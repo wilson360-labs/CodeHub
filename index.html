@@ -3,48 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido a mi pagina web</title>
+    <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
+    <title>Bienvenido a mi página web</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
         <h1>Bienvenido a mi web</h1>
-        <nav>
+        <nav aria-label="Principal">
             <ul>
                 <li><a href="#about">Sobre Mí</a></li>
                 <li><a href="#projects">Proyectos</a></li>
                 <li><a href="#contact">Contacto</a></li>
+                <li><a href="#game">Juego</a></li>
             </ul>
         </nav>
     </header>
     
-    <section id="about">
-        <h2>Sobre Mí</h2>
-        <p>Hola, soy Wilson.E. Soy Programador nivel medio, tengo 23 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a que me dedico :).</p>
-    </section>
-    
-    <section id="projects">
-        <h2>Proyectos</h2>
-        <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
-        <ul>
-            <li>Proyecto 1 - Python scripts</li>
-            <li>Proyecto 2 - HTML desarrollador web</li>
-            <li>Proyecto 3 - CSS en proceso</li>
-        </ul>
-    </section>
-    
-    <section id="contact">
-        <h2>Contacto</h2>
-        <p>Puedes contactarme a través de:</p>
-        <ul>
-            <li>Email: wilsonenrique686@gmail.com</li>
-            <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank">Contacto Telegram</a></li>
-            <li>Twitter: <a href="https://wa.me/*50241468185" target="_blank">Contacto Whatsapp</a></li>
-        </ul>
-    </section>
+    <main>
+        <section id="about">
+            <h2>Sobre Mí</h2>
+            <p>Hola, soy Wilson.E. Soy Programador nivel medio, tengo 23 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
+        </section>
+        
+        <section id="projects">
+            <h2>Proyectos</h2>
+            <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
+            <ul>
+                <li>Proyecto 1 - Python scripts</li>
+                <li>Proyecto 2 - HTML desarrollador web</li>
+                <li>Proyecto 3 - CSS en proceso</li>
+            </ul>
+        </section>
+        
+        <section id="contact">
+            <h2>Contacto</h2>
+            <p>Puedes contactarme a través de:</p>
+            <ul>
+                <li>Email: wilsonenrique686@gmail.com</li>
+                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank">Contacto Telegram</a></li>
+                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank">Contacto WhatsApp</a></li>
+            </ul>
+        </section>
+
+        <!-- Sección para el juego -->
+        <section id="game">
+            <h2>Juego: La Serpiente</h2>
+            <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
+            <button onclick="openGameWindow()">Jugar a la serpiente</button>
+        </section>
+    </main>
     
     <footer>
         <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
     </footer>
+
+    <!-- Enlace al archivo JavaScript -->
+    <script src="script.js"></script>
+    <script>
+        function openGameWindow() {
+            window.open('snake.html', '_blank', 'width=500,height=500');
+        }
+    </script>
 </body>
 </html>
