@@ -8,9 +8,17 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <h1>CARGANDO...</h1>
+    </div>
+
     <header>
-        <h1>Bienvenido a mi web</h1>
+        <h1>Bienvenido 😄</h1>
         <nav aria-label="Principal">
+            <div id="postdata">
+    <h2 class="animated-message">¡Gracias por visitar mi página web, Saludos✌️!</h2>
+</div>
             <ul>
                 <li><a href="#about">Sobre Mí</a></li>
                 <li><a href="#projects">Proyectos</a></li>
@@ -55,8 +63,10 @@
     </main>
     
     <footer>
+    <div class="footer-content">
         <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
-    </footer>
+    </div>
+</footer>
 
     <!-- Enlace al archivo JavaScript -->
     <script src="script.js"></script>
@@ -64,6 +74,21 @@
         function openGameWindow() {
             window.open('snake.html', '_blank', 'width=500,height=500');
         }
+
+        // Remover el splash screen después de 3 segundos
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('splash-screen').style.display = 'none';
+            }, 3000); // Tiempo en milisegundos
+        });
     </script>
+    <section id="mi-pueblo">
+    <h2>De aquí soy:</h2>
+    <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="pueblo-img">
+    <p>Este es mi querido pueblo. Aquí crecí y aprendí a soñar en grande.</p>
+    <p>• mas imagenes próximamente 📸 😁</p>
+</section>
+
 </body>
-</html>
+                        </html>
+    
