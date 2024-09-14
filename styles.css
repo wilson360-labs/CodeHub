@@ -1,3 +1,39 @@
+/* Splash Screen Styles */
+#splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #333; /* Color de fondo del splash screen */
+    color: #fff; /* Color del texto del splash screen */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Asegúrate de que el splash screen esté por encima de todo */
+}
+
+#splash-screen .loader {
+    border: 8px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 8px solid #fff; /* Color del borde superior del spinner */
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#splash-screen p {
+    font-size: 18px;
+    margin: 0;
+}
+
 /* Animación de entrada */
 @keyframes fadeIn {
     from {
@@ -14,8 +50,11 @@ body {
     margin: 0;
     padding: 0;
     animation: fadeIn 1s ease-in-out;
+    background: linear-gradient(to right, #6a11cb, #2575fc);
+    color: #fff;
 }
 
+/* Estilos de encabezado */
 header {
     background: #333;
     color: #fff;
@@ -26,6 +65,7 @@ header {
 nav ul {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 nav ul li {
@@ -38,6 +78,7 @@ nav ul li a {
     text-decoration: none;
 }
 
+/* Estilos de secciones principales */
 main {
     padding: 20px;
     margin: 10px;
@@ -48,56 +89,291 @@ main:hover {
     background-color: #f0f0f0;
 }
 
-footer {
-    background: #333;
-    color: #fff;
-    text-align: center;
-    padding: 10px 0;
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-}
-
-body {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
-    padding: 0;
-}
-
-header {
-    background: #333;
-    color: #fff;
-    padding: 10px 0;
-    text-align: center;
-}
-
-nav ul {
-    list-style: none;
-    padding: 0;
-}
-
-nav ul li {
-    display: inline;
-    margin: 0 15px;
-}
-
-nav ul li a {
-    color: #fff;
-    text-decoration: none;
-}
-
+/* Estilo general para las secciones */
 section {
     padding: 20px;
     margin: 10px;
+    background-color: #ffffff; /* Fondo blanco para las secciones */
+    border-radius: 8px; /* Opcional: agregar bordes redondeados */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: agregar sombra para más definición */
+    color: #333333; /* Color del texto en las secciones */
 }
 
+/* Ajusta el fondo blanco del main si es necesario */
+main {
+    padding: 20px;
+    margin: 10px;
+    background-color: #000000; /* Fondo blanco para el área principal */
+    border-radius: 8px; /* Opcional: agregar bordes redondeados */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: agregar sombra para más definición */
+    transition: background-color 0.5s ease;
+    color: #333333; /* Color del texto en el main */
+}
+
+main:hover {
+    background-color: #f0f0f0; /* Fondo al pasar el ratón sobre el main */
+}
+
+/* Estilo de la imagen de perfil */
+.profile-img {
+    max-width: 150px;
+    border-radius: 50%;
+    margin: 10px 0;
+}
+
+/* Estilos de la galería de proyectos */
+.project-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.project-item {
+    flex: 1 1 calc(33% - 20px);
+    box-sizing: border-box;
+    padding: 10px;
+    background: #fff;
+    color: #333;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
+    text-align: center;
+    border: 2px solid #007bff; /* Borde azul */
+    transition: background-color 0.3s, box-shadow 0.3s;
+}
+
+.project-item:hover {
+    background: #e9ecef;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Evitar fondo blanco al hacer clic */
+.project-item:focus,
+.project-item:active {
+    background: #fff; /* Asegúrate de que el fondo blanco no se muestre al hacer clic */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.project-item img {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.project-item h3 {
+    margin: 10px 0;
+}
+
+/* Estilos de habilidades */
+.skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.skill {
+    flex: 1 1 calc(33% - 20px);
+    box-sizing: border-box;
+    padding: 10px;
+    background: #fff;
+    color: #333;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
+}
+
+.skill h3 {
+    margin-bottom: 10px;
+}
+
+.skill-bar {
+    height: 10px;
+    background: #007bff; /* Azul de la barra de habilidad */
+    border-radius: 5px;
+}
+
+/* Estilos de formulario */
+form {
+    display: grid;
+    gap: 10px;
+}
+
+form label {
+    font-weight: bold;
+}
+
+form input, form textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+form button {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+form button:hover {
+    background: #0056b3;
+}
+
+/* Estilos de blog */
+.blog-post {
+    background: #fff;
+    color: #333;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
+}
+
+.blog-post h3 {
+    margin-top: 0;
+}
+/* Estilo para enlaces en secciones */
+section a {
+    color: #333; /* Color de texto por defecto */
+    text-decoration: none;
+    position: relative;
+    transition: color 0.3s, transform 0.3s;
+}
+
+/* Efecto de animación al pasar el cursor sobre los enlaces */
+section a:hover {
+    color: #007bff; /* Color del texto al pasar el cursor */
+    transform: scale(1.1); /* Aumenta el tamaño del enlace */
+}
+
+section a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -3px; /* Espacio entre el texto y el subrayado */
+    width: 100%;
+    height: 2px;
+    background-color: #007bff; /* Color del subrayado */
+    transform: scaleX(0);
+    transform-origin: bottom right;
+    transition: transform 0.3s ease;
+}
+
+section a:hover::after {
+    transform: scaleX(1);
+    transform-origin: bottom left;
+}
+/* Animación del cursor */
+@keyframes cursorAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.5); }
+    100% { transform: scale(1); }
+}
+
+/* Cursor personalizado */
+.cursor {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background-color: #333;
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: cursorAnimation 1s infinite;
+}
+
+/* Aplicar el cursor personalizado */
+body {
+    cursor: none; /* Ocultar el cursor por defecto */
+}
+
+/* derechos reservados xd*/
 footer {
     background: #333;
     color: #fff;
     text-align: center;
-    padding: 10px 0;
+    padding: 0px 0;
     position: fixed;
     width: 100%;
     bottom: 0;
+    z-index: 1;
 }
+
+.footer-content {
+    background: rgba(255, 255, 255, 0.3); /* Fondo translúcido blanco */
+    padding: 10px;
+    border-radius: 5px;
+    display: inline-block; /* Asegura que el contenedor solo ocupe el espacio necesario */
+}
+
+.footer-content p {
+    margin: 0;
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+}
+/*Postdata*/
+#postdata {
+    padding: 0;
+    margin: 20px;
+    background: none;
+    border: none;
+    text-align: center;
+}
+
+#postdata h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #fff; /* Texto blanco */
+}
+
+.animated-message {
+    font-size: 18px;
+    color: #fff; /* Texto blanco */
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: .15em solid orange; /* Cursor de escritura */
+    animation: typing 6s steps(100, end), blink-caret .0s step-end infinite;
+}
+
+@keyframes typing {
+    from { width: 0; }
+    to { width: 100%; }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent; }
+    50% { border-color: orange; }
+}
+/*Mi pueblo*/
+#mi-pueblo {
+    text-align: center;
+    margin: 40px 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+}
+
+#mi-pueblo h2 {
+    color: #333;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.pueblo-img {
+    width: 80%;
+    max-width: 600px;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#mi-pueblo p {
+    color: #555;
+    font-size: 18px;
+    margin-top: 15px;
+    }
+    
