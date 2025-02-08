@@ -397,3 +397,157 @@ footer {
     transform: scale(1.05);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
                                 }
+                                /* menu flotante */
+                                #floating-menu {
+                                    position: fixed;
+                                    top: 50%;
+                                    right: 20px;
+                                    transform: translateY(-50%);
+                                    background: linear-gradient(45deg, #ff6600, #ff4500);
+                                    color: white;
+                                    padding: 15px 25px;
+                                    font-size: 18px;
+                                    font-weight: bold;
+                                    border-radius: 12px;
+                                    cursor: pointer;
+                                    box-shadow: 0px 4px 12px rgba(255, 102, 0, 0.5);
+                                    transition: all 0.3s ease-in-out;
+                                    animation: pulse 1.5s infinite alternate;
+                                }
+                                
+                                /* Efecto de brillo al pasar el mouse */
+                                #floating-menu:hover {
+                                    background: linear-gradient(45deg, #ff4500, #ff6600);
+                                    transform: translateY(-50%) scale(1.1);
+                                    box-shadow: 0px 6px 20px rgba(255, 102, 0, 0.8);
+                                }
+                                
+                                /* Animación de pulso */
+                                @keyframes pulse {
+                                    from {
+                                        box-shadow: 0px 4px 12px rgba(255, 102, 0, 0.5);
+                                    }
+                                    to {
+                                        box-shadow: 0px 8px 24px rgba(255, 102, 0, 0.8);
+                                    }
+                                }
+                                /*mis skills*/
+                                /* Estilos generales para la sección de habilidades */
+#skills {
+    padding: 40px 20px;
+    background: #f9f9f9;
+    text-align: center;
+}
+
+#skills h2 {
+    font-size: 28px;
+    margin-bottom: 30px;
+    color: #333;
+}
+
+/* Contenedor de cada habilidad */
+.skill {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    margin: 0 auto 20px;
+}
+
+/* Ícono de la habilidad */
+.skill-icon {
+    font-size: 32px;
+    margin-right: 20px;
+    color: #ff4500; /* Color naranja */
+}
+
+/* Información de la habilidad */
+.skill-info {
+    flex: 1;
+    text-align: left;
+}
+
+.skill-info span {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Barra de progreso */
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+}
+
+.progress {
+    height: 100%;
+    background: #ff4500; /* Color naranja */
+    border-radius: 5px;
+    width: 0; /* Inicialmente en 0 para la animación */
+    transition: width 1s ease-in-out;
+}
+/* fondo pro xd */
+#neural-network {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1; /* Para que quede detrás del contenido */
+    pointer-events: none; /* Permite interactuar con el contenido sobre él */
+}
+
+/* firma final edit */
+
+.footer-signature {
+    text-align: center;
+    padding: 30px 0;
+    background: rgba(0, 0, 0, 0.8); /* Fondo oscuro semi-transparente */
+    margin-top: 50px;
+    border-top: 2px solid rgba(0, 255, 0, 0.3); /* Borde superior neón */
+}
+
+.terminal-container {
+    background: #1a1a1a; /* Fondo oscuro sólido */
+    border: 2px solid rgba(0, 255, 0, 0.3); /* Borde neón */
+    border-radius: 10px;
+    padding: 20px;
+    display: inline-block;
+    margin-bottom: 20px;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2); /* Sombra neón */
+}
+
+.terminal-text {
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    color: #00ff00; /* Texto verde neón */
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5); /* Brillo neón */
+}
+
+.prompt {
+    color: #00ff00; /* Texto verde neón */
+}
+
+.command {
+    color: rgba(255, 255, 255, 0.7); /* Texto gris claro */
+    animation: terminal-blink 1s infinite; /* Efecto de parpadeo */
+}
+
+@keyframes terminal-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.copyright {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7); /* Texto gris claro */
+    margin-top: 15px;
+}
