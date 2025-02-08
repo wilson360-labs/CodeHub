@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tienda de Apps</title>
+    <link rel="stylesheet" href="novedades.css">
+</head>
+<body>
+    <header>
+        <h1>Tienda de Aplicaciones</h1>
+    </header>
+    
+    <section class="info-seguridad">
+        <h2>Seguridad y Uso Responsable</h2>
+        <p>Para disfrutar de las funciones desbloqueadas de las aplicaciones, recomendamos usarlas de manera responsable. 
+           Asegúrate de descargar solo desde fuentes confiables y protege tu privacidad al instalar cualquier aplicación.</p>
+    </section>
+    
+    <section class="search-bar">
+        <input type="text" id="search" placeholder="Buscar aplicaciones...">
+        <button onclick="buscarApp()">🔍</button>
+    </section>
+    
+    <section class="popular-apps">
+        <h2>Aplicaciones Populares 🔥</h2>
+        <ul>
+            <li><a href="#">Spotify Premium</a></li>
+            <li><a href="#">YouTube ReVanced</a></li>
+            <li><a href="#">TikTok Premium</a></li>
+        </ul>
+    </section>
+    
+    <main class="container">
+        <div class="app-card">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/8/84/Spotify_icon.svg" alt="Spotify Premium">
+            <div class="app-info">
+                <h2>Spotify Premium <span class="update-tag">🆕</span></h2>
+                <p>Disfruta de música sin anuncios y con calidad premium.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" alt="YouTube ReVanced">
+            <div class="app-info">
+                <h2>YouTube ReVanced <span class="update-tag">🆕</span></h2>
+                <p>Accede a YouTube sin anuncios y con funciones premium.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok Premium">
+            <div class="app-info">
+                <h2>TikTok Premium <span class="update-tag">🆕</span></h2>
+                <p>Disfruta de TikTok sin anuncios y con más funciones.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.png" alt="Netflix Mod">
+            <div class="app-info">
+                <h2>Netflix Mod <span class="update-tag">🔄 Actualizada</span></h2>
+                <p>Mira series y películas sin restricciones.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg" alt="Disney+ Mod">
+            <div class="app-info">
+                <h2>Disney+ Mod <span class="update-tag">🆕</span></h2>
+                <p>Accede a todo el contenido premium sin límites.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://i.pinimg.com/736x/b5/5d/d5/b55dd53b92a36348bde3994500a1a593.jpg" alt="MX Player Pro">
+            <div class="app-info">
+                <h2>MX Player Pro <span class="update-tag">🔄 Actualizada</span></h2>
+                <p>Disfruta de un potente reproductor de video sin anuncios.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://i.pinimg.com/736x/d1/00/9f/d1009f9fbe8bc537c38fc059017e667d.jpg" alt="PicsArt Premium">
+            <div class="app-info">
+                <h2>PicsArt Premium <span class="update-tag">🆕</span></h2>
+                <p>Accede a herramientas de edición sin restricciones.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        
+        <div class="app-card">
+            <img src="https://takeremapk.com/wp-content/uploads/2024/02/Remini-icon-logo.webp" alt="MX Player Pro">
+            <div class="app-info">
+                <h2>Remini Pro <span class="update-tag">🔄 Actualizada</span></h2>
+                <p>Disfruta de sus funciones desbloqueadas y sin anuncios, algunas de sus funciones estan al lado del servidor.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
+        <div class="app-card">
+            <img src="https://store-images.s-microsoft.com/image/apps.33776.9007199266244356.f3c45420-71fd-4355-9b98-549eebf9b29c.3fc6451a-bdbe-4f22-b610-1a3b4289159f?h=210" alt="Crunchyroll Premium">
+            <div class="app-info">
+                <h2>Crunchyroll Premium <span class="update-tag">🔄 Actualizada</span></h2>
+                <p>Accede a todo el catálogo de anime sin anuncios y con la mejor calidad de reproducción.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+        
+    </main>
+    
+    <script>
+        function buscarApp() {
+            let input = document.getElementById("search").value.toLowerCase();
+            let apps = document.querySelectorAll(".app-card");
+            
+            apps.forEach(app => {
+                let nombre = app.querySelector("h2").innerText.toLowerCase();
+                if (nombre.includes(input)) {
+                    app.style.display = "block";
+                } else {
+                    app.style.display = "none";
+                }
+            });
+        }
+    </script>
+</body>
+</html>

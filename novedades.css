@@ -1,0 +1,144 @@
+/* Variables CSS */
+:root {
+    --color-primary: #ff4500;
+    --color-secondary: #ff6600;
+    --color-background: #f4f4f4;
+    --color-text: #333;
+    --color-text-light: #666;
+}
+
+/* Estilos generales */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--color-background);
+    text-align: center;
+}
+
+/* Encabezado */
+header {
+    background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+    color: white;
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Contenedor principal */
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 20px 10px;
+}
+
+/* Tarjetas de aplicaciones */
+.app-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    margin: 15px;
+    width: 100%;
+    max-width: 280px;
+    text-align: center;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+}
+
+.app-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Imagen de la app */
+.app-card img {
+    width: 100px;
+    height: 100px;
+    border-radius: 20%;
+    margin-bottom: 10px;
+    transition: transform 0.3s ease-in-out;
+}
+
+.app-card:hover img {
+    transform: scale(1.1);
+}
+
+/* Información de la app */
+.app-info h2 {
+    font-size: 20px;
+    margin: 10px 0;
+    color: var(--color-text);
+}
+
+.app-info p {
+    font-size: 14px;
+    color: var(--color-text-light);
+    margin-bottom: 15px;
+}
+
+/* Botón de descarga */
+.download-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 8px;
+    transition: background 0.3s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.download-btn:hover {
+    background: linear-gradient(45deg, var(--color-secondary), var(--color-primary));
+    transform: scale(1.1);
+}
+
+/* Barra de búsqueda */
+.search-bar {
+    margin: 20px auto;
+    max-width: 500px;
+}
+
+.search-bar input {
+    padding: 10px;
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    width: 70%;
+    font-size: 16px;
+}
+
+.search-bar button {
+    padding: 10px 20px;
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease-in-out;
+}
+
+.search-bar button:hover {
+    background: var(--color-secondary);
+}
+
+/* Sección de seguridad */
+.info-seguridad {
+    background: #fff3e0;
+    padding: 15px;
+    border-radius: 8px;
+    border: 2px solid var(--color-secondary);
+    margin: 20px auto;
+    max-width: 800px;
+}
+
+/* Etiquetas de actualización */
+.update-tag {
+    background: var(--color-primary);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    margin-left: 10px;
+}
