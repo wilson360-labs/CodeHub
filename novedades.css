@@ -142,3 +142,32 @@ header {
     font-size: 12px;
     margin-left: 10px;
 }
+/*Segundos botones xd*/
+.btn {
+    display: block; /* Hace que cada botón ocupe su propio espacio */
+    text-align: center;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    text-decoration: none;
+    margin-top: 10px; /* Separa los botones */
+}
+
+.primary-btn {
+    background-color: #28a745 !important; /* Verde */
+    color: white !important;
+}
+
+.secondary-btn {
+    background-color: #007bff !important; /* Azul */
+    color: white !important;
+}
+
+.primary-btn:hover {
+    background-color: #218838 !important;
+}
+
+.secondary-btn:hover {
+    background-color: #0056b3 !important;
+}
