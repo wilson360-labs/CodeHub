@@ -17,6 +17,8 @@
 </script>
 </head>
 <body>
+    <!-- Justo después de <body> -->
+<canvas id="neural-network"></canvas>
     <!-- Splash Screen -->
     <div id="splash-screen">
         <h1>CARGANDO...</h1>
@@ -38,6 +40,55 @@
     </header>
     
     <main>
+        <!-- mis skills -->
+        <section id="skills">
+            <h2>Habilidades Técnicas</h2>
+            <div class="skill">
+                <div class="skill-icon">
+                    <i class="fab fa-html5"></i> <!-- Ícono de FontAwesome -->
+                </div>
+                <div class="skill-info">
+                    <span>HTML</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 90%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
+                    <i class="fab fa-css3-alt"></i> <!-- Ícono de FontAwesome -->
+                </div>
+                <div class="skill-info">
+                    <span>CSS</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 85%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
+                    <i class="fab fa-js-square"></i> <!-- Ícono de FontAwesome -->
+                </div>
+                <div class="skill-info">
+                    <span>JavaScript</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 75%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
+                    <i class="fab fa-python"></i> <!-- Ícono de FontAwesome -->
+                </div>
+                <div class="skill-info">
+                    <span>Python</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 80%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- info-->
         <section id="about">
             <h2>Sobre Mí</h2>
             <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 23 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
@@ -69,6 +120,16 @@
             <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
             <button onclick="openGameWindow()">Jugar a la serpiente</button>
         </section>
+         <!-- Menú flotante -->
+    <div id="floating-menu" onclick="openNewWindow()">
+        ¿Qué hay de nuevo?
+    </div>
+
+    <script>
+        function openNewWindow() {
+            window.open('novedades.html', '_blank', 'width=800,height=600');
+        }
+    </script>
     </main>
     
     <footer>
@@ -90,6 +151,116 @@
                 document.getElementById('splash-screen').style.display = 'none';
             }, 3000); // Tiempo en milisegundos
         });
+        
+        // En tu script.js o dentro de //
+const canvas = document.getElementById('neural-network');
+const ctx = canvas.getContext('2d');
+
+// Configuración inicial
+let nodes = [];
+let connections = [];
+const mouse = { x: 0, y: 0 };
+
+// Crear nodos aleatorios
+class Node {
+    constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.radius = 2;
+        this.speedX = (Math.random() - 0.5) * 0.5;
+        this.speedY = (Math.random() - 0.5) * 0.5;
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 69, 0, 0.8)'; // Color naranja
+        ctx.fill();
+    }
+
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+
+        // Rebotar en los bordes
+        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+
+        // Atracción hacia el cursor
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < 100) {
+            this.x += dx * 0.01;
+            this.y += dy * 0.01;
+        }
+    }
+}
+
+// Crear conexiones entre nodos
+class Connection {
+    constructor(node1, node2) {
+        this.node1 = node1;
+        this.node2 = node2;
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.moveTo(this.node1.x, this.node1.y);
+        ctx.lineTo(this.node2.x, this.node2.y);
+        ctx.strokeStyle = 'rgba(255, 69, 0, 0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    }
+}
+
+// Inicializar nodos y conexiones
+function init() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    nodes = [];
+    for (let i = 0; i < 80; i++) {
+        nodes.push(new Node());
+    }
+
+    connections = [];
+    for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+            if (Math.random() < 0.02) { // Probabilidad de conexión
+                connections.push(new Connection(nodes[i], nodes[j]));
+            }
+        }
+    }
+}
+
+// Animación
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    nodes.forEach(node => {
+        node.update();
+        node.draw();
+    });
+
+    connections.forEach(connection => {
+        connection.draw();
+    });
+
+    requestAnimationFrame(animate);
+}
+
+// Event Listeners
+window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+window.addEventListener('resize', init);
+
+// Iniciar todo
+init();
+animate();
         </script>
     <section id="mi-pueblo">
     <h2>De aquí soy:</h2>
@@ -107,6 +278,12 @@
         <!-- Aquí irás agregando más imágenes en el futuro -->
     </div>
     </div>
+    <!-- Firma con efecto terminal -->
+    <div class="footer-signature">
+        <div class="terminal-text">
+            <span class="prompt">root@wilson:~$</span>
+            <span class="command"> "Código con pasión desde 2024"</span>
+        </div>
 </section>
 
 </body>
