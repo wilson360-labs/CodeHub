@@ -26,10 +26,11 @@ header {
     text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-/* Contenedor principal */
+/* Contenedor principal con diseño adaptable */
 .container {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* 2 columnas en móviles */
+    gap: 15px;
     justify-content: center;
     padding: 20px 10px;
 }
@@ -40,9 +41,6 @@ header {
     border-radius: 12px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     padding: 20px;
-    margin: 15px;
-    width: 100%;
-    max-width: 280px;
     text-align: center;
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
@@ -142,25 +140,26 @@ header {
     font-size: 12px;
     margin-left: 10px;
 }
-/*Segundos botones xd*/
+
+/* Botones adicionales */
 .btn {
-    display: block; /* Hace que cada botón ocupe su propio espacio */
+    display: block;
     text-align: center;
     padding: 10px 15px;
     border-radius: 5px;
     font-size: 16px;
     font-weight: bold;
     text-decoration: none;
-    margin-top: 10px; /* Separa los botones */
+    margin-top: 10px;
 }
 
 .primary-btn {
-    background-color: #28a745 !important; /* Verde */
+    background-color: #28a745 !important;
     color: white !important;
 }
 
 .secondary-btn {
-    background-color: #007bff !important; /* Azul */
+    background-color: #007bff !important;
     color: white !important;
 }
 
@@ -170,4 +169,11 @@ header {
 
 .secondary-btn:hover {
     background-color: #0056b3 !important;
+}
+
+/* Ajuste responsivo */
+@media (max-width: 600px) {
+    .container {
+        grid-template-columns: repeat(2, 1fr); /* Mantiene 2 columnas en móviles */
+    }
 }
