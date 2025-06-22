@@ -4,11 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplicaciones Premium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="novedades.css">
 </head>
 <body>
+    <!-- Animated Background Particles -->
+    <div class="particles" id="particles"></div>
+
     <header>
-        <h1>Tienda de Aplicaciones</h1>
+        <div class="header-content">
+            <div class="logo-container">
+                <div class="logo">📱</div>
+            </div>
+            <h1 class="main-title">Aplicaciones Premium</h1>
+            <p class="subtitle">Descubre el poder de las apps desbloqueadas</p>
+            
+            <nav class="nav-container">
+                <a href="#" class="nav-item">🏠 Inicio</a>
+                <a href="#" class="nav-item">🔥 Populares</a>
+                <a href="#" class="nav-item">🆕 Nuevas</a>
+                <a href="#" class="nav-item">⭐ Favoritas</a>
+            </nav>
+        </div>
     </header>
     
     <section class="info-seguridad">
@@ -17,18 +36,89 @@
            Asegúrate de descargar solo desde fuentes confiables y protege tu privacidad al instalar cualquier aplicación.</p>
     </section>
     
-    <section class="search-bar">
-        <input type="text" id="search" placeholder="Buscar aplicaciones...">
-        <button onclick="buscarApp()">🔍</button>
-    </section>
+    <div class="search-container">
+        <div class="search-wrapper">
+            <input type="text" class="search-input" id="search" placeholder="Buscar aplicaciones premium...">
+            <button class="search-btn" onclick="buscarApp()">🔍</button>
+        </div>
+    </div>
     
     <section class="popular-apps">
         <h2>Aplicaciones Populares 🔥</h2>
-        <ul>
-            <li><a href="#">Spotify Premium</a></li>
-            <li><a href="#">YouTube ReVanced</a></li>
-            <li><a href="#">TikTok Premium</a></li>
+        <ul class="apps-grid">
+            <li class="app-card">
+                <div class="app-icon">🎵</div>
+                <a href="#">Spotify Premium</a>
+            </li>
+            <li class="app-card">
+                <div class="app-icon">📺</div>
+                <a href="#">YouTube ReVanced</a>
+            </li>
+            <li class="app-card">
+                <div class="app-icon">🎬</div>
+                <a href="#">TikTok Premium</a>
+            </li>
         </ul>
+    </section>
+
+    <script>
+        // Create animated particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 8 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Search functionality
+        function buscarApp() {
+            const searchInput = document.getElementById('search');
+            const query = searchInput.value.trim();
+            
+            if (query) {
+                // Add search animation
+                searchInput.style.background = 'linear-gradient(90deg, #ff6b6b, #4ecdc4)';
+                searchInput.style.color = 'white';
+                
+                setTimeout(() => {
+                    searchInput.style.background = 'transparent';
+                    searchInput.style.color = '#333';
+                    alert(`Buscando: ${query}`);
+                }, 500);
+            }
+        }
+
+        // Enhanced search on Enter key
+        document.getElementById('search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarApp();
+            }
+        });
+
+        // Initialize particles when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+        });
+
+        // Add hover effects to app cards
+        document.querySelectorAll('.app-card').forEach(card => {
+            card.addEventListener('mouseover', function() {
+                this.style.background = 'rgba(255, 255, 255, 1)';
+            });
+            
+            card.addEventListener('mouseout', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.95)';
+            });
+        });
+    </script>
+</body>
     </section>
     
     <main class="container">

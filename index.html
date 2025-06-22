@@ -5,31 +5,495 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
     <title>Bienvenido a CodeHub</title>
-    <link rel="stylesheet" href="styles.css">
     <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-3YEWZ24PQR"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3YEWZ24PQR"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-3YEWZ24PQR');
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  gtag('config', 'G-3YEWZ24PQR');
-</script>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
+            color: #ffffff;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Neural Network Canvas */
+        #neural-network {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* Splash Screen Profesional */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #000000, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 1s ease-out, visibility 1s ease-out;
+        }
+
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .splash-content {
+            text-align: center;
+        }
+
+        .splash-title {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .loading-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            border-radius: 10px;
+            width: 0%;
+            animation: loadingProgress 2.5s ease-out forwards;
+            position: relative;
+        }
+
+        .loading-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6));
+            animation: loadingShine 0.8s ease-in-out infinite;
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            color: #ffbd69;
+            margin-top: 1rem;
+            animation: loadingDots 1.5s infinite;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes loadingProgress {
+            0% { width: 0%; }
+            20% { width: 25%; }
+            40% { width: 50%; }
+            60% { width: 75%; }
+            80% { width: 90%; }
+            100% { width: 100%; }
+        }
+
+        @keyframes loadingShine {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes loadingDots {
+            0%, 20% { opacity: 1; }
+            40% { opacity: 0.5; }
+            60% { opacity: 1; }
+            80% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Header Styles */
+        header {
+            padding: 2rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 69, 0, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes textFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        #postdata {
+            margin: 1.5rem 0;
+        }
+
+        .animated-message {
+            font-size: 1.2rem;
+            color: #ffbd69;
+            animation: typewriter 3s steps(40) 1s both, blinkCursor 1s infinite;
+            border-right: 3px solid #ff4500;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blinkCursor {
+            0%, 50% { border-color: #ff4500; }
+            51%, 100% { border-color: transparent; }
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        nav a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 0.8rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: 50px;
+            background: linear-gradient(45deg, rgba(255, 69, 0, 0.1), rgba(255, 107, 53, 0.1));
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        nav a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        nav a:hover::before {
+            left: 100%;
+        }
+
+        nav a:hover {
+            border-color: #ff4500;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
+            transform: translateY(-3px);
+        }
+
+        /* Main Content */
+        main {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        section {
+            margin: 4rem 0;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 69, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            animation: flowingGradient 3s ease-in-out infinite;
+        }
+
+        @keyframes flowingGradient {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            background: linear-gradient(45deg, #ff4500, #ffbd69);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Skills Section */
+        #skills {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(26, 26, 46, 0.6));
+            border: 2px solid rgba(255, 69, 0, 0.3);
+        }
+
+        .skill {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            padding: 2rem;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.05));
+            border-radius: 20px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skill:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(255, 69, 0, 0.4);
+        }
+
+        .skill-icon {
+            font-size: 4rem;
+            margin-right: 2.5rem;
+            color: #ff4500;
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .skill-info {
+            flex: 1;
+        }
+
+        .skill-info span {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffbd69;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            border-radius: 10px;
+            position: relative;
+            animation: progressFlow 2s ease-in-out infinite;
+        }
+
+        @keyframes progressFlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Game Section */
+        #game {
+            background: linear-gradient(135deg, rgba(20, 20, 40, 0.8), rgba(40, 20, 60, 0.6));
+            border: 2px solid rgba(255, 69, 0, 0.4);
+        }
+
+        .game-button, button {
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 1.5rem 3rem;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4);
+            margin: 1rem;
+        }
+
+        .game-button:hover, button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
+        }
+
+        /* Image Gallery */
+        .image-gallery {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .gallery-img, .pueblo-img {
+            max-width: 300px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 69, 0, 0.3);
+        }
+
+        .gallery-img:hover, .pueblo-img:hover {
+            transform: scale(1.05) rotate(2deg);
+            box-shadow: 0 15px 30px rgba(255, 69, 0, 0.4);
+            border-color: #ff4500;
+        }
+
+        /* Terminal Signature */
+        .footer-signature {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+        }
+
+        .terminal-text {
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+        }
+
+        .prompt {
+            color: #ff4500;
+            font-weight: bold;
+        }
+
+        .command {
+            animation: terminalBlink 1.5s infinite;
+        }
+
+        @keyframes terminalBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 2px solid rgba(255, 69, 0, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .splash-title { font-size: 2.5rem; }
+            header h1 { font-size: 2.5rem; }
+            nav ul { flex-direction: column; gap: 1rem; }
+            .skill { flex-direction: column; text-align: center; }
+            .skill-icon { margin-right: 0; margin-bottom: 1rem; }
+            .image-gallery { flex-direction: column; align-items: center; }
+    </style>
 </head>
 <body>
-    <!-- Justo después de <body> -->
-<canvas id="neural-network"></canvas>
-    <!-- Splash Screen -->
+    <!-- Neural Network Canvas -->
+    <canvas id="neural-network"></canvas>
+    
+    <!-- Splash Screen Profesional -->
     <div id="splash-screen">
-        <h1>CARGANDO...</h1>
+        <div class="splash-content">
+            <div class="splash-title">CodeHub</div>
+            <div class="loading-container">
+                <div class="loading-bar"></div>
+            </div>
+            <div class="loading-text">Cargando experiencia...</div>
+        </div>
     </div>
 
     <header>
-        <h1>Bienvenido 😄</h1>
+        <h1>Bienvenido &#128075;</h1>
         <nav aria-label="Principal">
             <div id="postdata">
-    <h2 class="animated-message">¡Gracias por visitar mi página web, Saludos✌️!</h2>
-</div>
+                <h2 class="animated-message">¡Gracias por visitar mi página web, Saludos✌️!</h2>
+            </div>
             <ul>
                 <li><a href="#about">Sobre Mí</a></li>
                 <li><a href="#projects">Proyectos</a></li>
@@ -40,12 +504,12 @@
     </header>
     
     <main>
-        <!-- mis skills -->
+        <!-- Skills Section -->
         <section id="skills">
             <h2>Habilidades Técnicas</h2>
             <div class="skill">
                 <div class="skill-icon">
-                    <i class="fab fa-html5"></i> <!-- Ícono de FontAwesome -->
+                    <i class="fab fa-html5"></i>
                 </div>
                 <div class="skill-info">
                     <span>HTML</span>
@@ -56,7 +520,7 @@
             </div>
             <div class="skill">
                 <div class="skill-icon">
-                    <i class="fab fa-css3-alt"></i> <!-- Ícono de FontAwesome -->
+                    <i class="fab fa-css3-alt"></i>
                 </div>
                 <div class="skill-info">
                     <span>CSS</span>
@@ -67,7 +531,7 @@
             </div>
             <div class="skill">
                 <div class="skill-icon">
-                    <i class="fab fa-js-square"></i> <!-- Ícono de FontAwesome -->
+                    <i class="fab fa-js-square"></i>
                 </div>
                 <div class="skill-info">
                     <span>JavaScript</span>
@@ -78,7 +542,7 @@
             </div>
             <div class="skill">
                 <div class="skill-icon">
-                    <i class="fab fa-python"></i> <!-- Ícono de FontAwesome -->
+                    <i class="fab fa-python"></i>
                 </div>
                 <div class="skill-info">
                     <span>Python</span>
@@ -88,7 +552,8 @@
                 </div>
             </div>
         </section>
-        <!-- info-->
+
+        <!-- About Section -->
         <section id="about">
             <h2>Sobre Mí</h2>
             <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 24 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
@@ -114,177 +579,169 @@
             </ul>
         </section>
 
-        <!-- Sección para el juego -->
-        <section id="game">
-            <h2>Juego: La Serpiente</h2>
-            <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
-            <button onclick="openGameWindow()">Jugar a la serpiente</button>
+        <!-- Game Section -->
+<section id="game">
+    <h2>Juego: La Serpiente</h2>
+    <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
+    <button onclick="openGameWindow('snake')">Jugar a la serpiente</button>
+
+    <h2>Juego: Tetris</h2>
+    <p>Haz clic en el botón para jugar a un emocionante juego de Tetris en una nueva ventana.</p>
+    <button onclick="openGameWindow('tetris')">Jugar a la Tetris</button>
+</section>
+
+        <!-- Mi Pueblo Section -->
+        <section id="mi-pueblo">
+            <h2>De aquí soy:</h2>
+            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery">
+            <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
+            <div class="mi-pueblo">
+                <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="ÁLBUM PRÓXIMAMENTE" class="gallery-img">
+                <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
+                <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
+            </div>
+            
+            <!-- Terminal Signature -->
+            <div class="footer-signature">
+                <div class="terminal-text">
+                    <span class="prompt">root@wilson:~$</span>
+                    <span class="command"> "Código con pasión desde 2024"</span>
+                </div>
+            </div>
         </section>
-         <!-- Menú flotante -->
+    </main>
+
+    <!-- Floating Menu -->
     <div id="floating-menu" onclick="openNewWindow()">
         ¿Qué hay de nuevo?
     </div>
+    
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
+        </div>
+    </footer>
 
     <script>
+        // Neural Network Animation
+        const canvas = document.getElementById('neural-network');
+        const ctx = canvas.getContext('2d');
+
+        let nodes = [];
+        let connections = [];
+        const mouse = { x: 0, y: 0 };
+
+        class Node {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.radius = 2;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 69, 0, 0.8)';
+                ctx.fill();
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 100) {
+                    this.x += dx * 0.01;
+                    this.y += dy * 0.01;
+                }
+            }
+        }
+
+        class Connection {
+            constructor(node1, node2) {
+                this.node1 = node1;
+                this.node2 = node2;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.node1.x, this.node1.y);
+                ctx.lineTo(this.node2.x, this.node2.y);
+                ctx.strokeStyle = 'rgba(255, 69, 0, 0.3)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+        }
+
+        function init() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            nodes = [];
+            for (let i = 0; i < 80; i++) {
+                nodes.push(new Node());
+            }
+
+            connections = [];
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() < 0.02) {
+                        connections.push(new Connection(nodes[i], nodes[j]));
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
+            });
+
+            connections.forEach(connection => {
+                connection.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('resize', init);
+
+        init();
+        animate();
+
+        // Splash Screen Logic
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splashScreen = document.getElementById('splash-screen');
+                splashScreen.classList.add('hidden');
+            }, 3000);
+        });
+
+        // Game and Menu Functions
+        function openGameWindow() {
+            window.open('snake.html', '_blank', 'width=500,height=500');
+        }
+        function openGameWindow() {
+            window.open('tetris.html', '_blank', 'width=500,height=500');
+        }
         function openNewWindow() {
             window.open('novedades.html', '_blank', 'width=800,height=600');
         }
     </script>
-    </main>
-    
-    <footer>
-    <div class="footer-content">
-        <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
-    </div>
-</footer>
-
-    <!-- Enlace al archivo JavaScript -->
-    <script src="script.js"></script>
-    <script>
-        function openGameWindow() {
-            window.open('snake.html', '_blank', 'width=500,height=500');
-        }
-
-        // Remover el splash screen después de 3 segundos
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('splash-screen').style.display = 'none';
-            }, 3000); // Tiempo en milisegundos
-        });
-        
-        // En tu script.js o dentro de //
-const canvas = document.getElementById('neural-network');
-const ctx = canvas.getContext('2d');
-
-// Configuración inicial
-let nodes = [];
-let connections = [];
-const mouse = { x: 0, y: 0 };
-
-// Crear nodos aleatorios
-class Node {
-    constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.radius = 2;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.speedY = (Math.random() - 0.5) * 0.5;
-    }
-
-    draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 69, 0, 0.8)'; // Color naranja
-        ctx.fill();
-    }
-
-    update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-
-        // Rebotar en los bordes
-        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-        if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
-
-        // Atracción hacia el cursor
-        const dx = mouse.x - this.x;
-        const dy = mouse.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance < 100) {
-            this.x += dx * 0.01;
-            this.y += dy * 0.01;
-        }
-    }
-}
-
-// Crear conexiones entre nodos
-class Connection {
-    constructor(node1, node2) {
-        this.node1 = node1;
-        this.node2 = node2;
-    }
-
-    draw() {
-        ctx.beginPath();
-        ctx.moveTo(this.node1.x, this.node1.y);
-        ctx.lineTo(this.node2.x, this.node2.y);
-        ctx.strokeStyle = 'rgba(255, 69, 0, 0.3)';
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-    }
-}
-
-// Inicializar nodos y conexiones
-function init() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    nodes = [];
-    for (let i = 0; i < 80; i++) {
-        nodes.push(new Node());
-    }
-
-    connections = [];
-    for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-            if (Math.random() < 0.02) { // Probabilidad de conexión
-                connections.push(new Connection(nodes[i], nodes[j]));
-            }
-        }
-    }
-}
-
-// Animación
-function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    nodes.forEach(node => {
-        node.update();
-        node.draw();
-    });
-
-    connections.forEach(connection => {
-        connection.draw();
-    });
-
-    requestAnimationFrame(animate);
-}
-
-// Event Listeners
-window.addEventListener('mousemove', (e) => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-});
-
-window.addEventListener('resize', init);
-
-// Iniciar todo
-init();
-animate();
-        </script>
-    <section id="mi-pueblo">
-    <h2>De aquí soy:</h2>
-    <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="pueblo-img">
-    <p>Este es mi querido pueblo “San Luis Jilotepeque” municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
-    <div class="image-gallery">
-        <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="ÁLBUM PRÓXIMAMENTE" class="gallery-img">
-        <!-- Aquí irás agregando más imágenes en el futuro -->
-        <div class="image-gallery">
-        <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
-        <!-- Aquí irás agregando más imágenes en el futuro -->
-    </div>
-    <div class="image-gallery">
-        <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
-        <!-- Aquí irás agregando más imágenes en el futuro -->
-    </div>
-    </div>
-    <!-- Firma con efecto terminal -->
-    <div class="footer-signature">
-        <div class="terminal-text">
-            <span class="prompt">root@wilson:~$</span>
-            <span class="command"> "Código con pasión desde 2024"</span>
-        </div>
-</section>
-
 </body>
 </html>

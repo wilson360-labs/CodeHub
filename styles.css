@@ -1,402 +1,3 @@
-/* Splash Screen Styles */
-#splash-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: #333; /* Color de fondo del splash screen */
-    color: #fff; /* Color del texto del splash screen */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999; /* Asegúrate de que el splash screen esté por encima de todo */
-}
-
-#splash-screen .loader {
-    border: 8px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top: 8px solid #fff; /* Color del borde superior del spinner */
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 20px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-#splash-screen p {
-    font-size: 18px;
-    margin: 0;
-}
-
-/* Animación de entrada */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-body {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-    margin: 0;
-    padding: 0;
-    animation: fadeIn 1s ease-in-out;
-    background: linear-gradient(to right, #6a11cb, #2575fc);
-    color: #fff;
-}
-
-/* Estilos de encabezado */
-header {
-    background: #333;
-    color: #fff;
-    padding: 10px 0;
-    text-align: center;
-}
-
-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-nav ul li {
-    display: inline;
-    margin: 0 15px;
-}
-
-nav ul li a {
-    color: #fff;
-    text-decoration: none;
-}
-
-/* Estilos de secciones principales */
-main {
-    padding: 20px;
-    margin: 10px;
-    transition: background-color 0.5s ease;
-}
-
-main:hover {
-    background-color: #f0f0f0;
-}
-
-/* Estilo general para las secciones */
-section {
-    padding: 20px;
-    margin: 10px;
-    background-color: #ffffff; /* Fondo blanco para las secciones */
-    border-radius: 8px; /* Opcional: agregar bordes redondeados */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: agregar sombra para más definición */
-    color: #333333; /* Color del texto en las secciones */
-}
-
-/* Ajusta el fondo blanco del main si es necesario */
-main {
-    padding: 20px;
-    margin: 10px;
-    background-color: #000000; /* Fondo blanco para el área principal */
-    border-radius: 8px; /* Opcional: agregar bordes redondeados */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Opcional: agregar sombra para más definición */
-    transition: background-color 0.5s ease;
-    color: #333333; /* Color del texto en el main */
-}
-
-main:hover {
-    background-color: #f0f0f0; /* Fondo al pasar el ratón sobre el main */
-}
-
-/* Estilo de la imagen de perfil */
-.profile-img {
-    max-width: 150px;
-    border-radius: 50%;
-    margin: 10px 0;
-}
-
-/* Estilos de la galería de proyectos */
-.project-gallery {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.project-item {
-    flex: 1 1 calc(33% - 20px);
-    box-sizing: border-box;
-    padding: 10px;
-    background: #fff;
-    color: #333;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
-    text-align: center;
-    border: 2px solid #007bff; /* Borde azul */
-    transition: background-color 0.3s, box-shadow 0.3s;
-}
-
-.project-item:hover {
-    background: #e9ecef;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-/* Evitar fondo blanco al hacer clic */
-.project-item:focus,
-.project-item:active {
-    background: #fff; /* Asegúrate de que el fondo blanco no se muestre al hacer clic */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.project-item img {
-    max-width: 100%;
-    border-radius: 10px;
-    margin-bottom: 10px;
-}
-
-.project-item h3 {
-    margin: 10px 0;
-}
-
-/* Estilos de habilidades */
-.skills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-
-.skill {
-    flex: 1 1 calc(33% - 20px);
-    box-sizing: border-box;
-    padding: 10px;
-    background: #fff;
-    color: #333;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
-}
-
-.skill h3 {
-    margin-bottom: 10px;
-}
-
-.skill-bar {
-    height: 10px;
-    background: #007bff; /* Azul de la barra de habilidad */
-    border-radius: 5px;
-}
-
-/* Estilos de formulario */
-form {
-    display: grid;
-    gap: 10px;
-}
-
-form label {
-    font-weight: bold;
-}
-
-form input, form textarea {
-    width: 100%;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-}
-
-form button {
-    background: #007bff;
-    color: #fff;
-    border: none;
-    padding: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-form button:hover {
-    background: #0056b3;
-}
-
-/* Estilos de blog */
-.blog-post {
-    background: #fff;
-    color: #333;
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada */
-}
-
-.blog-post h3 {
-    margin-top: 0;
-}
-/* Estilo para enlaces en secciones */
-section a {
-    color: #333; /* Color de texto por defecto */
-    text-decoration: none;
-    position: relative;
-    transition: color 0.3s, transform 0.3s;
-}
-
-/* Efecto de animación al pasar el cursor sobre los enlaces */
-section a:hover {
-    color: #007bff; /* Color del texto al pasar el cursor */
-    transform: scale(1.1); /* Aumenta el tamaño del enlace */
-}
-
-section a::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    bottom: -3px; /* Espacio entre el texto y el subrayado */
-    width: 100%;
-    height: 2px;
-    background-color: #007bff; /* Color del subrayado */
-    transform: scaleX(0);
-    transform-origin: bottom right;
-    transition: transform 0.3s ease;
-}
-
-section a:hover::after {
-    transform: scaleX(1);
-    transform-origin: bottom left;
-}
-/* Animación del cursor */
-@keyframes cursorAnimation {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.5); }
-    100% { transform: scale(1); }
-}
-
-/* Cursor personalizado */
-.cursor {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background-color: #333;
-    border-radius: 50%;
-    pointer-events: none;
-    transform: translate(-50%, -50%);
-    animation: cursorAnimation 1s infinite;
-}
-
-/* derechos reservados xd*/
-footer {
-    background: #333;
-    color: #fff;
-    text-align: center;
-    padding: 0px 0;
-    position: fixed;
-    width: 100%;
-    bottom: 0;
-    z-index: 1;
-}
-
-.footer-content {
-    background: rgba(255, 255, 255, 0.3); /* Fondo translúcido blanco */
-    padding: 10px;
-    border-radius: 5px;
-    display: inline-block; /* Asegura que el contenedor solo ocupe el espacio necesario */
-}
-
-.footer-content p {
-    margin: 0;
-    color: #fff;
-    font-family: 'Arial', sans-serif;
-}
-/*Postdata*/
-#postdata {
-    padding: 0;
-    margin: 20px;
-    background: none;
-    border: none;
-    text-align: center;
-}
-
-#postdata h2 {
-    font-size: 24px;
-    margin-bottom: 10px;
-    color: #fff; /* Texto blanco */
-}
-
-.animated-message {
-    font-size: 18px;
-    color: #fff; /* Texto blanco */
-    position: relative;
-    display: inline-block;
-    overflow: hidden;
-    white-space: nowrap;
-    border-right: .15em solid orange; /* Cursor de escritura */
-    animation: typing 6s steps(100, end), blink-caret .0s step-end infinite;
-}
-
-@keyframes typing {
-    from { width: 0; }
-    to { width: 100%; }
-}
-
-@keyframes blink-caret {
-    from, to { border-color: transparent; }
-    50% { border-color: orange; }
-}
-/*Mi pueblo*/
-#mi-pueblo {
-    text-align: center;
-    margin: 40px 0;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 10px;
-}
-
-#mi-pueblo h2 {
-    color: #333;
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-.pueblo-img {
-    width: 80%;
-    max-width: 600px;
-    height: auto;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-#mi-pueblo p {
-    color: #555;
-    font-size: 18px;
-    margin-top: 15px;
-}
-/*galeria ó almbum*/
-#album {
-    text-align: center;
-    margin-top: 30px;
-    padding: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-.image-gallery {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-.gallery-img {
-    width: 300px;
-    margin: 10px;
-    border-radius: 10px;
-    transition: transform 0.3s ease-in-out;
-}
-
-.gallery-img:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-                                }
                                 /* menu flotante */
                                 #floating-menu {
                                     position: fixed;
@@ -431,123 +32,170 @@ footer {
                                         box-shadow: 0px 8px 24px rgba(255, 102, 0, 0.8);
                                     }
                                 }
-                                /*mis skills*/
-                                /* Estilos generales para la sección de habilidades */
-#skills {
-    padding: 40px 20px;
-    background: #f9f9f9;
+/* Sección Mi Pueblo */
+#mi-pueblo {
+    padding: 2.5rem 1rem;
     text-align: center;
-}
-
-#skills h2 {
-    font-size: 28px;
-    margin-bottom: 30px;
-    color: #333;
-}
-
-/* Contenedor de cada habilidad */
-.skill {
+    margin-bottom: 3rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 20px;
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
-    margin: 0 auto 20px;
 }
 
-/* Ícono de la habilidad */
-.skill-icon {
-    font-size: 32px;
-    margin-right: 20px;
-    color: #ff4500; /* Color naranja */
-}
-
-/* Información de la habilidad */
-.skill-info {
-    flex: 1;
-    text-align: left;
-}
-
-.skill-info span {
-    font-size: 18px;
-    font-weight: bold;
+#mi-pueblo h2 {
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
     color: #333;
 }
 
-/* Barra de progreso */
-.progress-bar {
-    width: 100%;
-    height: 10px;
-    background: #e0e0e0;
-    border-radius: 5px;
-    overflow: hidden;
-    margin-top: 10px;
+/* IMAGEN PRINCIPAL - FORZANDO CENTRADO */
+#mi-pueblo .image-gallery {
+    width: 100% !important;
+    max-width: 350px !important;
+    height: 250px !important;
+    object-fit: cover !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    margin: 0 auto 1.5rem auto !important;
+    display: block !important;
+    transition: all 0.4s ease !important;
+    animation: fadeInScale 0.8s ease-out !important;
 }
 
-.progress {
-    height: 100%;
-    background: #ff4500; /* Color naranja */
-    border-radius: 5px;
-    width: 0; /* Inicialmente en 0 para la animación */
-    transition: width 1s ease-in-out;
-}
-/* fondo pro xd */
-#neural-network {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1; /* Para que quede detrás del contenido */
-    pointer-events: none; /* Permite interactuar con el contenido sobre él */
+#mi-pueblo .image-gallery:hover {
+    transform: scale(1.05) rotate(1deg) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 16px !important;
 }
 
-/* firma final edit */
-
-.footer-signature {
-    text-align: center;
-    padding: 30px 0;
-    background: rgba(0, 0, 0, 0.8); /* Fondo oscuro semi-transparente */
-    margin-top: 50px;
-    border-top: 2px solid rgba(0, 255, 0, 0.3); /* Borde superior neón */
+/* Texto con fondo mejorado */
+#mi-pueblo p {
+    margin: 1.5rem auto !important;
+    font-size: 1.1rem !important;
+    line-height: 1.6 !important;
+    color: #ffffff !important;
+    max-width: 600px !important;
+    background-color: rgba(0, 0, 0, 0.7) !important;
+    padding: 1rem 1.5rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
 }
 
-.terminal-container {
-    background: #1a1a1a; /* Fondo oscuro sólido */
-    border: 2px solid rgba(0, 255, 0, 0.3); /* Borde neón */
-    border-radius: 10px;
-    padding: 20px;
-    display: inline-block;
-    margin-bottom: 20px;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.2); /* Sombra neón */
+/* Contenedor de la galería - CENTRADO FORZADO */
+#mi-pueblo .mi-pueblo {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1.5rem !important;
+    margin-top: 2.5rem !important;
+    max-width: 900px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 0 1rem !important;
+    width: 100% !important;
 }
 
-.terminal-text {
-    font-family: 'Courier New', monospace;
-    font-size: 18px;
-    color: #00ff00; /* Texto verde neón */
-    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5); /* Brillo neón */
+/* IMÁGENES DE LA GALERÍA - CENTRADAS */
+#mi-pueblo .gallery-img {
+    width: 100% !important;
+    max-width: 350px !important;
+    height: 220px !important;
+    object-fit: cover !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    border: none !important;
+    display: block !important;
+    margin: 0 auto !important;
+    animation: slideInUp 0.6s ease-out !important;
+    animation-fill-mode: both !important;
 }
 
-.prompt {
-    color: #00ff00; /* Texto verde neón */
+/* Retraso de animación para cada imagen */
+#mi-pueblo .gallery-img:nth-child(1) {
+    animation-delay: 0.2s !important;
 }
 
-.command {
-    color: rgba(255, 255, 255, 0.7); /* Texto gris claro */
-    animation: terminal-blink 1s infinite; /* Efecto de parpadeo */
+#mi-pueblo .gallery-img:nth-child(2) {
+    animation-delay: 0.4s !important;
 }
 
-@keyframes terminal-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+#mi-pueblo .gallery-img:nth-child(3) {
+    animation-delay: 0.6s !important;
 }
 
-.copyright {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.7); /* Texto gris claro */
-    margin-top: 15px;
+#mi-pueblo .gallery-img:hover {
+    transform: scale(1.08) translateY(-5px) !important;
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 16px !important;
+    filter: brightness(1.1) contrast(1.1) !important;
+}
+
+/* Animaciones */
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #mi-pueblo .image-gallery {
+        max-width: 300px !important;
+        height: 200px !important;
+    }
+    
+    #mi-pueblo .gallery-img {
+        height: 180px !important;
+        max-width: 300px !important;
+    }
+    
+    #mi-pueblo {
+        padding: 1rem !important;
+    }
+    
+    #mi-pueblo p {
+        font-size: 1rem !important;
+        padding: 0.8rem 1.2rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    #mi-pueblo .image-gallery {
+        max-width: 280px !important;
+        height: 180px !important;
+    }
+    
+    #mi-pueblo .gallery-img {
+        height: 160px !important;
+        max-width: 280px !important;
+    }
+    
+    #mi-pueblo p {
+        font-size: 0.95rem !important;
+        padding: 0.7rem 1rem !important;
+    }
+    
+    /* Reducir animaciones en móviles */
+    #mi-pueblo .image-gallery:hover,
+    #mi-pueblo .gallery-img:hover {
+        transform: scale(1.03) !important;
+    }
 }
