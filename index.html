@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeHub - Características Premium</title>
+    <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
+    <title>Bienvenido a CodeHub</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3YEWZ24PQR"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-3YEWZ24PQR');
+    </script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -12,791 +23,734 @@
             box-sizing: border-box;
         }
 
-        :root {
-            --primary: #ff4500;
-            --secondary: #ff6b35;
-            --accent: #ffbd69;
-            --bg-dark: #0c0c0c;
-            --bg-light: #f5f5f5;
-            --text-dark: #0c0c0c;
-            --text-light: #ffffff;
-        }
-
         body {
-            font-family: 'Segoe UI', sans-serif;
-            transition: background 0.5s ease, color 0.5s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
+            color: #ffffff;
             overflow-x: hidden;
-        }
-
-        body.dark-mode {
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
-            color: var(--text-light);
-        }
-
-        body.light-mode {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%);
-            color: var(--text-dark);
-        }
-
-        /* Theme Toggle Button */
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 60px;
-            height: 30px;
-            background: rgba(255, 69, 0, 0.2);
-            border-radius: 50px;
-            cursor: pointer;
-            z-index: 1000;
-            border: 2px solid var(--primary);
-            transition: all 0.3s ease;
-        }
-
-        .theme-toggle:hover {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
-        }
-
-        .theme-toggle-circle {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 22px;
-            height: 22px;
-            background: var(--primary);
-            border-radius: 50%;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: white;
-        }
-
-        body.light-mode .theme-toggle-circle {
-            transform: translateX(30px);
-        }
-
-        /* Music Player */
-        .music-player {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 15px 20px;
-            border-radius: 50px;
-            border: 2px solid var(--primary);
-            cursor: pointer;
-            z-index: 1000;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .music-player:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
-        }
-
-        .music-player i {
-            font-size: 1.2rem;
-            color: var(--primary);
-        }
-
-        .music-player span {
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-
-        /* Stats Counter */
-        .stats-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            padding: 3rem;
-            margin: 3rem 0;
-        }
-
-        .stat-card {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(255, 69, 0, 0.1);
-            border-radius: 15px;
-            border: 2px solid var(--primary);
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.3);
-        }
-
-        .stat-number {
-            font-size: 3rem;
-            font-weight: bold;
-            color: var(--primary);
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 1.2rem;
-            color: var(--accent);
-        }
-
-        /* Badges Section */
-        .badges-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1.5rem;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .badge {
-            width: 120px;
-            height: 120px;
-            background: linear-gradient(145deg, rgba(255, 69, 0, 0.2), rgba(255, 107, 53, 0.1));
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 3px solid var(--primary);
-            transition: all 0.4s ease;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .badge:hover {
-            transform: rotate(360deg) scale(1.1);
-            box-shadow: 0 0 30px rgba(255, 69, 0, 0.6);
-        }
-
-        .badge i {
-            font-size: 2.5rem;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .badge span {
-            font-size: 0.8rem;
-            color: var(--accent);
-            text-align: center;
-        }
-
-        /* Blog Preview Cards */
-        .blog-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            padding: 2rem 0;
-        }
-
-        .blog-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid rgba(255, 69, 0, 0.3);
-            transition: all 0.4s ease;
-            cursor: pointer;
-        }
-
-        .blog-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.4);
-        }
-
-        .blog-image {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-            color: white;
-        }
-
-        .blog-content {
-            padding: 1.5rem;
-        }
-
-        .blog-date {
-            color: var(--accent);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .blog-title {
-            font-size: 1.4rem;
-            margin-bottom: 1rem;
-            color: var(--primary);
-        }
-
-        .blog-excerpt {
             line-height: 1.6;
-            margin-bottom: 1rem;
         }
 
-        .read-more {
-            display: inline-block;
-            padding: 8px 20px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: white;
-            text-decoration: none;
-            border-radius: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .read-more:hover {
-            transform: scale(1.05);
-        }
-
-        /* Scroll Reveal Animation */
-        .reveal {
-            opacity: 0;
-            transform: translateY(50px);
-            transition: all 0.8s ease;
-        }
-
-        .reveal.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Particle Canvas */
-        #particles-canvas {
+        /* Neural Network Canvas */
+        #neural-network {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: -1;
-            pointer-events: none;
+            opacity: 0.6;
         }
 
-        /* Floating Action Button */
-        .fab-container {
+        /* Splash Screen Profesional */
+        #splash-screen {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-        }
-
-        .fab-button {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 5px 20px rgba(255, 69, 0, 0.4);
-            transition: all 0.3s ease;
-        }
-
-        .fab-button:hover {
-            transform: scale(1.1) rotate(90deg);
-        }
-
-        .fab-button i {
-            font-size: 1.5rem;
-            color: white;
-        }
-
-        .fab-menu {
-            position: absolute;
-            bottom: 80px;
-            right: 0;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #000000, #1a1a2e, #16213e, #0f3460);
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            opacity: 0;
-            transform: scale(0);
-            transition: all 0.3s ease;
-        }
-
-        .fab-menu.active {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .fab-menu-item {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 69, 0, 0.9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            align-items: center;
+            z-index: 10000;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 1s ease-out, visibility 1s ease-out;
         }
 
-        .fab-menu-item:hover {
-            transform: scale(1.2);
-            background: var(--primary);
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
         }
 
-        .fab-menu-item i {
-            color: white;
-            font-size: 1.2rem;
-        }
-
-        /* Container */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        section {
-            margin: 4rem 0;
-            padding: 3rem;
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 69, 0, 0.2);
-        }
-
-        body.light-mode section {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 69, 0, 0.3);
-        }
-
-        h1, h2 {
+        .splash-content {
             text-align: center;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
+        }
+
+        .splash-title {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+            animation: fadeInUp 1s ease-out;
         }
 
-        h1 {
-            font-size: 3rem;
+        .loading-container {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            border-radius: 10px;
+            width: 0%;
+            animation: loadingProgress 2.5s ease-out forwards;
+            position: relative;
+        }
+
+        .loading-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 30px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6));
+            animation: loadingShine 0.8s ease-in-out infinite;
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            color: #ffbd69;
+            margin-top: 1rem;
+            animation: loadingDots 1.5s infinite;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes loadingProgress {
+            0% { width: 0%; }
+            20% { width: 25%; }
+            40% { width: 50%; }
+            60% { width: 75%; }
+            80% { width: 90%; }
+            100% { width: 100%; }
+        }
+
+        @keyframes loadingShine {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes loadingDots {
+            0%, 20% { opacity: 1; }
+            40% { opacity: 0.5; }
+            60% { opacity: 1; }
+            80% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Header Styles */
+        header {
+            padding: 2rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 69, 0, 0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes textFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        #postdata {
+            margin: 1.5rem 0;
+        }
+
+        .animated-message {
+            font-size: 1.2rem;
+            color: #ffbd69;
+            animation: typewriter 3s steps(40) 1s both, blinkCursor 1s infinite;
+            border-right: 3px solid #ff4500;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        @keyframes blinkCursor {
+            0%, 50% { border-color: #ff4500; }
+            51%, 100% { border-color: transparent; }
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
             margin-top: 2rem;
+        }
+
+        nav a {
+            color: #ffffff;
+            text-decoration: none;
+            padding: 0.8rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: 50px;
+            background: linear-gradient(45deg, rgba(255, 69, 0, 0.1), rgba(255, 107, 53, 0.1));
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        nav a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        nav a:hover::before {
+            left: 100%;
+        }
+
+        nav a:hover {
+            border-color: #ff4500;
+            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
+            transform: translateY(-3px);
+        }
+
+        /* Main Content */
+        main {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        section {
+            margin: 4rem 0;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 69, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: slideInUp 0.8s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            animation: flowingGradient 3s ease-in-out infinite;
+        }
+
+        @keyframes flowingGradient {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
         }
 
         h2 {
             font-size: 2.5rem;
-        }
-
-        /* Typing Effect */
-        .typing-text {
-            font-size: 1.5rem;
+            margin-bottom: 2rem;
             text-align: center;
-            color: var(--accent);
-            min-height: 2rem;
+            background: linear-gradient(45deg, #ff4500, #ffbd69);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .typing-cursor {
-            animation: blink 1s infinite;
+        /* Skills Section */
+        #skills {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(26, 26, 46, 0.6));
+            border: 2px solid rgba(255, 69, 0, 0.3);
         }
 
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
+        .skill {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            padding: 2rem;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.05));
+            border-radius: 20px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Toast Notification */
-        .toast {
-            position: fixed;
-            top: 100px;
-            right: -400px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 20px;
+        .skill:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 60px rgba(255, 69, 0, 0.4);
+        }
+
+        .skill-icon {
+            font-size: 4rem;
+            margin-right: 2.5rem;
+            color: #ff4500;
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .skill-info {
+            flex: 1;
+        }
+
+        .skill-info span {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #ffbd69;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
-            border-left: 4px solid var(--primary);
-            z-index: 10000;
-            transition: right 0.5s ease;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            border-radius: 10px;
+            position: relative;
+            animation: progressFlow 2s ease-in-out infinite;
+        }
+
+        @keyframes progressFlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* Game Section */
+        #game {
+            background: linear-gradient(135deg, rgba(20, 20, 40, 0.8), rgba(40, 20, 60, 0.6));
+            border: 2px solid rgba(255, 69, 0, 0.4);
+        }
+
+        .game-button, button {
+            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+            color: white;
+            border: none;
+            padding: 1.5rem 3rem;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4);
+            margin: 1rem;
+        }
+
+        .game-button:hover, button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
+        }
+
+        /* Image Gallery */
+        .image-gallery {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .gallery-img, .pueblo-img {
             max-width: 300px;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            border: 3px solid rgba(255, 69, 0, 0.3);
         }
 
-        .toast.show {
-            right: 20px;
+        .gallery-img:hover, .pueblo-img:hover {
+            transform: scale(1.05) rotate(2deg);
+            box-shadow: 0 15px 30px rgba(255, 69, 0, 0.4);
+            border-color: #ff4500;
         }
 
-        /* Loading Bar */
-        .loading-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 0%;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
-            z-index: 9999;
-            transition: width 0.3s ease;
+        /* Terminal Signature */
+        .footer-signature {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 2rem;
         }
 
+        .terminal-text {
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+        }
+
+        .prompt {
+            color: #ff4500;
+            font-weight: bold;
+        }
+
+        .command {
+            animation: terminalBlink 1.5s infinite;
+        }
+
+        @keyframes terminalBlink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        /* Footer */
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 2px solid rgba(255, 69, 0, 0.3);
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-            .stats-section {
-                grid-template-columns: 1fr;
-            }
-            .blog-grid {
-                grid-template-columns: 1fr;
-            }
-            h1 { font-size: 2rem; }
-            h2 { font-size: 1.8rem; }
-        }
+            .splash-title { font-size: 2.5rem; }
+            header h1 { font-size: 2.5rem; }
+            nav ul { flex-direction: column; gap: 1rem; }
+            .skill { flex-direction: column; text-align: center; }
+            .skill-icon { margin-right: 0; margin-bottom: 1rem; }
+            .image-gallery { flex-direction: column; align-items: center; }
     </style>
 </head>
-<body class="dark-mode">
-    <!-- Loading Bar -->
-    <div class="loading-bar" id="loadingBar"></div>
-
-    <!-- Toast Notification -->
-    <div class="toast" id="toast">
-        <strong>¡Bienvenido!</strong>
-        <p>Explora todas las características premium</p>
-    </div>
-
-    <!-- Theme Toggle -->
-    <div class="theme-toggle" onclick="toggleTheme()">
-        <div class="theme-toggle-circle">
-            <i class="fas fa-moon"></i>
+<body>
+    <!-- Neural Network Canvas -->
+    <canvas id="neural-network"></canvas>
+    
+    <!-- Splash Screen Profesional -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-title">CodeHub</div>
+            <div class="loading-container">
+                <div class="loading-bar"></div>
+            </div>
+            <div class="loading-text">Cargando experiencia...</div>
         </div>
     </div>
 
-    <!-- Music Player -->
-    <div class="music-player" onclick="toggleMusic()">
-        <i class="fas fa-music" id="musicIcon"></i>
-        <span id="musicStatus">Música: OFF</span>
-    </div>
-
-    <!-- Floating Action Button -->
-    <div class="fab-container">
-        <div class="fab-menu" id="fabMenu">
-            <div class="fab-menu-item" onclick="scrollToTop()" title="Ir arriba">
-                <i class="fas fa-arrow-up"></i>
+    <header>
+        <h1>Bienvenido &#128075;</h1>
+        <nav aria-label="Principal">
+            <div id="postdata">
+                <h2 class="animated-message">¡Gracias por visitar mi página web, Saludos✌️!</h2>
             </div>
-            <div class="fab-menu-item" onclick="shareWebsite()" title="Compartir">
-                <i class="fas fa-share-alt"></i>
-            </div>
-            <div class="fab-menu-item" onclick="printPage()" title="Imprimir">
-                <i class="fas fa-print"></i>
-            </div>
-        </div>
-        <div class="fab-button" onclick="toggleFabMenu()">
-            <i class="fas fa-plus"></i>
-        </div>
-    </div>
-
-    <!-- Particle Canvas -->
-    <canvas id="particles-canvas"></canvas>
-
-    <div class="container">
-        <h1>🚀 Características Premium</h1>
-        <div class="typing-text" id="typingText"></div>
-
-        <!-- Stats Section -->
-        <section class="reveal">
-            <h2>Estadísticas en Tiempo Real</h2>
-            <div class="stats-section">
-                <div class="stat-card">
-                    <span class="stat-number" data-target="50">0</span>
-                    <span class="stat-label">Proyectos</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" data-target="1000">0</span>
-                    <span class="stat-label">Líneas de Código</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" data-target="24">0</span>
-                    <span class="stat-label">Clientes Felices</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" data-target="100">0</span>
-                    <span class="stat-label">Cafés ☕</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Badges Section -->
-        <section class="reveal">
-            <h2>Certificaciones y Logros</h2>
-            <div class="badges-container">
-                <div class="badge" title="HTML Expert">
+            <ul>
+                <li><a href="#about">Sobre Mí</a></li>
+                <li><a href="#projects">Proyectos</a></li>
+                <li><a href="#contact">Contacto</a></li>
+                <li><a href="#game">Juego</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <!-- Skills Section -->
+        <section id="skills">
+            <h2>Habilidades Técnicas</h2>
+            <div class="skill">
+                <div class="skill-icon">
                     <i class="fab fa-html5"></i>
-                    <span>HTML Expert</span>
                 </div>
-                <div class="badge" title="CSS Master">
+                <div class="skill-info">
+                    <span>HTML</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 90%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
                     <i class="fab fa-css3-alt"></i>
-                    <span>CSS Master</span>
                 </div>
-                <div class="badge" title="JavaScript Pro">
+                <div class="skill-info">
+                    <span>CSS</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 85%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
                     <i class="fab fa-js-square"></i>
-                    <span>JS Pro</span>
                 </div>
-                <div class="badge" title="Python Developer">
+                <div class="skill-info">
+                    <span>JavaScript</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 75%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon">
                     <i class="fab fa-python"></i>
-                    <span>Python Dev</span>
                 </div>
-                <div class="badge" title="Git Master">
-                    <i class="fab fa-git-alt"></i>
-                    <span>Git Master</span>
-                </div>
-                <div class="badge" title="Problem Solver">
-                    <i class="fas fa-brain"></i>
-                    <span>Problem Solver</span>
+                <div class="skill-info">
+                    <span>Python</span>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 80%;"></div>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Blog Preview -->
-        <section class="reveal">
-            <h2>Últimas Publicaciones</h2>
-            <div class="blog-grid">
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <i class="fab fa-python"></i>
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-date">5 de Octubre, 2024</div>
-                        <h3 class="blog-title">Automatización con Python</h3>
-                        <p class="blog-excerpt">Descubre cómo automatizar tareas repetitivas con scripts de Python y aumentar tu productividad...</p>
-                        <a href="#" class="read-more">Leer más →</a>
-                    </div>
-                </div>
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <i class="fab fa-js-square"></i>
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-date">1 de Octubre, 2024</div>
-                        <h3 class="blog-title">JavaScript Moderno</h3>
-                        <p class="blog-excerpt">Explora las últimas características de ES6+ y cómo pueden mejorar tu código...</p>
-                        <a href="#" class="read-more">Leer más →</a>
-                    </div>
-                </div>
-                <div class="blog-card">
-                    <div class="blog-image">
-                        <i class="fas fa-laptop-code"></i>
-                    </div>
-                    <div class="blog-content">
-                        <div class="blog-date">28 de Septiembre, 2024</div>
-                        <h3 class="blog-title">Desarrollo Web en 2024</h3>
-                        <p class="blog-excerpt">Las tendencias más importantes que todo desarrollador debe conocer este año...</p>
-                        <a href="#" class="read-more">Leer más →</a>
-                    </div>
+        <!-- About Section -->
+        <section id="about">
+            <h2>Sobre Mí</h2>
+            <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 24 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
+        </section>
+        
+        <section id="projects">
+            <h2>Proyectos</h2>
+            <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
+            <ul>
+                <li>Proyecto 1 - Python scripts</li>
+                <li>Proyecto 2 - HTML desarrollador web</li>
+                <li>Proyecto 3 - CSS en proceso</li>
+            </ul>
+        </section>
+        
+        <section id="contact">
+            <h2>Contacto</h2>
+            <p>Puedes contactarme a través de:</p>
+            <ul>
+                <li>Email: wilsonenrique686@gmail.com</li>
+                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank">Contacto Telegram</a></li>
+                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank">Contacto WhatsApp</a></li>
+            </ul>
+        </section>
+        <!-- Game Section -->
+<section id="game">
+    <h2>Juego: La Serpiente</h2>
+    <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
+    <button onclick="openGameWindow('snake')">Jugar a la serpiente</button>
+
+    <h2>Juego: Tetris</h2>
+    <p>Haz clic en el botón para jugar a un emocionante juego de Tetris en una nueva ventana.</p>
+    <button onclick="openGameWindow('tetris')">Jugar a la Tetris</button>
+</section>
+
+        <!-- Mi Pueblo Section -->
+        <section id="mi-pueblo">
+            <h2>De aquí soy:</h2>
+            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery">
+            <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
+            <div class="mi-pueblo">
+          <!-- Video Section -->
+<section id="presentacion-video" style="text-align: center; padding: 20px;">
+  <h2 style="color: orange;">Conoce más</h2>
+  <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
+
+  <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
+    <source src="video/video.mp4" type="video/mp4">
+    Tu navegador no soporta la reproducción de video.
+  </video>
+</section>
+                <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" class="gallery-img">
+                <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
+                <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
+            </div>
+            
+            <!-- Terminal Signature -->
+            <div class="footer-signature">
+                <div class="terminal-text">
+                    <span class="prompt">root@wilson:~$</span>
+                    <span class="command"> "Código con pasión desde 2024"</span>
                 </div>
             </div>
         </section>
+    </main>
+
+    <!-- Floating Menu -->
+    <div id="floating-menu" onclick="openNewWindow()">
+        ¿Qué hay de nuevo?
     </div>
+    
+    <footer>
+        <div class="footer-content">
+            <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
+        </div>
+    </footer>
 
     <script>
-        // Theme Toggle
-        function toggleTheme() {
-            const body = document.body;
-            const icon = document.querySelector('.theme-toggle-circle i');
-            
-            if (body.classList.contains('dark-mode')) {
-                body.classList.remove('dark-mode');
-                body.classList.add('light-mode');
-                icon.className = 'fas fa-sun';
-            } else {
-                body.classList.remove('light-mode');
-                body.classList.add('dark-mode');
-                icon.className = 'fas fa-moon';
-            }
-        }
-
-        // Music Player
-        let musicPlaying = false;
-        function toggleMusic() {
-            musicPlaying = !musicPlaying;
-            const icon = document.getElementById('musicIcon');
-            const status = document.getElementById('musicStatus');
-            
-            if (musicPlaying) {
-                icon.className = 'fas fa-volume-up';
-                status.textContent = 'Música: ON';
-                showToast('Música activada 🎵');
-            } else {
-                icon.className = 'fas fa-music';
-                status.textContent = 'Música: OFF';
-                showToast('Música desactivada 🔇');
-            }
-        }
-
-        // FAB Menu
-        function toggleFabMenu() {
-            document.getElementById('fabMenu').classList.toggle('active');
-        }
-
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function shareWebsite() {
-            if (navigator.share) {
-                navigator.share({
-                    title: 'CodeHub - Wilson E.',
-                    text: 'Mira este increíble portfolio!',
-                    url: window.location.href
-                });
-            } else {
-                showToast('Función de compartir no disponible');
-            }
-        }
-
-        function printPage() {
-            window.print();
-        }
-
-        // Toast Notification
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.querySelector('p').textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        // Typing Effect
-        const phrases = [
-            'Desarrollador Web Full Stack',
-            'Especialista en Python',
-            'Creador de Experiencias Digitales',
-            'Problem Solver'
-        ];
-        let phraseIndex = 0;
-        let charIndex = 0;
-        let isDeleting = false;
-
-        function typeEffect() {
-            const current = phrases[phraseIndex];
-            const typingText = document.getElementById('typingText');
-            
-            if (isDeleting) {
-                typingText.textContent = current.substring(0, charIndex - 1);
-                charIndex--;
-            } else {
-                typingText.textContent = current.substring(0, charIndex + 1);
-                charIndex++;
-            }
-            
-            typingText.innerHTML += '<span class="typing-cursor">|</span>';
-            
-            if (!isDeleting && charIndex === current.length) {
-                setTimeout(() => isDeleting = true, 2000);
-            } else if (isDeleting && charIndex === 0) {
-                isDeleting = false;
-                phraseIndex = (phraseIndex + 1) % phrases.length;
-            }
-            
-            setTimeout(typeEffect, isDeleting ? 50 : 100);
-        }
-
-        // Counter Animation
-        function animateCounters() {
-            const counters = document.querySelectorAll('.stat-number');
-            counters.forEach(counter => {
-                const target = parseInt(counter.getAttribute('data-target'));
-                const duration = 2000;
-                const step = target / (duration / 16);
-                let current = 0;
-                
-                const updateCounter = () => {
-                    current += step;
-                    if (current < target) {
-                        counter.textContent = Math.floor(current);
-                        requestAnimationFrame(updateCounter);
-                    } else {
-                        counter.textContent = target;
-                    }
-                };
-                updateCounter();
-            });
-        }
-
-        // Scroll Reveal
-        function reveal() {
-            const reveals = document.querySelectorAll('.reveal');
-            reveals.forEach(element => {
-                const windowHeight = window.innerHeight;
-                const elementTop = element.getBoundingClientRect().top;
-                const elementVisible = 150;
-                
-                if (elementTop < windowHeight - elementVisible) {
-                    element.classList.add('active');
-                }
-            });
-        }
-
-        window.addEventListener('scroll', () => {
-            reveal();
-            
-            // Loading bar on scroll
-            const winScroll = document.documentElement.scrollTop;
-            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrolled = (winScroll / height) * 100;
-            document.getElementById('loadingBar').style.width = scrolled + '%';
-        });
-
-        // Particles Animation
-        const canvas = document.getElementById('particles-canvas');
+        // Neural Network Animation
+        const canvas = document.getElementById('neural-network');
         const ctx = canvas.getContext('2d');
-        let particles = [];
 
-        class Particle {
+        let nodes = [];
+        let connections = [];
+        const mouse = { x: 0, y: 0 };
+
+        class Node {
             constructor() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 3;
+                this.radius = 2;
                 this.speedX = (Math.random() - 0.5) * 0.5;
                 this.speedY = (Math.random() - 0.5) * 0.5;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 69, 0, 0.8)';
+                ctx.fill();
             }
 
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
+
                 if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
                 if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+
+                const dx = mouse.x - this.x;
+                const dy = mouse.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 100) {
+                    this.x += dx * 0.01;
+                    this.y += dy * 0.01;
+                }
+            }
+        }
+
+        class Connection {
+            constructor(node1, node2) {
+                this.node1 = node1;
+                this.node2 = node2;
             }
 
             draw() {
-                ctx.fillStyle = 'rgba(255, 69, 0, 0.5)';
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(this.node1.x, this.node1.y);
+                ctx.lineTo(this.node2.x, this.node2.y);
+                ctx.strokeStyle = 'rgba(255, 69, 0, 0.3)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
             }
         }
 
-        function initParticles() {
+        function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            particles = [];
-            for (let i = 0; i < 100; i++) {
-                particles.push(new Particle());
+
+            nodes = [];
+            for (let i = 0; i < 80; i++) {
+                nodes.push(new Node());
+            }
+
+            connections = [];
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() < 0.02) {
+                        connections.push(new Connection(nodes[i], nodes[j]));
+                    }
+                }
             }
         }
 
-        function animateParticles() {
+        function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            particles.forEach(particle => {
-                particle.update();
-                particle.draw();
+
+            nodes.forEach(node => {
+                node.update();
+                node.draw();
             });
-            requestAnimationFrame(animateParticles);
+
+            connections.forEach(connection => {
+                connection.draw();
+            });
+
+            requestAnimationFrame(animate);
         }
 
-        // Initialize
-        window.addEventListener('load', () => {
-            typeEffect();
-            animateCounters();
-            reveal();
-            initParticles();
-            animateParticles();
-            setTimeout(() => showToast('¡Bienvenido a CodeHub! 🚀'), 500);
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
         });
 
-        window.addEventListener('resize', initParticles);
+        window.addEventListener('resize', init);
+
+        init();
+        animate();
+
+        // Splash Screen Logic
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splashScreen = document.getElementById('splash-screen');
+                splashScreen.classList.add('hidden');
+            }, 3000);
+        });
+
+        // Game and Menu Functions
+        function openGameWindow() {
+            window.open('snake.html', '_blank', 'width=500,height=500');
+        }
+        function openGameWindow() {
+            window.open('tetris.html', '_blank', 'width=500,height=500');
+        }
+        function openNewWindow() {
+            window.open('novedades.html', '_blank', 'width=800,height=600');
+        }
     </script>
 </body>
 </html>
