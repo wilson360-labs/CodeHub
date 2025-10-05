@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Portfolio de Wilson E. - Desarrollador Web Full Stack especializado en Python y JavaScript">
-    <meta name="author" content="Wilson E.">
-    <title>CodeHub - Wilson E. | Desarrollador Web</title>
+    <title>CodeHub - Características Premium</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
@@ -18,107 +16,29 @@
             --primary: #ff4500;
             --secondary: #ff6b35;
             --accent: #ffbd69;
-            --dark: #0c0c0c;
-            --light: #ffffff;
+            --bg-dark: #0c0c0c;
+            --bg-light: #f5f5f5;
+            --text-dark: #0c0c0c;
+            --text-light: #ffffff;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
-            color: var(--light);
+            font-family: 'Segoe UI', sans-serif;
+            transition: background 0.5s ease, color 0.5s ease;
             overflow-x: hidden;
-            line-height: 1.6;
-            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: var(--text-light);
         }
 
         body.light-mode {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%);
-            color: var(--dark);
+            color: var(--text-dark);
         }
 
-        /* Neural Network Canvas */
-        #neural-network {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            opacity: 0.6;
-        }
-
-        /* Splash Screen */
-        #splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #000000, #1a1a2e, #16213e, #0f3460);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            opacity: 1;
-            visibility: visible;
-            transition: opacity 1s ease-out, visibility 1s ease-out;
-        }
-
-        #splash-screen.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .splash-title {
-            font-size: 4rem;
-            font-weight: 900;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 2rem;
-            animation: fadeInUp 1s ease-out;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .loading-container {
-            width: 300px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 2rem 0;
-        }
-
-        .loading-bar {
-            height: 100%;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            width: 0%;
-            animation: loadingProgress 2.5s ease-out forwards;
-        }
-
-        @keyframes loadingProgress {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
-
-        .loading-text {
-            font-size: 1.2rem;
-            color: #ffbd69;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        /* Theme Toggle */
+        /* Theme Toggle Button */
         .theme-toggle {
             position: fixed;
             top: 20px;
@@ -158,171 +78,46 @@
             transform: translateX(30px);
         }
 
-        /* Floating Menu Button */
-        #floating-menu {
+        /* Music Player */
+        .music-player {
             position: fixed;
-            bottom: 30px;
-            left: 30px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 15px 25px;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
             border-radius: 50px;
+            border: 2px solid var(--primary);
             cursor: pointer;
             z-index: 1000;
-            box-shadow: 0 5px 20px rgba(255, 69, 0, 0.5);
             transition: all 0.3s ease;
-            font-weight: bold;
-            animation: bounceIn 2s infinite;
-        }
-
-        @keyframes bounceIn {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        #floating-menu:hover {
-            transform: scale(1.1) translateY(-5px);
-            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.7);
-        }
-
-        /* Scroll to Top */
-        .scroll-top {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border-radius: 50%;
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
+            gap: 10px;
         }
 
-        .scroll-top.visible {
-            opacity: 1;
-        }
-
-        .scroll-top:hover {
-            transform: translateY(-5px) rotate(360deg);
-            box-shadow: 0 10px 25px rgba(255, 69, 0, 0.5);
-        }
-
-        /* Header */
-        header {
-            padding: 2rem;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        body.light-mode header {
-            background: rgba(255, 255, 255, 0.9);
-        }
-
-        header h1 {
-            font-size: 3.5rem;
-            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: textFloat 3s ease-in-out infinite;
-        }
-
-        @keyframes textFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .typing-text {
-            font-size: 1.3rem;
-            color: var(--accent);
-            margin: 1rem 0;
-        }
-
-        nav ul {
-            list-style: none;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-        }
-
-        nav a {
-            color: var(--light);
-            text-decoration: none;
-            padding: 0.8rem 1.5rem;
-            border: 2px solid transparent;
-            border-radius: 50px;
-            background: linear-gradient(45deg, rgba(255, 69, 0, 0.1), rgba(255, 107, 53, 0.1));
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        body.light-mode nav a {
-            color: var(--dark);
-        }
-
-        nav a:hover {
-            border-color: var(--primary);
+        .music-player:hover {
+            transform: scale(1.05);
             box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
-            transform: translateY(-3px);
         }
 
-        /* Main Content */
-        main {
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
+        .music-player i {
+            font-size: 1.2rem;
+            color: var(--primary);
         }
 
-        section {
-            margin: 4rem 0;
-            padding: 3rem;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 69, 0, 0.2);
-            position: relative;
-            animation: slideInUp 0.8s ease-out;
+        .music-player span {
+            color: var(--text-light);
+            font-size: 0.9rem;
         }
 
-        body.light-mode section {
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 69, 0, 0.3);
-        }
-
-        @keyframes slideInUp {
-            from { opacity: 0; transform: translateY(50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        h2 {
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            text-align: center;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Stats Section */
+        /* Stats Counter */
         .stats-section {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 2rem;
-            margin: 2rem 0;
+            padding: 3rem;
+            margin: 3rem 0;
         }
 
         .stat-card {
@@ -335,264 +130,331 @@
         }
 
         .stat-card:hover {
-            transform: translateY(-10px) scale(1.05);
-            box-shadow: 0 15px 30px rgba(255, 69, 0, 0.3);
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.3);
         }
 
         .stat-number {
             font-size: 3rem;
             font-weight: bold;
             color: var(--primary);
+            display: block;
+            margin-bottom: 0.5rem;
         }
 
         .stat-label {
             font-size: 1.2rem;
             color: var(--accent);
-            margin-top: 0.5rem;
         }
 
-        /* Skills */
-        .skill {
+        /* Badges Section */
+        .badges-container {
             display: flex;
-            align-items: center;
-            margin: 2rem 0;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: center;
             padding: 2rem;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
-            border-radius: 20px;
+        }
+
+        .badge {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(145deg, rgba(255, 69, 0, 0.2), rgba(255, 107, 53, 0.1));
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--primary);
             transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
         }
 
-        .skill:hover {
-            transform: translateX(10px);
-            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.3);
+        .badge:hover {
+            transform: rotate(360deg) scale(1.1);
+            box-shadow: 0 0 30px rgba(255, 69, 0, 0.6);
         }
 
-        .skill-icon {
-            font-size: 3rem;
-            margin-right: 2rem;
+        .badge i {
+            font-size: 2.5rem;
             color: var(--primary);
-            animation: iconFloat 3s ease-in-out infinite;
-        }
-
-        @keyframes iconFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
-        }
-
-        .skill-info {
-            flex: 1;
-        }
-
-        .skill-info span {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: var(--accent);
-            display: block;
             margin-bottom: 0.5rem;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
+        .badge span {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-align: center;
         }
 
-        .progress {
-            height: 100%;
-            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
-            border-radius: 10px;
-            animation: progressGlow 2s ease-in-out infinite;
-        }
-
-        @keyframes progressGlow {
-            0%, 100% { box-shadow: 0 0 10px var(--primary); }
-            50% { box-shadow: 0 0 20px var(--primary); }
-        }
-
-        /* Projects Grid */
-        .projects-grid {
+        /* Blog Preview Cards */
+        .blog-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
-            margin-top: 2rem;
+            padding: 2rem 0;
         }
 
-        .project-card {
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+        .blog-card {
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            padding: 2rem;
+            overflow: hidden;
             border: 2px solid rgba(255, 69, 0, 0.3);
             transition: all 0.4s ease;
-            transform-style: preserve-3d;
+            cursor: pointer;
         }
 
-        .project-card:hover {
-            transform: rotateY(5deg) rotateX(5deg) translateY(-10px);
-            box-shadow: 0 20px 40px rgba(255, 69, 0, 0.4);
+        .blog-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.4);
         }
 
-        .project-card h3 {
-            color: var(--accent);
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-
-        .project-link {
-            display: inline-block;
-            padding: 10px 20px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
+        .blog-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
             color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            margin-top: 1rem;
-            transition: all 0.3s ease;
         }
 
-        .project-link:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.4);
+        .blog-content {
+            padding: 1.5rem;
         }
 
-        /* Games Section */
-        .games-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+        .blog-date {
+            color: var(--accent);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
         }
 
-        .game-card {
-            background: rgba(255, 69, 0, 0.1);
-            border: 2px solid var(--primary);
-            border-radius: 15px;
-            padding: 2rem;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .game-card:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 30px rgba(255, 69, 0, 0.4);
-        }
-
-        .game-icon {
-            font-size: 4rem;
+        .blog-title {
+            font-size: 1.4rem;
             margin-bottom: 1rem;
             color: var(--primary);
         }
 
-        .game-button {
+        .blog-excerpt {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .read-more {
+            display: inline-block;
+            padding: 8px 20px;
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            font-weight: bold;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .read-more:hover {
+            transform: scale(1.05);
+        }
+
+        /* Scroll Reveal Animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Particle Canvas */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Floating Action Button */
+        .fab-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .fab-button {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(255, 69, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .fab-button:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        .fab-button i {
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s ease;
+        }
+
+        .fab-menu.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .fab-menu-item {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 69, 0, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 1rem;
         }
 
-        .game-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(255, 69, 0, 0.5);
+        .fab-menu-item:hover {
+            transform: scale(1.2);
+            background: var(--primary);
         }
 
-        /* Contact Form */
-        .contact-form {
-            max-width: 600px;
-            margin: 2rem auto;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--accent);
-            font-weight: bold;
-        }
-
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 69, 0, 0.3);
-            border-radius: 10px;
-            color: var(--light);
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        body.light-mode .form-group input,
-        body.light-mode .form-group textarea {
-            background: rgba(0, 0, 0, 0.05);
-            color: var(--dark);
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 15px rgba(255, 69, 0, 0.3);
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
+        .fab-menu-item i {
             color: white;
-            border: none;
-            border-radius: 50px;
             font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
 
-        .submit-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(255, 69, 0, 0.4);
-        }
-
-        /* Footer */
-        footer {
-            background: rgba(0, 0, 0, 0.8);
-            text-align: center;
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 2rem;
-            margin-top: 3rem;
-            border-top: 2px solid rgba(255, 69, 0, 0.3);
         }
 
-        /* Responsive */
+        section {
+            margin: 4rem 0;
+            padding: 3rem;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 69, 0, 0.2);
+        }
+
+        body.light-mode section {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 69, 0, 0.3);
+        }
+
+        h1, h2 {
+            text-align: center;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-top: 2rem;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+        }
+
+        /* Typing Effect */
+        .typing-text {
+            font-size: 1.5rem;
+            text-align: center;
+            color: var(--accent);
+            min-height: 2rem;
+        }
+
+        .typing-cursor {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 100px;
+            right: -400px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary);
+            z-index: 10000;
+            transition: right 0.5s ease;
+            max-width: 300px;
+        }
+
+        .toast.show {
+            right: 20px;
+        }
+
+        /* Loading Bar */
+        .loading-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            z-index: 9999;
+            transition: width 0.3s ease;
+        }
+
         @media (max-width: 768px) {
-            .splash-title { font-size: 2.5rem; }
-            header h1 { font-size: 2.5rem; }
-            nav ul { flex-direction: column; gap: 1rem; }
-            .skill { flex-direction: column; text-align: center; }
-            .skill-icon { margin-right: 0; margin-bottom: 1rem; }
-            .stats-section { grid-template-columns: 1fr; }
-            .projects-grid { grid-template-columns: 1fr; }
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+            .blog-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.8rem; }
         }
     </style>
 </head>
 <body class="dark-mode">
-    <!-- Neural Network Canvas -->
-    <canvas id="neural-network"></canvas>
-    
-    <!-- Splash Screen -->
-    <div id="splash-screen">
-        <div class="splash-title">CodeHub</div>
-        <div class="loading-container">
-            <div class="loading-bar"></div>
-        </div>
-        <div class="loading-text">Cargando experiencia...</div>
+    <!-- Loading Bar -->
+    <div class="loading-bar" id="loadingBar"></div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <strong>¡Bienvenido!</strong>
+        <p>Explora todas las características premium</p>
     </div>
 
     <!-- Theme Toggle -->
@@ -602,188 +464,291 @@
         </div>
     </div>
 
-    <!-- Floating Menu Button -->
-    <div id="floating-menu" onclick="openNovedades()">
-        ¿Qué hay de nuevo?
+    <!-- Music Player -->
+    <div class="music-player" onclick="toggleMusic()">
+        <i class="fas fa-music" id="musicIcon"></i>
+        <span id="musicStatus">Música: OFF</span>
     </div>
 
-    <!-- Scroll to Top -->
-    <div class="scroll-top" id="scrollTop">
-        <i class="fas fa-arrow-up"></i>
+    <!-- Floating Action Button -->
+    <div class="fab-container">
+        <div class="fab-menu" id="fabMenu">
+            <div class="fab-menu-item" onclick="scrollToTop()" title="Ir arriba">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="fab-menu-item" onclick="shareWebsite()" title="Compartir">
+                <i class="fas fa-share-alt"></i>
+            </div>
+            <div class="fab-menu-item" onclick="printPage()" title="Imprimir">
+                <i class="fas fa-print"></i>
+            </div>
+        </div>
+        <div class="fab-button" onclick="toggleFabMenu()">
+            <i class="fas fa-plus"></i>
+        </div>
     </div>
 
-    <header>
-        <h1>Bienvenido 👋</h1>
+    <!-- Particle Canvas -->
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="container">
+        <h1>🚀 Características Premium</h1>
         <div class="typing-text" id="typingText"></div>
-        <nav>
-            <ul>
-                <li><a href="#about">Sobre Mí</a></li>
-                <li><a href="#skills">Habilidades</a></li>
-                <li><a href="#stats">Estadísticas</a></li>
-                <li><a href="#projects">Proyectos</a></li>
-                <li><a href="#games">Juegos</a></li>
-                <li><a href="#contact">Contacto</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <main>
-        <!-- About Section -->
-        <section id="about">
-            <h2>Sobre Mí</h2>
-            <p>Hola, soy Wilson E. Desarrollador Web Full Stack de Ciudad de Guatemala 🇬🇹, con 24 años y pasión por crear proyectos innovadores. Especializado en Python y JavaScript, siempre buscando mejorar mis habilidades y crear experiencias web impactantes.</p>
-        </section>
-
-        <!-- Skills Section -->
-        <section id="skills">
-            <h2>Habilidades Técnicas</h2>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-html5"></i></div>
-                <div class="skill-info">
-                    <span>HTML</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 90%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
-                <div class="skill-info">
-                    <span>CSS</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 85%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
-                <div class="skill-info">
-                    <span>JavaScript</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 75%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-python"></i></div>
-                <div class="skill-info">
-                    <span>Python</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 80%;"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Stats Section -->
-        <section id="stats">
-            <h2>Estadísticas</h2>
+        <section class="reveal">
+            <h2>Estadísticas en Tiempo Real</h2>
             <div class="stats-section">
                 <div class="stat-card">
-                    <div class="stat-number" data-target="50">0</div>
-                    <div class="stat-label">Proyectos</div>
+                    <span class="stat-number" data-target="50">0</span>
+                    <span class="stat-label">Proyectos</span>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="1000">0</div>
-                    <div class="stat-label">Commits</div>
+                    <span class="stat-number" data-target="1000">0</span>
+                    <span class="stat-label">Líneas de Código</span>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="24">0</div>
-                    <div class="stat-label">Clientes</div>
+                    <span class="stat-number" data-target="24">0</span>
+                    <span class="stat-label">Clientes Felices</span>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="100">0</div>
-                    <div class="stat-label">Cafés ☕</div>
+                    <span class="stat-number" data-target="100">0</span>
+                    <span class="stat-label">Cafés ☕</span>
                 </div>
             </div>
         </section>
 
-        <!-- Projects Section -->
-        <section id="projects">
-            <h2>Proyectos Destacados</h2>
-            <div class="projects-grid">
-                <div class="project-card">
-                    <h3>🐍 Python Automation</h3>
-                    <p>Scripts de automatización para tareas cotidianas, web scraping y análisis de datos.</p>
-                    <a href="#" class="project-link">Ver Proyecto</a>
+        <!-- Badges Section -->
+        <section class="reveal">
+            <h2>Certificaciones y Logros</h2>
+            <div class="badges-container">
+                <div class="badge" title="HTML Expert">
+                    <i class="fab fa-html5"></i>
+                    <span>HTML Expert</span>
                 </div>
-                <div class="project-card">
-                    <h3>🌐 Portfolio Interactivo</h3>
-                    <p>Sitio web personal con animaciones avanzadas y efectos 3D.</p>
-                    <a href="#" class="project-link">Ver Proyecto</a>
+                <div class="badge" title="CSS Master">
+                    <i class="fab fa-css3-alt"></i>
+                    <span>CSS Master</span>
                 </div>
-                <div class="project-card">
-                    <h3>🎮 Juegos Web</h3>
-                    <p>Implementación de juegos clásicos con JavaScript y Canvas HTML5.</p>
-                    <a href="#" class="project-link">Ver Proyecto</a>
+                <div class="badge" title="JavaScript Pro">
+                    <i class="fab fa-js-square"></i>
+                    <span>JS Pro</span>
                 </div>
-            </div>
-        </section>
-
-        <!-- Games Section -->
-        <section id="games">
-            <h2>Juegos Interactivos</h2>
-            <div class="games-container">
-                <div class="game-card">
-                    <div class="game-icon">🐍</div>
-                    <h3>Snake</h3>
-                    <p>Clásico juego de la serpiente</p>
-                    <button class="game-button" onclick="openGame('snake')">Jugar</button>
+                <div class="badge" title="Python Developer">
+                    <i class="fab fa-python"></i>
+                    <span>Python Dev</span>
                 </div>
-                <div class="game-card">
-                    <div class="game-icon">🎮</div>
-                    <h3>Tetris</h3>
-                    <p>El icónico juego de bloques</p>
-                    <button class="game-button" onclick="openGame('tetris')">Jugar</button>
+                <div class="badge" title="Git Master">
+                    <i class="fab fa-git-alt"></i>
+                    <span>Git Master</span>
+                </div>
+                <div class="badge" title="Problem Solver">
+                    <i class="fas fa-brain"></i>
+                    <span>Problem Solver</span>
                 </div>
             </div>
         </section>
 
-        <!-- Contact Section -->
-        <section id="contact">
-            <h2>Contáctame</h2>
-            <div class="contact-form">
-                <form id="contactForm">
-                    <div class="form-group">
-                        <label for="name">Nombre</label>
-                        <input type="text" id="name" required>
+        <!-- Blog Preview -->
+        <section class="reveal">
+            <h2>Últimas Publicaciones</h2>
+            <div class="blog-grid">
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fab fa-python"></i>
                     </div>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" required>
+                    <div class="blog-content">
+                        <div class="blog-date">5 de Octubre, 2024</div>
+                        <h3 class="blog-title">Automatización con Python</h3>
+                        <p class="blog-excerpt">Descubre cómo automatizar tareas repetitivas con scripts de Python y aumentar tu productividad...</p>
+                        <a href="#" class="read-more">Leer más →</a>
                     </div>
-                    <div class="form-group">
-                        <label for="message">Mensaje</label>
-                        <textarea id="message" rows="5" required></textarea>
+                </div>
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fab fa-js-square"></i>
                     </div>
-                    <button type="submit" class="submit-btn">Enviar Mensaje</button>
-                </form>
-            </div>
-            <div style="text-align: center; margin-top: 2rem;">
-                <p>📧 wilsonenrique686@gmail.com</p>
-                <p style="margin-top: 1rem;">
-                    <a href="https://wa.me/50241468185" style="color: var(--accent); margin: 0 1rem;">WhatsApp</a>
-                    <a href="https://t.me/d3exg3aeyag1ko" style="color: var(--accent); margin: 0 1rem;">Telegram</a>
-                </p>
+                    <div class="blog-content">
+                        <div class="blog-date">1 de Octubre, 2024</div>
+                        <h3 class="blog-title">JavaScript Moderno</h3>
+                        <p class="blog-excerpt">Explora las últimas características de ES6+ y cómo pueden mejorar tu código...</p>
+                        <a href="#" class="read-more">Leer más →</a>
+                    </div>
+                </div>
+                <div class="blog-card">
+                    <div class="blog-image">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <div class="blog-content">
+                        <div class="blog-date">28 de Septiembre, 2024</div>
+                        <h3 class="blog-title">Desarrollo Web en 2024</h3>
+                        <p class="blog-excerpt">Las tendencias más importantes que todo desarrollador debe conocer este año...</p>
+                        <a href="#" class="read-more">Leer más →</a>
+                    </div>
+                </div>
             </div>
         </section>
-    </main>
-
-    <footer>
-        <p>&copy; 2024 Wilson E. Todos los derechos reservados.</p>
-        <p style="margin-top: 1rem; color: var(--accent);">Hecho con 💻 desde Guatemala</p>
-    </footer>
+    </div>
 
     <script>
-        // Neural Network Animation
-        const canvas = document.getElementById('neural-network');
-        const ctx = canvas.getContext('2d');
-        let nodes = [];
+        // Theme Toggle
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.querySelector('.theme-toggle-circle i');
+            
+            if (body.classList.contains('dark-mode')) {
+                body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
+                icon.className = 'fas fa-sun';
+            } else {
+                body.classList.remove('light-mode');
+                body.classList.add('dark-mode');
+                icon.className = 'fas fa-moon';
+            }
+        }
 
-        class Node {
+        // Music Player
+        let musicPlaying = false;
+        function toggleMusic() {
+            musicPlaying = !musicPlaying;
+            const icon = document.getElementById('musicIcon');
+            const status = document.getElementById('musicStatus');
+            
+            if (musicPlaying) {
+                icon.className = 'fas fa-volume-up';
+                status.textContent = 'Música: ON';
+                showToast('Música activada 🎵');
+            } else {
+                icon.className = 'fas fa-music';
+                status.textContent = 'Música: OFF';
+                showToast('Música desactivada 🔇');
+            }
+        }
+
+        // FAB Menu
+        function toggleFabMenu() {
+            document.getElementById('fabMenu').classList.toggle('active');
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function shareWebsite() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'CodeHub - Wilson E.',
+                    text: 'Mira este increíble portfolio!',
+                    url: window.location.href
+                });
+            } else {
+                showToast('Función de compartir no disponible');
+            }
+        }
+
+        function printPage() {
+            window.print();
+        }
+
+        // Toast Notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.querySelector('p').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Typing Effect
+        const phrases = [
+            'Desarrollador Web Full Stack',
+            'Especialista en Python',
+            'Creador de Experiencias Digitales',
+            'Problem Solver'
+        ];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+
+        function typeEffect() {
+            const current = phrases[phraseIndex];
+            const typingText = document.getElementById('typingText');
+            
+            if (isDeleting) {
+                typingText.textContent = current.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typingText.textContent = current.substring(0, charIndex + 1);
+                charIndex++;
+            }
+            
+            typingText.innerHTML += '<span class="typing-cursor">|</span>';
+            
+            if (!isDeleting && charIndex === current.length) {
+                setTimeout(() => isDeleting = true, 2000);
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % phrases.length;
+            }
+            
+            setTimeout(typeEffect, isDeleting ? 50 : 100);
+        }
+
+        // Counter Animation
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-number');
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                const duration = 2000;
+                const step = target / (duration / 16);
+                let current = 0;
+                
+                const updateCounter = () => {
+                    current += step;
+                    if (current < target) {
+                        counter.textContent = Math.floor(current);
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        counter.textContent = target;
+                    }
+                };
+                updateCounter();
+            });
+        }
+
+        // Scroll Reveal
+        function reveal() {
+            const reveals = document.querySelectorAll('.reveal');
+            reveals.forEach(element => {
+                const windowHeight = window.innerHeight;
+                const elementTop = element.getBoundingClientRect().top;
+                const elementVisible = 150;
+                
+                if (elementTop < windowHeight - elementVisible) {
+                    element.classList.add('active');
+                }
+            });
+        }
+
+        window.addEventListener('scroll', () => {
+            reveal();
+            
+            // Loading bar on scroll
+            const winScroll = document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('loadingBar').style.width = scrolled + '%';
+        });
+
+        // Particles Animation
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        class Particle {
             constructor() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3;
                 this.speedX = (Math.random() - 0.5) * 0.5;
                 this.speedY = (Math.random() - 0.5) * 0.5;
             }
@@ -796,39 +761,42 @@
             }
 
             draw() {
+                ctx.fillStyle = 'rgba(255, 69, 0, 0.5)';
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 69, 0, 0.8)';
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
 
-        function initCanvas() {
+        function initParticles() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            nodes = [];
-            for (let i = 0; i < 50; i++) {
-                nodes.push(new Node());
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
             }
         }
 
-        function animate() {
+        function animateParticles() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            nodes.forEach(node => {
-                node.update();
-                node.draw();
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
             });
+            requestAnimationFrame(animateParticles);
+        }
 
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    const dx = nodes[i].x - nodes[j].x;
-                    const dy = nodes[i].y - nodes[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < 150) {
-                        ctx.beginPath();
-                        ctx.moveTo(nodes[i].x, nodes[i].y);
-                        ctx.lineTo(nodes[j].x, nodes[j].y);
-                        ctx.strokeStyle = `rgba(255, 69, 0, ${1 - distance / 150})`;
-                        ctx.lineWidth = 0.5;
+        // Initialize
+        window.addEventListener('load', () => {
+            typeEffect();
+            animateCounters();
+            reveal();
+            initParticles();
+            animateParticles();
+            setTimeout(() => showToast('¡Bienvenido a CodeHub! 🚀'), 500);
+        });
+
+        window.addEventListener('resize', initParticles);
+    </script>
+</body>
+</html>
