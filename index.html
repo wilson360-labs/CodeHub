@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+</section><!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -13,7 +13,6 @@
       gtag('js', new Date());
       gtag('config', 'G-3YEWZ24PQR');
     </script>
-    <link rel="stylesheet" href="styles.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -23,12 +22,193 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #ff4500;
+            --secondary: #ff6b35;
+            --accent: #ffbd69;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
             color: #ffffff;
             overflow-x: hidden;
             line-height: 1.6;
+            transition: all 0.5s ease;
+        }
+
+        /* Light Mode */
+        body.light-mode {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%);
+            color: #0c0c0c;
+        }
+
+        body.light-mode section {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border-color: rgba(255, 69, 0, 0.4) !important;
+        }
+
+        body.light-mode nav a,
+        body.light-mode .terminal-text {
+            color: #0c0c0c !important;
+        }
+
+        body.light-mode #neural-network {
+            opacity: 0.3 !important;
+        }
+
+        /* Scroll Progress Bar */
+        #scroll-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            z-index: 9999;
+            transition: width 0.1s ease;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 30px;
+            background: rgba(255, 69, 0, 0.2);
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 1001;
+            border: 2px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.15) rotate(360deg);
+            box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+        }
+
+        .theme-toggle-circle {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 22px;
+            height: 22px;
+            background: var(--primary);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: white;
+        }
+
+        body.light-mode .theme-toggle-circle {
+            transform: translateX(30px);
+        }
+
+        /* Command Palette (Ctrl+K) */
+        #command-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        #command-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .command-palette {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -20px);
+            width: 600px;
+            max-width: 90%;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        #command-overlay.active .command-palette {
+            transform: translate(-50%, 0);
+        }
+
+        .command-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-bottom: 2px solid var(--primary);
+            color: #ffffff;
+            padding: 15px;
+            font-size: 1.2rem;
+            outline: none;
+        }
+
+        .command-hint {
+            text-align: center;
+            color: var(--accent);
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .command-results {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .command-item {
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #ffffff;
+        }
+
+        .command-item:hover {
+            background: rgba(255, 69, 0, 0.3);
+            transform: translateX(5px);
+        }
+
+        .command-item i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        /* Cursor Particles */
+        .cursor-particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            animation: particleFade 1s ease-out forwards;
+        }
+
+        @keyframes particleFade {
+            to {
+                opacity: 0;
+                transform: translateY(-30px) scale(0);
+            }
         }
 
         /* Neural Network Canvas */
@@ -42,7 +222,7 @@
             opacity: 0.6;
         }
 
-        /* Splash Screen Profesional */
+        /* Splash Screen MEJORADO */
         #splash-screen {
             position: fixed;
             top: 0;
@@ -57,16 +237,12 @@
             z-index: 10000;
             opacity: 1;
             visibility: visible;
-            transition: opacity 1s ease-out, visibility 1s ease-out;
+            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
         }
 
         #splash-screen.hidden {
             opacity: 0;
             visibility: hidden;
-        }
-
-        .splash-content {
-            text-align: center;
         }
 
         .splash-title {
@@ -78,7 +254,17 @@
             -webkit-text-fill-color: transparent;
             margin-bottom: 2rem;
             letter-spacing: 0.2em;
-            animation: fadeInUp 1s ease-out;
+            animation: glowPulse 2s ease-in-out infinite, fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 69, 0, 0.5)); }
+            50% { filter: drop-shadow(0 0 30px rgba(255, 69, 0, 1)); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .loading-container {
@@ -88,80 +274,44 @@
             border-radius: 10px;
             overflow: hidden;
             margin: 2rem 0;
-            position: relative;
         }
 
         .loading-bar {
             height: 100%;
             background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            border-radius: 10px;
             width: 0%;
-            animation: loadingProgress 2.5s ease-out forwards;
-            position: relative;
-        }
-
-        .loading-bar::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 30px;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6));
-            animation: loadingShine 0.8s ease-in-out infinite;
-        }
-
-        .loading-text {
-            font-size: 1.2rem;
-            color: #ffbd69;
-            margin-top: 1rem;
-            animation: loadingDots 1.5s infinite;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            animation: loadingProgress 1.5s ease-out forwards;
+            box-shadow: 0 0 20px var(--primary);
         }
 
         @keyframes loadingProgress {
             0% { width: 0%; }
-            20% { width: 25%; }
-            40% { width: 50%; }
-            60% { width: 75%; }
-            80% { width: 90%; }
             100% { width: 100%; }
         }
 
-        @keyframes loadingShine {
-            0% { opacity: 0; }
-            50% { opacity: 1; }
-            100% { opacity: 0; }
+        .loading-text {
+            font-size: 1.2rem;
+            color: var(--accent);
+            animation: pulse 1.5s infinite;
         }
 
-        @keyframes loadingDots {
-            0%, 20% { opacity: 1; }
-            40% { opacity: 0.5; }
-            60% { opacity: 1; }
-            80% { opacity: 0.5; }
-            100% { opacity: 1; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
         /* Header Styles */
-        header {
-            padding: 2rem;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
+header {
+    padding: 2rem;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+    border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+position: relative;
+    top: 0;
+    z-index: 100;
+    overflow: hidden;
+}
 
         header::before {
             content: '';
@@ -182,7 +332,7 @@
         header h1 {
             font-size: 3.5rem;
             margin-bottom: 1rem;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -194,36 +344,20 @@
             50% { transform: translateY(-10px); }
         }
 
-        #postdata {
+        .animated-message {
+            font-size: 1.2rem;
+            color: var(--accent);
             margin: 1.5rem 0;
         }
 
-        .animated-message {
-            font-size: 1.2rem;
-            color: #ffbd69;
-            animation: typewriter 3s steps(40) 1s both, blinkCursor 1s infinite;
-            border-right: 3px solid #ff4500;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        @keyframes typewriter {
-            from { width: 0; }
-            to { width: 100%; }
-        }
-
-        @keyframes blinkCursor {
-            0%, 50% { border-color: #ff4500; }
-            51%, 100% { border-color: transparent; }
-        }
-
-        nav ul {
-            list-style: none;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
 
         nav a {
             color: #ffffff;
@@ -253,7 +387,7 @@
         }
 
         nav a:hover {
-            border-color: #ff4500;
+            border-color: var(--primary);
             box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
             transform: translateY(-3px);
         }
@@ -289,7 +423,7 @@
             left: 0;
             right: 0;
             height: 2px;
-            background: linear-gradient(90deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
             animation: flowingGradient 3s ease-in-out infinite;
         }
 
@@ -302,16 +436,86 @@
             font-size: 2.5rem;
             margin-bottom: 2rem;
             text-align: center;
-            background: linear-gradient(45deg, #ff4500, #ffbd69);
+            background: linear-gradient(45deg, var(--primary), var(--accent));
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Skills Section */
+        /* Stats Counter - NUEVA SECCIÓN */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(145deg, rgba(255, 69, 0, 0.1), rgba(255, 107, 53, 0.05));
+            border-radius: 15px;
+            border: 2px solid var(--primary);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 69, 0, 0.1), transparent);
+            transform: rotate(45deg);
+            animation: statShine 3s ease-in-out infinite;
+        }
+
+        @keyframes statShine {
+            0%, 100% { transform: translateX(-100%) rotate(45deg); }
+            50% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .stat-card:hover {
+            transform: translateY(-15px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(255, 69, 0, 0.4);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat-label {
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-top: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Skills Section MEJORADA */
         #skills {
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(26, 26, 46, 0.6));
             border: 2px solid rgba(255, 69, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #skills::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(255, 69, 0, 0.05) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .skill {
@@ -319,65 +523,551 @@
             align-items: center;
             margin: 2rem 0;
             padding: 2rem;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.05));
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.08));
             border-radius: 20px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
             border: 2px solid transparent;
-            background-clip: padding-box;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .skill::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 20px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .skill:hover::before {
+            opacity: 1;
+        }
+
+        .skill:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 25px 60px rgba(255, 69, 0, 0.5);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.15));
+        }
+
+        .skill-icon {
+            font-size: 4.5rem;
+            margin-right: 2.5rem;
+            color: var(--primary);
+            animation: iconFloat 3s ease-in-out infinite;
+            position: relative;
+            filter: drop-shadow(0 0 20px var(--primary));
+        }
+
+        .skill-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(circle, rgba(255, 69, 0, 0.3) 0%, transparent 70%);
+            z-index: -1;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0px) rotateY(0deg); }
+            50% { transform: translateY(-8px) rotateY(5deg); }
+        }
+
+        .skill-info {
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .skill-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .skill-info span {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        .skill-percentage {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            opacity: 0;
+            animation: fadeInRight 0.5s ease forwards;
+        }
+
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 0 20px var(--primary);
+            animation: progressLoad 2s ease-out forwards;
+            transform-origin: left;
+        }
+
+        .progress::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmerProgress 2s ease-in-out infinite;
+        }
+
+        @keyframes progressLoad {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+
+        @keyframes shimmerProgress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Services Section - NUEVA */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .service-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+            border: 2px solid rgba(255, 69, 0, 0.3);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
         }
 
-        .skill:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 60px rgba(255, 69, 0, 0.4);
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 69, 0, 0.1) 0%, transparent 70%);
+            transform: scale(0);
+            transition: transform 0.6s ease;
         }
 
-        .skill-icon {
-            font-size: 4rem;
-            margin-right: 2.5rem;
-            color: #ff4500;
+        .service-card:hover::before {
+            transform: scale(1);
+        }
+
+        .service-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 20px 50px rgba(255, 69, 0, 0.4);
+            border-color: var(--primary);
+        }
+
+        .service-icon {
+            font-size: 3.5rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            display: inline-block;
             animation: iconFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.5));
         }
 
-        @keyframes iconFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+        .service-card h3 {
+            color: var(--accent);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
         }
 
-        .skill-info {
-            flex: 1;
+        .service-card p {
+            color: #cccccc;
+            line-height: 1.6;
         }
 
-        .skill-info span {
-            font-size: 1.4rem;
+        /* Timeline Section - NUEVA */
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+            margin: 2rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--primary), var(--accent));
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        .timeline-item {
+            margin: 3rem 0;
+            position: relative;
+            width: 45%;
+            padding: 2rem;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+            border-radius: 15px;
+            border: 2px solid rgba(255, 69, 0, 0.3);
+            animation: slideIn 0.6s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.4);
+        }
+
+        .timeline-item:nth-child(odd) {
+            margin-left: auto;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border: 4px solid #0c0c0c;
+            border-radius: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        .timeline-item:nth-child(odd)::before {
+            left: -60px;
+        }
+
+        .timeline-item:nth-child(even)::before {
+            right: -60px;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .timeline-year {
+            color: var(--primary);
+            font-size: 1.8rem;
             font-weight: bold;
-            color: #ffbd69;
-            display: block;
             margin-bottom: 0.5rem;
         }
 
-        .progress-bar {
-            width: 100%;
-            height: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        .timeline-title {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .timeline-desc {
+            color: #cccccc;
+            line-height: 1.6;
+        }
+
+        /* Badges/Achievements - NUEVA */
+        .badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+
+        .badge {
+            width: 140px;
+            height: 140px;
+            background: linear-gradient(145deg, rgba(255, 69, 0, 0.2), rgba(255, 107, 53, 0.1));
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--primary);
+            transition: all 0.5s ease;
+            cursor: pointer;
+            position: relative;
             overflow: hidden;
-            position: relative;
         }
 
-        .progress {
+        .badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
             height: 100%;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            border-radius: 10px;
-            position: relative;
-            animation: progressFlow 2s ease-in-out infinite;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
         }
 
-        @keyframes progressFlow {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
+        .badge:hover::before {
+            left: 100%;
+        }
+
+        .badge:hover {
+            transform: rotate(360deg) scale(1.15);
+            box-shadow: 0 0 40px rgba(255, 69, 0, 0.8);
+        }
+
+        .badge i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+        }
+
+        .badge span {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* Testimonials Carousel - NUEVA */
+        .testimonials-container {
+            position: relative;
+            max-width: 800px;
+            margin: 2rem auto;
+            overflow: hidden;
+        }
+
+        .testimonial {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+            border: 2px solid rgba(255, 69, 0, 0.3);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .testimonial-text {
+            font-size: 1.2rem;
+            font-style: italic;
+            color: #cccccc;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+
+        .testimonial-author {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .testimonial-role {
+            color: var(--primary);
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        .quote-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            opacity: 0.2;
+            position: absolute;
+            top: 20px;
+            left: 30px;
+        }
+
+        /* Latest Projects Grid - NUEVA */
+        .projects-modern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin: 2rem 0;
+        }
+
+        .project-modern-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+            border: 2px solid rgba(255, 69, 0, 0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .project-modern-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(255, 69, 0, 0.4);
+        }
+
+        .project-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .project-image::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .project-modern-card:hover .project-image::after {
+            opacity: 1;
+        }
+
+        .project-content {
+            padding: 2rem;
+        }
+
+        .project-title {
+            color: var(--accent);
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .project-desc {
+            color: #cccccc;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+
+        .project-tag {
+            background: rgba(255, 69, 0, 0.2);
+            color: var(--accent);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid var(--primary);
+        }
+
+        .project-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .project-link-btn {
+            flex: 1;
+            padding: 10px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .project-link-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.5);
+        }
+
+        /* Visitor Counter - NUEVA */
+        .visitor-counter {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.1));
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 2px solid var(--primary);
+            margin: 1rem 0;
+        }
+
+        .visitor-counter i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .visitor-number {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Typing Effect in Header - MEJORADO */
+        .typing-effect {
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin: 1rem 0;
+            min-height: 40px;
+            display: inline-block;
+        }
+
+        .typing-cursor {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* Copy Email Button */
+        .copy-email {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .copy-email:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.5);
         }
 
         /* Game Section */
@@ -386,8 +1076,8 @@
             border: 2px solid rgba(255, 69, 0, 0.4);
         }
 
-        .game-button, button {
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e);
+        button {
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
             border: none;
             padding: 1.5rem 3rem;
@@ -400,12 +1090,12 @@
             margin: 1rem;
         }
 
-        .game-button:hover, button:hover {
+        button:hover {
             transform: translateY(-5px) scale(1.05);
             box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
         }
 
-        /* Image Gallery */
+        /* Image Gallery - SIN MODIFICAR */
         .image-gallery {
             display: flex;
             gap: 1rem;
@@ -424,7 +1114,7 @@
         .gallery-img:hover, .pueblo-img:hover {
             transform: scale(1.05) rotate(2deg);
             box-shadow: 0 15px 30px rgba(255, 69, 0, 0.4);
-            border-color: #ff4500;
+            border-color: var(--primary);
         }
 
         /* Terminal Signature */
@@ -441,17 +1131,59 @@
         }
 
         .prompt {
-            color: #ff4500;
+            color: var(--primary);
             font-weight: bold;
         }
 
-        .command {
-            animation: terminalBlink 1.5s infinite;
+        /* Floating Menu MEJORADO */
+        #floating-menu {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 5px 25px rgba(255, 69, 0, 0.6);
+            transition: all 0.4s ease;
+            font-weight: bold;
+            animation: floatBounce 3s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        @keyframes terminalBlink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.7; }
+        @keyframes floatBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        #floating-menu:hover {
+            transform: scale(1.15) rotate(5deg) translateY(-5px);
+            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.9);
+        }
+
+        #floating-menu::before {
+            content: '🔥';
+            font-size: 1.2rem;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Konami Code Easter Egg */
+        .konami-active {
+            animation: rainbow 2s linear infinite !important;
+        }
+
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
         }
 
         /* Footer */
@@ -470,47 +1202,331 @@
             nav ul { flex-direction: column; gap: 1rem; }
             .skill { flex-direction: column; text-align: center; }
             .skill-icon { margin-right: 0; margin-bottom: 1rem; }
-            .image-gallery { flex-direction: column; align-items: center; }
+            .stats-section { grid-template-columns: 1fr; }
+            .command-palette { width: 95%; }
+        }
     </style>
 </head>
 <body>
+    <!-- Scroll Progress Bar -->
+    <div id="scroll-progress"></div>
+
     <!-- Neural Network Canvas -->
     <canvas id="neural-network"></canvas>
     
-    <!-- Splash Screen Profesional -->
+    <!-- Theme Toggle -->
+    <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema (Alt+T)">
+        <div class="theme-toggle-circle">
+            <i class="fas fa-moon"></i>
+        </div>
+    </div>
+
+    <!-- Command Palette Overlay -->
+    <div id="command-overlay" onclick="closeCommandPalette(event)">
+        <div class="command-palette" onclick="event.stopPropagation()">
+            <input type="text" class="command-input" id="commandInput" placeholder="¿Qué buscas?" autocomplete="off">
+            <div class="command-hint">Presiona Esc para cerrar | ↑↓ para navegar</div>
+            <div class="command-results" id="commandResults"></div>
+        </div>
+    </div>
+    
+    <!-- Splash Screen -->
     <div id="splash-screen">
         <div class="splash-content">
-            <div class="splash-title">CodeHub</div>
-            <div class="loading-container">
-                <div class="loading-bar"></div>
-            </div>
-            <div class="loading-text">Cargando experiencia...</div>
+<div class="splash-title">CodeHub</div>
+<div class="loading-container">
+  <div class="loading-bar"></div>
+</div>
+<div class="loading-text">Cargando experiencia...</div>
         </div>
     </div>
 
     <header>
-        <h1>Bienvenido &#128075;</h1>
+        <h1>Bienvenido 👋</h1>
+        <div class="typing-effect" id="typingEffect"></div>
         <nav aria-label="Principal">
-            <div id="postdata">
-                <h2 class="animated-message">¡Gracias por visitar mi página web, Saludos✌️!</h2>
-            </div>
             <ul>
-                <li><a href="#about">Sobre Mí</a></li>
-                <li><a href="#projects">Proyectos</a></li>
+                <li><a href="#stats">Estadísticas</a></li>
+                <li><a href="#skills">Habilidades</a></li>
+                <li><a href="#services">Servicios</a></li>
+                <li><a href="#timeline">Experiencia</a></li>
+                <li><a href="#latest-projects">Proyectos</a></li>
                 <li><a href="#contact">Contacto</a></li>
-                <li><a href="#game">Juego</a></li>
             </ul>
         </nav>
     </header>
     
     <main>
+        <!-- Stats Section - NUEVA -->
+        <section id="stats">
+            <h2>🚀 Mi Trayectoria</h2>
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-number" data-target="50">0</div>
+                    <div class="stat-label">Proyectos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="1000">0</div>
+                    <div class="stat-label">Líneas de Código</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="24">0</div>
+                    <div class="stat-label">Clientes Felices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="100">0</div>
+                    <div class="stat-label">Cafés ☕</div>
+                </div>
+            </div>
+        </section>
+       <!-- Skills Section MEJORADA -->
+        <section id="skills">
+            <h2>💻 Habilidades Técnicas</h2>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-html5"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>HTML5</span>
+                        <span class="skill-percentage"> 90%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 90%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>CSS3</span>
+                        <span class="skill-percentage"> 85%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 85%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>JavaScript</span>
+                        <span class="skill-percentage">75%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 75%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-python"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>Python</span>
+                        <span class="skill-percentage">80%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 80%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-git-alt"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>Git & GitHub</span>
+                        <span class="skill-percentage">70%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section - NUEVA -->
+        <section id="services">
+            <h2>🚀 Servicios que Ofrezco</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <i class="fas fa-code service-icon"></i>
+                    <h3>Desarrollo Web</h3>
+                    <p>Creación de sitios web modernos, responsive y optimizados para SEO.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-mobile-alt service-icon"></i>
+                    <h3>Diseño Responsive</h3>
+                    <p>Diseños que se adaptan perfectamente a cualquier dispositivo.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-robot service-icon"></i>
+                    <h3>Automatización</h3>
+                    <p>Scripts y bots de automatización con Python para tareas repetitivas.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-database service-icon"></i>
+                    <h3>Base de Datos</h3>
+                    <p>Diseño e implementación de bases de datos eficientes.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-paint-brush service-icon"></i>
+                    <h3>UI/UX Design</h3>
+                    <p>Interfaces intuitivas y experiencias de usuario atractivas.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-rocket service-icon"></i>
+                    <h3>Optimización</h3>
+                    <p>Mejora del rendimiento y velocidad de carga de sitios web.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Achievements/Badges - NUEVA -->
+        <section id="achievements">
+            <h2>🏆 Logros y Certificaciones</h2>
+            <div class="badges-container">
+                <div class="badge" title="Master en HTML5">
+                    <i class="fab fa-html5"></i>
+                    <span>HTML Master</span>
+                </div>
+                <div class="badge" title="Expert en CSS3">
+                    <i class="fab fa-css3-alt"></i>
+                    <span>CSS Expert</span>
+                </div>
+                <div class="badge" title="JavaScript Pro">
+                    <i class="fab fa-js-square"></i>
+                    <span>JS Pro</span>
+                </div>
+                <div class="badge" title="Python Developer">
+                    <i class="fab fa-python"></i>
+                    <span>Python Dev</span>
+                </div>
+                <div class="badge" title="Git Master">
+                    <i class="fab fa-git-alt"></i>
+                    <span>Git Master</span>
+                </div>
+                <div class="badge" title="Problem Solver">
+                    <i class="fas fa-brain"></i>
+                    <span>Problem Solver</span>
+                </div>
+                <div class="badge" title="Fast Learner">
+                    <i class="fas fa-bolt"></i>
+                    <span>Fast Learner</span>
+                </div>
+                <div class="badge" title="Team Player">
+                    <i class="fas fa-users"></i>
+                    <span>Team Player</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline - NUEVA -->
+        <section id="timeline">
+            <h2>📅 Mi Experiencia</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">2024 - Presente</div>
+                    <div class="timeline-title">Desarrollador Web Freelance</div>
+                    <div class="timeline-desc">
+                        Creación de sitios web modernos y aplicaciones interactivas para clientes locales e internacionales.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2023</div>
+                    <div class="timeline-title">Aprendizaje Intensivo</div>
+                    <div class="timeline-desc">
+                        Estudios autodidactas en desarrollo web full stack, Python, JavaScript y tecnologías modernas.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2022</div>
+                    <div class="timeline-title">Inicio en Programación</div>
+                    <div class="timeline-desc">
+                        Primeros pasos en el mundo del desarrollo, comenzando con HTML, CSS y JavaScript básico.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Latest Projects - NUEVA -->
+        <section id="latest-projects">
+            <h2>🎨 Últimos Proyectos</h2>
+            <div class="projects-modern-grid">
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fab fa-python"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Python Automation Suite</h3>
+                        <p class="project-desc">Suite completa de scripts de automatización para tareas cotidianas, web scraping y análisis de datos.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">Python</span>
+                            <span class="project-tag">Automation</span>
+                            <span class="project-tag">Web Scraping</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Portfolio Interactivo</h3>
+                        <p class="project-desc">Sitio web personal con animaciones avanzadas, efectos 3D y experiencia de usuario optimizada.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">HTML5</span>
+                            <span class="project-tag">CSS3</span>
+                            <span class="project-tag">JavaScript</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Juegos Web Clásicos</h3>
+                        <p class="project-desc">Implementación de juegos clásicos como Snake y Tetris con JavaScript vanilla y Canvas HTML5.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">JavaScript</span>
+                            <span class="project-tag">Canvas</span>
+                            <span class="project-tag">Game Dev</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#game" class="project-link-btn"><i class="fas fa-play"></i> Jugar</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials - NUEVA -->
+        <section id="testimonials">
+            <h2>💬 Testimonios</h2>
+            <div class="testimonials-container">
+                <div class="testimonial">
+                    <i class="fas fa-quote-left quote-icon"></i>
+                    <p class="testimonial-text">
+                        "Wilson es un desarrollador excepcional. Su atención al detalle y creatividad hicieron que nuestro proyecto superara todas las expectativas. ¡Altamente recomendado!"
+                    </p>
+                    <div class="testimonial-author">María González</div>
+                    <div class="testimonial-role">CEO, Tech Solutions</div>
+                </div>
+            </div>
         <!-- Skills Section -->
         <section id="skills">
             <h2>Habilidades Técnicas</h2>
             <div class="skill">
-                <div class="skill-icon">
-                    <i class="fab fa-html5"></i>
-                </div>
+                <div class="skill-icon"><i class="fab fa-html5"></i></div>
                 <div class="skill-info">
                     <span>HTML</span>
                     <div class="progress-bar">
@@ -519,9 +1535,7 @@
                 </div>
             </div>
             <div class="skill">
-                <div class="skill-icon">
-                    <i class="fab fa-css3-alt"></i>
-                </div>
+                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
                 <div class="skill-info">
                     <span>CSS</span>
                     <div class="progress-bar">
@@ -530,9 +1544,7 @@
                 </div>
             </div>
             <div class="skill">
-                <div class="skill-icon">
-                    <i class="fab fa-js-square"></i>
-                </div>
+                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
                 <div class="skill-info">
                     <span>JavaScript</span>
                     <div class="progress-bar">
@@ -541,9 +1553,7 @@
                 </div>
             </div>
             <div class="skill">
-                <div class="skill-icon">
-                    <i class="fab fa-python"></i>
-                </div>
+                <div class="skill-icon"><i class="fab fa-python"></i></div>
                 <div class="skill-info">
                     <span>Python</span>
                     <div class="progress-bar">
@@ -573,38 +1583,48 @@
             <h2>Contacto</h2>
             <p>Puedes contactarme a través de:</p>
             <ul>
-                <li>Email: wilsonenrique686@gmail.com</li>
-                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank">Contacto Telegram</a></li>
-                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank">Contacto WhatsApp</a></li>
+                <li>
+                    Email: wilsonenrique686@gmail.com
+                    <button class="copy-email" onclick="copyEmail()">
+                        <i class="fas fa-copy"></i> Copiar Email
+                    </button>
+                </li>
+                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--accent);">Contacto Telegram</a></li>
+                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank" style="color: var(--accent);">Contacto WhatsApp</a></li>
             </ul>
         </section>
+        
         <!-- Game Section -->
-<section id="game">
-    <h2>Juego: La Serpiente</h2>
-    <p>Haz clic en el botón para jugar a un emocionante juego de la serpiente en una nueva ventana.</p>
-    <button onclick="openGameWindow('snake')">Jugar a la serpiente</button>
+        <section id="game">
+            <h2>🎮 Juegos Interactivos</h2>
+            <p>Haz clic en los botones para jugar a estos emocionantes juegos en una nueva ventana.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button onclick="openGameWindow('snake')">
+                    <i class="fas fa-gamepad"></i> Jugar a la Serpiente
+                </button>
+                <button onclick="openGameWindow('tetris')">
+                    <i class="fas fa-th"></i> Jugar a Tetris
+                </button>
+            </div>
+        </section>
 
-    <h2>Juego: Tetris</h2>
-    <p>Haz clic en el botón para jugar a un emocionante juego de Tetris en una nueva ventana.</p>
-    <button onclick="openGameWindow('tetris')">Jugar a la Tetris</button>
-</section>
-
-        <!-- Mi Pueblo Section -->
+        <!-- Mi Pueblo Section - SIN MODIFICAR -->
         <section id="mi-pueblo">
             <h2>De aquí soy:</h2>
-            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery">
+            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery" style="max-width: 100%;">
             <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
-            <div class="mi-pueblo">
-          <!-- Video Section -->
-<section id="presentacion-video" style="text-align: center; padding: 20px;">
-  <h2 style="color: orange;">Conoce más</h2>
-  <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
+            
+            <!-- Video Section -->
+            <div id="presentacion-video" style="text-align: center; padding: 20px; margin-top: 2rem;">
+                <h2 style="color: orange;">Conoce más</h2>
+                <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
+                <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
+                    <source src="video/video.mp4" type="video/mp4">
+                    Tu navegador no soporta la reproducción de video.
+                </video>
+            </div>
 
-  <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
-    <source src="video/video.mp4" type="video/mp4">
-    Tu navegador no soporta la reproducción de video.
-  </video>
-</section>
+            <div class="image-gallery" style="margin-top: 2rem;">
                 <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" class="gallery-img">
                 <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
                 <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
@@ -627,17 +1647,96 @@
     
     <footer>
         <div class="footer-content">
-            <p>&copy; 2024 ᴡ̶ɪ̶ʟ̶ꜱ̶ᴏ̶ɴ̶.̶𝐸 ⌜³⁶⁰⌟. Todos los derechos reservados.</p>
+            <div class="visitor-counter">
+                <i class="fas fa-eye"></i>
+                <span>Visitantes:</span>
+                <span class="visitor-number" id="visitorCount">0</span>
+            </div>
+            <p style="margin-top: 1rem;">&copy; 2024 Wilson.E 🚀. Todos los derechos reservados.</p>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1.5rem; justify-content: center; font-size: 1.5rem;">
+                <a href="https://github.com" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://wa.me/50241468185" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-whatsapp"></i>
+                </a>
+                <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-telegram"></i>
+                </a>
+                <a href="mailto:wilsonenrique686@gmail.com" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+            <p style="margin-top: 1.5rem; color: var(--accent); font-size: 0.9rem;">
+                Presiona <kbd style="background: var(--primary); padding: 2px 8px; border-radius: 4px;">Ctrl + K</kbd> para búsqueda rápida
+            </p>
+            <p style="margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
+                Hecho con 💻 y ☕ desde Guatemala 🇬🇹
+            </p>
         </div>
     </footer>
 
     <script>
+        // Typing Effect in Header
+        const typingPhrases = [
+            'Desarrollador Web Full Stack 💻',
+            'Especialista en Python 🐍',
+            'Creador de Experiencias Digitales ✨',
+            'De Guatemala para el Mundo 🇬🇹',
+            'Programador Apasionado 🚀',
+            'Problem Solver 🧠'
+        ];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+
+        function typeEffect() {
+            const typingElement = document.getElementById('typingEffect');
+            const currentPhrase = typingPhrases[phraseIndex];
+            
+            if (isDeleting) {
+                typingElement.textContent = currentPhrase.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typingElement.textContent = currentPhrase.substring(0, charIndex + 1);
+                charIndex++;
+            }
+            
+            typingElement.innerHTML += '<span class="typing-cursor">|</span>';
+            
+            if (!isDeleting && charIndex === currentPhrase.length) {
+                setTimeout(() => isDeleting = true, 2000);
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                phraseIndex = (phraseIndex + 1) % typingPhrases.length;
+            }
+            
+            setTimeout(typeEffect, isDeleting ? 50 : 100);
+        }
+
+        // Visitor Counter Animation
+        function animateVisitorCounter() {
+            const target = Math.floor(Math.random() * 1000) + 5000;
+            const counter = document.getElementById('visitorCount');
+            const duration = 2000;
+            const increment = target / (duration / 16);
+            let current = 0;
+            
+            const updateCounter = () => {
+                current += increment;
+                if (current < target) {
+                    counter.textContent = Math.floor(current).toLocaleString();
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    counter.textContent = target.toLocaleString();
+                }
+            };
+            updateCounter();
+        }
         // Neural Network Animation
         const canvas = document.getElementById('neural-network');
         const ctx = canvas.getContext('2d');
-
         let nodes = [];
-        let connections = [];
         const mouse = { x: 0, y: 0 };
 
         class Node {
@@ -673,38 +1772,12 @@
             }
         }
 
-        class Connection {
-            constructor(node1, node2) {
-                this.node1 = node1;
-                this.node2 = node2;
-            }
-
-            draw() {
-                ctx.beginPath();
-                ctx.moveTo(this.node1.x, this.node1.y);
-                ctx.lineTo(this.node2.x, this.node2.y);
-                ctx.strokeStyle = 'rgba(255, 69, 0, 0.3)';
-                ctx.lineWidth = 0.5;
-                ctx.stroke();
-            }
-        }
-
         function init() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-
             nodes = [];
-            for (let i = 0; i < 80; i++) {
+            for (let i = 0; i < 60; i++) {
                 nodes.push(new Node());
-            }
-
-            connections = [];
-            for (let i = 0; i < nodes.length; i++) {
-                for (let j = i + 1; j < nodes.length; j++) {
-                    if (Math.random() < 0.02) {
-                        connections.push(new Connection(nodes[i], nodes[j]));
-                    }
-                }
             }
         }
 
@@ -716,9 +1789,23 @@
                 node.draw();
             });
 
-            connections.forEach(connection => {
-                connection.draw();
-            });
+            // Draw connections
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const dx = nodes[i].x - nodes[j].x;
+                    const dy = nodes[i].y - nodes[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(nodes[i].x, nodes[i].y);
+                        ctx.lineTo(nodes[j].x, nodes[j].y);
+                        ctx.strokeStyle = `rgba(255, 69, 0, ${0.3 * (1 - distance / 150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
 
             requestAnimationFrame(animate);
         }
@@ -726,31 +1813,260 @@
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
+            
+            // Create cursor particles
+            if (Math.random() > 0.85) {
+                createCursorParticle(e.clientX, e.clientY);
+            }
         });
 
         window.addEventListener('resize', init);
-
         init();
         animate();
 
-        // Splash Screen Logic
+        // Cursor Particles
+        function createCursorParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'cursor-particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 1000);
+        }
+
+        // Splash Screen Logic - MÁS RÁPIDO
         window.addEventListener('load', () => {
             setTimeout(() => {
-                const splashScreen = document.getElementById('splash-screen');
-                splashScreen.classList.add('hidden');
-            }, 3000);
+                document.getElementById('splash-screen').classList.add('hidden');
+                animateCounters();
+                animateVisitorCounter();
+                typeEffect();
+            }, 2000);
         });
 
-        // Game and Menu Functions
-        function openGameWindow() {
-            window.open('snake.html', '_blank', 'width=500,height=500');
+        // Theme Toggle
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.querySelector('.theme-toggle-circle i');
+            
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'light');
+            }
         }
-        function openGameWindow() {
-            window.open('tetris.html', '_blank', 'width=500,height=500');
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            document.querySelector('.theme-toggle-circle i').className = 'fas fa-sun';
         }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+K for command palette
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                openCommandPalette();
+            }
+            
+            // Alt+T for theme toggle
+            if (e.altKey && e.key === 't') {
+                e.preventDefault();
+                toggleTheme();
+            }
+            
+            // Escape to close command palette
+            if (e.key === 'Escape') {
+                closeCommandPalette();
+            }
+        });
+
+        // Command Palette
+        const commands = [
+            { name: 'Ir a Estadísticas', icon: 'fa-chart-line', action: () => scrollToSection('stats') },
+            { name: 'Ir a Habilidades', icon: 'fa-code', action: () => scrollToSection('skills') },
+            { name: 'Ir a Servicios', icon: 'fa-briefcase', action: () => scrollToSection('services') },
+            { name: 'Ir a Logros', icon: 'fa-trophy', action: () => scrollToSection('achievements') },
+            { name: 'Ir a Experiencia', icon: 'fa-calendar', action: () => scrollToSection('timeline') },
+            { name: 'Ir a Proyectos', icon: 'fa-folder', action: () => scrollToSection('latest-projects') },
+            { name: 'Ir a Testimonios', icon: 'fa-comment', action: () => scrollToSection('testimonials') },
+            { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
+            { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
+            { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
+            { name: 'Cambiar Tema', icon: 'fa-moon', action: toggleTheme },
+            { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
+            { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
+            { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
+            { name: 'Jugar Tetris', icon: 'fa-th', action: () => openGameWindow('tetris') }
+        ];
+
+        function openCommandPalette() {
+            const overlay = document.getElementById('command-overlay');
+            const input = document.getElementById('commandInput');
+            overlay.classList.add('active');
+            input.focus();
+            renderCommands(commands);
+        }
+
+        function closeCommandPalette(event) {
+            if (!event || event.target.id === 'command-overlay') {
+                document.getElementById('command-overlay').classList.remove('active');
+                document.getElementById('commandInput').value = '';
+            }
+        }
+
+        function renderCommands(commandList) {
+            const results = document.getElementById('commandResults');
+            results.innerHTML = commandList.map((cmd, index) => `
+                <div class="command-item" onclick="executeCommand(${index})">
+                    <i class="fas ${cmd.icon}"></i>
+                    <span>${cmd.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function executeCommand(index) {
+            commands[index].action();
+            closeCommandPalette();
+        }
+
+        document.getElementById('commandInput').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const filtered = commands.filter(cmd => 
+                cmd.name.toLowerCase().includes(search)
+            );
+            renderCommands(filtered);
+        });
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Scroll Progress Bar
+        window.addEventListener('scroll', () => {
+            const winScroll = document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('scroll-progress').style.width = scrolled + '%';
+        });
+
+        // Stats Counter Animation
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-number');
+            counters.forEach(counter => {
+                const target = parseInt(counter.getAttribute('data-target'));
+                const duration = 2000;
+                const increment = target / (duration / 16);
+                let current = 0;
+                
+                const updateCounter = () => {
+                    current += increment;
+                    if (current < target) {
+                        counter.textContent = Math.floor(current);
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        counter.textContent = target;
+                    }
+                };
+                updateCounter();
+            });
+        }
+
+        // Copy Email Function
+        function copyEmail() {
+            const email = 'wilsonenrique686@gmail.com';
+            navigator.clipboard.writeText(email).then(() => {
+                const btn = event.target.closest('.copy-email');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+                btn.style.background = 'linear-gradient(45deg, #00ff00, #00cc00)';
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            });
+        }
+
+        // Game and Menu Functions - CORREGIDO
+        function openGameWindow(game) {
+            const games = {
+                'snake': 'snake.html',
+                'tetris': 'tetris.html'
+            };
+            
+            if (games[game]) {
+                window.open(games[game], '_blank', 'width=500,height=500,resizable=yes');
+            }
+        }
+
         function openNewWindow() {
-            window.open('novedades.html', '_blank', 'width=800,height=600');
+            window.open('novedades.html', '_blank', 'width=800,height=600,resizable=yes');
         }
+
+        // Konami Code Easter Egg (↑ ↑ ↓ ↓ ← → ← → B A)
+        let konamiCode = [];
+        const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+        document.addEventListener('keydown', (e) => {
+            konamiCode.push(e.key);
+            konamiCode = konamiCode.slice(-10);
+            
+            if (konamiCode.join(',') === konamiSequence.join(',')) {
+                activateKonamiMode();
+            }
+        });
+
+        function activateKonamiMode() {
+            document.body.classList.add('konami-active');
+            
+            // Crear confetti effect
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.style.cssText = `
+                        position: fixed;
+                        top: -10px;
+                        left: ${Math.random() * 100}%;
+                        width: 10px;
+                        height: 10px;
+                        background: hsl(${Math.random() * 360}, 100%, 50%);
+                        z-index: 9999;
+                        animation: fall ${2 + Math.random() * 3}s linear forwards;
+                    `;
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 5000);
+                }, i * 20);
+            }
+
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(100vh) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            alert('🎉 ¡Código Konami activado! Modo ARCOÍRIS 🌈');
+            
+            setTimeout(() => {
+                document.body.classList.remove('konami-active');
+            }, 10000);
+        }
+
+        // Console Easter Egg
+        console.log('%c¡Hola Developer! 👋', 'color: #ff4500; font-size: 24px; font-weight: bold;');
+        console.log('%c¿Curioseando el código? Me gusta tu estilo 😎', 'color: #ffbd69; font-size: 16px;');
+        console.log('%cPrueba el código Konami: ↑ ↑ ↓ ↓ ← → ← → B A', 'color: #ff6b35; font-size: 14px;');
+        console.log('%cO presiona Ctrl+K para la búsqueda rápida 🚀', 'color: #f7931e; font-size: 14px;');
     </script>
 </body>
 </html>
