@@ -1,0 +1,144 @@
+{
+  "apps": [
+    {
+      "nombre": "Spotify Premium",
+      "descripcion": "Disfruta de música sin anuncios y con calidad premium.",
+      "enlace": "https://dl.dropbox.com/scl/fi/5lal2itfo5wizqrxm2i95/Spotify-premium.apk?rlkey=qkcaenco96uri0lpmm8rq4qv9&st=4suu53mo&dl=0",
+      "imagen": "img/Spotify.png",
+      "tag": "🆕",
+      "version_conocida": "v8.9.10",
+      "ultima_fecha": "2025-10-01",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "Spotify Lite Premium",
+      "descripcion": "Disfruta de música sin anuncios y con calidad premium en una versión más liviana pero todas sus funciones premium en excepción de descargas.",
+      "enlace": "https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0",
+      "imagen": "img/SpoLite.png",
+      "tag": "🆕",
+      "version_conocida": "v1.9.0",
+      "ultima_fecha": "2025-10-01",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "YouTube ReVanced",
+      "descripcion": "Accede a YouTube sin anuncios y con funciones premium.",
+      "enlace": "https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file",
+      "imagen": "img/YouTube.jpeg",
+      "tag": "🆕",
+      "version_conocida": "v19.10.37",
+      "ultima_fecha": "2025-09-15",
+      "plugin_enlace": "https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3"
+    },
+    {
+      "nombre": "TikTok Premium",
+      "descripcion": "Disfruta de TikTok sin anuncios y con más funciones.",
+      "enlace": "https://www.mediafire.com/file/xoxsozv6q9csllm/TikTok_Private_Plus_v38.5.5_%2528MOD%2529_arm8.apk/file",
+      "imagen": "img/TikTok.svg",
+      "tag": "🆕",
+      "version_conocida": "v38.5.5",
+      "ultima_fecha": "2025-09-20",
+      "plugin_enlace": "https://www.mediafire.com/file/ss1xujlvbmpopbi/TikTok_Plugin_v1.66.1.apk/file"
+    },
+    {
+      "nombre": "Flicks Remix",
+      "descripcion": "Mira series y películas sin restricciones.",
+      "enlace": "https://www.mediafire.com/file/gh6tw4a61kfrpk5/Flicks_Remix_4.4.0-PRE.apk/file",
+      "imagen": "img/Netflix.png",
+      "tag": "🔄 Actualizada",
+      "version_conocida": "v4.4.0",
+      "ultima_fecha": "2025-10-05",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "TeraBox Premium",
+      "descripcion": "Almacenamiento en la nube ilimitado y descargas sin restricciones.",
+      "enlace": "https://www.mediafire.com/file/ztep28ynrzp6mec/Terabox_Premium.apk/file",
+      "imagen": "img/Terabox.png",
+      "tag": "⭐",
+      "version_conocida": "v3.2.5",
+      "ultima_fecha": "2025-09-10",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "MX Player Pro",
+      "descripcion": "Disfruta de un potente reproductor de video sin anuncios.",
+      "enlace": "https://www.mediafire.com/file/hsak6350wb7uy7g/MX_Player_v1.92.0_%25282001002560%2529_Lite_Mod_arm64-v8a.apk/file",
+      "imagen": "img/Player.jpg",
+      "tag": "🔄 Actualizada",
+      "version_conocida": "v1.92.0",
+      "ultima_fecha": "2025-10-10",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "PicsArt Premium",
+      "descripcion": "Accede a herramientas de edición sin restricciones.",
+      "enlace": "https://www.mediafire.com/file/aupu0p39f2h5oha/Picsart_Premium.apk/file",
+      "imagen": "img/Picsart.jpg",
+      "tag": "🆕",
+      "version_conocida": "v20.5.0",
+      "ultima_fecha": "2025-09-25",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "Remini Pro",
+      "descripcion": "Disfruta de sus funciones desbloqueadas y sin anuncios, algunas de sus funciones están al lado del servidor.",
+      "enlace": "https://drive.google.com/uc?export=download&id=13SyNMgObxE_hN9YZ2BzgfcZ-u_aWe7qf",
+      "imagen": "img/Remini.png",
+      "tag": "🔄 Actualizada",
+      "version_conocida": "v3.7.2",
+      "ultima_fecha": "2025-10-03",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "Crunchyroll Premium",
+      "descripcion": "Accede a todo el catálogo de anime sin anuncios y con la mejor calidad de reproducción.",
+      "enlace": "#", // Enlace vacío en el HTML, debes actualizarlo
+      "imagen": "img/Crunchyroll.png",
+      "tag": "🔄 Actualizada",
+      "version_conocida": "v3.20.1",
+      "ultima_fecha": "2025-09-30",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "Magic Eraser Mod",
+      "descripcion": "Elimina objetos no deseados de tus fotos sin restricciones.",
+      "enlace": "https://www.mediafire.com/file/dlc9pitwn55j5hk/Magic_Eraser_2.18.2.apk/file",
+      "imagen": "img/Eraser.jpg",
+      "tag": "🆕",
+      "version_conocida": "v2.18.2",
+      "ultima_fecha": "2025-10-07",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "YouTube Music ReVanced",
+      "descripcion": "Disfruta de YouTube Music sin anuncios, con descargas y reproducción en segundo plano.",
+      "enlace": "https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file",
+      "imagen": "img/YTMusic.png",
+      "tag": "🆕",
+      "version_conocida": "v6.10.2",
+      "ultima_fecha": "2025-09-18",
+      "plugin_enlace": "https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3"
+    },
+    {
+      "nombre": "CamScanner Mod",
+      "descripcion": "Escanea y edita tus documentos sin restricciones.",
+      "enlace": "https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0",
+      "imagen": "img/CamScanner.jpg",
+      "tag": "🆕",
+      "version_conocida": "v6.20.0",
+      "ultima_fecha": "2025-10-02",
+      "plugin_enlace": null
+    },
+    {
+      "nombre": "DNS AdGuard Pro",
+      "descripcion": "Líbrate de anuncios molestos en un click.",
+      "enlace": "https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0",
+      "imagen": "img/dnspro.png",
+      "tag": "🆕",
+      "version_conocida": "v4.13.6",
+      "ultima_fecha": "2025-10-01",
+      "plugin_enlace": null
+    }
+  ]
+}
