@@ -60,13 +60,16 @@
             </li>
         </ul>
     </section>
-
+    
+    <main class="container" id="apps-container">
+        <!-- Tarjetas generadas dinámicamente aquí -->
+    </main>
+    
     <script>
-        // Create animated particles
+        // Crear partículas animadas
         function createParticles() {
             const particlesContainer = document.getElementById('particles');
             const particleCount = 50;
-            
             for (let i = 0; i < particleCount; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
@@ -77,21 +80,59 @@
             }
         }
 
-        // Search functionality
+        // Cargar apps desde Pastebin
+        async function cargarAppsDesdePastebin() {
+            const pastebinUrl = 'https://pastebin.com/raw/DTSfarwd'; // URL raw de tu JSON
+            try {
+                const response = await fetch(pastebinUrl);
+                if (!response.ok) throw new Error('Error al cargar el JSON');
+                const data = await response.json();
+                const apps = data.apps;
+                const container = document.getElementById('apps-container');
+                container.innerHTML = '';
+
+                apps.forEach(app => {
+                    const pluginBtn = app.plugin_enlace ? `<a href="${app.plugin_enlace}" class="btn download-btn secondary-btn">Descargar Plugin</a>` : '';
+                    const card = `
+                        <div class="app-card">
+                            <img src="${app.imagen}" alt="${app.nombre}">
+                            <div class="app-info">
+                                <h2>${app.nombre} <span class="update-tag">${app.tag}</span></h2>
+                                <p>${app.descripcion}</p>
+                                <a href="${app.enlace}" class="btn download-btn">Descargar</a>
+                                ${pluginBtn}
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                });
+
+                // Actualizar buscador y efectos hover
+                actualizarBuscador();
+            } catch (error) {
+                console.error('Error cargando apps desde Pastebin:', error);
+                document.getElementById('apps-container').innerHTML = '<p>Error al cargar las aplicaciones. Intenta de nuevo más tarde.</p>';
+            }
+        }
+
+        // Buscador para filtrar apps dinámicas
         function buscarApp() {
-            const searchInput = document.getElementById('search');
-            const query = searchInput.value.trim();
-            
-            if (query) {
-                // Add search animation
-                searchInput.style.background = 'linear-gradient(90deg, #ff6b6b, #4ecdc4)';
-                searchInput.style.color = 'white';
-                
-                setTimeout(() => {
-                    searchInput.style.background = 'transparent';
-                    searchInput.style.color = '#333';
-                    alert(`Buscando: ${query}`);
-                }, 500);
+            const input = document.getElementById("search").value.toLowerCase();
+            const apps = document.querySelectorAll(".app-card");
+            let found = false;
+
+            apps.forEach(app => {
+                const nombre = app.querySelector("h2")?.innerText.toLowerCase();
+                if (nombre && nombre.includes(input)) {
+                    app.style.display = "block";
+                    found = true;
+                } else {
+                    app.style.display = "none";
+                }
+            });
+
+            if (!found && input) {
+                alert("No se encontraron aplicaciones para: " + input);
             }
         }
 
@@ -102,174 +143,23 @@
             }
         });
 
-        // Initialize particles when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            createParticles();
-        });
-
-        // Add hover effects to app cards
-        document.querySelectorAll('.app-card').forEach(card => {
-            card.addEventListener('mouseover', function() {
-                this.style.background = 'rgba(255, 255, 255, 1)';
-            });
-            
-            card.addEventListener('mouseout', function() {
-                this.style.background = 'rgba(255, 255, 255, 0.95)';
-            });
-        });
-    </script>
-</body>
-    </section>
-    
-    <main class="container">
-        <div class="app-card">
-            <img src="img/Spotify.png" alt="Spotify Premium">
-            <div class="app-info">
-                <h2>Spotify Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de música sin anuncios y con calidad premium.</p>
-                <a href="https://dl.dropbox.com/scl/fi/5lal2itfo5wizqrxm2i95/Spotify-premium.apk?rlkey=qkcaenco96uri0lpmm8rq4qv9&st=4suu53mo&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-        
-                <div class="app-card">
-            <img src="img/SpoLite.png" alt="Spotify Lite Premium">
-            <div class="app-info">
-                <h2>Spotify Lite Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de música sin anuncios y con calidad premium en una versión mas liviana pero todas sus funciones premium en excepción de descargas.
-</p>
-              <a href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/YouTube.jpeg" alt="YouTube ReVanced">
-            <div class="app-info">
-                <h2>YouTube ReVanced <span class="update-tag">🆕</span></h2>
-                <p>Accede a YouTube sin anuncios y con funciones premium.</p>
-                <a href="https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin 
-                MicroG</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/TikTok.svg" alt="TikTok Premium">
-            <div class="app-info">
-                <h2>TikTok Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de TikTok sin anuncios y con más funciones.</p>
-                <a href="https://www.mediafire.com/file/xoxsozv6q9csllm/TikTok_Private_Plus_v38.5.5_%2528MOD%2529_arm8.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://www.mediafire.com/file/ss1xujlvbmpopbi/TikTok_Plugin_v1.66.1.apk/file" class="btn download-btn secondary-btn">Descargar Plugin</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/Netflix.png" alt="Netflix Mod">
-            <div class="app-info">
-                <h2>Flicks Remix <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Mira series y películas sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/gh6tw4a61kfrpk5/Flicks_Remix_4.4.0-PRE.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/Terabox.png" alt="TeraBox Premium">
-            <div class="app-info">
-                <h2>TeraBox Premium <span class="update-tag">⭐</span></h2>
-                <p>Almacenamiento en la nube ilimitado y descargas sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/ztep28ynrzp6mec/Terabox_Premium.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>        
-
-        <div class="app-card">
-            <img src="img/Player.jpg" alt="MX Player Pro">
-            <div class="app-info">
-                <h2>MX Player Pro <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Disfruta de un potente reproductor de video sin anuncios.</p>
-                <a href="https://www.mediafire.com/file/hsak6350wb7uy7g/MX_Player_v1.92.0_%25282001002560%2529_Lite_Mod_arm64-v8a.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/Picsart.jpg" alt="PicsArt Premium">
-            <div class="app-info">
-                <h2>PicsArt Premium <span class="update-tag">🆕</span></h2>
-                <p>Accede a herramientas de edición sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/aupu0p39f2h5oha/Picsart_Premium.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        
-        <div class="app-card">
-            <img src="img/Remini.png" alt="Remini Pro">
-            <div class="app-info">
-                <h2>Remini Pro <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Disfruta de sus funciones desbloqueadas y sin anuncios, algunas de sus funciones estan al lado del servidor.</p>
-                <a href="https://drive.google.com/uc?export=download&id=13SyNMgObxE_hN9YZ2BzgfcZ-u_aWe7qf" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/Crunchyroll.png" alt="Crunchyroll Premium">
-            <div class="app-info">
-                <h2>Crunchyroll Premium <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Accede a todo el catálogo de anime sin anuncios y con la mejor calidad de reproducción.</p>
-                <a href="#" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <div class="app-card">
-            <img src="img/Eraser.jpg" alt="Magic Eraser Mod">
-            <div class="app-info">
-                <h2>Magic Eraser Mod <span class="update-tag">🆕</span></h2>
-                <p>Elimina objetos no deseados de tus fotos sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/dlc9pitwn55j5hk/Magic_Eraser_2.18.2.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-        
-        <div class="app-card">
-            <img src="img/YTMusic.png" alt="YouTube Music ReVanced">
-            <div class="app-info">
-                <h2>YouTube Music ReVanced <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de YouTube Music sin anuncios, con descargas y reproducción en segundo plano.</p>
-                <a href="https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin 
-                    MicroG</a>
-            </div>
-    </div>
-                <div class="app-card">
-            <img src="img/CamScanner.jpg" alt="CamScanner Mod">
-            <div class="app-info">
-                <h2>CamScanner Mod <span class="update-tag">🆕</span></h2>
-                <p>Escanea y edita tus documentos sin restricciones.</p>
-                <a href="https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-                    </div>
-                               <div class="app-card">
-            <img src="img/dnspro.png" alt="AdGuard Pro">
-                                <div class="app-info">
-                <h2>DNS AdGuard Pro<span class="update-tag">🆕</span></h2>
-                <p>Librate de anuncios molestos en un click.</p>
-                <a href="https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-                    </div>
-        
-        
-    </main>
-    
-    <script>
-        function buscarApp() {
-            let input = document.getElementById("search").value.toLowerCase();
-            let apps = document.querySelectorAll(".app-card");
-            
-            apps.forEach(app => {
-                let nombre = app.querySelector("h2").innerText.toLowerCase();
-                if (nombre.includes(input)) {
-                    app.style.display = "block";
-                } else {
-                    app.style.display = "none";
-                }
+        // Efectos hover para tarjetas dinámicas
+        function actualizarBuscador() {
+            document.querySelectorAll('.app-card').forEach(card => {
+                card.addEventListener('mouseover', function() {
+                    this.style.background = 'rgba(255, 255, 255, 1)';
+                });
+                card.addEventListener('mouseout', function() {
+                    this.style.background = 'rgba(255, 255, 255, 0.95)';
+                });
             });
         }
+
+        // Inicializar partículas y cargar apps
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            cargarAppsDesdePastebin();
+        });
     </script>
 </body>
 </html>
