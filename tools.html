@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramientas Útiles - CodeHub</title>
+    <!-- Incluye Font Awesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- CDN para QR Code (qrcode.js) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* Copia tus estilos principales aquí para consistencia (o linkea tu CSS) */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #ff4500; --secondary: #ff6b35; --accent: #ffbd69; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%); color: #ffffff; line-height: 1.6; }
+        header { padding: 2rem; text-align: center; background: rgba(0, 0, 0, 0.3); border-bottom: 2px solid rgba(255, 69, 0, 0.3); }
+        h1 { font-size: 3rem; background: linear-gradient(45deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        section { margin: 2rem 0; padding: 2rem; background: rgba(0, 0, 0, 0.2); border-radius: 20px; border: 1px solid rgba(255, 69, 0, 0.2); }
+        h2 { font-size: 2rem; color: var(--accent); text-align: center; margin-bottom: 1rem; }
+        input, select, button { padding: 0.5rem; margin: 0.5rem; border-radius: 5px; border: 1px solid var(--primary); background: rgba(255, 255, 255, 0.1); color: #fff; }
+        button { background: var(--primary); cursor: pointer; }
+        .result { margin-top: 1rem; color: var(--accent); font-weight: bold; }
+        /* Añade más estilos de tu sitio si es necesario */
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛠️ Herramientas Útiles</h1>
+        <p>Una colección de herramientas prácticas para desarrolladores y usuarios cotidianos.</p>
+    </header>
+    <main>
+        <!-- 1. Prueba de Velocidad de Internet -->
+        <section id="speed-test">
+            <h2><i class="fas fa-tachometer-alt"></i> Prueba de Velocidad de Internet</h2>
+            <button onclick="runSpeedTest()">Iniciar Prueba</button>
+            <div class="result" id="speedResult"></div>
+        </section>
+
+        <!-- 2. Verificador de Dirección IP -->
+        <section id="ip-checker">
+            <h2><i class="fas fa-map-marker-alt"></i> Verificador de IP</h2>
+            <button onclick="getIPInfo()">Obtener IP y Ubicación</button>
+            <div class="result" id="ipResult"></div>
+        </section>
+
+        <!-- 3. Información del Dispositivo -->
+        <section id="device-info">
+            <h2><i class="fas fa-mobile-alt"></i> Información del Dispositivo</h2>
+            <button onclick="getDeviceInfo()">Obtener Info</button>
+            <div class="result" id="deviceResult"></div>
+        </section>
+
+        <!-- 4. Generador de Contraseñas Seguras -->
+        <section id="password-generator">
+            <h2><i class="fas fa-lock"></i> Generador de Contraseñas</h2>
+            <input type="number" id="passLength" value="12" min="4" max="50">
+            <button onclick="generatePassword()">Generar</button>
+            <div class="result" id="passwordResult"></div>
+        </section>
+
+        <!-- 5. Verificador de Fuerza de Contraseña -->
+        <section id="password-strength">
+            <h2><i class="fas fa-shield-alt"></i> Verificador de Fuerza</h2>
+            <input type="text" id="passInput" placeholder="Ingresa contraseña">
+            <button onclick="checkPasswordStrength()">Verificar</button>
+            <div class="result" id="strengthResult"></div>
+        </section>
+
+        <!-- 6. Generador de Códigos QR -->
+        <section id="qr-generator">
+            <h2><i class="fas fa-qrcode"></i> Generador de QR</h2>
+            <input type="text" id="qrText" placeholder="Ingresa texto o URL">
+            <button onclick="generateQR()">Generar QR</button>
+            <div id="qrResult" class="result"></div>
+        </section>
+
+        <!-- 7. Calculadora de IMC -->
+        <section id="bmi-calculator">
+            <h2><i class="fas fa-weight"></i> Calculadora de IMC</h2>
+            <input type="number" id="weight" placeholder="Peso (kg)">
+            <input type="number" id="height" placeholder="Altura (m)">
+            <button onclick="calculateBMI()">Calcular</button>
+            <div class="result" id="bmiResult"></div>
+        </section>
+
+        <!-- 8. Convertidor de Unidades -->
+        <section id="unit-converter">
+            <h2><i class="fas fa-exchange-alt"></i> Convertidor de Unidades</h2>
+            <select id="unitType">
+                <option value="length">Longitud</option>
+                <option value="weight">Peso</option>
+                <option value="temp">Temperatura</option>
+            </select>
+            <input type="number" id="unitInput" placeholder="Valor">
+            <select id="fromUnit"></select>
+            <select id="toUnit"></select>
+            <button onclick="convertUnits()">Convertir</button>
+            <div class="result" id="unitResult"></div>
+        </section>
+
+        <!-- 9. Calculadora de Préstamos -->
+        <section id="loan-calculator">
+            <h2><i class="fas fa-calculator"></i> Calculadora de Préstamos</h2>
+            <input type="number" id="loanAmount" placeholder="Monto">
+            <input type="number" id="loanRate" placeholder="Tasa (%)">
+            <input type="number" id="loanMonths" placeholder="Meses">
+            <button onclick="calculateLoan()">Calcular</button>
+            <div class="result" id="loanResult"></div>
+        </section>
+
+        <!-- 10. Temporizador Pomodoro -->
+        <section id="pomodoro-timer">
+            <h2><i class="fas fa-clock"></i> Temporizador Pomodoro</h2>
+            <button onclick="startPomodoro()">Iniciar (25 min)</button>
+            <div class="result" id="pomodoroResult"></div>
+        </section>
+
+        <!-- 11. Selector de Colores -->
+        <section id="color-picker">
+            <h2><i class="fas fa-palette"></i> Selector de Colores</h2>
+            <input type="color" id="colorInput">
+            <button onclick="generateColorScheme()">Generar Esquema</button>
+            <div class="result" id="colorResult"></div>
+        </section>
+
+        <!-- 12. Generador de Memes -->
+        <section id="meme-generator">
+            <h2><i class="fas fa-laugh"></i> Generador de Memes</h2>
+            <input type="file" id="memeImage" accept="image/*">
+            <input type="text" id="topText" placeholder="Texto superior">
+            <input type="text" id="bottomText" placeholder="Texto inferior">
+            <button onclick="generateMeme()">Generar Meme</button>
+            <canvas id="memeCanvas" width="400" height="400" style="border:1px solid #fff;"></canvas>
+        </section>
+
+        <!-- 13. Compresor de Imágenes -->
+        <section id="image-compressor">
+            <h2><i class="fas fa-compress"></i> Compresor de Imágenes</h2>
+            <input type="file" id="compressImage" accept="image/*">
+            <button onclick="compressImage()">Comprimir</button>
+            <div class="result" id="compressResult"></div>
+        </section>
+
+        <!-- 14. Conversor de Monedas -->
+        <section id="currency-converter">
+            <h2><i class="fas fa-dollar-sign"></i> Conversor de Monedas</h2>
+            <input type="number" id="currencyAmount" placeholder="Monto">
+            <select id="fromCurrency">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GTQ">GTQ</option> <!-- Agregué GTQ para Guatemala -->
+            </select>
+            <select id="toCurrency">
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GTQ">GTQ</option>
+            </select>
+            <button onclick="convertCurrency()">Convertir</button>
+            <div class="result" id="currencyResult"></div>
+        </section>
+
+        <!-- 15. Pronóstico del Tiempo -->
+        <section id="weather-checker">
+            <h2><i class="fas fa-cloud"></i> Pronóstico del Tiempo</h2>
+            <input type="text" id="cityInput" placeholder="Ciudad (ej. Guatemala)">
+            <button onclick="getWeather()">Obtener Clima</button>
+            <div class="result" id="weatherResult"></div>
+        </section>
+    </main>
+
+    <script>
+        // 1. Prueba de Velocidad de Internet (mide descarga descargando una imagen grande)
+        function runSpeedTest() {
+            const imageAddr = "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"; // Imagen grande ~5MB
+            const downloadSize = 5242880; // Tamaño en bytes
+            const startTime = new Date().getTime();
+            const download = new Image();
+            download.onload = function () {
+                const endTime = new Date().getTime();
+                const duration = (endTime - startTime) / 1000;
+                const bitsLoaded = downloadSize * 8;
+                const speedBps = (bitsLoaded / duration).toFixed(2);
+                const speedKbps = (speedBps / 1024).toFixed(2);
+                const speedMbps = (speedKbps / 1024).toFixed(2);
+                document.getElementById('speedResult').innerHTML = `Velocidad de descarga: ${speedMbps} Mbps`;
+            };
+            download.src = imageAddr + "?n=" + Math.random();
+        }
+
+        // 2. Verificador de IP (usa API gratuita)
+        async function getIPInfo() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                document.getElementById('ipResult').innerHTML = `IP: ${data.ip}<br>Ubicación: ${data.city}, ${data.country_name}<br>Proveedor: ${data.org}`;
+            } catch (error) {
+                document.getElementById('ipResult').innerHTML = 'Error al obtener info.';
+            }
+        }
+
+        // 3. Información del Dispositivo
+        function getDeviceInfo() {
+            const info = `
+                Navegador: ${navigator.userAgent}<br>
+                OS: ${navigator.platform}<br>
+                Resolución: ${screen.width} x ${screen.height}<br>
+                Dispositivo: ${navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Escritorio'}
+            `;
+            document.getElementById('deviceResult').innerHTML = info;
+        }
+
+        // 4. Generador de Contraseñas
+        function generatePassword() {
+            const length = document.getElementById('passLength').value;
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+            let password = '';
+            for (let i = 0; i < length; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('passwordResult').innerHTML = `Contraseña: ${password} <button onclick="navigator.clipboard.writeText('${password}')">Copiar</button>`;
+        }
+
+        // 5. Verificador de Fuerza de Contraseña
+        function checkPasswordStrength() {
+            const password = document.getElementById('passInput').value;
+            let strength = 0;
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/)) strength++;
+            if (password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
+            const levels = ['Muy débil', 'Débil', 'Media', 'Fuerte', 'Muy fuerte', 'Excelente'];
+            document.getElementById('strengthResult').innerHTML = `Fuerza: ${levels[strength]}`;
+        }
+
+        // 6. Generador de QR
+        function generateQR() {
+            const text = document.getElementById('qrText').value;
+            const qrDiv = document.getElementById('qrResult');
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+                text: text,
+                width: 200,
+                height: 200,
+                colorDark: "#ff4500",
+                colorLight: "#ffffff"
+            });
+        }
+
+        // 7. Calculadora de IMC
+        function calculateBMI() {
+            const weight = parseFloat(document.getElementById('weight').value);
+            const height = parseFloat(document.getElementById('height').value);
+            if (weight > 0 && height > 0) {
+                const bmi = (weight / (height * height)).toFixed(2);
+                let category = '';
+                if (bmi < 18.5) category = 'Bajo peso';
+                else if (bmi < 25) category = 'Normal';
+                else if (bmi < 30) category = 'Sobrepeso';
+                else category = 'Obesidad';
+                document.getElementById('bmiResult').innerHTML = `IMC: ${bmi} (${category})`;
+            } else {
+                document.getElementById('bmiResult').innerHTML = 'Ingresa valores válidos.';
+            }
+        }
+
+        // 8. Convertidor de Unidades
+        const units = {
+            length: { cm: 1, m: 100, km: 100000, inch: 2.54, foot: 30.48 },
+            weight: { g: 1, kg: 1000, lb: 453.592, oz: 28.3495 },
+            temp: { c: (v) => v, f: (v) => (v * 9/5) + 32, k: (v) => v + 273.15 }
+        };
+
+        function updateUnitOptions() {
+            const type = document.getElementById('unitType').value;
+            const from = document.getElementById('fromUnit');
+            const to = document.getElementById('toUnit');
+            from.innerHTML = '';
+            to.innerHTML = '';
+            Object.keys(units[type]).forEach(unit => {
+                from.innerHTML += `<option value="${unit}">${unit.toUpperCase()}</option>`;
+                to.innerHTML += `<option value="${unit}">${unit.toUpperCase()}</option>`;
+            });
+        }
+
+        document.getElementById('unitType').addEventListener('change', updateUnitOptions);
+        updateUnitOptions(); // Inicial
+
+        function convertUnits() {
+            const type = document.getElementById('unitType').value;
+            const value = parseFloat(document.getElementById('unitInput').value);
+            const from = document.getElementById('fromUnit').value;
+            const to = document.getElementById('toUnit').value;
+
+            if (isNaN(value)) return;
+
+            let result;
+            if (type === 'temp') {
+                let celsius = value;
+                if (from === 'f') celsius = (value - 32) * 5/9;
+                if (from === 'k') celsius = value - 273.15;
+                result = units.temp[to](celsius);
+            } else {
+                const base = value * units[type][from];
+                result = base / units[type][to];
+            }
+            document.getElementById('unitResult').innerHTML = `${value} ${from.toUpperCase()} = ${result.toFixed(2)} ${to.toUpperCase()}`;
+        }
+
+        // 9. Calculadora de Préstamos
+        function calculateLoan() {
+            const amount = parseFloat(document.getElementById('loanAmount').value);
+            const rate = parseFloat(document.getElementById('loanRate').value) / 100 / 12;
+            const months = parseFloat(document.getElementById('loanMonths').value);
+            if (amount > 0 && rate > 0 && months > 0) {
+                const payment = (amount * rate * Math.pow(1 + rate, months)) / (Math.pow(1 + rate, months) - 1);
+                document.getElementById('loanResult').innerHTML = `Pago mensual: $${payment.toFixed(2)}`;
+            } else {
+                document.getElementById('loanResult').innerHTML = 'Ingresa valores válidos.';
+            }
+        }
+
+        // 10. Temporizador Pomodoro
+        let pomodoroInterval;
+        function startPomodoro() {
+            let time = 25 * 60; // 25 minutos
+            document.getElementById('pomodoroResult').innerHTML = 'Tiempo restante: 25:00';
+            pomodoroInterval = setInterval(() => {
+                time--;
+                const min = Math.floor(time / 60);
+                const sec = time % 60;
+                document.getElementById('pomodoroResult').innerHTML = `Tiempo restante: ${min}:${sec < 10 ? '0' : ''}${sec}`;
+                if (time <= 0) {
+                    clearInterval(pomodoroInterval);
+                    alert('¡Tiempo de descanso!');
+                }
+            }, 1000);
+        }
+
+        // 11. Selector de Colores (simple, genera complementarios básicos)
+        function generateColorScheme() {
+            const color = document.getElementById('colorInput').value;
+            const complementary = '#' + (0xFFFFFF ^ parseInt(color.slice(1), 16)).toString(16).padStart(6, '0');
+            document.getElementById('colorResult').innerHTML = `
+                Color seleccionado: <span style="color: ${color};">${color}</span><br>
+                Complementario: <span style="color: ${complementary};">${complementary}</span>
+            `;
+        }
+
+        // 12. Generador de Memes (usa Canvas)
+        function generateMeme() {
+            const file = document.getElementById('memeImage').files[0];
+            if (!file) return alert('Sube una imagen');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.getElementById('memeCanvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    ctx.font = 'bold 30px Arial';
+                    ctx.fillStyle = 'white';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+                    ctx.textAlign = 'center';
+                    const top = document.getElementById('topText').value.toUpperCase();
+                    const bottom = document.getElementById('bottomText').value.toUpperCase();
+                    ctx.fillText(top, canvas.width / 2, 40);
+                    ctx.strokeText(top, canvas.width / 2, 40);
+                    ctx.fillText(bottom, canvas.width / 2, canvas.height - 20);
+                    ctx.strokeText(bottom, canvas.width / 2, canvas.height - 20);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 13. Compresor de Imágenes (usa Canvas para resize)
+        function compressImage() {
+            const file = document.getElementById('compressImage').files[0];
+            if (!file) return alert('Sube una imagen');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const maxWidth = 800; // Ajusta según necesidad
+                    const scale = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7); // Calidad 70%
+                    const link = document.createElement('a');
+                    link.href = compressed;
+                    link.download = 'compressed.jpg';
+                    link.textContent = 'Descargar Imagen Comprimida';
+                    document.getElementById('compressResult').innerHTML = '';
+                    document.getElementById('compressResult').appendChild(link);
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 14. Conversor de Monedas (usa API)
+        async function convertCurrency() {
+            const amount = parseFloat(document.getElementById('currencyAmount').value);
+            const from = document.getElementById('fromCurrency').value;
+            const to = document.getElementById('toCurrency').value;
+            try {
+                const response = await fetch(`https://v6.exchangerate-api.com/v6/TU_API_KEY/latest/${from}`);
+                const data = await response.json();
+                const rate = data.conversion_rates[to];
+                const result = (amount * rate).toFixed(2);
+                document.getElementById('currencyResult').innerHTML = `${amount} ${from} = ${result} ${to}`;
+            } catch (error) {
+                document.getElementById('currencyResult').innerHTML = 'Error al obtener tasas. Revisa tu API key.';
+            }
+        }
+
+        // 15. Pronóstico del Tiempo (usa OpenWeatherMap)
+        async function getWeather() {
+            const city = document.getElementById('cityInput').value;
+            try {
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=TU_API_KEY&units=metric&lang=es`);
+                const data = await response.json();
+                if (data.cod === 200) {
+                    document.getElementById('weatherResult').innerHTML = `
+                        Ciudad: ${data.name}<br>
+                        Temperatura: ${data.main.temp}°C<br>
+                        Clima: ${data.weather[0].description}<br>
+                        Humedad: ${data.main.humidity}%
+                    `;
+                } else {
+                    document.getElementById('weatherResult').innerHTML = 'Ciudad no encontrada.';
+                }
+            } catch (error) {
+                document.getElementById('weatherResult').innerHTML = 'Error al obtener clima. Revisa tu API key.';
+            }
+        }
+    </script>
+</body>
+</html>

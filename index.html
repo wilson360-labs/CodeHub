@@ -1,4 +1,4 @@
-</section><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -16,6 +16,111 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+    /* ====== CSS: Icono flotante y diálogo profesional ====== */
+#whatsNewOverlay {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .25s ease, visibility .25s ease;
+}
+
+#whatsNewOverlay.active {
+  visibility: visible;
+  opacity: 1;
+}
+/* Icono flotante */
+#whatsNewIcon{
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.6rem;
+  z-index: 4000;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(255,69,0,0.35);
+  transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
+  animation: floatPulse 3s infinite;
+}
+#whatsNewIcon:focus { outline: 2px solid rgba(255,255,255,0.12); transform: translateY(-50%) scale(1.04); }
+#whatsNewIcon:hover{ transform: translateY(-50%) scale(1.08) rotate(8deg); box-shadow: 0 14px 40px rgba(255,69,0,0.55); }
+
+@keyframes floatPulse{
+  0%,100%{ filter: drop-shadow(0 0 8px var(--primary)); transform: translateY(-50%) scale(1); }
+  50%{ filter: drop-shadow(0 0 22px var(--accent)); transform: translateY(-52%) scale(1.03); }
+}
+
+/* Overlay + dialog */
+#whatsNewOverlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(6px);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity .25s ease, visibility .25s ease;
+  z-index: 3999;
+}
+#whatsNewOverlay.active{
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Dialogo */
+.whatsNewDialog{
+  width: 92%;
+  max-width: 420px;
+  background: linear-gradient(180deg, rgba(12,12,18,0.98), rgba(18,18,28,0.98));
+  border-radius: 16px;
+  padding: 20px;
+  border: 3px solid var(--primary); /* contorno anaranjado */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  transform: translateY(8px) scale(.98);
+  opacity: 0;
+  transition: transform .28s cubic-bezier(.2,.9,.2,1), opacity .28s ease;
+}
+#whatsNewOverlay.active .whatsNewDialog{
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Texto y botones */
+.whatsNewDialog h3{ margin: 0 0 8px 0; color: var(--accent); font-size: 1.35rem; text-shadow: 0 0 8px rgba(255,69,0,0.12); }
+.whatsNewSub{ color: #cfcfcf; margin-bottom: 14px; }
+
+.whatsNewActions{ display:flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.action-btn{
+  display:flex; align-items:center; gap:10px; justify-content:center;
+  padding: 12px 16px; border-radius: 999px; border: none; font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(90deg,#00c853,#4caf50); /* verde */
+  color: #fff; box-shadow: 0 8px 30px rgba(0,200,83,0.18);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.action-btn:hover{ transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,200,83,0.26); }
+
+/* boton cerrar gris */
+.close-btn{
+  display:inline-flex; align-items:center; gap:10px; margin: 0 auto;
+  padding: 8px 14px; background: #5a5a5a; color: #fff; border: none; border-radius: 12px;
+  cursor: pointer; transition: transform .18s ease, background .18s ease;
+}
+.close-btn:hover{ background: #707070; transform: translateY(-2px); }
+
+/* responsive */
+@media (max-width:520px){
+  #whatsNewIcon{ right: 18px; width:56px; height:56px; font-size:1.35rem; }
+  .whatsNewDialog{ padding: 16px; border-radius: 12px; }
+}
+/*fin de la línea del icono*/
         * {
             margin: 0;
             padding: 0;
@@ -108,6 +213,153 @@
         body.light-mode .theme-toggle-circle {
             transform: translateX(30px);
         }
+
+        /* ========== MENÚ LATERAL EXPERIMENTAL ========== */
+        #experimental-menu {
+            position: fixed;
+            left: -320px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 300px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(26, 26, 46, 0.95));
+            backdrop-filter: blur(20px);
+            border: 2px solid var(--primary);
+            border-left: none;
+            border-radius: 0 20px 20px 0;
+            padding: 20px;
+            z-index: 1000;
+            transition: left 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 5px 0 30px rgba(255, 69, 0, 0.3);
+        }
+
+        #experimental-menu.active {
+            left: 0;
+        }
+
+        .menu-toggle-btn {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: 2px solid var(--primary);
+            border-left: none;
+            border-radius: 0 15px 15px 0;
+            cursor: pointer;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+            box-shadow: 3px 0 15px rgba(255, 69, 0, 0.4);
+        }
+
+        .menu-toggle-btn:hover {
+            width: 60px;
+            box-shadow: 5px 0 25px rgba(255, 69, 0, 0.6);
+        }
+
+        .menu-toggle-btn i {
+            font-size: 1.5rem;
+            color: white;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .menu-toggle-text {
+            writing-mode: vertical-rl;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        .menu-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .menu-header h3 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+
+        .menu-header p {
+            color: #888;
+            font-size: 0.85rem;
+        }
+
+        .menu-item {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
+            border: 2px solid rgba(255, 69, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .menu-item:hover {
+            transform: translateX(10px);
+            border-color: var(--primary);
+            box-shadow: 0 5px 20px rgba(255, 69, 0, 0.4);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.1));
+        }
+
+        .menu-item i {
+            font-size: 1.5rem;
+            color: var(--primary);
+            width: 30px;
+            text-align: center;
+        }
+
+        .menu-item-content {
+            flex: 1;
+        }
+
+        .menu-item-title {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 3px;
+        }
+
+        .menu-item-desc {
+            color: #999;
+            font-size: 0.75rem;
+        }
+
+        .menu-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 69, 0, 0.2);
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .menu-close-btn:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        /* ========== FIN MENÚ LATERAL ========== */
 
         /* Command Palette (Ctrl+K) */
         #command-overlay {
@@ -222,7 +474,7 @@
             opacity: 0.6;
         }
 
-        /* Splash Screen MEJORADO */
+        /* Splash Screen */
         #splash-screen {
             position: fixed;
             top: 0;
@@ -301,17 +553,17 @@
         }
 
         /* Header Styles */
-header {
-    padding: 2rem;
-    text-align: center;
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(20px);
-    border-bottom: 2px solid rgba(255, 69, 0, 0.3);
-position: relative;
-    top: 0;
-    z-index: 100;
-    overflow: hidden;
-}
+        header {
+            padding: 2rem;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+            position: relative;
+            top: 0;
+            z-index: 100;
+            overflow: hidden;
+        }
 
         header::before {
             content: '';
@@ -350,14 +602,14 @@ position: relative;
             margin: 1.5rem 0;
         }
 
-nav ul {
-    list-style: none;
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    margin-top: 2rem;
-    flex-wrap: wrap;
-}
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
 
         nav a {
             color: #ffffff;
@@ -442,7 +694,7 @@ nav ul {
             -webkit-text-fill-color: transparent;
         }
 
-        /* Stats Counter - NUEVA SECCIÓN */
+        /* Stats Counter */
         .stats-section {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -499,7 +751,7 @@ nav ul {
             z-index: 1;
         }
 
-        /* Skills Section MEJORADA */
+        /* Skills Section (DEJAMOS SOLO UNA) */
         #skills {
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(26, 26, 46, 0.6));
             border: 2px solid rgba(255, 69, 0, 0.3);
@@ -655,7 +907,529 @@ nav ul {
             100% { transform: translateX(100%); }
         }
 
-        /* Services Section - NUEVA */
+        /* Continúa en Parte 2... */
+    </style>
+</head>
+<body>
+    <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
+         Guarda este archivo y continúa con la PARTE 2 que incluirá el resto del HTML y JavaScript -->
+    
+    <div id="scroll-progress"></div>
+    <canvas id="neural-network"></canvas>
+    
+    <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema (Alt+T)">
+        <div class="theme-toggle-circle">
+            <i class="fas fa-moon"></i>
+        </div>
+    </div>
+
+    <!-- MENÚ LATERAL EXPERIMENTAL -->
+    <div class="menu-toggle-btn" onclick="toggleExperimentalMenu()">
+        <i class="fas fa-flask"></i>
+        <span class="menu-toggle-text">EXPERIMENTAL</span>
+    </div>
+
+    <div id="experimental-menu">
+        <div class="menu-close-btn" onclick="toggleExperimentalMenu()">
+            <i class="fas fa-times"></i>
+        </div>
+        
+        <div class="menu-header">
+            <h3>🧪 Zona Experimental</h3>
+            <p>Funciones avanzadas y experimentales</p>
+        </div>
+
+        <div class="menu-item" onclick="activateMatrixMode()">
+            <i class="fas fa-code"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Matrix Mode</div>
+                <div class="menu-item-desc">Efecto Matrix con lluvia de código</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateParticleExplosion()">
+            <i class="fas fa-fire"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Explosión de Partículas</div>
+                <div class="menu-item-desc">Efectos visuales espectaculares</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateScreenShake()">
+            <i class="fas fa-震"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Screen Shake</div>
+                <div class="menu-item-desc">Vibración de pantalla extrema</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateGlitchEffect()">
+            <i class="fas fa-tv"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Glitch Effect</div>
+                <div class="menu-item-desc">Efecto de distorsión digital</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateRainbowScroll()">
+            <i class="fas fa-rainbow"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Rainbow Scroll</div>
+                <div class="menu-item-desc">Colores al hacer scroll</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateVoiceCommands()">
+            <i class="fas fa-microphone"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Comandos de Voz</div>
+                <div class="menu-item-desc">Control por voz (experimental)</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="activateCodeRain()">
+            <i class="fas fa-cloud-rain"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Lluvia de Código</div>
+                <div class="menu-item-desc">Números binarios cayendo</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="takeScreenshot()">
+            <i class="fas fa-camera"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Screenshot</div>
+                <div class="menu-item-desc">Captura de pantalla del sitio</div>
+            </div>
+        </div>
+
+        <div class="menu-item" onclick="exportPortfolio()">
+            <i class="fas fa-download"></i>
+            <div class="menu-item-content">
+                <div class="menu-item-title">Exportar Portfolio</div>
+                <div class="menu-item-desc">Descargar info en PDF</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Palette -->
+    <div id="command-overlay" onclick="closeCommandPalette(event)">
+        <div class="command-palette" onclick="event.stopPropagation()">
+            <input type="text" class="command-input" id="commandInput" placeholder="¿Qué buscas?" autocomplete="off">
+            <div class="command-hint">Presiona Esc para cerrar | ↑↓ para navegar</div>
+            <div class="command-results" id="commandResults"></div>
+        </div>
+    </div>
+    
+    <!-- Splash Screen -->
+    <div id="splash-screen">
+        <div class="splash-content">
+            <div class="splash-title">CodeHub</div>
+            <div class="loading-container">
+                <div class="loading-bar"></div>
+            </div>
+            <div class="loading-text">Cargando experiencia...</div>
+        </div>
+    </div>
+
+    <header>
+        <h1>Bienvenido 👋</h1>
+        <div class="typing-effect" id="typingEffect"></div>
+        <nav aria-label="Principal">
+            <ul>
+                <li><a href="#stats">Estadísticas</a></li>
+                <li><a href="#skills">Habilidades</a></li>
+                <li><a href="#services">Servicios</a></li>
+                <li><a href="#timeline">Experiencia</a></li>
+                <li><a href="#latest-projects">Proyectos</a></li>
+                <li><a href="#contact">Contacto</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <!-- Stats Section -->
+        <section id="stats">
+            <h2>🚀 Mi Trayectoria</h2>
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-number" data-target="50">0</div>
+                    <div class="stat-label">Proyectos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="1000">0</div>
+                    <div class="stat-label">Líneas de Código</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="24">0</div>
+                    <div class="stat-label">Clientes Felices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" data-target="100">0</div>
+                    <div class="stat-label">Cafés ☕</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Skills Section (SOLO UNA VEZ) -->
+        <section id="skills">
+            <h2>💻 Habilidades Técnicas</h2>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-html5"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>HTML5</span>
+                        <span class="skill-percentage">90%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 90%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>CSS3</span>
+                        <span class="skill-percentage">85%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 85%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>JavaScript</span>
+                        <span class="skill-percentage">75%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 75%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-python"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>Python</span>
+                        <span class="skill-percentage">80%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 80%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skill">
+                <div class="skill-icon"><i class="fab fa-git-alt"></i></div>
+                <div class="skill-info">
+                    <div class="skill-header">
+                        <span>Git & GitHub</span>
+                        <span class="skill-percentage">70%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 70%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTINÚA: Necesitas la PARTE 2 con el resto de las secciones y TODO el JavaScript -->
+        <!-- PARTE 2 - Continuación desde Skills Section -->
+<!-- Copia este código y pégalo DESPUÉS de la sección Skills en la Parte 1 -->
+
+        <!-- Services Section -->
+        <section id="services">
+            <h2>🚀 Servicios que Ofrezco</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <i class="fas fa-code service-icon"></i>
+                    <h3>Desarrollo Web</h3>
+                    <p>Creación de sitios web modernos, responsive y optimizados para SEO.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-mobile-alt service-icon"></i>
+                    <h3>Diseño Responsive</h3>
+                    <p>Diseños que se adaptan perfectamente a cualquier dispositivo.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-robot service-icon"></i>
+                    <h3>Automatización</h3>
+                    <p>Scripts y bots de automatización con Python para tareas repetitivas.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-database service-icon"></i>
+                    <h3>Base de Datos</h3>
+                    <p>Diseño e implementación de bases de datos eficientes.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-paint-brush service-icon"></i>
+                    <h3>UI/UX Design</h3>
+                    <p>Interfaces intuitivas y experiencias de usuario atractivas.</p>
+                </div>
+                <div class="service-card">
+                    <i class="fas fa-rocket service-icon"></i>
+                    <h3>Optimización</h3>
+                    <p>Mejora del rendimiento y velocidad de carga de sitios web.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Achievements/Badges -->
+        <section id="achievements">
+            <h2>🏆 Logros y Certificaciones</h2>
+            <div class="badges-container">
+                <div class="badge" title="Master en HTML5">
+                    <i class="fab fa-html5"></i>
+                    <span>HTML Master</span>
+                </div>
+                <div class="badge" title="Expert en CSS3">
+                    <i class="fab fa-css3-alt"></i>
+                    <span>CSS Expert</span>
+                </div>
+                <div class="badge" title="JavaScript Pro">
+                    <i class="fab fa-js-square"></i>
+                    <span>JS Pro</span>
+                </div>
+                <div class="badge" title="Python Developer">
+                    <i class="fab fa-python"></i>
+                    <span>Python Dev</span>
+                </div>
+                <div class="badge" title="Git Master">
+                    <i class="fab fa-git-alt"></i>
+                    <span>Git Master</span>
+                </div>
+                <div class="badge" title="Problem Solver">
+                    <i class="fas fa-brain"></i>
+                    <span>Problem Solver</span>
+                </div>
+                <div class="badge" title="Fast Learner">
+                    <i class="fas fa-bolt"></i>
+                    <span>Fast Learner</span>
+                </div>
+                <div class="badge" title="Team Player">
+                    <i class="fas fa-users"></i>
+                    <span>Team Player</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline -->
+        <section id="timeline">
+            <h2>📅 Mi Experiencia</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-year">2024 - Presente</div>
+                    <div class="timeline-title">Desarrollador Web Freelance</div>
+                    <div class="timeline-desc">
+                        Creación de sitios web modernos y aplicaciones interactivas para clientes locales e internacionales.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2023</div>
+                    <div class="timeline-title">Aprendizaje Intensivo</div>
+                    <div class="timeline-desc">
+                        Estudios autodidactas en desarrollo web full stack, Python, JavaScript y tecnologías modernas.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-year">2022</div>
+                    <div class="timeline-title">Inicio en Programación</div>
+                    <div class="timeline-desc">
+                        Primeros pasos en el mundo del desarrollo, comenzando con HTML, CSS y JavaScript básico.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Latest Projects -->
+        <section id="latest-projects">
+            <h2>🎨 Últimos Proyectos</h2>
+            <div class="projects-modern-grid">
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fab fa-python"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Python Automation Suite</h3>
+                        <p class="project-desc">Suite completa de scripts de automatización para tareas cotidianas, web scraping y análisis de datos.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">Python</span>
+                            <span class="project-tag">Automation</span>
+                            <span class="project-tag">Web Scraping</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Portfolio Interactivo</h3>
+                        <p class="project-desc">Sitio web personal con animaciones avanzadas, efectos 3D y experiencia de usuario optimizada.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">HTML5</span>
+                            <span class="project-tag">CSS3</span>
+                            <span class="project-tag">JavaScript</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-modern-card">
+                    <div class="project-image">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">Juegos Web Clásicos</h3>
+                        <p class="project-desc">Implementación de juegos clásicos como Snake y Tetris con JavaScript vanilla y Canvas HTML5.</p>
+                        <div class="project-tags">
+                            <span class="project-tag">JavaScript</span>
+                            <span class="project-tag">Canvas</span>
+                            <span class="project-tag">Game Dev</span>
+                        </div>
+                        <div class="project-links">
+                            <a href="#game" class="project-link-btn"><i class="fas fa-play"></i> Jugar</a>
+                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section id="testimonials">
+            <h2>💬 Testimonios</h2>
+            <div class="testimonials-container">
+                <div class="testimonial">
+                    <i class="fas fa-quote-left quote-icon"></i>
+                    <p class="testimonial-text">
+                        "Wilson es un desarrollador excepcional. Su atención al detalle y creatividad hicieron que nuestro proyecto superara todas las expectativas. ¡Altamente recomendado!"
+                    </p>
+                    <div class="testimonial-author">María González</div>
+                    <div class="testimonial-role">CEO, Tech Solutions</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about">
+            <h2>Sobre Mí</h2>
+            <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 24 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
+        </section>
+        
+        <section id="projects">
+            <h2>Proyectos</h2>
+            <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
+            <ul>
+                <li>Proyecto 1 - Python scripts</li>
+                <li>Proyecto 2 - HTML desarrollador web</li>
+                <li>Proyecto 3 - CSS en proceso</li>
+            </ul>
+        </section>
+        
+        <section id="contact">
+            <h2>Contacto</h2>
+            <p>Puedes contactarme a través de:</p>
+            <ul>
+                <li>
+                    Email: wilsonenrique686@gmail.com
+                    <button class="copy-email" onclick="copyEmail()">
+                        <i class="fas fa-copy"></i> Copiar Email
+                    </button>
+                </li>
+                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--accent);">Contacto Telegram</a></li>
+                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank" style="color: var(--accent);">Contacto WhatsApp</a></li>
+            </ul>
+        </section>
+        
+        <!-- Game Section -->
+        <section id="game">
+            <h2>🎮 Juegos Interactivos</h2>
+            <p>Haz clic en los botones para jugar a estos emocionantes juegos en una nueva ventana.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <button onclick="openGameWindow('snake')">
+                    <i class="fas fa-gamepad"></i> Jugar a la Serpiente
+                </button>
+                <button onclick="openGameWindow('tetris')">
+                    <i class="fas fa-th"></i> Jugar a Tetris
+                </button>
+            </div>
+        </section>
+
+        <!-- Mi Pueblo Section -->
+        <section id="mi-pueblo">
+            <h2>De aquí soy:</h2>
+            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery" style="max-width: 100%;">
+            <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
+            
+            <!-- Video Section -->
+            <div id="presentacion-video" style="text-align: center; padding: 20px; margin-top: 2rem;">
+                <h2 style="color: orange;">Conoce más</h2>
+                <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
+                <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
+                    <source src="video/video.mp4" type="video/mp4">
+                    Tu navegador no soporta la reproducción de video.
+                </video>
+            </div>
+
+            <div class="image-gallery" style="margin-top: 2rem;">
+                <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" class="gallery-img">
+                <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
+                <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
+            </div>
+            
+            <!-- Terminal Signature -->
+            <div class="footer-signature">
+                <div class="terminal-text">
+                    <span class="prompt">root@wilson:~$</span>
+                    <span class="command"> "Código con pasión desde 2024"</span>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="footer-content">
+            <div class="visitor-counter">
+                <i class="fas fa-eye"></i>
+                <span>Visitantes:</span>
+                <span class="visitor-number" id="visitorCount">0</span>
+            </div>
+            <p style="margin-top: 1rem;">&copy; 2024 Wilson.E 🚀. Todos los derechos reservados.</p>
+            <div style="margin-top: 1.5rem; display: flex; gap: 1.5rem; justify-content: center; font-size: 1.5rem;">
+                <a href="https://github.com" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-github"></i>
+                </a>
+                <a href="https://wa.me/50241468185" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-whatsapp"></i>
+                </a>
+                <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fab fa-telegram"></i>
+                </a>
+                <a href="mailto:wilsonenrique686@gmail.com" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                    <i class="fas fa-envelope"></i>
+                </a>
+            </div>
+            <p style="margin-top: 1.5rem; color: var(--accent); font-size: 0.9rem;">
+                Presiona <kbd style="background: var(--primary); padding: 2px 8px; border-radius: 4px;">Ctrl + K</kbd> para búsqueda rápida
+            </p>
+            <p style="margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
+                Hecho con 💻 y ☕ desde Guatemala 🇬🇹
+            </p>
+        </div>
+    </footer>
+
+    <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
+    <style>
         .services-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -716,7 +1490,6 @@ nav ul {
             line-height: 1.6;
         }
 
-        /* Timeline Section - NUEVA */
         .timeline {
             position: relative;
             padding: 2rem 0;
@@ -799,7 +1572,6 @@ nav ul {
             line-height: 1.6;
         }
 
-        /* Badges/Achievements - NUEVA */
         .badges-container {
             display: flex;
             flex-wrap: wrap;
@@ -857,7 +1629,6 @@ nav ul {
             font-weight: bold;
         }
 
-        /* Testimonials Carousel - NUEVA */
         .testimonials-container {
             position: relative;
             max-width: 800px;
@@ -903,7 +1674,6 @@ nav ul {
             left: 30px;
         }
 
-        /* Latest Projects Grid - NUEVA */
         .projects-modern-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -1009,7 +1779,6 @@ nav ul {
             box-shadow: 0 5px 15px rgba(255, 69, 0, 0.5);
         }
 
-        /* Visitor Counter - NUEVA */
         .visitor-counter {
             display: inline-flex;
             align-items: center;
@@ -1032,7 +1801,6 @@ nav ul {
             font-size: 1.1rem;
         }
 
-        /* Typing Effect in Header - MEJORADO */
         .typing-effect {
             font-size: 1.3rem;
             color: var(--accent);
@@ -1050,7 +1818,6 @@ nav ul {
             51%, 100% { opacity: 0; }
         }
 
-        /* Copy Email Button */
         .copy-email {
             display: inline-flex;
             align-items: center;
@@ -1070,7 +1837,6 @@ nav ul {
             box-shadow: 0 5px 15px rgba(255, 69, 0, 0.5);
         }
 
-        /* Game Section */
         #game {
             background: linear-gradient(135deg, rgba(20, 20, 40, 0.8), rgba(40, 20, 60, 0.6));
             border: 2px solid rgba(255, 69, 0, 0.4);
@@ -1095,7 +1861,6 @@ nav ul {
             box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
         }
 
-        /* Image Gallery - SIN MODIFICAR */
         .image-gallery {
             display: flex;
             gap: 1rem;
@@ -1117,7 +1882,6 @@ nav ul {
             border-color: var(--primary);
         }
 
-        /* Terminal Signature */
         .footer-signature {
             background: rgba(0, 0, 0, 0.8);
             padding: 1rem;
@@ -1135,7 +1899,6 @@ nav ul {
             font-weight: bold;
         }
 
-        /* Floating Menu MEJORADO */
         #floating-menu {
             position: fixed;
             bottom: 30px;
@@ -1176,7 +1939,6 @@ nav ul {
             to { transform: rotate(360deg); }
         }
 
-        /* Konami Code Easter Egg */
         .konami-active {
             animation: rainbow 2s linear infinite !important;
         }
@@ -1186,7 +1948,6 @@ nav ul {
             100% { filter: hue-rotate(360deg); }
         }
 
-        /* Footer */
         footer {
             background: rgba(0, 0, 0, 0.8);
             text-align: center;
@@ -1195,7 +1956,6 @@ nav ul {
             border-top: 2px solid rgba(255, 69, 0, 0.3);
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .splash-title { font-size: 2.5rem; }
             header h1 { font-size: 2.5rem; }
@@ -1204,480 +1964,17 @@ nav ul {
             .skill-icon { margin-right: 0; margin-bottom: 1rem; }
             .stats-section { grid-template-columns: 1fr; }
             .command-palette { width: 95%; }
+            .timeline::before { left: 20px; }
+            .timeline-item { width: calc(100% - 60px); margin-left: 40px !important; }
+            .timeline-item::before { left: -50px !important; }
         }
     </style>
-</head>
-<body>
-    <!-- Scroll Progress Bar -->
-    <div id="scroll-progress"></div>
 
-    <!-- Neural Network Canvas -->
-    <canvas id="neural-network"></canvas>
-    
-    <!-- Theme Toggle -->
-    <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema (Alt+T)">
-        <div class="theme-toggle-circle">
-            <i class="fas fa-moon"></i>
-        </div>
-    </div>
-
-    <!-- Command Palette Overlay -->
-    <div id="command-overlay" onclick="closeCommandPalette(event)">
-        <div class="command-palette" onclick="event.stopPropagation()">
-            <input type="text" class="command-input" id="commandInput" placeholder="¿Qué buscas?" autocomplete="off">
-            <div class="command-hint">Presiona Esc para cerrar | ↑↓ para navegar</div>
-            <div class="command-results" id="commandResults"></div>
-        </div>
-    </div>
-    
-    <!-- Splash Screen -->
-    <div id="splash-screen">
-        <div class="splash-content">
-<div class="splash-title">CodeHub</div>
-<div class="loading-container">
-  <div class="loading-bar"></div>
-</div>
-<div class="loading-text">Cargando experiencia...</div>
-        </div>
-    </div>
-
-    <header>
-        <h1>Bienvenido 👋</h1>
-        <div class="typing-effect" id="typingEffect"></div>
-        <nav aria-label="Principal">
-            <ul>
-                <li><a href="#stats">Estadísticas</a></li>
-                <li><a href="#skills">Habilidades</a></li>
-                <li><a href="#services">Servicios</a></li>
-                <li><a href="#timeline">Experiencia</a></li>
-                <li><a href="#latest-projects">Proyectos</a></li>
-                <li><a href="#contact">Contacto</a></li>
-            </ul>
-        </nav>
-    </header>
-    
-    <main>
-        <!-- Stats Section - NUEVA -->
-        <section id="stats">
-            <h2>🚀 Mi Trayectoria</h2>
-            <div class="stats-section">
-                <div class="stat-card">
-                    <div class="stat-number" data-target="50">0</div>
-                    <div class="stat-label">Proyectos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" data-target="1000">0</div>
-                    <div class="stat-label">Líneas de Código</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" data-target="24">0</div>
-                    <div class="stat-label">Clientes Felices</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" data-target="100">0</div>
-                    <div class="stat-label">Cafés ☕</div>
-                </div>
-            </div>
-        </section>
-       <!-- Skills Section MEJORADA -->
-        <section id="skills">
-            <h2>💻 Habilidades Técnicas</h2>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-html5"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>HTML5</span>
-                        <span class="skill-percentage"> 90%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 90%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>CSS3</span>
-                        <span class="skill-percentage"> 85%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 85%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>JavaScript</span>
-                        <span class="skill-percentage">75%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 75%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-python"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>Python</span>
-                        <span class="skill-percentage">80%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 80%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-git-alt"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>Git & GitHub</span>
-                        <span class="skill-percentage">70%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 70%;"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Services Section - NUEVA -->
-        <section id="services">
-            <h2>🚀 Servicios que Ofrezco</h2>
-            <div class="services-grid">
-                <div class="service-card">
-                    <i class="fas fa-code service-icon"></i>
-                    <h3>Desarrollo Web</h3>
-                    <p>Creación de sitios web modernos, responsive y optimizados para SEO.</p>
-                </div>
-                <div class="service-card">
-                    <i class="fas fa-mobile-alt service-icon"></i>
-                    <h3>Diseño Responsive</h3>
-                    <p>Diseños que se adaptan perfectamente a cualquier dispositivo.</p>
-                </div>
-                <div class="service-card">
-                    <i class="fas fa-robot service-icon"></i>
-                    <h3>Automatización</h3>
-                    <p>Scripts y bots de automatización con Python para tareas repetitivas.</p>
-                </div>
-                <div class="service-card">
-                    <i class="fas fa-database service-icon"></i>
-                    <h3>Base de Datos</h3>
-                    <p>Diseño e implementación de bases de datos eficientes.</p>
-                </div>
-                <div class="service-card">
-                    <i class="fas fa-paint-brush service-icon"></i>
-                    <h3>UI/UX Design</h3>
-                    <p>Interfaces intuitivas y experiencias de usuario atractivas.</p>
-                </div>
-                <div class="service-card">
-                    <i class="fas fa-rocket service-icon"></i>
-                    <h3>Optimización</h3>
-                    <p>Mejora del rendimiento y velocidad de carga de sitios web.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Achievements/Badges - NUEVA -->
-        <section id="achievements">
-            <h2>🏆 Logros y Certificaciones</h2>
-            <div class="badges-container">
-                <div class="badge" title="Master en HTML5">
-                    <i class="fab fa-html5"></i>
-                    <span>HTML Master</span>
-                </div>
-                <div class="badge" title="Expert en CSS3">
-                    <i class="fab fa-css3-alt"></i>
-                    <span>CSS Expert</span>
-                </div>
-                <div class="badge" title="JavaScript Pro">
-                    <i class="fab fa-js-square"></i>
-                    <span>JS Pro</span>
-                </div>
-                <div class="badge" title="Python Developer">
-                    <i class="fab fa-python"></i>
-                    <span>Python Dev</span>
-                </div>
-                <div class="badge" title="Git Master">
-                    <i class="fab fa-git-alt"></i>
-                    <span>Git Master</span>
-                </div>
-                <div class="badge" title="Problem Solver">
-                    <i class="fas fa-brain"></i>
-                    <span>Problem Solver</span>
-                </div>
-                <div class="badge" title="Fast Learner">
-                    <i class="fas fa-bolt"></i>
-                    <span>Fast Learner</span>
-                </div>
-                <div class="badge" title="Team Player">
-                    <i class="fas fa-users"></i>
-                    <span>Team Player</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Timeline - NUEVA -->
-        <section id="timeline">
-            <h2>📅 Mi Experiencia</h2>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-year">2024 - Presente</div>
-                    <div class="timeline-title">Desarrollador Web Freelance</div>
-                    <div class="timeline-desc">
-                        Creación de sitios web modernos y aplicaciones interactivas para clientes locales e internacionales.
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2023</div>
-                    <div class="timeline-title">Aprendizaje Intensivo</div>
-                    <div class="timeline-desc">
-                        Estudios autodidactas en desarrollo web full stack, Python, JavaScript y tecnologías modernas.
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2022</div>
-                    <div class="timeline-title">Inicio en Programación</div>
-                    <div class="timeline-desc">
-                        Primeros pasos en el mundo del desarrollo, comenzando con HTML, CSS y JavaScript básico.
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Latest Projects - NUEVA -->
-        <section id="latest-projects">
-            <h2>🎨 Últimos Proyectos</h2>
-            <div class="projects-modern-grid">
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fab fa-python"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Python Automation Suite</h3>
-                        <p class="project-desc">Suite completa de scripts de automatización para tareas cotidianas, web scraping y análisis de datos.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">Python</span>
-                            <span class="project-tag">Automation</span>
-                            <span class="project-tag">Web Scraping</span>
-                        </div>
-                        <div class="project-links">
-                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Portfolio Interactivo</h3>
-                        <p class="project-desc">Sitio web personal con animaciones avanzadas, efectos 3D y experiencia de usuario optimizada.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">HTML5</span>
-                            <span class="project-tag">CSS3</span>
-                            <span class="project-tag">JavaScript</span>
-                        </div>
-                        <div class="project-links">
-                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fas fa-gamepad"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Juegos Web Clásicos</h3>
-                        <p class="project-desc">Implementación de juegos clásicos como Snake y Tetris con JavaScript vanilla y Canvas HTML5.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">JavaScript</span>
-                            <span class="project-tag">Canvas</span>
-                            <span class="project-tag">Game Dev</span>
-                        </div>
-                        <div class="project-links">
-                            <a href="#game" class="project-link-btn"><i class="fas fa-play"></i> Jugar</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Testimonials - NUEVA -->
-        <section id="testimonials">
-            <h2>💬 Testimonios</h2>
-            <div class="testimonials-container">
-                <div class="testimonial">
-                    <i class="fas fa-quote-left quote-icon"></i>
-                    <p class="testimonial-text">
-                        "Wilson es un desarrollador excepcional. Su atención al detalle y creatividad hicieron que nuestro proyecto superara todas las expectativas. ¡Altamente recomendado!"
-                    </p>
-                    <div class="testimonial-author">María González</div>
-                    <div class="testimonial-role">CEO, Tech Solutions</div>
-                </div>
-            </div>
-        <!-- Skills Section -->
-        <section id="skills">
-            <h2>Habilidades Técnicas</h2>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-html5"></i></div>
-                <div class="skill-info">
-                    <span>HTML</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 90%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
-                <div class="skill-info">
-                    <span>CSS</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 85%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
-                <div class="skill-info">
-                    <span>JavaScript</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 75%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-python"></i></div>
-                <div class="skill-info">
-                    <span>Python</span>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 80%;"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- About Section -->
-        <section id="about">
-            <h2>Sobre Mí</h2>
-            <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 24 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
-        </section>
-        
-        <section id="projects">
-            <h2>Proyectos</h2>
-            <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
-            <ul>
-                <li>Proyecto 1 - Python scripts</li>
-                <li>Proyecto 2 - HTML desarrollador web</li>
-                <li>Proyecto 3 - CSS en proceso</li>
-            </ul>
-        </section>
-        
-        <section id="contact">
-            <h2>Contacto</h2>
-            <p>Puedes contactarme a través de:</p>
-            <ul>
-                <li>
-                    Email: wilsonenrique686@gmail.com
-                    <button class="copy-email" onclick="copyEmail()">
-                        <i class="fas fa-copy"></i> Copiar Email
-                    </button>
-                </li>
-                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--accent);">Contacto Telegram</a></li>
-                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank" style="color: var(--accent);">Contacto WhatsApp</a></li>
-            </ul>
-        </section>
-        
-        <!-- Game Section -->
-        <section id="game">
-            <h2>🎮 Juegos Interactivos</h2>
-            <p>Haz clic en los botones para jugar a estos emocionantes juegos en una nueva ventana.</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <button onclick="openGameWindow('snake')">
-                    <i class="fas fa-gamepad"></i> Jugar a la Serpiente
-                </button>
-                <button onclick="openGameWindow('tetris')">
-                    <i class="fas fa-th"></i> Jugar a Tetris
-                </button>
-            </div>
-        </section>
-
-        <!-- Mi Pueblo Section - SIN MODIFICAR -->
-        <section id="mi-pueblo">
-            <h2>De aquí soy:</h2>
-            <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="Imagen de mi pueblo" class="image-gallery" style="max-width: 100%;">
-            <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
-            
-            <!-- Video Section -->
-            <div id="presentacion-video" style="text-align: center; padding: 20px; margin-top: 2rem;">
-                <h2 style="color: orange;">Conoce más</h2>
-                <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
-                <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
-                    <source src="video/video.mp4" type="video/mp4">
-                    Tu navegador no soporta la reproducción de video.
-                </video>
-            </div>
-
-            <div class="image-gallery" style="margin-top: 2rem;">
-                <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" class="gallery-img">
-                <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" class="gallery-img">
-                <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" class="gallery-img">
-            </div>
-            
-            <!-- Terminal Signature -->
-            <div class="footer-signature">
-                <div class="terminal-text">
-                    <span class="prompt">root@wilson:~$</span>
-                    <span class="command"> "Código con pasión desde 2024"</span>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Floating Menu -->
-    <div id="floating-menu" onclick="openNewWindow()">
-        ¿Qué hay de nuevo?
-    </div>
-    
-    <footer>
-        <div class="footer-content">
-            <div class="visitor-counter">
-                <i class="fas fa-eye"></i>
-                <span>Visitantes:</span>
-                <span class="visitor-number" id="visitorCount">0</span>
-            </div>
-            <p style="margin-top: 1rem;">&copy; 2024 Wilson.E 🚀. Todos los derechos reservados.</p>
-            <div style="margin-top: 1.5rem; display: flex; gap: 1.5rem; justify-content: center; font-size: 1.5rem;">
-                <a href="https://github.com" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fab fa-github"></i>
-                </a>
-                <a href="https://wa.me/50241468185" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fab fa-whatsapp"></i>
-                </a>
-                <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fab fa-telegram"></i>
-                </a>
-                <a href="mailto:wilsonenrique686@gmail.com" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
-                    <i class="fas fa-envelope"></i>
-                </a>
-            </div>
-            <p style="margin-top: 1.5rem; color: var(--accent); font-size: 0.9rem;">
-                Presiona <kbd style="background: var(--primary); padding: 2px 8px; border-radius: 4px;">Ctrl + K</kbd> para búsqueda rápida
-            </p>
-            <p style="margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
-                Hecho con 💻 y ☕ desde Guatemala 🇬🇹
-            </p>
-        </div>
-    </footer>
-
+    <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
     <script>
-        // Typing Effect in Header
+        // ========== FUNCIONES BÁSICAS ==========
+        
+        // Typing Effect
         const typingPhrases = [
             'Desarrollador Web Full Stack 💻',
             'Especialista en Python 🐍',
@@ -1733,6 +2030,7 @@ nav ul {
             };
             updateCounter();
         }
+
         // Neural Network Animation
         const canvas = document.getElementById('neural-network');
         const ctx = canvas.getContext('2d');
@@ -1789,7 +2087,6 @@ nav ul {
                 node.draw();
             });
 
-            // Draw connections
             for (let i = 0; i < nodes.length; i++) {
                 for (let j = i + 1; j < nodes.length; j++) {
                     const dx = nodes[i].x - nodes[j].x;
@@ -1814,7 +2111,6 @@ nav ul {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
             
-            // Create cursor particles
             if (Math.random() > 0.85) {
                 createCursorParticle(e.clientX, e.clientY);
             }
@@ -1834,7 +2130,7 @@ nav ul {
             setTimeout(() => particle.remove(), 1000);
         }
 
-        // Splash Screen Logic - MÁS RÁPIDO
+        // Splash Screen
         window.addEventListener('load', () => {
             setTimeout(() => {
                 document.getElementById('splash-screen').classList.add('hidden');
@@ -1860,29 +2156,289 @@ nav ul {
             }
         }
 
-        // Load saved theme
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
             document.querySelector('.theme-toggle-circle i').className = 'fas fa-sun';
         }
 
+        // ========== MENÚ EXPERIMENTAL ==========
+        function toggleExperimentalMenu() {
+            const menu = document.getElementById('experimental-menu');
+            menu.classList.toggle('active');
+        }
+
+        // Matrix Mode
+        function activateMatrixMode() {
+            const matrixCanvas = document.createElement('canvas');
+            matrixCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none;';
+            document.body.appendChild(matrixCanvas);
+            
+            const ctx = matrixCanvas.getContext('2d');
+            matrixCanvas.width = window.innerWidth;
+            matrixCanvas.height = window.innerHeight;
+            
+            const chars = '01アイウエオカキクケコサシスセソタチツテト';
+            const fontSize = 16;
+            const columns = matrixCanvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+            
+            function drawMatrix() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+                
+                ctx.fillStyle = '#0F0';
+                ctx.font = fontSize + 'px monospace';
+                
+                for (let i = 0; i < drops.length; i++) {
+                    const text = chars[Math.floor(Math.random() * chars.length)];
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    
+                    if (drops[i] * fontSize > matrixCanvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+            
+            const interval = setInterval(drawMatrix, 35);
+            
+            setTimeout(() => {
+                clearInterval(interval);
+                matrixCanvas.remove();
+            }, 10000);
+            
+            toggleExperimentalMenu();
+            alert('🟢 Matrix Mode activado por 10 segundos!');
+        }
+
+        // Particle Explosion
+        function activateParticleExplosion() {
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const particle = document.createElement('div');
+                    particle.style.cssText = `
+                        position: fixed;
+                        top: 50%;
+                        left: 50%;
+                        width: 10px;
+                        height: 10px;
+                        background: hsl(${Math.random() * 360}, 100%, 50%);
+                        border-radius: 50%;
+                        z-index: 9999;
+                        pointer-events: none;
+                    `;
+                    document.body.appendChild(particle);
+                    
+                    const angle = (Math.PI * 2 * i) / 100;
+                    const velocity = 5 + Math.random() * 10;
+                    let x = 0, y = 0;
+                    
+                    const animateParticle = () => {
+                        x += Math.cos(angle) * velocity;
+                        y += Math.sin(angle) * velocity;
+                        particle.style.transform = `translate(${x}px, ${y}px) scale(${1 - Math.abs(x) / 500})`;
+                        particle.style.opacity = 1 - Math.abs(x) / 500;
+                        
+                        if (Math.abs(x) < 500) {
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    animateParticle();
+                }, i * 10);
+            }
+            toggleExperimentalMenu();
+        }
+
+        // Screen Shake
+        function activateScreenShake() {
+            const body = document.body;
+            let count = 0;
+            const maxShakes = 20;
+            
+            const shake = setInterval(() => {
+                const x = (Math.random() - 0.5) * 20;
+                const y = (Math.random() - 0.5) * 20;
+                body.style.transform = `translate(${x}px, ${y}px)`;
+                count++;
+                
+                if (count >= maxShakes) {
+                    clearInterval(shake);
+                    body.style.transform = '';
+                }
+            }, 50);
+            
+            toggleExperimentalMenu();
+        }
+
+        // Glitch Effect
+        function activateGlitchEffect() {
+            const sections = document.querySelectorAll('section, header');
+            let count = 0;
+            
+            const glitch = setInterval(() => {
+                sections.forEach(section => {
+                    section.style.transform = `translate(${(Math.random() - 0.5) * 10}px, ${(Math.random() - 0.5) * 10}px)`;
+                    section.style.filter = `hue-rotate(${Math.random() * 360}deg)`;
+                });
+                count++;
+                
+                if (count >= 30) {
+                    clearInterval(glitch);
+                    sections.forEach(section => {
+                        section.style.transform = '';
+                        section.style.filter = '';
+                    });
+                }
+            }, 100);
+            
+            toggleExperimentalMenu();
+        }
+
+        // Rainbow Scroll
+        let rainbowActive = false;
+        function activateRainbowScroll() {
+            rainbowActive = !rainbowActive;
+            
+            if (rainbowActive) {
+                window.addEventListener('scroll', rainbowScrollHandler);
+                alert('🌈 Rainbow Scroll activado! Desplázate para ver el efecto');
+            } else {
+                window.removeEventListener('scroll', rainbowScrollHandler);
+                document.body.style.filter = '';
+            }
+            
+            toggleExperimentalMenu();
+        }
+
+        function rainbowScrollHandler() {
+            const scrollPercent = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 360;
+            document.body.style.filter = `hue-rotate(${scrollPercent}deg)`;
+        }
+
+        // Voice Commands (Experimental)
+        function activateVoiceCommands() {
+            if (!('webkitSpeechRecognition' in window)) {
+                alert('❌ Tu navegador no soporta reconocimiento de voz');
+                return;
+            }
+            
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'es-ES';
+            recognition.continuous = false;
+            
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript.toLowerCase();
+                
+                if (command.includes('inicio')) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else if (command.includes('contacto')) {
+                    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+                } else if (command.includes('proyecto')) {
+                    document.getElementById('latest-projects').scrollIntoView({ behavior: 'smooth' });
+                } else if (command.includes('habilidad')) {
+                    document.getElementById('skills').scrollIntoView({ behavior: 'smooth' });
+                }
+            };
+            
+            recognition.start();
+            alert('🎤 Escuchando... Di "inicio", "contacto", "proyectos" o "habilidades"');
+            toggleExperimentalMenu();
+        }
+
+        // Code Rain
+        function activateCodeRain() {
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const code = document.createElement('div');
+                    code.textContent = Math.random() > 0.5 ? '0' : '1';
+                    code.style.cssText = `
+                        position: fixed;
+                        top: -20px;
+                        left: ${Math.random() * 100}%;
+                        color: var(--primary);
+                        font-size: ${20 + Math.random() * 30}px;
+                        font-family: monospace;
+                        z-index: 9999;
+                        pointer-events: none;
+                        animation: fall ${3 + Math.random() * 3}s linear forwards;
+                    `;
+                    document.body.appendChild(code);
+                    setTimeout(() => code.remove(), 6000);
+                }, i * 100);
+            }
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(100vh) rotate(360deg);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            toggleExperimentalMenu();
+        }
+
+        // Screenshot
+        function takeScreenshot() {
+            alert('📸 Función de screenshot en desarrollo. Por ahora, usa Ctrl+Shift+S en tu navegador.');
+            toggleExperimentalMenu();
+        }
+
+        // Export Portfolio
+        function exportPortfolio() {
+            const info = `
+PORTFOLIO - Wilson.E
+====================
+Email: wilsonenrique686@gmail.com
+Telegram: @d3exg3aeyag1ko
+WhatsApp: +502 4146 8185
+
+HABILIDADES:
+- HTML5: 90%
+- CSS3: 85%
+- JavaScript: 75%
+- Python: 80%
+- Git & GitHub: 70%
+
+Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
+            `;
+            
+            const blob = new Blob([info], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Wilson_Portfolio.txt';
+            a.click();
+            
+            toggleExperimentalMenu();
+            alert('📥 Portfolio exportado!');
+        }
+
+        // ========== RESTO DE FUNCIONES ==========
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Ctrl+K for command palette
             if (e.ctrlKey && e.key === 'k') {
                 e.preventDefault();
                 openCommandPalette();
             }
             
-            // Alt+T for theme toggle
             if (e.altKey && e.key === 't') {
                 e.preventDefault();
                 toggleTheme();
             }
             
-            // Escape to close command palette
             if (e.key === 'Escape') {
                 closeCommandPalette();
+                const menu = document.getElementById('experimental-menu');
+                if (menu.classList.contains('active')) {
+                    toggleExperimentalMenu();
+                }
             }
         });
 
@@ -1902,7 +2458,8 @@ nav ul {
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
-            { name: 'Jugar Tetris', icon: 'fa-th', action: () => openGameWindow('tetris') }
+            { name: 'Jugar Tetris', icon: 'fa-th', action: () => openGameWindow('tetris') },
+            { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
         ];
 
         function openCommandPalette() {
@@ -1993,7 +2550,7 @@ nav ul {
             });
         }
 
-        // Game and Menu Functions - CORREGIDO
+        // Game and Menu Functions
         function openGameWindow(game) {
             const games = {
                 'snake': 'snake.html',
@@ -2067,6 +2624,328 @@ nav ul {
         console.log('%c¿Curioseando el código? Me gusta tu estilo 😎', 'color: #ffbd69; font-size: 16px;');
         console.log('%cPrueba el código Konami: ↑ ↑ ↓ ↓ ← → ← → B A', 'color: #ff6b35; font-size: 14px;');
         console.log('%cO presiona Ctrl+K para la búsqueda rápida 🚀', 'color: #f7931e; font-size: 14px;');
+        console.log('%cAbre el Menú Experimental en el lado izquierdo 🧪', 'color: #ff4500; font-size: 14px;');
+
+        // Smooth scroll para todos los enlaces internos
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Intersection Observer para animaciones al scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            section.style.opacity = '0';
+            section.style.transform = 'translateY(50px)';
+            section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(section);
+        });
+
+        // Preloader para imágenes
+        const images = document.querySelectorAll('img');
+        images.forEach(img => {
+            img.addEventListener('load', function() {
+                this.style.opacity = '1';
+            });
+            img.style.opacity = '0';
+            img.style.transition = 'opacity 0.5s ease';
+        });
+
+        // Detectar si el usuario está inactivo
+        let inactivityTimer;
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                console.log('👀 Usuario inactivo. ¿Todo bien?');
+            }, 60000); // 1 minuto
+        }
+
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+            document.addEventListener(event, resetInactivityTimer, true);
+        });
+
+        resetInactivityTimer();
+
+        // Notificación de bienvenida
+        setTimeout(() => {
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        new Notification('¡Bienvenido a CodeHub! 🚀', {
+                            body: 'Explora mi portfolio y descubre el menú experimental',
+                            icon: 'https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg'
+                        });
+                    }
+                });
+            }
+        }, 5000);
+
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            const perfData = performance.getEntriesByType('navigation')[0];
+            console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
+        });
+
+        // Dark mode automático según hora del día
+        function autoTheme() {
+            const hour = new Date().getHours();
+            if (hour >= 20 || hour < 6) {
+                if (!document.body.classList.contains('light-mode')) {
+                    // Ya está en modo oscuro
+                    console.log('🌙 Modo nocturno activo');
+                }
+            }
+        }
+
+        autoTheme();
+
+        // Efecto parallax suave
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const parallaxElements = document.querySelectorAll('.skill-icon, .service-icon');
+            
+            parallaxElements.forEach((el, index) => {
+                const speed = 0.5 + (index * 0.1);
+                el.style.transform = `translateY(${scrolled * speed * 0.01}px)`;
+            });
+        });
+
+        // Mensaje de despedida al salir
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '¿Seguro que quieres salir? 🥺';
+        });
+
+        // Log de actividad del usuario
+        let activityLog = {
+            scrolls: 0,
+            clicks: 0,
+            timeSpent: 0
+        };
+
+        window.addEventListener('scroll', () => {
+            activityLog.scrolls++;
+        });
+
+        document.addEventListener('click', () => {
+            activityLog.clicks++;
+        });
+
+        setInterval(() => {
+            activityLog.timeSpent++;
+        }, 1000);
+
+        // Mostrar estadísticas al presionar Ctrl+Shift+S
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                console.table(activityLog);
+                alert(`📊 Estadísticas de tu visita:\n\n` +
+                      `Scrolls: ${activityLog.scrolls}\n` +
+                      `Clicks: ${activityLog.clicks}\n` +
+                      `Tiempo: ${Math.floor(activityLog.timeSpent / 60)}m ${activityLog.timeSpent % 60}s`);
+            }
+        });
+
+        // Easter egg: escribir "dev" en cualquier parte
+        let typedText = '';
+        document.addEventListener('keypress', (e) => {
+            typedText += e.key;
+            typedText = typedText.slice(-3);
+            
+            if (typedText === 'dev') {
+                console.log('%c🎮 MODO DESARROLLADOR ACTIVADO', 'color: lime; font-size: 20px; font-weight: bold;');
+                console.log('%cComandos disponibles:', 'color: cyan; font-size: 14px;');
+                console.log('• Ctrl+K: Búsqueda rápida');
+                console.log('• Alt+T: Cambiar tema');
+                console.log('• Ctrl+Shift+S: Ver estadísticas');
+                console.log('• Esc: Cerrar menús');
+                console.log('• Código Konami: ↑↑↓↓←→←→BA');
+            }
+        });
+
+        // Añadir efecto de ripple a los botones
+        document.querySelectorAll('button, .menu-item, .command-item').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const rect = this.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const x = e.clientX - rect.left - size / 2;
+                const y = e.clientY - rect.top - size / 2;
+                
+                ripple.style.cssText = `
+                    position: absolute;
+                    width: ${size}px;
+                    height: ${size}px;
+                    border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.5);
+                    left: ${x}px;
+                    top: ${y}px;
+                    pointer-events: none;
+                    animation: rippleEffect 0.6s ease-out;
+                `;
+                
+                this.style.position = 'relative';
+                this.style.overflow = 'hidden';
+                this.appendChild(ripple);
+                
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+
+        const rippleStyle = document.createElement('style');
+        rippleStyle.textContent = `
+            @keyframes rippleEffect {
+                0% { transform: scale(0); opacity: 1; }
+                100% { transform: scale(4); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(rippleStyle);
+
+        // Finalización de carga
+        console.log('%c✨ CodeHub Portfolio Cargado Completamente', 'color: #ff4500; font-size: 16px; font-weight: bold;');
+        console.log('%c🧪 Menú Experimental disponible en el lado izquierdo', 'color: #ffbd69; font-size: 14px;');
+        console.log('%c📝 Desarrollado por Wilson.E - 2024', 'color: #ff6b35; font-size: 12px;');
+
+/* ====== JS: control del icono y diálogo ====== */
+(function(){
+  const whatsIcon = document.getElementById('whatsNewIcon');
+  const overlay = document.getElementById('whatsNewOverlay');
+  const btnClose = document.getElementById('closeWhatsNew');
+  const btnNovedades = document.getElementById('openNovedades');
+  const btnTools = document.getElementById('openTools');
+
+  if (!whatsIcon || !overlay || !btnClose || !btnNovedades || !btnTools) {
+    console.warn('whatsNew: elementos no encontrados (verifica IDs).');
+    return;
+  }
+
+  // abrir diálogo al tocar/enter en icono (no automático)
+  const openDialog = () => {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden','false');
+    btnNovedades.focus();
+  };
+
+  const closeDialog = () => {
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden','true');
+    whatsIcon.focus();
+  };
+
+  whatsIcon.addEventListener('click', openDialog);
+  whatsIcon.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openDialog(); });
+
+  btnClose.addEventListener('click', closeDialog);
+
+  // cerrar al click fuera del dialog (overlay)
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDialog(); });
+
+  // acciones: abrir páginas (misma pestaña)
+  btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
+  btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
+
+  // Esc para cerrar
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
+})();
     </script>
+<!-- ... resto de tu main y footer ... -->
+
+<!-- ====== HTML: Icono flotante + diálogo ====== -->
+<!-- Pegar justo antes de </body> -->
+
+<!-- ICONO FLOTANTE (solo icono) -->
+<div id="whatsNewIcon" title="Novedades y herramientas" aria-label="Novedades" tabindex="0">
+  <i class="fas fa-bolt" aria-hidden="true"></i>
+</div>
+
+<!-- OVERLAY + DIALOG -->
+<div id="whatsNewOverlay" aria-hidden="true">
+  <div class="whatsNewDialog" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
+    <h3 id="whatsNewTitle">⚡ Panel de Novedades</h3>
+    <p class="whatsNewSub">Selecciona una opción</p>
+
+    <div class="whatsNewActions">
+      <button class="action-btn" id="openNovedades" type="button">
+        <i class="fas fa-sparkles" aria-hidden="true"></i>
+        Novedades
+      </button>
+
+      <button class="action-btn" id="openTools" type="button">
+        <i class="fas fa-tools" aria-hidden="true"></i>
+        Tools
+      </button>
+    </div>
+
+    <button class="close-btn" id="closeWhatsNew" type="button" aria-label="Cerrar diálogo">
+      <i class="fas fa-times" aria-hidden="true"></i> Cerrar
+    </button>
+  </div>
+</div>
+<!-- ====== FIN HTML ====== -->
+
+<!-- Ahora mueve el script AQUÍ, después de los DIVs -->
+<script>
+/* ====== JS: control del icono y diálogo ====== */
+(function(){
+  const whatsIcon = document.getElementById('whatsNewIcon');
+  const overlay = document.getElementById('whatsNewOverlay');
+  const btnClose = document.getElementById('closeWhatsNew');
+  const btnNovedades = document.getElementById('openNovedades');
+  const btnTools = document.getElementById('openTools');
+
+  if (!whatsIcon || !overlay || !btnClose || !btnNovedades || !btnTools) {
+    console.warn('whatsNew: elementos no encontrados (verifica IDs).');
+    return;
+  }
+
+  // abrir diálogo al tocar/enter en icono (no automático)
+  const openDialog = () => {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden','false');
+    btnNovedades.focus();
+  };
+
+  const closeDialog = () => {
+    overlay.classList.remove('active');
+    overlay.setAttribute('aria-hidden','true');
+    whatsIcon.focus();
+  };
+
+  whatsIcon.addEventListener('click', openDialog);
+  whatsIcon.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openDialog(); });
+
+  btnClose.addEventListener('click', closeDialog);
+
+  // cerrar al click fuera del dialog (overlay)
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDialog(); });
+
+  // acciones: abrir páginas (misma pestaña)
+  btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
+  btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
+
+  // Esc para cerrar
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
+})();
+</script>
+
 </body>
 </html>
