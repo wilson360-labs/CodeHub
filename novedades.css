@@ -77,20 +77,18 @@ header {
 }
 
 /* Botón de descarga */
-.download-btn {
-    display: inline-block;
-    padding: 10px 20px;
-    background: linear-gradient(45deg, var(--color-primary), var(--color-secondary));
-    color: white;
-    font-weight: bold;
-    text-decoration: none;
-    border-radius: 8px;
-    transition: background 0.3s ease-in-out, transform 0.2s ease-in-out;
+/* Línea aproximada 285-310 */
+.btn {
+    color: white !important;  /* ← Agrega esto */
+    background: linear-gradient(135deg, #ff6600, #ff4500); /* ← Naranja */
 }
 
-.download-btn:hover {
-    background: linear-gradient(45deg, var(--color-secondary), var(--color-primary));
-    transform: scale(1.1);
+.download-btn {
+    color: white !important;  /* ← Agrega esto */
+}
+
+.secondary-btn {
+    color: white !important;  /* ← Agrega esto */
 }
 
 /* Barra de búsqueda */
