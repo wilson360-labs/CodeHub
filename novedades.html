@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeHub - Aplicaciones Premium</title>
+    <title>Aplicaciones Premium</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="novedades.css">
 </head>
 <body>
-    <!-- Partículas animadas -->
+    <!-- Animated Background Particles -->
     <div class="particles" id="particles"></div>
 
-    <!-- Header -->
     <header>
         <div class="header-content">
-            <div class="logo">📱</div>
+            <div class="logo-container">
+                <div class="logo">📱</div>
+            </div>
             <h1 class="main-title">Aplicaciones Premium</h1>
             <p class="subtitle">Descubre el poder de las apps desbloqueadas</p>
             
@@ -29,24 +30,98 @@
         </div>
     </header>
     
-    <!-- Información de Seguridad -->
     <section class="info-seguridad">
         <h2>Seguridad y Uso Responsable</h2>
         <p>Para disfrutar de las funciones desbloqueadas de las aplicaciones, recomendamos usarlas de manera responsable. 
            Asegúrate de descargar solo desde fuentes confiables y protege tu privacidad al instalar cualquier aplicación.</p>
     </section>
     
-    <!-- Buscador -->
     <div class="search-container">
         <div class="search-wrapper">
             <input type="text" class="search-input" id="search" placeholder="Buscar aplicaciones premium...">
             <button class="search-btn" onclick="buscarApp()">🔍</button>
         </div>
     </div>
-    <!-- Contenedor de Aplicaciones -->
-    <main class="container" id="apps-container">
-        
-        <!-- Spotify Premium -->
+    
+    <section class="popular-apps">
+        <h2>Aplicaciones Populares 🔥</h2>
+        <ul class="apps-grid">
+            <li class="app-card">
+                <div class="app-icon">🎵</div>
+                <a href="#">Spotify Premium</a>
+            </li>
+            <li class="app-card">
+                <div class="app-icon">📺</div>
+                <a href="#">YouTube ReVanced</a>
+            </li>
+            <li class="app-card">
+                <div class="app-icon">🎬</div>
+                <a href="#">TikTok Premium</a>
+            </li>
+        </ul>
+    </section>
+
+    <script>
+        // Create animated particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 8 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Search functionality
+        function buscarApp() {
+            const searchInput = document.getElementById('search');
+            const query = searchInput.value.trim();
+            
+            if (query) {
+                // Add search animation
+                searchInput.style.background = 'linear-gradient(90deg, #ff6b6b, #4ecdc4)';
+                searchInput.style.color = 'white';
+                
+                setTimeout(() => {
+                    searchInput.style.background = 'transparent';
+                    searchInput.style.color = '#333';
+                    alert(`Buscando: ${query}`);
+                }, 500);
+            }
+        }
+
+        // Enhanced search on Enter key
+        document.getElementById('search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                buscarApp();
+            }
+        });
+
+        // Initialize particles when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+        });
+
+        // Add hover effects to app cards
+        document.querySelectorAll('.app-card').forEach(card => {
+            card.addEventListener('mouseover', function() {
+                this.style.background = 'rgba(255, 255, 255, 1)';
+            });
+            
+            card.addEventListener('mouseout', function() {
+                this.style.background = 'rgba(255, 255, 255, 0.95)';
+            });
+        });
+    </script>
+</body>
+    </section>
+    
+    <main class="container">
         <div class="app-card">
             <img src="img/Spotify.png" alt="Spotify Premium">
             <div class="app-info">
@@ -56,28 +131,27 @@
             </div>
         </div>
         
-        <!-- Spotify Lite Premium -->
-        <div class="app-card">
+                <div class="app-card">
             <img src="img/SpoLite.png" alt="Spotify Lite Premium">
             <div class="app-info">
                 <h2>Spotify Lite Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de música sin anuncios y con calidad premium en una versión mas liviana pero todas sus funciones premium en excepción de descargas.</p>
-                <a href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" class="btn download-btn">Descargar</a>
+                <p>Disfruta de música sin anuncios y con calidad premium en una versión mas liviana pero todas sus funciones premium en excepción de descargas.
+</p>
+              <a href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" class="btn download-btn">Descargar</a>
             </div>
         </div>
 
-        <!-- YouTube ReVanced -->
         <div class="app-card">
             <img src="img/YouTube.jpeg" alt="YouTube ReVanced">
             <div class="app-info">
                 <h2>YouTube ReVanced <span class="update-tag">🆕</span></h2>
                 <p>Accede a YouTube sin anuncios y con funciones premium.</p>
                 <a href="https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin MicroG</a>
+                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin 
+                MicroG</a>
             </div>
         </div>
 
-        <!-- TikTok Premium -->
         <div class="app-card">
             <img src="img/TikTok.svg" alt="TikTok Premium">
             <div class="app-info">
@@ -88,7 +162,6 @@
             </div>
         </div>
 
-        <!-- Flicks Remix -->
         <div class="app-card">
             <img src="img/Netflix.png" alt="Netflix Mod">
             <div class="app-info">
@@ -98,7 +171,6 @@
             </div>
         </div>
 
-        <!-- TeraBox Premium -->
         <div class="app-card">
             <img src="img/Terabox.png" alt="TeraBox Premium">
             <div class="app-info">
@@ -108,7 +180,6 @@
             </div>
         </div>        
 
-        <!-- MX Player Pro -->
         <div class="app-card">
             <img src="img/Player.jpg" alt="MX Player Pro">
             <div class="app-info">
@@ -118,7 +189,6 @@
             </div>
         </div>
 
-        <!-- PicsArt Premium -->
         <div class="app-card">
             <img src="img/Picsart.jpg" alt="PicsArt Premium">
             <div class="app-info">
@@ -128,7 +198,7 @@
             </div>
         </div>
 
-        <!-- Remini Pro -->
+        
         <div class="app-card">
             <img src="img/Remini.png" alt="Remini Pro">
             <div class="app-info">
@@ -138,7 +208,15 @@
             </div>
         </div>
 
-        <!-- Magic Eraser Mod -->
+        <div class="app-card">
+            <img src="img/Crunchyroll.png" alt="Crunchyroll Premium">
+            <div class="app-info">
+                <h2>Crunchyroll Premium <span class="update-tag">🔄 Actualizada</span></h2>
+                <p>Accede a todo el catálogo de anime sin anuncios y con la mejor calidad de reproducción.</p>
+                <a href="#" class="btn download-btn">Descargar</a>
+            </div>
+        </div>
+
         <div class="app-card">
             <img src="img/Eraser.jpg" alt="Magic Eraser Mod">
             <div class="app-info">
@@ -148,46 +226,50 @@
             </div>
         </div>
         
-        <!-- YouTube Music ReVanced -->
         <div class="app-card">
             <img src="img/YTMusic.png" alt="YouTube Music ReVanced">
             <div class="app-info">
                 <h2>YouTube Music ReVanced <span class="update-tag">🆕</span></h2>
                 <p>Disfruta de YouTube Music sin anuncios, con descargas y reproducción en segundo plano.</p>
                 <a href="https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin MicroG</a>
+                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin 
+                    MicroG</a>
             </div>
-        </div>
-
-        <!-- CamScanner Mod -->
-        <div class="app-card">
+    </div>
+                <div class="app-card">
             <img src="img/CamScanner.jpg" alt="CamScanner Mod">
             <div class="app-info">
                 <h2>CamScanner Mod <span class="update-tag">🆕</span></h2>
                 <p>Escanea y edita tus documentos sin restricciones.</p>
                 <a href="https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0" class="btn download-btn">Descargar</a>
             </div>
-        </div>
-
-        <!-- DNS AdGuard Pro -->
-        <div class="app-card">
+                    </div>
+                               <div class="app-card">
             <img src="img/dnspro.png" alt="AdGuard Pro">
-            <div class="app-info">
-                <h2>DNS AdGuard Pro <span class="update-tag">🆕</span></h2>
+                                <div class="app-info">
+                <h2>DNS AdGuard Pro<span class="update-tag">🆕</span></h2>
                 <p>Librate de anuncios molestos en un click.</p>
                 <a href="https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0" class="btn download-btn">Descargar</a>
             </div>
-        </div>
+                    </div>
+        
         
     </main>
-    <!-- Elementos del sistema de actualización (sin botón manual) -->
-    <div id="loading-indicator" class="loading-indicator">
-        <div class="spinner"></div>
-    </div>
     
-    <div id="update-notification" class="update-notification"></div>
-
-    <!-- Script de actualización desde Pastebin -->
-    <script src="updater.js"></script>
+    <script>
+        function buscarApp() {
+            let input = document.getElementById("search").value.toLowerCase();
+            let apps = document.querySelectorAll(".app-card");
+            
+            apps.forEach(app => {
+                let nombre = app.querySelector("h2").innerText.toLowerCase();
+                if (nombre.includes(input)) {
+                    app.style.display = "block";
+                } else {
+                    app.style.display = "none";
+                }
+            });
+        }
+    </script>
 </body>
 </html>
