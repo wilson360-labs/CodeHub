@@ -12,6 +12,10 @@
     --orange-gradient: linear-gradient(135deg, #ff6b35, #f7931e);
     --green-gradient: linear-gradient(135deg, #11998e, #38ef7d);
     --blue-gradient: linear-gradient(135deg, #667eea, #764ba2);
+    --text-dark: #2d3748;
+    --text-light: #e2e8f0;
+    --bg-dark: #1a202c;
+    --card-dark: rgba(45, 55, 72, 0.85);
 }
 
 /* Reset y Base */
@@ -28,6 +32,12 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
+    transition: background 0.3s ease;
+}
+
+body.dark {
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    color: var(--text-light);
 }
 
 /* ====================================================
@@ -91,6 +101,11 @@ header {
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
+body.dark header {
+    background: rgba(45, 55, 72, 0.08);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 header::before {
     content: '';
     position: absolute;
@@ -118,7 +133,7 @@ header::before {
 .logo {
     width: 90px;
     height: 90px;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: var(--orange-gradient);
     border-radius: 25px;
     display: flex;
     align-items: center;
@@ -134,7 +149,7 @@ header::before {
     content: '';
     position: absolute;
     inset: -5px;
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: var(--orange-gradient);
     border-radius: 25px;
     z-index: -1;
     filter: blur(15px);
@@ -166,6 +181,10 @@ header::before {
     text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
 }
 
+body.dark .main-title {
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e0, #e2e8f0);
+}
+
 @keyframes shine {
     to { background-position: 200% center; }
 }
@@ -176,6 +195,59 @@ header::before {
     font-weight: 300;
     margin-bottom: 2rem;
     letter-spacing: 0.5px;
+}
+
+body.dark .subtitle {
+    color: rgba(203, 213, 225, 0.9);
+}
+
+/* ====================================================
+   TEMA CLARO/OSCURO - INTERRUPTOR
+   ==================================================== */
+.theme-switcher {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+}
+
+.theme-btn {
+    background: var(--orange-gradient);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
+    font-size: 1.3rem;
+    color: white;
+}
+
+body.dark .theme-btn {
+    background: var(--green-gradient);
+}
+
+.theme-btn:hover {
+    transform: scale(1.1);
+}
+
+.theme-btn .fa-sun {
+    display: block;
+}
+
+.theme-btn .fa-moon {
+    display: none;
+}
+
+body.dark .theme-btn .fa-sun {
+    display: none;
+}
+
+body.dark .theme-btn .fa-moon {
+    display: block;
 }
 
 /* ====================================================
@@ -204,6 +276,12 @@ header::before {
     overflow: hidden;
 }
 
+body.dark .nav-item {
+    background: rgba(45, 55, 72, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--text-light);
+}
+
 .nav-item::before {
     content: '';
     position: absolute;
@@ -229,6 +307,10 @@ header::before {
     border-color: rgba(255, 255, 255, 0.3);
 }
 
+body.dark .nav-item:hover {
+    background: rgba(45, 55, 72, 0.15);
+}
+
 /* ====================================================
    SECCIÓN DE SEGURIDAD ELEGANTE
    ==================================================== */
@@ -236,7 +318,7 @@ header::before {
     max-width: 1100px;
     margin: 3rem auto;
     padding: 2.5rem;
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--card-glass);
     backdrop-filter: blur(20px);
     border-radius: 25px;
     box-shadow: var(--shadow-soft);
@@ -244,6 +326,11 @@ header::before {
     position: relative;
     overflow: hidden;
     z-index: 10;
+}
+
+body.dark .info-seguridad {
+    background: var(--card-dark);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .info-seguridad::before {
@@ -264,7 +351,7 @@ header::before {
 }
 
 .info-seguridad h2 {
-    color: #2d3748;
+    color: var(--text-dark);
     font-size: 2rem;
     margin-bottom: 1.2rem;
     font-weight: 700;
@@ -273,15 +360,18 @@ header::before {
     gap: 0.8rem;
 }
 
-.info-seguridad h2::before {
-    content: '🛡️';
-    font-size: 2rem;
+body.dark .info-seguridad h2 {
+    color: var(--text-light);
 }
 
 .info-seguridad p {
     color: #4a5568;
     line-height: 1.8;
     font-size: 1.1rem;
+}
+
+body.dark .info-seguridad p {
+    color: #cbd5e0;
 }
 
 /* ====================================================
@@ -297,7 +387,7 @@ header::before {
 
 .search-wrapper {
     position: relative;
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--card-glass);
     backdrop-filter: blur(20px);
     border-radius: 60px;
     padding: 0.8rem;
@@ -307,6 +397,11 @@ header::before {
     align-items: center;
     gap: 1rem;
     transition: all 0.4s ease;
+}
+
+body.dark .search-wrapper {
+    background: var(--card-dark);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .search-wrapper:focus-within {
@@ -322,13 +417,21 @@ header::before {
     padding: 1rem 1.5rem;
     font-size: 1.1rem;
     background: transparent;
-    color: #2d3748;
+    color: var(--text-dark);
     font-family: 'Poppins', sans-serif;
     font-weight: 500;
 }
 
+body.dark .search-input {
+    color: var(--text-light);
+}
+
 .search-input::placeholder {
     color: #a0aec0;
+}
+
+body.dark .search-input::placeholder {
+    color: #718096;
 }
 
 .search-btn {
@@ -344,6 +447,7 @@ header::before {
     transition: all 0.3s ease;
     box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
     font-size: 1.3rem;
+    color: white;
 }
 
 .search-btn:hover {
@@ -373,7 +477,7 @@ header::before {
    TARJETAS DE APPS - DISEÑO PRO
    ==================================================== */
 .app-card {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--card-glass);
     backdrop-filter: blur(20px);
     border-radius: 25px;
     padding: 2rem;
@@ -384,6 +488,11 @@ header::before {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+body.dark .app-card {
+    background: var(--card-dark);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .app-card::before {
@@ -449,7 +558,7 @@ header::before {
 }
 
 .app-info h2 {
-    color: #2d3748;
+    color: var(--text-dark);
     font-size: 1.3rem;
     margin-bottom: 0.8rem;
     text-align: center;
@@ -461,6 +570,10 @@ header::before {
     line-height: 1.3;
 }
 
+body.dark .app-info h2 {
+    color: var(--text-light);
+}
+
 .app-info p {
     color: #4a5568;
     line-height: 1.6;
@@ -470,11 +583,15 @@ header::before {
     flex: 1;
 }
 
+body.dark .app-info p {
+    color: #cbd5e0;
+}
+
 /* ====================================================
    ETIQUETAS Y BADGES MODERNOS
    ==================================================== */
 .update-tag {
-    background: linear-gradient(135deg, #11998e, #38ef7d);
+    background: var(--green-gradient);
     color: white;
     padding: 0.3rem 0.9rem;
     border-radius: 25px;
@@ -540,7 +657,6 @@ header::before {
 
 .download-btn {
     background: var(--orange-gradient);
-    color: white !important;
 }
 
 .secondary-btn {
@@ -559,9 +675,9 @@ header::before {
     position: fixed;
     top: 25px;
     right: 25px;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--card-glass);
     backdrop-filter: blur(20px);
-    color: #2d3748;
+    color: var(--text-dark);
     padding: 1.2rem 1.8rem;
     border-radius: 15px;
     box-shadow: var(--shadow-hover);
@@ -572,6 +688,12 @@ header::before {
     transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     font-weight: 600;
     max-width: 350px;
+}
+
+body.dark .update-notification {
+    background: var(--card-dark);
+    color: var(--text-light);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .update-notification.show {
@@ -595,13 +717,17 @@ header::before {
     position: fixed;
     bottom: 25px;
     right: 25px;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--card-glass);
     backdrop-filter: blur(20px);
     padding: 1.2rem;
     border-radius: 50%;
     box-shadow: var(--shadow-soft);
     z-index: 10000;
     display: none;
+}
+
+body.dark .loading-indicator {
+    background: var(--card-dark);
 }
 
 .spinner {
@@ -795,57 +921,4 @@ header::before {
     }
     
     .app-info p {
-        font-size: 0.82rem;
-        margin-bottom: 1rem;
-    }
-    
-    .btn {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.82rem;
-        border-radius: 12px;
-    }
-    
-    .update-tag {
-        font-size: 0.7rem;
-        padding: 0.25rem 0.7rem;
-    }
-    
-    .logo {
-        width: 70px;
-        height: 70px;
-        font-size: 2rem;
-    }
-    
-    .main-title {
-        font-size: 1.9rem;
-    }
-    
-    .subtitle {
-        font-size: 0.95rem;
-    }
-}
-
-@media (max-width: 360px) {
-    .container {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.8rem;
-    }
-    
-    .app-card img {
-        width: 65px;
-        height: 65px;
-    }
-    
-    .app-info h2 {
-        font-size: 0.88rem;
-    }
-    
-    .app-info p {
-        font-size: 0.78rem;
-    }
-    
-    .btn {
-        padding: 0.7rem 0.4rem;
-        font-size: 0.78rem;
-    }
-}
+      
