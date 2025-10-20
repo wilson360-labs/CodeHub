@@ -2309,6 +2309,69 @@
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
     <script>
+        // Crear partículas mejoradas con drift
+        function createParticles() {
+            const container = document.getElementById('particles1');
+            container.innerHTML = '';
+            for (let i = 0; i < 80; i++) { // Aumentado de 50 a 80
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.setProperty('--drift', (Math.random() - 0.5) * 200 + 'px');
+                particle.style.animationDelay = Math.random() * 4 + 's';
+                particle.style.animationDuration = (3 + Math.random() * 4) + 's';
+                
+                // Variación de tamaño
+                const size = 2 + Math.random() * 4;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                container.appendChild(particle);
+            }
+        }
+
+        // Animar porcentaje de carga
+        function animatePercentage() {
+            const percentageEl = document.getElementById('percentage');
+            let count = 0;
+            const interval = setInterval(() => {
+                count += Math.floor(Math.random() * 5) + 1;
+                if (count >= 100) {
+                    count = 100;
+                    clearInterval(interval);
+                }
+                percentageEl.textContent = count + '%';
+            }, 60);
+        }
+
+        // Efecto de pulso en el logo
+        function addLogoPulse() {
+            const logo = document.querySelector('.logo-3d');
+            setInterval(() => {
+                logo.style.transform = 'perspective(1000px) rotateX(0) scale(1.05)';
+                setTimeout(() => {
+                    logo.style.transform = 'perspective(1000px) rotateX(0) scale(1)';
+                }, 200);
+            }, 3000);
+        }
+
+        // Inicializar todo
+        createParticles();
+        animatePercentage();
+        addLogoPulse();
+
+        // Simular carga completa y cerrar
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.8s ease';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                // alert('¡Splash screen mejorado! 🚀');  // Comentado para producción
+            }, 800);
+        }, 3500);
+        
         // ========== FUNCIONES BÁSICAS ==========
         
         // Typing Effect
