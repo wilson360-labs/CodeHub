@@ -14,6 +14,28 @@
     <!-- Animated Background Particles -->
     <div class="particles" id="particles"></div>
 
+    <!-- Update Banner -->
+    <div class="update-banner" id="updateBanner" style="display: none;">
+        <div class="update-banner-content">
+            <h3><i class="fas fa-info-circle"></i> Nueva Actualización Disponible</h3>
+            <p>¡Hemos agregado nuevas aplicaciones y mejorado la experiencia de usuario!</p>
+            <div class="update-banner-actions">
+                <button class="update-btn" onclick="triggerUpdate()">Actualizar Ahora</button>
+                <button class="dismiss-btn" onclick="dismissUpdate()">Descartar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Notification -->
+    <div class="update-notification info" id="updateNotification" style="display: none;">
+        <i class="fas fa-info-circle"></i> Nueva versión disponible. ¡Actualiza para disfrutar de las últimas mejoras!
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loadingIndicator" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
     <header>
         <div class="header-content">
             <div class="logo-container">
@@ -200,6 +222,7 @@
     </main>
     
     <script src="theme-switcher.js"></script>
+    <script src="updater.js"></script>
     <script>
         // Create animated particles
         function createParticles() {
