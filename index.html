@@ -474,83 +474,373 @@
             opacity: 0.6;
         }
 
-        /* Splash Screen */
-        #splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #000000, #1a1a2e, #16213e, #0f3460);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            opacity: 1;
-            visibility: visible;
-            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
-        }
+/* ==================== PARTE 1: CSS MEJORADO (Reemplaza desde #splash1 hasta antes de Responsive) ==================== */
 
-        #splash-screen.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
+#splash-screen {  /* Cambié #splash1 a #splash-screen para consistencia */
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #0f0f23);
+    z-index: 9999;
+    overflow: hidden;
+}
 
-        .splash-title {
-            font-size: 4rem;
-            font-weight: 900;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 2rem;
-            letter-spacing: 0.2em;
-            animation: glowPulse 2s ease-in-out infinite, fadeInUp 0.8s ease-out;
-        }
-    
-        @keyframes glowPulse {
-            0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 69, 0, 0.5)); }
-            50% { filter: drop-shadow(0 0 30px rgba(255, 69, 0, 1)); }
-        }
+.splash1-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+/* Efecto de escaneo horizontal */
+.scan-line {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #ff4500, transparent);
+    box-shadow: 0 0 20px #ff4500;
+    animation: scanMove 3s linear infinite;
+    z-index: 1;
+}
 
-        .loading-container {
-            width: 300px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 2rem 0;
-        }
+@keyframes scanMove {
+    0% { top: -2px; }
+    100% { top: 100%; }
+}
 
-        .loading-bar {
-            height: 100%;
-            background: linear-gradient(45deg, #ff4500, #ff6b35, #f7931e, #ffbd69);
-            width: 0%;
-            animation: loadingProgress 1.5s ease-out forwards;
-            box-shadow: 0 0 20px var(--primary);
-        }
+/* Grid de fondo futurista */
+.cyber-grid {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(255, 69, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 69, 0, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: gridScroll 20s linear infinite;
+    opacity: 0.3;
+}
 
-        @keyframes loadingProgress {
-            0% { width: 0%; }
-            100% { width: 100%; }
-        }
+@keyframes gridScroll {
+    0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+    100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+}
 
-        .loading-text {
-            font-size: 1.2rem;
-            color: var(--accent);
-            animation: pulse 1.5s infinite;
-        }
+/* Partículas de fondo MEJORADAS */
+.particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 1;
+}
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+.particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: #ff4500;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
+    animation: float 4s infinite ease-in-out;
+}
+
+@keyframes float {
+    0%, 100% { 
+        transform: translateY(0) translateX(0); 
+        opacity: 0; 
+    }
+    50% { 
+        opacity: 1; 
+    }
+    100% {
+        transform: translateY(-100vh) translateX(var(--drift));
+    }
+}
+
+/* Logo 3D MEJORADO */
+.logo-3d {
+    font-size: 6rem;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    position: relative;
+    z-index: 10;
+    animation: logoReveal 1.5s ease-out, logoFloat 4s ease-in-out infinite 2s;
+    text-shadow: 
+        0 0 10px #ff4500,
+        0 0 20px #ff4500,
+        0 0 40px #ff4500,
+        0 0 80px #ff6b35,
+        0 5px 10px rgba(0, 0, 0, 0.5),
+        0 0 100px rgba(255, 69, 0, 0.5);
+}
+
+@keyframes logoReveal {
+    0% { 
+        opacity: 0;
+        transform: perspective(1000px) rotateX(-90deg) scale(0.5);
+        filter: blur(20px);
+    }
+    100% { 
+        opacity: 1;
+        transform: perspective(1000px) rotateX(0) scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes logoFloat {
+    0%, 100% { 
+        transform: perspective(1000px) rotateX(0) translateY(0);
+    }
+    50% { 
+        transform: perspective(1000px) rotateX(5deg) translateY(-10px);
+    }
+}
+
+/* Círculos concéntricos MEJORADOS - MÁS ONDAS */
+.circle-pulse {
+    position: absolute;
+    border: 2px solid rgba(255, 69, 0, 0.3);
+    border-radius: 50%;
+    animation: pulse 3s ease-out infinite;
+}
+
+/* 8 círculos en lugar de 3 */
+.circle-pulse:nth-child(1) { 
+    width: 200px; 
+    height: 200px; 
+    animation-delay: 0s; 
+}
+.circle-pulse:nth-child(2) { 
+    width: 250px; 
+    height: 250px; 
+    animation-delay: 0.3s; 
+}
+.circle-pulse:nth-child(3) { 
+    width: 300px; 
+    height: 300px; 
+    animation-delay: 0.6s; 
+}
+.circle-pulse:nth-child(4) { 
+    width: 350px; 
+    height: 350px; 
+    animation-delay: 0.9s; 
+}
+.circle-pulse:nth-child(5) { 
+    width: 400px; 
+    height: 400px; 
+    animation-delay: 1.2s; 
+}
+.circle-pulse:nth-child(6) { 
+    width: 450px; 
+    height: 450px; 
+    animation-delay: 1.5s; 
+}
+.circle-pulse:nth-child(7) { 
+    width: 500px; 
+    height: 500px; 
+    animation-delay: 1.8s; 
+}
+.circle-pulse:nth-child(8) { 
+    width: 550px; 
+    height: 550px; 
+    animation-delay: 2.1s; 
+}
+
+@keyframes pulse {
+    0% { 
+        transform: scale(0.3); 
+        opacity: 1; 
+    }
+    100% { 
+        transform: scale(4); 
+        opacity: 0; 
+    }
+}
+
+/* Anillos hexagonales rotatorios - NUEVO */
+.hex-ring {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border: 2px solid rgba(255, 107, 53, 0.3);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: hexRotate 10s linear infinite;
+    z-index: 2;
+}
+
+.hex-ring:nth-child(2) {
+    width: 300px;
+    height: 300px;
+    animation-duration: 8s;
+    animation-direction: reverse;
+    border-color: rgba(255, 189, 105, 0.4);
+}
+
+@keyframes hexRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Ondas de radar - NUEVO */
+.radar-wave {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border: 3px solid rgba(255, 69, 0, 0.2);
+    border-radius: 50%;
+    animation: radarPulse 4s ease-out infinite;
+}
+
+.radar-wave:nth-child(2) {
+    animation-delay: 1s;
+}
+
+.radar-wave:nth-child(3) {
+    animation-delay: 2s;
+}
+
+@keyframes radarPulse {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+        border-width: 3px;
+    }
+    100% {
+        transform: scale(2);
+        opacity: 0;
+        border-width: 0;
+    }
+}
+
+/* Barra de progreso 3D MEJORADA */
+.progress-container-3d {
+    width: 500px;
+    height: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-top: 60px;
+    position: relative;
+    overflow: hidden;
+    z-index: 10;
+    box-shadow: 
+        inset 0 2px 10px rgba(0, 0, 0, 0.5),
+        0 5px 15px rgba(255, 69, 0, 0.3),
+        0 0 30px rgba(255, 69, 0, 0.2);
+    border: 1px solid rgba(255, 69, 0, 0.3);
+}
+
+.progress-bar-3d {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff4500, #ff6b35, #f7931e, #ffbd69, #ff4500);
+    background-size: 200% 100%;
+    border-radius: 10px;
+    position: relative;
+    animation: loadProgress 2.5s ease-out forwards, gradientFlow 3s linear infinite;
+    box-shadow: 
+        0 0 20px #ff4500, 
+        0 0 40px #ff4500,
+        inset 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+@keyframes loadProgress {
+    to { width: 100%; }
+}
+
+@keyframes gradientFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+.progress-bar-3d::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: shine 1.5s infinite;
+}
+
+@keyframes shine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(200%); }
+}
+
+/* Porcentaje de carga - NUEVO */
+.loading-percentage {
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #ff4500;
+    text-shadow: 0 0 10px #ff4500;
+}
+
+.loading-text-3d {
+    margin-top: 30px;
+    font-size: 1.2rem;
+    color: #ff6b35;
+    letter-spacing: 0.3em;
+    z-index: 10;
+    animation: fadeInOut 1.5s infinite;
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+}
+
+/* Puntos de carga animados - NUEVO */
+.loading-dots {
+    display: inline-block;
+}
+
+.loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Efecto de destello de fondo - NUEVO */
+.flash-overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 69, 0, 0.2) 0%, transparent 70%);
+    animation: flash 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes flash {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .logo-3d { font-size: 3rem; }
+    .progress-container-3d { width: 90%; }
+    .circle-pulse { width: 150px !important; height: 150px !important; }
+    .hex-ring { width: 200px; height: 200px; }
+    .radar-wave { width: 300px; height: 300px; }
+}
 
         /* Header Styles */
         header {
