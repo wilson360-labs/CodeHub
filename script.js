@@ -14,5 +14,5 @@ window.addEventListener('load', () => {
     splashScreen.style.transition = 'opacity 8s ease-out';
     setTimeout(() => {
         splashScreen.style.display = 'none';
-    }, 4000); // Asegúrate de que el splash screen se oculte después de la animación
+    }, 6000); // Asegúrate de que el splash screen se oculte después de la animación
 });
