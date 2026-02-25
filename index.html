@@ -855,6 +855,45 @@
     50% { opacity: 1; }
 }
 
+/* Notificaciones de actualización */
+.update-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--accent-color);
+    color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: all 0.3s ease;
+}
+
+.update-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.update-notification.success { background: #4CAF50; }
+.update-notification.error { background: #f44336; }
+.update-notification.info { background: #2196F3; }
+
+/* Loading indicator */
+.loading-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem;
+    border-radius: 5px;
+    z-index: 1001;
+    display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .logo-3d { font-size: 3rem; }
@@ -924,6 +963,21 @@
         }
 
         #beta-btn:hover {
+            background: #ff6b35;
+        }
+
+        #update-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        #update-btn:hover {
             background: #ff6b35;
         }
 
@@ -1470,6 +1524,7 @@
                 <li><a href="#latest-projects">Proyectos</a></li>
                 <li><a href="#contact">Contacto</a></li>
                 <li><button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button></li>
+                <li><button id="update-btn" aria-label="Buscar actualizaciones">🔄 Actualizar</button></li>
             </ul>
         </nav>
         <button id="theme-toggle" aria-label="Cambiar tema">🌙</button>
@@ -1815,6 +1870,10 @@
             </div>
         </section>
     </main>
+
+    <!-- Elementos del updater -->
+    <div id="update-notification" class="update-notification"></div>
+    <div id="loading-indicator" class="loading-indicator"></div>
     
     <footer>
         <div class="footer-content">
@@ -2460,6 +2519,11 @@
         // Beta Test
         document.getElementById('beta-btn').addEventListener('click', () => {
             alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
+        });
+
+        // Actualización manual
+        document.getElementById('update-btn').addEventListener('click', () => {
+            checkForUpdates(true);
         });
 
         // Simular carga completa y cerrar
@@ -3447,6 +3511,10 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
 })();
 </script>
+
+<script src="script.js"></script>
+<script src="updater.js"></script>
+<script src="theme-switcher.js"></script>
 
 </body>
 </html>
