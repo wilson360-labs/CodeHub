@@ -604,6 +604,21 @@
     }
 }
 
+/* Subtítulo del splash */
+.splash-subtitle {
+    font-size: 1.5rem;
+    color: #ff6b35;
+    letter-spacing: 0.2em;
+    margin-top: 10px;
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    animation: subtitleFade 2s ease-out 1.5s both;
+}
+
+@keyframes subtitleFade {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
 /* Círculos concéntricos MEJORADOS - MÁS ONDAS */
 .circle-pulse {
     position: absolute;
@@ -744,7 +759,7 @@
     background-size: 200% 100%;
     border-radius: 10px;
     position: relative;
-    animation: loadProgress 2.5s ease-out forwards, gradientFlow 3s linear infinite;
+    animation: loadProgress 6s ease-out forwards, gradientFlow 3s linear infinite, pulseGlow 2s ease-in-out infinite;
     box-shadow: 
         0 0 20px #ff4500, 
         0 0 40px #ff4500,
@@ -758,6 +773,11 @@
 @keyframes gradientFlow {
     0% { background-position: 0% 50%; }
     100% { background-position: 200% 50%; }
+}
+
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 20px #ff4500, 0 0 40px #ff4500, inset 0 0 10px rgba(255, 255, 255, 0.3); }
+    50% { box-shadow: 0 0 30px #ff4500, 0 0 60px #ff4500, 0 0 80px #ff6b35, inset 0 0 15px rgba(255, 255, 255, 0.5); }
 }
 
 .progress-bar-3d::after {
@@ -837,6 +857,7 @@
 /* Responsive */
 @media (max-width: 768px) {
     .logo-3d { font-size: 3rem; }
+    .splash-subtitle { font-size: 1rem; }
     .progress-container-3d { width: 90%; }
     .circle-pulse { width: 150px !important; height: 150px !important; }
     .hex-ring { width: 200px; height: 200px; }
@@ -1354,6 +1375,7 @@
         
         <!-- Logo principal -->
         <div class="logo-3d">CODEHUB</div>
+        <div class="splash-subtitle">PREMIUM APPS & TOOLS</div>
         
         <!-- Barra de progreso con porcentaje -->
         <div class="progress-container-3d">
@@ -1362,7 +1384,7 @@
         </div>
         
         <div class="loading-text-3d">
-            CARGANDO EXPERIENCIA<span class="loading-dots"></span>
+            INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
         </div>
     </div>
 </div>
@@ -1597,10 +1619,6 @@
                             <span class="project-tag">Automation</span>
                             <span class="project-tag">Web Scraping</span>
                         </div>
-                        <div class="project-links">
-                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
-                        </div>
                     </div>
                 </div>
                 <div class="project-modern-card">
@@ -1615,10 +1633,6 @@
                             <span class="project-tag">CSS3</span>
                             <span class="project-tag">JavaScript</span>
                         </div>
-                        <div class="project-links">
-                            <a href="#" class="project-link-btn"><i class="fas fa-eye"></i> Ver Demo</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
-                        </div>
                     </div>
                 </div>
                 <div class="project-modern-card">
@@ -1632,10 +1646,6 @@
                             <span class="project-tag">JavaScript</span>
                             <span class="project-tag">Canvas</span>
                             <span class="project-tag">Game Dev</span>
-                        </div>
-                        <div class="project-links">
-                            <a href="#game" class="project-link-btn"><i class="fas fa-play"></i> Jugar</a>
-                            <a href="#" class="project-link-btn"><i class="fab fa-github"></i> GitHub</a>
                         </div>
                     </div>
                 </div>
@@ -2333,14 +2343,17 @@
         function animatePercentage() {
             const percentageEl = document.getElementById('percentage');
             let count = 0;
+            const duration = 6000; // 6 segundos
+            const steps = 100;
+            const intervalTime = duration / steps;
             const interval = setInterval(() => {
-                count += Math.floor(Math.random() * 5) + 1;
+                count++;
                 if (count >= 100) {
                     count = 100;
                     clearInterval(interval);
                 }
                 percentageEl.textContent = count + '%';
-            }, 60);
+            }, intervalTime);
         }
 
         // Efecto de pulso en el logo
@@ -2363,12 +2376,12 @@
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
-            splash.style.transition = 'opacity 0.8s ease';
+            splash.style.transition = 'opacity 1s ease';
             setTimeout(() => {
                 splash.style.display = 'none';
                 // alert('¡Splash screen mejorado! 🚀');  // Comentado para producción
-            }, 800);
-        }, 3500);
+            }, 1000);
+        }, 6000);
         
         // ========== FUNCIONES BÁSICAS ==========
         

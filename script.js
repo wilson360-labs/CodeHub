@@ -9,10 +9,6 @@ document.getElementById('floating-menu').addEventListener('keydown', (e) => {
     }
 });
 window.addEventListener('load', () => {
-    const splashScreen = document.getElementById('splash-screen');
-    splashScreen.style.opacity = 0;
-    splashScreen.style.transition = 'opacity 8s ease-out';
-    setTimeout(() => {
-        splashScreen.style.display = 'none';
-    }, 6000); // Asegúrate de que el splash screen se oculte después de la animación
+    // El splash se maneja en index.html con duración de 6 segundos
+    // No ocultar aquí para evitar conflictos
 });
