@@ -1507,6 +1507,9 @@
         <div class="loading-text-3d">
             INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
         </div>
+        
+        <!-- Botón skip -->
+        <button id="skip-splash" style="position: absolute; bottom: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">Saltar</button>
     </div>
 </div>
         </div>
@@ -2526,14 +2529,25 @@
             checkForUpdates(true);
         });
 
+        // Skip splash
+        document.getElementById('skip-splash').addEventListener('click', () => {
+            const splash = document.getElementById('splash-screen');
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => {
+                splash.style.display = 'none';
+            }, 500);
+        });
+
         // Simular carga completa y cerrar
         setTimeout(() => {
+            console.log('Ocultando splash screen');
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
             splash.style.transition = 'opacity 1s ease';
             setTimeout(() => {
                 splash.style.display = 'none';
-                // alert('¡Splash screen mejorado! 🚀');  // Comentado para producción
+                console.log('Splash screen ocultado');
             }, 1000);
         }, 6000);
         

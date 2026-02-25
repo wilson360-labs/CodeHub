@@ -295,6 +295,15 @@ function initUpdateSystem() {
         
         console.log(`⏰ Revisión automática cada ${CONFIG.checkInterval / 60000} minutos`);
     }
+    
+    // Timeout forzado para ocultar loading si se queda atascado
+    setTimeout(() => {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator && loadingIndicator.style.display !== 'none') {
+            loadingIndicator.style.display = 'none';
+            console.log('Loading indicator ocultado forzosamente');
+        }
+    }, 10000); // 10 segundos
 }
 
 // ====================================================
