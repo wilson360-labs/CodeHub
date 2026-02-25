@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.allorigins.win;">
     <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
     <title>Bienvenido a CodeHub</title>
     <!-- Google tag (gtag.js) -->
@@ -864,11 +865,77 @@
     .radar-wave { width: 300px; height: 300px; }
 }
 
+        /* Variables CSS para modo oscuro */
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #fff;
+            --accent-color: #ff4500;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f5f5f5;
+            --text-color: #000;
+            --accent-color: #ff4500;
+            --card-bg: rgba(0, 0, 0, 0.05);
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            transition: background 0.3s, color 0.3s;
+        }
+
         /* Header Styles */
         header {
             padding: 2rem;
             text-align: center;
             background: rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        #theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.3s;
+        }
+
+        #theme-toggle:hover {
+            background: #ff6b35;
+        }
+
+        #beta-btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        #beta-btn:hover {
+            background: #ff6b35;
+        }
+
+        /* Accesibilidad */
+        *:focus {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+
+        button:focus, a:focus {
+            outline: 2px solid var(--accent-color);
+        }
             backdrop-filter: blur(20px);
             border-bottom: 2px solid rgba(255, 69, 0, 0.3);
             position: relative;
@@ -1402,8 +1469,10 @@
                 <li><a href="#timeline">Experiencia</a></li>
                 <li><a href="#latest-projects">Proyectos</a></li>
                 <li><a href="#contact">Contacto</a></li>
+                <li><button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button></li>
             </ul>
         </nav>
+        <button id="theme-toggle" aria-label="Cambiar tema">🌙</button>
     </header>
     
     <main>
@@ -1647,6 +1716,9 @@
                             <span class="project-tag">Canvas</span>
                             <span class="project-tag">Game Dev</span>
                         </div>
+                        <a href="https://play.google.com/store" target="_blank" class="google-play-badge" aria-label="Disponible en Google Play">
+                            <img src="https://play.google.com/intl/en_us/badges/static/images/badges/es_badge_web_generic.png" alt="Disponible en Google Play" style="height: 40px;">
+                        </a>
                     </div>
                 </div>
             </div>
@@ -2371,6 +2443,24 @@
         createParticles();
         animatePercentage();
         addLogoPulse();
+
+        // Modo oscuro
+        const themeToggle = document.getElementById('theme-toggle');
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        themeToggle.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+
+        themeToggle.addEventListener('click', () => {
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            themeToggle.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+        });
+
+        // Beta Test
+        document.getElementById('beta-btn').addEventListener('click', () => {
+            alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
+        });
 
         // Simular carga completa y cerrar
         setTimeout(() => {
