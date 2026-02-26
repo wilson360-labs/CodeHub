@@ -1507,6 +1507,8 @@
         <div class="loading-text-3d">
             INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
         </div>
+        
+        <button id="skip-splash" style="position: absolute; top: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">Saltar</button>
     </div>
 </div>
         </div>
@@ -2474,7 +2476,7 @@
         function animatePercentage() {
             const percentageEl = document.getElementById('percentage');
             let count = 0;
-            const duration = 6000; // 6 segundos
+            const duration = 3000; // 3 segundos
             const steps = 100;
             const intervalTime = duration / steps;
             const interval = setInterval(() => {
@@ -2527,14 +2529,17 @@
         });
 
         // Skip splash
-        document.getElementById('skip-splash').addEventListener('click', () => {
-            const splash = document.getElementById('splash-screen');
-            splash.style.opacity = '0';
-            splash.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => {
-                splash.style.display = 'none';
-            }, 500);
-        });
+        const skipBtn = document.getElementById('skip-splash');
+        if (skipBtn) {
+            skipBtn.addEventListener('click', () => {
+                const splash = document.getElementById('splash-screen');
+                splash.style.opacity = '0';
+                splash.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    splash.style.display = 'none';
+                }, 500);
+            });
+        }
 
         // Simular carga completa y cerrar
         setTimeout(() => {
@@ -2546,7 +2551,7 @@
                 splash.style.display = 'none';
                 console.log('Splash screen ocultado');
             }, 1000);
-        }, 6000);
+        }, 3000);
         
         // ========== FUNCIONES BÁSICAS ==========
         
