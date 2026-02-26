@@ -2449,6 +2449,7 @@
     </style>
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
+    <script src="updater.js"></script>
     <script>
         // Crear partículas mejoradas con drift
         function createParticles() {
@@ -2476,7 +2477,7 @@
         function animatePercentage() {
             const percentageEl = document.getElementById('percentage');
             let count = 0;
-            const duration = 3000; // 3 segundos
+            const duration = 2000; // 2 segundos
             const steps = 100;
             const intervalTime = duration / steps;
             const interval = setInterval(() => {
@@ -2550,8 +2551,11 @@
             setTimeout(() => {
                 splash.style.display = 'none';
                 console.log('Splash screen ocultado');
+                animateCounters();
+                animateVisitorCounter();
+                typeEffect();
             }, 1000);
-        }, 3000);
+        }, 2000);
         
         // ========== FUNCIONES BÁSICAS ==========
         
@@ -2710,16 +2714,6 @@
             document.body.appendChild(particle);
             setTimeout(() => particle.remove(), 1000);
         }
-
-        // Splash Screen
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                document.getElementById('splash-screen').classList.add('hidden');
-                animateCounters();
-                animateVisitorCounter();
-                typeEffect();
-            }, 2000);
-        });
 
         // Theme Toggle
         function toggleTheme() {
@@ -3529,7 +3523,6 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 </script>
 
 <script src="script.js"></script>
-<script src="updater.js"></script>
 <script src="theme-switcher.js"></script>
 
 </body>
