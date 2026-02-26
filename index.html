@@ -923,6 +923,7 @@
             background: var(--bg-color);
             color: var(--text-color);
             transition: background 0.3s, color 0.3s;
+            padding-top: 6rem;
         }
 
         /* Header Styles */
@@ -930,7 +931,12 @@
             padding: 2rem;
             text-align: center;
             background: rgba(0, 0, 0, 0.3);
-            position: relative;
+            backdrop-filter: blur(20px);
+            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+            position: fixed;
+            top: 0;
+            z-index: 100;
+            overflow: hidden;
         }
 
         #theme-toggle {
@@ -990,13 +996,7 @@
         button:focus, a:focus {
             outline: 2px solid var(--accent-color);
         }
-            backdrop-filter: blur(20px);
-            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
-            position: relative;
-            top: 0;
-            z-index: 100;
-            overflow: hidden;
-        }
+
 
         header::before {
             content: '';
@@ -1507,9 +1507,6 @@
         <div class="loading-text-3d">
             INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
         </div>
-        
-        <!-- Botón skip -->
-        <button id="skip-splash" style="position: absolute; bottom: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">Saltar</button>
     </div>
 </div>
         </div>
