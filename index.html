@@ -2451,6 +2451,7 @@
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
     <script src="updater.js"></script>
     <script>
+        console.log('Script started');
         // Crear partículas mejoradas con drift
         function createParticles() {
             const container = document.getElementById('particles1');
@@ -2505,6 +2506,7 @@
         createParticles();
         animatePercentage();
         addLogoPulse();
+        console.log('Initial functions called');
 
         // Modo oscuro
         const themeToggle = document.getElementById('theme-toggle');
@@ -2544,6 +2546,7 @@
 
         // Simular carga completa y cerrar
         setTimeout(() => {
+            console.log('SetTimeout triggered');
             console.log('Ocultando splash screen');
             const splash = document.getElementById('splash-screen');
             splash.style.opacity = '0';
