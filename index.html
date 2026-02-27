@@ -5468,13 +5468,12 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   // Solo cambia BACKEND_URL cuando tengas tu servidor con IP pública.
   const BACKEND_URL = (function() {
     const host = window.location.hostname;
-    // Si es localhost o archivo local → servidor Termux local
+    // Desarrollo local → Termux
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:3001';
     }
-    // En producción (GitHub Pages, tu dominio, etc.)
-    // CAMBIA ESTO por la IP/dominio de tu Termux cuando tengas URL pública:
-    return 'http://localhost:3001'; // ← reemplaza con tu URL real
+    // Producción → Railway
+    return 'https://codehub-production-729d.up.railway.app';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
 
