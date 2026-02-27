@@ -1099,11 +1099,317 @@ function calcScore(ping, connType, vpn, localIP) {
 
   const tipsEl = $('net-tips');
   tipsEl.innerHTML = tips.map(t =>
-    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span></div>`
+    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span>
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  HERRAMIENTAS EXTRA — Las más buscadas en internet    -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<!-- 19 · TRADUCTOR -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span></div>
+  <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
+  <select class="ts" id="tr-from" style="margin-bottom:.5rem">
+    <option value="es">🇪🇸 Español</option>
+    <option value="en">🇺🇸 English</option>
+    <option value="fr">🇫🇷 Français</option>
+    <option value="de">🇩🇪 Deutsch</option>
+    <option value="it">🇮🇹 Italiano</option>
+    <option value="pt">🇧🇷 Português</option>
+    <option value="ja">🇯🇵 日本語</option>
+    <option value="zh">🇨🇳 中文</option>
+    <option value="ar">🇸🇦 العربية</option>
+    <option value="ru">🇷🇺 Русский</option>
+  </select>
+  <span style="font-size:.7rem;color:var(--muted);font-family:var(--mono)">→</span>
+  <select class="ts" id="tr-to" style="margin-bottom:.5rem">
+    <option value="en">🇺🇸 English</option>
+    <option value="es">🇪🇸 Español</option>
+    <option value="fr">🇫🇷 Français</option>
+    <option value="de">🇩🇪 Deutsch</option>
+    <option value="it">🇮🇹 Italiano</option>
+    <option value="pt">🇧🇷 Português</option>
+    <option value="ja">🇯🇵 日本語</option>
+    <option value="zh">🇨🇳 中文</option>
+    <option value="ar">🇸🇦 العربية</option>
+    <option value="ru">🇷🇺 Русский</option>
+  </select>
+  <textarea class="ti" id="tr-in" rows="3" placeholder="Escribe o pega el texto aquí…" style="margin-top:.4rem"></textarea>
+  <button class="tb" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
+  <div class="rb" id="tr-out" style="display:none;margin-top:.5rem;white-space:pre-wrap"></div>
+</div>
+
+<!-- 20 · CALCULADORA CIENTÍFICA -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span></div>
+  <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
+  <input class="ti" id="calc-display" type="text" placeholder="0" readonly style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default">
+  <div id="calc-btns" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin-top:.4rem"></div>
+</div>
+
+<!-- 21 · GENERADOR DE LOREM IPSUM -->
+<div class="card" data-tags="dev dis">
+  <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
+  <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
+  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+    <label style="font-size:.78rem;color:var(--muted)">Párrafos:</label>
+    <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:60px">
+    <select class="ts" id="lorem-type">
+      <option value="p">Párrafos</option>
+      <option value="w">Palabras</option>
+      <option value="s">Oraciones</option>
+    </select>
+  </div>
+  <button class="tb" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
+  <div class="rb" id="lorem-out" style="display:none;max-height:180px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6;margin-top:.5rem"></div>
+  <button id="lorem-copy" style="display:none" class="tb" onclick="copyLorem()" style="margin-top:.4rem"><i class="fas fa-copy"></i> Copiar</button>
+</div>
+
+<!-- 22 · CONTADOR DE PALABRAS / CARACTERES -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span></div>
+  <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
+  <textarea class="ti" id="wc-input" rows="5" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
+  <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
+</div>
+
+<!-- 23 · CONVERSOR DE COLOR HEX / RGB / HSL -->
+<div class="card" data-tags="dis dev">
+  <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
+  <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
+  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+    <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
+    <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
+  </div>
+  <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+</div>
+
+</div>`
   ).join('');
 
   $('net-score-wrap').style.display = 'block';
 }
+
+// ═══════════════════════════════════════════════════════════
+//  HERRAMIENTAS EXTRA
+// ═══════════════════════════════════════════════════════════
+
+// ── 19 · TRADUCTOR ─────────────────────────────────────────
+async function doTranslate() {
+  const text = document.getElementById('tr-in').value.trim();
+  const from = document.getElementById('tr-from').value;
+  const to   = document.getElementById('tr-to').value;
+  const out  = document.getElementById('tr-out');
+
+  if (!text) { toast('Escribe algo para traducir'); return; }
+  if (from === to) { out.style.display='block'; out.textContent = text; return; }
+
+  out.style.display = 'block';
+  out.textContent = '⏳ Traduciendo…';
+
+  try {
+    // Usando la API gratuita de MyMemory (500 palabras/día gratis, sin key)
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.responseStatus === 200) {
+      out.textContent = data.responseData.translatedText;
+    } else {
+      out.textContent = '❌ Error: ' + (data.responseDetails || 'No se pudo traducir');
+    }
+  } catch(e) {
+    out.textContent = '❌ Sin conexión o límite alcanzado. Intenta de nuevo.';
+  }
+}
+
+// ── 20 · CALCULADORA CIENTÍFICA ────────────────────────────
+(function buildCalc() {
+  const display = () => document.getElementById('calc-display');
+  let expr = '';
+  let lastResult = false;
+
+  const BTN = [
+    ['C','⌫','%','÷'],
+    ['7','8','9','×'],
+    ['4','5','6','−'],
+    ['1','2','3','+'],
+    ['±','0','.','='],
+    ['x²','√','sin','cos'],
+    ['tan','π','e','( )'],
+  ];
+
+  const container = document.getElementById('calc-btns');
+  if (!container) return;
+  container.style.gridTemplateColumns = 'repeat(4,1fr)';
+
+  BTN.forEach(row => row.forEach(lbl => {
+    const b = document.createElement('button');
+    b.textContent = lbl;
+    b.className = 'tb';
+    b.style.cssText = 'padding:.4rem;font-size:.82rem;margin:0';
+    const isOp   = ['÷','×','−','+','='].includes(lbl);
+    const isFn   = ['sin','cos','tan','√','x²','π','e','( )','%','±','⌫','C'].includes(lbl);
+    if (isOp) b.style.background = 'linear-gradient(135deg,var(--p),var(--s))';
+    if (isFn) b.style.background = 'rgba(255,255,255,.08)';
+
+    b.addEventListener('click', () => {
+      const d = display();
+      if (lbl === 'C')  { expr = ''; d.value = '0'; lastResult = false; return; }
+      if (lbl === '⌫')  { expr = expr.slice(0,-1); d.value = expr || '0'; return; }
+      if (lbl === '=') {
+        try {
+          let e = expr
+            .replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')
+            .replace(/π/g,'Math.PI').replace(/e(?![a-z])/g,'Math.E');
+          const r = Function('"use strict"; return (' + e + ')')();
+          expr = isFinite(r) ? String(+r.toFixed(10)) : '❌';
+          d.value = expr;
+          lastResult = true;
+        } catch { d.value = '❌ Error'; expr = ''; }
+        return;
+      }
+      if (lbl === 'x²')    { try { expr = String(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')() ** 2); d.value = expr; } catch{} return; }
+      if (lbl === '√')     { try { expr = String(Math.sqrt(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')())); d.value = expr; } catch{} return; }
+      if (lbl === 'sin')   { try { expr = String(+Math.sin(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
+      if (lbl === 'cos')   { try { expr = String(+Math.cos(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
+      if (lbl === 'tan')   { try { expr = String(+Math.tan(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
+      if (lbl === 'π')     { expr += 'π'; d.value = expr; return; }
+      if (lbl === 'e')     { expr += 'e'; d.value = expr; return; }
+      if (lbl === '±')     { expr = expr.startsWith('-') ? expr.slice(1) : '-'+expr; d.value = expr; return; }
+      if (lbl === '%')     { try { expr = String(+Function('"use strict";return('+expr+')')() / 100); d.value = expr; } catch{} return; }
+      if (lbl === '( )') {
+        const opens = (expr.match(/\(/g)||[]).length;
+        const closes= (expr.match(/\)/g)||[]).length;
+        expr += opens > closes ? ')' : '(';
+        d.value = expr; return;
+      }
+      if (lastResult && /[0-9.]/.test(lbl)) { expr = lbl; }
+      else { expr += lbl; }
+      d.value = expr;
+      lastResult = false;
+    });
+    container.appendChild(b);
+  }));
+})();
+
+// ── 21 · LOREM IPSUM ───────────────────────────────────────
+const LOREM_WORDS = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum'.split(' ');
+
+function loremSentence() {
+  const len = Math.floor(Math.random() * 10) + 8;
+  const words = Array.from({length:len}, () => LOREM_WORDS[Math.floor(Math.random()*LOREM_WORDS.length)]);
+  words[0] = words[0][0].toUpperCase() + words[0].slice(1);
+  return words.join(' ') + '.';
+}
+function loremParagraph() {
+  const sents = Math.floor(Math.random() * 4) + 3;
+  return Array.from({length:sents}, loremSentence).join(' ');
+}
+
+function genLorem() {
+  const n    = Math.max(1, Math.min(10, parseInt(document.getElementById('lorem-n').value) || 2));
+  const type = document.getElementById('lorem-type').value;
+  const out  = document.getElementById('lorem-out');
+  const btn  = document.getElementById('lorem-copy');
+  let result = '';
+
+  if (type === 'p') {
+    result = Array.from({length:n}, loremParagraph).join('
+
+');
+  } else if (type === 's') {
+    result = Array.from({length:n}, loremSentence).join(' ');
+  } else {
+    result = Array.from({length:n}, () => LOREM_WORDS[Math.floor(Math.random()*LOREM_WORDS.length)]).join(' ');
+  }
+
+  out.textContent = result;
+  out.style.display = 'block';
+  btn.style.display = 'inline-flex';
+}
+function copyLorem() {
+  const text = document.getElementById('lorem-out').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('✅ Texto copiado'));
+}
+
+// ── 22 · CONTADOR DE TEXTO ─────────────────────────────────
+function countText() {
+  const text  = document.getElementById('wc-input').value;
+  const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+  const chars  = text.length;
+  const charsNoSp = text.replace(/\s/g,'').length;
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim()).length;
+  const paragraphs= text.split(/\n\n+/).filter(p => p.trim()).length;
+  const readMin   = Math.ceil(words / 200); // 200 palabras/min promedio
+
+  const stats = document.getElementById('wc-stats');
+  const items = [
+    { label: 'Palabras',     value: words.toLocaleString(), icon: 'fa-font' },
+    { label: 'Caracteres',   value: chars.toLocaleString(), icon: 'fa-i-cursor' },
+    { label: 'Sin espacios', value: charsNoSp.toLocaleString(), icon: 'fa-minus' },
+    { label: 'Oraciones',    value: sentences.toLocaleString(), icon: 'fa-circle' },
+    { label: 'Párrafos',     value: paragraphs.toLocaleString(), icon: 'fa-align-left' },
+    { label: 'Lectura',      value: readMin + ' min', icon: 'fa-clock' },
+  ];
+  stats.innerHTML = items.map(i => `
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:.5rem .7rem;display:flex;align-items:center;gap:.5rem">
+      <i class="fas ${i.icon}" style="color:var(--p);font-size:.8rem;width:14px"></i>
+      <div><div style="font-size:.72rem;color:var(--muted)">${i.label}</div>
+      <div style="font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--a)">${i.value}</div></div>
+    </div>`).join('');
+}
+
+// ── 23 · CONVERSOR DE COLORES ──────────────────────────────
+function hexToRgb(hex) {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : null;
+}
+function rgbToHsl(r,g,b) {
+  r/=255; g/=255; b/=255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b);
+  let h,s,l=(max+min)/2;
+  if(max===min){h=s=0}else{
+    const d=max-min; s=l>.5?d/(2-max-min):d/(max+min);
+    switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4}
+    h/=6;
+  }
+  return { h:Math.round(h*360), s:Math.round(s*100), l:Math.round(l*100) };
+}
+
+function convertColor(hex) {
+  document.getElementById('cc-hex').value = hex;
+  renderColorOut(hex);
+}
+function convertColorHex(val) {
+  const hex = val.startsWith('#') ? val : '#' + val;
+  if (/^#[0-9a-f]{6}$/i.test(hex)) {
+    document.getElementById('cc-picker').value = hex;
+    renderColorOut(hex);
+  }
+}
+function renderColorOut(hex) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return;
+  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+  const vals = [
+    { label:'HEX',  val: hex.toUpperCase() },
+    { label:'RGB',  val: `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})` },
+    { label:'HSL',  val: `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)` },
+    { label:'RGBA', val: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 1)` },
+  ];
+  const out = document.getElementById('cc-out');
+  out.innerHTML = vals.map(v => `
+    <div onclick="navigator.clipboard.writeText('${v.val}').then(()=>toast('✅ Copiado: ${v.label}'))"
+      style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:.5rem .7rem;cursor:pointer;transition:all .2s"
+      onmouseover="this.style.borderColor='var(--border-h)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
+      <div style="width:100%;height:6px;border-radius:4px;background:${hex};margin-bottom:.35rem"></div>
+      <div style="font-size:.65rem;color:var(--muted)">${v.label}</div>
+      <div style="font-family:var(--mono);font-size:.72rem;color:var(--a)">${v.val}</div>
+    </div>`).join('');
+}
+
+// Inicializar conversor de color
+convertColor('#ff4500');
+
 </script>
 </body>
 </html>

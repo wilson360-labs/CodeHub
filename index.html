@@ -1763,7 +1763,507 @@
   #ai-fab { right: 12px; bottom: 20px; }
 }
 
-</style>
+
+        /* ═══ HERO ═══════════════════════════════════════════════ */
+        #hero {
+            padding: 2.5rem 0 1.5rem;
+            position: relative;
+        }
+        .hero-inner {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+        @media(max-width:860px){ .hero-inner { grid-template-columns:1fr; } .hero-visual { display:none; } }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem;
+            color: var(--accent);
+            background: rgba(255,189,105,.08);
+            border: 1px solid rgba(255,189,105,.2);
+            padding: .28rem .9rem;
+            border-radius: 20px;
+            margin-bottom: 1.2rem;
+        }
+        .hero-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #00e676;
+            animation: heroDot 2.5s ease-in-out infinite;
+        }
+        @keyframes heroDot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+        .hero-title {
+            font-size: clamp(2rem, 4.5vw, 3.5rem);
+            font-weight: 900;
+            line-height: 1.05;
+            letter-spacing: -.03em;
+            color: rgba(232,232,240,.85);
+            margin-bottom: .9rem;
+        }
+        .hero-name {
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hero-desc {
+            font-size: .95rem;
+            color: rgba(232,232,240,.5);
+            line-height: 1.75;
+            max-width: 480px;
+            margin-bottom: 1.4rem;
+        }
+        .hero-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .4rem;
+            margin-bottom: 1.6rem;
+        }
+        .hero-stack span {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .68rem;
+            color: rgba(232,232,240,.5);
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            padding: .2rem .6rem;
+            border-radius: 6px;
+        }
+        .hero-ctas { display: flex; gap: .65rem; flex-wrap: wrap; }
+        .hero-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .6rem 1.15rem;
+            border-radius: 11px;
+            font-size: .83rem;
+            font-weight: 700;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .hero-btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(255,69,0,.3);
+        }
+        .hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(255,69,0,.45); }
+        .hero-btn-ghost {
+            background: rgba(255,255,255,.05);
+            color: rgba(232,232,240,.65);
+            border: 1px solid rgba(255,255,255,.1);
+        }
+        .hero-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+        /* Hero card de código */
+        .hero-visual { display: flex; justify-content: flex-end; }
+        .hero-card {
+            width: 100%;
+            max-width: 400px;
+            background: rgba(12,12,22,.95);
+            border: 1px solid rgba(255,69,0,.2);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 24px 72px rgba(0,0,0,.6);
+            animation: heroCardIn .8s cubic-bezier(.2,.9,.2,1) .3s both;
+        }
+        @keyframes heroCardIn { from{opacity:0;transform:translateY(24px) rotate(1deg)} to{opacity:1;transform:none} }
+        .hc-header {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .7rem 1rem;
+            background: rgba(255,255,255,.03);
+            border-bottom: 1px solid rgba(255,255,255,.06);
+        }
+        .hc-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .hc-dot.red    { background: #ff5f56; }
+        .hc-dot.yellow { background: #ffbd2e; }
+        .hc-dot.green  { background: #27c93f; }
+        .hc-file {
+            margin-left: .3rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem;
+            color: rgba(232,232,240,.4);
+        }
+        .hc-code {
+            padding: 1.1rem 1.3rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .8rem;
+            line-height: 1.7;
+        }
+        .hc-code pre { margin: 0; white-space: pre-wrap; }
+        .hc-k  { color: #c792ea; }
+        .hc-v  { color: #82aaff; }
+        .hc-p  { color: #f07178; }
+        .hc-s  { color: #c3e88d; }
+        .hc-n  { color: #f78c6c; }
+        .hc-b  { color: #ff9d00; }
+        .hc-c  { color: rgba(232,232,240,.3); font-style: italic; }
+        .hc-footer {
+            display: flex;
+            justify-content: space-between;
+            padding: .5rem 1rem;
+            background: rgba(255,255,255,.02);
+            border-top: 1px solid rgba(255,255,255,.05);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .65rem;
+            color: rgba(232,232,240,.3);
+        }
+        .hc-status { color: #00e676; }
+
+        /* ═══ STATS MEJORADO ════════════════════════════════════ */
+        .stats-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem;
+            color: var(--accent);
+            opacity: .65;
+            margin-bottom: .4rem;
+        }
+        .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: .5rem;
+            opacity: .7;
+        }
+        .stat-sub {
+            font-size: .68rem;
+            color: rgba(232,232,240,.3);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: .2rem;
+        }
+
+        /* ═══ SKILLS CON TABS ════════════════════════════════════ */
+        .skills-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .skills-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem;
+            color: var(--accent);
+            opacity: .65;
+            margin-bottom: .3rem;
+        }
+        .skills-tabs { display: flex; gap: .4rem; }
+        .sk-tab {
+            padding: .35rem .85rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,69,0,.2);
+            background: transparent;
+            color: rgba(232,232,240,.45);
+            font-family: 'Syne', sans-serif;
+            font-size: .75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .18s;
+        }
+        .sk-tab:hover, .sk-tab.active {
+            border-color: var(--primary);
+            color: var(--accent);
+            background: rgba(255,69,0,.1);
+        }
+
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .skills-grid.hidden { display: none !important; }
+
+        .skill-chip {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.1rem 1.3rem;
+            background: rgba(19,19,31,.9);
+            border: 1px solid rgba(255,69,0,.15);
+            border-radius: 14px;
+            transition: all .22s ease;
+        }
+        .skill-chip:hover {
+            border-color: rgba(255,69,0,.4);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0,0,0,.4);
+        }
+        .skill-chip.skill-new {
+            border-color: rgba(16,185,129,.2);
+            flex-direction: column;
+            align-items: flex-start;
+            gap: .6rem;
+        }
+        .skill-chip.skill-new:hover { border-color: rgba(16,185,129,.45); }
+        .skill-chip.skill-new .sc-icon { font-size: 1.6rem; }
+
+        .sc-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            width: 40px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .sc-info { flex: 1; width: 100%; }
+        .sc-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: .45rem;
+            font-size: .88rem;
+            font-weight: 700;
+            color: rgba(232,232,240,.85);
+        }
+        .sc-pct {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .75rem;
+            color: var(--primary);
+        }
+        .sc-pct.sc-badge {
+            background: rgba(16,185,129,.15);
+            color: #10b981;
+            border: 1px solid rgba(16,185,129,.25);
+            padding: .15rem .5rem;
+            border-radius: 20px;
+            font-size: .65rem;
+        }
+        .sc-bar {
+            height: 5px;
+            background: rgba(255,255,255,.07);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .sc-fill {
+            height: 100%;
+            width: var(--w, 0%);
+            background: var(--c, var(--primary));
+            border-radius: 5px;
+            animation: fillBar .9s cubic-bezier(.4,0,.2,1) both;
+        }
+        @keyframes fillBar { from{width:0} to{width:var(--w)} }
+        .sc-desc {
+            font-size: .73rem;
+            color: rgba(232,232,240,.4);
+            margin-top: .4rem;
+            line-height: 1.5;
+        }
+
+        /* Tools badges */
+        .sk-tools-grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+            gap: .55rem !important;
+        }
+        .tool-badge {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .6rem .9rem;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 10px;
+            font-size: .78rem;
+            color: rgba(232,232,240,.6);
+            transition: all .18s;
+        }
+        .tool-badge:hover {
+            border-color: rgba(255,69,0,.3);
+            color: var(--accent);
+            background: rgba(255,69,0,.06);
+        }
+        .tool-badge i { color: var(--primary); width: 16px; }
+
+        /* ═══ PANEL DE CONFIGURACIÓN ══════════════════════════════ */
+        #config-panel {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.65);
+            backdrop-filter: blur(10px);
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all .28s ease;
+        }
+        #config-panel.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .cfg-dialog {
+            width: 92%;
+            max-width: 420px;
+            background: linear-gradient(160deg, rgba(12,12,24,.98), rgba(18,18,34,.98));
+            border: 1px solid rgba(255,69,0,.25);
+            border-radius: 22px;
+            box-shadow: 0 32px 80px rgba(0,0,0,.7);
+            transform: translateY(16px) scale(.96);
+            transition: transform .28s cubic-bezier(.2,.9,.2,1);
+        }
+        #config-panel.open .cfg-dialog { transform: none; }
+
+        .cfg-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.3rem;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .cfg-head-title {
+            font-size: .95rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+        .cfg-head-title i { color: var(--primary); }
+        #cfg-close {
+            background: rgba(255,255,255,.07);
+            border: none;
+            color: rgba(232,232,240,.5);
+            width: 28px; height: 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: all .18s;
+        }
+        #cfg-close:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+        .cfg-body { padding: 1.1rem 1.3rem; display: flex; flex-direction: column; gap: 1.2rem; }
+        .cfg-group { display: flex; flex-direction: column; gap: .55rem; }
+        .cfg-label {
+            font-size: .72rem;
+            font-weight: 700;
+            color: rgba(232,232,240,.4);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .cfg-options { display: flex; gap: .4rem; flex-wrap: wrap; }
+        .cfg-opt {
+            padding: .38rem .85rem;
+            border-radius: 9px;
+            border: 1px solid rgba(255,255,255,.1);
+            background: rgba(255,255,255,.04);
+            color: rgba(232,232,240,.55);
+            font-family: 'Syne', sans-serif;
+            font-size: .8rem;
+            cursor: pointer;
+            transition: all .18s;
+        }
+        .cfg-opt:hover { border-color: rgba(255,69,0,.35); color: var(--accent); }
+        .cfg-opt.active {
+            border-color: var(--primary);
+            background: rgba(255,69,0,.12);
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .cfg-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: .85rem;
+            color: rgba(232,232,240,.6);
+        }
+        .cfg-toggle { position: relative; display: inline-block; width: 42px; height: 24px; }
+        .cfg-toggle input { opacity: 0; width: 0; height: 0; }
+        .cfg-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255,255,255,.12);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: .3s;
+        }
+        .cfg-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            left: 3px; bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .3s;
+        }
+        .cfg-toggle input:checked + .cfg-slider { background: var(--primary); }
+        .cfg-toggle input:checked + .cfg-slider::before { transform: translateX(18px); }
+
+        .cfg-foot {
+            padding: .9rem 1.3rem;
+            border-top: 1px solid rgba(255,255,255,.06);
+        }
+        .cfg-reset {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.1);
+            color: rgba(232,232,240,.45);
+            padding: .4rem .9rem;
+            border-radius: 8px;
+            font-size: .78rem;
+            cursor: pointer;
+            transition: all .18s;
+        }
+        .cfg-reset:hover { border-color: rgba(255,69,0,.3); color: var(--accent); }
+
+        /* Botón config en header */
+        #cfg-btn {
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            color: rgba(232,232,240,.6);
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: all .2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #cfg-btn:hover { border-color: var(--primary); color: var(--accent); background: rgba(255,69,0,.08); }
+        .header-dl-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            background: rgba(255,69,0,.12);
+            border: 1px solid rgba(255,69,0,.25);
+            color: var(--primary);
+            font-size: .85rem;
+            text-decoration: none;
+            transition: all .2s;
+        }
+        .header-dl-btn:hover { background: rgba(255,69,0,.22); transform: translateY(-2px); }
+        .header-yt-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            background: rgba(255,0,0,.1);
+            border: 1px solid rgba(255,0,0,.25);
+            color: #ff0000;
+            font-size: .9rem;
+            text-decoration: none;
+            transition: all .2s;
+        }
+        .header-yt-btn:hover { background: rgba(255,0,0,.22); transform: translateY(-2px); }
+        .social-yt { color: #fff !important; }
+        .social-yt i { color: #ff0000 !important; }
+        .social-yt:hover { border-color: #ff0000 !important; background: rgba(255,0,0,.12) !important; }
+
+        /* Font size cfg */
+        body.font-sm { font-size: 14px; }
+        body.font-lg { font-size: 18px; }
+        body.no-anim *, body.no-anim *::before, body.no-anim *::after {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        </style>
 </head>
 <body>
     <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
@@ -1955,104 +2455,339 @@
                     <li><a href="#timeline">Experiencia</a></li>
                     <li><a href="#latest-projects">Proyectos</a></li>
                     <li><a href="#contact">Contacto</a></li>
+                    <li><a href="downloader.html">⬇ Descargar</a></li>
                 </ul>
             </nav>
 
             <!-- Acciones derecha -->
             <div class="header-actions">
+                <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
+                    <i class="fas fa-sliders"></i>
+                </button>
+                <a href="downloader.html" class="header-dl-btn" title="Descargador de videos">
+                    <i class="fas fa-download"></i>
+                </a>
+                <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="header-yt-btn" title="Canal de YouTube" aria-label="YouTube">
+                    <i class="fab fa-youtube"></i>
+                </a>
                 <button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button>
             </div>
         </div>
         <!-- Typing effect debajo -->
         <div class="header-typing" id="typingEffect"></div>
     </header>
-    
+
+    <!-- ── PANEL DE CONFIGURACIÓN ── -->
+    <div id="config-panel" aria-hidden="true">
+        <div class="cfg-dialog" role="dialog" aria-modal="true" aria-label="Configuración del sitio">
+            <div class="cfg-head">
+                <div class="cfg-head-title"><i class="fas fa-sliders"></i> Configuración</div>
+                <button id="cfg-close" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="cfg-body">
+
+                <!-- Tema -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Tema</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt active" onclick="setCfg('theme','dark',this)">
+                            <i class="fas fa-moon"></i> Oscuro
+                        </button>
+                        <button class="cfg-opt" onclick="setCfg('theme','light',this)">
+                            <i class="fas fa-sun"></i> Claro
+                        </button>
+                        <button class="cfg-opt" onclick="setCfg('theme','auto',this)">
+                            <i class="fas fa-circle-half-stroke"></i> Auto
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tamaño de fuente -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Tamaño de texto</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" onclick="setCfg('font','sm',this)">Pequeño</button>
+                        <button class="cfg-opt active" onclick="setCfg('font','md',this)">Normal</button>
+                        <button class="cfg-opt" onclick="setCfg('font','lg',this)">Grande</button>
+                    </div>
+                </div>
+
+                <!-- Animaciones -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Animaciones</div>
+                    <div class="cfg-toggle-row">
+                        <span>Efectos visuales activos</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" id="cfg-anim" checked onchange="toggleAnim(this)">
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Idioma -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Idioma</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt active" onclick="setCfg('lang','es',this)">🇬🇹 Español</button>
+                        <button class="cfg-opt" onclick="setCfg('lang','en',this)">🇺🇸 English</button>
+                    </div>
+                </div>
+
+                <!-- Red neuronal -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Fondo</div>
+                    <div class="cfg-toggle-row">
+                        <span>Red neuronal animada</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" id="cfg-neural" checked onchange="toggleNeural(this)">
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+            <div class="cfg-foot">
+                <button class="cfg-reset" onclick="resetCfg()">
+                    <i class="fas fa-rotate-left"></i> Restablecer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main>
+        <!-- ── HERO ── -->
+        <section id="hero">
+            <div class="hero-inner">
+                <div class="hero-text">
+                    <div class="hero-tag">
+                        <span class="hero-dot"></span>
+                        Disponible para proyectos · Guatemala 🇬🇹
+                    </div>
+                    <h1 class="hero-title">
+                        Hola, soy<br>
+                        <span class="hero-name">Wilson.E</span>
+                    </h1>
+                    <p class="hero-desc">
+                        Desarrollador web autodidacta. Construyo portfolios, herramientas web, bots con IA y servidores con Node.js. 
+                        Cada proyecto es una oportunidad de aprender algo nuevo.
+                    </p>
+                    <div class="hero-stack">
+                        <span>HTML</span><span>CSS</span><span>JavaScript</span>
+                        <span>Python</span><span>Node.js</span><span>MongoDB</span><span>GPT API</span>
+                    </div>
+                    <div class="hero-ctas">
+                        <a href="#latest-projects" class="hero-btn hero-btn-primary">
+                            <i class="fas fa-folder-open"></i> Ver proyectos
+                        </a>
+                        <a href="#contact" class="hero-btn hero-btn-ghost">
+                            <i class="fas fa-envelope"></i> Contactar
+                        </a>
+                        <a href="tools.html" class="hero-btn hero-btn-ghost">
+                            <i class="fas fa-screwdriver-wrench"></i> Tools
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="hero-card">
+                        <div class="hc-header">
+                            <span class="hc-dot red"></span>
+                            <span class="hc-dot yellow"></span>
+                            <span class="hc-dot green"></span>
+                            <span class="hc-file">wilson.js</span>
+                        </div>
+                        <div class="hc-code">
+<pre><span class="hc-k">const</span> <span class="hc-v">wilson</span> = {
+  <span class="hc-p">nombre</span>: <span class="hc-s">"Wilson.E"</span>,
+  <span class="hc-p">edad</span>: <span class="hc-n">24</span>,
+  <span class="hc-p">país</span>: <span class="hc-s">"Guatemala 🇬🇹"</span>,
+  <span class="hc-p">stack</span>: [<span class="hc-s">"HTML"</span>, <span class="hc-s">"JS"</span>, <span class="hc-s">"Python"</span>],
+  <span class="hc-p">aprendiendo</span>: [
+    <span class="hc-s">"Node.js"</span>, <span class="hc-s">"MongoDB"</span>,
+    <span class="hc-s">"IA APIs"</span>
+  ],
+  <span class="hc-p">disponible</span>: <span class="hc-b">true</span> <span class="hc-c">// ← hire me</span>
+};</pre>
+                        </div>
+                        <div class="hc-footer">
+                            <span class="hc-status">● Online</span>
+                            <span>JS · ES2025</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Stats Section -->
         <section id="stats">
-            <h2>🚀 Mi Trayectoria</h2>
+            <div class="stats-eyebrow">// números reales · actualizado 2025</div>
+            <h2>Mi Trayectoria</h2>
             <div class="stats-section">
                 <div class="stat-card">
-                    <div class="stat-number" data-target="50">0</div>
+                    <div class="stat-icon"><i class="fas fa-folder-open"></i></div>
+                    <div class="stat-number" data-target="20">0</div>
                     <div class="stat-label">Proyectos</div>
+                    <div class="stat-sub">web, tools & apps</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="1000">0</div>
+                    <div class="stat-icon"><i class="fas fa-code"></i></div>
+                    <div class="stat-number" data-target="15000">0</div>
                     <div class="stat-label">Líneas de Código</div>
+                    <div class="stat-sub">solo en CodeHub</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="24">0</div>
-                    <div class="stat-label">Clientes Felices</div>
+                    <div class="stat-icon"><i class="fas fa-screwdriver-wrench"></i></div>
+                    <div class="stat-number" data-target="18">0</div>
+                    <div class="stat-label">Herramientas</div>
+                    <div class="stat-sub">en tools.html</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" data-target="100">0</div>
-                    <div class="stat-label">Cafés ☕</div>
+                    <div class="stat-icon"><i class="fas fa-mobile-screen"></i></div>
+                    <div class="stat-number" data-target="13">0</div>
+                    <div class="stat-label">Apps Premium</div>
+                    <div class="stat-sub">en novedades</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-robot"></i></div>
+                    <div class="stat-number" data-target="2">0</div>
+                    <div class="stat-label">APIs de IA</div>
+                    <div class="stat-sub">integradas en 2025</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">☕</div>
+                    <div class="stat-number" data-target="200">0</div>
+                    <div class="stat-label">Cafés</div>
+                    <div class="stat-sub">y contando</div>
                 </div>
             </div>
         </section>
 
         <!-- Skills Section (SOLO UNA VEZ) -->
         <section id="skills">
-            <h2>💻 Habilidades Técnicas</h2>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-html5"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>HTML5</span>
-                        <span class="skill-percentage">90%</span>
+            <!-- Encabezado con tabs de año -->
+            <div class="skills-header">
+                <div>
+                    <div class="skills-eyebrow">// stack técnico</div>
+                    <h2 style="margin-bottom:0">Habilidades Técnicas</h2>
+                </div>
+                <div class="skills-tabs">
+                    <button class="sk-tab active" onclick="switchSkillTab('core',this)">Core</button>
+                    <button class="sk-tab" onclick="switchSkillTab('2025',this)">✨ 2025</button>
+                    <button class="sk-tab" onclick="switchSkillTab('tools',this)">Tools</button>
+                </div>
+            </div>
+
+            <!-- TAB: Core -->
+            <div class="skills-grid" id="sk-core">
+                <div class="skill-chip">
+                    <div class="sc-icon"><i class="fab fa-html5"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>HTML5</span><span class="sc-pct">90%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:90%"></div></div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 90%;"></div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon" style="color:#264de4"><i class="fab fa-css3-alt"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>CSS3</span><span class="sc-pct">85%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:85%;--c:#264de4"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon" style="color:#f7df1e"><i class="fab fa-js-square"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>JavaScript</span><span class="sc-pct">75%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:75%;--c:#f7df1e"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon" style="color:#3776ab"><i class="fab fa-python"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Python</span><span class="sc-pct">80%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:80%;--c:#3776ab"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon" style="color:#f05032"><i class="fab fa-git-alt"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Git &amp; GitHub</span><span class="sc-pct">70%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:70%;--c:#f05032"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon" style="color:#68a063"><i class="fab fa-node-js"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Node.js</span><span class="sc-pct">65%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:65%;--c:#68a063"></div></div>
                     </div>
                 </div>
             </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-css3-alt"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>CSS3</span>
-                        <span class="skill-percentage">85%</span>
+
+            <!-- TAB: Habilidades 2025 -->
+            <div class="skills-grid hidden" id="sk-2025">
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#10b981"><i class="fas fa-robot"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>IA & Prompt Eng.</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:78%;--c:#10b981"></div></div>
+                        <div class="sc-desc">Claude, GPT-4, integración de APIs de IA en proyectos reales</div>
                     </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 85%;"></div>
+                </div>
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#47a248"><i class="fas fa-database"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>MongoDB + Express</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:70%;--c:#47a248"></div></div>
+                        <div class="sc-desc">Backend con Node.js, API REST, Atlas cloud y servidor en Termux</div>
+                    </div>
+                </div>
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#ff4500"><i class="fas fa-shield-halved"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Seguridad Web</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:65%;--c:#ff4500"></div></div>
+                        <div class="sc-desc">CORS, rate limiting, helmet, variables de entorno, .gitignore</div>
+                    </div>
+                </div>
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#40c4ff"><i class="fas fa-mobile-screen"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Servidor en Termux</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:72%;--c:#40c4ff"></div></div>
+                        <div class="sc-desc">Node.js corriendo en Android, MongoDB Atlas, despliegue móvil</div>
+                    </div>
+                </div>
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#ffbd69"><i class="fas fa-palette"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>UI/UX Avanzado</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:80%;--c:#ffbd69"></div></div>
+                        <div class="sc-desc">Design systems, animaciones CSS, dark mode, responsive</div>
+                    </div>
+                </div>
+                <div class="skill-chip skill-new">
+                    <div class="sc-icon" style="color:#b464ff"><i class="fas fa-code-branch"></i></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>GitHub Pages</span><span class="sc-pct sc-badge">2025</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:85%;--c:#b464ff"></div></div>
+                        <div class="sc-desc">Deploy continuo, CNAME, gestión de repositorios públicos</div>
                     </div>
                 </div>
             </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-js-square"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>JavaScript</span>
-                        <span class="skill-percentage">75%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 75%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-python"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>Python</span>
-                        <span class="skill-percentage">80%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 80%;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="skill">
-                <div class="skill-icon"><i class="fab fa-git-alt"></i></div>
-                <div class="skill-info">
-                    <div class="skill-header">
-                        <span>Git</span>
-                        <span class="skill-percentage">70%</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress" style="width: 70%;"></div>
-                    </div>
-                </div>
+
+            <!-- TAB: Tools -->
+            <div class="skills-grid sk-tools-grid hidden" id="sk-tools">
+                <div class="tool-badge"><i class="fab fa-github"></i> GitHub</div>
+                <div class="tool-badge"><i class="fas fa-terminal"></i> Termux</div>
+                <div class="tool-badge"><i class="fas fa-database"></i> MongoDB Atlas</div>
+                <div class="tool-badge"><i class="fas fa-robot"></i> ChatGPT API</div>
+                <div class="tool-badge"><i class="fas fa-code"></i> VS Code / AndroidIDE</div>
+                <div class="tool-badge"><i class="fas fa-paint-brush"></i> Figma básico</div>
+                <div class="tool-badge"><i class="fas fa-server"></i> Express.js</div>
+                <div class="tool-badge"><i class="fas fa-lock"></i> Helmet + dotenv</div>
+                <div class="tool-badge"><i class="fas fa-qrcode"></i> Web APIs nativas</div>
+                <div class="tool-badge"><i class="fas fa-mobile-alt"></i> Responsive Design</div>
+                <div class="tool-badge"><i class="fas fa-bolt"></i> Canvas API</div>
+                <div class="tool-badge"><i class="fas fa-key"></i> JWT básico</div>
             </div>
         </section>
 
@@ -2455,13 +3190,26 @@
             <p>Este es mi querido pueblo "San Luis Jilotepeque" municipio ubicado en el depto. Jalapa, Guatemala. Aquí crecí y aprendí a soñar en grande.</p>
             
             <!-- Video Section -->
-            <div id="presentacion-video" style="text-align: center; padding: 20px; margin-top: 2rem;">
-                <h2 style="color: orange;">Conoce más</h2>
-                <p>Aquí te comparto un video de mi hermoso pueblo ♥️:</p>
-                <video width="100%" controls style="border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); max-width: 600px;">
-                    <source src="video/video.mp4" type="video/mp4">
-                    Tu navegador no soporta la reproducción de video.
-                </video>
+            <div id="presentacion-video" style="text-align:center;padding:20px;margin-top:2rem;">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;color:rgba(255,189,105,.6);margin-bottom:.5rem">// mi pueblo en video</div>
+                <h2 style="color:#ff6b35;margin-bottom:.5rem">Conoce más</h2>
+                <p style="color:rgba(232,232,240,.5);font-size:.88rem;margin-bottom:1.2rem">San Luis Jilotepeque, Jalapa, Guatemala 🇬🇹</p>
+                <div style="position:relative;max-width:640px;margin:0 auto;border-radius:16px;overflow:hidden;border:1px solid rgba(255,69,0,.25);box-shadow:0 20px 60px rgba(0,0,0,.6)">
+                    <iframe
+                        width="100%"
+                        height="360"
+                        src="https://www.youtube.com/embed?listType=search&list=San+Luis+Jilotepeque+Guatemala"
+                        title="San Luis Jilotepeque"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                        loading="lazy"
+                        style="display:block">
+                    </iframe>
+                </div>
+                <p style="margin-top:.8rem;font-size:.75rem;color:rgba(232,232,240,.3);font-family:'JetBrains Mono',monospace">
+                    ¿Tienes un video mejor? <a href="mailto:wilsonenrique686@gmail.com" style="color:#ff4500">Envíamelo</a>
+                </p>
             </div>
 
             <div class="image-gallery" style="margin-top: 2rem;">
@@ -2506,6 +3254,10 @@
                 <a href="mailto:wilsonenrique686@gmail.com" class="social-link social-em" aria-label="Email">
                     <i class="fas fa-envelope"></i>
                     <span>Email</span>
+                </a>
+                <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="social-link social-yt" aria-label="YouTube">
+                    <i class="fab fa-youtube"></i>
+                    <span>YouTube</span>
                 </a>
             </div>
 
@@ -3545,7 +4297,7 @@
         })();
 
         // Cerrar splash automáticamente a los 8 segundos
-        setTimeout(closeSplash, 8000);
+        setTimeout(closeSplash, 5000);
 
         // Fallback de emergencia a los 10 segundos
         setTimeout(() => {
@@ -3598,25 +4350,44 @@
             setTimeout(typeEffect, isDeleting ? 50 : 100);
         }
 
-        // Visitor Counter Animation
+        // Visitor Counter — real con localStorage
         function animateVisitorCounter() {
-            const target = Math.floor(Math.random() * 1000) + 5000;
+            const KEY_COUNT = 'ch_visits';
+            const KEY_DATE  = 'ch_visit_date';
+            const today = new Date().toDateString();
+
+            let total  = parseInt(localStorage.getItem(KEY_COUNT) || '0');
+            const last = localStorage.getItem(KEY_DATE);
+
+            // Contar solo 1 visita nueva por día por dispositivo
+            if (last !== today) {
+                total += 1;
+                localStorage.setItem(KEY_COUNT, total);
+                localStorage.setItem(KEY_DATE, today);
+            }
+
+            // Animar el número
             const counter = document.getElementById('visitorCount');
-            const duration = 2000;
-            const increment = target / (duration / 16);
-            let current = 0;
-            
-            const updateCounter = () => {
-                current += increment;
-                if (current < target) {
-                    counter.textContent = Math.floor(current).toLocaleString();
-                    requestAnimationFrame(updateCounter);
-                } else {
-                    counter.textContent = target.toLocaleString();
-                }
-            };
-            updateCounter();
+            if (!counter) return;
+            const start = Math.max(0, total - 80);
+            const duration = 1600;
+            const startTime = performance.now();
+
+            function step(now) {
+                const p = Math.min((now - startTime) / duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                counter.textContent = Math.floor(start + (total - start) * ease).toLocaleString();
+                if (p < 1) requestAnimationFrame(step);
+                else counter.textContent = total.toLocaleString();
+            }
+            requestAnimationFrame(step);
         }
+
+        // Actualizar label del counter
+        (function() {
+            const wrap = document.querySelector('.footer-visitors span');
+            if (wrap) wrap.textContent = 'Visitas totales:';
+        })();
 
         // Neural Network Animation
         const canvas = document.getElementById('neural-network');
@@ -4692,12 +5463,20 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     sendAI();
   };
 
-  // ── CONFIGURACIÓN ─────────────────────────────────────────
-  // Cambia esta URL por la IP/dominio de tu servidor Termux
-  // Ejemplo local:     http://localhost:3001
-  // Ejemplo red local: http://192.168.1.XX:3001
-  // Ejemplo producción: https://tudominio.com
-  const API_URL = 'http://localhost:3001/api/chat';
+  // ── CONFIGURACIÓN DEL SERVIDOR ────────────────────────────
+  // Detecta automáticamente si estás en local o producción.
+  // Solo cambia BACKEND_URL cuando tengas tu servidor con IP pública.
+  const BACKEND_URL = (function() {
+    const host = window.location.hostname;
+    // Si es localhost o archivo local → servidor Termux local
+    if (host === 'localhost' || host === '127.0.0.1' || host === '') {
+      return 'http://localhost:3001';
+    }
+    // En producción (GitHub Pages, tu dominio, etc.)
+    // CAMBIA ESTO por la IP/dominio de tu Termux cuando tengas URL pública:
+    return 'http://localhost:3001'; // ← reemplaza con tu URL real
+  })();
+  const API_URL = BACKEND_URL + '/api/chat';
 
   // ID de sesión único por visita (no identifica al usuario, solo la sesión)
   const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -4795,6 +5574,114 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (!isOpen) fab.querySelector('.ai-notif').style.display = 'block';
   }, 8000);
 })();
+
+// ═══ SKILLS TABS ══════════════════════════════════════════════════
+function switchSkillTab(tab, btn) {
+    document.querySelectorAll('.sk-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['sk-core','sk-2025','sk-tools'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', id !== 'sk-' + tab);
+    });
+}
+
+// ═══ CONFIGURACIÓN DEL SITIO ══════════════════════════════════════
+function openCfg() {
+    const p = document.getElementById('config-panel');
+    p.classList.add('open');
+    p.setAttribute('aria-hidden','false');
+    loadCfg();
+}
+function closeCfgPanel() {
+    const p = document.getElementById('config-panel');
+    p.classList.remove('open');
+    p.setAttribute('aria-hidden','true');
+}
+
+document.getElementById('cfg-close')?.addEventListener('click', closeCfgPanel);
+document.getElementById('config-panel')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('config-panel')) closeCfgPanel();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCfgPanel();
+});
+
+function setCfg(key, val, btn) {
+    // Desactivar otros del grupo
+    btn.closest('.cfg-options').querySelectorAll('.cfg-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    localStorage.setItem('cfg_' + key, val);
+
+    if (key === 'theme') {
+        if (val === 'dark')  document.body.classList.remove('light-mode');
+        if (val === 'light') document.body.classList.add('light-mode');
+        if (val === 'auto') {
+            const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.body.classList.toggle('light-mode', !dark);
+        }
+    }
+    if (key === 'font') {
+        document.body.classList.remove('font-sm','font-lg');
+        if (val !== 'md') document.body.classList.add('font-' + val);
+    }
+    if (key === 'lang') {
+        // Placeholder — expansión futura
+        console.log('Idioma:', val);
+    }
+}
+
+function toggleAnim(chk) {
+    localStorage.setItem('cfg_anim', chk.checked ? '1' : '0');
+    document.body.classList.toggle('no-anim', !chk.checked);
+}
+function toggleNeural(chk) {
+    localStorage.setItem('cfg_neural', chk.checked ? '1' : '0');
+    const canvas = document.getElementById('neural-network');
+    if (canvas) canvas.style.opacity = chk.checked ? '1' : '0';
+}
+
+function loadCfg() {
+    const theme  = localStorage.getItem('cfg_theme')  || 'dark';
+    const font   = localStorage.getItem('cfg_font')   || 'md';
+    const anim   = localStorage.getItem('cfg_anim')   !== '0';
+    const neural = localStorage.getItem('cfg_neural') !== '0';
+    const lang   = localStorage.getItem('cfg_lang')   || 'es';
+
+    // Marcar botones activos
+    document.querySelectorAll('[onclick*="setCfg(\'theme\'"]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('onclick').includes("'"+theme+"'"));
+    });
+    document.querySelectorAll('[onclick*="setCfg(\'font\'"]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('onclick').includes("'"+font+"'"));
+    });
+    document.querySelectorAll('[onclick*="setCfg(\'lang\'"]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('onclick').includes("'"+lang+"'"));
+    });
+
+    const animChk = document.getElementById('cfg-anim');
+    if (animChk) animChk.checked = anim;
+    const neuralChk = document.getElementById('cfg-neural');
+    if (neuralChk) neuralChk.checked = neural;
+
+    // Aplicar al cargar
+    document.body.classList.toggle('no-anim', !anim);
+    document.body.classList.remove('font-sm','font-lg');
+    if (font !== 'md') document.body.classList.add('font-' + font);
+    const canvas = document.getElementById('neural-network');
+    if (canvas) canvas.style.opacity = neural ? '1' : '0';
+}
+
+// Aplicar config guardada al cargar la página
+(function() {
+    const font   = localStorage.getItem('cfg_font');
+    const anim   = localStorage.getItem('cfg_anim');
+    const neural = localStorage.getItem('cfg_neural');
+    if (font && font !== 'md') document.body.classList.add('font-' + font);
+    if (anim === '0') document.body.classList.add('no-anim');
+    const canvas = document.getElementById('neural-network');
+    if (canvas && neural === '0') canvas.style.opacity = '0';
+})();
+
 </script>
 </body>
 </html>
