@@ -1,193 +1,402 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeHub - Aplicaciones Premium</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="novedades.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apps Premium — CodeHub by Wilson.E</title>
+<meta name="description" content="Aplicaciones Android con funciones premium desbloqueadas. Spotify, YouTube ReVanced, TikTok y más.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="novedades.css">
 </head>
 <body>
-    <!-- Partículas animadas -->
-    <div class="particles" id="particles"></div>
 
-    <!-- Header -->
-    <header>
-        <div class="header-content">
-            <div class="logo">📱</div>
-            <h1 class="main-title">Aplicaciones Premium</h1>
-            <p class="subtitle">Descubre el poder de las apps desbloqueadas</p>
-            
-            <nav class="nav-container">
-                <a href="#" class="nav-item">🏠 Inicio</a>
-                <a href="#" class="nav-item">🔥 Populares</a>
-                <a href="#" class="nav-item">🆕 Nuevas</a>
-                <a href="#" class="nav-item">⭐ Favoritas</a>
-            </nav>
-        </div>
-    </header>
-    
-    <!-- Información de Seguridad -->
-    <section class="info-seguridad">
-        <h2>Seguridad y Uso Responsable</h2>
-        <p>Para disfrutar de las funciones desbloqueadas de las aplicaciones, recomendamos usarlas de manera responsable. 
-           Asegúrate de descargar solo desde fuentes confiables y protege tu privacidad al instalar cualquier aplicación.</p>
-    </section>
-    
-    <!-- Buscador -->
-    <div class="search-container">
-        <div class="search-wrapper">
-            <input type="text" class="search-input" id="search" placeholder="Buscar aplicaciones premium...">
-            <button class="search-btn" onclick="buscarApp()">🔍</button>
-        </div>
+<div id="pbar"></div>
+<div id="toast"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr">
+    <a class="logo-link" href="index.html">
+      <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
+      <span class="logo-b">CodeHub</span>
+    </a>
+    <div class="hdr-right">
+      <span class="update-badge" id="update-badge">● Actualizado</span>
+      <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Volver</a>
     </div>
-    <!-- Contenedor de Aplicaciones -->
-    <main class="container" id="apps-container">
-        
-        <!-- Spotify Premium -->
-        <div class="app-card">
-            <img src="img/Spotify.png" alt="Spotify Premium">
-            <div class="app-info">
-                <h2>Spotify Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de música sin anuncios y con calidad premium.</p>
-                <a href="https://dl.dropbox.com/scl/fi/5lal2itfo5wizqrxm2i95/Spotify-premium.apk?rlkey=qkcaenco96uri0lpmm8rq4qv9&st=4suu53mo&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-        
-        <!-- Spotify Lite Premium -->
-        <div class="app-card">
-            <img src="img/SpoLite.png" alt="Spotify Lite Premium">
-            <div class="app-info">
-                <h2>Spotify Lite Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de música sin anuncios y con calidad premium en una versión mas liviana pero todas sus funciones premium en excepción de descargas.</p>
-                <a href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
+  </div>
+</header>
 
-        <!-- YouTube ReVanced -->
-        <div class="app-card">
-            <img src="img/YouTube.jpeg" alt="YouTube ReVanced">
-            <div class="app-info">
-                <h2>YouTube ReVanced <span class="update-tag">🆕</span></h2>
-                <p>Accede a YouTube sin anuncios y con funciones premium.</p>
-                <a href="https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin MicroG</a>
-            </div>
-        </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-tag"><span class="hero-dot"></span> 13 apps · Gratis · Solo Android</div>
+  <h1>Apps con todo<br>desbloqueado</h1>
+  <p>Curadas y probadas. Sin registros, sin pagos, solo descarga e instala.</p>
+</section>
 
-        <!-- TikTok Premium -->
-        <div class="app-card">
-            <img src="img/TikTok.svg" alt="TikTok Premium">
-            <div class="app-info">
-                <h2>TikTok Premium <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de TikTok sin anuncios y con más funciones.</p>
-                <a href="https://www.mediafire.com/file/xoxsozv6q9csllm/TikTok_Private_Plus_v38.5.5_%2528MOD%2529_arm8.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://www.mediafire.com/file/ss1xujlvbmpopbi/TikTok_Plugin_v1.66.1.apk/file" class="btn download-btn secondary-btn">Descargar Plugin</a>
-            </div>
-        </div>
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-n"><span id="sc-apps">13</span></div><div class="stat-l">Apps disponibles</div></div>
+  <div class="stat-item"><div class="stat-n"><span id="sc-dl">0</span></div><div class="stat-l">Descargas hoy</div></div>
+  <div class="stat-item"><div class="stat-n"><span id="sc-new">5</span></div><div class="stat-l">Nuevas este mes</div></div>
+</div>
 
-        <!-- Flicks Remix -->
-        <div class="app-card">
-            <img src="img/Netflix.png" alt="Netflix Mod">
-            <div class="app-info">
-                <h2>Flicks Remix <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Mira series y películas sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/gh6tw4a61kfrpk5/Flicks_Remix_4.4.0-PRE.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
+<!-- AVISO SEGURIDAD -->
+<div class="security-banner">
+  <div class="sec-inner">
+    <i class="fas fa-shield-halved"></i>
+    <span>Usa estas apps de forma responsable. Descarga únicamente desde los links aquí listados. Activa "Fuentes desconocidas" en Ajustes → Seguridad antes de instalar archivos .apk.</span>
+  </div>
+</div>
 
-        <!-- TeraBox Premium -->
-        <div class="app-card">
-            <img src="img/Terabox.png" alt="TeraBox Premium">
-            <div class="app-info">
-                <h2>TeraBox Premium <span class="update-tag">⭐</span></h2>
-                <p>Almacenamiento en la nube ilimitado y descargas sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/ztep28ynrzp6mec/Terabox_Premium.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>        
+<!-- CONTROLES -->
+<div class="controls">
+  <div class="search-wrap">
+    <i class="fas fa-search"></i>
+    <input class="search-inp" type="text" id="search" placeholder="Buscar app…" oninput="filterApps()">
+  </div>
+  <div class="cat-chips">
+    <button class="cat-chip on" onclick="filterCat('all',this)">Todas</button>
+    <button class="cat-chip" onclick="filterCat('musica',this)">🎵 Música</button>
+    <button class="cat-chip" onclick="filterCat('video',this)">📺 Video</button>
+    <button class="cat-chip" onclick="filterCat('foto',this)">📸 Foto</button>
+    <button class="cat-chip" onclick="filterCat('util',this)">🛠️ Utilidad</button>
+  </div>
+</div>
 
-        <!-- MX Player Pro -->
-        <div class="app-card">
-            <img src="img/Player.jpg" alt="MX Player Pro">
-            <div class="app-info">
-                <h2>MX Player Pro <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Disfruta de un potente reproductor de video sin anuncios.</p>
-                <a href="https://www.mediafire.com/file/hsak6350wb7uy7g/MX_Player_v1.92.0_%25282001002560%2529_Lite_Mod_arm64-v8a.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
+<!-- GRID DE APPS -->
+<main class="app-grid" id="app-grid">
 
-        <!-- PicsArt Premium -->
-        <div class="app-card">
-            <img src="img/Picsart.jpg" alt="PicsArt Premium">
-            <div class="app-info">
-                <h2>PicsArt Premium <span class="update-tag">🆕</span></h2>
-                <p>Accede a herramientas de edición sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/aupu0p39f2h5oha/Picsart_Premium.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <!-- Remini Pro -->
-        <div class="app-card">
-            <img src="img/Remini.png" alt="Remini Pro">
-            <div class="app-info">
-                <h2>Remini Pro <span class="update-tag">🔄 Actualizada</span></h2>
-                <p>Disfruta de sus funciones desbloqueadas y sin anuncios, algunas de sus funciones estan al lado del servidor.</p>
-                <a href="https://drive.google.com/uc?export=download&id=13SyNMgObxE_hN9YZ2BzgfcZ-u_aWe7qf" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <!-- Magic Eraser Mod -->
-        <div class="app-card">
-            <img src="img/Eraser.jpg" alt="Magic Eraser Mod">
-            <div class="app-info">
-                <h2>Magic Eraser Mod <span class="update-tag">🆕</span></h2>
-                <p>Elimina objetos no deseados de tus fotos sin restricciones.</p>
-                <a href="https://www.mediafire.com/file/dlc9pitwn55j5hk/Magic_Eraser_2.18.2.apk/file" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-        
-        <!-- YouTube Music ReVanced -->
-        <div class="app-card">
-            <img src="img/YTMusic.png" alt="YouTube Music ReVanced">
-            <div class="app-info">
-                <h2>YouTube Music ReVanced <span class="update-tag">🆕</span></h2>
-                <p>Disfruta de YouTube Music sin anuncios, con descargas y reproducción en segundo plano.</p>
-                <a href="https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file" class="btn download-btn">Descargar</a>
-                <a href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" class="btn download-btn secondary-btn">Descargar plugin MicroG</a>
-            </div>
-        </div>
-
-        <!-- CamScanner Mod -->
-        <div class="app-card">
-            <img src="img/CamScanner.jpg" alt="CamScanner Mod">
-            <div class="app-info">
-                <h2>CamScanner Mod <span class="update-tag">🆕</span></h2>
-                <p>Escanea y edita tus documentos sin restricciones.</p>
-                <a href="https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-
-        <!-- DNS AdGuard Pro -->
-        <div class="app-card">
-            <img src="img/dnspro.png" alt="AdGuard Pro">
-            <div class="app-info">
-                <h2>DNS AdGuard Pro <span class="update-tag">🆕</span></h2>
-                <p>Librate de anuncios molestos en un click.</p>
-                <a href="https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0" class="btn download-btn">Descargar</a>
-            </div>
-        </div>
-        
-    </main>
-    <!-- Elementos del sistema de actualización (sin botón manual) -->
-    <div id="loading-indicator" class="loading-indicator">
-        <div class="spinner"></div>
+  <!-- 1 · Spotify Premium -->
+  <div class="app-card" data-cat="musica" data-name="spotify premium">
+    <div class="app-thumb">
+      <img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
     </div>
-    
-    <div id="update-notification" class="update-notification"></div>
+    <div class="app-body">
+      <div class="app-cat-tag">Música</div>
+      <div class="app-name">Spotify Premium</div>
+      <div class="app-desc">Música sin anuncios, calidad máxima, descargas y saltos ilimitados. Sin necesidad de cuenta premium.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/5lal2itfo5wizqrxm2i95/Spotify-premium.apk?rlkey=qkcaenco96uri0lpmm8rq4qv9&st=4suu53mo&dl=0" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
 
-    <!-- Script de actualización desde Pastebin -->
-    <script src="updater.js"></script>
+  <!-- 2 · Spotify Lite Premium -->
+  <div class="app-card" data-cat="musica" data-name="spotify lite premium">
+    <div class="app-thumb">
+      <img src="img/SpoLite.png" alt="Spotify Lite" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎶</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Música</div>
+      <div class="app-name">Spotify Lite Premium</div>
+      <div class="app-desc">Versión liviana con todas las funciones premium activas. Ideal para dispositivos con menos RAM.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 · YouTube ReVanced -->
+  <div class="app-card" data-cat="video" data-name="youtube revanced">
+    <div class="app-thumb">
+      <img src="img/YouTube.jpeg" alt="YouTube ReVanced" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
+      <span class="app-badge badge-hot">🔥 Popular</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Video</div>
+      <div class="app-name">YouTube ReVanced</div>
+      <div class="app-desc">YouTube sin anuncios, con reproductor de fondo, imagen en imagen y más funciones desbloqueadas.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> App APK
+        </a>
+        <a class="dl-btn dl-ghost" href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" onclick="countDl()">
+          <i class="fas fa-puzzle-piece"></i> MicroG
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 · YouTube Music ReVanced -->
+  <div class="app-card" data-cat="musica" data-name="youtube music revanced">
+    <div class="app-thumb">
+      <img src="img/YTMusic.png" alt="YouTube Music" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎧</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Música</div>
+      <div class="app-name">YouTube Music ReVanced</div>
+      <div class="app-desc">Música sin anuncios, reproducción en segundo plano y descargas sin límite. Requiere MicroG.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> App APK
+        </a>
+        <a class="dl-btn dl-ghost" href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" onclick="countDl()">
+          <i class="fas fa-puzzle-piece"></i> MicroG
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 · TikTok Premium -->
+  <div class="app-card" data-cat="video" data-name="tiktok premium">
+    <div class="app-thumb">
+      <img src="img/TikTok.svg" alt="TikTok" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Video</div>
+      <div class="app-name">TikTok Premium</div>
+      <div class="app-desc">TikTok sin anuncios y con más funciones desbloqueadas. Requiere plugin para funcionalidad completa.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/xoxsozv6q9csllm/TikTok_Private_Plus_v38.5.5_%2528MOD%2529_arm8.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> App APK
+        </a>
+        <a class="dl-btn dl-ghost" href="https://www.mediafire.com/file/ss1xujlvbmpopbi/TikTok_Plugin_v1.66.1.apk/file" onclick="countDl()">
+          <i class="fas fa-puzzle-piece"></i> Plugin
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 · Flicks Remix -->
+  <div class="app-card" data-cat="video" data-name="flicks remix netflix">
+    <div class="app-thumb">
+      <img src="img/Netflix.png" alt="Flicks Remix" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎬</div>'">
+      <span class="app-badge badge-upd">🔄 Actualizada</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Video</div>
+      <div class="app-name">Flicks Remix</div>
+      <div class="app-desc">Mira series y películas sin restricciones. Actualizada a la versión más reciente.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/gh6tw4a61kfrpk5/Flicks_Remix_4.4.0-PRE.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 · TeraBox Premium -->
+  <div class="app-card" data-cat="util" data-name="terabox premium nube">
+    <div class="app-thumb">
+      <img src="img/Terabox.png" alt="TeraBox" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>☁️</div>'">
+      <span class="app-badge badge-star">⭐ Destacada</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Utilidad</div>
+      <div class="app-name">TeraBox Premium</div>
+      <div class="app-desc">1 TB de almacenamiento en la nube gratuito con descargas sin restricciones de velocidad.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/ztep28ynrzp6mec/Terabox_Premium.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 · MX Player Pro -->
+  <div class="app-card" data-cat="video" data-name="mx player pro video">
+    <div class="app-thumb">
+      <img src="img/Player.jpg" alt="MX Player" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
+      <span class="app-badge badge-upd">🔄 Actualizada</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Video</div>
+      <div class="app-name">MX Player Pro</div>
+      <div class="app-desc">Potente reproductor multimedia sin anuncios. Soporta todos los formatos de video y audio.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/hsak6350wb7uy7g/MX_Player_v1.92.0_%25282001002560%2529_Lite_Mod_arm64-v8a.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 · PicsArt Premium -->
+  <div class="app-card" data-cat="foto" data-name="picsart premium edicion fotos">
+    <div class="app-thumb">
+      <img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🖼️</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Foto</div>
+      <div class="app-name">PicsArt Premium</div>
+      <div class="app-desc">Edición de fotos y videos profesional con todas las herramientas premium desbloqueadas.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/aupu0p39f2h5oha/Picsart_Premium.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 · Remini Pro -->
+  <div class="app-card" data-cat="foto" data-name="remini pro mejora fotos ia">
+    <div class="app-thumb">
+      <img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✨</div>'">
+      <span class="app-badge badge-upd">🔄 Actualizada</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Foto · IA</div>
+      <div class="app-name">Remini Pro</div>
+      <div class="app-desc">Mejora fotos antiguas o borrosas con IA. Funciones pro desbloqueadas. Algunas requieren conexión.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://drive.google.com/uc?export=download&id=13SyNMgObxE_hN9YZ2BzgfcZ-u_aWe7qf" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 · Magic Eraser -->
+  <div class="app-card" data-cat="foto" data-name="magic eraser borrar objetos fotos">
+    <div class="app-thumb">
+      <img src="img/Eraser.jpg" alt="Magic Eraser" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🪄</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Foto · IA</div>
+      <div class="app-name">Magic Eraser Mod</div>
+      <div class="app-desc">Elimina objetos, personas o imperfecciones de tus fotos con IA en segundos.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/dlc9pitwn55j5hk/Magic_Eraser_2.18.2.apk/file" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 · CamScanner -->
+  <div class="app-card" data-cat="util" data-name="camscanner escanear documentos">
+    <div class="app-thumb">
+      <img src="img/CamScanner.jpg" alt="CamScanner" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📄</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Utilidad</div>
+      <div class="app-name">CamScanner Mod</div>
+      <div class="app-desc">Escanea, edita y comparte documentos en PDF sin límite de páginas ni marca de agua.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 · DNS AdGuard Pro -->
+  <div class="app-card" data-cat="util" data-name="dns adguard bloquear anuncios">
+    <div class="app-thumb">
+      <img src="img/dnspro.png" alt="AdGuard DNS" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛡️</div>'">
+      <span class="app-badge badge-new">🆕 Nuevo</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">Seguridad</div>
+      <div class="app-name">DNS AdGuard Pro</div>
+      <div class="app-desc">Bloquea anuncios y rastreadores a nivel de DNS en todo el dispositivo, sin root.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0" onclick="countDl()">
+          <i class="fas fa-download"></i> Descargar APK
+        </a>
+      </div>
+    </div>
+  </div>
+
+</main><!-- /app-grid -->
+
+<footer>
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · Apps verificadas · Solo para Android · Uso responsable
+</footer>
+
+<script src="updater.js"></script>
+
+<script>
+// ── PROGRESO DE SCROLL ───────────────
+window.addEventListener('scroll', () => {
+  const s = document.documentElement.scrollTop;
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('pbar').style.width = (s / h * 100) + '%';
+});
+
+// ── TOAST ────────────────────────────
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2100);
+}
+
+// ── CONTADOR DESCARGAS (localStorage) ──
+function countDl() {
+  const today = new Date().toDateString();
+  const data = JSON.parse(localStorage.getItem('ch_dl') || '{"date":"","count":0}');
+  const count = data.date === today ? data.count + 1 : 1;
+  localStorage.setItem('ch_dl', JSON.stringify({ date: today, count }));
+  document.getElementById('sc-dl').textContent = count;
+  toast('⬇ Descarga iniciada');
+}
+
+// Cargar contador guardado
+(function() {
+  const today = new Date().toDateString();
+  const data = JSON.parse(localStorage.getItem('ch_dl') || '{"date":"","count":0}');
+  if (data.date === today) document.getElementById('sc-dl').textContent = data.count;
+
+  // Fecha de actualización en badge
+  const d = new Date();
+  document.getElementById('update-badge').textContent = '● ' + d.toLocaleDateString('es-GT', { month: 'short', day: 'numeric' });
+})();
+
+// ── FILTROS ──────────────────────────
+let activeTag = 'all';
+function filterCat(tag, btn) {
+  activeTag = tag;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilter(document.getElementById('search').value);
+}
+
+function filterApps() {
+  applyFilter(document.getElementById('search').value);
+}
+
+function applyFilter(q) {
+  const ql = q.toLowerCase();
+  let visible = 0;
+  document.querySelectorAll('.app-card').forEach(card => {
+    const name = card.dataset.name || '';
+    const cat  = card.dataset.cat || '';
+    const mq = !ql || name.includes(ql);
+    const mt = activeTag === 'all' || cat === activeTag;
+    const show = mq && mt;
+    card.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+
+  // Mensaje sin resultados
+  let noR = document.getElementById('no-results');
+  if (!visible) {
+    if (!noR) {
+      noR = document.createElement('div');
+      noR.id = 'no-results';
+      noR.className = 'no-results';
+      noR.innerHTML = '<i class="fas fa-search" style="font-size:2rem;margin-bottom:.8rem;display:block;opacity:.3"></i>No se encontraron apps para "<b>' + q + '</b>"';
+      document.getElementById('app-grid').appendChild(noR);
+    }
+  } else if (noR) noR.remove();
+}
+</script>
+
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.allorigins.win;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.allorigins.win https://pastebin.com;">
     <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
     <title>Bienvenido a CodeHub</title>
     <!-- Google tag (gtag.js) -->
@@ -14,114 +14,234 @@
       gtag('js', new Date());
       gtag('config', 'G-3YEWZ24PQR');
     </script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6.7.2 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
-    /* ====== CSS: Icono flotante y diálogo profesional ====== */
+    /* ====== NOVEDADES ICON — REDISEÑO PRO ====== */
+#whatsNewIcon {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ff4500 0%, #ff6b35 50%, #ffbd69 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.4rem;
+  z-index: 4000;
+  cursor: pointer;
+  box-shadow:
+    0 8px 32px rgba(255,69,0,0.4),
+    0 0 0 1px rgba(255,255,255,0.08) inset,
+    0 2px 0 rgba(255,255,255,0.2) inset;
+  transition: transform .3s cubic-bezier(.2,.9,.2,1), box-shadow .3s ease;
+  animation: novedadesFloat 4s ease-in-out infinite;
+}
+
+#whatsNewIcon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 19px;
+  background: linear-gradient(135deg, rgba(255,69,0,0.6), rgba(255,189,105,0.3), rgba(255,69,0,0.6));
+  z-index: -1;
+  animation: novedadesBorder 3s linear infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes novedadesBorder {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Punto de notificación */
+#whatsNewIcon::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  background: #00e676;
+  border-radius: 50%;
+  border: 2px solid #0c0c0c;
+  animation: notifPulse 2s ease-in-out infinite;
+}
+
+@keyframes notifPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(0,230,118,0); }
+}
+
+@keyframes novedadesFloat {
+  0%, 100% { transform: translateY(-50%) translateX(0); }
+  50%       { transform: translateY(calc(-50% - 8px)) translateX(-2px); }
+}
+
+#whatsNewIcon:hover {
+  transform: translateY(-50%) scale(1.1) rotate(-5deg);
+  box-shadow: 0 16px 48px rgba(255,69,0,0.6), 0 0 0 1px rgba(255,255,255,0.12) inset;
+}
+
+#whatsNewIcon:focus {
+  outline: 2px solid rgba(255,189,105,0.6);
+  outline-offset: 3px;
+}
+
+/* ====== OVERLAY ====== */
 #whatsNewOverlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   visibility: hidden;
   opacity: 0;
-  transition: opacity .25s ease, visibility .25s ease;
+  transition: opacity .3s ease, visibility .3s ease;
+  z-index: 3999;
 }
 
 #whatsNewOverlay.active {
   visibility: visible;
   opacity: 1;
 }
-/* Icono flotante */
-#whatsNewIcon{
-  position: fixed;
-  right: 28px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 1.6rem;
-  z-index: 4000;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(255,69,0,0.35);
-  transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
-  animation: floatPulse 3s infinite;
-}
-#whatsNewIcon:focus { outline: 2px solid rgba(255,255,255,0.12); transform: translateY(-50%) scale(1.04); }
-#whatsNewIcon:hover{ transform: translateY(-50%) scale(1.08) rotate(8deg); box-shadow: 0 14px 40px rgba(255,69,0,0.55); }
 
-@keyframes floatPulse{
-  0%,100%{ filter: drop-shadow(0 0 8px var(--primary)); transform: translateY(-50%) scale(1); }
-  50%{ filter: drop-shadow(0 0 22px var(--accent)); transform: translateY(-52%) scale(1.03); }
-}
-
-/* Overlay + dialog */
-#whatsNewOverlay{
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(0,0,0,0.65);
-  backdrop-filter: blur(6px);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity .25s ease, visibility .25s ease;
-  z-index: 3999;
-}
-#whatsNewOverlay.active{
-  visibility: visible;
-  opacity: 1;
-}
-
-/* Dialogo */
-.whatsNewDialog{
+/* ====== DIALOG ====== */
+.whatsNewDialog {
   width: 92%;
-  max-width: 420px;
-  background: linear-gradient(180deg, rgba(12,12,18,0.98), rgba(18,18,28,0.98));
-  border-radius: 16px;
-  padding: 20px;
-  border: 3px solid var(--primary); /* contorno anaranjado */
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-  transform: translateY(8px) scale(.98);
+  max-width: 400px;
+  background: linear-gradient(160deg, rgba(14,14,24,0.98) 0%, rgba(20,20,36,0.98) 100%);
+  border-radius: 24px;
+  padding: 28px;
+  border: 1px solid rgba(255,69,0,0.3);
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255,255,255,0.04) inset;
+  transform: translateY(20px) scale(.96);
   opacity: 0;
-  transition: transform .28s cubic-bezier(.2,.9,.2,1), opacity .28s ease;
+  transition: transform .35s cubic-bezier(.2,.9,.2,1), opacity .35s ease;
+  position: relative;
+  overflow: hidden;
 }
-#whatsNewOverlay.active .whatsNewDialog{
+
+/* Brillo superior */
+.whatsNewDialog::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,189,105,0.6), transparent);
+}
+
+#whatsNewOverlay.active .whatsNewDialog {
   transform: translateY(0) scale(1);
   opacity: 1;
 }
 
-/* Texto y botones */
-.whatsNewDialog h3{ margin: 0 0 8px 0; color: var(--accent); font-size: 1.35rem; text-shadow: 0 0 8px rgba(255,69,0,0.12); }
-.whatsNewSub{ color: #cfcfcf; margin-bottom: 14px; }
+.whatsNewDialog h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ff6b35, #ffbd69);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: 'Space Grotesk', sans-serif;
+}
 
-.whatsNewActions{ display:flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-.action-btn{
-  display:flex; align-items:center; gap:10px; justify-content:center;
-  padding: 12px 16px; border-radius: 999px; border: none; font-weight: 700;
+.whatsNewSub {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+.whatsNewActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  font-weight: 600;
+  font-size: 0.92rem;
   cursor: pointer;
-  background: linear-gradient(90deg,#00c853,#4caf50); /* verde */
-  color: #fff; box-shadow: 0 8px 30px rgba(0,200,83,0.18);
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: all .2s ease;
+  font-family: 'Space Grotesk', sans-serif;
 }
-.action-btn:hover{ transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,200,83,0.26); }
 
-/* boton cerrar gris */
-.close-btn{
-  display:inline-flex; align-items:center; gap:10px; margin: 0 auto;
-  padding: 8px 14px; background: #5a5a5a; color: #fff; border: none; border-radius: 12px;
-  cursor: pointer; transition: transform .18s ease, background .18s ease;
+.action-btn:first-child {
+  background: linear-gradient(135deg, rgba(255,69,0,0.2), rgba(255,107,53,0.1));
+  color: #ffbd69;
+  border-color: rgba(255,69,0,0.3);
 }
-.close-btn:hover{ background: #707070; transform: translateY(-2px); }
 
-/* responsive */
-@media (max-width:520px){
-  #whatsNewIcon{ right: 18px; width:56px; height:56px; font-size:1.35rem; }
-  .whatsNewDialog{ padding: 16px; border-radius: 12px; }
+.action-btn:first-child:hover {
+  background: linear-gradient(135deg, rgba(255,69,0,0.35), rgba(255,107,53,0.2));
+  border-color: rgba(255,69,0,0.6);
+  transform: translateX(4px);
 }
-/*fin de la línea del icono*/
+
+.action-btn:last-child {
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.7);
+}
+
+.action-btn:last-child:hover {
+  background: rgba(255,255,255,0.08);
+  transform: translateX(4px);
+}
+
+.action-btn i {
+  font-size: 1.1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: rgba(255,255,255,0.35);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: all .2s ease;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.close-btn:hover {
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.05);
+}
+
+@media (max-width:520px) {
+  #whatsNewIcon { right: 14px; width: 48px; height: 48px; font-size: 1.2rem; }
+  .whatsNewDialog { padding: 20px; border-radius: 18px; }
+}
         * {
             margin: 0;
             padding: 0;
@@ -135,7 +255,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Space Grotesk', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
             color: #ffffff;
             overflow-x: hidden;
@@ -178,41 +298,43 @@
         /* Theme Toggle */
         .theme-toggle {
             position: fixed;
-            top: 20px;
+            top: 72px; /* debajo del header */
             right: 20px;
-            width: 60px;
-            height: 30px;
-            background: rgba(255, 69, 0, 0.2);
+            width: 52px;
+            height: 26px;
+            background: rgba(10,10,20,0.85);
             border-radius: 50px;
             cursor: pointer;
-            z-index: 1001;
-            border: 2px solid var(--primary);
-            transition: all 0.3s ease;
+            z-index: 450;
+            border: 1px solid rgba(255,69,0,0.4);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
 
         .theme-toggle:hover {
-            transform: scale(1.15) rotate(360deg);
-            box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+            border-color: rgba(255,69,0,0.8);
+            box-shadow: 0 0 18px rgba(255,69,0,0.4);
         }
 
         .theme-toggle-circle {
             position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 22px;
-            height: 22px;
-            background: var(--primary);
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             border-radius: 50%;
-            transition: all 0.3s ease;
+            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: white;
+            box-shadow: 0 2px 8px rgba(255,69,0,0.4);
         }
 
         body.light-mode .theme-toggle-circle {
-            transform: translateX(30px);
+            transform: translateX(26px);
         }
 
         /* ========== MENÚ LATERAL EXPERIMENTAL ========== */
@@ -923,68 +1045,189 @@
             background: var(--bg-color);
             color: var(--text-color);
             transition: background 0.3s, color 0.3s;
-            padding-top: 6rem;
+            padding-top: 5rem;
         }
 
-        /* Header Styles */
+        /* ===== HEADER PRO ===== */
         header {
-            padding: 2rem;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(20px);
-            border-bottom: 2px solid rgba(255, 69, 0, 0.3);
+            padding: 0;
+            background: linear-gradient(180deg, rgba(5,5,10,0.97) 0%, rgba(10,10,20,0.95) 100%);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid rgba(255,69,0,0.25);
             position: fixed;
             top: 0;
-            z-index: 100;
-            overflow: hidden;
+            left: 0;
+            width: 100%;
+            z-index: 500;
+            box-sizing: border-box;
+            box-shadow: 0 4px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,69,0,0.15);
+        }
+
+        /* Línea animada bajo el header */
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), var(--accent), var(--primary), transparent);
+            background-size: 200% 100%;
+            animation: headerLine 4s linear infinite;
+        }
+
+        @keyframes headerLine {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Contenedor interno del header */
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.65rem 2rem;
+            max-width: 1300px;
+            margin: 0 auto;
+            gap: 1.5rem;
+        }
+
+        /* Logo */
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+
+        .header-logo-text {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .header-logo-text .bracket {
+            color: var(--primary);
+            text-shadow: 0 0 12px rgba(255,69,0,0.6);
+        }
+
+        .header-logo-badge {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--accent);
+            background: rgba(255,69,0,0.12);
+            border: 1px solid rgba(255,69,0,0.3);
+            padding: 2px 7px;
+            border-radius: 20px;
+            letter-spacing: 0.05em;
+        }
+
+        /* Nav central */
+        header nav {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            margin: 0;
+            padding: 0;
+            flex-wrap: nowrap;
+        }
+
+        nav li {
+            display: flex;
+            align-items: center;
+        }
+
+        nav a {
+            color: rgba(255,255,255,0.72);
+            text-decoration: none;
+            padding: 0.38rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%) scaleX(0);
+            width: 60%;
+            height: 1.5px;
+            background: var(--primary);
+            border-radius: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        nav a:hover {
+            color: #fff;
+            background: rgba(255,69,0,0.1);
+        }
+
+        nav a:hover::after {
+            transform: translateX(-50%) scaleX(1);
+        }
+
+        /* Acciones del header (derecha) */
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
         }
 
         #theme-toggle {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: var(--accent-color);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            font-size: 1.2rem;
-            transition: background 0.3s;
-        }
-
-        #theme-toggle:hover {
-            background: #ff6b35;
+            display: none;
         }
 
         #beta-btn {
-            background: var(--accent-color);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
+            padding: 0.38rem 0.9rem;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.3s;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            transition: all 0.25s ease;
+            box-shadow: 0 3px 12px rgba(255,69,0,0.3);
+            white-space: nowrap;
         }
 
         #beta-btn:hover {
-            background: #ff6b35;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,69,0,0.5);
         }
 
         #update-btn {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.3s;
+            display: none; /* oculto en el nav, accesible via menú experimental */
         }
 
-        #update-btn:hover {
-            background: #ff6b35;
+        /* Typing bajo el nav — en mobile */
+        .header-typing {
+            text-align: center;
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.45);
+            padding: 0 2rem 0.4rem;
+            letter-spacing: 0.04em;
+            min-height: 1.1em;
         }
 
         /* Accesibilidad */
@@ -1035,47 +1278,8 @@
             margin: 1.5rem 0;
         }
 
-        nav ul {
-            list-style: none;
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-        }
-
-        nav a {
-            color: #ffffff;
-            text-decoration: none;
-            padding: 0.8rem 1.5rem;
-            border: 2px solid transparent;
-            border-radius: 50px;
-            background: linear-gradient(45deg, rgba(255, 69, 0, 0.1), rgba(255, 107, 53, 0.1));
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        nav a::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        nav a:hover::before {
-            left: 100%;
-        }
-
-        nav a:hover {
-            border-color: var(--primary);
-            box-shadow: 0 0 20px rgba(255, 69, 0, 0.5);
-            transform: translateY(-3px);
-        }
+        /* nav ul ya definido arriba en header PRO */
+        nav a::before { display: none; } /* eliminar el shimmer anterior que interfiere */
 
         /* Main Content */
         main {
@@ -1341,7 +1545,225 @@
         }
 
         /* Continúa en Parte 2... */
-    </style>
+    
+/* ═══════════════════════════════════════════
+   ASISTENTE IA — CODEHUB AI CHAT
+   ═══════════════════════════════════════════ */
+#ai-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 28px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+  border: none;
+  color: #fff;
+  font-size: 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 4500;
+  box-shadow: 0 6px 28px rgba(108,58,245,.45);
+  transition: all .25s cubic-bezier(.2,.9,.2,1);
+  animation: aiFabPop .6s ease both 1s;
+}
+@keyframes aiFabPop {
+  0%   { opacity:0; transform: scale(0) rotate(-180deg) }
+  80%  { transform: scale(1.1) rotate(5deg) }
+  100% { opacity:1; transform: scale(1) rotate(0) }
+}
+#ai-fab:hover { transform: scale(1.12) rotate(-5deg); box-shadow: 0 10px 36px rgba(108,58,245,.6); }
+#ai-fab .ai-notif {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 13px; height: 13px;
+  background: #ff4500;
+  border-radius: 50%;
+  border: 2px solid #080810;
+  animation: notifBlink 2s infinite;
+}
+@keyframes notifBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+#ai-panel {
+  position: fixed;
+  right: 24px;
+  bottom: 94px;
+  width: 360px;
+  max-height: 520px;
+  background: linear-gradient(160deg, rgba(12,12,24,.98) 0%, rgba(18,18,32,.98) 100%);
+  border: 1px solid rgba(108,58,245,.35);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  z-index: 4499;
+  box-shadow: 0 24px 72px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04) inset;
+  backdrop-filter: blur(20px);
+  transform: scale(.92) translateY(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: all .3s cubic-bezier(.2,.9,.2,1);
+}
+#ai-panel.open {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+  pointer-events: all;
+}
+
+.ai-head {
+  padding: 1rem 1.1rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-shrink: 0;
+}
+.ai-head-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .95rem; flex-shrink: 0;
+}
+.ai-head-info { flex: 1 }
+.ai-head-title { font-size: .9rem; font-weight: 700; color: #fff; }
+.ai-head-sub { font-size: .68rem; color: rgba(232,232,240,.45); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+#ai-close-btn {
+  background: rgba(255,255,255,.07);
+  border: none;
+  color: rgba(232,232,240,.5);
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .85rem;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center;
+}
+#ai-close-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+#ai-msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: .9rem;
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  scroll-behavior: smooth;
+}
+#ai-msgs::-webkit-scrollbar { width: 4px; }
+#ai-msgs::-webkit-scrollbar-track { background: transparent; }
+#ai-msgs::-webkit-scrollbar-thumb { background: rgba(108,58,245,.4); border-radius: 4px; }
+
+.ai-msg {
+  max-width: 88%;
+  padding: .65rem .9rem;
+  border-radius: 14px;
+  font-size: .83rem;
+  line-height: 1.55;
+  animation: msgIn .25s ease;
+}
+@keyframes msgIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+.ai-msg.user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(108,58,245,.35), rgba(64,196,255,.2));
+  border: 1px solid rgba(108,58,245,.3);
+  color: #e8e8f0;
+  border-bottom-right-radius: 4px;
+}
+.ai-msg.ai {
+  align-self: flex-start;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.09);
+  color: rgba(232,232,240,.85);
+  border-bottom-left-radius: 4px;
+}
+.ai-msg.typing {
+  align-self: flex-start;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  color: rgba(232,232,240,.4);
+  font-style: italic;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .75rem;
+}
+.ai-msg strong { color: #fff; font-weight: 600; }
+.ai-msg code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .75rem;
+  background: rgba(0,0,0,.3);
+  padding: .1rem .35rem;
+  border-radius: 4px;
+  color: #40c4ff;
+}
+
+.ai-suggestions {
+  padding: 0 .9rem .7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  flex-shrink: 0;
+}
+.ai-sug-btn {
+  padding: .32rem .75rem;
+  border-radius: 20px;
+  border: 1px solid rgba(108,58,245,.3);
+  background: rgba(108,58,245,.08);
+  color: rgba(232,232,240,.6);
+  font-family: 'Syne', sans-serif;
+  font-size: .72rem;
+  cursor: pointer;
+  transition: all .18s;
+}
+.ai-sug-btn:hover { border-color: rgba(108,58,245,.6); color: #e8e8f0; background: rgba(108,58,245,.15); }
+
+.ai-input-row {
+  padding: .75rem .9rem .9rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex;
+  gap: .5rem;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+#ai-input {
+  flex: 1;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  color: #e8e8f0;
+  font-family: 'Syne', sans-serif;
+  font-size: .83rem;
+  padding: .6rem .85rem;
+  outline: none;
+  resize: none;
+  max-height: 100px;
+  min-height: 38px;
+  transition: border-color .2s;
+  line-height: 1.4;
+}
+#ai-input:focus { border-color: rgba(108,58,245,.5); }
+#ai-input::placeholder { color: rgba(232,232,240,.3); }
+#ai-send-btn {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+  border: none;
+  color: #fff;
+  font-size: .95rem;
+  cursor: pointer;
+  transition: all .2s;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+#ai-send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(108,58,245,.4); }
+#ai-send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+@media (max-width: 480px) {
+  #ai-panel { width: calc(100vw - 24px); right: 12px; bottom: 88px; }
+  #ai-fab { right: 12px; bottom: 20px; }
+}
+
+</style>
 </head>
 <body>
     <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
@@ -1389,7 +1811,7 @@
         </div>
 
         <div class="menu-item" onclick="activateScreenShake()">
-            <i class="fas fa-震"></i>
+            <i class="fas fa-wave-square"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Screen Shake</div>
                 <div class="menu-item-desc">Vibración de pantalla extrema</div>
@@ -1405,7 +1827,7 @@
         </div>
 
         <div class="menu-item" onclick="activateRainbowScroll()">
-            <i class="fas fa-rainbow"></i>
+            <i class="fas fa-palette"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Rainbow Scroll</div>
                 <div class="menu-item-desc">Colores al hacer scroll</div>
@@ -1515,21 +1937,34 @@
     </div>
 
     <header>
-        <h1>Bienvenido 👋</h1>
-        <div class="typing-effect" id="typingEffect"></div>
-        <nav aria-label="Principal">
-            <ul>
-                <li><a href="#stats">Estadísticas</a></li>
-                <li><a href="#skills">Habilidades</a></li>
-                <li><a href="#services">Servicios</a></li>
-                <li><a href="#timeline">Experiencia</a></li>
-                <li><a href="#latest-projects">Proyectos</a></li>
-                <li><a href="#contact">Contacto</a></li>
-                <li><button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button></li>
-                <li><button id="update-btn" aria-label="Buscar actualizaciones">🔄 Actualizar</button></li>
-            </ul>
-        </nav>
-        <button id="theme-toggle" aria-label="Cambiar tema">🌙</button>
+        <div class="header-inner">
+            <!-- Logo -->
+            <a class="header-logo" href="#">
+                <span class="header-logo-text">
+                    <span class="bracket">&lt;</span>Wilson.E<span class="bracket">/&gt;</span>
+                </span>
+                <span class="header-logo-badge">CodeHub</span>
+            </a>
+
+            <!-- Nav central -->
+            <nav aria-label="Principal">
+                <ul>
+                    <li><a href="#stats">Estadísticas</a></li>
+                    <li><a href="#skills">Habilidades</a></li>
+                    <li><a href="#services">Servicios</a></li>
+                    <li><a href="#timeline">Experiencia</a></li>
+                    <li><a href="#latest-projects">Proyectos</a></li>
+                    <li><a href="#contact">Contacto</a></li>
+                </ul>
+            </nav>
+
+            <!-- Acciones derecha -->
+            <div class="header-actions">
+                <button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button>
+            </div>
+        </div>
+        <!-- Typing effect debajo -->
+        <div class="header-typing" id="typingEffect"></div>
     </header>
     
     <main>
@@ -1635,7 +2070,7 @@
                     <p>Creación de sitios web modernos, responsive y optimizados para SEO.</p>
                 </div>
                 <div class="service-card">
-                    <i class="fas fa-mobile-alt service-icon"></i>
+                    <i class="fas fa-mobile-screen service-icon"></i>
                     <h3>Diseño Responsive</h3>
                     <p>Diseños que se adaptan perfectamente a cualquier dispositivo.</p>
                 </div>
@@ -1731,54 +2166,172 @@
 
         <!-- Latest Projects -->
         <section id="latest-projects">
-            <h2>🎨 Últimos Proyectos</h2>
-            <div class="projects-modern-grid">
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fab fa-python"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Python Automation Suite</h3>
-                        <p class="project-desc">Suite completa de scripts de automatización para tareas cotidianas, web scraping y análisis de datos.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">Python</span>
-                            <span class="project-tag">Automation</span>
-                            <span class="project-tag">Web Scraping</span>
-                        </div>
-                    </div>
+            <!-- Encabezado con filtros -->
+            <div class="proj-header">
+                <div>
+                    <div class="proj-eyebrow">// proyectos seleccionados</div>
+                    <h2 style="-webkit-text-fill-color:transparent;background:linear-gradient(135deg,#fff 0%,var(--accent) 55%,var(--primary) 100%);-webkit-background-clip:text;background-clip:text;margin-bottom:0">Trabajo Reciente</h2>
                 </div>
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Portfolio Interactivo</h3>
-                        <p class="project-desc">Sitio web personal con animaciones avanzadas, efectos 3D y experiencia de usuario optimizada.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">HTML5</span>
-                            <span class="project-tag">CSS3</span>
-                            <span class="project-tag">JavaScript</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="project-modern-card">
-                    <div class="project-image">
-                        <i class="fas fa-gamepad"></i>
-                    </div>
-                    <div class="project-content">
-                        <h3 class="project-title">Juegos Web Clásicos</h3>
-                        <p class="project-desc">Implementación de juegos clásicos como Snake y Tetris con JavaScript vanilla y Canvas HTML5.</p>
-                        <div class="project-tags">
-                            <span class="project-tag">JavaScript</span>
-                            <span class="project-tag">Canvas</span>
-                            <span class="project-tag">Game Dev</span>
-                        </div>
-                        <a href="https://play.google.com/store" target="_blank" class="google-play-badge" aria-label="Disponible en Google Play">
-                            <img src="https://play.google.com/intl/en_us/badges/static/images/badges/es_badge_web_generic.png" alt="Disponible en Google Play" style="height: 40px;">
-                        </a>
-                    </div>
+                <div class="proj-filters">
+                    <button class="pf-btn active" onclick="filterProjects('all',this)">Todos</button>
+                    <button class="pf-btn" onclick="filterProjects('web',this)">Web</button>
+                    <button class="pf-btn" onclick="filterProjects('python',this)">Python</button>
+                    <button class="pf-btn" onclick="filterProjects('tools',this)">Tools</button>
                 </div>
             </div>
+
+            <!-- Grid de proyectos -->
+            <div class="proj-grid" id="proj-grid">
+
+                <!-- 1 · CodeHub Portfolio -->
+                <article class="proj-card featured" data-cat="web">
+                    <div class="proj-thumb" style="--g1:#ff4500;--g2:#ff6b35">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon"><i class="fas fa-globe"></i></div>
+                        <div class="proj-thumb-lines">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <div class="proj-status live">En vivo</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2024–2025</span>
+                            <span class="proj-cat">Portfolio</span>
+                        </div>
+                        <h3 class="proj-title">CodeHub Portfolio</h3>
+                        <p class="proj-desc">Portfolio personal interactivo con splash screen animado, red neuronal en canvas, modo oscuro/claro, 18 herramientas integradas y experiencia de usuario única.</p>
+                        <div class="proj-stack">
+                            <span>HTML5</span><span>CSS3</span><span>JavaScript</span><span>Canvas API</span>
+                        </div>
+                        <div class="proj-actions">
+                            <a href="index.html" class="proj-btn proj-btn-primary"><i class="fas fa-eye"></i> Ver proyecto</a>
+                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-comment"></i> Contactar</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 2 · Tools Suite -->
+                <article class="proj-card" data-cat="tools">
+                    <div class="proj-thumb" style="--g1:#40c4ff;--g2:#0088cc">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon"><i class="fas fa-screwdriver-wrench"></i></div>
+                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
+                        <div class="proj-status wip">18 tools</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2025</span>
+                            <span class="proj-cat">Herramientas</span>
+                        </div>
+                        <h3 class="proj-title">DevTools Suite</h3>
+                        <p class="proj-desc">Colección de 18 herramientas client-side: generador QR, hash SHA-256, regex tester, UUID, conversor de monedas, Pomodoro y más. Zero dependencias de backend.</p>
+                        <div class="proj-stack">
+                            <span>JavaScript</span><span>Web Crypto API</span><span>Canvas</span>
+                        </div>
+                        <div class="proj-actions">
+                            <a href="tools.html" class="proj-btn proj-btn-primary"><i class="fas fa-arrow-right"></i> Explorar tools</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 3 · Python Automation -->
+                <article class="proj-card" data-cat="python">
+                    <div class="proj-thumb" style="--g1:#ffbd69;--g2:#ff8c00">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon"><i class="fab fa-python"></i></div>
+                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
+                        <div class="proj-status done">Completado</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2024</span>
+                            <span class="proj-cat">Automatización</span>
+                        </div>
+                        <h3 class="proj-title">Python Automation Suite</h3>
+                        <p class="proj-desc">Scripts de automatización para tareas repetitivas: web scraping con BeautifulSoup, manipulación de archivos, notificaciones automáticas y análisis básico de datos.</p>
+                        <div class="proj-stack">
+                            <span>Python</span><span>BeautifulSoup</span><span>Requests</span><span>Pandas</span>
+                        </div>
+                        <div class="proj-actions">
+                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-envelope"></i> Solicitar código</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 4 · Juegos Web -->
+                <article class="proj-card" data-cat="web">
+                    <div class="proj-thumb" style="--g1:#b464ff;--g2:#7c3aed">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon"><i class="fas fa-gamepad"></i></div>
+                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
+                        <div class="proj-status live">Jugable</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2024</span>
+                            <span class="proj-cat">Game Dev</span>
+                        </div>
+                        <h3 class="proj-title">Arcade Web Classics</h3>
+                        <p class="proj-desc">Reimplementación de clásicos arcade — Snake con niveles y puntuación, Tetris con piezas animadas — completamente en JavaScript vanilla y Canvas HTML5.</p>
+                        <div class="proj-stack">
+                            <span>JavaScript</span><span>Canvas API</span><span>CSS Animations</span>
+                        </div>
+                        <div class="proj-actions">
+                            <button class="proj-btn proj-btn-primary" onclick="openGameWindow('snake')"><i class="fas fa-play"></i> Jugar Snake</button>
+                            <button class="proj-btn proj-btn-ghost" onclick="openGameWindow('tetris')"><i class="fas fa-play"></i> Tetris</button>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 5 · App Store (novedades) -->
+                <article class="proj-card" data-cat="tools">
+                    <div class="proj-thumb" style="--g1:#00e676;--g2:#00b248">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon"><i class="fas fa-mobile-screen"></i></div>
+                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
+                        <div class="proj-status live">Activo</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2024–2025</span>
+                            <span class="proj-cat">Catálogo</span>
+                        </div>
+                        <h3 class="proj-title">App Premium Store</h3>
+                        <p class="proj-desc">Catálogo curado de aplicaciones Android con funciones desbloqueadas, búsqueda en tiempo real, sistema de categorías y actualizaciones periódicas.</p>
+                        <div class="proj-stack">
+                            <span>HTML5</span><span>CSS3</span><span>JavaScript</span>
+                        </div>
+                        <div class="proj-actions">
+                            <a href="novedades.html" class="proj-btn proj-btn-primary"><i class="fas fa-store"></i> Ver tienda</a>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- 6 · Próximo proyecto -->
+                <article class="proj-card proj-upcoming" data-cat="python">
+                    <div class="proj-thumb" style="--g1:#444;--g2:#222">
+                        <div class="proj-thumb-bg"></div>
+                        <div class="proj-thumb-icon" style="opacity:.35"><i class="fas fa-lock"></i></div>
+                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
+                        <div class="proj-status soon">Pronto</div>
+                    </div>
+                    <div class="proj-body">
+                        <div class="proj-meta">
+                            <span class="proj-year">2025</span>
+                            <span class="proj-cat">En desarrollo</span>
+                        </div>
+                        <h3 class="proj-title">Próximo Proyecto</h3>
+                        <p class="proj-desc" style="color:var(--muted)">Algo nuevo está en camino. Suscríbete a las novedades o escríbeme para saber antes que nadie qué viene.</p>
+                        <div class="proj-stack">
+                            <span style="opacity:.5">???</span>
+                        </div>
+                        <div class="proj-actions">
+                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-bell"></i> Avisarme</button>
+                        </div>
+                    </div>
+                </article>
+
+            </div><!-- /proj-grid -->
         </section>
 
         <!-- Testimonials -->
@@ -1802,29 +2355,83 @@
             <p>Hola, soy Wilson.E. Soy Programador nivel medio de Ciudad de Guatemala🇬🇹, tengo 24 años y me apasiona crear proyectos a futuro para mejorar mi experiencia en programación. Aquí puedes conocer más sobre mí y a qué me dedico :).</p>
         </section>
         
-        <section id="projects">
-            <h2>Proyectos</h2>
-            <p>Aquí puedes ver algunos de mis proyectos recientes:</p>
-            <ul>
-                <li>Proyecto 1 - Python scripts</li>
-                <li>Proyecto 2 - HTML desarrollador web</li>
-                <li>Proyecto 3 - CSS en proceso</li>
-            </ul>
-        </section>
-        
         <section id="contact">
-            <h2>Contacto</h2>
-            <p>Puedes contactarme a través de:</p>
-            <ul>
-                <li>
-                    Email: wilsonenrique686@gmail.com
-                    <button class="copy-email" onclick="copyEmail()">
-                        <i class="fas fa-copy"></i> Copiar Email
-                    </button>
-                </li>
-                <li>Telegram: <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--accent);">Contacto Telegram</a></li>
-                <li>WhatsApp: <a href="https://wa.me/50241468185" target="_blank" style="color: var(--accent);">Contacto WhatsApp</a></li>
-            </ul>
+            <div class="contact-wrap">
+                <!-- Info izquierda -->
+                <div class="contact-info">
+                    <div class="contact-eyebrow">// hablemos</div>
+                    <h2 class="contact-title">¿Tienes un<br>proyecto en mente?</h2>
+                    <p class="contact-sub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
+
+                    <div class="contact-links">
+                        <a href="mailto:wilsonenrique686@gmail.com" class="clink">
+                            <div class="clink-icon"><i class="fas fa-envelope"></i></div>
+                            <div>
+                                <div class="clink-label">Email directo</div>
+                                <div class="clink-val">wilsonenrique686@gmail.com</div>
+                            </div>
+                        </a>
+                        <a href="https://wa.me/50241468185" target="_blank" class="clink">
+                            <div class="clink-icon" style="background:rgba(37,211,102,.12);color:#25d366"><i class="fab fa-whatsapp"></i></div>
+                            <div>
+                                <div class="clink-label">WhatsApp</div>
+                                <div class="clink-val">+502 4146 8185</div>
+                            </div>
+                        </a>
+                        <a href="https://t.me/d3exg3aeyag1ko" target="_blank" class="clink">
+                            <div class="clink-icon" style="background:rgba(0,136,204,.12);color:#0088cc"><i class="fab fa-telegram"></i></div>
+                            <div>
+                                <div class="clink-label">Telegram</div>
+                                <div class="clink-val">@d3exg3aeyag1ko</div>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="contact-status">
+                        <span class="status-dot"></span>
+                        <span>Disponible para proyectos nuevos</span>
+                    </div>
+                </div>
+
+                <!-- Formulario derecha -->
+                <div class="contact-form-wrap">
+                    <form id="contact-form" onsubmit="sendEmail(event)" novalidate>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="cf-name">Nombre</label>
+                                <input class="form-input" type="text" id="cf-name" name="from_name" placeholder="Tu nombre" required autocomplete="name">
+                                <div class="form-err" id="err-name"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="cf-email">Email</label>
+                                <input class="form-input" type="email" id="cf-email" name="reply_to" placeholder="tu@email.com" required autocomplete="email">
+                                <div class="form-err" id="err-email"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cf-subject">Asunto</label>
+                            <select class="form-input form-select" id="cf-subject" name="subject">
+                                <option value="Proyecto Web">💻 Proyecto Web</option>
+                                <option value="Automatización Python">🐍 Automatización Python</option>
+                                <option value="Consultoría">🤝 Consultoría</option>
+                                <option value="Colaboración">🚀 Colaboración</option>
+                                <option value="Otro">📌 Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cf-msg">Mensaje</label>
+                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" required rows="5"></textarea>
+                            <div class="form-err" id="err-msg"></div>
+                            <div class="form-char"><span id="char-count">0</span>/500</div>
+                        </div>
+                        <button type="submit" class="form-submit" id="form-submit">
+                            <span id="submit-text"><i class="fas fa-paper-plane"></i> Enviar mensaje</span>
+                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> Enviando…</span>
+                        </button>
+                        <div id="form-feedback" class="form-feedback"></div>
+                    </form>
+                </div>
+            </div>
         </section>
         
         <!-- Game Section -->
@@ -1836,7 +2443,7 @@
                     <i class="fas fa-gamepad"></i> Jugar a la Serpiente
                 </button>
                 <button onclick="openGameWindow('tetris')">
-                    <i class="fas fa-th"></i> Jugar a Tetris
+                    <i class="fas fa-table-cells"></i> Jugar a Tetris
                 </button>
             </div>
         </section>
@@ -1879,30 +2486,41 @@
     
     <footer>
         <div class="footer-content">
-            <div class="visitor-counter">
-                <i class="fas fa-eye"></i>
-                <span>Visitantes:</span>
-                <span class="visitor-number" id="visitorCount">0</span>
+            <!-- Terminal signature -->
+            <div class="footer-terminal">
+                <span class="footer-prompt">wilson@codehub<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
+                <span class="footer-cmd"> echo "Código con pasión desde Guatemala 🇬🇹"</span>
+                <span class="footer-cursor">█</span>
             </div>
-            <p style="margin-top: 1rem;">&copy; 2024 Wilson.E 🚀. Todos los derechos reservados.</p>
-            <div style="margin-top: 1.5rem; display: flex; gap: 1.5rem; justify-content: center; font-size: 1.5rem;">
-                </a>
-                <a href="https://wa.me/50241468185" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+
+            <!-- Redes sociales -->
+            <div class="footer-socials">
+                <a href="https://wa.me/50241468185" target="_blank" class="social-link social-wa" aria-label="WhatsApp">
                     <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
                 </a>
-                <a href="https://t.me/d3exg3aeyag1ko" target="_blank" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                <a href="https://t.me/d3exg3aeyag1ko" target="_blank" class="social-link social-tg" aria-label="Telegram">
                     <i class="fab fa-telegram"></i>
+                    <span>Telegram</span>
                 </a>
-                <a href="mailto:wilsonenrique686@gmail.com" style="color: var(--primary); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform='scale(1)'">
+                <a href="mailto:wilsonenrique686@gmail.com" class="social-link social-em" aria-label="Email">
                     <i class="fas fa-envelope"></i>
+                    <span>Email</span>
                 </a>
             </div>
-            <p style="margin-top: 1.5rem; color: var(--accent); font-size: 0.9rem;">
-                Presiona <kbd style="background: var(--primary); padding: 2px 8px; border-radius: 4px;">Ctrl + K</kbd> para búsqueda rápida
-            </p>
-            <p style="margin-top: 0.5rem; color: #888; font-size: 0.85rem;">
-                Hecho con 💻 y ☕ desde Guatemala 🇬🇹
-            </p>
+
+            <!-- Visitor counter -->
+            <div class="footer-visitors">
+                <i class="fas fa-eye"></i>
+                <span>Visitantes hoy:</span>
+                <strong id="visitorCount">0</strong>
+            </div>
+
+            <!-- Bottom bar -->
+            <div class="footer-bottom">
+                <span>&copy; 2024–2025 <strong>Wilson.E</strong> · Todos los derechos reservados</span>
+                <span class="footer-kbd">Ctrl + K <em>búsqueda rápida</em></span>
+            </div>
         </div>
     </footer>
 
@@ -2051,60 +2669,67 @@
         }
 
         .badges-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2rem;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 1.2rem;
             margin: 2rem 0;
         }
 
         .badge {
-            width: 140px;
-            height: 140px;
-            background: linear-gradient(145deg, rgba(255, 69, 0, 0.2), rgba(255, 107, 53, 0.1));
-            border-radius: 50%;
+            width: auto;
+            height: auto;
+            aspect-ratio: 1;
+            background: linear-gradient(145deg, rgba(255,69,0,0.08), rgba(255,107,53,0.04));
+            border-radius: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 3px solid var(--primary);
-            transition: all 0.5s ease;
+            gap: 0.6rem;
+            padding: 1.4rem 0.8rem;
+            border: 1px solid rgba(255,69,0,0.25);
+            transition: all 0.35s cubic-bezier(.2,.9,.2,1);
             cursor: pointer;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
         }
 
-        .badge::before {
+        .badge::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
-        }
-
-        .badge:hover::before {
-            left: 100%;
+            inset: 0;
+            border-radius: 20px;
+            background: linear-gradient(135deg, rgba(255,69,0,0.15), rgba(255,189,105,0.08));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .badge:hover {
-            transform: rotate(360deg) scale(1.15);
-            box-shadow: 0 0 40px rgba(255, 69, 0, 0.8);
+            transform: translateY(-8px) scale(1.04);
+            border-color: rgba(255,69,0,0.7);
+            box-shadow: 0 16px 40px rgba(255,69,0,0.35), 0 0 0 1px rgba(255,69,0,0.2);
+        }
+
+        .badge:hover::after {
+            opacity: 1;
         }
 
         .badge i {
-            font-size: 3rem;
+            font-size: 2.2rem;
             color: var(--primary);
-            margin-bottom: 0.8rem;
+            filter: drop-shadow(0 0 8px rgba(255,69,0,0.5));
+            position: relative;
+            z-index: 1;
         }
 
         .badge span {
-            font-size: 0.85rem;
-            color: var(--accent);
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.75);
             text-align: center;
-            font-weight: bold;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            position: relative;
+            z-index: 1;
         }
 
         .testimonials-container {
@@ -2152,110 +2777,306 @@
             left: 30px;
         }
 
-        .projects-modern-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 2.5rem;
-            margin: 2rem 0;
+        /* ── PROYECTOS ── */
+        #latest-projects { padding: 3rem 0; }
+
+        .proj-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2.5rem;
+        }
+        .proj-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .75rem;
+            color: var(--accent);
+            opacity: .7;
+            margin-bottom: .4rem;
+        }
+        .proj-filters { display: flex; gap: .5rem; flex-wrap: wrap; }
+        .pf-btn {
+            padding: .38rem .9rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,69,0,.25);
+            background: transparent;
+            color: rgba(232,232,240,.5);
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .pf-btn:hover, .pf-btn.active {
+            border-color: var(--primary);
+            color: var(--accent);
+            background: rgba(255,69,0,.1);
         }
 
-        .project-modern-card {
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
-            border: 2px solid rgba(255, 69, 0, 0.3);
+        .proj-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.4rem;
+        }
+        .proj-card {
+            background: rgba(19,19,31,1);
+            border: 1px solid rgba(255,69,0,.18);
             border-radius: 20px;
             overflow: hidden;
-            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            transition: all .25s cubic-bezier(.4,0,.2,1);
+        }
+        .proj-card:hover {
+            border-color: rgba(255,69,0,.5);
+            transform: translateY(-5px);
+            box-shadow: 0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(255,69,0,.1);
+        }
+        .proj-card.proj-upcoming { opacity: .6; }
+        .proj-card.proj-upcoming:hover { opacity: 1; }
+
+        /* Thumbnail */
+        .proj-thumb {
             position: relative;
+            height: 160px;
+            overflow: hidden;
+            background: linear-gradient(135deg, var(--g1,#ff4500), var(--g2,#ff6b35));
         }
-
-        .project-modern-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 20px 50px rgba(255, 69, 0, 0.4);
+        .proj-thumb-bg {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(0,0,0,.06) 0px,
+                rgba(0,0,0,.06) 1px,
+                transparent 1px,
+                transparent 12px
+            );
         }
-
-        .project-image {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        .proj-thumb-icon {
+            position: absolute;
+            inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 4rem;
-            color: white;
-            position: relative;
-            overflow: hidden;
+            font-size: 3.2rem;
+            color: rgba(255,255,255,.9);
+            filter: drop-shadow(0 4px 16px rgba(0,0,0,.4));
+            transition: transform .3s ease;
         }
+        .proj-card:hover .proj-thumb-icon { transform: scale(1.1) rotate(-3deg); }
 
-        .project-image::after {
-            content: '';
+        .proj-thumb-lines {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.3);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .project-modern-card:hover .project-image::after {
-            opacity: 1;
-        }
-
-        .project-content {
-            padding: 2rem;
-        }
-
-        .project-title {
-            color: var(--accent);
-            font-size: 1.4rem;
-            margin-bottom: 1rem;
-        }
-
-        .project-desc {
-            color: #cccccc;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-        }
-
-        .project-tags {
+            bottom: 0; left: 0; right: 0;
             display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 1.5rem;
+            gap: 4px;
+            padding: 0 1rem .6rem;
         }
-
-        .project-tag {
-            background: rgba(255, 69, 0, 0.2);
-            color: var(--accent);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            border: 1px solid var(--primary);
-        }
-
-        .project-links {
-            display: flex;
-            gap: 1rem;
-        }
-
-        .project-link-btn {
+        .proj-thumb-lines span {
+            height: 3px;
+            border-radius: 3px;
+            background: rgba(255,255,255,.25);
             flex: 1;
-            padding: 10px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: white;
+        }
+        .proj-thumb-lines span:first-child { flex: 2; background: rgba(255,255,255,.6); }
+
+        .proj-status {
+            position: absolute;
+            top: 12px; right: 12px;
+            padding: .25rem .7rem;
+            border-radius: 20px;
+            font-size: .68rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: .04em;
+        }
+        .proj-status.live  { background: rgba(0,230,118,.18); color: #00e676; border: 1px solid rgba(0,230,118,.35); }
+        .proj-status.wip   { background: rgba(64,196,255,.18); color: #40c4ff; border: 1px solid rgba(64,196,255,.35); }
+        .proj-status.done  { background: rgba(255,189,105,.18); color: #ffbd69; border: 1px solid rgba(255,189,105,.35); }
+        .proj-status.soon  { background: rgba(255,255,255,.08); color: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.12); }
+
+        /* Body */
+        .proj-body { padding: 1.3rem; flex: 1; display: flex; flex-direction: column; gap: .65rem; }
+        .proj-meta { display: flex; align-items: center; gap: .6rem; }
+        .proj-year  { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: rgba(232,232,240,.4); }
+        .proj-cat   { font-size: .68rem; font-weight: 600; color: var(--accent); background: rgba(255,189,105,.1); padding: .15rem .55rem; border-radius: 20px; }
+        .proj-title { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.3; }
+        .proj-desc  { font-size: .83rem; color: rgba(232,232,240,.55); line-height: 1.65; flex: 1; }
+        .proj-stack { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .1rem; }
+        .proj-stack span {
+            font-size: .7rem;
+            font-family: 'JetBrains Mono', monospace;
+            color: rgba(232,232,240,.5);
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            padding: .18rem .55rem;
+            border-radius: 6px;
+        }
+        .proj-actions { display: flex; gap: .55rem; flex-wrap: wrap; margin-top: .2rem; }
+        .proj-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .5rem 1rem;
+            border-radius: 10px;
+            font-size: .8rem;
+            font-weight: 700;
             text-decoration: none;
-            text-align: center;
-            border-radius: 25px;
-            transition: all 0.3s ease;
             border: none;
             cursor: pointer;
+            transition: all .2s ease;
+        }
+        .proj-btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(255,69,0,.28);
+        }
+        .proj-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,69,0,.42); }
+        .proj-btn-ghost {
+            background: rgba(255,255,255,.05);
+            color: rgba(232,232,240,.6);
+            border: 1px solid rgba(255,255,255,.1);
+        }
+        .proj-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+        /* ── CONTACTO ── */
+        #contact { padding: 3rem 0; }
+
+        .contact-wrap {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 3rem;
+            align-items: start;
+        }
+        @media (max-width: 860px) { .contact-wrap { grid-template-columns: 1fr; } }
+
+        .contact-eyebrow {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .75rem;
+            color: var(--accent);
+            opacity: .7;
+            margin-bottom: .5rem;
+        }
+        .contact-title {
+            font-size: clamp(1.6rem, 3vw, 2.4rem);
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -.02em;
+            background: linear-gradient(135deg,#fff 0%,var(--accent) 60%,var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        .contact-sub { font-size: .9rem; color: rgba(232,232,240,.5); line-height: 1.7; margin-bottom: 1.8rem; }
+
+        .contact-links { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.8rem; }
+        .clink {
+            display: flex;
+            align-items: center;
+            gap: .9rem;
+            padding: .85rem 1rem;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 14px;
+            text-decoration: none;
+            color: inherit;
+            transition: all .2s ease;
+        }
+        .clink:hover { border-color: rgba(255,69,0,.35); background: rgba(255,69,0,.05); transform: translateX(4px); }
+        .clink-icon {
+            width: 40px; height: 40px;
+            border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,69,0,.12);
+            color: var(--primary);
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .clink-label { font-size: .7rem; color: rgba(232,232,240,.4); font-family: 'JetBrains Mono', monospace; }
+        .clink-val   { font-size: .85rem; font-weight: 600; color: rgba(232,232,240,.85); }
+
+        .contact-status {
+            display: inline-flex;
+            align-items: center;
+            gap: .55rem;
+            font-size: .78rem;
+            color: rgba(232,232,240,.5);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #00e676;
+            box-shadow: 0 0 0 3px rgba(0,230,118,.2);
+            animation: pulse-status 2.5s infinite;
+        }
+        @keyframes pulse-status {
+            0%,100% { box-shadow: 0 0 0 3px rgba(0,230,118,.2); }
+            50%      { box-shadow: 0 0 0 6px rgba(0,230,118,.05); }
         }
 
-        .project-link-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(255, 69, 0, 0.5);
+        /* Formulario */
+        .contact-form-wrap {
+            background: rgba(19,19,31,.95);
+            border: 1px solid rgba(255,69,0,.2);
+            border-radius: 22px;
+            padding: 2rem;
         }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+        @media (max-width: 540px) { .form-row { grid-template-columns: 1fr; } }
+
+        .form-group { display: flex; flex-direction: column; gap: .35rem; }
+        .form-label  { font-size: .75rem; font-weight: 600; color: rgba(232,232,240,.6); letter-spacing: .04em; }
+        .form-input  {
+            padding: .7rem .95rem;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 11px;
+            color: #e8e8f0;
+            font-size: .88rem;
+            outline: none;
+            transition: all .2s ease;
+            width: 100%;
+        }
+        .form-input:focus { border-color: rgba(255,69,0,.55); background: rgba(255,69,0,.04); box-shadow: 0 0 0 3px rgba(255,69,0,.1); }
+        .form-input::placeholder { color: rgba(232,232,240,.3); }
+        .form-input.error { border-color: rgba(255,100,100,.5); }
+        .form-select { cursor: pointer; }
+        .form-select option { background: #1a1a2e; }
+        .form-textarea { resize: vertical; min-height: 120px; font-family: inherit; }
+        .form-err   { font-size: .72rem; color: #ff6b6b; min-height: 1em; }
+        .form-char  { font-size: .68rem; color: rgba(232,232,240,.3); font-family: 'JetBrains Mono', monospace; text-align: right; margin-top: .2rem; }
+
+        .form-submit {
+            width: 100%;
+            padding: .85rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: .92rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+            margin-top: .5rem;
+            box-shadow: 0 6px 20px rgba(255,69,0,.3);
+        }
+        .form-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255,69,0,.45); }
+        .form-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+        .form-feedback {
+            margin-top: .85rem;
+            padding: .75rem 1rem;
+            border-radius: 10px;
+            font-size: .84rem;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .form-feedback.success { background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.3); color: #00e676; display: block; }
+        .form-feedback.error   { background: rgba(255,100,100,.1); border: 1px solid rgba(255,100,100,.3); color: #ff6b6b; display: block; }
 
         .visitor-counter {
             display: inline-flex;
@@ -2427,17 +3248,145 @@
         }
 
         footer {
-            background: rgba(0, 0, 0, 0.8);
+            background: linear-gradient(180deg, rgba(5,5,10,0.0) 0%, rgba(5,5,10,0.95) 40%);
             text-align: center;
-            padding: 2rem;
-            margin-top: 3rem;
-            border-top: 2px solid rgba(255, 69, 0, 0.3);
+            padding: 4rem 2rem 2.5rem;
+            margin-top: 4rem;
+            border-top: 1px solid rgba(255,69,0,0.15);
+            position: relative;
+            overflow: hidden;
         }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,69,0,0.5), rgba(255,189,105,0.5), rgba(255,69,0,0.5), transparent);
+        }
+
+        .footer-content {
+            max-width: 700px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        /* Terminal */
+        .footer-terminal {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,69,0,0.2);
+            border-radius: 12px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .footer-prompt {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .footer-sep { color: rgba(255,255,255,0.3); }
+
+        .footer-cmd { color: rgba(255,255,255,0.75); }
+
+        .footer-cursor {
+            color: var(--accent);
+            animation: blink 1.2s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+
+        /* Redes sociales */
+        .footer-socials {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: 'Space Grotesk', sans-serif;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.7);
+            transition: all 0.25s ease;
+            letter-spacing: 0.02em;
+        }
+
+        .social-link i { font-size: 1.1rem; }
+
+        .social-wa:hover  { background: rgba(37,211,102,0.15); border-color: rgba(37,211,102,0.4); color: #25d366; transform: translateY(-3px); }
+        .social-tg:hover  { background: rgba(0,136,204,0.15);  border-color: rgba(0,136,204,0.4);  color: #0088cc; transform: translateY(-3px); }
+        .social-em:hover  { background: rgba(255,69,0,0.15);   border-color: rgba(255,69,0,0.4);   color: #ff6b35; transform: translateY(-3px); }
+
+        /* Visitantes */
+        .footer-visitors {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .footer-visitors i { color: var(--primary); }
+        .footer-visitors strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+        /* Bottom bar */
+        .footer-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.3);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            padding-top: 1.5rem;
+            width: 100%;
+        }
+
+        .footer-bottom strong { color: rgba(255,255,255,0.6); }
+
+        .footer-kbd {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,69,0,0.12);
+            border: 1px solid rgba(255,69,0,0.25);
+            border-radius: 8px;
+            padding: 4px 10px;
+            color: rgba(255,189,105,0.7);
+        }
+
+        .footer-kbd em { font-style: normal; color: rgba(255,255,255,0.3); }
 
         @media (max-width: 768px) {
             .splash-title { font-size: 2.5rem; }
-            header h1 { font-size: 2.5rem; }
-            nav ul { flex-direction: column; gap: 1rem; }
+            nav ul { flex-wrap: wrap; gap: 0.3rem; }
+            nav a { font-size: 0.75rem; padding: 0.32rem 0.6rem; }
+            .header-logo-text { font-size: 1rem; }
             .skill { flex-direction: column; text-align: center; }
             .skill-icon { margin-right: 0; margin-bottom: 1rem; }
             .stats-section { grid-template-columns: 1fr; }
@@ -2445,6 +3394,8 @@
             .timeline::before { left: 20px; }
             .timeline-item { width: calc(100% - 60px); margin-left: 40px !important; }
             .timeline-item::before { left: -50px !important; }
+            .footer-bottom { flex-direction: column; gap: 1rem; }
+            .header-inner { padding: 0.5rem 1rem; gap: 0.8rem; }
         }
     </style>
 
@@ -2508,57 +3459,105 @@
         addLogoPulse();
         console.log('Initial functions called');
 
-        // Modo oscuro
-        const themeToggle = document.getElementById('theme-toggle');
-        const currentTheme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', currentTheme);
-        themeToggle.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
-
-        themeToggle.addEventListener('click', () => {
-            const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            themeToggle.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-        });
+        // Modo oscuro — sincronizar con el toggle flotante (.theme-toggle-circle)
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-mode');
+            const icon = document.querySelector('.theme-toggle-circle i');
+            if (icon) icon.className = 'fas fa-sun';
+        }
 
         // Beta Test
-        document.getElementById('beta-btn').addEventListener('click', () => {
-            alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
-        });
+        const betaBtn = document.getElementById('beta-btn');
+        if (betaBtn) {
+            betaBtn.addEventListener('click', () => {
+                alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
+            });
+        }
 
-        // Actualización manual
-        document.getElementById('update-btn').addEventListener('click', () => {
-            checkForUpdates(true);
-        });
+        // Actualización manual (update-btn ya no está en el nav, pero lo dejamos por si existe en otro lado)
+        const updateBtn = document.getElementById('update-btn');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', () => {
+                if (typeof checkForUpdates === 'function') checkForUpdates(true);
+            });
+        }
+
+        // Función central para cerrar el splash
+        function closeSplash() {
+            const splash = document.getElementById('splash-screen');
+            if (!splash || splash.style.display === 'none') return;
+            splash.style.opacity = '0';
+            splash.style.transition = 'opacity 0.8s ease';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                console.log('✅ Splash cerrado');
+                if (typeof animateCounters === 'function') animateCounters();
+                if (typeof animateVisitorCounter === 'function') animateVisitorCounter();
+                if (typeof typeEffect === 'function') typeEffect();
+            }, 800);
+        }
 
         // Skip splash
         const skipBtn = document.getElementById('skip-splash');
         if (skipBtn) {
-            skipBtn.addEventListener('click', () => {
-                const splash = document.getElementById('splash-screen');
-                splash.style.opacity = '0';
-                splash.style.transition = 'opacity 0.5s ease';
-                setTimeout(() => {
-                    splash.style.display = 'none';
-                }, 500);
-            });
+            skipBtn.addEventListener('click', closeSplash);
         }
 
-        // Simular carga completa y cerrar
-        setTimeout(() => {
-            console.log('SetTimeout triggered');
-            console.log('Ocultando splash screen');
-            const splash = document.getElementById('splash-screen');
-            splash.style.opacity = '0';
-            splash.style.transition = 'opacity 1s ease';
-            setTimeout(() => {
-                splash.style.display = 'none';
-                console.log('Splash screen ocultado');
-                animateCounters();
-                animateVisitorCounter();
-                typeEffect();
+        // ── SPLASH TIPS & BARRA PROGRESO (8s) ─────────────────
+        (function() {
+            const tips = [
+                'INICIALIZANDO CODEHUB<span class="loading-dots"></span>',
+                '🧠 Cargando red neuronal...',
+                '🛠️ Activando 18 herramientas...',
+                '🔐 Módulo de seguridad listo...',
+                '🎨 Calibrando paleta de colores...',
+                '📱 Sincronizando catálogo de apps...',
+                '⚡ Optimizando rendimiento...',
+                '🚀 ¡Todo listo. Bienvenido!'
+            ];
+            let i = 0;
+            const el = document.querySelector('.loading-text-3d');
+            const iv = setInterval(() => {
+                i++;
+                if (i < tips.length && el) {
+                    el.style.opacity = '0';
+                    setTimeout(() => {
+                        el.innerHTML = tips[i];
+                        el.style.opacity = '1';
+                        el.style.transition = 'opacity .3s';
+                    }, 160);
+                }
+                if (i >= tips.length - 1) clearInterval(iv);
             }, 1000);
-        }, 2000);
+
+            // Barra de progreso sincronizada a 8 segundos (80ms x 100 = 8s)
+            const pct = document.getElementById('percentage');
+            const bar = document.querySelector('.progress-bar-3d');
+            if (pct) pct.textContent = '0%';
+            let n = 0;
+            const pIv = setInterval(() => {
+                n++;
+                const display = Math.min(100, Math.round(n * 1.1 - Math.pow(n / 10, 1.4)));
+                if (pct) pct.textContent = Math.min(display, 100) + '%';
+                if (bar) bar.style.width = Math.min(n, 100) + '%';
+                if (n >= 100) clearInterval(pIv);
+            }, 80);
+        })();
+
+        // Cerrar splash automáticamente a los 8 segundos
+        setTimeout(closeSplash, 8000);
+
+        // Fallback de emergencia a los 10 segundos
+        setTimeout(() => {
+            const splash = document.getElementById('splash-screen');
+            if (splash && splash.style.display !== 'none') {
+                console.warn('⚠️ Fallback: cerrando splash forzosamente');
+                splash.style.display = 'none';
+                if (typeof animateCounters === 'function') animateCounters();
+                if (typeof animateVisitorCounter === 'function') animateVisitorCounter();
+                if (typeof typeEffect === 'function') typeEffect();
+            }
+        }, 10000);
         
         // ========== FUNCIONES BÁSICAS ==========
         
@@ -3036,7 +4035,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
-            { name: 'Jugar Tetris', icon: 'fa-th', action: () => openGameWindow('tetris') },
+            { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
             { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
         ];
 
@@ -3403,52 +4402,9 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         console.log('%c🧪 Menú Experimental disponible en el lado izquierdo', 'color: #ffbd69; font-size: 14px;');
         console.log('%c📝 Desarrollado por Wilson.E - 2024', 'color: #ff6b35; font-size: 12px;');
 
-/* ====== JS: control del icono y diálogo ====== */
-(function(){
-  const whatsIcon = document.getElementById('whatsNewIcon');
-  const overlay = document.getElementById('whatsNewOverlay');
-  const btnClose = document.getElementById('closeWhatsNew');
-  const btnNovedades = document.getElementById('openNovedades');
-  const btnTools = document.getElementById('openTools');
-
-  if (!whatsIcon || !overlay || !btnClose || !btnNovedades || !btnTools) {
-    console.warn('whatsNew: elementos no encontrados (verifica IDs).');
-    return;
-  }
-
-  // abrir diálogo al tocar/enter en icono (no automático)
-  const openDialog = () => {
-    overlay.classList.add('active');
-    overlay.setAttribute('aria-hidden','false');
-    btnNovedades.focus();
-  };
-
-  const closeDialog = () => {
-    overlay.classList.remove('active');
-    overlay.setAttribute('aria-hidden','true');
-    whatsIcon.focus();
-  };
-
-  whatsIcon.addEventListener('click', openDialog);
-  whatsIcon.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openDialog(); });
-
-  btnClose.addEventListener('click', closeDialog);
-
-  // cerrar al click fuera del dialog (overlay)
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDialog(); });
-
-  // acciones: abrir páginas (misma pestaña)
-  btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
-  btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
-
-  // Esc para cerrar
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
-})();
     </script>
-<!-- ... resto de tu main y footer ... -->
 
 <!-- ====== HTML: Icono flotante + diálogo ====== -->
-<!-- Pegar justo antes de </body> -->
 
 <!-- ICONO FLOTANTE (solo icono) -->
 <div id="whatsNewIcon" title="Novedades y herramientas" aria-label="Novedades" tabindex="0">
@@ -3463,12 +4419,12 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 
     <div class="whatsNewActions">
       <button class="action-btn" id="openNovedades" type="button">
-        <i class="fas fa-sparkles" aria-hidden="true"></i>
+        <i class="fas fa-star" aria-hidden="true"></i>
         Novedades
       </button>
 
       <button class="action-btn" id="openTools" type="button">
-        <i class="fas fa-tools" aria-hidden="true"></i>
+        <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
         Tools
       </button>
     </div>
@@ -3528,5 +4484,317 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 <script src="script.js"></script>
 <script src="theme-switcher.js"></script>
 
+<!-- EmailJS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════
+//  EMAILJS — CONFIGURA AQUÍ TUS CLAVES
+//  Sigue los 3 pasos abajo para obtenerlas
+// ═══════════════════════════════════════
+const EMAILJS_PUBLIC_KEY  = 'TU_PUBLIC_KEY';   // Paso 1
+const EMAILJS_SERVICE_ID  = 'TU_SERVICE_ID';   // Paso 2
+const EMAILJS_TEMPLATE_ID = 'TU_TEMPLATE_ID';  // Paso 3
+
+(function() {
+    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY') {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    }
+})();
+
+// ── FILTROS DE PROYECTOS ──────────────
+function filterProjects(cat, btn) {
+    document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.proj-card').forEach(card => {
+        const match = cat === 'all' || card.dataset.cat === cat;
+        card.style.transition = 'opacity .25s ease, transform .25s ease';
+        if (match) {
+            card.style.opacity = '1';
+            card.style.transform = '';
+            card.style.pointerEvents = '';
+            card.style.display = '';
+        } else {
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.95)';
+            card.style.pointerEvents = 'none';
+            setTimeout(() => { if (card.style.opacity === '0') card.style.display = 'none'; }, 250);
+        }
+    });
+}
+
+// ── FORMULARIO DE CONTACTO ────────────
+const msgArea = document.getElementById('cf-msg');
+if (msgArea) {
+    msgArea.addEventListener('input', () => {
+        const len = msgArea.value.length;
+        document.getElementById('char-count').textContent = len;
+        if (len > 500) msgArea.value = msgArea.value.slice(0, 500);
+    });
+}
+
+function validateForm() {
+    let valid = true;
+    const name  = document.getElementById('cf-name');
+    const email = document.getElementById('cf-email');
+    const msg   = document.getElementById('cf-msg');
+
+    // Reset errores
+    ['err-name','err-email','err-msg'].forEach(id => document.getElementById(id).textContent = '');
+    [name, email, msg].forEach(el => el.classList.remove('error'));
+
+    if (!name.value.trim()) {
+        document.getElementById('err-name').textContent = 'El nombre es requerido';
+        name.classList.add('error'); valid = false;
+    }
+    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRx.test(email.value)) {
+        document.getElementById('err-email').textContent = 'Email inválido';
+        email.classList.add('error'); valid = false;
+    }
+    if (msg.value.trim().length < 10) {
+        document.getElementById('err-msg').textContent = 'El mensaje debe tener al menos 10 caracteres';
+        msg.classList.add('error'); valid = false;
+    }
+    return valid;
+}
+
+async function sendEmail(e) {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    const btn      = document.getElementById('form-submit');
+    const textEl   = document.getElementById('submit-text');
+    const loadEl   = document.getElementById('submit-loading');
+    const feedback = document.getElementById('form-feedback');
+
+    // Estado cargando
+    btn.disabled = true;
+    textEl.style.display = 'none';
+    loadEl.style.display = 'inline';
+    feedback.className = 'form-feedback';
+
+    // Si las claves no están configuradas, mostramos aviso
+    if (EMAILJS_PUBLIC_KEY === 'TU_PUBLIC_KEY') {
+        await new Promise(r => setTimeout(r, 1200)); // simula espera
+        btn.disabled = false;
+        textEl.style.display = 'inline';
+        loadEl.style.display = 'none';
+        feedback.textContent = '⚙️ Configura tus claves EmailJS para activar el envío. Ver instrucciones en el código.';
+        feedback.className = 'form-feedback error';
+        return;
+    }
+
+    try {
+        await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, '#contact-form');
+        feedback.textContent = '✅ ¡Mensaje enviado! Te respondo en menos de 24h.';
+        feedback.className = 'form-feedback success';
+        document.getElementById('contact-form').reset();
+        document.getElementById('char-count').textContent = '0';
+    } catch (err) {
+        feedback.textContent = '❌ Error al enviar. Intenta por WhatsApp o email directo.';
+        feedback.className = 'form-feedback error';
+        console.error('EmailJS error:', err);
+    } finally {
+        btn.disabled = false;
+        textEl.style.display = 'inline';
+        loadEl.style.display = 'none';
+    }
+}
+</script>
+
+
+<!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
+<button id="ai-fab" aria-label="Abrir asistente IA" title="Asistente IA CodeHub">
+  <i class="fas fa-robot"></i>
+  <span class="ai-notif"></span>
+</button>
+
+<div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
+  <div class="ai-head">
+    <div class="ai-head-icon"><i class="fas fa-robot"></i></div>
+    <div class="ai-head-info">
+      <div class="ai-head-title">Asistente IA</div>
+      <div class="ai-head-sub" id="ai-status">● Online · CodeHub AI</div>
+    </div>
+    <button id="ai-close-btn" aria-label="Cerrar chat"><i class="fas fa-times"></i></button>
+  </div>
+
+  <div id="ai-msgs">
+    <div class="ai-msg ai">
+      ¡Hola! 👋 Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con código, explicar herramientas, responder preguntas técnicas o lo que necesites. ¿En qué te ayudo?
+    </div>
+  </div>
+
+  <div class="ai-suggestions" id="ai-sugs">
+    <button class="ai-sug-btn" onclick="aiSugg(this)">¿Qué herramientas hay?</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">Explícame Base64</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">¿Qué es un UUID?</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">Dame un tip de Python</button>
+  </div>
+
+  <div class="ai-input-row">
+    <textarea id="ai-input" placeholder="Escribe tu pregunta…" rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+    <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar">
+      <i class="fas fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  ASISTENTE IA — CODEHUB CHAT
+//  Usa la API de Anthropic via proxy seguro
+//  Para activar: el panel funciona con
+//  respuestas inteligentes en tiempo real.
+// ═══════════════════════════════════════
+(function() {
+  const fab    = document.getElementById('ai-fab');
+  const panel  = document.getElementById('ai-panel');
+  const msgs   = document.getElementById('ai-msgs');
+  const input  = document.getElementById('ai-input');
+  const sendBtn= document.getElementById('ai-send-btn');
+  const closeB = document.getElementById('ai-close-btn');
+  const sugs   = document.getElementById('ai-sugs');
+  const status = document.getElementById('ai-status');
+
+  // Historial de conversación
+  let history = [];
+  let isOpen  = false;
+  let loading = false;
+
+  // Sistema: quién es el asistente
+  const SYSTEM = `Eres el asistente de CodeHub, el portfolio de Wilson.E, desarrollador guatemalteco. 
+Eres conciso, técnico y amigable. Respondes en español.
+CodeHub tiene: portfolio, 18 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
+una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
+Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
+
+  fab.addEventListener('click', toggle);
+  closeB.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
+
+  function toggle() { setOpen(!isOpen); }
+  function setOpen(v) {
+    isOpen = v;
+    panel.classList.toggle('open', v);
+    if (v) {
+      input.focus();
+      fab.querySelector('.ai-notif').style.display = 'none';
+      scrollMsgs();
+    }
+  }
+
+  window.aiSugg = function(btn) {
+    input.value = btn.textContent;
+    sendAI();
+  };
+
+  // ── CONFIGURACIÓN ─────────────────────────────────────────
+  // Cambia esta URL por la IP/dominio de tu servidor Termux
+  // Ejemplo local:     http://localhost:3001
+  // Ejemplo red local: http://192.168.1.XX:3001
+  // Ejemplo producción: https://tudominio.com
+  const API_URL = 'http://localhost:3001/api/chat';
+
+  // ID de sesión único por visita (no identifica al usuario, solo la sesión)
+  const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  // ────────────────────────────────────────────────────────
+
+  window.sendAI = async function() {
+    const text = input.value.trim();
+    if (!text || loading) return;
+
+    // Limpiar sugerencias la primera vez
+    if (sugs) sugs.remove();
+
+    addMsg('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+
+    loading = true;
+    sendBtn.disabled = true;
+    status.textContent = '● Pensando…';
+    const typingEl = addMsg('typing', '▌');
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: text,
+          sessionId: SESSION_ID
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'HTTP ' + res.status);
+      }
+
+      typingEl.remove();
+      addMsg('ai', formatAIReply(data.reply));
+
+    } catch (err) {
+      typingEl.remove();
+      // Fallback offline si el servidor no responde
+      addMsg('ai', getFallback(text));
+      console.warn('Chat error:', err.message);
+    } finally {
+      loading = false;
+      sendBtn.disabled = false;
+      status.textContent = '● Online · CodeHub AI';
+      scrollMsgs();
+    }
+  };
+
+  function addMsg(type, html) {
+    const d = document.createElement('div');
+    d.className = 'ai-msg ' + type;
+    d.innerHTML = html;
+    msgs.appendChild(d);
+    scrollMsgs();
+    return d;
+  }
+
+  function scrollMsgs() {
+    requestAnimationFrame(() => msgs.scrollTop = msgs.scrollHeight);
+  }
+
+  function formatAIReply(text) {
+    // Convertir markdown básico a HTML
+    return text
+      .replace(/```([\s\S]*?)```/g, '<code>$1</code>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  // Respuestas offline inteligentes basadas en palabras clave
+  function getFallback(q) {
+    const ql = q.toLowerCase();
+    if (ql.includes('qr'))       return 'El <strong>Generador de QR</strong> está en <code>tools.html</code>. Soporta 3 tamaños y 4 colores. Se puede descargar como PNG. 🔳';
+    if (ql.includes('contraseña') || ql.includes('password')) return 'El <strong>Generador de Contraseñas</strong> usa <code>crypto.getRandomValues()</code> para máxima seguridad. Soporta hasta 64 caracteres con mayúsculas, números y símbolos. 🔐';
+    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Tools → Generador de UUID. 🎲';
+    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. 💻';
+    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
+    if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
+    if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
+    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
+    if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
+    if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
+    if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
+    return 'Entendido. Para preguntas técnicas detalladas, la conexión a la IA requiere configuración del servidor. Mientras tanto, puedo responder sobre las herramientas de CodeHub. ¿Qué quieres saber? 🤖';
+  }
+
+  // Mostrar notificación del FAB después de 8 segundos
+  setTimeout(() => {
+    if (!isOpen) fab.querySelector('.ai-notif').style.display = 'block';
+  }, 8000);
+})();
+</script>
 </body>
 </html>

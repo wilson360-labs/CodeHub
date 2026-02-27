@@ -1,0 +1,12 @@
+# ── CRÍTICO: credenciales ─────
+.env
+.env.local
+.env.production
+
+# ── Node ──────────────────────
+node_modules/
+npm-debug.log*
+
+# ── Sistema ───────────────────
+.DS_Store
+Thumbs.db

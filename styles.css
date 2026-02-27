@@ -1,201 +1,95 @@
-                                /* menu flotante */
-                                #floating-menu {
-                                    position: fixed;
-                                    top: 50%;
-                                    right: 20px;
-                                    transform: translateY(-50%);
-                                    background: linear-gradient(45deg, #ff6600, #ff4500);
-                                    color: white;
-                                    padding: 15px 25px;
-                                    font-size: 18px;
-                                    font-weight: bold;
-                                    border-radius: 12px;
-                                    cursor: pointer;
-                                    box-shadow: 0px 4px 12px rgba(255, 102, 0, 0.5);
-                                    transition: all 0.3s ease-in-out;
-                                    animation: pulse 1.5s infinite alternate;
-                                }
-                                
-                                /* Efecto de brillo al pasar el mouse */
-                                #floating-menu:hover {
-                                    background: linear-gradient(45deg, #ff4500, #ff6600);
-                                    transform: translateY(-50%) scale(1.1);
-                                    box-shadow: 0px 6px 20px rgba(255, 102, 0, 0.8);
-                                }
-                                
-                                /* Animación de pulso */
-                                @keyframes pulse {
-                                    from {
-                                        box-shadow: 0px 4px 12px rgba(255, 102, 0, 0.5);
-                                    }
-                                    to {
-                                        box-shadow: 0px 8px 24px rgba(255, 102, 0, 0.8);
-                                    }
-                                }
-/* Sección Mi Pueblo */
+/*
+ * styles.css — CodeHub Global Utilities
+ * Compartido entre index.html, tools.html, novedades.html
+ * Para linkearlo agregar: <link rel="stylesheet" href="styles.css">
+ *
+ * NOTA: El CSS principal de cada página vive inline o en su propio .css
+ * Este archivo es para overrides globales y la sección #mi-pueblo
+ */
+
+/* ── SECCIÓN MI PUEBLO ────────────────────── */
 #mi-pueblo {
     padding: 2.5rem 1rem;
     text-align: center;
-    margin-bottom: 3rem;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
-
 #mi-pueblo h2 {
     margin-bottom: 1.5rem;
     font-size: 2rem;
-    color: #333;
 }
-
-/* IMAGEN PRINCIPAL - FORZANDO CENTRADO */
 #mi-pueblo .image-gallery {
-    width: 100% !important;
-    max-width: 350px !important;
-    height: 250px !important;
-    object-fit: cover !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
-    margin: 0 auto 1.5rem auto !important;
-    display: block !important;
-    transition: all 0.4s ease !important;
-    animation: fadeInScale 0.8s ease-out !important;
+    width: 100%;
+    max-width: 350px;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    margin: 0 auto 1.5rem;
+    display: block;
+    animation: fadeInScale .8s ease-out;
 }
-
 #mi-pueblo .image-gallery:hover {
-    transform: scale(1.05) rotate(1deg) !important;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3) !important;
-    border-radius: 16px !important;
+    transform: scale(1.03) rotate(0.5deg);
 }
-
-/* Texto con fondo mejorado */
 #mi-pueblo p {
-    margin: 1.5rem auto !important;
-    font-size: 1.1rem !important;
-    line-height: 1.6 !important;
-    color: #ffffff !important;
-    max-width: 600px !important;
-    background-color: rgba(0, 0, 0, 0.7) !important;
-    padding: 1rem 1.5rem !important;
-    border-radius: 8px !important;
-    font-weight: 500 !important;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
+    margin: 1.2rem auto;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(232,232,240,.75);
+    max-width: 580px;
+    background: rgba(0,0,0,.5);
+    padding: .9rem 1.3rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255,69,0,.15);
 }
-
-/* Contenedor de la galería - CENTRADO FORZADO */
-#mi-pueblo .mi-pueblo {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 1.5rem !important;
-    margin-top: 2.5rem !important;
-    max-width: 900px !important;
-    margin-left: auto !important;
-    margin-right: auto !important;
-    padding: 0 1rem !important;
-    width: 100% !important;
-}
-
-/* IMÁGENES DE LA GALERÍA - CENTRADAS */
 #mi-pueblo .gallery-img {
-    width: 100% !important;
-    max-width: 350px !important;
-    height: 220px !important;
-    object-fit: cover !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-    border: none !important;
-    display: block !important;
-    margin: 0 auto !important;
-    animation: slideInUp 0.6s ease-out !important;
-    animation-fill-mode: both !important;
+    width: 100%;
+    max-width: 340px;
+    height: 210px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35);
+    transition: all .35s cubic-bezier(.175,.885,.32,1.275);
+    display: block;
+    margin: 0 auto;
+    animation: slideInUp .6s ease-out both;
 }
-
-/* Retraso de animación para cada imagen */
-#mi-pueblo .gallery-img:nth-child(1) {
-    animation-delay: 0.2s !important;
-}
-
-#mi-pueblo .gallery-img:nth-child(2) {
-    animation-delay: 0.4s !important;
-}
-
-#mi-pueblo .gallery-img:nth-child(3) {
-    animation-delay: 0.6s !important;
-}
-
+#mi-pueblo .gallery-img:nth-child(1) { animation-delay: .2s }
+#mi-pueblo .gallery-img:nth-child(2) { animation-delay: .4s }
+#mi-pueblo .gallery-img:nth-child(3) { animation-delay: .6s }
 #mi-pueblo .gallery-img:hover {
-    transform: scale(1.08) translateY(-5px) !important;
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.3) !important;
-    border-radius: 16px !important;
-    filter: brightness(1.1) contrast(1.1) !important;
+    transform: scale(1.06) translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0,0,0,.4);
+    filter: brightness(1.08);
 }
 
-/* Animaciones */
+/* ── ANIMACIONES COMPARTIDAS ─────────────── */
 @keyframes fadeInScale {
-    0% {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
+    0%   { opacity:0; transform: scale(.85) }
+    100% { opacity:1; transform: scale(1) }
 }
-
 @keyframes slideInUp {
-    0% {
-        opacity: 0;
-        transform: translateY(30px) scale(0.9);
-    }
-    100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+    0%   { opacity:0; transform: translateY(24px) scale(.95) }
+    100% { opacity:1; transform: translateY(0) scale(1) }
 }
 
-/* Responsive Design */
+/* ── UTILIDADES GLOBALES ─────────────────── */
+.text-primary   { color: #ff4500 }
+.text-accent    { color: #ffbd69 }
+.text-muted     { color: rgba(232,232,240,.45) }
+.text-green     { color: #00e676 }
+.mono           { font-family: 'JetBrains Mono', monospace }
+.hidden         { display: none !important }
+.sr-only        { position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0) }
+
+/* ── RESPONSIVE (mi-pueblo) ──────────────── */
 @media (max-width: 768px) {
-    #mi-pueblo .image-gallery {
-        max-width: 300px !important;
-        height: 200px !important;
-    }
-    
-    #mi-pueblo .gallery-img {
-        height: 180px !important;
-        max-width: 300px !important;
-    }
-    
-    #mi-pueblo {
-        padding: 1rem !important;
-    }
-    
-    #mi-pueblo p {
-        font-size: 1rem !important;
-        padding: 0.8rem 1.2rem !important;
-    }
+    #mi-pueblo .image-gallery { max-width:300px; height:200px }
+    #mi-pueblo .gallery-img   { height:180px; max-width:300px }
 }
-
 @media (max-width: 480px) {
-    #mi-pueblo .image-gallery {
-        max-width: 280px !important;
-        height: 180px !important;
-    }
-    
-    #mi-pueblo .gallery-img {
-        height: 160px !important;
-        max-width: 280px !important;
-    }
-    
-    #mi-pueblo p {
-        font-size: 0.95rem !important;
-        padding: 0.7rem 1rem !important;
-    }
-    
-    /* Reducir animaciones en móviles */
-    #mi-pueblo .image-gallery:hover,
-    #mi-pueblo .gallery-img:hover {
-        transform: scale(1.03) !important;
-    }
+    #mi-pueblo .image-gallery { max-width:280px; height:180px }
+    #mi-pueblo .gallery-img   { height:160px; max-width:280px }
 }

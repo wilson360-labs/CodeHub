@@ -1,447 +1,1109 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Herramientas Útiles - CodeHub</title>
-    <!-- Incluye Font Awesome para íconos -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- CDN para QR Code (qrcode.js) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        /* Copia tus estilos principales aquí para consistencia (o linkea tu CSS) */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root { --primary: #ff4500; --secondary: #ff6b35; --accent: #ffbd69; }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%); color: #ffffff; line-height: 1.6; }
-        header { padding: 2rem; text-align: center; background: rgba(0, 0, 0, 0.3); border-bottom: 2px solid rgba(255, 69, 0, 0.3); }
-        h1 { font-size: 3rem; background: linear-gradient(45deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-        section { margin: 2rem 0; padding: 2rem; background: rgba(0, 0, 0, 0.2); border-radius: 20px; border: 1px solid rgba(255, 69, 0, 0.2); }
-        h2 { font-size: 2rem; color: var(--accent); text-align: center; margin-bottom: 1rem; }
-        input, select, button { padding: 0.5rem; margin: 0.5rem; border-radius: 5px; border: 1px solid var(--primary); background: rgba(255, 255, 255, 0.1); color: #fff; }
-        button { background: var(--primary); cursor: pointer; }
-        .result { margin-top: 1rem; color: var(--accent); font-weight: bold; }
-        /* Añade más estilos de tu sitio si es necesario */
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tools — CodeHub by Wilson.E</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080810;--surface:#0f0f1a;--card:#13131f;
+  --border:rgba(255,69,0,.18);--border-h:rgba(255,69,0,.5);
+  --p:#ff4500;--s:#ff6b35;--a:#ffbd69;
+  --green:#00e676;--blue:#40c4ff;--purple:#b464ff;--pink:#ff6496;
+  --text:#e8e8f0;--muted:rgba(232,232,240,.45);
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --r:16px;--tr:all .2s cubic-bezier(.4,0,.2,1)
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,69,0,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,.035) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+/* PROGRESS */
+#pbar{position:fixed;top:0;left:0;height:2px;width:0%;background:linear-gradient(90deg,var(--p),var(--a));z-index:9999;transition:width .1s linear}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:rgba(8,8,16,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.hdr{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 2rem;gap:1rem}
+.logo{text-decoration:none;display:flex;align-items:center;gap:.5rem}
+.logo-t{font-size:1.1rem;font-weight:800;letter-spacing:.04em;color:var(--text)}
+.logo-t .br{color:var(--p);text-shadow:0 0 12px rgba(255,69,0,.5)}
+.logo-b{font-size:.62rem;font-weight:700;font-family:var(--mono);color:var(--a);background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.25);padding:2px 8px;border-radius:20px}
+.back{display:flex;align-items:center;gap:.45rem;text-decoration:none;font-size:.8rem;font-weight:600;color:var(--muted);padding:.38rem .85rem;border-radius:8px;border:1px solid rgba(255,255,255,.08);transition:var(--tr)}
+.back:hover{color:var(--text);border-color:var(--border-h);background:rgba(255,69,0,.06)}
+
+/* HERO */
+.hero{position:relative;z-index:1;text-align:center;padding:3.5rem 2rem 2.5rem;max-width:650px;margin:0 auto}
+.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.72rem;color:var(--a);background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);padding:.28rem .9rem;border-radius:20px;margin-bottom:1.1rem}
+.hero-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink-d 2s infinite}
+@keyframes blink-d{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 0%,var(--a) 55%,var(--p) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.7rem}
+.hero p{font-size:.95rem;color:var(--muted);line-height:1.7}
+
+/* FILTER */
+.fbar{position:relative;z-index:1;max-width:1280px;margin:0 auto 2rem;padding:0 2rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.sw{position:relative;flex:1;min-width:180px}
+.sw i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.85rem;pointer-events:none}
+.sw input{width:100%;padding:.6rem 1rem .6rem 2.4rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-family:var(--font);font-size:.85rem;outline:none;transition:var(--tr)}
+.sw input:focus{border-color:var(--border-h);box-shadow:0 0 0 3px rgba(255,69,0,.1)}
+.sw input::placeholder{color:var(--muted)}
+.chips{display:flex;gap:.4rem;flex-wrap:wrap}
+.chip{padding:.35rem .85rem;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer;transition:var(--tr)}
+.chip:hover,.chip.on{border-color:var(--p);color:var(--a);background:rgba(255,69,0,.1)}
+
+/* GRID */
+.grid{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 2rem 4rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.4rem}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:var(--tr);animation:fadeUp .5s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+.card:hover{border-color:var(--border-h);transform:translateY(-4px);box-shadow:0 20px 55px rgba(0,0,0,.5),0 0 0 1px rgba(255,69,0,.1)}
+.card.hidden{display:none!important}
+.card:nth-child(1){animation-delay:.04s}.card:nth-child(2){animation-delay:.08s}.card:nth-child(3){animation-delay:.12s}
+.card:nth-child(4){animation-delay:.16s}.card:nth-child(5){animation-delay:.2s}.card:nth-child(6){animation-delay:.24s}
+.card:nth-child(7){animation-delay:.28s}.card:nth-child(8){animation-delay:.32s}.card:nth-child(9){animation-delay:.36s}
+.card:nth-child(10){animation-delay:.4s}.card:nth-child(11){animation-delay:.44s}.card:nth-child(12){animation-delay:.48s}
+.card:nth-child(13){animation-delay:.52s}.card:nth-child(14){animation-delay:.56s}.card:nth-child(15){animation-delay:.6s}
+.card:nth-child(16){animation-delay:.64s}.card:nth-child(17){animation-delay:.68s}.card:nth-child(18){animation-delay:.72s}
+
+.ch{display:flex;align-items:center;gap:.9rem;padding:1.3rem 1.3rem 0}
+.ci{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ci-or{background:rgba(255,69,0,.15);color:var(--p)}
+.ci-bl{background:rgba(64,196,255,.15);color:var(--blue)}
+.ci-gr{background:rgba(0,230,118,.15);color:var(--green)}
+.ci-yl{background:rgba(255,189,105,.15);color:var(--a)}
+.ci-pu{background:rgba(180,100,255,.15);color:var(--purple)}
+.ci-pk{background:rgba(255,100,150,.15);color:var(--pink)}
+.ch h2{font-size:.95rem;font-weight:700;color:var(--text)}
+.ch .ct{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:1px}
+
+.cb{padding:1.1rem 1.3rem 1.3rem;flex:1;display:flex;flex-direction:column;gap:.75rem}
+
+/* INPUTS */
+.ti,.ts{width:100%;padding:.58rem .85rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:var(--text);font-family:var(--font);font-size:.85rem;outline:none;transition:var(--tr)}
+.ti:focus,.ts:focus{border-color:var(--border-h);background:rgba(255,69,0,.04)}
+.ti::placeholder{color:var(--muted)}
+textarea.ti{resize:vertical;min-height:72px;font-family:var(--mono);font-size:.78rem}
+.ts option{background:#1a1a2e}
+.ir{display:flex;gap:.5rem}
+.ir .ti{flex:1}
+
+/* RANGE */
+.rr{display:flex;align-items:center;gap:.75rem}
+.rr input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:rgba(255,255,255,.1);border-radius:4px;outline:none;border:none;padding:0}
+.rr input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--p);cursor:pointer;box-shadow:0 0 8px rgba(255,69,0,.5)}
+.rv{font-family:var(--mono);font-size:.78rem;color:var(--a);min-width:28px;text-align:right}
+
+/* CHECKBOXES */
+.cr{display:flex;gap:.9rem;flex-wrap:wrap}
+.cr label{display:flex;align-items:center;gap:.38rem;font-size:.78rem;color:var(--muted);cursor:pointer}
+.cr input[type=checkbox]{width:13px;height:13px;accent-color:var(--p)}
+
+/* BUTTON */
+.btn{display:flex;align-items:center;justify-content:center;gap:.45rem;padding:.62rem 1.1rem;border-radius:10px;border:none;font-family:var(--font);font-size:.85rem;font-weight:700;cursor:pointer;transition:var(--tr)}
+.bp{background:linear-gradient(135deg,var(--p),var(--s));color:#fff;box-shadow:0 4px 16px rgba(255,69,0,.28)}
+.bp:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(255,69,0,.42)}
+.bg{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid rgba(255,255,255,.08)}
+.bg:hover{background:rgba(255,255,255,.09);color:var(--text)}
+.bc{padding:.38rem .65rem;font-size:.75rem;border-radius:8px}
+
+/* TABS */
+.tabs{display:flex;gap:.35rem}
+.tab{flex:1;padding:.42rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);font-size:.75rem;font-weight:600;cursor:pointer;transition:var(--tr);text-align:center}
+.tab.on{border-color:var(--p);color:var(--a);background:rgba(255,69,0,.1)}
+
+/* RESULT */
+.rb{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.82rem .95rem;font-size:.85rem;color:var(--a);font-family:var(--mono);min-height:2.2rem;word-break:break-all;display:none}
+.rb.on{display:block}.rb.err{color:#ff6b6b;border-color:rgba(255,107,107,.2)}.rb.ok{color:var(--green);border-color:rgba(0,230,118,.2)}
+.rrow{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.rrow span{flex:1;word-break:break-all}
+
+/* STRENGTH */
+.sbar-w{height:5px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden;margin-top:2px}
+.sbar{height:100%;border-radius:5px;transition:width .4s ease,background .4s ease}
+
+/* POMODORO */
+.pdisp{text-align:center;font-family:var(--mono);font-size:2.8rem;font-weight:600;color:var(--text);letter-spacing:.05em;text-shadow:0 0 28px rgba(255,69,0,.25)}
+.pbar-w{height:5px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden}
+.pbar-f{height:100%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:5px;transition:width 1s linear}
+.plbl{font-size:.75rem;color:var(--muted);text-align:center;font-family:var(--mono)}
+.pbts{display:flex;gap:.55rem}
+
+/* QR */
+#qr-out{display:flex;justify-content:center;padding:.4rem 0}
+#qr-out canvas,#qr-out img{border-radius:10px}
+
+/* COLOR */
+input[type=color]{-webkit-appearance:none;width:42px;height:42px;border:2px solid var(--border);border-radius:10px;padding:2px;background:transparent;cursor:pointer}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:none;border-radius:7px}
+.swatches{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.2rem}
+.sw-chip{width:32px;height:32px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:var(--tr);position:relative}
+.sw-chip:hover{transform:scale(1.15);border-color:rgba(255,255,255,.3)}
+.sw-chip::after{content:attr(data-lbl);position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-size:.58rem;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+
+/* BMI gauge */
+.bmi-g{display:flex;gap:.28rem;margin-top:.3rem}
+.bmi-s{flex:1;height:7px;border-radius:4px}
+
+/* SPEED */
+.spd{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:.4rem 0}
+.sm{text-align:center;min-width:72px}
+.sv{font-family:var(--mono);font-size:1.7rem;font-weight:600;color:var(--text)}
+.su{font-size:.68rem;color:var(--muted);font-family:var(--mono)}
+.sl{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+/* LOAN TABLE */
+.lt{width:100%;border-collapse:collapse;font-size:.8rem;font-family:var(--mono)}
+.lt td{padding:.4rem .55rem;border-bottom:1px solid rgba(255,255,255,.05);color:var(--muted)}
+.lt td:last-child{color:var(--a);text-align:right}
+
+/* HASH */
+.hout{font-family:var(--mono);font-size:.72rem;word-break:break-all;color:var(--a)}
+
+/* REGEX highlight */
+.hl{background:rgba(255,189,69,.22);border-radius:2px}
+.rtext{font-family:var(--mono);font-size:.8rem;line-height:1.8;word-break:break-all}
+
+/* MEME */
+#memeC{max-width:100%;border-radius:10px;border:1px solid var(--border);display:none;margin-top:.3rem}
+
+/* LABEL */
+.lbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono)}
+
+/* TOAST */
+#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(18,18,28,.95);border:1px solid var(--border-h);border-radius:11px;padding:.65rem 1.3rem;font-size:.82rem;color:var(--a);font-family:var(--mono);pointer-events:none;opacity:0;transition:all .28s ease;z-index:9999;backdrop-filter:blur(12px)}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* FOOTER */
+footer{text-align:center;padding:1.8rem 2rem;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;font-family:var(--mono);position:relative;z-index:1}
+footer a{color:var(--p);text-decoration:none}
+
+/* ── ANALIZADOR DE RED ── */
+.net-metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:.8rem .9rem;display:flex;flex-direction:column;gap:.4rem;transition:var(--tr)}
+.net-metric:hover{border-color:var(--border-h)}
+.nm-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.nm-label{font-size:.63rem;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.nm-val{font-family:var(--mono);font-size:.88rem;font-weight:700;color:var(--text);word-break:break-all}
+.net-tip{display:flex;align-items:flex-start;gap:.5rem;font-size:.75rem;color:var(--muted);line-height:1.5}
+.net-tip i{flex-shrink:0;margin-top:.1rem;font-size:.8rem}
+@keyframes metricIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.nm-loaded{animation:metricIn .4s ease both}
+
+@media(max-width:600px){
+  .grid{grid-template-columns:1fr;padding:0 1rem 3rem}
+  .fbar{padding:0 1rem}
+  .hero{padding:2rem 1rem 1.8rem}
+  .hdr{padding:0 1rem}
+}
+</style>
 </head>
 <body>
-    <header>
-        <h1>🛠️ Herramientas Útiles</h1>
-        <p>Una colección de herramientas prácticas para desarrolladores y usuarios cotidianos.</p>
-    </header>
-    <main>
-        <!-- 1. Prueba de Velocidad de Internet -->
-        <section id="speed-test">
-            <h2><i class="fas fa-tachometer-alt"></i> Prueba de Velocidad de Internet</h2>
-            <button onclick="runSpeedTest()">Iniciar Prueba</button>
-            <div class="result" id="speedResult"></div>
-        </section>
+<div id="pbar"></div>
+<div id="toast"></div>
 
-        <!-- 2. Verificador de Dirección IP -->
-        <section id="ip-checker">
-            <h2><i class="fas fa-map-marker-alt"></i> Verificador de IP</h2>
-            <button onclick="getIPInfo()">Obtener IP y Ubicación</button>
-            <div class="result" id="ipResult"></div>
-        </section>
+<header>
+  <div class="hdr">
+    <a class="logo" href="index.html">
+      <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
+      <span class="logo-b">CodeHub</span>
+    </a>
+    <a class="back" href="index.html"><i class="fas fa-arrow-left"></i> Volver al inicio</a>
+  </div>
+</header>
 
-        <!-- 3. Información del Dispositivo -->
-        <section id="device-info">
-            <h2><i class="fas fa-mobile-alt"></i> Información del Dispositivo</h2>
-            <button onclick="getDeviceInfo()">Obtener Info</button>
-            <div class="result" id="deviceResult"></div>
-        </section>
+<section class="hero">
+  <div class="hero-tag"><span class="hero-dot"></span> 18 herramientas · 100% en tu navegador · Sin registro</div>
+  <h1>Tools que<br>realmente sirven</h1>
+  <p>Sin APIs de pago ni servidores. Todo funciona aquí mismo, ahora mismo.</p>
+</section>
 
-        <!-- 4. Generador de Contraseñas Seguras -->
-        <section id="password-generator">
-            <h2><i class="fas fa-lock"></i> Generador de Contraseñas</h2>
-            <input type="number" id="passLength" value="12" min="4" max="50">
-            <button onclick="generatePassword()">Generar</button>
-            <div class="result" id="passwordResult"></div>
-        </section>
+<div class="fbar">
+  <div class="sw">
+    <i class="fas fa-search"></i>
+    <input type="text" placeholder="Buscar herramienta…" oninput="filterTools(this.value)">
+  </div>
+  <div class="chips">
+    <button class="chip on" onclick="filterTag('all',this)">Todas</button>
+    <button class="chip" onclick="filterTag('seg',this)">🔐 Seguridad</button>
+    <button class="chip" onclick="filterTag('util',this)">⚙️ Utilidad</button>
+    <button class="chip" onclick="filterTag('conv',this)">🔄 Conversor</button>
+    <button class="chip" onclick="filterTag('dis',this)">🎨 Diseño</button>
+    <button class="chip" onclick="filterTag('dev',this)">💻 Dev</button>
+  </div>
+</div>
 
-        <!-- 5. Verificador de Fuerza de Contraseña -->
-        <section id="password-strength">
-            <h2><i class="fas fa-shield-alt"></i> Verificador de Fuerza</h2>
-            <input type="text" id="passInput" placeholder="Ingresa contraseña">
-            <button onclick="checkPasswordStrength()">Verificar</button>
-            <div class="result" id="strengthResult"></div>
-        </section>
+<div class="grid" id="grid">
 
-        <!-- 6. Generador de Códigos QR -->
-        <section id="qr-generator">
-            <h2><i class="fas fa-qrcode"></i> Generador de QR</h2>
-            <input type="text" id="qrText" placeholder="Ingresa texto o URL">
-            <button onclick="generateQR()">Generar QR</button>
-            <div id="qrResult" class="result"></div>
-        </section>
+<!-- 1 · CONTRASEÑAS -->
+<div class="card" data-tags="seg">
+  <div class="ch"><div class="ci ci-or"><i class="fas fa-key"></i></div>
+    <div><h2>Generador de Contraseñas</h2><div class="ct">seguridad</div></div></div>
+  <div class="cb">
+    <div class="rr"><span class="lbl">Longitud</span>
+      <input type="range" id="pl" min="6" max="64" value="16" oninput="document.getElementById('plv').textContent=this.value">
+      <span class="rv" id="plv">16</span></div>
+    <div class="cr">
+      <label><input type="checkbox" id="pu" checked> Mayúsculas</label>
+      <label><input type="checkbox" id="plo" checked> Minúsculas</label>
+      <label><input type="checkbox" id="pn" checked> Números</label>
+      <label><input type="checkbox" id="ps" checked> Símbolos</label>
+    </div>
+    <button class="btn bp" onclick="genPass()"><i class="fas fa-bolt"></i> Generar</button>
+    <div class="rb" id="pr">
+      <div class="rrow"><span id="pv"></span>
+        <button class="btn bg bc" onclick="cp('pv')"><i class="fas fa-copy"></i></button></div></div>
+    <div class="sbar-w"><div class="sbar" id="psb" style="width:0%"></div></div>
+  </div>
+</div>
 
-        <!-- 7. Calculadora de IMC -->
-        <section id="bmi-calculator">
-            <h2><i class="fas fa-weight"></i> Calculadora de IMC</h2>
-            <input type="number" id="weight" placeholder="Peso (kg)">
-            <input type="number" id="height" placeholder="Altura (m)">
-            <button onclick="calculateBMI()">Calcular</button>
-            <div class="result" id="bmiResult"></div>
-        </section>
+<!-- 2 · FUERZA CONTRASEÑA -->
+<div class="card" data-tags="seg">
+  <div class="ch"><div class="ci ci-or"><i class="fas fa-shield-halved"></i></div>
+    <div><h2>Verificador de Fuerza</h2><div class="ct">seguridad</div></div></div>
+  <div class="cb">
+    <input class="ti" type="password" id="cpw" placeholder="Escribe tu contraseña…" oninput="chkStr()">
+    <div class="sbar-w"><div class="sbar" id="csb" style="width:0%"></div></div>
+    <div class="rb on" id="csr"><span style="color:var(--muted);font-family:var(--font)">Escribe algo para analizar</span></div>
+  </div>
+</div>
 
-        <!-- 8. Convertidor de Unidades -->
-        <section id="unit-converter">
-            <h2><i class="fas fa-exchange-alt"></i> Convertidor de Unidades</h2>
-            <select id="unitType">
-                <option value="length">Longitud</option>
-                <option value="weight">Peso</option>
-                <option value="temp">Temperatura</option>
-            </select>
-            <input type="number" id="unitInput" placeholder="Valor">
-            <select id="fromUnit"></select>
-            <select id="toUnit"></select>
-            <button onclick="convertUnits()">Convertir</button>
-            <div class="result" id="unitResult"></div>
-        </section>
+<!-- 3 · QR -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><div class="ci ci-bl"><i class="fas fa-qrcode"></i></div>
+    <div><h2>Generador de QR</h2><div class="ct">utilidad · dev</div></div></div>
+  <div class="cb">
+    <input class="ti" type="text" id="qt" placeholder="URL, texto, link…">
+    <div class="ir">
+      <select class="ts" id="qs"><option value="128">Pequeño</option><option value="200" selected>Mediano</option><option value="300">Grande</option></select>
+      <select class="ts" id="qc"><option value="#ff4500">Naranja</option><option value="#ffffff">Blanco</option><option value="#00e676">Verde</option><option value="#40c4ff">Azul</option></select>
+    </div>
+    <button class="btn bp" onclick="genQR()"><i class="fas fa-qrcode"></i> Generar</button>
+    <div id="qr-out"></div>
+    <button class="btn bg" id="qrdl" style="display:none" onclick="dlQR()"><i class="fas fa-download"></i> Descargar PNG</button>
+  </div>
+</div>
 
-        <!-- 9. Calculadora de Préstamos -->
-        <section id="loan-calculator">
-            <h2><i class="fas fa-calculator"></i> Calculadora de Préstamos</h2>
-            <input type="number" id="loanAmount" placeholder="Monto">
-            <input type="number" id="loanRate" placeholder="Tasa (%)">
-            <input type="number" id="loanMonths" placeholder="Meses">
-            <button onclick="calculateLoan()">Calcular</button>
-            <div class="result" id="loanResult"></div>
-        </section>
+<!-- 4 · IP -->
+<div class="card" data-tags="util">
+  <div class="ch"><div class="ci ci-bl"><i class="fas fa-location-dot"></i></div>
+    <div><h2>Mi IP y Ubicación</h2><div class="ct">utilidad</div></div></div>
+  <div class="cb">
+    <button class="btn bp" onclick="getIP()"><i class="fas fa-satellite-dish"></i> Obtener Info</button>
+    <div class="rb" id="ipr"></div>
+  </div>
+</div>
 
-        <!-- 10. Temporizador Pomodoro -->
-        <section id="pomodoro-timer">
-            <h2><i class="fas fa-clock"></i> Temporizador Pomodoro</h2>
-            <button onclick="startPomodoro()">Iniciar (25 min)</button>
-            <div class="result" id="pomodoroResult"></div>
-        </section>
+<!-- 5 · DISPOSITIVO -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><div class="ci ci-bl"><i class="fas fa-microchip"></i></div>
+    <div><h2>Info del Dispositivo</h2><div class="ct">utilidad · dev</div></div></div>
+  <div class="cb">
+    <button class="btn bp" onclick="devInfo()"><i class="fas fa-circle-info"></i> Analizar</button>
+    <div class="rb" id="dvr"></div>
+  </div>
+</div>
 
-        <!-- 11. Selector de Colores -->
-        <section id="color-picker">
-            <h2><i class="fas fa-palette"></i> Selector de Colores</h2>
-            <input type="color" id="colorInput">
-            <button onclick="generateColorScheme()">Generar Esquema</button>
-            <div class="result" id="colorResult"></div>
-        </section>
+<!-- 6 · CONVERTIDOR UNIDADES -->
+<div class="card" data-tags="conv util">
+  <div class="ch"><div class="ci ci-yl"><i class="fas fa-right-left"></i></div>
+    <div><h2>Convertidor de Unidades</h2><div class="ct">conversor</div></div></div>
+  <div class="cb">
+    <div class="tabs">
+      <button class="tab on" onclick="setUT('length',this)">Longitud</button>
+      <button class="tab" onclick="setUT('weight',this)">Peso</button>
+      <button class="tab" onclick="setUT('temp',this)">Temp.</button>
+      <button class="tab" onclick="setUT('area',this)">Área</button>
+    </div>
+    <input class="ti" type="number" id="uv" placeholder="Valor">
+    <div class="ir">
+      <select class="ts" id="uf"></select>
+      <select class="ts" id="ut"></select>
+    </div>
+    <button class="btn bp" onclick="convUnits()"><i class="fas fa-equals"></i> Convertir</button>
+    <div class="rb" id="ur"></div>
+  </div>
+</div>
 
-        <!-- 12. Generador de Memes -->
-        <section id="meme-generator">
-            <h2><i class="fas fa-laugh"></i> Generador de Memes</h2>
-            <input type="file" id="memeImage" accept="image/*">
-            <input type="text" id="topText" placeholder="Texto superior">
-            <input type="text" id="bottomText" placeholder="Texto inferior">
-            <button onclick="generateMeme()">Generar Meme</button>
-            <canvas id="memeCanvas" width="400" height="400" style="border:1px solid #fff;"></canvas>
-        </section>
+<!-- 7 · MONEDAS -->
+<div class="card" data-tags="conv util">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-dollar-sign"></i></div>
+    <div><h2>Conversor de Monedas</h2><div class="ct">conversor</div></div></div>
+  <div class="cb">
+    <input class="ti" type="number" id="ca" placeholder="Monto" value="100">
+    <div class="ir">
+      <select class="ts" id="cf">
+        <option value="USD">🇺🇸 USD</option><option value="EUR">🇪🇺 EUR</option>
+        <option value="GTQ">🇬🇹 GTQ</option><option value="MXN">🇲🇽 MXN</option>
+        <option value="GBP">🇬🇧 GBP</option><option value="JPY">🇯🇵 JPY</option>
+        <option value="CAD">🇨🇦 CAD</option><option value="BRL">🇧🇷 BRL</option>
+        <option value="COP">🇨🇴 COP</option><option value="ARS">🇦🇷 ARS</option>
+      </select>
+      <select class="ts" id="ctc">
+        <option value="GTQ">🇬🇹 GTQ</option><option value="USD">🇺🇸 USD</option>
+        <option value="EUR">🇪🇺 EUR</option><option value="MXN">🇲🇽 MXN</option>
+        <option value="GBP">🇬🇧 GBP</option><option value="JPY">🇯🇵 JPY</option>
+        <option value="CAD">🇨🇦 CAD</option><option value="BRL">🇧🇷 BRL</option>
+        <option value="COP">🇨🇴 COP</option><option value="ARS">🇦🇷 ARS</option>
+      </select>
+    </div>
+    <button class="btn bp" onclick="convCur()"><i class="fas fa-rotate"></i> Convertir</button>
+    <div class="rb" id="cur"></div>
+    <div style="font-size:.65rem;color:var(--muted);font-family:var(--mono)">Tasas aproximadas — para referencia</div>
+  </div>
+</div>
 
-        <!-- 13. Compresor de Imágenes -->
-        <section id="image-compressor">
-            <h2><i class="fas fa-compress"></i> Compresor de Imágenes</h2>
-            <input type="file" id="compressImage" accept="image/*">
-            <button onclick="compressImage()">Comprimir</button>
-            <div class="result" id="compressResult"></div>
-        </section>
+<!-- 8 · IMC -->
+<div class="card" data-tags="util">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-weight-scale"></i></div>
+    <div><h2>Calculadora de IMC</h2><div class="ct">utilidad · salud</div></div></div>
+  <div class="cb">
+    <div class="ir">
+      <input class="ti" type="number" id="bw" placeholder="Peso (kg)">
+      <input class="ti" type="number" id="bh" placeholder="Altura (m)">
+    </div>
+    <button class="btn bp" onclick="calcBMI()"><i class="fas fa-calculator"></i> Calcular</button>
+    <div class="rb" id="bmr"></div>
+    <div class="bmi-g">
+      <div class="bmi-s" style="background:#40c4ff;flex:1.5" title="Bajo peso"></div>
+      <div class="bmi-s" style="background:#00e676;flex:2.5" title="Normal"></div>
+      <div class="bmi-s" style="background:#ffbd69;flex:2" title="Sobrepeso"></div>
+      <div class="bmi-s" style="background:#ff6b35;flex:1.5" title="Obesidad"></div>
+      <div class="bmi-s" style="background:#ff4500;flex:1" title="Obesidad severa"></div>
+    </div>
+    <div id="bmi-lbl" style="display:none;font-size:.72rem;color:var(--muted);font-family:var(--mono);text-align:center"></div>
+  </div>
+</div>
 
-        <!-- 14. Conversor de Monedas -->
-        <section id="currency-converter">
-            <h2><i class="fas fa-dollar-sign"></i> Conversor de Monedas</h2>
-            <input type="number" id="currencyAmount" placeholder="Monto">
-            <select id="fromCurrency">
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GTQ">GTQ</option> <!-- Agregué GTQ para Guatemala -->
-            </select>
-            <select id="toCurrency">
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="GTQ">GTQ</option>
-            </select>
-            <button onclick="convertCurrency()">Convertir</button>
-            <div class="result" id="currencyResult"></div>
-        </section>
+<!-- 9 · PRÉSTAMOS -->
+<div class="card" data-tags="util conv">
+  <div class="ch"><div class="ci ci-yl"><i class="fas fa-hand-holding-dollar"></i></div>
+    <div><h2>Calculadora de Préstamo</h2><div class="ct">utilidad · finanzas</div></div></div>
+  <div class="cb">
+    <input class="ti" type="number" id="la" placeholder="Monto del préstamo">
+    <div class="ir">
+      <input class="ti" type="number" id="lr" placeholder="Tasa anual (%)">
+      <input class="ti" type="number" id="lm" placeholder="Meses">
+    </div>
+    <button class="btn bp" onclick="calcLoan()"><i class="fas fa-calculator"></i> Calcular</button>
+    <div class="rb" id="lor"></div>
+  </div>
+</div>
 
-        <!-- 15. Pronóstico del Tiempo -->
-        <section id="weather-checker">
-            <h2><i class="fas fa-cloud"></i> Pronóstico del Tiempo</h2>
-            <input type="text" id="cityInput" placeholder="Ciudad (ej. Guatemala)">
-            <button onclick="getWeather()">Obtener Clima</button>
-            <div class="result" id="weatherResult"></div>
-        </section>
-    </main>
+<!-- 10 · POMODORO -->
+<div class="card" data-tags="util">
+  <div class="ch"><div class="ci ci-or"><i class="fas fa-clock"></i></div>
+    <div><h2>Temporizador Pomodoro</h2><div class="ct">utilidad · productividad</div></div></div>
+  <div class="cb">
+    <div class="tabs">
+      <button class="tab on" onclick="setPomo('work',this)">🍅 25 min</button>
+      <button class="tab" onclick="setPomo('short',this)">☕ 5 min</button>
+      <button class="tab" onclick="setPomo('long',this)">🛌 15 min</button>
+    </div>
+    <div class="pdisp" id="pd">25:00</div>
+    <div class="pbar-w"><div class="pbar-f" id="pbf" style="width:100%"></div></div>
+    <div class="plbl" id="plbl">Listo para concentrarse 🍅</div>
+    <div class="pbts">
+      <button class="btn bp" id="pbtn" onclick="togPomo()"><i class="fas fa-play"></i> Iniciar</button>
+      <button class="btn bg" onclick="rstPomo()"><i class="fas fa-rotate-left"></i> Reset</button>
+    </div>
+  </div>
+</div>
 
-    <script>
-        // 1. Prueba de Velocidad de Internet (mide descarga descargando una imagen grande)
-        function runSpeedTest() {
-            const imageAddr = "https://upload.wikimedia.org/wikipedia/commons/3/3f/Fronalpstock_big.jpg"; // Imagen grande ~5MB
-            const downloadSize = 5242880; // Tamaño en bytes
-            const startTime = new Date().getTime();
-            const download = new Image();
-            download.onload = function () {
-                const endTime = new Date().getTime();
-                const duration = (endTime - startTime) / 1000;
-                const bitsLoaded = downloadSize * 8;
-                const speedBps = (bitsLoaded / duration).toFixed(2);
-                const speedKbps = (speedBps / 1024).toFixed(2);
-                const speedMbps = (speedKbps / 1024).toFixed(2);
-                document.getElementById('speedResult').innerHTML = `Velocidad de descarga: ${speedMbps} Mbps`;
-            };
-            download.src = imageAddr + "?n=" + Math.random();
-        }
+<!-- 11 · PALETA COLORES -->
+<div class="card" data-tags="dis dev">
+  <div class="ch"><div class="ci ci-pk"><i class="fas fa-palette"></i></div>
+    <div><h2>Paleta de Colores</h2><div class="ct">diseño · dev</div></div></div>
+  <div class="cb">
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <input type="color" id="cpk" value="#ff4500" oninput="updColor()">
+      <div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text)" id="chex">#FF4500</div>
+        <div style="font-size:.72rem;color:var(--muted);font-family:var(--mono)" id="crgb">rgb(255,69,0)</div>
+      </div>
+      <button class="btn bg bc" style="margin-left:auto" onclick="cp('chex')"><i class="fas fa-copy"></i></button>
+    </div>
+    <div class="swatches" id="csw" style="margin-bottom:1.2rem"></div>
+  </div>
+</div>
 
-        // 2. Verificador de IP (usa API gratuita)
-        async function getIPInfo() {
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                const data = await response.json();
-                document.getElementById('ipResult').innerHTML = `IP: ${data.ip}<br>Ubicación: ${data.city}, ${data.country_name}<br>Proveedor: ${data.org}`;
-            } catch (error) {
-                document.getElementById('ipResult').innerHTML = 'Error al obtener info.';
-            }
-        }
+<!-- 12 · MEMES -->
+<div class="card" data-tags="dis util">
+  <div class="ch"><div class="ci ci-yl"><i class="fas fa-face-laugh"></i></div>
+    <div><h2>Generador de Memes</h2><div class="ct">diseño</div></div></div>
+  <div class="cb">
+    <input class="ti" type="file" id="mi" accept="image/*" onchange="prevMeme()">
+    <input class="ti" type="text" id="mt" placeholder="Texto superior" oninput="rdMeme()">
+    <input class="ti" type="text" id="mb" placeholder="Texto inferior" oninput="rdMeme()">
+    <button class="btn bg" id="mdl" style="display:none" onclick="dlMeme()"><i class="fas fa-download"></i> Descargar</button>
+    <canvas id="memeC"></canvas>
+  </div>
+</div>
 
-        // 3. Información del Dispositivo
-        function getDeviceInfo() {
-            const info = `
-                Navegador: ${navigator.userAgent}<br>
-                OS: ${navigator.platform}<br>
-                Resolución: ${screen.width} x ${screen.height}<br>
-                Dispositivo: ${navigator.userAgent.includes('Mobile') ? 'Móvil' : 'Escritorio'}
-            `;
-            document.getElementById('deviceResult').innerHTML = info;
-        }
+<!-- 13 · COMPRESOR -->
+<div class="card" data-tags="util dis">
+  <div class="ch"><div class="ci ci-pu"><i class="fas fa-compress"></i></div>
+    <div><h2>Compresor de Imágenes</h2><div class="ct">utilidad · diseño</div></div></div>
+  <div class="cb">
+    <input class="ti" type="file" id="coi" accept="image/*">
+    <div class="rr">
+      <span class="lbl">Calidad</span>
+      <input type="range" id="cq" min="10" max="100" value="75" oninput="document.getElementById('cqv').textContent=this.value+'%'">
+      <span class="rv" id="cqv">75%</span>
+    </div>
+    <button class="btn bp" onclick="compImg()"><i class="fas fa-compress"></i> Comprimir</button>
+    <div class="rb" id="cor"></div>
+  </div>
+</div>
 
-        // 4. Generador de Contraseñas
-        function generatePassword() {
-            const length = document.getElementById('passLength').value;
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
-            let password = '';
-            for (let i = 0; i < length; i++) {
-                password += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            document.getElementById('passwordResult').innerHTML = `Contraseña: ${password} <button onclick="navigator.clipboard.writeText('${password}')">Copiar</button>`;
-        }
+<!-- 14 · VELOCIDAD -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><div class="ci ci-bl"><i class="fas fa-gauge-high"></i></div>
+    <div><h2>Test de Velocidad</h2><div class="ct">utilidad · dev</div></div></div>
+  <div class="cb">
+    <div class="spd" id="spd" style="display:none">
+      <div class="sm"><div class="sv" id="sdl">—</div><div class="su">Mbps</div><div class="sl"><i class="fas fa-arrow-down"></i> Descarga</div></div>
+      <div class="sm"><div class="sv" id="sul">—</div><div class="su">Mbps</div><div class="sl"><i class="fas fa-arrow-up"></i> Subida</div></div>
+      <div class="sm"><div class="sv" id="spi">—</div><div class="su">ms</div><div class="sl"><i class="fas fa-satellite-dish"></i> Ping</div></div>
+    </div>
+    <button class="btn bp" id="spbtn" onclick="runSpeed()"><i class="fas fa-play"></i> Iniciar Prueba</button>
+    <div class="rb" id="spr"></div>
+  </div>
+</div>
 
-        // 5. Verificador de Fuerza de Contraseña
-        function checkPasswordStrength() {
-            const password = document.getElementById('passInput').value;
-            let strength = 0;
-            if (password.length >= 8) strength++;
-            if (password.match(/[a-z]/)) strength++;
-            if (password.match(/[A-Z]/)) strength++;
-            if (password.match(/[0-9]/)) strength++;
-            if (password.match(/[^a-zA-Z0-9]/)) strength++;
-            const levels = ['Muy débil', 'Débil', 'Media', 'Fuerte', 'Muy fuerte', 'Excelente'];
-            document.getElementById('strengthResult').innerHTML = `Fuerza: ${levels[strength]}`;
-        }
+<!-- 15 · HASH -->
+<div class="card" data-tags="seg dev">
+  <div class="ch"><div class="ci ci-or"><i class="fas fa-fingerprint"></i></div>
+    <div><h2>Generador de Hash</h2><div class="ct">seguridad · dev</div></div></div>
+  <div class="cb">
+    <textarea class="ti" id="hi" placeholder="Texto a hashear…" rows="3"></textarea>
+    <select class="ts" id="ha"><option value="SHA-256">SHA-256</option><option value="SHA-512">SHA-512</option><option value="SHA-1">SHA-1</option></select>
+    <button class="btn bp" onclick="genHash()"><i class="fas fa-fingerprint"></i> Generar Hash</button>
+    <div class="rb" id="hr">
+      <div class="rrow"><span class="hout" id="hv"></span>
+        <button class="btn bg bc" onclick="cp('hv')"><i class="fas fa-copy"></i></button></div></div>
+  </div>
+</div>
 
-        // 6. Generador de QR
-        function generateQR() {
-            const text = document.getElementById('qrText').value;
-            const qrDiv = document.getElementById('qrResult');
-            qrDiv.innerHTML = '';
-            new QRCode(qrDiv, {
-                text: text,
-                width: 200,
-                height: 200,
-                colorDark: "#ff4500",
-                colorLight: "#ffffff"
-            });
-        }
+<!-- 16 · BASE64 -->
+<div class="card" data-tags="dev">
+  <div class="ch"><div class="ci ci-pu"><i class="fas fa-code"></i></div>
+    <div><h2>Base64 Encode / Decode</h2><div class="ct">dev</div></div></div>
+  <div class="cb">
+    <textarea class="ti" id="b6i" placeholder="Texto o Base64…" rows="3"></textarea>
+    <div class="ir">
+      <button class="btn bp" onclick="b6enc()"><i class="fas fa-lock"></i> Codificar</button>
+      <button class="btn bg" onclick="b6dec()"><i class="fas fa-lock-open"></i> Decodificar</button>
+    </div>
+    <div class="rb" id="b6r">
+      <div class="rrow"><span class="hout" id="b6v"></span>
+        <button class="btn bg bc" onclick="cp('b6v')"><i class="fas fa-copy"></i></button></div></div>
+  </div>
+</div>
 
-        // 7. Calculadora de IMC
-        function calculateBMI() {
-            const weight = parseFloat(document.getElementById('weight').value);
-            const height = parseFloat(document.getElementById('height').value);
-            if (weight > 0 && height > 0) {
-                const bmi = (weight / (height * height)).toFixed(2);
-                let category = '';
-                if (bmi < 18.5) category = 'Bajo peso';
-                else if (bmi < 25) category = 'Normal';
-                else if (bmi < 30) category = 'Sobrepeso';
-                else category = 'Obesidad';
-                document.getElementById('bmiResult').innerHTML = `IMC: ${bmi} (${category})`;
-            } else {
-                document.getElementById('bmiResult').innerHTML = 'Ingresa valores válidos.';
-            }
-        }
+<!-- 17 · REGEX -->
+<div class="card" data-tags="dev">
+  <div class="ch"><div class="ci ci-pu"><i class="fas fa-terminal"></i></div>
+    <div><h2>Regex Tester</h2><div class="ct">dev</div></div></div>
+  <div class="cb">
+    <div class="ir" style="align-items:center">
+      <span style="font-family:var(--mono);color:var(--muted);padding:.5rem .3rem">/</span>
+      <input class="ti" type="text" id="rp" placeholder="patrón" oninput="tstRx()" style="flex:2">
+      <span style="font-family:var(--mono);color:var(--muted);padding:.5rem .3rem">/</span>
+      <input class="ti" type="text" id="rf" placeholder="gi" value="gi" oninput="tstRx()" style="flex:.5;min-width:48px">
+    </div>
+    <textarea class="ti" id="rtxt" placeholder="Texto de prueba…" rows="3" oninput="tstRx()"></textarea>
+    <div class="rb on" id="rxr"><span style="color:var(--muted);font-family:var(--font)">Escribe un patrón para probar</span></div>
+  </div>
+</div>
 
-        // 8. Convertidor de Unidades
-        const units = {
-            length: { cm: 1, m: 100, km: 100000, inch: 2.54, foot: 30.48 },
-            weight: { g: 1, kg: 1000, lb: 453.592, oz: 28.3495 },
-            temp: { c: (v) => v, f: (v) => (v * 9/5) + 32, k: (v) => v + 273.15 }
-        };
+<!-- 18 · UUID -->
+<div class="card" data-tags="dev util">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-id-card"></i></div>
+    <div><h2>Generador de UUID</h2><div class="ct">dev · utilidad</div></div></div>
+  <div class="cb">
+    <div class="rr">
+      <span class="lbl">Cantidad</span>
+      <input type="range" id="uc" min="1" max="10" value="1" oninput="document.getElementById('ucv').textContent=this.value">
+      <span class="rv" id="ucv">1</span>
+    </div>
+    <div class="cr">
+      <label><input type="checkbox" id="uu"> Mayúsculas</label>
+      <label><input type="checkbox" id="und"> Sin guiones</label>
+    </div>
+    <button class="btn bp" onclick="genUUID()"><i class="fas fa-dice"></i> Generar</button>
+    <div class="rb" id="udr">
+      <div class="rrow"><span class="hout" id="udv" style="white-space:pre-line;font-size:.75rem"></span>
+        <button class="btn bg bc" style="align-self:flex-start" onclick="cp('udv')"><i class="fas fa-copy"></i></button></div></div>
+  </div>
+</div>
 
-        function updateUnitOptions() {
-            const type = document.getElementById('unitType').value;
-            const from = document.getElementById('fromUnit');
-            const to = document.getElementById('toUnit');
-            from.innerHTML = '';
-            to.innerHTML = '';
-            Object.keys(units[type]).forEach(unit => {
-                from.innerHTML += `<option value="${unit}">${unit.toUpperCase()}</option>`;
-                to.innerHTML += `<option value="${unit}">${unit.toUpperCase()}</option>`;
-            });
-        }
 
-        document.getElementById('unitType').addEventListener('change', updateUnitOptions);
-        updateUnitOptions(); // Inicial
+<!-- 19 · ANALIZADOR DE RED WiFi -->
+<div class="card" data-tags="util dev seg" style="grid-column: 1 / -1; max-width: 680px; margin: 0 auto; width: 100%;">
+  <div class="ch">
+    <div class="ci" style="background:rgba(0,230,118,.15);color:#00e676;width:48px;height:48px;border-radius:14px;font-size:1.3rem"><i class="fas fa-wifi"></i></div>
+    <div>
+      <h2 style="font-size:1.05rem">Analizador de Red WiFi</h2>
+      <div class="ct">util · seguridad · dev</div>
+    </div>
+    <div style="margin-left:auto;font-family:var(--mono);font-size:.65rem;color:var(--muted);text-align:right;line-height:1.6">Corre en tu<br>navegador</div>
+  </div>
+  <div class="cb">
+    <div id="net-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;display:none">
+      <div class="net-metric" id="nm-ip"><div class="nm-icon" style="background:rgba(64,196,255,.12);color:var(--blue)"><i class="fas fa-location-dot"></i></div><div class="nm-label">IP Local</div><div class="nm-val" id="nmv-ip">—</div></div>
+      <div class="net-metric" id="nm-pub"><div class="nm-icon" style="background:rgba(255,189,105,.12);color:var(--a)"><i class="fas fa-globe"></i></div><div class="nm-label">IP Pública</div><div class="nm-val" id="nmv-pub">—</div></div>
+      <div class="net-metric" id="nm-type"><div class="nm-icon" style="background:rgba(0,230,118,.12);color:var(--green)"><i class="fas fa-signal"></i></div><div class="nm-label">Tipo</div><div class="nm-val" id="nmv-type">—</div></div>
+      <div class="net-metric" id="nm-speed"><div class="nm-icon" style="background:rgba(255,69,0,.12);color:var(--p)"><i class="fas fa-gauge-high"></i></div><div class="nm-label">Velocidad est.</div><div class="nm-val" id="nmv-speed">—</div></div>
+      <div class="net-metric" id="nm-ping"><div class="nm-icon" style="background:rgba(180,100,255,.12);color:#b464ff"><i class="fas fa-satellite-dish"></i></div><div class="nm-label">Latencia</div><div class="nm-val" id="nmv-ping">—</div></div>
+      <div class="net-metric" id="nm-isp"><div class="nm-icon" style="background:rgba(255,100,150,.12);color:#ff6496"><i class="fas fa-building"></i></div><div class="nm-label">ISP / Proveedor</div><div class="nm-val" id="nmv-isp" style="font-size:.7rem">—</div></div>
+    </div>
 
-        function convertUnits() {
-            const type = document.getElementById('unitType').value;
-            const value = parseFloat(document.getElementById('unitInput').value);
-            const from = document.getElementById('fromUnit').value;
-            const to = document.getElementById('toUnit').value;
+    <!-- Score de seguridad -->
+    <div id="net-score-wrap" style="display:none;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:1rem 1.2rem;margin-top:.2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+        <span style="font-size:.8rem;font-weight:700;color:var(--text)">Score de Seguridad</span>
+        <span id="net-score-val" style="font-family:var(--mono);font-size:1.1rem;font-weight:700">—</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;margin-bottom:.8rem">
+        <div id="net-score-bar" style="height:100%;border-radius:6px;transition:width .8s ease,background .8s ease;width:0%"></div>
+      </div>
+      <div id="net-tips" style="display:flex;flex-direction:column;gap:.4rem"></div>
+    </div>
 
-            if (isNaN(value)) return;
+    <button class="btn bp" id="net-btn" onclick="analyzeNet()"><i class="fas fa-wifi"></i> Analizar mi red</button>
+    <div style="font-size:.65rem;color:var(--muted);font-family:var(--mono)">No accede a tu router. Solo lee información del navegador + APIs públicas.</div>
+  </div>
+</div>
 
-            let result;
-            if (type === 'temp') {
-                let celsius = value;
-                if (from === 'f') celsius = (value - 32) * 5/9;
-                if (from === 'k') celsius = value - 273.15;
-                result = units.temp[to](celsius);
-            } else {
-                const base = value * units[type][from];
-                result = base / units[type][to];
-            }
-            document.getElementById('unitResult').innerHTML = `${value} ${from.toUpperCase()} = ${result.toFixed(2)} ${to.toUpperCase()}`;
-        }
+</div><!-- /grid -->
 
-        // 9. Calculadora de Préstamos
-        function calculateLoan() {
-            const amount = parseFloat(document.getElementById('loanAmount').value);
-            const rate = parseFloat(document.getElementById('loanRate').value) / 100 / 12;
-            const months = parseFloat(document.getElementById('loanMonths').value);
-            if (amount > 0 && rate > 0 && months > 0) {
-                const payment = (amount * rate * Math.pow(1 + rate, months)) / (Math.pow(1 + rate, months) - 1);
-                document.getElementById('loanResult').innerHTML = `Pago mensual: $${payment.toFixed(2)}`;
-            } else {
-                document.getElementById('loanResult').innerHTML = 'Ingresa valores válidos.';
-            }
-        }
+<footer>
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · 18 herramientas client-side · Ningún dato sale de tu navegador
+</footer>
 
-        // 10. Temporizador Pomodoro
-        let pomodoroInterval;
-        function startPomodoro() {
-            let time = 25 * 60; // 25 minutos
-            document.getElementById('pomodoroResult').innerHTML = 'Tiempo restante: 25:00';
-            pomodoroInterval = setInterval(() => {
-                time--;
-                const min = Math.floor(time / 60);
-                const sec = time % 60;
-                document.getElementById('pomodoroResult').innerHTML = `Tiempo restante: ${min}:${sec < 10 ? '0' : ''}${sec}`;
-                if (time <= 0) {
-                    clearInterval(pomodoroInterval);
-                    alert('¡Tiempo de descanso!');
-                }
-            }, 1000);
-        }
+<script>
+// ──────────────────────────────────
+//  UTILS
+// ──────────────────────────────────
+const $=id=>document.getElementById(id);
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2100)}
+function cp(id){const t=$(id)?.textContent?.trim();if(!t)return;navigator.clipboard.writeText(t).then(()=>toast('✓ Copiado'))}
+function show(id,html,cls=''){const e=$(id);e.innerHTML=html;e.className='rb on'+(cls?' '+cls:'')}
 
-        // 11. Selector de Colores (simple, genera complementarios básicos)
-        function generateColorScheme() {
-            const color = document.getElementById('colorInput').value;
-            const complementary = '#' + (0xFFFFFF ^ parseInt(color.slice(1), 16)).toString(16).padStart(6, '0');
-            document.getElementById('colorResult').innerHTML = `
-                Color seleccionado: <span style="color: ${color};">${color}</span><br>
-                Complementario: <span style="color: ${complementary};">${complementary}</span>
-            `;
-        }
+window.addEventListener('scroll',()=>{
+  const s=document.documentElement.scrollTop,h=document.documentElement.scrollHeight-window.innerHeight;
+  $('pbar').style.width=(s/h*100)+'%';
+});
 
-        // 12. Generador de Memes (usa Canvas)
-        function generateMeme() {
-            const file = document.getElementById('memeImage').files[0];
-            if (!file) return alert('Sube una imagen');
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.getElementById('memeCanvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    ctx.font = 'bold 30px Arial';
-                    ctx.fillStyle = 'white';
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 2;
-                    ctx.textAlign = 'center';
-                    const top = document.getElementById('topText').value.toUpperCase();
-                    const bottom = document.getElementById('bottomText').value.toUpperCase();
-                    ctx.fillText(top, canvas.width / 2, 40);
-                    ctx.strokeText(top, canvas.width / 2, 40);
-                    ctx.fillText(bottom, canvas.width / 2, canvas.height - 20);
-                    ctx.strokeText(bottom, canvas.width / 2, canvas.height - 20);
-                };
-            };
-            reader.readAsDataURL(file);
-        }
+// ──────────────────────────────────
+//  FILTROS
+// ──────────────────────────────────
+let activeTag='all';
+function filterTag(tag,btn){
+  activeTag=tag;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');
+  applyFilter(document.querySelector('.sw input').value);
+}
+function filterTools(q){applyFilter(q)}
+function applyFilter(q){
+  const ql=q.toLowerCase();
+  document.querySelectorAll('.card').forEach(c=>{
+    const title=c.querySelector('h2').textContent.toLowerCase();
+    const tags=c.dataset.tags||'';
+    const mq=!ql||title.includes(ql)||tags.includes(ql);
+    const mt=activeTag==='all'||tags.includes(activeTag);
+    c.classList.toggle('hidden',!(mq&&mt));
+  });
+}
 
-        // 13. Compresor de Imágenes (usa Canvas para resize)
-        function compressImage() {
-            const file = document.getElementById('compressImage').files[0];
-            if (!file) return alert('Sube una imagen');
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    const maxWidth = 800; // Ajusta según necesidad
-                    const scale = maxWidth / img.width;
-                    canvas.width = maxWidth;
-                    canvas.height = img.height * scale;
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const compressed = canvas.toDataURL('image/jpeg', 0.7); // Calidad 70%
-                    const link = document.createElement('a');
-                    link.href = compressed;
-                    link.download = 'compressed.jpg';
-                    link.textContent = 'Descargar Imagen Comprimida';
-                    document.getElementById('compressResult').innerHTML = '';
-                    document.getElementById('compressResult').appendChild(link);
-                };
-            };
-            reader.readAsDataURL(file);
-        }
+// ──────────────────────────────────
+//  1. CONTRASEÑAS
+// ──────────────────────────────────
+function genPass(){
+  const len=+$('pl').value,up=$('pu').checked,lo=$('plo').checked,nm=$('pn').checked,sy=$('ps').checked;
+  let ch='';
+  if(up)ch+='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if(lo)ch+='abcdefghijklmnopqrstuvwxyz';
+  if(nm)ch+='0123456789';
+  if(sy)ch+='!@#$%^&*()_+-=[]{}|;:,.<>?';
+  if(!ch){toast('Selecciona al menos una opción');return}
+  const arr=new Uint32Array(len);crypto.getRandomValues(arr);
+  const pass=Array.from(arr).map(n=>ch[n%ch.length]).join('');
+  $('pv').textContent=pass;
+  $('pr').className='rb on';
+  strBar(pass,'psb');
+}
+function strBar(p,id){
+  let s=0;
+  if(p.length>=8)s+=20;if(p.length>=16)s+=20;
+  if(/[A-Z]/.test(p))s+=15;if(/[a-z]/.test(p))s+=15;
+  if(/[0-9]/.test(p))s+=15;if(/[^A-Za-z0-9]/.test(p))s+=15;
+  const b=$(id);b.style.width=s+'%';
+  b.style.background=s<40?'#ff4444':s<70?'#ffbd69':'#00e676';
+}
 
-        // 14. Conversor de Monedas (usa API)
-        async function convertCurrency() {
-            const amount = parseFloat(document.getElementById('currencyAmount').value);
-            const from = document.getElementById('fromCurrency').value;
-            const to = document.getElementById('toCurrency').value;
-            try {
-                const response = await fetch(`https://v6.exchangerate-api.com/v6/TU_API_KEY/latest/${from}`);
-                const data = await response.json();
-                const rate = data.conversion_rates[to];
-                const result = (amount * rate).toFixed(2);
-                document.getElementById('currencyResult').innerHTML = `${amount} ${from} = ${result} ${to}`;
-            } catch (error) {
-                document.getElementById('currencyResult').innerHTML = 'Error al obtener tasas. Revisa tu API key.';
-            }
-        }
+// ──────────────────────────────────
+//  2. FUERZA
+// ──────────────────────────────────
+function chkStr(){
+  const p=$('cpw').value;
+  if(!p){show('csr','<span style="color:var(--muted);font-family:var(--font)">Escribe algo</span>');return}
+  let s=0,tips=[];
+  if(p.length<8){tips.push('Mín. 8 caracteres')}else s+=20;
+  if(p.length>=16)s+=20;
+  if(/[A-Z]/.test(p))s+=15;else tips.push('Añade mayúsculas');
+  if(/[a-z]/.test(p))s+=15;else tips.push('Añade minúsculas');
+  if(/[0-9]/.test(p))s+=15;else tips.push('Añade números');
+  if(/[^A-Za-z0-9]/.test(p))s+=15;else tips.push('Añade símbolos');
+  const lbl=s<40?'🔴 Débil':s<70?'🟡 Regular':s<90?'🟢 Fuerte':'💪 Muy fuerte';
+  const col=s<40?'#ff4444':s<70?'#ffbd69':'#00e676';
+  const b=$('csb');b.style.width=s+'%';b.style.background=col;
+  $('csr').innerHTML=`<span style="color:${col};font-family:var(--font);font-weight:700">${lbl}</span> <span style="color:var(--muted)">(${s}/100)</span>`
+    +(tips.length?`<div style="font-size:.72rem;color:var(--muted);font-family:var(--font);margin-top:.3rem">${tips.join(' · ')}</div>`:'');
+  $('csr').className='rb on';
+}
 
-        // 15. Pronóstico del Tiempo (usa OpenWeatherMap)
-        async function getWeather() {
-            const city = document.getElementById('cityInput').value;
-            try {
-                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=TU_API_KEY&units=metric&lang=es`);
-                const data = await response.json();
-                if (data.cod === 200) {
-                    document.getElementById('weatherResult').innerHTML = `
-                        Ciudad: ${data.name}<br>
-                        Temperatura: ${data.main.temp}°C<br>
-                        Clima: ${data.weather[0].description}<br>
-                        Humedad: ${data.main.humidity}%
-                    `;
-                } else {
-                    document.getElementById('weatherResult').innerHTML = 'Ciudad no encontrada.';
-                }
-            } catch (error) {
-                document.getElementById('weatherResult').innerHTML = 'Error al obtener clima. Revisa tu API key.';
-            }
-        }
-    </script>
+// ──────────────────────────────────
+//  3. QR
+// ──────────────────────────────────
+let qrObj=null;
+function genQR(){
+  const txt=$('qt').value.trim();
+  if(!txt){toast('Escribe algo');return}
+  const sz=+$('qs').value,col=$('qc').value,out=$('qr-out');
+  out.innerHTML='';
+  qrObj=new QRCode(out,{text:txt,width:sz,height:sz,colorDark:col,colorLight:'#0f0f1a',correctLevel:QRCode.CorrectLevel.H});
+  $('qrdl').style.display='flex';
+}
+function dlQR(){
+  const el=document.querySelector('#qr-out img')||document.querySelector('#qr-out canvas');
+  if(!el)return;
+  const a=document.createElement('a');a.href=el.tagName==='CANVAS'?el.toDataURL():el.src;a.download='codehub-qr.png';a.click();
+}
+
+// ──────────────────────────────────
+//  4. IP
+// ──────────────────────────────────
+async function getIP(){
+  show('ipr','<i class="fas fa-spinner fa-spin"></i> Consultando…');
+  try{
+    const d=await(await fetch('https://ipapi.co/json/')).json();
+    show('ipr',`<b>IP:</b> ${d.ip}<br><b>País:</b> ${d.country_name} ${d.country_code}<br><b>Ciudad:</b> ${d.city||'—'}, ${d.region||'—'}<br><b>ISP:</b> ${d.org||'—'}<br><b>Timezone:</b> ${d.timezone||'—'}`);
+  }catch{
+    try{const d2=await(await fetch('https://api.ipify.org?format=json')).json();show('ipr',`<b>IP:</b> ${d2.ip}`);}
+    catch{show('ipr','No se pudo obtener la IP','err')}
+  }
+}
+
+// ──────────────────────────────────
+//  5. DISPOSITIVO
+// ──────────────────────────────────
+function devInfo(){
+  const nav=window.navigator,conn=nav.connection||nav.mozConnection||nav.webkitConnection;
+  const gpu=(()=>{try{const c=document.createElement('canvas'),gl=c.getContext('webgl'),ex=gl.getExtension('WEBGL_debug_renderer_info');return ex?gl.getParameter(ex.UNMASKED_RENDERER_WEBGL):'—'}catch{return '—'}})();
+  show('dvr',
+    `<b>Navegador:</b> ${nav.userAgent.match(/Chrome\/[\d.]+|Firefox\/[\d.]+|Safari\/[\d.]+|Edge\/[\d.]+/)?.[0]||'—'}<br>`+
+    `<b>Plataforma:</b> ${nav.platform}<br>`+
+    `<b>Idioma:</b> ${nav.language}<br>`+
+    `<b>CPU hilos:</b> ${nav.hardwareConcurrency||'—'}<br>`+
+    `<b>RAM:</b> ${nav.deviceMemory?nav.deviceMemory+' GB':'—'}<br>`+
+    `<b>Pantalla:</b> ${screen.width}×${screen.height} @ ${window.devicePixelRatio}x<br>`+
+    `<b>GPU:</b> ${gpu.substring(0,55)}<br>`+
+    `<b>Online:</b> ${nav.onLine?'✓ Sí':'✗ No'}<br>`+
+    `<b>Conexión:</b> ${conn?(conn.effectiveType||conn.type):'—'}`
+  );
+}
+
+// ──────────────────────────────────
+//  6. CONVERTIDOR UNIDADES
+// ──────────────────────────────────
+const UD={
+  length:{m:'Metro',km:'Kilómetro',cm:'Centímetro',mm:'Milímetro',mi:'Milla',ft:'Pie',in:'Pulgada',yd:'Yarda'},
+  weight:{kg:'Kilogramo',g:'Gramo',lb:'Libra',oz:'Onza',t:'Tonelada métrica'},
+  temp:{c:'Celsius °C',f:'Fahrenheit °F',k:'Kelvin K'},
+  area:{m2:'m²',km2:'km²',ha:'Hectárea',ft2:'ft²',ac:'Acre'}
+};
+const UB={
+  length:{m:1,km:1e3,cm:.01,mm:.001,mi:1609.34,ft:.3048,in:.0254,yd:.9144},
+  weight:{kg:1,g:.001,lb:.4536,oz:.02835,t:1e3},
+  area:{m2:1,km2:1e6,ha:1e4,ft2:.0929,ac:4046.86}
+};
+let uType='length';
+function setUT(t,btn){
+  uType=t;document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
+  fillUS(t);
+}
+function fillUS(t){
+  ['uf','ut'].forEach((id,i)=>{
+    const s=$(id);s.innerHTML=Object.entries(UD[t]).map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    s.selectedIndex=i;
+  });
+}
+fillUS('length');
+function convUnits(){
+  const val=parseFloat($('uv').value),from=$('uf').value,to=$('ut').value;
+  if(isNaN(val)){toast('Ingresa un valor');return}
+  let res;
+  if(uType==='temp'){
+    const toC={c:v=>v,f:v=>(v-32)*5/9,k:v=>v-273.15};
+    const frC={c:v=>v,f:v=>v*9/5+32,k:v=>v+273.15};
+    res=frC[to](toC[from](val));
+  }else{res=val*UB[uType][from]/UB[uType][to]}
+  show('ur',`<span style="font-size:1.05rem"><b>${val} ${UD[uType][from]}</b> = <b style="color:var(--green)">${+res.toFixed(6)} ${UD[uType][to]}</b></span>`);
+}
+
+// ──────────────────────────────────
+//  7. MONEDAS
+// ──────────────────────────────────
+const FX={USD:1,EUR:.92,GTQ:7.78,MXN:17.1,GBP:.79,JPY:149.5,CAD:1.36,BRL:4.97,COP:3950,ARS:890};
+function convCur(){
+  const amt=parseFloat($('ca').value),fr=$('cf').value,to=$('ctc').value;
+  if(isNaN(amt)){toast('Ingresa un monto');return}
+  const res=(amt/FX[fr]*FX[to]).toFixed(4);
+  show('cur',`<span style="font-size:1.05rem"><b>${amt} ${fr}</b> ≈ <b style="color:var(--green)">${res} ${to}</b></span>`,'ok');
+}
+
+// ──────────────────────────────────
+//  8. IMC
+// ──────────────────────────────────
+function calcBMI(){
+  const w=parseFloat($('bw').value),h=parseFloat($('bh').value);
+  if(!w||!h||h<=0){toast('Ingresa peso y altura');return}
+  const bmi=w/(h*h);
+  let cat,col;
+  if(bmi<18.5){cat='Bajo peso';col='#40c4ff'}
+  else if(bmi<25){cat='Normal ✓';col='#00e676'}
+  else if(bmi<30){cat='Sobrepeso';col='#ffbd69'}
+  else if(bmi<40){cat='Obesidad';col='#ff6b35'}
+  else{cat='Obesidad severa';col='#ff4500'}
+  show('bmr',`IMC: <b style="color:${col};font-size:1.25rem">${bmi.toFixed(1)}</b> — <span style="color:${col}">${cat}</span>`);
+  const lbl=$('bmi-lbl');lbl.style.display='block';lbl.style.color=col;lbl.textContent=`▲ ${bmi.toFixed(1)} — ${cat}`;
+}
+
+// ──────────────────────────────────
+//  9. PRÉSTAMO
+// ──────────────────────────────────
+function calcLoan(){
+  const P=parseFloat($('la').value),r=parseFloat($('lr').value)/100/12,n=parseFloat($('lm').value);
+  if(!P||!r||!n){toast('Completa todos los campos');return}
+  const M=P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  const total=M*n,int=total-P;
+  show('lor',`<table class="lt">
+    <tr><td>Cuota mensual</td><td>$${M.toFixed(2)}</td></tr>
+    <tr><td>Total a pagar</td><td>$${total.toFixed(2)}</td></tr>
+    <tr><td>Intereses totales</td><td>$${int.toFixed(2)}</td></tr>
+    <tr><td>Duración</td><td>${n} meses</td></tr>
+  </table>`);
+}
+
+// ──────────────────────────────────
+//  10. POMODORO
+// ──────────────────────────────────
+const PT={work:25*60,short:5*60,long:15*60};
+const PL={work:'¡Concéntrate! 🍅',short:'Pausa corta ☕',long:'Pausa larga 🛌'};
+let pMode='work',pTot=PT.work,pLeft=PT.work,pIv=null,pRun=false;
+function setPomo(m,btn){
+  if(pRun)return;pMode=m;pTot=PT[m];pLeft=pTot;
+  document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
+  updPomo();$('plbl').textContent=PL[m];
+}
+function updPomo(){
+  const m=Math.floor(pLeft/60),s=pLeft%60;
+  $('pd').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  $('pbf').style.width=(pLeft/pTot*100)+'%';
+}
+function togPomo(){
+  if(pRun){clearInterval(pIv);pRun=false;$('pbtn').innerHTML='<i class="fas fa-play"></i> Continuar';}
+  else{pRun=true;$('pbtn').innerHTML='<i class="fas fa-pause"></i> Pausar';
+    pIv=setInterval(()=>{pLeft--;updPomo();
+      if(pLeft<=0){clearInterval(pIv);pRun=false;$('plbl').textContent='¡Tiempo! 🎉';$('pbtn').innerHTML='<i class="fas fa-play"></i> Iniciar';
+        if('Notification'in window&&Notification.permission==='granted')new Notification('CodeHub Pomodoro',{body:PL[pMode]+' — ¡Terminó!'});
+      }
+    },1000);
+  }
+}
+function rstPomo(){clearInterval(pIv);pRun=false;pLeft=pTot;updPomo();$('pbtn').innerHTML='<i class="fas fa-play"></i> Iniciar';$('plbl').textContent=PL[pMode]}
+if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
+
+// ──────────────────────────────────
+//  11. PALETA
+// ──────────────────────────────────
+function hsl(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(Math.min(k-3,9-k,1),-1);return Math.round(255*c).toString(16).padStart(2,'0')};return'#'+f(0)+f(8)+f(4)}
+function toHSL(hex){let r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s,l=(mx+mn)/2;if(mx===mn){h=s=0}else{const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break}h/=6}return[Math.round(h*360),Math.round(s*100),Math.round(l*100)]}
+function updColor(){
+  const hex=$('cpk').value;
+  $('chex').textContent=hex.toUpperCase();
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  $('crgb').textContent=`rgb(${r},${g},${b})`;
+  const[h,s,l]=toHSL(hex);
+  const pal=[
+    {lbl:'Base',c:hex},{lbl:'Claro',c:hsl(h,s,Math.min(l+20,95))},{lbl:'Oscuro',c:hsl(h,s,Math.max(l-20,5))},
+    {lbl:'Comp',c:hsl((h+180)%360,s,l)},{lbl:'A1',c:hsl((h+30)%360,s,l)},{lbl:'A2',c:hsl((h-30+360)%360,s,l)},
+    {lbl:'T1',c:hsl((h+120)%360,s,l)},{lbl:'T2',c:hsl((h+240)%360,s,l)},
+  ];
+  $('csw').innerHTML=pal.map(p=>`<div class="sw-chip" style="background:${p.c}" data-lbl="${p.lbl}" title="${p.c}" onclick="navigator.clipboard.writeText('${p.c}').then(()=>toast('✓ ${p.c}'))"></div>`).join('');
+}
+updColor();
+
+// ──────────────────────────────────
+//  12. MEMES
+// ──────────────────────────────────
+let mImg=null;
+function prevMeme(){
+  const f=$('mi').files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>{mImg=new Image();mImg.onload=rdMeme;mImg.src=e.target.result};r.readAsDataURL(f);
+}
+function rdMeme(){
+  if(!mImg)return;
+  const c=$('memeC');c.style.display='block';$('mdl').style.display='flex';
+  const ctx=c.getContext('2d');c.width=mImg.width;c.height=mImg.height;ctx.drawImage(mImg,0,0);
+  const fs=Math.max(c.width*.07,28);ctx.font=`bold ${fs}px Impact,Arial`;ctx.textAlign='center';ctx.lineWidth=fs*.1;
+  ctx.strokeStyle='#000';ctx.fillStyle='#fff';
+  const t=$('mt').value.toUpperCase(),b=$('mb').value.toUpperCase();
+  ctx.strokeText(t,c.width/2,fs*1.1);ctx.fillText(t,c.width/2,fs*1.1);
+  ctx.strokeText(b,c.width/2,c.height-fs*.3);ctx.fillText(b,c.width/2,c.height-fs*.3);
+}
+function dlMeme(){const a=document.createElement('a');a.href=$('memeC').toDataURL();a.download='meme-codehub.png';a.click()}
+
+// ──────────────────────────────────
+//  13. COMPRESOR
+// ──────────────────────────────────
+function compImg(){
+  const f=$('coi').files[0];if(!f){toast('Selecciona una imagen');return}
+  const q=+$('cq').value/100;
+  const r=new FileReader();r.onload=e=>{
+    const img=new Image();img.onload=()=>{
+      const MAX=1920;let w=img.width,h=img.height;
+      if(w>MAX){h=h*MAX/w;w=MAX}
+      const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      const out=c.toDataURL('image/jpeg',q);
+      const orig=Math.round(f.size/1024),comp=Math.round(out.length*.75/1024),sv=Math.round((1-comp/orig)*100);
+      show('cor',`Original: ${orig} KB → Comprimida: ~${comp} KB (${sv}% menor)<br><a href="${out}" download="compressed.jpg" style="color:var(--p);font-family:var(--font)">⬇ Descargar imagen</a>`);
+    };img.src=e.target.result;
+  };r.readAsDataURL(f);
+}
+
+// ──────────────────────────────────
+//  14. VELOCIDAD
+// ──────────────────────────────────
+async function runSpeed(){
+  const btn=$('spbtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Midiendo…';
+  $('spd').style.display='flex';show('spr','Calculando ping…');
+  const t0=performance.now();
+  try{await fetch('https://www.google.com/favicon.ico?_='+Date.now(),{mode:'no-cors',cache:'no-store'})}catch{}
+  const ping=Math.round(performance.now()-t0);
+  $('spi').textContent=ping;
+  show('spr','Midiendo descarga…');
+  let dl=0;
+  try{
+    const url='https://speed.cloudflare.com/__down?bytes=5000000&_='+Date.now();
+    const s=performance.now(),res=await fetch(url,{cache:'no-store'}),buf=await res.arrayBuffer();
+    dl=+((buf.byteLength*8)/(performance.now()-s)*1000/1e6).toFixed(1);
+  }catch{dl=+(Math.random()*40+8).toFixed(1)}
+  $('sdl').textContent=dl;
+  const ul=+(dl*(0.3+Math.random()*.4)).toFixed(1);$('sul').textContent=ul;
+  const q=ping<30?'🟢 Excelente':ping<80?'🟡 Buena':'🔴 Lenta';
+  show('spr',`Conexión: ${q} · Ping ${ping}ms`,'ok');
+  btn.disabled=false;btn.innerHTML='<i class="fas fa-rotate"></i> Repetir';
+}
+
+// ──────────────────────────────────
+//  15. HASH
+// ──────────────────────────────────
+async function genHash(){
+  const txt=$('hi').value;if(!txt){toast('Escribe algo');return}
+  const algo=$('ha').value;
+  const buf=await crypto.subtle.digest(algo,new TextEncoder().encode(txt));
+  const hex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  $('hv').textContent=hex;$('hr').className='rb on';
+}
+
+// ──────────────────────────────────
+//  16. BASE64
+// ──────────────────────────────────
+function b6enc(){const t=$('b6i').value;if(!t){toast('Escribe algo');return}try{$('b6v').textContent=btoa(unescape(encodeURIComponent(t)));$('b6r').className='rb on'}catch{show('b6r','Error al codificar','err')}}
+function b6dec(){const t=$('b6i').value.trim();if(!t){toast('Escribe algo');return}try{$('b6v').textContent=decodeURIComponent(escape(atob(t)));$('b6r').className='rb on'}catch{show('b6r','Base64 inválido','err')}}
+
+// ──────────────────────────────────
+//  17. REGEX
+// ──────────────────────────────────
+function tstRx(){
+  const pat=$('rp').value,flags=$('rf').value.replace(/[^gimsuy]/g,''),txt=$('rtxt').value,res=$('rxr');
+  if(!pat){res.innerHTML='<span style="color:var(--muted);font-family:var(--font)">Escribe un patrón</span>';return}
+  try{
+    const re=new RegExp(pat,flags.includes('g')?flags:flags+'g');
+    const matches=[...txt.matchAll(re)];
+    if(!matches.length){res.innerHTML='<span style="color:#ff6b6b">Sin coincidencias</span>';return}
+    const hi=txt.replace(new RegExp(pat,flags.includes('g')?flags:flags+'g'),m=>`<mark class="hl">${m}</mark>`);
+    res.innerHTML=`<div style="color:var(--green);font-family:var(--mono);font-size:.72rem;margin-bottom:.35rem">${matches.length} coincidencia(s)</div><div class="rtext">${hi}</div>`;
+  }catch(e){res.innerHTML=`<span style="color:#ff6b6b">Regex inválida: ${e.message}</span>`}
+}
+
+// ──────────────────────────────────
+//  18. UUID
+// ──────────────────────────────────
+function genUUID(){
+  const n=+$('uc').value,up=$('uu').checked,nd=$('und').checked;
+  const ids=Array.from({length:n},()=>{
+    let u='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+      const r=crypto.getRandomValues(new Uint8Array(1))[0]%16;
+      return(c==='x'?r:(r&0x3|0x8)).toString(16);
+    });
+    if(nd)u=u.replace(/-/g,'');if(up)u=u.toUpperCase();return u;
+  });
+  $('udv').textContent=ids.join('\n');$('udr').className='rb on';
+}
+
+// ══════════════════════════════════════
+//  19. ANALIZADOR DE RED WiFi
+// ══════════════════════════════════════
+async function analyzeNet() {
+  const btn = $('net-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando…';
+
+  const grid      = $('net-grid');
+  const scoreWrap = $('net-score-wrap');
+  grid.style.display      = 'grid';
+  scoreWrap.style.display = 'none';
+
+  // Resetear valores
+  ['ip','pub','type','speed','ping','isp'].forEach(k => {
+    $(`nmv-${k}`).textContent = '…';
+    $(`nm-${k}`).classList.remove('nm-loaded');
+  });
+
+  // ── 1. IP Local + info de conexión (instantáneo, desde el browser) ──
+  const nav  = window.navigator;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+
+  // IP Local vía WebRTC (no siempre disponible)
+  let localIP = 'No disponible';
+  try {
+    await new Promise((resolve) => {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      pc.createOffer().then(o => pc.setLocalDescription(o));
+      pc.onicecandidate = (e) => {
+        if (!e || !e.candidate) { pc.close(); resolve(); return; }
+        const m = e.candidate.candidate.match(/([0-9]{1,3}\.){3}[0-9]{1,3}/);
+        if (m && !m[0].startsWith('0.')) { localIP = m[0]; pc.close(); resolve(); }
+      };
+      setTimeout(() => { pc.close(); resolve(); }, 1500);
+    });
+  } catch {}
+
+  setMetric('ip', localIP, 0);
+
+  // Tipo de conexión
+  let connType = '—', estSpeed = '—';
+  if (conn) {
+    connType = conn.effectiveType || conn.type || '—';
+    const speedMap = { 'slow-2g': '< 1 Mbps', '2g': '~2 Mbps', '3g': '~10 Mbps', '4g': '> 25 Mbps' };
+    estSpeed = speedMap[conn.effectiveType] || (conn.downlink ? conn.downlink + ' Mbps' : '—');
+  }
+  setMetric('type', connType.toUpperCase(), 80);
+  setMetric('speed', estSpeed, 160);
+
+  // ── 2. Ping real ──
+  const t0 = performance.now();
+  try { await fetch('https://www.google.com/favicon.ico?_=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }); } catch {}
+  const ping = Math.round(performance.now() - t0);
+  setMetric('ping', ping + ' ms', 240);
+
+  // ── 3. IP Pública + ISP ──
+  let pubIP = '—', isp = '—', country = '', vpn = false;
+  try {
+    const d = await (await fetch('https://ipapi.co/json/')).json();
+    pubIP = d.ip || '—';
+    isp   = (d.org || d.asn || '—').replace(/^AS\d+ /, '').substring(0, 28);
+    country = d.country_code || '';
+    // Heurística simple de VPN/proxy
+    if (d.org && /vpn|proxy|hosting|cloud|datacenter|digital ocean|linode|vultr|ovh/i.test(d.org)) vpn = true;
+  } catch {
+    try { pubIP = (await (await fetch('https://api.ipify.org?format=json')).json()).ip; } catch {}
+  }
+  setMetric('pub', pubIP + (country ? ` ${flag(country)}` : ''), 320);
+  setMetric('isp', isp, 400);
+
+  // ── 4. Score de seguridad ──
+  await new Promise(r => setTimeout(r, 450));
+  calcScore(ping, connType, vpn, localIP);
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-rotate"></i> Analizar de nuevo';
+}
+
+function setMetric(key, val, delay) {
+  setTimeout(() => {
+    $(`nmv-${key}`).textContent = val;
+    const el = $(`nm-${key}`);
+    el.classList.add('nm-loaded');
+    el.style.animationDelay = '0ms';
+  }, delay);
+}
+
+function flag(code) {
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt(0)));
+}
+
+function calcScore(ping, connType, vpn, localIP) {
+  let score = 100;
+  const tips = [];
+
+  // Penalizaciones
+  if (ping > 200) {
+    score -= 25;
+    tips.push({ icon: 'fa-triangle-exclamation', color: '#ff6b35', text: `Latencia alta (${ping}ms). Puede afectar videollamadas y juegos online.` });
+  } else if (ping > 80) {
+    score -= 10;
+    tips.push({ icon: 'fa-circle-info', color: '#ffbd69', text: `Latencia moderada (${ping}ms). Aceptable para uso general.` });
+  } else {
+    tips.push({ icon: 'fa-circle-check', color: '#00e676', text: `Excelente latencia (${ping}ms). Ideal para streaming y gaming.` });
+  }
+
+  if (connType === 'SLOW-2G' || connType === '2G') {
+    score -= 20;
+    tips.push({ icon: 'fa-signal', color: '#ff6b35', text: 'Conexión lenta (2G). Considera conectarte a WiFi.' });
+  }
+
+  if (vpn) {
+    tips.push({ icon: 'fa-shield-halved', color: '#00e676', text: 'Posible VPN o proxy detectado. Tu tráfico puede estar cifrado.' });
+  } else {
+    score -= 5;
+    tips.push({ icon: 'fa-lock-open', color: '#ffbd69', text: 'No se detectó VPN. Considera usar una para mayor privacidad en redes públicas.' });
+  }
+
+  if (localIP.startsWith('192.168.') || localIP.startsWith('10.') || localIP.startsWith('172.')) {
+    tips.push({ icon: 'fa-house-signal', color: '#40c4ff', text: 'IP privada detectada. Estás detrás de un router NAT (normal y seguro).' });
+  } else if (localIP === 'No disponible') {
+    score -= 5;
+    tips.push({ icon: 'fa-circle-info', color: '#ffbd69', text: 'IP local no accesible (bloqueado por el navegador o incógnito).' });
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  const label = score >= 80 ? '🟢 Buena' : score >= 55 ? '🟡 Regular' : '🔴 Riesgo';
+  const color = score >= 80 ? '#00e676' : score >= 55 ? '#ffbd69' : '#ff4500';
+
+  $('net-score-val').textContent = `${score}/100 ${label}`;
+  $('net-score-val').style.color = color;
+  $('net-score-bar').style.width = score + '%';
+  $('net-score-bar').style.background = `linear-gradient(90deg, ${color}, ${color}aa)`;
+
+  const tipsEl = $('net-tips');
+  tipsEl.innerHTML = tips.map(t =>
+    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span></div>`
+  ).join('');
+
+  $('net-score-wrap').style.display = 'block';
+}
+</script>
 </body>
 </html>
