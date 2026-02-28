@@ -1,7 +1,7 @@
 {
   "name": "codehub-backend",
-  "version": "1.0.0",
-  "description": "Proxy seguro Claude API + MongoDB para CodeHub",
+  "version": "2.1.0",
+  "description": "Backend proxy seguro para CodeHub — OpenAI + MongoDB Atlas — Railway",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

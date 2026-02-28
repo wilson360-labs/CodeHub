@@ -26,7 +26,8 @@
     <div class="hdr-right">
       <span class="update-badge" id="update-badge">● Actualizado</span>
       <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Volver</a>
-      <a class="back-link" href="downloader.html" style="background:rgba(255,69,0,.12);border-color:rgba(255,69,0,.3);color:var(--p)"><i class="fas fa-download"></i> Descargar Videos</a>
+      <a class="back-link" href="tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
+      <a class="back-link" href="downloader.html" style="background:linear-gradient(135deg,rgba(255,69,0,.18),rgba(255,107,53,.12));border-color:rgba(255,69,0,.45);color:#ff6b35;font-weight:800"><i class="fas fa-cloud-arrow-down"></i> Descargador de Videos</a>
     </div>
   </div>
 </header>
@@ -52,6 +53,112 @@
     <span>Usa estas apps de forma responsable. Descarga únicamente desde los links aquí listados. Activa "Fuentes desconocidas" en Ajustes → Seguridad antes de instalar archivos .apk.</span>
   </div>
 </div>
+
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- DESCARGADOR DE VIDEOS — Feature destacada                 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="downloader-feature">
+  <div class="df-inner">
+    <div class="df-icon-wrap">
+      <div class="df-icon"><i class="fas fa-cloud-arrow-down"></i></div>
+    </div>
+    <div class="df-content">
+      <div class="df-tag">🆕 Feature destacada</div>
+      <h2 class="df-title">Descargador de Videos</h2>
+      <p class="df-desc">Descarga videos de <strong>YouTube, TikTok, Instagram, Facebook y Twitter/X</strong> sin instalar nada. Motor propio CodeHub con extracción de enlace directo.</p>
+      <div class="df-platforms">
+        <span class="dfp dfp-yt"><i class="fab fa-youtube"></i></span>
+        <span class="dfp dfp-tt"><i class="fab fa-tiktok"></i></span>
+        <span class="dfp dfp-ig"><i class="fab fa-instagram"></i></span>
+        <span class="dfp dfp-fb"><i class="fab fa-facebook"></i></span>
+        <span class="dfp dfp-tw"><i class="fab fa-x-twitter"></i></span>
+      </div>
+    </div>
+    <a class="df-btn" href="downloader.html">
+      <i class="fas fa-cloud-arrow-down"></i>
+      Abrir Descargador
+      <i class="fas fa-arrow-right df-arrow"></i>
+    </a>
+  </div>
+</div>
+
+<style>
+.downloader-feature{
+  max-width:960px;margin:0 auto 1.5rem;padding:0 1.5rem;
+}
+.df-inner{
+  background:linear-gradient(135deg,rgba(255,69,0,.10) 0%,rgba(13,13,26,.95) 50%,rgba(255,107,53,.06) 100%);
+  border:1px solid rgba(255,69,0,.35);
+  border-radius:20px;
+  padding:1.8rem 2rem;
+  display:flex;align-items:center;gap:1.5rem;
+  flex-wrap:wrap;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,69,0,.08),0 20px 50px rgba(0,0,0,.5);
+}
+.df-inner::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 80% 50%,rgba(255,69,0,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.df-icon-wrap{flex-shrink:0}
+.df-icon{
+  width:64px;height:64px;border-radius:18px;
+  background:linear-gradient(135deg,var(--p,#ff4500),rgba(255,107,53,.8));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.8rem;color:#fff;
+  box-shadow:0 8px 28px rgba(255,69,0,.45);
+}
+.df-content{flex:1;min-width:200px}
+.df-tag{
+  font-size:.68rem;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+  color:var(--a,#ffbd69);
+  background:rgba(255,189,105,.1);
+  border:1px solid rgba(255,189,105,.2);
+  padding:2px 9px;border-radius:10px;
+  display:inline-block;margin-bottom:.6rem;
+}
+.df-title{
+  font-size:1.3rem;font-weight:800;
+  background:linear-gradient(135deg,#fff,var(--a,#ffbd69));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:.45rem;
+}
+.df-desc{font-size:.82rem;color:rgba(232,232,240,.65);line-height:1.65;margin-bottom:.85rem}
+.df-desc strong{color:#fff}
+.df-platforms{display:flex;gap:.5rem;flex-wrap:wrap}
+.dfp{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;transition:all .2s;
+}
+.dfp:hover{transform:scale(1.15)}
+.dfp-yt{background:rgba(255,0,0,.15);color:#ff4444}
+.dfp-tt{background:rgba(64,196,255,.15);color:#40c4ff}
+.dfp-ig{background:rgba(225,48,108,.15);color:#e1306c}
+.dfp-fb{background:rgba(24,119,242,.15);color:#1877f2}
+.dfp-tw{background:rgba(255,255,255,.1);color:#ccc}
+.df-btn{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.85rem 1.6rem;
+  background:linear-gradient(135deg,#ff4500,#ff6b35);
+  color:#fff;font-weight:800;font-size:.9rem;
+  font-family:'Syne',sans-serif;
+  text-decoration:none;border-radius:12px;
+  white-space:nowrap;flex-shrink:0;
+  box-shadow:0 6px 22px rgba(255,69,0,.4);
+  transition:all .22s;position:relative;z-index:1;
+}
+.df-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,69,0,.55)}
+.df-arrow{transition:transform .2s}
+.df-btn:hover .df-arrow{transform:translateX(4px)}
+@media(max-width:600px){
+  .df-inner{padding:1.3rem 1.2rem;gap:1rem}
+  .df-btn{width:100%;justify-content:center}
+}
+</style>
 
 <!-- CONTROLES -->
 <div class="controls">

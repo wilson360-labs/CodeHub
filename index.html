@@ -5463,23 +5463,22 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     sendAI();
   };
 
-  // ── CONFIGURACIÓN DEL SERVIDOR ────────────────────────────
-  // Detecta automáticamente si estás en local o producción.
-  // Solo cambia BACKEND_URL cuando tengas tu servidor con IP pública.
-  const BACKEND_URL = (function() {
-    const host = window.location.hostname;
-    // Desarrollo local → Termux
-    if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-      return 'http://localhost:3001';
-    }
-    // Producción → Railway
-    return 'https://codehub-production-729d.up.railway.app';
-  })();
+  // ── BACKEND (Railway) ───────────────────────────────────
+  // Las credenciales viven en Railway Dashboard → Variables.
+  // Aquí solo va la URL pública del servidor.
+  const RAILWAY_URL = 'https://codehub-production-729d.up.railway.app';
+  const BACKEND_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3001'   // desarrollo local
+    : RAILWAY_URL;              // producción en Railway
   const API_URL = BACKEND_URL + '/api/chat';
 
   // ID de sesión único por visita (no identifica al usuario, solo la sesión)
   const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   // ────────────────────────────────────────────────────────
+
+  // ── HISTORIAL LOCAL para mantener contexto ────────────────
+  // El historial se envía al servidor en cada request para que GPT recuerde la conversación
+  const chatHistory = [];
 
   window.sendAI = async function() {
     const text = input.value.trim();
@@ -5492,6 +5491,9 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     input.value = '';
     input.style.height = 'auto';
 
+    // Agregar al historial local
+    chatHistory.push({ role: 'user', content: text });
+
     loading = true;
     sendBtn.disabled = true;
     status.textContent = '● Pensando…';
@@ -5501,30 +5503,54 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // FIX: enviar historial completo para que GPT mantenga el contexto
         body: JSON.stringify({
           message: text,
-          sessionId: SESSION_ID
+          sessionId: SESSION_ID,
+          history: chatHistory.slice(-10), // últimos 10 turnos
         })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'HTTP ' + res.status);
+        // Errores descriptivos según el código
+        const errMap = {
+          'NO_API_KEY':  '🔑 El chatbot no está configurado en el servidor. Contacta a Wilson para activarlo.',
+          'RATE_LIMIT':  '⏳ Demasiadas solicitudes. Espera unos minutos antes de seguir.',
+          'BAD_KEY':     '🚫 Error de configuración del servidor. Contacta a Wilson.',
+          'NO_CREDITS':  '💳 Sin créditos en OpenAI. Contacta a Wilson para recargarlo.',
+          'TIMEOUT':     '⏱ La IA tardó demasiado. Reintenta en un momento.',
+          'OVERLOADED':  '🔄 Servicio saturado. Intenta de nuevo en unos segundos.',
+        };
+        const msg = errMap[data.code] || data.error || ('Error HTTP ' + res.status);
+        throw new Error(msg);
       }
 
       typingEl.remove();
-      addMsg('ai', formatAIReply(data.reply));
+      const reply = data.reply;
+      addMsg('ai', formatAIReply(reply));
+      // Guardar respuesta en historial local
+      chatHistory.push({ role: 'assistant', content: reply });
 
     } catch (err) {
       typingEl.remove();
-      // Fallback offline si el servidor no responde
-      addMsg('ai', getFallback(text));
+      // Si es un error de red (servidor caído), usar fallback offline
+      const isNetwork = err.message.includes('fetch') || err.message.includes('Failed') || err.message.includes('NetworkError');
+      if (isNetwork) {
+        addMsg('ai', getFallback(text));
+        status.textContent = '● Offline · respuesta local';
+      } else {
+        // Error descriptivo del servidor
+        addMsg('ai', '<span style="color:#ff6b6b">⚠️ ' + err.message + '</span>');
+      }
       console.warn('Chat error:', err.message);
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = '● Online · CodeHub AI';
+      if (status.textContent !== '● Offline · respuesta local') {
+        status.textContent = '● Online · CodeHub AI';
+      }
       scrollMsgs();
     }
   };

@@ -582,6 +582,92 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- TOOLS EXTRA 19-23 — correctamente en el grid HTML       -->
+<!-- ════════════════════════════════════════════════════════ -->
+
+<!-- 19 · TRADUCTOR -->
+<div class="card" data-tags="util">
+  <div class="ch"><div class="ci ci-bl"><i class="fas fa-language"></i></div>
+    <div><h2>Traductor de Texto</h2><div class="ct">utilidad · idiomas</div></div></div>
+  <div class="cb">
+    <div class="ir">
+      <select class="ts" id="tr-from">
+        <option value="es">🇪🇸 Español</option><option value="en">🇺🇸 English</option>
+        <option value="fr">🇫🇷 Français</option><option value="de">🇩🇪 Deutsch</option>
+        <option value="it">🇮🇹 Italiano</option><option value="pt">🇧🇷 Português</option>
+        <option value="ja">🇯🇵 日本語</option><option value="zh">🇨🇳 中文</option>
+        <option value="ar">🇸🇦 العربية</option><option value="ru">🇷🇺 Русский</option>
+      </select>
+      <select class="ts" id="tr-to">
+        <option value="en">🇺🇸 English</option><option value="es">🇪🇸 Español</option>
+        <option value="fr">🇫🇷 Français</option><option value="de">🇩🇪 Deutsch</option>
+        <option value="it">🇮🇹 Italiano</option><option value="pt">🇧🇷 Português</option>
+        <option value="ja">🇯🇵 日本語</option><option value="zh">🇨🇳 中文</option>
+        <option value="ar">🇸🇦 العربية</option><option value="ru">🇷🇺 Русский</option>
+      </select>
+    </div>
+    <textarea class="ti" id="tr-in" placeholder="Escribe o pega el texto aquí…" rows="3"></textarea>
+    <button class="btn bp" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
+    <div class="rb" id="tr-out" style="white-space:pre-wrap"></div>
+  </div>
+</div>
+
+<!-- 20 · CALCULADORA CIENTÍFICA -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><div class="ci ci-yl"><i class="fas fa-calculator"></i></div>
+    <div><h2>Calculadora Científica</h2><div class="ct">utilidad · dev</div></div></div>
+  <div class="cb">
+    <input class="ti" id="calc-display" type="text" placeholder="0" readonly
+      style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default;font-family:var(--mono)">
+    <div id="calc-btns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem;margin-top:.4rem"></div>
+  </div>
+</div>
+
+<!-- 21 · LOREM IPSUM -->
+<div class="card" data-tags="dev dis">
+  <div class="ch"><div class="ci ci-pu"><i class="fas fa-align-left"></i></div>
+    <div><h2>Lorem Ipsum</h2><div class="ct">dev · diseño</div></div></div>
+  <div class="cb">
+    <div class="ir">
+      <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:70px">
+      <select class="ts" id="lorem-type">
+        <option value="p">Párrafos</option>
+        <option value="s">Oraciones</option>
+        <option value="w">Palabras</option>
+      </select>
+    </div>
+    <button class="btn bp" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
+    <div class="rb" id="lorem-out" style="max-height:160px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6"></div>
+    <button id="lorem-copy" class="btn bg" style="display:none" onclick="copyLorem()"><i class="fas fa-copy"></i> Copiar</button>
+  </div>
+</div>
+
+<!-- 22 · CONTADOR DE TEXTO -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-spell-check"></i></div>
+    <div><h2>Contador de Texto</h2><div class="ct">utilidad · dev</div></div></div>
+  <div class="cb">
+    <textarea class="ti" id="wc-input" rows="4" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
+    <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.3rem"></div>
+  </div>
+</div>
+
+<!-- 23 · CONVERSOR DE COLORES HEX/RGB/HSL -->
+<div class="card" data-tags="dis dev">
+  <div class="ch"><div class="ci ci-pk"><i class="fas fa-droplet"></i></div>
+    <div><h2>Conversor de Colores</h2><div class="ct">diseño · dev</div></div></div>
+  <div class="cb">
+    <div style="display:flex;gap:.75rem;align-items:center">
+      <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)">
+      <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb"
+        oninput="convertColorHex(this.value)" style="flex:1;font-family:var(--mono)">
+    </div>
+    <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
+  </div>
+</div>
+
 </div><!-- /grid -->
 
 <footer>
@@ -1100,91 +1186,7 @@ function calcScore(ping, connType, vpn, localIP) {
 
   const tipsEl = $('net-tips');
   tipsEl.innerHTML = tips.map(t =>
-    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span>
-<!-- ══════════════════════════════════════════════════════ -->
-<!--  HERRAMIENTAS EXTRA — Las más buscadas en internet    -->
-<!-- ══════════════════════════════════════════════════════ -->
-
-<!-- 19 · TRADUCTOR -->
-<div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span></div>
-  <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
-  <select class="ts" id="tr-from" style="margin-bottom:.5rem">
-    <option value="es">🇪🇸 Español</option>
-    <option value="en">🇺🇸 English</option>
-    <option value="fr">🇫🇷 Français</option>
-    <option value="de">🇩🇪 Deutsch</option>
-    <option value="it">🇮🇹 Italiano</option>
-    <option value="pt">🇧🇷 Português</option>
-    <option value="ja">🇯🇵 日本語</option>
-    <option value="zh">🇨🇳 中文</option>
-    <option value="ar">🇸🇦 العربية</option>
-    <option value="ru">🇷🇺 Русский</option>
-  </select>
-  <span style="font-size:.7rem;color:var(--muted);font-family:var(--mono)">→</span>
-  <select class="ts" id="tr-to" style="margin-bottom:.5rem">
-    <option value="en">🇺🇸 English</option>
-    <option value="es">🇪🇸 Español</option>
-    <option value="fr">🇫🇷 Français</option>
-    <option value="de">🇩🇪 Deutsch</option>
-    <option value="it">🇮🇹 Italiano</option>
-    <option value="pt">🇧🇷 Português</option>
-    <option value="ja">🇯🇵 日本語</option>
-    <option value="zh">🇨🇳 中文</option>
-    <option value="ar">🇸🇦 العربية</option>
-    <option value="ru">🇷🇺 Русский</option>
-  </select>
-  <textarea class="ti" id="tr-in" rows="3" placeholder="Escribe o pega el texto aquí…" style="margin-top:.4rem"></textarea>
-  <button class="tb" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
-  <div class="rb" id="tr-out" style="display:none;margin-top:.5rem;white-space:pre-wrap"></div>
-</div>
-
-<!-- 20 · CALCULADORA CIENTÍFICA -->
-<div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span></div>
-  <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
-  <input class="ti" id="calc-display" type="text" placeholder="0" readonly style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default">
-  <div id="calc-btns" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin-top:.4rem"></div>
-</div>
-
-<!-- 21 · GENERADOR DE LOREM IPSUM -->
-<div class="card" data-tags="dev dis">
-  <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
-  <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
-  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
-    <label style="font-size:.78rem;color:var(--muted)">Párrafos:</label>
-    <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:60px">
-    <select class="ts" id="lorem-type">
-      <option value="p">Párrafos</option>
-      <option value="w">Palabras</option>
-      <option value="s">Oraciones</option>
-    </select>
-  </div>
-  <button class="tb" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
-  <div class="rb" id="lorem-out" style="display:none;max-height:180px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6;margin-top:.5rem"></div>
-  <button id="lorem-copy" style="display:none" class="tb" onclick="copyLorem()" style="margin-top:.4rem"><i class="fas fa-copy"></i> Copiar</button>
-</div>
-
-<!-- 22 · CONTADOR DE PALABRAS / CARACTERES -->
-<div class="card" data-tags="util dev">
-  <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span></div>
-  <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
-  <textarea class="ti" id="wc-input" rows="5" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
-  <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
-</div>
-
-<!-- 23 · CONVERSOR DE COLOR HEX / RGB / HSL -->
-<div class="card" data-tags="dis dev">
-  <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
-  <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
-  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
-    <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
-    <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
-  </div>
-  <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
-</div>
-
-</div>`
+    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span></div>`
   ).join('');
 
   $('net-score-wrap').style.display = 'block';
