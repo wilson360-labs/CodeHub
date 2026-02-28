@@ -1,83 +1,101 @@
-# CodeHub Backend — Railway Deploy Guide
+# 🚀 Guía de Deploy en Railway — CodeHub Backend
 
-Tu backend ya está desplegado en:
-**https://codehub-production-729d.up.railway.app**
+## Paso 1 — Subir el backend a GitHub
 
----
+En Termux, dentro de la carpeta `backend/`:
 
-## Variables en Railway Dashboard
+```bash
+git init
+git add server.js package.json railway.json railway-setup.sh .gitignore
+# ⚠️  NUNCA hagas git add .env
+git commit -m "CodeHub backend v1 — Railway deploy"
+git remote add origin https://github.com/TU-USUARIO/codehub-backend.git
+git push -u origin main
+```
 
-Railway Dashboard → Tu proyecto → Variables. Estas son las que necesitas:
-
-| Variable          | Descripción                                      |
-|-------------------|--------------------------------------------------|
-| `OPENAI_API_KEY`  | sk-proj-... (platform.openai.com/api-keys)       |
-| `MONGODB_URI`     | mongodb+srv://... (Atlas → Connect → Drivers)    |
-| `FRONTEND_URL`    | https://TU_USUARIO.github.io                     |
-| `RATE_LIMIT_MAX`  | 20 (requests por IP cada 15 min)                 |
-| `NODE_ENV`        | production                                       |
-
-> ⚠️ Las credenciales NUNCA van en el código. Solo en Railway Variables.
-> El .env local (si lo usas) está en .gitignore y nunca llega a GitHub.
+> Crea el repo en github.com primero (sin README, vacío).
 
 ---
 
-## Verificar que todo funciona
+## Paso 2 — Crear proyecto en Railway
+
+1. Ve a **railway.app** e inicia sesión con GitHub
+2. Click en **"New Project"**
+3. Selecciona **"Deploy from GitHub repo"**
+4. Elige tu repo `codehub-backend`
+5. Railway detecta automáticamente Node.js y empieza a construir
+
+---
+
+## Paso 3 — Agregar las variables de entorno (TUS KEYS)
+
+En Railway → Tu proyecto → **Variables** → Add Variable:
+
+| Variable          | Valor                              |
+|-------------------|------------------------------------|
+| `OPENAI_API_KEY`  | sk-...tu-key-nueva                 |
+| `MONGODB_URI`     | mongodb+srv://...tu-atlas-uri      |
+| `NODE_ENV`        | production                         |
+| `RATE_LIMIT_MAX`  | 20                                 |
+| `FRONTEND_URL`    | https://tu-usuario.github.io       |
+
+> Las keys **nunca** van en el código — solo en Variables de Railway.
+> Railway las encripta y nadie más puede verlas.
+
+---
+
+## Paso 4 — Obtener la URL pública
+
+Después del deploy exitoso:
+Railway → Tu proyecto → **Settings** → **Domains** → Generate Domain
+
+Obtendrás algo como:
+```
+https://codehub-backend-production.up.railway.app
+```
+
+---
+
+## Paso 5 — Actualizar el frontend
+
+En `index.html`, busca esta línea:
+
+```js
+return 'http://localhost:3001'; // ← reemplaza con tu URL real
+```
+
+Cámbiala por:
+```js
+return 'https://codehub-backend-production.up.railway.app';
+```
+
+Sube el `index.html` actualizado a GitHub Pages. ¡Listo!
+
+---
+
+## Verificar que funciona
 
 ```bash
 # Health check
-curl https://codehub-production-729d.up.railway.app/api/health
+curl https://tu-proyecto.up.railway.app/api/health
 
 # Respuesta esperada:
-# {
-#   "status": "ok",
-#   "openai": "✅ configurado",
-#   "mongodb": "✅ conectado",
-#   "sessions": 0,
-#   "uptime": "10s"
-# }
+# {"status":"ok","mongo":"connected","openai":"configured","uptime":"10s"}
 
 # Prueba del chat
-curl -X POST https://codehub-production-729d.up.railway.app/api/chat \
+curl -X POST https://tu-proyecto.up.railway.app/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "Hola, qué herramientas tiene CodeHub?", "sessionId": "test123"}'
+  -d '{"message":"Hola","sessionId":"test"}'
 ```
 
 ---
 
-## Cómo actualizar el backend en Railway
+## ¿Cuánto cuesta Railway?
 
-```bash
-# Desde la carpeta backend/
-git add server.js package.json railway.json
-git commit -m "fix: descripción del cambio"
-git push origin main
-# Railway detecta el push y redespliega automáticamente en ~30 segundos
-```
+**Free tier:** $5 de crédito gratis al mes.
+Con el tráfico de un portfolio personal (chatbot con ~600 tokens/respuesta),
+los $5 alcanzan para aproximadamente **800–1200 conversaciones al mes**.
+Si se acaba, el servidor simplemente pausa hasta el siguiente mes.
 
-> ⚠️ Nunca hagas `git add .env` ni `git add .`
-
----
-
-## Flujo completo del sistema
-
-```
-Usuario (GitHub Pages)
-    ↓ fetch POST /api/chat
-Railway Backend (server.js)
-    ↓ valida CORS, rate limit
-OpenAI GPT-4o-mini
-    ↓ respuesta
-MongoDB Atlas (guarda historial 7 días)
-    ↓
-Usuario recibe la respuesta
-```
-
----
-
-## Si el chatbot no responde
-
-1. Verifica `OPENAI_API_KEY` en Railway Variables — que empiece con `sk-proj-`
-2. Verifica créditos en platform.openai.com/usage
-3. Revisa Railway → Logs para ver el error exacto
-4. Llama a `/api/health` para diagnóstico rápido
+Para uso intensivo puedes agregar una tarjeta — el costo real es
+menos de $1/mes con tráfico normal de portfolio.
