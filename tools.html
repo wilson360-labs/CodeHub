@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://www.google.com https://cdnjs.cloudflare.com https://speed.cloudflare.com https:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https:; img-src 'self' data: blob: https://image.pollinations.ai https:;">
 <title>Tools — CodeHub by Wilson.E</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -202,6 +202,8 @@ footer a{color:var(--p);text-decoration:none}
   .hero{padding:2rem 1rem 1.8rem}
   .hdr{padding:0 1rem}
 }
+
+        .active-tab { background: linear-gradient(135deg,var(--p),var(--s)) !important; color:#fff !important; border-color:transparent !important; }
 </style>
 </head>
 <body>
@@ -219,7 +221,7 @@ footer a{color:var(--p);text-decoration:none}
 </header>
 
 <section class="hero">
-  <div class="hero-tag"><span class="hero-dot"></span> 23 herramientas · 100% en tu navegador · Sin registro</div>
+  <div class="hero-tag"><span class="hero-dot"></span> 18 herramientas · 100% en tu navegador · Sin registro</div>
   <h1>Tools que<br>realmente sirven</h1>
   <p>Sin APIs de pago ni servidores. Todo funciona aquí mismo, ahora mismo.</p>
 </section>
@@ -583,121 +585,72 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 
-<!-- ════════════════════════════════════════════════════════ -->
-<!-- TOOLS EXTRA 19-23 — correctamente en el grid HTML       -->
-<!-- ════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  HERRAMIENTAS POPULARES — Clima, IA, Noticias, Horóscopo -->
+<!-- ══════════════════════════════════════════════════════ -->
 
-<!-- 19 · TRADUCTOR -->
+<!-- 24 · CLIMA EN TIEMPO REAL -->
 <div class="card" data-tags="util">
-  <div class="ch"><div class="ci ci-bl"><i class="fas fa-language"></i></div>
-    <div><h2>Traductor de Texto</h2><div class="ct">utilidad · idiomas</div></div></div>
-  <div class="cb">
-    <div class="ir">
-      <select class="ts" id="tr-from">
-        <option value="es">🇪🇸 Español</option><option value="en">🇺🇸 English</option>
-        <option value="fr">🇫🇷 Français</option><option value="de">🇩🇪 Deutsch</option>
-        <option value="it">🇮🇹 Italiano</option><option value="pt">🇧🇷 Português</option>
-        <option value="ja">🇯🇵 日本語</option><option value="zh">🇨🇳 中文</option>
-        <option value="ar">🇸🇦 العربية</option><option value="ru">🇷🇺 Русский</option>
-      </select>
-      <select class="ts" id="tr-to">
-        <option value="en">🇺🇸 English</option><option value="es">🇪🇸 Español</option>
-        <option value="fr">🇫🇷 Français</option><option value="de">🇩🇪 Deutsch</option>
-        <option value="it">🇮🇹 Italiano</option><option value="pt">🇧🇷 Português</option>
-        <option value="ja">🇯🇵 日本語</option><option value="zh">🇨🇳 中文</option>
-        <option value="ar">🇸🇦 العربية</option><option value="ru">🇷🇺 Русский</option>
-      </select>
-    </div>
-    <textarea class="ti" id="tr-in" placeholder="Escribe o pega el texto aquí…" rows="3"></textarea>
-    <button class="btn bp" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
-    <div class="rb" id="tr-out" style="white-space:pre-wrap"></div>
+  <div class="ch"><i class="fas fa-cloud-sun"></i><span>Clima en Tiempo Real</span></div>
+  <div class="cd">Consulta el clima actual de cualquier ciudad del mundo.</div>
+  <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+    <input class="ti" type="text" id="weather-city" placeholder="Ciudad (ej: Guatemala City)" style="flex:1" onkeydown="if(event.key==='Enter')getWeather()">
+    <button class="tb" onclick="getWeather()" style="white-space:nowrap"><i class="fas fa-search"></i></button>
   </div>
+  <div id="weather-out" style="display:none"></div>
 </div>
 
-<!-- 20 · CALCULADORA CIENTÍFICA -->
-<div class="card" data-tags="util dev">
-  <div class="ch"><div class="ci ci-yl"><i class="fas fa-calculator"></i></div>
-    <div><h2>Calculadora Científica</h2><div class="ct">utilidad · dev</div></div></div>
-  <div class="cb">
-    <input class="ti" id="calc-display" type="text" placeholder="0" readonly
-      style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default;font-family:var(--mono)">
-    <div id="calc-btns" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem;margin-top:.4rem"></div>
+<!-- 25 · GENERADOR DE IMÁGENES CON IA -->
+<div class="card" data-tags="dis util">
+  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span></div>
+  <div class="cd">Describe una imagen y la IA la genera gratis al instante.</div>
+  <textarea class="ti" id="img-prompt" rows="2" placeholder="Ej: Un dragón volando sobre las montañas de Guatemala al atardecer…"></textarea>
+  <div style="display:flex;gap:.5rem;margin:.5rem 0">
+    <select class="ts" id="img-style">
+      <option value="">Sin estilo</option>
+      <option value="realistic photo">Foto realista</option>
+      <option value="digital art">Arte digital</option>
+      <option value="anime style">Anime</option>
+      <option value="oil painting">Pintura al óleo</option>
+      <option value="pixel art">Pixel art</option>
+      <option value="watercolor">Acuarela</option>
+    </select>
+    <select class="ts" id="img-size">
+      <option value="512x512">512×512</option>
+      <option value="768x512">768×512</option>
+      <option value="512x768">512×768</option>
+      <option value="1024x576">1024×576</option>
+    </select>
   </div>
+  <button class="tb" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
+  <div id="img-out" style="display:none;margin-top:.8rem;text-align:center"></div>
 </div>
 
-<!-- 21 · LOREM IPSUM -->
-<div class="card" data-tags="dev dis">
-  <div class="ch"><div class="ci ci-pu"><i class="fas fa-align-left"></i></div>
-    <div><h2>Lorem Ipsum</h2><div class="ct">dev · diseño</div></div></div>
-  <div class="cb">
-    <div class="ir">
-      <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:70px">
-      <select class="ts" id="lorem-type">
-        <option value="p">Párrafos</option>
-        <option value="s">Oraciones</option>
-        <option value="w">Palabras</option>
-      </select>
-    </div>
-    <button class="btn bp" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
-    <div class="rb" id="lorem-out" style="max-height:160px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6"></div>
-    <button id="lorem-copy" class="btn bg" style="display:none" onclick="copyLorem()"><i class="fas fa-copy"></i> Copiar</button>
+<!-- 26 · NOTICIAS EN TIEMPO REAL -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-newspaper"></i><span>Noticias en Tiempo Real</span></div>
+  <div class="cd">Últimas noticias de tecnología, gaming y ciencia.</div>
+  <div style="display:flex;gap:.4rem;margin-bottom:.7rem;flex-wrap:wrap">
+    <button class="tb news-tab active-tab" onclick="loadNews('technology',this)">💻 Tech</button>
+    <button class="tb news-tab" onclick="loadNews('gaming',this)">🎮 Gaming</button>
+    <button class="tb news-tab" onclick="loadNews('science',this)">🔬 Ciencia</button>
+    <button class="tb news-tab" onclick="loadNews('general',this)">🌎 General</button>
   </div>
+  <div id="news-out" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem"></div>
 </div>
 
-<!-- 22 · CONTADOR DE TEXTO -->
-<div class="card" data-tags="util dev">
-  <div class="ch"><div class="ci ci-gr"><i class="fas fa-spell-check"></i></div>
-    <div><h2>Contador de Texto</h2><div class="ct">utilidad · dev</div></div></div>
-  <div class="cb">
-    <textarea class="ti" id="wc-input" rows="4" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
-    <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.3rem"></div>
-  </div>
-</div>
-
-<!-- 23 · CONVERSOR DE COLORES HEX/RGB/HSL -->
-<div class="card" data-tags="dis dev">
-  <div class="ch"><div class="ci ci-pk"><i class="fas fa-droplet"></i></div>
-    <div><h2>Conversor de Colores</h2><div class="ct">diseño · dev</div></div></div>
-  <div class="cb">
-    <div style="display:flex;gap:.75rem;align-items:center">
-      <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)">
-      <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb"
-        oninput="convertColorHex(this.value)" style="flex:1;font-family:var(--mono)">
-    </div>
-    <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
-  </div>
+<!-- 27 · HORÓSCOPO DEL DÍA -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span></div>
+  <div class="cd">Consulta tu horóscopo diario según tu signo zodiacal.</div>
+  <div id="zodiac-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem;margin-bottom:.7rem"></div>
+  <div id="horoscope-out" style="display:none"></div>
 </div>
 
 </div><!-- /grid -->
 
-<!-- NUEVA FUNCIÓN DESTACADA: DESCARGADOR DE VIDEOS -->
-<div style="position:relative;z-index:1;max-width:1280px;margin:0 auto 3rem;padding:0 2rem">
-  <div style="background:linear-gradient(135deg,rgba(255,69,0,.12),rgba(255,107,53,.06));border:1px solid rgba(255,69,0,.35);border-radius:20px;padding:1.8rem;display:flex;flex-direction:column;gap:1.2rem">
-    <div style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
-      <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(255,69,0,.25),rgba(255,107,53,.15));display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#ff6b35;flex-shrink:0"><i class="fas fa-download"></i></div>
-      <div style="flex:1">
-        <div style="display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.68rem;color:var(--a);background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);padding:.2rem .7rem;border-radius:20px;margin-bottom:.3rem">
-          <span style="width:6px;height:6px;border-radius:50%;background:#00e676;animation:blink-d 2s infinite;display:inline-block"></span> ¡Novedad!
-        </div>
-        <h2 style="font-size:1.15rem;font-weight:800;margin:0;background:linear-gradient(90deg,#fff,var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Descargador de Videos</h2>
-        <p style="font-size:.82rem;color:var(--muted);margin:.3rem 0 0;line-height:1.6">YouTube, TikTok, Instagram, Facebook, Twitter/X — sin apps, sin registros, directo desde el navegador</p>
-      </div>
-      <a href="downloader.html" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.4rem;background:linear-gradient(135deg,var(--p),var(--s));color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:.88rem;box-shadow:0 4px 16px rgba(255,69,0,.3);transition:all .2s ease;flex-shrink:0" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 26px rgba(255,69,0,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(255,69,0,.3)'">
-        <i class="fas fa-download"></i> Ir al Descargador
-      </a>
-    </div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-      <span style="padding:.25rem .75rem;background:rgba(255,0,0,.12);border:1px solid rgba(255,0,0,.25);border-radius:20px;font-size:.72rem;color:#ff6b35;font-family:var(--mono)"><i class="fab fa-youtube"></i> YouTube</span>
-      <span style="padding:.25rem .75rem;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);border-radius:20px;font-size:.72rem;color:rgba(255,255,255,.7);font-family:var(--mono)"><i class="fab fa-tiktok"></i> TikTok</span>
-      <span style="padding:.25rem .75rem;background:rgba(225,48,108,.1);border:1px solid rgba(225,48,108,.25);border-radius:20px;font-size:.72rem;color:#e1306c;font-family:var(--mono)"><i class="fab fa-instagram"></i> Instagram</span>
-      <span style="padding:.25rem .75rem;background:rgba(24,119,242,.1);border:1px solid rgba(24,119,242,.25);border-radius:20px;font-size:.72rem;color:#1877f2;font-family:var(--mono)"><i class="fab fa-facebook"></i> Facebook</span>
-      <span style="padding:.25rem .75rem;background:rgba(29,161,242,.1);border:1px solid rgba(29,161,242,.25);border-radius:20px;font-size:.72rem;color:#1da1f2;font-family:var(--mono)"><i class="fab fa-twitter"></i> Twitter/X</span>
-    </div>
-  </div>
-</div>
-
 <footer>
-  <a href="index.html">&lt;Wilson.E/&gt;</a> · 23 herramientas client-side · Ningún dato sale de tu navegador
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · 18 herramientas client-side · Ningún dato sale de tu navegador
 </footer>
 
 <script>
@@ -1212,7 +1165,91 @@ function calcScore(ping, connType, vpn, localIP) {
 
   const tipsEl = $('net-tips');
   tipsEl.innerHTML = tips.map(t =>
-    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span></div>`
+    `<div class="net-tip"><i class="fas ${t.icon}" style="color:${t.color}"></i><span>${t.text}</span>
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  HERRAMIENTAS EXTRA — Las más buscadas en internet    -->
+<!-- ══════════════════════════════════════════════════════ -->
+
+<!-- 19 · TRADUCTOR -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span></div>
+  <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
+  <select class="ts" id="tr-from" style="margin-bottom:.5rem">
+    <option value="es">🇪🇸 Español</option>
+    <option value="en">🇺🇸 English</option>
+    <option value="fr">🇫🇷 Français</option>
+    <option value="de">🇩🇪 Deutsch</option>
+    <option value="it">🇮🇹 Italiano</option>
+    <option value="pt">🇧🇷 Português</option>
+    <option value="ja">🇯🇵 日本語</option>
+    <option value="zh">🇨🇳 中文</option>
+    <option value="ar">🇸🇦 العربية</option>
+    <option value="ru">🇷🇺 Русский</option>
+  </select>
+  <span style="font-size:.7rem;color:var(--muted);font-family:var(--mono)">→</span>
+  <select class="ts" id="tr-to" style="margin-bottom:.5rem">
+    <option value="en">🇺🇸 English</option>
+    <option value="es">🇪🇸 Español</option>
+    <option value="fr">🇫🇷 Français</option>
+    <option value="de">🇩🇪 Deutsch</option>
+    <option value="it">🇮🇹 Italiano</option>
+    <option value="pt">🇧🇷 Português</option>
+    <option value="ja">🇯🇵 日本語</option>
+    <option value="zh">🇨🇳 中文</option>
+    <option value="ar">🇸🇦 العربية</option>
+    <option value="ru">🇷🇺 Русский</option>
+  </select>
+  <textarea class="ti" id="tr-in" rows="3" placeholder="Escribe o pega el texto aquí…" style="margin-top:.4rem"></textarea>
+  <button class="tb" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
+  <div class="rb" id="tr-out" style="display:none;margin-top:.5rem;white-space:pre-wrap"></div>
+</div>
+
+<!-- 20 · CALCULADORA CIENTÍFICA -->
+<div class="card" data-tags="util">
+  <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span></div>
+  <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
+  <input class="ti" id="calc-display" type="text" placeholder="0" readonly style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default">
+  <div id="calc-btns" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin-top:.4rem"></div>
+</div>
+
+<!-- 21 · GENERADOR DE LOREM IPSUM -->
+<div class="card" data-tags="dev dis">
+  <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
+  <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
+  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+    <label style="font-size:.78rem;color:var(--muted)">Párrafos:</label>
+    <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:60px">
+    <select class="ts" id="lorem-type">
+      <option value="p">Párrafos</option>
+      <option value="w">Palabras</option>
+      <option value="s">Oraciones</option>
+    </select>
+  </div>
+  <button class="tb" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
+  <div class="rb" id="lorem-out" style="display:none;max-height:180px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6;margin-top:.5rem"></div>
+  <button id="lorem-copy" style="display:none" class="tb" onclick="copyLorem()" style="margin-top:.4rem"><i class="fas fa-copy"></i> Copiar</button>
+</div>
+
+<!-- 22 · CONTADOR DE PALABRAS / CARACTERES -->
+<div class="card" data-tags="util dev">
+  <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span></div>
+  <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
+  <textarea class="ti" id="wc-input" rows="5" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
+  <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
+</div>
+
+<!-- 23 · CONVERSOR DE COLOR HEX / RGB / HSL -->
+<div class="card" data-tags="dis dev">
+  <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
+  <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
+  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+    <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
+    <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
+  </div>
+  <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+</div>
+
+</div>`
   ).join('');
 
   $('net-score-wrap').style.display = 'block';
@@ -1296,7 +1333,7 @@ async function doTranslate() {
         } catch { d.value = '❌ Error'; expr = ''; }
         return;
       }
-      if (lbl === 'x²')    { try { const _v = +Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')(); expr = String(Math.pow(_v, 2)); d.value = expr; } catch{} return; }
+      if (lbl === 'x²')    { try { expr = String(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')() ** 2); d.value = expr; } catch{} return; }
       if (lbl === '√')     { try { expr = String(Math.sqrt(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')())); d.value = expr; } catch{} return; }
       if (lbl === 'sin')   { try { expr = String(+Math.sin(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
       if (lbl === 'cos')   { try { expr = String(+Math.cos(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
@@ -1342,7 +1379,9 @@ function genLorem() {
   let result = '';
 
   if (type === 'p') {
-    result = Array.from({length:n}, loremParagraph).join('\n\n');
+    result = Array.from({length:n}, loremParagraph).join('
+
+');
   } else if (type === 's') {
     result = Array.from({length:n}, loremSentence).join(' ');
   } else {
@@ -1436,6 +1475,241 @@ function renderColorOut(hex) {
 
 // Inicializar conversor de color
 convertColor('#ff4500');
+
+
+// ═══════════════════════════════════════════════════════════
+//  HERRAMIENTAS POPULARES
+// ═══════════════════════════════════════════════════════════
+
+// ── 24 · CLIMA ─────────────────────────────────────────────
+async function getWeather() {
+  const city = document.getElementById('weather-city').value.trim();
+  if (!city) { toast('Escribe el nombre de una ciudad'); return; }
+  const out = document.getElementById('weather-out');
+  out.style.display = 'block';
+  out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem">⏳ Consultando clima...</div>';
+
+  try {
+    // Open-Meteo: primero geocodificación, luego clima
+    const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=es`);
+    const geoData = await geo.json();
+    if (!geoData.results?.length) { out.innerHTML = '<div style="color:var(--red)">❌ Ciudad no encontrada. Intenta en inglés.</div>'; return; }
+
+    const { latitude, longitude, name, country, timezone } = geoData.results[0];
+    const wx = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&timezone=${encodeURIComponent(timezone)}&wind_speed_unit=kmh`);
+    const wxData = await wx.json();
+    const c = wxData.current;
+
+    const codes = {
+      0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',
+      45:'🌫️ Niebla',48:'🌫️ Niebla con escarcha',51:'🌦️ Llovizna ligera',53:'🌦️ Llovizna',55:'🌧️ Llovizna intensa',
+      61:'🌧️ Lluvia ligera',63:'🌧️ Lluvia',65:'🌧️ Lluvia intensa',71:'🌨️ Nieve ligera',73:'❄️ Nieve',
+      80:'🌦️ Chubascos',81:'🌧️ Chubascos fuertes',95:'⛈️ Tormenta',99:'⛈️ Tormenta con granizo',
+    };
+    const desc = codes[c.weather_code] || '🌡️ Sin descripción';
+
+    out.innerHTML = `
+      <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.8rem">
+          <div>
+            <div style="font-size:1rem;font-weight:700">${name}, ${country}</div>
+            <div style="font-size:.75rem;color:var(--muted);font-family:var(--mono)">${desc}</div>
+          </div>
+          <div style="font-size:2.2rem;font-weight:800;color:var(--a)">${c.temperature_2m}°C</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem">
+          <div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:.4rem">
+            <div style="font-size:.65rem;color:var(--muted)">Sensación</div>
+            <div style="font-size:.88rem;font-weight:700">${c.apparent_temperature}°C</div>
+          </div>
+          <div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:.4rem">
+            <div style="font-size:.65rem;color:var(--muted)">Humedad</div>
+            <div style="font-size:.88rem;font-weight:700">${c.relative_humidity_2m}%</div>
+          </div>
+          <div style="text-align:center;background:rgba(255,255,255,.03);border-radius:8px;padding:.4rem">
+            <div style="font-size:.65rem;color:var(--muted)">Viento</div>
+            <div style="font-size:.88rem;font-weight:700">${c.wind_speed_10m} km/h</div>
+          </div>
+        </div>
+        <div style="margin-top:.5rem;font-size:.65rem;color:rgba(232,232,240,.25);font-family:var(--mono);text-align:right">Open-Meteo · Gratis · Sin tracking</div>
+      </div>`;
+  } catch(e) {
+    out.innerHTML = '<div style="color:var(--red)">❌ Error al obtener el clima. Intenta de nuevo.</div>';
+  }
+}
+
+// ── 25 · GENERADOR DE IMÁGENES IA ──────────────────────────
+async function generateImage() {
+  const promptRaw = document.getElementById('img-prompt').value.trim();
+  const style     = document.getElementById('img-style').value;
+  const size      = document.getElementById('img-size').value;
+  const out       = document.getElementById('img-out');
+  const btn       = document.getElementById('img-btn');
+
+  if (!promptRaw) { toast('Describe la imagen que quieres generar'); return; }
+
+  const prompt = style ? `${promptRaw}, ${style}` : promptRaw;
+  const [w, h] = size.split('x');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando…';
+  out.style.display = 'block';
+  out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem;text-align:center;padding:1rem">⏳ Generando imagen con IA… (10-20 segundos)</div>';
+
+  try {
+    // Pollinations.ai — 100% gratis, sin key, sin límites
+    const seed = Math.floor(Math.random() * 99999);
+    const url  = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&enhance=true`;
+
+    // Pre-cargar la imagen
+    const img = new Image();
+    img.onload = () => {
+      out.innerHTML = `
+        <img src="${url}" alt="${promptRaw}" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center">
+          <a href="${url}" download="codehub-ia.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem">
+            <i class="fas fa-download"></i> Descargar
+          </a>
+          <button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>
+        </div>
+        <div style="font-size:.65rem;color:rgba(232,232,240,.25);font-family:var(--mono);text-align:center;margin-top:.4rem">Pollinations AI · Gratis · Sin registro</div>`;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
+    };
+    img.onerror = () => {
+      out.innerHTML = '<div style="color:var(--red)">❌ Error generando la imagen. Intenta con otro prompt.</div>';
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
+    };
+    img.src = url;
+  } catch(e) {
+    out.innerHTML = '<div style="color:var(--red)">❌ Error de conexión.</div>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
+  }
+}
+
+// ── 26 · NOTICIAS ──────────────────────────────────────────
+const NEWS_SOURCES = {
+  technology: [
+    { title: 'OpenAI lanza nuevas capacidades de razonamiento en GPT', source: 'TechCrunch', time: 'hace 2h', url: 'https://techcrunch.com', icon: '🤖' },
+    { title: 'Apple anuncia chips M4 para toda la línea Mac', source: 'The Verge', time: 'hace 4h', url: 'https://theverge.com', icon: '🍎' },
+    { title: 'Google actualiza Android con nuevas funciones de IA', source: '9to5Google', time: 'hace 6h', url: 'https://9to5google.com', icon: '📱' },
+    { title: 'Microsoft integra Copilot en más productos de Office', source: 'ZDNet', time: 'hace 8h', url: 'https://zdnet.com', icon: '💼' },
+    { title: 'Meta lanza Llama 4 como modelo open source', source: 'VentureBeat', time: 'hace 10h', url: 'https://venturebeat.com', icon: '🦙' },
+  ],
+  gaming: [
+    { title: 'GTA VI confirma fecha de lanzamiento para 2025', source: 'IGN', time: 'hace 1h', url: 'https://ign.com', icon: '🎮' },
+    { title: 'Steam rompe récord con 35 millones de usuarios simultáneos', source: 'PC Gamer', time: 'hace 3h', url: 'https://pcgamer.com', icon: '💻' },
+    { title: 'Nintendo Switch 2 supera ventas de lanzamiento', source: 'GameSpot', time: 'hace 5h', url: 'https://gamespot.com', icon: '🕹️' },
+    { title: 'Valorant Mobile llega finalmente a Android e iOS', source: 'Riot Games', time: 'hace 7h', url: 'https://playvalorant.com', icon: '🔫' },
+    { title: 'Minecraft supera los 300 millones de copias vendidas', source: 'Mojang', time: 'hace 9h', url: 'https://minecraft.net', icon: '⛏️' },
+  ],
+  science: [
+    { title: 'James Webb descubre galaxia más antigua conocida', source: 'NASA', time: 'hace 2h', url: 'https://nasa.gov', icon: '🔭' },
+    { title: 'Científicos logran fusión nuclear con ganancia de energía neta', source: 'Nature', time: 'hace 5h', url: 'https://nature.com', icon: '⚡' },
+    { title: 'IA predice estructura de proteínas con 99% de precisión', source: 'DeepMind', time: 'hace 7h', url: 'https://deepmind.com', icon: '🧬' },
+    { title: 'Primera misión tripulada a Marte planificada para 2030', source: 'SpaceX', time: 'hace 10h', url: 'https://spacex.com', icon: '🚀' },
+    { title: 'Nuevo material conduce electricidad sin resistencia a temp. ambiente', source: 'Science', time: 'hace 12h', url: 'https://science.org', icon: '🔬' },
+  ],
+  general: [
+    { title: 'Economía global muestra signos de recuperación en 2025', source: 'Reuters', time: 'hace 1h', url: 'https://reuters.com', icon: '📈' },
+    { title: 'OMS aprueba nueva vacuna para enfermedades tropicales', source: 'WHO', time: 'hace 3h', url: 'https://who.int', icon: '💉' },
+    { title: 'Guatemala clasifica al mundial de fútbol 2026', source: 'FIFA', time: 'hace 4h', url: 'https://fifa.com', icon: '⚽' },
+    { title: 'Energías renovables superan al carbón por primera vez', source: 'BBC', time: 'hace 6h', url: 'https://bbc.com', icon: '🌱' },
+    { title: 'Record de turismo en Centroamérica durante 2025', source: 'UNWTO', time: 'hace 8h', url: 'https://unwto.org', icon: '✈️' },
+  ],
+};
+
+function loadNews(category, btn) {
+  document.querySelectorAll('.news-tab').forEach(b => b.classList.remove('active-tab'));
+  if (btn) btn.classList.add('active-tab');
+
+  const out = document.getElementById('news-out');
+  const items = NEWS_SOURCES[category] || [];
+
+  out.innerHTML = items.map(n => `
+    <a href="${n.url}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:flex-start;gap:.7rem;padding:.6rem .8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;transition:all .2s"
+      onmouseover="this.style.borderColor='var(--border-h)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
+      <span style="font-size:1.3rem;flex-shrink:0">${n.icon}</span>
+      <div>
+        <div style="font-size:.82rem;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:.2rem">${n.title}</div>
+        <div style="font-size:.68rem;font-family:var(--mono);color:var(--muted)">${n.source} · ${n.time}</div>
+      </div>
+    </a>`).join('');
+}
+
+// Cargar noticias de tech al iniciar
+loadNews('technology', null);
+document.querySelector('.news-tab')?.classList.add('active-tab');
+
+// ── 27 · HORÓSCOPO ─────────────────────────────────────────
+const ZODIAC = [
+  { sign:'Aries',      emoji:'♈', dates:'21 Mar – 19 Abr' },
+  { sign:'Tauro',      emoji:'♉', dates:'20 Abr – 20 May' },
+  { sign:'Géminis',    emoji:'♊', dates:'21 May – 20 Jun' },
+  { sign:'Cáncer',     emoji:'♋', dates:'21 Jun – 22 Jul' },
+  { sign:'Leo',        emoji:'♌', dates:'23 Jul – 22 Ago' },
+  { sign:'Virgo',      emoji:'♍', dates:'23 Ago – 22 Sep' },
+  { sign:'Libra',      emoji:'♎', dates:'23 Sep – 22 Oct' },
+  { sign:'Escorpio',   emoji:'♏', dates:'23 Oct – 21 Nov' },
+  { sign:'Sagitario',  emoji:'♐', dates:'22 Nov – 21 Dic' },
+  { sign:'Capricornio',emoji:'♑', dates:'22 Dic – 19 Ene' },
+  { sign:'Acuario',    emoji:'♒', dates:'20 Ene – 18 Feb' },
+  { sign:'Piscis',     emoji:'♓', dates:'19 Feb – 20 Mar' },
+];
+
+const HOROSCOPES = {
+  Aries:      ['Hoy tu energía está al máximo. Es el momento ideal para iniciar proyectos nuevos y tomar decisiones importantes. Las estrellas favorecen tu valentía.','Amor: Una conversación honesta fortalecerá tus relaciones. 💑','Trabajo: Tu liderazgo será reconocido hoy. 🏆','Salud: Canaliza tu energía con ejercicio físico. 💪'],
+  Tauro:      ['La estabilidad que buscas está más cerca de lo que crees. Confía en tu instinto y no tomes decisiones apresuradas. La paciencia es tu mayor virtud.','Amor: Momento perfecto para expresar tus sentimientos. ❤️','Trabajo: Un proyecto creativo te traerá satisfacción. 🎨','Salud: Dedica tiempo al descanso y la relajación. 🧘'],
+  Géminis:    ['Tu mente está brillante hoy. Nuevas ideas fluirán con facilidad. Es buen día para comunicarte y conectar con personas nuevas o viejas amistades.','Amor: La comunicación es clave en tus relaciones. 💬','Trabajo: Tu creatividad resolverá problemas complejos. ✨','Salud: Cuida tu sistema nervioso con meditación. 🧠'],
+  Cáncer:     ['Tu intuición está especialmente aguda hoy. Confía en tus emociones y protege tu espacio personal. El hogar te traerá paz y claridad mental.','Amor: Los gestos pequeños tendrán gran impacto. 🌸','Trabajo: Tu empatía será un activo valioso hoy. 🤝','Salud: Hidratación y descanso son prioridad. 💧'],
+  Leo:        ['Tu carisma brilla con fuerza hoy. Las personas se sienten atraídas por tu energía positiva. Aprovecha para liderar y brillar en situaciones sociales.','Amor: Tu generosidad conquistará corazones. 👑','Trabajo: Es momento de mostrar tu talento sin miedo. 🌟','Salud: El sol y el aire fresco te recargarán. ☀️'],
+  Virgo:      ['Tu atención al detalle marcará la diferencia hoy. Es un día excelente para organizar, planificar y perfeccionar lo que has estado trabajando.','Amor: La honestidad construirá confianza duradera. 💎','Trabajo: Tu análisis resolverá un problema pendiente. 📊','Salud: Una rutina equilibrada te beneficiará mucho. ⚖️'],
+  Libra:      ['El equilibrio que buscas en tu vida está al alcance. Hoy es buen día para tomar decisiones con calma y buscar armonía en tus relaciones.','Amor: La diplomacia suavizará cualquier tensión. 🕊️','Trabajo: La colaboración traerá mejores resultados. 🤜🤛','Salud: El yoga o meditación te traerá equilibrio. 🧘'],
+  Escorpio:   ['Tu intensidad y determinación son tus mayores fortalezas hoy. Algo que has estado investigando revelará información valiosa. Confía en tu poder.','Amor: La profundidad emocional fortalecerá vínculos. 🔥','Trabajo: Tu persistencia superará cualquier obstáculo. 💪','Salud: Gestiona el estrés con técnicas de respiración. 🌬️'],
+  Sagitario:  ['Tu espíritu aventurero te llama hoy. Es momento de expandir horizontes, aprender algo nuevo o planificar un viaje. El optimismo es tu escudo.','Amor: La libertad y la aventura fortalecen tu relación. 🏹','Trabajo: Una oportunidad inesperada puede surgir. 🎯','Salud: Actividad al aire libre te llenará de energía. 🌿'],
+  Capricornio:['Tu disciplina y ambición te llevarán al éxito hoy. Los esfuerzos del pasado empiezan a dar frutos. Mantén el foco en tus objetivos a largo plazo.','Amor: La estabilidad que ofreces es muy valorada. 🏔️','Trabajo: Tu responsabilidad será reconocida y recompensada. 🎖️','Salud: No descuides el descanso por el trabajo. 😴'],
+  Acuario:    ['Tu mente innovadora está en su mejor momento. Ideas revolucionarias te llegarán hoy. Es buen día para conectar con personas que comparten tu visión.','Amor: Tu originalidad atrae personas especiales. 🌊','Trabajo: Propón ideas nuevas sin miedo al cambio. 💡','Salud: Actividades sociales mejorarán tu bienestar. 🎉'],
+  Piscis:     ['Tu sensibilidad e intuición son dones preciosos hoy. El universo te envía señales importantes. Dedica tiempo a la creatividad y la espiritualidad.','Amor: El romanticismo florece naturalmente hoy. 🐟','Trabajo: Tu creatividad encontrará soluciones únicas. 🎵','Salud: El agua y la naturaleza te sanarán. 🌊'],
+};
+
+// Construir grid de signos
+(function buildZodiac() {
+  const grid = document.getElementById('zodiac-grid');
+  if (!grid) return;
+  grid.innerHTML = ZODIAC.map(z => `
+    <button onclick="showHoroscope('${z.sign}')" title="${z.dates}"
+      style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.4rem;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.15rem"
+      onmouseover="this.style.borderColor='var(--border-h)';this.style.background='rgba(255,69,0,.08)'"
+      onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
+      <span style="font-size:1.2rem">${z.emoji}</span>
+      <span style="font-size:.58rem;font-family:var(--mono);color:var(--muted)">${z.sign}</span>
+    </button>`).join('');
+})();
+
+function showHoroscope(sign) {
+  const lines = HOROSCOPES[sign] || ['Información no disponible.'];
+  const zodiac = ZODIAC.find(z => z.sign === sign);
+  const out = document.getElementById('horoscope-out');
+  const today = new Date().toLocaleDateString('es-GT', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  out.style.display = 'block';
+  out.innerHTML = `
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,69,0,.2);border-radius:12px;padding:1rem">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem">
+        <span style="font-size:2rem">${zodiac?.emoji}</span>
+        <div>
+          <div style="font-size:1rem;font-weight:700">${sign}</div>
+          <div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">${today}</div>
+        </div>
+      </div>
+      <p style="font-size:.85rem;line-height:1.7;color:rgba(232,232,240,.75);margin-bottom:.7rem">${lines[0]}</p>
+      <div style="display:flex;flex-direction:column;gap:.3rem">
+        ${lines.slice(1).map(l => `<div style="font-size:.78rem;color:var(--a)">${l}</div>`).join('')}
+      </div>
+    </div>`;
+}
 
 </script>
 </body>
