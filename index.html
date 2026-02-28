@@ -188,25 +188,39 @@
   font-family: 'Space Grotesk', sans-serif;
 }
 
-.action-btn:first-child {
+.action-btn:nth-child(1) {
   background: linear-gradient(135deg, rgba(255,69,0,0.2), rgba(255,107,53,0.1));
   color: #ffbd69;
   border-color: rgba(255,69,0,0.3);
 }
 
-.action-btn:first-child:hover {
+.action-btn:nth-child(1):hover {
   background: linear-gradient(135deg, rgba(255,69,0,0.35), rgba(255,107,53,0.2));
   border-color: rgba(255,69,0,0.6);
   transform: translateX(4px);
 }
 
-.action-btn:last-child {
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.7);
+.action-btn:nth-child(2) {
+  background: rgba(64,196,255,0.08);
+  color: #40c4ff;
+  border-color: rgba(64,196,255,0.25);
 }
 
-.action-btn:last-child:hover {
-  background: rgba(255,255,255,0.08);
+.action-btn:nth-child(2):hover {
+  background: rgba(64,196,255,0.15);
+  border-color: rgba(64,196,255,0.5);
+  transform: translateX(4px);
+}
+
+.action-btn:nth-child(3), .action-btn:last-child {
+  background: rgba(0,230,118,0.08);
+  color: #00e676;
+  border-color: rgba(0,230,118,0.25);
+}
+
+.action-btn:nth-child(3):hover, .action-btn:last-child:hover {
+  background: rgba(0,230,118,0.15);
+  border-color: rgba(0,230,118,0.5);
   transform: translateX(4px);
 }
 
@@ -1278,8 +1292,152 @@
             margin: 1.5rem 0;
         }
 
-        /* nav ul ya definido arriba en header PRO */
-        nav a::before { display: none; } /* eliminar el shimmer anterior que interfiere */
+        /* ===== MOBILE NAV — HAMBURGER ===== */
+        .nav-hamburger {
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          gap: 5px;
+          width: 40px;
+          height: 40px;
+          background: rgba(255,69,0,0.1);
+          border: 1px solid rgba(255,69,0,0.3);
+          border-radius: 10px;
+          cursor: pointer;
+          padding: 8px;
+          flex-shrink: 0;
+          transition: all .2s ease;
+        }
+        .nav-hamburger:hover { background: rgba(255,69,0,0.2); }
+        .nav-hamburger span {
+          display: block;
+          width: 100%;
+          height: 2px;
+          background: #ff6b35;
+          border-radius: 2px;
+          transition: all .3s ease;
+        }
+        .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        /* Mobile overlay nav */
+        #mobile-nav-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0,0,0,0.7);
+          backdrop-filter: blur(8px);
+          z-index: 490;
+        }
+        #mobile-nav-overlay.open { display: block; }
+        #mobile-nav-drawer {
+          position: fixed;
+          top: 0;
+          right: -280px;
+          width: 270px;
+          height: 100vh;
+          background: linear-gradient(160deg, rgba(10,10,20,0.99), rgba(16,10,28,0.99));
+          border-left: 1px solid rgba(255,69,0,0.3);
+          z-index: 495;
+          padding: 1.5rem 1.2rem;
+          transition: right .3s cubic-bezier(.2,.9,.2,1);
+          display: flex;
+          flex-direction: column;
+          gap: .4rem;
+          overflow-y: auto;
+        }
+        #mobile-nav-drawer.open { right: 0; }
+        .mob-nav-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 1rem;
+          padding-bottom: .8rem;
+          border-bottom: 1px solid rgba(255,69,0,0.2);
+        }
+        .mob-nav-logo {
+          font-size: .95rem;
+          font-weight: 800;
+          color: #fff;
+        }
+        .mob-nav-logo .br { color: #ff4500; }
+        .mob-close-btn {
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 8px;
+          cursor: pointer;
+          color: rgba(255,255,255,.7);
+          font-size: .85rem;
+          transition: all .2s ease;
+        }
+        .mob-close-btn:hover { background: rgba(255,69,0,.2); color: #fff; }
+        #mobile-nav-drawer a {
+          display: flex;
+          align-items: center;
+          gap: .75rem;
+          padding: .75rem 1rem;
+          border-radius: 12px;
+          text-decoration: none;
+          color: rgba(255,255,255,.75);
+          font-size: .92rem;
+          font-weight: 500;
+          transition: all .2s ease;
+          border: 1px solid transparent;
+        }
+        #mobile-nav-drawer a i { width: 18px; text-align: center; color: #ff6b35; font-size: .9rem; }
+        #mobile-nav-drawer a:hover {
+          background: rgba(255,69,0,.1);
+          border-color: rgba(255,69,0,.25);
+          color: #fff;
+          transform: translateX(4px);
+        }
+        .mob-divider {
+          height: 1px;
+          background: rgba(255,255,255,.07);
+          margin: .5rem 0;
+        }
+        .mob-special-btn {
+          display: flex;
+          align-items: center;
+          gap: .75rem;
+          padding: .75rem 1rem;
+          border-radius: 12px;
+          text-decoration: none;
+          font-size: .92rem;
+          font-weight: 600;
+          transition: all .2s ease;
+          margin-top: .4rem;
+        }
+        .mob-dl-btn {
+          background: rgba(255,69,0,.15);
+          color: #ffbd69;
+          border: 1px solid rgba(255,69,0,.3);
+        }
+        .mob-dl-btn:hover { background: rgba(255,69,0,.25) !important; color: #ffbd69 !important; }
+        .mob-yt-btn {
+          background: rgba(255,0,0,.1);
+          color: #ff4444;
+          border: 1px solid rgba(255,0,0,.25);
+        }
+        .mob-yt-btn:hover { background: rgba(255,0,0,.2) !important; color: #ff4444 !important; }
+
+        @media (max-width: 768px) {
+          .nav-hamburger { display: flex; }
+          header nav { display: none; }
+          .header-dl-btn, .header-yt-btn, #beta-btn { display: none !important; }
+          #cfg-btn { display: none !important; }
+          .header-inner { padding: 0.65rem 1rem; gap: .5rem; }
+          .header-actions { gap: .35rem; }
+        }
+        @media (max-width: 480px) {
+          .header-logo-badge { display: none; }
+        }
 
         /* Main Content */
         main {
@@ -2461,6 +2619,9 @@
 
             <!-- Acciones derecha -->
             <div class="header-actions">
+                <button class="nav-hamburger" id="nav-hamburger" aria-label="Menú" onclick="toggleMobileNav()">
+                  <span></span><span></span><span></span>
+                </button>
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
                 </button>
@@ -2473,9 +2634,28 @@
                 <button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button>
             </div>
         </div>
+
         <!-- Typing effect debajo -->
         <div class="header-typing" id="typingEffect"></div>
     </header>
+
+    <!-- ── MOBILE NAV DRAWER ── -->
+    <div id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+    <div id="mobile-nav-drawer">
+      <div class="mob-nav-header">
+        <span class="mob-nav-logo"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
+        <button class="mob-close-btn" onclick="closeMobileNav()"><i class="fas fa-times"></i></button>
+      </div>
+      <a href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-bar"></i> Estadísticas</a>
+      <a href="#skills" onclick="closeMobileNav()"><i class="fas fa-code"></i> Habilidades</a>
+      <a href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
+      <a href="#timeline" onclick="closeMobileNav()"><i class="fas fa-timeline"></i> Experiencia</a>
+      <a href="#latest-projects" onclick="closeMobileNav()"><i class="fas fa-folder-open"></i> Proyectos</a>
+      <a href="#contact" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
+      <div class="mob-divider"></div>
+      <a href="downloader.html" class="mob-special-btn mob-dl-btn"><i class="fas fa-download"></i> Descargar Videos</a>
+      <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="mob-special-btn mob-yt-btn"><i class="fab fa-youtube"></i> Canal de YouTube</a>
+    </div>
 
     <!-- ── PANEL DE CONFIGURACIÓN ── -->
     <div id="config-panel" aria-hidden="true">
@@ -3118,6 +3298,13 @@
                             <div>
                                 <div class="clink-label">Telegram</div>
                                 <div class="clink-val">@d3exg3aeyag1ko</div>
+                            </div>
+                        </a>
+                        <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="clink">
+                            <div class="clink-icon" style="background:rgba(255,0,0,.12);color:#ff0000"><i class="fab fa-youtube"></i></div>
+                            <div>
+                                <div class="clink-label">YouTube</div>
+                                <div class="clink-val">@WilsonEnriquez-g7m</div>
                             </div>
                         </a>
                     </div>
@@ -5198,6 +5385,11 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
         Tools
       </button>
+
+      <button class="action-btn" id="openDownloader" type="button">
+        <i class="fas fa-download" aria-hidden="true"></i>
+        Descargar Videos
+      </button>
     </div>
 
     <button class="close-btn" id="closeWhatsNew" type="button" aria-label="Cerrar diálogo">
@@ -5216,6 +5408,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
   const btnClose = document.getElementById('closeWhatsNew');
   const btnNovedades = document.getElementById('openNovedades');
   const btnTools = document.getElementById('openTools');
+  const btnDownloader = document.getElementById('openDownloader');
 
   if (!whatsIcon || !overlay || !btnClose || !btnNovedades || !btnTools) {
     console.warn('whatsNew: elementos no encontrados (verifica IDs).');
@@ -5246,6 +5439,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
   // acciones: abrir páginas (misma pestaña)
   btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
   btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
+  if (btnDownloader) btnDownloader.addEventListener('click', () => { window.location.href = 'downloader.html'; });
 
   // Esc para cerrar
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
@@ -5707,6 +5901,33 @@ function loadCfg() {
     if (canvas && neural === '0') canvas.style.opacity = '0';
 })();
 
+</script>
+<script>
+// ── MOBILE NAV ─────────────────────────────────────────────
+function toggleMobileNav() {
+  const drawer = document.getElementById('mobile-nav-drawer');
+  const overlay = document.getElementById('mobile-nav-overlay');
+  const hamburger = document.getElementById('nav-hamburger');
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) {
+    closeMobileNav();
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    hamburger.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+function closeMobileNav() {
+  const drawer = document.getElementById('mobile-nav-drawer');
+  const overlay = document.getElementById('mobile-nav-overlay');
+  const hamburger = document.getElementById('nav-hamburger');
+  drawer.classList.remove('open');
+  overlay.classList.remove('open');
+  hamburger.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMobileNav(); });
 </script>
 </body>
 </html>

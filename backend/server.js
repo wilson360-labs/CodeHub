@@ -42,8 +42,10 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);                          // curl / Postman / Railway health
-    if (origin.endsWith('.github.io')) return cb(null, true);   // cualquier GitHub Pages
+    if (!origin) return cb(null, true);                               // curl / Postman / Railway health
+    if (origin.endsWith('.github.io')) return cb(null, true);         // GitHub Pages
+    if (origin.endsWith('.vercel.app')) return cb(null, true);        // ✅ Vercel deployments
+    if (origin.endsWith('.netlify.app')) return cb(null, true);       // Netlify (por si acaso)
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
     if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     console.warn(`[CORS] Bloqueado: ${origin}`);
@@ -265,7 +267,7 @@ app.get('/api/health', (_req, res) => {
     mongodb:   dbConnected                 ? '✅ conectado'   : '⚠️  sin conexión',
     sessions:  SESSION_CACHE.size,
     uptime:    Math.floor(process.uptime()) + 's',
-    cors:      '✅ *.github.io + localhost',
+    cors:      '✅ *.github.io + *.vercel.app + localhost',
     env:       process.env.NODE_ENV || 'development',
     railway:   RAILWAY_URL,
   });
@@ -285,7 +287,7 @@ app.get('/', (_req, res) => {
     console.log(`    Puerto:   ${PORT}`);
     console.log(`    OpenAI:   ${openai            ? '✅ configurado' : '❌ FALTA OPENAI_API_KEY'}`);
     console.log(`    MongoDB:  ${dbConnected       ? '✅ conectado'   : '⚠️  sin conexión'}`);
-    console.log(`    CORS:     ✅ *.github.io + localhost`);
+    console.log(`    CORS:     ✅ *.github.io + *.vercel.app + localhost`);
     console.log(`    Env:      ${process.env.NODE_ENV || 'development'}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   });
