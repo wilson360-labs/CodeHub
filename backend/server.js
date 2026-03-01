@@ -81,7 +81,7 @@ async function connectDB() {
 const SYSTEM_PROMPT = `Eres el asistente IA de CodeHub, portfolio de Wilson.E, desarrollador guatemalteco.
 PERSONALIDAD: Conciso, técnico y amigable. Siempre en español. Emojis con moderación. Máx 4 oraciones por respuesta.
 SOBRE CODEHUB: Portfolio de Wilson.E (24 años, Guatemala 🇬🇹). 23 herramientas web, apps Android premium, juegos Snake/Tetris, descargador de videos (YouTube, TikTok, Instagram, Facebook, Twitter/X).
-Contacto: wilson.e360labs@gmail.com / WhatsApp +502 3513 1808.
+Contacto: wilsonenrique686@gmail.com / WhatsApp +502 3513 1808.
 FORMATO: Código en bloques, listas con guión, negritas para términos clave.`;
 
 // ── GROQ ───────────────────────────────────────────────
@@ -254,3 +254,97 @@ app.get('/api/health', (req, res) => {
     console.log(`   Cadena:  Groq → Gemini (fallback automático)`);
   });
 })();
+
+// ── SCHEMAS NUEVOS ─────────────────────────────────────────
+
+// Rating de apps
+const ratingSchema = new mongoose.Schema({
+  appId:    { type: String, required: true, index: true },
+  appName:  { type: String, required: true },
+  ratings:  [{ ip: String, stars: Number, createdAt: { type: Date, default: Date.now } }],
+  total:    { type: Number, default: 0 },
+  count:    { type: Number, default: 0 },
+});
+const AppRating = mongoose.model('AppRating', ratingSchema);
+
+// Solicitudes de apps
+const requestSchema = new mongoose.Schema({
+  appName:  { type: String, required: true },
+  reason:   { type: String, default: '' },
+  ip:       { type: String },
+  votes:    { type: Number, default: 1 },
+  voters:   [String],
+  status:   { type: String, enum: ['pending','done','rejected'], default: 'pending' },
+  createdAt:{ type: Date, default: Date.now },
+});
+const AppRequest = mongoose.model('AppRequest', requestSchema);
+
+// ── GET /api/ratings — obtener ratings de todas las apps ──
+app.get('/api/ratings', async (req, res) => {
+  if (!dbConnected) return res.json({ ratings: {} });
+  try {
+    const all = await AppRating.find({}, 'appId total count');
+    const ratings = {};
+    all.forEach(r => {
+      ratings[r.appId] = {
+        avg: r.count > 0 ? Math.round((r.total / r.count) * 10) / 10 : 0,
+        count: r.count,
+      };
+    });
+    res.json({ ratings });
+  } catch(e) { res.json({ ratings: {} }); }
+});
+
+// ── POST /api/ratings — votar una app ──
+app.post('/api/ratings', async (req, res) => {
+  const { appId, appName, stars } = req.body;
+  const ip = req.ip || 'anon';
+  if (!appId || !stars || stars < 1 || stars > 5)
+    return res.status(400).json({ error: 'Datos inválidos' });
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    let rating = await AppRating.findOne({ appId });
+    if (!rating) rating = new AppRating({ appId, appName: appName || appId, ratings: [], total: 0, count: 0 });
+    // Solo 1 voto por IP
+    const already = rating.ratings.find(r => r.ip === ip);
+    if (already) return res.status(409).json({ error: 'Ya votaste esta app', avg: rating.count > 0 ? Math.round((rating.total/rating.count)*10)/10 : 0, count: rating.count });
+    rating.ratings.push({ ip, stars });
+    rating.total += stars;
+    rating.count += 1;
+    await rating.save();
+    res.json({ ok: true, avg: Math.round((rating.total / rating.count) * 10) / 10, count: rating.count });
+  } catch(e) { res.status(500).json({ error: 'Error guardando rating' }); }
+});
+
+// ── GET /api/requests — obtener solicitudes (top 20) ──
+app.get('/api/requests', async (req, res) => {
+  if (!dbConnected) return res.json({ requests: [] });
+  try {
+    const reqs = await AppRequest.find({ status: 'pending' }).sort({ votes: -1 }).limit(20);
+    res.json({ requests: reqs });
+  } catch(e) { res.json({ requests: [] }); }
+});
+
+// ── POST /api/requests — solicitar nueva app ──
+app.post('/api/requests', async (req, res) => {
+  const { appName, reason } = req.body;
+  const ip = req.ip || 'anon';
+  if (!appName || appName.trim().length < 2)
+    return res.status(400).json({ error: 'Nombre de app requerido' });
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    // Verificar si ya existe
+    const existing = await AppRequest.findOne({ appName: new RegExp(appName.trim(), 'i'), status: 'pending' });
+    if (existing) {
+      if (existing.voters.includes(ip))
+        return res.status(409).json({ error: 'Ya votaste por esta solicitud', votes: existing.votes });
+      existing.votes += 1;
+      existing.voters.push(ip);
+      await existing.save();
+      return res.json({ ok: true, message: 'Voto agregado a solicitud existente', votes: existing.votes });
+    }
+    const newReq = new AppRequest({ appName: appName.trim(), reason: reason?.trim() || '', ip, voters: [ip] });
+    await newReq.save();
+    res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
+  } catch(e) { res.status(500).json({ error: 'Error guardando solicitud' }); }
+});

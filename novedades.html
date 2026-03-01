@@ -26,8 +26,7 @@
     <div class="hdr-right">
       <span class="update-badge" id="update-badge">● Actualizado</span>
       <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Volver</a>
-      <a class="back-link" href="tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
-      <a class="back-link" href="downloader.html" style="background:linear-gradient(135deg,rgba(255,69,0,.18),rgba(255,107,53,.12));border-color:rgba(255,69,0,.45);color:#ff6b35;font-weight:800"><i class="fas fa-cloud-arrow-down"></i> Descargador de Videos</a>
+      <a class="back-link" href="downloader.html" style="background:rgba(255,69,0,.12);border-color:rgba(255,69,0,.3);color:var(--p)"><i class="fas fa-download"></i> Descargar Videos</a>
     </div>
   </div>
 </header>
@@ -54,112 +53,6 @@
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- DESCARGADOR DE VIDEOS — Feature destacada                 -->
-<!-- ══════════════════════════════════════════════════════════ -->
-<div class="downloader-feature">
-  <div class="df-inner">
-    <div class="df-icon-wrap">
-      <div class="df-icon"><i class="fas fa-cloud-arrow-down"></i></div>
-    </div>
-    <div class="df-content">
-      <div class="df-tag">🆕 Feature destacada</div>
-      <h2 class="df-title">Descargador de Videos</h2>
-      <p class="df-desc">Descarga videos de <strong>YouTube, TikTok, Instagram, Facebook y Twitter/X</strong> sin instalar nada. Motor propio CodeHub con extracción de enlace directo.</p>
-      <div class="df-platforms">
-        <span class="dfp dfp-yt"><i class="fab fa-youtube"></i></span>
-        <span class="dfp dfp-tt"><i class="fab fa-tiktok"></i></span>
-        <span class="dfp dfp-ig"><i class="fab fa-instagram"></i></span>
-        <span class="dfp dfp-fb"><i class="fab fa-facebook"></i></span>
-        <span class="dfp dfp-tw"><i class="fab fa-x-twitter"></i></span>
-      </div>
-    </div>
-    <a class="df-btn" href="downloader.html">
-      <i class="fas fa-cloud-arrow-down"></i>
-      Abrir Descargador
-      <i class="fas fa-arrow-right df-arrow"></i>
-    </a>
-  </div>
-</div>
-
-<style>
-.downloader-feature{
-  max-width:960px;margin:0 auto 1.5rem;padding:0 1.5rem;
-}
-.df-inner{
-  background:linear-gradient(135deg,rgba(255,69,0,.10) 0%,rgba(13,13,26,.95) 50%,rgba(255,107,53,.06) 100%);
-  border:1px solid rgba(255,69,0,.35);
-  border-radius:20px;
-  padding:1.8rem 2rem;
-  display:flex;align-items:center;gap:1.5rem;
-  flex-wrap:wrap;
-  position:relative;overflow:hidden;
-  box-shadow:0 0 0 1px rgba(255,69,0,.08),0 20px 50px rgba(0,0,0,.5);
-}
-.df-inner::before{
-  content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse at 80% 50%,rgba(255,69,0,.08) 0%,transparent 70%);
-  pointer-events:none;
-}
-.df-icon-wrap{flex-shrink:0}
-.df-icon{
-  width:64px;height:64px;border-radius:18px;
-  background:linear-gradient(135deg,var(--p,#ff4500),rgba(255,107,53,.8));
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.8rem;color:#fff;
-  box-shadow:0 8px 28px rgba(255,69,0,.45);
-}
-.df-content{flex:1;min-width:200px}
-.df-tag{
-  font-size:.68rem;font-weight:700;
-  font-family:'JetBrains Mono',monospace;
-  color:var(--a,#ffbd69);
-  background:rgba(255,189,105,.1);
-  border:1px solid rgba(255,189,105,.2);
-  padding:2px 9px;border-radius:10px;
-  display:inline-block;margin-bottom:.6rem;
-}
-.df-title{
-  font-size:1.3rem;font-weight:800;
-  background:linear-gradient(135deg,#fff,var(--a,#ffbd69));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  margin-bottom:.45rem;
-}
-.df-desc{font-size:.82rem;color:rgba(232,232,240,.65);line-height:1.65;margin-bottom:.85rem}
-.df-desc strong{color:#fff}
-.df-platforms{display:flex;gap:.5rem;flex-wrap:wrap}
-.dfp{
-  width:32px;height:32px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:.95rem;transition:all .2s;
-}
-.dfp:hover{transform:scale(1.15)}
-.dfp-yt{background:rgba(255,0,0,.15);color:#ff4444}
-.dfp-tt{background:rgba(64,196,255,.15);color:#40c4ff}
-.dfp-ig{background:rgba(225,48,108,.15);color:#e1306c}
-.dfp-fb{background:rgba(24,119,242,.15);color:#1877f2}
-.dfp-tw{background:rgba(255,255,255,.1);color:#ccc}
-.df-btn{
-  display:flex;align-items:center;gap:.6rem;
-  padding:.85rem 1.6rem;
-  background:linear-gradient(135deg,#ff4500,#ff6b35);
-  color:#fff;font-weight:800;font-size:.9rem;
-  font-family:'Syne',sans-serif;
-  text-decoration:none;border-radius:12px;
-  white-space:nowrap;flex-shrink:0;
-  box-shadow:0 6px 22px rgba(255,69,0,.4);
-  transition:all .22s;position:relative;z-index:1;
-}
-.df-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,69,0,.55)}
-.df-arrow{transition:transform .2s}
-.df-btn:hover .df-arrow{transform:translateX(4px)}
-@media(max-width:600px){
-  .df-inner{padding:1.3rem 1.2rem;gap:1rem}
-  .df-btn{width:100%;justify-content:center}
-}
-</style>
-
 <!-- CONTROLES -->
 <div class="controls">
   <div class="search-wrap">
@@ -179,7 +72,7 @@
 <main class="app-grid" id="app-grid">
 
   <!-- 1 · Spotify Premium -->
-  <div class="app-card" data-cat="musica" data-name="spotify premium">
+  <div class="app-card" data-id="app-1" data-cat="musica" data-name="spotify premium">
     <div class="app-thumb">
       <img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -193,11 +86,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 2 · Spotify Lite Premium -->
-  <div class="app-card" data-cat="musica" data-name="spotify lite premium">
+  <div class="app-card" data-id="app-2" data-cat="musica" data-name="spotify lite premium">
     <div class="app-thumb">
       <img src="img/SpoLite.png" alt="Spotify Lite" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎶</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -211,11 +115,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 3 · YouTube ReVanced -->
-  <div class="app-card" data-cat="video" data-name="youtube revanced">
+  <div class="app-card" data-id="app-3" data-cat="video" data-name="youtube revanced">
     <div class="app-thumb">
       <img src="img/YouTube.jpeg" alt="YouTube ReVanced" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
       <span class="app-badge badge-hot">🔥 Popular</span>
@@ -232,11 +147,22 @@
           <i class="fas fa-puzzle-piece"></i> MicroG
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 4 · YouTube Music ReVanced -->
-  <div class="app-card" data-cat="musica" data-name="youtube music revanced">
+  <div class="app-card" data-id="app-4" data-cat="musica" data-name="youtube music revanced">
     <div class="app-thumb">
       <img src="img/YTMusic.png" alt="YouTube Music" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎧</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -253,11 +179,22 @@
           <i class="fas fa-puzzle-piece"></i> MicroG
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 5 · TikTok Premium -->
-  <div class="app-card" data-cat="video" data-name="tiktok premium">
+  <div class="app-card" data-id="app-5" data-cat="video" data-name="tiktok premium">
     <div class="app-thumb">
       <img src="img/TikTok.svg" alt="TikTok" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -274,11 +211,22 @@
           <i class="fas fa-puzzle-piece"></i> Plugin
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 6 · Flicks Remix -->
-  <div class="app-card" data-cat="video" data-name="flicks remix netflix">
+  <div class="app-card" data-id="app-6" data-cat="video" data-name="flicks remix netflix">
     <div class="app-thumb">
       <img src="img/Netflix.png" alt="Flicks Remix" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎬</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -292,11 +240,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 7 · TeraBox Premium -->
-  <div class="app-card" data-cat="util" data-name="terabox premium nube">
+  <div class="app-card" data-id="app-7" data-cat="util" data-name="terabox premium nube">
     <div class="app-thumb">
       <img src="img/Terabox.png" alt="TeraBox" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>☁️</div>'">
       <span class="app-badge badge-star">⭐ Destacada</span>
@@ -310,11 +269,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 8 · MX Player Pro -->
-  <div class="app-card" data-cat="video" data-name="mx player pro video">
+  <div class="app-card" data-id="app-8" data-cat="video" data-name="mx player pro video">
     <div class="app-thumb">
       <img src="img/Player.jpg" alt="MX Player" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -328,11 +298,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 9 · PicsArt Premium -->
-  <div class="app-card" data-cat="foto" data-name="picsart premium edicion fotos">
+  <div class="app-card" data-id="app-9" data-cat="foto" data-name="picsart premium edicion fotos">
     <div class="app-thumb">
       <img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🖼️</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -346,11 +327,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 10 · Remini Pro -->
-  <div class="app-card" data-cat="foto" data-name="remini pro mejora fotos ia">
+  <div class="app-card" data-id="app-10" data-cat="foto" data-name="remini pro mejora fotos ia">
     <div class="app-thumb">
       <img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✨</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -364,11 +356,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 11 · Magic Eraser -->
-  <div class="app-card" data-cat="foto" data-name="magic eraser borrar objetos fotos">
+  <div class="app-card" data-id="app-11" data-cat="foto" data-name="magic eraser borrar objetos fotos">
     <div class="app-thumb">
       <img src="img/Eraser.jpg" alt="Magic Eraser" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🪄</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -382,11 +385,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 12 · CamScanner -->
-  <div class="app-card" data-cat="util" data-name="camscanner escanear documentos">
+  <div class="app-card" data-id="app-12" data-cat="util" data-name="camscanner escanear documentos">
     <div class="app-thumb">
       <img src="img/CamScanner.jpg" alt="CamScanner" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📄</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -400,11 +414,22 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
   <!-- 13 · DNS AdGuard Pro -->
-  <div class="app-card" data-cat="util" data-name="dns adguard bloquear anuncios">
+  <div class="app-card" data-id="app-13" data-cat="util" data-name="dns adguard bloquear anuncios">
     <div class="app-thumb">
       <img src="img/dnspro.png" alt="AdGuard DNS" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛡️</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
@@ -418,10 +443,43 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Rating estrellas -->
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
     </div>
   </div>
 
 </main><!-- /app-grid -->
+
+<!-- Modal Solicitar App -->
+<div id="req-modal" class="req-modal-bg" style="display:none" onclick="if(event.target===this)closeReqModal()">
+  <div class="req-modal">
+    <div class="req-modal-head">
+      <h3>📲 Solicitar App</h3>
+      <button onclick="closeReqModal()" class="req-close">✕</button>
+    </div>
+    <p class="req-sub">¿No encuentras la app que buscas? Solicítala aquí y si hay demanda la agrego.</p>
+    <div class="req-form">
+      <input type="text" id="req-name" placeholder="Nombre de la app (ej: Netflix Mod)" maxlength="60" class="req-input">
+      <textarea id="req-reason" placeholder="¿Por qué la quieres? (opcional)" maxlength="200" class="req-textarea" rows="2"></textarea>
+      <button onclick="submitRequest()" class="req-submit-btn"><i class="fas fa-paper-plane"></i> Enviar solicitud</button>
+    </div>
+    <div class="req-list-wrap">
+      <div class="req-list-title">📋 Solicitudes populares</div>
+      <div id="req-list" class="req-list">
+        <div class="req-loading">Cargando solicitudes...</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <footer>
   <a href="index.html">&lt;Wilson.E/&gt;</a> · Apps verificadas · Solo para Android · Uso responsable
@@ -504,6 +562,139 @@ function applyFilter(q) {
     }
   } else if (noR) noR.remove();
 }
+
+// ═══════════════════════════════════════════════════════════
+//  RATING + SOLICITUDES — MongoDB via Railway
+// ═══════════════════════════════════════════════════════════
+const BACKEND = 'https://codehub-production-729d.up.railway.app';
+let allRatings = {};
+
+// Cargar ratings al iniciar
+async function loadRatings() {
+  try {
+    const res = await fetch(`${BACKEND}/api/ratings`);
+    const d   = await res.json();
+    allRatings = d.ratings || {};
+    renderRatings();
+  } catch(e) { console.warn('Ratings no disponibles'); }
+}
+
+function renderRatings() {
+  document.querySelectorAll('.app-card').forEach(card => {
+    const id  = card.dataset.id;
+    const rat = card.querySelector('.app-rating');
+    if (!rat || !id) return;
+    const info = allRatings[id];
+    if (info && info.count > 0) {
+      rat.querySelector('.rating-info').textContent = `${info.avg} ★ (${info.count} votos)`;
+      highlightStars(rat, Math.round(info.avg));
+    }
+    // Hover stars
+    rat.querySelectorAll('.star').forEach(star => {
+      star.addEventListener('mouseenter', () => {
+        if (rat.dataset.voted) return;
+        const v = parseInt(star.dataset.v);
+        rat.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('active', i < v));
+      });
+      star.addEventListener('mouseleave', () => {
+        if (rat.dataset.voted) return;
+        rat.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+        const info = allRatings[card.dataset.id];
+        if (info) highlightStars(rat, Math.round(info.avg));
+      });
+      star.addEventListener('click', () => voteApp(card, star));
+    });
+  });
+}
+
+function highlightStars(rat, count) {
+  rat.querySelectorAll('.star').forEach((s, i) => {
+    s.classList.toggle('voted', i < count);
+    s.classList.remove('active');
+  });
+}
+
+async function voteApp(card, star) {
+  const rat   = card.querySelector('.app-rating');
+  if (rat.dataset.voted) { toast('Ya votaste esta app'); return; }
+  const stars = parseInt(star.dataset.v);
+  const appId = card.dataset.id;
+  const appName = card.querySelector('.app-name')?.textContent || appId;
+  try {
+    const res = await fetch(`${BACKEND}/api/ratings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appId, appName, stars }),
+    });
+    const d = await res.json();
+    if (d.ok || d.avg !== undefined) {
+      allRatings[appId] = { avg: d.avg, count: d.count };
+      rat.dataset.voted = '1';
+      highlightStars(rat, stars);
+      rat.querySelector('.rating-info').textContent = `${d.avg} ★ (${d.count} votos)`;
+      toast(`⭐ Votaste ${stars} estrellas para ${appName}`);
+    } else {
+      toast(d.error || 'No se pudo votar');
+    }
+  } catch(e) { toast('Error de conexión'); }
+}
+
+// ── SOLICITUDES ──────────────────────────────────────────────
+function openReqModal() {
+  document.getElementById('req-modal').style.display = 'flex';
+  loadRequests();
+}
+function closeReqModal() {
+  document.getElementById('req-modal').style.display = 'none';
+}
+async function loadRequests() {
+  const list = document.getElementById('req-list');
+  list.innerHTML = '<div class="req-loading">Cargando...</div>';
+  try {
+    const res = await fetch(`${BACKEND}/api/requests`);
+    const d   = await res.json();
+    if (!d.requests?.length) {
+      list.innerHTML = '<div class="req-loading">No hay solicitudes aún. ¡Sé el primero!</div>';
+      return;
+    }
+    list.innerHTML = d.requests.map(r => `
+      <div class="req-item">
+        <span class="req-item-name">${r.appName}</span>
+        <span class="req-item-votes">+${r.votes} votos</span>
+      </div>`).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="req-loading">No disponible ahora</div>';
+  }
+}
+async function submitRequest() {
+  const name   = document.getElementById('req-name').value.trim();
+  const reason = document.getElementById('req-reason').value.trim();
+  if (!name) { toast('Escribe el nombre de la app'); return; }
+  const btn = document.querySelector('.req-submit-btn');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    const res = await fetch(`${BACKEND}/api/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appName: name, reason }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      toast(d.message || 'Solicitud enviada ✅');
+      document.getElementById('req-name').value = '';
+      document.getElementById('req-reason').value = '';
+      loadRequests();
+    } else {
+      toast(d.error || 'Error al enviar');
+    }
+  } catch(e) { toast('Error de conexión'); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar solicitud';
+}
+
+// Iniciar al cargar
+window.addEventListener('load', loadRatings);
+
 </script>
 
 </body>

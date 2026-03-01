@@ -364,60 +364,41 @@
             left: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 36px;
-            height: 110px;
+            width: 50px;
+            height: 120px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border: 2px solid rgba(255,69,0,.6);
+            border: 2px solid var(--primary);
             border-left: none;
-            border-radius: 0 14px 14px 0;
+            border-radius: 0 15px 15px 0;
             cursor: pointer;
             z-index: 999;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 5px;
             transition: all 0.3s ease;
             box-shadow: 3px 0 15px rgba(255, 69, 0, 0.4);
         }
+
         .menu-toggle-btn:hover {
-            width: 44px;
+            width: 60px;
             box-shadow: 5px 0 25px rgba(255, 69, 0, 0.6);
         }
+
         .menu-toggle-btn i {
-            font-size: 1.1rem;
+            font-size: 1.5rem;
             color: white;
             animation: pulse 2s ease-in-out infinite;
         }
+
         .menu-toggle-text {
             writing-mode: vertical-rl;
             color: white;
             font-weight: bold;
-            font-size: 0.62rem;
+            font-size: 0.9rem;
             letter-spacing: 2px;
-            opacity: .85;
         }
-        /* Deslizador visible en desktop */
-        .exp-drag-handle {
-            position: fixed; left: 36px; top: 50%;
-            transform: translateY(-50%);
-            width: 14px; height: 40px;
-            background: rgba(255,69,0,.25);
-            border: 1px solid rgba(255,69,0,.3);
-            border-left: none; border-radius: 0 8px 8px 0;
-            z-index: 998; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all .2s;
-        }
-        .exp-drag-handle::after {
-            content: '›';
-            color: rgba(255,69,0,.7); font-size: .75rem; font-weight: 700;
-        }
-        .exp-drag-handle:hover { background: rgba(255,69,0,.4); width: 18px; }
-        #experimental-menu.active ~ .exp-drag-handle,
-        .exp-drag-handle.open { left: 300px; }
-        .exp-drag-handle.open::after { content: '‹'; }
-        @media (max-width: 768px) { .exp-drag-handle { display: none; } }
 
         .menu-header {
             text-align: center;
@@ -2513,16 +2494,12 @@
             flex-direction: column; align-items: center; gap: .5rem;
         }
         .pueblo-avatar-circle {
-            width: 96px; height: 96px; border-radius: 50%;
-            background: linear-gradient(135deg, #ff4500, #6c3af5);
-            border: 3px solid rgba(255,69,0,.5);
+            width: 80px; height: 80px; border-radius: 50%;
+            background: linear-gradient(135deg, rgba(255,69,0,.2), rgba(108,58,245,.2));
+            border: 2px solid rgba(255,69,0,.4);
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 28px rgba(255,69,0,.35), 0 0 0 6px rgba(255,69,0,.08);
-            overflow: hidden; flex-shrink: 0;
-        }
-        .pueblo-avatar-img {
-            width: 100%; height: 100%; object-fit: cover;
-            border-radius: 50%; display: block;
+            font-size: 2rem; color: var(--primary);
+            box-shadow: 0 0 24px rgba(255,69,0,.2);
         }
         .pueblo-avatar-status {
             display: flex; align-items: center; gap: .35rem;
@@ -2642,7 +2619,6 @@
     </div>
 
     <!-- MENÚ LATERAL EXPERIMENTAL -->
-    <div class="exp-drag-handle" id="exp-handle" onclick="toggleExperimentalMenu()"></div>
     <div class="menu-toggle-btn" onclick="toggleExperimentalMenu()">
         <i class="fas fa-flask"></i>
         <span class="menu-toggle-text">EXPERIMENTAL</span>
@@ -2949,7 +2925,6 @@
             <li><a href="#news-section" onclick="closeMobileNav()">📰 Noticias</a></li>
             <div class="mobile-nav-divider"></div>
             <li><a href="tools.html" onclick="closeMobileNav()">🔧 Tools</a></li>
-            <li><a href="codehub-ultra.html" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">⚡ CodeHub Ultra</a></li>
             <li><a href="novedades.html" onclick="closeMobileNav()">📱 Apps Android</a></li>
             <li><a href="downloader.html" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
             <li><a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
@@ -3468,38 +3443,7 @@
                     </div>
                 </article>
 
-            
-                <!-- CodeHub Ultra 2026 -->
-                <div class="proj-card" data-cat="web">
-                    <div class="proj-img" style="background:linear-gradient(135deg,#0d0d1a,#1a0a2e);display:flex;align-items:center;justify-content:center;height:180px;position:relative;overflow:hidden">
-                        <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(255,69,0,.15),transparent 60%),radial-gradient(circle at 80% 30%,rgba(0,229,255,.1),transparent 50%),radial-gradient(circle at 60% 80%,rgba(168,85,247,.12),transparent 50%)"></div>
-                        <div style="text-align:center;position:relative;z-index:1">
-                            <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.1em;line-height:1">
-                                <span style="color:#ff4500">CODE</span><span style="color:#00e5ff">HUB</span><br><span style="color:#ffbd69">ULTRA</span>
-                            </div>
-                            <div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:rgba(255,189,105,.5);margin-top:.3rem;letter-spacing:.15em">// PROYECTO 2026</div>
-                        </div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2026</span>
-                            <span class="proj-tag" style="background:rgba(255,189,105,.1);color:#ffbd69;border-color:rgba(255,189,105,.3)">Ultra</span>
-                        </div>
-                        <div class="proj-title">CodeHub Ultra</div>
-                        <p class="proj-desc">Ecosistema 2026 — MiniStore, DevCard, DropZone y HubStore. 4 módulos, una plataforma. Sistema de ratings, solicitudes comunitarias y tarjeta de presentación compartible.</p>
-                        <div class="proj-stack">
-                            <span class="proj-chip">Node.js</span>
-                            <span class="proj-chip">MongoDB</span>
-                            <span class="proj-chip">Railway</span>
-                            <span class="proj-chip">HTML5</span>
-                        </div>
-                        <div class="proj-actions">
-                            <a href="codehub-ultra.html" class="proj-btn proj-btn-primary"><i class="fas fa-rocket"></i> Ver proyecto</a>
-                        </div>
-                    </div>
-                </div>
-
-</div><!-- /proj-grid -->
+            </div><!-- /proj-grid -->
         </section>
 
         <!-- Testimonials -->
@@ -3706,7 +3650,7 @@
                 <div class="pueblo-about-left">
                     <div class="pueblo-about-avatar">
                         <div class="pueblo-avatar-circle">
-                            <img src="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png" alt="Wilson.E" class="pueblo-avatar-img">
+                            <i class="fas fa-user-astronaut"></i>
                         </div>
                         <div class="pueblo-avatar-status">
                             <span class="pulse-dot"></span> Disponible
@@ -3715,7 +3659,7 @@
                     <div class="pueblo-about-bio">
                         <h3 class="pueblo-about-name">Wilson.E <span>👨‍💻</span></h3>
                         <p class="pueblo-about-role">Desarrollador Web Full Stack</p>
-                        <p class="pueblo-about-text">Hola, soy Wilson.E. Programador autodidacta de <strong>Ciudad de Guatemala 🇬🇹</strong>, tengo 25 años y me apasiona construir proyectos web modernos, bots con IA y herramientas útiles. Cada proyecto es una oportunidad de aprender algo nuevo.</p>
+                        <p class="pueblo-about-text">Hola, soy Wilson.E. Programador autodidacta de <strong>Ciudad de Guatemala 🇬🇹</strong>, tengo 24 años y me apasiona construir proyectos web modernos, bots con IA y herramientas útiles. Cada proyecto es una oportunidad de aprender algo nuevo.</p>
                         <p class="pueblo-about-origin">Originario de <strong>San Luis Jilotepeque</strong>, Jalapa — el lugar donde aprendí a soñar en grande.</p>
                         <div class="pueblo-about-tags">
                             <span>HTML</span><span>CSS</span><span>JavaScript</span>
@@ -4721,6 +4665,79 @@
             .header-inner { padding: 0.5rem 1rem; gap: 0.8rem; }
         }
     
+        /* ═══ MÚSICA AMBIENT ════════════════════════════════════ */
+        .music-wrap {
+            position: fixed; right: 24px; bottom: 92px; z-index: 4400;
+        }
+        .music-fab {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1.5px solid rgba(255,189,105,.3);
+            color: var(--a); font-size: 1.1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all .25s; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+            position: relative;
+        }
+        .music-fab:hover { transform: scale(1.1); border-color: rgba(255,189,105,.6); }
+        .music-fab.playing { border-color: #00e676; box-shadow: 0 0 18px rgba(0,230,118,.3); }
+        .music-eq {
+            display: flex; align-items: flex-end; gap: 2px; height: 16px;
+        }
+        .music-eq b {
+            display: block; width: 3px; background: #00e676; border-radius: 2px;
+            animation: eq 0.8s ease-in-out infinite;
+        }
+        .music-eq b:nth-child(1) { height: 6px; animation-delay: 0s; }
+        .music-eq b:nth-child(2) { height: 12px; animation-delay: .15s; }
+        .music-eq b:nth-child(3) { height: 8px; animation-delay: .3s; }
+        .music-eq b:nth-child(4) { height: 14px; animation-delay: .1s; }
+        @keyframes eq {
+            0%,100% { transform: scaleY(1); }
+            50%      { transform: scaleY(.4); }
+        }
+        .music-panel {
+            position: absolute; bottom: 58px; right: 0;
+            width: 260px;
+            background: rgba(8,8,18,.97);
+            border: 1px solid rgba(255,189,105,.2);
+            border-radius: 16px; padding: 1rem;
+            box-shadow: 0 16px 48px rgba(0,0,0,.7);
+            backdrop-filter: blur(16px);
+        }
+        .music-panel-hdr {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: .8rem; font-size: .82rem; font-weight: 700;
+        }
+        .music-panel-hdr button {
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: .9rem; padding: 2px 6px;
+        }
+        .music-track {
+            display: flex; align-items: center; gap: .6rem;
+            padding: .5rem .6rem; border-radius: 10px;
+            cursor: pointer; transition: all .18s; margin-bottom: .25rem;
+            border: 1px solid transparent;
+        }
+        .music-track:hover { background: rgba(255,255,255,.05); border-color: rgba(255,189,105,.15); }
+        .music-track.active { background: rgba(0,230,118,.08); border-color: rgba(0,230,118,.25); }
+        .music-track-icon { font-size: 1.2rem; flex-shrink: 0; }
+        .music-track-info { flex: 1; }
+        .music-track-name { font-size: .78rem; font-weight: 600; color: var(--text); }
+        .music-track-genre { font-size: .65rem; color: var(--muted); }
+        .music-vol-row {
+            display: flex; align-items: center; gap: .5rem;
+            margin-top: .8rem; padding-top: .7rem;
+            border-top: 1px solid rgba(255,255,255,.07);
+            font-size: .75rem; color: var(--muted);
+        }
+        .music-vol-row input[type=range] {
+            flex: 1; accent-color: #00e676; height: 4px; cursor: pointer;
+        }
+        @media (max-width:768px) {
+            .music-wrap { right: 12px; bottom: 80px; }
+            .music-fab { width: 42px; height: 42px; font-size: .95rem; }
+        }
+
         /* ═══ PROTECCIÓN ANTI-COPIAR ════════════════════════════ */
         ::selection { background: rgba(255,69,0,.15); color: var(--text); }
 
@@ -5099,9 +5116,7 @@
         // ========== MENÚ EXPERIMENTAL ==========
         function toggleExperimentalMenu() {
             const menu = document.getElementById('experimental-menu');
-            const handle = document.getElementById('exp-handle');
             menu.classList.toggle('active');
-            if (handle) handle.classList.toggle('open', menu.classList.contains('active'));
         }
 
         // Matrix Mode
@@ -5964,6 +5979,28 @@ async function sendEmail(e) {
 </script>
 
 
+<!-- ═══ REPRODUCTOR MÚSICA AMBIENT ═══ -->
+<div id="music-wrap" class="music-wrap">
+    <div class="music-panel" id="music-panel" style="display:none">
+        <div class="music-panel-hdr">
+            <span>🎵 Ambient Player</span>
+            <button onclick="closeMusicPanel()"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="music-tracks"></div>
+        <div class="music-vol-row">
+            <i class="fas fa-volume-low"></i>
+            <input type="range" id="music-vol" min="0" max="100" value="40" oninput="setMusicVol(this.value)">
+            <i class="fas fa-volume-high"></i>
+        </div>
+    </div>
+    <button id="music-fab" class="music-fab" onclick="toggleMusicPanel()" title="Música ambient lo-fi">
+        <span class="music-eq" id="music-eq" style="display:none">
+            <b></b><b></b><b></b><b></b>
+        </span>
+        <i class="fas fa-headphones" id="music-icon"></i>
+    </button>
+</div>
+
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
 <button id="ai-fab" aria-label="Abrir asistente IA" title="Asistente IA CodeHub">
   <i class="fas fa-robot"></i>
@@ -6275,6 +6312,199 @@ function loadCfg() {
 // ═══════════════════════════════════════════════════════════
 //  REPRODUCTOR DE MÚSICA AMBIENT
 // ═══════════════════════════════════════════════════════════
+// ── MÚSICA AMBIENT — Web Audio API (sin dependencias externas) ──
+const MUSIC_TRACKS = [
+  { name:'Lo-Fi Chill',    genre:'Estudio · Relax',  icon:'🎧', type:'lofi'    },
+  { name:'Lluvia Suave',   genre:'Naturaleza · Paz',  icon:'🌧️', type:'rain'    },
+  { name:'Bosque',         genre:'Naturaleza · Focus',icon:'🌿', type:'forest'  },
+  { name:'Espacio',        genre:'Ambient · Deep',    icon:'🌌', type:'space'   },
+  { name:'Café Jazz',      genre:'Jazz · Tarde',      icon:'☕', type:'jazz'    },
+];
+
+let musicActive = false;
+let currentTrack = 0;
+let audioCtx = null;
+let musicNodes = [];
+let masterGain = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function stopMusic() {
+  musicNodes.forEach(n => { try { n.stop(); } catch(e){} });
+  musicNodes = [];
+}
+
+function createNoise(ctx, type) {
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.loop = true;
+  return src;
+}
+
+function playAmbient(type) {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+  stopMusic();
+  masterGain = ctx.createGain();
+  const vol = parseInt(document.getElementById('music-vol')?.value || 40) / 100;
+  masterGain.gain.value = vol * 0.18;
+  masterGain.connect(ctx.destination);
+
+  if (type === 'rain' || type === 'forest') {
+    const noise = createNoise(ctx, 'white');
+    const filter = ctx.createBiquadFilter();
+    filter.type = type === 'rain' ? 'bandpass' : 'lowpass';
+    filter.frequency.value = type === 'rain' ? 1200 : 600;
+    filter.Q.value = type === 'rain' ? 0.8 : 1.2;
+    noise.connect(filter); filter.connect(masterGain);
+    noise.start(); musicNodes.push(noise);
+
+    if (type === 'rain') {
+      // Gotas ocasionales
+      const dropInterval = setInterval(() => {
+        if (!musicActive) { clearInterval(dropInterval); return; }
+        const drop = ctx.createOscillator();
+        const dGain = ctx.createGain();
+        drop.frequency.value = 800 + Math.random() * 400;
+        drop.type = 'sine';
+        dGain.gain.setValueAtTime(0.08, ctx.currentTime);
+        dGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        drop.connect(dGain); dGain.connect(masterGain);
+        drop.start(); drop.stop(ctx.currentTime + 0.15);
+      }, 200 + Math.random() * 600);
+    }
+  }
+
+  if (type === 'space') {
+    [80, 120, 160, 200].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.frequency.value = freq + idx * 15;
+      osc.type = 'sine';
+      g.gain.value = 0.04;
+      const lfo = ctx.createOscillator();
+      const lfoG = ctx.createGain();
+      lfo.frequency.value = 0.1 + idx * 0.05;
+      lfoG.gain.value = 0.02;
+      lfo.connect(lfoG); lfoG.connect(g.gain);
+      lfo.start(); osc.connect(g); g.connect(masterGain); osc.start();
+      musicNodes.push(osc, lfo);
+    });
+  }
+
+  if (type === 'lofi') {
+    const freqs = [220, 277.18, 329.63, 369.99, 440, 493.88];
+    function playNote() {
+      if (!musicActive) return;
+      const freq = freqs[Math.floor(Math.random() * freqs.length)];
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.connect(g); g.connect(masterGain);
+      osc.start(); osc.stop(ctx.currentTime + 0.65);
+      setTimeout(playNote, 300 + Math.random() * 500);
+    }
+    // Bajo
+    const bass = ctx.createOscillator();
+    const bGain = ctx.createGain();
+    bass.frequency.value = 55; bass.type = 'sine';
+    bGain.gain.value = 0.08;
+    bass.connect(bGain); bGain.connect(masterGain); bass.start();
+    musicNodes.push(bass);
+    playNote();
+  }
+
+  if (type === 'jazz') {
+    const jFreqs = [261.63, 311.13, 369.99, 415.30, 523.25, 622.25];
+    function jNote() {
+      if (!musicActive) return;
+      const f = jFreqs[Math.floor(Math.random() * jFreqs.length)];
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sawtooth'; osc.frequency.value = f;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 1800;
+      g.gain.setValueAtTime(0, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.07, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.connect(filt); filt.connect(g); g.connect(masterGain);
+      osc.start(); osc.stop(ctx.currentTime + 0.45);
+      setTimeout(jNote, 250 + Math.random() * 400);
+    }
+    jNote();
+  }
+}
+
+function buildMusicTracks() {
+  const wrap = document.getElementById('music-tracks');
+  if (!wrap) return;
+  wrap.innerHTML = MUSIC_TRACKS.map((t, i) => `
+    <div class="music-track ${i===currentTrack?'active':''}" id="mtrack-${i}" onclick="selectTrack(${i})">
+      <span class="music-track-icon">${t.icon}</span>
+      <div class="music-track-info">
+        <div class="music-track-name">${t.name}</div>
+        <div class="music-track-genre">${t.genre}</div>
+      </div>
+      <i class="fas ${i===currentTrack && musicActive ? 'fa-pause':'fa-play'}" style="color:var(--muted);font-size:.65rem"></i>
+    </div>`).join('');
+}
+
+function selectTrack(i) {
+  currentTrack = i;
+  if (musicActive) { playAmbient(MUSIC_TRACKS[i].type); }
+  buildMusicTracks();
+}
+
+function toggleMusicPanel() {
+  const panel = document.getElementById('music-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) buildMusicTracks();
+}
+
+function closeMusicPanel() {
+  document.getElementById('music-panel').style.display = 'none';
+}
+
+function setMusicVol(val) {
+  if (masterGain) masterGain.gain.value = (val / 100) * 0.18;
+}
+
+// Click en el fab: toggle play/pause
+document.getElementById('music-fab')?.addEventListener('click', function(e) {
+  // Si el panel está abierto y hacen click en el botón, toggle música
+  const panel = document.getElementById('music-panel');
+  if (panel.style.display === 'none') {
+    toggleMusicPanel(); return;
+  }
+  musicActive = !musicActive;
+  const icon = document.getElementById('music-icon');
+  const eq   = document.getElementById('music-eq');
+  const fab  = document.getElementById('music-fab');
+
+  if (musicActive) {
+    playAmbient(MUSIC_TRACKS[currentTrack].type);
+    fab.classList.add('playing');
+    if (icon) icon.style.display = 'none';
+    if (eq)   eq.style.display   = 'flex';
+  } else {
+    stopMusic();
+    fab.classList.remove('playing');
+    if (icon) icon.style.display = '';
+    if (eq)   eq.style.display   = 'none';
+  }
+  buildMusicTracks();
+});
+
 // ═══════════════════════════════════════════════════════════
 //  PROTECCIONES DEL SITIO
 // ═══════════════════════════════════════════════════════════
@@ -6358,7 +6588,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
   try {
     let data, city;
 
-    if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
+    if (OWM_KEY !== 'ca78d113dd28ecc21bff7eba56e2bcdc') {
       // ── OpenWeatherMap (preciso, datos en español) ──
       const res = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric&lang=es`

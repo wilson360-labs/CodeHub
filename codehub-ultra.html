@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeHub Ultra — Proyecto 2026</title>
+  <meta name="description" content="CodeHub Ultra — La evolución del portfolio. MiniStore, DevCard, herramientas premium. Wilson.E 2026.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      /* Paleta CodeHub Ultra — cada módulo tiene su color */
+      --bg:       #05050f;
+      --surface:  #0c0c1e;
+      --border:   rgba(255,255,255,.07);
+
+      /* Colores por módulo */
+      --c-store:  #ff4500;   /* naranja — MiniStore */
+      --c-card:   #00e5ff;   /* cyan — DevCard */
+      --c-drop:   #a855f7;   /* morado — DropZone */
+      --c-hub:    #00e676;   /* verde — HubStore */
+      --c-ultra:  #ffbd69;   /* dorado — Ultra */
+
+      --text:     #f0f0fa;
+      --muted:    rgba(240,240,250,.45);
+      --font:     'Space Grotesk', sans-serif;
+      --display:  'Bebas Neue', sans-serif;
+      --mono:     'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ── CURSOR PERSONALIZADO ── */
+    .cursor {
+      position: fixed; width: 12px; height: 12px;
+      border-radius: 50%; pointer-events: none; z-index: 99999;
+      background: var(--c-ultra);
+      transform: translate(-50%,-50%);
+      transition: width .2s, height .2s, background .2s;
+      mix-blend-mode: difference;
+    }
+    .cursor-ring {
+      position: fixed; width: 36px; height: 36px;
+      border: 1.5px solid rgba(255,189,105,.5);
+      border-radius: 50%; pointer-events: none; z-index: 99998;
+      transform: translate(-50%,-50%);
+      transition: all .12s ease-out;
+    }
+    body:hover .cursor { opacity: 1; }
+
+    /* ── GRID DE FONDO ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,189,69,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,189,69,.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── SCROLL PROGRESS ── */
+    #pbar {
+      position: fixed; top: 0; left: 0; height: 2px; width: 0%;
+      background: linear-gradient(90deg, var(--c-store), var(--c-card), var(--c-drop));
+      z-index: 9999;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      background: rgba(5,5,15,.92); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,189,105,.15);
+      padding: .75rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo-ultra {
+      font-family: var(--display); font-size: 1.5rem; letter-spacing: .08em;
+      line-height: 1;
+    }
+    .logo-ultra .code { color: var(--c-store); }
+    .logo-ultra .hub  { color: var(--c-card); }
+    .logo-ultra .ultra{ color: var(--c-ultra); }
+    .header-nav { display: flex; gap: 1.5rem; align-items: center; }
+    .header-nav a {
+      font-size: .78rem; font-weight: 600; color: var(--muted);
+      text-decoration: none; letter-spacing: .06em; text-transform: uppercase;
+      transition: color .2s;
+    }
+    .header-nav a:hover { color: var(--text); }
+    .header-back {
+      display: flex; align-items: center; gap: .4rem;
+      padding: .35rem .9rem; border-radius: 8px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--muted); font-size: .75rem; font-weight: 600;
+      text-decoration: none; transition: all .2s; font-family: var(--font);
+    }
+    .header-back:hover { border-color: var(--c-ultra); color: var(--c-ultra); }
+    .burger-ultra {
+      display: none; background: none; border: none;
+      color: var(--text); font-size: 1.2rem; cursor: none;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 6rem 2rem 4rem; position: relative; z-index: 1;
+    }
+    .hero-eyebrow {
+      font-family: var(--mono); font-size: .72rem; letter-spacing: .18em;
+      color: var(--c-ultra); text-transform: uppercase; margin-bottom: 1.2rem;
+      opacity: .8;
+    }
+    .hero-title {
+      font-family: var(--display);
+      font-size: clamp(4rem, 14vw, 11rem);
+      line-height: .92; letter-spacing: .04em;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title .t1 { color: var(--c-store); display: block; }
+    .hero-title .t2 { color: var(--c-card);  display: block; }
+    .hero-title .t3 { color: var(--c-ultra); display: block; }
+    .hero-sub {
+      font-size: clamp(.9rem, 2vw, 1.1rem);
+      color: var(--muted); max-width: 560px; line-height: 1.8;
+      margin-bottom: 2.5rem;
+    }
+    .hero-sub strong { color: var(--text); }
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      padding: .75rem 2rem; border-radius: 12px;
+      background: linear-gradient(135deg, var(--c-store), #ff6b35);
+      border: none; color: #fff; font-family: var(--font);
+      font-size: .9rem; font-weight: 700; cursor: none;
+      transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
+    }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(255,69,0,.4); }
+    .btn-ghost {
+      padding: .75rem 2rem; border-radius: 12px;
+      background: transparent; border: 1.5px solid rgba(255,255,255,.15);
+      color: var(--text); font-family: var(--font);
+      font-size: .9rem; font-weight: 600; cursor: none;
+      transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
+    }
+    .btn-ghost:hover { border-color: var(--c-card); color: var(--c-card); }
+
+    /* Orbs de fondo */
+    .hero-orb {
+      position: absolute; border-radius: 50%; filter: blur(80px);
+      pointer-events: none; z-index: 0;
+    }
+    .orb1 { width: 500px; height: 500px; background: rgba(255,69,0,.08); top: -100px; left: -200px; }
+    .orb2 { width: 400px; height: 400px; background: rgba(0,229,255,.06); top: 20%; right: -150px; }
+    .orb3 { width: 300px; height: 300px; background: rgba(168,85,247,.07); bottom: 0; left: 30%; }
+
+    /* ── MÓDULOS GRID ── */
+    .modules {
+      padding: 6rem 2rem; position: relative; z-index: 1;
+      max-width: 1300px; margin: 0 auto;
+    }
+    .section-label {
+      font-family: var(--mono); font-size: .7rem; letter-spacing: .2em;
+      text-transform: uppercase; margin-bottom: .6rem;
+    }
+    .section-title {
+      font-family: var(--display); font-size: clamp(2.5rem, 6vw, 4.5rem);
+      line-height: 1; letter-spacing: .04em; margin-bottom: 3rem;
+    }
+    .modules-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: auto;
+      gap: 1.2rem;
+    }
+
+    /* Módulo base */
+    .module {
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      padding: 2rem;
+      background: var(--surface);
+      position: relative; overflow: hidden;
+      transition: transform .3s, border-color .3s, box-shadow .3s;
+    }
+    .module:hover {
+      transform: translateY(-4px);
+    }
+    .module::before {
+      content: '';
+      position: absolute; inset: 0; border-radius: 20px;
+      opacity: 0; transition: opacity .3s;
+    }
+    .module:hover::before { opacity: 1; }
+
+    /* Tamaños en grid */
+    .mod-xl    { grid-column: span 8; grid-row: span 2; }
+    .mod-md    { grid-column: span 4; }
+    .mod-sm    { grid-column: span 4; }
+    .mod-full  { grid-column: span 12; }
+    .mod-half  { grid-column: span 6; }
+
+    /* ── MiniStore (naranja) ── */
+    .mod-store { border-color: rgba(255,69,0,.2); }
+    .mod-store:hover { border-color: rgba(255,69,0,.5); box-shadow: 0 20px 60px rgba(255,69,0,.12); }
+    .mod-store::before { background: radial-gradient(circle at 80% 20%, rgba(255,69,0,.08), transparent 60%); }
+    .mod-store .mod-accent { color: var(--c-store); }
+    .mod-store .mod-icon { background: rgba(255,69,0,.12); color: var(--c-store); }
+
+    /* ── DevCard (cyan) ── */
+    .mod-devcard { border-color: rgba(0,229,255,.2); }
+    .mod-devcard:hover { border-color: rgba(0,229,255,.5); box-shadow: 0 20px 60px rgba(0,229,255,.08); }
+    .mod-devcard::before { background: radial-gradient(circle at 20% 80%, rgba(0,229,255,.07), transparent 60%); }
+    .mod-devcard .mod-accent { color: var(--c-card); }
+    .mod-devcard .mod-icon { background: rgba(0,229,255,.1); color: var(--c-card); }
+
+    /* ── DropZone (morado) ── */
+    .mod-drop { border-color: rgba(168,85,247,.2); }
+    .mod-drop:hover { border-color: rgba(168,85,247,.5); box-shadow: 0 20px 60px rgba(168,85,247,.1); }
+    .mod-drop::before { background: radial-gradient(circle at 80% 80%, rgba(168,85,247,.08), transparent 60%); }
+    .mod-drop .mod-accent { color: var(--c-drop); }
+    .mod-drop .mod-icon { background: rgba(168,85,247,.1); color: var(--c-drop); }
+
+    /* ── HubStore (verde) ── */
+    .mod-hub { border-color: rgba(0,230,118,.2); }
+    .mod-hub:hover { border-color: rgba(0,230,118,.5); box-shadow: 0 20px 60px rgba(0,230,118,.1); }
+    .mod-hub::before { background: radial-gradient(circle at 50% 0%, rgba(0,230,118,.07), transparent 60%); }
+    .mod-hub .mod-accent { color: var(--c-hub); }
+    .mod-hub .mod-icon { background: rgba(0,230,118,.1); color: var(--c-hub); }
+
+    /* ── Elementos comunes del módulo ── */
+    .mod-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1.2rem;
+    }
+    .mod-tag {
+      font-family: var(--mono); font-size: .62rem; letter-spacing: .15em;
+      text-transform: uppercase; margin-bottom: .5rem; opacity: .6;
+    }
+    .mod-name {
+      font-family: var(--display); font-size: 2.2rem; letter-spacing: .04em;
+      line-height: 1; margin-bottom: .8rem;
+    }
+    .mod-name.big { font-size: clamp(2.5rem, 5vw, 3.8rem); }
+    .mod-desc {
+      font-size: .88rem; line-height: 1.7; color: var(--muted);
+      max-width: 420px;
+    }
+    .mod-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .2rem .6rem; border-radius: 20px;
+      font-size: .62rem; font-family: var(--mono);
+      font-weight: 700; letter-spacing: .08em; margin-top: .8rem;
+    }
+    .badge-soon { background: rgba(255,189,105,.12); color: var(--c-ultra); border: 1px solid rgba(255,189,105,.25); }
+    .badge-live { background: rgba(0,230,118,.12); color: var(--c-hub); border: 1px solid rgba(0,230,118,.25); }
+    .badge-beta { background: rgba(0,229,255,.12); color: var(--c-card); border: 1px solid rgba(0,229,255,.25); }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Features list */
+    .mod-features {
+      list-style: none; margin-top: 1.2rem;
+      display: flex; flex-direction: column; gap: .45rem;
+    }
+    .mod-features li {
+      font-size: .8rem; color: var(--muted);
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .mod-features li::before {
+      content: '→'; font-weight: 700; flex-shrink: 0;
+    }
+    .mod-store .mod-features li::before { color: var(--c-store); }
+    .mod-devcard .mod-features li::before { color: var(--c-card); }
+    .mod-drop .mod-features li::before   { color: var(--c-drop); }
+    .mod-hub .mod-features li::before    { color: var(--c-hub); }
+
+    /* Mock UI dentro del módulo grande */
+    .mod-mockup {
+      margin-top: 1.8rem;
+      background: rgba(0,0,0,.4);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 14px; padding: 1rem; overflow: hidden;
+    }
+    .mock-bar {
+      display: flex; gap: .4rem; align-items: center; margin-bottom: .8rem;
+    }
+    .mock-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .mock-grid {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: .6rem;
+    }
+    .mock-card {
+      height: 60px; border-radius: 8px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.06);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    /* DevCard preview */
+    .devcard-preview {
+      margin-top: 1.5rem;
+      background: linear-gradient(135deg, rgba(0,229,255,.08), rgba(168,85,247,.06));
+      border: 1px solid rgba(0,229,255,.15);
+      border-radius: 16px; padding: 1.2rem;
+    }
+    .devcard-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--c-store), var(--c-drop));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: .8rem;
+      font-family: var(--font);
+    }
+    .devcard-name { font-family: var(--display); font-size: 1.4rem; letter-spacing: .06em; margin-bottom: .2rem; }
+    .devcard-role { font-size: .72rem; font-family: var(--mono); color: var(--c-card); margin-bottom: .8rem; }
+    .devcard-stats {
+      display: grid; grid-template-columns: repeat(3,1fr); gap: .5rem;
+    }
+    .devcard-stat {
+      text-align: center;
+      background: rgba(0,0,0,.3); border-radius: 8px; padding: .4rem;
+    }
+    .devcard-stat span { display: block; font-family: var(--display); font-size: 1.1rem; color: var(--c-card); }
+    .devcard-stat small { font-size: .58rem; font-family: var(--mono); color: var(--muted); }
+    .devcard-link {
+      display: flex; align-items: center; gap: .4rem; margin-top: .8rem;
+      font-size: .65rem; font-family: var(--mono); color: var(--muted);
+      background: rgba(0,0,0,.3); border-radius: 6px; padding: .3rem .6rem;
+    }
+
+    /* ── TIMELINE 2026 ── */
+    .timeline-section {
+      padding: 6rem 2rem; max-width: 1300px; margin: 0 auto; position: relative; z-index: 1;
+    }
+    .timeline-ul {
+      list-style: none; position: relative; margin-top: 3rem;
+    }
+    .timeline-ul::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 1px; background: linear-gradient(to bottom, var(--c-store), var(--c-card), var(--c-drop), var(--c-hub));
+    }
+    .tl-item {
+      padding: 0 0 2.5rem 2.5rem; position: relative;
+    }
+    .tl-item::before {
+      content: ''; position: absolute; left: -5px; top: 4px;
+      width: 11px; height: 11px; border-radius: 50%;
+      border: 2px solid; background: var(--bg);
+    }
+    .tl-item:nth-child(1)::before { border-color: var(--c-store); background: var(--c-store); }
+    .tl-item:nth-child(2)::before { border-color: var(--c-card); }
+    .tl-item:nth-child(3)::before { border-color: var(--c-drop); }
+    .tl-item:nth-child(4)::before { border-color: var(--c-hub); }
+    .tl-date { font-family: var(--mono); font-size: .65rem; letter-spacing: .12em; color: var(--muted); margin-bottom: .3rem; }
+    .tl-title { font-family: var(--display); font-size: 1.6rem; letter-spacing: .04em; margin-bottom: .4rem; }
+    .tl-desc { font-size: .85rem; color: var(--muted); line-height: 1.7; max-width: 500px; }
+
+    /* ── STATS ── */
+    .stats-section {
+      padding: 4rem 2rem; max-width: 1300px; margin: 0 auto;
+      position: relative; z-index: 1;
+    }
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-top: 2.5rem;
+    }
+    .stat-item {
+      padding: 1.5rem; border-radius: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--display); font-size: 3rem; line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .stat-lbl { font-size: .75rem; font-family: var(--mono); color: var(--muted); }
+    .stat-item:nth-child(1) .stat-num { color: var(--c-store); }
+    .stat-item:nth-child(2) .stat-num { color: var(--c-card); }
+    .stat-item:nth-child(3) .stat-num { color: var(--c-drop); }
+    .stat-item:nth-child(4) .stat-num { color: var(--c-hub); }
+
+    /* ── CTA ── */
+    .cta-section {
+      padding: 6rem 2rem 8rem; text-align: center;
+      position: relative; z-index: 1;
+    }
+    .cta-title {
+      font-family: var(--display); font-size: clamp(3rem, 8vw, 6rem);
+      letter-spacing: .04em; line-height: 1; margin-bottom: 1.5rem;
+    }
+    .cta-title .c1 { color: var(--c-store); }
+    .cta-title .c2 { color: var(--c-card); }
+    .cta-title .c3 { color: var(--c-drop); }
+    .cta-sub { font-size: 1rem; color: var(--muted); margin-bottom: 2.5rem; line-height: 1.8; }
+    .notify-form {
+      display: flex; gap: .6rem; max-width: 440px; margin: 0 auto;
+      flex-wrap: wrap; justify-content: center;
+    }
+    .notify-input {
+      flex: 1; min-width: 220px; padding: .7rem 1.2rem;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px; color: var(--text); font-family: var(--font);
+      font-size: .88rem; outline: none; transition: border-color .2s;
+    }
+    .notify-input:focus { border-color: var(--c-ultra); }
+    .notify-input::placeholder { color: rgba(240,240,250,.25); }
+    .notify-btn {
+      padding: .7rem 1.5rem; border-radius: 12px;
+      background: linear-gradient(135deg, var(--c-ultra), #ff9500);
+      border: none; color: #000; font-family: var(--font);
+      font-size: .88rem; font-weight: 700; cursor: none; transition: opacity .2s;
+      white-space: nowrap;
+    }
+    .notify-btn:hover { opacity: .88; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+      font-family: var(--mono); font-size: .7rem; color: var(--muted);
+      position: relative; z-index: 1;
+    }
+    footer a { color: var(--c-ultra); text-decoration: none; }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(15,15,30,.97); border: 1px solid rgba(255,189,105,.3);
+      color: var(--text); padding: .65rem 1.4rem; border-radius: 12px;
+      font-size: .82rem; font-family: var(--mono);
+      opacity: 0; transition: all .3s; z-index: 9999; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .mod-xl   { grid-column: span 12; }
+      .mod-md   { grid-column: span 6; }
+      .mod-sm   { grid-column: span 6; }
+      .mod-half { grid-column: span 12; }
+      .header-nav { display: none; }
+      .burger-ultra { display: block; }
+      body { cursor: auto; }
+      .cursor, .cursor-ring { display: none; }
+    }
+    @media (max-width: 600px) {
+      .mod-md, .mod-sm { grid-column: span 12; }
+      .hero-title { font-size: clamp(3rem, 20vw, 5rem); }
+      .mod-name.big { font-size: 2rem; }
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="cursor" class="cursor"></div>
+<div id="cursor-ring" class="cursor-ring"></div>
+<div id="pbar"></div>
+<div id="toast"></div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo-ultra">
+    <span class="code">CODE</span><span class="hub">HUB</span> <span class="ultra">ULTRA</span>
+  </div>
+  <nav class="header-nav">
+    <a href="#modules">Módulos</a>
+    <a href="#timeline">Roadmap</a>
+    <a href="#stats">Stats</a>
+    <a href="#cta">Notificarme</a>
+  </nav>
+  <a href="index.html" class="header-back"><i class="fas fa-arrow-left"></i> CodeHub</a>
+  <button class="burger-ultra"><i class="fas fa-bars"></i></button>
+</header>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-orb orb1"></div>
+  <div class="hero-orb orb2"></div>
+  <div class="hero-orb orb3"></div>
+  <div class="hero-eyebrow">// Wilson.E · Proyecto 2026 · En construcción</div>
+  <h1 class="hero-title">
+    <span class="t1">CODE</span>
+    <span class="t2">HUB</span>
+    <span class="t3">ULTRA</span>
+  </h1>
+  <p class="hero-sub">
+    La evolución del portfolio. <strong>MiniStore</strong>, <strong>DevCard</strong>, <strong>DropZone</strong> y <strong>HubStore</strong> — cuatro módulos, un ecosistema. Construido en Guatemala 🇬🇹 para el mundo.
+  </p>
+  <div class="hero-btns">
+    <a href="#modules" class="btn-primary"><i class="fas fa-rocket"></i> Ver módulos</a>
+    <a href="#cta" class="btn-ghost"><i class="fas fa-bell"></i> Notificarme</a>
+  </div>
+</section>
+
+<!-- ── MÓDULOS ── -->
+<section id="modules" class="modules">
+  <div class="section-label" style="color:var(--c-ultra)">// 04 módulos</div>
+  <div class="section-title">
+    <span style="color:var(--c-store)">Lo</span>
+    <span style="color:var(--c-card)"> que</span>
+    <span style="color:var(--c-drop)"> viene</span>
+  </div>
+
+  <div class="modules-grid">
+
+    <!-- MiniStore — XL -->
+    <div class="module mod-store mod-xl">
+      <div class="mod-icon"><i class="fas fa-store"></i></div>
+      <div class="mod-tag">Módulo 01</div>
+      <div class="mod-name big mod-accent">MiniStore</div>
+      <p class="mod-desc">Tienda de apps premium Android con sistema de votos, ratings en MongoDB, solicitudes de la comunidad y filtros inteligentes. Evolución de Novedades.</p>
+      <span class="mod-badge badge-soon"><span class="badge-dot"></span> En desarrollo</span>
+      <ul class="mod-features">
+        <li>Rating 1-5 estrellas guardado en MongoDB</li>
+        <li>Comunidad: solicitar apps con votos</li>
+        <li>Carrito con lista de descarga</li>
+        <li>Filtros por categoría, fecha y popularidad</li>
+        <li>Notificaciones de nuevas apps</li>
+      </ul>
+      <div class="mod-mockup">
+        <div class="mock-bar">
+          <div class="mock-dot" style="background:#ff4500"></div>
+          <div class="mock-dot" style="background:#ff9500"></div>
+          <div class="mock-dot" style="background:#00e676"></div>
+        </div>
+        <div class="mock-grid">
+          <div class="mock-card">🎵</div>
+          <div class="mock-card">📺</div>
+          <div class="mock-card">📸</div>
+          <div class="mock-card">🎮</div>
+          <div class="mock-card">🛡️</div>
+          <div class="mock-card">☁️</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DevCard — MD -->
+    <div class="module mod-devcard mod-md">
+      <div class="mod-icon"><i class="fas fa-id-card"></i></div>
+      <div class="mod-tag">Módulo 02</div>
+      <div class="mod-name mod-accent">DevCard</div>
+      <p class="mod-desc">Tarjeta de presentación interactiva con link único compartible. Tu portfolio en una URL.</p>
+      <span class="mod-badge badge-beta"><span class="badge-dot"></span> Beta pronto</span>
+      <div class="devcard-preview">
+        <div class="devcard-avatar">W.E</div>
+        <div class="devcard-name">Wilson.E</div>
+        <div class="devcard-role">Full Stack Developer · GT 🇬🇹</div>
+        <div class="devcard-stats">
+          <div class="devcard-stat"><span>25</span><small>proyectos</small></div>
+          <div class="devcard-stat"><span>2+</span><small>años</small></div>
+          <div class="devcard-stat"><span>27</span><small>tools</small></div>
+        </div>
+        <div class="devcard-link"><i class="fas fa-link"></i> wilson360-labs.vercel.app/card</div>
+      </div>
+    </div>
+
+    <!-- DropZone — SM -->
+    <div class="module mod-drop mod-sm">
+      <div class="mod-icon"><i class="fas fa-bolt"></i></div>
+      <div class="mod-tag">Módulo 03</div>
+      <div class="mod-name mod-accent">DropZone</div>
+      <p class="mod-desc">Zona de lanzamientos rápidos. Herramientas, scripts y recursos drop semanal para la comunidad.</p>
+      <span class="mod-badge badge-soon"><span class="badge-dot"></span> Q3 2026</span>
+      <ul class="mod-features">
+        <li>Drop semanal de recursos</li>
+        <li>Scripts y snippets útiles</li>
+        <li>Descarga directa con contador</li>
+      </ul>
+    </div>
+
+    <!-- HubStore — half -->
+    <div class="module mod-hub mod-half">
+      <div class="mod-icon"><i class="fas fa-boxes-stacked"></i></div>
+      <div class="mod-tag">Módulo 04</div>
+      <div class="mod-name mod-accent">HubStore</div>
+      <p class="mod-desc">La tienda central de CodeHub. Templates, proyectos, herramientas premium descargables. Sistema de puntos de fidelidad por actividad en la comunidad.</p>
+      <span class="mod-badge badge-live"><span class="badge-dot"></span> Planificado Q4 2026</span>
+      <ul class="mod-features">
+        <li>Templates HTML/CSS listos para usar</li>
+        <li>Sistema de puntos por descargas y reseñas</li>
+        <li>Panel de usuario con historial</li>
+        <li>Integración completa con MongoDB</li>
+      </ul>
+    </div>
+
+    <!-- Stat cards bottom -->
+    <div class="module mod-full" style="padding:1.5rem 2rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+        <div>
+          <div class="mod-tag">// progreso global</div>
+          <div style="font-family:var(--display);font-size:1.4rem;letter-spacing:.06em">Estado del proyecto</div>
+        </div>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+          <span class="mod-badge badge-live"><span class="badge-dot"></span> Rating live en Novedades</span>
+          <span class="mod-badge badge-beta"><span class="badge-dot"></span> DevCard en diseño</span>
+          <span class="mod-badge badge-soon"><span class="badge-dot"></span> MiniStore Q2 2026</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── TIMELINE ── -->
+<section id="timeline" class="timeline-section">
+  <div class="section-label" style="color:var(--c-card)">// roadmap</div>
+  <div class="section-title">
+    <span style="color:var(--c-card)">Road</span><span style="color:var(--text)">map</span>
+    <span style="color:var(--c-drop)"> 2026</span>
+  </div>
+  <ul class="timeline-ul">
+    <li class="tl-item">
+      <div class="tl-date">Q1 2026 — AHORA</div>
+      <div class="tl-title" style="color:var(--c-store)">Sistema de Rating + Solicitudes</div>
+      <p class="tl-desc">Rating 1-5 estrellas en Novedades guardado en MongoDB. Botón "Solicitar App" con sistema de votos comunitario. Ya disponible en wilson360-labs.vercel.app/novedades.html</p>
+    </li>
+    <li class="tl-item">
+      <div class="tl-date">Q2 2026</div>
+      <div class="tl-title" style="color:var(--c-card)">DevCard + MiniStore Beta</div>
+      <p class="tl-desc">Lanzamiento de la DevCard compartible con link único. Primera versión de MiniStore con carrito y filtros avanzados. Contador de descargas real en MongoDB.</p>
+    </li>
+    <li class="tl-item">
+      <div class="tl-date">Q3 2026</div>
+      <div class="tl-title" style="color:var(--c-drop)">DropZone + API Pública</div>
+      <p class="tl-desc">Lanzamiento de DropZone con drops semanales. API pública de herramientas CodeHub — QR, hash, traductor, clima — para que otros desarrolladores la integren.</p>
+    </li>
+    <li class="tl-item">
+      <div class="tl-date">Q4 2026</div>
+      <div class="tl-title" style="color:var(--c-hub)">HubStore + Sistema de Puntos</div>
+      <p class="tl-desc">Tienda completa con templates, sistema de puntos de fidelidad, panel de usuario y notificaciones push. CodeHub Ultra completo.</p>
+    </li>
+  </ul>
+</section>
+
+<!-- ── STATS ── -->
+<section id="stats" class="stats-section">
+  <div class="section-label" style="color:var(--c-drop)">// en números</div>
+  <div class="section-title">
+    <span style="color:var(--c-drop)">Code</span><span style="color:var(--text)">Hub</span>
+    <span style="color:var(--c-ultra)"> hoy</span>
+  </div>
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-num" id="sn1">0</div>
+      <div class="stat-lbl">Herramientas</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="sn2">0</div>
+      <div class="stat-lbl">Apps en Novedades</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="sn3">0</div>
+      <div class="stat-lbl">Proyectos publicados</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="sn4">0</div>
+      <div class="stat-lbl">Módulos Ultra</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta" class="cta-section">
+  <div class="cta-title">
+    <span class="c1">Sé</span>
+    <span class="c2"> el</span>
+    <span class="c3"> primero</span>
+  </div>
+  <p class="cta-sub">Deja tu email y te notifico cuando CodeHub Ultra haga su lanzamiento oficial.<br>Sin spam — solo un mensaje cuando esté listo.</p>
+  <div class="notify-form">
+    <input type="email" id="notify-email" class="notify-input" placeholder="tu@email.com">
+    <button class="notify-btn" onclick="submitNotify()"><i class="fas fa-bell"></i> Notificarme</button>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <strong><a href="index.html">&lt;Wilson.E/&gt;</a></strong> · CodeHub Ultra · Proyecto 2026 · Guatemala 🇬🇹
+  <br style="margin-bottom:.4rem">
+  <span style="opacity:.4">Construido con pasión · Powered by Node.js + MongoDB + Railway</span>
+</footer>
+
+<script>
+// ── CURSOR ──────────────────────────────────────────
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+});
+(function animRing() {
+  rx += (mx - rx) * .12;
+  ry += (my - ry) * .12;
+  ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+  requestAnimationFrame(animRing);
+})();
+document.querySelectorAll('a,button,.module,.star').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cur.style.width = '20px'; cur.style.height = '20px';
+    ring.style.width = '50px'; ring.style.height = '50px';
+  });
+  el.addEventListener('mouseleave', () => {
+    cur.style.width = '12px'; cur.style.height = '12px';
+    ring.style.width = '36px'; ring.style.height = '36px';
+  });
+});
+
+// ── SCROLL PROGRESS ─────────────────────────────────
+window.addEventListener('scroll', () => {
+  const s = document.documentElement.scrollTop;
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('pbar').style.width = (s / h * 100) + '%';
+});
+
+// ── TOAST ────────────────────────────────────────────
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── STATS COUNTER ────────────────────────────────────
+const statsData = [{ id:'sn1', target:27 }, { id:'sn2', target:13 }, { id:'sn3', target:20 }, { id:'sn4', target:4 }];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    statsData.forEach(({ id, target }) => {
+      const el = document.getElementById(id);
+      if (!el || el.dataset.done) return;
+      el.dataset.done = '1';
+      let v = 0;
+      const step = Math.ceil(target / 40);
+      const iv = setInterval(() => {
+        v = Math.min(v + step, target);
+        el.textContent = v;
+        if (v >= target) clearInterval(iv);
+      }, 40);
+    });
+    obs.disconnect();
+  });
+}, { threshold: 0.3 });
+const statsEl = document.querySelector('.stats-row');
+if (statsEl) obs.observe(statsEl);
+
+// ── NOTIFY FORM ──────────────────────────────────────
+function submitNotify() {
+  const email = document.getElementById('notify-email').value.trim();
+  if (!email || !email.includes('@')) { toast('⚠️ Ingresa un email válido'); return; }
+  toast('🔔 ¡Listo! Te notificaré cuando CodeHub Ultra esté disponible.');
+  document.getElementById('notify-email').value = '';
+}
+
+// ── MÓDULOS HOVER COLOR CURSOR ───────────────────────
+const modColors = {
+  'mod-store':   '#ff4500',
+  'mod-devcard': '#00e5ff',
+  'mod-drop':    '#a855f7',
+  'mod-hub':     '#00e676',
+};
+document.querySelectorAll('.module').forEach(mod => {
+  const color = Object.entries(modColors).find(([cls]) => mod.classList.contains(cls))?.[1];
+  if (!color) return;
+  mod.addEventListener('mouseenter', () => cur.style.background = color);
+  mod.addEventListener('mouseleave', () => cur.style.background = 'var(--c-ultra)');
+});
+</script>
+</body>
+</html>
