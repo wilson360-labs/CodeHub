@@ -6352,13 +6352,13 @@ if (window.location.href.includes('view-source:')) {
 //  NOTA: Reemplaza 'OWM_API_KEY_PLACEHOLDER' con tu key real
 //  de openweathermap.org → API Keys
 // ═══════════════════════════════════════════════════════════
-const OWM_KEY = 'OWM_API_KEY_PLACEHOLDER';
+const OWM_KEY = 'ca78d113dd28ecc21bff7eba56e2bcdc';
 
 async function fetchWeatherByCoords(lat, lon, cityName) {
   try {
     let data, city;
 
-    if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
+    if (OWM_KEY !== 'ca78d113dd28ecc21bff7eba56e2bcdc') {
       // ── OpenWeatherMap (preciso, datos en español) ──
       const res = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric&lang=es`
