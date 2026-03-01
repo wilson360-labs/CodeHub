@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.allorigins.win https://pastebin.com https://codehub-production-729d.up.railway.app https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://api.allorigins.win https://pastebin.com https://codehub-production-729d.up.railway.app https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https:;">
     <meta name="description" content="Conoce más sobre Wilson, un programador apasionado por proyectos y desarrollo web.">
     <title>Bienvenido a CodeHub</title>
     <!-- Google tag (gtag.js) -->
@@ -1093,6 +1093,76 @@
             gap: 1.5rem;
         }
 
+        /* ═══ BURGER MENU MOBILE ═══ */
+        .burger-btn {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            width: 38px; height: 38px;
+            background: rgba(255,69,0,.08);
+            border: 1px solid rgba(255,69,0,.25);
+            border-radius: 10px;
+            cursor: pointer;
+            padding: 8px;
+            flex-shrink: 0;
+            transition: all .2s;
+        }
+        .burger-btn:hover { background: rgba(255,69,0,.18); }
+        .burger-btn span {
+            display: block;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+            transition: all .3s cubic-bezier(.4,0,.2,1);
+        }
+        .burger-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .burger-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .burger-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        /* Menú mobile desplegable */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 58px; left: 0; right: 0;
+            background: rgba(5,5,12,.97);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,69,0,.2);
+            z-index: 499;
+            padding: 1rem 1.5rem 1.5rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,.6);
+        }
+        .mobile-nav.open { display: block; }
+        .mobile-nav ul {
+            list-style: none; margin: 0; padding: 0;
+            display: flex; flex-direction: column; gap: .2rem;
+        }
+        .mobile-nav a {
+            display: block;
+            padding: .7rem 1rem;
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            font-size: .9rem;
+            font-weight: 500;
+            border-radius: 10px;
+            transition: all .18s;
+        }
+        .mobile-nav a:hover, .mobile-nav a:active {
+            background: rgba(255,69,0,.1);
+            color: #fff;
+        }
+        .mobile-nav-divider {
+            height: 1px;
+            background: rgba(255,255,255,.07);
+            margin: .5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .burger-btn { display: flex; }
+            header nav { display: none; }
+            .header-actions #beta-btn { display: none; }
+        }
+
         /* Logo */
         .header-logo {
             display: flex;
@@ -1348,6 +1418,13 @@
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
+        }
+        @media (max-width: 768px) {
+            .stat-card { padding: 1.1rem .8rem; border-radius: 12px; }
+            .stat-number { font-size: 2rem !important; }
+            .stat-label { font-size: .9rem !important; }
+            .stat-sub { font-size: .68rem !important; }
+            .stat-icon { font-size: 1.2rem !important; }
         }
 
         .stat-card::before {
@@ -2613,6 +2690,10 @@
                     <i class="fab fa-youtube"></i>
                 </a>
                 <button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button>
+                <!-- Burger button — solo visible en mobile -->
+                <button class="burger-btn" id="burger-btn" aria-label="Menú" onclick="toggleMobileNav()">
+                    <span></span><span></span><span></span>
+                </button>
             </div>
         </div>
         <!-- Typing effect debajo -->
@@ -2696,7 +2777,38 @@
         </div>
     </div>
 
-    <main>
+    <!-- Anti-DevTools Warning -->
+    <div id="devtools-warning">
+        <div style="font-size:3rem">🛡️</div>
+        <h2>Acceso Restringido</h2>
+        <p>Las herramientas de desarrollo están deshabilitadas en este sitio.<br>Por favor cierra DevTools para continuar.</p>
+        <button onclick="document.getElementById('devtools-warning').classList.remove('show')" 
+            style="padding:.5rem 1.5rem;background:var(--primary);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:.85rem">
+            Cerrar
+        </button>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Menú móvil">
+        <ul>
+            <li><a href="#stats" onclick="closeMobileNav()">📊 Estadísticas</a></li>
+            <li><a href="#skills" onclick="closeMobileNav()">💡 Habilidades</a></li>
+            <li><a href="#services" onclick="closeMobileNav()">🛠 Servicios</a></li>
+            <li><a href="#timeline" onclick="closeMobileNav()">📅 Experiencia</a></li>
+            <li><a href="#latest-projects" onclick="closeMobileNav()">🚀 Proyectos</a></li>
+            <li><a href="#contact" onclick="closeMobileNav()">✉️ Contacto</a></li>
+            <div class="mobile-nav-divider"></div>
+            <li><a href="#weather-section" onclick="closeMobileNav()">🌤 Clima</a></li>
+            <li><a href="#news-section" onclick="closeMobileNav()">📰 Noticias</a></li>
+            <div class="mobile-nav-divider"></div>
+            <li><a href="tools.html" onclick="closeMobileNav()">🔧 Tools</a></li>
+            <li><a href="novedades.html" onclick="closeMobileNav()">📱 Apps Android</a></li>
+            <li><a href="downloader.html" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
+            <li><a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
+        </ul>
+    </nav>
+
+        <main>
         <!-- ── HERO ── -->
         <section id="hero">
             <div class="hero-inner">
@@ -4368,7 +4480,7 @@
             .header-logo-text { font-size: 1rem; }
             .skill { flex-direction: column; text-align: center; }
             .skill-icon { margin-right: 0; margin-bottom: 1rem; }
-            .stats-section { grid-template-columns: 1fr; }
+            .stats-section { grid-template-columns: repeat(2,1fr); gap: 1rem; }
             .command-palette { width: 95%; }
             .timeline::before { left: 20px; }
             .timeline-item { width: calc(100% - 60px); margin-left: 40px !important; }
@@ -4376,7 +4488,96 @@
             .footer-bottom { flex-direction: column; gap: 1rem; }
             .header-inner { padding: 0.5rem 1rem; gap: 0.8rem; }
         }
-    </style>
+    
+        /* ═══ MÚSICA AMBIENT ════════════════════════════════════ */
+        .music-wrap {
+            position: fixed; right: 90px; bottom: 28px; z-index: 4400;
+        }
+        .music-fab {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1.5px solid rgba(255,189,105,.3);
+            color: var(--a); font-size: 1.1rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all .25s; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+            position: relative;
+        }
+        .music-fab:hover { transform: scale(1.1); border-color: rgba(255,189,105,.6); }
+        .music-fab.playing { border-color: #00e676; box-shadow: 0 0 18px rgba(0,230,118,.3); }
+        .music-eq {
+            display: flex; align-items: flex-end; gap: 2px; height: 16px;
+        }
+        .music-eq b {
+            display: block; width: 3px; background: #00e676; border-radius: 2px;
+            animation: eq 0.8s ease-in-out infinite;
+        }
+        .music-eq b:nth-child(1) { height: 6px; animation-delay: 0s; }
+        .music-eq b:nth-child(2) { height: 12px; animation-delay: .15s; }
+        .music-eq b:nth-child(3) { height: 8px; animation-delay: .3s; }
+        .music-eq b:nth-child(4) { height: 14px; animation-delay: .1s; }
+        @keyframes eq {
+            0%,100% { transform: scaleY(1); }
+            50%      { transform: scaleY(.4); }
+        }
+        .music-panel {
+            position: absolute; bottom: 58px; right: 0;
+            width: 260px;
+            background: rgba(8,8,18,.97);
+            border: 1px solid rgba(255,189,105,.2);
+            border-radius: 16px; padding: 1rem;
+            box-shadow: 0 16px 48px rgba(0,0,0,.7);
+            backdrop-filter: blur(16px);
+        }
+        .music-panel-hdr {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: .8rem; font-size: .82rem; font-weight: 700;
+        }
+        .music-panel-hdr button {
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: .9rem; padding: 2px 6px;
+        }
+        .music-track {
+            display: flex; align-items: center; gap: .6rem;
+            padding: .5rem .6rem; border-radius: 10px;
+            cursor: pointer; transition: all .18s; margin-bottom: .25rem;
+            border: 1px solid transparent;
+        }
+        .music-track:hover { background: rgba(255,255,255,.05); border-color: rgba(255,189,105,.15); }
+        .music-track.active { background: rgba(0,230,118,.08); border-color: rgba(0,230,118,.25); }
+        .music-track-icon { font-size: 1.2rem; flex-shrink: 0; }
+        .music-track-info { flex: 1; }
+        .music-track-name { font-size: .78rem; font-weight: 600; color: var(--text); }
+        .music-track-genre { font-size: .65rem; color: var(--muted); }
+        .music-vol-row {
+            display: flex; align-items: center; gap: .5rem;
+            margin-top: .8rem; padding-top: .7rem;
+            border-top: 1px solid rgba(255,255,255,.07);
+            font-size: .75rem; color: var(--muted);
+        }
+        .music-vol-row input[type=range] {
+            flex: 1; accent-color: #00e676; height: 4px; cursor: pointer;
+        }
+        @media (max-width:768px) {
+            .music-wrap { right: 80px; bottom: 20px; }
+            .music-fab { width: 42px; height: 42px; font-size: .95rem; }
+        }
+
+        /* ═══ PROTECCIÓN ANTI-COPIAR ════════════════════════════ */
+        ::selection { background: rgba(255,69,0,.15); color: var(--text); }
+
+        /* ═══ ANTI-DEVTOOLS OVERLAY ═════════════════════════════ */
+        #devtools-warning {
+            display: none;
+            position: fixed; inset: 0; z-index: 99999;
+            background: rgba(0,0,0,.97);
+            align-items: center; justify-content: center;
+            flex-direction: column; gap: 1rem; text-align: center;
+        }
+        #devtools-warning.show { display: flex; }
+        #devtools-warning h2 { font-size: 1.8rem; color: var(--primary); }
+        #devtools-warning p { color: var(--muted); font-size: .9rem; max-width: 400px; }
+
+        </style>
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
     <script src="updater.js"></script>
@@ -5602,6 +5803,28 @@ async function sendEmail(e) {
 </script>
 
 
+<!-- ═══ REPRODUCTOR MÚSICA AMBIENT ═══ -->
+<div id="music-wrap" class="music-wrap">
+    <div class="music-panel" id="music-panel" style="display:none">
+        <div class="music-panel-hdr">
+            <span>🎵 Ambient Player</span>
+            <button onclick="closeMusicPanel()"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="music-tracks"></div>
+        <div class="music-vol-row">
+            <i class="fas fa-volume-low"></i>
+            <input type="range" id="music-vol" min="0" max="100" value="40" oninput="setMusicVol(this.value)">
+            <i class="fas fa-volume-high"></i>
+        </div>
+    </div>
+    <button id="music-fab" class="music-fab" onclick="toggleMusicPanel()" title="Música ambient lo-fi">
+        <span class="music-eq" id="music-eq" style="display:none">
+            <b></b><b></b><b></b><b></b>
+        </span>
+        <i class="fas fa-headphones" id="music-icon"></i>
+    </button>
+</div>
+
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
 <button id="ai-fab" aria-label="Abrir asistente IA" title="Asistente IA CodeHub">
   <i class="fas fa-robot"></i>
@@ -5909,137 +6132,324 @@ function loadCfg() {
 })();
 
 
+
 // ═══════════════════════════════════════════════════════════
-//  CLIMA EN TIEMPO REAL — Detección automática
+//  REPRODUCTOR DE MÚSICA AMBIENT
+// ═══════════════════════════════════════════════════════════
+const MUSIC_TRACKS = [
+  { name:'Lo-Fi Hip Hop',   genre:'Chill · Study',    icon:'🎧', url:'https://www.youtube.com/embed/jfKfPfyJRdk?autoplay=1&loop=1&playlist=jfKfPfyJRdk' },
+  { name:'Chillhop Café',   genre:'Jazz · Relax',     icon:'☕', url:'https://www.youtube.com/embed/7NOSDKb0HlU?autoplay=1&loop=1&playlist=7NOSDKb0HlU' },
+  { name:'Dark Ambient',    genre:'Focus · Deep',     icon:'🌑', url:'https://www.youtube.com/embed/S_MOd40zlYU?autoplay=1&loop=1&playlist=S_MOd40zlYU' },
+  { name:'Synthwave Mix',   genre:'Retro · Drive',    icon:'🌆', url:'https://www.youtube.com/embed/4xDzrJKXOOY?autoplay=1&loop=1&playlist=4xDzrJKXOOY' },
+  { name:'Nature Sounds',   genre:'Rain · Forest',    icon:'🌿', url:'https://www.youtube.com/embed/q76bMs-NwRk?autoplay=1&loop=1&playlist=q76bMs-NwRk' },
+];
+
+let musicActive = false;
+let currentTrack = 0;
+let musicIframe = null;
+
+function buildMusicTracks() {
+  const wrap = document.getElementById('music-tracks');
+  if (!wrap) return;
+  wrap.innerHTML = MUSIC_TRACKS.map((t, i) => `
+    <div class="music-track ${i===0?'active':''}" id="mtrack-${i}" onclick="selectTrack(${i})">
+      <span class="music-track-icon">${t.icon}</span>
+      <div class="music-track-info">
+        <div class="music-track-name">${t.name}</div>
+        <div class="music-track-genre">${t.genre}</div>
+      </div>
+      ${i===0 ? '<i class="fas fa-play" style="color:var(--muted);font-size:.7rem"></i>' : ''}
+    </div>`).join('');
+}
+
+function selectTrack(i) {
+  currentTrack = i;
+  document.querySelectorAll('.music-track').forEach((el,j) => {
+    el.classList.toggle('active', j===i);
+  });
+  if (musicActive) playTrack(i);
+}
+
+function playTrack(i) {
+  if (musicIframe) musicIframe.remove();
+  musicIframe = document.createElement('iframe');
+  musicIframe.src = MUSIC_TRACKS[i].url;
+  musicIframe.style.cssText = 'display:none;width:0;height:0;position:absolute;';
+  musicIframe.allow = 'autoplay';
+  document.body.appendChild(musicIframe);
+}
+
+function toggleMusicPanel() {
+  const panel = document.getElementById('music-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) buildMusicTracks();
+}
+
+function closeMusicPanel() {
+  document.getElementById('music-panel').style.display = 'none';
+}
+
+function setMusicVol(val) {
+  // El volumen real se controla via postMessage al iframe de YouTube
+  // Por ahora solo visual — el usuario puede usar el volumen del sistema
+}
+
+// Botón play/pause real en el fab
+document.getElementById('music-fab')?.addEventListener('dblclick', (e) => {
+  e.stopPropagation();
+  musicActive = !musicActive;
+  const fab   = document.getElementById('music-fab');
+  const icon  = document.getElementById('music-icon');
+  const eq    = document.getElementById('music-eq');
+
+  if (musicActive) {
+    playTrack(currentTrack);
+    fab.classList.add('playing');
+    if (icon) icon.style.display = 'none';
+    if (eq)   eq.style.display   = 'flex';
+  } else {
+    if (musicIframe) { musicIframe.remove(); musicIframe = null; }
+    fab.classList.remove('playing');
+    if (icon) icon.style.display = '';
+    if (eq)   eq.style.display   = 'none';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+//  PROTECCIONES DEL SITIO
 // ═══════════════════════════════════════════════════════════
 
-const WX_CODES = {
-  0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',
-  45:'🌫️ Niebla',48:'🌫️ Niebla con escarcha',51:'🌦️ Llovizna ligera',53:'🌦️ Llovizna',55:'🌧️ Llovizna intensa',
-  61:'🌧️ Lluvia ligera',63:'🌧️ Lluvia moderada',65:'🌧️ Lluvia intensa',71:'🌨️ Nieve ligera',73:'❄️ Nieve',
-  80:'🌦️ Chubascos',81:'🌧️ Chubascos fuertes',95:'⛈️ Tormenta',99:'⛈️ Tormenta con granizo',
-};
+// 1. Anti clic derecho
+document.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  // Mostrar toast personalizado en lugar de menú
+  if (typeof toast === 'function') {
+    toast('🔒 Contenido protegido — Wilson.E © 2025');
+  }
+});
+
+// 2. Anti selección de texto en secciones clave
+const protectedSelectors = ['#hero', '#mi-pueblo', '.project-card', '.skill-chip', 'footer'];
+protectedSelectors.forEach(sel => {
+  document.querySelectorAll(sel).forEach(el => {
+    el.style.userSelect = 'none';
+    el.style.webkitUserSelect = 'none';
+  });
+});
+
+// 3. Anti keyboard shortcuts de DevTools
+document.addEventListener('keydown', (e) => {
+  // Bloquear F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (ver fuente)
+  if (
+    e.key === 'F12' ||
+    (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
+    (e.ctrlKey && e.key.toLowerCase() === 'u')
+  ) {
+    e.preventDefault();
+    if (typeof toast === 'function') toast('🔒 Acceso restringido');
+    return false;
+  }
+  // Bloquear Ctrl+C en zonas protegidas
+  if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+    const sel = window.getSelection()?.toString();
+    if (sel && sel.length > 50) {
+      e.preventDefault();
+      if (typeof toast === 'function') toast('🔒 Copia restringida — © Wilson.E 2025');
+    }
+  }
+});
+
+// 4. Anti-DevTools — detectar si están abiertos por tamaño de ventana
+(function detectDevTools() {
+  const threshold = 160;
+  let devOpen = false;
+
+  function check() {
+    const widthDiff  = window.outerWidth  - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+    const isOpen = widthDiff > threshold || heightDiff > threshold;
+
+    if (isOpen && !devOpen) {
+      devOpen = true;
+      document.getElementById('devtools-warning')?.classList.add('show');
+    } else if (!isOpen && devOpen) {
+      devOpen = false;
+      document.getElementById('devtools-warning')?.classList.remove('show');
+    }
+  }
+
+  setInterval(check, 1000);
+})();
+
+// 5. Ofuscación básica — deshabilitar vista de fuente via URL
+// (Nota: esto disuade usuarios casuales, no a desarrolladores avanzados)
+if (window.location.href.includes('view-source:')) {
+  window.location.href = 'https://wilson360-labs.vercel.app';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLIMA — OpenWeatherMap (más preciso)
+//  NOTA: Reemplaza 'OWM_API_KEY_PLACEHOLDER' con tu key real
+//  de openweathermap.org → API Keys
+// ═══════════════════════════════════════════════════════════
+const OWM_KEY = 'OWM_API_KEY_PLACEHOLDER';
 
 async function fetchWeatherByCoords(lat, lon, cityName) {
-  const wx = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto`
-  );
-  const data = await wx.json();
-  const c = data.current;
-  const now = new Date(c.time).toLocaleTimeString('es-GT', {hour:'2-digit',minute:'2-digit'});
+  try {
+    let data, city;
 
-  document.getElementById('wx-city').textContent   = cityName;
-  document.getElementById('wx-desc').textContent   = WX_CODES[c.weather_code] || '🌡️ Sin descripción';
-  document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
-  document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(c.apparent_temperature)}°C`;
-  document.getElementById('wx-hum').textContent    = `${c.relative_humidity_2m}%`;
-  document.getElementById('wx-wind').textContent   = `${Math.round(c.wind_speed_10m)} km/h`;
-  document.getElementById('wx-precip').textContent = `${c.precipitation} mm`;
-  document.getElementById('wx-updated').textContent= now;
+    if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
+      // ── OpenWeatherMap (preciso, datos en español) ──
+      const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric&lang=es`
+      );
+      data = await res.json();
 
-  document.getElementById('wx-loading').style.display = 'none';
-  document.getElementById('wx-result').style.display  = 'block';
-  document.getElementById('wx-error').style.display   = 'none';
+      if (data.cod !== 200 && data.cod !== '200') throw new Error(data.message);
+
+      const icon = getOWMIcon(data.weather[0].id, data.weather[0].icon);
+      city = cityName || `${data.name}, ${data.sys.country}`;
+
+      document.getElementById('wx-city').textContent   = city;
+      document.getElementById('wx-desc').textContent   = `${icon} ${capitalize(data.weather[0].description)}`;
+      document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}°`;
+      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C`;
+      document.getElementById('wx-hum').textContent    = `${data.main.humidity}%`;
+      document.getElementById('wx-wind').textContent   = `${Math.round(data.wind.speed * 3.6)} km/h`;
+      document.getElementById('wx-precip').textContent = data.rain?.['1h'] ? `${data.rain['1h']} mm` : '0 mm';
+      document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
+
+    } else {
+      // ── Fallback: Open-Meteo (sin key) ──
+      const res = await fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto`
+      );
+      const d = await res.json();
+      const c = d.current;
+      const WX = {0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',45:'🌫️ Niebla',51:'🌦️ Llovizna',61:'🌧️ Lluvia',80:'🌦️ Chubascos',95:'⛈️ Tormenta'};
+
+      document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
+      document.getElementById('wx-desc').textContent   = WX[c.weather_code] || '🌡️ Variable';
+      document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
+      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(c.apparent_temperature)}°C`;
+      document.getElementById('wx-hum').textContent    = `${c.relative_humidity_2m}%`;
+      document.getElementById('wx-wind').textContent   = `${Math.round(c.wind_speed_10m)} km/h`;
+      document.getElementById('wx-precip').textContent = `${c.precipitation} mm`;
+      document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
+    }
+
+    document.getElementById('wx-loading').style.display = 'none';
+    document.getElementById('wx-result').style.display  = 'block';
+    document.getElementById('wx-error').style.display   = 'none';
+
+  } catch(e) {
+    console.warn('fetchWeatherByCoords error:', e.message);
+    showWeatherError('No se pudo obtener el clima. Intenta buscar tu ciudad manualmente.');
+  }
 }
+
+function getOWMIcon(id, icon) {
+  const isDay = icon && icon.endsWith('d');
+  if (id >= 200 && id < 300) return '⛈️';
+  if (id >= 300 && id < 400) return '🌦️';
+  if (id >= 500 && id < 600) return id >= 502 ? '🌧️' : '🌦️';
+  if (id >= 600 && id < 700) return '❄️';
+  if (id >= 700 && id < 800) return '🌫️';
+  if (id === 800) return isDay ? '☀️' : '🌙';
+  if (id === 801) return isDay ? '🌤️' : '🌥️';
+  if (id <= 804) return '☁️';
+  return '🌡️';
+}
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
 async function detectWeatherByIP() {
   try {
-    // Detectar ubicación por IP
-    const geo = await fetch('https://ipapi.co/json/');
-    const g   = await geo.json();
-    if (!g.latitude) throw new Error('No coords from IP');
-    const cityLabel = `${g.city || g.region || g.country_name}, ${g.country_name} ${g.country_code === 'GT' ? '🇬🇹' : ''}`.trim();
-    await fetchWeatherByCoords(g.latitude, g.longitude, cityLabel);
-  } catch(e) {
-    // Si ipapi falla, intentar con ip-api.com
-    try {
-      const r = await fetch('https://ip-api.com/json/?fields=lat,lon,city,country,countryCode');
-      const d = await r.json();
-      if (!d.lat) throw new Error('No coords');
-      const cityLabel = `${d.city}, ${d.country} ${d.countryCode === 'GT' ? '🇬🇹' : ''}`.trim();
-      await fetchWeatherByCoords(d.lat, d.lon, cityLabel);
-    } catch(e2) {
-      showWeatherError('No se pudo detectar tu ubicación por IP.');
+    // Prioridad 1: ipapi.co
+    const r1 = await fetch('https://ipapi.co/json/');
+    const g1 = await r1.json();
+    if (g1.latitude && !g1.error) {
+      const flag = g1.country_code === 'GT' ? ' 🇬🇹' : '';
+      await fetchWeatherByCoords(g1.latitude, g1.longitude, `${g1.city}, ${g1.country_name}${flag}`);
+      return;
     }
-  }
+  } catch(e) {}
+  try {
+    // Prioridad 2: ip-api.com
+    const r2 = await fetch('https://ip-api.com/json/?fields=lat,lon,city,country,countryCode,status');
+    const g2 = await r2.json();
+    if (g2.status === 'success' && g2.lat) {
+      const flag = g2.countryCode === 'GT' ? ' 🇬🇹' : '';
+      await fetchWeatherByCoords(g2.lat, g2.lon, `${g2.city}, ${g2.country}${flag}`);
+      return;
+    }
+  } catch(e) {}
+  showWeatherError('No se pudo detectar tu ubicación. Escribe tu ciudad abajo.');
 }
 
 function requestGeoLocation() {
   const btn = document.getElementById('wx-loc-btn');
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…';
-  btn.disabled = true;
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…'; btn.disabled = true; }
 
-  if (!navigator.geolocation) {
-    showWeatherError('Tu navegador no soporta geolocalización.');
-    btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación';
-    btn.disabled = false;
-    return;
-  }
+  if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       try {
         const { latitude: lat, longitude: lon } = pos.coords;
-        // Geocodificación inversa para obtener el nombre de la ciudad
-        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=es`);
+        // Geocodificación inversa con Nominatim (OpenStreetMap, gratis)
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`);
         const d = await r.json();
-        const cityName = d.name ? `${d.name}, ${d.country}` : `${lat.toFixed(2)}, ${lon.toFixed(2)}`;
-        await fetchWeatherByCoords(lat, lon, cityName + ' 📍');
-        btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅';
-        btn.style.borderColor = 'rgba(0,230,118,.4)';
-        btn.style.color = '#00e676';
+        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
+        const country = d.address?.country || '';
+        await fetchWeatherByCoords(lat, lon, `${city}, ${country} 📍`);
+        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#00e676'; }
       } catch(e) {
-        showWeatherError('Error obteniendo el clima para tu ubicación.');
+        await fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación 📍');
       }
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
     },
-    (err) => {
-      // Permiso denegado → fallback a IP
-      detectWeatherByIP();
-      btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación';
-      btn.disabled = false;
-    },
+    () => { detectWeatherByIP(); if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; } },
     { timeout: 10000 }
   );
 }
 
 async function searchWeatherCity() {
-  const val = document.getElementById('wx-search-input').value.trim();
-  if (!val) return;
-  await searchWeatherByName(val);
+  const val = document.getElementById('wx-search-input')?.value.trim();
+  if (val) await searchWeatherByName(val);
 }
 async function searchWeatherManual() {
-  const val = document.getElementById('wx-manual-input').value.trim();
-  if (!val) return;
-  await searchWeatherByName(val);
+  const val = document.getElementById('wx-manual-input')?.value.trim();
+  if (val) await searchWeatherByName(val);
 }
-
 async function searchWeatherByName(name) {
   document.getElementById('wx-loading').style.display = 'flex';
   document.getElementById('wx-result').style.display  = 'none';
   document.getElementById('wx-error').style.display   = 'none';
   try {
-    const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=es`);
-    const g   = await geo.json();
-    if (!g.results?.length) { showWeatherError(`Ciudad "${name}" no encontrada. Intenta en inglés.`); return; }
-    const { latitude, longitude, name: n, country } = g.results[0];
-    await fetchWeatherByCoords(latitude, longitude, `${n}, ${country}`);
-  } catch(e) {
-    showWeatherError('Error al buscar la ciudad.');
-  }
+    if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
+      const r = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(name)}&limit=1&appid=${OWM_KEY}`);
+      const d = await r.json();
+      if (!d.length) { showWeatherError(`Ciudad "${name}" no encontrada.`); return; }
+      await fetchWeatherByCoords(d[0].lat, d[0].lon, `${d[0].local_names?.es || d[0].name}, ${d[0].country}`);
+    } else {
+      const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=es`);
+      const d = await r.json();
+      if (!d.results?.length) { showWeatherError(`Ciudad "${name}" no encontrada.`); return; }
+      const g = d.results[0];
+      await fetchWeatherByCoords(g.latitude, g.longitude, `${g.name}, ${g.country}`);
+    }
+  } catch(e) { showWeatherError('Error al buscar la ciudad.'); }
 }
 
 function showWeatherError(msg) {
   document.getElementById('wx-loading').style.display  = 'none';
   document.getElementById('wx-result').style.display   = 'none';
   document.getElementById('wx-error').style.display    = 'flex';
-  document.getElementById('wx-error-msg').textContent  = msg;
+  const errMsg = document.getElementById('wx-error-msg');
+  if (errMsg) errMsg.textContent = msg;
 }
-
-// Auto-detectar al cargar
-window.addEventListener('load', () => {
-  detectWeatherByIP();
-});
 
 // ═══════════════════════════════════════════════════════════
 //  NOTICIAS EN EL INDEX
@@ -6100,6 +6510,44 @@ function loadIndexNews(category, btn) {
 // Cargar noticias tech al iniciar
 window.addEventListener('load', () => {
   loadIndexNews('technology', document.querySelector('.news-idx-tab'));
+});
+
+
+// ═══════════════════════════════════════════════════════════
+//  BURGER MENU MOBILE
+// ═══════════════════════════════════════════════════════════
+function toggleMobileNav() {
+    const nav = document.getElementById('mobile-nav');
+    const btn = document.getElementById('burger-btn');
+    const isOpen = nav.classList.contains('open');
+    if (isOpen) {
+        nav.classList.remove('open');
+        btn.classList.remove('open');
+        document.body.style.overflow = '';
+    } else {
+        nav.classList.add('open');
+        btn.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+}
+function closeMobileNav() {
+    document.getElementById('mobile-nav')?.classList.remove('open');
+    document.getElementById('burger-btn')?.classList.remove('open');
+    document.body.style.overflow = '';
+}
+// Cerrar al hacer scroll
+window.addEventListener('scroll', () => {
+    if (document.getElementById('mobile-nav')?.classList.contains('open')) {
+        closeMobileNav();
+    }
+}, { passive: true });
+// Cerrar al tocar fuera del menú
+document.addEventListener('click', (e) => {
+    const nav = document.getElementById('mobile-nav');
+    const btn = document.getElementById('burger-btn');
+    if (nav?.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+        closeMobileNav();
+    }
 });
 
 </script>
