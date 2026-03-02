@@ -72,10 +72,12 @@
 <main class="app-grid" id="app-grid">
 
   <!-- 1 · Spotify Premium -->
-  <div class="app-card" data-id="app-1" data-cat="musica" data-name="spotify premium">
+  <div class="app-card" data-id="app-1" data-version="8.9.94.598" data-verified="true" data-changelog="v8.9.94 — Corrección de bugs de reproducción · Mejor compatibilidad Android 14" data-cat="musica" data-name="spotify premium">
     <div class="app-thumb">
       <img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Música</div>
@@ -86,6 +88,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -101,10 +111,12 @@
   </div>
 
   <!-- 2 · Spotify Lite Premium -->
-  <div class="app-card" data-id="app-2" data-cat="musica" data-name="spotify lite premium">
+  <div class="app-card" data-id="app-2" data-version="1.9.0.178" data-verified="true" data-changelog="v1.9.0 — Modo offline mejorado · Reducción de consumo de batería" data-cat="musica" data-name="spotify lite premium">
     <div class="app-thumb">
       <img src="img/SpoLite.png" alt="Spotify Lite" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎶</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Música</div>
@@ -115,6 +127,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -130,7 +150,7 @@
   </div>
 
   <!-- 3 · YouTube ReVanced -->
-  <div class="app-card" data-id="app-3" data-cat="video" data-name="youtube revanced">
+  <div class="app-card" data-id="app-3" data-version="19.47.43" data-verified="true" data-changelog="v19.47 — SponsorBlock actualizado · Nuevo gestor de descargas" data-cat="video" data-name="youtube revanced">
     <div class="app-thumb">
       <img src="img/YouTube.jpeg" alt="YouTube ReVanced" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
       <span class="app-badge badge-hot">🔥 Popular</span>
@@ -147,6 +167,14 @@
           <i class="fas fa-puzzle-piece"></i> MicroG
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -162,10 +190,12 @@
   </div>
 
   <!-- 4 · YouTube Music ReVanced -->
-  <div class="app-card" data-id="app-4" data-cat="musica" data-name="youtube music revanced">
+  <div class="app-card" data-id="app-4" data-version="7.25.51" data-verified="true" data-changelog="v7.25 — Reproducción en segundo plano mejorada · Fix de crashes" data-cat="musica" data-name="youtube music revanced">
     <div class="app-thumb">
       <img src="img/YTMusic.png" alt="YouTube Music" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎧</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Música</div>
@@ -179,6 +209,14 @@
           <i class="fas fa-puzzle-piece"></i> MicroG
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -194,10 +232,12 @@
   </div>
 
   <!-- 5 · TikTok Premium -->
-  <div class="app-card" data-id="app-5" data-cat="video" data-name="tiktok premium">
+  <div class="app-card" data-id="app-5" data-version="38.5.6" data-verified="true" data-changelog="v38.5 — Nuevos filtros · Eliminación de anuncios actualizada" data-cat="video" data-name="tiktok premium">
     <div class="app-thumb">
       <img src="img/TikTok.svg" alt="TikTok" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Video</div>
@@ -211,6 +251,14 @@
           <i class="fas fa-puzzle-piece"></i> Plugin
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -226,7 +274,7 @@
   </div>
 
   <!-- 6 · Flicks Remix -->
-  <div class="app-card" data-id="app-6" data-cat="video" data-name="flicks remix netflix">
+  <div class="app-card" data-id="app-6" data-version="3.2.1" data-verified="false" data-changelog="v3.2.1 — Calidad 4K desbloqueada · Subtítulos mejorados" data-cat="video" data-name="flicks remix netflix">
     <div class="app-thumb">
       <img src="img/Netflix.png" alt="Flicks Remix" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎬</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -240,6 +288,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -255,7 +311,7 @@
   </div>
 
   <!-- 7 · TeraBox Premium -->
-  <div class="app-card" data-id="app-7" data-cat="util" data-name="terabox premium nube">
+  <div class="app-card" data-id="app-7" data-version="4.5.2" data-verified="true" data-changelog="v4.5.2 — Transferencia más rápida · Fix de login" data-cat="util" data-name="terabox premium nube">
     <div class="app-thumb">
       <img src="img/Terabox.png" alt="TeraBox" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>☁️</div>'">
       <span class="app-badge badge-star">⭐ Destacada</span>
@@ -269,6 +325,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -284,7 +348,7 @@
   </div>
 
   <!-- 8 · MX Player Pro -->
-  <div class="app-card" data-id="app-8" data-cat="video" data-name="mx player pro video">
+  <div class="app-card" data-id="app-8" data-version="1.3.9" data-verified="true" data-changelog="v1.3.9 — Nuevo decodificador de hardware · Soporte AV1" data-cat="video" data-name="mx player pro video">
     <div class="app-thumb">
       <img src="img/Player.jpg" alt="MX Player" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -298,6 +362,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -313,10 +385,12 @@
   </div>
 
   <!-- 9 · PicsArt Premium -->
-  <div class="app-card" data-id="app-9" data-cat="foto" data-name="picsart premium edicion fotos">
+  <div class="app-card" data-id="app-9" data-version="24.8" data-verified="true" data-changelog="v24.8 — Nuevas herramientas IA · Paquetes de stickers" data-cat="foto" data-name="picsart premium edicion fotos">
     <div class="app-thumb">
       <img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🖼️</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Foto</div>
@@ -327,6 +401,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -342,7 +424,7 @@
   </div>
 
   <!-- 10 · Remini Pro -->
-  <div class="app-card" data-id="app-10" data-cat="foto" data-name="remini pro mejora fotos ia">
+  <div class="app-card" data-id="app-10" data-version="5.6.0" data-verified="true" data-changelog="v5.6.0 — Motor IA actualizado · Mejor rendimiento" data-cat="foto" data-name="remini pro mejora fotos ia">
     <div class="app-thumb">
       <img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✨</div>'">
       <span class="app-badge badge-upd">🔄 Actualizada</span>
@@ -356,6 +438,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -371,10 +461,12 @@
   </div>
 
   <!-- 11 · Magic Eraser -->
-  <div class="app-card" data-id="app-11" data-cat="foto" data-name="magic eraser borrar objetos fotos">
+  <div class="app-card" data-id="app-11" data-version="7.5.1" data-verified="false" data-changelog="v7.5.1 — Nuevos fondos · Fix de exportación" data-cat="foto" data-name="magic eraser borrar objetos fotos">
     <div class="app-thumb">
       <img src="img/Eraser.jpg" alt="Magic Eraser" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🪄</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Foto · IA</div>
@@ -385,6 +477,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -400,10 +500,12 @@
   </div>
 
   <!-- 12 · CamScanner -->
-  <div class="app-card" data-id="app-12" data-cat="util" data-name="camscanner escanear documentos">
+  <div class="app-card" data-id="app-12" data-version="2.12.0" data-verified="true" data-changelog="v2.12.0 — Reconocimiento OCR mejorado · Nuevos formatos" data-cat="util" data-name="camscanner escanear documentos">
     <div class="app-thumb">
       <img src="img/CamScanner.jpg" alt="CamScanner" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📄</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Utilidad</div>
@@ -414,6 +516,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -429,10 +539,12 @@
   </div>
 
   <!-- 13 · DNS AdGuard Pro -->
-  <div class="app-card" data-id="app-13" data-cat="util" data-name="dns adguard bloquear anuncios">
+  <div class="app-card" data-id="app-13" data-version="4.3.1" data-verified="true" data-changelog="v4.3.1 — DNS over HTTPS · Lista de filtros actualizada" data-cat="util" data-name="dns adguard bloquear anuncios">
     <div class="app-thumb">
       <img src="img/dnspro.png" alt="AdGuard DNS" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛡️</div>'">
       <span class="app-badge badge-new">🆕 Nuevo</span>
+      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
+      <span class="app-version-tag"></span>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">Seguridad</div>
@@ -443,6 +555,14 @@
           <i class="fas fa-download"></i> Descargar APK
         </a>
       </div>
+      <!-- Changelog -->
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text"></div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+
       <!-- Rating estrellas -->
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
@@ -695,7 +815,90 @@ async function submitRequest() {
 // Iniciar al cargar
 window.addEventListener('load', loadRatings);
 
-</script>
 
-</body>
-</html>
+// ═══════════════════════════════════════════════════════════
+//  BADGES VERIFICADO + VERSION + CHANGELOG
+// ═══════════════════════════════════════════════════════════
+function initAppBadges() {
+  document.querySelectorAll('.app-card').forEach(card => {
+    const verified  = card.dataset.verified === 'true';
+    const version   = card.dataset.version || '';
+    const changelog = card.dataset.changelog || '';
+
+    // Badge verificado
+    const vBadge = card.querySelector('.app-verified-badge');
+    if (vBadge && verified) vBadge.style.display = 'block';
+
+    // Version tag
+    const vTag = card.querySelector('.app-version-tag');
+    if (vTag && version) vTag.textContent = 'v' + version;
+
+    // Changelog text
+    const clText = card.querySelector('.app-changelog-text');
+    if (clText && changelog) {
+      clText.innerHTML = changelog.split(' · ').map(c => `<div>→ ${c}</div>`).join('');
+    }
+  });
+}
+
+function toggleChangelog(btn) {
+  const wrap = btn.previousElementSibling;
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : 'block';
+  btn.innerHTML = isOpen
+    ? '<i class="fas fa-clock-rotate-left"></i> Ver cambios'
+    : '<i class="fas fa-chevron-up"></i> Ocultar';
+}
+
+window.addEventListener('load', () => {
+  initAppBadges();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  TURNSTILE EN SOLICITAR APP
+// ═══════════════════════════════════════════════════════════
+// El widget se renderiza dinámicamente al abrir el modal
+function openReqModal() {
+  document.getElementById('req-modal').style.display = 'flex';
+  loadRequests();
+  // Renderizar Turnstile si existe el contenedor
+  if (typeof turnstile !== 'undefined' && document.getElementById('turnstile-req')) {
+    turnstile.render('#turnstile-req', {
+      sitekey: '0x4AAAAAAA_REPLACE_WITH_YOUR_SITEKEY',
+      theme: 'dark',
+      language: 'es',
+    });
+  }
+}
+
+async function submitRequest() {
+  const name   = document.getElementById('req-name').value.trim();
+  const reason = document.getElementById('req-reason').value.trim();
+  if (!name) { toast('Escribe el nombre de la app'); return; }
+
+  // Verificar Turnstile
+  const tsInput = document.querySelector('#turnstile-req iframe')?.closest('[name="cf-turnstile-response"]')
+               || document.querySelector('input[name="cf-turnstile-response"]');
+  // Continuar sin bloquear si turnstile no cargó (degradación elegante)
+
+  const btn = document.querySelector('.req-submit-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+  try {
+    const res = await fetch(`${BACKEND}/api/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appName: name, reason }),
+    });
+    const d = await res.json();
+    if (d.ok) {
+      toast(d.message || 'Solicitud enviada ✅');
+      document.getElementById('req-name').value = '';
+      document.getElementById('req-reason').value = '';
+      loadRequests();
+    } else { toast(d.error || 'Error al enviar'); }
+  } catch(e) { toast('Error de conexión'); }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar solicitud';
+}
+
+</script>

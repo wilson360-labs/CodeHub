@@ -449,3 +449,38 @@ footer a { color: var(--p); text-decoration: none; }
   background: rgba(255,69,0,.1); border-radius: 20px; padding: .15rem .5rem;
 }
 .req-loading { font-size: .78rem; color: var(--muted); font-family: var(--mono); padding: .5rem 0; }
+
+/* ═══ BADGE VERIFICADO + VERSION + CHANGELOG ══════════════ */
+.app-verified-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,230,118,.15); border: 1px solid rgba(0,230,118,.35);
+  color: #00e676; font-size: .58rem; font-family: var(--mono);
+  padding: .15rem .5rem; border-radius: 20px; font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+.app-version-tag {
+  position: absolute; bottom: 8px; right: 8px;
+  background: rgba(0,0,0,.7); border: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.5); font-size: .55rem; font-family: var(--mono);
+  padding: .1rem .4rem; border-radius: 6px;
+}
+.app-changelog-btn {
+  display: flex; align-items: center; gap: .35rem;
+  background: none; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px; padding: .3rem .7rem;
+  color: var(--muted); font-size: .65rem; font-family: var(--mono);
+  cursor: pointer; transition: all .2s; width: 100%; margin-bottom: .4rem;
+}
+.app-changelog-btn:hover { border-color: var(--p); color: var(--s); }
+.app-changelog-btn i { font-size: .6rem; }
+.app-changelog-wrap {
+  background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: .6rem .8rem; margin-bottom: .4rem;
+}
+.app-changelog-text {
+  font-family: var(--mono); font-size: .65rem; color: var(--muted); line-height: 1.7;
+}
+.app-changelog-text strong { color: var(--a); }
+@media (max-width: 600px) {
+  .app-changelog-btn { font-size: .58rem; padding: .25rem .5rem; }
+}

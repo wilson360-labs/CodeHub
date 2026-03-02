@@ -348,3 +348,14 @@ app.post('/api/requests', async (req, res) => {
     res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
   } catch(e) { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
+
+// ── PATCH /api/requests/:id — marcar solicitud (admin) ──
+app.patch('/api/requests/:id', async (req, res) => {
+  const { status, adminKey } = req.body;
+  if (adminKey !== 'wilson2026ultra') return res.status(403).json({ error: 'No autorizado' });
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    await AppRequest.findByIdAndUpdate(req.params.id, { status });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: 'Error actualizando' }); }
+});

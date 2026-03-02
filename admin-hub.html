@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — CodeHub</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308; --surface: #0a0a14; --card: #0f0f1e;
+      --p: #ff4500; --a: #ffbd69; --g: #00e676; --c: #00e5ff;
+      --text: #f0f0fa; --muted: rgba(240,240,250,.4);
+      --border: rgba(255,255,255,.07);
+      --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg); display: flex; align-items: center; justify-content: center;
+    }
+    .login-box {
+      background: var(--surface); border: 1px solid rgba(255,69,0,.2);
+      border-radius: 20px; padding: 2.5rem; width: 360px; text-align: center;
+    }
+    .login-logo { font-size: 2.5rem; font-weight: 800; margin-bottom: .3rem; }
+    .login-logo span { color: var(--p); }
+    .login-sub { font-family: var(--mono); font-size: .7rem; color: var(--muted); margin-bottom: 2rem; }
+    .login-input {
+      width: 100%; padding: .75rem 1rem; border-radius: 10px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: .9rem;
+      outline: none; margin-bottom: .8rem; text-align: center; letter-spacing: .2em;
+      transition: border-color .2s;
+    }
+    .login-input:focus { border-color: var(--p); }
+    .login-btn {
+      width: 100%; padding: .75rem; border-radius: 10px;
+      background: linear-gradient(135deg, var(--p), #ff6b35);
+      border: none; color: #fff; font-family: var(--font);
+      font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
+    }
+    .login-btn:hover { opacity: .88; }
+    .login-err { font-family: var(--mono); font-size: .72rem; color: #ff6b6b; margin-top: .6rem; min-height: 1em; }
+
+    /* ── HEADER ── */
+    header {
+      background: rgba(3,3,8,.95); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,69,0,.15);
+      padding: .8rem 2rem; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .admin-logo { font-size: 1.1rem; font-weight: 800; }
+    .admin-logo span { color: var(--p); }
+    .admin-logo small { font-family: var(--mono); font-size: .6rem; color: var(--muted); display: block; }
+    .admin-nav { display: flex; gap: .6rem; }
+    .admin-tab {
+      padding: .4rem .9rem; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-family: var(--font);
+      font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
+    }
+    .admin-tab.active { background: rgba(255,69,0,.15); border-color: rgba(255,69,0,.35); color: var(--a); }
+    .logout-btn {
+      padding: .4rem .8rem; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: .75rem;
+      font-family: var(--mono); cursor: pointer; transition: all .2s;
+    }
+    .logout-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+    /* ── MAIN ── */
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem;
+    }
+    .stat-card .num { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .stat-card .lbl { font-family: var(--mono); font-size: .65rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── PANEL APPS ── */
+    .section-title {
+      font-size: 1.2rem; font-weight: 700; margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section-title i { color: var(--p); }
+    .apps-table {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+    }
+    .apps-table-head {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr 120px;
+      padding: .7rem 1.2rem; background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono); font-size: .62rem; color: var(--muted); letter-spacing: .1em;
+    }
+    .app-row {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr 120px;
+      padding: .85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.04);
+      align-items: center; transition: background .15s;
+    }
+    .app-row:last-child { border-bottom: none; }
+    .app-row:hover { background: rgba(255,255,255,.02); }
+    .app-name-cell { font-weight: 600; font-size: .85rem; }
+    .app-name-cell small { display: block; font-family: var(--mono); font-size: .6rem; color: var(--muted); margin-top: .1rem; }
+    .ver-input {
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 7px; padding: .3rem .6rem; color: var(--text);
+      font-family: var(--mono); font-size: .72rem; width: 90%;
+      outline: none; transition: border-color .2s;
+    }
+    .ver-input:focus { border-color: var(--p); }
+    .badge-verified {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .65rem; font-family: var(--mono); padding: .18rem .5rem; border-radius: 20px; cursor: pointer;
+    }
+    .badge-verified.yes { background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.25); color: var(--g); }
+    .badge-verified.no  { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); }
+    .changelog-input {
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 7px; padding: .3rem .6rem; color: var(--text);
+      font-family: var(--mono); font-size: .65rem; width: 100%;
+      outline: none; transition: border-color .2s; resize: none;
+    }
+    .changelog-input:focus { border-color: var(--a); }
+    .save-row-btn {
+      padding: .35rem .8rem; border-radius: 8px;
+      background: linear-gradient(135deg, var(--p), #ff6b35);
+      border: none; color: #fff; font-family: var(--mono);
+      font-size: .68rem; font-weight: 700; cursor: pointer; transition: all .2s;
+      white-space: nowrap;
+    }
+    .save-row-btn:hover { opacity: .85; }
+    .save-row-btn.saved { background: linear-gradient(135deg, #00e676, #00c853); }
+
+    /* ── PUBLISH BUTTON ── */
+    .publish-wrap {
+      display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem; flex-wrap: wrap;
+    }
+    .publish-btn {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .7rem 1.6rem; border-radius: 12px;
+      background: linear-gradient(135deg, var(--g), #00c853);
+      border: none; color: #000; font-family: var(--font);
+      font-size: .88rem; font-weight: 800; cursor: pointer; transition: all .2s;
+    }
+    .publish-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,230,118,.3); }
+    .publish-status { font-family: var(--mono); font-size: .75rem; color: var(--muted); }
+
+    /* ── SOLICITUDES ── */
+    .req-row {
+      display: grid; grid-template-columns: 1fr auto auto auto;
+      gap: .8rem; align-items: center; padding: .8rem 1.2rem;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .req-row:last-child { border-bottom: none; }
+    .req-name { font-weight: 600; font-size: .88rem; }
+    .req-votes { font-family: var(--mono); font-size: .72rem; color: var(--p); }
+    .req-action {
+      padding: .28rem .7rem; border-radius: 8px; font-family: var(--mono);
+      font-size: .65rem; font-weight: 700; cursor: pointer; border: none; transition: all .2s;
+    }
+    .req-done { background: rgba(0,230,118,.15); color: var(--g); border: 1px solid rgba(0,230,118,.25); }
+    .req-done:hover { background: rgba(0,230,118,.3); }
+    .req-reject { background: rgba(255,107,107,.1); color: #ff6b6b; border: 1px solid rgba(255,107,107,.2); }
+    .req-reject:hover { background: rgba(255,107,107,.2); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: rgba(15,15,30,.97); border: 1px solid rgba(255,189,105,.3);
+      color: var(--text); padding: .65rem 1.2rem; border-radius: 12px;
+      font-family: var(--mono); font-size: .78rem;
+      opacity: 0; transition: all .3s; z-index: 9999; transform: translateY(10px);
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    @media (max-width: 900px) {
+      .apps-table-head, .app-row { grid-template-columns: 2fr 1fr 1fr 100px; }
+      .app-row > :nth-child(5) { display: none; }
+      .apps-table-head > :nth-child(5) { display: none; }
+    }
+    @media (max-width: 600px) {
+      .apps-table-head, .app-row { grid-template-columns: 1fr 1fr 80px; }
+      .app-row > :nth-child(3), .app-row > :nth-child(4),
+      .apps-table-head > :nth-child(3), .apps-table-head > :nth-child(4) { display: none; }
+      header { flex-wrap: wrap; gap: .5rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="toast"></div>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Wilson<span>.E</span></div>
+    <div class="login-sub">// panel de administración · codehub</div>
+    <input type="password" id="pwd-input" class="login-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="login-btn" onclick="checkLogin()"><i class="fas fa-unlock"></i> Ingresar</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="admin-logo">
+    Admin<span>Hub</span>
+    <small>// CodeHub control panel</small>
+  </div>
+  <div class="admin-nav">
+    <button class="admin-tab active" onclick="switchTab('apps', this)"><i class="fas fa-mobile-screen"></i> Apps</button>
+    <button class="admin-tab" onclick="switchTab('requests', this)"><i class="fas fa-inbox"></i> Solicitudes</button>
+    <button class="admin-tab" onclick="switchTab('stats', this)"><i class="fas fa-chart-bar"></i> Stats</button>
+  </div>
+  <button class="logout-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Salir</button>
+</header>
+
+<main>
+  <!-- Stats rápidas -->
+  <div class="stats-row" style="margin-bottom:1.5rem">
+    <div class="stat-card"><div class="num" style="color:var(--p)" id="st-apps">13</div><div class="lbl">Apps publicadas</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--g)" id="st-verified">0</div><div class="lbl">Verificadas</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--a)" id="st-requests">—</div><div class="lbl">Solicitudes pendientes</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--c)" id="st-ratings">—</div><div class="lbl">Ratings recibidos</div></div>
+  </div>
+
+  <!-- ── TAB: APPS ── -->
+  <div class="tab-panel active" id="tab-apps">
+    <div class="section-title"><i class="fas fa-mobile-screen"></i> Gestión de Aplicaciones</div>
+    <div class="apps-table">
+      <div class="apps-table-head">
+        <div>APP</div><div>VERSIÓN</div><div>VERIFICADO</div><div>ESTADO</div><div>CHANGELOG</div><div>ACCIÓN</div>
+      </div>
+      <div id="apps-list">
+        <!-- Generado por JS -->
+      </div>
+    </div>
+    <div class="publish-wrap">
+      <button class="publish-btn" onclick="publishAll()">
+        <i class="fas fa-rocket"></i> Publicar todos los cambios
+      </button>
+      <div class="publish-status" id="publish-status">Última publicación: <span id="last-pub">—</span></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SOLICITUDES ── -->
+  <div class="tab-panel" id="tab-requests">
+    <div class="section-title"><i class="fas fa-inbox"></i> Solicitudes de la Comunidad</div>
+    <div class="apps-table">
+      <div id="req-list-admin">
+        <div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)">Cargando solicitudes...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: STATS ── -->
+  <div class="tab-panel" id="tab-stats">
+    <div class="section-title"><i class="fas fa-chart-bar"></i> Estadísticas de Ratings</div>
+    <div class="apps-table">
+      <div id="ratings-list">
+        <div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)">Cargando ratings...</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const BACKEND = 'https://codehub-production-729d.up.railway.app';
+// ⚠️ Cambia esta contraseña antes de subir a producción
+const ADMIN_PASS = 'wilson2026ultra';
+
+const APPS_DEFAULT = [
+  { id:'app-1',  name:'Spotify Premium',        cat:'Música',    ver:'8.9.94.598', verified:true,  badge:'🆕 Nuevo',       changelog:'v8.9.94 — Corrección de bugs de reproducción · Mejor compatibilidad Android 14' },
+  { id:'app-2',  name:'Spotify Lite Premium',   cat:'Música',    ver:'1.9.0.178',  verified:true,  badge:'🆕 Nuevo',       changelog:'v1.9.0 — Modo offline mejorado · Reducción de consumo de batería' },
+  { id:'app-3',  name:'YouTube ReVanced',       cat:'Video',     ver:'19.47.43',   verified:true,  badge:'🔄 Actualizado', changelog:'v19.47 — SponsorBlock actualizado · Nuevo gestor de descargas' },
+  { id:'app-4',  name:'YT Music ReVanced',      cat:'Música',    ver:'7.25.51',    verified:true,  badge:'🔄 Actualizado', changelog:'v7.25 — Reproducción en segundo plano mejorada · Fix de crashes' },
+  { id:'app-5',  name:'TikTok Premium',         cat:'Video',     ver:'38.5.6',     verified:true,  badge:'🆕 Nuevo',       changelog:'v38.5 — Nuevos filtros · Eliminación de anuncios actualizada' },
+  { id:'app-6',  name:'Flicks Remix Netflix',   cat:'Video',     ver:'3.2.1',      verified:false, badge:'🆕 Nuevo',       changelog:'v3.2.1 — Calidad 4K desbloqueada · Subtítulos mejorados' },
+  { id:'app-7',  name:'Terabox Premium',        cat:'Util',      ver:'4.5.2',      verified:true,  badge:'🔄 Actualizado', changelog:'v4.5.2 — Transferencia más rápida · Fix de login' },
+  { id:'app-8',  name:'MX Player Pro',          cat:'Video',     ver:'1.3.9',      verified:true,  badge:'🆕 Nuevo',       changelog:'v1.3.9 — Nuevo decodificador de hardware · Soporte AV1' },
+  { id:'app-9',  name:'PicsArt Premium',        cat:'Foto',      ver:'24.8',       verified:true,  badge:'🔄 Actualizado', changelog:'v24.8 — Nuevas herramientas IA · Paquetes de stickers' },
+  { id:'app-10', name:'Remini Pro',             cat:'Foto',      ver:'5.6.0',      verified:true,  badge:'🔄 Actualizado', changelog:'v5.6.0 — Motor IA actualizado · Mejor rendimiento' },
+  { id:'app-11', name:'Magic Eraser',           cat:'Foto',      ver:'7.5.1',      verified:false, badge:'🆕 Nuevo',       changelog:'v7.5.1 — Nuevos fondos · Fix de exportación' },
+  { id:'app-12', name:'CamScanner Premium',     cat:'Util',      ver:'2.12.0',     verified:true,  badge:'🔄 Actualizado', changelog:'v2.12.0 — Reconocimiento OCR mejorado · Nuevos formatos' },
+  { id:'app-13', name:'DNS AdGuard Pro',        cat:'Seguridad', ver:'4.3.1',      verified:true,  badge:'🆕 Nuevo',       changelog:'v4.3.1 — DNS over HTTPS · Lista de filtros actualizada' },
+];
+
+let appsData = JSON.parse(localStorage.getItem('admin_apps') || 'null') || APPS_DEFAULT;
+
+// ── AUTH ──────────────────────────────────────────────────
+function checkLogin() {
+  const pwd = document.getElementById('pwd-input').value;
+  if (pwd === ADMIN_PASS) {
+    document.getElementById('login-screen').style.display = 'none';
+    initAdmin();
+  } else {
+    document.getElementById('login-err').textContent = '❌ Contraseña incorrecta';
+    document.getElementById('pwd-input').value = '';
+  }
+}
+document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkLogin(); });
+
+function logout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pwd-input').value = '';
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'requests') loadAdminRequests();
+  if (id === 'stats') loadAdminRatings();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+function initAdmin() {
+  renderApps();
+  loadAdminStats();
+  const lp = localStorage.getItem('admin_last_pub');
+  if (lp) document.getElementById('last-pub').textContent = new Date(lp).toLocaleString('es-GT');
+}
+
+function renderApps() {
+  const list = document.getElementById('apps-list');
+  const verified = appsData.filter(a => a.verified).length;
+  document.getElementById('st-verified').textContent = verified;
+
+  list.innerHTML = appsData.map((app, i) => `
+    <div class="app-row">
+      <div class="app-name-cell">
+        ${app.name}
+        <small>${app.cat} · ${app.id}</small>
+      </div>
+      <div>
+        <input class="ver-input" type="text" value="${app.ver}" id="ver-${i}" placeholder="1.0.0">
+      </div>
+      <div>
+        <span class="badge-verified ${app.verified?'yes':'no'}" id="vbadge-${i}" onclick="toggleVerified(${i})">
+          ${app.verified ? '✅ Sí' : '○ No'}
+        </span>
+      </div>
+      <div>
+        <select style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:.25rem .4rem;color:var(--text);font-family:var(--mono);font-size:.65rem;outline:none" id="badge-${i}">
+          <option value="🆕 Nuevo" ${app.badge==='🆕 Nuevo'?'selected':''}>🆕 Nuevo</option>
+          <option value="🔄 Actualizado" ${app.badge==='🔄 Actualizado'?'selected':''}>🔄 Actualizado</option>
+          <option value="🔥 Popular" ${app.badge==='🔥 Popular'?'selected':''}>🔥 Popular</option>
+          <option value="⚡ Beta" ${app.badge==='⚡ Beta'?'selected':''}>⚡ Beta</option>
+        </select>
+      </div>
+      <div>
+        <textarea class="changelog-input" rows="2" id="cl-${i}" placeholder="v1.0 — Cambio 1 · Cambio 2">${app.changelog}</textarea>
+      </div>
+      <div>
+        <button class="save-row-btn" id="sbtn-${i}" onclick="saveRow(${i})">
+          <i class="fas fa-save"></i> Guardar
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleVerified(i) {
+  appsData[i].verified = !appsData[i].verified;
+  const badge = document.getElementById('vbadge-' + i);
+  badge.className = 'badge-verified ' + (appsData[i].verified ? 'yes' : 'no');
+  badge.textContent = appsData[i].verified ? '✅ Sí' : '○ No';
+}
+
+function saveRow(i) {
+  appsData[i].ver       = document.getElementById('ver-' + i).value.trim();
+  appsData[i].changelog = document.getElementById('cl-' + i).value.trim();
+  appsData[i].badge     = document.getElementById('badge-' + i).value;
+  localStorage.setItem('admin_apps', JSON.stringify(appsData));
+  const btn = document.getElementById('sbtn-' + i);
+  btn.classList.add('saved'); btn.innerHTML = '<i class="fas fa-check"></i> Guardado';
+  setTimeout(() => { btn.classList.remove('saved'); btn.innerHTML = '<i class="fas fa-save"></i> Guardar'; }, 2000);
+  toast('✅ App actualizada: ' + appsData[i].name);
+  renderApps();
+}
+
+function publishAll() {
+  // Guardar estado en localStorage (el frontend de novedades lo leería)
+  localStorage.setItem('admin_apps', JSON.stringify(appsData));
+  localStorage.setItem('admin_last_pub', new Date().toISOString());
+  const now = new Date().toLocaleString('es-GT');
+  document.getElementById('last-pub').textContent = now;
+  document.getElementById('publish-status').innerHTML =
+    `<span style="color:var(--g)">✅ Publicado</span> · ${now}`;
+  toast('🚀 Cambios publicados — ' + appsData.length + ' apps actualizadas');
+}
+
+// ── SOLICITUDES ────────────────────────────────────────────
+async function loadAdminRequests() {
+  const list = document.getElementById('req-list-admin');
+  list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Cargando...</div>';
+  try {
+    const res = await fetch(`${BACKEND}/api/requests`);
+    const d   = await res.json();
+    document.getElementById('st-requests').textContent = d.requests?.length || 0;
+    if (!d.requests?.length) {
+      list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">No hay solicitudes pendientes</div>';
+      return;
+    }
+    list.innerHTML = d.requests.map(r => `
+      <div class="req-row">
+        <div class="req-name">${r.appName} <small style="font-family:var(--mono);font-size:.6rem;color:var(--muted)">${r.reason || ''}</small></div>
+        <div class="req-votes">+${r.votes} votos</div>
+        <button class="req-action req-done" onclick="markRequest('${r._id}','done')"><i class="fas fa-check"></i> Agregar</button>
+        <button class="req-action req-reject" onclick="markRequest('${r._id}','rejected')"><i class="fas fa-times"></i> Rechazar</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error conectando al backend</div>';
+  }
+}
+
+async function markRequest(id, status) {
+  try {
+    await fetch(`${BACKEND}/api/requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, adminKey: 'wilson2026ultra' })
+    });
+    toast(status === 'done' ? '✅ Marcada como agregada' : '🗑️ Solicitud rechazada');
+    loadAdminRequests();
+  } catch(e) { toast('Error actualizando'); }
+}
+
+// ── RATINGS ────────────────────────────────────────────────
+async function loadAdminRatings() {
+  const list = document.getElementById('ratings-list');
+  try {
+    const res = await fetch(`${BACKEND}/api/ratings`);
+    const d   = await res.json();
+    const ratings = d.ratings || {};
+    let total = Object.values(ratings).reduce((s, r) => s + r.count, 0);
+    document.getElementById('st-ratings').textContent = total;
+    if (!Object.keys(ratings).length) {
+      list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Aún no hay ratings</div>';
+      return;
+    }
+    list.innerHTML = Object.entries(ratings).map(([id, r]) => {
+      const app = APPS_DEFAULT.find(a => a.id === id);
+      return `<div class="req-row">
+        <div class="req-name">${app?.name || id}</div>
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--a)">⭐ ${r.avg} / 5</div>
+        <div style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">${r.count} votos</div>
+        <div></div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error conectando al backend</div>';
+  }
+}
+
+async function loadAdminStats() {
+  try {
+    const [reqRes, ratRes] = await Promise.all([
+      fetch(`${BACKEND}/api/requests`),
+      fetch(`${BACKEND}/api/ratings`)
+    ]);
+    const req = await reqRes.json();
+    const rat = await ratRes.json();
+    document.getElementById('st-requests').textContent = req.requests?.length || 0;
+    const totalVotes = Object.values(rat.ratings || {}).reduce((s, r) => s + r.count, 0);
+    document.getElementById('st-ratings').textContent = totalVotes;
+  } catch(e) {}
+}
+
+// ── TOAST ──────────────────────────────────────────────────
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
