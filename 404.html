@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Página no encontrada | CodeHub</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #05050f; --primary: #ff4500; --accent: #ffbd69;
+      --cyan: #00e5ff; --muted: rgba(240,240,250,.4);
+      --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg); color: #f0f0fa;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; overflow: hidden;
+      text-align: center; padding: 2rem;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,69,0,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,69,0,.04) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+    }
+
+    /* Orbs */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(100px); pointer-events: none;
+    }
+    .orb1 { width: 400px; height: 400px; background: rgba(255,69,0,.1); top: -100px; left: -100px; }
+    .orb2 { width: 300px; height: 300px; background: rgba(0,229,255,.07); bottom: -50px; right: -50px; }
+
+    /* Glitch 404 */
+    .error-code {
+      font-family: var(--mono);
+      font-size: clamp(6rem, 25vw, 14rem);
+      font-weight: 700; line-height: 1;
+      color: var(--primary);
+      position: relative;
+      text-shadow: 0 0 40px rgba(255,69,0,.4);
+      animation: glitch 3s infinite;
+      margin-bottom: .5rem;
+    }
+    .error-code::before, .error-code::after {
+      content: '404';
+      position: absolute; top: 0; left: 0; width: 100%;
+    }
+    .error-code::before {
+      color: var(--cyan); clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+      animation: glitch-top 3s infinite;
+    }
+    .error-code::after {
+      color: var(--accent); clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+      animation: glitch-bot 3s infinite;
+    }
+    @keyframes glitch {
+      0%,90%,100% { transform: none; }
+      92% { transform: skew(-1deg); }
+      94% { transform: skew(1deg); }
+    }
+    @keyframes glitch-top {
+      0%,90%,100% { transform: none; opacity: 0; }
+      92% { transform: translate(-3px, -2px); opacity: .7; }
+      94% { transform: translate(3px, 2px); opacity: .5; }
+    }
+    @keyframes glitch-bot {
+      0%,90%,100% { transform: none; opacity: 0; }
+      92% { transform: translate(3px, 2px); opacity: .7; }
+      94% { transform: translate(-3px, -2px); opacity: .5; }
+    }
+
+    /* Terminal block */
+    .terminal {
+      background: rgba(0,0,0,.6);
+      border: 1px solid rgba(255,69,0,.2);
+      border-radius: 14px; padding: 1.2rem 1.8rem;
+      font-family: var(--mono); font-size: .82rem;
+      text-align: left; max-width: 480px; width: 100%;
+      margin: 1.5rem auto;
+    }
+    .terminal-bar {
+      display: flex; gap: .4rem; margin-bottom: .8rem;
+    }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .t-dot:nth-child(1) { background: #ff5f57; }
+    .t-dot:nth-child(2) { background: #febc2e; }
+    .t-dot:nth-child(3) { background: #28c840; }
+    .t-line { margin-bottom: .35rem; color: var(--muted); }
+    .t-line .prompt { color: var(--primary); }
+    .t-line .cmd { color: #f0f0fa; }
+    .t-line .err { color: #ff6b6b; }
+    .t-line .ok  { color: #00e676; }
+    .t-cursor {
+      display: inline-block; width: 8px; height: 1em;
+      background: var(--accent); animation: blink .8s infinite;
+      vertical-align: text-bottom; margin-left: 2px;
+    }
+    @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+
+    /* Título y sub */
+    .error-title {
+      font-size: clamp(1.2rem, 4vw, 1.8rem);
+      font-weight: 800; margin-bottom: .6rem;
+    }
+    .error-sub {
+      font-family: var(--mono); font-size: .82rem;
+      color: var(--muted); margin-bottom: 2rem; line-height: 1.7;
+    }
+
+    /* Botones */
+    .btns { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: .5rem;
+      padding: .65rem 1.4rem; border-radius: 10px;
+      font-family: var(--font); font-size: .85rem; font-weight: 700;
+      text-decoration: none; transition: all .2s; cursor: pointer; border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #ff6b35);
+      color: #fff;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,69,0,.4); }
+    .btn-ghost {
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.12);
+      color: #f0f0fa;
+    }
+    .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* Counter */
+    .redirect-msg {
+      font-family: var(--mono); font-size: .72rem;
+      color: var(--muted); margin-top: 1.5rem;
+    }
+    .redirect-msg span { color: var(--accent); font-weight: 700; }
+
+    /* Suggested links */
+    .suggested {
+      display: flex; gap: .5rem; flex-wrap: wrap;
+      justify-content: center; margin-top: 1.8rem;
+    }
+    .sug-link {
+      padding: .3rem .8rem; border-radius: 20px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      color: var(--muted); font-size: .72rem;
+      font-family: var(--mono); text-decoration: none;
+      transition: all .18s;
+    }
+    .sug-link:hover { border-color: var(--primary); color: var(--accent); }
+
+    @media (max-width: 480px) {
+      .terminal { padding: .9rem 1rem; font-size: .74rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+
+  <div class="error-code">404</div>
+
+  <div class="error-title">Página no encontrada</div>
+  <p class="error-sub">
+    La ruta que buscas no existe o fue movida.<br>
+    Pero no te preocupes — CodeHub sigue en línea.
+  </p>
+
+  <div class="terminal">
+    <div class="terminal-bar">
+      <div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div>
+    </div>
+    <div class="t-line"><span class="prompt">wilson@codehub:~$</span> <span class="cmd">GET <span id="t-path">/???</span></span></div>
+    <div class="t-line"><span class="err">✗ 404 Not Found — ruta no registrada</span></div>
+    <div class="t-line"><span class="ok">→ Redirigiendo a inicio en <span id="t-count">8</span>s...</span></div>
+    <div class="t-line"><span class="prompt">wilson@codehub:~$</span><span class="t-cursor"></span></div>
+  </div>
+
+  <div class="btns">
+    <a href="/" class="btn btn-primary"><i class="fas fa-house"></i> Ir al inicio</a>
+    <button onclick="history.back()" class="btn btn-ghost"><i class="fas fa-arrow-left"></i> Volver atrás</button>
+  </div>
+
+  <div class="redirect-msg">Redirigiendo automáticamente en <span id="countdown">8</span> segundos</div>
+
+  <div class="suggested">
+    <a href="/tools.html" class="sug-link">🔧 Herramientas</a>
+    <a href="/novedades.html" class="sug-link">📱 Apps Android</a>
+    <a href="/codehub-ultra.html" class="sug-link">⚡ CodeHub Ultra</a>
+    <a href="/downloader.html" class="sug-link">⬇️ Descargador</a>
+  </div>
+
+  <script>
+    // Mostrar la ruta que intentaron visitar
+    document.getElementById('t-path').textContent = window.location.pathname || '/???';
+
+    // Countdown y redirect automático
+    let secs = 8;
+    const cd = document.getElementById('countdown');
+    const tc = document.getElementById('t-count');
+    const iv = setInterval(() => {
+      secs--;
+      if (cd) cd.textContent = secs;
+      if (tc) tc.textContent = secs;
+      if (secs <= 0) { clearInterval(iv); window.location.href = '/'; }
+    }, 1000);
+  </script>
+</body>
+</html>

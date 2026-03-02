@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CV — Wilson.E | Desarrollador Web Full Stack</title>
+  <meta name="description" content="Curriculum Vitae de Wilson.E, Desarrollador Web Full Stack de Guatemala. Disponible para freelance.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #05050f; --surface: #0c0c1e;
+      --primary: #ff4500; --accent: #ffbd69; --cyan: #00e5ff; --green: #00e676;
+      --text: #f0f0fa; --muted: rgba(240,240,250,.45);
+      --border: rgba(255,255,255,.08);
+      --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    body {
+      font-family: var(--font); background: var(--bg); color: var(--text);
+      min-height: 100vh; padding-bottom: 4rem;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(rgba(255,69,0,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,69,0,.025) 1px, transparent 1px);
+      background-size: 50px 50px; pointer-events: none; z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    .cv-header {
+      background: rgba(5,5,15,.95); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,69,0,.15);
+      padding: .8rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: .6rem;
+    }
+    .cv-logo { font-size: .85rem; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+    .cv-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+    .btn-dl {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1.2rem; border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), #ff6b35);
+      border: none; color: #fff; font-family: var(--font);
+      font-size: .8rem; font-weight: 700; cursor: pointer; transition: all .2s;
+    }
+    .btn-dl:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1rem; border-radius: 10px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--muted); font-family: var(--font);
+      font-size: .8rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; transition: all .2s;
+    }
+    .btn-back:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── CV PAPER ── */
+    .cv-wrap {
+      max-width: 860px; margin: 2rem auto; padding: 0 1rem;
+      position: relative; z-index: 1;
+    }
+    .cv-paper {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0,0,0,.6);
+    }
+
+    /* ── HERO SECTION ── */
+    .cv-hero {
+      background: linear-gradient(135deg, rgba(255,69,0,.12), rgba(108,58,245,.08), rgba(0,229,255,.06));
+      border-bottom: 1px solid var(--border);
+      padding: 2.5rem 2.5rem 2rem;
+      display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;
+    }
+    .cv-avatar {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #6c3af5);
+      border: 3px solid rgba(255,69,0,.4);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+      box-shadow: 0 0 32px rgba(255,69,0,.3);
+    }
+    .cv-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+    .cv-hero-info { flex: 1; min-width: 200px; }
+    .cv-name {
+      font-size: 2.2rem; font-weight: 800; line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .cv-name span { color: var(--primary); }
+    .cv-role {
+      font-family: var(--mono); font-size: .78rem; color: var(--cyan);
+      letter-spacing: .1em; margin-bottom: .8rem;
+    }
+    .cv-location {
+      font-size: .82rem; color: var(--muted); margin-bottom: 1rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .cv-contacts {
+      display: flex; flex-wrap: wrap; gap: .5rem;
+    }
+    .cv-contact-item {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .25rem .7rem; border-radius: 20px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      font-size: .72rem; font-family: var(--mono); color: var(--muted);
+      text-decoration: none; transition: all .18s;
+    }
+    .cv-contact-item:hover { border-color: var(--primary); color: var(--accent); }
+    .cv-contact-item i { color: var(--primary); font-size: .7rem; }
+
+    /* Disponibilidad badge */
+    .cv-available {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .3rem .8rem; border-radius: 20px;
+      background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.25);
+      font-size: .68rem; font-family: var(--mono); color: var(--green);
+      font-weight: 700; margin-bottom: .8rem;
+    }
+    .avail-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+    /* ── BODY DEL CV ── */
+    .cv-body { padding: 2rem 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .cv-col-left { padding-right: 1.5rem; border-right: 1px solid var(--border); }
+    .cv-col-right { padding-left: 1.5rem; }
+
+    /* Section title */
+    .cv-section { margin-bottom: 2rem; }
+    .cv-section-title {
+      font-family: var(--mono); font-size: .65rem; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--primary);
+      margin-bottom: 1rem; padding-bottom: .4rem;
+      border-bottom: 1px solid rgba(255,69,0,.2);
+      display: flex; align-items: center; gap: .4rem;
+    }
+
+    /* Sobre mí */
+    .cv-about-text { font-size: .85rem; line-height: 1.8; color: var(--muted); }
+
+    /* Experiencia */
+    .cv-exp-item { margin-bottom: 1.2rem; }
+    .cv-exp-role { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: .15rem; }
+    .cv-exp-company { font-size: .75rem; font-family: var(--mono); color: var(--accent); margin-bottom: .2rem; }
+    .cv-exp-date { font-size: .67rem; font-family: var(--mono); color: var(--muted); margin-bottom: .4rem; }
+    .cv-exp-desc { font-size: .78rem; color: var(--muted); line-height: 1.7; }
+
+    /* Skills */
+    .cv-skills-grid { display: flex; flex-direction: column; gap: .6rem; }
+    .cv-skill-row { display: flex; flex-direction: column; gap: .2rem; }
+    .cv-skill-label { font-size: .72rem; font-family: var(--mono); color: var(--text); display: flex; justify-content: space-between; }
+    .cv-skill-label span { color: var(--muted); font-size: .65rem; }
+    .cv-skill-bar { height: 4px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; }
+    .cv-skill-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+    /* Tags de tecnologías */
+    .cv-tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .cv-tag {
+      padding: .2rem .6rem; border-radius: 20px;
+      font-size: .65rem; font-family: var(--mono);
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    /* Proyectos */
+    .cv-proj-item { margin-bottom: 1rem; padding: .8rem; border-radius: 10px; background: rgba(255,255,255,.02); border: 1px solid var(--border); }
+    .cv-proj-name { font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: .2rem; }
+    .cv-proj-desc { font-size: .74rem; color: var(--muted); line-height: 1.6; margin-bottom: .4rem; }
+    .cv-proj-link { font-size: .65rem; font-family: var(--mono); color: var(--cyan); text-decoration: none; }
+    .cv-proj-link:hover { color: var(--accent); }
+
+    /* Idiomas */
+    .cv-lang-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+    .cv-lang-name { font-size: .82rem; }
+    .cv-lang-level { font-size: .65rem; font-family: var(--mono); color: var(--accent); background: rgba(255,189,105,.1); padding: .1rem .5rem; border-radius: 20px; }
+
+    /* Footer del CV */
+    .cv-footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 2.5rem;
+      font-family: var(--mono); font-size: .65rem; color: var(--muted);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .4rem;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(15,15,30,.97); border: 1px solid rgba(255,189,105,.3);
+      color: var(--text); padding: .65rem 1.4rem; border-radius: 12px;
+      font-size: .82rem; font-family: var(--mono);
+      opacity: 0; transition: all .3s; z-index: 9999; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+      .cv-body { grid-template-columns: 1fr; }
+      .cv-col-left { padding-right: 0; border-right: none; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
+      .cv-col-right { padding-left: 0; }
+      .cv-hero { padding: 1.5rem; }
+      .cv-body { padding: 1.5rem; }
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff; color: #000; }
+      .cv-header, #toast { display: none !important; }
+      .cv-paper { box-shadow: none; border: none; border-radius: 0; }
+      .cv-hero { background: #f5f5f5; }
+      .cv-wrap { max-width: 100%; margin: 0; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ── HEADER ── -->
+<div class="cv-header">
+  <div class="cv-logo">// wilson.cv · 2026</div>
+  <div class="cv-actions">
+    <a href="index.html" class="btn-back"><i class="fas fa-arrow-left"></i> Portfolio</a>
+    <button class="btn-dl" onclick="downloadCV()"><i class="fas fa-download"></i> Descargar PDF</button>
+    <button class="btn-dl" style="background:rgba(0,229,255,.15);border:1px solid rgba(0,229,255,.3);color:var(--cyan)" onclick="shareCV()"><i class="fas fa-share-nodes"></i> Compartir</button>
+  </div>
+</div>
+
+<!-- ── CV PAPER ── -->
+<div class="cv-wrap">
+  <div class="cv-paper" id="cv-content">
+
+    <!-- Hero -->
+    <div class="cv-hero">
+      <div class="cv-avatar">
+        <img src="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png" alt="Wilson.E">
+      </div>
+      <div class="cv-hero-info">
+        <div class="cv-available"><span class="avail-dot"></span> Disponible para freelance</div>
+        <div class="cv-name">Wilson<span>.E</span></div>
+        <div class="cv-role">// FULL STACK DEVELOPER · GUATEMALA 🇬🇹</div>
+        <div class="cv-location"><i class="fas fa-location-dot" style="color:var(--primary)"></i> Ciudad de Guatemala, GT · Remoto worldwide</div>
+        <div class="cv-contacts">
+          <a href="mailto:wilsonenrique686@gmail.com" class="cv-contact-item"><i class="fas fa-envelope"></i> wilsonenrique686@gmail.com</a>
+          <a href="https://wilson360-labs.vercel.app" target="_blank" class="cv-contact-item"><i class="fas fa-globe"></i> wilson360-labs.vercel.app</a>
+          <a href="https://github.com/wilson360-labs" target="_blank" class="cv-contact-item"><i class="fab fa-github"></i> wilson360-labs</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="cv-body">
+
+      <!-- Columna izquierda -->
+      <div class="cv-col-left">
+
+        <!-- Sobre mí -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-user"></i> Sobre mí</div>
+          <p class="cv-about-text">Desarrollador web autodidacta con 2+ años de experiencia construyendo portfolios, herramientas web, bots con IA y servidores con Node.js. Apasionado por crear proyectos útiles y aprender tecnologías modernas. Disponible para proyectos freelance locales e internacionales.</p>
+        </div>
+
+        <!-- Experiencia -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-briefcase"></i> Experiencia</div>
+          <div class="cv-exp-item">
+            <div class="cv-exp-role">Desarrollador Web Freelance</div>
+            <div class="cv-exp-company">Independiente · Remoto</div>
+            <div class="cv-exp-date">2024 — Presente</div>
+            <div class="cv-exp-desc">Creación de sitios web modernos y aplicaciones interactivas para clientes locales e internacionales. Portfolio con 27 herramientas integradas, chatbot con IA y sistema de apps Android.</div>
+          </div>
+          <div class="cv-exp-item">
+            <div class="cv-exp-role">Aprendizaje Intensivo</div>
+            <div class="cv-exp-company">Autodidacta · Full Stack</div>
+            <div class="cv-exp-date">2023 — 2024</div>
+            <div class="cv-exp-desc">Estudios profundos en desarrollo web full stack: HTML, CSS, JavaScript, Python, Node.js, MongoDB, APIs REST e integración con servicios de IA.</div>
+          </div>
+          <div class="cv-exp-item">
+            <div class="cv-exp-role">Inicio en Programación</div>
+            <div class="cv-exp-company">Proyectos personales</div>
+            <div class="cv-exp-date">2022 — 2023</div>
+            <div class="cv-exp-desc">Primeros proyectos web, scripts Python y exploración de tecnologías modernas. Base sólida en lógica de programación y resolución de problemas.</div>
+          </div>
+        </div>
+
+        <!-- Idiomas -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-language"></i> Idiomas</div>
+          <div class="cv-lang-item"><span class="cv-lang-name">Español</span><span class="cv-lang-level">Nativo</span></div>
+          <div class="cv-lang-item"><span class="cv-lang-name">Inglés</span><span class="cv-lang-level">Intermedio</span></div>
+        </div>
+
+      </div>
+
+      <!-- Columna derecha -->
+      <div class="cv-col-right">
+
+        <!-- Skills -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-code"></i> Habilidades técnicas</div>
+          <div class="cv-skills-grid" id="skills-grid">
+            <!-- Generado por JS -->
+          </div>
+        </div>
+
+        <!-- Tecnologías -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-layer-group"></i> Stack tecnológico</div>
+          <div class="cv-tags">
+            <span class="cv-tag">HTML5</span><span class="cv-tag">CSS3</span>
+            <span class="cv-tag">JavaScript ES2025</span><span class="cv-tag">Python</span>
+            <span class="cv-tag">Node.js</span><span class="cv-tag">Express.js</span>
+            <span class="cv-tag">MongoDB</span><span class="cv-tag">REST APIs</span>
+            <span class="cv-tag">Groq AI</span><span class="cv-tag">Gemini AI</span>
+            <span class="cv-tag">Git</span><span class="cv-tag">Railway</span>
+            <span class="cv-tag">Vercel</span><span class="cv-tag">PWA</span>
+          </div>
+        </div>
+
+        <!-- Proyectos destacados -->
+        <div class="cv-section">
+          <div class="cv-section-title"><i class="fas fa-rocket"></i> Proyectos destacados</div>
+          <div class="cv-proj-item">
+            <div class="cv-proj-name">CodeHub Portfolio</div>
+            <div class="cv-proj-desc">Portfolio interactivo con 27 herramientas, chatbot IA (Groq + Gemini), splash screen animado, sistema de apps Android con rating MongoDB.</div>
+            <a href="https://wilson360-labs.vercel.app" target="_blank" class="cv-proj-link"><i class="fas fa-arrow-up-right-from-square"></i> wilson360-labs.vercel.app</a>
+          </div>
+          <div class="cv-proj-item">
+            <div class="cv-proj-name">CodeHub Ultra</div>
+            <div class="cv-proj-desc">Proyecto 2026 — Ecosistema con MiniStore, DevCard compartible, DropZone y HubStore con sistema de puntos de fidelidad.</div>
+            <a href="https://wilson360-labs.vercel.app/codehub-ultra.html" target="_blank" class="cv-proj-link"><i class="fas fa-arrow-up-right-from-square"></i> Ver proyecto</a>
+          </div>
+          <div class="cv-proj-item">
+            <div class="cv-proj-name">Multi-Platform Downloader</div>
+            <div class="cv-proj-desc">Descargador de videos para YouTube, TikTok, Instagram y otras plataformas con backend Node.js en Railway.</div>
+            <a href="https://wilson360-labs.vercel.app/downloader.html" target="_blank" class="cv-proj-link"><i class="fas fa-arrow-up-right-from-square"></i> Ver proyecto</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer del CV -->
+    <div class="cv-footer">
+      <span>Wilson.E · Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
+      <span id="cv-date"></span>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// ── FECHA ACTUAL ──────────────────────────────────────────
+document.getElementById('cv-date').textContent =
+  'Actualizado: ' + new Date().toLocaleDateString('es-GT', { year:'numeric', month:'long', day:'numeric' });
+
+// ── SKILLS BARS ──────────────────────────────────────────
+const skills = [
+  { name: 'HTML / CSS',        pct: 90, color: '#ff4500' },
+  { name: 'JavaScript',        pct: 78, color: '#ffbd69' },
+  { name: 'Node.js / Express', pct: 72, color: '#00e676' },
+  { name: 'Python',            pct: 65, color: '#00e5ff' },
+  { name: 'MongoDB',           pct: 68, color: '#a855f7' },
+  { name: 'Git / Deploy',      pct: 75, color: '#ff6b35' },
+];
+const grid = document.getElementById('skills-grid');
+grid.innerHTML = skills.map(s => `
+  <div class="cv-skill-row">
+    <div class="cv-skill-label">${s.name} <span>${s.pct}%</span></div>
+    <div class="cv-skill-bar">
+      <div class="cv-skill-fill" data-pct="${s.pct}" style="width:0%;background:${s.color}"></div>
+    </div>
+  </div>`).join('');
+
+// Animar barras al cargar
+setTimeout(() => {
+  document.querySelectorAll('.cv-skill-fill').forEach(el => {
+    el.style.width = el.dataset.pct + '%';
+  });
+}, 300);
+
+// ── TOAST ──────────────────────────────────────────────────
+function toast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── DESCARGAR PDF ──────────────────────────────────────────
+async function downloadCV() {
+  const btn = document.querySelector('.btn-dl');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando PDF...';
+  btn.disabled = true;
+  try {
+    const { jsPDF } = window.jspdf;
+    const el = document.getElementById('cv-content');
+    const canvas = await html2canvas(el, {
+      scale: 2, useCORS: true, allowTaint: true,
+      backgroundColor: '#0c0c1e', logging: false
+    });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const w = pdf.internal.pageSize.getWidth();
+    const h = (canvas.height * w) / canvas.width;
+    // Si el CV es más largo que una página A4, dividir
+    const pageH = pdf.internal.pageSize.getHeight();
+    let y = 0;
+    while (y < h) {
+      if (y > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, -y, w, h);
+      y += pageH;
+    }
+    pdf.save('Wilson-E_CV_2026.pdf');
+    toast('✅ CV descargado como PDF');
+  } catch(e) {
+    console.error(e);
+    toast('❌ Error generando PDF — intenta con Ctrl+P');
+  }
+  btn.innerHTML = '<i class="fas fa-download"></i> Descargar PDF';
+  btn.disabled = false;
+}
+
+// ── COMPARTIR ──────────────────────────────────────────────
+function shareCV() {
+  const url = window.location.href;
+  if (navigator.share) {
+    navigator.share({ title: 'CV — Wilson.E', text: 'Desarrollador Web Full Stack de Guatemala', url })
+      .catch(() => copyUrl(url));
+  } else {
+    copyUrl(url);
+  }
+}
+function copyUrl(url) {
+  navigator.clipboard.writeText(url)
+    .then(() => toast('🔗 Link copiado al portapapeles'))
+    .catch(() => toast('Copia: ' + url));
+}
+</script>
+</body>
+</html>

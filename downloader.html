@@ -4,177 +4,371 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Video Downloader — CodeHub by Wilson.E</title>
-<meta name="description" content="Descarga videos de YouTube, TikTok, Instagram, Facebook y Twitter/X gratis. Tecnología propia CodeHub.">
+<meta name="description" content="Descarga videos de YouTube, TikTok, Instagram, Facebook y Twitter/X gratis y sin instalar nada.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
 <style>
+/* ═══════════════════════════════════════════════
+   CODEHUB VIDEO DOWNLOADER
+   Design: dark cyber · naranja CodeHub
+   ═══════════════════════════════════════════════ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#07070f;--card:#11111e;--card2:#151524;
+  --bg:#07070f;--s1:#0d0d1a;--s2:#11111e;--card:#13131f;
   --p:#ff4500;--p2:#ff6b35;--a:#ffbd69;
-  --green:#00e676;--blue:#40c4ff;--red:#ff4757;--purple:#b464ff;
+  --green:#00e676;--blue:#40c4ff;--red:#ff4757;
   --text:#e8e8f0;--muted:rgba(232,232,240,.45);
-  --border:rgba(255,69,0,.16);--bh:rgba(255,69,0,.45);
-  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
-  --r:14px;--tr:all .22s cubic-bezier(.4,0,.2,1)
+  --border:rgba(255,69,0,.16);--border-h:rgba(255,69,0,.45);
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace
 }
+
 html{scroll-behavior:smooth}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-body::before{
-  content:'';position:fixed;inset:0;
-  background-image:linear-gradient(rgba(255,69,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,.03) 1px,transparent 1px);
-  background-size:52px 52px;pointer-events:none;z-index:0
-}
-
-/* PROGRESS */
-#pbar{position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,var(--p),var(--a));z-index:9999;transition:width .1s linear}
-
-/* HEADER */
-header{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.94);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
-.hdr{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 2rem;gap:1rem}
-.logo-link{text-decoration:none;display:flex;align-items:center;gap:.5rem}
-.logo-t{font-size:1.05rem;font-weight:800;letter-spacing:.04em}
-.logo-t .br{color:var(--p);text-shadow:0 0 10px rgba(255,69,0,.4)}
-.logo-b{font-size:.6rem;font-weight:700;font-family:var(--mono);color:var(--a);background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.22);padding:2px 8px;border-radius:20px}
-.hdr-links{display:flex;gap:.5rem}
-.hlink{display:flex;align-items:center;gap:.4rem;text-decoration:none;font-size:.78rem;font-weight:600;padding:.36rem .9rem;border-radius:9px;border:1px solid rgba(255,255,255,.08);color:var(--muted);transition:var(--tr)}
-.hlink:hover{color:var(--text);border-color:var(--bh);background:rgba(255,69,0,.07)}
-.hlink.primary{color:var(--p);border-color:rgba(255,69,0,.3);background:rgba(255,69,0,.08)}
-
-/* HERO */
-.hero{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:4rem 2rem 2.5rem;text-align:center}
-.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.7rem;color:var(--a);background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);padding:.28rem .9rem;border-radius:20px;margin-bottom:1.2rem}
-.hdot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:hdot 2.5s ease-in-out infinite}
-@keyframes hdot{0%,100%{opacity:1}50%{opacity:.25}}
-.hero h1{font-size:clamp(2rem,5vw,3.4rem);font-weight:800;line-height:1.08;letter-spacing:-.03em;margin-bottom:.85rem}
-.hero h1 em{font-style:normal;background:linear-gradient(135deg,#fff 0%,var(--a) 40%,var(--p) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-sub{font-size:.93rem;color:var(--muted);line-height:1.8;max-width:540px;margin:0 auto 2rem}
-
-/* PLATAFORMAS CHIPS */
-.plat-chips{display:flex;justify-content:center;flex-wrap:wrap;gap:.45rem;margin-bottom:2.5rem}
-.plat-chip{display:flex;align-items:center;gap:.4rem;padding:.3rem .8rem;border-radius:20px;font-size:.74rem;font-weight:700;font-family:var(--mono);border:1px solid;transition:var(--tr)}
-.pc-yt {color:#ff0000;border-color:rgba(255,0,0,.25);background:rgba(255,0,0,.08)}
-.pc-tt {color:var(--blue);border-color:rgba(64,196,255,.25);background:rgba(64,196,255,.08)}
-.pc-ig {color:#e1306c;border-color:rgba(225,48,108,.25);background:rgba(225,48,108,.08)}
-.pc-fb {color:#1877f2;border-color:rgba(24,119,242,.25);background:rgba(24,119,242,.08)}
-.pc-tw {color:var(--text);border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.05)}
-
-/* FORM CARD */
-.form-wrap{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 2rem 2rem}
-.form-card{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:2rem;box-shadow:0 24px 70px rgba(0,0,0,.55)}
-
-.flabel{display:block;font-size:.7rem;font-weight:700;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.65rem}
-
-.url-row{display:flex;gap:.6rem}
-.url-input{
-  flex:1;padding:.75rem 1.1rem;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-  border-radius:12px;color:var(--text);font-family:var(--mono);font-size:.85rem;outline:none;transition:var(--tr)
-}
-.url-input:focus{border-color:var(--bh);box-shadow:0 0 0 3px rgba(255,69,0,.1);background:rgba(255,69,0,.04)}
-.url-input::placeholder{color:rgba(232,232,240,.2)}
-
-.go-btn{
-  padding:.75rem 1.5rem;background:linear-gradient(135deg,var(--p),var(--p2));
-  border:none;border-radius:12px;color:#fff;font-family:var(--font);font-size:.88rem;font-weight:800;
-  cursor:pointer;display:flex;align-items:center;gap:.45rem;
-  transition:var(--tr);white-space:nowrap;box-shadow:0 4px 18px rgba(255,69,0,.3)
-}
-.go-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,69,0,.45)}
-.go-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-
-/* DETECTED PLATFORM */
-.detected{display:none;align-items:center;gap:.8rem;padding:.7rem 1.1rem;border-radius:12px;margin-top:1rem;font-size:.82rem;animation:fadeUp .3s ease}
-.detected.show{display:flex}
-.detected.ok{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2)}
-.detected.bad{background:rgba(255,71,87,.06);border:1px solid rgba(255,71,87,.2)}
-.detected .di{font-size:1.4rem}
-.detected strong{color:#fff}
-.detected .dok{margin-left:auto;font-family:var(--mono);font-size:.67rem;color:var(--green)}
-
-/* RESULT AREA */
-#result-area{margin-top:1.5rem}
-
-/* LOADING */
-.loading-state{text-align:center;padding:2rem 1rem}
-.spin-ring{width:48px;height:48px;border:3px solid rgba(255,69,0,.15);border-top-color:var(--p);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto .8rem}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-state p{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
-
-/* DOWNLOAD OPTIONS GRID */
-.dl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:.75rem}
-.dl-opt{
-  display:flex;flex-direction:column;gap:.3rem;
-  padding:1rem 1.1rem;background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.09);border-radius:14px;
-  cursor:pointer;transition:var(--tr);text-decoration:none;
+body{
+  font-family:var(--font);
+  background:var(--bg);
   color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
 }
-.dl-opt:hover{border-color:var(--bh);background:rgba(255,69,0,.09);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.45)}
-.dl-opt.featured{border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.05)}
-.dl-opt.featured:hover{border-color:rgba(0,230,118,.6);background:rgba(0,230,118,.1)}
-.opt-top{display:flex;align-items:center;gap:.5rem}
-.opt-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
-.opt-label{font-size:.88rem;font-weight:700}
-.opt-sub{font-size:.71rem;font-family:var(--mono);color:var(--muted);line-height:1.5}
-.opt-badge{display:inline-flex;align-items:center;gap:.3rem;font-family:var(--mono);font-size:.63rem;color:var(--green);background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.2);padding:2px 7px;border-radius:10px;margin-top:.2rem;width:fit-content}
 
-/* TÉCNICA FALLBACK */
-.fallback-notice{display:none;margin-top:1.2rem;padding:.9rem 1.1rem;background:rgba(255,189,105,.05);border:1px solid rgba(255,189,105,.15);border-radius:12px;font-size:.8rem;color:var(--muted);line-height:1.7}
-.fallback-notice.show{display:block}
-.fallback-notice a{color:var(--a);text-decoration:none}
-.fallback-notice a:hover{text-decoration:underline}
+/* Grid de fondo */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,69,0,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,69,0,.03) 1px, transparent 1px);
+  background-size:52px 52px;
+  pointer-events:none;z-index:0;
+}
 
-/* ERROR */
-.error-state{padding:1.2rem;background:rgba(255,71,87,.06);border:1px solid rgba(255,71,87,.2);border-radius:12px;font-size:.82rem;color:#ff6b6b;display:flex;align-items:flex-start;gap:.7rem}
-.error-state i{margin-top:.1rem;flex-shrink:0}
+/* ── SCROLL PROGRESS ─── */
+#pbar{
+  position:fixed;top:0;left:0;height:2px;width:0%;
+  background:linear-gradient(90deg,var(--p),var(--a));
+  z-index:9999;transition:width .1s linear;
+}
 
-/* SECCIÓN CÓMO */
-.how{position:relative;z-index:1;max-width:1100px;margin:2rem auto 0;padding:0 2rem 3rem}
-.eyebrow{font-family:var(--mono);font-size:.72rem;color:var(--a);opacity:.65;margin-bottom:.4rem}
-.section-title{font-size:1.65rem;font-weight:800;margin-bottom:1.8rem}
-.how-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem}
-.how-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.4rem;transition:var(--tr);animation:fadeUp .5s ease both}
-.how-card:nth-child(2){animation-delay:.07s}.how-card:nth-child(3){animation-delay:.14s}.how-card:nth-child(4){animation-delay:.21s}
-.how-card:hover{border-color:var(--bh);transform:translateY(-3px)}
-.how-num{font-family:var(--mono);font-size:2.2rem;font-weight:800;color:var(--p);opacity:.22;line-height:1;margin-bottom:.6rem}
+/* ── HEADER ─────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,7,15,.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.hdr{
+  max-width:1100px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  height:56px;padding:0 2rem;gap:1rem;
+}
+.logo-link{text-decoration:none;display:flex;align-items:center;gap:.5rem}
+.logo-t{font-size:1.05rem;font-weight:800;letter-spacing:.04em;color:var(--text)}
+.logo-t .br{color:var(--p);text-shadow:0 0 10px rgba(255,69,0,.4)}
+.logo-b{
+  font-size:.6rem;font-weight:700;font-family:var(--mono);
+  color:var(--a);background:rgba(255,69,0,.1);
+  border:1px solid rgba(255,69,0,.22);
+  padding:2px 8px;border-radius:20px;
+}
+.hdr-right{display:flex;align-items:center;gap:.6rem}
+.back-link{
+  display:flex;align-items:center;gap:.4rem;
+  text-decoration:none;font-size:.78rem;font-weight:600;
+  color:var(--muted);padding:.36rem .8rem;
+  border-radius:8px;border:1px solid rgba(255,255,255,.08);
+  transition:all .2s;
+}
+.back-link:hover{color:var(--text);border-color:var(--border-h);background:rgba(255,69,0,.06)}
+.tools-link{
+  display:flex;align-items:center;gap:.4rem;
+  text-decoration:none;font-size:.78rem;font-weight:600;
+  color:var(--p);padding:.36rem .8rem;
+  border-radius:8px;border:1px solid rgba(255,69,0,.25);
+  background:rgba(255,69,0,.08);transition:all .2s;
+}
+.tools-link:hover{background:rgba(255,69,0,.16)}
+
+/* ── HERO ────────────────────────────────────────── */
+.hero{
+  position:relative;z-index:1;
+  max-width:1100px;margin:0 auto;
+  padding:3.5rem 2rem 2rem;
+  text-align:center;
+}
+.hero-tag{
+  display:inline-flex;align-items:center;gap:.5rem;
+  font-family:var(--mono);font-size:.7rem;
+  color:var(--a);background:rgba(255,189,105,.08);
+  border:1px solid rgba(255,189,105,.2);
+  padding:.28rem .9rem;border-radius:20px;margin-bottom:1.1rem;
+}
+.hero-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  animation:hdot 2.5s ease-in-out infinite;
+}
+@keyframes hdot{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{
+  font-size:clamp(2rem,5vw,3.2rem);
+  font-weight:800;line-height:1.08;
+  letter-spacing:-.03em;margin-bottom:.8rem;
+}
+.hero h1 span{
+  background:linear-gradient(135deg,#fff 0%,var(--a) 45%,var(--p) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{
+  font-size:.92rem;color:var(--muted);
+  line-height:1.75;max-width:520px;margin:0 auto 2rem;
+}
+
+/* ── PLATAFORMAS CHIPS ───────────────────────────── */
+.platforms{
+  display:flex;justify-content:center;
+  flex-wrap:wrap;gap:.5rem;margin-bottom:2.5rem;
+}
+.plat-chip{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.32rem .85rem;border-radius:20px;
+  font-size:.74rem;font-weight:700;font-family:var(--mono);
+  border:1px solid;cursor:default;
+  transition:all .2s;
+}
+.plat-yt  {color:#ff0000;border-color:rgba(255,0,0,.25);background:rgba(255,0,0,.08)}
+.plat-tt  {color:#40c4ff;border-color:rgba(64,196,255,.25);background:rgba(64,196,255,.08)}
+.plat-ig  {color:#e1306c;border-color:rgba(225,48,108,.25);background:rgba(225,48,108,.08)}
+.plat-fb  {color:#1877f2;border-color:rgba(24,119,242,.25);background:rgba(24,119,242,.08)}
+.plat-tw  {color:#fff;border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.06)}
+
+/* ── FORM PRINCIPAL ──────────────────────────────── */
+.downloader-card{
+  position:relative;z-index:1;
+  max-width:780px;margin:0 auto;padding:0 2rem 2rem;
+}
+.url-form{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:2rem;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+.url-form-label{
+  font-size:.72rem;font-weight:700;
+  font-family:var(--mono);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:.6rem;display:block;
+}
+.url-row{
+  display:flex;gap:.6rem;margin-bottom:1rem;
+}
+.url-input{
+  flex:1;
+  padding:.7rem 1rem;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:.85rem;
+  outline:none;
+  transition:border-color .2s;
+}
+.url-input:focus{border-color:var(--border-h);box-shadow:0 0 0 3px rgba(255,69,0,.1)}
+.url-input::placeholder{color:rgba(232,232,240,.25)}
+.detect-btn{
+  padding:.7rem 1.3rem;
+  background:linear-gradient(135deg,var(--p),var(--p2));
+  border:none;border-radius:12px;
+  color:#fff;font-family:var(--font);
+  font-size:.85rem;font-weight:700;
+  cursor:pointer;
+  display:flex;align-items:center;gap:.4rem;
+  transition:all .2s;white-space:nowrap;
+  box-shadow:0 4px 16px rgba(255,69,0,.28);
+}
+.detect-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,69,0,.42)}
+.detect-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* Detector de plataforma */
+.plat-detected{
+  display:none;align-items:center;gap:.7rem;
+  padding:.65rem 1rem;
+  background:rgba(0,230,118,.06);
+  border:1px solid rgba(0,230,118,.2);
+  border-radius:10px;margin-bottom:1rem;
+  font-size:.82rem;color:rgba(232,232,240,.75);
+  animation:fadeUp .3s ease;
+}
+.plat-detected.show{display:flex}
+.plat-detected .plat-icon{font-size:1.3rem}
+.plat-detected strong{color:#fff}
+.plat-detected .plat-ok{
+  margin-left:auto;font-family:var(--mono);
+  font-size:.68rem;color:var(--green);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── OPCIONES DE DESCARGA ─────────────────────────── */
+.dl-options{
+  display:none;
+  grid-template-columns:1fr 1fr;
+  gap:.7rem;
+  margin-top:1.2rem;
+}
+.dl-options.show{display:grid}
+@media(max-width:520px){.dl-options{grid-template-columns:1fr}}
+
+.dl-opt-btn{
+  display:flex;flex-direction:column;align-items:flex-start;
+  padding:1rem 1.1rem;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:13px;
+  color:var(--text);
+  font-family:var(--font);
+  cursor:pointer;
+  transition:all .22s;
+  text-decoration:none;
+  gap:.25rem;
+}
+.dl-opt-btn:hover{
+  border-color:var(--border-h);
+  background:rgba(255,69,0,.08);
+  transform:translateY(-3px);
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+.dl-opt-btn .opt-label{
+  font-size:.88rem;font-weight:700;
+  display:flex;align-items:center;gap:.5rem;
+}
+.dl-opt-btn .opt-label i{color:var(--p)}
+.dl-opt-btn .opt-sub{
+  font-size:.72rem;font-family:var(--mono);
+  color:var(--muted);
+}
+
+/* ── CÓMO FUNCIONA ──────────────────────────────── */
+.how-section{
+  position:relative;z-index:1;
+  max-width:1100px;margin:2.5rem auto 0;
+  padding:0 2rem 3rem;
+}
+.section-eyebrow{
+  font-family:var(--mono);font-size:.72rem;
+  color:var(--a);opacity:.65;margin-bottom:.4rem;
+}
+.how-section h2{
+  font-size:1.6rem;font-weight:800;margin-bottom:1.8rem;
+}
+.how-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:1rem;
+}
+.how-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;padding:1.4rem;
+  transition:all .22s;
+  animation:fadeUp .5s ease both;
+}
+.how-card:nth-child(2){animation-delay:.07s}
+.how-card:nth-child(3){animation-delay:.14s}
+.how-card:nth-child(4){animation-delay:.21s}
+.how-card:hover{border-color:var(--border-h);transform:translateY(-3px)}
+.how-num{
+  font-family:var(--mono);font-size:2rem;
+  font-weight:800;color:var(--p);
+  opacity:.25;line-height:1;margin-bottom:.6rem;
+}
 .how-title{font-size:.92rem;font-weight:700;margin-bottom:.35rem}
 .how-desc{font-size:.78rem;color:var(--muted);line-height:1.65}
-@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
-/* PLATAFORMAS DETALLE */
-.plats{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 2rem 3rem}
-.plats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.75rem}
-.plat-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;transition:var(--tr)}
-.plat-card:hover{transform:translateY(-3px);border-color:var(--bh)}
-.pc-icon-big{font-size:1.8rem}
-.pc-name-big{font-size:.88rem;font-weight:700}
-.pc-feats{display:flex;flex-direction:column;gap:.2rem;font-size:.7rem;font-family:var(--mono);color:var(--muted);margin-top:.1rem}
-.pc-feats span::before{content:'✓ ';color:var(--green)}
+/* ── PLATAFORMAS DETALLE ─────────────────────────── */
+.plats-section{
+  position:relative;z-index:1;
+  max-width:1100px;margin:0 auto;
+  padding:0 2rem 3rem;
+}
+.plats-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:.75rem;
+}
+.plat-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:1.2rem;
+  display:flex;flex-direction:column;
+  align-items:flex-start;gap:.5rem;
+  transition:all .2s;
+}
+.plat-card:hover{transform:translateY(-3px);border-color:var(--border-h)}
+.plat-card .pc-icon{font-size:1.8rem}
+.plat-card .pc-name{font-size:.88rem;font-weight:700}
+.plat-card .pc-features{
+  display:flex;flex-direction:column;gap:.25rem;
+  font-size:.7rem;font-family:var(--mono);color:var(--muted);
+  margin-top:.1rem;
+}
+.plat-card .pc-features span::before{content:'✓ ';color:var(--green)}
 
-/* NOTICE */
-.notice{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 2rem 3.5rem}
-.notice-inner{background:rgba(255,189,105,.05);border:1px solid rgba(255,189,105,.18);border-radius:14px;padding:.9rem 1.2rem;display:flex;align-items:flex-start;gap:.9rem;font-size:.8rem;color:rgba(232,232,240,.5);line-height:1.75}
+/* ── AVISO ─────────────────────────────────────── */
+.notice{
+  position:relative;z-index:1;
+  max-width:780px;margin:0 auto;
+  padding:0 2rem 3rem;
+}
+.notice-inner{
+  background:rgba(255,189,105,.05);
+  border:1px solid rgba(255,189,105,.18);
+  border-radius:14px;
+  padding:.9rem 1.2rem;
+  display:flex;align-items:flex-start;gap:.9rem;
+  font-size:.8rem;color:rgba(232,232,240,.55);
+  line-height:1.7;
+}
 .notice-inner i{color:var(--a);margin-top:2px;flex-shrink:0}
 
-/* FOOTER */
-footer{text-align:center;padding:1.8rem 2rem;border-top:1px solid var(--border);color:var(--muted);font-size:.75rem;font-family:var(--mono);position:relative;z-index:1}
+/* ── FOOTER ─────────────────────────────────────── */
+footer{
+  text-align:center;
+  padding:1.8rem 2rem;
+  border-top:1px solid var(--border);
+  color:var(--muted);font-size:.75rem;
+  font-family:var(--mono);
+  position:relative;z-index:1;
+}
 footer a{color:var(--p);text-decoration:none}
 
-/* TOAST */
-#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(16px);background:rgba(18,18,28,.97);border:1px solid var(--bh);border-radius:11px;padding:.65rem 1.3rem;font-size:.82rem;color:var(--a);font-family:var(--mono);pointer-events:none;opacity:0;transition:all .28s ease;z-index:9999;backdrop-filter:blur(12px)}
+/* ── TOAST ───────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:2rem;left:50%;
+  transform:translateX(-50%) translateY(16px);
+  background:rgba(18,18,28,.97);
+  border:1px solid var(--border-h);
+  border-radius:11px;padding:.65rem 1.3rem;
+  font-size:.82rem;color:var(--a);
+  font-family:var(--mono);
+  pointer-events:none;opacity:0;
+  transition:all .28s ease;z-index:9999;
+  backdrop-filter:blur(12px);
+}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media(max-width:620px){
-  .hero,.form-wrap,.how,.plats,.notice{padding-left:1rem;padding-right:1rem}
-  .hdr{padding:0 1rem}.url-row{flex-direction:column}
-  .hero{padding-top:2.5rem}
+@media(max-width:600px){
+  .hero{padding:2.5rem 1rem 1.5rem}
+  .downloader-card,.how-section,.plats-section,.notice{padding-left:1rem;padding-right:1rem}
+  .url-row{flex-direction:column}
+  .hdr{padding:0 1rem}
 }
 </style>
 </head>
 <body>
+
 <div id="pbar"></div>
 <div id="toast"></div>
 
@@ -185,143 +379,57 @@ footer a{color:var(--p);text-decoration:none}
       <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
       <span class="logo-b">CodeHub</span>
     </a>
-    <div class="hdr-links">
-      <a class="hlink" href="tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
-      <a class="hlink" href="novedades.html"><i class="fas fa-star"></i> Apps</a>
-      <a class="hlink" href="index.html"><i class="fas fa-arrow-left"></i> Inicio</a>
+    <div class="hdr-right">
+      <a class="tools-link" href="tools.html"><i class="fas fa-screwdriver-wrench"></i> Tools</a>
+      <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Inicio</a>
     </div>
   </div>
 </header>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-tag"><span class="hdot"></span> Motor propio · Sin redirecciones · Gratis</div>
-  <h1>Descarga videos de<br><em>cualquier plataforma</em></h1>
-  <p class="hero-sub">Pega el enlace, CodeHub detecta la plataforma y extrae el enlace de descarga directo. Sin intermediarios innecesarios.</p>
+  <div class="hero-tag"><span class="hero-dot"></span> Gratis · Sin registro · Sin instalación</div>
+  <h1>Descarga videos de<br><span>cualquier plataforma</span></h1>
+  <p class="hero-sub">Pega el enlace del video, detectamos la plataforma automáticamente y te mandamos al mejor servicio de descarga disponible.</p>
 
-  <div class="plat-chips">
-    <span class="plat-chip pc-yt"><i class="fab fa-youtube"></i> YouTube</span>
-    <span class="plat-chip pc-tt"><i class="fab fa-tiktok"></i> TikTok</span>
-    <span class="plat-chip pc-ig"><i class="fab fa-instagram"></i> Instagram</span>
-    <span class="plat-chip pc-fb"><i class="fab fa-facebook"></i> Facebook</span>
-    <span class="plat-chip pc-tw"><i class="fab fa-x-twitter"></i> Twitter/X</span>
+  <div class="platforms">
+    <span class="plat-chip plat-yt"><i class="fab fa-youtube"></i> YouTube</span>
+    <span class="plat-chip plat-tt"><i class="fab fa-tiktok"></i> TikTok</span>
+    <span class="plat-chip plat-ig"><i class="fab fa-instagram"></i> Instagram</span>
+    <span class="plat-chip plat-fb"><i class="fab fa-facebook"></i> Facebook</span>
+    <span class="plat-chip plat-tw"><i class="fab fa-x-twitter"></i> Twitter/X</span>
   </div>
 </section>
 
-<!-- FORM -->
-<div class="form-wrap">
-  <div class="form-card">
-    <label class="flabel" for="url-input">// pega el enlace del video</label>
+<!-- FORM PRINCIPAL -->
+<div class="downloader-card">
+  <div class="url-form">
+    <label class="url-form-label" for="url-input">// pega el enlace del video</label>
 
     <div class="url-row">
-      <input class="url-input" id="url-input" type="url"
+      <input
+        class="url-input"
+        id="url-input"
+        type="url"
         placeholder="https://www.youtube.com/watch?v=..."
-        oninput="onUrlInput(this.value)"
-        onpaste="setTimeout(()=>onUrlInput(document.getElementById('url-input').value),60)">
-      <button class="go-btn" id="go-btn" onclick="startDownload()">
+        oninput="detectPlatform(this.value)"
+        onpaste="setTimeout(()=>detectPlatform(document.getElementById('url-input').value),50)"
+      >
+      <button class="detect-btn" id="detect-btn" onclick="goDownload()">
         <i class="fas fa-download"></i> Descargar
       </button>
     </div>
 
     <!-- Plataforma detectada -->
-    <div class="detected" id="detected">
-      <span class="di" id="det-icon">🔗</span>
-      <span>Detectado: <strong id="det-name">—</strong></span>
-      <span class="dok" id="det-status">✓ Compatible</span>
+    <div class="plat-detected" id="plat-info">
+      <span class="plat-icon" id="plat-icon">🔗</span>
+      <span>Plataforma detectada: <strong id="plat-name">—</strong></span>
+      <span class="plat-ok">✓ Compatible</span>
     </div>
 
-    <!-- Área de resultado -->
-    <div id="result-area"></div>
+    <!-- Opciones de descarga (se muestran tras detectar) -->
+    <div class="dl-options" id="dl-options"></div>
 
-    <!-- Fallback -->
-    <div class="fallback-notice" id="fallback">
-      <strong>¿No funciona?</strong> Prueba estos servicios alternativos directamente:<br>
-      <a id="fb-link1" href="#" target="_blank" rel="noopener"></a> · 
-      <a id="fb-link2" href="#" target="_blank" rel="noopener"></a> · 
-      <a id="fb-link3" href="#" target="_blank" rel="noopener"></a>
-    </div>
-  </div>
-</div>
-
-<!-- CÓMO FUNCIONA -->
-<div class="how">
-  <div class="eyebrow">// guía rápida</div>
-  <div class="section-title">¿Cómo funciona?</div>
-  <div class="how-grid">
-    <div class="how-card">
-      <div class="how-num">01</div>
-      <div class="how-title">Copia el enlace</div>
-      <div class="how-desc">Ve al video y copia la URL de la barra del navegador o usa el botón "Compartir → Copiar enlace".</div>
-    </div>
-    <div class="how-card">
-      <div class="how-num">02</div>
-      <div class="how-title">Detección automática</div>
-      <div class="how-desc">CodeHub detecta instantáneamente la plataforma: YouTube, TikTok, Instagram, Facebook o Twitter/X.</div>
-    </div>
-    <div class="how-card">
-      <div class="how-num">03</div>
-      <div class="how-title">Elige la calidad</div>
-      <div class="how-desc">Selecciona entre video 4K/1080p/720p, solo audio MP3, o la calidad original de la plataforma.</div>
-    </div>
-    <div class="how-card">
-      <div class="how-num">04</div>
-      <div class="how-title">Descarga directa</div>
-      <div class="how-desc">Obtén el enlace de descarga inmediato. Sin registros, sin instalaciones, sin esperas.</div>
-    </div>
-  </div>
-</div>
-
-<!-- PLATAFORMAS -->
-<div class="plats">
-  <div class="eyebrow">// plataformas soportadas</div>
-  <div class="section-title">Qué puedes descargar</div>
-  <div class="plats-grid">
-    <div class="plat-card">
-      <div class="pc-icon-big">🎬</div>
-      <div class="pc-name-big">YouTube</div>
-      <div class="pc-feats">
-        <span>Video MP4 hasta 4K</span>
-        <span>Solo audio MP3</span>
-        <span>Shorts y Lives</span>
-        <span>Sin marca de agua</span>
-      </div>
-    </div>
-    <div class="plat-card">
-      <div class="pc-icon-big">🎵</div>
-      <div class="pc-name-big">TikTok</div>
-      <div class="pc-feats">
-        <span>Video sin marca de agua</span>
-        <span>Solo audio</span>
-        <span>Calidad original HD</span>
-      </div>
-    </div>
-    <div class="plat-card">
-      <div class="pc-icon-big">📸</div>
-      <div class="pc-name-big">Instagram</div>
-      <div class="pc-feats">
-        <span>Reels y Stories</span>
-        <span>Fotos de posts</span>
-        <span>Videos de IGTV</span>
-      </div>
-    </div>
-    <div class="plat-card">
-      <div class="pc-icon-big">👥</div>
-      <div class="pc-name-big">Facebook</div>
-      <div class="pc-feats">
-        <span>Videos públicos</span>
-        <span>Alta y baja calidad</span>
-        <span>Reels de FB</span>
-      </div>
-    </div>
-    <div class="plat-card">
-      <div class="pc-icon-big">𝕏</div>
-      <div class="pc-name-big">Twitter / X</div>
-      <div class="pc-feats">
-        <span>Videos de tweets</span>
-        <span>GIFs animados</span>
-        <span>Calidad original</span>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -329,100 +437,291 @@ footer a{color:var(--p);text-decoration:none}
 <div class="notice">
   <div class="notice-inner">
     <i class="fas fa-circle-info"></i>
-    <span>CodeHub usa APIs públicas de terceros para extraer los enlaces de descarga. Algunos videos pueden no estar disponibles por restricciones de la plataforma. Usa esta herramienta solo para contenido que tengas permiso de descargar. Respetar el copyright es responsabilidad del usuario.</span>
+    <span>Al hacer clic en una opción de descarga serás redirigido a un servicio externo especializado. CodeHub no almacena ni procesa los videos — actúa como detector inteligente de plataforma y redirector. Usa esta herramienta solo para contenido que tengas permiso de descargar.</span>
+  </div>
+</div>
+
+<!-- CÓMO FUNCIONA -->
+<div class="how-section">
+  <div class="section-eyebrow">// guía rápida</div>
+  <h2>¿Cómo funciona?</h2>
+  <div class="how-grid">
+    <div class="how-card">
+      <div class="how-num">01</div>
+      <div class="how-title">Copia el enlace</div>
+      <div class="how-desc">Ve al video que quieres descargar y copia la URL de la barra del navegador o el botón "Compartir → Copiar enlace".</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">02</div>
+      <div class="how-title">Pégalo aquí</div>
+      <div class="how-desc">Pega el enlace en el campo de arriba. Detectamos automáticamente si es YouTube, TikTok, Instagram, Facebook o Twitter/X.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">03</div>
+      <div class="how-title">Elige la calidad</div>
+      <div class="how-desc">Selecciona entre las opciones disponibles: video con audio, solo audio (MP3), o diferentes resoluciones (720p, 1080p, 4K).</div>
+    </div>
+    <div class="how-card">
+      <div class="how-num">04</div>
+      <div class="how-title">Descarga</div>
+      <div class="how-desc">El servicio externo procesa el video y te da el enlace de descarga directo. Todo en el navegador, sin instalar nada.</div>
+    </div>
+  </div>
+</div>
+
+<!-- PLATAFORMAS SOPORTADAS -->
+<div class="plats-section">
+  <div class="section-eyebrow">// plataformas soportadas</div>
+  <h2 style="font-size:1.6rem;font-weight:800;margin-bottom:1.8rem">Qué puedes descargar</h2>
+  <div class="plats-grid">
+
+    <div class="plat-card">
+      <div class="pc-icon">🎬</div>
+      <div class="pc-name">YouTube</div>
+      <div class="pc-features">
+        <span>Video MP4 hasta 4K</span>
+        <span>Solo audio MP3</span>
+        <span>Subtítulos</span>
+        <span>Shorts</span>
+      </div>
+    </div>
+
+    <div class="plat-card">
+      <div class="pc-icon">🎵</div>
+      <div class="pc-name">TikTok</div>
+      <div class="pc-features">
+        <span>Video sin marca de agua</span>
+        <span>Solo audio</span>
+        <span>Calidad original</span>
+      </div>
+    </div>
+
+    <div class="plat-card">
+      <div class="pc-icon">📸</div>
+      <div class="pc-name">Instagram</div>
+      <div class="pc-features">
+        <span>Reels y stories</span>
+        <span>Fotos de posts</span>
+        <span>Videos de perfil</span>
+      </div>
+    </div>
+
+    <div class="plat-card">
+      <div class="pc-icon">👥</div>
+      <div class="pc-name">Facebook</div>
+      <div class="pc-features">
+        <span>Videos públicos</span>
+        <span>Alta y baja calidad</span>
+        <span>Reels</span>
+      </div>
+    </div>
+
+    <div class="plat-card">
+      <div class="pc-icon">𝕏</div>
+      <div class="pc-name">Twitter / X</div>
+      <div class="pc-features">
+        <span>Videos de tweets</span>
+        <span>GIFs animados</span>
+        <span>Calidad original</span>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <footer>
-  <a href="index.html">&lt;Wilson.E/&gt;</a> · Video Downloader · Motor propio CodeHub
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · Video Downloader · Solo para contenido con permiso
 </footer>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-//  CODEHUB VIDEO DOWNLOADER — Motor propio
-//  Usa APIs públicas reales que devuelven JSON con links directos
-//  Sin iframes, sin redirecciones muertas
-// ═══════════════════════════════════════════════════════════
-
-// ── CONFIGURACIÓN DE PLATAFORMAS ───────────────────────────
+// ═══ CONFIGURACIÓN DE SERVICIOS POR PLATAFORMA ═════════════════
 const PLATFORMS = {
   youtube: {
-    name: 'YouTube', icon: '🎬',
+    name: 'YouTube',
+    icon: '🎬',
     patterns: [/youtube\.com\/watch/i, /youtu\.be\//i, /youtube\.com\/shorts/i, /youtube\.com\/live/i],
-    // Servicios de fallback ordenados por confiabilidad
-    fallbacks: [
-      { name: 'Y2Mate', url: u => 'https://www.y2mate.com/youtube/' + extractYtId(u) },
-      { name: 'SaveFrom', url: u => 'https://en.savefrom.net/#url=' + enc(u) },
-      { name: 'YT1S', url: u => 'https://yt1s.com/en/youtube-to-mp4?q=' + enc(u) },
-    ],
+    services: [
+      {
+        label: 'Video MP4',
+        sub: 'Hasta 4K · yt1s.com',
+        icon: 'fa-video',
+        url: u => 'https://yt1s.com/en/youtube-to-mp4?q=' + encodeURIComponent(u)
+      },
+      {
+        label: 'Solo Audio MP3',
+        sub: 'Calidad máxima · y2mate',
+        icon: 'fa-music',
+        url: u => 'https://www.y2mate.com/youtube-mp3/' + extractYtId(u)
+      },
+      {
+        label: 'SaveFrom',
+        sub: 'Multi-formato · rápido',
+        icon: 'fa-download',
+        url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'SSYouTube',
+        sub: 'Pega "ss" antes de youtube.com',
+        icon: 'fa-circle-info',
+        url: u => 'https://ssyoutube.com/watch?v=' + extractYtId(u)
+      }
+    ]
   },
   tiktok: {
-    name: 'TikTok', icon: '🎵',
+    name: 'TikTok',
+    icon: '🎵',
     patterns: [/tiktok\.com/i, /vm\.tiktok\.com/i],
-    fallbacks: [
-      { name: 'SnapTik', url: u => 'https://snaptik.app/en?url=' + enc(u) },
-      { name: 'SSSTik', url: u => 'https://ssstik.io/en?url=' + enc(u) },
-      { name: 'MusicalDown', url: u => 'https://musicaldown.com/en?url=' + enc(u) },
-    ],
+    services: [
+      {
+        label: 'Sin marca de agua',
+        sub: 'Calidad original · snaptik',
+        icon: 'fa-video',
+        url: u => 'https://snaptik.app/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'SSSTik',
+        sub: 'Alternativa rápida',
+        icon: 'fa-download',
+        url: u => 'https://ssstik.io/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'MusicalDown',
+        sub: 'Video + audio',
+        icon: 'fa-music',
+        url: u => 'https://musicaldown.com/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'TikMate',
+        sub: 'Batch download',
+        icon: 'fa-layer-group',
+        url: u => 'https://tikmate.online/?url=' + encodeURIComponent(u)
+      }
+    ]
   },
   instagram: {
-    name: 'Instagram', icon: '📸',
+    name: 'Instagram',
+    icon: '📸',
     patterns: [/instagram\.com/i, /instagr\.am/i],
-    fallbacks: [
-      { name: 'SnapInsta', url: u => 'https://snapinsta.app/en?url=' + enc(u) },
-      { name: 'InSave', url: u => 'https://insave.io/?url=' + enc(u) },
-      { name: 'IGram', url: u => 'https://igram.world/?url=' + enc(u) },
-    ],
+    services: [
+      {
+        label: 'Reels y Videos',
+        sub: 'snapinsta.app',
+        icon: 'fa-video',
+        url: u => 'https://snapinsta.app/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'Fotos y Posts',
+        sub: 'Fotos en alta res',
+        icon: 'fa-image',
+        url: u => 'https://imginn.com/p/' + extractIgId(u)
+      },
+      {
+        label: 'StorySave',
+        sub: 'Stories anónimas',
+        icon: 'fa-clock',
+        url: u => 'https://storysaver.net/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'DownloadGram',
+        sub: 'Multi-formato',
+        icon: 'fa-download',
+        url: u => 'https://downloadgram.org/?url=' + encodeURIComponent(u)
+      }
+    ]
   },
   facebook: {
-    name: 'Facebook', icon: '👥',
+    name: 'Facebook',
+    icon: '👥',
     patterns: [/facebook\.com/i, /fb\.com/i, /fb\.watch/i],
-    fallbacks: [
-      { name: 'FDown', url: u => 'https://fdown.net/?url=' + enc(u) },
-      { name: 'SaveFrom', url: u => 'https://en.savefrom.net/#url=' + enc(u) },
-      { name: 'GetFVid', url: u => 'https://www.getfvid.com/downloader?url=' + enc(u) },
-    ],
+    services: [
+      {
+        label: 'Video HD',
+        sub: 'Alta calidad · fdown',
+        icon: 'fa-video',
+        url: u => 'https://fdown.net/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'SaveFrom',
+        sub: 'SD y HD disponibles',
+        icon: 'fa-download',
+        url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'GetFVid',
+        sub: 'Rápido y gratuito',
+        icon: 'fa-bolt',
+        url: u => 'https://www.getfvid.com/downloader?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'FBDownloader',
+        sub: 'Sin límites',
+        icon: 'fa-infinity',
+        url: u => 'https://fbdownloader.net/?url=' + encodeURIComponent(u)
+      }
+    ]
   },
   twitter: {
-    name: 'Twitter/X', icon: '𝕏',
-    patterns: [/twitter\.com/i, /x\.com/i],
-    fallbacks: [
-      { name: 'TWSave', url: u => 'https://twsave.com/?url=' + enc(u) },
-      { name: 'SaveTweetVid', url: u => 'https://savetweetvid.com/en?url=' + enc(u) },
-      { name: 'XVideoSave', url: u => 'https://xvideosave.net/?url=' + enc(u) },
-    ],
-  },
+    name: 'Twitter / X',
+    icon: '𝕏',
+    patterns: [/twitter\.com/i, /x\.com/i, /t\.co\//i],
+    services: [
+      {
+        label: 'Video del Tweet',
+        sub: 'twittervideodownloader',
+        icon: 'fa-video',
+        url: u => 'https://twittervideodownloader.com/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'SaveTweetVid',
+        sub: 'Calidad original',
+        icon: 'fa-download',
+        url: u => 'https://savetweetvid.com/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'TWSave',
+        sub: 'GIFs y videos',
+        icon: 'fa-film',
+        url: u => 'https://twsave.com/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'XDownloader',
+        sub: 'Multi-calidad',
+        icon: 'fa-sliders',
+        url: u => 'https://xdownloader.io/?url=' + encodeURIComponent(u)
+      }
+    ]
+  }
 };
 
-// ── HELPERS ────────────────────────────────────────────────
-const enc = encodeURIComponent;
+// ═══ HELPERS ════════════════════════════════════════════════════
 function extractYtId(url) {
   const m = url.match(/(?:v=|youtu\.be\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/);
   return m ? m[1] : '';
 }
+function extractIgId(url) {
+  const m = url.match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
+  return m ? m[2] : '';
+}
 
-// ── ESTADO ─────────────────────────────────────────────────
+// ═══ DETECTAR PLATAFORMA ════════════════════════════════════════
 let currentPlatform = null;
 let currentUrl = '';
-let isFetching = false;
 
-// ── DETECTAR PLATAFORMA ────────────────────────────────────
-function onUrlInput(val) {
-  currentUrl = val.trim();
-  const det = $('detected'), name = $('det-name'), icon = $('det-icon'), status = $('det-status');
-  const result = $('result-area');
-  const fallback = $('fallback');
-
-  // Limpiar
-  result.innerHTML = '';
-  fallback.classList.remove('show');
+function detectPlatform(url) {
+  currentUrl = url.trim();
+  const platInfo = document.getElementById('plat-info');
+  const platName = document.getElementById('plat-name');
+  const platIcon = document.getElementById('plat-icon');
+  const dlOptions = document.getElementById('dl-options');
 
   if (!currentUrl || !currentUrl.startsWith('http')) {
-    det.className = 'detected';
+    platInfo.classList.remove('show');
+    dlOptions.classList.remove('show');
     currentPlatform = null;
     return;
   }
 
+  // Detectar
   currentPlatform = null;
   for (const [key, plat] of Object.entries(PLATFORMS)) {
     if (plat.patterns.some(p => p.test(currentUrl))) {
@@ -432,306 +731,79 @@ function onUrlInput(val) {
   }
 
   if (!currentPlatform) {
-    icon.textContent = '❓';
-    name.textContent = 'Plataforma no reconocida';
-    status.textContent = '⚠ Usa el modo universal';
-    det.className = 'detected bad show';
+    platName.textContent = 'No reconocida';
+    platIcon.textContent = '❓';
+    platInfo.classList.add('show');
+    platInfo.style.borderColor = 'rgba(255,71,87,.2)';
+    platInfo.style.background = 'rgba(255,71,87,.05)';
+    dlOptions.classList.remove('show');
     return;
   }
 
   const plat = PLATFORMS[currentPlatform];
-  icon.textContent = plat.icon;
-  name.textContent = plat.name;
-  status.textContent = '✓ Compatible';
-  det.className = 'detected ok show';
+  platName.textContent = plat.name;
+  platIcon.textContent = plat.icon;
+  platInfo.classList.add('show');
+  platInfo.style.borderColor = 'rgba(0,230,118,.2)';
+  platInfo.style.background = 'rgba(0,230,118,.06)';
+
+  // Renderizar opciones
+  dlOptions.innerHTML = plat.services.map(s => `
+    <a class="dl-opt-btn" href="${s.url(currentUrl)}" target="_blank" rel="noopener noreferrer" onclick="toast('Abriendo ${s.sub.split('·')[0].trim()}…')">
+      <div class="opt-label"><i class="fas ${s.icon}"></i> ${s.label}</div>
+      <div class="opt-sub">${s.sub}</div>
+    </a>
+  `).join('');
+  dlOptions.classList.add('show');
 }
 
-// ── MOTOR PRINCIPAL DE DESCARGA ────────────────────────────
-// Usamos cobalt.tools — API pública JSON que devuelve links directos
-// Es el motor más confiable disponible sin clave de API
-async function startDownload() {
-  const url = $('url-input').value.trim();
+// ═══ BOTÓN PRINCIPAL ════════════════════════════════════════════
+function goDownload() {
+  const url = document.getElementById('url-input').value.trim();
   if (!url) { toast('⚠️ Pega un enlace primero'); return; }
   if (!url.startsWith('http')) { toast('⚠️ El enlace debe empezar con https://'); return; }
-  if (isFetching) return;
 
   if (!currentPlatform) {
-    // Plataforma desconocida → abrir SaveFrom universal
-    window.open('https://en.savefrom.net/#url=' + enc(url), '_blank', 'noopener');
-    toast('🔗 Abriendo descargador universal…');
+    toast('❓ Plataforma no reconocida — prueba con savefrom.net');
+    setTimeout(() => window.open('https://en.savefrom.net/#url=' + encodeURIComponent(url), '_blank'), 800);
     return;
   }
 
-  isFetching = true;
-  setGoBtn(true);
-  showLoading();
-
-  try {
-    // ── MÉTODO 1: cobalt.tools API (open source, devuelve JSON con link directo)
-    const result = await tryCobalt(url);
-    if (result) {
-      showCobaltResult(result, url);
-      return;
-    }
-  } catch (e) {
-    console.warn('Cobalt falló:', e.message);
-  }
-
-  try {
-    // ── MÉTODO 2: API de RapidAPI pública (sin key para algunas)
-    const result2 = await tryRapidDownloader(url);
-    if (result2) {
-      showCobaltResult(result2, url);
-      return;
-    }
-  } catch (e) {
-    console.warn('RapidDownloader falló:', e.message);
-  }
-
-  // ── MÉTODO 3: Mostrar los mejores servicios externos conocidos (fallback curado)
-  showFallbackOptions(url);
+  // Abrir el primer servicio automáticamente
+  const first = PLATFORMS[currentPlatform].services[0];
+  window.open(first.url(currentUrl), '_blank', 'noopener,noreferrer');
+  toast('✅ Abriendo ' + PLATFORMS[currentPlatform].name + ' downloader…');
 }
 
-// ── COBALT.TOOLS — Motor open source de descarga de video
-// API: https://cobalt.tools  — devuelve { status, url, picker, filename }
-async function tryCobalt(url) {
-  const COBALT_INSTANCES = [
-    'https://api.cobalt.tools',
-    'https://cobalt.api.077cz.com',
-  ];
-
-  for (const base of COBALT_INSTANCES) {
-    try {
-      const res = await Promise.race([
-        fetch(`${base}/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ url, videoQuality: '1080', audioFormat: 'mp3', filenameStyle: 'basic' }),
-        }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
-      ]);
-
-      if (!res.ok) continue;
-      const data = await res.json();
-
-      if (data.status === 'redirect' || data.status === 'tunnel' || data.status === 'stream') {
-        return { type: 'direct', url: data.url, filename: data.filename };
-      }
-      if (data.status === 'picker') {
-        return { type: 'picker', items: data.picker, audio: data.audio };
-      }
-      if (data.status === 'error') {
-        console.warn('Cobalt error:', data.error?.code);
-        continue;
-      }
-    } catch(e) { continue; }
-  }
-  return null;
-}
-
-// ── RAPIDDOWNLOADER — APIs alternativas
-async function tryRapidDownloader(url) {
-  // Intentar con alltubedownload (no requiere key para requests básicos)
-  try {
-    const ytId = extractYtId(url);
-    if (ytId && currentPlatform === 'youtube') {
-      // Para YouTube: intentar con invidious que devuelve JSON con streams
-      const invRes = await Promise.race([
-        fetch(`https://inv.tux.pizza/api/v1/videos/${ytId}`, { headers: { 'Accept': 'application/json' } }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000)),
-      ]);
-      if (invRes.ok) {
-        const data = await invRes.json();
-        if (data.adaptiveFormats?.length || data.formatStreams?.length) {
-          const streams = [...(data.formatStreams || []), ...(data.adaptiveFormats || [])];
-          const videos = streams.filter(s => s.type?.startsWith('video/mp4')).sort((a,b) => parseInt(b.resolution||'0') - parseInt(a.resolution||'0'));
-          const audios = streams.filter(s => s.type?.startsWith('audio/'));
-          if (videos.length || audios.length) {
-            return { type: 'invidious', title: data.title, videos, audios, thumbnail: data.videoThumbnails?.[0]?.url };
-          }
-        }
-      }
-    }
-  } catch(e) { console.warn('Invidious:', e.message); }
-  return null;
-}
-
-// ── RENDER RESULT — cobalt directo ─────────────────────────
-function showCobaltResult(result, url) {
-  isFetching = false;
-  setGoBtn(false);
-  const plat = PLATFORMS[currentPlatform];
-
-  if (result.type === 'direct') {
-    $('result-area').innerHTML = `
-      <div style="margin-top:1.2rem">
-        <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem">// enlace de descarga listo</div>
-        <div class="dl-grid">
-          <a class="dl-opt featured" href="${escHtml(result.url)}" download="${escHtml(result.filename||'video')}" target="_blank" onclick="toast('⬇ Descargando…')">
-            <div class="opt-top">
-              <div class="opt-icon" style="background:rgba(0,230,118,.15);color:var(--green)"><i class="fas fa-download"></i></div>
-              <span class="opt-label">Descargar Video</span>
-            </div>
-            <div class="opt-sub">${escHtml(result.filename || 'video.mp4')}</div>
-            <span class="opt-badge"><i class="fas fa-bolt"></i> Enlace directo</span>
-          </a>
-        </div>
-      </div>`;
-    showFallbackLinks(url);
-    toast('✅ Enlace extraído — ' + plat.name);
-  }
-
-  else if (result.type === 'picker') {
-    const items = result.items || [];
-    const cards = items.map((item, i) => `
-      <a class="dl-opt${i===0?' featured':''}" href="${escHtml(item.url)}" target="_blank" download onclick="toast('⬇ Descargando opción ${i+1}…')">
-        <div class="opt-top">
-          <div class="opt-icon" style="background:rgba(255,69,0,.15);color:var(--p)"><i class="fas fa-video"></i></div>
-          <span class="opt-label">Opción ${i+1}</span>
-        </div>
-        <div class="opt-sub">${item.type || 'video'}</div>
-        ${i===0?'<span class="opt-badge"><i class="fas fa-star"></i> Recomendado</span>':''}
-      </a>`).join('');
-    const audioCard = result.audio ? `
-      <a class="dl-opt" href="${escHtml(result.audio)}" target="_blank" download onclick="toast('🎵 Descargando audio…')">
-        <div class="opt-top">
-          <div class="opt-icon" style="background:rgba(180,100,255,.15);color:var(--purple)"><i class="fas fa-music"></i></div>
-          <span class="opt-label">Solo Audio</span>
-        </div>
-        <div class="opt-sub">MP3 · calidad máxima</div>
-      </a>` : '';
-    $('result-area').innerHTML = `
-      <div style="margin-top:1.2rem">
-        <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem">// elige una opción</div>
-        <div class="dl-grid">${cards}${audioCard}</div>
-      </div>`;
-    showFallbackLinks(url);
-    toast('✅ ' + items.length + ' opciones disponibles');
-  }
-
-  else if (result.type === 'invidious') {
-    const vCards = (result.videos||[]).slice(0,4).map((v,i) => `
-      <a class="dl-opt${i===0?' featured':''}" href="${escHtml(v.url)}" target="_blank" download="video_${v.resolution||i}.mp4" onclick="toast('⬇ Descargando ${v.resolution||''}…')">
-        <div class="opt-top">
-          <div class="opt-icon" style="background:rgba(255,0,0,.15);color:#ff4444"><i class="fab fa-youtube"></i></div>
-          <span class="opt-label">Video ${v.resolution||'MP4'}</span>
-        </div>
-        <div class="opt-sub">${v.qualityLabel||v.resolution||''} · ${v.type?.split(';')[0]||'mp4'}</div>
-        ${i===0?'<span class="opt-badge"><i class="fas fa-star"></i> Mejor calidad</span>':''}
-      </a>`).join('');
-    const aCards = (result.audios||[]).slice(0,2).map((a,i) => `
-      <a class="dl-opt" href="${escHtml(a.url)}" target="_blank" download="audio_${i}.mp4" onclick="toast('🎵 Descargando audio…')">
-        <div class="opt-top">
-          <div class="opt-icon" style="background:rgba(180,100,255,.15);color:var(--purple)"><i class="fas fa-music"></i></div>
-          <span class="opt-label">Solo Audio</span>
-        </div>
-        <div class="opt-sub">${a.type?.split(';')[0]||'audio'}</div>
-      </a>`).join('');
-    $('result-area').innerHTML = `
-      ${result.title?`<div style="margin-top:1.2rem;margin-bottom:.75rem;font-size:.88rem;font-weight:700;color:var(--text);line-height:1.4">${escHtml(result.title)}</div>`:''}
-      <div>
-        <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.6rem">// opciones de descarga</div>
-        <div class="dl-grid">${vCards}${aCards}</div>
-      </div>`;
-    showFallbackLinks(url);
-    toast('✅ ' + (result.videos?.length||0) + ' calidades encontradas');
-  }
-}
-
-// ── FALLBACK — opciones curadas cuando todo falla ──────────
-function showFallbackOptions(url) {
-  isFetching = false;
-  setGoBtn(false);
-  const plat = PLATFORMS[currentPlatform];
-
-  // Mostrar servicios externos curados en forma de cards (no iframes)
-  const fallbacks = plat.fallbacks || [];
-  const cards = fallbacks.map((s, i) => `
-    <a class="dl-opt${i===0?' featured':''}" href="${escHtml(s.url(url))}" target="_blank" rel="noopener noreferrer" onclick="toast('Abriendo ${s.name}…')">
-      <div class="opt-top">
-        <div class="opt-icon" style="background:rgba(255,69,0,.12);color:var(--p)"><i class="fas fa-external-link-alt"></i></div>
-        <span class="opt-label">${s.name}</span>
-      </div>
-      <div class="opt-sub">Servicio externo · ${plat.name} · Gratis</div>
-      ${i===0?'<span class="opt-badge"><i class="fas fa-star"></i> Más confiable</span>':''}
-    </a>`).join('');
-
-  $('result-area').innerHTML = `
-    <div style="margin-top:1.4rem">
-      <div style="background:rgba(255,189,105,.06);border:1px solid rgba(255,189,105,.18);border-radius:12px;padding:.8rem 1rem;margin-bottom:1rem;font-size:.78rem;color:rgba(232,232,240,.55);display:flex;align-items:center;gap:.6rem">
-        <i class="fas fa-info-circle" style="color:var(--a);flex-shrink:0"></i>
-        <span>La extracción directa no estuvo disponible. Usa uno de estos servicios especializados — son los más confiables para <strong style="color:var(--a)">${plat.name}</strong>:</span>
-      </div>
-      <div style="font-size:.7rem;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem">// mejores opciones para ${plat.name}</div>
-      <div class="dl-grid">${cards}</div>
-    </div>`;
-  toast('⚠️ Mostrando alternativas para ' + plat.name);
-}
-
-function showFallbackLinks(url) {
-  if (!currentPlatform) return;
-  const plat = PLATFORMS[currentPlatform];
-  const fb = plat.fallbacks || [];
-  if (!fb.length) return;
-  const links = ['fb-link1','fb-link2','fb-link3'];
-  fb.slice(0,3).forEach((s,i) => {
-    const a = $(links[i]);
-    if (a) { a.href = s.url(url); a.textContent = s.name; a.target = '_blank'; }
-  });
-  $('fallback').classList.add('show');
-}
-
-// ── LOADING STATE ──────────────────────────────────────────
-function showLoading() {
-  $('result-area').innerHTML = `
-    <div class="loading-state" style="margin-top:1.2rem">
-      <div class="spin-ring"></div>
-      <p>Extrayendo enlace de descarga…</p>
-      <p style="font-size:.72rem;margin-top:.3rem;opacity:.6">Contactando con el servidor de ${PLATFORMS[currentPlatform]?.name||''}…</p>
-    </div>`;
-}
-
-// ── HELPERS DOM ────────────────────────────────────────────
-const $ = id => document.getElementById(id);
-function setGoBtn(loading) {
-  const btn = $('go-btn');
-  btn.disabled = loading;
-  btn.innerHTML = loading
-    ? '<i class="fas fa-spinner fa-spin"></i> Procesando…'
-    : '<i class="fas fa-download"></i> Descargar';
-}
-function escHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// ── TOAST ──────────────────────────────────────────────────
+// ═══ TOAST ══════════════════════════════════════════════════════
 function toast(msg) {
-  const t = $('toast');
+  const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('on');
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => t.classList.remove('on'), 2400);
+  clearTimeout(t._to);
+  t._to = setTimeout(() => t.classList.remove('on'), 2200);
 }
 
-// ── SCROLL PROGRESS ────────────────────────────────────────
+// ═══ SCROLL PROGRESS ════════════════════════════════════════════
 window.addEventListener('scroll', () => {
   const s = document.documentElement.scrollTop;
   const h = document.documentElement.scrollHeight - window.innerHeight;
-  $('pbar').style.width = (s / h * 100) + '%';
+  document.getElementById('pbar').style.width = (s / h * 100) + '%';
 });
 
-// ── ENTER en input ─────────────────────────────────────────
-$('url-input').addEventListener('keydown', e => { if (e.key === 'Enter') startDownload(); });
+// ═══ ENTER EN INPUT ═════════════════════════════════════════════
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') goDownload();
+});
 
-// ── Leer clipboard al llegar ───────────────────────────────
+// Intentar leer URL del clipboard al llegar a la página
 window.addEventListener('focus', async () => {
-  if ($('url-input').value) return;
+  if (document.getElementById('url-input').value) return;
   try {
     const text = await navigator.clipboard.readText();
     if (text.startsWith('http')) {
-      $('url-input').value = text;
-      onUrlInput(text);
+      document.getElementById('url-input').value = text;
+      detectPlatform(text);
     }
   } catch(_) {}
 });

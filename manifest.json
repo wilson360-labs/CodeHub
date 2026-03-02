@@ -1,0 +1,48 @@
+{
+  "name": "CodeHub — Wilson.E",
+  "short_name": "CodeHub",
+  "description": "Portfolio de Wilson.E — Desarrollador Web Full Stack de Guatemala",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff4500",
+  "orientation": "portrait-primary",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Herramientas",
+      "short_name": "Tools",
+      "url": "/tools.html",
+      "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Novedades",
+      "short_name": "Apps",
+      "url": "/novedades.html",
+      "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
+    }
+  ],
+  "categories": ["portfolio", "productivity", "utilities"]
+}
