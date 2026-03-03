@@ -296,6 +296,21 @@ app.get('/api/ratings', async (req, res) => {
 });
 
 // ── POST /api/ratings — votar una app ──
+// ── Helper: validar Turnstile token ─────────────────────
+async function validateTurnstile(token) {
+  if (!process.env.TURNSTILE_SECRET) return true; // si no hay secret, saltar validación
+  if (!token) return false;
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET, response: token }),
+    });
+    const data = await resp.json();
+    return data.success === true;
+  } catch(e) { return true; } // en caso de error de red, no bloquear
+}
+
 app.post('/api/ratings', async (req, res) => {
   const { appId, appName, stars } = req.body;
   const ip = req.ip || 'anon';
@@ -327,10 +342,13 @@ app.get('/api/requests', async (req, res) => {
 
 // ── POST /api/requests — solicitar nueva app ──
 app.post('/api/requests', async (req, res) => {
-  const { appName, reason } = req.body;
+  const { appName, reason, turnstileToken } = req.body;
   const ip = req.ip || 'anon';
   if (!appName || appName.trim().length < 2)
     return res.status(400).json({ error: 'Nombre de app requerido' });
+  // Validar Turnstile
+  const tsValid = await validateTurnstile(turnstileToken);
+  if (!tsValid) return res.status(403).json({ error: 'Verificación de seguridad fallida' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
     // Verificar si ya existe
@@ -352,7 +370,7 @@ app.post('/api/requests', async (req, res) => {
 // ── PATCH /api/requests/:id — marcar solicitud (admin) ──
 app.patch('/api/requests/:id', async (req, res) => {
   const { status, adminKey } = req.body;
-  if (adminKey !== 'wilson2026ultra') return res.status(403).json({ error: 'No autorizado' });
+  if (adminKey !== (process.env.ADMIN_KEY || 'wilson2026ultra')) return res.status(403).json({ error: 'No autorizado' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
     await AppRequest.findByIdAndUpdate(req.params.id, { status });

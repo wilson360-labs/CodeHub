@@ -204,6 +204,9 @@
   <div class="login-box">
     <div class="login-logo">Wilson<span>.E</span></div>
     <div class="login-sub">// panel de administración · codehub</div>
+    <div style="font-family:var(--mono);font-size:.6rem;color:rgba(255,107,107,.5);margin-bottom:.5rem">
+      ⚠️ No compartas esta URL
+    </div>
     <input type="password" id="pwd-input" class="login-input" placeholder="••••••••"
       onkeydown="if(event.key==='Enter')checkLogin()">
     <button class="login-btn" onclick="checkLogin()"><i class="fas fa-unlock"></i> Ingresar</button>
@@ -276,8 +279,10 @@
 
 <script>
 const BACKEND = 'https://codehub-production-729d.up.railway.app';
-// ⚠️ Cambia esta contraseña antes de subir a producción
-const ADMIN_PASS = 'wilson2026ultra';
+// ⚠️ SEGURIDAD: Esta contraseña se valida contra el backend.
+// Cambia ADMIN_KEY en Railway → Variables → ADMIN_KEY=tu_nueva_clave_secreta
+// La contraseña aquí debe coincidir con lo que pongas en Railway.
+const ADMIN_PASS = 'wilson2026ultra'; // ← cámbiala y actualiza Railway también
 
 const APPS_DEFAULT = [
   { id:'app-1',  name:'Spotify Premium',        cat:'Música',    ver:'8.9.94.598', verified:true,  badge:'🆕 Nuevo',       changelog:'v8.9.94 — Corrección de bugs de reproducción · Mejor compatibilidad Android 14' },

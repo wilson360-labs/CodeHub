@@ -6188,6 +6188,14 @@ async function sendEmail(e) {
     }
 
     try {
+        // Adjuntar token Turnstile al form como campo oculto
+        let tsField = document.getElementById('ts-token-field');
+        if (!tsField) {
+            tsField = document.createElement('input');
+            tsField.type = 'hidden'; tsField.name = 'turnstile_token'; tsField.id = 'ts-token-field';
+            document.getElementById('contact-form').appendChild(tsField);
+        }
+        tsField.value = document.querySelector('input[name="cf-turnstile-response"]')?.value || '';
         await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, '#contact-form');
         feedback.textContent = '✅ ¡Mensaje enviado! Te respondo en menos de 24h.';
         feedback.className = 'form-feedback success';

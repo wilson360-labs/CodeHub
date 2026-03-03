@@ -796,7 +796,13 @@ async function submitRequest() {
     const res = await fetch(`${BACKEND}/api/requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appName: name, reason }),
+      body: JSON.stringify({
+        appName: name,
+        reason,
+        turnstileToken: (typeof turnstile !== 'undefined'
+            ? document.querySelector('input[name="cf-turnstile-response"]')?.value || ''
+            : ''),
+    }),
     });
     const d = await res.json();
     if (d.ok) {
@@ -864,7 +870,7 @@ function openReqModal() {
   // Renderizar Turnstile si existe el contenedor
   if (typeof turnstile !== 'undefined' && document.getElementById('turnstile-req')) {
     turnstile.render('#turnstile-req', {
-      sitekey: '0x4AAAAAAA_REPLACE_WITH_YOUR_SITEKEY',
+      sitekey: '0x4AAAAAAClKd5T1R81GltW_',
       theme: 'dark',
       language: 'es',
     });
@@ -887,7 +893,13 @@ async function submitRequest() {
     const res = await fetch(`${BACKEND}/api/requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appName: name, reason }),
+      body: JSON.stringify({
+        appName: name,
+        reason,
+        turnstileToken: (typeof turnstile !== 'undefined'
+            ? document.querySelector('input[name="cf-turnstile-response"]')?.value || ''
+            : ''),
+    }),
     });
     const d = await res.json();
     if (d.ok) {
@@ -902,3 +914,5 @@ async function submitRequest() {
 }
 
 </script>
+</body>
+</html>
