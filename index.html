@@ -6090,8 +6090,8 @@ const EMAILJS_SERVICE_ID  = 'service_gnm5lec';   // Paso 2
 const EMAILJS_TEMPLATE_ID = 'template_o2pks0d';  // Paso 3
 
 (function() {
-    if (EMAILJS_PUBLIC_KEY !== 'bjCD9ENp8Zj3nlpSA') {
-        emailjs.init({ publicKey: bjCD9ENp8Zj3nlpSA });
+    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY') {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     }
 })();
 
@@ -6155,12 +6155,14 @@ function validateForm() {
 async function sendEmail(e) {
     e.preventDefault();
     if (!validateForm()) return;
-    // Verificar Turnstile
-    const tsToken = document.querySelector('#turnstile-contact [name="cf-turnstile-response"]')?.value
-                  || document.querySelector('.cf-turnstile input')?.value || '';
-    if (!tsToken) {
+    // Verificar Turnstile (solo bloquea si el widget cargó y no fue completado)
+    const tsWidget = document.getElementById('turnstile-contact');
+    const tsLoaded = tsWidget && tsWidget.querySelector('iframe');
+    const tsToken  = document.querySelector('#turnstile-contact [name="cf-turnstile-response"]')?.value
+                   || document.querySelector('.cf-turnstile input[name="cf-turnstile-response"]')?.value || '';
+    if (tsLoaded && !tsToken) {
         const fb = document.getElementById('form-feedback');
-        fb.textContent = '⚠️ Completa la verificación de seguridad.';
+        fb.textContent = '⚠️ Completa la verificación (no soy un robot) antes de enviar.';
         fb.className = 'form-feedback error';
         return;
     }
