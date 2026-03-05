@@ -1,337 +1,352 @@
-// ====================================================
-// SISTEMA DE ACTUALIZACIÓN AUTOMÁTICA DESDE PASTEBIN
-// CodeHub - Premium Apps
-// ====================================================
+// ============================================================
+// CODEHUB — SISTEMA DE ACTUALIZACIÓN v3.0
+// Detección de cambios de links por app-id
+// Soporta: Dropbox · Google Drive · Mediafire · Directo
+// ------------------------------------------------------------
+// Para actualizar una app: edita apps_data.json y sube a GitHub
+// El sistema detecta cambios automáticamente al cargar la página
+// ============================================================
 
-// CONFIGURACIÓN
-const CONFIG = {
-    // Usa el proxy CORS para pruebas locales
-    // Cuando subas a producción, usa la URL directa de Pastebin
-    pastebinURL: 'https://api.allorigins.win/raw?url=https://pastebin.com/raw/DTSfarwd',
-    // pastebinURL: 'https://pastebin.com/raw/DTSfarwd', // Usa esta en producción
-    checkInterval: 300000, // Revisar cada 5 minutos (300000ms)
-    enableAutoUpdate: true, // Cambiar a false para actualización manual
-    showNotifications: true,
-    updateAnimations: true,
-    showManualButton: false // DESACTIVADO: No mostrar botón de actualización manual
+const UPDATER_CONFIG = {
+  // URL del apps_data.json en tu repo GitHub (raw)
+  dataURL: 'https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/apps_data.json',
+
+  // Fallback: carga local si el remoto falla
+  localDataURL: './apps_data.json',
+
+  // Re-chequeo en ms (0 = solo al cargar la página)
+  checkInterval: 0,
+
+  // Mostrar badge "🔗" en la card cuando cambia el link
+  showLinkBadge: true,
+
+  // Animación al detectar cambios
+  animateChanges: true,
 };
 
-// Variables globales
-let currentVersion = localStorage.getItem('appVersion') || '1.0.0';
-let updateCheckTimer = null;
+// ─── MAPA DE IDs ─────────────────────────────────────────────
+// Relaciona data-id del HTML con el nombre en apps_data.json
+// Agrega nuevas apps aquí cuando las añadas al HTML
+const APP_ID_MAP = {
+  'app-1':  'Spotify Premium',
+  'app-2':  'Spotify Lite Premium',
+  'app-3':  'YouTube ReVanced',
+  'app-4':  'YouTube Music ReVanced',
+  'app-5':  'TikTok Premium',
+  'app-6':  'Flicks Remix',
+  'app-7':  'TeraBox Premium',
+  'app-8':  'MX Player Pro',
+  'app-9':  'PicsArt Premium',
+  'app-10': 'Remini Pro',
+  'app-11': 'Magic Eraser Mod',
+  'app-12': 'CamScanner Mod',
+  'app-13': 'DNS AdGuard Pro',
+};
 
-// ====================================================
-// FUNCIÓN PRINCIPAL DE ACTUALIZACIÓN
-// ====================================================
+// ─── ESTADO ───────────────────────────────────────────────────
+const CACHE_KEY = 'ch_apps_cache_v3';
+
+// ─── DETECCIÓN DE PROVEEDOR ───────────────────────────────────
+
+function detectProvider(url) {
+  if (!url || url === '#') return 'direct';
+  if (/dropbox\.com|dl\.dropbox\.com/i.test(url))        return 'dropbox';
+  if (/drive\.google\.com|docs\.google\.com/i.test(url)) return 'gdrive';
+  if (/mediafire\.com/i.test(url))                        return 'mediafire';
+  return 'direct';
+}
+
+function getProviderLabel(url) {
+  const labels = { dropbox: '📦 Dropbox', gdrive: '☁️ Drive', mediafire: '🔥 Mediafire', direct: '🔗 Directo' };
+  return labels[detectProvider(url)] || '🔗';
+}
+
+// ─── NORMALIZACIÓN DE LINKS ───────────────────────────────────
+
+function normalizeDropbox(url) {
+  if (!url) return url;
+  // Quitar dl=0 y agregar dl=1 para descarga directa
+  let clean = url.replace(/[?&]dl=0/, '').replace(/\?$/, '').replace(/&$/, '');
+  return clean + (clean.includes('?') ? '&dl=1' : '?dl=1');
+}
+
+function normalizeGDrive(url) {
+  if (!url) return url;
+  // /file/d/ID/view → uc?export=download&id=ID
+  const m = url.match(/\/file\/d\/([^/?#]+)/);
+  if (m) return 'https://drive.google.com/uc?export=download&id=' + m[1];
+  return url; // ya está en formato correcto
+}
+
+function normalizeLink(url) {
+  if (!url || url === '#') return url;
+  const p = detectProvider(url);
+  if (p === 'dropbox') return normalizeDropbox(url);
+  if (p === 'gdrive')  return normalizeGDrive(url);
+  return url;
+}
+
+// ─── CACHE ────────────────────────────────────────────────────
+
+function loadCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveCache(cache) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
+// ─── CARGA DE DATOS ───────────────────────────────────────────
+
+async function loadAppsData() {
+  // Intentar remoto (GitHub raw)
+  try {
+    const res = await fetch(UPDATER_CONFIG.dataURL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const clean = text.replace(/\/\/[^\n]*/g, '').replace(/,(\s*[}\]])/g, '$1');
+    return JSON.parse(clean);
+  } catch (e) {
+    console.warn('[Updater] Remoto falló, usando local:', e.message);
+  }
+  // Fallback local
+  try {
+    const res = await fetch(UPDATER_CONFIG.localDataURL + '?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const clean = text.replace(/\/\/[^\n]*/g, '').replace(/,(\s*[}\]])/g, '$1');
+    return JSON.parse(clean);
+  } catch (e) {
+    console.error('[Updater] apps_data.json no disponible:', e.message);
+    return null;
+  }
+}
+
+// ─── DETECTAR CAMBIOS ─────────────────────────────────────────
+
+function detectChanges(apps, cache) {
+  const changes = [];
+  apps.forEach(app => {
+    const htmlId = Object.keys(APP_ID_MAP).find(
+      id => APP_ID_MAP[id].toLowerCase() === app.nombre.toLowerCase()
+    );
+    if (!htmlId) return;
+
+    const prev   = cache[htmlId] || {};
+    const eNorm  = normalizeLink(app.enlace);
+    const pNorm  = normalizeLink(app.plugin_enlace);
+
+    if (app.enlace && app.enlace !== '#' && prev.enlace && prev.enlace !== eNorm) {
+      changes.push({ htmlId, nombre: app.nombre, campo: 'APK principal',
+        anterior: prev.enlace, nuevo: eNorm, provider: detectProvider(app.enlace) });
+    }
+    if (app.plugin_enlace && prev.plugin_enlace && prev.plugin_enlace !== pNorm) {
+      changes.push({ htmlId, nombre: app.nombre, campo: 'Plugin',
+        anterior: prev.plugin_enlace, nuevo: pNorm, provider: detectProvider(app.plugin_enlace) });
+    }
+  });
+  return changes;
+}
+
+// ─── APLICAR DATOS AL HTML ────────────────────────────────────
+
+function applyDataToCards(apps) {
+  const cache = loadCache();
+  let count = 0;
+
+  apps.forEach(app => {
+    const htmlId = Object.keys(APP_ID_MAP).find(
+      id => APP_ID_MAP[id].toLowerCase() === app.nombre.toLowerCase()
+    );
+    if (!htmlId) return;
+
+    const card = document.querySelector('[data-id="' + htmlId + '"]');
+    if (!card) return;
+
+    const prev  = cache[htmlId] || {};
+    const eNorm = normalizeLink(app.enlace);
+    const pNorm = normalizeLink(app.plugin_enlace);
+    const linkChanged = prev.enlace && prev.enlace !== eNorm;
+
+    // Botón principal
+    if (app.enlace && app.enlace !== '#') {
+      const btn = card.querySelector('.dl-btn.dl-primary');
+      if (btn) {
+        btn.href = eNorm;
+        // Inyectar badge de proveedor si no existe
+        if (!btn.querySelector('.ch-provider')) {
+          const b = document.createElement('small');
+          b.className = 'ch-provider';
+          b.style.cssText = 'font-size:.65rem;opacity:.6;margin-left:6px';
+          btn.appendChild(b);
+        }
+        btn.querySelector('.ch-provider').textContent = getProviderLabel(app.enlace);
+        count++;
+      }
+    }
+
+    // Botón plugin
+    if (app.plugin_enlace) {
+      const btn = card.querySelector('.dl-btn.dl-ghost');
+      if (btn) {
+        btn.href = pNorm;
+        if (!btn.querySelector('.ch-provider')) {
+          const b = document.createElement('small');
+          b.className = 'ch-provider';
+          b.style.cssText = 'font-size:.65rem;opacity:.6;margin-left:6px';
+          btn.appendChild(b);
+        }
+        btn.querySelector('.ch-provider').textContent = getProviderLabel(app.plugin_enlace);
+      }
+    }
+
+    // Badge visual si el link cambió
+    if (linkChanged && UPDATER_CONFIG.showLinkBadge) {
+      const vTag = card.querySelector('.app-version-tag');
+      if (vTag && !vTag.dataset.linkUpdated) {
+        vTag.dataset.linkUpdated = '1';
+        const badge = document.createElement('span');
+        badge.textContent = ' 🔗';
+        badge.title = 'Link actualizado recientemente';
+        vTag.appendChild(badge);
+      }
+    }
+
+    // Guardar en cache
+    cache[htmlId] = { enlace: eNorm, plugin_enlace: pNorm,
+      version: app.version_conocida, fecha: app.ultima_fecha };
+  });
+
+  saveCache(cache);
+  return count;
+}
+
+// ─── LOG EN CONSOLA ───────────────────────────────────────────
+
+function logReport(changes, total) {
+  if (changes.length) {
+    console.group('%c[Updater] 🔄 ' + changes.length + ' link(s) cambiados', 'color:#fb923c;font-weight:bold');
+    changes.forEach(c => {
+      const icons = { dropbox:'📦', gdrive:'☁️', mediafire:'🔥', direct:'🔗' };
+      console.log((icons[c.provider] || '🔗') + ' ' + c.nombre + ' — ' + c.campo);
+      console.log('   Anterior:', c.anterior);
+      console.log('   Nuevo:   ', c.nuevo);
+    });
+    console.groupEnd();
+  } else {
+    console.log('%c[Updater] ✅ Todos los links al día (' + total + ' apps)', 'color:#4ade80');
+  }
+}
+
+// ─── TOAST VISUAL ─────────────────────────────────────────────
+
+function showToast(changes) {
+  if (!changes.length) return;
+  const old = document.getElementById('ch-updater-toast');
+  if (old) old.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'ch-updater-toast';
+  toast.innerHTML = '<span>🔄 ' + changes.length + ' app' + (changes.length > 1 ? 's' : '') +
+    ' con link actualizado</span><button onclick="this.parentNode.remove()">✕</button>';
+  toast.style.cssText = [
+    'position:fixed;bottom:24px;left:50%;transform:translateX(-50%)',
+    'background:#1a1a2e;border:1px solid rgba(255,69,0,.4);color:#fff',
+    'padding:10px 18px;border-radius:10px;font-size:.85rem',
+    'display:flex;gap:12px;align-items:center;z-index:9999',
+    'box-shadow:0 4px 20px rgba(0,0,0,.5)'
+  ].join(';');
+  toast.querySelector('button').style.cssText = 'background:none;border:none;color:#ff6b35;cursor:pointer;font-size:1rem';
+  document.body.appendChild(toast);
+  setTimeout(() => toast?.remove(), 7000);
+}
+
+// ─── ANIMACIÓN EN CARDS ───────────────────────────────────────
+
+function animateCards(changes) {
+  if (!UPDATER_CONFIG.animateChanges || !changes.length) return;
+  [...new Set(changes.map(c => c.htmlId))].forEach(id => {
+    const card = document.querySelector('[data-id="' + id + '"]');
+    if (!card) return;
+    card.style.transition = 'box-shadow .4s';
+    card.style.boxShadow  = '0 0 0 2px rgba(255,69,0,.7)';
+    setTimeout(() => { card.style.boxShadow = ''; }, 2500);
+  });
+}
+
+// ─── FUNCIÓN PRINCIPAL ────────────────────────────────────────
+
 async function checkForUpdates(showMessage = false) {
-    const loadingIndicator = document.getElementById('loading-indicator');
-    
-    try {
-        if (loadingIndicator) loadingIndicator.style.display = 'block';
-        
-        // Obtener datos desde Pastebin
-        const response = await fetch(CONFIG.pastebinURL, {
-            cache: 'no-cache',
-            headers: {
-                'Cache-Control': 'no-cache'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('No se pudo conectar con el servidor');
-        }
-        
-        const data = await response.json();
-        
-        // Verificar si hay actualización
-        if (data.version !== currentVersion) {
-            showUpdateNotification(data);
-            if (CONFIG.enableAutoUpdate) {
-                await applyUpdate(data);
-            }
-        } else if (showMessage) {
-            showNotification('✅ Estás usando la última versión', 'success');
-        }
-        
-        // Guardar última comprobación
-        localStorage.setItem('lastUpdateCheck', new Date().toISOString());
-        
-    } catch (error) {
-        console.error('Error al verificar actualizaciones:', error);
-        if (showMessage) {
-            showNotification('❌ Error al verificar actualizaciones', 'error');
-        }
-    } finally {
-        if (loadingIndicator) loadingIndicator.style.display = 'none';
+  const loading = document.getElementById('loading-indicator');
+  if (loading) loading.style.display = 'block';
+
+  try {
+    const data = await loadAppsData();
+    if (!data || !data.apps) throw new Error('Datos inválidos');
+
+    const cache   = loadCache();
+    const changes = detectChanges(data.apps, cache);
+    const total   = applyDataToCards(data.apps);
+
+    logReport(changes, total);
+    showToast(changes);
+    animateCards(changes);
+
+    if (!changes.length && showMessage) {
+      const n = document.getElementById('update-notification');
+      if (n) { n.textContent = '✅ Todos los links están al día'; n.className = 'update-notification show success'; setTimeout(() => n.classList.remove('show'), 4000); }
     }
+  } catch (err) {
+    console.error('[Updater] Error:', err.message);
+  } finally {
+    if (loading) loading.style.display = 'none';
+    setTimeout(() => { if (loading) loading.style.display = 'none'; }, 8000);
+  }
 }
 
-// ====================================================
-// APLICAR ACTUALIZACIONES
-// ====================================================
-async function applyUpdate(data) {
-    try {
-        showNotification('🔄 Aplicando actualización...', 'info');
-        
-        // Actualizar apps
-        if (data.apps && data.apps.length > 0) {
-            updateAppsGrid(data.apps);
-        }
-        
-        // Actualizar avisos de seguridad
-        if (data.securityInfo) {
-            updateSecurityInfo(data.securityInfo);
-        }
-        
-        // Actualizar estilos personalizados
-        if (data.customCSS) {
-            applyCustomCSS(data.customCSS);
-        }
-        
-        // Actualizar versión
-        currentVersion = data.version;
-        localStorage.setItem('appVersion', currentVersion);
-        
-        showNotification(`✅ Actualizado a versión ${data.version}`, 'success');
-        
-        // Animar cambios
-        if (CONFIG.updateAnimations) {
-            animateUpdates();
-        }
-        
-    } catch (error) {
-        console.error('Error al aplicar actualización:', error);
-        showNotification('❌ Error al aplicar actualización', 'error');
-    }
-}
+// ─── BÚSQUEDA ─────────────────────────────────────────────────
 
-// ====================================================
-// ACTUALIZAR GRID DE APLICACIONES
-// ====================================================
-function updateAppsGrid(apps) {
-    const container = document.getElementById('apps-container');
-    if (!container) return;
-    
-    // Limpiar contenedor
-    container.innerHTML = '';
-    
-    // Agregar apps actualizadas
-    apps.forEach(app => {
-        const appCard = createAppCard(app);
-        container.appendChild(appCard);
-    });
-}
-
-// ====================================================
-// CREAR TARJETA DE APP
-// ====================================================
-function createAppCard(app) {
-    const card = document.createElement('div');
-    card.className = 'app-card';
-    card.setAttribute('data-app-id', app.id);
-    
-    // Determinar badge
-    let badge = '';
-    if (app.isNew) {
-        badge = '<span class="update-tag">🆕</span>';
-    } else if (app.isUpdated) {
-        badge = '<span class="update-tag">🔄 Actualizada</span>';
-    } else if (app.isFeatured) {
-        badge = '<span class="update-tag">⭐</span>';
-    }
-    
-    card.innerHTML = `
-        <img src="${app.icon}" alt="${app.name}">
-        <div class="app-info">
-            <h2>${app.name} ${badge}</h2>
-            <p>${app.description}</p>
-            ${app.downloadLinks.map((link, index) => `
-                <a href="${link.url}" class="btn ${index > 0 ? 'secondary-btn' : ''}">
-                    ${link.label || 'Descargar'}
-                </a>
-            `).join('')}
-        </div>
-    `;
-    
-    return card;
-}
-
-// ====================================================
-// ACTUALIZAR INFORMACIÓN DE SEGURIDAD
-// ====================================================
-function updateSecurityInfo(info) {
-    const securitySection = document.querySelector('.info-seguridad');
-    if (!securitySection) return;
-    
-    securitySection.innerHTML = `
-        <h2>${info.title || 'Seguridad y Uso Responsable'}</h2>
-        <p>${info.message}</p>
-    `;
-}
-
-// ====================================================
-// APLICAR CSS PERSONALIZADO
-// ====================================================
-function applyCustomCSS(css) {
-    let styleElement = document.getElementById('custom-update-styles');
-    
-    if (!styleElement) {
-        styleElement = document.createElement('style');
-        styleElement.id = 'custom-update-styles';
-        document.head.appendChild(styleElement);
-    }
-    
-    styleElement.textContent = css;
-}
-
-// ====================================================
-// MOSTRAR NOTIFICACIONES
-// ====================================================
-function showNotification(message, type = 'info') {
-    if (!CONFIG.showNotifications) return;
-    
-    const notification = document.getElementById('update-notification');
-    if (!notification) return;
-    
-    // Configurar notificación
-    notification.textContent = message;
-    notification.className = `update-notification show ${type}`;
-    
-    // Auto-ocultar después de 5 segundos
-    setTimeout(() => {
-        notification.classList.remove('show');
-    }, 5000);
-}
-
-// ====================================================
-// ANIMAR ACTUALIZACIONES
-// ====================================================
-function animateUpdates() {
-    const cards = document.querySelectorAll('.app-card');
-    
-    cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-            card.style.transition = 'all 0.5s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-}
-
-// ====================================================
-// MOSTRAR NOTIFICACIÓN DE ACTUALIZACIÓN
-// ====================================================
-function showUpdateNotification(data) {
-    const notification = document.createElement('div');
-    notification.className = 'update-banner';
-    notification.innerHTML = `
-        <div class="update-banner-content">
-            <h3>🎉 Nueva actualización disponible</h3>
-            <p>Versión ${data.version} - ${data.updateMessage || 'Nuevas apps y mejoras'}</p>
-            <div class="update-banner-actions">
-                <button onclick="window.location.reload()" class="update-btn">Actualizar ahora</button>
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="dismiss-btn">Más tarde</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertBefore(notification, document.body.firstChild);
-}
-
-// ====================================================
-// FUNCIÓN DE BÚSQUEDA
-// ====================================================
 function buscarApp() {
-    let input = document.getElementById("search").value.toLowerCase();
-    let apps = document.querySelectorAll(".app-card");
-    
-    apps.forEach(app => {
-        let nombre = app.querySelector("h2").innerText.toLowerCase();
-        if (nombre.includes(input)) {
-            app.style.display = "block";
-        } else {
-            app.style.display = "none";
-        }
-    });
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  document.querySelectorAll('.app-card').forEach(card => {
+    const name = (card.querySelector('h2')?.innerText || '').toLowerCase();
+    card.style.display = name.includes(q) ? '' : 'none';
+  });
 }
 
-// ====================================================
-// CREAR PARTÍCULAS ANIMADAS
-// ====================================================
+// ─── PARTÍCULAS ───────────────────────────────────────────────
+
 function createParticles() {
-    const particlesContainer = document.getElementById('particles');
-    if (!particlesContainer) return;
-    
-    const particleCount = 50;
-    
-    for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 8 + 's';
-        particle.style.animationDuration = (Math.random() * 10 + 5) + 's';
-        particlesContainer.appendChild(particle);
-    }
+  const c = document.getElementById('particles');
+  if (!c) return;
+  for (let i = 0; i < 50; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 8 + 's';
+    p.style.animationDuration = (Math.random() * 10 + 5) + 's';
+    c.appendChild(p);
+  }
 }
 
-// ====================================================
-// INICIALIZAR SISTEMA
-// ====================================================
-function initUpdateSystem() {
-    console.log('🚀 Sistema de actualizaciones iniciado');
-    console.log(`📱 Versión actual: ${currentVersion}`);
-    
-    // Verificar actualizaciones al cargar
-    checkForUpdates();
-    
-    // Configurar verificación automática
-    if (CONFIG.enableAutoUpdate) {
-        updateCheckTimer = setInterval(() => {
-            checkForUpdates();
-        }, CONFIG.checkInterval);
-        
-        console.log(`⏰ Revisión automática cada ${CONFIG.checkInterval / 60000} minutos`);
-    }
-    
-    // Timeout forzado para ocultar loading si se queda atascado
-    setTimeout(() => {
-        const loadingIndicator = document.getElementById('loading-indicator');
-        if (loadingIndicator && loadingIndicator.style.display !== 'none') {
-            loadingIndicator.style.display = 'none';
-            console.log('Loading indicator ocultado forzosamente');
-        }
-    }, 10000); // 10 segundos
-}
+// ─── INIT ─────────────────────────────────────────────────────
 
-// ====================================================
-// EVENT LISTENERS
-// ====================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('search')?.addEventListener('keypress', e => {
+    if (e.key === 'Enter') buscarApp();
+  });
 
-// Búsqueda con Enter
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('search');
-    if (searchInput) {
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                buscarApp();
-            }
-        });
-    }
-    
-    // Crear partículas
-    createParticles();
-    
-    // Inicializar sistema de actualización
-    initUpdateSystem();
-    
-    // Mensajes de consola
-    console.log('%c💎 CodeHub Premium Apps', 'color: #667eea; font-size: 20px; font-weight: bold;');
-    console.log('%c🔄 Sistema de actualización automática activo', 'color: #4ecdc4; font-size: 14px;');
+  createParticles();
+  checkForUpdates();
+
+  if (UPDATER_CONFIG.checkInterval > 0) {
+    setInterval(() => checkForUpdates(), UPDATER_CONFIG.checkInterval);
+  }
+
+  console.log('%c💎 CodeHub Premium Apps', 'color:#ff6b35;font-size:18px;font-weight:bold');
+  console.log('%c🔄 Updater v3.0  |  Dropbox · Drive · Mediafire', 'color:#64748b;font-size:.8rem');
 });
 
-// Exponer funciones globales para uso en HTML
 window.checkForUpdates = checkForUpdates;
-window.buscarApp = buscarApp;
+window.buscarApp       = buscarApp;

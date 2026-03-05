@@ -93,7 +93,7 @@
     {
       "nombre": "Crunchyroll Premium",
       "descripcion": "Accede a todo el catálogo de anime sin anuncios y con la mejor calidad de reproducción.",
-      "enlace": "#", // Enlace vacío en el HTML, debes actualizarlo
+      "enlace": "#",
       "imagen": "img/Crunchyroll.png",
       "tag": "🔄 Actualizada",
       "version_conocida": "v3.20.1",

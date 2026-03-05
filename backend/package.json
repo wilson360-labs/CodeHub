@@ -1,7 +1,7 @@
 {
   "name": "codehub-backend",
-  "version": "1.0.0",
-  "description": "Proxy seguro Claude API + MongoDB para CodeHub",
+  "version": "2.2.0",
+  "description": "CodeHub Backend \u2014 Chat IA + Admin + Backblaze B2 Privado",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,7 +13,8 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.2.0",
     "helmet": "^7.1.0",
-    "mongoose": "^8.3.4"
+    "mongoose": "^8.3.4",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

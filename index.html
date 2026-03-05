@@ -2966,7 +2966,23 @@
             INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
         </div>
         
-        <button id="skip-splash" style="position: absolute; top: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">Saltar</button>
+        <button id="skip-splash" style="position: absolute; top: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; display:none">Saltar</button>
+
+        <!-- Turnstile en splash — aparece al 80% del progreso -->
+        <div id="splash-turnstile-wrap" style="
+            position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
+            z-index:20; display:none; flex-direction:column; align-items:center; gap:.5rem">
+          <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.5);letter-spacing:.1em">
+            VERIFICACIÓN DE SEGURIDAD
+          </p>
+          <div class="cf-turnstile"
+               data-sitekey="0x4AAAAAAClKd5T1R81GltW_"
+               data-theme="dark"
+               data-language="es"
+               data-callback="onSplashTurnstileSuccess"
+               id="ts-splash">
+          </div>
+        </div>
     </div>
 </div>
         </div>
@@ -5100,22 +5116,58 @@
                 if (i >= tips.length - 1) clearInterval(iv);
             }, 1000);
 
-            // Barra de progreso sincronizada a 8 segundos (80ms x 100 = 8s)
+            // Barra de progreso sincronizada a 8 segundos
             const pct = document.getElementById('percentage');
             const bar = document.querySelector('.progress-bar-3d');
             if (pct) pct.textContent = '0%';
             let n = 0;
+            let turnstileSolved = false;
+            let progressDone = false;
+
+            // Callback global cuando Turnstile se resuelve
+            window.onSplashTurnstileSuccess = function() {
+                turnstileSolved = true;
+                const wrap = document.getElementById('splash-turnstile-wrap');
+                if (wrap) {
+                    wrap.innerHTML = '<p style="font-family:JetBrains Mono,monospace;font-size:.7rem;color:#00e676;letter-spacing:.1em">✅ VERIFICACIÓN COMPLETADA</p>';
+                }
+                // Si la barra ya terminó, cerrar inmediatamente
+                if (progressDone) setTimeout(closeSplash, 600);
+            };
+
             const pIv = setInterval(() => {
                 n++;
                 const display = Math.min(100, Math.round(n * 1.1 - Math.pow(n / 10, 1.4)));
                 if (pct) pct.textContent = Math.min(display, 100) + '%';
                 if (bar) bar.style.width = Math.min(n, 100) + '%';
-                if (n >= 100) clearInterval(pIv);
+
+                // Al 80% mostrar el Turnstile
+                if (n === 80) {
+                    const wrap = document.getElementById('splash-turnstile-wrap');
+                    if (wrap) wrap.style.display = 'flex';
+                }
+
+                if (n >= 100) {
+                    clearInterval(pIv);
+                    progressDone = true;
+                    // Solo cerrar si Turnstile ya fue resuelto
+                    if (turnstileSolved) {
+                        setTimeout(closeSplash, 600);
+                    } else {
+                        // Mostrar botón saltar como fallback tras 6s adicionales
+                        setTimeout(() => {
+                            if (document.getElementById('splash-screen')?.style.display !== 'none') {
+                                const skip = document.getElementById('skip-splash');
+                                if (skip) skip.style.display = 'block';
+                            }
+                        }, 6000);
+                    }
+                }
             }, 80);
         })();
 
-        // Cerrar splash automáticamente a los 8 segundos
-        setTimeout(closeSplash, 5000);
+        // Cerrar splash automáticamente si Turnstile no carga (fallback 14s)
+        setTimeout(closeSplash, 14000);
 
         // Fallback de emergencia a los 10 segundos
         setTimeout(() => {

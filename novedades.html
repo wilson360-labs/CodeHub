@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="novedades.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 
@@ -590,6 +591,7 @@
     <div class="req-form">
       <input type="text" id="req-name" placeholder="Nombre de la app (ej: Netflix Mod)" maxlength="60" class="req-input">
       <textarea id="req-reason" placeholder="¿Por qué la quieres? (opcional)" maxlength="200" class="req-textarea" rows="2"></textarea>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAAClKd5T1R81GltW_" data-theme="dark" data-language="es" style="margin:.8rem 0"></div>
       <button onclick="submitRequest()" class="req-submit-btn"><i class="fas fa-paper-plane"></i> Enviar solicitud</button>
     </div>
     <div class="req-list-wrap">
@@ -799,9 +801,8 @@ async function submitRequest() {
       body: JSON.stringify({
         appName: name,
         reason,
-        turnstileToken: (typeof turnstile !== 'undefined'
-            ? document.querySelector('input[name="cf-turnstile-response"]')?.value || ''
-            : ''),
+        turnstileToken: document.querySelector('.req-form input[name="cf-turnstile-response"]')?.value
+            || document.querySelector('input[name="cf-turnstile-response"]')?.value || '',
     }),
     });
     const d = await res.json();
@@ -896,9 +897,8 @@ async function submitRequest() {
       body: JSON.stringify({
         appName: name,
         reason,
-        turnstileToken: (typeof turnstile !== 'undefined'
-            ? document.querySelector('input[name="cf-turnstile-response"]')?.value || ''
-            : ''),
+        turnstileToken: document.querySelector('.req-form input[name="cf-turnstile-response"]')?.value
+            || document.querySelector('input[name="cf-turnstile-response"]')?.value || '',
     }),
     });
     const d = await res.json();

@@ -195,6 +195,7 @@
       header { flex-wrap: wrap; gap: .5rem; }
     }
   </style>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
 <div id="toast"></div>
@@ -209,6 +210,7 @@
     </div>
     <input type="password" id="pwd-input" class="login-input" placeholder="••••••••"
       onkeydown="if(event.key==='Enter')checkLogin()">
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAClKd5T1R81GltW_" data-theme="dark" data-language="es" style="margin:.6rem auto;display:flex;justify-content:center" id="ts-admin"></div>
     <button class="login-btn" onclick="checkLogin()"><i class="fas fa-unlock"></i> Ingresar</button>
     <div class="login-err" id="login-err"></div>
   </div>
@@ -224,6 +226,7 @@
     <button class="admin-tab active" onclick="switchTab('apps', this)"><i class="fas fa-mobile-screen"></i> Apps</button>
     <button class="admin-tab" onclick="switchTab('requests', this)"><i class="fas fa-inbox"></i> Solicitudes</button>
     <button class="admin-tab" onclick="switchTab('stats', this)"><i class="fas fa-chart-bar"></i> Stats</button>
+    <button class="admin-tab" onclick="switchTab('add', this)"><i class="fas fa-plus"></i> Nueva App</button>
   </div>
   <button class="logout-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Salir</button>
 </header>
@@ -275,139 +278,387 @@
       </div>
     </div>
   </div>
+  <!-- TAB: AGREGAR APP -->
+  <div class="tab-panel" id="tab-add">
+    <!-- Generado por renderAddForm() -->
+  </div>
+
+  <!-- Acciones extra -->
+  <div style="margin-top:2rem;display:flex;gap:.8rem;flex-wrap:wrap">
+    <button onclick="refreshApps()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--c);font-family:var(--mono);font-size:.75rem;cursor:pointer">
+      <i class="fas fa-rotate"></i> Refrescar apps
+    </button>
+    <button onclick="seedFromJSON()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);color:var(--a);font-family:var(--mono);font-size:.75rem;cursor:pointer">
+      <i class="fas fa-database"></i> Seed desde apps_data.json
+    </button>
+  </div>
 </main>
 
 <script>
-const BACKEND = 'https://codehub-production-729d.up.railway.app';
-// ⚠️ SEGURIDAD: Esta contraseña se valida contra el backend.
-// Cambia ADMIN_KEY en Railway → Variables → ADMIN_KEY=tu_nueva_clave_secreta
-// La contraseña aquí debe coincidir con lo que pongas en Railway.
-const ADMIN_PASS = 'wilson2026ultra'; // ← cámbiala y actualiza Railway también
+const BACKEND   = 'https://codehub-production-729d.up.railway.app';
+// ⚠️  La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Railway)
+// NO la guardes aquí en producción — este campo solo sirve para enviarla al servidor
+let ADMIN_KEY = '';
 
-const APPS_DEFAULT = [
-  { id:'app-1',  name:'Spotify Premium',        cat:'Música',    ver:'8.9.94.598', verified:true,  badge:'🆕 Nuevo',       changelog:'v8.9.94 — Corrección de bugs de reproducción · Mejor compatibilidad Android 14' },
-  { id:'app-2',  name:'Spotify Lite Premium',   cat:'Música',    ver:'1.9.0.178',  verified:true,  badge:'🆕 Nuevo',       changelog:'v1.9.0 — Modo offline mejorado · Reducción de consumo de batería' },
-  { id:'app-3',  name:'YouTube ReVanced',       cat:'Video',     ver:'19.47.43',   verified:true,  badge:'🔄 Actualizado', changelog:'v19.47 — SponsorBlock actualizado · Nuevo gestor de descargas' },
-  { id:'app-4',  name:'YT Music ReVanced',      cat:'Música',    ver:'7.25.51',    verified:true,  badge:'🔄 Actualizado', changelog:'v7.25 — Reproducción en segundo plano mejorada · Fix de crashes' },
-  { id:'app-5',  name:'TikTok Premium',         cat:'Video',     ver:'38.5.6',     verified:true,  badge:'🆕 Nuevo',       changelog:'v38.5 — Nuevos filtros · Eliminación de anuncios actualizada' },
-  { id:'app-6',  name:'Flicks Remix Netflix',   cat:'Video',     ver:'3.2.1',      verified:false, badge:'🆕 Nuevo',       changelog:'v3.2.1 — Calidad 4K desbloqueada · Subtítulos mejorados' },
-  { id:'app-7',  name:'Terabox Premium',        cat:'Util',      ver:'4.5.2',      verified:true,  badge:'🔄 Actualizado', changelog:'v4.5.2 — Transferencia más rápida · Fix de login' },
-  { id:'app-8',  name:'MX Player Pro',          cat:'Video',     ver:'1.3.9',      verified:true,  badge:'🆕 Nuevo',       changelog:'v1.3.9 — Nuevo decodificador de hardware · Soporte AV1' },
-  { id:'app-9',  name:'PicsArt Premium',        cat:'Foto',      ver:'24.8',       verified:true,  badge:'🔄 Actualizado', changelog:'v24.8 — Nuevas herramientas IA · Paquetes de stickers' },
-  { id:'app-10', name:'Remini Pro',             cat:'Foto',      ver:'5.6.0',      verified:true,  badge:'🔄 Actualizado', changelog:'v5.6.0 — Motor IA actualizado · Mejor rendimiento' },
-  { id:'app-11', name:'Magic Eraser',           cat:'Foto',      ver:'7.5.1',      verified:false, badge:'🆕 Nuevo',       changelog:'v7.5.1 — Nuevos fondos · Fix de exportación' },
-  { id:'app-12', name:'CamScanner Premium',     cat:'Util',      ver:'2.12.0',     verified:true,  badge:'🔄 Actualizado', changelog:'v2.12.0 — Reconocimiento OCR mejorado · Nuevos formatos' },
-  { id:'app-13', name:'DNS AdGuard Pro',        cat:'Seguridad', ver:'4.3.1',      verified:true,  badge:'🆕 Nuevo',       changelog:'v4.3.1 — DNS over HTTPS · Lista de filtros actualizada' },
-];
-
-let appsData = JSON.parse(localStorage.getItem('admin_apps') || 'null') || APPS_DEFAULT;
-
-// ── AUTH ──────────────────────────────────────────────────
-function checkLogin() {
-  const pwd = document.getElementById('pwd-input').value;
-  if (pwd === ADMIN_PASS) {
-    document.getElementById('login-screen').style.display = 'none';
-    initAdmin();
-  } else {
-    document.getElementById('login-err').textContent = '❌ Contraseña incorrecta';
-    document.getElementById('pwd-input').value = '';
+// ── AUTH ──────────────────────────────────────────────────────
+async function checkLogin() {
+  const pwd = document.getElementById('pwd-input').value.trim();
+  if (!pwd) return;
+  // Verificar Turnstile
+  const tsToken = document.querySelector('#ts-admin input[name="cf-turnstile-response"]')?.value
+               || document.querySelector('input[name="cf-turnstile-response"]')?.value || '';
+  const tsLoaded = document.querySelector('#ts-admin iframe');
+  if (tsLoaded && !tsToken) {
+    document.getElementById('login-err').textContent = '⚠️ Completa la verificación de seguridad';
+    return;
   }
+  const btn = document.querySelector('.login-btn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+  try {
+    // Verificar contra el backend real
+    const res = await fetch(`${BACKEND}/api/admin/apps`, {
+      headers: { 'x-admin-key': pwd }
+    });
+    if (res.ok) {
+      ADMIN_KEY = pwd;
+      document.getElementById('login-screen').style.display = 'none';
+      const data = await res.json();
+      initAdmin(data.apps);
+    } else {
+      document.getElementById('login-err').textContent = '❌ Contraseña incorrecta';
+      document.getElementById('pwd-input').value = '';
+    }
+  } catch {
+    // Si falla la red, intentar login local de emergencia
+    document.getElementById('login-err').textContent = '❌ Error de conexión con el servidor';
+  }
+  btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock"></i> Ingresar';
 }
 document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkLogin(); });
 
 function logout() {
+  ADMIN_KEY = '';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('pwd-input').value = '';
+  document.getElementById('login-err').textContent = '';
 }
 
-// ── TABS ──────────────────────────────────────────────────
+// ── TABS ──────────────────────────────────────────────────────
 function switchTab(id, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   btn.classList.add('active');
   if (id === 'requests') loadAdminRequests();
-  if (id === 'stats') loadAdminRatings();
+  if (id === 'stats')    loadAdminRatings();
+  if (id === 'add')      renderAddForm();
 }
 
-// ── INIT ──────────────────────────────────────────────────
-function initAdmin() {
+// ── INIT ──────────────────────────────────────────────────────
+let appsData = [];
+
+function initAdmin(apps) {
+  appsData = apps || [];
   renderApps();
   loadAdminStats();
-  const lp = localStorage.getItem('admin_last_pub');
-  if (lp) document.getElementById('last-pub').textContent = new Date(lp).toLocaleString('es-GT');
 }
 
+// ── RENDER APPS ───────────────────────────────────────────────
 function renderApps() {
   const list = document.getElementById('apps-list');
   const verified = appsData.filter(a => a.verified).length;
+  document.getElementById('st-apps').textContent     = appsData.length;
   document.getElementById('st-verified').textContent = verified;
 
-  list.innerHTML = appsData.map((app, i) => `
-    <div class="app-row">
+  if (!appsData.length) {
+    list.innerHTML = '<div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)">No hay apps. Usa "Seed desde JSON" para importar o agrega una manualmente.</div>';
+    return;
+  }
+
+  list.innerHTML = appsData.map((app, i) => {
+    const enlace      = app.b2_url || app.enlace || '#';
+    const pluginEnl   = app.b2_plugin_url || app.plugin_enlace || '';
+    const hasB2       = !!app.b2_url;
+    const hasB2Plugin = !!app.b2_plugin_url;
+    return `
+    <div class="app-row" id="row-${app.appId}">
       <div class="app-name-cell">
-        ${app.name}
-        <small>${app.cat} · ${app.id}</small>
+        ${app.nombre}
+        <small>${app.categoria || ''} · ${app.appId}</small>
+        ${hasB2 ? '<small style="color:var(--g)">☁️ APK en R2</small>' : ''}
       </div>
       <div>
-        <input class="ver-input" type="text" value="${app.ver}" id="ver-${i}" placeholder="1.0.0">
+        <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
       </div>
       <div>
-        <span class="badge-verified ${app.verified?'yes':'no'}" id="vbadge-${i}" onclick="toggleVerified(${i})">
+        <span class="badge-verified ${app.verified ? 'yes' : 'no'}" id="vbadge-${app.appId}"
+              onclick="toggleVerified('${app.appId}')">
           ${app.verified ? '✅ Sí' : '○ No'}
         </span>
       </div>
       <div>
-        <select style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:.25rem .4rem;color:var(--text);font-family:var(--mono);font-size:.65rem;outline:none" id="badge-${i}">
-          <option value="🆕 Nuevo" ${app.badge==='🆕 Nuevo'?'selected':''}>🆕 Nuevo</option>
-          <option value="🔄 Actualizado" ${app.badge==='🔄 Actualizado'?'selected':''}>🔄 Actualizado</option>
-          <option value="🔥 Popular" ${app.badge==='🔥 Popular'?'selected':''}>🔥 Popular</option>
-          <option value="⚡ Beta" ${app.badge==='⚡ Beta'?'selected':''}>⚡ Beta</option>
+        <select style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:.25rem .4rem;color:var(--text);font-family:var(--mono);font-size:.65rem;outline:none" id="badge-${app.appId}">
+          <option value="🆕" ${app.tag==='🆕'?'selected':''}>🆕 Nuevo</option>
+          <option value="🔄 Actualizada" ${app.tag==='🔄 Actualizada'?'selected':''}>🔄 Actualizada</option>
+          <option value="🔥 Popular" ${app.tag==='🔥 Popular'?'selected':''}>🔥 Popular</option>
+          <option value="⚡ Beta" ${app.tag==='⚡ Beta'?'selected':''}>⚡ Beta</option>
+          <option value="⭐" ${app.tag==='⭐'?'selected':''}>⭐ Destacada</option>
         </select>
       </div>
-      <div>
-        <textarea class="changelog-input" rows="2" id="cl-${i}" placeholder="v1.0 — Cambio 1 · Cambio 2">${app.changelog}</textarea>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
+        <!-- Link manual -->
+        <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" 
+               id="link-${app.appId}" placeholder="https://... (o sube APK directo)">
+        ${pluginEnl ? `<input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="Plugin URL (opcional)">` : ''}
       </div>
-      <div>
-        <button class="save-row-btn" id="sbtn-${i}" onclick="saveRow(${i})">
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <button class="save-row-btn" id="sbtn-${app.appId}" onclick="saveRow('${app.appId}')">
           <i class="fas fa-save"></i> Guardar
         </button>
+        <!-- Upload APK a B2 -->
+        <label style="cursor:pointer">
+          <span style="display:flex;align-items:center;gap:.4rem;padding:.3rem .6rem;border-radius:7px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--c);font-family:var(--mono);font-size:.62rem;font-weight:700;white-space:nowrap">
+            <i class="fas fa-cloud-arrow-up"></i> APK → R2
+          </span>
+          <input type="file" accept=".apk" style="display:none"
+                 onchange="uploadAPK('${app.appId}', 'main', this)">
+        </label>
+        <button onclick="deleteApp('${app.appId}', '${app.nombre.replace(/'/g,'')}')"
+                style="padding:.28rem .5rem;border-radius:7px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:#ff6b6b;font-family:var(--mono);font-size:.62rem;cursor:pointer;white-space:nowrap">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-function toggleVerified(i) {
-  appsData[i].verified = !appsData[i].verified;
-  const badge = document.getElementById('vbadge-' + i);
-  badge.className = 'badge-verified ' + (appsData[i].verified ? 'yes' : 'no');
-  badge.textContent = appsData[i].verified ? '✅ Sí' : '○ No';
+// ── TOGGLE VERIFIED ───────────────────────────────────────────
+function toggleVerified(appId) {
+  const app = appsData.find(a => a.appId === appId);
+  if (!app) return;
+  app.verified = !app.verified;
+  const badge = document.getElementById('vbadge-' + appId);
+  badge.className = 'badge-verified ' + (app.verified ? 'yes' : 'no');
+  badge.textContent = app.verified ? '✅ Sí' : '○ No';
 }
 
-function saveRow(i) {
-  appsData[i].ver       = document.getElementById('ver-' + i).value.trim();
-  appsData[i].changelog = document.getElementById('cl-' + i).value.trim();
-  appsData[i].badge     = document.getElementById('badge-' + i).value;
-  localStorage.setItem('admin_apps', JSON.stringify(appsData));
-  const btn = document.getElementById('sbtn-' + i);
-  btn.classList.add('saved'); btn.innerHTML = '<i class="fas fa-check"></i> Guardado';
-  setTimeout(() => { btn.classList.remove('saved'); btn.innerHTML = '<i class="fas fa-save"></i> Guardar'; }, 2000);
-  toast('✅ App actualizada: ' + appsData[i].name);
-  renderApps();
+// ── SAVE ROW ──────────────────────────────────────────────────
+async function saveRow(appId) {
+  const app = appsData.find(a => a.appId === appId);
+  if (!app) return;
+  const btn = document.getElementById('sbtn-' + appId);
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  const body = {
+    version:      document.getElementById('ver-' + appId)?.value.trim(),
+    changelog:    document.getElementById('cl-' + appId)?.value.trim(),
+    tag:          document.getElementById('badge-' + appId)?.value,
+    verified:     app.verified,
+    enlace:       document.getElementById('link-' + appId)?.value.trim() || app.enlace,
+    plugin_enlace: document.getElementById('plugin-' + appId)?.value.trim() || null,
+  };
+
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const d = await res.json();
+    // Actualizar local
+    Object.assign(app, d.app);
+    btn.classList.add('saved'); btn.innerHTML = '<i class="fas fa-check"></i> OK';
+    toast('✅ ' + app.nombre + ' actualizada');
+  } catch (e) {
+    toast('❌ Error: ' + e.message);
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+  }
+  setTimeout(() => {
+    btn.disabled = false; btn.classList.remove('saved');
+    btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
+  }, 2500);
 }
 
-function publishAll() {
-  // Guardar estado en localStorage (el frontend de novedades lo leería)
-  localStorage.setItem('admin_apps', JSON.stringify(appsData));
-  localStorage.setItem('admin_last_pub', new Date().toISOString());
-  const now = new Date().toLocaleString('es-GT');
-  document.getElementById('last-pub').textContent = now;
-  document.getElementById('publish-status').innerHTML =
-    `<span style="color:var(--g)">✅ Publicado</span> · ${now}`;
-  toast('🚀 Cambios publicados — ' + appsData.length + ' apps actualizadas');
+// ── UPLOAD APK A BACKBLAZE B2 ─────────────────────────────────
+async function uploadAPK(appId, slot, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const app = appsData.find(a => a.appId === appId);
+  toast(`⬆️ Subiendo ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`);
+
+  const label = input.previousElementSibling;
+  label.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+  label.style.color = 'var(--a)';
+
+  const formData = new FormData();
+  formData.append('apk', file);
+  formData.append('slot', slot);
+
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/upload`, {
+      method: 'POST',
+      headers: { 'x-admin-key': ADMIN_KEY },
+      body: formData,
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const d = await res.json();
+    toast(`✅ APK subido a B2 · ${d.sizeMB} MB · ${d.downloadUrl.slice(0,50)}...`);
+    // Actualizar el link en el formulario
+    const linkInput = document.getElementById('link-' + appId);
+    if (linkInput) linkInput.value = d.downloadUrl;
+    if (app) app.b2_url = d.downloadUrl;
+    label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
+    label.style.color = 'var(--g)';
+    // Refrescar datos
+    await refreshApps();
+  } catch (e) {
+    toast('❌ Error subiendo: ' + e.message);
+    label.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> APK → R2';
+    label.style.color = 'var(--c)';
+  }
+  input.value = '';
 }
 
-// ── SOLICITUDES ────────────────────────────────────────────
+// ── ELIMINAR APP ──────────────────────────────────────────────
+async function deleteApp(appId, nombre) {
+  if (!confirm(`¿Eliminar "${nombre}" de la tienda? Esta acción no se puede deshacer.`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
+      method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    appsData = appsData.filter(a => a.appId !== appId);
+    renderApps();
+    toast('🗑️ App eliminada: ' + nombre);
+  } catch (e) { toast('❌ Error: ' + e.message); }
+}
+
+// ── REFRESH APPS DESDE EL SERVIDOR ───────────────────────────
+async function refreshApps() {
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    if (!res.ok) return;
+    const d = await res.json();
+    appsData = d.apps;
+    renderApps();
+  } catch {}
+}
+
+// ── AGREGAR APP NUEVA ─────────────────────────────────────────
+function renderAddForm() {
+  const panel = document.getElementById('tab-add');
+  if (!panel) return;
+  const nextId = 'app-' + (appsData.length + 1);
+  panel.innerHTML = `
+    <div class="section-title"><i class="fas fa-plus-circle"></i> Agregar Nueva App</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:600px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">APP ID</label>
+          <input class="ver-input" id="new-appId" value="${nextId}" style="width:100%" placeholder="app-14">
+        </div>
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">NOMBRE</label>
+          <input class="ver-input" id="new-nombre" style="width:100%" placeholder="Spotify Premium">
+        </div>
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">VERSIÓN</label>
+          <input class="ver-input" id="new-version" style="width:100%" placeholder="1.0.0">
+        </div>
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">CATEGORÍA</label>
+          <select class="ver-input" id="new-cat" style="width:100%">
+            <option>Música</option><option>Video</option><option>Foto</option>
+            <option>Util</option><option>Seguridad</option><option>Juegos</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">DESCRIPCIÓN</label>
+          <input class="ver-input" id="new-desc" style="width:100%" placeholder="Disfruta de...">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">LINK DESCARGA (o sube APK después)</label>
+          <input class="ver-input" id="new-enlace" style="width:100%" placeholder="https://...">
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">IMAGEN (ruta)</label>
+          <input class="ver-input" id="new-imagen" style="width:100%" placeholder="img/NombreApp.png">
+        </div>
+      </div>
+      <button class="publish-btn" style="background:linear-gradient(135deg,var(--p),#ff6b35)" onclick="createApp()">
+        <i class="fas fa-plus"></i> Crear App
+      </button>
+    </div>`;
+}
+
+async function createApp() {
+  const body = {
+    appId:       document.getElementById('new-appId').value.trim(),
+    nombre:      document.getElementById('new-nombre').value.trim(),
+    version:     document.getElementById('new-version').value.trim(),
+    categoria:   document.getElementById('new-cat').value,
+    descripcion: document.getElementById('new-desc').value.trim(),
+    enlace:      document.getElementById('new-enlace').value.trim() || '#',
+    imagen:      document.getElementById('new-imagen').value.trim(),
+    tag:         '🆕',
+    verified:    true,
+  };
+  if (!body.appId || !body.nombre) return toast('❌ AppId y Nombre son obligatorios');
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    toast('✅ App creada: ' + body.nombre);
+    await refreshApps();
+    // Volver al tab de apps
+    document.querySelectorAll('.admin-tab')[0].click();
+  } catch (e) { toast('❌ ' + e.message); }
+}
+
+// ── SEED DESDE apps_data.json ─────────────────────────────────
+async function seedFromJSON() {
+  if (!confirm('Esto importará todos los datos de apps_data.json a MongoDB. ¿Continuar?')) return;
+  try {
+    const res = await fetch('./apps_data.json');
+    const text = await res.text();
+    const clean = text.replace(/\/\/[^\n]*/g, '').replace(/,(\s*[}\]])/g, '$1');
+    const data = JSON.parse(clean);
+
+    // Mapear al formato del backend
+    const mapped = data.apps.map((a, i) => ({
+      appId:          'app-' + (i + 1),
+      nombre:         a.nombre,
+      descripcion:    a.descripcion || '',
+      version:        a.version_conocida || '',
+      tag:            a.tag || '🆕',
+      changelog:      '',
+      imagen:         a.imagen || '',
+      enlace:         a.enlace || '#',
+      plugin_enlace:  a.plugin_enlace || null,
+      verified:       true,
+      categoria:      '',
+    }));
+
+    const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ apps: mapped }),
+    });
+    if (!seedRes.ok) throw new Error((await seedRes.json()).error);
+    const d = await seedRes.json();
+    toast(`✅ Seed completado: ${d.created} creadas, ${d.updated} actualizadas`);
+    await refreshApps();
+  } catch (e) { toast('❌ Error en seed: ' + e.message); }
+}
+
+// ── SOLICITUDES ───────────────────────────────────────────────
 async function loadAdminRequests() {
   const list = document.getElementById('req-list-admin');
   list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Cargando...</div>';
@@ -425,9 +676,8 @@ async function loadAdminRequests() {
         <div class="req-votes">+${r.votes} votos</div>
         <button class="req-action req-done" onclick="markRequest('${r._id}','done')"><i class="fas fa-check"></i> Agregar</button>
         <button class="req-action req-reject" onclick="markRequest('${r._id}','rejected')"><i class="fas fa-times"></i> Rechazar</button>
-      </div>
-    `).join('');
-  } catch(e) {
+      </div>`).join('');
+  } catch {
     list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error conectando al backend</div>';
   }
 }
@@ -436,61 +686,58 @@ async function markRequest(id, status) {
   try {
     await fetch(`${BACKEND}/api/requests/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, adminKey: 'wilson2026ultra' })
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ status }),
     });
-    toast(status === 'done' ? '✅ Marcada como agregada' : '🗑️ Solicitud rechazada');
+    toast(status === 'done' ? '✅ Marcada como agregada' : '🗑️ Rechazada');
     loadAdminRequests();
-  } catch(e) { toast('Error actualizando'); }
+  } catch { toast('❌ Error'); }
 }
 
-// ── RATINGS ────────────────────────────────────────────────
+// ── RATINGS ───────────────────────────────────────────────────
 async function loadAdminRatings() {
   const list = document.getElementById('ratings-list');
   try {
     const res = await fetch(`${BACKEND}/api/ratings`);
     const d   = await res.json();
     const ratings = d.ratings || {};
-    let total = Object.values(ratings).reduce((s, r) => s + r.count, 0);
+    const total = Object.values(ratings).reduce((s, r) => s + r.count, 0);
     document.getElementById('st-ratings').textContent = total;
     if (!Object.keys(ratings).length) {
       list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Aún no hay ratings</div>';
       return;
     }
     list.innerHTML = Object.entries(ratings).map(([id, r]) => {
-      const app = APPS_DEFAULT.find(a => a.id === id);
+      const app = appsData.find(a => a.appId === id);
       return `<div class="req-row">
-        <div class="req-name">${app?.name || id}</div>
+        <div class="req-name">${app?.nombre || id}</div>
         <div style="font-family:var(--mono);font-size:.72rem;color:var(--a)">⭐ ${r.avg} / 5</div>
         <div style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">${r.count} votos</div>
         <div></div>
       </div>`;
     }).join('');
-  } catch(e) {
-    list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error conectando al backend</div>';
+  } catch {
+    list.innerHTML = '<div style="padding:1.5rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error</div>';
   }
 }
 
 async function loadAdminStats() {
   try {
-    const [reqRes, ratRes] = await Promise.all([
-      fetch(`${BACKEND}/api/requests`),
-      fetch(`${BACKEND}/api/ratings`)
-    ]);
+    const [reqRes, ratRes] = await Promise.all([fetch(`${BACKEND}/api/requests`), fetch(`${BACKEND}/api/ratings`)]);
     const req = await reqRes.json();
     const rat = await ratRes.json();
     document.getElementById('st-requests').textContent = req.requests?.length || 0;
-    const totalVotes = Object.values(rat.ratings || {}).reduce((s, r) => s + r.count, 0);
-    document.getElementById('st-ratings').textContent = totalVotes;
-  } catch(e) {}
+    document.getElementById('st-ratings').textContent  = Object.values(rat.ratings || {}).reduce((s,r) => s + r.count, 0);
+  } catch {}
 }
 
-// ── TOAST ──────────────────────────────────────────────────
+// ── TOAST ─────────────────────────────────────────────────────
 function toast(m) {
   const t = document.getElementById('toast');
   t.textContent = m; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  setTimeout(() => t.classList.remove('show'), 3500);
 }
 </script>
+
 </body>
 </html>
