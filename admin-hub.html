@@ -624,27 +624,10 @@ async function createApp() {
 
 // ── SEED DESDE apps_data.json ─────────────────────────────────
 async function seedFromJSON() {
-  if (!confirm('Esto importará todos los datos de apps_data.json a MongoDB. ¿Continuar?')) return;
+  if (!confirm('Esto importará las 13 apps a MongoDB. ¿Continuar?')) return;
   try {
-    const res = await fetch('./apps_data.json');
-    const text = await res.text();
-    const clean = text.replace(/\/\/[^\n]*/g, '').replace(/,(\s*[}\]])/g, '$1');
-    const data = JSON.parse(clean);
-
-    // Mapear al formato del backend
-    const mapped = data.apps.map((a, i) => ({
-      appId:          'app-' + (i + 1),
-      nombre:         a.nombre,
-      descripcion:    a.descripcion || '',
-      version:        a.version_conocida || '',
-      tag:            a.tag || '🆕',
-      changelog:      '',
-      imagen:         a.imagen || '',
-      enlace:         a.enlace || '#',
-      plugin_enlace:  a.plugin_enlace || null,
-      verified:       true,
-      categoria:      '',
-    }));
+    // Datos embebidos directamente — sin fetch para evitar problemas de caché/CORS
+    const mapped = [{"appId": "app-1", "nombre": "Spotify Premium", "descripcion": "Disfruta de música sin anuncios y con calidad premium.", "enlace": "#", "imagen": "img/Spotify.png", "tag": "🆕", "version": "v8.9.10", "categoria": "Música", "verified": true}, {"appId": "app-2", "nombre": "Spotify Lite Premium", "descripcion": "Versión ligera de Spotify con funciones premium.", "enlace": "#", "imagen": "img/SpoLite.png", "tag": "🆕", "version": "v1.9.0", "categoria": "Música", "verified": true}, {"appId": "app-3", "nombre": "YouTube ReVanced", "descripcion": "YouTube sin anuncios con funciones extra desbloqueadas.", "enlace": "#", "imagen": "img/YouTube.jpeg", "tag": "🔄 Actualizada", "version": "v19.47.43", "categoria": "Video", "verified": true}, {"appId": "app-4", "nombre": "YT Music ReVanced", "descripcion": "YouTube Music con reproducción en segundo plano.", "enlace": "#", "imagen": "img/YTMusic.png", "tag": "🔄 Actualizada", "version": "v7.25.51", "categoria": "Música", "verified": true}, {"appId": "app-5", "nombre": "TikTok Premium", "descripcion": "TikTok sin anuncios y con funciones desbloqueadas.", "enlace": "#", "imagen": "img/TikTok.svg", "tag": "🆕", "version": "v38.5.6", "categoria": "Video", "verified": true}, {"appId": "app-6", "nombre": "Flicks Remix Netflix", "descripcion": "Cliente alternativo de Netflix con funciones extra.", "enlace": "#", "imagen": "img/Netflix.png", "tag": "🆕", "version": "v3.2.1", "categoria": "Video", "verified": true}, {"appId": "app-7", "nombre": "Terabox Premium", "descripcion": "Almacenamiento en la nube con funciones premium.", "enlace": "#", "imagen": "img/Terabox.png", "tag": "🔄 Actualizada", "version": "v4.5.2", "categoria": "Utilidades", "verified": true}, {"appId": "app-8", "nombre": "MX Player Pro", "descripcion": "Reproductor de video con soporte para todos los formatos.", "enlace": "#", "imagen": "img/Player.jpg", "tag": "🆕", "version": "v1.3.9", "categoria": "Video", "verified": true}, {"appId": "app-9", "nombre": "PicsArt Premium", "descripcion": "Editor de fotos con herramientas IA desbloqueadas.", "enlace": "#", "imagen": "img/Picsart.jpg", "tag": "🔄 Actualizada", "version": "v24.8", "categoria": "Foto", "verified": true}, {"appId": "app-10", "nombre": "Remini Pro", "descripcion": "Mejora la calidad de tus fotos con inteligencia artificial.", "enlace": "#", "imagen": "img/Remini.png", "tag": "🔄 Actualizada", "version": "v5.6.0", "categoria": "Foto", "verified": true}, {"appId": "app-11", "nombre": "Magic Eraser", "descripcion": "Elimina objetos de tus fotos con un toque.", "enlace": "#", "imagen": "img/Eraser.jpg", "tag": "🆕", "version": "v7.5.1", "categoria": "Foto", "verified": true}, {"appId": "app-12", "nombre": "CamScanner Premium", "descripcion": "Escáner de documentos con OCR y funciones premium.", "enlace": "#", "imagen": "img/CamScanner.png", "tag": "🔄 Actualizada", "version": "v2.12.0", "categoria": "Utilidades", "verified": true}, {"appId": "app-13", "nombre": "DNS AdGuard Pro", "descripcion": "Bloquea anuncios a nivel de DNS en todo el dispositivo.", "enlace": "#", "imagen": "img/dnspro.png", "tag": "🆕", "version": "v4.3.1", "categoria": "Seguridad", "verified": true}];
 
     const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
       method: 'POST',
