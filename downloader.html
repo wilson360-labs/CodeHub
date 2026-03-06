@@ -542,28 +542,28 @@ const PLATFORMS = {
     patterns: [/youtube\.com\/watch/i, /youtu\.be\//i, /youtube\.com\/shorts/i, /youtube\.com\/live/i],
     services: [
       {
-        label: 'Video MP4',
-        sub: 'Hasta 4K · yt1s.com',
-        icon: 'fa-video',
-        url: u => 'https://yt1s.com/en/youtube-to-mp4?q=' + encodeURIComponent(u)
+        label: 'SSYouTube ⭐',
+        sub: 'El mejor · HD hasta 4K · MP4',
+        icon: 'fa-crown',
+        url: u => { const id = extractYtId(u); return id ? 'https://ssyoutube.com/watch?v=' + id : 'https://ssyoutube.com/?url=' + encodeURIComponent(u); }
       },
       {
-        label: 'Solo Audio MP3',
-        sub: 'Calidad máxima · y2mate',
+        label: 'YT1S · Video MP4',
+        sub: 'Hasta 4K · rápido',
+        icon: 'fa-video',
+        url: u => 'https://yt1s.io/en68?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'MP3 · Solo Audio',
+        sub: 'Alta calidad · 320kbps',
         icon: 'fa-music',
-        url: u => 'https://www.y2mate.com/youtube-mp3/' + extractYtId(u)
+        url: u => 'https://ytmp3.cc/en13/youtube-to-mp3/?url=' + encodeURIComponent(u)
       },
       {
         label: 'SaveFrom',
-        sub: 'Multi-formato · rápido',
+        sub: 'Multi-formato · confiable',
         icon: 'fa-download',
         url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
-      },
-      {
-        label: 'SSYouTube',
-        sub: 'Pega "ss" antes de youtube.com',
-        icon: 'fa-circle-info',
-        url: u => 'https://ssyoutube.com/watch?v=' + extractYtId(u)
       }
     ]
   },
@@ -573,28 +573,28 @@ const PLATFORMS = {
     patterns: [/tiktok\.com/i, /vm\.tiktok\.com/i],
     services: [
       {
-        label: 'Sin marca de agua',
-        sub: 'Calidad original · snaptik',
-        icon: 'fa-video',
+        label: 'SnapTik ⭐',
+        sub: 'Sin marca de agua · el mejor',
+        icon: 'fa-crown',
         url: u => 'https://snaptik.app/en?url=' + encodeURIComponent(u)
       },
       {
         label: 'SSSTik',
-        sub: 'Alternativa rápida',
-        icon: 'fa-download',
+        sub: 'Rápido · sin watermark',
+        icon: 'fa-video',
         url: u => 'https://ssstik.io/en?url=' + encodeURIComponent(u)
       },
       {
-        label: 'MusicalDown',
-        sub: 'Video + audio',
+        label: 'TikMate',
+        sub: 'Video + audio separados',
         icon: 'fa-music',
-        url: u => 'https://musicaldown.com/en?url=' + encodeURIComponent(u)
+        url: u => 'https://tikmate.online/?url=' + encodeURIComponent(u)
       },
       {
-        label: 'TikMate',
-        sub: 'Batch download',
+        label: 'SaveTT',
+        sub: 'Batch · múltiples videos',
         icon: 'fa-layer-group',
-        url: u => 'https://tikmate.online/?url=' + encodeURIComponent(u)
+        url: u => 'https://savett.cc/en?url=' + encodeURIComponent(u)
       }
     ]
   },
@@ -604,28 +604,28 @@ const PLATFORMS = {
     patterns: [/instagram\.com/i, /instagr\.am/i],
     services: [
       {
-        label: 'Reels y Videos',
-        sub: 'snapinsta.app',
-        icon: 'fa-video',
+        label: 'SnapInsta ⭐',
+        sub: 'Reels · posts · stories · el mejor',
+        icon: 'fa-crown',
         url: u => 'https://snapinsta.app/en?url=' + encodeURIComponent(u)
       },
       {
-        label: 'Fotos y Posts',
-        sub: 'Fotos en alta res',
+        label: 'SaveIG',
+        sub: 'Videos e imágenes HD',
         icon: 'fa-image',
-        url: u => 'https://imginn.com/p/' + extractIgId(u)
+        url: u => 'https://saveig.app/en?url=' + encodeURIComponent(u)
       },
       {
-        label: 'StorySave',
+        label: 'IgDownloader',
+        sub: 'Reels sin marca',
+        icon: 'fa-video',
+        url: u => 'https://igdownloader.app/en?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'StorySaver',
         sub: 'Stories anónimas',
         icon: 'fa-clock',
         url: u => 'https://storysaver.net/?url=' + encodeURIComponent(u)
-      },
-      {
-        label: 'DownloadGram',
-        sub: 'Multi-formato',
-        icon: 'fa-download',
-        url: u => 'https://downloadgram.org/?url=' + encodeURIComponent(u)
       }
     ]
   },
@@ -635,28 +635,28 @@ const PLATFORMS = {
     patterns: [/facebook\.com/i, /fb\.com/i, /fb\.watch/i],
     services: [
       {
-        label: 'Video HD',
-        sub: 'Alta calidad · fdown',
-        icon: 'fa-video',
+        label: 'FDown ⭐',
+        sub: 'HD y SD · el más confiable',
+        icon: 'fa-crown',
         url: u => 'https://fdown.net/?url=' + encodeURIComponent(u)
       },
       {
-        label: 'SaveFrom',
-        sub: 'SD y HD disponibles',
-        icon: 'fa-download',
-        url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
-      },
-      {
         label: 'GetFVid',
-        sub: 'Rápido y gratuito',
+        sub: 'Rápido · sin registro',
         icon: 'fa-bolt',
         url: u => 'https://www.getfvid.com/downloader?url=' + encodeURIComponent(u)
       },
       {
-        label: 'FBDownloader',
-        sub: 'Sin límites',
-        icon: 'fa-infinity',
-        url: u => 'https://fbdownloader.net/?url=' + encodeURIComponent(u)
+        label: 'SaveFrom',
+        sub: 'Multi-formato',
+        icon: 'fa-download',
+        url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'FB Video Save',
+        sub: 'Privados y públicos',
+        icon: 'fa-lock-open',
+        url: u => 'https://fbvideosave.net/?url=' + encodeURIComponent(u)
       }
     ]
   },
@@ -666,28 +666,66 @@ const PLATFORMS = {
     patterns: [/twitter\.com/i, /x\.com/i, /t\.co\//i],
     services: [
       {
-        label: 'Video del Tweet',
-        sub: 'twittervideodownloader',
-        icon: 'fa-video',
-        url: u => 'https://twittervideodownloader.com/?url=' + encodeURIComponent(u)
+        label: 'TWSave ⭐',
+        sub: 'Videos y GIFs · el mejor',
+        icon: 'fa-crown',
+        url: u => 'https://twsave.com/?url=' + encodeURIComponent(u)
       },
       {
         label: 'SaveTweetVid',
         sub: 'Calidad original',
-        icon: 'fa-download',
+        icon: 'fa-video',
         url: u => 'https://savetweetvid.com/en?url=' + encodeURIComponent(u)
       },
       {
-        label: 'TWSave',
-        sub: 'GIFs y videos',
-        icon: 'fa-film',
-        url: u => 'https://twsave.com/?url=' + encodeURIComponent(u)
-      },
-      {
         label: 'XDownloader',
-        sub: 'Multi-calidad',
+        sub: 'Multi-calidad · rápido',
         icon: 'fa-sliders',
         url: u => 'https://xdownloader.io/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'TwitterVid',
+        sub: 'HD · GIFs animados',
+        icon: 'fa-film',
+        url: u => 'https://twittervid.com/?url=' + encodeURIComponent(u)
+      }
+    ]
+  },
+  pinterest: {
+    name: 'Pinterest',
+    icon: '📌',
+    patterns: [/pinterest\.com/i, /pin\.it\//i],
+    services: [
+      {
+        label: 'PinDown ⭐',
+        sub: 'Videos e imágenes · el mejor',
+        icon: 'fa-crown',
+        url: u => 'https://pindown.net/?url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'PinterestDown',
+        sub: 'HD rápido',
+        icon: 'fa-video',
+        url: u => 'https://pinterestdown.com/?url=' + encodeURIComponent(u)
+      }
+    ]
+  },
+  vimeo: {
+    name: 'Vimeo',
+    icon: '🎞️',
+    patterns: [/vimeo\.com/i],
+    services: [
+      {
+        label: 'SaveFrom ⭐',
+        sub: 'HD · el mejor para Vimeo',
+        icon: 'fa-crown',
+        url: u => 'https://en.savefrom.net/#url=' + encodeURIComponent(u)
+      },
+      {
+        label: 'VimeoDown',
+        sub: 'Multi-calidad',
+        icon: 'fa-video',
+        url: u => 'https://vimeodownloader.net/?url=' + encodeURIComponent(u)
       }
     ]
   }

@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Servicios — Wilson.E Desarrollador Web</title>
+<meta name="description" content="Servicios de desarrollo web profesional: tiendas online, landing pages, dashboards, portafolios, SEO y automatizaciones. Guatemala y remoto.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07070f;--s1:#0d0d1a;--s2:#11111e;--card:#13131f;
+  --p:#ff4500;--p2:#ff6b35;--a:#ffbd69;
+  --green:#00e676;--cyan:#40c4ff;--purple:#b388ff;
+  --text:#e8e8f0;--muted:rgba(232,232,240,.5);
+  --border:rgba(255,69,0,.16);--border-h:rgba(255,69,0,.4);
+  --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --tr:all .22s ease;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* Grid de fondo */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(255,69,0,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,69,0,.025) 1px,transparent 1px);
+  background-size:56px 56px;pointer-events:none;z-index:0;
+}
+
+/* ── SCROLL PROGRESS ── */
+#pbar{position:fixed;top:0;left:0;height:2px;width:0%;background:linear-gradient(90deg,var(--p),var(--a));z-index:9999;transition:width .1s}
+
+/* ── HEADER ── */
+header{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.hdr{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 2rem;gap:1rem}
+.logo-link{text-decoration:none;display:flex;align-items:center;gap:.5rem}
+.logo-t{font-size:1.05rem;font-weight:800;letter-spacing:.04em;color:var(--text)}
+.logo-t .br{color:var(--p);text-shadow:0 0 10px rgba(255,69,0,.4)}
+.logo-b{font-size:.6rem;font-weight:700;font-family:var(--mono);color:var(--a);background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.22);padding:2px 8px;border-radius:20px}
+.hdr-right{display:flex;align-items:center;gap:.6rem}
+.back-link{display:flex;align-items:center;gap:.4rem;text-decoration:none;font-size:.78rem;font-weight:600;color:var(--muted);padding:.36rem .8rem;border-radius:8px;border:1px solid rgba(255,255,255,.08);transition:var(--tr)}
+.back-link:hover{color:var(--text);border-color:var(--border-h);background:rgba(255,69,0,.06)}
+.cta-header{display:flex;align-items:center;gap:.4rem;text-decoration:none;font-size:.78rem;font-weight:700;color:#fff;padding:.36rem 1rem;border-radius:8px;background:linear-gradient(135deg,var(--p),var(--p2));transition:var(--tr);white-space:nowrap}
+.cta-header:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(255,69,0,.35)}
+
+/* ── HERO ── */
+.hero{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:5rem 2rem 3rem;text-align:center}
+.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.7rem;color:var(--a);background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);padding:.28rem 1rem;border-radius:20px;margin-bottom:1.2rem}
+.hero-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.hero h1{font-size:clamp(2.2rem,6vw,4rem);font-weight:800;line-height:1.05;letter-spacing:-.03em;margin-bottom:1rem}
+.hero h1 .grad{background:linear-gradient(135deg,#fff 0%,var(--a) 40%,var(--p) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:1rem;color:var(--muted);line-height:1.8;max-width:600px;margin:0 auto 2.5rem}
+.hero-ctas{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 2rem;border-radius:12px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;font-weight:700;font-size:.95rem;text-decoration:none;transition:var(--tr);box-shadow:0 4px 18px rgba(255,69,0,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,69,0,.45)}
+.btn-ghost{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 2rem;border-radius:12px;border:1px solid rgba(255,255,255,.15);color:var(--text);font-weight:600;font-size:.95rem;text-decoration:none;transition:var(--tr)}
+.btn-ghost:hover{border-color:var(--border-h);background:rgba(255,69,0,.06)}
+
+/* ── STATS BAR ── */
+.stats-bar{position:relative;z-index:1;max-width:1200px;margin:0 auto 1rem;padding:0 2rem;display:flex;gap:1rem;flex-wrap:wrap;justify-content:center}
+.stat-pill{display:flex;align-items:center;gap:.6rem;padding:.5rem 1.2rem;border-radius:30px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);font-size:.8rem;color:var(--muted)}
+.stat-pill i{color:var(--p);font-size:.85rem}
+.stat-pill strong{color:var(--text)}
+
+/* ── SERVICIOS GRID ── */
+.section{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:3rem 2rem}
+.section-label{font-family:var(--mono);font-size:.68rem;color:var(--p);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.5rem}
+.section-title{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.5rem}
+.section-sub{color:var(--muted);font-size:.9rem;line-height:1.7;margin-bottom:2.5rem;max-width:600px}
+
+.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.2rem}
+
+.srv-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:18px;padding:1.8rem;
+  transition:var(--tr);cursor:default;
+  position:relative;overflow:hidden;
+}
+.srv-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,69,0,.05),transparent);
+  opacity:0;transition:opacity .3s;
+}
+.srv-card:hover{border-color:var(--border-h);transform:translateY(-4px);box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.srv-card:hover::before{opacity:1}
+
+.srv-icon-wrap{
+  width:52px;height:52px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.4rem;margin-bottom:1.2rem;
+  background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.2);
+  transition:var(--tr);
+}
+.srv-card:hover .srv-icon-wrap{background:rgba(255,69,0,.18);transform:scale(1.08)}
+
+.srv-card h3{font-size:1.05rem;font-weight:700;margin-bottom:.5rem}
+.srv-card p{font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:1.2rem}
+
+.srv-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.2rem}
+.srv-tag{font-family:var(--mono);font-size:.62rem;padding:.2rem .55rem;border-radius:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted)}
+
+.srv-cta{
+  display:inline-flex;align-items:center;gap:.4rem;
+  font-size:.78rem;font-weight:700;color:var(--p);
+  text-decoration:none;font-family:var(--mono);
+  transition:var(--tr);
+}
+.srv-cta:hover{color:var(--a);gap:.6rem}
+
+/* Colores por tipo */
+.srv-card.ecom .srv-icon-wrap{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.25)}
+.srv-card.ecom .srv-cta{color:var(--green)}
+.srv-card.landing .srv-icon-wrap{background:rgba(64,196,255,.1);border-color:rgba(64,196,255,.25)}
+.srv-card.landing .srv-cta{color:var(--cyan)}
+.srv-card.dash .srv-icon-wrap{background:rgba(179,136,255,.1);border-color:rgba(179,136,255,.25)}
+.srv-card.dash .srv-cta{color:var(--purple)}
+.srv-card.portfolio .srv-icon-wrap{background:rgba(255,189,105,.1);border-color:rgba(255,189,105,.25)}
+.srv-card.portfolio .srv-cta{color:var(--a)}
+.srv-card.seo .srv-icon-wrap{background:rgba(255,69,0,.1);border-color:rgba(255,69,0,.25)}
+.srv-card.bot .srv-icon-wrap{background:rgba(64,196,255,.08);border-color:rgba(64,196,255,.2)}
+.srv-card.bot .srv-cta{color:var(--cyan)}
+.srv-card.mant .srv-icon-wrap{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.2)}
+.srv-card.mant .srv-cta{color:var(--green)}
+
+/* ── PROCESO ── */
+.proceso-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:2rem}
+.paso{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;position:relative;transition:var(--tr)}
+.paso:hover{border-color:var(--border-h);transform:translateY(-2px)}
+.paso-num{font-family:var(--mono);font-size:2rem;font-weight:800;color:rgba(255,69,0,.2);margin-bottom:.6rem;line-height:1}
+.paso h4{font-size:.9rem;font-weight:700;margin-bottom:.4rem}
+.paso p{font-size:.78rem;color:var(--muted);line-height:1.6}
+
+/* ── CTA FINAL ── */
+.cta-section{
+  position:relative;z-index:1;
+  max-width:1200px;margin:0 auto;padding:2rem 2rem 5rem;
+}
+.cta-box{
+  background:linear-gradient(135deg,rgba(255,69,0,.12),rgba(255,107,53,.06));
+  border:1px solid rgba(255,69,0,.3);
+  border-radius:24px;padding:3.5rem 2rem;
+  text-align:center;position:relative;overflow:hidden;
+}
+.cta-box::before{
+  content:'';position:absolute;top:-50%;left:-50%;
+  width:200%;height:200%;
+  background:radial-gradient(circle,rgba(255,69,0,.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.cta-box h2{font-size:clamp(1.6rem,4vw,2.5rem);font-weight:800;margin-bottom:.8rem}
+.cta-box p{color:var(--muted);font-size:.95rem;margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto}
+.wa-btn{
+  display:inline-flex;align-items:center;gap:.7rem;
+  padding:1rem 2.5rem;border-radius:14px;
+  background:linear-gradient(135deg,#25d366,#128c3e);
+  color:#fff;font-weight:700;font-size:1rem;
+  text-decoration:none;transition:var(--tr);
+  box-shadow:0 6px 24px rgba(37,211,102,.3);
+}
+.wa-btn:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(37,211,102,.45)}
+.wa-btn i{font-size:1.2rem}
+
+/* ── FAQ ── */
+.faq-list{display:flex;flex-direction:column;gap:.7rem;margin-top:2rem}
+.faq-item{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:var(--tr)}
+.faq-item:hover{border-color:var(--border-h)}
+.faq-q{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  padding:1rem 1.3rem;background:none;border:none;
+  color:var(--text);font-family:var(--font);font-size:.9rem;font-weight:600;
+  cursor:pointer;text-align:left;gap:1rem;
+}
+.faq-q i{color:var(--p);font-size:.8rem;transition:transform .2s;flex-shrink:0}
+.faq-item.open .faq-q i{transform:rotate(180deg)}
+.faq-a{display:none;padding:0 1.3rem 1rem;font-size:.83rem;color:var(--muted);line-height:1.7}
+.faq-item.open .faq-a{display:block}
+
+/* ── FOOTER ── */
+footer{position:relative;z-index:1;text-align:center;padding:1.5rem 2rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)}
+footer a{color:var(--p);text-decoration:none}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .hero{padding:3rem 1rem 2rem}
+  .hero h1{font-size:2rem}
+  .section{padding:2rem 1rem}
+  .services-grid{grid-template-columns:1fr}
+  .proceso-grid{grid-template-columns:repeat(2,1fr)}
+  .hdr{padding:0 1rem}
+  .cta-box{padding:2rem 1rem}
+  .hero-ctas{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+
+<div id="pbar"></div>
+
+<header>
+  <div class="hdr">
+    <a class="logo-link" href="index.html">
+      <span class="logo-t"><span class="br">&lt;Wilson.E/&gt;</span></span>
+      <span class="logo-b">CodeHub</span>
+    </a>
+    <div class="hdr-right">
+      <a class="back-link" href="index.html"><i class="fas fa-arrow-left"></i> Inicio</a>
+      <a class="cta-header" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20vi%20tus%20servicios%20y%20me%20interesa%20cotizar%20un%20proyecto" target="_blank" rel="noopener">
+        <i class="fab fa-whatsapp"></i> Cotizar proyecto
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">
+    <span class="hero-dot"></span>
+    Disponible para proyectos nuevos
+  </div>
+  <h1>Desarrollo web que<br><span class="grad">genera resultados</span></h1>
+  <p class="hero-sub">Tiendas online, landing pages, dashboards y más. Soluciones digitales a medida para que tu negocio crezca en internet.</p>
+  <div class="hero-ctas">
+    <a class="btn-primary" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20vi%20tus%20servicios%20y%20me%20interesa%20cotizar%20un%20proyecto" target="_blank" rel="noopener">
+      <i class="fab fa-whatsapp"></i> Hablar por WhatsApp
+    </a>
+    <a class="btn-ghost" href="index.html#latest-projects">
+      <i class="fas fa-eye"></i> Ver proyectos
+    </a>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat-pill"><i class="fas fa-map-marker-alt"></i> <span>Guatemala · <strong>Remoto mundial</strong></span></div>
+  <div class="stat-pill"><i class="fas fa-clock"></i> <span>Respuesta en <strong>menos de 24h</strong></span></div>
+  <div class="stat-pill"><i class="fas fa-shield-halved"></i> <span>Código <strong>limpio y documentado</strong></span></div>
+  <div class="stat-pill"><i class="fas fa-headset"></i> <span>Soporte <strong>post-entrega</strong></span></div>
+</div>
+
+<!-- SERVICIOS -->
+<div class="section">
+  <div class="section-label">// Servicios</div>
+  <h2 class="section-title">¿Qué puedo hacer por ti?</h2>
+  <p class="section-sub">Cada proyecto es único — el precio depende del alcance. Conversamos, entendemos tu necesidad y te damos una propuesta real.</p>
+
+  <div class="services-grid">
+
+    <!-- E-commerce -->
+    <div class="srv-card ecom">
+      <div class="srv-icon-wrap">🛒</div>
+      <h3>Tienda Online / E-commerce</h3>
+      <p>Vende tus productos en internet con un sistema completo: catálogo, carrito, pagos y panel de administración. Ideal para tiendas, boutiques, restaurantes y cualquier negocio que quiera vender online.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Catálogo de productos</span>
+        <span class="srv-tag">Pagos en línea</span>
+        <span class="srv-tag">Panel admin</span>
+        <span class="srv-tag">Inventario</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20una%20tienda%20online" target="_blank" rel="noopener">
+        Cotizar tienda <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- Landing Page -->
+    <div class="srv-card landing">
+      <div class="srv-icon-wrap">🚀</div>
+      <h3>Landing Page para Negocios</h3>
+      <p>Una página de alto impacto diseñada para convertir visitantes en clientes. Perfecta para lanzar un producto, captar leads o presentar tu negocio de forma profesional.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Diseño moderno</span>
+        <span class="srv-tag">Formulario de contacto</span>
+        <span class="srv-tag">Optimizada velocidad</span>
+        <span class="srv-tag">Mobile first</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20una%20landing%20page" target="_blank" rel="noopener">
+        Cotizar landing <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="srv-card dash">
+      <div class="srv-icon-wrap">📊</div>
+      <h3>Sistemas de Gestión / Dashboard</h3>
+      <p>Controla tu negocio desde un panel centralizado. Gestión de pedidos, empleados, inventario, reportes y estadísticas en tiempo real. Sistemas a medida para tu operación.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Panel personalizado</span>
+        <span class="srv-tag">Base de datos</span>
+        <span class="srv-tag">Reportes</span>
+        <span class="srv-tag">Multi-usuario</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20un%20sistema%20de%20gesti%C3%B3n" target="_blank" rel="noopener">
+        Cotizar sistema <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- Portafolio -->
+    <div class="srv-card portfolio">
+      <div class="srv-icon-wrap">👤</div>
+      <h3>Portafolio Profesional</h3>
+      <p>Tu presencia digital que impresiona. Ideal para freelancers, diseñadores, fotógrafos, arquitectos o cualquier profesional que quiera mostrar su trabajo y atraer clientes.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Diseño único</span>
+        <span class="srv-tag">Galería de trabajos</span>
+        <span class="srv-tag">Blog opcional</span>
+        <span class="srv-tag">CV descargable</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20un%20portafolio%20profesional" target="_blank" rel="noopener">
+        Cotizar portafolio <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- SEO -->
+    <div class="srv-card seo">
+      <div class="srv-icon-wrap">🔍</div>
+      <h3>SEO y Posicionamiento</h3>
+      <p>Que Google te encuentre primero. Optimización técnica, velocidad de carga, metadatos, estructura de URLs y estrategia de contenido para que tu sitio aparezca en los primeros resultados.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Auditoría SEO</span>
+        <span class="srv-tag">Velocidad Web</span>
+        <span class="srv-tag">Google Search Console</span>
+        <span class="srv-tag">Palabras clave</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20mejorar%20mi%20SEO" target="_blank" rel="noopener">
+        Cotizar SEO <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- Bots -->
+    <div class="srv-card bot">
+      <div class="srv-icon-wrap">🤖</div>
+      <h3>Bots y Automatizaciones</h3>
+      <p>Automatiza tareas repetitivas y atiende a tus clientes 24/7. Bots de WhatsApp para negocios, catálogos automáticos, respuestas inteligentes y flujos de venta automatizados.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Bot WhatsApp</span>
+        <span class="srv-tag">Bot Telegram</span>
+        <span class="srv-tag">Respuestas automáticas</span>
+        <span class="srv-tag">Catálogo digital</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20me%20interesa%20un%20bot%20para%20mi%20negocio" target="_blank" rel="noopener">
+        Cotizar bot <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+    <!-- Mantenimiento -->
+    <div class="srv-card mant">
+      <div class="srv-icon-wrap">🔧</div>
+      <h3>Mantenimiento y Soporte Web</h3>
+      <p>¿Tu web está desactualizada, lenta o con errores? Me encargo del mantenimiento mensual: actualizaciones, backups, corrección de bugs, mejoras de velocidad y soporte continuo.</p>
+      <div class="srv-tags">
+        <span class="srv-tag">Actualizaciones</span>
+        <span class="srv-tag">Backups</span>
+        <span class="srv-tag">Fix de errores</span>
+        <span class="srv-tag">Mensual / anual</span>
+      </div>
+      <a class="srv-cta" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20necesito%20mantenimiento%20para%20mi%20web" target="_blank" rel="noopener">
+        Cotizar mantenimiento <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<!-- PROCESO -->
+<div class="section" style="padding-top:1rem">
+  <div class="section-label">// Proceso</div>
+  <h2 class="section-title">¿Cómo trabajamos?</h2>
+  <p class="section-sub">Simple, transparente y sin sorpresas.</p>
+  <div class="proceso-grid">
+    <div class="paso">
+      <div class="paso-num">01</div>
+      <h4>Conversamos</h4>
+      <p>Me cuentas tu idea, necesidad o problema. Sin tecnicismos — hablamos en tu idioma.</p>
+    </div>
+    <div class="paso">
+      <div class="paso-num">02</div>
+      <h4>Propuesta</h4>
+      <p>Te envío una propuesta clara con lo que incluye, el tiempo estimado y el costo.</p>
+    </div>
+    <div class="paso">
+      <div class="paso-num">03</div>
+      <h4>Desarrollo</h4>
+      <p>Construyo tu proyecto con actualizaciones constantes para que veas el avance.</p>
+    </div>
+    <div class="paso">
+      <div class="paso-num">04</div>
+      <h4>Entrega</h4>
+      <p>Lanzamos tu proyecto, te explico cómo usarlo y quedo disponible para soporte.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="section" style="padding-top:1rem">
+  <div class="section-label">// FAQ</div>
+  <h2 class="section-title">Preguntas frecuentes</h2>
+  <div class="faq-list">
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        ¿Cuánto cuesta un proyecto? <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="faq-a">El precio depende del alcance y complejidad de cada proyecto. No hay precios fijos porque cada negocio tiene necesidades distintas. Escríbeme, cuéntame tu idea y te doy una propuesta honesta y detallada.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        ¿Cuánto tiempo tarda en estar listo? <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="faq-a">Una landing page puede estar lista en 3-5 días. Una tienda online o sistema de gestión puede tomar 2-4 semanas dependiendo de la complejidad. Te doy un tiempo estimado claro desde el inicio.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        ¿Trabajas con clientes fuera de Guatemala? <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="faq-a">Sí, trabajo 100% remoto con clientes de toda Latinoamérica y el mundo. La comunicación es por WhatsApp, email o videollamada según prefieras.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        ¿Qué necesito tener listo para empezar? <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="faq-a">Solo necesitas tener clara tu idea o necesidad. Yo te guío en lo técnico — el dominio, hosting, diseño y todo lo demás lo resolvemos juntos durante el proyecto.</div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        ¿Ofreces soporte después de entregar el proyecto? <i class="fas fa-chevron-down"></i>
+      </button>
+      <div class="faq-a">Sí. Todos los proyectos incluyen soporte post-entrega para resolver dudas y ajustes menores. Para mantenimiento continuo tenemos planes mensuales.</div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA FINAL -->
+<div class="cta-section">
+  <div class="cta-box">
+    <h2>¿Tienes un proyecto en mente?</h2>
+    <p>Escríbeme por WhatsApp y hablamos. Sin compromisos, sin formularios largos — solo cuéntame tu idea.</p>
+    <a class="wa-btn" href="https://wa.me/50241468185?text=Hola%20Wilson%2C%20vi%20tu%20p%C3%A1gina%20de%20servicios%20y%20quiero%20cotizar%20un%20proyecto" target="_blank" rel="noopener">
+      <i class="fab fa-whatsapp"></i> Escribir por WhatsApp
+    </a>
+  </div>
+</div>
+
+<footer>
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · Desarrollo Web Profesional · Guatemala
+</footer>
+
+<script>
+window.addEventListener('scroll', () => {
+  const s = document.documentElement.scrollTop;
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('pbar').style.width = (s / h * 100) + '%';
+});
+
+function toggleFaq(btn) {
+  const item = btn.parentElement;
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+  if (!isOpen) item.classList.add('open');
+}
+</script>
+</body>
+</html>
