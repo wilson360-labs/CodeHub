@@ -105,7 +105,6 @@
   <a href="index.html">&lt;Wilson.E/&gt;</a> · Apps verificadas · Solo para Android · Uso responsable
 </footer>
 
-<script src="updater.js"></script>
 
 <script>
 // ── PROGRESO DE SCROLL ───────────────
@@ -417,30 +416,43 @@ const APP_META = {"app-1": {"img": "img/Spotify.png", "desc": "Música sin anunc
 const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util"};
 
 function buildAppCard(app) {
-  const meta     = APP_META[app.appId] || {};
-  const img      = meta.img     || 'img/default.png';
-  const desc     = meta.desc    || app.descripcion || '';
-  const catTag   = meta.catTag  || app.categoria   || 'App';
-  const dataCat  = CAT_MAP[catTag] || 'util';
-  const verified = app.verified ? 'true' : 'false';
-  const badge    = app.tag || '🆕';
+  const meta      = APP_META[app.appId] || {};
+  const img       = meta.img     || 'img/default.png';
+  const desc      = meta.desc    || app.descripcion || '';
+  const catTag    = meta.catTag  || app.categoria   || 'App';
+  const dataCat   = CAT_MAP[catTag] || 'util';
+  const verified  = app.verified ? 'true' : 'false';
+  const badge     = app.tag || '🆕';
   const badgeClass = badge.includes('Actualiz') ? 'badge-updated' : 'badge-new';
   const changelog = app.changelog || '';
   const version   = app.version  || '';
   const enlace    = app.enlace   || '#';
   const plugin    = app.plugin_enlace || null;
+  const tutorial  = app.tutorial_url  || null;
   const hasLink   = enlace && enlace !== '#';
 
-  const dlButtons = hasLink
+  // Botón principal APK
+  const mainBtn = hasLink
     ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" ${enlace.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>
          <i class="fas fa-download"></i> Descargar APK
-       </a>
-       ${plugin ? `<a class="dl-btn dl-ghost" href="${plugin}" onclick="countDl()" target="_blank" rel="noopener">
-         <i class="fas fa-puzzle-piece"></i> Plugin
-       </a>` : ''}`
+       </a>`
     : `<span class="dl-btn" style="opacity:.45;cursor:not-allowed;pointer-events:none">
          <i class="fas fa-clock"></i> Próximamente
        </span>`;
+
+  // Botón plugin — solo si existe, al lado del APK
+  const pluginBtn = plugin
+    ? `<a class="dl-btn dl-plugin" href="${plugin}" onclick="countDl()" target="_blank" rel="noopener" title="Plugin requerido">
+         <i class="fas fa-puzzle-piece"></i> Plugin
+       </a>`
+    : '';
+
+  // Botón tutorial — solo si existe, debajo de los botones
+  const tutorialBtn = tutorial
+    ? `<a class="app-tutorial" href="${tutorial}" target="_blank" rel="noopener">
+         <i class="fab fa-youtube"></i> Ver tutorial de instalación
+       </a>`
+    : '';
 
   return `
   <div class="app-card" data-id="${app.appId}" data-version="${version}" data-verified="${verified}" data-changelog="${changelog}" data-cat="${dataCat}" data-name="${app.nombre?.toLowerCase()} ${catTag.toLowerCase()}">
@@ -454,7 +466,8 @@ function buildAppCard(app) {
       <div class="app-cat-tag">${catTag}</div>
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
-      <div class="app-actions">${dlButtons}</div>
+      <div class="app-actions">${mainBtn}${pluginBtn}</div>
+      ${tutorialBtn}
       <div class="app-changelog-wrap" style="display:none">
         <div class="app-changelog-text">${changelog}</div>
       </div>
@@ -496,7 +509,6 @@ async function loadAppsFromBackend() {
     // Re-inicializar ratings, filtros y updater
     if (typeof loadRatings    === 'function') loadRatings();
     if (typeof filterApps     === 'function') filterApps();
-    if (typeof checkForUpdates=== 'function') checkForUpdates();
 
     console.log(`✅ ${apps.length} apps cargadas desde backend`);
   } catch (e) {

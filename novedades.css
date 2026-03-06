@@ -204,23 +204,19 @@ header {
 /* ── GRID ── */
 .app-grid {
   position: relative; z-index: 1;
-  max-width: 1400px; margin: 0 auto;
-  padding: 0 2rem 4rem;
+  max-width: 1600px; margin: 0 auto;
+  padding: 0 1.5rem 4rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 1.2rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
 }
-/* Forzar mínimo 2 columnas en tablets */
-@media (min-width: 600px) and (max-width: 900px) {
-  .app-grid { grid-template-columns: repeat(2, 1fr); }
+/* 3 columnas en tablet */
+@media (min-width: 700px) {
+  .app-grid { grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
 }
-/* 3 columnas en desktop medio */
-@media (min-width: 900px) and (max-width: 1200px) {
-  .app-grid { grid-template-columns: repeat(3, 1fr); }
-}
-/* 4 columnas en desktop grande */
-@media (min-width: 1200px) {
-  .app-grid { grid-template-columns: repeat(4, 1fr); }
+/* 4 columnas en desktop */
+@media (min-width: 1100px) {
+  .app-grid { grid-template-columns: repeat(4, 1fr); gap: 1.2rem; padding: 0 2rem 4rem; }
 }
 
 /* ── APP CARD ── */
@@ -334,9 +330,36 @@ footer {
 }
 footer a { color: var(--p); text-decoration: none; }
 
+
+/* ── BOTÓN PLUGIN ── */
+.dl-plugin {
+  background: rgba(0,229,255,.08);
+  color: var(--c, #00e5ff);
+  border: 1px solid rgba(0,229,255,.25);
+  flex: 0 1 auto;
+}
+.dl-plugin:hover { background: rgba(0,229,255,.16); color: #00e5ff; }
+
+/* ── BOTÓN VIDEO TUTORIAL ── */
+.app-tutorial {
+  display: flex; align-items: center; gap: .45rem;
+  margin-top: .3rem;
+  padding: .38rem .8rem;
+  border-radius: 8px;
+  background: rgba(255,0,80,.07);
+  border: 1px solid rgba(255,0,80,.2);
+  color: rgba(255,80,120,.9);
+  font-size: .72rem; font-family: var(--mono);
+  text-decoration: none; transition: var(--tr);
+  width: fit-content;
+}
+.app-tutorial:hover { background: rgba(255,0,80,.14); color: #ff5078; }
+.app-tutorial i { font-size: .8rem; }
+
+/* ── GRID RESPONSIVE MEJORADO ── */
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
-  .app-grid   { grid-template-columns: repeat(2, 1fr); padding: 0 .6rem 3rem; gap: .7rem; }
+  .app-grid   { grid-template-columns: repeat(2, 1fr); padding: 0 .5rem 3rem; gap: .6rem; }
   .controls   { padding: 0 1rem; }
   .hero       { padding: 2.5rem 1rem 1.8rem; }
   .hdr        { padding: 0 1rem; }

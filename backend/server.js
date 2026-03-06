@@ -379,6 +379,7 @@ app.get('/api/apps', async (req, res) => {
       plugin_enlace: a.b2_plugin_file_name
                       ? `${backendBase}/api/download/${encodeURIComponent(a.b2_plugin_file_name)}`
                       : (a.plugin_enlace || null),
+      tutorial_url: a.tutorial_url || null,
       updatedAt:    a.updatedAt,
     }));
     res.json({ apps: mapped, total: mapped.length });

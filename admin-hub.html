@@ -410,7 +410,8 @@ function renderApps() {
         <!-- Link manual -->
         <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" 
                id="link-${app.appId}" placeholder="https://... (o sube APK directo)">
-        ${pluginEnl ? `<input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="Plugin URL (opcional)">` : ''}
+        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" style="display:${pluginEnl?'block':'block'}">
+        <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="🎬 Tutorial YouTube (opcional)" style="border-color:rgba(255,0,80,.2)">
       </div>
       <div style="display:flex;flex-direction:column;gap:.4rem">
         <button class="save-row-btn" id="sbtn-${app.appId}" onclick="saveRow('${app.appId}')">
@@ -456,7 +457,8 @@ async function saveRow(appId) {
     tag:          document.getElementById('badge-' + appId)?.value,
     verified:     app.verified,
     enlace:       document.getElementById('link-' + appId)?.value.trim() || app.enlace,
-    plugin_enlace: document.getElementById('plugin-' + appId)?.value.trim() || null,
+    plugin_enlace: document.getElementById('plugin-' + appId)?.value.trim()   || null,
+    tutorial_url:  document.getElementById('tutorial-' + appId)?.value.trim() || null,
   };
 
   try {
