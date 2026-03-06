@@ -257,6 +257,15 @@
       </button>
       <div class="publish-status" id="publish-status">Última publicación: <span id="last-pub">—</span></div>
     </div>
+    <!-- Acciones extra -->
+    <div style="margin-top:1rem;display:flex;gap:.8rem;flex-wrap:wrap">
+      <button onclick="refreshApps()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--c);font-family:var(--mono);font-size:.75rem;cursor:pointer">
+        <i class="fas fa-rotate"></i> Refrescar apps
+      </button>
+      <button onclick="seedFromJSON()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);color:var(--a);font-family:var(--mono);font-size:.75rem;cursor:pointer">
+        <i class="fas fa-database"></i> Seed desde apps_data.json
+      </button>
+    </div>
   </div>
 
   <!-- ── TAB: SOLICITUDES ── -->
@@ -283,15 +292,6 @@
     <!-- Generado por renderAddForm() -->
   </div>
 
-  <!-- Acciones extra -->
-  <div style="margin-top:2rem;display:flex;gap:.8rem;flex-wrap:wrap">
-    <button onclick="refreshApps()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--c);font-family:var(--mono);font-size:.75rem;cursor:pointer">
-      <i class="fas fa-rotate"></i> Refrescar apps
-    </button>
-    <button onclick="seedFromJSON()" style="padding:.5rem 1rem;border-radius:10px;background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);color:var(--a);font-family:var(--mono);font-size:.75rem;cursor:pointer">
-      <i class="fas fa-database"></i> Seed desde apps_data.json
-    </button>
-  </div>
 </main>
 
 <script>
