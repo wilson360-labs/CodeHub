@@ -46,7 +46,7 @@ app.use(cors({
     cb(new Error('CORS bloqueado: ' + origin));
   },
   methods: ['GET','POST','PATCH','DELETE'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'x-admin-key'],
 }));
 
 app.use(express.json({ limit: '10kb' }));
