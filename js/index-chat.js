@@ -266,6 +266,15 @@ function loadCfg() {
     if (canvas) canvas.style.opacity = neural ? '1' : '0';
 }
 
+
+function resetCfg() {
+    ['cfg_theme','cfg_font','cfg_anim','cfg_neural','cfg_lang'].forEach(k => localStorage.removeItem(k));
+    document.body.classList.remove('light-mode','no-anim','font-sm','font-lg');
+    const canvas = document.getElementById('neural-network');
+    if (canvas) canvas.style.opacity = '1';
+    loadCfg();
+}
+
 // Aplicar config guardada al cargar la página
 (function() {
     const font   = localStorage.getItem('cfg_font');
