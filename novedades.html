@@ -71,513 +71,11 @@
 
 <!-- GRID DE APPS -->
 <main class="app-grid" id="app-grid">
-
-  <!-- 1 · Spotify Premium -->
-  <div class="app-card" data-id="app-1" data-version="8.9.94.598" data-verified="true" data-changelog="v8.9.94 — Corrección de bugs de reproducción · Mejor compatibilidad Android 14" data-cat="musica" data-name="spotify premium">
-    <div class="app-thumb">
-      <img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Música</div>
-      <div class="app-name">Spotify Premium</div>
-      <div class="app-desc">Música sin anuncios, calidad máxima, descargas y saltos ilimitados. Sin necesidad de cuenta premium.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/5lal2itfo5wizqrxm2i95/Spotify-premium.apk?rlkey=qkcaenco96uri0lpmm8rq4qv9&st=4suu53mo&dl=0" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
+  <!-- Cargando desde backend -->
+  <div id="apps-loading" style="grid-column:1/-1;text-align:center;padding:3rem;font-family:var(--mono);font-size:.8rem;color:var(--muted)">
+    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>
+    Cargando apps...
   </div>
-
-  <!-- 2 · Spotify Lite Premium -->
-  <div class="app-card" data-id="app-2" data-version="1.9.0.178" data-verified="true" data-changelog="v1.9.0 — Modo offline mejorado · Reducción de consumo de batería" data-cat="musica" data-name="spotify lite premium">
-    <div class="app-thumb">
-      <img src="img/SpoLite.png" alt="Spotify Lite" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎶</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Música</div>
-      <div class="app-name">Spotify Lite Premium</div>
-      <div class="app-desc">Versión liviana con todas las funciones premium activas. Ideal para dispositivos con menos RAM.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/89dofz2hu13o1d5selu02/Spotify-Lite.apk?rlkey=g39dfjlzbq8nbpdip432lfcp8&st=huvu1z4l&dl=0" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3 · YouTube ReVanced -->
-  <div class="app-card" data-id="app-3" data-version="19.47.43" data-verified="true" data-changelog="v19.47 — SponsorBlock actualizado · Nuevo gestor de descargas" data-cat="video" data-name="youtube revanced">
-    <div class="app-thumb">
-      <img src="img/YouTube.jpeg" alt="YouTube ReVanced" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
-      <span class="app-badge badge-hot">🔥 Popular</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Video</div>
-      <div class="app-name">YouTube ReVanced</div>
-      <div class="app-desc">YouTube sin anuncios, con reproductor de fondo, imagen en imagen y más funciones desbloqueadas.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/f92xvb9yraadljc/YouTube_RVX.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> App APK
-        </a>
-        <a class="dl-btn dl-ghost" href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" onclick="countDl()">
-          <i class="fas fa-puzzle-piece"></i> MicroG
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 4 · YouTube Music ReVanced -->
-  <div class="app-card" data-id="app-4" data-version="7.25.51" data-verified="true" data-changelog="v7.25 — Reproducción en segundo plano mejorada · Fix de crashes" data-cat="musica" data-name="youtube music revanced">
-    <div class="app-thumb">
-      <img src="img/YTMusic.png" alt="YouTube Music" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎧</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Música</div>
-      <div class="app-name">YouTube Music ReVanced</div>
-      <div class="app-desc">Música sin anuncios, reproducción en segundo plano y descargas sin límite. Requiere MicroG.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/kyje7lv8hvcik41/TY_Music_RVX.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> App APK
-        </a>
-        <a class="dl-btn dl-ghost" href="https://drive.google.com/uc?export=download&id=13XQmA_U4kxODWdaqeu4lBFfVuhdDGCn3" onclick="countDl()">
-          <i class="fas fa-puzzle-piece"></i> MicroG
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5 · TikTok Premium -->
-  <div class="app-card" data-id="app-5" data-version="38.5.6" data-verified="true" data-changelog="v38.5 — Nuevos filtros · Eliminación de anuncios actualizada" data-cat="video" data-name="tiktok premium">
-    <div class="app-thumb">
-      <img src="img/TikTok.svg" alt="TikTok" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Video</div>
-      <div class="app-name">TikTok Premium</div>
-      <div class="app-desc">TikTok sin anuncios y con más funciones desbloqueadas. Requiere plugin para funcionalidad completa.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/xoxsozv6q9csllm/TikTok_Private_Plus_v38.5.5_%2528MOD%2529_arm8.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> App APK
-        </a>
-        <a class="dl-btn dl-ghost" href="https://www.mediafire.com/file/ss1xujlvbmpopbi/TikTok_Plugin_v1.66.1.apk/file" onclick="countDl()">
-          <i class="fas fa-puzzle-piece"></i> Plugin
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 6 · Flicks Remix -->
-  <div class="app-card" data-id="app-6" data-version="3.2.1" data-verified="false" data-changelog="v3.2.1 — Calidad 4K desbloqueada · Subtítulos mejorados" data-cat="video" data-name="flicks remix netflix">
-    <div class="app-thumb">
-      <img src="img/Netflix.png" alt="Flicks Remix" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎬</div>'">
-      <span class="app-badge badge-upd">🔄 Actualizada</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Video</div>
-      <div class="app-name">Flicks Remix</div>
-      <div class="app-desc">Mira series y películas sin restricciones. Actualizada a la versión más reciente.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/gh6tw4a61kfrpk5/Flicks_Remix_4.4.0-PRE.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 7 · TeraBox Premium -->
-  <div class="app-card" data-id="app-7" data-version="4.5.2" data-verified="true" data-changelog="v4.5.2 — Transferencia más rápida · Fix de login" data-cat="util" data-name="terabox premium nube">
-    <div class="app-thumb">
-      <img src="img/Terabox.png" alt="TeraBox" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>☁️</div>'">
-      <span class="app-badge badge-star">⭐ Destacada</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Utilidad</div>
-      <div class="app-name">TeraBox Premium</div>
-      <div class="app-desc">1 TB de almacenamiento en la nube gratuito con descargas sin restricciones de velocidad.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/ztep28ynrzp6mec/Terabox_Premium.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 8 · MX Player Pro -->
-  <div class="app-card" data-id="app-8" data-version="1.3.9" data-verified="true" data-changelog="v1.3.9 — Nuevo decodificador de hardware · Soporte AV1" data-cat="video" data-name="mx player pro video">
-    <div class="app-thumb">
-      <img src="img/Player.jpg" alt="MX Player" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>▶️</div>'">
-      <span class="app-badge badge-upd">🔄 Actualizada</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Video</div>
-      <div class="app-name">MX Player Pro</div>
-      <div class="app-desc">Potente reproductor multimedia sin anuncios. Soporta todos los formatos de video y audio.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/hsak6350wb7uy7g/MX_Player_v1.92.0_%25282001002560%2529_Lite_Mod_arm64-v8a.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 9 · PicsArt Premium -->
-  <div class="app-card" data-id="app-9" data-version="24.8" data-verified="true" data-changelog="v24.8 — Nuevas herramientas IA · Paquetes de stickers" data-cat="foto" data-name="picsart premium edicion fotos">
-    <div class="app-thumb">
-      <img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🖼️</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Foto</div>
-      <div class="app-name">PicsArt Premium</div>
-      <div class="app-desc">Edición de fotos y videos profesional con todas las herramientas premium desbloqueadas.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/aupu0p39f2h5oha/Picsart_Premium.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 10 · Remini Pro -->
-  <div class="app-card" data-id="app-10" data-version="5.6.0" data-verified="true" data-changelog="v5.6.0 — Motor IA actualizado · Mejor rendimiento" data-cat="foto" data-name="remini pro mejora fotos ia">
-    <div class="app-thumb">
-      <img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✨</div>'">
-      <span class="app-badge badge-upd">🔄 Actualizada</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Foto · IA</div>
-      <div class="app-name">Remini Pro</div>
-      <div class="app-desc">Mejora fotos antiguas o borrosas con IA. Funciones pro desbloqueadas. Algunas requieren conexión.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://drive.google.com/uc?export=download&id=13SyNMgObxE_hN9YZ2BzgfcZ-u_aWe7qf" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 11 · Magic Eraser -->
-  <div class="app-card" data-id="app-11" data-version="7.5.1" data-verified="false" data-changelog="v7.5.1 — Nuevos fondos · Fix de exportación" data-cat="foto" data-name="magic eraser borrar objetos fotos">
-    <div class="app-thumb">
-      <img src="img/Eraser.jpg" alt="Magic Eraser" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🪄</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Foto · IA</div>
-      <div class="app-name">Magic Eraser Mod</div>
-      <div class="app-desc">Elimina objetos, personas o imperfecciones de tus fotos con IA en segundos.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://www.mediafire.com/file/dlc9pitwn55j5hk/Magic_Eraser_2.18.2.apk/file" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 12 · CamScanner -->
-  <div class="app-card" data-id="app-12" data-version="2.12.0" data-verified="true" data-changelog="v2.12.0 — Reconocimiento OCR mejorado · Nuevos formatos" data-cat="util" data-name="camscanner escanear documentos">
-    <div class="app-thumb">
-      <img src="img/CamScanner.jpg" alt="CamScanner" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📄</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Utilidad</div>
-      <div class="app-name">CamScanner Mod</div>
-      <div class="app-desc">Escanea, edita y comparte documentos en PDF sin límite de páginas ni marca de agua.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/l2f7f5qfdklfxgglj1it5/CamScanner.apk?rlkey=4757i8rwzpg25xly8s9gcosgn&st=slxl5qzr&dl=0" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 13 · DNS AdGuard Pro -->
-  <div class="app-card" data-id="app-13" data-version="4.3.1" data-verified="true" data-changelog="v4.3.1 — DNS over HTTPS · Lista de filtros actualizada" data-cat="util" data-name="dns adguard bloquear anuncios">
-    <div class="app-thumb">
-      <img src="img/dnspro.png" alt="AdGuard DNS" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛡️</div>'">
-      <span class="app-badge badge-new">🆕 Nuevo</span>
-      <span class="app-verified-badge" style="display:none">✅ Verificado</span>
-      <span class="app-version-tag"></span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">Seguridad</div>
-      <div class="app-name">DNS AdGuard Pro</div>
-      <div class="app-desc">Bloquea anuncios y rastreadores a nivel de DNS en todo el dispositivo, sin root.</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://dl.dropbox.com/scl/fi/pq9huiyzuh59jb15in7lr/Adguard-Pro-v4.13.6.apk?rlkey=nc20je60gi0bdy997zq8cxjue&st=mlsgh4o0&dl=0" onclick="countDl()">
-          <i class="fas fa-download"></i> Descargar APK
-        </a>
-      </div>
-      <!-- Changelog -->
-      <div class="app-changelog-wrap" style="display:none">
-        <div class="app-changelog-text"></div>
-      </div>
-      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
-        <i class="fas fa-clock-rotate-left"></i> Ver cambios
-      </button>
-
-      <!-- Rating estrellas -->
-      <div class="app-rating" data-init="false">
-        <div class="stars-wrap">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-        </div>
-        <span class="rating-info">— sin votos</span>
-      </div>
-    </div>
-  </div>
-
 </main><!-- /app-grid -->
 
 <!-- Modal Solicitar App -->
@@ -912,6 +410,103 @@ async function submitRequest() {
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar solicitud';
 }
+
+
+// ── CARGA DINÁMICA DE APPS DESDE BACKEND ─────────────────────
+const APP_META = {"app-1": {"img": "img/Spotify.png", "desc": "Música sin anuncios, calidad máxima, descargas y saltos ilimitados.", "catTag": "Música", "emoji": "🎵"}, "app-2": {"img": "img/SpoLite.png", "desc": "Versión ligera de Spotify con funciones premium activadas.", "catTag": "Música", "emoji": "🎵"}, "app-3": {"img": "img/YouTube.jpeg", "desc": "YouTube sin anuncios, SponsorBlock integrado y gestor de descargas.", "catTag": "Video", "emoji": "📺"}, "app-4": {"img": "img/YTMusic.png", "desc": "YouTube Music con reproducción en segundo plano sin restricciones.", "catTag": "Música", "emoji": "🎵"}, "app-5": {"img": "img/TikTok.svg", "desc": "TikTok sin anuncios, sin marca de agua en descargas y región desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-6": {"img": "img/Netflix.png", "desc": "Cliente alternativo de Netflix con calidad 4K desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-7": {"img": "img/Terabox.png", "desc": "Almacenamiento en la nube premium con transferencias más rápidas.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-8": {"img": "img/Player.jpg", "desc": "Reproductor de video con soporte para todos los formatos y AV1.", "catTag": "Video", "emoji": "📺"}, "app-9": {"img": "img/Picsart.jpg", "desc": "Editor de fotos con todas las herramientas IA desbloqueadas.", "catTag": "Foto", "emoji": "📸"}, "app-10": {"img": "img/Remini.png", "desc": "Mejora la calidad de fotos antiguas o borrosas con IA avanzada.", "catTag": "Foto", "emoji": "📸"}, "app-11": {"img": "img/Eraser.jpg", "desc": "Elimina objetos, personas o fondos de tus fotos con un toque.", "catTag": "Foto", "emoji": "📸"}, "app-12": {"img": "img/CamScanner.png", "desc": "Escáner de documentos con OCR preciso y múltiples formatos de exportación.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-13": {"img": "img/dnspro.png", "desc": "Bloquea anuncios y rastreadores a nivel DNS en todo el dispositivo.", "catTag": "Seguridad", "emoji": "🔒"}};
+const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util"};
+
+function buildAppCard(app) {
+  const meta     = APP_META[app.appId] || {};
+  const img      = meta.img     || 'img/default.png';
+  const desc     = meta.desc    || app.descripcion || '';
+  const catTag   = meta.catTag  || app.categoria   || 'App';
+  const dataCat  = CAT_MAP[catTag] || 'util';
+  const verified = app.verified ? 'true' : 'false';
+  const badge    = app.tag || '🆕';
+  const badgeClass = badge.includes('Actualiz') ? 'badge-updated' : 'badge-new';
+  const changelog = app.changelog || '';
+  const version   = app.version  || '';
+  const enlace    = app.enlace   || '#';
+  const plugin    = app.plugin_enlace || null;
+  const hasLink   = enlace && enlace !== '#';
+
+  const dlButtons = hasLink
+    ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" ${enlace.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>
+         <i class="fas fa-download"></i> Descargar APK
+       </a>
+       ${plugin ? `<a class="dl-btn dl-ghost" href="${plugin}" onclick="countDl()" target="_blank" rel="noopener">
+         <i class="fas fa-puzzle-piece"></i> Plugin
+       </a>` : ''}`
+    : `<span class="dl-btn" style="opacity:.45;cursor:not-allowed;pointer-events:none">
+         <i class="fas fa-clock"></i> Próximamente
+       </span>`;
+
+  return `
+  <div class="app-card" data-id="${app.appId}" data-version="${version}" data-verified="${verified}" data-changelog="${changelog}" data-cat="${dataCat}" data-name="${app.nombre?.toLowerCase()} ${catTag.toLowerCase()}">
+    <div class="app-thumb">
+      <img src="${img}" alt="${app.nombre}" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${meta.emoji||'📱'}</div>'">
+      <span class="app-badge ${badgeClass}">${badge}</span>
+      <span class="app-verified-badge" style="display:${app.verified?'flex':'none'}">✅ Verificado</span>
+      <span class="app-version-tag">${version}</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">${catTag}</div>
+      <div class="app-name">${app.nombre}</div>
+      <div class="app-desc">${desc}</div>
+      <div class="app-actions">${dlButtons}</div>
+      <div class="app-changelog-wrap" style="display:none">
+        <div class="app-changelog-text">${changelog}</div>
+      </div>
+      <button class="app-changelog-btn" onclick="toggleChangelog(this)">
+        <i class="fas fa-clock-rotate-left"></i> Ver cambios
+      </button>
+      <div class="app-rating" data-init="false">
+        <div class="stars-wrap">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <span class="rating-info">— sin votos</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function loadAppsFromBackend() {
+  const grid = document.getElementById('app-grid');
+  try {
+    const res  = await fetch(`${BACKEND}/api/apps`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const apps = await res.json();
+
+    if (!apps.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No hay apps disponibles.</div>';
+      return;
+    }
+
+    grid.innerHTML = apps.map(buildAppCard).join('');
+
+    // Actualizar contador de apps
+    const scApps = document.getElementById('sc-apps');
+    if (scApps) scApps.textContent = apps.length;
+
+    // Re-inicializar ratings, filtros y updater
+    if (typeof loadRatings    === 'function') loadRatings();
+    if (typeof filterApps     === 'function') filterApps();
+    if (typeof checkForUpdates=== 'function') checkForUpdates();
+
+    console.log(`✅ ${apps.length} apps cargadas desde backend`);
+  } catch (e) {
+    console.error('Error cargando apps:', e);
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><i class="fas fa-exclamation-triangle" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>Error cargando apps. Recarga la página.</div>';
+  }
+}
+
+// Cargar apps al iniciar
+loadAppsFromBackend();
 
 </script>
 </body>
