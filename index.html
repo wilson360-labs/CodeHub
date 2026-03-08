@@ -2776,6 +2776,26 @@
         }
 
         </style>
+
+  <!-- PWA Install Prompt -->
+  <style>
+  #pwa-install{position:fixed;bottom:80px;right:1.5rem;z-index:9998;display:none;animation:slideUp .4s ease}
+  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+  .pwa-card{background:rgba(15,15,26,.97);border:1px solid rgba(255,69,0,.35);border-radius:18px;padding:1.1rem 1.3rem;display:flex;align-items:center;gap:.9rem;box-shadow:0 16px 48px rgba(0,0,0,.6);max-width:290px;backdrop-filter:blur(20px)}
+  .pwa-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#ff4500,#ff6b35);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+  .pwa-text{flex:1;min-width:0}
+  .pwa-title{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:.2rem}
+  .pwa-sub{font-size:.7rem;color:rgba(232,232,240,.45);font-family:'JetBrains Mono',monospace}
+  .pwa-btns{display:flex;flex-direction:column;gap:.4rem;flex-shrink:0}
+  .pwa-btn-yes{padding:.38rem .8rem;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;border:none;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer}
+  .pwa-btn-no{padding:.3rem .8rem;background:transparent;color:rgba(232,232,240,.4);border:none;font-size:.7rem;cursor:pointer}
+  #pwa-update{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:rgba(15,15,26,.97);border:1px solid rgba(0,230,118,.35);border-radius:12px;padding:.7rem 1.2rem;align-items:center;gap:.8rem;box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:.82rem;backdrop-filter:blur(20px)}
+  #pwa-update.show{display:flex}
+  .upd-dot{width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0;animation:pulse-g 2s infinite}
+  @keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)}}
+  .upd-btn{padding:.32rem .8rem;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer}
+  .upd-close{background:none;border:none;color:rgba(232,232,240,.3);cursor:pointer;font-size:1rem}
+  </style>
 </head>
 <body>
     <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
@@ -7074,5 +7094,70 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
+
+  <!-- PWA Install Prompt -->
+  <div id="pwa-install">
+    <div class="pwa-card">
+      <div class="pwa-icon">⚡</div>
+      <div class="pwa-text">
+        <div class="pwa-title">Instalar CodeHub</div>
+        <div class="pwa-sub">Acceso rápido · Sin browser</div>
+      </div>
+      <div class="pwa-btns">
+        <button class="pwa-btn-yes" onclick="installPWA()">Instalar</button>
+        <button class="pwa-btn-no" onclick="dismissPWA()">Ahora no</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PWA Update Banner -->
+  <div id="pwa-update">
+    <span class="upd-dot"></span>
+    <span style="color:rgba(232,232,240,.7)">Nueva versión disponible</span>
+    <button class="upd-btn" onclick="updatePWA()">Actualizar</button>
+    <button class="upd-close" onclick="this.parentElement.classList.remove('show')">✕</button>
+  </div>
+
+  <script>
+  let _deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredPrompt = e;
+    if (!localStorage.getItem('pwa_dismissed')) {
+      setTimeout(() => { document.getElementById('pwa-install').style.display = 'block'; }, 30000);
+    }
+  });
+  function installPWA() {
+    if (!_deferredPrompt) return;
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(r => {
+      if (r.outcome === 'accepted') localStorage.setItem('pwa_installed','1');
+      document.getElementById('pwa-install').style.display = 'none';
+      _deferredPrompt = null;
+    });
+  }
+  function dismissPWA() {
+    document.getElementById('pwa-install').style.display = 'none';
+    localStorage.setItem('pwa_dismissed', Date.now());
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            document.getElementById('pwa-update').classList.add('show');
+          }
+        });
+      });
+    });
+  }
+  function updatePWA() {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    });
+    location.reload();
+  }
+  </script>
 </body>
 </html>

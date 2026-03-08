@@ -1,25 +1,27 @@
 {
   "name": "CodeHub — Wilson.E",
   "short_name": "CodeHub",
-  "description": "Portfolio de Wilson.E — Desarrollador Web Full Stack de Guatemala",
+  "description": "Portfolio de Wilson.E — Dev Full Stack de Guatemala. Tools, Apps Android, IA.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
+  "background_color": "#080810",
   "theme_color": "#ff4500",
   "orientation": "portrait-primary",
   "lang": "es",
+  "dir": "ltr",
   "icons": [
     {
       "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
   "screenshots": [
@@ -27,22 +29,47 @@
       "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "form_factor": "wide"
+      "form_factor": "wide",
+      "label": "CodeHub — Portfolio Wilson.E"
+    },
+    {
+      "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "CodeHub en móvil"
     }
   ],
   "shortcuts": [
     {
       "name": "Herramientas",
       "short_name": "Tools",
+      "description": "27 herramientas web gratuitas",
       "url": "/tools.html",
       "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
     },
     {
-      "name": "Novedades",
+      "name": "Apps Android",
       "short_name": "Apps",
+      "description": "Apps premium desbloqueadas",
       "url": "/novedades.html",
+      "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Servicios",
+      "short_name": "Servicios",
+      "description": "Servicios de desarrollo web",
+      "url": "/servicios.html",
+      "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Descargar Videos",
+      "short_name": "Downloader",
+      "description": "Descarga videos de redes sociales",
+      "url": "/downloader.html",
       "icons": [{ "src": "https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png", "sizes": "96x96" }]
     }
   ],
-  "categories": ["portfolio", "productivity", "utilities"]
+  "categories": ["portfolio", "productivity", "utilities", "developer-tools"],
+  "prefer_related_applications": false
 }

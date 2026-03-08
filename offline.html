@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sin conexión — CodeHub</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--p:#ff4500;--a:#ffbd69;--bg:#080810;--text:#e8e8f0;--mono:'JetBrains Mono',monospace}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,69,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,69,0,.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
+.wrap{max-width:480px;position:relative;z-index:1}
+.icon{font-size:4rem;margin-bottom:1.5rem;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.72rem;color:var(--a);background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.2);padding:.3rem .9rem;border-radius:20px;margin-bottom:1.2rem}
+.tag::before{content:'';width:6px;height:6px;border-radius:50%;background:#ff4444;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,#fff 0%,var(--a) 50%,var(--p) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+p{color:rgba(232,232,240,.55);font-size:.95rem;line-height:1.7;margin-bottom:2rem}
+.btns{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.5rem;border-radius:12px;font-size:.88rem;font-weight:700;text-decoration:none;cursor:pointer;transition:all .2s;border:none;font-family:'Syne',sans-serif}
+.btn-primary{background:linear-gradient(135deg,var(--p),#ff6b35);color:#fff;box-shadow:0 4px 16px rgba(255,69,0,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,69,0,.45)}
+.btn-ghost{background:rgba(255,255,255,.05);color:rgba(232,232,240,.6);border:1px solid rgba(255,255,255,.1)}
+.btn-ghost:hover{background:rgba(255,255,255,.1);color:#fff}
+.status{margin-top:2.5rem;font-family:var(--mono);font-size:.72rem;color:rgba(232,232,240,.3)}
+.logo{margin-bottom:2rem;font-size:1.1rem;font-weight:800}
+.logo .br{color:var(--p)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span> <span style="color:var(--a);font-size:.7rem;background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.25);padding:2px 8px;border-radius:20px">CodeHub</span></div>
+  <div class="icon">📡</div>
+  <div class="tag">sin conexión</div>
+  <h1>Parece que estás<br>offline</h1>
+  <p>No hay conexión a internet. Algunas páginas pueden estar disponibles desde el caché. Intenta de nuevo cuando tengas señal.</p>
+  <div class="btns">
+    <button class="btn btn-primary" onclick="location.reload()">↻ Reintentar</button>
+    <a class="btn btn-ghost" href="/">🏠 Inicio</a>
+  </div>
+  <div class="status" id="status">Verificando conexión...</div>
+</div>
+<script>
+function checkOnline(){
+  const el=document.getElementById('status');
+  if(navigator.onLine){
+    el.textContent='✅ Conexión detectada — recargando...';
+    el.style.color='#00e676';
+    setTimeout(()=>location.reload(),1000);
+  } else {
+    el.textContent='⚠️  Sin señal · '+new Date().toLocaleTimeString('es-GT');
+  }
+}
+checkOnline();
+window.addEventListener('online', checkOnline);
+setInterval(checkOnline, 5000);
+</script>
+</body>
+</html>
