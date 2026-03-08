@@ -1,3 +1,8 @@
+/* Ocultar badge en móvil para no tapar la fecha */
+@media (max-width: 600px) {
+  .update-badge { display: none; }
+}
+
 /* ============================================
    novedades.css — CodeHub by Wilson.E
    Consistente con el design system del sitio
