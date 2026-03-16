@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https:; img-src 'self' data: blob: https://image.pollinations.ai https:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https:; img-src 'self' data: blob: https://image.pollinations.ai https:;">
 <title>Tools — CodeHub by Wilson.E</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -203,7 +203,23 @@ footer a{color:var(--p);text-decoration:none}
   .hdr{padding:0 1rem}
 }
 
-        .active-tab { background: linear-gradient(135deg,var(--p),var(--s)) !important; color:#fff !important; border-color:transparent !important; }
+        .active-tab{background:linear-gradient(135deg,var(--p),var(--s))!important;color:#fff!important;border-color:transparent!important}
+/* ── TOOL BUTTON (.tb) ── */
+.tb{display:inline-flex;align-items:center;justify-content:center;gap:.42rem;padding:.55rem .95rem;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:var(--muted);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:var(--tr);white-space:nowrap}
+.tb:hover{border-color:var(--border-h);color:var(--text);background:rgba(255,69,0,.08)}
+.tb:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.tb.primary{background:linear-gradient(135deg,var(--p),var(--s));color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(255,69,0,.28)}
+.tb.primary:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(255,69,0,.42)}
+
+/* ── CARD DESCRIPTION (.cd) ── */
+.cd{font-size:.82rem;color:var(--muted);line-height:1.6;padding:.55rem 1.3rem 0}
+
+/* ── CARD BODY PADDING (.cp) — para cards nuevas sin .cb ── */
+.cp{padding:.9rem 1.3rem 1.3rem;display:flex;flex-direction:column;gap:.7rem}
+
+/* ── NEWS TAB ── */
+.news-tab{font-size:.75rem;padding:.38rem .7rem}
+
 </style>
 </head>
 <body>
@@ -593,17 +609,20 @@ footer a{color:var(--p);text-decoration:none}
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-cloud-sun"></i><span>Clima en Tiempo Real</span></div>
   <div class="cd">Consulta el clima actual de cualquier ciudad del mundo.</div>
-  <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+  <div class="cp">
+  <div style="display:flex;gap:.5rem">
     <input class="ti" type="text" id="weather-city" placeholder="Ciudad (ej: Guatemala City)" style="flex:1" onkeydown="if(event.key==='Enter')getWeather()">
     <button class="tb" onclick="getWeather()" style="white-space:nowrap"><i class="fas fa-search"></i></button>
   </div>
   <div id="weather-out" style="display:none"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 25 · GENERADOR DE IMÁGENES CON IA -->
 <div class="card" data-tags="dis util">
   <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span></div>
   <div class="cd">Describe una imagen y la IA la genera gratis al instante.</div>
+  <div class="cp">
   <textarea class="ti" id="img-prompt" rows="2" placeholder="Ej: Un dragón volando sobre las montañas de Guatemala al atardecer…"></textarea>
   <div style="display:flex;gap:.5rem;margin:.5rem 0">
     <select class="ts" id="img-style">
@@ -624,27 +643,32 @@ footer a{color:var(--p);text-decoration:none}
   </div>
   <button class="tb" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
   <div id="img-out" style="display:none;margin-top:.8rem;text-align:center"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 26 · NOTICIAS EN TIEMPO REAL -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-newspaper"></i><span>Noticias en Tiempo Real</span></div>
   <div class="cd">Últimas noticias de tecnología, gaming y ciencia.</div>
-  <div style="display:flex;gap:.4rem;margin-bottom:.7rem;flex-wrap:wrap">
+  <div class="cp">
+  <div style="display:flex;gap:.4rem;margin-bottom:.3rem;flex-wrap:wrap">
     <button class="tb news-tab active-tab" onclick="loadNews('technology',this)">💻 Tech</button>
     <button class="tb news-tab" onclick="loadNews('gaming',this)">🎮 Gaming</button>
     <button class="tb news-tab" onclick="loadNews('science',this)">🔬 Ciencia</button>
     <button class="tb news-tab" onclick="loadNews('general',this)">🌎 General</button>
   </div>
   <div id="news-out" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 27 · HORÓSCOPO DEL DÍA -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span></div>
   <div class="cd">Consulta tu horóscopo diario según tu signo zodiacal.</div>
+  <div class="cp">
   <div id="zodiac-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem;margin-bottom:.7rem"></div>
   <div id="horoscope-out" style="display:none"></div>
+  </div><!-- /cp -->
 </div>
 
 </div><!-- /grid -->
@@ -681,7 +705,8 @@ function filterTools(q){applyFilter(q)}
 function applyFilter(q){
   const ql=q.toLowerCase();
   document.querySelectorAll('.card').forEach(c=>{
-    const title=c.querySelector('h2').textContent.toLowerCase();
+    const titleEl=c.querySelector('h2')||c.querySelector('.ch span')||c.querySelector('.ch');
+    const title=(titleEl?.textContent||'').toLowerCase();
     const tags=c.dataset.tags||'';
     const mq=!ql||title.includes(ql)||tags.includes(ql);
     const mt=activeTag==='all'||tags.includes(activeTag);
@@ -1174,6 +1199,7 @@ function calcScore(ping, connType, vpn, localIP) {
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span></div>
   <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
+  <div class="cp">
   <select class="ts" id="tr-from" style="margin-bottom:.5rem">
     <option value="es">🇪🇸 Español</option>
     <option value="en">🇺🇸 English</option>
@@ -1202,21 +1228,25 @@ function calcScore(ping, connType, vpn, localIP) {
   <textarea class="ti" id="tr-in" rows="3" placeholder="Escribe o pega el texto aquí…" style="margin-top:.4rem"></textarea>
   <button class="tb" onclick="doTranslate()"><i class="fas fa-globe"></i> Traducir</button>
   <div class="rb" id="tr-out" style="display:none;margin-top:.5rem;white-space:pre-wrap"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 20 · CALCULADORA CIENTÍFICA -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span></div>
   <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
+  <div class="cp">
   <input class="ti" id="calc-display" type="text" placeholder="0" readonly style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default">
   <div id="calc-btns" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.3rem;margin-top:.4rem"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 21 · GENERADOR DE LOREM IPSUM -->
 <div class="card" data-tags="dev dis">
   <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
   <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
-  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+  <div class="cp">
+  <div style="display:flex;gap:.5rem;align-items:center">
     <label style="font-size:.78rem;color:var(--muted)">Párrafos:</label>
     <input type="number" class="ti" id="lorem-n" value="2" min="1" max="10" style="width:60px">
     <select class="ts" id="lorem-type">
@@ -1227,26 +1257,31 @@ function calcScore(ping, connType, vpn, localIP) {
   </div>
   <button class="tb" onclick="genLorem()"><i class="fas fa-wand-magic-sparkles"></i> Generar</button>
   <div class="rb" id="lorem-out" style="display:none;max-height:180px;overflow-y:auto;white-space:pre-wrap;font-size:.78rem;line-height:1.6;margin-top:.5rem"></div>
-  <button id="lorem-copy" style="display:none" class="tb" onclick="copyLorem()" style="margin-top:.4rem"><i class="fas fa-copy"></i> Copiar</button>
+  <button id="lorem-copy" style="display:none" class="tb" onclick="copyLorem()"><i class="fas fa-copy"></i> Copiar</button>
+  </div><!-- /cp -->
 </div>
 
 <!-- 22 · CONTADOR DE PALABRAS / CARACTERES -->
 <div class="card" data-tags="util dev">
   <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span></div>
   <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
+  <div class="cp">
   <textarea class="ti" id="wc-input" rows="5" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
   <div id="wc-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.5rem"></div>
+  </div><!-- /cp -->
 </div>
 
 <!-- 23 · CONVERSOR DE COLOR HEX / RGB / HSL -->
 <div class="card" data-tags="dis dev">
   <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
   <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
-  <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
+  <div class="cp">
+  <div style="display:flex;gap:.5rem;align-items:center">
     <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
     <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
   </div>
   <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
+  </div><!-- /cp -->
 </div>
 
 </div>`
