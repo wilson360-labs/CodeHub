@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https:; img-src 'self' data: blob: https://image.pollinations.ai https:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https://image.pollinations.ai https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https: wss://codehub-production-729d.up.railway.app;">
 <title>Tools — CodeHub by Wilson.E</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1370,7 +1370,7 @@ async function doTranslate() {
         } catch { d.value = '❌ Error'; expr = ''; }
         return;
       }
-      if (lbl === 'x²')    { try { expr = String(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')() ** 2); d.value = expr; } catch{} return; }
+      if (lbl === 'x²')    { try { const _n=+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')\n')(); expr=String(_n*_n); d.value=expr; } catch{} return; }
       if (lbl === '√')     { try { expr = String(Math.sqrt(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')())); d.value = expr; } catch{} return; }
       if (lbl === 'sin')   { try { expr = String(+Math.sin(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
       if (lbl === 'cos')   { try { expr = String(+Math.cos(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
@@ -1416,9 +1416,7 @@ function genLorem() {
   let result = '';
 
   if (type === 'p') {
-    result = Array.from({length:n}, loremParagraph).join('
-
-');
+    result = Array.from({length:n}, loremParagraph).join('\n\n');
   } else if (type === 's') {
     result = Array.from({length:n}, loremSentence).join(' ');
   } else {
