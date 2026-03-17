@@ -1609,18 +1609,29 @@ async function generateImage() {
   const prompt = style ? promptRaw + ', ' + style : promptRaw;
   const parts  = size.split('x');
   const w = parts[0] || '512', h = parts[1] || '512';
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando…';
-  out.style.display = 'block';
-
   const BACKEND = 'https://codehub-production-729d.up.railway.app';
 
-  function setStatus(msg) {
-    out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem;text-align:center;padding:1.2rem">⏳ ' + msg + '</div>';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+  out.style.display = 'block';
+
+  function setStatus(icon, title, sub, pct) {
+    out.innerHTML =
+      '<div style="padding:1.2rem;font-family:var(--mono)">' +
+        '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem">' +
+          '<span style="font-size:1.4rem">' + icon + '</span>' +
+          '<div>' +
+            '<div style="font-size:.85rem;font-weight:700;color:var(--text)">' + title + '</div>' +
+            '<div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">' + sub + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:rgba(255,255,255,.07);border-radius:4px;height:4px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:4px;transition:width .4s ease"></div>' +
+        '</div>' +
+      '</div>';
   }
 
-  function showResult(src, providerName) {
+  function showResult(src, provName) {
     out.innerHTML =
       '<img src="' + src + '" alt="IA" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">' +
       '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center;flex-wrap:wrap">' +
@@ -1628,59 +1639,89 @@ async function generateImage() {
         '<a href="' + src + '" download="codehub-ia.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-download"></i> Descargar</a>' +
         '<button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>' +
       '</div>' +
-      '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">' + providerName + ' · Gratis</div>';
+      '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">' + provName + ' - Gratis</div>';
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
   }
 
-  function showError(msg) {
-    out.innerHTML = '<div style="color:#ff6b6b;font-size:.85rem;text-align:center;padding:.8rem">❌ ' + msg + '<br><small style="color:var(--muted)">Intenta con un prompt en inglés</small></div>';
+  function showError() {
+    out.innerHTML =
+      '<div style="padding:1rem;text-align:center">' +
+        '<div style="font-size:.85rem;font-weight:700;color:#ff6b6b">Todos los modelos ocupados</div>' +
+        '<div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Las IAs gratuitas tienen alta demanda</div>' +
+        '<button class="tb" onclick="generateImage()" style="margin-top:.8rem"><i class="fas fa-rotate"></i> Reintentar</button>' +
+      '</div>';
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
   }
 
-  // Proveedor 1: Puter.js (DALL-E 3, sin key)
-  if (typeof puter !== 'undefined' && puter.ai && puter.ai.txt2img) {
-    setStatus('Generando con DALL-E 3 (Puter.js)…');
-    try {
-      const result = await Promise.race([
-        puter.ai.txt2img(prompt, false),
-        new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 20000); })
-      ]);
-      if (result && result.src) { showResult(result.src, 'Puter.js · DALL-E 3'); return; }
-    } catch(e) { console.warn('Puter:', e.message); }
+  function countdown(secs, msg) {
+    return new Promise(function(resolve) {
+      var remaining = secs;
+      var tick = setInterval(function() {
+        remaining--;
+        out.innerHTML =
+          '<div style="padding:1.2rem;font-family:var(--mono);text-align:center">' +
+            '<div style="font-size:.82rem;color:var(--muted)">' + msg + '</div>' +
+            '<div style="font-size:2rem;font-weight:700;color:var(--a);margin:.4rem 0">' + remaining + 's</div>' +
+            '<div style="font-size:.7rem;color:rgba(232,232,240,.3)">Cambiando de modelo...</div>' +
+          '</div>';
+        if (remaining <= 0) { clearInterval(tick); resolve(); }
+      }, 1000);
+    });
   }
 
-  // Proveedores 2-4 via Backend
   var providers = [
-    { name: 'Together AI · FLUX.1', p: 'together' },
-    { name: 'Google Gemini · Imagen 3', p: 'gemini' },
-    { name: 'Pollinations · Flux', p: 'pollinations' }
+    { icon: '&#129302;', name: 'DALL-E 3',      sub: 'Puter.js - sin key',    pct: 20, type: 'puter' },
+    { icon: '&#9889;',   name: 'FLUX.1 Schnell', sub: 'Together AI - tu key', pct: 45, type: 'together' },
+    { icon: '&#128142;', name: 'Imagen 3 Fast',  sub: 'Google Gemini',         pct: 65, type: 'gemini' },
+    { icon: '&#127744;', name: 'Flux',            sub: 'Pollinations AI',       pct: 85, type: 'pollinations' },
+    { icon: '&#127912;', name: 'Turbo',           sub: 'Pollinations AI',       pct: 95, type: 'pollinations' },
   ];
 
   for (var i = 0; i < providers.length; i++) {
     var prov = providers[i];
-    setStatus('Generando con ' + prov.name + '… (' + (i+2) + '/4)');
+    setStatus(prov.icon, 'Generando con ' + prov.name + '...', prov.sub + ' - modelo ' + (i+1) + ' de ' + providers.length, prov.pct);
+
     try {
+      if (prov.type === 'puter') {
+        if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) continue;
+        var result = await Promise.race([
+          puter.ai.txt2img(prompt, false),
+          new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 18000); })
+        ]);
+        if (result && result.src) { showResult(result.src, 'Puter.js - DALL-E 3'); return; }
+        if (i < providers.length - 1) await countdown(3, prov.name + ' no disponible. Reintentando...');
+        continue;
+      }
+
+      var bodyData = { prompt: prompt, width: parseInt(w), height: parseInt(h), provider: prov.type };
       var resp = await Promise.race([
         fetch(BACKEND + '/api/generate-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt, width: parseInt(w), height: parseInt(h), provider: prov.p })
+          body: JSON.stringify(bodyData)
         }),
         new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 35000); })
       ]);
+
       if (resp.ok) {
         var data = await resp.json();
         if (data.ok && (data.image || data.url)) {
-          showResult(data.image || data.url, prov.name);
+          showResult(data.image || data.url, prov.sub + ' - ' + prov.name);
           return;
         }
       }
-    } catch(e) { console.warn(prov.name, e.message); }
+    } catch(e) {
+      console.warn(prov.name + ' fallo:', e.message);
+    }
+
+    if (i < providers.length - 1) {
+      await countdown(3, prov.name + ' no disponible. Reintentando...');
+    }
   }
 
-  showError('Todos los proveedores no disponibles. Intenta en unos minutos.');
+  showError();
 }
 
 
