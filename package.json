@@ -4,6 +4,7 @@
   "description": "CodeHub — Wilson.E Portfolio",
   "private": true,
   "scripts": {
+    "start":       "cd backend && node server.js",
     "test":        "cd tests && npx playwright test",
     "test:ui":     "cd tests && npx playwright test --ui",
     "test:api":    "cd tests && npx playwright test e2e/api.spec.js",
