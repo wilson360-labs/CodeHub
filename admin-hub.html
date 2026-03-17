@@ -102,12 +102,18 @@
     .app-row {
       display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr 120px;
       padding: .85rem 1.2rem; border-bottom: 1px solid rgba(255,255,255,.04);
-      align-items: center; transition: background .15s;
+      align-items: start; transition: background .15s, border-left .15s;
+      border-left: 2px solid transparent;
     }
     .app-row:last-child { border-bottom: none; }
-    .app-row:hover { background: rgba(255,255,255,.02); }
+    .app-row:hover { background: rgba(255,69,0,.03); border-left-color: rgba(255,69,0,.4); }
     .app-name-cell { font-weight: 600; font-size: .85rem; }
     .app-name-cell small { display: block; font-family: var(--mono); font-size: .6rem; color: var(--muted); margin-top: .1rem; }
+    .b2-pill { display: inline-flex; align-items: center; gap: .2rem; font-family: var(--mono);
+      font-size: .58rem; padding: .1rem .45rem; border-radius: 10px; margin-top: .2rem;
+      font-weight: 700; width: fit-content; }
+    .b2-pill.ok { background: rgba(0,230,118,.1); color: var(--g); border: 1px solid rgba(0,230,118,.2); }
+    .b2-pill.no { background: rgba(255,255,255,.04); color: var(--muted); border: 1px solid var(--border); }
     .ver-input {
       background: rgba(255,255,255,.05); border: 1px solid var(--border);
       border-radius: 7px; padding: .3rem .6rem; color: var(--text);
@@ -183,14 +189,35 @@
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    @media (max-width: 700px) { #apps-list { grid-template-columns: 1fr; } .app-card-fields { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) {
+      .apps-table-head, .app-row { grid-template-columns: 2fr 1fr 1fr 100px; }
       .app-row > :nth-child(5) { display: none; }
       .apps-table-head > :nth-child(5) { display: none; }
     }
-    @media (max-width: 480px) { .admin-nav { flex-wrap: wrap; } .app-card-actions { grid-template-columns: 1fr; } }
-      .app-row > :nth-child(3), .app-row > :nth-child(4),
-      .apps-table-head > :nth-child(3), .apps-table-head > :nth-child(4) { display: none; }
-      header { flex-wrap: wrap; gap: .5rem; }
+    @media (max-width: 600px) {
+      /* Mobile: convertir filas en cards */
+      .apps-table-head { display: none !important; }
+      .app-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: .7rem;
+        padding: 1rem 1rem 1rem 1rem;
+        border-bottom: none !important;
+        border-radius: 14px;
+        background: var(--card);
+        border: 1px solid var(--border) !important;
+        margin: 0 0 .7rem 0;
+      }
+      .app-row:hover { background: rgba(255,255,255,.02); }
+      #apps-list { padding: .5rem; }
+      .app-row > div { display: block !important; width: 100% !important; }
+      .ver-input, .changelog-input { width: 100% !important; box-sizing: border-box; }
+      .save-row-btn { width: 100%; padding: .65rem; font-size: .82rem; }
+      .admin-nav { flex-wrap: wrap; gap: .4rem; }
+      .admin-tab { flex: 1; min-width: 70px; text-align: center; font-size: .72rem; padding: .4rem .5rem; }
+      header { padding: .7rem 1rem; flex-wrap: wrap; gap: .5rem; }
+      .stat-grid { grid-template-columns: repeat(2,1fr) !important; }
+      main { padding: 1rem !important; }
     }
   </style>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
@@ -378,94 +405,56 @@ function renderApps() {
     const pluginEnl   = app.b2_plugin_url || app.plugin_enlace || '';
     const hasB2       = !!app.b2_url;
     const hasB2Plugin = !!app.b2_plugin_url;
-    const catEmojis = {musica:'🎵',video:'📺',foto:'📸',util:'🛠️',seguridad:'🔒',juego:'🎮'};
-    const catKey = (app.categoria||'').toLowerCase();
-    const icon = catEmojis[catKey] || '📱';
-
     return `
     <div class="app-row" id="row-${app.appId}">
-
-      <!-- Header: ícono + nombre + badges -->
-      <div class="app-card-header">
-        <div class="app-card-icon">${icon}</div>
-        <div class="app-card-info">
-          <div class="app-name-cell">
-            ${app.nombre}
-            <small>${app.categoria || 'Sin categoría'} · <code style="font-size:.58rem">${app.appId}</code></small>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:.25rem;align-items:flex-end;flex-shrink:0">
-          <span class="b2-badge ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK OK' : '📎 Sin APK'}</span>
-          <span class="badge-verified ${app.verified ? 'yes' : 'no'}" id="vbadge-${app.appId}"
-                onclick="toggleVerified('${app.appId}')" style="cursor:pointer">
-            ${app.verified ? '✅ Verificado' : '○ Sin verificar'}
-          </span>
-        </div>
+      <div class="app-name-cell">
+        ${app.nombre}
+        <small>${app.categoria || 'Sin cat.'} · ${app.appId}</small>
+        <span class="b2-pill ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK listo' : '📎 Sin APK'}</span>
       </div>
-
-      <!-- Campos -->
-      <div class="app-card-fields">
-        <div>
-          <div class="field-label">Versión</div>
-          <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0" style="width:100%">
-        </div>
-        <div>
-          <div class="field-label">Badge</div>
-          <select class="ver-input" id="badge-${app.appId}" style="width:100%">
-            <option value="🆕" ${app.tag==='🆕'?'selected':''}>🆕 Nuevo</option>
-            <option value="🔄 Actualizada" ${app.tag==='🔄 Actualizada'?'selected':''}>🔄 Actualizada</option>
-            <option value="🔥 Popular" ${app.tag==='🔥 Popular'?'selected':''}>🔥 Popular</option>
-            <option value="⚡ Beta" ${app.tag==='⚡ Beta'?'selected':''}>⚡ Beta</option>
-            <option value="⭐" ${app.tag==='⭐'?'selected':''}>⭐ Destacada</option>
-          </select>
-        </div>
-        <div class="app-card-field-full">
-          <div class="field-label">Changelog</div>
-          <textarea class="changelog-input" rows="2" id="cl-${app.appId}" style="width:100%">${app.changelog || ''}</textarea>
-        </div>
-        <div class="app-card-field-full">
-          <div class="field-label">Link APK (si no usas B2)</div>
-          <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" id="link-${app.appId}" placeholder="https://..." style="width:100%">
-        </div>
-        <div class="app-card-field-full">
-          <div class="field-label">Plugin URL</div>
-          <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="https://... (opcional)" style="width:100%">
-        </div>
-        <div class="app-card-field-full">
-          <div class="field-label">Tutorial YouTube</div>
-          <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="https://youtu.be/..." style="width:100%;border-color:rgba(255,0,80,.15)">
-        </div>
+      <div>
+        <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
       </div>
-
-      <!-- Acciones -->
-      <div class="app-card-actions">
-        <button class="action-btn btn-save" id="sbtn-${app.appId}" onclick="saveRow('${app.appId}')">
-          <i class="fas fa-save"></i> Guardar cambios
+      <div>
+        <span class="badge-verified ${app.verified ? 'yes' : 'no'}" id="vbadge-${app.appId}"
+              onclick="toggleVerified('${app.appId}')">
+          ${app.verified ? '✅ Sí' : '○ No'}
+        </span>
+      </div>
+      <div>
+        <select style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:.25rem .4rem;color:var(--text);font-family:var(--mono);font-size:.65rem;outline:none" id="badge-${app.appId}">
+          <option value="🆕" ${app.tag==='🆕'?'selected':''}>🆕 Nuevo</option>
+          <option value="🔄 Actualizada" ${app.tag==='🔄 Actualizada'?'selected':''}>🔄 Actualizada</option>
+          <option value="🔥 Popular" ${app.tag==='🔥 Popular'?'selected':''}>🔥 Popular</option>
+          <option value="⚡ Beta" ${app.tag==='⚡ Beta'?'selected':''}>⚡ Beta</option>
+          <option value="⭐" ${app.tag==='⭐'?'selected':''}>⭐ Destacada</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
+        <!-- Link manual -->
+        <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" 
+               id="link-${app.appId}" placeholder="https://... (o sube APK directo)">
+        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" style="display:${pluginEnl?'block':'block'}">
+        <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="🎬 Tutorial YouTube (opcional)" style="border-color:rgba(255,0,80,.2)">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <button class="save-row-btn" id="sbtn-${app.appId}" onclick="saveRow('${app.appId}')">
+          <i class="fas fa-save"></i> Guardar
         </button>
-        <label style="cursor:pointer;display:contents">
-          <div class="action-btn btn-apk">
-            <i class="fas fa-cloud-arrow-up"></i> Subir APK
-          </div>
-          <input type="file" accept=".apk" style="display:none" onchange="uploadAPK('${app.appId}', 'main', this)">
+        <!-- Upload APK a B2 -->
+        <label style="cursor:pointer">
+          <span style="display:flex;align-items:center;gap:.4rem;padding:.3rem .6rem;border-radius:7px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--c);font-family:var(--mono);font-size:.62rem;font-weight:700;white-space:nowrap">
+            <i class="fas fa-cloud-arrow-up"></i> APK → R2
+          </span>
+          <input type="file" accept=".apk" style="display:none"
+                 onchange="uploadAPK('${app.appId}', 'main', this)">
         </label>
-        ${hasB2Plugin || pluginEnl ? `
-        <label style="cursor:pointer;display:contents">
-          <div class="action-btn btn-plugin">
-            <i class="fas fa-puzzle-piece"></i> Plugin APK
-          </div>
-          <input type="file" accept=".apk" style="display:none" onchange="uploadAPK('${app.appId}', 'plugin', this)">
-        </label>` : `
-        <label style="cursor:pointer;display:contents">
-          <div class="action-btn btn-plugin">
-            <i class="fas fa-puzzle-piece"></i> + Plugin
-          </div>
-          <input type="file" accept=".apk" style="display:none" onchange="uploadAPK('${app.appId}', 'plugin', this)">
-        </label>`}
-        <button class="action-btn btn-del" onclick="deleteApp('${app.appId}', '${app.nombre.replace(/'/g,'')}')">
+        <button onclick="deleteApp('${app.appId}', '${app.nombre.replace(/'/g,'')}')"
+                style="padding:.28rem .5rem;border-radius:7px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:#ff6b6b;font-family:var(--mono);font-size:.62rem;cursor:pointer;white-space:nowrap">
           <i class="fas fa-trash"></i> Eliminar
         </button>
       </div>
-
     </div>`;
   }).join('');
 }
