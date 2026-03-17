@@ -506,7 +506,8 @@ async function loadAppsFromBackend() {
   try {
     const res  = await fetch(`${BACKEND}/api/apps`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const apps = await res.json();
+    const data = await res.json();
+    const apps = data.apps || data || [];
 
     if (!apps.length) {
       grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No hay apps disponibles.</div>';
