@@ -1,0 +1,58 @@
+name: CodeHub CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-backend:
+    name: 🔍 Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+      - run: cd backend && npm ci
+      - run: node --check backend/server.js && echo "✅ Sintaxis OK"
+      - run: |
+          test -f backend/server.js    && echo "✅ server.js"
+          test -f backend/package.json && echo "✅ package.json"
+          test -f backend/railway.json && echo "✅ railway.json"
+
+  verify-frontend:
+    name: 🎨 Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar archivos críticos
+        run: |
+          for f in index.html novedades.html tools.html servicios.html downloader.html sw.js manifest.json offline.html vercel.json sitemap.xml; do
+            test -f "$f" && echo "✅ $f" || echo "❌ FALTA: $f"
+          done
+      - name: Verificar tamaño mínimo
+        run: |
+          for f in index.html novedades.html tools.html; do
+            size=$(wc -c < "$f")
+            [ "$size" -lt 1000 ] && echo "❌ $f vacío" && exit 1
+            echo "✅ $f — ${size} bytes"
+          done
+
+  health-check:
+    name: 🏥 Health Check
+    runs-on: ubuntu-latest
+    needs: [verify-backend, verify-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Esperar deploy (90s)
+        run: sleep 90
+      - name: Verificar backend
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://codehub-production-729d.up.railway.app/api/health --max-time 30)
+          echo "HTTP: $STATUS"
+          [ "$STATUS" = "200" ] && echo "✅ Backend OK" || echo "⚠️ Status $STATUS"

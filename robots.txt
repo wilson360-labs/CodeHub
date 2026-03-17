@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /backend/
+Disallow: /admin-hub.html
+Disallow: /apps_data.json
 
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
+
+Crawl-delay: 1

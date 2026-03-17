@@ -1,0 +1,27 @@
+# Entorno
+.env
+.env.local
+.env.production
+
+# Dependencias
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs y backups locales
+logs/
+backups/
+*.log
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*.tmp
+
+# APKs locales (van en Backblaze)
+*.apk
+
+# IDE
+.vscode/settings.json
+.idea/

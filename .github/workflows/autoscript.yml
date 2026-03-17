@@ -1,0 +1,38 @@
+name: CodeHub AutoScript
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Comando'
+        required: true
+        default: 'status'
+        type: choice
+        options: [status, health, backup, update, clean, all]
+
+jobs:
+  autoscript:
+    name: 🤖 AutoScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Ejecutar
+        env:
+          ADMIN_KEY:        ${{ secrets.ADMIN_KEY }}
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BACKEND_URL:      ${{ secrets.BACKEND_URL }}
+        run: python python/codehub.py ${{ github.event.inputs.command || 'all' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backups-${{ github.run_number }}
+          path: backups/
+          retention-days: 30
+          if-no-files-found: ignore
