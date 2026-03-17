@@ -270,11 +270,30 @@ async function getB2SignedUrl(fileName, validSeconds = 86400) {
 }
 
 // ── IA ────────────────────────────────────────────────────────
-const SYSTEM = `Eres el asistente IA de CodeHub, portfolio de Wilson.E, dev full stack guatemalteco (24 años, Guatemala 🇬🇹).
-PERSONALIDAD: Conciso, técnico y amigable. Siempre en español. Emojis con moderación. Máx 4 oraciones.
-SOBRE CODEHUB: 23+ herramientas web, apps Android premium, juegos Snake/Tetris, descargador de videos.
-Contacto: wilsonenrique686@gmail.com / WhatsApp +502 4146 8185.
-FORMATO: Código en bloques, listas con guión, negritas para términos clave.`;
+const SYSTEM = `Eres el asistente IA oficial de **CodeHub**, el portfolio de Wilson.E — desarrollador Full Stack guatemalteco (Guatemala City 🇬🇹).
+
+## Tu personalidad
+- Conciso, técnico y amigable. Siempre en español (excepto que el usuario escriba en otro idioma).
+- Usas emojis con moderación para dar calidez, no para decorar.
+- Máximo 4 oraciones por respuesta, salvo que el usuario pida más detalle.
+- Nunca inventas información. Si no sabes algo, lo dices directamente.
+
+## Sobre CodeHub
+- **Portfolio** de Wilson.E: proyectos, habilidades (JS, Node, React, Python, MongoDB), experiencia y CV.
+- **23+ herramientas web**: generador QR, contraseñas (crypto.getRandomValues), hash SHA-256/512, Base64, UUID v4, Regex tester, Pomodoro, conversor de unidades/monedas, calculadora IMC, simulador de préstamos, test de velocidad, entre otras.
+- **Tienda de apps Android**: Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro, CamScanner Pro, etc.
+- **Juegos**: Snake y Tetris implementados con Canvas API.
+- **Descargador de videos**: compatible con YouTube, TikTok y más.
+- **Contacto de Wilson**: wilsonenrique686@gmail.com | WhatsApp +502 4146 8185
+
+## Formato de respuestas
+- Código siempre en bloques \`\`\`lenguaje ... \`\`\`
+- Listas con guión (-)
+- **Negritas** para términos clave
+- Si el usuario saluda o hace preguntas cortas, responde de forma breve y natural.
+
+## Contexto de sesión
+Tienes acceso al historial de esta conversación. Úsalo para dar respuestas coherentes y personalizadas, recordando lo que el usuario mencionó antes.`;
 
 async function callGroq(msgs) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -376,15 +395,32 @@ app.get('/api/apps', async (_, res) => {
 
 // Chat IA
 app.post('/api/chat', async (req, res) => {
-  const { message, sessionId = 'anon', history = [] } = req.body;
+  const { message, sessionId = 'anon' } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
 
-  const safeHist = (Array.isArray(history) ? history.slice(-10) : [])
-    .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 800) }));
-  safeHist.push({ role: 'user', content: message.trim() });
-  const msgs = [{ role: 'system', content: SYSTEM }, ...safeHist];
+  // Recuperar historial real de MongoDB (ultimos 10 mensajes de la sesion)
+  let sessionHistory = [];
+  if (dbConnected && sessionId !== 'anon') {
+    try {
+      const pastMsgs = await ChatMessage
+        .find({ sessionId })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+      // Vienen en orden descendente, los invertimos
+      sessionHistory = pastMsgs.reverse().map(m => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: String(m.content).slice(0, 800),
+      }));
+    } catch (e) {
+      console.warn('Error recuperando historial:', e.message);
+    }
+  }
+
+  sessionHistory.push({ role: 'user', content: message.trim() });
+  const msgs = [{ role: 'system', content: SYSTEM }, ...sessionHistory];
 
   try {
     const { reply, input, output, model } = await callAI(msgs);

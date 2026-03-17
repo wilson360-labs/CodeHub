@@ -66,7 +66,11 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   const API_URL = BACKEND_URL + '/api/chat';
 
   // ID de sesión único por visita (no identifica al usuario, solo la sesión)
-  const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const SESSION_ID = localStorage.getItem('ch_session_id') || (() => {
+    const id = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('ch_session_id', id);
+    return id;
+  })();
   // ────────────────────────────────────────────────────────
 
   window.sendAI = async function() {
