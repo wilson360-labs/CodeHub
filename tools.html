@@ -1608,105 +1608,79 @@ async function generateImage() {
 
   const prompt = style ? promptRaw + ', ' + style : promptRaw;
   const parts  = size.split('x');
-  const w = parts[0], h = parts[1];
-  const seed = Math.floor(Math.random() * 99999);
+  const w = parts[0] || '512', h = parts[1] || '512';
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando…';
   out.style.display = 'block';
 
-  // Lista de URLs a intentar en orden
-  const providers = [
-    {
-      name: 'Flux',
-      url: 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=' + w + '&height=' + h + '&seed=' + seed + '&model=flux&nologo=true'
-    },
-    {
-      name: 'Flux Realism',
-      url: 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=' + w + '&height=' + h + '&seed=' + (seed+1) + '&model=flux-realism&nologo=true'
-    },
-    {
-      name: 'Turbo',
-      url: 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=512&height=512&seed=' + seed + '&model=turbo&nologo=true'
-    },
-    {
-      name: 'Stable Diffusion',
-      url: 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + '?width=512&height=512&seed=' + seed + '&nologo=true'
-    }
-  ];
+  const BACKEND = 'https://codehub-production-729d.up.railway.app';
 
-  let provIdx = 0;
-
-  function tryNext() {
-    if (provIdx >= providers.length) {
-      out.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:1rem">No se pudo generar. Intenta con un prompt en inglés.</div>';
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
-      return;
-    }
-
-    const prov = providers[provIdx];
-    provIdx++;
-
-    out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem;text-align:center;padding:1rem">⏳ Generando con ' + prov.name + '… (' + provIdx + '/' + providers.length + ')</div>';
-
-    const img = new Image();
-    const timer = setTimeout(() => {
-      img.src = '';
-      console.warn(prov.name + ' timeout');
-      tryNext();
-    }, 30000);
-
-    img.onload = function() {
-      clearTimeout(timer);
-      out.innerHTML =
-        '<img src="' + prov.url + '" alt="' + promptRaw.replace(/"/g, '') + '" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">' +
-        '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center;flex-wrap:wrap">' +
-          '<a href="' + prov.url + '" target="_blank" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-external-link-alt"></i> Ver completa</a>' +
-          '<a href="' + prov.url + '" download="codehub-ia.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-download"></i> Descargar</a>' +
-          '<button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>' +
-        '</div>' +
-        '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">Pollinations · ' + prov.name + ' · Gratis</div>';
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
-    };
-
-    img.onerror = function() {
-      clearTimeout(timer);
-      console.warn(prov.name + ' error, intentando siguiente...');
-      tryNext();
-    };
-
-    img.crossOrigin = 'anonymous';
-    img.src = prov.url;
+  function setStatus(msg) {
+    out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem;text-align:center;padding:1.2rem">⏳ ' + msg + '</div>';
   }
 
-  // Intentar con Puter.js primero si está disponible
+  function showResult(src, providerName) {
+    out.innerHTML =
+      '<img src="' + src + '" alt="IA" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">' +
+      '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center;flex-wrap:wrap">' +
+        '<a href="' + src + '" target="_blank" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-external-link-alt"></i> Ver completa</a>' +
+        '<a href="' + src + '" download="codehub-ia.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-download"></i> Descargar</a>' +
+        '<button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>' +
+      '</div>' +
+      '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">' + providerName + ' · Gratis</div>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
+  }
+
+  function showError(msg) {
+    out.innerHTML = '<div style="color:#ff6b6b;font-size:.85rem;text-align:center;padding:.8rem">❌ ' + msg + '<br><small style="color:var(--muted)">Intenta con un prompt en inglés</small></div>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
+  }
+
+  // Proveedor 1: Puter.js (DALL-E 3, sin key)
   if (typeof puter !== 'undefined' && puter.ai && puter.ai.txt2img) {
-    out.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.8rem;text-align:center;padding:1rem">⏳ Generando con DALL-E 3…</div>';
+    setStatus('Generando con DALL-E 3 (Puter.js)…');
     try {
       const result = await Promise.race([
         puter.ai.txt2img(prompt, false),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000))
+        new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 20000); })
       ]);
-      if (result && result.src) {
-        out.innerHTML =
-          '<img src="' + result.src + '" alt="' + promptRaw.replace(/"/g, '') + '" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">' +
-          '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center">' +
-            '<button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>' +
-          '</div>' +
-          '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">Puter.js · DALL-E 3 · Gratis</div>';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
-        return;
-      }
-    } catch(e) {
-      console.warn('Puter.js fallo:', e.message);
-    }
+      if (result && result.src) { showResult(result.src, 'Puter.js · DALL-E 3'); return; }
+    } catch(e) { console.warn('Puter:', e.message); }
   }
 
-  // Fallback a Pollinations
-  tryNext();
+  // Proveedores 2-4 via Backend
+  var providers = [
+    { name: 'Together AI · FLUX.1', p: 'together' },
+    { name: 'Google Gemini · Imagen 3', p: 'gemini' },
+    { name: 'Pollinations · Flux', p: 'pollinations' }
+  ];
+
+  for (var i = 0; i < providers.length; i++) {
+    var prov = providers[i];
+    setStatus('Generando con ' + prov.name + '… (' + (i+2) + '/4)');
+    try {
+      var resp = await Promise.race([
+        fetch(BACKEND + '/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt, width: parseInt(w), height: parseInt(h), provider: prov.p })
+        }),
+        new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 35000); })
+      ]);
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data.ok && (data.image || data.url)) {
+          showResult(data.image || data.url, prov.name);
+          return;
+        }
+      }
+    } catch(e) { console.warn(prov.name, e.message); }
+  }
+
+  showError('Todos los proveedores no disponibles. Intenta en unos minutos.');
 }
 
 
