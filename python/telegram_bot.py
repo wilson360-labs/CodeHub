@@ -1,424 +1,181 @@
 """
 CodeHub Telegram Bot — Wilson.E 2026
-=====================================
-Envía un resumen diario automático con estadísticas de CodeHub.
-
-Uso:
-  python telegram_bot.py          → envía resumen ahora (test)
-  python telegram_bot.py --schedule → ejecuta en loop (producción)
-
-Variables de entorno (.env):
-  TELEGRAM_TOKEN   → token del bot de @BotFather
-  TELEGRAM_CHAT_ID → tu chat ID (usa /start en el bot para obtenerlo)
-  BACKEND_URL      → https://codehub-production-729d.up.railway.app
-  ADMIN_KEY        → tu clave admin del backend
-  MONGODB_URI      → opcional, para stats extra directas de MongoDB
+Resumen diario via GitHub Actions
 """
 
-import os
-import sys
-import json
-import time
-import asyncio
-import logging
+import os, sys, json, asyncio, logging
 from datetime import datetime, timezone, timedelta
 from typing import Optional
+import urllib.request, urllib.error
 
-import httpx
-from dotenv import load_dotenv
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("codehub-bot")
 
-load_dotenv()
+# Config
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# ── CONFIG ────────────────────────────────────────────────────
 TOKEN     = os.getenv("TELEGRAM_TOKEN", "")
 CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
 BACKEND   = os.getenv("BACKEND_URL", "https://codehub-production-729d.up.railway.app").rstrip("/")
 ADMIN_KEY = os.getenv("ADMIN_KEY", "")
+GT_TZ     = timezone(timedelta(hours=-6))
 
-# Guatemala es UTC-6
-GT_TZ = timezone(timedelta(hours=-6))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-log = logging.getLogger("codehub-bot")
+def http_get(url, headers=None, timeout=20):
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = r.read().decode("utf-8")
+            try:    return r.status, json.loads(body)
+            except: return r.status, {"raw": body}
+    except urllib.error.HTTPError as e:
+        return e.code, {}
+    except Exception as e:
+        return 0, {"error": str(e)}
 
-# ── TELEGRAM API ──────────────────────────────────────────────
 
-async def send_message(text: str, parse_mode: str = "HTML") -> bool:
-    """Envía un mensaje a Telegram."""
+def send_telegram(text):
+    """Envía mensaje de texto plano a Telegram."""
     if not TOKEN or not CHAT_ID:
-        log.error("❌ TELEGRAM_TOKEN o TELEGRAM_CHAT_ID no configurados")
+        log.error("TOKEN o CHAT_ID no configurados")
         return False
 
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {
+    data = json.dumps({
         "chat_id": CHAT_ID,
         "text": text,
-        "parse_mode": parse_mode,
-        "disable_web_page_preview": True,
-    }
+        "disable_web_page_preview": True
+    }).encode("utf-8")
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        try:
-            r = await client.post(url, json=payload)
-            r.raise_for_status()
-            log.info("✅ Mensaje enviado a Telegram")
-            return True
-        except Exception as e:
-            log.error(f"❌ Error enviando a Telegram: {e}")
-            return False
-
-
-async def get_my_chat_id() -> Optional[str]:
-    """Obtiene tu chat_id enviando /start al bot primero."""
-    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    async with httpx.AsyncClient(timeout=15) as client:
-        try:
-            r = await client.get(url)
-            data = r.json()
-            updates = data.get("result", [])
-            if updates:
-                chat_id = str(updates[-1]["message"]["chat"]["id"])
-                log.info(f"Tu CHAT_ID es: {chat_id}")
-                return chat_id
-            else:
-                log.warning("Sin mensajes aún. Envía /start al bot primero.")
-                return None
-        except Exception as e:
-            log.error(f"Error: {e}")
-            return None
-
-# ── OBTENER DATOS DEL BACKEND ─────────────────────────────────
-
-async def fetch_backend(endpoint: str, method: str = "GET") -> Optional[dict]:
-    """Hace una petición al backend de CodeHub."""
-    headers = {"x-admin-key": ADMIN_KEY}
-    url = f"{BACKEND}{endpoint}"
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        try:
-            if method == "GET":
-                r = await client.get(url, headers=headers)
-            else:
-                r = await client.post(url, headers=headers)
-            r.raise_for_status()
-            return r.json()
-        except httpx.HTTPStatusError as e:
-            log.warning(f"HTTP {e.response.status_code} en {endpoint}")
-            return None
-        except Exception as e:
-            log.warning(f"Error en {endpoint}: {e}")
-            return None
-
-
-async def get_stats() -> dict:
-    """Recopila todas las estadísticas del backend."""
-    # Paralelo — todo a la vez
-    results = await asyncio.gather(
-        fetch_backend("/api/health"),
-        fetch_backend("/api/admin/apps"),
-        fetch_backend("/api/ratings"),
-        fetch_backend("/api/requests"),
-        return_exceptions=True
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
     )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            log.info(f"Telegram OK: {r.status}")
+            return True
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8")
+        log.error(f"Telegram error {e.code}: {body}")
+        return False
+    except Exception as e:
+        log.error(f"Error: {e}")
+        return False
 
-    health   = results[0] if isinstance(results[0], dict) else {}
-    apps     = results[1] if isinstance(results[1], dict) else {}
-    ratings  = results[2] if isinstance(results[2], dict) else {}
-    requests = results[3] if isinstance(results[3], dict) else {}
-    live     = {}
 
-    return {
-        "health":   health,
-        "apps":     apps,
-        "ratings":  ratings,
-        "requests": requests,
-        "live":     live,
+def get_stats():
+    """Obtiene estadísticas del backend."""
+    headers = {"x-admin-key": ADMIN_KEY}
+    stats = {}
+
+    endpoints = {
+        "health":   ("/api/health",       {}),
+        "apps":     ("/api/admin/apps",   headers),
+        "ratings":  ("/api/ratings",      {}),
+        "requests": ("/api/requests",     {}),
     }
 
-# ── FORMATEAR EL RESUMEN ──────────────────────────────────────
+    for key, (path, hdrs) in endpoints.items():
+        code, data = http_get(f"{BACKEND}{path}", headers=hdrs)
+        stats[key] = data if code == 200 else {}
+        log.info(f"{path}: HTTP {code}")
 
-def format_daily_summary(stats: dict) -> str:
-    """Genera el mensaje HTML del resumen diario."""
-    now_gt = datetime.now(GT_TZ)
-    fecha  = now_gt.strftime("%A %d de %B, %Y")
-    hora   = now_gt.strftime("%H:%M")
+    return stats
+
+
+def build_message(stats):
+    """Construye el mensaje de texto plano."""
+    now = datetime.now(GT_TZ)
+    fecha = now.strftime("%d/%m/%Y")
+    hora  = now.strftime("%H:%M")
 
     health   = stats.get("health", {})
-    apps_data = stats.get("apps", {})
+    apps_d   = stats.get("apps", {})
     ratings  = stats.get("ratings", {})
     requests = stats.get("requests", {})
-    live     = stats.get("live", {})
 
-    # Estado del backend
-    status     = health.get("status", "?")
-    version    = health.get("version", "?")
-    uptime_s   = health.get("uptime", "?")
-    mongo_st   = health.get("mongo", "?")
-    redis_st   = health.get("redis", "?")
-    ws_clients = health.get("ws", "?")
+    version  = health.get("version", "?")
+    status   = health.get("status", "?")
+    mongo    = health.get("mongo", "?")
+    uptime   = health.get("uptime", "?")
 
-    # Uptime legible
-    try:
-        secs = int(str(uptime_s).replace("s", ""))
-        h, r = divmod(secs, 3600)
-        m, _ = divmod(r, 60)
-        uptime_str = f"{h}h {m}m"
-    except Exception:
-        uptime_str = str(uptime_s)
+    apps     = apps_d.get("apps", [])
+    total    = len(apps)
+    con_apk  = sum(1 for a in apps if a.get("b2_file_name"))
 
-    # Apps
-    apps_list  = apps_data.get("apps", [])
-    total_apps = len(apps_list)
-    # Apps con APK en B2
-    apps_con_apk = sum(1 for a in apps_list if a.get("b2_file_name"))
+    all_r    = ratings.get("ratings", {})
+    rated    = len(all_r)
+    avg      = round(sum(v.get("avg",0) for v in all_r.values()) / len(all_r), 1) if all_r else 0
 
-    # Ratings
-    all_ratings = ratings.get("ratings", {})
-    rated_apps  = len(all_ratings)
-    if all_ratings:
-        avg_global = sum(v.get("avg", 0) for v in all_ratings.values()) / len(all_ratings)
-        top_app = max(all_ratings.items(), key=lambda x: x[1].get("avg", 0))
-        top_name, top_data = top_app
-        top_str = f"⭐ {top_name} — {top_data.get('avg', 0)}/5 ({top_data.get('count', 0)} votos)"
-    else:
-        avg_global = 0
-        top_str = "Sin ratings aún"
-
-    # Requests pendientes
-    pending_reqs = requests.get("requests", [])
-    pending_count = len(pending_reqs)
-    top_req = pending_reqs[0].get("appName", "—") if pending_reqs else "—"
-    top_req_votes = pending_reqs[0].get("votes", 0) if pending_reqs else 0
-
-    # Visitas en vivo
-    visitors_today = live.get("visitors", 0)
-    ws_live        = live.get("wsClients", 0)
-
-    # Iconos de estado
-    def st_icon(val: str) -> str:
-        if "connected" in str(val) or "ok" in str(val):
-            return "🟢"
-        if "memory" in str(val):
-            return "🟡"
-        return "🔴"
-
-    backend_icon = "🟢" if status == "ok" else "🔴"
+    reqs     = requests.get("requests", [])
+    pending  = len(reqs)
+    top_req  = reqs[0].get("appName", "-") if reqs else "-"
 
     lines = [
-        f"📊 *CodeHub — Resumen del día*",
-        f"_{fecha} · {hora} GT_",
+        "=== CodeHub - Resumen del dia ===",
+        f"Fecha: {fecha} {hora} GT",
         "",
-        f"*🖥️ Backend v{version}*",
-        f"  {backend_icon} Estado: {status}",
-        f"  ⏱️ Uptime: {uptime_str}",
-        f"  {st_icon(mongo_st)} MongoDB: {mongo_st}",
-        f"  {st_icon(redis_st)} Redis: {redis_st}",
-        f"  🔌 WS: {ws_clients}",
+        f"BACKEND v{version}",
+        f"  Estado: {status}",
+        f"  Uptime: {uptime}",
+        f"  MongoDB: {mongo}",
         "",
-        f"*📱 Apps Android*",
-        f"  📦 Total: {total_apps}",
-        f"  ✅ Con APK: {apps_con_apk}",
-        f"  ⚠️  Sin APK: {total_apps - apps_con_apk}",
+        f"APPS ANDROID",
+        f"  Total: {total}",
+        f"  Con APK: {con_apk}",
+        f"  Sin APK: {total - con_apk}",
         "",
-        f"*⭐ Ratings*",
-        f"  Apps calificadas: {rated_apps}",
-        f"  Promedio global: {avg_global:.1f}/5",
-        f"  {top_str}",
+        f"RATINGS",
+        f"  Apps calificadas: {rated}",
+        f"  Promedio: {avg}/5",
         "",
-        f"*📬 Solicitudes pendientes*",
-        f"  Total: {pending_count}",
+        f"SOLICITUDES",
+        f"  Pendientes: {pending}",
+        f"  Mas votada: {top_req}",
+        "",
+        "https://wilson360-labs.vercel.app",
     ]
-
-    if pending_count > 0:
-        lines.append(f"  🔝 Más votada: {top_req} ({top_req_votes} votos)")
-        if pending_count > 1:
-            others = [r.get("appName","?") for r in pending_reqs[1:4]]
-            lines.append(f"  📋 Otras: {', '.join(others)}")
-
-    lines += [
-        "",
-        f"*👁️ Tráfico*",
-        f"  Visitas hoy: {visitors_today}",
-        f"  En línea: {ws_live}",
-        "",
-        f"🌐 https://wilson360-labs.vercel.app",
-    ]
-
     return "\n".join(lines)
 
 
-def format_error_alert(error: str) -> str:
-    """Mensaje de alerta de error crítico."""
-    now = datetime.now(GT_TZ).strftime("%H:%M GT")
-    return (
-        f"🚨 *CodeHub — Alerta crítica*\n"
-        f"_{now}_\n\n"
-        f"`{error}`\n\n"
-        f"<a href='https://railway.app'>Ver Railway →</a>"
-    )
-
-# ── COMANDOS DEL BOT ──────────────────────────────────────────
-
-async def handle_updates():
-    """Procesa comandos entrantes del bot."""
-    url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
-    last_update_id = None
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        while True:
-            try:
-                params = {"timeout": 30, "offset": last_update_id}
-                r = await client.get(url, params=params)
-                data = r.json()
-
-                for update in data.get("result", []):
-                    last_update_id = update["update_id"] + 1
-                    msg = update.get("message", {})
-                    text = msg.get("text", "").strip()
-                    chat = str(msg.get("chat", {}).get("id", ""))
-
-                    if not text or chat != CHAT_ID:
-                        continue
-
-                    log.info(f"Comando recibido: {text}")
-
-                    if text in ["/start", "/help"]:
-                        await send_message(
-                            "👋 *CodeHub Bot activo*\n\n"
-                            "/stats — resumen ahora mismo\n"
-                            "/health — estado del backend\n"
-                            "/apps — lista de apps\n"
-                            "/help — este menú"
-                        )
-
-                    elif text == "/stats":
-                        await send_message("⏳ Obteniendo estadísticas...")
-                        stats = await get_stats()
-                        msg_text = format_daily_summary(stats)
-                        await send_message(msg_text)
-
-                    elif text == "/health":
-                        health = await fetch_backend("/api/health")
-                        if health:
-                            lines = [f"*🔧 Backend Health*\n"]
-                            for k, v in health.items():
-                                lines.append(f"  `{k}`: {v}")
-                            await send_message("\n".join(lines))
-                        else:
-                            await send_message("❌ Backend no responde")
-
-                    elif text == "/apps":
-                        apps_data = await fetch_backend("/api/admin/apps")
-                        apps = apps_data.get("apps", []) if apps_data else []
-                        if apps:
-                            lines = [f"*📱 Apps ({len(apps)})*\n"]
-                            for a in apps[:15]:
-                                icon = "✅" if a.get("b2_file_name") else "⚠️"
-                                lines.append(f"  {icon} *{a['nombre']}* v{a.get('version','?')} {a.get('tag','')}")
-                            if len(apps) > 15:
-                                lines.append(f"\n  ...y {len(apps)-15} más")
-                            await send_message("\n".join(lines))
-                        else:
-                            await send_message("Sin apps en la DB")
-
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                log.error(f"Error en handle_updates: {e}")
-                await asyncio.sleep(5)
-
-
-# ── SCHEDULER ─────────────────────────────────────────────────
-
-async def daily_scheduler():
-    """
-    Ejecuta el resumen todos los días a las 9:00 PM hora Guatemala (UTC-6).
-    Eso es 03:00 AM UTC del día siguiente.
-    """
-    target_hour_gt = 21  # 9 PM Guatemala
-
-    log.info(f"🤖 Bot iniciado — resumen diario a las {target_hour_gt}:00 GT")
-    await send_message(
-        f"🤖 *CodeHub Bot iniciado*\n"
-        f"Resumen diario a las {target_hour_gt}:00 GT\n"
-        f"Comandos: /stats /health /apps /help"
-    )
-
-    while True:
-        now_gt    = datetime.now(GT_TZ)
-        target_gt = now_gt.replace(hour=target_hour_gt, minute=0, second=0, microsecond=0)
-
-        # Si ya pasó la hora hoy, programar para mañana
-        if now_gt >= target_gt:
-            target_gt += timedelta(days=1)
-
-        wait_secs = (target_gt - now_gt).total_seconds()
-        log.info(f"⏰ Próximo resumen en {wait_secs/3600:.1f}h ({target_gt.strftime('%d/%m %H:%M GT')})")
-
-        await asyncio.sleep(wait_secs)
-
-        try:
-            log.info("📊 Enviando resumen diario...")
-            stats    = await get_stats()
-            msg_text = format_daily_summary(stats)
-            await send_message(msg_text)
-            log.info("✅ Resumen enviado")
-        except Exception as e:
-            log.error(f"❌ Error en resumen diario: {e}")
-            await send_message(format_error_alert(str(e)))
-
-        # Esperar 1 minuto para no re-enviar en el mismo minuto
-        await asyncio.sleep(60)
-
-
-async def main():
-    """Punto de entrada principal."""
+def main():
     if not TOKEN:
-        print("❌ TELEGRAM_TOKEN no configurado en .env")
+        print("ERROR: TELEGRAM_TOKEN no configurado")
         sys.exit(1)
     if not CHAT_ID:
-        print("⚠️  TELEGRAM_CHAT_ID no configurado.")
-        print("   Envía /start al bot y ejecuta: python telegram_bot.py --get-id")
+        print("ERROR: TELEGRAM_CHAT_ID no configurado")
         sys.exit(1)
 
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
 
     if mode == "--get-id":
-        # Obtener chat ID
-        chat_id = await get_my_chat_id()
-        if chat_id:
-            print(f"\n✅ Agrega esto a tu .env:\nTELEGRAM_CHAT_ID={chat_id}")
+        code, data = http_get(f"https://api.telegram.org/bot{TOKEN}/getUpdates")
+        updates = data.get("result", [])
+        if updates:
+            chat_id = updates[-1]["message"]["chat"]["id"]
+            print(f"Tu CHAT_ID es: {chat_id}")
+        else:
+            print("Sin mensajes. Envia /start al bot primero.")
+        return
 
-    elif mode == "--test":
-        # Enviar resumen una vez (test)
-        print("📊 Obteniendo estadísticas...")
-        stats    = await get_stats()
-        msg_text = format_daily_summary(stats)
-        print("\n--- PREVIEW DEL MENSAJE ---")
-        print(msg_text)
-        print("---\n")
-        success = await send_message(msg_text, parse_mode="Markdown")
-        print("✅ Enviado a Telegram" if success else "❌ Error al enviar")
+    print("Obteniendo estadisticas...")
+    stats = get_stats()
+    msg   = build_message(stats)
 
-    elif mode == "--schedule":
-        # Modo producción: scheduler + listener de comandos
-        await asyncio.gather(
-            daily_scheduler(),
-            handle_updates(),
-        )
+    print("--- MENSAJE ---")
+    print(msg)
+    print("---")
 
-    else:
-        # Default: enviar resumen ahora
-        print("📊 Enviando resumen ahora...")
-        stats    = await get_stats()
-        msg_text = format_daily_summary(stats)
-        success  = await send_message(msg_text, parse_mode="Markdown")
-        print("✅ Enviado" if success else "❌ Error")
+    ok = send_telegram(msg)
+    print("Enviado OK" if ok else "ERROR al enviar")
+    sys.exit(0 if ok else 1)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
