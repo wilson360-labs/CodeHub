@@ -34,7 +34,7 @@ test.describe('Tools — 27 herramientas', () => {
     const output = page.locator('#pv, [id*="pass"]').first();
     if (await output.isVisible()) {
       const text = await output.textContent();
-      expect(text!.length).toBeGreaterThan(6);
+      expect(text.length).toBeGreaterThan(6);
     }
   });
 
