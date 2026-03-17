@@ -122,7 +122,6 @@ async def get_stats() -> dict:
         fetch_backend("/api/admin/apps"),
         fetch_backend("/api/ratings"),
         fetch_backend("/api/requests"),
-        fetch_backend("/api/stats/live"),
         return_exceptions=True
     )
 
@@ -130,7 +129,7 @@ async def get_stats() -> dict:
     apps     = results[1] if isinstance(results[1], dict) else {}
     ratings  = results[2] if isinstance(results[2], dict) else {}
     requests = results[3] if isinstance(results[3], dict) else {}
-    live     = results[4] if isinstance(results[4], dict) else {}
+    live     = {}
 
     return {
         "health":   health,
@@ -184,7 +183,7 @@ def format_daily_summary(stats: dict) -> str:
         avg_global = sum(v.get("avg", 0) for v in all_ratings.values()) / len(all_ratings)
         top_app = max(all_ratings.items(), key=lambda x: x[1].get("avg", 0))
         top_name, top_data = top_app
-        top_str = f"⭐ <b>{top_name}</b> — {top_data.get('avg', 0)}/5 ({top_data.get('count', 0)} votos)"
+        top_str = f"⭐ {top_name} — {top_data.get('avg', 0)}/5 ({top_data.get('count', 0)} votos)"
     else:
         avg_global = 0
         top_str = "Sin ratings aún"
@@ -210,44 +209,43 @@ def format_daily_summary(stats: dict) -> str:
     backend_icon = "🟢" if status == "ok" else "🔴"
 
     lines = [
-        f"<b>📊 CodeHub — Resumen del día</b>",
-        f"<i>{fecha} · {hora} GT</i>",
+        f"📊 *CodeHub — Resumen del día*",
+        f"_{fecha} · {hora} GT_",
         "",
-        f"<b>🖥️ Backend v{version}</b>",
-        f"  {backend_icon} Estado: <code>{status}</code>",
-        f"  ⏱️ Uptime: <code>{uptime_str}</code>",
-        f"  {st_icon(mongo_st)} MongoDB: <code>{mongo_st}</code>",
-        f"  {st_icon(redis_st)} Redis: <code>{redis_st}</code>",
-        f"  🔌 WS clientes: <code>{ws_clients}</code>",
+        f"*🖥️ Backend v{version}*",
+        f"  {backend_icon} Estado: {status}",
+        f"  ⏱️ Uptime: {uptime_str}",
+        f"  {st_icon(mongo_st)} MongoDB: {mongo_st}",
+        f"  {st_icon(redis_st)} Redis: {redis_st}",
+        f"  🔌 WS: {ws_clients}",
         "",
-        f"<b>📱 Apps Android</b>",
-        f"  📦 Total apps: <b>{total_apps}</b>",
-        f"  ✅ Con APK en B2: <b>{apps_con_apk}</b>",
-        f"  ⚠️  Sin APK: <b>{total_apps - apps_con_apk}</b>",
+        f"*📱 Apps Android*",
+        f"  📦 Total: {total_apps}",
+        f"  ✅ Con APK: {apps_con_apk}",
+        f"  ⚠️  Sin APK: {total_apps - apps_con_apk}",
         "",
-        f"<b>⭐ Ratings</b>",
-        f"  Apps calificadas: <b>{rated_apps}</b>",
-        f"  Promedio global: <b>{avg_global:.1f}/5</b>",
+        f"*⭐ Ratings*",
+        f"  Apps calificadas: {rated_apps}",
+        f"  Promedio global: {avg_global:.1f}/5",
         f"  {top_str}",
         "",
-        f"<b>📬 Solicitudes pendientes</b>",
-        f"  Total: <b>{pending_count}</b>",
+        f"*📬 Solicitudes pendientes*",
+        f"  Total: {pending_count}",
     ]
 
     if pending_count > 0:
-        lines.append(f"  🔝 Más votada: <b>{top_req}</b> ({top_req_votes} votos)")
+        lines.append(f"  🔝 Más votada: {top_req} ({top_req_votes} votos)")
         if pending_count > 1:
             others = [r.get("appName","?") for r in pending_reqs[1:4]]
             lines.append(f"  📋 Otras: {', '.join(others)}")
 
     lines += [
         "",
-        f"<b>👁️ Tráfico hoy</b>",
-        f"  Visitas: <b>{visitors_today}</b>",
-        f"  En línea ahora: <b>{ws_live}</b>",
+        f"*👁️ Tráfico*",
+        f"  Visitas hoy: {visitors_today}",
+        f"  En línea: {ws_live}",
         "",
-        f"<a href='https://wilson360-labs.vercel.app'>🌐 Ver CodeHub</a> · "
-        f"<a href='https://codehub-production-729d.up.railway.app/api/health'>🔧 API Health</a>",
+        f"🌐 https://wilson360-labs.vercel.app",
     ]
 
     return "\n".join(lines)
@@ -257,9 +255,9 @@ def format_error_alert(error: str) -> str:
     """Mensaje de alerta de error crítico."""
     now = datetime.now(GT_TZ).strftime("%H:%M GT")
     return (
-        f"🚨 <b>CodeHub — Alerta crítica</b>\n"
-        f"<i>{now}</i>\n\n"
-        f"<code>{error}</code>\n\n"
+        f"🚨 *CodeHub — Alerta crítica*\n"
+        f"_{now}_\n\n"
+        f"`{error}`\n\n"
         f"<a href='https://railway.app'>Ver Railway →</a>"
     )
 
@@ -290,7 +288,7 @@ async def handle_updates():
 
                     if text in ["/start", "/help"]:
                         await send_message(
-                            "👋 <b>CodeHub Bot activo</b>\n\n"
+                            "👋 *CodeHub Bot activo*\n\n"
                             "/stats — resumen ahora mismo\n"
                             "/health — estado del backend\n"
                             "/apps — lista de apps\n"
@@ -306,9 +304,9 @@ async def handle_updates():
                     elif text == "/health":
                         health = await fetch_backend("/api/health")
                         if health:
-                            lines = [f"<b>🔧 Backend Health</b>\n"]
+                            lines = [f"*🔧 Backend Health*\n"]
                             for k, v in health.items():
-                                lines.append(f"  <code>{k}</code>: {v}")
+                                lines.append(f"  `{k}`: {v}")
                             await send_message("\n".join(lines))
                         else:
                             await send_message("❌ Backend no responde")
@@ -317,10 +315,10 @@ async def handle_updates():
                         apps_data = await fetch_backend("/api/admin/apps")
                         apps = apps_data.get("apps", []) if apps_data else []
                         if apps:
-                            lines = [f"<b>📱 Apps ({len(apps)})</b>\n"]
+                            lines = [f"*📱 Apps ({len(apps)})*\n"]
                             for a in apps[:15]:
                                 icon = "✅" if a.get("b2_file_name") else "⚠️"
-                                lines.append(f"  {icon} <b>{a['nombre']}</b> v{a.get('version','?')} {a.get('tag','')}")
+                                lines.append(f"  {icon} *{a['nombre']}* v{a.get('version','?')} {a.get('tag','')}")
                             if len(apps) > 15:
                                 lines.append(f"\n  ...y {len(apps)-15} más")
                             await send_message("\n".join(lines))
@@ -345,7 +343,7 @@ async def daily_scheduler():
 
     log.info(f"🤖 Bot iniciado — resumen diario a las {target_hour_gt}:00 GT")
     await send_message(
-        f"🤖 <b>CodeHub Bot iniciado</b>\n"
+        f"🤖 *CodeHub Bot iniciado*\n"
         f"Resumen diario a las {target_hour_gt}:00 GT\n"
         f"Comandos: /stats /health /apps /help"
     )
@@ -403,7 +401,7 @@ async def main():
         print("\n--- PREVIEW DEL MENSAJE ---")
         print(msg_text)
         print("---\n")
-        success = await send_message(msg_text)
+        success = await send_message(msg_text, parse_mode="Markdown")
         print("✅ Enviado a Telegram" if success else "❌ Error al enviar")
 
     elif mode == "--schedule":
@@ -418,7 +416,7 @@ async def main():
         print("📊 Enviando resumen ahora...")
         stats    = await get_stats()
         msg_text = format_daily_summary(stats)
-        success  = await send_message(msg_text)
+        success  = await send_message(msg_text, parse_mode="Markdown")
         print("✅ Enviado" if success else "❌ Error")
 
 
