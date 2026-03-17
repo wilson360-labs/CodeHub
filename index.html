@@ -66,226 +66,232 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>
     /* ====== NOVEDADES ICON — REDISEÑO PRO ====== */
-#whatsNewIcon {
+/* ====== DOCK FLOTANTE ====== */
+#hub-dock {
   position: fixed;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #ff4500 0%, #ff6b35 50%, #ffbd69 100%);
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(12,12,20,0.75);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset;
+  z-index: 4000;
+  transition: box-shadow .3s ease;
+}
+#hub-dock:hover {
+  box-shadow: 0 12px 56px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.08) inset;
+}
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform .25s cubic-bezier(.2,.9,.2,1);
+  position: relative;
+}
+.dock-item:hover {
+  transform: translateY(-10px) scale(1.18);
+}
+.dock-item:hover .dock-icon {
+  box-shadow: 0 8px 28px var(--dock-glow, rgba(255,69,0,0.5));
+}
+.dock-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-size: 1.4rem;
-  z-index: 4000;
-  cursor: pointer;
-  box-shadow:
-    0 8px 32px rgba(255,69,0,0.4),
-    0 0 0 1px rgba(255,255,255,0.08) inset,
-    0 2px 0 rgba(255,255,255,0.2) inset;
-  transition: transform .3s cubic-bezier(.2,.9,.2,1), box-shadow .3s ease;
-  animation: novedadesFloat 4s ease-in-out infinite;
+  color: #fff;
+  transition: box-shadow .25s ease;
+  position: relative;
 }
-
-#whatsNewIcon::before {
-  content: '';
+.dock-icon-tools   { background: linear-gradient(135deg,#0088cc,#40c4ff); --dock-glow: rgba(64,196,255,0.5); }
+.dock-icon-apps    { background: linear-gradient(135deg,#00b248,#00e676); --dock-glow: rgba(0,230,118,0.5); }
+.dock-icon-chat    { background: linear-gradient(135deg,#ff4500,#ff6b35); --dock-glow: rgba(255,69,0,0.5); }
+.dock-icon-cv      { background: linear-gradient(135deg,#7c3aed,#b464ff); --dock-glow: rgba(180,100,255,0.5); }
+.dock-label {
+  font-size: 0.62rem;
+  font-family: 'Space Grotesk', sans-serif;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: .03em;
+  font-weight: 500;
+  transition: color .2s;
+}
+.dock-item:hover .dock-label { color: rgba(255,255,255,0.9); }
+.dock-notif {
   position: absolute;
-  inset: -3px;
-  border-radius: 19px;
-  background: linear-gradient(135deg, rgba(255,69,0,0.6), rgba(255,189,105,0.3), rgba(255,69,0,0.6));
-  z-index: -1;
-  animation: novedadesBorder 3s linear infinite;
-  background-size: 200% 200%;
-}
-
-@keyframes novedadesBorder {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-/* Punto de notificación */
-#whatsNewIcon::after {
-  content: '';
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 14px;
-  height: 14px;
+  top: -3px; right: -3px;
+  width: 10px; height: 10px;
   background: #00e676;
   border-radius: 50%;
   border: 2px solid #0c0c0c;
-  animation: notifPulse 2s ease-in-out infinite;
+  animation: dockPulse 2s ease-in-out infinite;
+}
+@keyframes dockPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+}
+.dock-sep {
+  width: 1px;
+  height: 36px;
+  background: rgba(255,255,255,0.1);
+  margin: 0 2px 8px;
+}
+@media (max-width: 480px) {
+  #hub-dock { bottom: 16px; gap: 6px; padding: 8px 12px; }
+  .dock-icon { width: 44px; height: 44px; font-size: 1.2rem; border-radius: 12px; }
+  .dock-label { font-size: 0.55rem; }
 }
 
-@keyframes notifPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.6); }
-  50%       { box-shadow: 0 0 0 8px rgba(0,230,118,0); }
+/* ====== SECTION: TOOLS PREVIEW ====== */
+#tools-preview {
+  padding: 80px 0;
 }
-
-@keyframes novedadesFloat {
-  0%, 100% { transform: translateY(-50%) translateX(0); }
-  50%       { transform: translateY(calc(-50% - 8px)) translateX(-2px); }
+.tp-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 16px;
 }
-
-#whatsNewIcon:hover {
-  transform: translateY(-50%) scale(1.1) rotate(-5deg);
-  box-shadow: 0 16px 48px rgba(255,69,0,0.6), 0 0 0 1px rgba(255,255,255,0.12) inset;
+.tp-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem;
+  color: #40c4ff;
+  letter-spacing: .1em;
+  margin-bottom: 6px;
 }
-
-#whatsNewIcon:focus {
-  outline: 2px solid rgba(255,189,105,0.6);
-  outline-offset: 3px;
+.tp-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, #40c4ff 60%, #0088cc 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin: 0;
 }
-
-/* ====== OVERLAY ====== */
-#whatsNewOverlay {
-  position: fixed;
-  inset: 0;
+.tp-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 12px;
+  background: rgba(64,196,255,0.1); color: #40c4ff;
+  border: 1px solid rgba(64,196,255,0.25);
+  font-weight: 600; font-size: .88rem; text-decoration: none;
+  font-family: 'Space Grotesk', sans-serif;
+  transition: all .2s ease; white-space: nowrap;
+}
+.tp-cta:hover { background: rgba(64,196,255,0.2); transform: translateY(-2px); }
+.tp-grid {
   display: grid;
-  place-items: center;
-  background: rgba(0,0,0,0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  visibility: hidden;
-  opacity: 0;
-  transition: opacity .3s ease, visibility .3s ease;
-  z-index: 3999;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
 }
-
-#whatsNewOverlay.active {
-  visibility: visible;
-  opacity: 1;
+.tp-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 18px;
+  padding: 22px 18px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; cursor: pointer; text-decoration: none;
+  transition: all .25s cubic-bezier(.2,.9,.2,1);
+  position: relative; overflow: hidden;
 }
-
-/* ====== DIALOG ====== */
-.whatsNewDialog {
-  width: 92%;
-  max-width: 400px;
-  background: linear-gradient(160deg, rgba(14,14,24,0.98) 0%, rgba(20,20,36,0.98) 100%);
-  border-radius: 24px;
-  padding: 28px;
-  border: 1px solid rgba(255,69,0,0.3);
-  box-shadow:
-    0 32px 80px rgba(0,0,0,0.7),
-    0 0 0 1px rgba(255,255,255,0.04) inset;
-  transform: translateY(20px) scale(.96);
-  opacity: 0;
-  transition: transform .35s cubic-bezier(.2,.9,.2,1), opacity .35s ease;
-  position: relative;
-  overflow: hidden;
+.tp-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 0%, var(--tc, rgba(64,196,255,0.1)), transparent 70%);
+  opacity: 0; transition: opacity .3s;
 }
-
-/* Brillo superior */
-.whatsNewDialog::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,189,105,0.6), transparent);
+.tp-card:hover { transform: translateY(-6px); border-color: rgba(255,255,255,0.14); }
+.tp-card:hover::before { opacity: 1; }
+.tp-card-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #fff;
 }
+.tp-card-name { font-size: .85rem; font-weight: 600; color: rgba(255,255,255,0.85); }
+.tp-card-desc { font-size: .72rem; color: rgba(255,255,255,0.4); line-height: 1.4; }
 
-#whatsNewOverlay.active .whatsNewDialog {
-  transform: translateY(0) scale(1);
-  opacity: 1;
+/* ====== SECTION: APP STORE PREVIEW ====== */
+#appstore-preview {
+  padding: 80px 0;
 }
-
-.whatsNewDialog h3 {
-  margin: 0 0 4px 0;
-  font-size: 1.3rem;
-  font-weight: 700;
-  background: linear-gradient(90deg, #ff6b35, #ffbd69);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.ap-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 40px; flex-wrap: wrap; gap: 16px;
+}
+.ap-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .78rem; color: #00e676; letter-spacing: .1em; margin-bottom: 6px;
+}
+.ap-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800;
+  background: linear-gradient(135deg, #fff 0%, #00e676 60%, #00b248 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin: 0;
+}
+.ap-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 12px;
+  background: rgba(0,230,118,0.1); color: #00e676;
+  border: 1px solid rgba(0,230,118,0.25);
+  font-weight: 600; font-size: .88rem; text-decoration: none;
   font-family: 'Space Grotesk', sans-serif;
+  transition: all .2s ease; white-space: nowrap;
 }
-
-.whatsNewSub {
-  color: rgba(255,255,255,0.5);
-  font-size: 0.85rem;
-  margin-bottom: 20px;
+.ap-cta:hover { background: rgba(0,230,118,0.2); transform: translateY(-2px); }
+.ap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
-
-.whatsNewActions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 16px;
+.ap-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 20px; padding: 18px;
+  display: flex; align-items: center; gap: 16px;
+  text-decoration: none;
+  transition: all .25s cubic-bezier(.2,.9,.2,1);
+  position: relative; overflow: hidden;
 }
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: flex-start;
-  padding: 14px 18px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  font-weight: 600;
-  font-size: 0.92rem;
-  cursor: pointer;
-  transition: all .2s ease;
-  font-family: 'Space Grotesk', sans-serif;
+.ap-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 0% 50%, rgba(0,230,118,0.06), transparent 70%);
+  opacity: 0; transition: opacity .3s;
 }
-
-.action-btn:first-child {
-  background: linear-gradient(135deg, rgba(255,69,0,0.2), rgba(255,107,53,0.1));
-  color: #ffbd69;
-  border-color: rgba(255,69,0,0.3);
+.ap-card:hover { transform: translateY(-4px); border-color: rgba(0,230,118,0.2); }
+.ap-card:hover::after { opacity: 1; }
+.ap-app-icon {
+  width: 60px; height: 60px; border-radius: 16px;
+  object-fit: cover; flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
 }
-
-.action-btn:first-child:hover {
-  background: linear-gradient(135deg, rgba(255,69,0,0.35), rgba(255,107,53,0.2));
-  border-color: rgba(255,69,0,0.6);
-  transform: translateX(4px);
+.ap-app-icon img { width: 100%; height: 100%; border-radius: 16px; object-fit: cover; }
+.ap-app-info { flex: 1; min-width: 0; }
+.ap-app-name { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-app-cat { font-size: .72rem; color: rgba(255,255,255,0.4); margin-bottom: 6px; }
+.ap-app-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 6px;
+  font-size: .65rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  background: rgba(0,230,118,0.12); color: #00e676;
+  border: 1px solid rgba(0,230,118,0.2);
 }
-
-.action-btn:last-child {
-  background: rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.7);
+.ap-arrow {
+  color: rgba(255,255,255,0.2); font-size: .9rem; flex-shrink: 0;
+  transition: color .2s, transform .2s;
 }
-
-.action-btn:last-child:hover {
-  background: rgba(255,255,255,0.08);
-  transform: translateX(4px);
-}
-
-.action-btn i {
-  font-size: 1.1rem;
-  width: 20px;
-  text-align: center;
-}
-
-.close-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px;
-  background: transparent;
-  color: rgba(255,255,255,0.35);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 0.82rem;
-  transition: all .2s ease;
-  font-family: 'Space Grotesk', sans-serif;
-}
-
-.close-btn:hover {
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.05);
-}
-
-@media (max-width:520px) {
-  #whatsNewIcon { right: 14px; width: 48px; height: 48px; font-size: 1.2rem; }
-  .whatsNewDialog { padding: 20px; border-radius: 18px; }
-}
+.ap-card:hover .ap-arrow { color: #00e676; transform: translateX(3px); }
         * {
             margin: 0;
             padding: 0;
@@ -305,6 +311,7 @@
             overflow-x: hidden;
             line-height: 1.6;
             transition: all 0.5s ease;
+            padding-bottom: 110px;
         }
 
         /* Light Mode */
@@ -6081,79 +6088,139 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 <!-- ====== HTML: Icono flotante + diálogo ====== -->
 
 <!-- ICONO FLOTANTE (solo icono) -->
-<div id="whatsNewIcon" title="Novedades y herramientas" aria-label="Novedades" tabindex="0">
-  <i class="fas fa-bolt" aria-hidden="true"></i>
-</div>
-
-<!-- OVERLAY + DIALOG -->
-<div id="whatsNewOverlay" aria-hidden="true">
-  <div class="whatsNewDialog" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
-    <h3 id="whatsNewTitle">⚡ Panel de Novedades</h3>
-    <p class="whatsNewSub">Selecciona una opción</p>
-
-    <div class="whatsNewActions">
-      <button class="action-btn" id="openNovedades" type="button">
-        <i class="fas fa-star" aria-hidden="true"></i>
-        Novedades
-      </button>
-
-      <button class="action-btn" id="openTools" type="button">
-        <i class="fas fa-screwdriver-wrench" aria-hidden="true"></i>
-        Tools
-      </button>
+<!-- ====== TOOLS PREVIEW SECTION ====== -->
+<section id="tools-preview">
+  <div class="tp-header">
+    <div>
+      <div class="tp-eyebrow">// herramientas client-side</div>
+      <h2 class="tp-title">DevTools Suite</h2>
     </div>
-
-    <button class="close-btn" id="closeWhatsNew" type="button" aria-label="Cerrar diálogo">
-      <i class="fas fa-times" aria-hidden="true"></i> Cerrar
-    </button>
+    <a href="tools.html" class="tp-cta"><i class="fas fa-arrow-right"></i> Ver las 27 herramientas</a>
   </div>
-</div>
-<!-- ====== FIN HTML ====== -->
+  <div class="tp-grid">
+    <a href="tools.html#qr" class="tp-card" style="--tc:rgba(64,196,255,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#0088cc,#40c4ff)"><i class="fas fa-qrcode"></i></div>
+      <div class="tp-card-name">Generador QR</div>
+      <div class="tp-card-desc">Convierte texto o URLs en código QR al instante</div>
+    </a>
+    <a href="tools.html#pass" class="tp-card" style="--tc:rgba(255,69,0,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#ff4500,#ff6b35)"><i class="fas fa-key"></i></div>
+      <div class="tp-card-name">Contraseñas</div>
+      <div class="tp-card-desc">Genera contraseñas seguras y aleatorias</div>
+    </a>
+    <a href="tools.html#hash" class="tp-card" style="--tc:rgba(180,100,255,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#7c3aed,#b464ff)"><i class="fas fa-hashtag"></i></div>
+      <div class="tp-card-name">Hash SHA-256</div>
+      <div class="tp-card-desc">Genera hashes criptográficos en el navegador</div>
+    </a>
+    <a href="tools.html#calc" class="tp-card" style="--tc:rgba(255,189,105,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#ff8c00,#ffbd69)"><i class="fas fa-calculator"></i></div>
+      <div class="tp-card-name">Calculadora Científica</div>
+      <div class="tp-card-desc">Operaciones avanzadas y funciones matemáticas</div>
+    </a>
+    <a href="tools.html#pomodoro" class="tp-card" style="--tc:rgba(0,230,118,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#00b248,#00e676)"><i class="fas fa-clock"></i></div>
+      <div class="tp-card-name">Pomodoro</div>
+      <div class="tp-card-desc">Temporizador de productividad 25/5 min</div>
+    </a>
+    <a href="tools.html#regex" class="tp-card" style="--tc:rgba(255,107,53,0.12)">
+      <div class="tp-card-icon" style="background:linear-gradient(135deg,#cc2200,#ff4500)"><i class="fas fa-magnifying-glass-chart"></i></div>
+      <div class="tp-card-name">Regex Tester</div>
+      <div class="tp-card-desc">Prueba expresiones regulares en tiempo real</div>
+    </a>
+  </div>
+</section>
 
-<!-- Ahora mueve el script AQUÍ, después de los DIVs -->
-<script>
-/* ====== JS: control del icono y diálogo ====== */
-(function(){
-  const whatsIcon = document.getElementById('whatsNewIcon');
-  const overlay = document.getElementById('whatsNewOverlay');
-  const btnClose = document.getElementById('closeWhatsNew');
-  const btnNovedades = document.getElementById('openNovedades');
-  const btnTools = document.getElementById('openTools');
+<!-- ====== APP STORE PREVIEW SECTION ====== -->
+<section id="appstore-preview">
+  <div class="ap-header">
+    <div>
+      <div class="ap-eyebrow">// catálogo curado</div>
+      <h2 class="ap-title">App Premium Store</h2>
+    </div>
+    <a href="novedades.html" class="ap-cta"><i class="fas fa-store"></i> Ver todas las apps</a>
+  </div>
+  <div class="ap-grid">
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='🎵'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">Spotify</div>
+        <div class="ap-app-cat">Música &amp; Audio</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/YouTube.jpeg" alt="YouTube" onerror="this.parentElement.innerHTML='▶️'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">YouTube</div>
+        <div class="ap-app-cat">Video &amp; Entretenimiento</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/Crunchyroll.png" alt="Crunchyroll" onerror="this.parentElement.innerHTML='🍥'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">Crunchyroll</div>
+        <div class="ap-app-cat">Anime &amp; Series</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='🎨'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">PicsArt</div>
+        <div class="ap-app-cat">Foto &amp; Diseño</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='✨'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">Remini</div>
+        <div class="ap-app-cat">IA &amp; Fotografía</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+    <a href="novedades.html" class="ap-card">
+      <div class="ap-app-icon"><img src="img/Terabox.png" alt="Terabox" onerror="this.parentElement.innerHTML='☁️'"></div>
+      <div class="ap-app-info">
+        <div class="ap-app-name">Terabox</div>
+        <div class="ap-app-cat">Almacenamiento Cloud</div>
+        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
+      </div>
+      <i class="fas fa-chevron-right ap-arrow"></i>
+    </a>
+  </div>
+</section>
 
-  if (!whatsIcon || !overlay || !btnClose || !btnNovedades || !btnTools) {
-    console.warn('whatsNew: elementos no encontrados (verifica IDs).');
-    return;
-  }
-
-  // abrir diálogo al tocar/enter en icono (no automático)
-  const openDialog = () => {
-    overlay.classList.add('active');
-    overlay.setAttribute('aria-hidden','false');
-    btnNovedades.focus();
-  };
-
-  const closeDialog = () => {
-    overlay.classList.remove('active');
-    overlay.setAttribute('aria-hidden','true');
-    whatsIcon.focus();
-  };
-
-  whatsIcon.addEventListener('click', openDialog);
-  whatsIcon.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openDialog(); });
-
-  btnClose.addEventListener('click', closeDialog);
-
-  // cerrar al click fuera del dialog (overlay)
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDialog(); });
-
-  // acciones: abrir páginas (misma pestaña)
-  btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
-  btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
-
-  // Esc para cerrar
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('active')) closeDialog(); });
-})();
-</script>
+<!-- ====== DOCK FLOTANTE ====== -->
+<nav id="hub-dock" aria-label="Accesos rápidos">
+  <a href="tools.html" class="dock-item" title="DevTools Suite">
+    <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
+    <span class="dock-label">Tools</span>
+  </a>
+  <a href="novedades.html" class="dock-item" title="App Premium Store">
+    <div class="dock-icon dock-icon-apps">
+      <i class="fas fa-mobile-screen"></i>
+      <span class="dock-notif"></span>
+    </div>
+    <span class="dock-label">Apps</span>
+  </a>
+  <div class="dock-sep"></div>
+  <a href="#contact" class="dock-item" title="Chat IA / Contacto" onclick="event.preventDefault();scrollToSection('contact')">
+    <div class="dock-icon dock-icon-chat"><i class="fas fa-comment-dots"></i></div>
+    <span class="dock-label">Chat</span>
+  </a>
+  <a href="cv.html" class="dock-item" title="Ver CV">
+    <div class="dock-icon dock-icon-cv"><i class="fas fa-id-card"></i></div>
+    <span class="dock-label">CV</span>
+  </a>
+</nav>
 
 <script src="script.js"></script>
 <script src="theme-switcher.js"></script>
