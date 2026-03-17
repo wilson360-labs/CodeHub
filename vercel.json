@@ -3,91 +3,19 @@
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        }
+        {"key": "X-Frame-Options", "value": "SAMEORIGIN"},
+        {"key": "X-Content-Type-Options", "value": "nosniff"},
+        {"key": "X-XSS-Protection", "value": "1; mode=block"},
+        {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"},
+        {"key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains"}
       ]
     },
     {
       "source": "/sw.js",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        },
-        {
-          "key": "Service-Worker-Allowed",
-          "value": "/"
-        }
-      ]
-    },
-    {
-      "source": "/manifest.json",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        },
-        {
-          "key": "Content-Type",
-          "value": "application/manifest+json"
-        }
-      ]
-    },
-    {
-      "source": "/sitemap.xml",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        }
+        {"key": "Cache-Control", "value": "public, max-age=0, must-revalidate"},
+        {"key": "Service-Worker-Allowed", "value": "/"}
       ]
     }
-  ],
-  "redirects": [
-    {
-      "source": "/tools",
-      "destination": "/tools.html",
-      "permanent": true
-    },
-    {
-      "source": "/servicios",
-      "destination": "/servicios.html",
-      "permanent": true
-    },
-    {
-      "source": "/cv",
-      "destination": "/cv.html",
-      "permanent": true
-    },
-    {
-      "source": "/novedades",
-      "destination": "/novedades.html",
-      "permanent": true
-    },
-    {
-      "source": "/home",
-      "destination": "/",
-      "permanent": true
-    }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
+  ]
 }
