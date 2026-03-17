@@ -1,11 +1,14 @@
 {
   "name": "codehub",
   "version": "3.0.0",
-  "description": "CodeHub Backend — Wilson.E",
+  "description": "CodeHub Backend \u2014 Wilson.E",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "lint": "eslint server.js --max-warnings 20",
+    "lint:fix": "eslint server.js --fix",
+    "format": "prettier --write server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -20,5 +23,9 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5"
   }
 }

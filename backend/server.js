@@ -21,6 +21,7 @@ const multer    = require('multer');
 const crypto    = require('crypto');
 const http      = require('http');
 const { WebSocketServer } = require('ws');
+const swaggerSpec        = require('./swagger');
 
 const app    = express();
 const server = http.createServer(app);
@@ -671,6 +672,43 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
   // Todos fallaron
   res.status(503).json({ ok: false, error: 'Todos los proveedores fallaron', details: errors });
 });
+
+
+// ── GET /api/docs — Swagger UI inline ────────────────────────
+app.get('/api/docs', (_, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CodeHub API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #0a0a14; }
+    .swagger-ui .topbar { background: #ff4500; }
+    .swagger-ui .topbar .download-url-wrapper { display: none; }
+    .swagger-ui .info .title { color: #ff4500; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    SwaggerUIBundle({
+      spec: ${JSON.stringify(swaggerSpec)},
+      dom_id: '#swagger-ui',
+      deepLinking: true,
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+      layout: 'StandaloneLayout',
+      tryItOutEnabled: true,
+    });
+  </script>
+</body>
+</html>`);
+});
+
+// ── GET /api/docs.json — spec en JSON ─────────────────────────
+app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
 
 // ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {

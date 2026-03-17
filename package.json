@@ -1,0 +1,16 @@
+{
+  "name": "codehub",
+  "version": "3.0.0",
+  "description": "CodeHub — Wilson.E Portfolio",
+  "private": true,
+  "scripts": {
+    "test":        "cd tests && npx playwright test",
+    "test:ui":     "cd tests && npx playwright test --ui",
+    "test:api":    "cd tests && npx playwright test e2e/api.spec.js",
+    "test:e2e":    "cd tests && npx playwright test e2e/home.spec.js e2e/tools.spec.js",
+    "test:report": "cd tests && npx playwright show-report report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.43.0"
+  }
+}
