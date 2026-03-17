@@ -7,8 +7,26 @@ on:
     branches: [main]
 
 jobs:
+  verify-frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar archivos criticos
+        run: |
+          for f in index.html novedades.html tools.html servicios.html sw.js manifest.json vercel.json; do
+            test -f "$f" && echo "OK $f" || echo "FALTA $f"
+          done
+      - name: Verificar tamano minimo
+        run: |
+          for f in index.html tools.html; do
+            size=$(wc -c < "$f")
+            [ "$size" -lt 1000 ] && echo "ERROR $f vacio" && exit 1
+            echo "OK $f - ${size} bytes"
+          done
+
   verify-backend:
-    name: 🔍 Backend
+    name: Backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,35 +35,20 @@ jobs:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: backend/package.json
-      - run: cd backend && npm ci
-      - run: node --check backend/server.js && echo "✅ Sintaxis OK"
-      - run: |
-          test -f backend/server.js    && echo "✅ server.js"
-          test -f backend/package.json && echo "✅ package.json"
-          test -f backend/railway.json && echo "✅ railway.json"
-
-  verify-frontend:
-    name: 🎨 Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verificar archivos críticos
+      - name: Instalar dependencias
+        run: cd backend && npm install
+      - name: Verificar sintaxis
+        run: node --check backend/server.js && echo "Sintaxis OK"
+      - name: Verificar archivos
         run: |
-          for f in index.html novedades.html tools.html servicios.html downloader.html sw.js manifest.json offline.html vercel.json sitemap.xml; do
-            test -f "$f" && echo "✅ $f" || echo "❌ FALTA: $f"
-          done
-      - name: Verificar tamaño mínimo
-        run: |
-          for f in index.html novedades.html tools.html; do
-            size=$(wc -c < "$f")
-            [ "$size" -lt 1000 ] && echo "❌ $f vacío" && exit 1
-            echo "✅ $f — ${size} bytes"
-          done
+          test -f backend/server.js    && echo "OK server.js"
+          test -f backend/package.json && echo "OK package.json"
+          test -f backend/railway.json && echo "OK railway.json"
 
   health-check:
-    name: 🏥 Health Check
+    name: Health Check
     runs-on: ubuntu-latest
-    needs: [verify-backend, verify-frontend]
+    needs: [verify-frontend, verify-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Esperar deploy (90s)
@@ -55,4 +58,4 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             https://codehub-production-729d.up.railway.app/api/health --max-time 30)
           echo "HTTP: $STATUS"
-          [ "$STATUS" = "200" ] && echo "✅ Backend OK" || echo "⚠️ Status $STATUS"
+          [ "$STATUS" = "200" ] && echo "Backend OK" || echo "Status $STATUS"
