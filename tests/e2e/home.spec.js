@@ -52,7 +52,7 @@ test.describe('Página principal — CodeHub', () => {
     await page.goto('/');
     const description = await page.locator('meta[name="description"]').getAttribute('content');
     expect(description).toBeTruthy();
-    expect(description!.length).toBeGreaterThan(50);
+    expect(description.length).toBeGreaterThan(50);
 
     const ogTitle = await page.locator('meta[property="og:title"]').getAttribute('content');
     expect(ogTitle).toBeTruthy();
