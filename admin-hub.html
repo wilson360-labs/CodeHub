@@ -221,6 +221,7 @@
     }
   </style>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 <div id="toast"></div>
@@ -305,11 +306,46 @@
 
   <!-- ── TAB: STATS ── -->
   <div class="tab-panel" id="tab-stats">
-    <div class="section-title"><i class="fas fa-chart-bar"></i> Estadísticas de Ratings</div>
+
+    <!-- KPIs Supabase -->
+    <div class="section-title"><i class="fas fa-chart-line"></i> Estadísticas en Tiempo Real — Supabase</div>
+    <div class="stats-row" style="margin-bottom:1.5rem">
+      <div class="stat-card"><div class="num" style="color:#00e5ff" id="sb-events">—</div><div class="lbl">Eventos totales</div></div>
+      <div class="stat-card"><div class="num" style="color:#00e676" id="sb-visits">—</div><div class="lbl">Visitas hoy</div></div>
+      <div class="stat-card"><div class="num" style="color:#ffbd69" id="sb-downloads">—</div><div class="lbl">Descargas hoy</div></div>
+      <div class="stat-card"><div class="num" style="color:#a855f7" id="sb-chats">—</div><div class="lbl">Chats hoy</div></div>
+    </div>
+
+    <!-- Gráfica visitas 30 días -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem">
+      <div style="font-size:.8rem;font-weight:700;margin-bottom:1rem;color:var(--a)">📈 Visitas últimos 30 días</div>
+      <canvas id="chart-visits" height="80"></canvas>
+    </div>
+
+    <!-- Top herramientas + Top descargas -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+        <div style="font-size:.8rem;font-weight:700;margin-bottom:1rem;color:#00e5ff">🛠️ Herramientas más usadas</div>
+        <canvas id="chart-tools" height="160"></canvas>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
+        <div style="font-size:.8rem;font-weight:700;margin-bottom:1rem;color:#00e676">📥 Apps más descargadas</div>
+        <canvas id="chart-downloads" height="160"></canvas>
+      </div>
+    </div>
+
+    <!-- Ratings (existente) -->
+    <div class="section-title" style="margin-top:1rem"><i class="fas fa-star"></i> Ratings de Apps</div>
     <div class="apps-table">
       <div id="ratings-list">
         <div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)">Cargando ratings...</div>
       </div>
+    </div>
+
+    <div style="text-align:right;margin-top:1rem">
+      <button onclick="loadSupabaseStats()" style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:#00e5ff;padding:.5rem 1.2rem;border-radius:8px;font-family:var(--mono);font-size:.75rem;cursor:pointer">
+        <i class="fas fa-rotate-right"></i> Actualizar stats
+      </button>
     </div>
   </div>
   <!-- TAB: AGREGAR APP -->
@@ -369,7 +405,102 @@ function logout() {
 }
 
 // ── TABS ──────────────────────────────────────────────────────
+// ── SUPABASE STATS ────────────────────────────────────────────
+const BACKEND = 'https://codehub-production-729d.up.railway.app';
+let visitChart = null, toolChart = null, dlChart = null;
+
+async function loadSupabaseStats() {
+  try {
+    const res = await fetch(BACKEND + '/api/stats/supabase', {
+      headers: { 'x-admin-key': sessionStorage.getItem('admin_key') || '' }
+    });
+    const data = await res.json();
+
+    // KPIs de hoy
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRow = data.daily.find(d => d.date === today) || {};
+    document.getElementById('sb-events').textContent    = data.total_events.toLocaleString();
+    document.getElementById('sb-visits').textContent    = todayRow.visits    || 0;
+    document.getElementById('sb-downloads').textContent = todayRow.downloads || 0;
+    document.getElementById('sb-chats').textContent     = todayRow.chat_msgs || 0;
+
+    // Gráfica visitas 30 días
+    const days   = data.daily.slice(0, 30).reverse();
+    const labels = days.map(d => d.date.slice(5));
+    const visits = days.map(d => d.visits || 0);
+
+    if (visitChart) visitChart.destroy();
+    visitChart = new Chart(document.getElementById('chart-visits'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Visitas',
+          data: visits,
+          borderColor: '#00e5ff',
+          backgroundColor: 'rgba(0,229,255,.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#00e5ff',
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: 'rgba(240,240,250,.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+          y: { ticks: { color: 'rgba(240,240,250,.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true }
+        }
+      }
+    });
+
+    // Top herramientas
+    const tools = data.tools.slice(0, 8);
+    if (toolChart) toolChart.destroy();
+    toolChart = new Chart(document.getElementById('chart-tools'), {
+      type: 'bar',
+      data: {
+        labels: tools.map(t => t.tool_name),
+        datasets: [{ label: 'Usos', data: tools.map(t => t.uses), backgroundColor: 'rgba(0,229,255,.5)', borderColor: '#00e5ff', borderWidth: 1, borderRadius: 6 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: 'rgba(240,240,250,.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+          y: { ticks: { color: 'rgba(240,240,250,.5)', font: { size: 10 } }, grid: { display: false } }
+        }
+      }
+    });
+
+    // Top descargas
+    const dls = data.downloads.slice(0, 8);
+    if (dlChart) dlChart.destroy();
+    dlChart = new Chart(document.getElementById('chart-downloads'), {
+      type: 'bar',
+      data: {
+        labels: dls.map(d => d.app_name.replace(/_main_.*/, '').replace(/_/g, ' ')),
+        datasets: [{ label: 'Descargas', data: dls.map(d => d.downloads), backgroundColor: 'rgba(0,230,118,.5)', borderColor: '#00e676', borderWidth: 1, borderRadius: 6 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: 'rgba(240,240,250,.4)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true },
+          y: { ticks: { color: 'rgba(240,240,250,.5)', font: { size: 10 } }, grid: { display: false } }
+        }
+      }
+    });
+
+  } catch(e) { console.warn('Supabase stats error:', e.message); }
+}
+
 function switchTab(id, btn) {
+  if (id === 'stats') loadSupabaseStats();
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
