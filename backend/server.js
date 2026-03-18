@@ -9,6 +9,7 @@
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
  *   ADMIN_KEY, B2_KEY_ID, B2_APP_KEY, B2_BUCKET_ID, B2_BUCKET_NAME
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
+ *   SUPABASE_URL, SUPABASE_KEY
  */
 
 require('dotenv').config();
@@ -22,6 +23,44 @@ const crypto    = require('crypto');
 const http      = require('http');
 const { WebSocketServer } = require('ws');
 const swaggerSpec        = require('./swagger');
+
+// ── SUPABASE ──────────────────────────────────────────────────
+const { createClient } = require('@supabase/supabase-js');
+const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+  : null;
+
+// Helper: registrar evento en Supabase
+async function trackEvent(type, page = null, metadata = {}) {
+  if (!supabase) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    // Insertar evento individual
+    await supabase.from('events').insert({ type, page, metadata });
+    // Actualizar stats diarias
+    const col = { visit: 'visits', download: 'downloads', chat: 'chat_msgs', tool: 'tool_uses', contact: 'contacts' }[type];
+    if (col) {
+      const { data } = await supabase.from('daily_stats').select('id,' + col).eq('date', today).single();
+      if (data) {
+        await supabase.from('daily_stats').update({ [col]: (data[col] || 0) + 1, updated_at: new Date() }).eq('date', today);
+      } else {
+        await supabase.from('daily_stats').insert({ date: today, [col]: 1 });
+      }
+    }
+    // Stats por herramienta
+    if (type === 'tool' && metadata.tool_name) {
+      const { data: t } = await supabase.from('tool_stats').select('id,uses').eq('tool_name', metadata.tool_name).single();
+      if (t) await supabase.from('tool_stats').update({ uses: t.uses + 1, last_used: new Date() }).eq('tool_name', metadata.tool_name);
+      else await supabase.from('tool_stats').insert({ tool_name: metadata.tool_name, uses: 1 });
+    }
+    // Stats por descarga
+    if (type === 'download' && metadata.app_name) {
+      const { data: d } = await supabase.from('download_stats').select('id,downloads').eq('app_name', metadata.app_name).single();
+      if (d) await supabase.from('download_stats').update({ downloads: d.downloads + 1, last_download: new Date() }).eq('app_name', metadata.app_name);
+      else await supabase.from('download_stats').insert({ app_name: metadata.app_name, downloads: 1 });
+    }
+  } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
+}
 
 const app    = express();
 const server = http.createServer(app);
@@ -127,6 +166,7 @@ function trackVisit() {
   if (today !== visits.date) { visits.today = 0; visits.date = today; }
   visits.today++; visits.total++;
   broadcast('visit', { today: visits.today, total: visits.total });
+  trackEvent('visit');
 }
 
 // ── MONGODB SCHEMAS ───────────────────────────────────────────
@@ -339,6 +379,25 @@ async function validateTurnstile(token) {
 //  RUTAS
 // ════════════════════════════════════════════════════════════════
 
+// ── ESTADÍSTICAS SUPABASE ────────────────────────────────────
+app.get('/api/stats/supabase', async (_, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
+  try {
+    const [daily, tools, downloads, total] = await Promise.all([
+      supabase.from('daily_stats').select('*').order('date', { ascending: false }).limit(30),
+      supabase.from('tool_stats').select('*').order('uses', { ascending: false }).limit(10),
+      supabase.from('download_stats').select('*').order('downloads', { ascending: false }).limit(10),
+      supabase.from('events').select('id', { count: 'exact', head: true }),
+    ]);
+    res.json({
+      daily:     daily.data     || [],
+      tools:     tools.data     || [],
+      downloads: downloads.data || [],
+      total_events: total.count || 0,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // Health
 app.get('/api/health', (_, res) => res.json({
   status: 'ok', version: '3.0',
@@ -429,6 +488,7 @@ app.post('/api/chat', async (req, res) => {
       { sessionId, role: 'assistant', content: reply,          tokens: output, model },
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
+    trackEvent('chat', null, { model, tokens: input + output });
     res.json({ reply, usage: { input, output, total: input + output }, model });
   } catch (err) {
     if (err.status === 401) return res.status(500).json({ error: 'API key inválida.' });
@@ -440,6 +500,7 @@ app.post('/api/chat', async (req, res) => {
 // Contacto (notifica vía WS)
 app.post('/api/contact', (req, res) => {
   const { name, email } = req.body;
+  trackEvent('contact');
   broadcast('contact_form', {
     name:  name  || 'Anónimo',
     email: email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?',
@@ -509,6 +570,7 @@ app.get('/api/download/:fileName', async (req, res) => {
   try {
     const url = await getB2SignedUrl(decodeURIComponent(fileName), 86400);
     broadcast('download', { fileName: decodeURIComponent(fileName) });
+    trackEvent('download', null, { app_name: decodeURIComponent(fileName) });
     res.redirect(302, url);
   } catch (e) { console.error('Error URL firmada:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
