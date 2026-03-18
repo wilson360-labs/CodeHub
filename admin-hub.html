@@ -366,13 +366,9 @@ async function checkLogin() {
   const pwd = document.getElementById('pwd-input').value.trim();
   if (!pwd) return;
   // Verificar Turnstile
+  // Turnstile opcional — no bloquea el login si no carga
   const tsToken = document.querySelector('#ts-admin input[name="cf-turnstile-response"]')?.value
                || document.querySelector('input[name="cf-turnstile-response"]')?.value || '';
-  const tsLoaded = document.querySelector('#ts-admin iframe');
-  if (tsLoaded && !tsToken) {
-    document.getElementById('login-err').textContent = '⚠️ Completa la verificación de seguridad';
-    return;
-  }
   const btn = document.querySelector('.login-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
   try {
