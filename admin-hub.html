@@ -378,6 +378,7 @@ async function checkLogin() {
     });
     if (res.ok) {
       ADMIN_KEY = pwd;
+      sessionStorage.setItem('admin_key', pwd);
       document.getElementById('login-screen').style.display = 'none';
       const data = await res.json();
       initAdmin(data.apps);
@@ -402,7 +403,6 @@ function logout() {
 
 // ── TABS ──────────────────────────────────────────────────────
 // ── SUPABASE STATS ────────────────────────────────────────────
-const BACKEND = 'https://codehub-production-729d.up.railway.app';
 let visitChart = null, toolChart = null, dlChart = null;
 
 async function loadSupabaseStats() {
