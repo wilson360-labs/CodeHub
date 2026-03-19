@@ -274,6 +274,7 @@ async function uploadToB2(buffer, fileName) {
       'X-Bz-Content-Sha1': sha1,
     },
     body: buffer,
+    duplex: 'half',
   });
   if (!upRes.ok) { const e = await upRes.json().catch(() => ({})); throw new Error('Error subiendo B2: ' + (e.message || upRes.status)); }
   const data = await upRes.json();
@@ -637,7 +638,9 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
       ? { b2_plugin_file_id: fileId, b2_plugin_file_name: fileName, updatedAt: new Date() }
       : { b2_file_id: fileId,        b2_file_name: fileName,        updatedAt: new Date() };
     await App.updateOne({ appId }, upd); await cacheDel('apps:all');
-    res.json({ ok: true, fileId, fileName, sizeMB: (req.file.size / 1024 / 1024).toFixed(1) });
+    const base = process.env.BACKEND_URL || 'https://codehub-production-729d.up.railway.app';
+    const downloadUrl = `${base}/api/download/${encodeURIComponent(fileName)}`;
+    res.json({ ok: true, fileId, fileName, downloadUrl, sizeMB: (req.file.size / 1024 / 1024).toFixed(1) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
