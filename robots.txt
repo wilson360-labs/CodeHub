@@ -3,6 +3,8 @@ Allow: /
 Disallow: /backend/
 Disallow: /admin-hub.html
 Disallow: /apps_data.json
+Disallow: /python/
+Disallow: /tests/
 
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
 
