@@ -7179,29 +7179,50 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 
   <script>
+  // ── PWA Install ─────────────────────────────────────
   let _deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _deferredPrompt = e;
-    if (!localStorage.getItem('pwa_dismissed')) {
-      setTimeout(() => { document.getElementById('pwa-install').style.display = 'block'; }, 30000);
+    const dismissed = localStorage.getItem('pwa_dismissed');
+    const installed = localStorage.getItem('pwa_installed');
+    if (!installed && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000)) {
+      setTimeout(() => { document.getElementById('pwa-install').style.display = 'block'; }, 15000);
     }
   });
+
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem('pwa_installed', '1');
+    document.getElementById('pwa-install').style.display = 'none';
+    _deferredPrompt = null;
+  });
+
   function installPWA() {
     if (!_deferredPrompt) return;
     _deferredPrompt.prompt();
     _deferredPrompt.userChoice.then(r => {
-      if (r.outcome === 'accepted') localStorage.setItem('pwa_installed','1');
-      document.getElementById('pwa-install').style.display = 'none';
+      if (r.outcome === 'accepted') {
+        localStorage.setItem('pwa_installed','1');
+        document.getElementById('pwa-install').style.display = 'none';
+      } else {
+        localStorage.setItem('pwa_dismissed', Date.now());
+        document.getElementById('pwa-install').style.display = 'none';
+      }
       _deferredPrompt = null;
     });
   }
+
   function dismissPWA() {
     document.getElementById('pwa-install').style.display = 'none';
     localStorage.setItem('pwa_dismissed', Date.now());
   }
+
+  // ── Service Worker ───────────────────────────────────
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('✅ SW registrado v4.1');
+
+      // Detectar actualización disponible
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
         nw.addEventListener('statechange', () => {
@@ -7210,13 +7231,31 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       });
+
+      // Verificar actualizaciones cada 30 min
+      setInterval(() => reg.update(), 30 * 60 * 1000);
+
+    }).catch(e => console.warn('SW error:', e));
+
+    // Escuchar mensajes del SW
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SW_UPDATED') {
+        document.getElementById('pwa-update').classList.add('show');
+      }
+    });
+
+    // Recargar cuando el SW nuevo tome control
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) { refreshing = true; location.reload(); }
     });
   }
+
   function updatePWA() {
     navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      else location.reload();
     });
-    location.reload();
   }
   </script>
 </body>
