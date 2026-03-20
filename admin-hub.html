@@ -377,6 +377,29 @@
     .bulk-progress { height: 4px; background: rgba(255,255,255,.07); border-radius: 2px; overflow: hidden; margin-bottom: 1rem; display: none; }
     .bulk-progress-bar { height: 100%; background: var(--g); border-radius: 2px; transition: width .3s; width: 0%; }
 
+
+    /* ── SW Update Banner (admin only) ── */
+    #sw-update-banner {
+      position: fixed; top: 70px; left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      z-index: 9999; display: none;
+      background: rgba(15,15,30,.97);
+      border: 1px solid rgba(0,230,118,.35);
+      border-radius: 12px; padding: .7rem 1.2rem;
+      align-items: center; gap: .8rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+      font-size: .82rem; font-family: var(--mono);
+      backdrop-filter: blur(20px);
+      transition: all .3s;
+    }
+    #sw-update-banner.show {
+      display: flex;
+      transform: translateX(-50%) translateY(0);
+    }
+    .sw-upd-dot { width: 8px; height: 8px; background: var(--g); border-radius: 50%; animation: notifBlink 1.5s infinite; }
+    .sw-upd-btn { padding: .3rem .8rem; background: var(--g); color: #000; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; font-family: var(--font); font-size: .75rem; }
+    .sw-upd-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: .9rem; }
+
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -416,6 +439,14 @@
 </head>
 <body>
 <div id="toast"></div>
+<!-- ── SW Update Banner (admin only) ── -->
+<div id="sw-update-banner">
+  <span class="sw-upd-dot"></span>
+  <span style="color:rgba(232,232,240,.8)">⚡ Nueva versión del sitio disponible</span>
+  <button class="sw-upd-btn" onclick="applyUpdate()">Actualizar</button>
+  <button class="sw-upd-close" onclick="this.parentElement.classList.remove('show')">✕</button>
+</div>
+
 
 
 <!-- ── PREVIEW MODAL ── -->
@@ -1578,6 +1609,35 @@ function toast(m) {
   const t = document.getElementById('toast');
   t.textContent = m; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+
+
+<script>
+// SW Update Detection — solo para admin
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          document.getElementById('sw-update-banner').classList.add('show');
+        }
+      });
+    });
+    setInterval(() => reg.update(), 5 * 60 * 1000); // Check cada 5 min
+  });
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') {
+      document.getElementById('sw-update-banner').classList.add('show');
+    }
+  });
+}
+function applyUpdate() {
+  navigator.serviceWorker.getRegistration().then(reg => {
+    if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    else location.reload();
+  });
 }
 </script>
 

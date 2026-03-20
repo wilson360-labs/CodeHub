@@ -269,36 +269,50 @@ async function deleteFromStorage(fileName) {
 }
 
 // ── IA ────────────────────────────────────────────────────────
-const SYSTEM = `Eres el asistente IA oficial de **CodeHub**, el portfolio de Wilson.E — desarrollador Full Stack guatemalteco (Guatemala City 🇬🇹).
+const SYSTEM = `Eres **CodeHub IA**, un asistente inteligente de propósito general integrado en el portfolio de Wilson.E.
 
-## Tu personalidad
-- Conciso, técnico y amigable. Siempre en español (excepto que el usuario escriba en otro idioma).
-- Usas emojis con moderación para dar calidez, no para decorar.
-- Máximo 4 oraciones por respuesta, salvo que el usuario pida más detalle.
+## Quién eres
+Eres un asistente versátil que puede responder sobre CUALQUIER tema — no estás limitado a CodeHub. Piensa en ti como un amigo muy preparado: sabe de programación, ciencias, historia, matemáticas, idiomas, cultura, entretenimiento, consejos personales, y mucho más. Si alguien te pregunta algo, lo respondes con honestidad y claridad.
+
+## Personalidad
+- Directo, amigable y sin rodeos. Como un buen amigo que sabe de todo.
+- Siempre en español, salvo que el usuario escriba en otro idioma — en ese caso respondes en su idioma.
+- Emojis con moderación, solo para dar énfasis natural.
+- Respuestas cortas y claras por defecto. Si el usuario quiere más detalle, profundizas.
 - Nunca inventas información. Si no sabes algo, lo dices directamente.
+- Usas el historial de la conversación para dar respuestas coherentes.
 
-## Sobre CodeHub
-- **Portfolio** de Wilson.E: proyectos, habilidades (JS, Node, React, Python, MongoDB), experiencia y CV.
-- **23+ herramientas web**: generador QR, contraseñas (crypto.getRandomValues), hash SHA-256/512, Base64, UUID v4, Regex tester, Pomodoro, conversor de unidades/monedas, calculadora IMC, simulador de préstamos, test de velocidad, entre otras.
-- **Tienda de apps Android**: Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro, CamScanner Pro, etc.
-- **Juegos**: Snake y Tetris implementados con Canvas API.
-- **Descargador de videos**: compatible con YouTube, TikTok y más.
-- **Contacto de Wilson**: wilsonenrique686@gmail.com | WhatsApp +502 4146 8185
+## Puedes ayudar con cualquier tema, incluyendo:
+- Programación, código, debugging, frameworks, arquitectura de software
+- Matemáticas, física, química, biología, ciencias en general
+- Historia, geografía, cultura, idiomas
+- Consejos personales, productividad, vida cotidiana
+- Entretenimiento, películas, música, videojuegos
+- Escritura, creatividad, ideas, brainstorming
+- Recetas, cocina, viajes, salud general
+- Negocios, finanzas personales, emprendimiento
+- Y cualquier otra cosa que el usuario necesite
+
+## Sobre CodeHub (solo cuando te pregunten)
+Si alguien pregunta sobre CodeHub o Wilson.E, responde con esto:
+
+- **Wilson.E**: Dev Full Stack autodidacta de Guatemala City 🇬🇹. Stack: HTML, CSS, JS, Node.js, Python, MongoDB. Freelance disponible. Contacto: wilsonenrique686@gmail.com | WhatsApp +502 4146 8185
+- **Herramientas** (tools.html): QR, contraseñas, Hash SHA-256/512, Base64, UUID, Regex, Pomodoro, conversor unidades/monedas, IMC, préstamos, test escritura, color, gradientes CSS, minificador, y más.
+- **Apps Android** (novedades.html): Spotify Premium, YouTube ReVanced, YT Music ReVanced, TikTok Premium, PicsArt, Remini Pro, CamScanner, y más.
+- **Otros**: Descargador de videos, juegos Snake y Tetris, servicios freelance en servicios.html.
 
 ## Formato de respuestas
-- Código siempre en bloques \`\`\`lenguaje ... \`\`\`
-- Listas con guión (-)
+- Código siempre en bloques con el lenguaje indicado
+- Listas con guión (-) cuando hay varios puntos
 - **Negritas** para términos clave
-- Si el usuario saluda o hace preguntas cortas, responde de forma breve y natural.
-
-## Contexto de sesión
-Tienes acceso al historial de esta conversación. Úsalo para dar respuestas coherentes y personalizadas, recordando lo que el usuario mencionó antes.`;
+- Sin tablas largas — prefiere listas
+- Nunca empieces con "¡Claro!" o "Por supuesto!" — ve directo al punto\`;
 
 async function callGroq(msgs) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 600, temperature: 0.7, messages: msgs }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 800, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -316,10 +330,124 @@ async function callGemini(msgs) {
   return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: 'gemini-1.5-flash' };
 }
 
+
+// Modelos gratuitos de OpenRouter en orden de preferencia
+const OR_FREE_MODELS = [
+  'meta-llama/llama-3.3-70b-instruct:free',      // Llama 3.3 70B — mejor general
+  'google/gemini-2.0-flash-exp:free',              // Gemini 2.0 Flash — 1M contexto
+  'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 — muy bueno
+  'deepseek/deepseek-chat-v3-0324:free',           // DeepSeek V3 — razonamiento
+  'nvidia/llama-3.1-nemotron-nano-8b-v1:free',     // NVIDIA Nemotron — rápido
+  'openrouter/free',                               // Auto-router — elige el mejor disponible
+];
+
+async function callOpenRouterModel(msgs, model) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app',
+      'X-Title': 'CodeHub IA',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 800,
+      temperature: 0.65,
+      messages: msgs,
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    const err = new Error(e.error?.message || `OpenRouter ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  const d = await res.json();
+  const reply = d.choices[0]?.message?.content || '';
+  if (!reply) throw new Error('OpenRouter devolvió respuesta vacía');
+  return {
+    reply,
+    input: d.usage?.prompt_tokens || 0,
+    output: d.usage?.completion_tokens || 0,
+    model: `openrouter/${model.split('/').pop().replace(':free', '')}`,
+  };
+}
+
+async function callOpenRouter(msgs) {
+  if (!process.env.OPENROUTER_API_KEY) throw new Error('Sin OPENROUTER_API_KEY');
+  // Intenta cada modelo gratuito en orden
+  for (const model of OR_FREE_MODELS) {
+    try {
+      const result = await callOpenRouterModel(msgs, model);
+      console.log(`✅ OpenRouter respondió con: ${model}`);
+      return result;
+    } catch (e) {
+      if (e.status === 401) throw e; // Key inválida — no seguir intentando
+      console.warn(`⚠️ OpenRouter ${model} falló: ${e.message}`);
+    }
+  }
+  throw new Error('Todos los modelos de OpenRouter fallaron');
+}
+
+async function callMistral(msgs) {
+  if (!process.env.MISTRAL_API_KEY) throw new Error('Sin MISTRAL_API_KEY');
+  const mistralMsgs = msgs.map(m => ({
+    role: m.role === 'system' ? 'system' : m.role,
+    content: m.content,
+  }));
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}` },
+    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 800, temperature: 0.65, messages: mistralMsgs }),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Mistral ${res.status}`); err.status = res.status; throw err; }
+  const d = await res.json();
+  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'mistral/mistral-small' };
+}
+
+async function callCohere(msgs) {
+  if (!process.env.COHERE_API_KEY) throw new Error('Sin COHERE_API_KEY');
+  const system = msgs.find(m => m.role === 'system')?.content || '';
+  const chatHistory = msgs.filter(m => m.role !== 'system').slice(0, -1).map(m => ({
+    role: m.role === 'assistant' ? 'CHATBOT' : 'USER',
+    message: m.content,
+  }));
+  const lastMsg = msgs.filter(m => m.role !== 'system').slice(-1)[0]?.content || '';
+  const res = await fetch('https://api.cohere.com/v1/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.COHERE_API_KEY}` },
+    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: 800, temperature: 0.65 }),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.message || `Cohere ${res.status}`); err.status = res.status; throw err; }
+  const d = await res.json();
+  return { reply: d.text || '', input: d.meta?.tokens?.input_tokens||0, output: d.meta?.tokens?.output_tokens||0, model: 'cohere/command-r' };
+}
+
 async function callAI(msgs) {
-  if (process.env.GROQ_API_KEY) { try { return await callGroq(msgs); } catch (e) { if (e.status === 401) throw e; console.warn('Groq falló, usando Gemini...'); } }
-  if (process.env.GEMINI_API_KEY) return await callGemini(msgs);
-  throw new Error('Sin API keys de IA');
+  const providers = [
+    { name: 'Groq',        fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
+    { name: 'OpenRouter',  fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
+    { name: 'Gemini',      fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
+    { name: 'Mistral',     fn: () => callMistral(msgs),     key: process.env.MISTRAL_API_KEY },
+    { name: 'Cohere',      fn: () => callCohere(msgs),      key: process.env.COHERE_API_KEY },
+  ];
+
+  const available = providers.filter(p => p.key);
+  if (!available.length) throw new Error('Sin API keys de IA configuradas');
+
+  for (const provider of available) {
+    try {
+      const result = await provider.fn();
+      console.log(`✅ IA respondió via ${provider.name}`);
+      return result;
+    } catch (e) {
+      if (e.status === 401) { console.warn(`❌ ${provider.name}: API key inválida`); continue; }
+      if (e.status === 429) { console.warn(`⚠️ ${provider.name}: rate limit, probando siguiente...`); continue; }
+      console.warn(`⚠️ ${provider.name} falló (${e.message}), probando siguiente...`);
+    }
+  }
+  throw new Error('Todos los proveedores de IA fallaron');
 }
 
 async function validateTurnstile(token) {
@@ -359,14 +487,17 @@ app.get('/api/stats/supabase', async (_, res) => {
 
 // Health
 app.get('/api/health', (_, res) => res.json({
-  status: 'ok', version: '3.1',
-  mongo:  dbConnected ? 'connected' : 'disconnected',
-  redis:  redis       ? 'connected' : 'memory',
-  ws:     wsClients.size + ' clients',
-  groq:   process.env.GROQ_API_KEY   ? 'ok' : 'missing',
-  gemini: process.env.GEMINI_API_KEY ? 'ok' : 'missing',
-  storage: supabase ? 'supabase' : 'missing',
-  uptime: Math.floor(process.uptime()) + 's',
+  status: 'ok', version: '3.2',
+  mongo:     dbConnected ? 'connected' : 'disconnected',
+  redis:     redis       ? 'connected' : 'memory',
+  ws:        wsClients.size + ' clients',
+  groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
+  openrouter:process.env.OPENROUTER_API_KEY  ? `ok (${OR_FREE_MODELS.length} modelos)` : 'missing',
+  gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
+  mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
+  cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
+  storage:   supabase ? 'supabase' : 'missing',
+  uptime:    Math.floor(process.uptime()) + 's',
 }));
 
 // Stats en vivo
@@ -779,8 +910,11 @@ app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
     console.log(`   MongoDB:    ${dbConnected ? '✅' : '⚠️  sin conexión'}`);
     console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
     console.log(`   WebSockets: ✅ /ws`);
-    console.log(`   Groq:       ${process.env.GROQ_API_KEY   ? '✅' : '❌ falta'}`);
-    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY ? '✅' : '⚠️  opcional'}`);
+    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   OpenRouter: ${process.env.OPENROUTER_API_KEY  ? `✅ (${OR_FREE_MODELS.length} modelos gratis)` : '⚠️  sin configurar'}`);
+    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
   });

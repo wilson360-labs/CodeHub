@@ -3025,8 +3025,7 @@
   .pwa-btns{display:flex;flex-direction:column;gap:.4rem;flex-shrink:0}
   .pwa-btn-yes{padding:.38rem .8rem;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;border:none;border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer}
   .pwa-btn-no{padding:.3rem .8rem;background:transparent;color:rgba(232,232,240,.4);border:none;font-size:.7rem;cursor:pointer}
-  #pwa-update{position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;display:none;background:rgba(15,15,26,.97);border:1px solid rgba(0,230,118,.35);border-radius:12px;padding:.7rem 1.2rem;align-items:center;gap:.8rem;box-shadow:0 8px 32px rgba(0,0,0,.5);font-size:.82rem;backdrop-filter:blur(20px)}
-  #pwa-update.show{display:flex}
+
   .upd-dot{width:8px;height:8px;border-radius:50%;background:#00e676;flex-shrink:0;animation:pulse-g 2s infinite}
   @keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)}}
   .upd-btn{padding:.32rem .8rem;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer}
@@ -6475,10 +6474,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
     <div class="dock-icon dock-icon-chat"><i class="fas fa-comment-dots"></i></div>
     <span class="dock-label">Chat</span>
   </a>
-  <a href="cv.html" class="dock-item" title="Ver CV">
-    <div class="dock-icon dock-icon-cv"><i class="fas fa-id-card"></i></div>
-    <span class="dock-label">CV</span>
-  </a>
+
 </nav>
 
 <script src="script.js"></script>
@@ -6793,17 +6789,18 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     // Anti-spam: máx 30 mensajes por sesión
     const chatCount = parseInt(sessionStorage.getItem('ch_chat_count') || '0');
     if (chatCount >= 30) {
-      addMsg('⚠️ Límite de sesión alcanzado (30 mensajes). Recarga la página para continuar.', 'bot');
+      addMsg('ai', '⚠️ Límite de sesión alcanzado (30 mensajes). Recarga la página para continuar.');
       return;
     }
     sessionStorage.setItem('ch_chat_count', chatCount + 1);
 
-    // Limpiar sugerencias la primera vez
-    if (sugs) sugs.remove();
+    // Ocultar sugerencias al primer mensaje
+    if (sugs) sugs.style.display = 'none';
 
     addMsg('user', text);
     input.value = '';
     input.style.height = 'auto';
+    updateCharCount();
 
     loading = true;
     sendBtn.disabled = true;
@@ -6837,7 +6834,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = '● Online · CodeHub AI';
+      status.textContent = '● Online · Listo para ayudarte';
       scrollMsgs();
     }
   };
@@ -7528,12 +7525,7 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 
   <!-- PWA Update Banner -->
-  <div id="pwa-update">
-    <span class="upd-dot"></span>
-    <span style="color:rgba(232,232,240,.7)">Nueva versión disponible</span>
-    <button class="upd-btn" onclick="updatePWA()">Actualizar</button>
-    <button class="upd-close" onclick="this.parentElement.classList.remove('show')">✕</button>
-  </div>
+
 
   <script>
   // ── PWA Install ─────────────────────────────────────
@@ -7579,27 +7571,12 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
       console.log('✅ SW registrado v4.1');
 
-      // Detectar actualización disponible
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-            document.getElementById('pwa-update').classList.add('show');
-          }
-        });
-      });
-
-      // Verificar actualizaciones cada 30 min
+      // Verificar actualizaciones cada 30 min (silencioso, sin banner para usuarios)
       setInterval(() => reg.update(), 30 * 60 * 1000);
 
     }).catch(e => console.warn('SW error:', e));
 
-    // Escuchar mensajes del SW
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data?.type === 'SW_UPDATED') {
-        document.getElementById('pwa-update').classList.add('show');
-      }
-    });
+
 
     // Recargar cuando el SW nuevo tome control
     let refreshing = false;
