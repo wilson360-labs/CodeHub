@@ -1720,92 +1720,115 @@
 /* ═══════════════════════════════════════════
    ASISTENTE IA — CODEHUB AI CHAT
    ═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════
+   CODEHUB AI CHAT — REDESIGN PRO
+   ═══════════════════════════════════════════ */
+
+/* ── FAB Button ── */
 #ai-fab {
   position: fixed;
-  right: 24px;
-  bottom: 160px;
-  height: 48px;
-  padding: 0 18px 0 14px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+  right: 28px;
+  bottom: 28px;
+  height: 52px;
+  padding: 0 20px 0 16px;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #6c3af5 0%, #4f8ef7 60%, #40c4ff 100%);
   border: none;
   color: #fff;
-  font-size: .82rem;
-  font-weight: 700;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  z-index: 4500;
-  box-shadow: 0 6px 28px rgba(108,58,245,.45);
-  transition: all .25s cubic-bezier(.2,.9,.2,1);
-  animation: aiFabPop .6s ease both 1s;
+  z-index: 5000;
+  box-shadow: 0 8px 32px rgba(108,58,245,.5), 0 2px 8px rgba(0,0,0,.3);
+  transition: transform .3s cubic-bezier(.2,.9,.2,1), box-shadow .3s, opacity .3s;
+  animation: aiFabPop .7s cubic-bezier(.2,.9,.2,1) both 1.2s;
   white-space: nowrap;
-  letter-spacing: .01em;
 }
+@keyframes aiFabPop {
+  0%   { opacity:0; transform: scale(0) rotate(-90deg) }
+  70%  { transform: scale(1.08) rotate(3deg) }
+  100% { opacity:1; transform: scale(1) rotate(0) }
+}
+#ai-fab::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+  z-index: -1;
+  opacity: 0;
+  transition: opacity .3s;
+  filter: blur(8px);
+}
+#ai-fab:hover::before { opacity: .6; }
+#ai-fab:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 14px 40px rgba(108,58,245,.65), 0 4px 12px rgba(0,0,0,.3); }
+#ai-fab:active { transform: scale(.96); }
+#ai-fab.hidden { opacity: 0; pointer-events: none; transform: scale(0) rotate(-90deg); }
+
+/* Pulse ring animation */
+#ai-fab::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 30px;
+  border: 2px solid rgba(108,58,245,.4);
+  animation: fabPulse 2.5s ease-in-out infinite;
+}
+@keyframes fabPulse {
+  0%, 100% { opacity: 0; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+
 #ai-fab .ai-fab-icon {
-  width: 28px; height: 28px;
+  width: 32px; height: 32px;
   background: rgba(255,255,255,.2);
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1rem; flex-shrink: 0;
-  transition: transform .3s;
+  font-size: 1.1rem; flex-shrink: 0;
+  transition: transform .4s cubic-bezier(.2,.9,.2,1);
 }
-#ai-fab:hover .ai-fab-icon { transform: rotate(-15deg) scale(1.1); }
-#ai-fab .ai-fab-text {
-  display: flex; flex-direction: column; line-height: 1.2;
-}
-#ai-fab .ai-fab-label {
-  font-size: .78rem; font-weight: 700; color: #fff;
-}
-#ai-fab .ai-fab-sub {
-  font-size: .62rem; font-weight: 400;
-  color: rgba(255,255,255,.7);
-  font-family: 'JetBrains Mono', monospace;
-}
-@keyframes aiFabPop {
-  0%   { opacity:0; transform: translateX(80px) }
-  80%  { transform: translateX(-4px) }
-  100% { opacity:1; transform: translateX(0) }
-}
-#ai-fab:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 10px 36px rgba(108,58,245,.6);
-}
-#ai-fab:active { transform: scale(.97); }
+#ai-fab:hover .ai-fab-icon { transform: rotate(-20deg) scale(1.15); }
+#ai-fab .ai-fab-text { display: flex; flex-direction: column; line-height: 1.2; }
+#ai-fab .ai-fab-label { font-size: .82rem; font-weight: 700; font-family: 'Space Grotesk', system-ui, sans-serif; }
+#ai-fab .ai-fab-sub { font-size: .63rem; font-weight: 400; color: rgba(255,255,255,.7); font-family: 'JetBrains Mono', monospace; }
 #ai-fab .ai-notif {
   position: absolute;
   top: -3px; right: -3px;
-  width: 12px; height: 12px;
+  width: 13px; height: 13px;
   background: #ff4500;
   border-radius: 50%;
   border: 2px solid #080810;
   animation: notifBlink 2s infinite;
 }
-@keyframes notifBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes notifBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* Cuando el panel está abierto, ocultar el FAB */
-#ai-fab.hidden { opacity:0; pointer-events:none; transform: translateX(80px); }
-
+/* ── Panel ── */
 #ai-panel {
   position: fixed;
-  right: 24px;
-  bottom: 220px;
-  width: 360px;
-  max-height: 520px;
-  background: linear-gradient(160deg, rgba(12,12,24,.98) 0%, rgba(18,18,32,.98) 100%);
-  border: 1px solid rgba(108,58,245,.35);
-  border-radius: 22px;
+  right: 28px;
+  bottom: 100px;
+  width: 400px;
+  max-height: calc(100vh - 140px);
+  min-height: 480px;
+  background: rgba(10,10,20,.96);
+  border: 1px solid rgba(108,58,245,.4);
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
-  z-index: 4499;
-  box-shadow: 0 24px 72px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04) inset;
-  backdrop-filter: blur(20px);
-  transform: scale(.92) translateY(12px);
+  z-index: 4999;
+  box-shadow:
+    0 32px 80px rgba(0,0,0,.8),
+    0 0 0 1px rgba(255,255,255,.05) inset,
+    0 0 60px rgba(108,58,245,.15);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  transform: scale(.88) translateY(20px);
+  transform-origin: bottom right;
   opacity: 0;
   pointer-events: none;
-  transition: all .3s cubic-bezier(.2,.9,.2,1);
+  transition: transform .4s cubic-bezier(.2,.9,.2,1), opacity .3s;
+  overflow: hidden;
 }
 #ai-panel.open {
   transform: scale(1) translateY(0);
@@ -1813,167 +1836,308 @@
   pointer-events: all;
 }
 
+/* Glow border animado */
+#ai-panel::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 29px;
+  background: linear-gradient(135deg, rgba(108,58,245,.6), rgba(64,196,255,.2), rgba(108,58,245,.1));
+  z-index: -1;
+  opacity: 0;
+  transition: opacity .4s;
+}
+#ai-panel.open::before { opacity: 1; }
+
+/* ── Header ── */
 .ai-head {
-  padding: 1rem 1.1rem .75rem;
-  border-bottom: 1px solid rgba(255,255,255,.07);
+  padding: 1.1rem 1.2rem .9rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
   display: flex;
   align-items: center;
-  gap: .75rem;
+  gap: .85rem;
   flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(108,58,245,.12), rgba(64,196,255,.05));
 }
-.ai-head-icon {
-  width: 34px; height: 34px;
-  border-radius: 10px;
+.ai-head-avatar {
+  width: 42px; height: 42px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #6c3af5, #40c4ff);
   display: flex; align-items: center; justify-content: center;
-  font-size: .95rem; flex-shrink: 0;
+  font-size: 1.3rem; flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(108,58,245,.4);
 }
-.ai-head-info { flex: 1 }
-.ai-head-title { font-size: .9rem; font-weight: 700; color: #fff; }
-.ai-head-sub { font-size: .68rem; color: rgba(232,232,240,.45); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
-#ai-close-btn {
+.ai-head-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 12px; height: 12px;
+  background: #00e676;
+  border-radius: 50%;
+  border: 2px solid rgba(10,10,20,.96);
+  animation: onlinePulse 2s infinite;
+}
+@keyframes onlinePulse {
+  0%,100%{ box-shadow: 0 0 0 0 rgba(0,230,118,.4) }
+  50%{ box-shadow: 0 0 0 4px rgba(0,230,118,0) }
+}
+.ai-head-info { flex: 1; min-width: 0; }
+.ai-head-title { font-size: .95rem; font-weight: 700; color: #fff; letter-spacing: -.01em; }
+.ai-head-sub { font-size: .68rem; color: rgba(232,232,240,.5); font-family: 'JetBrains Mono', monospace; margin-top: 2px; display: flex; align-items: center; gap: .3rem; }
+.ai-head-sub .online-dot { width: 6px; height: 6px; background: #00e676; border-radius: 50%; display: inline-block; }
+.ai-head-actions { display: flex; gap: .4rem; }
+.ai-head-btn {
   background: rgba(255,255,255,.07);
-  border: none;
-  color: rgba(232,232,240,.5);
-  width: 28px; height: 28px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: .85rem;
+  border: none; color: rgba(232,232,240,.5);
+  width: 30px; height: 30px;
+  border-radius: 9px; cursor: pointer; font-size: .8rem;
   transition: all .2s;
   display: flex; align-items: center; justify-content: center;
 }
-#ai-close-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
+.ai-head-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
 
+/* ── Messages ── */
 #ai-msgs {
   flex: 1;
   overflow-y: auto;
-  padding: .9rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: .7rem;
+  gap: .8rem;
   scroll-behavior: smooth;
 }
-#ai-msgs::-webkit-scrollbar { width: 4px; }
+#ai-msgs::-webkit-scrollbar { width: 3px; }
 #ai-msgs::-webkit-scrollbar-track { background: transparent; }
-#ai-msgs::-webkit-scrollbar-thumb { background: rgba(108,58,245,.4); border-radius: 4px; }
+#ai-msgs::-webkit-scrollbar-thumb { background: rgba(108,58,245,.3); border-radius: 3px; }
+
+/* Fade top/bottom edges */
+#ai-msgs::before, #ai-msgs::after {
+  content: ''; position: sticky;
+  left: 0; right: 0; height: 20px;
+  pointer-events: none; z-index: 1; flex-shrink: 0;
+}
+#ai-msgs::before { top: 0; background: linear-gradient(to bottom, rgba(10,10,20,.8), transparent); }
+#ai-msgs::after  { bottom: 0; background: linear-gradient(to top, rgba(10,10,20,.8), transparent); }
+
+.ai-msg-wrap {
+  display: flex;
+  gap: .6rem;
+  animation: msgIn .3s cubic-bezier(.2,.9,.2,1);
+}
+@keyframes msgIn { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:translateY(0) } }
+.ai-msg-wrap.user { flex-direction: row-reverse; }
+
+.ai-msg-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+  margin-top: 2px;
+}
+.ai-msg-wrap.ai .ai-msg-avatar {
+  background: linear-gradient(135deg, #6c3af5, #40c4ff);
+}
+.ai-msg-wrap.user .ai-msg-avatar {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.15);
+}
+
+.ai-msg-content { display: flex; flex-direction: column; gap: .25rem; max-width: 82%; }
+.ai-msg-wrap.user .ai-msg-content { align-items: flex-end; }
 
 .ai-msg {
-  max-width: 88%;
-  padding: .65rem .9rem;
-  border-radius: 14px;
+  padding: .7rem 1rem;
+  border-radius: 18px;
   font-size: .83rem;
-  line-height: 1.55;
-  animation: msgIn .25s ease;
+  line-height: 1.6;
+  position: relative;
 }
-@keyframes msgIn { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
-.ai-msg.user {
-  align-self: flex-end;
-  background: linear-gradient(135deg, rgba(108,58,245,.35), rgba(64,196,255,.2));
-  border: 1px solid rgba(108,58,245,.3);
+.ai-msg-wrap.user .ai-msg {
+  background: linear-gradient(135deg, rgba(108,58,245,.5), rgba(64,196,255,.3));
+  border: 1px solid rgba(108,58,245,.4);
   color: #e8e8f0;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 6px;
 }
-.ai-msg.ai {
-  align-self: flex-start;
+.ai-msg-wrap.ai .ai-msg {
   background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.09);
-  color: rgba(232,232,240,.85);
-  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255,255,255,.08);
+  color: rgba(232,232,240,.9);
+  border-bottom-left-radius: 6px;
 }
-.ai-msg.typing {
-  align-self: flex-start;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.07);
-  color: rgba(232,232,240,.4);
-  font-style: italic;
+.ai-msg-time {
+  font-size: .6rem;
+  color: rgba(232,232,240,.3);
   font-family: 'JetBrains Mono', monospace;
-  font-size: .75rem;
+  padding: 0 .3rem;
 }
+.ai-msg-copy {
+  position: absolute;
+  top: .4rem; right: .4rem;
+  background: rgba(255,255,255,.08);
+  border: none; border-radius: 6px;
+  color: rgba(255,255,255,.4);
+  font-size: .65rem; padding: .2rem .4rem;
+  cursor: pointer; opacity: 0; transition: opacity .2s;
+}
+.ai-msg-wrap.ai .ai-msg:hover .ai-msg-copy { opacity: 1; }
+.ai-msg-copy:hover { color: #fff; background: rgba(255,255,255,.15); }
 .ai-msg strong { color: #fff; font-weight: 600; }
 .ai-msg code {
   font-family: 'JetBrains Mono', monospace;
   font-size: .75rem;
-  background: rgba(0,0,0,.3);
-  padding: .1rem .35rem;
-  border-radius: 4px;
+  background: rgba(0,0,0,.35);
+  padding: .15rem .4rem;
+  border-radius: 5px;
   color: #40c4ff;
+  border: 1px solid rgba(64,196,255,.15);
 }
 
+/* Typing indicator */
+.ai-typing .ai-msg {
+  display: flex; gap: 4px; align-items: center;
+  padding: .8rem 1rem;
+}
+.ai-typing-dot {
+  width: 7px; height: 7px;
+  background: rgba(108,58,245,.7);
+  border-radius: 50%;
+  animation: typingBounce 1.2s infinite;
+}
+.ai-typing-dot:nth-child(2) { animation-delay: .2s; }
+.ai-typing-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes typingBounce {
+  0%,60%,100%{ transform: translateY(0); opacity: .5; }
+  30%{ transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Suggestions ── */
 .ai-suggestions {
-  padding: 0 .9rem .7rem;
+  padding: .5rem 1rem .7rem;
   display: flex;
   flex-wrap: wrap;
   gap: .4rem;
   flex-shrink: 0;
+  border-top: 1px solid rgba(255,255,255,.04);
 }
 .ai-sug-btn {
-  padding: .32rem .75rem;
+  padding: .35rem .8rem;
   border-radius: 20px;
   border: 1px solid rgba(108,58,245,.3);
   background: rgba(108,58,245,.08);
   color: rgba(232,232,240,.6);
-  font-family: 'Syne', sans-serif;
-  font-size: .72rem;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: .71rem;
   cursor: pointer;
-  transition: all .18s;
+  transition: all .2s;
 }
-.ai-sug-btn:hover { border-color: rgba(108,58,245,.6); color: #e8e8f0; background: rgba(108,58,245,.15); }
+.ai-sug-btn:hover {
+  border-color: rgba(108,58,245,.7);
+  color: #e8e8f0;
+  background: rgba(108,58,245,.2);
+  transform: translateY(-1px);
+}
 
-.ai-input-row {
-  padding: .75rem .9rem .9rem;
+/* ── Input area ── */
+.ai-input-wrap {
+  padding: .8rem 1rem 1rem;
   border-top: 1px solid rgba(255,255,255,.06);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  flex-shrink: 0;
+  background: rgba(0,0,0,.2);
+}
+.ai-input-row {
   display: flex;
   gap: .5rem;
   align-items: flex-end;
-  flex-shrink: 0;
 }
 #ai-input {
   flex: 1;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.1);
-  border-radius: 12px;
+  border-radius: 14px;
   color: #e8e8f0;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: .83rem;
-  padding: .6rem .85rem;
+  padding: .65rem .95rem;
   outline: none;
   resize: none;
   max-height: 100px;
-  min-height: 38px;
-  transition: border-color .2s;
-  line-height: 1.4;
+  min-height: 42px;
+  transition: border-color .2s, box-shadow .2s;
+  line-height: 1.45;
 }
-#ai-input:focus { border-color: rgba(108,58,245,.5); }
-#ai-input::placeholder { color: rgba(232,232,240,.3); }
+#ai-input:focus {
+  border-color: rgba(108,58,245,.6);
+  box-shadow: 0 0 0 3px rgba(108,58,245,.1);
+}
+#ai-input::placeholder { color: rgba(232,232,240,.25); }
 #ai-send-btn {
-  width: 38px; height: 38px;
-  border-radius: 11px;
+  width: 42px; height: 42px;
+  border-radius: 13px;
   background: linear-gradient(135deg, #6c3af5, #40c4ff);
-  border: none;
-  color: #fff;
-  font-size: .95rem;
-  cursor: pointer;
-  transition: all .2s;
+  border: none; color: #fff; font-size: 1rem;
+  cursor: pointer; transition: all .2s;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(108,58,245,.4);
 }
-#ai-send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(108,58,245,.4); }
-#ai-send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+#ai-send-btn:hover { transform: scale(1.08) rotate(-5deg); box-shadow: 0 6px 20px rgba(108,58,245,.6); }
+#ai-send-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+.ai-input-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: .62rem; color: rgba(232,232,240,.25);
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0 .2rem;
+}
+.ai-char-count { transition: color .2s; }
+.ai-char-count.warn { color: rgba(255,189,69,.6); }
+.ai-char-count.over { color: rgba(255,69,0,.7); }
 
-@media (max-width: 600px) {
-  #ai-panel { width: calc(100vw - 16px); right: 8px; bottom: 130px; max-height: 65vh; }
+/* ── Mobile drawer ── */
+@media (max-width: 640px) {
+  #ai-panel {
+    right: 0; left: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 85vh;
+    min-height: 0;
+    border-radius: 28px 28px 0 0;
+    border-bottom: none;
+    transform: translateY(100%);
+    transform-origin: bottom center;
+  }
+  #ai-panel.open { transform: translateY(0); }
+
+  /* Handle para arrastrar */
+  #ai-panel::after {
+    content: '';
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    width: 40px; height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+  }
+  .ai-head { padding-top: 1.5rem; }
+
   #ai-fab {
-    right: 12px;
-    bottom: 130px;
-    padding: 0 14px 0 10px;
-    height: 44px;
-    font-size: .75rem;
+    right: 16px;
+    bottom: 90px;
+    height: 48px;
+    padding: 0 16px 0 12px;
   }
   #ai-fab .ai-fab-sub { display: none; }
+  #ai-fab::after { display: none; }
 }
 @media (max-width: 380px) {
-  #ai-fab .ai-fab-label { font-size: .72rem; }
+  #ai-fab .ai-fab-label { font-size: .76rem; }
+  #ai-fab .ai-fab-icon { width: 28px; height: 28px; font-size: .95rem; }
 }
+
 
 
         /* ═══ HERO ═══════════════════════════════════════════════ */
@@ -6472,35 +6636,62 @@ async function sendEmail(e) {
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
+  <!-- Header -->
   <div class="ai-head">
-    <div class="ai-head-icon" style="font-size:1.2rem">✦</div>
+    <div class="ai-head-avatar">✦</div>
     <div class="ai-head-info">
-      <div class="ai-head-title">Asistente IA</div>
-      <div class="ai-head-sub" id="ai-status">● Online · CodeHub AI</div>
+      <div class="ai-head-title">CodeHub IA</div>
+      <div class="ai-head-sub">
+        <span class="online-dot"></span>
+        <span id="ai-status">Online · Listo para ayudarte</span>
+      </div>
     </div>
-    <button id="ai-close-btn" aria-label="Cerrar chat"><i class="fas fa-times"></i></button>
+    <div class="ai-head-actions">
+      <button class="ai-head-btn" id="ai-clear-btn" title="Limpiar chat" aria-label="Limpiar conversación">
+        <i class="fas fa-rotate-left"></i>
+      </button>
+      <button class="ai-head-btn" id="ai-close-btn" title="Cerrar" aria-label="Cerrar chat">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
   </div>
 
+  <!-- Messages -->
   <div id="ai-msgs">
-    <div class="ai-msg ai">
-      ¡Hola! 👋 Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con código, explicar herramientas, responder preguntas técnicas o lo que necesites. ¿En qué te ayudo?
+    <div class="ai-msg-wrap ai">
+      <div class="ai-msg-avatar">✦</div>
+      <div class="ai-msg-content">
+        <div class="ai-msg">
+          ¡Hola! 👋 Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con código, explicar herramientas o responder cualquier pregunta técnica. ¿En qué te ayudo hoy?
+          <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
+        </div>
+        <span class="ai-msg-time" id="ai-welcome-time"></span>
+      </div>
     </div>
   </div>
 
+  <!-- Suggestions -->
   <div class="ai-suggestions" id="ai-sugs">
-    <button class="ai-sug-btn" onclick="aiSugg(this)">¿Qué herramientas hay?</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">Explícame Base64</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">¿Qué es un UUID?</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">Dame un tip de Python</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🛠 ¿Qué herramientas hay?</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">📦 Base64 explicado</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🔑 ¿Qué es un UUID?</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🐍 Tip de Python</button>
   </div>
 
-  <div class="ai-input-row">
-    <textarea id="ai-input" placeholder="Escribe tu pregunta…" rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
-      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
-    <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar">
-      <i class="fas fa-paper-plane"></i>
-    </button>
+  <!-- Input -->
+  <div class="ai-input-wrap">
+    <div class="ai-input-row">
+      <textarea id="ai-input" placeholder="Pregúntame algo…" rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';updateCharCount()"></textarea>
+      <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+    <div class="ai-input-footer">
+      <span>Enter para enviar · Shift+Enter nueva línea</span>
+      <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
+    </div>
   </div>
 </div>
 
@@ -6535,7 +6726,22 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
 
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
+  const clearB = document.getElementById('ai-clear-btn');
+  if (clearB) clearB.addEventListener('click', () => {
+    msgs.innerHTML = '';
+    history = [];
+    addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
+    if (sugs) sugs.style.display = 'flex';
+  });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
+  // Mobile: swipe down to close
+  let touchStartY = 0;
+  panel.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  panel.addEventListener('touchend', e => {
+    const diff = e.changedTouches[0].clientY - touchStartY;
+    if (diff > 80) setOpen(false);
+  }, { passive: true });
+
 
   function toggle() { setOpen(!isOpen); }
   function setOpen(v) {
@@ -6543,10 +6749,18 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     panel.classList.toggle('open', v);
     fab.classList.toggle('hidden', v);
     if (v) {
-      input.focus();
-      fab.querySelector('.ai-notif').style.display = 'none';
+      setTimeout(() => input.focus(), 300);
+      const notif = fab.querySelector('.ai-notif');
+      if (notif) notif.style.display = 'none';
       scrollMsgs();
+      // Set welcome time
+      const wt = document.getElementById('ai-welcome-time');
+      if (wt && !wt.textContent) wt.textContent = getTime();
     }
+  }
+
+  function getTime() {
+    return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
   }
 
   window.aiSugg = function(btn) {
@@ -6629,13 +6843,56 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   };
 
   function addMsg(type, html) {
-    const d = document.createElement('div');
-    d.className = 'ai-msg ' + type;
-    d.innerHTML = html;
-    msgs.appendChild(d);
+    if (type === 'typing') {
+      const wrap = document.createElement('div');
+      wrap.className = 'ai-msg-wrap ai ai-typing';
+      wrap.innerHTML = `
+        <div class="ai-msg-avatar">✦</div>
+        <div class="ai-msg-content">
+          <div class="ai-msg">
+            <span class="ai-typing-dot"></span>
+            <span class="ai-typing-dot"></span>
+            <span class="ai-typing-dot"></span>
+          </div>
+        </div>`;
+      msgs.appendChild(wrap);
+      scrollMsgs();
+      return wrap;
+    }
+    const isUser = type === 'user';
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-msg-wrap ' + (isUser ? 'user' : 'ai');
+    const time = getTime();
+    wrap.innerHTML = `
+      <div class="ai-msg-avatar">${isUser ? '👤' : '✦'}</div>
+      <div class="ai-msg-content">
+        <div class="ai-msg">
+          ${html}
+          ${!isUser ? '<button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>' : ''}
+        </div>
+        <span class="ai-msg-time">${time}</span>
+      </div>`;
+    msgs.appendChild(wrap);
     scrollMsgs();
-    return d;
+    return wrap;
   }
+
+  window.copyMsg = function(btn) {
+    const msgEl = btn.closest('.ai-msg');
+    const text = msgEl.innerText.replace('⎘', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓';
+      setTimeout(() => btn.textContent = '⎘', 1500);
+    });
+  };
+
+  window.updateCharCount = function() {
+    const len = document.getElementById('ai-input')?.value.length || 0;
+    const el = document.getElementById('ai-char-count');
+    if (!el) return;
+    el.textContent = len + ' / 1000';
+    el.className = 'ai-char-count' + (len > 900 ? ' over' : len > 700 ? ' warn' : '');
+  };
 
   function scrollMsgs() {
     requestAnimationFrame(() => msgs.scrollTop = msgs.scrollHeight);
