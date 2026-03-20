@@ -1,5 +1,5 @@
 /**
- * CodeHub Backend v3.0 — Wilson.E 2026
+ * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
  * ✅ Redis      — caché (opcional, Railway Redis addon)
@@ -94,7 +94,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 
-// Multer APKs (máx 200 MB)
+// Multer APKs (máx 200 MB) — sube a Supabase Storage
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 200 * 1024 * 1024 },
@@ -242,7 +242,7 @@ function requireAdmin(req, res, next) {
 }
 
 // ── SUPABASE STORAGE ─────────────────────────────────────────
-const STORAGE_BUCKET = 'codehub-apks';
+const STORAGE_BUCKET = 'CodeHub';
 
 async function uploadToStorage(buffer, fileName) {
   if (!supabase) throw new Error('Supabase no configurado');
@@ -359,7 +359,7 @@ app.get('/api/stats/supabase', async (_, res) => {
 
 // Health
 app.get('/api/health', (_, res) => res.json({
-  status: 'ok', version: '3.0',
+  status: 'ok', version: '3.1',
   mongo:  dbConnected ? 'connected' : 'disconnected',
   redis:  redis       ? 'connected' : 'memory',
   ws:     wsClients.size + ' clients',
@@ -522,7 +522,7 @@ app.post('/api/requests', async (req, res) => {
   } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
 
-// Download APK (URL firmada B2 + evento WS)
+// Download APK (Supabase Storage URL pública)
 app.get('/api/download/:fileName', async (req, res) => {
   const { fileName } = req.params;
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
