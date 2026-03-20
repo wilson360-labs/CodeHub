@@ -50,21 +50,45 @@
       "knowsAbout": ["HTML", "CSS", "JavaScript", "Python", "Node.js", "MongoDB", "Web Development"]
     }
     </script>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3YEWZ24PQR"></script>
+    <!-- Google Analytics — carga diferida para no bloquear render -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-3YEWZ24PQR');
+      gtag('config', 'G-3YEWZ24PQR', { send_page_view: false });
+      // Cargar GA script después del load
+      window.addEventListener('load', function() {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-3YEWZ24PQR';
+        s.onload = function() { gtag('event', 'page_view'); };
+        document.head.appendChild(s);
+      });
     </script>
-    <!-- Google Fonts -->
+    <!-- Preconnect crítico — antes de cualquier recurso externo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome 6.7.2 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <style>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="dns-prefetch" href="https://i.ibb.co">
+    <link rel="dns-prefetch" href="https://i.postimg.cc">
+    <link rel="dns-prefetch" href="https://codehub-production-729d.up.railway.app">
+
+    <!-- Google Fonts — no bloqueante con display=swap -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
+
+    <!-- Font Awesome — diferido, no bloquea render -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
+
+    <!-- Fuente sistema como fallback inmediato — evita FOUT -->
+    <style id="font-fallback">
+      body, button, input, textarea, select {
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      code, pre, .mono { font-family: 'Courier New', monospace; }
+    </style>
+        <style>
     /* ====== NOVEDADES ICON — REDISEÑO PRO ====== */
 /* ====== DOCK FLOTANTE ====== */
 #hub-dock {
@@ -1699,39 +1723,70 @@
 #ai-fab {
   position: fixed;
   right: 24px;
-  bottom: 28px;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
+  bottom: 90px;
+  height: 48px;
+  padding: 0 18px 0 14px;
+  border-radius: 24px;
   background: linear-gradient(135deg, #6c3af5, #40c4ff);
   border: none;
   color: #fff;
-  font-size: 1.35rem;
+  font-size: .82rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   cursor: pointer;
   z-index: 4500;
   box-shadow: 0 6px 28px rgba(108,58,245,.45);
   transition: all .25s cubic-bezier(.2,.9,.2,1);
   animation: aiFabPop .6s ease both 1s;
+  white-space: nowrap;
+  letter-spacing: .01em;
+}
+#ai-fab .ai-fab-icon {
+  width: 28px; height: 28px;
+  background: rgba(255,255,255,.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; flex-shrink: 0;
+  transition: transform .3s;
+}
+#ai-fab:hover .ai-fab-icon { transform: rotate(-15deg) scale(1.1); }
+#ai-fab .ai-fab-text {
+  display: flex; flex-direction: column; line-height: 1.2;
+}
+#ai-fab .ai-fab-label {
+  font-size: .78rem; font-weight: 700; color: #fff;
+}
+#ai-fab .ai-fab-sub {
+  font-size: .62rem; font-weight: 400;
+  color: rgba(255,255,255,.7);
+  font-family: 'JetBrains Mono', monospace;
 }
 @keyframes aiFabPop {
-  0%   { opacity:0; transform: scale(0) rotate(-180deg) }
-  80%  { transform: scale(1.1) rotate(5deg) }
-  100% { opacity:1; transform: scale(1) rotate(0) }
+  0%   { opacity:0; transform: translateX(80px) }
+  80%  { transform: translateX(-4px) }
+  100% { opacity:1; transform: translateX(0) }
 }
-#ai-fab:hover { transform: scale(1.12) rotate(-5deg); box-shadow: 0 10px 36px rgba(108,58,245,.6); }
+#ai-fab:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 36px rgba(108,58,245,.6);
+}
+#ai-fab:active { transform: scale(.97); }
 #ai-fab .ai-notif {
   position: absolute;
-  top: -2px; right: -2px;
-  width: 13px; height: 13px;
+  top: -3px; right: -3px;
+  width: 12px; height: 12px;
   background: #ff4500;
   border-radius: 50%;
   border: 2px solid #080810;
   animation: notifBlink 2s infinite;
 }
 @keyframes notifBlink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Cuando el panel está abierto, ocultar el FAB */
+#ai-fab.hidden { opacity:0; pointer-events:none; transform: translateX(80px); }
 
 #ai-panel {
   position: fixed;
@@ -1905,9 +1960,19 @@
 #ai-send-btn:hover { transform: scale(1.08); box-shadow: 0 4px 14px rgba(108,58,245,.4); }
 #ai-send-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 
-@media (max-width: 480px) {
-  #ai-panel { width: calc(100vw - 24px); right: 12px; bottom: 88px; }
-  #ai-fab { right: 12px; bottom: 20px; }
+@media (max-width: 600px) {
+  #ai-panel { width: calc(100vw - 16px); right: 8px; bottom: 80px; max-height: 70vh; }
+  #ai-fab {
+    right: 12px;
+    bottom: 80px;
+    padding: 0 14px 0 10px;
+    height: 44px;
+    font-size: .75rem;
+  }
+  #ai-fab .ai-fab-sub { display: none; }
+}
+@media (max-width: 380px) {
+  #ai-fab .ai-fab-label { font-size: .72rem; }
 }
 
 
@@ -2803,6 +2868,36 @@
   .upd-btn{padding:.32rem .8rem;background:rgba(0,230,118,.15);color:#00e676;border:1px solid rgba(0,230,118,.3);border-radius:8px;font-size:.75rem;font-weight:700;cursor:pointer}
   .upd-close{background:none;border:none;color:rgba(232,232,240,.3);cursor:pointer;font-size:1rem}
   </style>
+
+    <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
+    <style>
+      /* Reservar espacio para imágenes antes de cargar */
+      img { content-visibility: auto; }
+      .about-avatar-img { width: 200px; height: 200px; object-fit: cover; }
+      .ap-app-icon img { width: 48px; height: 48px; object-fit: contain; }
+
+      /* Estabilizar fuentes — evitar FOUT que causa CLS */
+      @font-face {
+        font-family: 'Space Grotesk';
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-display: swap;
+      }
+
+      /* Skeleton loader para secciones que cargan tarde */
+      .section-loading {
+        background: linear-gradient(90deg, rgba(255,255,255,.03) 25%, rgba(255,255,255,.06) 50%, rgba(255,255,255,.03) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px; min-height: 40px;
+      }
+      @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+      /* Evitar reflow al cargar iconos de Font Awesome */
+      .fas, .fab, .far, .fa { display: inline-block; min-width: 1em; }
+    </style>
 </head>
 <body>
     <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
@@ -3947,7 +4042,7 @@
                     <div class="about-avatar-ring">
                         <div class="about-avatar-glow"></div>
                         <div class="about-avatar-circle">
-                            <img src="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png" alt="Wilson.E — Dev Icon" class="about-avatar-img">
+                            <img src="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png" alt="Wilson.E — Dev Icon" class="about-avatar-img" fetchpriority="high" width="200" height="200" decoding="async" loading="eager">
                         </div>
                         <div class="about-avatar-badge">
                             <span class="about-pulse"></span>
@@ -4013,22 +4108,22 @@
             <!-- Galería elegante con grid -->
             <div class="pueblo-gallery">
                 <div class="pueblo-main-img">
-                    <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque" loading="lazy">
+                    <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque" loading="lazy" width="400" height="300" decoding="async">
                     <div class="pueblo-img-overlay">
                         <span>📍 San Luis Jilotepeque</span>
                     </div>
                 </div>
                 <div class="pueblo-side-imgs">
                     <div class="pueblo-side-item">
-                        <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" loading="lazy">
+                        <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Mi Pueblo" loading="lazy" width="300" height="200" decoding="async">
                         <div class="pueblo-img-overlay"><span>🏔️ Paisaje</span></div>
                     </div>
                     <div class="pueblo-side-item">
-                        <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" loading="lazy">
+                        <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Mi Pueblo" loading="lazy" width="300" height="200" decoding="async">
                         <div class="pueblo-img-overlay"><span>🌄 Vista</span></div>
                     </div>
                     <div class="pueblo-side-item">
-                        <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" loading="lazy">
+                        <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Mi Pueblo" loading="lazy" width="300" height="200" decoding="async">
                         <div class="pueblo-img-overlay"><span>🌿 Naturaleza</span></div>
                     </div>
                 </div>
@@ -6142,7 +6237,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
   </div>
   <div class="ap-grid">
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Spotify.png" alt="Spotify" onerror="this.parentElement.innerHTML='🎵'"></div>
+      <div class="ap-app-icon"><img src="img/Spotify.png" alt="Spotify" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🎵'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">Spotify</div>
         <div class="ap-app-cat">Música &amp; Audio</div>
@@ -6151,7 +6246,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
       <i class="fas fa-chevron-right ap-arrow"></i>
     </a>
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/YouTube.jpeg" alt="YouTube" onerror="this.parentElement.innerHTML='▶️'"></div>
+      <div class="ap-app-icon"><img src="img/YouTube.jpeg" alt="YouTube" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='▶️'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">YouTube</div>
         <div class="ap-app-cat">Video &amp; Entretenimiento</div>
@@ -6160,7 +6255,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
       <i class="fas fa-chevron-right ap-arrow"></i>
     </a>
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Crunchyroll.png" alt="Crunchyroll" onerror="this.parentElement.innerHTML='🍥'"></div>
+      <div class="ap-app-icon"><img src="img/Crunchyroll.png" alt="Crunchyroll" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🍥'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">Crunchyroll</div>
         <div class="ap-app-cat">Anime &amp; Series</div>
@@ -6169,7 +6264,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
       <i class="fas fa-chevron-right ap-arrow"></i>
     </a>
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Picsart.jpg" alt="PicsArt" onerror="this.parentElement.innerHTML='🎨'"></div>
+      <div class="ap-app-icon"><img src="img/Picsart.jpg" alt="PicsArt" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🎨'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">PicsArt</div>
         <div class="ap-app-cat">Foto &amp; Diseño</div>
@@ -6178,7 +6273,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
       <i class="fas fa-chevron-right ap-arrow"></i>
     </a>
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Remini.png" alt="Remini" onerror="this.parentElement.innerHTML='✨'"></div>
+      <div class="ap-app-icon"><img src="img/Remini.png" alt="Remini" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='✨'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">Remini</div>
         <div class="ap-app-cat">IA &amp; Fotografía</div>
@@ -6187,7 +6282,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
       <i class="fas fa-chevron-right ap-arrow"></i>
     </a>
     <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Terabox.png" alt="Terabox" onerror="this.parentElement.innerHTML='☁️'"></div>
+      <div class="ap-app-icon"><img src="img/Terabox.png" alt="Terabox" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='☁️'"></div>
       <div class="ap-app-info">
         <div class="ap-app-name">Terabox</div>
         <div class="ap-app-cat">Almacenamiento Cloud</div>
@@ -6367,14 +6462,18 @@ async function sendEmail(e) {
 
 
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
-<button id="ai-fab" aria-label="Abrir asistente IA" title="Asistente IA CodeHub">
-  <i class="fas fa-robot"></i>
+<button id="ai-fab" aria-label="Abrir asistente IA CodeHub" title="Habla con CodeHub IA">
+  <span class="ai-fab-icon">✦</span>
+  <span class="ai-fab-text">
+    <span class="ai-fab-label">CodeHub IA</span>
+    <span class="ai-fab-sub">Pregúntame algo</span>
+  </span>
   <span class="ai-notif"></span>
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
   <div class="ai-head">
-    <div class="ai-head-icon"><i class="fas fa-robot"></i></div>
+    <div class="ai-head-icon" style="font-size:1.2rem">✦</div>
     <div class="ai-head-info">
       <div class="ai-head-title">Asistente IA</div>
       <div class="ai-head-sub" id="ai-status">● Online · CodeHub AI</div>
@@ -6442,6 +6541,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   function setOpen(v) {
     isOpen = v;
     panel.classList.toggle('open', v);
+    fab.classList.toggle('hidden', v);
     if (v) {
       input.focus();
       fab.querySelector('.ai-notif').style.display = 'none';
@@ -7257,6 +7357,38 @@ document.addEventListener('DOMContentLoaded', () => {
       else location.reload();
     });
   }
+  </script>
+
+  <script>
+  // Intersection Observer para lazy load de secciones pesadas
+  if ('IntersectionObserver' in window) {
+    const lazyImages = document.querySelectorAll('img[loading="lazy"]');
+    const imgObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const img = entry.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+          }
+          imgObserver.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px' });
+    lazyImages.forEach(img => imgObserver.observe(img));
+  }
+
+  // Preconectar al backend Railway cuando el usuario hace scroll (no al cargar)
+  let backendPreconnected = false;
+  window.addEventListener('scroll', function() {
+    if (!backendPreconnected) {
+      backendPreconnected = true;
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      link.href = 'https://codehub-production-729d.up.railway.app';
+      document.head.appendChild(link);
+    }
+  }, { passive: true, once: true });
   </script>
 </body>
 </html>
