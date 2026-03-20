@@ -7,7 +7,7 @@
  *
  * Variables Railway:
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
- *   ADMIN_KEY, B2_KEY_ID, B2_APP_KEY, B2_BUCKET_ID, B2_BUCKET_NAME
+ *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
  *   SUPABASE_URL, SUPABASE_KEY
  */
@@ -241,79 +241,31 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ── BACKBLAZE B2 ──────────────────────────────────────────────
-let _b2 = null;
-async function getB2Auth() {
-  if (_b2 && Date.now() < _b2.expiry) return _b2;
-  const keyId = process.env.B2_KEY_ID, appKey = process.env.B2_APP_KEY;
-  if (!keyId || !appKey) throw new Error('B2_KEY_ID y B2_APP_KEY no configurados');
-  const creds = Buffer.from(`${keyId}:${appKey}`).toString('base64');
-  const res = await fetch('https://api.backblazeb2.com/b2api/v3/b2_authorize_account', { headers: { Authorization: 'Basic ' + creds } });
-  if (!res.ok) throw new Error('B2 auth falló: ' + res.status);
-  const d = await res.json();
-  _b2 = {
-    token: d.authorizationToken,
-    apiUrl: d.apiInfo?.storageApi?.apiUrl || d.apiUrl,
-    downloadUrl: d.apiInfo?.storageApi?.downloadUrl || d.downloadUrl,
-    expiry: Date.now() + 20 * 60 * 60 * 1000,
-  };
-  console.log('✅ B2 autenticado'); return _b2;
+// ── SUPABASE STORAGE ─────────────────────────────────────────
+const STORAGE_BUCKET = 'codehub-apks';
+
+async function uploadToStorage(buffer, fileName) {
+  if (!supabase) throw new Error('Supabase no configurado');
+  console.log(`🔵 uploadToStorage START: ${fileName} (${(buffer.length/1024/1024).toFixed(1)} MB)`);
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(fileName, buffer, {
+      contentType: 'application/vnd.android.package-archive',
+      upsert: true,
+    });
+  if (error) throw new Error('Error subiendo a Supabase Storage: ' + error.message);
+  const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
+  console.log(`✅ Supabase Storage upload: ${fileName}`);
+  return { fileName, publicUrl: urlData.publicUrl };
 }
 
-async function uploadToB2(buffer, fileName) {
-  const auth = await getB2Auth(), bucketId = process.env.B2_BUCKET_ID;
-  if (!bucketId) throw new Error('B2_BUCKET_ID no configurado');
-  const urlRes = await fetch(`${auth.apiUrl}/b2api/v3/b2_get_upload_url`, {
-    method: 'POST', headers: { Authorization: auth.token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bucketId }),
-  });
-  if (!urlRes.ok) throw new Error('Error upload URL B2: ' + urlRes.status);
-  const { uploadUrl, authorizationToken: uploadAuth } = await urlRes.json();
-  const sha1 = crypto.createHash('sha1').update(buffer).digest('hex');
-  const upRes = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: uploadAuth,
-      'X-Bz-File-Name': encodeURIComponent(fileName),
-      'Content-Type': 'application/vnd.android.package-archive',
-      'Content-Length': String(buffer.length),
-      'X-Bz-Content-Sha1': sha1,
-    },
-    body: buffer,
-    duplex: 'half',
-  });
-  if (!upRes.ok) { const e = await upRes.json().catch(() => ({})); throw new Error('Error subiendo B2: ' + (e.message || upRes.status)); }
-  const data = await upRes.json();
-  console.log(`✅ B2 upload: ${fileName} (${(buffer.length/1024/1024).toFixed(1)} MB)`);
-  return { fileId: data.fileId, fileName: data.fileName };
-}
-
-async function deleteFromB2(fileName) {
-  if (!fileName) return false;
+async function deleteFromStorage(fileName) {
+  if (!supabase || !fileName) return false;
   try {
-    const auth = await getB2Auth();
-    const listRes = await fetch(`${auth.apiUrl}/b2api/v3/b2_list_file_names`, {
-      method: 'POST', headers: { Authorization: auth.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bucketId: process.env.B2_BUCKET_ID, prefix: fileName, maxFileCount: 1 }),
-    });
-    const { files } = await listRes.json(); const file = files?.[0]; if (!file) return false;
-    await fetch(`${auth.apiUrl}/b2api/v3/b2_delete_file_version`, {
-      method: 'POST', headers: { Authorization: auth.token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileId: file.fileId, fileName: file.fileName }),
-    });
-    console.log(`🗑️ B2 delete: ${fileName}`); return true;
-  } catch (e) { console.warn('B2 delete error:', e.message); return false; }
-}
-
-async function getB2SignedUrl(fileName, validSeconds = 86400) {
-  const auth = await getB2Auth(), bucketName = process.env.B2_BUCKET_NAME || 'codehub-apks';
-  const tokenRes = await fetch(`${auth.apiUrl}/b2api/v3/b2_get_download_authorization`, {
-    method: 'POST', headers: { Authorization: auth.token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bucketId: process.env.B2_BUCKET_ID, fileNamePrefix: fileName, validDurationInSeconds: validSeconds }),
-  });
-  if (!tokenRes.ok) throw new Error('Error download auth: ' + tokenRes.status);
-  const { authorizationToken: dlToken } = await tokenRes.json();
-  return `${auth.downloadUrl}/file/${bucketName}/${encodeURIComponent(fileName)}?Authorization=${dlToken}`;
+    const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([fileName]);
+    if (error) { console.warn('Storage delete error:', error.message); return false; }
+    console.log(`🗑️ Storage delete: ${fileName}`); return true;
+  } catch (e) { console.warn('Storage delete error:', e.message); return false; }
 }
 
 // ── IA ────────────────────────────────────────────────────────
@@ -413,7 +365,7 @@ app.get('/api/health', (_, res) => res.json({
   ws:     wsClients.size + ' clients',
   groq:   process.env.GROQ_API_KEY   ? 'ok' : 'missing',
   gemini: process.env.GEMINI_API_KEY ? 'ok' : 'missing',
-  b2:     (process.env.B2_KEY_ID && process.env.B2_APP_KEY) ? 'configured' : 'missing',
+  storage: supabase ? 'supabase' : 'missing',
   uptime: Math.floor(process.uptime()) + 's',
 }));
 
@@ -448,8 +400,8 @@ app.get('/api/apps', async (_, res) => {
       imagen:       a.imagen,
       categoria:    a.categoria,
       verified:     a.verified,
-      enlace:       a.b2_file_name        ? `${base}/api/download/${encodeURIComponent(a.b2_file_name)}`        : (a.enlace || '#'),
-      plugin_enlace:a.b2_plugin_file_name ? `${base}/api/download/${encodeURIComponent(a.b2_plugin_file_name)}` : (a.plugin_enlace || null),
+      enlace:       a.enlace || '#',
+      plugin_enlace:a.plugin_enlace || null,
       tutorial_url: a.tutorial_url || null,
       updatedAt:    a.updatedAt,
     }));
@@ -575,11 +527,12 @@ app.get('/api/download/:fileName', async (req, res) => {
   const { fileName } = req.params;
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
   try {
-    const url = await getB2SignedUrl(decodeURIComponent(fileName), 86400);
+    if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
+    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(decodeURIComponent(fileName));
     broadcast('download', { fileName: decodeURIComponent(fileName) });
     trackEvent('download', null, { app_name: decodeURIComponent(fileName) });
-    res.redirect(302, url);
-  } catch (e) { console.error('Error URL firmada:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
+    res.redirect(302, data.publicUrl);
+  } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -623,8 +576,8 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
   try {
     const a = await App.findOne({ appId: req.params.appId });
     if (!a) return res.status(404).json({ error: 'App no encontrada' });
-    if (a.b2_file_name)        await deleteFromB2(a.b2_file_name);
-    if (a.b2_plugin_file_name) await deleteFromB2(a.b2_plugin_file_name);
+    if (a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
+    if (a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
     await App.deleteOne({ appId: req.params.appId }); await cacheDel('apps:all');
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -637,16 +590,14 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
   try {
     const a = await App.findOne({ appId }); if (!a) return res.status(404).json({ error: 'App no encontrada' });
     const fileName = `${appId}_${isPlugin ? 'plugin' : 'main'}_${Date.now()}.apk`;
-    if (!isPlugin && a.b2_file_name)        await deleteFromB2(a.b2_file_name);
-    if ( isPlugin && a.b2_plugin_file_name) await deleteFromB2(a.b2_plugin_file_name);
-    const { fileId } = await uploadToB2(req.file.buffer, fileName);
+    if (!isPlugin && a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
+    if ( isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
+    const { publicUrl } = await uploadToStorage(req.file.buffer, fileName);
     const upd = isPlugin
-      ? { b2_plugin_file_id: fileId, b2_plugin_file_name: fileName, updatedAt: new Date() }
-      : { b2_file_id: fileId,        b2_file_name: fileName,        updatedAt: new Date() };
+      ? { b2_plugin_file_id: null, b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
+      : { b2_file_id: null,        b2_file_name: fileName,        enlace: publicUrl,         updatedAt: new Date() };
     await App.updateOne({ appId }, upd); await cacheDel('apps:all');
-    const base = process.env.BACKEND_URL || 'https://codehub-production-729d.up.railway.app';
-    const downloadUrl = `${base}/api/download/${encodeURIComponent(fileName)}`;
-    res.json({ ok: true, fileId, fileName, downloadUrl, sizeMB: (req.file.size / 1024 / 1024).toFixed(1) });
+    res.json({ ok: true, fileName, downloadUrl: publicUrl, sizeMB: (req.file.size / 1024 / 1024).toFixed(1) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -821,7 +772,7 @@ app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
 (async () => {
   await initRedis();
   dbConnected = await connectDB();
-  getB2Auth().catch(e => console.warn('B2 pre-auth:', e.message));
+  if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
@@ -830,7 +781,7 @@ app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
     console.log(`   WebSockets: ✅ /ws`);
     console.log(`   Groq:       ${process.env.GROQ_API_KEY   ? '✅' : '❌ falta'}`);
     console.log(`   Gemini:     ${process.env.GEMINI_API_KEY ? '✅' : '⚠️  opcional'}`);
-    console.log(`   Backblaze:  ${process.env.B2_KEY_ID      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
   });
 })();

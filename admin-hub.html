@@ -423,6 +423,52 @@
 <script>
 const BACKEND   = 'https://codehub-production-729d.up.railway.app';
 // ⚠️  La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Railway)
+// ── CONVERTIDOR DE LINKS DE DESCARGA DIRECTA ──────────────────
+function convertToDirectLink(url) {
+  if (!url || url === '#') return url;
+
+  // Dropbox: dl=0 o www.dropbox → dl=1 y raw
+  if (url.includes('dropbox.com')) {
+    return url
+      .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+      .replace('?dl=0', '?dl=1')
+      .replace('&dl=0', '&dl=1')
+      + (url.includes('dl=') ? '' : (url.includes('?') ? '&dl=1' : '?dl=1'));
+  }
+
+  // Google Drive: extrae ID y genera link directo
+  const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]{20,})/);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  }
+
+  // OneDrive: cambia resdl=0 por download=1
+  if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) {
+    return url.replace('redir?', 'download?').replace('view.aspx?', 'download.aspx?');
+  }
+
+  // MediaFire: ya es directo si termina en /file/
+  if (url.includes('mediafire.com')) {
+    return url; // MediaFire maneja su propia redirección
+  }
+
+  // Mega.nz: no se puede convertir fácilmente, devolver tal cual
+  return url;
+}
+
+// Aplica conversión automática al perder foco en campos de URL
+function setupUrlAutoConvert() {
+  document.querySelectorAll('input[id^="link-"], input[id^="plugin-"]').forEach(input => {
+    input.addEventListener('blur', () => {
+      const converted = convertToDirectLink(input.value.trim());
+      if (converted !== input.value.trim()) {
+        input.value = converted;
+        toast('🔗 Link convertido a descarga directa');
+      }
+    });
+  });
+}
+
 // NO la guardes aquí en producción — este campo solo sirve para enviarla al servidor
 let ADMIN_KEY = '';
 
@@ -626,7 +672,7 @@ function renderApps() {
         <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
         <!-- Link manual -->
         <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" 
-               id="link-${app.appId}" placeholder="https://... (o sube APK directo)">
+               id="link-${app.appId}" placeholder="https://... (o sube APK directo)" onblur="applyLinkConversion(this)" onpaste="setTimeout(()=>applyLinkConversion(this),100)">
         <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" style="display:${pluginEnl?'block':'block'}">
         <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="🎬 Tutorial YouTube (opcional)" style="border-color:rgba(255,0,80,.2)">
       </div>
@@ -701,6 +747,59 @@ async function saveRow(appId) {
 }
 
 // ── UPLOAD APK A BACKBLAZE B2 ─────────────────────────────────
+
+// ── LINK CONVERTER ────────────────────────────────────────────
+function convertToDirectLink(url) {
+  if (!url || url === '#') return url;
+
+  // Dropbox: dl=0 o www.dropbox → dl=1
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+              .replace('?dl=0', '?dl=1')
+              .replace('&dl=0', '&dl=1')
+              + (url.includes('dl=') ? '' : (url.includes('?') ? '&dl=1' : '?dl=1'));
+  }
+
+  // Google Drive: /file/d/ID/view → uc?export=download&id=ID
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?export=download&confirm=t&id=${driveMatch[1]}`;
+  }
+  // Google Drive share link
+  const driveShare = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (driveShare) {
+    return `https://drive.google.com/uc?export=download&confirm=t&id=${driveShare[1]}`;
+  }
+
+  // OneDrive: 1drv.ms o onedrive.live.com
+  if (url.includes('1drv.ms') || url.includes('onedrive.live.com')) {
+    return url.replace('redir?', 'download?').replace('embed?', 'download?');
+  }
+
+  // MediaFire: ya tiene link directo si termina en /file/
+  if (url.includes('mediafire.com/file/')) {
+    return url; // MediaFire maneja la descarga directa
+  }
+
+  // Pixeldrain
+  if (url.includes('pixeldrain.com/u/')) {
+    const id = url.split('/u/')[1]?.split('/')[0];
+    if (id) return `https://pixeldrain.com/api/file/${id}?download`;
+  }
+
+  return url; // sin conversión si no reconoce la nube
+}
+
+function applyLinkConversion(input) {
+  const original = input.value.trim();
+  if (!original) return;
+  const converted = convertToDirectLink(original);
+  if (converted !== original) {
+    input.value = converted;
+    toast('🔗 Link convertido a descarga directa');
+  }
+}
+
 function closeUploadDialog() {
   document.getElementById('upload-dialog-overlay').classList.remove('show');
 }
@@ -810,6 +909,7 @@ async function deleteApp(appId, nombre) {
 
 // ── REFRESH APPS DESDE EL SERVIDOR ───────────────────────────
 async function refreshApps() {
+  setTimeout(setupUrlAutoConvert, 500);
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       headers: { 'x-admin-key': ADMIN_KEY }
