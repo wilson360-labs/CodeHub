@@ -306,7 +306,7 @@ Si alguien pregunta sobre CodeHub o Wilson.E, responde con esto:
 - Listas con guión (-) cuando hay varios puntos
 - **Negritas** para términos clave
 - Sin tablas largas — prefiere listas
-- Nunca empieces con "¡Claro!" o "Por supuesto!" — ve directo al punto\`;
+- Nunca empieces con "¡Claro!" o "Por supuesto!" — ve directo al punto`;
 
 async function callGroq(msgs) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -492,7 +492,7 @@ app.get('/api/health', (_, res) => res.json({
   redis:     redis       ? 'connected' : 'memory',
   ws:        wsClients.size + ' clients',
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
-  openrouter:process.env.OPENROUTER_API_KEY  ? `ok (${OR_FREE_MODELS.length} modelos)` : 'missing',
+  openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
   mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
@@ -911,7 +911,7 @@ app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
     console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
     console.log(`   WebSockets: ✅ /ws`);
     console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   OpenRouter: ${process.env.OPENROUTER_API_KEY  ? `✅ (${OR_FREE_MODELS.length} modelos gratis)` : '⚠️  sin configurar'}`);
+    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? '✅ (' + OR_FREE_MODELS.length + ' modelos gratis)' : '⚠️  sin configurar'));
     console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
