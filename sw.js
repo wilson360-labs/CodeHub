@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v3.0 — Wilson.E 2026
+//  CodeHub SW v4.0 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v3';
-const API_CACHE = 'codehub-api-v3';
+const VERSION   = 'codehub-v4';
+const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
 // Assets que se cachean al instalar
@@ -54,15 +54,15 @@ self.addEventListener('fetch', e => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // 1. API Railway — Network only con fallback JSON
-  if (url.hostname.includes('railway.app')) {
-    e.respondWith(
-      fetch(request).catch(() =>
-        new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
-          headers: { 'Content-Type': 'application/json' }
-        })
-      )
-    );
+  // 1. API Railway — Network only, sin cache, sin interceptar
+  if (url.hostname.includes('railway.app') || url.hostname.includes('up.railway.app')) {
+    e.respondWith(fetch(request.clone()));
+    return;
+  }
+
+  // 1b. Admin panel — nunca cachear, siempre red
+  if (url.pathname.includes('admin-hub')) {
+    e.respondWith(fetch(request.clone()));
     return;
   }
 
