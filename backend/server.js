@@ -78,14 +78,20 @@ const allowedOrigins = [
   'https://wilson360-labs.github.io',
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error('CORS bloqueado: ' + origin));
   },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'x-admin-key'],
-}));
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-admin-key', 'Accept', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Cache'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs (máx 200 MB)

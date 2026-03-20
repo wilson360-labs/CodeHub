@@ -186,6 +186,56 @@
     }
     #toast.show { opacity: 1; transform: translateY(0); }
 
+    /* ── UPLOAD DIALOG ── */
+    #upload-dialog-overlay {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(3,3,8,.85); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    #upload-dialog-overlay.show { opacity: 1; pointer-events: all; }
+    #upload-dialog {
+      background: var(--card); border-radius: 20px;
+      width: 440px; max-width: calc(100vw - 2rem);
+      padding: 2rem; position: relative;
+      transform: translateY(20px) scale(.97); transition: transform .25s;
+      border: 1px solid rgba(255,255,255,.07);
+    }
+    #upload-dialog-overlay.show #upload-dialog { transform: translateY(0) scale(1); }
+    .udlg-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; margin: 0 auto 1.2rem;
+    }
+    .udlg-icon.ok  { background: rgba(0,230,118,.12); border: 1px solid rgba(0,230,118,.25); }
+    .udlg-icon.err { background: rgba(255,69,0,.12);  border: 1px solid rgba(255,69,0,.25); }
+    .udlg-title { text-align: center; font-size: 1.1rem; font-weight: 700; margin-bottom: .4rem; }
+    .udlg-title.ok  { color: var(--g); }
+    .udlg-title.err { color: var(--p); }
+    .udlg-msg { text-align: center; font-size: .82rem; color: var(--muted); font-family: var(--mono); margin-bottom: 1.4rem; line-height: 1.6; }
+    .udlg-meta {
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      border-radius: 10px; padding: .8rem 1rem; margin-bottom: 1.4rem;
+      font-family: var(--mono); font-size: .75rem; display: flex; flex-direction: column; gap: .4rem;
+    }
+    .udlg-meta-row { display: flex; justify-content: space-between; gap: .5rem; }
+    .udlg-meta-row span:first-child { color: var(--muted); white-space: nowrap; }
+    .udlg-meta-row span:last-child  { color: var(--text); word-break: break-all; text-align: right; }
+    .udlg-cause {
+      background: rgba(255,69,0,.06); border: 1px solid rgba(255,69,0,.2);
+      border-radius: 10px; padding: .8rem 1rem; margin-bottom: 1.4rem;
+      font-family: var(--mono); font-size: .75rem; color: rgba(255,150,100,.9); line-height: 1.6;
+    }
+    .udlg-cause strong { display: block; color: var(--p); margin-bottom: .3rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; }
+    .udlg-btn {
+      width: 100%; padding: .75rem; border-radius: 10px; border: none;
+      font-family: var(--font); font-size: .9rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .udlg-btn:hover { opacity: .85; }
+    .udlg-btn.ok  { background: var(--g); color: #000; }
+    .udlg-btn.err { background: var(--p); color: #fff; }
+
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -225,6 +275,21 @@
 </head>
 <body>
 <div id="toast"></div>
+
+<!-- ── UPLOAD DIALOG ── -->
+<div id="upload-dialog-overlay">
+  <div id="upload-dialog">
+    <div id="udlg-icon" class="udlg-icon ok">✅</div>
+    <div id="udlg-title" class="udlg-title ok">APK subido exitosamente</div>
+    <div id="udlg-msg" class="udlg-msg"></div>
+    <div id="udlg-meta" class="udlg-meta" style="display:none"></div>
+    <div id="udlg-cause" class="udlg-cause" style="display:none">
+      <strong>Causa del error</strong>
+      <span id="udlg-cause-text"></span>
+    </div>
+    <button id="udlg-btn" class="udlg-btn ok" onclick="closeUploadDialog()">Entendido</button>
+  </div>
+</div>
 
 <!-- ── LOGIN ── -->
 <div id="login-screen">
@@ -636,6 +701,59 @@ async function saveRow(appId) {
 }
 
 // ── UPLOAD APK A BACKBLAZE B2 ─────────────────────────────────
+function closeUploadDialog() {
+  document.getElementById('upload-dialog-overlay').classList.remove('show');
+}
+
+function showUploadDialog(type, data) {
+  const overlay = document.getElementById('upload-dialog-overlay');
+  const icon    = document.getElementById('udlg-icon');
+  const title   = document.getElementById('udlg-title');
+  const msg     = document.getElementById('udlg-msg');
+  const meta    = document.getElementById('udlg-meta');
+  const cause   = document.getElementById('udlg-cause');
+  const causeT  = document.getElementById('udlg-cause-text');
+  const btn     = document.getElementById('udlg-btn');
+
+  if (type === 'ok') {
+    icon.className  = 'udlg-icon ok';   icon.textContent  = '☁️';
+    title.className = 'udlg-title ok';  title.textContent = 'APK subido exitosamente';
+    msg.textContent = `El archivo fue enviado a Backblaze B2 y ya está disponible para descarga.`;
+    meta.style.display = 'flex';
+    meta.innerHTML = `
+      <div class="udlg-meta-row"><span>Archivo</span><span>${data.fileName}</span></div>
+      <div class="udlg-meta-row"><span>Tamaño</span><span>${data.sizeMB} MB</span></div>
+      <div class="udlg-meta-row"><span>App</span><span>${data.appId}</span></div>
+      <div class="udlg-meta-row"><span>URL</span><span>${data.downloadUrl}</span></div>`;
+    cause.style.display = 'none';
+    btn.className = 'udlg-btn ok'; btn.textContent = 'Perfecto';
+  } else {
+    icon.className  = 'udlg-icon err';  icon.textContent  = '✖';
+    title.className = 'udlg-title err'; title.textContent = 'Error al subir el APK';
+    msg.textContent = 'No se pudo completar la subida. Revisa la causa y vuelve a intentarlo.';
+    meta.style.display = 'none';
+    cause.style.display = 'block';
+    const causes = {
+      'CORS':    'El backend bloqueó la petición por CORS. Verifica FRONTEND_URL en Railway.',
+      'Network': 'No se pudo conectar con el servidor. Comprueba que Railway esté activo.',
+      'Failed to fetch': 'No se pudo conectar con el servidor. Comprueba que Railway esté activo.',
+      '403':     'Clave de admin incorrecta (ADMIN_KEY). Verifica la variable en Railway.',
+      '401':     'No autorizado. Revisa la clave de administrador.',
+      '404':     'App no encontrada en la base de datos. ¿Existe el appId?',
+      '413':     'El archivo es demasiado grande. Límite actual: 200 MB.',
+      '503':     'MongoDB no disponible. Verifica MONGODB_URI en Railway.',
+      '500':     'Error interno del servidor. Revisa los Deploy Logs en Railway.',
+    };
+    let causeText = data.message || 'Error desconocido';
+    for (const [key, val] of Object.entries(causes)) {
+      if (causeText.includes(key)) { causeText = val; break; }
+    }
+    causeT.textContent = causeText;
+    btn.className = 'udlg-btn err'; btn.textContent = 'Entendido';
+  }
+  overlay.classList.add('show');
+}
+
 async function uploadAPK(appId, slot, input) {
   const file = input.files[0];
   if (!file) return;
@@ -656,21 +774,22 @@ async function uploadAPK(appId, slot, input) {
       headers: { 'x-admin-key': ADMIN_KEY },
       body: formData,
     });
-    if (!res.ok) throw new Error((await res.json()).error);
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ error: String(res.status) }));
+      throw new Error(errData.error || String(res.status));
+    }
     const d = await res.json();
-    toast(`✅ APK subido a B2 · ${d.sizeMB} MB · ${d.downloadUrl.slice(0,50)}...`);
-    // Actualizar el link en el formulario
     const linkInput = document.getElementById('link-' + appId);
     if (linkInput) linkInput.value = d.downloadUrl;
-    if (app) app.b2_url = d.downloadUrl;
+    if (app) { app.b2_url = d.downloadUrl; app.b2_file_name = d.fileName; }
     label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
     label.style.color = 'var(--g)';
-    // Refrescar datos
+    showUploadDialog('ok', { ...d, appId });
     await refreshApps();
   } catch (e) {
-    toast('❌ Error subiendo: ' + e.message);
     label.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> APK → R2';
     label.style.color = 'var(--c)';
+    showUploadDialog('err', { message: e.message });
   }
   input.value = '';
 }
