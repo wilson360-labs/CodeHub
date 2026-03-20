@@ -427,35 +427,48 @@ const BACKEND   = 'https://codehub-production-729d.up.railway.app';
 function convertToDirectLink(url) {
   if (!url || url === '#') return url;
 
-  // Dropbox: dl=0 o www.dropbox → dl=1 y raw
+  // Dropbox
   if (url.includes('dropbox.com')) {
-    return url
-      .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-      .replace('?dl=0', '?dl=1')
-      .replace('&dl=0', '&dl=1')
-      + (url.includes('dl=') ? '' : (url.includes('?') ? '&dl=1' : '?dl=1'));
+    let u = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+               .replace('?dl=0','?dl=1').replace('&dl=0','&dl=1');
+    if (!u.includes('dl=1')) u += (u.includes('?') ? '&dl=1' : '?dl=1');
+    return u;
   }
 
-  // Google Drive: extrae ID y genera link directo
-  const driveMatch = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]{20,})/);
-  if (driveMatch) {
-    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  // Google Drive /file/d/ID
+  const gd1 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (gd1) return 'https://drive.google.com/uc?export=download&confirm=t&id=' + gd1[1];
+
+  // Google Drive open?id=
+  const gd2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (gd2) return 'https://drive.google.com/uc?export=download&confirm=t&id=' + gd2[1];
+
+  // OneDrive
+  if (url.includes('1drv.ms') || url.includes('onedrive.live.com')) {
+    return url.replace('redir?','download?').replace('embed?','download?');
   }
 
-  // OneDrive: cambia resdl=0 por download=1
-  if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) {
-    return url.replace('redir?', 'download?').replace('view.aspx?', 'download.aspx?');
+  // MediaFire — ya es directo
+  if (url.includes('mediafire.com')) return url;
+
+  // Pixeldrain
+  if (url.includes('pixeldrain.com/u/')) {
+    const pid = url.split('/u/')[1] && url.split('/u/')[1].split('/')[0];
+    if (pid) return 'https://pixeldrain.com/api/file/' + pid + '?download';
   }
 
-  // MediaFire: ya es directo si termina en /file/
-  if (url.includes('mediafire.com')) {
-    return url; // MediaFire maneja su propia redirección
-  }
-
-  // Mega.nz: no se puede convertir fácilmente, devolver tal cual
   return url;
 }
 
+function applyLinkConversion(input) {
+  const original = input.value.trim();
+  if (!original || original === '#') return;
+  const converted = convertToDirectLink(original);
+  if (converted !== original) {
+    input.value = converted;
+    toast('🔗 Link convertido a descarga directa');
+  }
+}
 // Aplica conversión automática al perder foco en campos de URL
 function setupUrlAutoConvert() {
   document.querySelectorAll('input[id^="link-"], input[id^="plugin-"]').forEach(input => {
@@ -639,16 +652,16 @@ function renderApps() {
   }
 
   list.innerHTML = appsData.map((app, i) => {
-    const enlace      = app.b2_url || app.enlace || '#';
-    const pluginEnl   = app.b2_plugin_url || app.plugin_enlace || '';
-    const hasB2       = !!app.b2_url;
-    const hasB2Plugin = !!app.b2_plugin_url;
+    const enlace      = app.enlace || '#';
+    const pluginEnl   = app.plugin_enlace || '';
+    const hasB2       = !!(app.enlace && app.enlace !== '#');
+    const hasB2Plugin = !!app.plugin_enlace;
     return `
     <div class="app-row" id="row-${app.appId}">
       <div class="app-name-cell">
         ${app.nombre}
         <small>${app.categoria || 'Sin cat.'} · ${app.appId}</small>
-        <span class="b2-pill ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK listo' : '📎 Sin APK'}</span>
+        <span class="b2-pill ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK en Supabase' : '📎 Sin APK'}</span>
       </div>
       <div>
         <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
@@ -672,8 +685,8 @@ function renderApps() {
         <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
         <!-- Link manual -->
         <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" 
-               id="link-${app.appId}" placeholder="https://... (o sube APK directo)" onblur="applyLinkConversion(this)" onpaste="setTimeout(()=>applyLinkConversion(this),100)">
-        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" style="display:${pluginEnl?'block':'block'}">
+               id="link-${app.appId}" placeholder="Pega link Dropbox/Drive/MediaFire — se convierte automático" onblur="applyLinkConversion(this)" onpaste="setTimeout(()=>applyLinkConversion(this),100)">
+        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" onblur="applyLinkConversion(this)" onpaste="setTimeout(()=>applyLinkConversion(this),100)" style="display:${pluginEnl?'block':'block'}">
         <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="🎬 Tutorial YouTube (opcional)" style="border-color:rgba(255,0,80,.2)">
       </div>
       <div style="display:flex;flex-direction:column;gap:.4rem">
@@ -748,58 +761,6 @@ async function saveRow(appId) {
 
 // ── UPLOAD APK A BACKBLAZE B2 ─────────────────────────────────
 
-// ── LINK CONVERTER ────────────────────────────────────────────
-function convertToDirectLink(url) {
-  if (!url || url === '#') return url;
-
-  // Dropbox: dl=0 o www.dropbox → dl=1
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com')
-              .replace('?dl=0', '?dl=1')
-              .replace('&dl=0', '&dl=1')
-              + (url.includes('dl=') ? '' : (url.includes('?') ? '&dl=1' : '?dl=1'));
-  }
-
-  // Google Drive: /file/d/ID/view → uc?export=download&id=ID
-  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (driveMatch) {
-    return `https://drive.google.com/uc?export=download&confirm=t&id=${driveMatch[1]}`;
-  }
-  // Google Drive share link
-  const driveShare = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-  if (driveShare) {
-    return `https://drive.google.com/uc?export=download&confirm=t&id=${driveShare[1]}`;
-  }
-
-  // OneDrive: 1drv.ms o onedrive.live.com
-  if (url.includes('1drv.ms') || url.includes('onedrive.live.com')) {
-    return url.replace('redir?', 'download?').replace('embed?', 'download?');
-  }
-
-  // MediaFire: ya tiene link directo si termina en /file/
-  if (url.includes('mediafire.com/file/')) {
-    return url; // MediaFire maneja la descarga directa
-  }
-
-  // Pixeldrain
-  if (url.includes('pixeldrain.com/u/')) {
-    const id = url.split('/u/')[1]?.split('/')[0];
-    if (id) return `https://pixeldrain.com/api/file/${id}?download`;
-  }
-
-  return url; // sin conversión si no reconoce la nube
-}
-
-function applyLinkConversion(input) {
-  const original = input.value.trim();
-  if (!original) return;
-  const converted = convertToDirectLink(original);
-  if (converted !== original) {
-    input.value = converted;
-    toast('🔗 Link convertido a descarga directa');
-  }
-}
-
 function closeUploadDialog() {
   document.getElementById('upload-dialog-overlay').classList.remove('show');
 }
@@ -817,13 +778,13 @@ function showUploadDialog(type, data) {
   if (type === 'ok') {
     icon.className  = 'udlg-icon ok';   icon.textContent  = '☁️';
     title.className = 'udlg-title ok';  title.textContent = 'APK subido exitosamente';
-    msg.textContent = `El archivo fue enviado a Backblaze B2 y ya está disponible para descarga.`;
+    msg.textContent = `El archivo fue enviado a Supabase Storage y ya está disponible para descarga.`;
     meta.style.display = 'flex';
     meta.innerHTML = `
-      <div class="udlg-meta-row"><span>Archivo</span><span>${data.fileName}</span></div>
-      <div class="udlg-meta-row"><span>Tamaño</span><span>${data.sizeMB} MB</span></div>
-      <div class="udlg-meta-row"><span>App</span><span>${data.appId}</span></div>
-      <div class="udlg-meta-row"><span>URL</span><span>${data.downloadUrl}</span></div>`;
+      <div class="udlg-meta-row"><span>Archivo</span><span>${data.fileName || data.file || '—'}</span></div>
+      <div class="udlg-meta-row"><span>Tamaño</span><span>${data.sizeMB || data.size || '—'} MB</span></div>
+      <div class="udlg-meta-row"><span>App</span><span>${data.appId || '—'}</span></div>
+      <div class="udlg-meta-row"><span>URL</span><span>${(data.downloadUrl || data.publicUrl || '—').slice(0,50)}...</span></div>`;
     cause.style.display = 'none';
     btn.className = 'udlg-btn ok'; btn.textContent = 'Perfecto';
   } else {
@@ -880,10 +841,10 @@ async function uploadAPK(appId, slot, input) {
     const d = await res.json();
     const linkInput = document.getElementById('link-' + appId);
     if (linkInput) linkInput.value = d.downloadUrl;
-    if (app) { app.b2_url = d.downloadUrl; app.b2_file_name = d.fileName; }
+    if (app) { app.enlace = d.downloadUrl; app.b2_file_name = d.fileName; }
     label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
     label.style.color = 'var(--g)';
-    showUploadDialog('ok', { ...d, appId });
+    showUploadDialog('ok', { fileName: d.fileName, sizeMB: d.sizeMB, downloadUrl: d.downloadUrl || d.publicUrl, appId });
     await refreshApps();
   } catch (e) {
     label.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> APK → R2';
