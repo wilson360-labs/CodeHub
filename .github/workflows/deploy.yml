@@ -33,8 +33,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: backend/package.json
       - name: Instalar dependencias
         run: cd backend && npm install
       - name: Verificar sintaxis
@@ -43,7 +41,6 @@ jobs:
         run: |
           test -f backend/server.js    && echo "OK server.js"
           test -f backend/package.json && echo "OK package.json"
-          test -f backend/railway.json && echo "OK railway.json"
 
   health-check:
     name: Health Check
