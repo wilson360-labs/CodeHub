@@ -3059,6 +3059,56 @@
 
       /* Evitar reflow al cargar iconos de Font Awesome */
       .fas, .fab, .far, .fa { display: inline-block; min-width: 1em; }
+
+        /* ══ OPEN TO WORK ══════════════════════════════════ */
+        #open-to-work { padding: 3rem 0; }
+        .otw-inner {
+          background: linear-gradient(135deg, rgba(0,230,118,.06), rgba(0,230,118,.02));
+          border: 1px solid rgba(0,230,118,.2); border-radius: 24px;
+          padding: 2rem 2.5rem; position: relative; overflow: hidden;
+        }
+        .otw-inner::before {
+          content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+          background: linear-gradient(90deg, transparent, #00e676, transparent);
+        }
+        .otw-badge {
+          display: inline-flex; align-items: center; gap: .5rem;
+          background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.3);
+          color: #00e676; font-size: .75rem; font-weight: 700;
+          padding: .3rem .85rem; border-radius: 20px;
+          font-family: 'JetBrains Mono', monospace; margin-bottom: 1.5rem;
+        }
+        .otw-dot { width: 7px; height: 7px; background: #00e676; border-radius: 50%; flex-shrink: 0; animation: otwPulse 1.5s ease-in-out infinite; }
+        @keyframes otwPulse { 0%,100%{ box-shadow:0 0 0 0 rgba(0,230,118,.5); } 50%{ box-shadow:0 0 0 5px rgba(0,230,118,0); } }
+        .otw-content { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; }
+        .otw-title { font-size: clamp(1.4rem,2.5vw,1.9rem); font-weight: 800; margin-bottom: .75rem; color: #fff; }
+        .otw-desc { font-size: .88rem; color: rgba(240,240,250,.6); line-height: 1.7; margin-bottom: 1.2rem; }
+        .otw-tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+        .otw-tags span { font-size: .72rem; padding: .25rem .65rem; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; color: rgba(240,240,250,.6); }
+        .otw-info-card { background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 1.2rem; display: flex; flex-direction: column; gap: .9rem; }
+        .otw-info-row { display: flex; align-items: flex-start; gap: .75rem; }
+        .otw-info-row > i { color: #00e676; font-size: .9rem; margin-top: 2px; flex-shrink: 0; }
+        .otw-info-label { display: block; font-size: .65rem; color: rgba(240,240,250,.4); font-family: 'JetBrains Mono',monospace; margin-bottom: 1px; }
+        .otw-info-val { font-size: .83rem; color: rgba(240,240,250,.85); font-weight: 500; }
+        .otw-actions { display: flex; gap: .6rem; padding-top: .3rem; flex-wrap: wrap; }
+        .otw-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .6rem 1.1rem; border-radius: 10px; font-size: .82rem; font-weight: 700; text-decoration: none; transition: all .2s; font-family: 'Space Grotesk',sans-serif; }
+        .otw-btn-primary { background: #00e676; color: #000; }
+        .otw-btn-primary:hover { background: #00ff87; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,230,118,.3); }
+        .otw-btn-ghost { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: rgba(240,240,250,.7); }
+        .otw-btn-ghost:hover { background: rgba(255,255,255,.12); color: #fff; transform: translateY(-2px); }
+        @media(max-width:768px){ .otw-content { grid-template-columns: 1fr; } .otw-inner { padding: 1.5rem; } }
+
+        /* ══ WHY HIRE ME ════════════════════════════════════ */
+        #why-me { padding: 4rem 0; }
+        .wm-eyebrow { font-family: 'JetBrains Mono',monospace; font-size: .75rem; color: var(--primary,#ff4500); letter-spacing: .1em; margin-bottom: .5rem; }
+        .wm-title { font-size: clamp(1.5rem,3vw,2rem); font-weight: 800; margin-bottom: 2.5rem; background: linear-gradient(135deg, #fff, rgba(255,255,255,.6)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .wm-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 1.2rem; }
+        .wm-card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 18px; padding: 1.5rem; transition: transform .25s, border-color .25s, box-shadow .25s; }
+        .wm-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,.14); box-shadow: 0 12px 32px rgba(0,0,0,.3); }
+        .wm-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff; margin-bottom: 1rem; }
+        .wm-card-title { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: .5rem; }
+        .wm-card-desc { font-size: .8rem; color: rgba(240,240,250,.5); line-height: 1.65; }
+
     </style>
 </head>
 <body>
@@ -3496,46 +3546,105 @@
             </div>
         </section>
 
+        <!-- ══ OPEN TO WORK ══ -->
+        <section id="open-to-work">
+          <div class="otw-inner">
+            <div class="otw-badge">
+              <span class="otw-dot"></span>
+              Disponible para proyectos
+            </div>
+            <div class="otw-content">
+              <div class="otw-left">
+                <h2 class="otw-title">¿Buscas un desarrollador?</h2>
+                <p class="otw-desc">Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rápida, código limpio y comunicación directa.</p>
+                <div class="otw-tags">
+                  <span>🌐 Sitios web</span>
+                  <span>🤖 Bots IA</span>
+                  <span>⚙️ APIs REST</span>
+                  <span>📱 PWA</span>
+                  <span>🗄️ Bases de datos</span>
+                  <span>🚀 Deploy</span>
+                </div>
+              </div>
+              <div class="otw-right">
+                <div class="otw-info-card">
+                  <div class="otw-info-row">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                      <span class="otw-info-label">Disponibilidad</span>
+                      <span class="otw-info-val">Tiempo completo · Remoto</span>
+                    </div>
+                  </div>
+                  <div class="otw-info-row">
+                    <i class="fas fa-location-dot"></i>
+                    <div>
+                      <span class="otw-info-label">Ubicación</span>
+                      <span class="otw-info-val">Guatemala City 🇬🇹 · Worldwide</span>
+                    </div>
+                  </div>
+                  <div class="otw-info-row">
+                    <i class="fas fa-bolt"></i>
+                    <div>
+                      <span class="otw-info-label">Tiempo de respuesta</span>
+                      <span class="otw-info-val">Menos de 24 horas</span>
+                    </div>
+                  </div>
+                  <div class="otw-actions">
+                    <a href="https://wa.me/50241468185" target="_blank" rel="noopener" class="otw-btn otw-btn-primary">
+                      <i class="fab fa-whatsapp"></i> WhatsApp
+                    </a>
+                    <a href="mailto:wilsonenrique686@gmail.com" class="otw-btn otw-btn-ghost">
+                      <i class="fas fa-envelope"></i> Email
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+
         <!-- Stats Section -->
         <section id="stats">
-            <div class="stats-eyebrow">// números reales · actualizado 2025</div>
+            <div class="stats-eyebrow">// números reales · actualizado 2026</div>
             <h2>Mi Trayectoria</h2>
             <div class="stats-section">
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-folder-open"></i></div>
-                    <div class="stat-number" data-target="20">0</div>
+                    <div class="stat-number" data-target="25">0</div>
                     <div class="stat-label">Proyectos</div>
-                    <div class="stat-sub">web, tools & apps</div>
+                    <div class="stat-sub">web, tools &amp; apps</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-code"></i></div>
-                    <div class="stat-number" data-target="15000">0</div>
+                    <div class="stat-number" data-target="20000">0</div>
                     <div class="stat-label">Líneas de Código</div>
                     <div class="stat-sub">solo en CodeHub</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-screwdriver-wrench"></i></div>
-                    <div class="stat-number" data-target="18">0</div>
+                    <div class="stat-number" data-target="23">0</div>
                     <div class="stat-label">Herramientas</div>
-                    <div class="stat-sub">en tools.html</div>
+                    <div class="stat-sub">gratuitas en tools</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-mobile-screen"></i></div>
                     <div class="stat-number" data-target="13">0</div>
                     <div class="stat-label">Apps Premium</div>
-                    <div class="stat-sub">en novedades</div>
+                    <div class="stat-sub">Android desbloqueadas</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-robot"></i></div>
-                    <div class="stat-number" data-target="2">0</div>
-                    <div class="stat-label">APIs de IA</div>
-                    <div class="stat-sub">integradas en 2025</div>
+                    <div class="stat-number" data-target="5">0</div>
+                    <div class="stat-label">Proveedores IA</div>
+                    <div class="stat-sub">Groq, OpenRouter, Gemini+</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">☕</div>
-                    <div class="stat-number" data-target="200">0</div>
-                    <div class="stat-label">Cafés</div>
-                    <div class="stat-sub">y contando</div>
+                    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+                    <div class="stat-number" data-target="3">0</div>
+                    <div class="stat-label">Años Programando</div>
+                    <div class="stat-sub">autodidacta desde 2022</div>
                 </div>
             </div>
         </section>
@@ -3723,43 +3832,7 @@
         </section>
 
         <!-- Achievements/Badges -->
-        <section id="achievements">
-            <h2>🏆 Logros y Certificaciones</h2>
-            <div class="badges-container">
-                <div class="badge" title="Master en HTML5">
-                    <i class="fab fa-html5"></i>
-                    <span>HTML Master</span>
-                </div>
-                <div class="badge" title="Expert en CSS3">
-                    <i class="fab fa-css3-alt"></i>
-                    <span>CSS Expert</span>
-                </div>
-                <div class="badge" title="JavaScript Pro">
-                    <i class="fab fa-js-square"></i>
-                    <span>JS Pro</span>
-                </div>
-                <div class="badge" title="Python Developer">
-                    <i class="fab fa-python"></i>
-                    <span>Python Dev</span>
-                </div>
-                <div class="badge" title="Git Master">
-                    <i class="fab fa-git-alt"></i>
-                    <span>Git Master</span>
-                </div>
-                <div class="badge" title="Problem Solver">
-                    <i class="fas fa-brain"></i>
-                    <span>Problem Solver</span>
-                </div>
-                <div class="badge" title="Fast Learner">
-                    <i class="fas fa-bolt"></i>
-                    <span>Fast Learner</span>
-                </div>
-                <div class="badge" title="Team Player">
-                    <i class="fas fa-users"></i>
-                    <span>Team Player</span>
-                </div>
-            </div>
-        </section>
+        
 
         <!-- Timeline -->
         <section id="timeline">
@@ -4076,22 +4149,46 @@
             <div id="news-index-out" class="news-index-grid"></div>
         </section>
 
-        <section id="testimonials">
-            <h2>💬 Testimonios</h2>
-            <div class="testimonials-container">
-                <div class="testimonial">
-                    <i class="fas fa-quote-left quote-icon"></i>
-                    <p class="testimonial-text">
-                        "Wilson es un desarrollador excepcional. Su atención al detalle y creatividad hicieron que nuestro proyecto superara todas las expectativas. ¡Altamente recomendado!"
-                    </p>
-                    <div class="testimonial-author">María González</div>
-                    <div class="testimonial-role">CEO, Tech Solutions</div>
-                </div>
-            </div>
-        </section>
+        
 
 
         
+        <!-- ══ ¿POR QUÉ CONTRATARME? ══ -->
+        <section id="why-me">
+          <div class="wm-eyebrow">// propuesta de valor</div>
+          <h2 class="wm-title">¿Por qué trabajar conmigo?</h2>
+          <div class="wm-grid">
+            <div class="wm-card">
+              <div class="wm-icon" style="background:linear-gradient(135deg,#ff4500,#ff6b35)">
+                <i class="fas fa-rocket"></i>
+              </div>
+              <h3 class="wm-card-title">Entrega rápida</h3>
+              <p class="wm-card-desc">Proyectos listos en tiempo récord. Sin burocracia, sin demoras innecesarias. Itero rápido y entrego.</p>
+            </div>
+            <div class="wm-card">
+              <div class="wm-icon" style="background:linear-gradient(135deg,#7c3aed,#b464ff)">
+                <i class="fas fa-brain"></i>
+              </div>
+              <h3 class="wm-card-title">Autodidacta</h3>
+              <p class="wm-card-desc">Aprendo lo que el proyecto necesita. Si algo no lo sé hoy, lo domino mañana. Cero excusas.</p>
+            </div>
+            <div class="wm-card">
+              <div class="wm-icon" style="background:linear-gradient(135deg,#0088cc,#40c4ff)">
+                <i class="fas fa-code"></i>
+              </div>
+              <h3 class="wm-card-title">Stack moderno</h3>
+              <p class="wm-card-desc">HTML, CSS, JS, Node.js, Python, MongoDB, APIs de IA. Todo lo necesario para construir productos reales.</p>
+            </div>
+            <div class="wm-card">
+              <div class="wm-icon" style="background:linear-gradient(135deg,#00b248,#00e676)">
+                <i class="fas fa-comments"></i>
+              </div>
+              <h3 class="wm-card-title">Comunicación directa</h3>
+              <p class="wm-card-desc">Sin intermediarios. Hablas directamente conmigo. Actualizaciones constantes y total transparencia.</p>
+            </div>
+          </div>
+        </section>
+
         <section id="contact">
             <div class="contact-wrap">
                 <!-- Info izquierda -->
@@ -6346,114 +6443,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 
 <!-- ICONO FLOTANTE (solo icono) -->
 <!-- ====== TOOLS PREVIEW SECTION ====== -->
-<section id="tools-preview">
-  <div class="tp-header">
-    <div>
-      <div class="tp-eyebrow">// herramientas client-side</div>
-      <h2 class="tp-title">DevTools Suite</h2>
-    </div>
-    <a href="tools.html" class="tp-cta"><i class="fas fa-arrow-right"></i> Ver las 27 herramientas</a>
-  </div>
-  <div class="tp-grid">
-    <a href="tools.html#qr" class="tp-card" style="--tc:rgba(64,196,255,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#0088cc,#40c4ff)"><i class="fas fa-qrcode"></i></div>
-      <div class="tp-card-name">Generador QR</div>
-      <div class="tp-card-desc">Convierte texto o URLs en código QR al instante</div>
-    </a>
-    <a href="tools.html#pass" class="tp-card" style="--tc:rgba(255,69,0,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#ff4500,#ff6b35)"><i class="fas fa-key"></i></div>
-      <div class="tp-card-name">Contraseñas</div>
-      <div class="tp-card-desc">Genera contraseñas seguras y aleatorias</div>
-    </a>
-    <a href="tools.html#hash" class="tp-card" style="--tc:rgba(180,100,255,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#7c3aed,#b464ff)"><i class="fas fa-hashtag"></i></div>
-      <div class="tp-card-name">Hash SHA-256</div>
-      <div class="tp-card-desc">Genera hashes criptográficos en el navegador</div>
-    </a>
-    <a href="tools.html#calc" class="tp-card" style="--tc:rgba(255,189,105,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#ff8c00,#ffbd69)"><i class="fas fa-calculator"></i></div>
-      <div class="tp-card-name">Calculadora Científica</div>
-      <div class="tp-card-desc">Operaciones avanzadas y funciones matemáticas</div>
-    </a>
-    <a href="tools.html#pomodoro" class="tp-card" style="--tc:rgba(0,230,118,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#00b248,#00e676)"><i class="fas fa-clock"></i></div>
-      <div class="tp-card-name">Pomodoro</div>
-      <div class="tp-card-desc">Temporizador de productividad 25/5 min</div>
-    </a>
-    <a href="tools.html#regex" class="tp-card" style="--tc:rgba(255,107,53,0.12)">
-      <div class="tp-card-icon" style="background:linear-gradient(135deg,#cc2200,#ff4500)"><i class="fas fa-magnifying-glass-chart"></i></div>
-      <div class="tp-card-name">Regex Tester</div>
-      <div class="tp-card-desc">Prueba expresiones regulares en tiempo real</div>
-    </a>
-  </div>
-</section>
 
-<!-- ====== APP STORE PREVIEW SECTION ====== -->
-<section id="appstore-preview">
-  <div class="ap-header">
-    <div>
-      <div class="ap-eyebrow">// catálogo curado</div>
-      <h2 class="ap-title">App Premium Store</h2>
-    </div>
-    <a href="novedades.html" class="ap-cta"><i class="fas fa-store"></i> Ver todas las apps</a>
-  </div>
-  <div class="ap-grid">
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Spotify.png" alt="Spotify" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🎵'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">Spotify</div>
-        <div class="ap-app-cat">Música &amp; Audio</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/YouTube.jpeg" alt="YouTube" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='▶️'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">YouTube</div>
-        <div class="ap-app-cat">Video &amp; Entretenimiento</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Crunchyroll.png" alt="Crunchyroll" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🍥'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">Crunchyroll</div>
-        <div class="ap-app-cat">Anime &amp; Series</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Picsart.jpg" alt="PicsArt" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='🎨'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">PicsArt</div>
-        <div class="ap-app-cat">Foto &amp; Diseño</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Remini.png" alt="Remini" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='✨'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">Remini</div>
-        <div class="ap-app-cat">IA &amp; Fotografía</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-    <a href="novedades.html" class="ap-card">
-      <div class="ap-app-icon"><img src="img/Terabox.png" alt="Terabox" loading="lazy" width="48" height="48" onerror="this.parentElement.innerHTML='☁️'"></div>
-      <div class="ap-app-info">
-        <div class="ap-app-name">Terabox</div>
-        <div class="ap-app-cat">Almacenamiento Cloud</div>
-        <span class="ap-app-badge"><i class="fas fa-crown"></i> Premium</span>
-      </div>
-      <i class="fas fa-chevron-right ap-arrow"></i>
-    </a>
-  </div>
-</section>
 
 <!-- ====== DOCK FLOTANTE ====== -->
 <nav id="hub-dock" aria-label="Accesos rápidos">
