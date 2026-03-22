@@ -17,7 +17,7 @@
     <meta property="og:url" content="https://wilson360-labs.vercel.app/">
     <meta property="og:title" content="Wilson.E — Desarrollador Web Full Stack | CodeHub">
     <meta property="og:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas, proyectos web y apps Android. Disponible para freelance.">
-    <meta property="og:image" content="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png">
+    <meta property="og:image" content="https://i.ibb.co/G4JGM65y/1749331794644.jpg">
     <meta property="og:locale" content="es_GT">
     <meta property="og:site_name" content="CodeHub by Wilson.E">
 
@@ -26,7 +26,7 @@
     <meta name="twitter:url" content="https://wilson360-labs.vercel.app/">
     <meta name="twitter:title" content="Wilson.E — Desarrollador Web Full Stack">
     <meta name="twitter:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas y proyectos web.">
-    <meta name="twitter:image" content="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png">
+    <meta name="twitter:image" content="https://i.ibb.co/G4JGM65y/1749331794644.jpg">
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -34,7 +34,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CodeHub">
-    <link rel="apple-touch-icon" href="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png">
+    <link rel="apple-touch-icon" href="https://i.ibb.co/G4JGM65y/1749331794644.jpg">
 
     <!-- Schema.org JSON-LD (Google rich results) -->
     <script type="application/ld+json">
@@ -181,6 +181,10 @@
 /* ====== SECTION: TOOLS PREVIEW ====== */
 #tools-preview {
   padding: 80px 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 .tp-header {
   display: flex;
@@ -1845,6 +1849,12 @@
   transform: scale(1) translateY(0);
   opacity: 1;
   pointer-events: all;
+  animation: panelBounceIn .4s cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes panelBounceIn {
+  0%   { transform: scale(.88) translateY(20px); opacity: 0; }
+  60%  { transform: scale(1.02) translateY(-3px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 /* Top accent line */
 #ai-panel::before {
@@ -1860,13 +1870,22 @@
 
 /* ── Header ── */
 .ai-head {
-  padding: 1rem 1rem .85rem;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: .9rem 1rem .8rem;
+  border-bottom: 1px solid rgba(124,77,255,.15);
   display: flex;
   align-items: center;
   gap: .8rem;
   flex-shrink: 0;
-  background: var(--ai-surface-2);
+  background: linear-gradient(135deg, rgba(124,77,255,.12) 0%, rgba(68,138,255,.06) 100%);
+  position: relative;
+  overflow: hidden;
+}
+.ai-head::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 0% 50%, rgba(124,77,255,.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 .ai-head-avatar {
   width: 40px; height: 40px;
@@ -1902,14 +1921,14 @@
 }
 .ai-head-actions { display: flex; gap: .35rem; }
 .ai-head-btn {
-  background: rgba(255,255,255,.06); border: none;
+  background: transparent; border: none;
   color: var(--ai-text-muted);
-  width: 30px; height: 30px; border-radius: 8px;
-  cursor: pointer; font-size: .8rem; transition: all .18s;
+  width: 24px; height: 24px; border-radius: 6px;
+  cursor: pointer; font-size: .72rem; transition: all .18s;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.ai-head-btn:hover { background: rgba(124,77,255,.2); color: var(--ai-text); }
+.ai-head-btn:hover { background: rgba(124,77,255,.18); color: var(--ai-text); transform: scale(1.1); }
 
 /* ── Messages ── */
 #ai-msgs {
@@ -1952,16 +1971,20 @@
   word-break: break-word;
 }
 .ai-msg-wrap.user .ai-msg {
-  background: var(--ai-user-bg);
-  border: 1px solid var(--ai-user-border);
-  color: #D8D8F0;
+  background: linear-gradient(135deg, rgba(124,77,255,.28), rgba(68,138,255,.18));
+  border: 1px solid rgba(124,77,255,.5);
+  color: #DDD8FF;
   border-bottom-right-radius: 5px;
+  box-shadow: 0 2px 12px rgba(124,77,255,.15);
 }
 .ai-msg-wrap.ai .ai-msg {
-  background: var(--ai-bot-bg);
-  border: 1px solid var(--ai-bot-border);
+  background: rgba(36,36,56,.9);
+  border: 1px solid rgba(255,255,255,.07);
   color: var(--ai-text);
   border-bottom-left-radius: 5px;
+}
+.ai-msg-wrap.ai .ai-msg:hover {
+  border-color: rgba(124,77,255,.2);
 }
 .ai-msg-time {
   font-size: .59rem; color: var(--ai-text-muted);
@@ -2012,29 +2035,37 @@
   background: var(--ai-surface-2);
 }
 .ai-sug-btn {
-  padding: .32rem .75rem;
+  padding: .3rem .72rem;
   border-radius: 20px;
-  border: 1px solid rgba(124,77,255,.28);
-  background: rgba(124,77,255,.08);
-  color: rgba(200,200,220,.7);
+  border: 1px solid rgba(124,77,255,.22);
+  background: rgba(124,77,255,.07);
+  color: rgba(200,200,220,.65);
   font-family: 'Space Grotesk',system-ui,sans-serif;
-  font-size: .7rem; cursor: pointer;
-  transition: all .18s;
+  font-size: .69rem; cursor: pointer;
+  transition: all .2s cubic-bezier(.2,.9,.2,1);
+  position: relative; overflow: hidden;
+}
+.ai-sug-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(124,77,255,.15), rgba(68,138,255,.1));
+  opacity: 0; transition: opacity .2s;
 }
 .ai-sug-btn:hover {
-  border-color: rgba(124,77,255,.6);
-  background: rgba(124,77,255,.18);
+  border-color: rgba(124,77,255,.55);
   color: var(--ai-text);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 4px 12px rgba(124,77,255,.2);
 }
+.ai-sug-btn:hover::before { opacity: 1; }
 
 /* ── Input ── */
 .ai-input-wrap {
-  padding: .75rem .9rem .85rem;
-  border-top: 1px solid rgba(255,255,255,.05);
-  display: flex; flex-direction: column; gap: .45rem;
+  padding: .7rem .85rem .8rem;
+  border-top: 1px solid rgba(124,77,255,.1);
+  display: flex; flex-direction: column; gap: .4rem;
   flex-shrink: 0;
-  background: var(--ai-surface-2);
+  background: linear-gradient(180deg, var(--ai-surface-2), rgba(14,14,22,.98));
 }
 .ai-input-row { display: flex; gap: .45rem; align-items: flex-end; }
 #ai-input {
@@ -4173,7 +4204,7 @@
                     <div class="about-avatar-ring">
                         <div class="about-avatar-glow"></div>
                         <div class="about-avatar-circle">
-                            <img src="https://i.ibb.co/r2sr0jG5/Pngtree-software-engineer-3d-icon-in-20173912.png" alt="Wilson.E — Dev Icon" class="about-avatar-img" fetchpriority="high" width="200" height="200" decoding="async" loading="eager">
+                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg" alt="Wilson.E — Dev Icon" class="about-avatar-img" fetchpriority="high" width="200" height="200" decoding="async" loading="eager">
                         </div>
                         <div class="about-avatar-badge">
                             <span class="about-pulse"></span>
