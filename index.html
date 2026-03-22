@@ -1891,10 +1891,40 @@
             margin-bottom: .9rem;
         }
         .hero-name {
-            background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--primary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #fff;
+            position: relative;
+        }
+
+        /* ── LIQUID EFFECT — CodeHub & Wilson.E ── */
+        .liquid-word {
+            display: inline-block;
+            position: relative;
+            cursor: default;
+        }
+        .liquid-letter {
+            display: inline-block;
+            will-change: transform;
+            transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), color 0.25s;
+            position: relative;
+            z-index: 1;
+        }
+        .liquid-canvas-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            border-radius: 4px;
+        }
+        .about-pro-name {
+            position: relative;
+        }
+        .header-logo {
+            position: relative;
+        }
+        .header-logo-text,
+        .header-logo-badge {
+            position: relative;
+            z-index: 1;
         }
         .hero-desc {
             font-size: .95rem;
@@ -2889,7 +2919,7 @@
             // Encontraste el secreto de CodeHub 🎉<br>
             Eres uno de los pocos que llegó hasta aquí.<br><br>
             <span>→ 7 clicks en el logo</span> — misión cumplida.<br>
-            Wilson.E te tiene un mensaje especial:
+            <span class="liquid-word" id="liq-egg-wilson" data-liq-size="small">Wilson.E</span> te tiene un mensaje especial:
             <br><br>
             <span style="color:#ffbd69;font-size:1.1rem">"Gracias por explorar CodeHub.<br>Cada herramienta aquí fue construida con pasión."</span><br>
             <span style="opacity:.4;font-size:.75rem">— Wilson.E, Guatemala 🇬🇹</span>
@@ -3079,9 +3109,9 @@
             <!-- Logo -->
             <a class="header-logo" href="#" id="logo-egg" onclick="eggClick(event)">
                 <span class="header-logo-text">
-                    <span class="bracket">&lt;</span>Wilson.E<span class="bracket">/&gt;</span>
+                    <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
                 </span>
-                <span class="header-logo-badge">CodeHub</span>
+                <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small">CodeHub</span>
                 <span class="egg-counter" id="egg-counter"></span>
             </a>
 
@@ -3243,7 +3273,7 @@
                     </div>
                     <h1 class="hero-title">
                         Hola, soy<br>
-                        <span class="hero-name">Wilson.E</span>
+                        <span class="hero-name liquid-word" id="liq-hero-wilson" data-liq-size="large">Wilson.E</span>
                     </h1>
                     <p class="hero-desc">
                         Desarrollador web autodidacta. Construyo portfolios, herramientas web, bots con IA y servidores con Node.js. 
@@ -4079,7 +4109,7 @@
                 <!-- Columna derecha: Info -->
                 <div class="about-pro-right">
                     <div class="about-eyebrow">// sobre el dev</div>
-                    <h2 class="about-pro-name">Wilson<span style="color:var(--primary)">.E</span></h2>
+                    <h2 class="about-pro-name"><span class="liquid-word" id="liq-about-wilson" data-liq-size="medium">Wilson.E</span></h2>
                     <div class="about-pro-role">
                         <span class="about-role-dot"></span>
                         <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
@@ -7370,6 +7400,125 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   })();
   </script>
+
+<script>
+/* ══════════════════════════════════════════
+   LIQUID EFFECT — CodeHub & Wilson.E
+   Metaball canvas + letter wave
+══════════════════════════════════════════ */
+(function initLiquid() {
+  var PALETTE = [
+    [255,69,0],[200,40,0],[255,120,30],[108,58,245],[64,196,255],[180,50,200]
+  ];
+  function Ball(x,y,r){
+    this.x=x;this.y=y;this.r=r;
+    this.vx=(Math.random()-.5)*.9;this.vy=(Math.random()-.5)*.9;
+    this.col=PALETTE[Math.floor(Math.random()*PALETTE.length)];
+    this.life=.7+Math.random()*.3;this.decay=.005+Math.random()*.004;
+  }
+  Ball.prototype.update=function(W,H){
+    this.vx*=.97;this.vy*=.97;this.x+=this.vx;this.y+=this.vy;
+    if(this.x<this.r){this.x=this.r;this.vx*=-.6;}
+    if(this.x>W-this.r){this.x=W-this.r;this.vx*=-.6;}
+    if(this.y<this.r){this.y=this.r;this.vy*=-.6;}
+    if(this.y>H-this.r){this.y=H-this.r;this.vy*=-.6;}
+    this.life-=this.decay;
+  };
+  Ball.prototype.alive=function(){return this.life>0;};
+
+  function initWrapper(wrapper){
+    var size=wrapper.dataset.liqSize||"medium";
+    var rMin=size==="large"?22:size==="medium"?16:10;
+    var rMax=size==="large"?38:size==="medium"?26:16;
+    var count=size==="large"?18:size==="medium"?12:8;
+    var cv=document.createElement("canvas");
+    cv.className="liquid-canvas-bg";
+    if(getComputedStyle(wrapper).position==="static") wrapper.style.position="relative";
+    wrapper.insertBefore(cv,wrapper.firstChild);
+    var ctx=cv.getContext("2d");
+    var W,H,balls=[],lastSpawn=0,mx=-999,my=-999;
+    function resize(){W=cv.width=wrapper.offsetWidth||120;H=cv.height=wrapper.offsetHeight||40;}
+    resize();
+    if(window.ResizeObserver) new ResizeObserver(resize).observe(wrapper);
+    for(var i=0;i<count;i++) balls.push(new Ball(Math.random()*W,Math.random()*H,rMin+Math.random()*(rMax-rMin)));
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      balls=balls.filter(function(b){return b.alive();});
+      if(balls.length<Math.floor(count*.6)) balls.push(new Ball(Math.random()*W,Math.random()*H,rMin+Math.random()*(rMax-rMin)));
+      var now=Date.now();
+      if(mx>0&&now-lastSpawn>90){
+        var nb=new Ball(mx+(Math.random()-.5)*30,my+(Math.random()-.5)*30,rMin+Math.random()*(rMax-rMin));
+        nb.vx=(Math.random()-.5)*2;nb.vy=(Math.random()-.5)*2;
+        balls.push(nb);lastSpawn=now;
+      }
+      balls.forEach(function(b){
+        b.update(W,H);
+        if(mx>0){var dx=mx-b.x,dy=my-b.y,d=Math.sqrt(dx*dx+dy*dy);if(d<80){b.vx+=dx*.01;b.vy+=dy*.01;}}
+      });
+      ctx.save();ctx.globalCompositeOperation="screen";
+      balls.forEach(function(b){
+        var a=b.life*.6,r=b.col[0],g=b.col[1],bl=b.col[2];
+        var g2=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*2.4);
+        g2.addColorStop(0,"rgba("+r+","+g+","+bl+","+a+")");
+        g2.addColorStop(.45,"rgba("+r+","+g+","+bl+","+(a*.5)+")");
+        g2.addColorStop(1,"rgba("+r+","+g+","+bl+",0)");
+        ctx.beginPath();ctx.arc(b.x,b.y,b.r*2.4,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+      });
+      ctx.restore();ctx.save();
+      balls.forEach(function(b){
+        var a=b.life*.2,r=b.col[0],g=b.col[1],bl=b.col[2];
+        var g2=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+        g2.addColorStop(0,"rgba("+r+","+g+","+bl+","+a+")");
+        g2.addColorStop(1,"rgba("+r+","+g+","+bl+",0)");
+        ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+      });
+      ctx.restore();
+      requestAnimationFrame(draw);
+    }
+    draw();
+    wrapper.addEventListener("mousemove",function(e){var rect=wrapper.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top;});
+    wrapper.addEventListener("mouseleave",function(){mx=-999;my=-999;});
+    var textNodes=[];
+    wrapper.childNodes.forEach(function(n){if(n.nodeType===Node.TEXT_NODE&&n.textContent.trim()) textNodes.push(n);});
+    textNodes.forEach(function(node){
+      var frag=document.createDocumentFragment();
+      node.textContent.split("").forEach(function(ch){
+        if(ch===" "){frag.appendChild(document.createTextNode("\u00A0"));return;}
+        var span=document.createElement("span");
+        span.className="liquid-letter";span.textContent=ch;
+        span.style.position="relative";span.style.zIndex="1";
+        frag.appendChild(span);
+      });
+      node.replaceWith(frag);
+    });
+    var letters=wrapper.querySelectorAll(".liquid-letter");
+    var waveT=0,waving=true;
+    (function wave(){
+      if(waving){waveT+=.035;letters.forEach(function(el,i){var y=Math.sin(waveT+i*.55)*3;var s=1+Math.sin(waveT+i*.7)*.018;el.style.transform="translateY("+y+"px) scale("+s+")";});}
+      requestAnimationFrame(wave);
+    })();
+    letters.forEach(function(el,idx){
+      el.addEventListener("mouseenter",function(){
+        waving=false;
+        letters.forEach(function(other,j){
+          var dist=Math.abs(j-idx);
+          var amp=Math.max(0,12-dist*2.5);
+          var scale=1+Math.max(0,.2-dist*.045);
+          var color=dist===0?"#ff6535":dist===1?"#ff9060":dist===2?"#ffb590":"#fff";
+          setTimeout(function(){other.style.transform="translateY(-"+amp+"px) scale("+scale+")";other.style.color=color;},dist*35);
+        });
+      });
+      el.addEventListener("mouseleave",function(){
+        setTimeout(function(){waving=true;letters.forEach(function(l){l.style.color="";});},500);
+      });
+    });
+  }
+
+  function initAll(){document.querySelectorAll(".liquid-word").forEach(initWrapper);}
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",initAll);
+  else initAll();
+})();
+</script>
 
 </body>
 </html>
