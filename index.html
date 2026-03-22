@@ -2667,23 +2667,68 @@
             line-height: 1.7; margin-bottom: 1.5rem;
             max-width: 600px;
         }
-        /* ── Pueblo Carousel ── */
-        .pueblo-carousel{position:relative;border-radius:20px;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 24px 64px rgba(0,0,0,.6);aspect-ratio:16/7;background:#0a0a14;}
-        .pueblo-slides{display:flex;height:100%;transition:transform .55s cubic-bezier(.4,0,.2,1);}
-        .pueblo-slide{min-width:100%;height:100%;position:relative;flex-shrink:0;}
-        .pueblo-slide img{width:100%;height:100%;object-fit:cover;display:block;}
-        .pueblo-slide-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%);display:flex;flex-direction:column;justify-content:flex-end;padding:1.2rem 1.4rem;}
-        .pueblo-slide-label{font-size:.78rem;color:rgba(255,255,255,.9);font-family:var(--mono);letter-spacing:.05em;}
-        .pueblo-slide-sub{font-size:.65rem;color:rgba(255,255,255,.5);font-family:var(--mono);margin-top:2px;}
-        .pueblo-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;z-index:5;backdrop-filter:blur(8px);}
-        .pueblo-arrow:hover{background:rgba(255,69,0,.7);border-color:transparent;transform:translateY(-50%) scale(1.1);}
-        .pueblo-arrow.prev{left:12px;}
-        .pueblo-arrow.next{right:12px;}
-        .pueblo-dots{position:absolute;bottom:10px;right:14px;display:flex;gap:5px;z-index:5;}
-        .pueblo-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);cursor:pointer;transition:all .25s;}
-        .pueblo-dot.active{background:#ff4500;width:18px;border-radius:3px;}
-        .pueblo-counter{position:absolute;top:12px;right:14px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);font-size:.65rem;font-family:var(--mono);padding:.2rem .55rem;border-radius:20px;z-index:5;}
-        @media(max-width:600px){.pueblo-carousel{aspect-ratio:4/3;}}
+        /* ── Expanding Panels Carrusel ── */
+        .pueblo-panels {
+            display: flex;
+            width: 100%;
+            height: 340px;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .pueblo-panel {
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            flex: 0.5;
+            border-radius: 20px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 700ms ease-in;
+        }
+        .pueblo-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity .4s;
+        }
+        .pueblo-panel.active::before { opacity: 1; }
+        .pueblo-panel h3 {
+            color: #fff;
+            position: absolute;
+            bottom: 0; left: 20px;
+            font-size: 1rem;
+            font-family: var(--font, 'Space Grotesk', sans-serif);
+            font-weight: 700;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity .3s .2s, transform .3s .2s;
+            margin: 0 0 16px 0;
+            text-shadow: 0 2px 8px rgba(0,0,0,.5);
+        }
+        .pueblo-panel h3 span {
+            display: block;
+            font-size: .7rem;
+            font-family: var(--mono, 'JetBrains Mono', monospace);
+            color: rgba(255,255,255,.6);
+            font-weight: 400;
+            margin-top: 2px;
+        }
+        .pueblo-panel.active { flex: 5; }
+        .pueblo-panel.active h3 {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @media (max-width: 600px) {
+            .pueblo-panels { height: 220px; gap: 6px; }
+            .pueblo-panel { border-radius: 12px; }
+            .pueblo-panel h3 { font-size: .82rem; left: 14px; }
+        }
+        @media (max-width: 380px) {
+            .pueblo-panels { height: 180px; }
+        }
         .pueblo-video-wrap {
             margin-top: 1rem;
         }
@@ -4071,46 +4116,19 @@
                 </div>
             </div>
 
-            <!-- Carrusel San Luis Jilotepeque -->
-            <div class="pueblo-carousel" id="pueblo-carousel">
-              <div class="pueblo-slides" id="pueblo-slides">
-                <div class="pueblo-slide">
-                  <img src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque" loading="lazy" decoding="async">
-                  <div class="pueblo-slide-overlay">
-                    <div class="pueblo-slide-label">📍 San Luis Jilotepeque</div>
-                    <div class="pueblo-slide-sub">Jalapa, Guatemala</div>
-                  </div>
-                </div>
-                <div class="pueblo-slide">
-                  <img src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Paisaje" loading="lazy" decoding="async">
-                  <div class="pueblo-slide-overlay">
-                    <div class="pueblo-slide-label">🏔️ Paisaje montañoso</div>
-                    <div class="pueblo-slide-sub">Vista desde el pueblo</div>
-                  </div>
-                </div>
-                <div class="pueblo-slide">
-                  <img src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Vista" loading="lazy" decoding="async">
-                  <div class="pueblo-slide-overlay">
-                    <div class="pueblo-slide-label">🌄 Amanecer</div>
-                    <div class="pueblo-slide-sub">Noviembre 2024</div>
-                  </div>
-                </div>
-                <div class="pueblo-slide">
-                  <img src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Naturaleza" loading="lazy" decoding="async">
-                  <div class="pueblo-slide-overlay">
-                    <div class="pueblo-slide-label">🌿 Naturaleza</div>
-                    <div class="pueblo-slide-sub">Enero 2025</div>
-                  </div>
-                </div>
+            <!-- Expanding Panels — San Luis Jilotepeque -->
+            <div class="pueblo-panels" id="pueblo-panels">
+              <div class="pueblo-panel active" style="background-image:url('https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg')">
+                <h3>📍 San Luis Jilotepeque<span>Jalapa, Guatemala</span></h3>
               </div>
-              <button class="pueblo-arrow prev" onclick="puebloSlide(-1)" aria-label="Anterior">&#8249;</button>
-              <button class="pueblo-arrow next" onclick="puebloSlide(1)" aria-label="Siguiente">&#8250;</button>
-              <div class="pueblo-counter" id="pueblo-counter">1 / 4</div>
-              <div class="pueblo-dots" id="pueblo-dots">
-                <div class="pueblo-dot active" onclick="puebloGoTo(0)"></div>
-                <div class="pueblo-dot" onclick="puebloGoTo(1)"></div>
-                <div class="pueblo-dot" onclick="puebloGoTo(2)"></div>
-                <div class="pueblo-dot" onclick="puebloGoTo(3)"></div>
+              <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/9gt4vNS/20250101-122927.jpg')">
+                <h3>🏔️ Paisaje<span>Vista desde el pueblo</span></h3>
+              </div>
+              <div class="pueblo-panel" style="background-image:url('https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg')">
+                <h3>🌄 Amanecer<span>Noviembre 2024</span></h3>
+              </div>
+              <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/cF1zZJn/20250101-124645.jpg')">
+                <h3>🌿 Naturaleza<span>Enero 2025</span></h3>
               </div>
             </div>
 
@@ -7341,44 +7359,15 @@ document.addEventListener('DOMContentLoaded', () => {
   </script>
 
   <script>
-  // ── Pueblo Carousel ──────────────────────────
+  // ── Expanding Panels ─────────────────────────
   (function() {
-    var current = 0, total = 4, autoTimer = null;
-    function update() {
-      var slides = document.getElementById('pueblo-slides');
-      var counter = document.getElementById('pueblo-counter');
-      var dots = document.querySelectorAll('.pueblo-dot');
-      if (!slides) return;
-      slides.style.transform = 'translateX(-' + (current * 100) + '%)';
-      if (counter) counter.textContent = (current + 1) + ' / ' + total;
-      dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
-    }
-    window.puebloSlide = function(dir) {
-      current = (current + dir + total) % total;
-      update(); resetAuto();
-    };
-    window.puebloGoTo = function(idx) {
-      current = idx; update(); resetAuto();
-    };
-    function resetAuto() {
-      clearInterval(autoTimer);
-      autoTimer = setInterval(function() { current = (current + 1) % total; update(); }, 4000);
-    }
-    var carousel = document.getElementById('pueblo-carousel');
-    if (carousel) {
-      var startX = 0;
-      carousel.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, { passive: true });
-      carousel.addEventListener('touchend', function(e) {
-        var diff = startX - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 40) puebloSlide(diff > 0 ? 1 : -1);
-      }, { passive: true });
-      if ('IntersectionObserver' in window) {
-        var obs = new IntersectionObserver(function(entries) {
-          entries.forEach(function(e) { if (e.isIntersecting) resetAuto(); else clearInterval(autoTimer); });
-        }, { threshold: .3 });
-        obs.observe(carousel);
-      } else { resetAuto(); }
-    }
+    var panels = document.querySelectorAll('.pueblo-panel');
+    panels.forEach(function(panel) {
+      panel.addEventListener('click', function() {
+        panels.forEach(function(p) { p.classList.remove('active'); });
+        panel.classList.add('active');
+      });
+    });
   })();
   </script>
 
