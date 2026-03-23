@@ -1767,7 +1767,7 @@
 /* Panel */
 #ai-panel{
   position:fixed;right:20px;bottom:80px;width:375px;
-  max-height:min(570px,calc(100vh - 110px));min-height:430px;
+  max-height:min(600px,calc(100vh - 110px));min-height:460px;
   background:var(--ai-bg);border:1px solid var(--ai-border);border-radius:22px;
   display:flex;flex-direction:column;z-index:4999;overflow:hidden;
   box-shadow:0 20px 60px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.04) inset,0 0 40px rgba(124,77,255,.08);
@@ -1791,47 +1791,53 @@
 .ai-head-actions{display:none;}
 /* ── AI bottom action bar ── */
 .ai-bottom-bar{
-  display:flex;justify-content:center;gap:2rem;
-  padding:.7rem 1rem .8rem;
-  border-top:1px solid var(--ai-border2);
-  background:var(--ai-s2);
+  display:flex;justify-content:center;align-items:center;gap:2.5rem;
+  padding:.65rem 1rem .75rem;
+  border-top:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.02);
   flex-shrink:0;
+  min-height:72px;
 }
 .ai-circle-btn{
-  display:flex;flex-direction:column;align-items:center;gap:.3rem;
+  display:flex;flex-direction:column;align-items:center;gap:.28rem;
   background:transparent;border:none;cursor:pointer;
-  transition:all .2s cubic-bezier(.2,.9,.2,1);
-  padding:.2rem .5rem;
+  transition:transform .2s cubic-bezier(.2,.9,.2,1);
+  padding:.15rem .4rem;
+  flex-shrink:0;
 }
-.ai-circle-btn i{
-  width:40px;height:40px;border-radius:50%;
+.ai-circle-btn:hover{transform:translateY(-2px);}
+.ai-circle-btn:active{transform:scale(.93);}
+.ai-circle-icon{
+  width:42px;height:42px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:.9rem;
+  font-size:.88rem;
   border:1.5px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.06);
-  color:var(--ai-muted);
-  transition:all .2s cubic-bezier(.2,.9,.2,1);
+  background:rgba(255,255,255,.05);
+  color:rgba(200,200,230,.55);
+  transition:all .22s cubic-bezier(.2,.9,.2,1);
+  pointer-events:none;
 }
 .ai-circle-label{
-  font-size:.58rem;color:var(--ai-muted);
+  font-size:.57rem;
+  color:rgba(200,200,230,.4);
   font-family:'JetBrains Mono',monospace;
   transition:color .2s;
   letter-spacing:.04em;
+  pointer-events:none;
+  white-space:nowrap;
 }
-.ai-circle-btn:hover i{transform:scale(1.1);}
-.ai-circle-btn:active i{transform:scale(.92);}
-.ai-circle-clear:hover i{
-  background:rgba(124,77,255,.25);
+.ai-circle-clear:hover .ai-circle-icon{
+  background:rgba(124,77,255,.22);
   border-color:rgba(124,77,255,.5);
   color:#c4b8ff;
-  box-shadow:0 0 14px rgba(124,77,255,.4);
+  box-shadow:0 0 16px rgba(124,77,255,.45);
 }
 .ai-circle-clear:hover .ai-circle-label{color:#c4b8ff;}
-.ai-circle-close:hover i{
-  background:rgba(255,69,0,.2);
+.ai-circle-close:hover .ai-circle-icon{
+  background:rgba(255,69,0,.18);
   border-color:rgba(255,69,0,.45);
   color:#ff6535;
-  box-shadow:0 0 14px rgba(255,69,0,.3);
+  box-shadow:0 0 16px rgba(255,69,0,.35);
 }
 .ai-circle-close:hover .ai-circle-label{color:#ff6535;}
 /* mood bar */
@@ -4175,7 +4181,7 @@
                 <!-- Columna derecha: Info -->
                 <div class="about-pro-right">
                     <div class="about-eyebrow">// sobre el dev</div>
-                    <h2 class="about-pro-name"><span class="liquid-word" id="liq-about-wilson" data-liq-size="medium">Wilson.E</span></h2>
+                    <h2 class="about-pro-name">Wilson.E</h2>
                     <div class="about-pro-role">
                         <span class="about-role-dot"></span>
                         <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
@@ -6522,11 +6528,11 @@ async function sendEmail(e) {
   <!-- Barra de acciones inferior -->
   <div class="ai-bottom-bar">
     <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversación">
-      <i class="fas fa-rotate-left"></i>
+      <div class="ai-circle-icon"><i class="fas fa-rotate-left"></i></div>
       <span class="ai-circle-label">Restablecer</span>
     </button>
     <button class="ai-circle-btn ai-circle-close" id="ai-close-btn" title="Cerrar chat" aria-label="Cerrar chat">
-      <i class="fas fa-times"></i>
+      <div class="ai-circle-icon"><i class="fas fa-times"></i></div>
       <span class="ai-circle-label">Cerrar</span>
     </button>
   </div>
@@ -7504,6 +7510,7 @@ function setAIMood(btn) {
   });
 }
 
+</script>
 
 <script>
 /* ── LIQUID EFFECT — CodeHub & Wilson.E ── */
