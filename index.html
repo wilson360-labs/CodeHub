@@ -2671,49 +2671,83 @@
         .wx-error i { color: var(--a); }
 
         /* ═══ NOTICIAS INDEX ═════════════════════════════════════ */
+        /* ── BLOGGER SECTION ── */
         #news-section {
             background: linear-gradient(135deg, rgba(0,0,0,.5), rgba(20,20,38,.6));
             border: 2px solid rgba(255,69,0,.2);
         }
-        .news-tabs-index { display: flex; gap: .4rem; flex-wrap: wrap; }
-        .news-idx-tab {
-            padding: .3rem .75rem; border-radius: 20px;
-            border: 1px solid rgba(255,69,0,.2);
-            background: transparent; color: var(--muted);
-            font-family: var(--font); font-size: .73rem; font-weight: 700;
-            cursor: pointer; transition: all .18s;
-        }
-        .news-idx-tab:hover, .news-idx-tab.active-idx {
-            border-color: var(--primary); color: var(--accent);
-            background: rgba(255,69,0,.1);
-        }
-        .news-index-grid {
+        .blogger-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
-            gap: .7rem;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.2rem;
+            margin-top: 1.5rem;
         }
-        .news-idx-card {
-            display: flex; align-items: flex-start; gap: .7rem;
-            padding: .8rem 1rem;
+        .blogger-card {
+            display: flex; flex-direction: column;
             background: rgba(255,255,255,.03);
             border: 1px solid rgba(255,255,255,.07);
-            border-radius: 12px; cursor: pointer;
+            border-radius: 14px; overflow: hidden;
             text-decoration: none;
-            transition: all .2s;
+            transition: all .22s ease;
         }
-        .news-idx-card:hover {
-            border-color: rgba(255,69,0,.35);
-            background: rgba(255,69,0,.05);
-            transform: translateY(-2px);
+        .blogger-card:hover {
+            border-color: rgba(255,69,0,.4);
+            background: rgba(255,69,0,.04);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0,0,0,.4);
         }
-        .news-idx-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: .1rem; }
-        .news-idx-title {
-            font-size: .82rem; font-weight: 600;
-            color: var(--text); line-height: 1.4; margin-bottom: .25rem;
+        .blogger-card-thumb {
+            width: 100%; height: 160px;
+            background: linear-gradient(135deg, rgba(255,69,0,.15), rgba(255,189,105,.1));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.5rem; color: rgba(255,255,255,.15);
+            flex-shrink: 0; overflow: hidden;
         }
-        .news-idx-meta {
+        .blogger-card-thumb img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .blogger-card-body {
+            padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .45rem; flex: 1;
+        }
+        .blogger-card-label {
+            font-family: var(--mono); font-size: .63rem;
+            color: var(--primary); text-transform: uppercase; letter-spacing: .08em;
+        }
+        .blogger-card-title {
+            font-size: .9rem; font-weight: 700;
+            color: var(--text); line-height: 1.4;
+        }
+        .blogger-card-desc {
+            font-size: .78rem; color: var(--muted); line-height: 1.55; flex: 1;
+        }
+        .blogger-card-meta {
             font-size: .67rem; font-family: var(--mono); color: var(--muted);
+            display: flex; gap: .6rem; align-items: center; margin-top: .3rem;
         }
+        .blogger-card-meta i { color: var(--primary); font-size: .6rem; }
+        .blogger-view-btn {
+            display: inline-flex; align-items: center; gap: .4rem;
+            margin-top: 1.8rem;
+            padding: .55rem 1.3rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff; font-size: .8rem; font-weight: 700;
+            border-radius: 10px; text-decoration: none;
+            box-shadow: 0 4px 14px rgba(255,69,0,.28);
+            transition: all .2s;
+            align-self: flex-start;
+        }
+        .blogger-view-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,69,0,.42); }
+        .blogger-loading {
+            text-align: center; padding: 2.5rem 1rem;
+            font-family: var(--mono); font-size: .8rem; color: var(--muted);
+        }
+        .blogger-loading i { font-size: 1.4rem; color: var(--primary); display: block; margin-bottom: .6rem; animation: spin 1.2s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .blogger-error {
+            text-align: center; padding: 2rem 1rem;
+            font-size: .82rem; color: var(--muted);
+        }
+        .blogger-error i { font-size: 1.6rem; color: rgba(255,69,0,.5); display: block; margin-bottom: .5rem; }
 
         
 
@@ -3335,7 +3369,6 @@
                     <li><a href="#stats">Estadísticas</a></li>
                     <li><a href="#skills">Habilidades</a></li>
                     <li><a href="#services">Servicios</a></li>
-                    <li><a href="#timeline">Experiencia</a></li>
                     <li><a href="#latest-projects">Proyectos</a></li>
                     <li><a href="#contact">Contacto</a></li>
                     <li><a href="downloader.html">⬇ Descargar</a></li>
@@ -3460,7 +3493,6 @@
             <li><a href="#stats" onclick="closeMobileNav()">📊 Estadísticas</a></li>
             <li><a href="#skills" onclick="closeMobileNav()">💡 Habilidades</a></li>
             <li><a href="#services" onclick="closeMobileNav()">🛠 Servicios</a></li>
-            <li><a href="#timeline" onclick="closeMobileNav()">📅 Experiencia</a></li>
             <li><a href="#latest-projects" onclick="closeMobileNav()">🚀 Proyectos</a></li>
             <li><a href="#contact" onclick="closeMobileNav()">✉️ Contacto</a></li>
             <div class="mobile-nav-divider"></div>
@@ -3830,234 +3862,9 @@
         <!-- Achievements/Badges -->
         
 
-        <!-- Timeline -->
-        <section id="timeline">
-            <h2>📅 Mi Experiencia</h2>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-year">2024 - Presente</div>
-                    <div class="timeline-title">Desarrollador Web Freelance</div>
-                    <div class="timeline-desc">
-                        Creación de sitios web modernos y aplicaciones interactivas para clientes locales e internacionales.
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2023</div>
-                    <div class="timeline-title">Aprendizaje Intensivo</div>
-                    <div class="timeline-desc">
-                        Estudios autodidactas en desarrollo web full stack, Python, JavaScript y tecnologías modernas.
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-year">2022</div>
-                    <div class="timeline-title">Inicio en Programación</div>
-                    <div class="timeline-desc">
-                        Primeros pasos en el mundo del desarrollo, comenzando con HTML, CSS y JavaScript básico.
-                    </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Latest Projects -->
-        <section id="latest-projects">
-            <!-- Encabezado con filtros -->
-            <div class="proj-header">
-                <div>
-                    <div class="proj-eyebrow">// proyectos seleccionados</div>
-                    <h2 style="-webkit-text-fill-color:transparent;background:linear-gradient(135deg,#fff 0%,var(--accent) 55%,var(--primary) 100%);-webkit-background-clip:text;background-clip:text;margin-bottom:0">Trabajo Reciente</h2>
-                </div>
-                <div class="proj-filters">
-                    <button class="pf-btn active" onclick="filterProjects('all',this)">Todos</button>
-                    <button class="pf-btn" onclick="filterProjects('web',this)">Web</button>
-                    <button class="pf-btn" onclick="filterProjects('python',this)">Python</button>
-                    <button class="pf-btn" onclick="filterProjects('tools',this)">Tools</button>
-                </div>
-            </div>
 
-            <!-- Grid de proyectos -->
-            <div class="proj-grid" id="proj-grid">
 
-                <!-- 1 · CodeHub Portfolio -->
-                <article class="proj-card featured" data-cat="web">
-                    <div class="proj-thumb" style="--g1:#ff4500;--g2:#ff6b35">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon"><i class="fas fa-globe"></i></div>
-                        <div class="proj-thumb-lines">
-                            <span></span><span></span><span></span>
-                        </div>
-                        <div class="proj-status live">En vivo</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2024–2025</span>
-                            <span class="proj-cat">Portfolio</span>
-                        </div>
-                        <h3 class="proj-title">CodeHub Portfolio</h3>
-                        <p class="proj-desc">Portfolio personal interactivo con splash screen animado, red neuronal en canvas, modo oscuro/claro, 18 herramientas integradas y experiencia de usuario única.</p>
-                        <div class="proj-stack">
-                            <span>HTML5</span><span>CSS3</span><span>JavaScript</span><span>Canvas API</span>
-                        </div>
-                        <div class="proj-actions">
-                            <a href="index.html" class="proj-btn proj-btn-primary"><i class="fas fa-eye"></i> Ver proyecto</a>
-                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-comment"></i> Contactar</button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- 2 · Tools Suite -->
-                <article class="proj-card" data-cat="tools">
-                    <div class="proj-thumb" style="--g1:#40c4ff;--g2:#0088cc">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon"><i class="fas fa-screwdriver-wrench"></i></div>
-                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
-                        <div class="proj-status wip">18 tools</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2025</span>
-                            <span class="proj-cat">Herramientas</span>
-                        </div>
-                        <h3 class="proj-title">DevTools Suite</h3>
-                        <p class="proj-desc">Colección de 18 herramientas client-side: generador QR, hash SHA-256, regex tester, UUID, conversor de monedas, Pomodoro y más. Zero dependencias de backend.</p>
-                        <div class="proj-stack">
-                            <span>JavaScript</span><span>Web Crypto API</span><span>Canvas</span>
-                        </div>
-                        <div class="proj-actions">
-                            <a href="tools.html" class="proj-btn proj-btn-primary"><i class="fas fa-arrow-right"></i> Explorar tools</a>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- 3 · Python Automation -->
-                <article class="proj-card" data-cat="python">
-                    <div class="proj-thumb" style="--g1:#ffbd69;--g2:#ff8c00">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon"><i class="fab fa-python"></i></div>
-                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
-                        <div class="proj-status done">Completado</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2024</span>
-                            <span class="proj-cat">Automatización</span>
-                        </div>
-                        <h3 class="proj-title">Python Automation Suite</h3>
-                        <p class="proj-desc">Scripts de automatización para tareas repetitivas: web scraping con BeautifulSoup, manipulación de archivos, notificaciones automáticas y análisis básico de datos.</p>
-                        <div class="proj-stack">
-                            <span>Python</span><span>BeautifulSoup</span><span>Requests</span><span>Pandas</span>
-                        </div>
-                        <div class="proj-actions">
-                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-envelope"></i> Solicitar código</button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- 4 · Juegos Web -->
-                <article class="proj-card" data-cat="web">
-                    <div class="proj-thumb" style="--g1:#b464ff;--g2:#7c3aed">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon"><i class="fas fa-gamepad"></i></div>
-                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
-                        <div class="proj-status live">Jugable</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2024</span>
-                            <span class="proj-cat">Game Dev</span>
-                        </div>
-                        <h3 class="proj-title">Arcade Web Classics</h3>
-                        <p class="proj-desc">Reimplementación de clásicos arcade — Snake con niveles y puntuación, Tetris con piezas animadas — completamente en JavaScript vanilla y Canvas HTML5.</p>
-                        <div class="proj-stack">
-                            <span>JavaScript</span><span>Canvas API</span><span>CSS Animations</span>
-                        </div>
-                        <div class="proj-actions">
-                            <button class="proj-btn proj-btn-primary" onclick="openGameWindow('snake')"><i class="fas fa-play"></i> Jugar Snake</button>
-                            <button class="proj-btn proj-btn-ghost" onclick="openGameWindow('tetris')"><i class="fas fa-play"></i> Tetris</button>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- 5 · App Store (novedades) -->
-                <article class="proj-card" data-cat="tools">
-                    <div class="proj-thumb" style="--g1:#00e676;--g2:#00b248">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon"><i class="fas fa-mobile-screen"></i></div>
-                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
-                        <div class="proj-status live">Activo</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2024–2025</span>
-                            <span class="proj-cat">Catálogo</span>
-                        </div>
-                        <h3 class="proj-title">App Premium Store</h3>
-                        <p class="proj-desc">Catálogo curado de aplicaciones Android con funciones desbloqueadas, búsqueda en tiempo real, sistema de categorías y actualizaciones periódicas.</p>
-                        <div class="proj-stack">
-                            <span>HTML5</span><span>CSS3</span><span>JavaScript</span>
-                        </div>
-                        <div class="proj-actions">
-                            <a href="novedades.html" class="proj-btn proj-btn-primary"><i class="fas fa-store"></i> Ver tienda</a>
-                        </div>
-                    </div>
-                </article>
-
-                <!-- 6 · Próximo proyecto -->
-                <article class="proj-card proj-upcoming" data-cat="python">
-                    <div class="proj-thumb" style="--g1:#444;--g2:#222">
-                        <div class="proj-thumb-bg"></div>
-                        <div class="proj-thumb-icon" style="opacity:.35"><i class="fas fa-lock"></i></div>
-                        <div class="proj-thumb-lines"><span></span><span></span><span></span></div>
-                        <div class="proj-status soon">Pronto</div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2025</span>
-                            <span class="proj-cat">En desarrollo</span>
-                        </div>
-                        <h3 class="proj-title">Próximo Proyecto</h3>
-                        <p class="proj-desc" style="color:var(--muted)">Algo nuevo está en camino. Suscríbete a las novedades o escríbeme para saber antes que nadie qué viene.</p>
-                        <div class="proj-stack">
-                            <span style="opacity:.5">???</span>
-                        </div>
-                        <div class="proj-actions">
-                            <button class="proj-btn proj-btn-ghost" onclick="scrollToSection('contact')"><i class="fas fa-bell"></i> Avisarme</button>
-                        </div>
-                    </div>
-                </article>
-
-            
-                <!-- CodeHub Ultra 2026 -->
-                <div class="proj-card" data-cat="web">
-                    <div class="proj-img" style="background:linear-gradient(135deg,#0d0d1a,#1a0a2e);display:flex;align-items:center;justify-content:center;height:180px;position:relative;overflow:hidden">
-                        <div style="position:absolute;inset:0;background:radial-gradient(circle at 30% 50%,rgba(255,69,0,.15),transparent 60%),radial-gradient(circle at 80% 30%,rgba(0,229,255,.1),transparent 50%),radial-gradient(circle at 60% 80%,rgba(168,85,247,.12),transparent 50%)"></div>
-                        <div style="text-align:center;position:relative;z-index:1">
-                            <div style="font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:.1em;line-height:1">
-                                <span style="color:#ff4500">CODE</span><span style="color:#00e5ff">HUB</span><br><span style="color:#ffbd69">ULTRA</span>
-                            </div>
-                            <div style="font-family:'JetBrains Mono',monospace;font-size:.6rem;color:rgba(255,189,105,.5);margin-top:.3rem;letter-spacing:.15em">// PROYECTO 2026</div>
-                        </div>
-                    </div>
-                    <div class="proj-body">
-                        <div class="proj-meta">
-                            <span class="proj-year">2026</span>
-                            <span class="proj-tag" style="background:rgba(255,189,105,.1);color:#ffbd69;border-color:rgba(255,189,105,.3)">Ultra</span>
-                        </div>
-                        <div class="proj-title">CodeHub Ultra</div>
-                        <p class="proj-desc">Ecosistema 2026 — MiniStore, DevCard, DropZone y HubStore. 4 módulos, una plataforma. Sistema de ratings, solicitudes comunitarias y tarjeta de presentación compartible.</p>
-                        <div class="proj-stack">
-                            <span class="proj-chip">Node.js</span>
-                            <span class="proj-chip">MongoDB</span>
-                            <span class="proj-chip">Railway</span>
-                            <span class="proj-chip">HTML5</span>
-                        </div>
-                        <div class="proj-actions">
-                            <a href="codehub-ultra.html" class="proj-btn proj-btn-primary"><i class="fas fa-rocket"></i> Ver proyecto</a>
-                        </div>
-                    </div>
-                </div>
-
-</div><!-- /proj-grid -->
-        </section>
 
         <!-- Testimonials -->
         <!-- ── CLIMA EN TIEMPO REAL ── -->
@@ -4132,17 +3939,19 @@
         <section id="news-section">
             <div class="wx-header">
                 <div>
-                    <div class="wx-eyebrow">// actualizado en tiempo real</div>
-                    <h2 style="margin-bottom:0">Noticias del Mundo</h2>
+                    <div class="wx-eyebrow">// blog · artículos y tutoriales</div>
+                    <h2 style="margin-bottom:0">Blog &amp; Dev Notes</h2>
                 </div>
-                <div class="news-tabs-index">
-                    <button class="news-idx-tab active-idx" onclick="loadIndexNews('technology',this)">💻 Tech</button>
-                    <button class="news-idx-tab" onclick="loadIndexNews('gaming',this)">🎮 Gaming</button>
-                    <button class="news-idx-tab" onclick="loadIndexNews('science',this)">🔬 Ciencia</button>
-                    <button class="news-idx-tab" onclick="loadIndexNews('general',this)">🌎 General</button>
+                <a href="https://codehub-labs.blogspot.com" target="_blank" rel="noopener" class="blogger-view-btn" id="blogger-link">
+                    <i class="fab fa-blogger-b"></i> Ver blog completo
+                </a>
+            </div>
+            <div id="blogger-out">
+                <div class="blogger-loading">
+                    <i class="fas fa-circle-notch"></i>
+                    Cargando posts del blog...
                 </div>
             </div>
-            <div id="news-index-out" class="news-index-grid"></div>
         </section>
 
         
@@ -4295,12 +4104,21 @@
                 <!-- Columna izquierda: Avatar + stats -->
                 <div class="about-pro-left">
                     <div class="about-avatar-ring">
-                        <div class="about-avatar-glow"></div>
-                        <div class="about-avatar-spin-ring"></div>
-                        <div class="about-avatar-circle">
-                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg" alt="Wilson.E — Dev Icon" class="about-avatar-img" fetchpriority="high" width="148" height="148" decoding="async" loading="eager">
+                        <!-- Neon circle dev photo -->
+                        <style>
+                          @keyframes neonSpinConic { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+                          @keyframes neonSpinConic2 { 0%{transform:rotate(0deg)} 100%{transform:rotate(-360deg)} }
+                          @keyframes neonGlowPulse { 0%,100%{opacity:.85} 50%{opacity:1} }
+                        </style>
+                        <div style="position:relative;width:160px;height:160px;margin:0 auto;">
+                          <div style="position:absolute;inset:0;border-radius:50%;overflow:hidden;">
+                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg" alt="Wilson.E — Dev Icon" fetchpriority="high" width="160" height="160" decoding="async" loading="eager" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" />
+                          </div>
+                          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff00ff,#00ffff,#ffff00,#ff0080,#00ff88,#8800ff,#ff6600,#ff00ff);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),black calc(100% - 10px));mask:radial-gradient(farthest-side,transparent calc(100% - 10px),black calc(100% - 10px));"></div>
+                          <div style="position:absolute;inset:12px;border-radius:50%;background:conic-gradient(from 180deg,#00ffff,#ff00ff,#ffff00,#00ff88,#8800ff,#ff0080,#00ffff);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),black calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),black calc(100% - 6px));"></div>
+                          <div style="position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 30px rgba(0,255,255,.7),0 0 60px rgba(255,0,255,.5),0 0 100px rgba(255,255,0,.25);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;"></div>
                         </div>
-                        <div class="about-avatar-badge">
+                        <div class="about-avatar-badge" style="margin-top:.5rem;">
                             <span class="about-pulse"></span>
                             <span data-i18n="available">Disponible</span>
                         </div>
@@ -4512,87 +4330,7 @@
             line-height: 1.6;
         }
 
-        .timeline {
-            position: relative;
-            padding: 2rem 0;
-            margin: 2rem 0;
-        }
 
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 4px;
-            height: 100%;
-            background: linear-gradient(to bottom, var(--primary), var(--accent));
-            box-shadow: 0 0 20px var(--primary);
-        }
-
-        .timeline-item {
-            margin: 3rem 0;
-            position: relative;
-            width: 45%;
-            padding: 2rem;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
-            border-radius: 15px;
-            border: 2px solid rgba(255, 69, 0, 0.3);
-            animation: slideIn 0.6s ease-out;
-            transition: all 0.3s ease;
-        }
-
-        .timeline-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.4);
-        }
-
-        .timeline-item:nth-child(odd) {
-            margin-left: auto;
-        }
-
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            width: 20px;
-            height: 20px;
-            background: var(--primary);
-            border: 4px solid #0c0c0c;
-            border-radius: 50%;
-            transform: translateY(-50%);
-            box-shadow: 0 0 20px var(--primary);
-        }
-
-        .timeline-item:nth-child(odd)::before {
-            left: -60px;
-        }
-
-        .timeline-item:nth-child(even)::before {
-            right: -60px;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-30px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .timeline-year {
-            color: var(--primary);
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .timeline-title {
-            color: var(--accent);
-            font-size: 1.3rem;
-            margin-bottom: 0.8rem;
-        }
-
-        .timeline-desc {
-            color: #cccccc;
-            line-height: 1.6;
-        }
 
         .badges-container {
             display: grid;
@@ -4704,175 +4442,6 @@
         }
 
         /* ── PROYECTOS ── */
-        #latest-projects { padding: 3rem 0; }
-
-        .proj-header {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            margin-bottom: 2.5rem;
-        }
-        .proj-eyebrow {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: .75rem;
-            color: var(--accent);
-            opacity: .7;
-            margin-bottom: .4rem;
-        }
-        .proj-filters { display: flex; gap: .5rem; flex-wrap: wrap; }
-        .pf-btn {
-            padding: .38rem .9rem;
-            border-radius: 20px;
-            border: 1px solid rgba(255,69,0,.25);
-            background: transparent;
-            color: rgba(232,232,240,.5);
-            font-size: .78rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .2s ease;
-        }
-        .pf-btn:hover, .pf-btn.active {
-            border-color: var(--primary);
-            color: var(--accent);
-            background: rgba(255,69,0,.1);
-        }
-
-        .proj-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.4rem;
-        }
-        @media (max-width: 640px) {
-            .proj-grid { grid-template-columns: 1fr !important; gap: .8rem; }
-            .proj-card { border-radius: 12px; }
-            .proj-body { padding: .9rem; }
-            .proj-title { font-size: .95rem; }
-            .proj-desc { font-size: .78rem; }
-        }
-        .proj-card {
-            background: rgba(19,19,31,1);
-            border: 1px solid rgba(255,69,0,.18);
-            border-radius: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            transition: all .25s cubic-bezier(.4,0,.2,1);
-        }
-        .proj-card:hover {
-            border-color: rgba(255,69,0,.5);
-            transform: translateY(-5px);
-            box-shadow: 0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(255,69,0,.1);
-        }
-        .proj-card.proj-upcoming { opacity: .6; }
-        .proj-card.proj-upcoming:hover { opacity: 1; }
-
-        /* Thumbnail */
-        .proj-thumb {
-            position: relative;
-            height: 160px;
-            overflow: hidden;
-            background: linear-gradient(135deg, var(--g1,#ff4500), var(--g2,#ff6b35));
-        }
-        .proj-thumb-bg {
-            position: absolute;
-            inset: 0;
-            background: repeating-linear-gradient(
-                45deg,
-                rgba(0,0,0,.06) 0px,
-                rgba(0,0,0,.06) 1px,
-                transparent 1px,
-                transparent 12px
-            );
-        }
-        .proj-thumb-icon {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.2rem;
-            color: rgba(255,255,255,.9);
-            filter: drop-shadow(0 4px 16px rgba(0,0,0,.4));
-            transition: transform .3s ease;
-        }
-        .proj-card:hover .proj-thumb-icon { transform: scale(1.1) rotate(-3deg); }
-
-        .proj-thumb-lines {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            display: flex;
-            gap: 4px;
-            padding: 0 1rem .6rem;
-        }
-        .proj-thumb-lines span {
-            height: 3px;
-            border-radius: 3px;
-            background: rgba(255,255,255,.25);
-            flex: 1;
-        }
-        .proj-thumb-lines span:first-child { flex: 2; background: rgba(255,255,255,.6); }
-
-        .proj-status {
-            position: absolute;
-            top: 12px; right: 12px;
-            padding: .25rem .7rem;
-            border-radius: 20px;
-            font-size: .68rem;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-            letter-spacing: .04em;
-        }
-        .proj-status.live  { background: rgba(0,230,118,.18); color: #00e676; border: 1px solid rgba(0,230,118,.35); }
-        .proj-status.wip   { background: rgba(64,196,255,.18); color: #40c4ff; border: 1px solid rgba(64,196,255,.35); }
-        .proj-status.done  { background: rgba(255,189,105,.18); color: #ffbd69; border: 1px solid rgba(255,189,105,.35); }
-        .proj-status.soon  { background: rgba(255,255,255,.08); color: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.12); }
-
-        /* Body */
-        .proj-body { padding: 1.3rem; flex: 1; display: flex; flex-direction: column; gap: .65rem; }
-        .proj-meta { display: flex; align-items: center; gap: .6rem; }
-        .proj-year  { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: rgba(232,232,240,.4); }
-        .proj-cat   { font-size: .68rem; font-weight: 600; color: var(--accent); background: rgba(255,189,105,.1); padding: .15rem .55rem; border-radius: 20px; }
-        .proj-title { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.3; }
-        .proj-desc  { font-size: .83rem; color: rgba(232,232,240,.55); line-height: 1.65; flex: 1; }
-        .proj-stack { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .1rem; }
-        .proj-stack span {
-            font-size: .7rem;
-            font-family: 'JetBrains Mono', monospace;
-            color: rgba(232,232,240,.5);
-            background: rgba(255,255,255,.05);
-            border: 1px solid rgba(255,255,255,.08);
-            padding: .18rem .55rem;
-            border-radius: 6px;
-        }
-        .proj-actions { display: flex; gap: .55rem; flex-wrap: wrap; margin-top: .2rem; }
-        .proj-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: .4rem;
-            padding: .5rem 1rem;
-            border-radius: 10px;
-            font-size: .8rem;
-            font-weight: 700;
-            text-decoration: none;
-            border: none;
-            cursor: pointer;
-            transition: all .2s ease;
-        }
-        .proj-btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: #fff;
-            box-shadow: 0 4px 14px rgba(255,69,0,.28);
-        }
-        .proj-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,69,0,.42); }
-        .proj-btn-ghost {
-            background: rgba(255,255,255,.05);
-            color: rgba(232,232,240,.6);
-            border: 1px solid rgba(255,255,255,.1);
-        }
-        .proj-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
-
         /* ── CONTACTO ── */
         #contact { padding: 3rem 0; }
 
@@ -5336,15 +4905,7 @@
             .service-icon { font-size: 2rem !important; margin-bottom: .8rem; }
             .service-card h3 { font-size: 1rem; margin-bottom: .4rem; }
             .service-card p { font-size: .78rem; line-height: 1.5; }
-            /* Timeline — 1 columna limpia */
             .command-palette { width: 95%; }
-            .timeline::before { left: 16px; }
-            .timeline-item { width: calc(100% - 48px) !important; margin-left: 36px !important; padding: 1rem; }
-            .timeline-item::before { left: -44px !important; right: auto !important; width: 14px; height: 14px; }
-            .timeline-item:hover { transform: none; }
-            .timeline-year { font-size: 1.1rem; }
-            /* Proyectos — mejor en mobile */
-            .projects-showcase { gap: 1rem; }
             .footer-bottom { flex-direction: column; gap: 1rem; }
             .header-inner { padding: 0.5rem 1rem; gap: 0.8rem; }
         }
@@ -5936,8 +5497,6 @@
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else if (command.includes('contacto')) {
                     document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
-                } else if (command.includes('proyecto')) {
-                    document.getElementById('latest-projects').scrollIntoView({ behavior: 'smooth' });
                 } else if (command.includes('habilidad')) {
                     document.getElementById('skills').scrollIntoView({ behavior: 'smooth' });
                 }
@@ -6049,8 +5608,6 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             { name: 'Ir a Habilidades', icon: 'fa-code', action: () => scrollToSection('skills') },
             { name: 'Ir a Servicios', icon: 'fa-briefcase', action: () => scrollToSection('services') },
             { name: 'Ir a Logros', icon: 'fa-trophy', action: () => scrollToSection('achievements') },
-            { name: 'Ir a Experiencia', icon: 'fa-calendar', action: () => scrollToSection('timeline') },
-            { name: 'Ir a Proyectos', icon: 'fa-folder', action: () => scrollToSection('latest-projects') },
             { name: 'Ir a Testimonios', icon: 'fa-comment', action: () => scrollToSection('testimonials') },
             { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
@@ -7292,62 +6849,79 @@ function showWeatherError(msg) {
 //  NOTICIAS EN EL INDEX
 // ═══════════════════════════════════════════════════════════
 
-const INDEX_NEWS = {
-  technology: [
-    { title:'OpenAI lanza nuevas capacidades de razonamiento en GPT', source:'TechCrunch', time:'hace 2h', url:'https://techcrunch.com', icon:'🤖' },
-    { title:'Apple anuncia chips M4 para toda la línea Mac', source:'The Verge', time:'hace 4h', url:'https://theverge.com', icon:'🍎' },
-    { title:'Google actualiza Android con nuevas funciones de IA', source:'9to5Google', time:'hace 6h', url:'https://9to5google.com', icon:'📱' },
-    { title:'Microsoft integra Copilot en más productos de Office', source:'ZDNet', time:'hace 8h', url:'https://zdnet.com', icon:'💼' },
-    { title:'Meta lanza Llama 4 como modelo open source gratuito', source:'VentureBeat', time:'hace 10h', url:'https://venturebeat.com', icon:'🦙' },
-    { title:'Groq lanza nuevos modelos con velocidad récord de inferencia', source:'Groq Blog', time:'hace 12h', url:'https://groq.com', icon:'⚡' },
-  ],
-  gaming: [
-    { title:'GTA VI confirma fecha de lanzamiento para 2025', source:'IGN', time:'hace 1h', url:'https://ign.com', icon:'🎮' },
-    { title:'Steam rompe récord con 35 millones de usuarios simultáneos', source:'PC Gamer', time:'hace 3h', url:'https://pcgamer.com', icon:'💻' },
-    { title:'Nintendo Switch 2 supera ventas de lanzamiento', source:'GameSpot', time:'hace 5h', url:'https://gamespot.com', icon:'🕹️' },
-    { title:'Valorant Mobile llega finalmente a Android e iOS', source:'Riot Games', time:'hace 7h', url:'https://playvalorant.com', icon:'🔫' },
-    { title:'Minecraft supera los 300 millones de copias vendidas', source:'Mojang', time:'hace 9h', url:'https://minecraft.net', icon:'⛏️' },
-    { title:'The Game Awards 2025 anuncia los nominados oficiales', source:'TGA', time:'hace 11h', url:'https://thegameawards.com', icon:'🏆' },
-  ],
-  science: [
-    { title:'James Webb descubre galaxia más antigua conocida', source:'NASA', time:'hace 2h', url:'https://nasa.gov', icon:'🔭' },
-    { title:'Científicos logran fusión nuclear con ganancia de energía neta', source:'Nature', time:'hace 5h', url:'https://nature.com', icon:'⚡' },
-    { title:'IA predice estructura de proteínas con 99% de precisión', source:'DeepMind', time:'hace 7h', url:'https://deepmind.com', icon:'🧬' },
-    { title:'Primera misión tripulada a Marte planificada para 2030', source:'SpaceX', time:'hace 10h', url:'https://spacex.com', icon:'🚀' },
-    { title:'Nuevo material superconductor funciona a temperatura ambiente', source:'Science', time:'hace 12h', url:'https://science.org', icon:'🔬' },
-    { title:'Descubren posible señal de vida en exoplaneta K2-18b', source:'ESA', time:'hace 14h', url:'https://esa.int', icon:'🌍' },
-  ],
-  general: [
-    { title:'Economía global muestra signos de recuperación sostenida', source:'Reuters', time:'hace 1h', url:'https://reuters.com', icon:'📈' },
-    { title:'OMS aprueba nueva vacuna para enfermedades tropicales', source:'WHO', time:'hace 3h', url:'https://who.int', icon:'💉' },
-    { title:'Guatemala avanza en proyectos de infraestructura digital', source:'Prensa Libre', time:'hace 4h', url:'https://prensalibre.com', icon:'🇬🇹' },
-    { title:'Energías renovables superan al carbón por primera vez', source:'BBC', time:'hace 6h', url:'https://bbc.com', icon:'🌱' },
-    { title:'Récord de turismo en Centroamérica durante 2025', source:'UNWTO', time:'hace 8h', url:'https://unwto.org', icon:'✈️' },
-    { title:'Inteligencia artificial transforma el mercado laboral global', source:'WEF', time:'hace 10h', url:'https://weforum.org', icon:'🤖' },
-  ],
-};
+// ── BLOGGER RSS FEED ─────────────────────────────────────────
+const BLOGGER_URL = 'https://codehub-labs.blogspot.com'; // Blog oficial de CodeHub
 
-function loadIndexNews(category, btn) {
-  document.querySelectorAll('.news-idx-tab').forEach(b => b.classList.remove('active-idx'));
-  if (btn) btn.classList.add('active-idx');
+async function loadBloggerPosts() {
+  const out = document.getElementById('blogger-out');
+  const link = document.getElementById('blogger-link');
+  if (!out) return;
 
-  const out = document.getElementById('news-index-out');
-  const items = INDEX_NEWS[category] || [];
+  // Actualizar href del botón
+  if (link) link.href = BLOGGER_URL;
 
-  out.innerHTML = items.map(n => `
-    <a href="${n.url}" target="_blank" rel="noopener noreferrer" class="news-idx-card">
-      <span class="news-idx-icon">${n.icon}</span>
-      <div>
-        <div class="news-idx-title">${n.title}</div>
-        <div class="news-idx-meta">${n.source} · ${n.time}</div>
-      </div>
-    </a>`).join('');
+  // Si es el placeholder, mostrar posts de demo
+  if (BLOGGER_URL.includes('TU-BLOG')) {
+    renderBloggerPosts(BLOGGER_DEMO_POSTS);
+    return;
+  }
+
+  try {
+    const feed = `${BLOGGER_URL}/feeds/posts/default?alt=json&max-results=6`;
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(feed)}`);
+    const data = await res.json();
+    const json = JSON.parse(data.contents);
+    const entries = json.feed.entry || [];
+
+    const posts = entries.map(e => {
+      const title = e.title.$t;
+      const url   = (e.link.find(l => l.rel === 'alternate') || {}).href || BLOGGER_URL;
+      const date  = new Date(e.published.$t).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
+      const desc  = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + '…' : '';
+      const thumb = e['media$thumbnail'] ? e['media$thumbnail'].url.replace(/s72-c/,'s400-c') : null;
+      const author = e.author?.[0]?.name?.$t || 'Wilson.E';
+      return { title, url, date, desc, thumb, author };
+    });
+
+    renderBloggerPosts(posts);
+  } catch(err) {
+    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar los posts.<br><small>Verifica la URL del blog o revisa la conexión.</small></div>`;
+  }
 }
 
-// Cargar noticias tech al iniciar
-window.addEventListener('load', () => {
-  loadIndexNews('technology', document.querySelector('.news-idx-tab'));
-});
+const BLOGGER_DEMO_POSTS = [
+  { title:'Cómo construí mi portfolio con HTML, CSS y JS puro', url:'#', date:'23 mar 2026', desc:'Un recorrido por las decisiones técnicas detrás de CodeHub: la red neuronal en canvas, el splash screen y las 18 tools integradas.', thumb:null, author:'Wilson.E' },
+  { title:'Python Automation: scraping y tareas repetitivas en minutos', url:'#', date:'15 mar 2026', desc:'Guía práctica para automatizar tareas con BeautifulSoup, Requests y Pandas. Desde cero hasta producción.', thumb:null, author:'Wilson.E' },
+  { title:'Integrar una IA en tu web sin backend: GPT API desde el cliente', url:'#', date:'8 mar 2026', desc:'Cómo conectar la API de OpenAI directamente desde JavaScript, manejar el contexto y crear un chatbot útil.', thumb:null, author:'Wilson.E' },
+  { title:'MongoDB + Railway: deploy gratuito de tu base de datos', url:'#', date:'1 mar 2026', desc:'Paso a paso para desplegar una aplicación Node.js con MongoDB en Railway, con variables de entorno y dominio personalizado.', thumb:null, author:'Wilson.E' },
+  { title:'CSS sin frameworks: técnicas avanzadas que uso en mis proyectos', url:'#', date:'22 feb 2026', desc:'Conic-gradient, mask, container queries y custom properties que uso a diario sin necesitar Tailwind ni Bootstrap.', thumb:null, author:'Wilson.E' },
+  { title:'Cómo ganar tus primeros clientes freelance como dev en Guatemala', url:'#', date:'14 feb 2026', desc:'Mi experiencia conseguiendo proyectos reales: dónde buscarlos, cómo cotizar y qué errores evitar al inicio.', thumb:null, author:'Wilson.E' },
+];
+
+function renderBloggerPosts(posts) {
+  const out = document.getElementById('blogger-out');
+  if (!posts.length) {
+    out.innerHTML = `<div class="blogger-error"><i class="fas fa-pen-nib"></i>Aún no hay posts publicados.<br><small>¡Vuelve pronto!</small></div>`;
+    return;
+  }
+  out.innerHTML = `<div class="blogger-grid">${posts.map(p => `
+    <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="blogger-card">
+      <div class="blogger-card-thumb">
+        ${p.thumb ? `<img src="${p.thumb}" alt="${p.title}" loading="lazy">` : '<i class="fas fa-pen-nib"></i>'}
+      </div>
+      <div class="blogger-card-body">
+        <div class="blogger-card-label">// dev blog</div>
+        <div class="blogger-card-title">${p.title}</div>
+        <div class="blogger-card-desc">${p.desc}</div>
+        <div class="blogger-card-meta">
+          <i class="fas fa-calendar-days"></i>${p.date}
+          <i class="fas fa-user" style="margin-left:.3rem"></i>${p.author}
+        </div>
+      </div>
+    </a>`).join('')}</div>`;
+}
+
+window.addEventListener('load', loadBloggerPosts);
 
 
 // ═══════════════════════════════════════════════════════════
