@@ -1766,11 +1766,17 @@
 @keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.15}}
 /* Panel */
 #ai-panel{
-  position:fixed;right:20px;bottom:80px;width:375px;
-  max-height:min(600px,calc(100vh - 110px));min-height:460px;
-  background:var(--ai-bg);border:1px solid var(--ai-border);border-radius:22px;
-  display:flex;flex-direction:column;z-index:4999;overflow:hidden;
-  box-shadow:0 20px 60px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.04) inset,0 0 40px rgba(124,77,255,.08);
+  position:fixed;right:20px;bottom:80px;width:min(420px,calc(100vw - 28px));
+  height:min(720px,calc(100dvh - 104px));max-height:min(720px,calc(100dvh - 104px));min-height:520px;
+  background:
+    conic-gradient(from 180deg at 50% 0%, rgba(124,77,255,.08), rgba(0,176,255,.03), rgba(255,255,255,.02), rgba(124,77,255,.08)),
+    radial-gradient(circle at top right, rgba(124,77,255,.18), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(0,176,255,.12), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)),
+    var(--ai-bg);
+  border:1px solid rgba(124,77,255,.22);border-radius:24px;
+  display:flex;flex-direction:column;z-index:4999;overflow:hidden;isolation:isolate;
+  box-shadow:0 24px 80px rgba(0,0,0,.82),0 0 0 1px rgba(255,255,255,.04) inset,0 0 48px rgba(124,77,255,.12);
   transform:scale(.88) translateY(16px);transform-origin:bottom right;
   opacity:0;pointer-events:none;
   transition:transform .38s cubic-bezier(.2,.9,.2,1),opacity .28s;
@@ -1778,52 +1784,96 @@
 #ai-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all;animation:panelIn .38s cubic-bezier(.2,.9,.2,1) both;}
 @keyframes panelIn{0%{transform:scale(.88) translateY(16px);opacity:0;}60%{transform:scale(1.015) translateY(-2px);}100%{transform:scale(1) translateY(0);opacity:1;}}
 #ai-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1.5px;z-index:2;background:linear-gradient(90deg,transparent 0%,#7C4DFF 30%,#00E5FF 60%,#7C4DFF 80%,transparent 100%);background-size:200% 100%;animation:auroraSweep 4s linear infinite;}
+#ai-panel::after{
+  content:'';position:absolute;inset:auto -25% 14% auto;width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle, rgba(124,77,255,.14), transparent 68%);
+  pointer-events:none;filter:blur(12px);opacity:.9;
+}
+@keyframes panelBreathe{0%,100%{box-shadow:0 24px 80px rgba(0,0,0,.82),0 0 0 1px rgba(255,255,255,.04) inset,0 0 48px rgba(124,77,255,.12);}50%{box-shadow:0 24px 80px rgba(0,0,0,.82),0 0 0 1px rgba(255,255,255,.05) inset,0 0 60px rgba(0,176,255,.12);}}
+#ai-panel.open{animation:panelIn .38s cubic-bezier(.2,.9,.2,1) both, panelBreathe 7s ease-in-out infinite 1s;}
 @keyframes auroraSweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
 /* Header */
-.ai-head{padding:.85rem 1rem .75rem;border-bottom:1px solid var(--ai-border2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;background:linear-gradient(135deg,rgba(124,77,255,.1) 0%,rgba(0,176,255,.05) 100%);}
+.ai-head{padding:1rem 1rem .82rem;border-bottom:1px solid var(--ai-border2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;background:linear-gradient(135deg,rgba(124,77,255,.12) 0%,rgba(0,176,255,.05) 100%);position:relative;z-index:1;}
 .ai-head-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7C4DFF,#00B0FF);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;position:relative;box-shadow:0 3px 10px rgba(124,77,255,.4);}
 .ai-head-avatar::after{content:'';position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;background:var(--ai-online);border-radius:50%;border:2px solid var(--ai-bg);animation:onlinePulse 2.5s ease-in-out infinite;}
 @keyframes onlinePulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.5)}60%{box-shadow:0 0 0 4px rgba(0,230,118,0)}}
 .ai-head-info{flex:1;min-width:0;}
-.ai-head-title{font-size:.88rem;font-weight:700;color:var(--ai-text);letter-spacing:-.01em;}
-.ai-head-sub{font-size:.63rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;margin-top:1px;display:flex;align-items:center;gap:.3rem;}
-.ai-head-sub .online-dot{width:5px;height:5px;background:var(--ai-online);border-radius:50%;flex-shrink:0;}
-.ai-head-actions{display:none;}
+.ai-head-title{font-size:.92rem;font-weight:700;color:var(--ai-text);letter-spacing:-.01em;}
+.ai-head-sub{
+  font-size:.64rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;margin-top:3px;
+  display:flex;align-items:center;gap:.42rem;min-width:0;max-width:100%;line-height:1.2;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ai-head-sub .online-dot{
+  width:6px;height:6px;background:var(--ai-online);border-radius:50%;flex-shrink:0;
+  box-shadow:0 0 10px rgba(0,230,118,.45);
+  animation:aiStatusPulse 1.8s ease-in-out infinite;
+}
+@keyframes aiStatusPulse{
+  0%,100%{transform:scale(1);opacity:1;}
+  50%{transform:scale(1.18);opacity:.75;}
+}
+.ai-status-text{
+  display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  background:linear-gradient(90deg,rgba(232,232,248,.9),rgba(196,184,255,.88),rgba(128,207,255,.85),rgba(232,232,248,.9));
+  background-size:220% 100%;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:aiStatusGlow 7.5s linear infinite;
+}
+@keyframes aiStatusGlow{
+  0%{background-position:0% 50%;}
+  100%{background-position:220% 50%;}
+}
 /* ── AI bottom action bar ── */
 .ai-bottom-bar{
-  display:flex;justify-content:center;align-items:center;gap:2.5rem;
-  padding:.65rem 1rem .75rem;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.68rem;
+  padding:.76rem 1rem calc(.82rem + env(safe-area-inset-bottom, 0px));
   border-top:1px solid rgba(255,255,255,.07);
-  background:rgba(255,255,255,.02);
+  background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.018));
   flex-shrink:0;
-  min-height:72px;
+  min-height:78px;
+  position:relative;z-index:1;
 }
 .ai-circle-btn{
-  display:flex;flex-direction:column;align-items:center;gap:.28rem;
-  background:transparent;border:none;cursor:pointer;
+  display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:.62rem;
+  background:linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);cursor:pointer;
   transition:transform .2s cubic-bezier(.2,.9,.2,1);
-  padding:.15rem .4rem;
+  padding:.58rem .68rem;border-radius:14px;
   flex-shrink:0;
+  min-width:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
-.ai-circle-btn:hover{transform:translateY(-2px);}
+.ai-circle-btn:hover{transform:translateY(-2px);border-color:rgba(124,77,255,.24);background:linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.028));}
 .ai-circle-btn:active{transform:scale(.93);}
 .ai-circle-icon{
-  width:42px;height:42px;border-radius:50%;
+  width:34px;height:34px;border-radius:12px;
   display:flex;align-items:center;justify-content:center;
-  font-size:.88rem;
+  font-size:.78rem;
   border:1.5px solid rgba(255,255,255,.1);
-  background:rgba(255,255,255,.05);
+  background:rgba(255,255,255,.055);
   color:rgba(200,200,230,.55);
   transition:all .22s cubic-bezier(.2,.9,.2,1);
   pointer-events:none;
+  flex-shrink:0;
 }
 .ai-circle-label{
-  font-size:.57rem;
-  color:rgba(200,200,230,.4);
-  font-family:'JetBrains Mono',monospace;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  font-size:.62rem;
+  color:rgba(200,200,230,.62);
+  font-family:'Space Grotesk',system-ui,sans-serif;
   transition:color .2s;
-  letter-spacing:.04em;
+  letter-spacing:.01em;
   pointer-events:none;
+  white-space:normal;
+  line-height:1.2;
+}
+.ai-circle-label::after{
+  content:attr(data-subtitle);
+  font-size:.5rem;
+  color:rgba(200,200,230,.38);
+  font-family:'JetBrains Mono',monospace;
+  margin-top:.08rem;
   white-space:nowrap;
 }
 .ai-circle-clear:hover .ai-circle-icon{
@@ -1841,25 +1891,46 @@
 }
 .ai-circle-close:hover .ai-circle-label{color:#ff6535;}
 /* mood bar */
-.ai-mood-bar{padding:.42rem .85rem;display:flex;gap:.3rem;align-items:center;border-bottom:1px solid var(--ai-border2);background:var(--ai-s2);flex-shrink:0;}
+.ai-mood-bar{padding:.5rem .85rem;display:flex;gap:.3rem;align-items:center;border-bottom:1px solid var(--ai-border2);background:rgba(19,19,31,.92);flex-shrink:0;overflow-x:auto;scrollbar-width:none;position:relative;z-index:1;}
+.ai-mood-bar::-webkit-scrollbar{display:none;}
 .ai-mood-label{font-size:.6rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;white-space:nowrap;margin-right:.2rem;}
 .ai-mood-btn{padding:.2rem .52rem;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--ai-muted);font-size:.62rem;cursor:pointer;transition:all .18s;font-family:'Space Grotesk',system-ui,sans-serif;white-space:nowrap;}
 .ai-mood-btn.active,.ai-mood-btn:hover{background:rgba(124,77,255,.2);border-color:rgba(124,77,255,.45);color:#c4b8ff;}
 /* Messages */
-#ai-msgs{flex:1;overflow-y:auto;padding:.8rem .85rem;display:flex;flex-direction:column;gap:.7rem;scroll-behavior:smooth;background:var(--ai-bg);}
+#ai-msgs{flex:1;min-height:0;overflow-y:auto;padding:1rem 1rem 1.1rem;display:flex;flex-direction:column;gap:.9rem;scroll-behavior:smooth;background:linear-gradient(180deg, rgba(255,255,255,.015), transparent 22%);position:relative;z-index:1;}
 #ai-msgs::-webkit-scrollbar{width:2px;}
 #ai-msgs::-webkit-scrollbar-thumb{background:rgba(124,77,255,.3);border-radius:2px;}
 .ai-msg-wrap{display:flex;gap:.5rem;animation:msgIn .28s cubic-bezier(.2,.9,.2,1);}
 @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .ai-msg-wrap.user{flex-direction:row-reverse;}
+.ai-msg-wrap.ai-welcome{align-items:flex-start;margin-bottom:.2rem;}
 .ai-msg-avatar{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;margin-top:3px;}
 .ai-msg-wrap.ai .ai-msg-avatar{background:linear-gradient(135deg,#7C4DFF,#00B0FF);}
 .ai-msg-wrap.user .ai-msg-avatar{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);}
-.ai-msg-content{display:flex;flex-direction:column;gap:.2rem;max-width:82%;}
+.ai-msg-content{display:flex;flex-direction:column;gap:.2rem;max-width:88%;}
+.ai-msg-wrap.ai .ai-msg-content{max-width:94%;}
 .ai-msg-wrap.user .ai-msg-content{align-items:flex-end;}
 .ai-msg{padding:.6rem .85rem;border-radius:15px;font-size:.81rem;line-height:1.6;position:relative;word-break:break-word;}
 .ai-msg-wrap.user .ai-msg{background:linear-gradient(135deg,rgba(124,77,255,.25),rgba(0,176,255,.15));border:1px solid rgba(124,77,255,.4);color:#D8D8FF;border-bottom-right-radius:4px;}
-.ai-msg-wrap.ai .ai-msg{background:var(--ai-s1);border:1px solid var(--ai-border2);color:var(--ai-text);border-bottom-left-radius:4px;}
+.ai-msg-wrap.ai .ai-msg{background:linear-gradient(135deg, rgba(255,255,255,.035), rgba(124,77,255,.03));border:1px solid var(--ai-border2);color:var(--ai-text);border-bottom-left-radius:4px;padding-right:2.2rem;}
+.ai-msg-wrap.ai-welcome .ai-msg-avatar{
+  width:28px;height:28px;border-radius:10px;font-size:.85rem;margin-top:1px;
+  box-shadow:0 6px 18px rgba(124,77,255,.25);
+}
+.ai-msg-wrap.ai-welcome .ai-msg-content{max-width:100%;width:100%;}
+.ai-msg-wrap.ai-welcome .ai-msg{
+  padding:.88rem 1rem .9rem;
+  border-radius:18px;
+  background:
+    linear-gradient(135deg, rgba(124,77,255,.18), rgba(0,176,255,.08)),
+    rgba(19,19,31,.96);
+  border:1px solid rgba(124,77,255,.22);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+  font-size:.83rem;
+  line-height:1.62;
+}
+.ai-msg-wrap.ai-welcome .ai-msg-copy{top:.55rem;right:.55rem;}
+.ai-msg-wrap.ai-welcome .ai-msg-time{padding:.08rem .25rem 0 2.15rem;}
 .ai-msg-time{font-size:.58rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;padding:0 .2rem;}
 .ai-msg-copy{position:absolute;top:.3rem;right:.3rem;background:rgba(255,255,255,.06);border:none;border-radius:5px;color:rgba(255,255,255,.3);font-size:.58rem;padding:.15rem .35rem;cursor:pointer;opacity:0;transition:opacity .18s;line-height:1;}
 .ai-msg-wrap.ai .ai-msg:hover .ai-msg-copy{opacity:1;}
@@ -1873,34 +1944,106 @@
 .ai-typing-dot:nth-child(3){animation-delay:.36s;}
 @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 /* Suggestions */
-.ai-suggestions{padding:.45rem .85rem .6rem;display:flex;flex-wrap:wrap;gap:.3rem;flex-shrink:0;border-top:1px solid var(--ai-border2);background:var(--ai-s2);}
-.ai-sug-btn{padding:.27rem .68rem;border-radius:18px;border:1px solid rgba(124,77,255,.22);background:rgba(124,77,255,.07);color:rgba(200,200,230,.65);font-family:'Space Grotesk',system-ui,sans-serif;font-size:.67rem;cursor:pointer;transition:all .2s cubic-bezier(.2,.9,.2,1);}
-.ai-sug-btn:hover{border-color:rgba(124,77,255,.55);color:var(--ai-text);background:rgba(124,77,255,.18);transform:translateY(-2px) scale(1.03);}
 /* Input */
-.ai-input-wrap{padding:.65rem .85rem .75rem;border-top:1px solid var(--ai-border2);display:flex;flex-direction:column;gap:.38rem;flex-shrink:0;background:var(--ai-s2);}
+.ai-input-wrap{padding:.82rem .95rem .88rem;border-top:1px solid var(--ai-border2);display:flex;flex-direction:column;gap:.42rem;flex-shrink:0;background:linear-gradient(180deg, rgba(26,26,46,.96), rgba(18,18,32,.98));position:relative;z-index:1;}
+.ai-input-topline{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:0 .08rem;}
+.ai-input-badge{
+  display:inline-flex;align-items:center;gap:.34rem;
+  padding:.24rem .56rem;border-radius:999px;
+  font-size:.54rem;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;
+  color:#cbbcff;background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.24);
+  box-shadow:0 0 16px rgba(124,77,255,.12);
+}
+.ai-input-badge::before{
+  content:'';width:6px;height:6px;border-radius:50%;
+  background:linear-gradient(135deg,#7C4DFF,#00B0FF);
+  box-shadow:0 0 10px rgba(0,176,255,.45);
+}
+.ai-input-hint{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:.56rem;font-family:'JetBrains Mono',monospace;color:rgba(200,200,230,.52);
+  animation:hintFade 6s ease-in-out infinite;
+}
+@keyframes hintFade{
+  0%,100%{opacity:.6;transform:translateY(0);}
+  50%{opacity:1;transform:translateY(-1px);}
+}
+.ai-input-shell{
+  position:relative;
+  padding:.34rem;
+  border-radius:18px;
+  background:linear-gradient(135deg, rgba(124,77,255,.2), rgba(0,176,255,.12), rgba(255,255,255,.05));
+  box-shadow:0 10px 30px rgba(0,0,0,.24);
+}
+.ai-input-shell::before{
+  content:'';
+  position:absolute;inset:1px;border-radius:17px;
+  background:linear-gradient(180deg, rgba(14,14,24,.95), rgba(22,22,38,.96));
+  z-index:0;
+}
 .ai-input-row{display:flex;gap:.4rem;align-items:flex-end;}
-#ai-input{flex:1;background:var(--ai-s3);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:var(--ai-text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:.8rem;padding:.58rem .85rem;outline:none;resize:none;max-height:96px;min-height:38px;transition:border-color .2s,box-shadow .2s;line-height:1.45;}
-#ai-input:focus{border-color:rgba(124,77,255,.5);box-shadow:0 0 0 3px rgba(124,77,255,.1);}
+#ai-input,.ai-input-row,#ai-send-btn{position:relative;z-index:1;}
+#ai-input{flex:1;background:rgba(34,34,56,.78);border:1px solid rgba(255,255,255,.08);border-radius:14px;color:var(--ai-text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:.82rem;padding:.78rem .92rem;outline:none;resize:none;max-height:104px;min-height:46px;transition:border-color .2s,box-shadow .2s,transform .2s;line-height:1.45;backdrop-filter:blur(10px);}
+#ai-input:focus{border-color:rgba(124,77,255,.56);box-shadow:0 0 0 3px rgba(124,77,255,.12), 0 0 24px rgba(124,77,255,.12);transform:translateY(-1px);}
 #ai-input::placeholder{color:rgba(200,200,230,.22);}
-#ai-send-btn{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#7C4DFF,#00B0FF);border:none;color:#fff;font-size:.9rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(124,77,255,.35);transition:all .2s;}
-#ai-send-btn:hover{transform:scale(1.08);box-shadow:0 5px 16px rgba(124,77,255,.55);}
+#ai-send-btn{width:54px;height:46px;border-radius:14px;background:linear-gradient(135deg,#7C4DFF,#00B0FF);border:none;color:#fff;font-size:1rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 22px rgba(124,77,255,.28), inset 0 1px 0 rgba(255,255,255,.22);transition:all .2s;overflow:hidden;}
+#ai-send-btn::before{
+  content:'';
+  position:absolute;inset:-40% auto -40% -55%;width:26px;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.42), transparent);
+  transform:rotate(18deg);
+  transition:left .45s ease;
+}
+#ai-send-btn:hover{transform:translateY(-1px) scale(1.04);box-shadow:0 12px 24px rgba(124,77,255,.38), inset 0 1px 0 rgba(255,255,255,.24);}
+#ai-send-btn:hover::before{left:120%;}
 #ai-send-btn:active{transform:scale(.94);}
 #ai-send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
-.ai-input-footer{display:flex;justify-content:space-between;align-items:center;font-size:.59rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;padding:0 .1rem;}
+.ai-input-footer{display:flex;justify-content:space-between;align-items:center;font-size:.59rem;color:var(--ai-muted);font-family:'JetBrains Mono',monospace;padding:0 .16rem;}
+.ai-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 .3rem;border-radius:6px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);font-size:.52rem;color:rgba(232,232,248,.72);margin:0 .14rem;}
 .ai-char-count{transition:color .2s;}
 .ai-char-count.warn{color:rgba(255,171,0,.7);}
 .ai-char-count.over{color:rgba(255,82,82,.8);}
+@media(max-width:920px){
+  #ai-panel{
+    right:14px;bottom:74px;
+    width:min(420px,calc(100vw - 20px));
+    height:min(680px,calc(100dvh - 88px));
+    max-height:min(680px,calc(100dvh - 88px));
+  }
+}
 /* Mobile */
 @media(max-width:640px){
-  #ai-panel{right:0;left:0;bottom:0;width:100%;max-height:88vh;min-height:0;border-radius:22px 22px 0 0;border-bottom:none;transform:translateY(100%);transform-origin:bottom center;}
+  #ai-panel{right:0;left:0;bottom:0;width:100%;height:min(100dvh - 8px,820px);max-height:min(100dvh - 8px,820px);min-height:0;border-radius:24px 24px 0 0;border-bottom:none;transform:translateY(100%);transform-origin:bottom center;}
   #ai-panel.open{transform:translateY(0);animation:none;}
   #ai-panel::after{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:34px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;}
   .ai-head{padding-top:1.4rem;}
+  .ai-head-avatar{width:38px;height:38px;}
+  .ai-head-title{font-size:.92rem;}
+  .ai-head-sub{font-size:.59rem;gap:.34rem;}
+  .ai-bottom-bar{grid-template-columns:1fr 1fr;gap:.55rem;padding:.72rem .85rem calc(.96rem + env(safe-area-inset-bottom, 0px));}
+  .ai-circle-btn{padding:.56rem .58rem;gap:.48rem;border-radius:13px;}
+  .ai-circle-icon{width:32px;height:32px;}
+  .ai-circle-label{font-size:.58rem;}
+  .ai-input-topline{gap:.4rem;}
+  .ai-input-hint{font-size:.53rem;}
+  #ai-send-btn{width:50px;height:44px;}
   #ai-fab{right:14px;bottom:82px;height:44px;padding:0 13px 0 10px;}
   #ai-fab .ai-fab-sub{display:none;}
   #ai-fab::after{display:none;}
 }
-@media(max-width:380px){#ai-fab .ai-fab-label{font-size:.73rem;}}
+@media(max-width:420px){
+  .ai-mood-label{display:none;}
+  .ai-head{padding-left:.9rem;padding-right:.9rem;}
+  .ai-head-title{font-size:.9rem;}
+  .ai-head-sub{font-size:.56rem;}
+  .ai-bottom-bar{grid-template-columns:1fr 1fr;gap:.5rem;padding-left:.75rem;padding-right:.75rem;}
+  .ai-input-topline{flex-direction:column;align-items:flex-start;gap:.3rem;}
+  .ai-input-hint{max-width:100%;}
+}
+@media(max-width:380px){
+  #ai-fab .ai-fab-label{font-size:.73rem;}
+  .ai-circle-btn{padding:.52rem .54rem;}
+}
 
 /* ═══ HERO ═══════════════════════════════════════════════ */
         #hero {
@@ -6467,14 +6610,14 @@ async function sendEmail(e) {
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
-  <!-- Header (sin botones — se movieron abajo) -->
+  <!-- Header con acciones rápidas -->
   <div class="ai-head">
     <div class="ai-head-avatar">✦</div>
     <div class="ai-head-info">
       <div class="ai-head-title">CodeHub IA</div>
       <div class="ai-head-sub">
         <span class="online-dot"></span>
-        <span id="ai-status">Online · Listo para ayudarte</span>
+        <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
     </div>
   </div>
@@ -6490,7 +6633,7 @@ async function sendEmail(e) {
 
   <!-- Messages -->
   <div id="ai-msgs">
-    <div class="ai-msg-wrap ai">
+    <div class="ai-msg-wrap ai ai-welcome">
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
@@ -6502,26 +6645,24 @@ async function sendEmail(e) {
     </div>
   </div>
 
-  <!-- Suggestions -->
-  <div class="ai-suggestions" id="ai-sugs">
-    <button class="ai-sug-btn" onclick="aiSugg(this)">🛠 ¿Qué herramientas hay?</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">📦 Base64 explicado</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">🔑 ¿Qué es un UUID?</button>
-    <button class="ai-sug-btn" onclick="aiSugg(this)">🐍 Tip de Python</button>
-  </div>
-
   <!-- Input -->
   <div class="ai-input-wrap">
+    <div class="ai-input-topline">
+      <span class="ai-input-badge">AI Cockpit</span>
+      <span class="ai-input-hint" id="ai-input-hint">Debug, diseño, ideas y código en un solo lugar</span>
+    </div>
+    <div class="ai-input-shell">
     <div class="ai-input-row">
       <textarea id="ai-input" placeholder="Pregúntame algo…" rows="1"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';updateCharCount()"></textarea>
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,104)+'px';updateCharCount()"></textarea>
       <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
         <i class="fas fa-paper-plane"></i>
       </button>
     </div>
+    </div>
     <div class="ai-input-footer">
-      <span>Enter para enviar · Shift+Enter nueva línea</span>
+      <span><span class="ai-kbd">Enter</span> enviar · <span class="ai-kbd">Shift</span>+<span class="ai-kbd">Enter</span> salto</span>
       <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
     </div>
   </div>
@@ -6529,11 +6670,11 @@ async function sendEmail(e) {
   <div class="ai-bottom-bar">
     <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversación">
       <div class="ai-circle-icon"><i class="fas fa-rotate-left"></i></div>
-      <span class="ai-circle-label">Restablecer</span>
+      <span class="ai-circle-label" data-subtitle="Nueva conversación">Restablecer</span>
     </button>
     <button class="ai-circle-btn ai-circle-close" id="ai-close-btn" title="Cerrar chat" aria-label="Cerrar chat">
       <div class="ai-circle-icon"><i class="fas fa-times"></i></div>
-      <span class="ai-circle-label">Cerrar</span>
+      <span class="ai-circle-label" data-subtitle="Ocultar panel">Cerrar</span>
     </button>
   </div>
 </div>
@@ -6550,6 +6691,7 @@ async function sendEmail(e) {
   const panel  = document.getElementById('ai-panel');
   const msgs   = document.getElementById('ai-msgs');
   const input  = document.getElementById('ai-input');
+  const inputHint = document.getElementById('ai-input-hint');
   const sendBtn= document.getElementById('ai-send-btn');
   const closeB = document.getElementById('ai-close-btn');
   const sugs   = document.getElementById('ai-sugs');
@@ -6559,6 +6701,14 @@ async function sendEmail(e) {
   let history = [];
   let isOpen  = false;
   let loading = false;
+  let placeholderIdx = 0;
+
+  const PLACEHOLDER_ROTATION = [
+    { placeholder: 'ExplÃ­came este error de JavaScript...', hint: 'Debug rÃ¡pido para frontend, backend y APIs' },
+    { placeholder: 'Mejora la UI de mi landing page...', hint: 'Ideas visuales mÃ¡s limpias y mÃ¡s pro' },
+    { placeholder: 'Dame una soluciÃ³n para mÃ³vil y PC...', hint: 'Pensado para responsive y UX real' },
+    { placeholder: 'AyÃºdame con una automatizaciÃ³n en Python...', hint: 'CÃ³digo, lÃ³gica y siguientes pasos claros' }
+  ];
 
   // Sistema: quién es el asistente
   const SYSTEM = `Eres el asistente de CodeHub, el portfolio de Wilson.E, desarrollador guatemalteco. 
@@ -6567,15 +6717,23 @@ CodeHub tiene: portfolio, 18 herramientas web (QR, contraseñas, hash, regex, UU
 una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
 Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
 
+  const ACTIVE_PROMPTS = [
+    { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
+    { placeholder: 'Mejora la UI de mi landing page...', hint: 'Ideas visuales mas limpias y mas pro' },
+    { placeholder: 'Dame una solucion para movil y PC...', hint: 'Pensado para responsive y UX real' },
+    { placeholder: 'Ayudame con una automatizacion en Python...', hint: 'Codigo, logica y siguientes pasos claros' }
+  ];
+
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
   const clearB = document.getElementById('ai-clear-btn');
-  if (clearB) clearB.addEventListener('click', () => {
+  const resetChat = () => {
     msgs.innerHTML = '';
     history = [];
     addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
     if (sugs) sugs.style.display = 'flex';
-  });
+  };
+  if (clearB) clearB.addEventListener('click', resetChat);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close
   let touchStartY = 0;
@@ -6585,6 +6743,13 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (diff > 80) setOpen(false);
   }, { passive: true });
 
+  function rotatePrompt(force = false) {
+    if (!input || document.activeElement === input || input.value.trim()) return;
+    if (!force) placeholderIdx = (placeholderIdx + 1) % ACTIVE_PROMPTS.length;
+    const current = ACTIVE_PROMPTS[placeholderIdx];
+    input.placeholder = current.placeholder;
+    if (inputHint) inputHint.textContent = current.hint;
+  }
 
   function toggle() { setOpen(!isOpen); }
   function setOpen(v) {
@@ -6601,6 +6766,8 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
       if (wt && !wt.textContent) wt.textContent = getTime();
     }
   }
+  rotatePrompt(true);
+  setInterval(() => rotatePrompt(false), 4200);
 
   function getTime() {
     return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });

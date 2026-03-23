@@ -221,6 +221,28 @@ footer a{color:var(--p);text-decoration:none}
 /* ── NEWS TAB ── */
 .news-tab{font-size:.75rem;padding:.38rem .7rem}
 
+/* ── IMAGE AI TOOL ── */
+.img-quick{display:flex;flex-wrap:wrap;gap:.45rem}
+.img-chip{padding:.34rem .72rem;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer;transition:var(--tr)}
+.img-chip:hover{border-color:var(--border-h);background:rgba(255,69,0,.08);color:var(--text);transform:translateY(-1px)}
+.img-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:.55rem}
+.img-stack{display:flex;flex-direction:column;gap:.55rem}
+.img-meta{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.66rem;color:var(--muted);font-family:var(--mono)}
+.img-note{padding:.7rem .8rem;border-radius:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);font-size:.74rem;color:var(--muted);line-height:1.6}
+.img-note strong{color:var(--a)}
+.img-toolbar{display:flex;flex-wrap:wrap;gap:.45rem}
+.img-out-shell{display:none;margin-top:.85rem;padding:.75rem;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02))}
+.img-out-shell.on{display:block}
+.img-preview{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:rgba(0,0,0,.26);min-height:280px;display:flex;align-items:center;justify-content:center}
+.img-preview img{display:block;max-width:100%;width:100%;height:auto}
+.img-badge{position:absolute;top:12px;left:12px;padding:.28rem .62rem;border-radius:999px;background:rgba(8,8,16,.82);border:1px solid rgba(255,255,255,.08);font-size:.62rem;font-family:var(--mono);color:var(--a);backdrop-filter:blur(10px)}
+.img-actions{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:.75rem}
+.img-caption{margin-top:.65rem;text-align:center;font-size:.68rem;color:rgba(232,232,240,.4);font-family:var(--mono);line-height:1.5}
+@media(max-width:600px){
+  .img-grid{grid-template-columns:1fr}
+  .img-preview{min-height:220px}
+}
+
 </style>
 
   <meta name="robots" content="index, follow">
@@ -638,26 +660,45 @@ footer a{color:var(--p);text-decoration:none}
   <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span></div>
   <div class="cd">Describe una imagen y la IA la genera gratis al instante.</div>
   <div class="cp">
-  <textarea class="ti" id="img-prompt" rows="2" placeholder="Ej: Un dragón volando sobre las montañas de Guatemala al atardecer…"></textarea>
-  <div style="display:flex;gap:.5rem;margin:.5rem 0">
-    <select class="ts" id="img-style">
-      <option value="">Sin estilo</option>
-      <option value="realistic photo">Foto realista</option>
-      <option value="digital art">Arte digital</option>
-      <option value="anime style">Anime</option>
-      <option value="oil painting">Pintura al óleo</option>
-      <option value="pixel art">Pixel art</option>
-      <option value="watercolor">Acuarela</option>
-    </select>
-    <select class="ts" id="img-size">
-      <option value="512x512">512×512</option>
-      <option value="768x512">768×512</option>
-      <option value="512x768">512×768</option>
-      <option value="1024x576">1024×576</option>
-    </select>
+  <textarea class="ti" id="img-prompt" rows="3" placeholder="Ej: Un dragon volando sobre las montanas de Guatemala al atardecer, cinematografico, ultra detallado..."></textarea>
+  <div class="img-quick">
+    <button class="img-chip" onclick="setImagePrompt('Un retrato futurista de un desarrollador guatemalteco con luces neon')">Retrato neon</button>
+    <button class="img-chip" onclick="setImagePrompt('Una interfaz futurista de inteligencia artificial sobre vidrio y luces holograficas')">UI futurista</button>
+    <button class="img-chip" onclick="setImagePrompt('Paisaje de Guatemala al amanecer con volcanes, nubes y luz dorada')">Guatemala epica</button>
+    <button class="img-chip" onclick="setImagePrompt('Mascota robot amigable para una app de tecnologia, estilo premium')">Mascota tech</button>
   </div>
-  <button class="tb" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
-  <div id="img-out" style="display:none;margin-top:.8rem;text-align:center"></div>
+  <div class="img-grid">
+    <div class="img-stack">
+      <select class="ts" id="img-style">
+        <option value="">Sin estilo</option>
+        <option value="realistic photo, cinematic lighting">Foto realista</option>
+        <option value="digital art, polished details">Arte digital</option>
+        <option value="anime style, vibrant colors">Anime</option>
+        <option value="oil painting, rich brush strokes">Pintura al oleo</option>
+        <option value="pixel art, retro game aesthetic">Pixel art</option>
+        <option value="watercolor, soft texture">Acuarela</option>
+      </select>
+      <div class="img-toolbar">
+        <button class="tb" onclick="enhanceImagePrompt()"><i class="fas fa-wand-magic-sparkles"></i> Mejorar prompt</button>
+        <button class="tb" onclick="randomImagePrompt()"><i class="fas fa-shuffle"></i> Aleatorio</button>
+      </div>
+    </div>
+    <div class="img-stack">
+      <select class="ts" id="img-size" onchange="updateImageHints()">
+        <option value="512x512">1:1 · 512x512</option>
+        <option value="768x512">3:2 · 768x512</option>
+        <option value="512x768">2:3 · 512x768</option>
+        <option value="1024x576">16:9 · 1024x576</option>
+      </select>
+      <div class="img-meta">
+        <span id="img-model-hint">Auto · rota entre varios modelos</span>
+        <span id="img-size-hint">Listo para web</span>
+      </div>
+    </div>
+  </div>
+  <div class="img-note"><strong>Tip:</strong> pide camara, iluminacion, estilo y composicion para obtener mejores resultados. Ejemplo: <em>"retrato editorial, luz volumetrica, fondo oscuro, alta definicion"</em>.</div>
+  <button class="tb primary" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
+  <div id="img-out" class="img-out-shell"></div>
   </div><!-- /cp -->
 </div>
 
@@ -1613,7 +1654,7 @@ async function generateImage() {
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
-  out.style.display = 'block';
+  out.classList.add('on');
 
   function setStatus(icon, title, sub, pct) {
     out.innerHTML =
@@ -1633,13 +1674,17 @@ async function generateImage() {
 
   function showResult(src, provName) {
     out.innerHTML =
-      '<img src="' + src + '" alt="IA" style="max-width:100%;border-radius:12px;border:1px solid var(--border);display:block;margin:0 auto">' +
-      '<div style="display:flex;gap:.5rem;margin-top:.6rem;justify-content:center;flex-wrap:wrap">' +
+      '<div class="img-preview">' +
+        '<span class="img-badge">' + provName + '</span>' +
+        '<img src="' + src + '" alt="IA">' +
+      '</div>' +
+      '<div class="img-actions">' +
         '<a href="' + src + '" target="_blank" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-external-link-alt"></i> Ver completa</a>' +
         '<a href="' + src + '" download="codehub-ia.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-download"></i> Descargar</a>' +
         '<button class="tb" onclick="generateImage()"><i class="fas fa-rotate"></i> Regenerar</button>' +
+        '<button class="tb" onclick="copyImagePrompt()"><i class="fas fa-copy"></i> Copiar prompt</button>' +
       '</div>' +
-      '<div style="font-size:.65rem;color:rgba(232,232,240,.3);font-family:var(--mono);text-align:center;margin-top:.4rem">' + provName + ' - Gratis</div>';
+      '<div class="img-caption">' + provName + ' · Gratis · Prompt optimizado para web</div>';
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-image"></i> Generar imagen';
   }
@@ -1722,6 +1767,59 @@ async function generateImage() {
   }
 
   showError();
+}
+
+function setImagePrompt(text) {
+  document.getElementById('img-prompt').value = text;
+}
+
+function updateImageHints() {
+  const size = document.getElementById('img-size').value;
+  const sizeHint = {
+    '512x512': 'Ideal para avatar',
+    '768x512': 'Perfecto para post horizontal',
+    '512x768': 'Ideal para story vertical',
+    '1024x576': 'Hero banner cinematografico'
+  };
+  document.getElementById('img-size-hint').textContent = sizeHint[size] || 'Listo para web';
+}
+
+function enhanceImagePrompt() {
+  const promptEl = document.getElementById('img-prompt');
+  const style = document.getElementById('img-style').value;
+  const size = document.getElementById('img-size').value;
+  const base = promptEl.value.trim();
+  if (!base) { toast('Escribe primero una idea base'); return; }
+
+  const ratioHint = {
+    '512x512': 'centered composition, balanced framing',
+    '768x512': 'wide cinematic composition, environmental details',
+    '512x768': 'vertical composition, full subject in frame',
+    '1024x576': 'ultra wide cinematic shot, dramatic perspective'
+  }[size] || 'clean composition';
+
+  const extras = ['high detail', 'professional lighting', ratioHint, 'sharp focus', 'premium quality'];
+  if (style) extras.unshift(style);
+  promptEl.value = [base].concat(extras).join(', ');
+  toast('✨ Prompt mejorado');
+}
+
+function randomImagePrompt() {
+  const ideas = [
+    'Un estudio futurista de inteligencia artificial con pantallas holograficas y ambiente premium',
+    'Un robot asistente elegante sobre vidrio oscuro con luces neon azul y naranja',
+    'Un panel de control cyberpunk para una app moderna de productividad',
+    'Una ciudad futurista inspirada en Guatemala con lluvia nocturna y reflejos neon'
+  ];
+  const pick = ideas[Math.floor(Math.random() * ideas.length)];
+  setImagePrompt(pick);
+  toast('🎲 Idea aleatoria aplicada');
+}
+
+function copyImagePrompt() {
+  const text = document.getElementById('img-prompt').value.trim();
+  if (!text) { toast('No hay prompt para copiar'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('✅ Prompt copiado'));
 }
 
 
