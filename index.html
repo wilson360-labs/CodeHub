@@ -1364,28 +1364,8 @@
             display: none;
         }
 
-        #beta-btn {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            padding: 0.38rem 0.9rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            font-weight: 700;
-            letter-spacing: 0.03em;
-            transition: all 0.25s ease;
-            box-shadow: 0 3px 12px rgba(255,69,0,0.3);
-            white-space: nowrap;
-        }
-
-        #beta-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255,69,0,0.5);
-        }
-
         #update-btn {
-            display: none; /* oculto en el nav, accesible via menú experimental */
+            display: none;
         }
 
         /* Typing bajo el nav — en mobile */
@@ -3388,7 +3368,7 @@
                 <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="header-yt-btn" title="Canal de YouTube" aria-label="YouTube">
                     <i class="fab fa-youtube"></i>
                 </a>
-                <button id="beta-btn" aria-label="Únete al Beta Test">🚀 Beta Test</button>
+
                 <!-- Burger button — solo visible en mobile -->
                 <button class="burger-btn" id="burger-btn" aria-label="Menú" onclick="toggleMobileNav()">
                     <span></span><span></span><span></span>
@@ -4104,21 +4084,29 @@
                 <!-- Columna izquierda: Avatar + stats -->
                 <div class="about-pro-left">
                     <div class="about-avatar-ring">
-                        <!-- Neon circle dev photo -->
+                        <!-- Neon circle dev photo — colores CodeHub -->
                         <style>
-                          @keyframes neonSpinConic { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-                          @keyframes neonSpinConic2 { 0%{transform:rotate(0deg)} 100%{transform:rotate(-360deg)} }
-                          @keyframes neonGlowPulse { 0%,100%{opacity:.85} 50%{opacity:1} }
+                          @keyframes neonSpinConic  { 0%{transform:rotate(0deg)}   100%{transform:rotate(360deg)} }
+                          @keyframes neonSpinConic2 { 0%{transform:rotate(0deg)}   100%{transform:rotate(-360deg)} }
+                          @keyframes neonGlowPulse  { 0%,100%{opacity:.8} 50%{opacity:1} }
                         </style>
-                        <div style="position:relative;width:160px;height:160px;margin:0 auto;">
-                          <div style="position:absolute;inset:0;border-radius:50%;overflow:hidden;">
-                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg" alt="Wilson.E — Dev Icon" fetchpriority="high" width="160" height="160" decoding="async" loading="eager" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" />
+                        <div style="position:relative;width:168px;height:168px;margin:0 auto;">
+                          <!-- Glow exterior pulsante en naranja/rojo -->
+                          <div style="position:absolute;inset:-6px;border-radius:50%;box-shadow:0 0 28px rgba(255,69,0,.9),0 0 55px rgba(255,107,53,.6),0 0 90px rgba(255,189,105,.3);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;z-index:3;"></div>
+                          <!-- Anillo exterior giratorio — naranja/rojo/dorado -->
+                          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff4500,#ff6b35,#ffbd69,#ff8c00,#ff4500,#cc2200,#ff4500);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));z-index:2;"></div>
+                          <!-- Anillo interior giratorio inverso — dorado/rojo -->
+                          <div style="position:absolute;inset:14px;border-radius:50%;background:conic-gradient(from 180deg,#ffbd69,#ff4500,#cc2200,#ff6b35,#ffbd69);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));z-index:2;"></div>
+                          <!-- Foto — ocupa todo el círculo -->
+                          <div style="position:absolute;inset:12px;border-radius:50%;overflow:hidden;z-index:1;">
+                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg"
+                              alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
+                              crossorigin="anonymous"
+                              style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
+                              onerror="this.onerror=null;this.src='https://avatars.githubusercontent.com/u/0?v=4';" />
                           </div>
-                          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff00ff,#00ffff,#ffff00,#ff0080,#00ff88,#8800ff,#ff6600,#ff00ff);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 10px),black calc(100% - 10px));mask:radial-gradient(farthest-side,transparent calc(100% - 10px),black calc(100% - 10px));"></div>
-                          <div style="position:absolute;inset:12px;border-radius:50%;background:conic-gradient(from 180deg,#00ffff,#ff00ff,#ffff00,#00ff88,#8800ff,#ff0080,#00ffff);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 6px),black calc(100% - 6px));mask:radial-gradient(farthest-side,transparent calc(100% - 6px),black calc(100% - 6px));"></div>
-                          <div style="position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 30px rgba(0,255,255,.7),0 0 60px rgba(255,0,255,.5),0 0 100px rgba(255,255,0,.25);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;"></div>
                         </div>
-                        <div class="about-avatar-badge" style="margin-top:.5rem;">
+                        <div class="about-avatar-badge" style="margin-top:.7rem;">
                             <span class="about-pulse"></span>
                             <span data-i18n="available">Disponible</span>
                         </div>
@@ -4994,15 +4982,7 @@
             if (icon) icon.className = 'fas fa-sun';
         }
 
-        // Beta Test
-        const betaBtn = document.getElementById('beta-btn');
-        if (betaBtn) {
-            betaBtn.addEventListener('click', () => {
-                alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
-            });
-        }
-
-        // Actualización manual (update-btn ya no está en el nav, pero lo dejamos por si existe en otro lado)
+        // Actualización manual
         const updateBtn = document.getElementById('update-btn');
         if (updateBtn) {
             updateBtn.addEventListener('click', () => {
