@@ -104,6 +104,10 @@ const upload = multer({
     else cb(new Error('Solo .apk'));
   },
 });
+const uploadSecurityFile = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 32 * 1024 * 1024 },
+});
 
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' } });
@@ -995,6 +999,102 @@ app.post('/api/check-link', chatLimiter, async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message || 'No se pudo analizar el link' });
   }
+});
+
+// ── POST /api/check-file — VirusTotal file checker ───────────
+app.post('/api/check-file', chatLimiter, (req, res) => {
+  uploadSecurityFile.single('file')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({
+        ok: false,
+        error: err.code === 'LIMIT_FILE_SIZE'
+          ? 'El archivo supera el limite de 32 MB'
+          : (err.message || 'No se pudo procesar el archivo')
+      });
+    }
+    if (!req.file) return res.status(400).json({ ok: false, error: 'Archivo requerido' });
+    if (!process.env.VIRUSTOTAL_API_KEY) {
+      return res.status(503).json({ ok: false, error: 'VIRUSTOTAL_API_KEY no configurada' });
+    }
+
+    try {
+      const sha256 = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+      const form = new FormData();
+      form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype || 'application/octet-stream' }), req.file.originalname);
+
+      const submitRes = await fetch('https://www.virustotal.com/api/v3/files', {
+        method: 'POST',
+        headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY },
+        body: form
+      });
+
+      const submitData = await submitRes.json().catch(() => ({}));
+      if (!submitRes.ok) {
+        return res.status(submitRes.status).json({
+          ok: false,
+          error: submitData.error?.message || `VirusTotal ${submitRes.status}`
+        });
+      }
+
+      const analysisId = submitData.data?.id;
+      if (!analysisId) {
+        return res.status(502).json({ ok: false, error: 'VirusTotal no devolvio un analysis id para el archivo' });
+      }
+
+      let analysisData = null;
+      for (let i = 0; i < 5; i++) {
+        const analysisRes = await fetch(`https://www.virustotal.com/api/v3/analyses/${encodeURIComponent(analysisId)}`, {
+          headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY }
+        });
+        analysisData = await analysisRes.json().catch(() => ({}));
+        if (analysisRes.ok && analysisData.data?.attributes?.status === 'completed') break;
+        await new Promise(resolve => setTimeout(resolve, 1800));
+      }
+
+      const attrs = analysisData?.data?.attributes || {};
+      const stats = attrs.stats || {};
+      const malicious = stats.malicious || 0;
+      const suspicious = stats.suspicious || 0;
+      const harmless = stats.harmless || 0;
+      const undetected = stats.undetected || 0;
+      const riskScore = Math.min(100, (malicious * 25) + (suspicious * 12));
+
+      let verdict = 'clean';
+      let recommendation = 'No se detectaron amenazas claras, pero aun conviene verificar el origen del archivo antes de abrirlo.';
+      if (malicious > 0) {
+        verdict = 'malicious';
+        recommendation = 'No abras ni ejecutes este archivo. Eliminalo o aisla la muestra.';
+      } else if (suspicious > 0) {
+        verdict = 'suspicious';
+        recommendation = 'Tratalo como sospechoso. Evita ejecutarlo y confirma su origen primero.';
+      }
+
+      res.json({
+        ok: true,
+        provider: 'virustotal',
+        fileName: req.file.originalname,
+        mime: req.file.mimetype || 'application/octet-stream',
+        size: req.file.size,
+        sha256,
+        verdict,
+        riskScore,
+        recommendation,
+        stats: {
+          malicious,
+          suspicious,
+          harmless,
+          undetected
+        },
+        analysis: {
+          id: analysisId,
+          status: attrs.status || 'queued',
+          date: attrs.date || null
+        }
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message || 'No se pudo analizar el archivo' });
+    }
+  });
 });
 
 

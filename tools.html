@@ -717,6 +717,27 @@ footer a{color:var(--p);text-decoration:none}
     <span style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">Backend: VirusTotal via Railway</span>
   </div>
   <div id="link-check-out" class="rb" style="display:none"></div>
+  <div style="height:1px;background:rgba(255,255,255,.08);margin:1rem 0"></div>
+  <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.55rem">Escaneo de archivos</div>
+  <input class="ti" type="file" id="file-check-input" style="margin-bottom:.75rem">
+  <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="tb primary" onclick="analyzeFileSafety()" id="file-check-btn"><i class="fas fa-file-shield"></i> Analizar archivo</button>
+    <span style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">Limite actual: 32 MB por archivo</span>
+  </div>
+  <div id="file-check-out" class="rb" style="display:none"></div>
+  <div style="height:1px;background:rgba(255,255,255,.08);margin:1rem 0"></div>
+  <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.55rem">Proteccion y confianza</div>
+  <div style="display:grid;gap:.5rem">
+    <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+      <strong style="color:#ffbd69">Phishing:</strong> desconfia de links cortos, dominios raros y paginas que piden iniciar sesion demasiado rapido.
+    </div>
+    <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+      <strong style="color:#64d2ff">APK o EXE:</strong> evita instalar archivos si no conoces la fuente, aunque parezcan premium o modificados.
+    </div>
+    <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+      <strong style="color:#00e676">Recomendacion:</strong> verifica dominio, reputacion y extension del archivo antes de abrir o compartir.
+    </div>
+  </div>
   </div><!-- /cp -->
 </div>
 
@@ -1912,6 +1933,68 @@ function metricBox(label, value) {
     '<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">' + label + '</div>' +
     '<div style="margin-top:.2rem;font-size:1rem;font-weight:700;color:var(--text)">' + value + '</div>' +
   '</div>';
+}
+
+async function analyzeFileSafety() {
+  const input = document.getElementById('file-check-input');
+  const out = document.getElementById('file-check-out');
+  const btn = document.getElementById('file-check-btn');
+  const file = input.files && input.files[0];
+  const BACKEND = 'https://codehub-production-729d.up.railway.app';
+
+  if (!file) { toast('Selecciona un archivo primero'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
+  out.style.display = 'block';
+  out.innerHTML = '<div style="font-family:var(--mono);color:var(--muted)">Subiendo archivo y consultando VirusTotal...</div>';
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+
+    const res = await fetch(BACKEND + '/api/check-file', {
+      method: 'POST',
+      body: form
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      out.innerHTML = '<div style="color:#ff6b6b;font-weight:700">No se pudo analizar el archivo</div><div style="margin-top:.45rem;color:var(--muted)">' + (data.error || 'Error desconocido') + '</div>';
+      return;
+    }
+
+    const tone = data.verdict === 'malicious'
+      ? { label: 'Malicioso', color: '#ff5f56', bg: 'rgba(255,95,86,.14)' }
+      : data.verdict === 'suspicious'
+      ? { label: 'Sospechoso', color: '#ffbd2e', bg: 'rgba(255,189,46,.14)' }
+      : { label: 'Limpio', color: '#00e676', bg: 'rgba(0,230,118,.14)' };
+
+    out.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.9rem">' +
+        '<div>' +
+          '<div style="font-size:.72rem;color:var(--muted);font-family:var(--mono)">Archivo</div>' +
+          '<div style="font-weight:700;color:var(--text);word-break:break-word">' + data.fileName + '</div>' +
+        '</div>' +
+        '<div style="padding:.45rem .8rem;border-radius:999px;background:' + tone.bg + ';color:' + tone.color + ';font-weight:700">' + tone.label + '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.55rem;margin-bottom:.9rem">' +
+        metricBox('Riesgo', data.riskScore + '/100') +
+        metricBox('Maliciosos', data.stats.malicious) +
+        metricBox('Sospechosos', data.stats.suspicious) +
+        metricBox('Seguros', data.stats.harmless) +
+      '</div>' +
+      '<div style="padding:.85rem;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">' +
+        '<div style="font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:.35rem">Recomendacion</div>' +
+        '<div style="color:var(--text);line-height:1.6">' + data.recommendation + '</div>' +
+      '</div>' +
+      '<div style="margin-top:.8rem;font-size:.7rem;color:var(--muted);word-break:break-word">SHA256: ' + data.sha256 + '</div>';
+  } catch (e) {
+    out.innerHTML = '<div style="color:#ff6b6b;font-weight:700">Fallo la conexion con el backend</div><div style="margin-top:.45rem;color:var(--muted)">' + e.message + '</div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-file-shield"></i> Analizar archivo';
+  }
 }
 
 

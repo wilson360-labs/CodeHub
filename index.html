@@ -423,6 +423,7 @@
             top: 50%;
             transform: translateY(-50%);
             width: 300px;
+            max-height: 82vh;
             background: linear-gradient(135deg, rgba(0, 0, 0, 0.95), rgba(26, 26, 46, 0.95));
             backdrop-filter: blur(20px);
             border: 2px solid var(--primary);
@@ -432,7 +433,13 @@
             z-index: 1000;
             transition: left 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             box-shadow: 5px 0 30px rgba(255, 69, 0, 0.3);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,69,0,.55) rgba(255,255,255,.06);
         }
+        #experimental-menu::-webkit-scrollbar { width: 8px; }
+        #experimental-menu::-webkit-scrollbar-track { background: rgba(255,255,255,.05); border-radius: 999px; }
+        #experimental-menu::-webkit-scrollbar-thumb { background: rgba(255,69,0,.55); border-radius: 999px; }
 
         #experimental-menu.active {
             left: 0;
@@ -514,6 +521,28 @@
         .menu-header p {
             color: #888;
             font-size: 0.85rem;
+        }
+        .exp-scroll-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .55rem;
+            margin: 0 0 14px;
+            padding: .7rem .85rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            color: rgba(255,255,255,.78);
+            font-size: .73rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .exp-scroll-indicator i {
+            color: var(--accent);
+            animation: expArrowBounce 1.5s ease-in-out infinite;
+        }
+        @keyframes expArrowBounce {
+            0%, 100% { transform: translateY(0); opacity: .8; }
+            50% { transform: translateY(4px); opacity: 1; }
         }
 
         .menu-item {
@@ -3451,6 +3480,11 @@
         <div class="menu-header">
             <h3>🧪 Zona Experimental</h3>
             <p>Funciones avanzadas y experimentales</p>
+        </div>
+
+        <div class="exp-scroll-indicator">
+            <i class="fas fa-arrow-down"></i>
+            <span>Explora las funciones una por una</span>
         </div>
 
         <div class="menu-item" onclick="activateMatrixMode()">

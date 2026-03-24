@@ -291,6 +291,51 @@ const swaggerSpec = {
         },
       },
     },
+    '/api/check-file': {
+      post: {
+        tags: ['Seguridad'],
+        summary: 'Analizar un archivo con VirusTotal',
+        requestBody: {
+          required: true,
+          content: {
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                required: ['file'],
+                properties: {
+                  file: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Analisis del archivo',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    ok: { type: 'boolean' },
+                    provider: { type: 'string', example: 'virustotal' },
+                    fileName: { type: 'string' },
+                    mime: { type: 'string' },
+                    size: { type: 'integer' },
+                    sha256: { type: 'string' },
+                    verdict: { type: 'string', enum: ['clean', 'suspicious', 'malicious'] },
+                    riskScore: { type: 'integer', example: 25 },
+                    recommendation: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: 'Archivo invalido o demasiado grande' },
+          503: { description: 'VirusTotal no configurado' },
+        },
+      },
+    },
     '/api/requests': {
       get: {
         tags: ['Requests'],
