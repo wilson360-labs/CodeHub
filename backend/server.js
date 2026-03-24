@@ -494,6 +494,7 @@ app.get('/api/health', (_, res) => res.json({
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
   openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
+  minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
   mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
   storage:   supabase ? 'supabase' : 'missing',
@@ -830,6 +831,41 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
   }
 
   // ── 3. Pollinations — Flux (sin key) ──────────────────────
+  // MiniMax - image-01
+  if (process.env.MINIMAX_API_KEY && (provider === 'auto' || provider === 'minimax')) {
+    try {
+      const aspectRatio = w > h ? '16:9' : w < h ? '9:16' : '1:1';
+      const r = await fetch('https://api.minimax.io/v1/image_generation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.MINIMAX_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'image-01',
+          prompt: p,
+          aspect_ratio: aspectRatio,
+          response_format: 'base64',
+          n: 1,
+        })
+      });
+      if (r.ok) {
+        const d = await r.json();
+        const b64 =
+          d.data?.base64?.[0] ||
+          d.data?.images?.[0]?.base64 ||
+          d.data?.image_base64?.[0];
+        const url = d.data?.image_urls?.[0];
+        if (b64) return res.json({ ok: true, provider: 'minimax', model: 'image-01', image: `data:image/png;base64,${b64}` });
+        if (url) return res.json({ ok: true, provider: 'minimax', model: 'image-01', url });
+        errors.push('MiniMax: respuesta sin imagen');
+      } else {
+        const e = await r.json().catch(() => ({}));
+        errors.push(`MiniMax: ${e.base_resp?.status_msg || e.message || r.status}`);
+      }
+    } catch (e) { errors.push(`MiniMax: ${e.message}`); }
+  }
+
   if (provider === 'auto' || provider === 'pollinations') {
     try {
       const seed = Math.floor(Math.random() * 99999);

@@ -220,7 +220,7 @@ const swaggerSpec = {
                   prompt:   { type: 'string', example: 'a dragon flying over Guatemala mountains' },
                   width:    { type: 'integer', default: 512, minimum: 256, maximum: 1024 },
                   height:   { type: 'integer', default: 512, minimum: 256, maximum: 1024 },
-                  provider: { type: 'string', enum: ['auto', 'together', 'gemini', 'pollinations'], default: 'auto' },
+                  provider: { type: 'string', enum: ['auto', 'together', 'gemini', 'minimax', 'pollinations'], default: 'auto' },
                 },
               },
             },
