@@ -21,6 +21,7 @@ const swaggerSpec = {
     { url: 'http://localhost:3001', description: 'Desarrollo local' },
   ],
   tags: [
+    { name: 'Seguridad',  description: 'Analisis de links y reputacion con VirusTotal' },
     { name: 'Sistema',    description: 'Health check y estado del servidor' },
     { name: 'Apps',       description: 'Tienda de apps Android' },
     { name: 'Ratings',    description: 'Sistema de calificaciones' },
@@ -244,6 +245,49 @@ const swaggerSpec = {
             },
           },
           503: { description: 'Todos los proveedores fallaron' },
+        },
+      },
+    },
+    '/api/check-link': {
+      post: {
+        tags: ['Seguridad'],
+        summary: 'Analizar un link con VirusTotal',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['url'],
+                properties: {
+                  url: { type: 'string', example: 'https://example.com/download' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Analisis del link',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    ok: { type: 'boolean' },
+                    provider: { type: 'string', example: 'virustotal' },
+                    url: { type: 'string' },
+                    host: { type: 'string' },
+                    verdict: { type: 'string', enum: ['clean', 'suspicious', 'malicious', 'unknown'] },
+                    riskScore: { type: 'integer', example: 25 },
+                    recommendation: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          400: { description: 'URL invalida' },
+          503: { description: 'VirusTotal no configurado' },
         },
       },
     },

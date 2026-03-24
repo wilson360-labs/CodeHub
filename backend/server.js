@@ -495,6 +495,7 @@ app.get('/api/health', (_, res) => res.json({
   openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
   minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
+  virustotal:process.env.VIRUSTOTAL_API_KEY  ? 'ok' : 'missing',
   mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
   storage:   supabase ? 'supabase' : 'missing',
@@ -896,6 +897,104 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
 
   // Todos fallaron
   res.status(503).json({ ok: false, error: 'Todos los proveedores fallaron', details: errors });
+});
+
+// ── POST /api/check-link — VirusTotal URL checker ────────────
+app.post('/api/check-link', chatLimiter, async (req, res) => {
+  const rawUrl = String(req.body?.url || '').trim();
+  if (!rawUrl) return res.status(400).json({ ok: false, error: 'URL requerida' });
+  if (!process.env.VIRUSTOTAL_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'VIRUSTOTAL_API_KEY no configurada' });
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+    if (!/^https?:$/.test(parsedUrl.protocol)) throw new Error('Protocolo no soportado');
+  } catch (_) {
+    return res.status(400).json({ ok: false, error: 'URL invalida. Usa http:// o https://' });
+  }
+
+  try {
+    const submitRes = await fetch('https://www.virustotal.com/api/v3/urls', {
+      method: 'POST',
+      headers: {
+        'x-apikey': process.env.VIRUSTOTAL_API_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: `url=${encodeURIComponent(parsedUrl.toString())}`
+    });
+
+    const submitData = await submitRes.json().catch(() => ({}));
+    if (!submitRes.ok) {
+      return res.status(submitRes.status).json({
+        ok: false,
+        error: submitData.error?.message || `VirusTotal ${submitRes.status}`
+      });
+    }
+
+    const analysisId = submitData.data?.id;
+    if (!analysisId) {
+      return res.status(502).json({ ok: false, error: 'VirusTotal no devolvio un analysis id' });
+    }
+
+    let analysisData = null;
+    for (let i = 0; i < 4; i++) {
+      const analysisRes = await fetch(`https://www.virustotal.com/api/v3/analyses/${encodeURIComponent(analysisId)}`, {
+        headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY }
+      });
+      analysisData = await analysisRes.json().catch(() => ({}));
+      if (analysisRes.ok && analysisData.data?.attributes?.status === 'completed') break;
+      await new Promise(resolve => setTimeout(resolve, 1800));
+    }
+
+    const attrs = analysisData?.data?.attributes || {};
+    const stats = attrs.stats || {};
+    const malicious = stats.malicious || 0;
+    const suspicious = stats.suspicious || 0;
+    const harmless = stats.harmless || 0;
+    const undetected = stats.undetected || 0;
+    const timeout = stats.timeout || 0;
+    const riskScore = Math.min(100, (malicious * 25) + (suspicious * 12));
+
+    let verdict = 'clean';
+    let recommendation = 'No se detectaron senales claras de riesgo, pero aun conviene revisar el dominio antes de abrirlo.';
+
+    if (malicious > 0) {
+      verdict = 'malicious';
+      recommendation = 'No abras este link. Bloquealo, no descargues archivos y evita compartirlo.';
+    } else if (suspicious > 0) {
+      verdict = 'suspicious';
+      recommendation = 'Tratalo como sospechoso. Verifica el dominio, evita iniciar sesion y no descargues nada.';
+    } else if (timeout > 0 && harmless === 0) {
+      verdict = 'unknown';
+      recommendation = 'El analisis no fue concluyente. Revisa el dominio manualmente antes de confiar.';
+    }
+
+    res.json({
+      ok: true,
+      provider: 'virustotal',
+      url: parsedUrl.toString(),
+      host: parsedUrl.hostname,
+      verdict,
+      riskScore,
+      recommendation,
+      stats: {
+        malicious,
+        suspicious,
+        harmless,
+        undetected,
+        timeout
+      },
+      analysis: {
+        id: analysisId,
+        status: attrs.status || 'queued',
+        date: attrs.date || null
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message || 'No se pudo analizar el link' });
+  }
 });
 
 

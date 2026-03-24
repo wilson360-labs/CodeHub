@@ -527,10 +527,11 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            transform: translateY(var(--exp-shift, 0px));
         }
 
         .menu-item:hover {
-            transform: translateX(10px);
+            transform: translateX(10px) translateY(var(--exp-shift, 0px));
             border-color: var(--primary);
             box-shadow: 0 5px 20px rgba(255, 69, 0, 0.4);
             background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 69, 0, 0.1));
@@ -3200,10 +3201,67 @@
             opacity: 1;
             transform: translateY(0);
         }
+        .pueblo-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .8rem;
+            flex-wrap: wrap;
+            margin: .4rem 0 1.6rem;
+        }
+        .pueblo-nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,.1);
+            background: rgba(255,255,255,.04);
+            color: #fff;
+            cursor: pointer;
+            transition: transform .2s ease, background .2s ease, border-color .2s ease;
+        }
+        .pueblo-nav-btn:hover {
+            transform: translateY(-2px);
+            background: rgba(255,69,0,.14);
+            border-color: rgba(255,69,0,.35);
+        }
+        .pueblo-nav-btn i {
+            font-size: 1rem;
+        }
+        .pueblo-nav-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: .55rem;
+            padding: .75rem 1rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            color: rgba(232,232,240,.72);
+            font-size: .82rem;
+        }
+        .pueblo-nav-hint strong {
+            color: #fff;
+            font-weight: 700;
+        }
         @media (max-width: 600px) {
             .pueblo-panels { height: 220px; gap: 6px; }
             .pueblo-panel { border-radius: 12px; }
             .pueblo-panel h3 { font-size: .82rem; left: 14px; }
+            .pueblo-controls {
+                gap: .6rem;
+            }
+            .pueblo-nav-btn {
+                width: 44px;
+                height: 44px;
+            }
+            .pueblo-nav-hint {
+                width: 100%;
+                justify-content: center;
+                font-size: .77rem;
+                text-align: center;
+            }
         }
         @media (max-width: 380px) {
             .pueblo-panels { height: 180px; }
@@ -3724,13 +3782,13 @@
                         <span class="hero-name liquid-word" id="liq-hero-wilson" data-liq-size="large">Wilson.E</span>
                     </h1>
                     <p class="hero-desc">
-                        DiseÃ±o y construyo experiencias web con mejor presencia, herramientas Ãºtiles y automatizaciones con IA.
-                        Me enfoco en que cada proyecto se vea serio, cargue rÃ¡pido y comunique valor desde el primer vistazo.
+                        Diseno y construyo experiencias web con mejor presencia, herramientas utiles y automatizaciones con IA.
+                        Me enfoco en que cada proyecto se vea serio, cargue rapido y comunique valor desde el primer vistazo.
                     </p>
                     <div class="hero-proof">
-                        <span><i class="fas fa-bolt"></i> Entrega rÃ¡pida</span>
+                        <span><i class="fas fa-bolt"></i> Entrega rapida</span>
                         <span><i class="fas fa-layer-group"></i> Frontend + backend</span>
-                        <span><i class="fas fa-wand-magic-sparkles"></i> UI con mÃ¡s nivel</span>
+                        <span><i class="fas fa-wand-magic-sparkles"></i> UI con mas nivel</span>
                     </div>
                     <div class="hero-stack">
                         <span>HTML</span><span>CSS</span><span>JavaScript</span>
@@ -3765,7 +3823,7 @@
                         </a>
                     </div>
                     <div class="hero-note">
-                        <span><i class="fas fa-circle-check"></i> Branding visual mÃ¡s limpio y profesional</span>
+                        <span><i class="fas fa-circle-check"></i> Branding visual mas limpio y profesional</span>
                         <span><i class="fas fa-circle-check"></i> Compatible con mobile y desktop</span>
                     </div>
                 </div>
@@ -3797,10 +3855,6 @@
                             <span>JS · ES2025</span>
                         </div>
                     </div>
-                        <div class="hero-float-card hero-float-card-right">
-                            <strong>Node + IA</strong>
-                            <span>automation ready</span>
-                        </div>
                 </div>
             </div>
         </section>
@@ -4434,6 +4488,19 @@
               </div>
             </div>
 
+            <div class="pueblo-controls" aria-label="Controles de la galería">
+                <button class="pueblo-nav-btn" id="pueblo-prev" type="button" aria-label="Imagen anterior">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="pueblo-nav-hint">
+                    <i class="fas fa-images" style="color:var(--accent)"></i>
+                    <span><strong>Galeria:</strong> toca la imagen o usa las flechas para verla una por una</span>
+                </div>
+                <button class="pueblo-nav-btn" id="pueblo-next" type="button" aria-label="Imagen siguiente">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
             <!-- Video -->
             <div class="pueblo-video-wrap">
                 <div class="pueblo-eyebrow" style="margin-bottom:.6rem">// mi pueblo en video</div>
@@ -4462,6 +4529,19 @@
     <!-- Elementos del updater -->
     <div id="update-notification" class="update-notification"></div>
     <div id="loading-indicator" class="loading-indicator"></div>
+    <script>
+      function toast(message, type, duration) {
+        var el = document.getElementById('update-notification');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'update-notification ' + (type || 'info');
+        el.classList.add('show');
+        clearTimeout(window.__codehubToastTimer);
+        window.__codehubToastTimer = setTimeout(function() {
+          el.classList.remove('show');
+        }, duration || 2200);
+      }
+    </script>
     
     <footer>
         <div class="footer-content">
@@ -5559,6 +5639,17 @@
             menu.classList.toggle('active');
             if (handle) handle.classList.toggle('open', menu.classList.contains('active'));
         }
+
+        function updateExperimentalMotion() {
+            const items = document.querySelectorAll('#experimental-menu .menu-item');
+            const scrollY = window.scrollY || window.pageYOffset || 0;
+            items.forEach((item, index) => {
+                const offset = Math.sin((scrollY * 0.012) + index * 0.7) * 6;
+                item.style.setProperty('--exp-shift', offset.toFixed(2) + 'px');
+            });
+        }
+        window.addEventListener('scroll', updateExperimentalMotion, { passive: true });
+        window.addEventListener('load', updateExperimentalMotion);
 
         // Matrix Mode
         function activateMatrixMode() {
@@ -7447,13 +7538,54 @@ document.addEventListener('DOMContentLoaded', () => {
   <script>
   // ── Expanding Panels ─────────────────────────
   (function() {
-    var panels = document.querySelectorAll('.pueblo-panel');
-    panels.forEach(function(panel) {
+    var panels = Array.from(document.querySelectorAll('.pueblo-panel'));
+    var prevBtn = document.getElementById('pueblo-prev');
+    var nextBtn = document.getElementById('pueblo-next');
+    var current = panels.findIndex(function(panel) { return panel.classList.contains('active'); });
+    var hintShown = false;
+    if (current < 0) current = 0;
+
+    function activatePanel(index, source) {
+      if (!panels.length) return;
+      current = (index + panels.length) % panels.length;
+      panels.forEach(function(panel, panelIndex) {
+        panel.classList.toggle('active', panelIndex === current);
+        panel.setAttribute('aria-hidden', panelIndex === current ? 'false' : 'true');
+      });
+
+      if (!hintShown && source && typeof toast === 'function') {
+        toast('Usa las flechas para recorrer la galeria', 'info', 2200);
+        hintShown = true;
+      }
+    }
+
+    panels.forEach(function(panel, index) {
+      panel.setAttribute('tabindex', '0');
+      panel.setAttribute('role', 'button');
       panel.addEventListener('click', function() {
-        panels.forEach(function(p) { p.classList.remove('active'); });
-        panel.classList.add('active');
+        activatePanel(index, 'click');
+      });
+      panel.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          activatePanel(index, 'keyboard');
+        }
       });
     });
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function() {
+        activatePanel(current - 1, 'prev');
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function() {
+        activatePanel(current + 1, 'next');
+      });
+    }
+
+    activatePanel(current);
   })();
   </script>
 

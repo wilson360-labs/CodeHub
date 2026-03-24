@@ -702,7 +702,25 @@ footer a{color:var(--p);text-decoration:none}
   </div><!-- /cp -->
 </div>
 
-<!-- 26 · NOTICIAS EN TIEMPO REAL -->
+<!-- 26 · LINK CHECKER PROTECTOR -->
+<div class="card" data-tags="seg util">
+  <div class="ch"><i class="fas fa-shield-halved"></i><span>Link Checker de Seguridad</span></div>
+  <div class="cd">Analiza links sospechosos, reputacion, spam y posibles senales de malware con VirusTotal.</div>
+  <div class="cp">
+  <input class="ti" type="url" id="link-check-url" placeholder="https://ejemplo.com/archivo o link sospechoso" onkeydown="if(event.key==='Enter')analyzeLinkSafety()">
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin:.8rem 0 .6rem">
+    <button class="tb" onclick="setLinkCheckUrl('https://example.com')"><i class="fas fa-link"></i> Ejemplo limpio</button>
+    <button class="tb" onclick="setLinkCheckUrl('https://bit.ly/')"><i class="fas fa-triangle-exclamation"></i> Link corto</button>
+  </div>
+  <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">
+    <button class="tb primary" onclick="analyzeLinkSafety()" id="link-check-btn"><i class="fas fa-radar"></i> Analizar link</button>
+    <span style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">Backend: VirusTotal via Railway</span>
+  </div>
+  <div id="link-check-out" class="rb" style="display:none"></div>
+  </div><!-- /cp -->
+</div>
+
+<!-- 27 · NOTICIAS EN TIEMPO REAL -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-newspaper"></i><span>Noticias en Tiempo Real</span></div>
   <div class="cd">Últimas noticias de tecnología, gaming y ciencia.</div>
@@ -1821,6 +1839,79 @@ function copyImagePrompt() {
   const text = document.getElementById('img-prompt').value.trim();
   if (!text) { toast('No hay prompt para copiar'); return; }
   navigator.clipboard.writeText(text).then(() => toast('✅ Prompt copiado'));
+}
+
+function setLinkCheckUrl(text) {
+  document.getElementById('link-check-url').value = text;
+}
+
+async function analyzeLinkSafety() {
+  const input = document.getElementById('link-check-url');
+  const out = document.getElementById('link-check-out');
+  const btn = document.getElementById('link-check-btn');
+  const url = input.value.trim();
+  const BACKEND = 'https://codehub-production-729d.up.railway.app';
+
+  if (!url) { toast('Pega un link para analizar'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
+  out.style.display = 'block';
+  out.innerHTML = '<div style="font-family:var(--mono);color:var(--muted)">Consultando VirusTotal y calculando reputacion...</div>';
+
+  try {
+    const res = await fetch(BACKEND + '/api/check-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      out.innerHTML = '<div style="color:#ff6b6b;font-weight:700">No se pudo analizar el link</div><div style="margin-top:.45rem;color:var(--muted)">' + (data.error || 'Error desconocido') + '</div>';
+      return;
+    }
+
+    const tone = data.verdict === 'malicious'
+      ? { label: 'Malicioso', color: '#ff5f56', bg: 'rgba(255,95,86,.14)' }
+      : data.verdict === 'suspicious'
+      ? { label: 'Sospechoso', color: '#ffbd2e', bg: 'rgba(255,189,46,.14)' }
+      : data.verdict === 'unknown'
+      ? { label: 'Sin concluir', color: '#64d2ff', bg: 'rgba(100,210,255,.14)' }
+      : { label: 'Limpio', color: '#00e676', bg: 'rgba(0,230,118,.14)' };
+
+    out.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-bottom:.9rem">' +
+        '<div>' +
+          '<div style="font-size:.72rem;color:var(--muted);font-family:var(--mono)">Host</div>' +
+          '<div style="font-weight:700;color:var(--text)">' + data.host + '</div>' +
+        '</div>' +
+        '<div style="padding:.45rem .8rem;border-radius:999px;background:' + tone.bg + ';color:' + tone.color + ';font-weight:700">' + tone.label + '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.55rem;margin-bottom:.9rem">' +
+        metricBox('Riesgo', data.riskScore + '/100') +
+        metricBox('Maliciosos', data.stats.malicious) +
+        metricBox('Sospechosos', data.stats.suspicious) +
+        metricBox('Seguros', data.stats.harmless) +
+      '</div>' +
+      '<div style="padding:.85rem;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)">' +
+        '<div style="font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:.35rem">Recomendacion</div>' +
+        '<div style="color:var(--text);line-height:1.6">' + data.recommendation + '</div>' +
+      '</div>' +
+      '<div style="margin-top:.8rem;font-size:.7rem;color:var(--muted);word-break:break-word">' + data.url + '</div>';
+  } catch (e) {
+    out.innerHTML = '<div style="color:#ff6b6b;font-weight:700">Fallo la conexion con el backend</div><div style="margin-top:.45rem;color:var(--muted)">' + e.message + '</div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-radar"></i> Analizar link';
+  }
+}
+
+function metricBox(label, value) {
+  return '<div style="padding:.75rem;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)">' +
+    '<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">' + label + '</div>' +
+    '<div style="margin-top:.2rem;font-size:1rem;font-weight:700;color:var(--text)">' + value + '</div>' +
+  '</div>';
 }
 
 
