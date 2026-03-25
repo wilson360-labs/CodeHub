@@ -274,7 +274,7 @@ footer a{color:var(--p);text-decoration:none}
 </header>
 
 <section class="hero">
-  <div class="hero-tag"><span class="hero-dot"></span> 28 herramientas · 100% en tu navegador · Sin registro</div>
+<div class="hero-tag"><span class="hero-dot"></span> 32 herramientas · 100% en tu navegador · Sin registro</div>
   <h1>Tools que<br>realmente sirven</h1>
   <p>Sin APIs de pago ni servidores. Todo funciona aquí mismo, ahora mismo.</p>
 </section>
@@ -820,6 +820,70 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <!-- 21 · GENERADOR DE LOREM IPSUM -->
+<div class="card" data-tags="seg dev util">
+  <div class="ch"><i class="fas fa-mobile-screen-button"></i><span>APK Verifier</span></div>
+  <div class="cd">Revisa APKs antes de instalar: hash, tamano, extension, riesgo y origen recomendado.</div>
+  <div class="cp">
+  <input class="ti" type="file" id="apk-file" accept=".apk,application/vnd.android.package-archive">
+  <button class="tb primary" onclick="analyzeApkFile()" id="apk-btn"><i class="fas fa-shield-check"></i> Verificar APK</button>
+  <div id="apk-out" class="rb" style="display:none"></div>
+  </div>
+</div>
+
+<div class="card" data-tags="seg util">
+  <div class="ch"><i class="fas fa-user-shield"></i><span>Scam Detector</span></div>
+  <div class="cd">Analiza mensajes sospechosos y detecta senales de estafa, phishing y urgencia falsa.</div>
+  <div class="cp">
+  <textarea class="ti" id="scam-input" rows="5" placeholder="Pega aqui un mensaje sospechoso de WhatsApp, Telegram, correo o redes..."></textarea>
+  <button class="tb primary" onclick="analyzeScamText()" id="scam-btn"><i class="fas fa-magnifying-glass"></i> Analizar mensaje</button>
+  <div id="scam-out" class="rb" style="display:none"></div>
+  </div>
+</div>
+
+<div class="card" data-tags="dis util dev">
+  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Prompt Studio</span></div>
+  <div class="cd">Mejora prompts para imagen, branding, UI o contenido con variantes mas pro.</div>
+  <div class="cp">
+  <textarea class="ti" id="ps-input" rows="4" placeholder="Ej: una landing premium para una app de productividad con estilo futurista"></textarea>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <select class="ts" id="ps-mode">
+      <option value="image">Imagen IA</option>
+      <option value="ui">UI / Landing</option>
+      <option value="branding">Branding</option>
+      <option value="copy">Copy corto</option>
+    </select>
+    <select class="ts" id="ps-tone">
+      <option value="premium">Premium</option>
+      <option value="minimal">Minimal</option>
+      <option value="cinematic">Cinematic</option>
+      <option value="bold">Bold</option>
+    </select>
+  </div>
+  <button class="tb primary" onclick="generatePromptStudio()"><i class="fas fa-sparkles"></i> Generar variantes</button>
+  <div id="ps-out" class="rb" style="display:none;white-space:pre-wrap"></div>
+  </div>
+</div>
+
+<div class="card" data-tags="dev dis util">
+  <div class="ch"><i class="fas fa-window-maximize"></i><span>Generador de Landing Pages</span></div>
+  <div class="cd">Crea una estructura de landing con hero, beneficios, prueba social y CTA en segundos.</div>
+  <div class="cp">
+  <input class="ti" id="lg-business" type="text" placeholder="Producto o negocio">
+  <input class="ti" id="lg-audience" type="text" placeholder="Publico objetivo">
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <select class="ts" id="lg-style">
+      <option value="premium">Premium</option>
+      <option value="tech">Tech</option>
+      <option value="minimal">Minimal</option>
+      <option value="startup">Startup</option>
+    </select>
+    <input class="ti" id="lg-cta" type="text" placeholder="CTA principal" style="flex:1">
+  </div>
+  <button class="tb primary" onclick="generateLandingBlueprint()"><i class="fas fa-rocket"></i> Generar estructura</button>
+  <div id="lg-out" class="rb" style="display:none;white-space:pre-wrap"></div>
+  </div>
+</div>
+
 <div class="card" data-tags="dev dis">
   <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
   <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
@@ -865,7 +929,7 @@ footer a{color:var(--p);text-decoration:none}
 </div><!-- /grid -->
 
 <footer>
-  <a href="index.html">&lt;Wilson.E/&gt;</a> · 28 herramientas · Ningún dato sale de tu navegador
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · 32 herramientas · Ningun dato sale de tu navegador
 </footer>
 
 <script>
@@ -2121,6 +2185,229 @@ function showHoroscope(sign) {
     </div>`;
 }
 
+</script>
+<script>
+(function(){
+  function setCalcDisplay(value) {
+    const d = document.getElementById('calc-display');
+    if (d) d.value = value || '0';
+  }
+
+  function safeEvalCalc(input) {
+    const normalized = String(input || '')
+      .replace(/pi/g, 'Math.PI')
+      .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, 'Math.E');
+    const result = Function('"use strict"; return (' + normalized + ')')();
+    if (!Number.isFinite(result)) throw new Error('Resultado invalido');
+    return +result.toFixed(10);
+  }
+
+  function initFixedCalculator() {
+    const container = document.getElementById('calc-btns');
+    const display = document.getElementById('calc-display');
+    if (!container || !display) return;
+
+    let expr = '';
+    let lastResult = false;
+    const BTN = [
+      ['C','DEL','%','/'],
+      ['7','8','9','*'],
+      ['4','5','6','-'],
+      ['1','2','3','+'],
+      ['+/-','0','.','='],
+      ['x^2','sqrt','sin','cos'],
+      ['tan','pi','e','()'],
+    ];
+
+    container.innerHTML = '';
+    container.style.gridTemplateColumns = 'repeat(4,1fr)';
+
+    BTN.forEach(row => row.forEach(lbl => {
+      const b = document.createElement('button');
+      b.textContent = lbl;
+      b.className = 'tb';
+      b.style.cssText = 'padding:.4rem;font-size:.82rem;margin:0';
+      const isOp = ['/','*','-','+','='].includes(lbl);
+      const isFn = ['sin','cos','tan','sqrt','x^2','pi','e','()','%','+/-','DEL','C'].includes(lbl);
+      if (isOp) b.style.background = 'linear-gradient(135deg,var(--p),var(--s))';
+      if (isFn) b.style.background = 'rgba(255,255,255,.08)';
+
+      b.addEventListener('click', () => {
+        try {
+          if (lbl === 'C') { expr = ''; lastResult = false; setCalcDisplay(expr); return; }
+          if (lbl === 'DEL') { expr = expr.slice(0, -1); setCalcDisplay(expr); return; }
+          if (lbl === '=') { expr = String(safeEvalCalc(expr)); lastResult = true; setCalcDisplay(expr); return; }
+          if (lbl === 'x^2') { expr = String(Math.pow(safeEvalCalc(expr || '0'), 2)); lastResult = true; setCalcDisplay(expr); return; }
+          if (lbl === 'sqrt') { expr = String(+Math.sqrt(safeEvalCalc(expr || '0')).toFixed(10)); lastResult = true; setCalcDisplay(expr); return; }
+          if (lbl === 'sin' || lbl === 'cos' || lbl === 'tan') {
+            const angle = safeEvalCalc(expr || '0') * Math.PI / 180;
+            const opMap = { sin: Math.sin, cos: Math.cos, tan: Math.tan };
+            expr = String(+opMap[lbl](angle).toFixed(10));
+            lastResult = true;
+            setCalcDisplay(expr);
+            return;
+          }
+          if (lbl === '%') { expr = String(safeEvalCalc(expr || '0') / 100); lastResult = true; setCalcDisplay(expr); return; }
+          if (lbl === '+/-') { expr = expr.startsWith('-') ? expr.slice(1) : '-' + (expr || '0'); setCalcDisplay(expr); return; }
+          if (lbl === '()') {
+            const opens = (expr.match(/\(/g) || []).length;
+            const closes = (expr.match(/\)/g) || []).length;
+            expr += opens > closes ? ')' : '(';
+            lastResult = false;
+            setCalcDisplay(expr);
+            return;
+          }
+          if (lastResult && /[0-9.]/.test(lbl)) expr = '';
+          if (lastResult && ['+','-','*','/'].includes(lbl)) {
+            lastResult = false;
+            expr += lbl;
+            setCalcDisplay(expr);
+            return;
+          }
+          expr += lbl;
+          lastResult = false;
+          setCalcDisplay(expr);
+        } catch (_) {
+          expr = '';
+          lastResult = false;
+          setCalcDisplay('Error');
+        }
+      });
+
+      container.appendChild(b);
+    }));
+
+    setCalcDisplay('');
+  }
+
+  window.analyzeApkFile = async function analyzeApkFile() {
+    const file = document.getElementById('apk-file')?.files?.[0];
+    const out = document.getElementById('apk-out');
+    const btn = document.getElementById('apk-btn');
+    if (!file || !out || !btn) { toast('Selecciona un APK primero'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+    out.className = 'rb on';
+    out.style.display = 'block';
+    out.textContent = 'Analizando APK...';
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+      const isApk = /\.apk$/i.test(file.name);
+      let score = 100;
+      const warnings = [];
+
+      if (!isApk) { score -= 40; warnings.push('La extension no parece APK.'); }
+      if (file.size < 1024 * 100) { score -= 20; warnings.push('El archivo es demasiado pequeno para una app real.'); }
+      if (file.size > 1024 * 1024 * 500) { score -= 15; warnings.push('Tamano inusual. Verifica la fuente.'); }
+      if (/mod|hack|crack|patch|inject/i.test(file.name)) { score -= 15; warnings.push('El nombre sugiere modificacion o parche.'); }
+
+      const tone = score >= 80 ? '#00e676' : score >= 55 ? '#ffbd69' : '#ff5f56';
+      out.innerHTML =
+        '<div class="rrow"><strong style="color:' + tone + '">Score ' + score + '/100</strong><span style="color:var(--muted)">' + file.name + '</span></div>' +
+        '<div style="margin-top:.6rem;display:grid;gap:.35rem">' +
+          '<div>SHA-256: <span style="color:var(--text);word-break:break-all">' + hash + '</span></div>' +
+          '<div>Tamano: <span style="color:var(--text)">' + sizeMB + ' MB</span></div>' +
+          '<div>Tipo: <span style="color:var(--text)">' + (file.type || 'application/octet-stream') + '</span></div>' +
+          '<div>Extension valida: <span style="color:var(--text)">' + (isApk ? 'Si' : 'No') + '</span></div>' +
+        '</div>' +
+        '<div style="margin-top:.7rem;color:var(--muted)">' + (warnings.length ? warnings.join(' ') : 'No hay senales obvias de riesgo por nombre o tamano, pero aun conviene escanearlo y validar la fuente.') + '</div>';
+    } catch (e) {
+      out.textContent = 'No se pudo verificar el APK: ' + e.message;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-shield-check"></i> Verificar APK';
+    }
+  };
+
+  window.analyzeScamText = function analyzeScamText() {
+    const text = document.getElementById('scam-input')?.value.trim() || '';
+    const out = document.getElementById('scam-out');
+    if (!text || !out) { toast('Pega un mensaje primero'); return; }
+
+    const rules = [
+      { re: /(urgente|inmediato|ahora mismo|ultimatum)/i, msg: 'Usa urgencia para presionar.' },
+      { re: /(premio|ganaste|bono|regalo|gratis)/i, msg: 'Promete beneficios faciles.' },
+      { re: /(verifica tu cuenta|inicia sesion|confirma tu cuenta)/i, msg: 'Busca robar acceso o credenciales.' },
+      { re: /(bitcoin|usdt|crypto|transferencia|deposito)/i, msg: 'Pide dinero o activos dificiles de recuperar.' },
+      { re: /(http:\/\/|bit\.ly|tinyurl|t\.co|goo\.gl)/i, msg: 'Incluye link corto o inseguro.' },
+      { re: /(codigo de verificacion|otp|pin|password|contrasena)/i, msg: 'Intenta obtener codigos o datos privados.' },
+    ];
+
+    const hits = rules.filter(r => r.re.test(text)).map(r => r.msg);
+    const risk = Math.min(100, hits.length * 18 + (text.length > 350 ? 8 : 0));
+    const verdict = risk >= 65 ? 'Riesgo alto' : risk >= 35 ? 'Riesgo medio' : 'Riesgo bajo';
+    const tone = risk >= 65 ? '#ff5f56' : risk >= 35 ? '#ffbd69' : '#00e676';
+
+    out.className = 'rb on';
+    out.style.display = 'block';
+    out.innerHTML =
+      '<div class="rrow"><strong style="color:' + tone + '">' + verdict + ' · ' + risk + '/100</strong><span style="color:var(--muted)">Scam Detector</span></div>' +
+      '<div style="margin-top:.65rem;color:var(--text)">' + (hits.length ? hits.join(' ') : 'No detecte patrones tipicos de estafa en este texto, pero igual revisa links, remitente y dominio.') + '</div>';
+  };
+
+  window.generatePromptStudio = function generatePromptStudio() {
+    const base = document.getElementById('ps-input')?.value.trim() || '';
+    const mode = document.getElementById('ps-mode')?.value || 'image';
+    const tone = document.getElementById('ps-tone')?.value || 'premium';
+    const out = document.getElementById('ps-out');
+    if (!base || !out) { toast('Escribe una idea base'); return; }
+
+    const blocks = {
+      image: ['high detail', 'clean composition', 'professional lighting'],
+      ui: ['modern interface', 'clear hierarchy', 'responsive layout'],
+      branding: ['strong identity', 'memorable visual language', 'clean typography'],
+      copy: ['clear value proposition', 'benefit-driven message', 'short CTA']
+    };
+    const tones = {
+      premium: 'premium, polished, elegant',
+      minimal: 'minimal, refined, uncluttered',
+      cinematic: 'cinematic, dramatic lighting, immersive',
+      bold: 'bold, high contrast, memorable'
+    };
+
+    const main = [base, tones[tone]].concat(blocks[mode] || []).join(', ');
+    const alt1 = [base, 'high quality', 'clear focus', 'professional finish'].join(', ');
+    const alt2 = [base, tones[tone], 'optimized for modern web presentation'].join(', ');
+
+    out.className = 'rb on';
+    out.style.display = 'block';
+    out.textContent = 'Principal:\n' + main + '\n\nVariante A:\n' + alt1 + '\n\nVariante B:\n' + alt2;
+  };
+
+  window.generateLandingBlueprint = function generateLandingBlueprint() {
+    const business = document.getElementById('lg-business')?.value.trim() || '';
+    const audience = document.getElementById('lg-audience')?.value.trim() || '';
+    const style = document.getElementById('lg-style')?.value || 'premium';
+    const cta = document.getElementById('lg-cta')?.value.trim() || 'Solicitar demo';
+    const out = document.getElementById('lg-out');
+    if (!business || !audience || !out) { toast('Completa negocio y publico'); return; }
+
+    out.className = 'rb on';
+    out.style.display = 'block';
+    out.textContent =
+      'Hero:\n' +
+      '- Titular: ' + business + ' para ' + audience + '\n' +
+      '- Subtitulo: propuesta clara con estilo ' + style + '\n' +
+      '- CTA: ' + cta + '\n\n' +
+      'Secciones:\n' +
+      '- Beneficios principales (3)\n' +
+      '- Como funciona\n' +
+      '- Prueba social o resultados\n' +
+      '- FAQ corta\n' +
+      '- CTA final fuerte\n\n' +
+      'Notas visuales:\n' +
+      '- Usa cards limpias, contraste fuerte y jerarquia clara\n' +
+      '- Añade prueba social visible arriba del pliegue\n' +
+      '- Manten mobile-first y CTA siempre visible';
+  };
+
+  initFixedCalculator();
+})();
 </script>
 </body>
 </html>
