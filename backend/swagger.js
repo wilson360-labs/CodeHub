@@ -11,7 +11,7 @@ const swaggerSpec = {
     description: 'API REST de CodeHub — Wilson.E 2026\n\nBase URL: `https://codehub-production-729d.up.railway.app`',
     contact: {
       name: 'Wilson.E',
-      email: 'wilsonenrique686@gmail.com',
+      email: 'wilson.e360labs@gmail.com',
       url: 'https://wilson360-labs.vercel.app',
     },
     license: { name: 'MIT' },

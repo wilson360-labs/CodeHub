@@ -630,7 +630,7 @@ console.log('Script started');
             const info = `
 PORTFOLIO - Wilson.E
 ====================
-Email: wilsonenrique686@gmail.com
+Email: wilson.e360labs@gmail.com
 Telegram: @d3exg3aeyag1ko
 WhatsApp: +502 4146 8185
 
@@ -772,7 +772,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 
         // Copy Email Function
         function copyEmail() {
-            const email = 'wilsonenrique686@gmail.com';
+            const email = 'wilson.e360labs@gmail.com';
             navigator.clipboard.writeText(email).then(() => {
                 const btn = event.target.closest('.copy-email');
                 const originalText = btn.innerHTML;
