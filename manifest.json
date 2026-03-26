@@ -1,7 +1,7 @@
 {
-  "name": "CodeHub — Wilson.E",
+  "name": "CodeHub - Wilson.E",
   "short_name": "CodeHub",
-  "description": "Portfolio de Wilson.E — Dev Full Stack de Guatemala. Tools, Apps Android, IA.",
+  "description": "Portfolio de Wilson.E - Dev Full Stack de Guatemala. Tools, Apps Android, IA.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -12,13 +12,13 @@
   "dir": "ltr",
   "icons": [
     {
-      "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg",
+      "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg",
+      "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -26,48 +26,68 @@
   ],
   "screenshots": [
     {
-      "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg",
+      "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "CodeHub — Portfolio Wilson.E"
+      "label": "CodeHub - Portfolio Wilson.E"
     },
     {
-      "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg",
+      "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "CodeHub en móvil"
+      "label": "CodeHub en movil"
     }
   ],
   "shortcuts": [
     {
       "name": "Herramientas",
       "short_name": "Tools",
-      "description": "27 herramientas web gratuitas",
+      "description": "32 herramientas web gratuitas",
       "url": "/tools.html",
-      "icons": [{ "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Apps Android",
       "short_name": "Apps",
       "description": "Apps premium desbloqueadas",
       "url": "/novedades.html",
-      "icons": [{ "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Servicios",
       "short_name": "Servicios",
       "description": "Servicios de desarrollo web",
       "url": "/servicios.html",
-      "icons": [{ "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
+          "sizes": "96x96"
+        }
+      ]
     },
     {
       "name": "Descargar Videos",
       "short_name": "Downloader",
       "description": "Descarga videos de redes sociales",
       "url": "/downloader.html",
-      "icons": [{ "src": "https://i.ibb.co/G4JGM65y/1749331794644.jpg", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
+          "sizes": "96x96"
+        }
+      ]
     }
   ],
   "categories": ["portfolio", "productivity", "utilities", "developer-tools"],
