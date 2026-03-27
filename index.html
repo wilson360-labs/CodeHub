@@ -737,6 +737,14 @@
     overflow: hidden;
 }
 
+#warp-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
 .splash1-container {
     width: 100%;
     height: 100%;
@@ -746,6 +754,97 @@
     justify-content: center;
     position: relative;
     overflow: hidden;
+}
+
+.splash-warp-shell {
+    background:
+        radial-gradient(circle at center, rgba(255,140,0,0.03), transparent 28%),
+        radial-gradient(circle at 50% 18%, rgba(255,215,0,0.06), transparent 30%);
+}
+
+.vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, transparent 18%, rgba(0,0,0,0.82) 100%);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.logo-manifest {
+    position: relative;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: appearance-sequence 4.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes appearance-sequence {
+    0% { transform: scale(0.5); opacity: 0; filter: blur(30px) brightness(2.4); }
+    15% { transform: scale(1.05); opacity: 1; filter: blur(0) brightness(1.35); }
+    25% { transform: scale(1); filter: brightness(1); }
+    85% { transform: scale(1); opacity: 1; filter: blur(0); }
+    100% { transform: scale(1.22); opacity: 0; filter: blur(34px); }
+}
+
+.logo-aura {
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(255,140,0,0.02) 0%, transparent 70%);
+    border-radius: 50%;
+    z-index: 4;
+    animation: aura-pulse 3s ease-in-out infinite alternate;
+    filter: blur(18px);
+}
+
+@keyframes aura-pulse {
+    from { transform: scale(0.82); opacity: 0.22; }
+    to { transform: scale(1.18); opacity: 0.42; }
+}
+
+.splash-orbit {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border-radius: 999px;
+    border: 1px solid rgba(255,140,0,0.06);
+    pointer-events: none;
+    z-index: 4;
+}
+
+.splash-orbit-a {
+    width: 420px;
+    height: 420px;
+    transform: translate(-50%, -50%);
+    animation: orbit-spin 12s linear infinite;
+}
+
+.splash-orbit-b {
+    width: 310px;
+    height: 310px;
+    transform: translate(-50%, -50%) rotate(18deg);
+    border-color: rgba(255,215,0,0.18);
+    animation: orbit-spin-reverse 9s linear infinite;
+}
+
+.splash-warp-shell .particles,
+.splash-warp-shell .radar-wave,
+.splash-warp-shell .circle-pulse,
+.splash-warp-shell .hex-ring,
+.splash-warp-shell .scan-line,
+.splash-warp-shell .cyber-grid {
+    display: none;
+}
+
+@keyframes orbit-spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes orbit-spin-reverse {
+    from { transform: translate(-50%, -50%) rotate(18deg); }
+    to { transform: translate(-50%, -50%) rotate(-342deg); }
 }
 
 /* Efecto de escaneo horizontal */
@@ -816,21 +915,75 @@
 
 /* Logo 3D MEJORADO */
 .logo-3d {
-    font-size: 6rem;
-    font-weight: 900;
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.3em;
+    width: 260px;
+    height: 260px;
     position: relative;
-    z-index: 10;
+    z-index: 90;
+    display: grid;
+    place-items: center;
     animation: logoReveal 1.5s ease-out, logoFloat 4s ease-in-out infinite 2s;
-    text-shadow: 
-        0 0 10px #ff4500,
-        0 0 20px #ff4500,
-        0 0 40px #ff4500,
-        0 0 80px #ff6b35,
-        0 5px 10px rgba(0, 0, 0, 0.5),
-        0 0 100px rgba(255, 69, 0, 0.5);
+}
+
+.logo-3d::before {
+    content: none;
+}
+
+.logo-3d::after {
+    content: none;
+}
+
+.splash-logo-core {
+    width: 220px;
+    height: 220px;
+    position: relative;
+    z-index: 95;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    animation: logoPopIn 1.3s cubic-bezier(.2,.9,.2,1) both;
+    display: grid;
+    place-items: center;
+}
+
+.splash-logo-core img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    position: relative;
+    z-index: 100;
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(255,140,0,.18)) contrast(1.05) brightness(1.04);
+}
+
+.splash-logo-fallback {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 220px;
+    height: 220px;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.04);
+    color: #fff;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: .22em;
+    text-indent: .22em;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset;
+}
+
+.splash-brand-note {
+    margin-top: 1.25rem;
+    font-size: .82rem;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.76);
+    z-index: 10;
+    text-shadow: 0 0 18px rgba(255,69,0,0.28);
 }
 
 @keyframes logoReveal {
@@ -855,12 +1008,41 @@
     }
 }
 
+@keyframes logoPopIn {
+    0% {
+        opacity: 0;
+        transform: scale(.72) rotate(-6deg);
+        filter: blur(12px);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.06) rotate(0deg);
+        filter: blur(0);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+@keyframes splashHaloSpin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.04); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+@keyframes splashFramePulse {
+    0%, 100% { opacity: .72; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.03); }
+}
+
 /* Subtítulo del splash */
 .splash-subtitle {
-    font-size: 1.5rem;
-    color: #ff6b35;
-    letter-spacing: 0.2em;
-    margin-top: 10px;
+    font-size: 1.18rem;
+    color: #ffbd69;
+    letter-spacing: 0.28em;
+    margin-top: 14px;
     text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
     animation: subtitleFade 2s ease-out 1.5s both;
 }
@@ -988,11 +1170,11 @@
 
 /* Barra de progreso 3D MEJORADA */
 .progress-container-3d {
-    width: 500px;
-    height: 10px;
+    width: min(520px, calc(100vw - 3.5rem));
+    height: 12px;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 10px;
-    margin-top: 60px;
+    margin-top: 36px;
     position: relative;
     overflow: hidden;
     z-index: 10;
@@ -1001,6 +1183,36 @@
         0 5px 15px rgba(255, 69, 0, 0.3),
         0 0 30px rgba(255, 69, 0, 0.2);
     border: 1px solid rgba(255, 69, 0, 0.3);
+}
+
+.loading-container {
+    position: absolute;
+    bottom: 12%;
+    width: min(320px, calc(100vw - 3rem));
+    z-index: 100;
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #ffd700;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.progress-track {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    width: 0%;
+    animation: none;
+    box-shadow: 0 0 15px #ff8c00;
 }
 
 .progress-bar-3d {
@@ -1060,13 +1272,7 @@
 }
 
 .loading-text-3d {
-    margin-top: 30px;
-    font-size: 1.2rem;
-    color: #ff6b35;
-    letter-spacing: 0.3em;
-    z-index: 10;
-    animation: fadeInOut 1.5s infinite;
-    text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    display: none;
 }
 
 @keyframes fadeInOut {
@@ -1146,12 +1352,20 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .logo-3d { font-size: 3rem; }
-    .splash-subtitle { font-size: 1rem; }
+    .logo-aura { width: 280px; height: 280px; }
+    .logo-3d { width: 196px; height: 196px; }
+    .splash-logo-core { width: 164px; height: 164px; border-radius: 0; padding: 0; }
+    .splash-logo-fallback { width: 164px; height: 164px; font-size: 1.45rem; border-radius: 22px; }
+    .splash-subtitle { font-size: .92rem; letter-spacing: .2em; }
+    .splash-brand-note { font-size: .7rem; letter-spacing: .18em; text-align: center; padding: 0 1rem; }
+    .loading-container { bottom: 10%; }
     .progress-container-3d { width: 90%; }
     .circle-pulse { width: 150px !important; height: 150px !important; }
     .hex-ring { width: 200px; height: 200px; }
     .radar-wave { width: 300px; height: 300px; }
+    .loading-percentage { right: -48px; font-size: 1rem; }
+    .splash-orbit-a { width: 300px; height: 300px; }
+    .splash-orbit-b { width: 230px; height: 230px; }
 }
 
         /* Variables CSS para modo oscuro */
@@ -1289,7 +1503,7 @@
             .burger-btn { display: flex; }
             header nav { display: none; }
             .header-actions #beta-btn { display: none; }
-            .header-logo-mark { width: 40px; height: 40px; border-radius: 12px; }
+            .header-logo-mark { width: 46px; height: 46px; border-radius: 12px; }
             .header-logo-desc { display: none; }
         }
 
@@ -1303,8 +1517,8 @@
         }
 
         .header-logo-mark {
-            width: 44px;
-            height: 44px;
+            width: 52px;
+            height: 52px;
             border-radius: 14px;
             object-fit: cover;
             border: 1px solid rgba(255,255,255,0.14);
@@ -3650,8 +3864,13 @@
     
     <!-- Splash Screen -->
 <div id="splash-screen">
-    <div class="splash1-container">
+    <div class="splash1-container splash-warp-shell">
         <!-- Línea de escaneo -->
+        <canvas id="warp-canvas"></canvas>
+        <div class="vignette"></div>
+        <div class="logo-aura"></div>
+        <div class="splash-orbit splash-orbit-a"></div>
+        <div class="splash-orbit splash-orbit-b"></div>
         <div class="scan-line"></div>
         
         <!-- Grid cibernético -->
@@ -3689,17 +3908,26 @@
         </div>
         
         <!-- Logo principal -->
-        <div class="logo-3d">CODEHUB</div>
-        <div class="splash-subtitle">PREMIUM APPS & TOOLS</div>
-        
-        <!-- Barra de progreso con porcentaje -->
-        <div class="progress-container-3d">
-            <div class="progress-bar-3d"></div>
-            <div class="loading-percentage" id="percentage">0%</div>
+        <div class="logo-manifest">
+            <div class="logo-3d">
+                <div class="splash-logo-core">
+                    <img src="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" alt="CodeHub logo" loading="eager" decoding="async" referrerpolicy="no-referrer" crossorigin="anonymous" onerror="this.style.display='none'; var fb=this.nextElementSibling; if(fb) fb.style.display='flex';">
+                    <div class="splash-logo-fallback">CH</div>
+                </div>
+            </div>
+            <div class="splash-subtitle">CODEHUB</div>
+            <div class="splash-brand-note" id="phrase">Iniciando experiencia premium</div>
         </div>
         
-        <div class="loading-text-3d">
-            INICIALIZANDO SISTEMA CODEHUB<span class="loading-dots"></span>
+        <!-- Barra de progreso con porcentaje -->
+        <div class="loading-container">
+            <div class="status-header">
+                <span id="task-name">WARP_BOOT</span>
+                <span id="percentage">0%</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-bar-3d progress-fill"></div>
+            </div>
         </div>
         
         <button id="skip-splash" style="position: absolute; top: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; display:none">Saltar</button>
@@ -5380,6 +5608,7 @@
         // Crear partículas mejoradas con drift
         function createParticles() {
             const container = document.getElementById('particles1');
+            if (!container) return;
             container.innerHTML = '';
             for (let i = 0; i < 80; i++) { // Aumentado de 50 a 80
                 const particle = document.createElement('div');
@@ -5401,24 +5630,13 @@
 
         // Animar porcentaje de carga
         function animatePercentage() {
-            const percentageEl = document.getElementById('percentage');
-            let count = 0;
-            const duration = 2000; // 2 segundos
-            const steps = 100;
-            const intervalTime = duration / steps;
-            const interval = setInterval(() => {
-                count++;
-                if (count >= 100) {
-                    count = 100;
-                    clearInterval(interval);
-                }
-                percentageEl.textContent = count + '%';
-            }, intervalTime);
+            return;
         }
 
         // Efecto de pulso en el logo
         function addLogoPulse() {
             const logo = document.querySelector('.logo-3d');
+            if (!logo) return;
             setInterval(() => {
                 logo.style.transform = 'perspective(1000px) rotateX(0) scale(1.05)';
                 setTimeout(() => {
@@ -5427,10 +5645,74 @@
             }, 3000);
         }
 
+        let warpStars = [];
+        let warpCtx = null;
+        let warpCanvas = null;
+        let warpWidth = 0;
+        let warpHeight = 0;
+        let warpFrame = null;
+
+        function initWarpCanvas() {
+            warpCanvas = document.getElementById('warp-canvas');
+            if (!warpCanvas) return;
+            warpCtx = warpCanvas.getContext('2d');
+            resizeWarpCanvas();
+            cancelAnimationFrame(warpFrame);
+            drawWarpFrame();
+        }
+
+        function resizeWarpCanvas() {
+            if (!warpCanvas) return;
+            warpWidth = warpCanvas.width = window.innerWidth;
+            warpHeight = warpCanvas.height = window.innerHeight;
+            warpStars = Array.from({ length: window.innerWidth < 768 ? 260 : 520 }, () => ({
+                x: (Math.random() - 0.5) * warpWidth,
+                y: (Math.random() - 0.5) * warpHeight,
+                z: Math.random() * warpWidth,
+            }));
+        }
+
+        function drawWarpFrame() {
+            if (!warpCtx || !warpCanvas) return;
+            warpCtx.fillStyle = 'rgba(5, 3, 0, 0.2)';
+            warpCtx.fillRect(0, 0, warpWidth, warpHeight);
+
+            const centerX = warpWidth / 2;
+            const centerY = warpHeight / 2;
+
+            warpStars.forEach((star) => {
+                star.z -= window.innerWidth < 768 ? 6 : 8;
+                if (star.z <= 0) {
+                    star.z = warpWidth;
+                    star.x = (Math.random() - 0.5) * warpWidth;
+                    star.y = (Math.random() - 0.5) * warpHeight;
+                }
+
+                const k = 128 / star.z;
+                const px = star.x * k + centerX;
+                const py = star.y * k + centerY;
+
+                if (px >= 0 && px <= warpWidth && py >= 0 && py <= warpHeight) {
+                    const size = Math.max(0.8, (1 - star.z / warpWidth) * 3.2);
+                    const shade = Math.floor((1 - star.z / warpWidth) * 255);
+                    warpCtx.fillStyle = star.z < warpWidth / 2
+                        ? `rgb(255, ${150 + shade / 2}, ${shade})`
+                        : `rgb(${shade}, ${shade}, ${shade})`;
+                    warpCtx.beginPath();
+                    warpCtx.arc(px, py, size, 0, Math.PI * 2);
+                    warpCtx.fill();
+                }
+            });
+
+            warpFrame = requestAnimationFrame(drawWarpFrame);
+        }
+
         // Inicializar todo
         createParticles();
         animatePercentage();
         addLogoPulse();
+        initWarpCanvas();
+        window.addEventListener('resize', resizeWarpCanvas);
         console.log('Initial functions called');
 
         // Modo oscuro — sincronizar con el toggle flotante (.theme-toggle-circle)
@@ -5560,6 +5842,30 @@
                 if (typeof typeEffect === 'function') typeEffect();
             }
         }, 10000);
+        
+        (function() {
+            const tasks = ['WARP_BOOT', 'DATA_STREAM', 'VECTOR_SYNC', 'SECURE_LINK', 'READY'];
+            const phrases = [
+                'Iniciando experiencia premium',
+                'Abriendo portal de herramientas',
+                'Sincronizando flujos inteligentes',
+                'Asegurando entorno CodeHub',
+                'Todo listo. Bienvenido'
+            ];
+            const taskEl = document.getElementById('task-name');
+            const phraseEl = document.getElementById('phrase');
+            if (!taskEl && !phraseEl) return;
+            let idx = 0;
+            const interval = setInterval(() => {
+                idx++;
+                if (idx >= tasks.length) {
+                    clearInterval(interval);
+                    return;
+                }
+                if (taskEl) taskEl.textContent = tasks[idx];
+                if (phraseEl) phraseEl.textContent = phrases[idx];
+            }, 1000);
+        })();
         
         // ========== FUNCIONES BÁSICAS ==========
         
