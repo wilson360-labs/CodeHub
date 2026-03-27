@@ -776,15 +776,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    animation: appearance-sequence 4.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation: appearance-sequence 1.4s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 @keyframes appearance-sequence {
-    0% { transform: scale(0.5); opacity: 0; filter: blur(30px) brightness(2.4); }
-    15% { transform: scale(1.05); opacity: 1; filter: blur(0) brightness(1.35); }
-    25% { transform: scale(1); filter: brightness(1); }
-    85% { transform: scale(1); opacity: 1; filter: blur(0); }
-    100% { transform: scale(1.22); opacity: 0; filter: blur(34px); }
+    0% { transform: scale(0.7); opacity: 0; filter: blur(20px) brightness(1.8); }
+    60% { transform: scale(1.04); opacity: 1; filter: blur(0) brightness(1.08); }
+    100% { transform: scale(1); opacity: 1; filter: blur(0) brightness(1); }
 }
 
 .logo-aura {
@@ -915,8 +913,8 @@
 
 /* Logo 3D MEJORADO */
 .logo-3d {
-    width: 260px;
-    height: 260px;
+    width: 300px;
+    height: 300px;
     position: relative;
     z-index: 90;
     display: grid;
@@ -933,12 +931,12 @@
 }
 
 .splash-logo-core {
-    width: 220px;
-    height: 220px;
+    width: 210px;
+    height: 210px;
     position: relative;
     z-index: 95;
     padding: 0;
-    border-radius: 0;
+    border-radius: 50%;
     background: transparent;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -949,14 +947,14 @@
 }
 
 .splash-logo-core img {
-    width: 100%;
-    height: 100%;
+    width: 86%;
+    height: 86%;
     object-fit: contain;
     display: block;
     position: relative;
     z-index: 100;
     opacity: 1;
-    filter: drop-shadow(0 0 8px rgba(255,140,0,.18)) contrast(1.05) brightness(1.04);
+    filter: drop-shadow(0 0 10px rgba(255,140,0,.16)) contrast(1.04) brightness(1.03);
 }
 
 .splash-logo-fallback {
@@ -1353,8 +1351,8 @@
 /* Responsive */
 @media (max-width: 768px) {
     .logo-aura { width: 280px; height: 280px; }
-    .logo-3d { width: 196px; height: 196px; }
-    .splash-logo-core { width: 164px; height: 164px; border-radius: 0; padding: 0; }
+    .logo-3d { width: 224px; height: 224px; }
+    .splash-logo-core { width: 160px; height: 160px; border-radius: 50%; padding: 0; }
     .splash-logo-fallback { width: 164px; height: 164px; font-size: 1.45rem; border-radius: 22px; }
     .splash-subtitle { font-size: .92rem; letter-spacing: .2em; }
     .splash-brand-note { font-size: .7rem; letter-spacing: .18em; text-align: center; padding: 0 1rem; }
@@ -5799,8 +5797,7 @@
 
             const pIv = setInterval(() => {
                 n++;
-                const display = Math.min(100, Math.round(n * 1.1 - Math.pow(n / 10, 1.4)));
-                if (pct) pct.textContent = Math.min(display, 100) + '%';
+                if (pct) pct.textContent = Math.min(n, 100) + '%';
                 if (bar) bar.style.width = Math.min(n, 100) + '%';
 
                 // Al 80% mostrar el Turnstile
@@ -5812,6 +5809,8 @@
                 if (n >= 100) {
                     clearInterval(pIv);
                     progressDone = true;
+                    if (pct) pct.textContent = '100%';
+                    if (bar) bar.style.width = '100%';
                     // Solo cerrar si Turnstile ya fue resuelto
                     if (turnstileSolved) {
                         setTimeout(closeSplash, 600);
