@@ -1,32 +1,34 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; connect-src 'self' https://api.allorigins.win https://pastebin.com https://codehub-production-729d.up.railway.app https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
-    <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
+    <title>Wilson.E â€” Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E, desarrollador web full stack autodidacta de Guatemala. Portfolio con 27 herramientas, proyectos web, apps Android y chatbot con IA. Disponible para freelance.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson Enriquez, HTML CSS JavaScript Python Node.js MongoDB">
-    <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+    <meta name="author" content="Wilson.E â€” wilson.e360labs@gmail.com">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ff4500">
-    <link rel="canonical" href="https://wilson360-labs.vercel.app/">
+    
+<link rel="preload" as="image" href="splash/codehub.png">
+<link rel="canonical" href="https://wilson360-labs.vercel.app/">
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://wilson360-labs.vercel.app/">
-    <meta property="og:title" content="Wilson.E — Desarrollador Web Full Stack | CodeHub">
+    <meta property="og:title" content="Wilson.E â€” Desarrollador Web Full Stack | CodeHub">
     <meta property="og:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas, proyectos web y apps Android. Disponible para freelance.">
-    <meta property="og:image" content="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+    <meta property="og:image" content="splash/codehub.png">
     <meta property="og:locale" content="es_GT">
     <meta property="og:site_name" content="CodeHub by Wilson.E">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://wilson360-labs.vercel.app/">
-    <meta name="twitter:title" content="Wilson.E — Desarrollador Web Full Stack">
+    <meta name="twitter:title" content="Wilson.E â€” Desarrollador Web Full Stack">
     <meta name="twitter:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas y proyectos web.">
-    <meta name="twitter:image" content="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+    <meta name="twitter:image" content="splash/codehub.png">
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
@@ -34,7 +36,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CodeHub">
-    <link rel="apple-touch-icon" href="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+    <link rel="apple-touch-icon" href="splash/codehub.png">
 
     <!-- Schema.org JSON-LD (Google rich results) -->
     <script type="application/ld+json">
@@ -50,13 +52,13 @@
       "knowsAbout": ["HTML", "CSS", "JavaScript", "Python", "Node.js", "MongoDB", "Web Development"]
     }
     </script>
-    <!-- Google Analytics — carga diferida para no bloquear render -->
+    <!-- Google Analytics â€” carga diferida para no bloquear render -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-3YEWZ24PQR', { send_page_view: false });
-      // Cargar GA script después del load
+      // Cargar GA script despuÃ©s del load
       window.addEventListener('load', function() {
         var s = document.createElement('script');
         s.async = true;
@@ -65,7 +67,7 @@
         document.head.appendChild(s);
       });
     </script>
-    <!-- Preconnect crítico — antes de cualquier recurso externo -->
+    <!-- Preconnect crÃ­tico â€” antes de cualquier recurso externo -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
@@ -73,15 +75,15 @@
     <link rel="dns-prefetch" href="https://i.postimg.cc">
     <link rel="dns-prefetch" href="https://codehub-production-729d.up.railway.app">
 
-    <!-- Google Fonts — no bloqueante con display=swap -->
+    <!-- Google Fonts â€” no bloqueante con display=swap -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
 
-    <!-- Font Awesome — diferido, no bloquea render -->
+    <!-- Font Awesome â€” diferido, no bloquea render -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
-    <!-- Fuente sistema como fallback inmediato — evita FOUT -->
+    <!-- Fuente sistema como fallback inmediato â€” evita FOUT -->
     <style id="font-fallback">
       body, button, input, textarea, select {
         font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -89,7 +91,7 @@
       code, pre, .mono { font-family: 'Courier New', monospace; }
     </style>
         <style>
-    /* ====== NOVEDADES ICON — REDISEÑO PRO ====== */
+    /* ====== NOVEDADES ICON â€” REDISEÃ‘O PRO ====== */
 /* ====== DOCK FLOTANTE ====== */
 #hub-dock {
   position: fixed;
@@ -416,7 +418,7 @@
             transform: translateX(26px);
         }
 
-        /* ========== MENÚ LATERAL EXPERIMENTAL ========== */
+        /* ========== MENÃš LATERAL EXPERIMENTAL ========== */
         #experimental-menu {
             position: fixed;
             left: -320px;
@@ -496,13 +498,13 @@
             transition: all .2s;
         }
         .exp-drag-handle::after {
-            content: '›';
+            content: 'â€º';
             color: rgba(255,69,0,.7); font-size: .75rem; font-weight: 700;
         }
         .exp-drag-handle:hover { background: rgba(255,69,0,.4); width: 18px; }
         #experimental-menu.active ~ .exp-drag-handle,
         .exp-drag-handle.open { left: 300px; }
-        .exp-drag-handle.open::after { content: '‹'; }
+        .exp-drag-handle.open::after { content: 'â€¹'; }
         @media (max-width: 768px) { .exp-drag-handle { display: none; } }
 
         .menu-header {
@@ -610,7 +612,7 @@
             transform: rotate(90deg);
         }
 
-        /* ========== FIN MENÚ LATERAL ========== */
+        /* ========== FIN MENÃš LATERAL ========== */
 
         /* Command Palette (Ctrl+K) */
         #command-overlay {
@@ -728,667 +730,258 @@
         /* Splash Screen */
 /* ==================== PARTE 1: CSS MEJORADO ==================== */
 
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   SPLASH SCREEN â€” diseÃ±o limpio 2.0
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 #splash-screen {
-    display: flex;
     position: fixed;
     inset: 0;
-    background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #0f0f23);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #06060c;
     z-index: 9999;
     overflow: hidden;
 }
 
+/* Canvas de estrellas â€” fondo */
 #warp-canvas {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    z-index: 1;
+    z-index: 0;
 }
 
+/* ViÃ±eta oscura en los bordes */
+.vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center,
+        transparent 25%,
+        rgba(6,6,12,0.65) 60%,
+        rgba(6,6,12,0.95) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Contenedor principal â€” centrado flex */
 .splash1-container {
+    position: relative;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.splash-warp-shell {
-    background:
-        radial-gradient(circle at center, rgba(255,140,0,0.03), transparent 28%),
-        radial-gradient(circle at 50% 18%, rgba(255,215,0,0.06), transparent 30%);
-}
-
-.vignette {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle, transparent 18%, rgba(0,0,0,0.82) 100%);
     z-index: 2;
-    pointer-events: none;
 }
 
+/* â”€â”€ LOGO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .logo-manifest {
     position: relative;
-    z-index: 200;
     display: flex;
     flex-direction: column;
     align-items: center;
-    animation: appearance-sequence 1.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+    z-index: 20;
+    animation: splashLogoFloat 5s ease-in-out infinite 1.2s;
 }
 
-@keyframes appearance-sequence {
-    0% { transform: scale(0.7); opacity: 0; filter: blur(20px) brightness(1.8); }
-    60% { transform: scale(1.04); opacity: 1; filter: blur(0) brightness(1.08); }
-    100% { transform: scale(1); opacity: 1; filter: blur(0) brightness(1); }
+@keyframes splashLogoFloat {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-10px); }
 }
 
-.logo-aura {
-    position: absolute;
-    width: 520px;
-    height: 520px;
-    background: radial-gradient(circle, rgba(255,140,0,0.05) 0%, rgba(255,69,0,0.02) 40%, transparent 70%);
-    border-radius: 50%;
-    z-index: 4;
-    animation: aura-pulse 3s ease-in-out infinite alternate;
-    filter: blur(22px);
-}
-
-@keyframes aura-pulse {
-    from { transform: scale(0.82); opacity: 0.22; }
-    to { transform: scale(1.18); opacity: 0.42; }
-}
-
-.splash-orbit {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    border-radius: 999px;
-    border: 1px solid rgba(255,140,0,0.06);
-    pointer-events: none;
-    z-index: 4;
-}
-
-.splash-orbit-a {
-    width: 460px;
-    height: 460px;
-    transform: translate(-50%, -50%);
-    animation: orbit-spin 12s linear infinite;
-    border: 1.5px solid rgba(255,140,0,0.13);
-}
-
-.splash-orbit-b {
-    width: 350px;
-    height: 350px;
-    transform: translate(-50%, -50%) rotate(18deg);
-    border-color: rgba(255,215,0,0.22);
-    animation: orbit-spin-reverse 9s linear infinite;
-}
-
-.splash-orbit-c {
-    width: 560px;
-    height: 560px;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    border-color: rgba(255,69,0,0.07);
-    border-width: 1px;
-    animation: orbit-spin 20s linear infinite;
-}
-
-/* Puntos orbitales en el anillo A */
-.splash-orbit-a::before,
-.splash-orbit-a::after {
-    content: '';
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: radial-gradient(circle, #ff8c00, rgba(255,140,0,0.3));
-    border-radius: 50%;
-    top: 50%;
-    box-shadow: 0 0 10px #ff8c00, 0 0 20px rgba(255,140,0,0.5);
-}
-.splash-orbit-a::before { left: -4px; margin-top: -4px; }
-.splash-orbit-a::after  { right: -4px; margin-top: -4px; }
-
-/* Punto orbital en anillo B */
-.splash-orbit-b::before {
-    content: '';
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    background: radial-gradient(circle, #ffd700, rgba(255,215,0,0.3));
-    border-radius: 50%;
-    top: -3px; left: 50%; margin-left: -3px;
-    box-shadow: 0 0 8px #ffd700, 0 0 16px rgba(255,215,0,0.4);
-}
-
-.splash-warp-shell .particles,
-.splash-warp-shell .radar-wave,
-.splash-warp-shell .circle-pulse,
-.splash-warp-shell .hex-ring,
-.splash-warp-shell .scan-line,
-.splash-warp-shell .cyber-grid {
-    display: none;
-}
-
-@keyframes orbit-spin {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-@keyframes orbit-spin-reverse {
-    from { transform: translate(-50%, -50%) rotate(18deg); }
-    to { transform: translate(-50%, -50%) rotate(-342deg); }
-}
-
-/* Efecto de escaneo horizontal */
-.scan-line {
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, #ff4500, transparent);
-    box-shadow: 0 0 20px #ff4500;
-    animation: scanMove 3s linear infinite;
-    z-index: 1;
-}
-
-@keyframes scanMove {
-    0% { top: -2px; }
-    100% { top: 100%; }
-}
-
-/* Grid de fondo futurista */
-.cyber-grid {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        linear-gradient(rgba(255, 69, 0, 0.1) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 69, 0, 0.1) 1px, transparent 1px);
-    background-size: 50px 50px;
-    animation: gridScroll 20s linear infinite;
-    opacity: 0.3;
-}
-
-@keyframes gridScroll {
-    0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
-    100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
-}
-
-/* Partículas de fondo MEJORADAS */
-.particles {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    z-index: 1;
-}
-
-.particle {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    background: #ff4500;
-    border-radius: 50%;
-    box-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500;
-    animation: float 4s infinite ease-in-out;
-}
-
-@keyframes float {
-    0%, 100% { 
-        transform: translateY(0) translateX(0); 
-        opacity: 0; 
-    }
-    50% { 
-        opacity: 1; 
-    }
-    100% {
-        transform: translateY(-100vh) translateX(var(--drift));
-    }
-}
-
-/* Logo 3D MEJORADO */
-.logo-3d {
-    width: 300px;
-    height: 300px;
-    position: relative;
-    z-index: 200;
-    display: grid;
-    place-items: center;
-    animation: logoReveal 1.5s ease-out both, logoFloat 4.5s ease-in-out infinite 2s;
-}
-
-/* Fondo oscuro detrás del logo para que resalte sobre el warp */
-.logo-3d::before {
-    content: '';
-    position: absolute;
-    width: 320px;
-    height: 320px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(8,6,2,0.92) 30%, rgba(8,6,2,0.6) 60%, transparent 80%);
-    z-index: -1;
-    pointer-events: none;
-}
-
-.logo-3d::after {
-    content: none;
-}
-
+/* El logo en sÃ­ â€” 200px, aparece al instante */
 .splash-logo-core {
-    width: 280px;
-    height: 280px;
+    width: 200px;
+    height: 200px;
     position: relative;
-    z-index: 210;
-    padding: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,140,0,0.06) 0%, transparent 70%);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    box-shadow:
-        0 0 0 2px rgba(255,140,0,0.12),
-        0 0 40px rgba(255,100,0,0.18),
-        0 0 80px rgba(255,69,0,0.08);
-    animation: logoPopIn 1.3s cubic-bezier(.2,.9,.2,1) both;
     display: grid;
     place-items: center;
+    /* fondo oscuro para que el logo resalte sobre el canvas */
+    background: radial-gradient(circle, rgba(6,6,12,0.98) 42%, rgba(6,6,12,0.6) 68%, transparent 88%);
+    border-radius: 50%;
+    animation: splashLogoIn 0.55s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes splashLogoIn {
+    0%   { opacity:0; transform:scale(0.55); filter:blur(6px); }
+    75%  { opacity:1; transform:scale(1.04); filter:blur(0); }
+    100% { opacity:1; transform:scale(1);    filter:blur(0); }
 }
 
 .splash-logo-core img {
-    width: 88%;
-    height: 88%;
+    width: 140px;
+    height: 140px;
     object-fit: contain;
     display: block;
-    position: relative;
-    z-index: 220;
-    opacity: 1;
-    filter: drop-shadow(0 0 18px rgba(255,120,0,.32)) drop-shadow(0 0 6px rgba(255,200,80,.18)) contrast(1.05) brightness(1.05);
-    animation: logoGlow 3s ease-in-out infinite 1.5s;
+    filter: drop-shadow(0 0 16px rgba(255,120,0,0.55))
+            drop-shadow(0 0 40px rgba(255,70,0,0.25));
+    animation: splashLogoGlow 3.5s ease-in-out infinite 1s;
 }
 
-@keyframes logoGlow {
-    0%, 100% { filter: drop-shadow(0 0 18px rgba(255,120,0,.32)) drop-shadow(0 0 6px rgba(255,200,80,.18)) contrast(1.05) brightness(1.05); }
-    50% { filter: drop-shadow(0 0 32px rgba(255,120,0,.55)) drop-shadow(0 0 14px rgba(255,200,80,.35)) contrast(1.07) brightness(1.1); }
+@keyframes splashLogoGlow {
+    0%,100% {
+        filter: drop-shadow(0 0 16px rgba(255,120,0,0.55))
+                drop-shadow(0 0 40px rgba(255,70,0,0.25));
+    }
+    50% {
+        filter: drop-shadow(0 0 26px rgba(255,160,0,0.85))
+                drop-shadow(0 0 60px rgba(255,90,0,0.45));
+    }
 }
 
 .splash-logo-fallback {
     display: none;
     align-items: center;
     justify-content: center;
-    width: 220px;
-    height: 220px;
-    border-radius: 28px;
-    background: rgba(255,255,255,0.04);
-    color: #fff;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2.2rem;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: rgba(255,69,0,0.1);
+    color: #ff8c00;
+    font-family: system-ui, sans-serif;
+    font-size: 2.6rem;
     font-weight: 900;
-    letter-spacing: .22em;
-    text-indent: .22em;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset;
+    border: 2px solid rgba(255,140,0,0.35);
+}
+
+/* â”€â”€ SVG DE ANILLOS â€” dentro del logo-manifest â”€â”€ */
+.splash-rings-svg { display:none; }
+
+/* â”€â”€ TEXTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.splash-subtitle {
+    margin-top: 24px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.5em;
+    text-indent: 0.5em;
+    color: #ffb347;
+    text-shadow: 0 0 18px rgba(255,140,0,0.5);
+    animation: splashFadeUp 0.5s ease-out 0.6s both;
 }
 
 .splash-brand-note {
-    margin-top: 1.25rem;
-    font-size: .82rem;
-    letter-spacing: .26em;
+    margin-top: 8px;
+    font-size: .72rem;
+    letter-spacing: .22em;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.76);
-    z-index: 10;
-    text-shadow: 0 0 18px rgba(255,69,0,0.28);
-    transition: opacity .4s ease, transform .4s ease;
-    min-height: 1.4em;
+    color: rgba(255,255,255,0.5);
     text-align: center;
+    min-height: 1.4em;
+    transition: opacity .35s ease, transform .35s ease;
+    animation: splashFadeUp 0.5s ease-out 0.9s both;
 }
 
-@keyframes logoReveal {
-    0% { 
-        opacity: 0;
-        transform: perspective(1000px) rotateX(-90deg) scale(0.5);
-        filter: blur(20px);
-    }
-    100% { 
-        opacity: 1;
-        transform: perspective(1000px) rotateX(0) scale(1);
-        filter: blur(0);
-    }
+@keyframes splashFadeUp {
+    from { opacity:0; transform:translateY(10px); }
+    to   { opacity:1; transform:translateY(0); }
 }
 
-@keyframes logoFloat {
-    0%, 100% { 
-        transform: translateY(0px);
-    }
-    50% { 
-        transform: translateY(-9px);
-    }
-}
-
-@keyframes logoPopIn {
-    0% {
-        opacity: 0;
-        transform: scale(.72) rotate(-6deg);
-        filter: blur(12px);
-    }
-    60% {
-        opacity: 1;
-        transform: scale(1.06) rotate(0deg);
-        filter: blur(0);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-        filter: blur(0);
-    }
-}
-
-@keyframes splashHaloSpin {
-    0% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.04); }
-    100% { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes splashFramePulse {
-    0%, 100% { opacity: .72; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.03); }
-}
-
-/* Subtítulo del splash */
-.splash-subtitle {
-    font-size: 1.32rem;
-    color: #ffbd69;
-    letter-spacing: 0.44em;
-    text-indent: 0.44em;
-    margin-top: 18px;
-    font-weight: 700;
-    text-shadow: 0 0 24px rgba(255,140,0,0.6), 0 0 8px rgba(255,107,53,0.4);
-    animation: subtitleFade 2s ease-out 1.5s both;
-}
-
-@keyframes subtitleFade {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
-}
-
-/* Círculos concéntricos MEJORADOS - MÁS ONDAS */
-.circle-pulse {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.3);
-    border: 2px solid rgba(255, 69, 0, 0.3);
-    border-radius: 50%;
-    animation: circlePulse 3s ease-out infinite;
-}
-
-/* 8 círculos en lugar de 3 */
-.circle-pulse:nth-child(1) { 
-    width: 310px; 
-    height: 310px; 
-    animation-delay: 0s;
-    border-color: rgba(255,100,0,0.5);
-    border-width: 2px;
-}
-.circle-pulse:nth-child(2) { 
-    width: 370px; 
-    height: 370px; 
-    animation-delay: 0.35s; 
-}
-.circle-pulse:nth-child(3) { 
-    width: 430px; 
-    height: 430px; 
-    animation-delay: 0.7s; 
-}
-.circle-pulse:nth-child(4) { 
-    width: 490px; 
-    height: 490px; 
-    animation-delay: 1.05s; 
-}
-.circle-pulse:nth-child(5) { 
-    width: 550px; 
-    height: 550px; 
-    animation-delay: 1.4s; 
-}
-.circle-pulse:nth-child(6) { 
-    width: 610px; 
-    height: 610px; 
-    animation-delay: 1.75s; 
-}
-.circle-pulse:nth-child(7) { 
-    width: 670px; 
-    height: 670px; 
-    animation-delay: 2.1s; 
-}
-.circle-pulse:nth-child(8) { 
-    width: 730px; 
-    height: 730px; 
-    animation-delay: 2.45s; 
-}
-
-@keyframes circlePulse {
-    0% { 
-        transform: translate(-50%, -50%) scale(0.3); 
-        opacity: 1; 
-    }
-    100% { 
-        transform: translate(-50%, -50%) scale(4); 
-        opacity: 0; 
-    }
-}
-
-/* Anillos hexagonales rotatorios - NUEVO */
-.hex-ring {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(0deg);
-    width: 400px;
-    height: 400px;
-    border: 2px solid rgba(255, 107, 53, 0.3);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    animation: hexRotate 10s linear infinite;
-    z-index: 2;
-}
-
-.hex-ring:nth-child(2) {
-    width: 300px;
-    height: 300px;
-    animation-duration: 8s;
-    animation-direction: reverse;
-    border-color: rgba(255, 189, 105, 0.4);
-}
-
-@keyframes hexRotate {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Ondas de radar - NUEVO */
-.radar-wave {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    width: 600px;
-    height: 600px;
-    border: 3px solid rgba(255, 69, 0, 0.2);
-    border-radius: 50%;
-    animation: radarPulse 4s ease-out infinite;
-}
-
-.radar-wave:nth-child(2) {
-    animation-delay: 1s;
-}
-
-.radar-wave:nth-child(3) {
-    animation-delay: 2s;
-}
-
-@keyframes radarPulse {
-    0% {
-        transform: translate(-50%, -50%) scale(0);
-        opacity: 1;
-        border-width: 3px;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(2);
-        opacity: 0;
-        border-width: 0;
-    }
-}
-
-/* Barra de progreso 3D MEJORADA */
-.progress-container-3d {
-    width: min(520px, calc(100vw - 3.5rem));
-    height: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    margin-top: 36px;
-    position: relative;
-    overflow: hidden;
-    z-index: 10;
-    box-shadow: 
-        inset 0 2px 10px rgba(0, 0, 0, 0.5),
-        0 5px 15px rgba(255, 69, 0, 0.3),
-        0 0 30px rgba(255, 69, 0, 0.2);
-    border: 1px solid rgba(255, 69, 0, 0.3);
-}
-
+/* â”€â”€ BARRA DE PROGRESO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .loading-container {
     position: absolute;
-    bottom: 9%;
-    width: min(380px, calc(100vw - 3rem));
-    z-index: 100;
+    bottom: 8%;
+    width: min(340px, calc(100vw - 2.5rem));
+    z-index: 30;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 7px;
 }
 
 .status-header {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    font-size: 9px;
-    color: #ffd700;
-    letter-spacing: 2px;
+    font-size: 8px;
+    color: rgba(255,180,70,0.75);
+    letter-spacing: 2.5px;
     font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
 }
 
 .progress-track {
     width: 100%;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.07);
-    border-radius: 4px;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
     overflow: hidden;
-    position: relative;
-    box-shadow: 0 0 12px rgba(255,69,0,0.15);
 }
 
-.progress-fill {
-    width: 0%;
-    animation: none;
-    box-shadow: 0 0 15px #ff8c00;
-}
+.progress-fill { width:0%; animation:none; }
 
 .progress-bar-3d {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #c42800, #ff4500, #ff6b35, #ffbd69, #ff6b35, #ff4500);
+    background: linear-gradient(90deg, #a02800, #ff4500, #ff7a20, #ffba50, #ff7a20, #ff4500);
     background-size: 300% 100%;
-    border-radius: 4px;
-    position: relative;
-    animation: gradientFlow 2s linear infinite, pulseGlow 2s ease-in-out infinite;
-    box-shadow: 
-        0 0 12px rgba(255,69,0,0.9), 
-        0 0 28px rgba(255,69,0,0.5),
-        inset 0 0 8px rgba(255, 255, 255, 0.25);
-    transition: width 0.3s ease;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(255,69,0,0.9), 0 0 22px rgba(255,69,0,0.45);
+    animation: barShimmer 1.8s linear infinite;
+    transition: width 0.22s ease;
+}
+@keyframes barShimmer {
+    0%   { background-position: 0% 0%; }
+    100% { background-position: 300% 0%; }
 }
 
-@keyframes loadProgress {
-    to { width: 100%; }
+
+/* â”€â”€ SVG RING ANIMATIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@keyframes svgRingA {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+@keyframes svgRingB {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(-360deg); }
+}
+@keyframes svgPulse {
+    0%   { r: 110; opacity: 0.85; stroke-width: 1.8; }
+    100% { r: 240; opacity: 0;    stroke-width: 0.3; }
 }
 
-@keyframes gradientFlow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
-}
-
-@keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 20px #ff4500, 0 0 40px #ff4500, inset 0 0 10px rgba(255, 255, 255, 0.3); }
-    50% { box-shadow: 0 0 30px #ff4500, 0 0 60px #ff4500, 0 0 80px #ff6b35, inset 0 0 15px rgba(255, 255, 255, 0.5); }
-}
-
-.progress-bar-3d::after {
-    content: '';
+/* â”€â”€ SCAN LINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.scan-line {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-    animation: shine 1.5s infinite;
-}
-
-@keyframes shine {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(200%); }
-}
-
-/* Porcentaje de carga - NUEVO */
-.loading-percentage {
-    position: absolute;
-    right: -60px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
-    font-weight: bold;
-    color: #ff4500;
-    text-shadow: 0 0 10px #ff4500;
-}
-
-.loading-text-3d {
-    display: none;
-}
-
-@keyframes fadeInOut {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-}
-
-/* Puntos de carga animados - NUEVO */
-.loading-dots {
-    display: inline-block;
-}
-
-.loading-dots::after {
-    content: '';
-    animation: dots 1.5s steps(4, end) infinite;
-}
-
-@keyframes dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-}
-
-/* Efecto de destello de fondo - NUEVO */
-.flash-overlay {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(255, 69, 0, 0.2) 0%, transparent 70%);
-    animation: flash 3s ease-in-out infinite;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 5%,
+        rgba(255,100,0,0.25) 40%,
+        rgba(255,150,50,0.4) 50%,
+        rgba(255,100,0,0.25) 60%,
+        transparent 95%);
+    animation: scanMove 6s linear infinite;
+    z-index: 5;
     pointer-events: none;
 }
-
-@keyframes flash {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 1; }
+@keyframes scanMove {
+    0%   { top: -1px; opacity:0; }
+    4%   { opacity:1; }
+    96%  { opacity:1; }
+    100% { top: 100%; opacity:0; }
 }
 
-/* Notificaciones de actualización */
+/* â”€â”€ DESACTIVA ELEMENTOS VIEJOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.splash-orbit, .splash-pulse-ring, .logo-aura,
+.splash-warp-shell .particles,
+.splash-warp-shell .radar-wave,
+.splash-warp-shell .circle-pulse,
+.splash-warp-shell .hex-ring,
+.splash-warp-shell .cyber-grid,
+.splash-warp-shell .flash-overlay,
+.logo-3d { display:none !important; }
+
+/* â”€â”€ RESPONSIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+@media (max-width: 600px) {
+    .splash-logo-core { width:160px; height:160px; }
+    .splash-logo-core img { width:110px; height:110px; }
+    .splash-rings-svg { display:none; }
+
+/* Notificaciones de actualizaciÃ³n */
 .update-notification {
     position: fixed;
     top: 20px;
@@ -1483,7 +1076,7 @@
             box-shadow: 0 4px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,69,0,0.15);
         }
 
-        /* Línea animada bajo el header */
+        /* LÃ­nea animada bajo el header */
         header::after {
             content: '';
             position: absolute;
@@ -1512,7 +1105,7 @@
             gap: 1.5rem;
         }
 
-        /* ═══ BURGER MENU MOBILE ═══ */
+        /* â•â•â• BURGER MENU MOBILE â•â•â• */
         .burger-btn {
             display: none;
             flex-direction: column;
@@ -1539,7 +1132,7 @@
         .burger-btn.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
         .burger-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-        /* Menú mobile desplegable */
+        /* MenÃº mobile desplegable */
         .mobile-nav {
             display: none;
             position: fixed;
@@ -1724,7 +1317,7 @@
             display: none;
         }
 
-        /* Typing bajo el nav — en mobile */
+        /* Typing bajo el nav â€” en mobile */
         .header-typing {
             text-align: center;
             font-size: 0.72rem;
@@ -2055,14 +1648,14 @@
             100% { transform: translateX(100%); }
         }
 
-        /* Continúa en Parte 2... */
+        /* ContinÃºa en Parte 2... */
     
-/* ═══════════════════════════════════════════
-   ASISTENTE IA — CODEHUB AI CHAT
-   ═══════════════════════════════════════════ */
-/* ═══════════════════════════════════════════
-   CODEHUB AI CHAT — AURORA
-   ═══════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ASISTENTE IA â€” CODEHUB AI CHAT
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CODEHUB AI CHAT â€” AURORA
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 :root {
   --ai-accent:  #7C4DFF;
   --ai-accent2: #00B0FF;
@@ -2161,7 +1754,7 @@
   0%{background-position:0% 50%;}
   100%{background-position:220% 50%;}
 }
-/* ── AI bottom action bar ── */
+/* â”€â”€ AI bottom action bar â”€â”€ */
 .ai-bottom-bar{
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.68rem;
   padding:.76rem 1rem calc(.82rem + env(safe-area-inset-bottom, 0px));
@@ -2381,7 +1974,7 @@
   .ai-circle-btn{padding:.52rem .54rem;}
 }
 
-/* ═══ HERO ═══════════════════════════════════════════════ */
+/* â•â•â• HERO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #hero {
             padding: 2.5rem 0 1.5rem;
             position: relative;
@@ -2437,7 +2030,7 @@
             display: inline-block;
         }
 
-        /* ── LIQUID EFFECT — CodeHub & Wilson.E ── */
+        /* â”€â”€ LIQUID EFFECT â€” CodeHub & Wilson.E â”€â”€ */
         .liquid-word {
             display: inline-block;
             position: relative;
@@ -2509,7 +2102,7 @@
         }
         .hero-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
 
-        /* Hero card de código */
+        /* Hero card de cÃ³digo */
         .hero-visual { display: flex; justify-content: flex-end; }
         .hero-card {
             width: 100%;
@@ -2787,7 +2380,7 @@
             }
         }
 
-        /* ═══ STATS MEJORADO ════════════════════════════════════ */
+        /* â•â•â• STATS MEJORADO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .stats-eyebrow {
             font-family: 'JetBrains Mono', monospace;
             font-size: .72rem;
@@ -2807,7 +2400,7 @@
             margin-top: .2rem;
         }
 
-        /* ═══ SKILLS CON TABS ════════════════════════════════════ */
+        /* â•â•â• SKILLS CON TABS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .skills-header {
             display: flex;
             align-items: flex-end;
@@ -2948,7 +2541,7 @@
         }
         .tool-badge i { color: var(--primary); width: 16px; }
 
-        /* ═══ PANEL DE CONFIGURACIÓN ══════════════════════════════ */
+        /* â•â•â• PANEL DE CONFIGURACIÃ“N â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #config-panel {
             position: fixed;
             inset: 0;
@@ -3083,7 +2676,7 @@
         }
         .cfg-reset:hover { border-color: rgba(255,69,0,.3); color: var(--accent); }
 
-        /* Botón config en header */
+        /* BotÃ³n config en header */
         #cfg-btn {
             background: rgba(255,255,255,.06);
             border: 1px solid rgba(255,255,255,.1);
@@ -3133,7 +2726,7 @@
         }
 
         
-        /* ═══ CLIMA ═════════════════════════════════════════════ */
+        /* â•â•â• CLIMA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #weather-section {
             background: linear-gradient(135deg, rgba(0,0,0,.6), rgba(26,26,46,.6));
             border: 2px solid rgba(64,196,255,.2);
@@ -3227,8 +2820,8 @@
         }
         .wx-error i { color: var(--a); }
 
-        /* ═══ NOTICIAS INDEX ═════════════════════════════════════ */
-        /* ── BLOGGER SECTION ── */
+        /* â•â•â• NOTICIAS INDEX â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+        /* â”€â”€ BLOGGER SECTION â”€â”€ */
         #news-section {
             background: linear-gradient(135deg, rgba(0,0,0,.5), rgba(20,20,38,.6));
             border: 2px solid rgba(255,69,0,.2);
@@ -3309,7 +2902,7 @@
         
 
 
-        /* ── EASTER EGG ──────────────────────────────────────── */
+        /* â”€â”€ EASTER EGG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
         .egg-counter {
             position: absolute; top: -8px; right: -8px;
             width: 16px; height: 16px; border-radius: 50%;
@@ -3370,7 +2963,7 @@
             z-index: -1;
         }
 
-        /* ═══ SOBRE MÍ PRO ════════════════════════════════════════ */
+        /* â•â•â• SOBRE MÃ PRO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         .about-pro-wrap {
             display: grid; grid-template-columns: 200px 1fr;
             gap: 2.5rem; align-items: start; margin-bottom: 2.5rem;
@@ -3534,7 +3127,7 @@
             .about-brand-card { flex-direction: column; align-items: center; text-align: center; }
         }
 
-        /* ═══ GALERÍA MI PUEBLO ══════════════════════════════════ */
+        /* â•â•â• GALERÃA MI PUEBLO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #mi-pueblo { text-align: left; }
         .pueblo-eyebrow {
             font-family: var(--mono); font-size: .72rem;
@@ -3546,7 +3139,7 @@
             line-height: 1.7; margin-bottom: 1.5rem;
             max-width: 600px;
         }
-        /* ── Expanding Panels Carrusel ── */
+        /* â”€â”€ Expanding Panels Carrusel â”€â”€ */
         .pueblo-panels {
             display: flex;
             width: 100%;
@@ -3719,14 +3312,14 @@
   .upd-close{background:none;border:none;color:rgba(232,232,240,.3);cursor:pointer;font-size:1rem}
   </style>
 
-    <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
+    <!-- CLS Fix â€” reservar espacio para imÃ¡genes y evitar saltos de layout -->
     <style>
-      /* Reservar espacio para imágenes antes de cargar */
+      /* Reservar espacio para imÃ¡genes antes de cargar */
       img { content-visibility: auto; }
       .about-avatar-img { width: 200px; height: 200px; object-fit: cover; }
       .ap-app-icon img { width: 48px; height: 48px; object-fit: contain; }
 
-      /* Estabilizar fuentes — evitar FOUT que causa CLS */
+      /* Estabilizar fuentes â€” evitar FOUT que causa CLS */
       @font-face {
         font-family: 'Space Grotesk';
         font-display: swap;
@@ -3748,7 +3341,7 @@
       /* Evitar reflow al cargar iconos de Font Awesome */
       .fas, .fab, .far, .fa { display: inline-block; min-width: 1em; }
 
-        /* ══ OPEN TO WORK ══════════════════════════════════ */
+        /* â•â• OPEN TO WORK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #open-to-work { padding: 3rem 0; }
         .otw-inner {
           background: linear-gradient(135deg, rgba(0,230,118,.06), rgba(0,230,118,.02));
@@ -3786,7 +3379,7 @@
         .otw-btn-ghost:hover { background: rgba(255,255,255,.12); color: #fff; transform: translateY(-2px); }
         @media(max-width:768px){ .otw-content { grid-template-columns: 1fr; } .otw-inner { padding: 1.5rem; } }
 
-        /* ══ WHY HIRE ME ════════════════════════════════════ */
+        /* â•â• WHY HIRE ME â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #why-me { padding: 4rem 0; }
         .wm-eyebrow { font-family: 'JetBrains Mono',monospace; font-size: .75rem; color: var(--primary,#ff4500); letter-spacing: .1em; margin-bottom: .5rem; }
         .wm-title { font-size: clamp(1.5rem,3vw,2rem); font-weight: 800; margin-bottom: 2.5rem; background: linear-gradient(135deg, #fff, rgba(255,255,255,.6)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -3800,8 +3393,8 @@
     </style>
 </head>
 <body>
-    <!-- NOTA: Debido a límites de longitud, este es solo el inicio del código.
-         Guarda este archivo y continúa con la PARTE 2 que incluirá el resto del HTML y JavaScript -->
+    <!-- NOTA: Debido a lÃ­mites de longitud, este es solo el inicio del cÃ³digo.
+         Guarda este archivo y continÃºa con la PARTE 2 que incluirÃ¡ el resto del HTML y JavaScript -->
     
     <div id="scroll-progress"></div>
     <canvas id="neural-network"></canvas>
@@ -3812,7 +3405,7 @@
         </div>
     </div>
 
-    <!-- ══ EASTER EGG OVERLAY ══ -->
+    <!-- â•â• EASTER EGG OVERLAY â•â• -->
     <div id="egg-overlay">
         <div class="egg-particles" id="egg-particles"></div>
         <div class="egg-matrix" id="egg-matrix"></div>
@@ -3822,20 +3415,20 @@
             <div class="e3">ACTIVADO</div>
         </div>
         <div class="egg-msg">
-            // Encontraste el secreto de CodeHub 🎉<br>
-            Eres uno de los pocos que llegó hasta aquí.<br><br>
-            <span>→ 7 clicks en el logo</span> — misión cumplida.<br>
+            // Encontraste el secreto de CodeHub ðŸŽ‰<br>
+            Eres uno de los pocos que llegÃ³ hasta aquÃ­.<br><br>
+            <span>â†’ 7 clicks en el logo</span> â€” misiÃ³n cumplida.<br>
             <span class="liquid-word" id="liq-egg-wilson" data-liq-size="small">Wilson.E</span> te tiene un mensaje especial:
             <br><br>
-            <span style="color:#ffbd69;font-size:1.1rem">"Gracias por explorar CodeHub.<br>Cada herramienta aquí fue construida con pasión."</span><br>
-            <span style="opacity:.4;font-size:.75rem">— Wilson.E, Guatemala 🇬🇹</span>
+            <span style="color:#ffbd69;font-size:1.1rem">"Gracias por explorar CodeHub.<br>Cada herramienta aquÃ­ fue construida con pasiÃ³n."</span><br>
+            <span style="opacity:.4;font-size:.75rem">â€” Wilson.E, Guatemala ðŸ‡¬ðŸ‡¹</span>
         </div>
         <button class="egg-close" onclick="closeEgg()">
-            ✕ Cerrar modo Ultra
+            âœ• Cerrar modo Ultra
         </button>
     </div>
 
-    <!-- MENÚ LATERAL EXPERIMENTAL -->
+    <!-- MENÃš LATERAL EXPERIMENTAL -->
     <div class="exp-drag-handle" id="exp-handle" onclick="toggleExperimentalMenu()"></div>
     <div class="menu-toggle-btn" onclick="toggleExperimentalMenu()">
         <i class="fas fa-flask"></i>
@@ -3848,7 +3441,7 @@
         </div>
         
         <div class="menu-header">
-            <h3>🧪 Zona Experimental</h3>
+            <h3>ðŸ§ª Zona Experimental</h3>
             <p>Funciones avanzadas y experimentales</p>
         </div>
 
@@ -3861,14 +3454,14 @@
             <i class="fas fa-code"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Matrix Mode</div>
-                <div class="menu-item-desc">Efecto Matrix con lluvia de código</div>
+                <div class="menu-item-desc">Efecto Matrix con lluvia de cÃ³digo</div>
             </div>
         </div>
 
         <div class="menu-item" onclick="activateParticleExplosion()">
             <i class="fas fa-fire"></i>
             <div class="menu-item-content">
-                <div class="menu-item-title">Explosión de Partículas</div>
+                <div class="menu-item-title">ExplosiÃ³n de PartÃ­culas</div>
                 <div class="menu-item-desc">Efectos visuales espectaculares</div>
             </div>
         </div>
@@ -3877,7 +3470,7 @@
             <i class="fas fa-wave-square"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Screen Shake</div>
-                <div class="menu-item-desc">Vibración de pantalla extrema</div>
+                <div class="menu-item-desc">VibraciÃ³n de pantalla extrema</div>
             </div>
         </div>
 
@@ -3885,7 +3478,7 @@
             <i class="fas fa-tv"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Glitch Effect</div>
-                <div class="menu-item-desc">Efecto de distorsión digital</div>
+                <div class="menu-item-desc">Efecto de distorsiÃ³n digital</div>
             </div>
         </div>
 
@@ -3908,8 +3501,8 @@
         <div class="menu-item" onclick="activateCodeRain()">
             <i class="fas fa-cloud-rain"></i>
             <div class="menu-item-content">
-                <div class="menu-item-title">Lluvia de Código</div>
-                <div class="menu-item-desc">Números binarios cayendo</div>
+                <div class="menu-item-title">Lluvia de CÃ³digo</div>
+                <div class="menu-item-desc">NÃºmeros binarios cayendo</div>
             </div>
         </div>
 
@@ -3933,69 +3526,39 @@
     <!-- Command Palette -->
     <div id="command-overlay" onclick="closeCommandPalette(event)">
         <div class="command-palette" onclick="event.stopPropagation()">
-            <input type="text" class="command-input" id="commandInput" placeholder="¿Qué buscas?" autocomplete="off">
-            <div class="command-hint">Presiona Esc para cerrar | ↑↓ para navegar</div>
+            <input type="text" class="command-input" id="commandInput" placeholder="Â¿QuÃ© buscas?" autocomplete="off">
+            <div class="command-hint">Presiona Esc para cerrar | â†‘â†“ para navegar</div>
             <div class="command-results" id="commandResults"></div>
         </div>
     </div>
     
     <!-- Splash Screen -->
 <div id="splash-screen">
-    <div class="splash1-container splash-warp-shell">
-        <!-- Línea de escaneo -->
-        <canvas id="warp-canvas"></canvas>
-        <div class="vignette"></div>
-        <div class="logo-aura"></div>
-        <div class="splash-orbit splash-orbit-a"></div>
-        <div class="splash-orbit splash-orbit-b"></div>
-        <div class="splash-orbit splash-orbit-c"></div>
-        <div class="scan-line"></div>
-        
-        <!-- Grid cibernético -->
-        <div class="cyber-grid"></div>
-        
-        <!-- Flash overlay -->
-        <div class="flash-overlay"></div>
-        
-        <!-- Partículas de fondo -->
-        <div class="particles" id="particles1"></div>
-        
-        <!-- Ondas de radar (3 capas) -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;">
-            <div class="radar-wave"></div>
-            <div class="radar-wave"></div>
-            <div class="radar-wave"></div>
-        </div>
-        
-        <!-- Círculos pulsantes (8 ondas) -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;">
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-            <div class="circle-pulse"></div>
-        </div>
-        
-        <!-- Anillos hexagonales -->
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;">
-            <div class="hex-ring"></div>
-            <div class="hex-ring"></div>
-        </div>
-        
-        <!-- Logo principal -->
-        <div class="logo-manifest">
-            <div class="logo-3d">
-                <div class="splash-logo-core">
-                    <img src="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" alt="CodeHub logo" loading="eager" decoding="async" onerror="this.style.display='none'; var fb=this.nextElementSibling; if(fb) { fb.style.display='flex'; }">
-                    <div class="splash-logo-fallback">CH</div>
-                </div>
-            </div>
-            <div class="splash-subtitle">CODEHUB</div>
-            <div class="splash-brand-note" id="phrase">Iniciando experiencia premium</div>
-        </div>
+  <div class="splash1-container">
+
+    <!-- Fondo: estrellas warp -->
+    <canvas id="warp-canvas"></canvas>
+    <div class="vignette"></div>
+    <div class="scan-line"></div>
+
+    <!-- LOGO + ANILLOS SVG â€” todo en un solo bloque centrado -->
+    <div class="logo-manifest">
+
+      <!-- Anillos y pulsos en SVG puro: centrado perfecto, sin CSS wars -->
+      <!-- Logo imagen â€” encima del SVG -->
+      <div class="splash-logo-core">
+        <img src="splash/codehub.png"
+             alt="CodeHub logo"
+             loading="eager"
+             decoding="sync"
+             fetchpriority="high"
+             onerror="this.style.display='none';var fb=this.nextElementSibling;if(fb){fb.style.display='flex';}">
+        <div class="splash-logo-fallback">CH</div>
+      </div>
+
+      <div class="splash-subtitle">CODEHUB</div>
+      <div class="splash-brand-note" id="phrase">INICIANDO EXPERIENCIA PREMIUM</div>
+    </div>
         
         <!-- Barra de progreso con porcentaje -->
         <div class="loading-container">
@@ -4010,12 +3573,12 @@
         
         <button id="skip-splash" style="position: absolute; top: 20px; right: 20px; background: rgba(255,69,0,0.8); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; display:none">Saltar</button>
 
-        <!-- Turnstile en splash — aparece al 80% del progreso -->
+        <!-- Turnstile en splash â€” aparece al 80% del progreso -->
         <div id="splash-turnstile-wrap" style="
             position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
             z-index:20; display:none; flex-direction:column; align-items:center; gap:.5rem">
           <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:rgba(255,255,255,.5);letter-spacing:.1em">
-            VERIFICACIÓN DE SEGURIDAD
+            VERIFICACIÃ“N DE SEGURIDAD
           </p>
           <div class="cf-turnstile"
                data-sitekey="0x4AAAAAAClKd5T1R81GltW_"
@@ -4034,7 +3597,7 @@
         <div class="header-inner">
             <!-- Logo -->
             <a class="header-logo" href="#" id="logo-egg" onclick="eggClick(event)">
-                <img class="header-logo-mark" src="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" alt="Logo CodeHub" loading="eager" decoding="async">
+                <img class="header-logo-mark" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="eager" decoding="async">
                 <span class="header-logo-copy">
                     <span class="header-logo-text">
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
@@ -4050,20 +3613,20 @@
             <!-- Nav central -->
             <nav aria-label="Principal">
                 <ul>
-                    <li><a href="#stats">Estadísticas</a></li>
+                    <li><a href="#stats">EstadÃ­sticas</a></li>
                     <li><a href="#skills">Habilidades</a></li>
                     <li><a href="#services">Servicios</a></li>
                     <li><a href="#latest-projects">Proyectos</a></li>
                     <li><a href="#contact">Contacto</a></li>
-                    <li><a href="downloader.html">⬇ Descargar</a></li>
-                    <li><a href="#weather-section">🌤 Clima</a></li>
-                    <li><a href="#news-section">📰 Noticias</a></li>
+                    <li><a href="downloader.html">â¬‡ Descargar</a></li>
+                    <li><a href="#weather-section">ðŸŒ¤ Clima</a></li>
+                    <li><a href="#news-section">ðŸ“° Noticias</a></li>
                 </ul>
             </nav>
 
             <!-- Acciones derecha -->
             <div class="header-actions">
-                <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
+                <button id="cfg-btn" aria-label="ConfiguraciÃ³n" title="ConfiguraciÃ³n del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
                 </button>
                 <a href="downloader.html" class="header-dl-btn" title="Descargador de videos">
@@ -4073,8 +3636,8 @@
                     <i class="fab fa-youtube"></i>
                 </a>
 
-                <!-- Burger button — solo visible en mobile -->
-                <button class="burger-btn" id="burger-btn" aria-label="Menú" onclick="toggleMobileNav()">
+                <!-- Burger button â€” solo visible en mobile -->
+                <button class="burger-btn" id="burger-btn" aria-label="MenÃº" onclick="toggleMobileNav()">
                     <span></span><span></span><span></span>
                 </button>
             </div>
@@ -4083,11 +3646,11 @@
         <div class="header-typing" id="typingEffect"></div>
     </header>
 
-    <!-- ── PANEL DE CONFIGURACIÓN ── -->
+    <!-- â”€â”€ PANEL DE CONFIGURACIÃ“N â”€â”€ -->
     <div id="config-panel" aria-hidden="true">
-        <div class="cfg-dialog" role="dialog" aria-modal="true" aria-label="Configuración del sitio">
+        <div class="cfg-dialog" role="dialog" aria-modal="true" aria-label="ConfiguraciÃ³n del sitio">
             <div class="cfg-head">
-                <div class="cfg-head-title"><i class="fas fa-sliders"></i> Configuración</div>
+                <div class="cfg-head-title"><i class="fas fa-sliders"></i> ConfiguraciÃ³n</div>
                 <button id="cfg-close" aria-label="Cerrar"><i class="fas fa-times"></i></button>
             </div>
             <div class="cfg-body">
@@ -4108,11 +3671,11 @@
                     </div>
                 </div>
 
-                <!-- Tamaño de fuente -->
+                <!-- TamaÃ±o de fuente -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Tamaño de texto</div>
+                    <div class="cfg-label">TamaÃ±o de texto</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt" onclick="setCfg('font','sm',this)">Pequeño</button>
+                        <button class="cfg-opt" onclick="setCfg('font','sm',this)">PequeÃ±o</button>
                         <button class="cfg-opt active" onclick="setCfg('font','md',this)">Normal</button>
                         <button class="cfg-opt" onclick="setCfg('font','lg',this)">Grande</button>
                     </div>
@@ -4134,8 +3697,8 @@
                 <div class="cfg-group">
                     <div class="cfg-label">Idioma</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt active" onclick="setCfg('lang','es',this)">🇬🇹 Español</button>
-                        <button class="cfg-opt" onclick="setCfg('lang','en',this)">🇺🇸 English</button>
+                        <button class="cfg-opt active" onclick="setCfg('lang','es',this)">ðŸ‡¬ðŸ‡¹ EspaÃ±ol</button>
+                        <button class="cfg-opt" onclick="setCfg('lang','en',this)">ðŸ‡ºðŸ‡¸ English</button>
                     </div>
                 </div>
 
@@ -4162,9 +3725,9 @@
 
     <!-- Anti-DevTools Warning -->
     <div id="devtools-warning">
-        <div style="font-size:3rem">🛡️</div>
+        <div style="font-size:3rem">ðŸ›¡ï¸</div>
         <h2>Acceso Restringido</h2>
-        <p>Las herramientas de desarrollo están deshabilitadas en este sitio.<br>Por favor cierra DevTools para continuar.</p>
+        <p>Las herramientas de desarrollo estÃ¡n deshabilitadas en este sitio.<br>Por favor cierra DevTools para continuar.</p>
         <button onclick="document.getElementById('devtools-warning').classList.remove('show')" 
             style="padding:.5rem 1.5rem;background:var(--primary);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:.85rem">
             Cerrar
@@ -4172,36 +3735,36 @@
     </div>
 
     <!-- Mobile Nav -->
-    <nav class="mobile-nav" id="mobile-nav" aria-label="Menú móvil">
+    <nav class="mobile-nav" id="mobile-nav" aria-label="MenÃº mÃ³vil">
         <ul>
-            <li><a href="#stats" onclick="closeMobileNav()">📊 Estadísticas</a></li>
-            <li><a href="#skills" onclick="closeMobileNav()">💡 Habilidades</a></li>
-            <li><a href="#services" onclick="closeMobileNav()">🛠 Servicios</a></li>
-            <li><a href="#latest-projects" onclick="closeMobileNav()">🚀 Proyectos</a></li>
-            <li><a href="#contact" onclick="closeMobileNav()">✉️ Contacto</a></li>
+            <li><a href="#stats" onclick="closeMobileNav()">ðŸ“Š EstadÃ­sticas</a></li>
+            <li><a href="#skills" onclick="closeMobileNav()">ðŸ’¡ Habilidades</a></li>
+            <li><a href="#services" onclick="closeMobileNav()">ðŸ›  Servicios</a></li>
+            <li><a href="#latest-projects" onclick="closeMobileNav()">ðŸš€ Proyectos</a></li>
+            <li><a href="#contact" onclick="closeMobileNav()">âœ‰ï¸ Contacto</a></li>
             <div class="mobile-nav-divider"></div>
-            <li><a href="#weather-section" onclick="closeMobileNav()">🌤 Clima</a></li>
-            <li><a href="#news-section" onclick="closeMobileNav()">📰 Noticias</a></li>
+            <li><a href="#weather-section" onclick="closeMobileNav()">ðŸŒ¤ Clima</a></li>
+            <li><a href="#news-section" onclick="closeMobileNav()">ðŸ“° Noticias</a></li>
             <div class="mobile-nav-divider"></div>
-            <li><a href="tools.html" onclick="closeMobileNav()">🔧 Tools</a></li>
-            <li><a href="codehub-ultra.html" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">⚡ CodeHub Ultra</a></li>
-            <li><a href="cv.html" onclick="closeMobileNav()" style="color:#00e676">📄 Mi CV</a></li>
-            <li><a href="novedades.html" onclick="closeMobileNav()">📱 Apps Android</a></li>
-            <li><a href="downloader.html" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
-            <li><a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
+            <li><a href="tools.html" onclick="closeMobileNav()">ðŸ”§ Tools</a></li>
+            <li><a href="codehub-ultra.html" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">âš¡ CodeHub Ultra</a></li>
+            <li><a href="cv.html" onclick="closeMobileNav()" style="color:#00e676">ðŸ“„ Mi CV</a></li>
+            <li><a href="novedades.html" onclick="closeMobileNav()">ðŸ“± Apps Android</a></li>
+            <li><a href="downloader.html" onclick="closeMobileNav()">â¬‡ï¸ Descargar Videos</a></li>
+            <li><a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" onclick="closeMobileNav()">â–¶ï¸ YouTube</a></li>
         </ul>
     </nav>
 
         <main>
-        <!-- ── HERO ── -->
+        <!-- â”€â”€ HERO â”€â”€ -->
         <section id="hero">
             <div class="hero-inner">
                 <div class="hero-text">
                     <div class="hero-tag">
                         <span class="hero-dot"></span>
-                        Disponible para proyectos · Guatemala 🇬🇹
+                        Disponible para proyectos Â· Guatemala ðŸ‡¬ðŸ‡¹
                     </div>
-                    <span class="hero-kicker">Full stack builder · portfolio · tools · IA</span>
+                    <span class="hero-kicker">Full stack builder Â· portfolio Â· tools Â· IA</span>
                     <h1 class="hero-title">
                         <span class="hero-title-greeting">Hola, soy</span>
                         <span class="hero-name liquid-word" id="liq-hero-wilson" data-liq-size="large">Wilson.E</span>
@@ -4265,26 +3828,26 @@
 <pre><span class="hc-k">const</span> <span class="hc-v">wilson</span> = {
   <span class="hc-p">nombre</span>: <span class="hc-s">"Wilson.E"</span>,
   <span class="hc-p">edad</span>: <span class="hc-n">24</span>,
-  <span class="hc-p">país</span>: <span class="hc-s">"Guatemala 🇬🇹"</span>,
+  <span class="hc-p">paÃ­s</span>: <span class="hc-s">"Guatemala ðŸ‡¬ðŸ‡¹"</span>,
   <span class="hc-p">stack</span>: [<span class="hc-s">"HTML"</span>, <span class="hc-s">"JS"</span>, <span class="hc-s">"Python"</span>],
   <span class="hc-p">aprendiendo</span>: [
     <span class="hc-s">"Node.js"</span>, <span class="hc-s">"MongoDB"</span>,
     <span class="hc-s">"IA APIs"</span>
   ],
   <span class="hc-p">enfoque</span>: [<span class="hc-s">"performance"</span>, <span class="hc-s">"ui polish"</span>],
-  <span class="hc-p">disponible</span>: <span class="hc-b">true</span> <span class="hc-c">// ← hire me</span>
+  <span class="hc-p">disponible</span>: <span class="hc-b">true</span> <span class="hc-c">// â† hire me</span>
 };</pre>
                         </div>
                         <div class="hc-footer">
-                            <span class="hc-status">● Online</span>
-                            <span>JS · ES2025</span>
+                            <span class="hc-status">â— Online</span>
+                            <span>JS Â· ES2025</span>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ══ OPEN TO WORK ══ -->
+        <!-- â•â• OPEN TO WORK â•â• -->
         <section id="open-to-work">
           <div class="otw-inner">
             <div class="otw-badge">
@@ -4293,15 +3856,15 @@
             </div>
             <div class="otw-content">
               <div class="otw-left">
-                <h2 class="otw-title">¿Buscas un desarrollador?</h2>
-                <p class="otw-desc">Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rápida, código limpio y comunicación directa.</p>
+                <h2 class="otw-title">Â¿Buscas un desarrollador?</h2>
+                <p class="otw-desc">Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rÃ¡pida, cÃ³digo limpio y comunicaciÃ³n directa.</p>
                 <div class="otw-tags">
-                  <span>🌐 Sitios web</span>
-                  <span>🤖 Bots IA</span>
-                  <span>⚙️ APIs REST</span>
-                  <span>📱 PWA</span>
-                  <span>🗄️ Bases de datos</span>
-                  <span>🚀 Deploy</span>
+                  <span>ðŸŒ Sitios web</span>
+                  <span>ðŸ¤– Bots IA</span>
+                  <span>âš™ï¸ APIs REST</span>
+                  <span>ðŸ“± PWA</span>
+                  <span>ðŸ—„ï¸ Bases de datos</span>
+                  <span>ðŸš€ Deploy</span>
                 </div>
               </div>
               <div class="otw-right">
@@ -4310,14 +3873,14 @@
                     <i class="fas fa-clock"></i>
                     <div>
                       <span class="otw-info-label">Disponibilidad</span>
-                      <span class="otw-info-val">Tiempo completo · Remoto</span>
+                      <span class="otw-info-val">Tiempo completo Â· Remoto</span>
                     </div>
                   </div>
                   <div class="otw-info-row">
                     <i class="fas fa-location-dot"></i>
                     <div>
-                      <span class="otw-info-label">Ubicación</span>
-                      <span class="otw-info-val">Guatemala City 🇬🇹 · Worldwide</span>
+                      <span class="otw-info-label">UbicaciÃ³n</span>
+                      <span class="otw-info-val">Guatemala City ðŸ‡¬ðŸ‡¹ Â· Worldwide</span>
                     </div>
                   </div>
                   <div class="otw-info-row">
@@ -4345,7 +3908,7 @@
 
         <!-- Stats Section -->
         <section id="stats">
-            <div class="stats-eyebrow">// números reales · actualizado 2026</div>
+            <div class="stats-eyebrow">// nÃºmeros reales Â· actualizado 2026</div>
             <h2>Mi Trayectoria</h2>
             <div class="stats-section">
                 <div class="stat-card">
@@ -4357,7 +3920,7 @@
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-code"></i></div>
                     <div class="stat-number" data-target="20000">0</div>
-                    <div class="stat-label">Líneas de Código</div>
+                    <div class="stat-label">LÃ­neas de CÃ³digo</div>
                     <div class="stat-sub">solo en CodeHub</div>
                 </div>
                 <div class="stat-card">
@@ -4381,7 +3944,7 @@
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
                     <div class="stat-number" data-target="3">0</div>
-                    <div class="stat-label">Años Programando</div>
+                    <div class="stat-label">AÃ±os Programando</div>
                     <div class="stat-sub">autodidacta desde 2022</div>
                 </div>
             </div>
@@ -4389,15 +3952,15 @@
 
         <!-- Skills Section (SOLO UNA VEZ) -->
         <section id="skills">
-            <!-- Encabezado con tabs de año -->
+            <!-- Encabezado con tabs de aÃ±o -->
             <div class="skills-header">
                 <div>
-                    <div class="skills-eyebrow">// stack técnico</div>
-                    <h2 style="margin-bottom:0">Habilidades Técnicas</h2>
+                    <div class="skills-eyebrow">// stack tÃ©cnico</div>
+                    <h2 style="margin-bottom:0">Habilidades TÃ©cnicas</h2>
                 </div>
                 <div class="skills-tabs">
                     <button class="sk-tab active" onclick="switchSkillTab('core',this)">Core</button>
-                    <button class="sk-tab" onclick="switchSkillTab('2025',this)">✨ 2025</button>
+                    <button class="sk-tab" onclick="switchSkillTab('2025',this)">âœ¨ 2025</button>
                     <button class="sk-tab" onclick="switchSkillTab('tools',this)">Tools</button>
                 </div>
             </div>
@@ -4455,7 +4018,7 @@
                     <div class="sc-info">
                         <div class="sc-top"><span>IA & Prompt Eng.</span><span class="sc-pct sc-badge">2025</span></div>
                         <div class="sc-bar"><div class="sc-fill" style="--w:78%;--c:#10b981"></div></div>
-                        <div class="sc-desc">Claude, GPT-4, integración de APIs de IA en proyectos reales</div>
+                        <div class="sc-desc">Claude, GPT-4, integraciÃ³n de APIs de IA en proyectos reales</div>
                     </div>
                 </div>
                 <div class="skill-chip skill-new">
@@ -4479,7 +4042,7 @@
                     <div class="sc-info">
                         <div class="sc-top"><span>Servidor en Termux</span><span class="sc-pct sc-badge">2025</span></div>
                         <div class="sc-bar"><div class="sc-fill" style="--w:72%;--c:#40c4ff"></div></div>
-                        <div class="sc-desc">Node.js corriendo en Android, MongoDB Atlas, despliegue móvil</div>
+                        <div class="sc-desc">Node.js corriendo en Android, MongoDB Atlas, despliegue mÃ³vil</div>
                     </div>
                 </div>
                 <div class="skill-chip skill-new">
@@ -4495,7 +4058,7 @@
                     <div class="sc-info">
                         <div class="sc-top"><span>GitHub Pages</span><span class="sc-pct sc-badge">2025</span></div>
                         <div class="sc-bar"><div class="sc-fill" style="--w:85%;--c:#b464ff"></div></div>
-                        <div class="sc-desc">Deploy continuo, CNAME, gestión de repositorios públicos</div>
+                        <div class="sc-desc">Deploy continuo, CNAME, gestiÃ³n de repositorios pÃºblicos</div>
                     </div>
                 </div>
             </div>
@@ -4507,49 +4070,49 @@
                 <div class="tool-badge"><i class="fas fa-database"></i> MongoDB Atlas</div>
                 <div class="tool-badge"><i class="fas fa-robot"></i> ChatGPT API</div>
                 <div class="tool-badge"><i class="fas fa-code"></i> VS Code / AndroidIDE</div>
-                <div class="tool-badge"><i class="fas fa-paint-brush"></i> Figma básico</div>
+                <div class="tool-badge"><i class="fas fa-paint-brush"></i> Figma bÃ¡sico</div>
                 <div class="tool-badge"><i class="fas fa-server"></i> Express.js</div>
                 <div class="tool-badge"><i class="fas fa-lock"></i> Helmet + dotenv</div>
                 <div class="tool-badge"><i class="fas fa-qrcode"></i> Web APIs nativas</div>
                 <div class="tool-badge"><i class="fas fa-mobile-alt"></i> Responsive Design</div>
                 <div class="tool-badge"><i class="fas fa-bolt"></i> Canvas API</div>
-                <div class="tool-badge"><i class="fas fa-key"></i> JWT básico</div>
+                <div class="tool-badge"><i class="fas fa-key"></i> JWT bÃ¡sico</div>
             </div>
         </section>
 
-        <!-- CONTINÚA: Necesitas la PARTE 2 con el resto de las secciones y TODO el JavaScript -->
-        <!-- PARTE 2 - Continuación desde Skills Section -->
-<!-- Copia este código y pégalo DESPUÉS de la sección Skills en la Parte 1 -->
+        <!-- CONTINÃšA: Necesitas la PARTE 2 con el resto de las secciones y TODO el JavaScript -->
+        <!-- PARTE 2 - ContinuaciÃ³n desde Skills Section -->
+<!-- Copia este cÃ³digo y pÃ©galo DESPUÃ‰S de la secciÃ³n Skills en la Parte 1 -->
 
         <!-- Services Section -->
         <section id="services">
-            <h2>🚀 Servicios que Ofrezco</h2>
-            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Soluciones digitales a medida — el precio depende del alcance de cada proyecto.</p>
+            <h2>ðŸš€ Servicios que Ofrezco</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Soluciones digitales a medida â€” el precio depende del alcance de cada proyecto.</p>
             <div class="services-grid">
                 <div class="service-card">
                     <i class="fas fa-shopping-cart service-icon"></i>
                     <h3>Tienda Online</h3>
-                    <p>Vende tus productos en internet con catálogo, carrito de compras, pagos y panel de administración.</p>
+                    <p>Vende tus productos en internet con catÃ¡logo, carrito de compras, pagos y panel de administraciÃ³n.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-rocket service-icon"></i>
                     <h3>Landing Pages</h3>
-                    <p>Páginas de alto impacto para captar clientes, lanzar productos o presentar tu negocio profesionalmente.</p>
+                    <p>PÃ¡ginas de alto impacto para captar clientes, lanzar productos o presentar tu negocio profesionalmente.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-chart-line service-icon"></i>
                     <h3>Sistemas / Dashboards</h3>
-                    <p>Paneles de gestión a medida: pedidos, inventario, empleados y reportes en tiempo real.</p>
+                    <p>Paneles de gestiÃ³n a medida: pedidos, inventario, empleados y reportes en tiempo real.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-user-tie service-icon"></i>
                     <h3>Portafolios</h3>
-                    <p>Tu presencia digital que impresiona. Para freelancers, diseñadores, fotógrafos y profesionales.</p>
+                    <p>Tu presencia digital que impresiona. Para freelancers, diseÃ±adores, fotÃ³grafos y profesionales.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-magnifying-glass service-icon"></i>
                     <h3>SEO</h3>
-                    <p>Que Google te encuentre primero. Optimización técnica, velocidad y estrategia de contenido.</p>
+                    <p>Que Google te encuentre primero. OptimizaciÃ³n tÃ©cnica, velocidad y estrategia de contenido.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-robot service-icon"></i>
@@ -4559,7 +4122,7 @@
                 <div class="service-card">
                     <i class="fas fa-wrench service-icon"></i>
                     <h3>Mantenimiento Web</h3>
-                    <p>Soporte continuo, actualizaciones, backups y corrección de errores para tu sitio existente.</p>
+                    <p>Soporte continuo, actualizaciones, backups y correcciÃ³n de errores para tu sitio existente.</p>
                 </div>
             </div>
             <div style="text-align:center;margin-top:2rem">
@@ -4577,59 +4140,59 @@
 
 
         <!-- Testimonials -->
-        <!-- ── CLIMA EN TIEMPO REAL ── -->
+        <!-- â”€â”€ CLIMA EN TIEMPO REAL â”€â”€ -->
         <section id="weather-section">
             <div class="wx-header">
                 <div>
-                    <div class="wx-eyebrow">// detectado automáticamente</div>
+                    <div class="wx-eyebrow">// detectado automÃ¡ticamente</div>
                     <h2 style="margin-bottom:0">Clima en tu Ciudad</h2>
                 </div>
-                <button class="wx-location-btn" id="wx-loc-btn" onclick="requestGeoLocation()" title="Usar mi ubicación exacta">
-                    <i class="fas fa-location-dot"></i> Usar mi ubicación
+                <button class="wx-location-btn" id="wx-loc-btn" onclick="requestGeoLocation()" title="Usar mi ubicaciÃ³n exacta">
+                    <i class="fas fa-location-dot"></i> Usar mi ubicaciÃ³n
                 </button>
             </div>
 
             <!-- Estado de carga -->
             <div id="wx-loading" class="wx-loading">
                 <div class="wx-spinner"></div>
-                <span>Detectando tu ubicación…</span>
+                <span>Detectando tu ubicaciÃ³nâ€¦</span>
             </div>
 
             <!-- Resultado clima -->
             <div id="wx-result" style="display:none">
                 <div class="wx-card">
                     <div class="wx-main">
-                        <div class="wx-city" id="wx-city">—</div>
-                        <div class="wx-desc" id="wx-desc">—</div>
-                        <div class="wx-temp" id="wx-temp">—°</div>
-                        <div class="wx-feels" id="wx-feels">Sensación: —°C</div>
+                        <div class="wx-city" id="wx-city">â€”</div>
+                        <div class="wx-desc" id="wx-desc">â€”</div>
+                        <div class="wx-temp" id="wx-temp">â€”Â°</div>
+                        <div class="wx-feels" id="wx-feels">SensaciÃ³n: â€”Â°C</div>
                     </div>
                     <div class="wx-grid">
                         <div class="wx-stat">
                             <i class="fas fa-droplet"></i>
-                            <span id="wx-hum">—%</span>
+                            <span id="wx-hum">â€”%</span>
                             <small>Humedad</small>
                         </div>
                         <div class="wx-stat">
                             <i class="fas fa-wind"></i>
-                            <span id="wx-wind">— km/h</span>
+                            <span id="wx-wind">â€” km/h</span>
                             <small>Viento</small>
                         </div>
                         <div class="wx-stat">
                             <i class="fas fa-umbrella"></i>
-                            <span id="wx-precip">— mm</span>
-                            <small>Precipitación</small>
+                            <span id="wx-precip">â€” mm</span>
+                            <small>PrecipitaciÃ³n</small>
                         </div>
                         <div class="wx-stat">
                             <i class="fas fa-eye"></i>
-                            <span id="wx-updated">—</span>
+                            <span id="wx-updated">â€”</span>
                             <small>Actualizado</small>
                         </div>
                     </div>
                 </div>
-                <!-- Barra de búsqueda manual -->
+                <!-- Barra de bÃºsqueda manual -->
                 <div class="wx-search">
-                    <input type="text" id="wx-search-input" class="wx-input" placeholder="Buscar otra ciudad…" onkeydown="if(event.key==='Enter')searchWeatherCity()">
+                    <input type="text" id="wx-search-input" class="wx-input" placeholder="Buscar otra ciudadâ€¦" onkeydown="if(event.key==='Enter')searchWeatherCity()">
                     <button class="wx-search-btn" onclick="searchWeatherCity()"><i class="fas fa-search"></i></button>
                 </div>
             </div>
@@ -4637,19 +4200,19 @@
             <!-- Error -->
             <div id="wx-error" style="display:none" class="wx-error">
                 <i class="fas fa-triangle-exclamation"></i>
-                <span id="wx-error-msg">No se pudo detectar tu ubicación.</span>
+                <span id="wx-error-msg">No se pudo detectar tu ubicaciÃ³n.</span>
                 <div class="wx-search" style="margin-top:.8rem">
-                    <input type="text" id="wx-manual-input" class="wx-input" placeholder="Escribe tu ciudad manualmente…" onkeydown="if(event.key==='Enter')searchWeatherManual()">
+                    <input type="text" id="wx-manual-input" class="wx-input" placeholder="Escribe tu ciudad manualmenteâ€¦" onkeydown="if(event.key==='Enter')searchWeatherManual()">
                     <button class="wx-search-btn" onclick="searchWeatherManual()"><i class="fas fa-search"></i></button>
                 </div>
             </div>
         </section>
 
-        <!-- ── NOTICIAS ── -->
+        <!-- â”€â”€ NOTICIAS â”€â”€ -->
         <section id="news-section">
             <div class="wx-header">
                 <div>
-                    <div class="wx-eyebrow">// blog · artículos y tutoriales</div>
+                    <div class="wx-eyebrow">// blog Â· artÃ­culos y tutoriales</div>
                     <h2 style="margin-bottom:0">Blog &amp; Dev Notes</h2>
                 </div>
                 <a href="https://codehub-labs.blogspot.com" target="_blank" rel="noopener" class="blogger-view-btn" id="blogger-link">
@@ -4668,24 +4231,24 @@
 
 
         
-        <!-- ══ ¿POR QUÉ CONTRATARME? ══ -->
+        <!-- â•â• Â¿POR QUÃ‰ CONTRATARME? â•â• -->
         <section id="why-me">
           <div class="wm-eyebrow">// propuesta de valor</div>
-          <h2 class="wm-title">¿Por qué trabajar conmigo?</h2>
+          <h2 class="wm-title">Â¿Por quÃ© trabajar conmigo?</h2>
           <div class="wm-grid">
             <div class="wm-card">
               <div class="wm-icon" style="background:linear-gradient(135deg,#ff4500,#ff6b35)">
                 <i class="fas fa-rocket"></i>
               </div>
-              <h3 class="wm-card-title">Entrega rápida</h3>
-              <p class="wm-card-desc">Proyectos listos en tiempo récord. Sin burocracia, sin demoras innecesarias. Itero rápido y entrego.</p>
+              <h3 class="wm-card-title">Entrega rÃ¡pida</h3>
+              <p class="wm-card-desc">Proyectos listos en tiempo rÃ©cord. Sin burocracia, sin demoras innecesarias. Itero rÃ¡pido y entrego.</p>
             </div>
             <div class="wm-card">
               <div class="wm-icon" style="background:linear-gradient(135deg,#7c3aed,#b464ff)">
                 <i class="fas fa-brain"></i>
               </div>
               <h3 class="wm-card-title">Autodidacta</h3>
-              <p class="wm-card-desc">Aprendo lo que el proyecto necesita. Si algo no lo sé hoy, lo domino mañana. Cero excusas.</p>
+              <p class="wm-card-desc">Aprendo lo que el proyecto necesita. Si algo no lo sÃ© hoy, lo domino maÃ±ana. Cero excusas.</p>
             </div>
             <div class="wm-card">
               <div class="wm-icon" style="background:linear-gradient(135deg,#0088cc,#40c4ff)">
@@ -4698,7 +4261,7 @@
               <div class="wm-icon" style="background:linear-gradient(135deg,#00b248,#00e676)">
                 <i class="fas fa-comments"></i>
               </div>
-              <h3 class="wm-card-title">Comunicación directa</h3>
+              <h3 class="wm-card-title">ComunicaciÃ³n directa</h3>
               <p class="wm-card-desc">Sin intermediarios. Hablas directamente conmigo. Actualizaciones constantes y total transparencia.</p>
             </div>
           </div>
@@ -4709,8 +4272,8 @@
                 <!-- Info izquierda -->
                 <div class="contact-info">
                     <div class="contact-eyebrow">// hablemos</div>
-                    <h2 class="contact-title">¿Tienes un<br>proyecto en mente?</h2>
-                    <p class="contact-sub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
+                    <h2 class="contact-title">Â¿Tienes un<br>proyecto en mente?</h2>
+                    <p class="contact-sub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre cÃ³digo. Respondo en menos de 24h.</p>
 
                     <div class="contact-links">
                         <a href="/cdn-cgi/l/email-protection#9cebf5f0eff3f2b2f9afaaacf0fdfeefdcfbf1fdf5f0b2fff3f1" class="clink">
@@ -4760,16 +4323,16 @@
                         <div class="form-group">
                             <label class="form-label" for="cf-subject">Asunto</label>
                             <select class="form-input form-select" id="cf-subject" name="subject">
-                                <option value="Proyecto Web">💻 Proyecto Web</option>
-                                <option value="Automatización Python">🐍 Automatización Python</option>
-                                <option value="Consultoría">🤝 Consultoría</option>
-                                <option value="Colaboración">🚀 Colaboración</option>
-                                <option value="Otro">📌 Otro</option>
+                                <option value="Proyecto Web">ðŸ’» Proyecto Web</option>
+                                <option value="AutomatizaciÃ³n Python">ðŸ AutomatizaciÃ³n Python</option>
+                                <option value="ConsultorÃ­a">ðŸ¤ ConsultorÃ­a</option>
+                                <option value="ColaboraciÃ³n">ðŸš€ ColaboraciÃ³n</option>
+                                <option value="Otro">ðŸ“Œ Otro</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label class="form-label" for="cf-msg">Mensaje</label>
-                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" required rows="5"></textarea>
+                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="CuÃ©ntame sobre tu proyecto o ideaâ€¦" required rows="5"></textarea>
                             <div class="form-err" id="err-msg"></div>
                             <div class="form-char"><span id="char-count">0</span>/500</div>
                         </div>
@@ -4783,7 +4346,7 @@
                         </div>
                         <button type="submit" class="form-submit" id="form-submit">
                             <span id="submit-text"><i class="fas fa-paper-plane"></i> Enviar mensaje</span>
-                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> Enviando…</span>
+                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> Enviandoâ€¦</span>
                         </button>
                         <div id="form-feedback" class="form-feedback"></div>
                     </form>
@@ -4793,7 +4356,7 @@
         
         <!-- Game Section -->
         <section id="game">
-            <h2>🎮 Juegos Interactivos</h2>
+            <h2>ðŸŽ® Juegos Interactivos</h2>
             <p>Haz clic en los botones para jugar a estos emocionantes juegos en una nueva ventana.</p>
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                 <button onclick="openGameWindow('snake')">
@@ -4807,14 +4370,14 @@
 
         <!-- Mi Pueblo Section -->
         <section id="mi-pueblo">
-            <div class="pueblo-eyebrow">// San Luis Jilotepeque, Jalapa 🇬🇹</div>
-            <h2>De Aquí Soy</h2>
-            <!-- ══ SOBRE MÍ REDISEÑADO ══ -->
+            <div class="pueblo-eyebrow">// San Luis Jilotepeque, Jalapa ðŸ‡¬ðŸ‡¹</div>
+            <h2>De AquÃ­ Soy</h2>
+            <!-- â•â• SOBRE MÃ REDISEÃ‘ADO â•â• -->
             <div class="about-pro-wrap">
                 <!-- Columna izquierda: Avatar + stats -->
                 <div class="about-pro-left">
                     <div class="about-avatar-ring">
-                        <!-- Neon circle dev photo — colores CodeHub -->
+                        <!-- Neon circle dev photo â€” colores CodeHub -->
                         <style>
                           @keyframes neonSpinConic  { 0%{transform:rotate(0deg)}   100%{transform:rotate(360deg)} }
                           @keyframes neonSpinConic2 { 0%{transform:rotate(0deg)}   100%{transform:rotate(-360deg)} }
@@ -4823,11 +4386,11 @@
                         <div style="position:relative;width:168px;height:168px;margin:0 auto;">
                           <!-- Glow exterior pulsante en naranja/rojo -->
                           <div style="position:absolute;inset:-6px;border-radius:50%;box-shadow:0 0 28px rgba(255,69,0,.9),0 0 55px rgba(255,107,53,.6),0 0 90px rgba(255,189,105,.3);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;z-index:3;"></div>
-                          <!-- Anillo exterior giratorio — naranja/rojo/dorado -->
+                          <!-- Anillo exterior giratorio â€” naranja/rojo/dorado -->
                           <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff4500,#ff6b35,#ffbd69,#ff8c00,#ff4500,#cc2200,#ff4500);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));z-index:2;"></div>
-                          <!-- Anillo interior giratorio inverso — dorado/rojo -->
+                          <!-- Anillo interior giratorio inverso â€” dorado/rojo -->
                           <div style="position:absolute;inset:14px;border-radius:50%;background:conic-gradient(from 180deg,#ffbd69,#ff4500,#cc2200,#ff6b35,#ffbd69);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));z-index:2;"></div>
-                          <!-- Foto — ocupa todo el círculo -->
+                          <!-- Foto â€” ocupa todo el cÃ­rculo -->
                           <div style="position:absolute;inset:12px;border-radius:50%;overflow:hidden;z-index:1;">
                             <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg"
                               alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
@@ -4844,7 +4407,7 @@
                     <div class="about-mini-stats">
                         <div class="about-mini-stat">
                             <span class="about-mini-num" style="color:var(--primary)">2+</span>
-                            <span class="about-mini-lbl" data-i18n="years">Años</span>
+                            <span class="about-mini-lbl" data-i18n="years">AÃ±os</span>
                         </div>
                         <div class="about-mini-stat">
                             <span class="about-mini-num" style="color:var(--accent)">27</span>
@@ -4863,10 +4426,10 @@
                     <h2 class="about-pro-name">Wilson.E</h2>
                     <div class="about-pro-role">
                         <span class="about-role-dot"></span>
-                        <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
+                        <span data-i18n="role">Desarrollador Web Full Stack Â· Guatemala ðŸ‡¬ðŸ‡¹</span>
                     </div>
                     <div class="about-brand-card">
-                        <img class="about-brand-logo" src="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" alt="Logo CodeHub" loading="lazy" decoding="async">
+                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="lazy" decoding="async">
                         <div class="about-brand-copy">
                             <div class="about-brand-kicker">CodeHub</div>
                             <div class="about-brand-title">Producto + creador en una misma experiencia</div>
@@ -4874,13 +4437,13 @@
                         </div>
                     </div>
                     <p class="about-pro-text" data-i18n="bio">
-                        Programador autodidacta de <strong>Ciudad de Guatemala</strong>, 25 años.
+                        Programador autodidacta de <strong>Ciudad de Guatemala</strong>, 25 aÃ±os.
                         Me apasiona construir proyectos web modernos, chatbots con IA y herramientas
-                        útiles para la comunidad. Cada línea de código es una oportunidad de aprender algo nuevo.
+                        Ãºtiles para la comunidad. Cada lÃ­nea de cÃ³digo es una oportunidad de aprender algo nuevo.
                     </p>
                     <p class="about-pro-origin">
                         <i class="fas fa-map-marker-alt" style="color:var(--primary);font-size:.75rem"></i>
-                        <span data-i18n="from">Originario de <strong>San Luis Jilotepeque</strong>, Jalapa — donde aprendí a soñar en grande.</span>
+                        <span data-i18n="from">Originario de <strong>San Luis Jilotepeque</strong>, Jalapa â€” donde aprendÃ­ a soÃ±ar en grande.</span>
                     </p>
                     <div class="about-pro-stack">
                         <span style="color:var(--primary)">HTML</span>
@@ -4905,23 +4468,23 @@
                 </div>
             </div>
 
-            <!-- Expanding Panels — San Luis Jilotepeque -->
+            <!-- Expanding Panels â€” San Luis Jilotepeque -->
             <div class="pueblo-panels" id="pueblo-panels">
               <div class="pueblo-panel active" style="background-image:url('https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg')">
-                <h3>📍 San Luis Jilotepeque<span>Jalapa, Guatemala</span></h3>
+                <h3>ðŸ“ San Luis Jilotepeque<span>Jalapa, Guatemala</span></h3>
               </div>
               <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/9gt4vNS/20250101-122927.jpg')">
-                <h3>🏔️ Paisaje<span>Vista desde el pueblo</span></h3>
+                <h3>ðŸ”ï¸ Paisaje<span>Vista desde el pueblo</span></h3>
               </div>
               <div class="pueblo-panel" style="background-image:url('https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg')">
-                <h3>🌄 Amanecer<span>Noviembre 2024</span></h3>
+                <h3>ðŸŒ„ Amanecer<span>Noviembre 2024</span></h3>
               </div>
               <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/cF1zZJn/20250101-124645.jpg')">
-                <h3>🌿 Naturaleza<span>Enero 2025</span></h3>
+                <h3>ðŸŒ¿ Naturaleza<span>Enero 2025</span></h3>
               </div>
             </div>
 
-            <div class="pueblo-controls" aria-label="Controles de la galería">
+            <div class="pueblo-controls" aria-label="Controles de la galerÃ­a">
                 <button class="pueblo-nav-btn" id="pueblo-prev" type="button" aria-label="Imagen anterior">
                     <i class="fas fa-chevron-left"></i>
                 </button>
@@ -4937,7 +4500,7 @@
             <!-- Video -->
             <div class="pueblo-video-wrap">
                 <div class="pueblo-eyebrow" style="margin-bottom:.6rem">// mi pueblo en video</div>
-                <h3 style="color:#ff6b35;margin-bottom:.5rem;font-size:1.1rem">Conoce más de San Luis Jilotepeque</h3>
+                <h3 style="color:#ff6b35;margin-bottom:.5rem;font-size:1.1rem">Conoce mÃ¡s de San Luis Jilotepeque</h3>
                 <div class="pueblo-iframe-wrap">
                     <iframe
                         width="100%" height="100%"
@@ -4953,7 +4516,7 @@
             <div class="footer-signature">
                 <div class="terminal-text">
                     <span class="prompt">root@wilson:~$</span>
-                    <span class="command"> "Código con pasión desde 2024"</span>
+                    <span class="command"> "CÃ³digo con pasiÃ³n desde 2024"</span>
                 </div>
             </div>
         </section>
@@ -4981,8 +4544,8 @@
             <!-- Terminal signature -->
             <div class="footer-terminal">
                 <span class="footer-prompt">wilson@codehub<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
-                <span class="footer-cmd"> echo "Código con pasión desde Guatemala 🇬🇹"</span>
-                <span class="footer-cursor">█</span>
+                <span class="footer-cmd"> echo "CÃ³digo con pasiÃ³n desde Guatemala ðŸ‡¬ðŸ‡¹"</span>
+                <span class="footer-cursor">â–ˆ</span>
             </div>
 
             <!-- Redes sociales -->
@@ -5014,8 +4577,8 @@
 
             <!-- Bottom bar -->
             <div class="footer-bottom">
-                <span>&copy; 2024–2025 <strong>Wilson.E</strong> · Todos los derechos reservados</span>
-                <span class="footer-kbd">Ctrl + K <em>búsqueda rápida</em></span>
+                <span>&copy; 2024â€“2025 <strong>Wilson.E</strong> Â· Todos los derechos reservados</span>
+                <span class="footer-kbd">Ctrl + K <em>bÃºsqueda rÃ¡pida</em></span>
             </div>
         </div>
     </footer>
@@ -5193,8 +4756,8 @@
             left: 30px;
         }
 
-        /* ── PROYECTOS ── */
-        /* ── CONTACTO ── */
+        /* â”€â”€ PROYECTOS â”€â”€ */
+        /* â”€â”€ CONTACTO â”€â”€ */
         #contact { padding: 3rem 0; }
 
         .contact-wrap {
@@ -5482,7 +5045,7 @@
         }
 
         #floating-menu::before {
-            content: '🔥';
+            content: 'ðŸ”¥';
             font-size: 1.2rem;
             animation: spin 2s linear infinite;
         }
@@ -5638,20 +5201,20 @@
 
         @media (max-width: 768px) {
             .splash-title { font-size: 2.5rem; }
-            /* NAV DESKTOP — forzar oculto en mobile (no sobreescribir el burger) */
+            /* NAV DESKTOP â€” forzar oculto en mobile (no sobreescribir el burger) */
             header nav { display: none !important; }
             nav ul { flex-wrap: wrap; gap: 0.3rem; }
             nav a { font-size: 0.75rem; padding: 0.32rem 0.6rem; }
             .header-logo-text { font-size: 1rem; }
             .skill { flex-direction: column; text-align: center; }
             .skill-icon { margin-right: 0; margin-bottom: 1rem; }
-            /* Stats — 2 columnas compactas */
+            /* Stats â€” 2 columnas compactas */
             .stats-section { grid-template-columns: repeat(2,1fr); gap: .8rem; }
             .stat-card { padding: 1rem .7rem; }
             .stat-number { font-size: 1.8rem !important; }
             .stat-label { font-size: .82rem !important; }
             .stat-sub { font-size: .65rem !important; }
-            /* Servicios — 2 columnas en mobile */
+            /* Servicios â€” 2 columnas en mobile */
             .services-grid { grid-template-columns: repeat(2,1fr); gap: 1rem; }
             .service-card { padding: 1.2rem .8rem; }
             .service-icon { font-size: 2rem !important; margin-bottom: .8rem; }
@@ -5662,10 +5225,10 @@
             .header-inner { padding: 0.5rem 1rem; gap: 0.8rem; }
         }
     
-        /* ═══ PROTECCIÓN ANTI-COPIAR ════════════════════════════ */
+        /* â•â•â• PROTECCIÃ“N ANTI-COPIAR â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         ::selection { background: rgba(255,69,0,.15); color: var(--text); }
 
-        /* ═══ ANTI-DEVTOOLS OVERLAY ═════════════════════════════ */
+        /* â•â•â• ANTI-DEVTOOLS OVERLAY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
         #devtools-warning {
             display: none;
             position: fixed; inset: 0; z-index: 99999;
@@ -5683,7 +5246,7 @@
     <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="updater.js"></script>
     <script>
         console.log('Script started');
-        // Crear partículas mejoradas con drift
+        // Crear partÃ­culas mejoradas con drift
         function createParticles() {
             const container = document.getElementById('particles1');
             if (!container) return;
@@ -5712,7 +5275,7 @@
             return;
         }
 
-        // Efecto de pulso en el logo — suave, no interfiere con CSS float
+        // Efecto de pulso en el logo â€” suave, no interfiere con CSS float
         function addLogoPulse() {
             const core = document.querySelector('.splash-logo-core');
             if (!core) return;
@@ -5744,7 +5307,7 @@
             if (!warpCanvas) return;
             warpWidth = warpCanvas.width = window.innerWidth;
             warpHeight = warpCanvas.height = window.innerHeight;
-            warpStars = Array.from({ length: window.innerWidth < 768 ? 260 : 520 }, () => ({
+            warpStars = Array.from({ length: window.innerWidth < 768 ? 180 : 340 }, () => ({
                 x: (Math.random() - 0.5) * warpWidth,
                 y: (Math.random() - 0.5) * warpHeight,
                 z: Math.random() * warpWidth,
@@ -5760,7 +5323,7 @@
             const centerY = warpHeight / 2;
 
             warpStars.forEach((star) => {
-                star.z -= window.innerWidth < 768 ? 6 : 8;
+                star.z -= window.innerWidth < 768 ? 4 : 5;
                 if (star.z <= 0) {
                     star.z = warpWidth;
                     star.x = (Math.random() - 0.5) * warpWidth;
@@ -5775,7 +5338,7 @@
                 const dx = px - centerX, dy = py - centerY;
                 const distCenter = Math.sqrt(dx*dx + dy*dy);
 
-                if (px >= 0 && px <= warpWidth && py >= 0 && py <= warpHeight && distCenter > 155) {
+                if (px >= 0 && px <= warpWidth && py >= 0 && py <= warpHeight && distCenter > 145) {
                     const size = Math.max(0.8, (1 - star.z / warpWidth) * 3.2);
                     const shade = Math.floor((1 - star.z / warpWidth) * 255);
                     warpCtx.fillStyle = star.z < warpWidth / 2
@@ -5798,14 +5361,14 @@
         window.addEventListener('resize', resizeWarpCanvas);
         console.log('Initial functions called');
 
-        // Modo oscuro — sincronizar con el toggle flotante (.theme-toggle-circle)
+        // Modo oscuro â€” sincronizar con el toggle flotante (.theme-toggle-circle)
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
             const icon = document.querySelector('.theme-toggle-circle i');
             if (icon) icon.className = 'fas fa-sun';
         }
 
-        // Actualización manual
+        // ActualizaciÃ³n manual
         const updateBtn = document.getElementById('update-btn');
         if (updateBtn) {
             updateBtn.addEventListener('click', () => {
@@ -5813,7 +5376,7 @@
             });
         }
 
-        // Función central para cerrar el splash
+        // FunciÃ³n central para cerrar el splash
         function closeSplash() {
             const splash = document.getElementById('splash-screen');
             if (!splash || splash.style.display === 'none') return;
@@ -5821,7 +5384,7 @@
             splash.style.transition = 'opacity 0.8s ease';
             setTimeout(() => {
                 splash.style.display = 'none';
-                console.log('✅ Splash cerrado');
+                console.log('âœ… Splash cerrado');
                 if (typeof animateCounters === 'function') animateCounters();
                 if (typeof animateVisitorCounter === 'function') animateVisitorCounter();
                 if (typeof typeEffect === 'function') typeEffect();
@@ -5834,27 +5397,27 @@
             skipBtn.addEventListener('click', closeSplash);
         }
 
-        // ── SPLASH TIPS & BARRA PROGRESO (8s) ─────────────────
+        // â”€â”€ SPLASH TIPS & BARRA PROGRESO (8s) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         (function() {
             const tips = [
                 'INICIALIZANDO CODEHUB<span class="loading-dots"></span>',
-                '🧠 Cargando red neuronal...',
-                '🛠️ Activando 27 herramientas...',
-                '🔐 Módulo de seguridad listo...',
-                '🎨 Calibrando paleta de colores...',
-                '📱 Sincronizando catálogo de apps...',
-                '⚡ Optimizando rendimiento...',
-                '🚀 ¡Todo listo. Bienvenido!'
+                'ðŸ§  Cargando red neuronal...',
+                'ðŸ› ï¸ Activando 27 herramientas...',
+                'ðŸ” MÃ³dulo de seguridad listo...',
+                'ðŸŽ¨ Calibrando paleta de colores...',
+                'ðŸ“± Sincronizando catÃ¡logo de apps...',
+                'âš¡ Optimizando rendimiento...',
+                'ðŸš€ Â¡Todo listo. Bienvenido!'
             ];
             const phrases = [
                 'INICIANDO EXPERIENCIA PREMIUM',
-                'CARGANDO MÓDULOS',
+                'CARGANDO MÃ“DULOS',
                 'ACTIVANDO HERRAMIENTAS',
                 'VERIFICANDO SEGURIDAD',
                 'CALIBRANDO INTERFAZ',
                 'SINCRONIZANDO DATOS',
                 'OPTIMIZANDO RENDIMIENTO',
-                '✦ BIENVENIDO A CODEHUB ✦'
+                'âœ¦ BIENVENIDO A CODEHUB âœ¦'
             ];
             let i = 0;
             const el = document.querySelector('.loading-text-3d');
@@ -5900,9 +5463,9 @@
                 turnstileSolved = true;
                 const wrap = document.getElementById('splash-turnstile-wrap');
                 if (wrap) {
-                    wrap.innerHTML = '<p style="font-family:JetBrains Mono,monospace;font-size:.7rem;color:#00e676;letter-spacing:.1em">✅ VERIFICACIÓN COMPLETADA</p>';
+                    wrap.innerHTML = '<p style="font-family:JetBrains Mono,monospace;font-size:.7rem;color:#00e676;letter-spacing:.1em">âœ… VERIFICACIÃ“N COMPLETADA</p>';
                 }
-                // Si la barra ya terminó, cerrar inmediatamente
+                // Si la barra ya terminÃ³, cerrar inmediatamente
                 if (progressDone) setTimeout(closeSplash, 600);
             };
 
@@ -5926,7 +5489,7 @@
                     if (turnstileSolved) {
                         setTimeout(closeSplash, 600);
                     } else {
-                        // Mostrar botón saltar como fallback tras 6s adicionales
+                        // Mostrar botÃ³n saltar como fallback tras 6s adicionales
                         setTimeout(() => {
                             if (document.getElementById('splash-screen')?.style.display !== 'none') {
                                 const skip = document.getElementById('skip-splash');
@@ -5938,14 +5501,14 @@
             }, 80);
         })();
 
-        // Cerrar splash automáticamente si Turnstile no carga (fallback 14s)
+        // Cerrar splash automÃ¡ticamente si Turnstile no carga (fallback 14s)
         setTimeout(closeSplash, 14000);
 
         // Fallback de emergencia a los 10 segundos
         setTimeout(() => {
             const splash = document.getElementById('splash-screen');
             if (splash && splash.style.display !== 'none') {
-                console.warn('⚠️ Fallback: cerrando splash forzosamente');
+                console.warn('âš ï¸ Fallback: cerrando splash forzosamente');
                 splash.style.display = 'none';
                 if (typeof animateCounters === 'function') animateCounters();
                 if (typeof animateVisitorCounter === 'function') animateVisitorCounter();
@@ -5977,16 +5540,16 @@
             }, 1000);
         })();
         
-        // ========== FUNCIONES BÁSICAS ==========
+        // ========== FUNCIONES BÃSICAS ==========
         
         // Typing Effect
         const typingPhrases = [
-            'Desarrollador Web Full Stack 💻',
-            'Especialista en Python 🐍',
-            'Creador de Experiencias Digitales ✨',
-            'De Guatemala para el Mundo 🇬🇹',
-            'Programador Apasionado 🚀',
-            'Problem Solver 🧠'
+            'Desarrollador Web Full Stack ðŸ’»',
+            'Especialista en Python ðŸ',
+            'Creador de Experiencias Digitales âœ¨',
+            'De Guatemala para el Mundo ðŸ‡¬ðŸ‡¹',
+            'Programador Apasionado ðŸš€',
+            'Problem Solver ðŸ§ '
         ];
         let phraseIndex = 0;
         let charIndex = 0;
@@ -6016,7 +5579,7 @@
             setTimeout(typeEffect, isDeleting ? 50 : 100);
         }
 
-        // Visitor Counter — real con localStorage
+        // Visitor Counter â€” real con localStorage
         function animateVisitorCounter() {
             const KEY_COUNT = 'ch_visits';
             const KEY_DATE  = 'ch_visit_date';
@@ -6025,14 +5588,14 @@
             let total  = parseInt(localStorage.getItem(KEY_COUNT) || '0');
             const last = localStorage.getItem(KEY_DATE);
 
-            // Contar solo 1 visita nueva por día por dispositivo
+            // Contar solo 1 visita nueva por dÃ­a por dispositivo
             if (last !== today) {
                 total += 1;
                 localStorage.setItem(KEY_COUNT, total);
                 localStorage.setItem(KEY_DATE, today);
             }
 
-            // Animar el número
+            // Animar el nÃºmero
             const counter = document.getElementById('visitorCount');
             if (!counter) return;
             const start = Math.max(0, total - 80);
@@ -6175,7 +5738,7 @@
             document.querySelector('.theme-toggle-circle i').className = 'fas fa-sun';
         }
 
-        // ========== MENÚ EXPERIMENTAL ==========
+        // ========== MENÃš EXPERIMENTAL ==========
         function toggleExperimentalMenu() {
             const menu = document.getElementById('experimental-menu');
             const handle = document.getElementById('exp-handle');
@@ -6204,7 +5767,7 @@
             matrixCanvas.width = window.innerWidth;
             matrixCanvas.height = window.innerHeight;
             
-            const chars = '01アイウエオカキクケコサシスセソタチツテト';
+            const chars = '01ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³ã‚µã‚·ã‚¹ã‚»ã‚½ã‚¿ãƒãƒ„ãƒ†ãƒˆ';
             const fontSize = 16;
             const columns = matrixCanvas.width / fontSize;
             const drops = Array(Math.floor(columns)).fill(1);
@@ -6235,7 +5798,7 @@
             }, 10000);
             
             toggleExperimentalMenu();
-            alert('🟢 Matrix Mode activado por 10 segundos!');
+            alert('ðŸŸ¢ Matrix Mode activado por 10 segundos!');
         }
 
         // Particle Explosion
@@ -6330,7 +5893,7 @@
             
             if (rainbowActive) {
                 window.addEventListener('scroll', rainbowScrollHandler);
-                alert('🌈 Rainbow Scroll activado! Desplázate para ver el efecto');
+                alert('ðŸŒˆ Rainbow Scroll activado! DesplÃ¡zate para ver el efecto');
             } else {
                 window.removeEventListener('scroll', rainbowScrollHandler);
                 document.body.style.filter = '';
@@ -6347,7 +5910,7 @@
         // Voice Commands (Experimental)
         function activateVoiceCommands() {
             if (!('webkitSpeechRecognition' in window)) {
-                alert('❌ Tu navegador no soporta reconocimiento de voz');
+                alert('âŒ Tu navegador no soporta reconocimiento de voz');
                 return;
             }
             
@@ -6368,7 +5931,7 @@
             };
             
             recognition.start();
-            alert('🎤 Escuchando... Di "inicio", "contacto", "proyectos" o "habilidades"');
+            alert('ðŸŽ¤ Escuchando... Di "inicio", "contacto", "proyectos" o "habilidades"');
             toggleExperimentalMenu();
         }
 
@@ -6410,7 +5973,7 @@
 
         // Screenshot
         function takeScreenshot() {
-            alert('📸 Función de screenshot en desarrollo. Por ahora, usa Ctrl+Shift+S en tu navegador.');
+            alert('ðŸ“¸ FunciÃ³n de screenshot en desarrollo. Por ahora, usa Ctrl+Shift+S en tu navegador.');
             toggleExperimentalMenu();
         }
 
@@ -6430,7 +5993,7 @@ HABILIDADES:
 - Python: 80%
 - Git: 70%
 
-Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
+UbicaciÃ³n: San Luis Jilotepeque, Jalapa, Guatemala
             `;
             
             const blob = new Blob([info], { type: 'text/plain' });
@@ -6441,7 +6004,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             a.click();
             
             toggleExperimentalMenu();
-            alert('📥 Portfolio exportado!');
+            alert('ðŸ“¥ Portfolio exportado!');
         }
 
         // ========== RESTO DE FUNCIONES ==========
@@ -6469,12 +6032,12 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 
         // Command Palette
         const commands = [
-            { name: 'Ir a Estadísticas', icon: 'fa-chart-line', action: () => scrollToSection('stats') },
+            { name: 'Ir a EstadÃ­sticas', icon: 'fa-chart-line', action: () => scrollToSection('stats') },
             { name: 'Ir a Habilidades', icon: 'fa-code', action: () => scrollToSection('skills') },
             { name: 'Ir a Servicios', icon: 'fa-briefcase', action: () => scrollToSection('services') },
             { name: 'Ir a Logros', icon: 'fa-trophy', action: () => scrollToSection('achievements') },
             { name: 'Ir a Testimonios', icon: 'fa-comment', action: () => scrollToSection('testimonials') },
-            { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
+            { name: 'Ir a Sobre MÃ­', icon: 'fa-user', action: () => scrollToSection('about') },
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
             { name: 'Cambiar Tema', icon: 'fa-moon', action: toggleTheme },
@@ -6482,7 +6045,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
             { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
-            { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
+            { name: 'MenÃº Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
         ];
 
         function openCommandPalette() {
@@ -6563,7 +6126,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             navigator.clipboard.writeText(email).then(() => {
                 const btn = event.target.closest('.copy-email');
                 const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
+                btn.innerHTML = '<i class="fas fa-check"></i> Â¡Copiado!';
                 btn.style.background = 'linear-gradient(45deg, #00ff00, #00cc00)';
                 
                 setTimeout(() => {
@@ -6589,7 +6152,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             window.open('novedades.html', '_blank', 'width=800,height=600,resizable=yes');
         }
 
-        // Konami Code Easter Egg (↑ ↑ ↓ ↓ ← → ← → B A)
+        // Konami Code Easter Egg (â†‘ â†‘ â†“ â†“ â† â†’ â† â†’ B A)
         let konamiCode = [];
         const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
 
@@ -6635,7 +6198,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             `;
             document.head.appendChild(style);
             
-            alert('🎉 ¡Código Konami activado! Modo ARCOÍRIS 🌈');
+            alert('ðŸŽ‰ Â¡CÃ³digo Konami activado! Modo ARCOÃRIS ðŸŒˆ');
             
             setTimeout(() => {
                 document.body.classList.remove('konami-active');
@@ -6643,11 +6206,11 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         }
 
         // Console Easter Egg
-        console.log('%c¡Hola Developer! 👋', 'color: #ff4500; font-size: 24px; font-weight: bold;');
-        console.log('%c¿Curioseando el código? Me gusta tu estilo 😎', 'color: #ffbd69; font-size: 16px;');
-        console.log('%cPrueba el código Konami: ↑ ↑ ↓ ↓ ← → ← → B A', 'color: #ff6b35; font-size: 14px;');
-        console.log('%cO presiona Ctrl+K para la búsqueda rápida 🚀', 'color: #f7931e; font-size: 14px;');
-        console.log('%cAbre el Menú Experimental en el lado izquierdo 🧪', 'color: #ff4500; font-size: 14px;');
+        console.log('%cÂ¡Hola Developer! ðŸ‘‹', 'color: #ff4500; font-size: 24px; font-weight: bold;');
+        console.log('%cÂ¿Curioseando el cÃ³digo? Me gusta tu estilo ðŸ˜Ž', 'color: #ffbd69; font-size: 16px;');
+        console.log('%cPrueba el cÃ³digo Konami: â†‘ â†‘ â†“ â†“ â† â†’ â† â†’ B A', 'color: #ff6b35; font-size: 14px;');
+        console.log('%cO presiona Ctrl+K para la bÃºsqueda rÃ¡pida ðŸš€', 'color: #f7931e; font-size: 14px;');
+        console.log('%cAbre el MenÃº Experimental en el lado izquierdo ðŸ§ª', 'color: #ff4500; font-size: 14px;');
 
         // Smooth scroll para todos los enlaces internos
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -6682,7 +6245,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             observer.observe(section);
         });
 
-        // Preloader para imágenes
+        // Preloader para imÃ¡genes
         const images = document.querySelectorAll('img');
         images.forEach(img => {
             img.addEventListener('load', function() {
@@ -6692,12 +6255,12 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             img.style.transition = 'opacity 0.5s ease';
         });
 
-        // Detectar si el usuario está inactivo
+        // Detectar si el usuario estÃ¡ inactivo
         let inactivityTimer;
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(() => {
-                console.log('👀 Usuario inactivo. ¿Todo bien?');
+                console.log('ðŸ‘€ Usuario inactivo. Â¿Todo bien?');
             }, 60000); // 1 minuto
         }
 
@@ -6707,13 +6270,13 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
 
         resetInactivityTimer();
 
-        // Notificación de bienvenida
+        // NotificaciÃ³n de bienvenida
         setTimeout(() => {
             if (Notification.permission === 'default') {
                 Notification.requestPermission().then(permission => {
                     if (permission === 'granted') {
-                        new Notification('¡Bienvenido a CodeHub! 🚀', {
-                            body: 'Explora mi portfolio y descubre el menú experimental',
+                        new Notification('Â¡Bienvenido a CodeHub! ðŸš€', {
+                            body: 'Explora mi portfolio y descubre el menÃº experimental',
                             icon: 'https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg'
                         });
                     }
@@ -6724,16 +6287,16 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         // Performance monitoring
         window.addEventListener('load', () => {
             const perfData = performance.getEntriesByType('navigation')[0];
-            console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
+            console.log(`âš¡ PÃ¡gina cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
         });
 
-        // Dark mode automático según hora del día
+        // Dark mode automÃ¡tico segÃºn hora del dÃ­a
         function autoTheme() {
             const hour = new Date().getHours();
             if (hour >= 20 || hour < 6) {
                 if (!document.body.classList.contains('light-mode')) {
-                    // Ya está en modo oscuro
-                    console.log('🌙 Modo nocturno activo');
+                    // Ya estÃ¡ en modo oscuro
+                    console.log('ðŸŒ™ Modo nocturno activo');
                 }
             }
         }
@@ -6754,7 +6317,7 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         // Mensaje de despedida al salir
         window.addEventListener('beforeunload', (e) => {
             e.preventDefault();
-            e.returnValue = '¿Seguro que quieres salir? 🥺';
+            e.returnValue = 'Â¿Seguro que quieres salir? ðŸ¥º';
         });
 
         // Log de actividad del usuario
@@ -6776,12 +6339,12 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             activityLog.timeSpent++;
         }, 1000);
 
-        // Mostrar estadísticas al presionar Ctrl+Shift+S
+        // Mostrar estadÃ­sticas al presionar Ctrl+Shift+S
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.shiftKey && e.key === 'S') {
                 e.preventDefault();
                 console.table(activityLog);
-                alert(`📊 Estadísticas de tu visita:\n\n` +
+                alert(`ðŸ“Š EstadÃ­sticas de tu visita:\n\n` +
                       `Scrolls: ${activityLog.scrolls}\n` +
                       `Clicks: ${activityLog.clicks}\n` +
                       `Tiempo: ${Math.floor(activityLog.timeSpent / 60)}m ${activityLog.timeSpent % 60}s`);
@@ -6795,17 +6358,17 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             typedText = typedText.slice(-3);
             
             if (typedText === 'dev') {
-                console.log('%c🎮 MODO DESARROLLADOR ACTIVADO', 'color: lime; font-size: 20px; font-weight: bold;');
+                console.log('%cðŸŽ® MODO DESARROLLADOR ACTIVADO', 'color: lime; font-size: 20px; font-weight: bold;');
                 console.log('%cComandos disponibles:', 'color: cyan; font-size: 14px;');
-                console.log('• Ctrl+K: Búsqueda rápida');
-                console.log('• Alt+T: Cambiar tema');
-                console.log('• Ctrl+Shift+S: Ver estadísticas');
-                console.log('• Esc: Cerrar menús');
-                console.log('• Código Konami: ↑↑↓↓←→←→BA');
+                console.log('â€¢ Ctrl+K: BÃºsqueda rÃ¡pida');
+                console.log('â€¢ Alt+T: Cambiar tema');
+                console.log('â€¢ Ctrl+Shift+S: Ver estadÃ­sticas');
+                console.log('â€¢ Esc: Cerrar menÃºs');
+                console.log('â€¢ CÃ³digo Konami: â†‘â†‘â†“â†“â†â†’â†â†’BA');
             }
         });
 
-        // Añadir efecto de ripple a los botones
+        // AÃ±adir efecto de ripple a los botones
         document.querySelectorAll('button, .menu-item, .command-item').forEach(button => {
             button.addEventListener('click', function(e) {
                 const ripple = document.createElement('span');
@@ -6843,21 +6406,21 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         `;
         document.head.appendChild(rippleStyle);
 
-        // Finalización de carga
-        console.log('%c✨ CodeHub Portfolio Cargado Completamente', 'color: #ff4500; font-size: 16px; font-weight: bold;');
-        console.log('%c🧪 Menú Experimental disponible en el lado izquierdo', 'color: #ffbd69; font-size: 14px;');
-        console.log('%c📝 Desarrollado por Wilson.E - 2024', 'color: #ff6b35; font-size: 12px;');
+        // FinalizaciÃ³n de carga
+        console.log('%câœ¨ CodeHub Portfolio Cargado Completamente', 'color: #ff4500; font-size: 16px; font-weight: bold;');
+        console.log('%cðŸ§ª MenÃº Experimental disponible en el lado izquierdo', 'color: #ffbd69; font-size: 14px;');
+        console.log('%cðŸ“ Desarrollado por Wilson.E - 2024', 'color: #ff6b35; font-size: 12px;');
 
     </script>
 
-<!-- ====== HTML: Icono flotante + diálogo ====== -->
+<!-- ====== HTML: Icono flotante + diÃ¡logo ====== -->
 
 <!-- ICONO FLOTANTE (solo icono) -->
 <!-- ====== TOOLS PREVIEW SECTION ====== -->
 
 
 <!-- ====== DOCK FLOTANTE ====== -->
-<nav id="hub-dock" aria-label="Accesos rápidos">
+<nav id="hub-dock" aria-label="Accesos rÃ¡pidos">
   <a href="tools.html" class="dock-item" title="DevTools Suite">
     <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
     <span class="dock-label">Tools</span>
@@ -6886,10 +6449,10 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <script>
-// ═══════════════════════════════════════
-//  EMAILJS — CONFIGURA AQUÍ TUS CLAVES
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  EMAILJS â€” CONFIGURA AQUÃ TUS CLAVES
 //  Sigue los 3 pasos abajo para obtenerlas
-// ═══════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const EMAILJS_PUBLIC_KEY  = 'bjCD9ENp8Zj3nlpSA';   // Paso 1
 const EMAILJS_SERVICE_ID  = 'service_gnm5lec';   // Paso 2
 const EMAILJS_TEMPLATE_ID = 'template_o2pks0d';  // Paso 3
@@ -6900,7 +6463,7 @@ const EMAILJS_TEMPLATE_ID = 'template_o2pks0d';  // Paso 3
     }
 })();
 
-// ── FILTROS DE PROYECTOS ──────────────
+// â”€â”€ FILTROS DE PROYECTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function filterProjects(cat, btn) {
     document.querySelectorAll('.pf-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -6921,7 +6484,7 @@ function filterProjects(cat, btn) {
     });
 }
 
-// ── FORMULARIO DE CONTACTO ────────────
+// â”€â”€ FORMULARIO DE CONTACTO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const msgArea = document.getElementById('cf-msg');
 if (msgArea) {
     msgArea.addEventListener('input', () => {
@@ -6947,7 +6510,7 @@ function validateForm() {
     }
     const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRx.test(email.value)) {
-        document.getElementById('err-email').textContent = 'Email inválido';
+        document.getElementById('err-email').textContent = 'Email invÃ¡lido';
         email.classList.add('error'); valid = false;
     }
     if (msg.value.trim().length < 10) {
@@ -6960,14 +6523,14 @@ function validateForm() {
 async function sendEmail(e) {
     e.preventDefault();
     if (!validateForm()) return;
-    // Verificar Turnstile (solo bloquea si el widget cargó y no fue completado)
+    // Verificar Turnstile (solo bloquea si el widget cargÃ³ y no fue completado)
     const tsWidget = document.getElementById('turnstile-contact');
     const tsLoaded = tsWidget && tsWidget.querySelector('iframe');
     const tsToken  = document.querySelector('#turnstile-contact [name="cf-turnstile-response"]')?.value
                    || document.querySelector('.cf-turnstile input[name="cf-turnstile-response"]')?.value || '';
     if (tsLoaded && !tsToken) {
         const fb = document.getElementById('form-feedback');
-        fb.textContent = '⚠️ Completa la verificación (no soy un robot) antes de enviar.';
+        fb.textContent = 'âš ï¸ Completa la verificaciÃ³n (no soy un robot) antes de enviar.';
         fb.className = 'form-feedback error';
         return;
     }
@@ -6983,13 +6546,13 @@ async function sendEmail(e) {
     loadEl.style.display = 'inline';
     feedback.className = 'form-feedback';
 
-    // Si las claves no están configuradas, mostramos aviso
+    // Si las claves no estÃ¡n configuradas, mostramos aviso
     if (EMAILJS_PUBLIC_KEY === 'TU_PUBLIC_KEY') {
         await new Promise(r => setTimeout(r, 1200)); // simula espera
         btn.disabled = false;
         textEl.style.display = 'inline';
         loadEl.style.display = 'none';
-        feedback.textContent = '⚙️ Configura tus claves EmailJS para activar el envío. Ver instrucciones en el código.';
+        feedback.textContent = 'âš™ï¸ Configura tus claves EmailJS para activar el envÃ­o. Ver instrucciones en el cÃ³digo.';
         feedback.className = 'form-feedback error';
         return;
     }
@@ -7004,12 +6567,12 @@ async function sendEmail(e) {
         }
         tsField.value = document.querySelector('input[name="cf-turnstile-response"]')?.value || '';
         await emailjs.sendForm(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, '#contact-form');
-        feedback.textContent = '✅ ¡Mensaje enviado! Te respondo en menos de 24h.';
+        feedback.textContent = 'âœ… Â¡Mensaje enviado! Te respondo en menos de 24h.';
         feedback.className = 'form-feedback success';
         document.getElementById('contact-form').reset();
         document.getElementById('char-count').textContent = '0';
     } catch (err) {
-        feedback.textContent = '❌ Error al enviar. Intenta por WhatsApp o email directo.';
+        feedback.textContent = 'âŒ Error al enviar. Intenta por WhatsApp o email directo.';
         feedback.className = 'form-feedback error';
         console.error('EmailJS error:', err);
     } finally {
@@ -7021,25 +6584,25 @@ async function sendEmail(e) {
 </script>
 
 
-<!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
+<!-- â•â•â• ASISTENTE IA FLOTANTE â•â•â• -->
 <button id="ai-fab" aria-label="Abrir asistente IA CodeHub" title="Habla con CodeHub IA">
-  <span class="ai-fab-icon">✦</span>
+  <span class="ai-fab-icon">âœ¦</span>
   <span class="ai-fab-text">
     <span class="ai-fab-label">CodeHub IA</span>
-    <span class="ai-fab-sub">Pregúntame algo</span>
+    <span class="ai-fab-sub">PregÃºntame algo</span>
   </span>
   <span class="ai-notif"></span>
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
-  <!-- Header con acciones rápidas -->
+  <!-- Header con acciones rÃ¡pidas -->
   <div class="ai-head">
-    <div class="ai-head-avatar">✦</div>
+    <div class="ai-head-avatar">âœ¦</div>
     <div class="ai-head-info">
       <div class="ai-head-title">CodeHub IA</div>
       <div class="ai-head-sub">
         <span class="online-dot"></span>
-        <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
+        <span id="ai-status" class="ai-status-text">Online Â· Listo para ayudarte</span>
       </div>
     </div>
   </div>
@@ -7047,20 +6610,20 @@ async function sendEmail(e) {
   <!-- Mood bar -->
   <div class="ai-mood-bar" id="ai-mood-bar">
     <span class="ai-mood-label">Modo:</span>
-    <button class="ai-mood-btn active" data-mood="general" onclick="setAIMood(this)">💬 General</button>
-    <button class="ai-mood-btn" data-mood="code" onclick="setAIMood(this)">🛠 Código</button>
-    <button class="ai-mood-btn" data-mood="portfolio" onclick="setAIMood(this)">🎨 Portfolio</button>
-    <button class="ai-mood-btn" data-mood="debug" onclick="setAIMood(this)">🐛 Debug</button>
+    <button class="ai-mood-btn active" data-mood="general" onclick="setAIMood(this)">ðŸ’¬ General</button>
+    <button class="ai-mood-btn" data-mood="code" onclick="setAIMood(this)">ðŸ›  CÃ³digo</button>
+    <button class="ai-mood-btn" data-mood="portfolio" onclick="setAIMood(this)">ðŸŽ¨ Portfolio</button>
+    <button class="ai-mood-btn" data-mood="debug" onclick="setAIMood(this)">ðŸ› Debug</button>
   </div>
 
   <!-- Messages -->
   <div id="ai-msgs">
     <div class="ai-msg-wrap ai ai-welcome">
-      <div class="ai-msg-avatar">✦</div>
+      <div class="ai-msg-avatar">âœ¦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
-          ¡Hola! 👋 Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con código, explicar herramientas o responder cualquier pregunta técnica. ¿En qué te ayudo hoy?
-          <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
+          Â¡Hola! ðŸ‘‹ Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con cÃ³digo, explicar herramientas o responder cualquier pregunta tÃ©cnica. Â¿En quÃ© te ayudo hoy?
+          <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">âŽ˜</button>
         </div>
         <span class="ai-msg-time" id="ai-welcome-time"></span>
       </div>
@@ -7071,11 +6634,11 @@ async function sendEmail(e) {
   <div class="ai-input-wrap">
     <div class="ai-input-topline">
       <span class="ai-input-badge">AI Cockpit</span>
-      <span class="ai-input-hint" id="ai-input-hint">Debug, diseño, ideas y código en un solo lugar</span>
+      <span class="ai-input-hint" id="ai-input-hint">Debug, diseÃ±o, ideas y cÃ³digo en un solo lugar</span>
     </div>
     <div class="ai-input-shell">
     <div class="ai-input-row">
-      <textarea id="ai-input" placeholder="Pregúntame algo…" rows="1"
+      <textarea id="ai-input" placeholder="PregÃºntame algoâ€¦" rows="1"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
         oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,104)+'px';updateCharCount()"></textarea>
       <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
@@ -7084,15 +6647,15 @@ async function sendEmail(e) {
     </div>
     </div>
     <div class="ai-input-footer">
-      <span><span class="ai-kbd">Enter</span> enviar · <span class="ai-kbd">Shift</span>+<span class="ai-kbd">Enter</span> salto</span>
+      <span><span class="ai-kbd">Enter</span> enviar Â· <span class="ai-kbd">Shift</span>+<span class="ai-kbd">Enter</span> salto</span>
       <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
     </div>
   </div>
   <!-- Barra de acciones inferior -->
   <div class="ai-bottom-bar">
-    <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversación">
+    <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversaciÃ³n">
       <div class="ai-circle-icon"><i class="fas fa-rotate-left"></i></div>
-      <span class="ai-circle-label" data-subtitle="Nueva conversación">Restablecer</span>
+      <span class="ai-circle-label" data-subtitle="Nueva conversaciÃ³n">Restablecer</span>
     </button>
     <button class="ai-circle-btn ai-circle-close" id="ai-close-btn" title="Cerrar chat" aria-label="Cerrar chat">
       <div class="ai-circle-icon"><i class="fas fa-times"></i></div>
@@ -7102,12 +6665,12 @@ async function sendEmail(e) {
 </div>
 
 <script>
-// ═══════════════════════════════════════
-//  ASISTENTE IA — CODEHUB CHAT
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  ASISTENTE IA â€” CODEHUB CHAT
 //  Usa la API de Anthropic via proxy seguro
 //  Para activar: el panel funciona con
 //  respuestas inteligentes en tiempo real.
-// ═══════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 (function() {
   const fab    = document.getElementById('ai-fab');
   const panel  = document.getElementById('ai-panel');
@@ -7119,25 +6682,25 @@ async function sendEmail(e) {
   const sugs   = document.getElementById('ai-sugs');
   const status = document.getElementById('ai-status');
 
-  // Historial de conversación
+  // Historial de conversaciÃ³n
   let history = [];
   let isOpen  = false;
   let loading = false;
   let placeholderIdx = 0;
 
   const PLACEHOLDER_ROTATION = [
-    { placeholder: 'ExplÃ­came este error de JavaScript...', hint: 'Debug rÃ¡pido para frontend, backend y APIs' },
-    { placeholder: 'Mejora la UI de mi landing page...', hint: 'Ideas visuales mÃ¡s limpias y mÃ¡s pro' },
-    { placeholder: 'Dame una soluciÃ³n para mÃ³vil y PC...', hint: 'Pensado para responsive y UX real' },
-    { placeholder: 'AyÃºdame con una automatizaciÃ³n en Python...', hint: 'CÃ³digo, lÃ³gica y siguientes pasos claros' }
+    { placeholder: 'ExplÃƒÂ­came este error de JavaScript...', hint: 'Debug rÃƒÂ¡pido para frontend, backend y APIs' },
+    { placeholder: 'Mejora la UI de mi landing page...', hint: 'Ideas visuales mÃƒÂ¡s limpias y mÃƒÂ¡s pro' },
+    { placeholder: 'Dame una soluciÃƒÂ³n para mÃƒÂ³vil y PC...', hint: 'Pensado para responsive y UX real' },
+    { placeholder: 'AyÃƒÂºdame con una automatizaciÃƒÂ³n en Python...', hint: 'CÃƒÂ³digo, lÃƒÂ³gica y siguientes pasos claros' }
   ];
 
-  // Sistema: quién es el asistente
+  // Sistema: quiÃ©n es el asistente
   const SYSTEM = `Eres el asistente de CodeHub, el portfolio de Wilson.E, desarrollador guatemalteco. 
-Eres conciso, técnico y amigable. Respondes en español.
-CodeHub tiene: portfolio, 18 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
+Eres conciso, tÃ©cnico y amigable. Respondes en espaÃ±ol.
+CodeHub tiene: portfolio, 18 herramientas web (QR, contraseÃ±as, hash, regex, UUID, Pomodoro, etc.), 
 una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
-Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
+Cuando expliques cÃ³digo, usa bloques de cÃ³digo breves. MÃ¡ximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
 
   const ACTIVE_PROMPTS = [
     { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
@@ -7152,7 +6715,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   const resetChat = () => {
     msgs.innerHTML = '';
     history = [];
-    addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
+    addMsg('ai', 'Â¡ConversaciÃ³n reiniciada! ðŸ”„ Â¿En quÃ© te puedo ayudar?');
     if (sugs) sugs.style.display = 'flex';
   };
   if (clearB) clearB.addEventListener('click', resetChat);
@@ -7200,32 +6763,32 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     sendAI();
   };
 
-  // ── CONFIGURACIÓN DEL SERVIDOR ────────────────────────────
-  // Detecta automáticamente si estás en local o producción.
-  // Solo cambia BACKEND_URL cuando tengas tu servidor con IP pública.
+  // â”€â”€ CONFIGURACIÃ“N DEL SERVIDOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Detecta automÃ¡ticamente si estÃ¡s en local o producciÃ³n.
+  // Solo cambia BACKEND_URL cuando tengas tu servidor con IP pÃºblica.
   const BACKEND_URL = (function() {
     const host = window.location.hostname;
-    // Desarrollo local → Termux
+    // Desarrollo local â†’ Termux
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:3001';
     }
-    // Producción → Railway
+    // ProducciÃ³n â†’ Railway
     return 'https://codehub-production-729d.up.railway.app';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
 
-  // ID de sesión único por visita (no identifica al usuario, solo la sesión)
+  // ID de sesiÃ³n Ãºnico por visita (no identifica al usuario, solo la sesiÃ³n)
   const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  // ────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   window.sendAI = async function() {
     const text = input.value.trim();
     if (!text || loading) return;
 
-    // Anti-spam: máx 30 mensajes por sesión
+    // Anti-spam: mÃ¡x 30 mensajes por sesiÃ³n
     const chatCount = parseInt(sessionStorage.getItem('ch_chat_count') || '0');
     if (chatCount >= 30) {
-      addMsg('ai', '⚠️ Límite de sesión alcanzado (30 mensajes). Recarga la página para continuar.');
+      addMsg('ai', 'âš ï¸ LÃ­mite de sesiÃ³n alcanzado (30 mensajes). Recarga la pÃ¡gina para continuar.');
       return;
     }
     sessionStorage.setItem('ch_chat_count', chatCount + 1);
@@ -7240,8 +6803,8 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
 
     loading = true;
     sendBtn.disabled = true;
-    status.textContent = '● Pensando…';
-    const typingEl = addMsg('typing', '▌');
+    status.textContent = 'â— Pensandoâ€¦';
+    const typingEl = addMsg('typing', 'â–Œ');
 
     try {
       const res = await fetch(API_URL, {
@@ -7270,7 +6833,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = '● Online · Listo para ayudarte';
+      status.textContent = 'â— Online Â· Listo para ayudarte';
       scrollMsgs();
     }
   };
@@ -7280,7 +6843,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
       const wrap = document.createElement('div');
       wrap.className = 'ai-msg-wrap ai ai-typing';
       wrap.innerHTML = `
-        <div class="ai-msg-avatar">✦</div>
+        <div class="ai-msg-avatar">âœ¦</div>
         <div class="ai-msg-content">
           <div class="ai-msg">
             <span class="ai-typing-dot"></span>
@@ -7297,11 +6860,11 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     wrap.className = 'ai-msg-wrap ' + (isUser ? 'user' : 'ai');
     const time = getTime();
     wrap.innerHTML = `
-      <div class="ai-msg-avatar">${isUser ? '👤' : '✦'}</div>
+      <div class="ai-msg-avatar">${isUser ? 'ðŸ‘¤' : 'âœ¦'}</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
           ${html}
-          ${!isUser ? '<button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>' : ''}
+          ${!isUser ? '<button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">âŽ˜</button>' : ''}
         </div>
         <span class="ai-msg-time">${time}</span>
       </div>`;
@@ -7312,10 +6875,10 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
 
   window.copyMsg = function(btn) {
     const msgEl = btn.closest('.ai-msg');
-    const text = msgEl.innerText.replace('⎘', '').trim();
+    const text = msgEl.innerText.replace('âŽ˜', '').trim();
     navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = '✓';
-      setTimeout(() => btn.textContent = '⎘', 1500);
+      btn.textContent = 'âœ“';
+      setTimeout(() => btn.textContent = 'âŽ˜', 1500);
     });
   };
 
@@ -7332,7 +6895,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   }
 
   function formatAIReply(text) {
-    // Convertir markdown básico a HTML
+    // Convertir markdown bÃ¡sico a HTML
     return text
       .replace(/```([\s\S]*?)```/g, '<code>$1</code>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -7343,27 +6906,27 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   // Respuestas offline inteligentes basadas en palabras clave
   function getFallback(q) {
     const ql = q.toLowerCase();
-    if (ql.includes('qr'))       return 'El <strong>Generador de QR</strong> está en <code>tools.html</code>. Soporta 3 tamaños y 4 colores. Se puede descargar como PNG. 🔳';
-    if (ql.includes('contraseña') || ql.includes('password')) return 'El <strong>Generador de Contraseñas</strong> usa <code>crypto.getRandomValues()</code> para máxima seguridad. Soporta hasta 64 caracteres con mayúsculas, números y símbolos. 🔐';
-    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Tools → Generador de UUID. 🎲';
-    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. 💻';
-    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
-    if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
-    if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
-    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
-    if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
-    if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
-    if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
-    return 'Entendido. Para preguntas técnicas detalladas, la conexión a la IA requiere configuración del servidor. Mientras tanto, puedo responder sobre las herramientas de CodeHub. ¿Qué quieres saber? 🤖';
+    if (ql.includes('qr'))       return 'El <strong>Generador de QR</strong> estÃ¡ en <code>tools.html</code>. Soporta 3 tamaÃ±os y 4 colores. Se puede descargar como PNG. ðŸ”³';
+    if (ql.includes('contraseÃ±a') || ql.includes('password')) return 'El <strong>Generador de ContraseÃ±as</strong> usa <code>crypto.getRandomValues()</code> para mÃ¡xima seguridad. Soporta hasta 64 caracteres con mayÃºsculas, nÃºmeros y sÃ­mbolos. ðŸ”';
+    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador Ãºnico universal de 128 bits. Tiene ~5.3Ã—10Â³â¶ combinaciones posibles. Lo encuentras en Tools â†’ Generador de UUID. ðŸŽ²';
+    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. ðŸ’»';
+    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vÃ­a. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. PruÃ©balo en Tools â†’ Generador de Hash. ðŸ”’';
+    if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con Ã­ndice. MÃ¡s pythonico y legible. ðŸ';
+    if (ql.includes('pomodoro')) return 'La tÃ©cnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. EstÃ¡ en Tools con notificaciones del navegador. ðŸ…';
+    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseÃ±as, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, prÃ©stamos, velocidad de internet y mÃ¡s. ðŸ› ï¸';
+    if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y mÃ¡s. Todo en <code>novedades.html</code>. Solo para Android. ðŸ“±';
+    if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> estÃ¡n implementados con Canvas API. Puedes jugarlos desde la secciÃ³n de Proyectos. ðŸŽ®';
+    if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. ðŸ’¬';
+    return 'Entendido. Para preguntas tÃ©cnicas detalladas, la conexiÃ³n a la IA requiere configuraciÃ³n del servidor. Mientras tanto, puedo responder sobre las herramientas de CodeHub. Â¿QuÃ© quieres saber? ðŸ¤–';
   }
 
-  // Mostrar notificación del FAB después de 8 segundos
+  // Mostrar notificaciÃ³n del FAB despuÃ©s de 8 segundos
   setTimeout(() => {
     if (!isOpen) fab.querySelector('.ai-notif').style.display = 'block';
   }, 8000);
 })();
 
-// ═══ SKILLS TABS ══════════════════════════════════════════════════
+// â•â•â• SKILLS TABS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function switchSkillTab(tab, btn) {
     document.querySelectorAll('.sk-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -7373,7 +6936,7 @@ function switchSkillTab(tab, btn) {
     });
 }
 
-// ═══ CONFIGURACIÓN DEL SITIO ══════════════════════════════════════
+// â•â•â• CONFIGURACIÃ“N DEL SITIO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function openCfg() {
     const p = document.getElementById('config-panel');
     p.classList.add('open');
@@ -7413,7 +6976,7 @@ function setCfg(key, val, btn) {
         if (val !== 'md') document.body.classList.add('font-' + val);
     }
     if (key === 'lang') {
-        // Placeholder — expansión futura
+        // Placeholder â€” expansiÃ³n futura
         console.log('Idioma:', val);
     }
 }
@@ -7459,7 +7022,7 @@ function loadCfg() {
     if (canvas) canvas.style.opacity = neural ? '1' : '0';
 }
 
-// Aplicar config guardada al cargar la página
+// Aplicar config guardada al cargar la pÃ¡gina
 (function() {
     const font   = localStorage.getItem('cfg_font');
     const anim   = localStorage.getItem('cfg_anim');
@@ -7472,23 +7035,23 @@ function loadCfg() {
 
 
 
-// ═══════════════════════════════════════════════════════════
-//  REPRODUCTOR DE MÚSICA AMBIENT
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  REPRODUCTOR DE MÃšSICA AMBIENT
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  PROTECCIONES DEL SITIO
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // 1. Anti clic derecho
 document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  // Mostrar toast personalizado en lugar de menú
+  // Mostrar toast personalizado en lugar de menÃº
   if (typeof toast === 'function') {
-    toast('🔒 Contenido protegido — Wilson.E © 2025');
+    toast('ðŸ”’ Contenido protegido â€” Wilson.E Â© 2025');
   }
 });
 
-// 2. Anti selección de texto en secciones clave
+// 2. Anti selecciÃ³n de texto en secciones clave
 const protectedSelectors = ['#hero', '#mi-pueblo', '.project-card', '.skill-chip', 'footer'];
 protectedSelectors.forEach(sel => {
   document.querySelectorAll(sel).forEach(el => {
@@ -7506,7 +7069,7 @@ document.addEventListener('keydown', (e) => {
     (e.ctrlKey && e.key.toLowerCase() === 'u')
   ) {
     e.preventDefault();
-    if (typeof toast === 'function') toast('🔒 Acceso restringido');
+    if (typeof toast === 'function') toast('ðŸ”’ Acceso restringido');
     return false;
   }
   // Bloquear Ctrl+C en zonas protegidas
@@ -7514,12 +7077,12 @@ document.addEventListener('keydown', (e) => {
     const sel = window.getSelection()?.toString();
     if (sel && sel.length > 50) {
       e.preventDefault();
-      if (typeof toast === 'function') toast('🔒 Copia restringida — © Wilson.E 2025');
+      if (typeof toast === 'function') toast('ðŸ”’ Copia restringida â€” Â© Wilson.E 2025');
     }
   }
 });
 
-// 4. Anti-DevTools — detectar si están abiertos por tamaño de ventana
+// 4. Anti-DevTools â€” detectar si estÃ¡n abiertos por tamaÃ±o de ventana
 (function detectDevTools() {
   const threshold = 160;
   let devOpen = false;
@@ -7541,17 +7104,17 @@ document.addEventListener('keydown', (e) => {
   setInterval(check, 1000);
 })();
 
-// 5. Ofuscación básica — deshabilitar vista de fuente via URL
+// 5. OfuscaciÃ³n bÃ¡sica â€” deshabilitar vista de fuente via URL
 // (Nota: esto disuade usuarios casuales, no a desarrolladores avanzados)
 if (window.location.href.includes('view-source:')) {
   window.location.href = 'https://wilson360-labs.vercel.app';
 }
 
-// ═══════════════════════════════════════════════════════════
-//  CLIMA — OpenWeatherMap (más preciso)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  CLIMA â€” OpenWeatherMap (mÃ¡s preciso)
 //  NOTA: Reemplaza 'OWM_API_KEY_PLACEHOLDER' con tu key real
-//  de openweathermap.org → API Keys
-// ═══════════════════════════════════════════════════════════
+//  de openweathermap.org â†’ API Keys
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const OWM_KEY = 'OWM_API_KEY_PLACEHOLDER';
 
 async function fetchWeatherByCoords(lat, lon, cityName) {
@@ -7559,7 +7122,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
     let data, city;
 
     if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
-      // ── OpenWeatherMap (preciso, datos en español) ──
+      // â”€â”€ OpenWeatherMap (preciso, datos en espaÃ±ol) â”€â”€
       const res = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric&lang=es`
       );
@@ -7572,26 +7135,26 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
 
       document.getElementById('wx-city').textContent   = city;
       document.getElementById('wx-desc').textContent   = `${icon} ${capitalize(data.weather[0].description)}`;
-      document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}°`;
-      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C`;
+      document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}Â°`;
+      document.getElementById('wx-feels').textContent  = `SensaciÃ³n tÃ©rmica: ${Math.round(data.main.feels_like)}Â°C`;
       document.getElementById('wx-hum').textContent    = `${data.main.humidity}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(data.wind.speed * 3.6)} km/h`;
       document.getElementById('wx-precip').textContent = data.rain?.['1h'] ? `${data.rain['1h']} mm` : '0 mm';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
 
     } else {
-      // ── Fallback: Open-Meteo (sin key) ──
+      // â”€â”€ Fallback: Open-Meteo (sin key) â”€â”€
       const res = await fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto`
       );
       const d = await res.json();
       const c = d.current;
-      const WX = {0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',45:'🌫️ Niebla',51:'🌦️ Llovizna',61:'🌧️ Lluvia',80:'🌦️ Chubascos',95:'⛈️ Tormenta'};
+      const WX = {0:'â˜€ï¸ Despejado',1:'ðŸŒ¤ï¸ Mayormente despejado',2:'â›… Parcialmente nublado',3:'â˜ï¸ Nublado',45:'ðŸŒ«ï¸ Niebla',51:'ðŸŒ¦ï¸ Llovizna',61:'ðŸŒ§ï¸ Lluvia',80:'ðŸŒ¦ï¸ Chubascos',95:'â›ˆï¸ Tormenta'};
 
-      document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
-      document.getElementById('wx-desc').textContent   = WX[c.weather_code] || '🌡️ Variable';
-      document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
-      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(c.apparent_temperature)}°C`;
+      document.getElementById('wx-city').textContent   = cityName || 'Tu ubicaciÃ³n';
+      document.getElementById('wx-desc').textContent   = WX[c.weather_code] || 'ðŸŒ¡ï¸ Variable';
+      document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}Â°`;
+      document.getElementById('wx-feels').textContent  = `SensaciÃ³n tÃ©rmica: ${Math.round(c.apparent_temperature)}Â°C`;
       document.getElementById('wx-hum').textContent    = `${c.relative_humidity_2m}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(c.wind_speed_10m)} km/h`;
       document.getElementById('wx-precip').textContent = `${c.precipitation} mm`;
@@ -7610,15 +7173,15 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
 
 function getOWMIcon(id, icon) {
   const isDay = icon && icon.endsWith('d');
-  if (id >= 200 && id < 300) return '⛈️';
-  if (id >= 300 && id < 400) return '🌦️';
-  if (id >= 500 && id < 600) return id >= 502 ? '🌧️' : '🌦️';
-  if (id >= 600 && id < 700) return '❄️';
-  if (id >= 700 && id < 800) return '🌫️';
-  if (id === 800) return isDay ? '☀️' : '🌙';
-  if (id === 801) return isDay ? '🌤️' : '🌥️';
-  if (id <= 804) return '☁️';
-  return '🌡️';
+  if (id >= 200 && id < 300) return 'â›ˆï¸';
+  if (id >= 300 && id < 400) return 'ðŸŒ¦ï¸';
+  if (id >= 500 && id < 600) return id >= 502 ? 'ðŸŒ§ï¸' : 'ðŸŒ¦ï¸';
+  if (id >= 600 && id < 700) return 'â„ï¸';
+  if (id >= 700 && id < 800) return 'ðŸŒ«ï¸';
+  if (id === 800) return isDay ? 'â˜€ï¸' : 'ðŸŒ™';
+  if (id === 801) return isDay ? 'ðŸŒ¤ï¸' : 'ðŸŒ¥ï¸';
+  if (id <= 804) return 'â˜ï¸';
+  return 'ðŸŒ¡ï¸';
 }
 
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
@@ -7629,7 +7192,7 @@ async function detectWeatherByIP() {
     const r1 = await fetch('https://ipapi.co/json/');
     const g1 = await r1.json();
     if (g1.latitude && !g1.error) {
-      const flag = g1.country_code === 'GT' ? ' 🇬🇹' : '';
+      const flag = g1.country_code === 'GT' ? ' ðŸ‡¬ðŸ‡¹' : '';
       await fetchWeatherByCoords(g1.latitude, g1.longitude, `${g1.city}, ${g1.country_name}${flag}`);
       return;
     }
@@ -7639,37 +7202,37 @@ async function detectWeatherByIP() {
     const r2 = await fetch('https://ip-api.com/json/?fields=lat,lon,city,country,countryCode,status');
     const g2 = await r2.json();
     if (g2.status === 'success' && g2.lat) {
-      const flag = g2.countryCode === 'GT' ? ' 🇬🇹' : '';
+      const flag = g2.countryCode === 'GT' ? ' ðŸ‡¬ðŸ‡¹' : '';
       await fetchWeatherByCoords(g2.lat, g2.lon, `${g2.city}, ${g2.country}${flag}`);
       return;
     }
   } catch(e) {}
-  showWeatherError('No se pudo detectar tu ubicación. Escribe tu ciudad abajo.');
+  showWeatherError('No se pudo detectar tu ubicaciÃ³n. Escribe tu ciudad abajo.');
 }
 
 function requestGeoLocation() {
   const btn = document.getElementById('wx-loc-btn');
-  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectandoâ€¦'; btn.disabled = true; }
 
-  if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
+  if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalizaciÃ³n.'); return; }
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       try {
         const { latitude: lat, longitude: lon } = pos.coords;
-        // Geocodificación inversa con Nominatim (OpenStreetMap, gratis)
+        // GeocodificaciÃ³n inversa con Nominatim (OpenStreetMap, gratis)
         const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`);
         const d = await r.json();
-        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
+        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicaciÃ³n';
         const country = d.address?.country || '';
-        await fetchWeatherByCoords(lat, lon, `${city}, ${country} 📍`);
-        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#00e676'; }
+        await fetchWeatherByCoords(lat, lon, `${city}, ${country} ðŸ“`);
+        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> UbicaciÃ³n exacta âœ…'; btn.style.color='#00e676'; }
       } catch(e) {
-        await fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación 📍');
+        await fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude, 'Tu ubicaciÃ³n ðŸ“');
       }
       if (btn) btn.disabled = false;
     },
-    () => { detectWeatherByIP(); if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; } },
+    () => { detectWeatherByIP(); if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicaciÃ³n'; btn.disabled = false; } },
     { timeout: 10000 }
   );
 }
@@ -7710,11 +7273,11 @@ function showWeatherError(msg) {
   if (errMsg) errMsg.textContent = msg;
 }
 
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  NOTICIAS EN EL INDEX
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-// ── BLOGGER RSS FEED ─────────────────────────────────────────
+// â”€â”€ BLOGGER RSS FEED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const BLOGGER_URL = 'https://codehub-labs.blogspot.com'; // Blog oficial de CodeHub
 
 async function loadBloggerPosts() {
@@ -7722,7 +7285,7 @@ async function loadBloggerPosts() {
   const link = document.getElementById('blogger-link');
   if (!out) return;
 
-  // Actualizar href del botón
+  // Actualizar href del botÃ³n
   if (link) link.href = BLOGGER_URL;
 
   // Si es el placeholder, mostrar posts de demo
@@ -7742,7 +7305,7 @@ async function loadBloggerPosts() {
       const title = e.title.$t;
       const url   = (e.link.find(l => l.rel === 'alternate') || {}).href || BLOGGER_URL;
       const date  = new Date(e.published.$t).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
-      const desc  = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + '…' : '';
+      const desc  = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + 'â€¦' : '';
       const thumb = e['media$thumbnail'] ? e['media$thumbnail'].url.replace(/s72-c/,'s400-c') : null;
       const author = e.author?.[0]?.name?.$t || 'Wilson.E';
       return { title, url, date, desc, thumb, author };
@@ -7750,23 +7313,23 @@ async function loadBloggerPosts() {
 
     renderBloggerPosts(posts);
   } catch(err) {
-    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar los posts.<br><small>Verifica la URL del blog o revisa la conexión.</small></div>`;
+    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar los posts.<br><small>Verifica la URL del blog o revisa la conexiÃ³n.</small></div>`;
   }
 }
 
 const BLOGGER_DEMO_POSTS = [
-  { title:'Cómo construí mi portfolio con HTML, CSS y JS puro', url:'#', date:'23 mar 2026', desc:'Un recorrido por las decisiones técnicas detrás de CodeHub: la red neuronal en canvas, el splash screen y las 18 tools integradas.', thumb:null, author:'Wilson.E' },
-  { title:'Python Automation: scraping y tareas repetitivas en minutos', url:'#', date:'15 mar 2026', desc:'Guía práctica para automatizar tareas con BeautifulSoup, Requests y Pandas. Desde cero hasta producción.', thumb:null, author:'Wilson.E' },
-  { title:'Integrar una IA en tu web sin backend: GPT API desde el cliente', url:'#', date:'8 mar 2026', desc:'Cómo conectar la API de OpenAI directamente desde JavaScript, manejar el contexto y crear un chatbot útil.', thumb:null, author:'Wilson.E' },
-  { title:'MongoDB + Railway: deploy gratuito de tu base de datos', url:'#', date:'1 mar 2026', desc:'Paso a paso para desplegar una aplicación Node.js con MongoDB en Railway, con variables de entorno y dominio personalizado.', thumb:null, author:'Wilson.E' },
-  { title:'CSS sin frameworks: técnicas avanzadas que uso en mis proyectos', url:'#', date:'22 feb 2026', desc:'Conic-gradient, mask, container queries y custom properties que uso a diario sin necesitar Tailwind ni Bootstrap.', thumb:null, author:'Wilson.E' },
-  { title:'Cómo ganar tus primeros clientes freelance como dev en Guatemala', url:'#', date:'14 feb 2026', desc:'Mi experiencia conseguiendo proyectos reales: dónde buscarlos, cómo cotizar y qué errores evitar al inicio.', thumb:null, author:'Wilson.E' },
+  { title:'CÃ³mo construÃ­ mi portfolio con HTML, CSS y JS puro', url:'#', date:'23 mar 2026', desc:'Un recorrido por las decisiones tÃ©cnicas detrÃ¡s de CodeHub: la red neuronal en canvas, el splash screen y las 18 tools integradas.', thumb:null, author:'Wilson.E' },
+  { title:'Python Automation: scraping y tareas repetitivas en minutos', url:'#', date:'15 mar 2026', desc:'GuÃ­a prÃ¡ctica para automatizar tareas con BeautifulSoup, Requests y Pandas. Desde cero hasta producciÃ³n.', thumb:null, author:'Wilson.E' },
+  { title:'Integrar una IA en tu web sin backend: GPT API desde el cliente', url:'#', date:'8 mar 2026', desc:'CÃ³mo conectar la API de OpenAI directamente desde JavaScript, manejar el contexto y crear un chatbot Ãºtil.', thumb:null, author:'Wilson.E' },
+  { title:'MongoDB + Railway: deploy gratuito de tu base de datos', url:'#', date:'1 mar 2026', desc:'Paso a paso para desplegar una aplicaciÃ³n Node.js con MongoDB en Railway, con variables de entorno y dominio personalizado.', thumb:null, author:'Wilson.E' },
+  { title:'CSS sin frameworks: tÃ©cnicas avanzadas que uso en mis proyectos', url:'#', date:'22 feb 2026', desc:'Conic-gradient, mask, container queries y custom properties que uso a diario sin necesitar Tailwind ni Bootstrap.', thumb:null, author:'Wilson.E' },
+  { title:'CÃ³mo ganar tus primeros clientes freelance como dev en Guatemala', url:'#', date:'14 feb 2026', desc:'Mi experiencia conseguiendo proyectos reales: dÃ³nde buscarlos, cÃ³mo cotizar y quÃ© errores evitar al inicio.', thumb:null, author:'Wilson.E' },
 ];
 
 function renderBloggerPosts(posts) {
   const out = document.getElementById('blogger-out');
   if (!posts.length) {
-    out.innerHTML = `<div class="blogger-error"><i class="fas fa-pen-nib"></i>Aún no hay posts publicados.<br><small>¡Vuelve pronto!</small></div>`;
+    out.innerHTML = `<div class="blogger-error"><i class="fas fa-pen-nib"></i>AÃºn no hay posts publicados.<br><small>Â¡Vuelve pronto!</small></div>`;
     return;
   }
   out.innerHTML = `<div class="blogger-grid">${posts.map(p => `
@@ -7789,9 +7352,9 @@ function renderBloggerPosts(posts) {
 window.addEventListener('load', loadBloggerPosts);
 
 
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  BURGER MENU MOBILE
-// ═══════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function toggleMobileNav() {
     const nav = document.getElementById('mobile-nav');
     const btn = document.getElementById('burger-btn');
@@ -7817,7 +7380,7 @@ window.addEventListener('scroll', () => {
         closeMobileNav();
     }
 }, { passive: true });
-// Cerrar al tocar fuera del menú
+// Cerrar al tocar fuera del menÃº
 document.addEventListener('click', (e) => {
     const nav = document.getElementById('mobile-nav');
     const btn = document.getElementById('burger-btn');
@@ -7827,12 +7390,12 @@ document.addEventListener('click', (e) => {
 });
 
 
-// SW registrado por PWA install prompt ↓
+// SW registrado por PWA install prompt â†“
 
 
-// ════════════════════════════════════════════════════════════
-//  EASTER EGG — 7 clicks en el logo
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  EASTER EGG â€” 7 clicks en el logo
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 let eggClicks = 0, eggTimer = null;
 function eggClick(e) {
     e.preventDefault();
@@ -7858,7 +7421,7 @@ function activateEgg() {
     overlay.classList.add('active');
     spawnParticles();
     startMatrix();
-    // Confetti sonoro simulado con vibración
+    // Confetti sonoro simulado con vibraciÃ³n
     if (navigator.vibrate) navigator.vibrate([100,50,100,50,200]);
 }
 
@@ -7891,7 +7454,7 @@ function spawnParticles() {
 
 function startMatrix() {
     const el = document.getElementById('egg-matrix');
-    const chars = '01アイウエオカキクケコWilson.ECodeHubUltra</>{}[]';
+    const chars = '01ã‚¢ã‚¤ã‚¦ã‚¨ã‚ªã‚«ã‚­ã‚¯ã‚±ã‚³Wilson.ECodeHubUltra</>{}[]';
     let txt = '';
     for (let i = 0; i < 800; i++) txt += chars[Math.floor(Math.random()*chars.length)] + (i%80===79?'\n':' ');
     el.textContent = txt;
@@ -7902,30 +7465,30 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeEgg();
 });
 
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  MULTIIDIOMA ES / EN
-// ════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const i18n = {
     es: {
         available: 'Disponible',
-        years: 'Años',
+        years: 'AÃ±os',
         projects: 'Proyectos',
-        role: 'Desarrollador Web Full Stack · Guatemala 🇬🇹',
-        bio: 'Programador autodidacta de <strong>Ciudad de Guatemala</strong>, 25 años. Me apasiona construir proyectos web modernos, chatbots con IA y herramientas útiles para la comunidad. Cada línea de código es una oportunidad de aprender algo nuevo.',
-        from: 'Originario de <strong>San Luis Jilotepeque</strong>, Jalapa — donde aprendí a soñar en grande.',
+        role: 'Desarrollador Web Full Stack Â· Guatemala ðŸ‡¬ðŸ‡¹',
+        bio: 'Programador autodidacta de <strong>Ciudad de Guatemala</strong>, 25 aÃ±os. Me apasiona construir proyectos web modernos, chatbots con IA y herramientas Ãºtiles para la comunidad. Cada lÃ­nea de cÃ³digo es una oportunidad de aprender algo nuevo.',
+        from: 'Originario de <strong>San Luis Jilotepeque</strong>, Jalapa â€” donde aprendÃ­ a soÃ±ar en grande.',
         viewCV: 'Ver CV completo',
         contact: 'Contactar',
         // Nav
-        navStats: 'Estadísticas', navSkills: 'Habilidades', navServices: 'Servicios',
+        navStats: 'EstadÃ­sticas', navSkills: 'Habilidades', navServices: 'Servicios',
         navExp: 'Experiencia', navProjects: 'Proyectos', navContact: 'Contacto',
     },
     en: {
         available: 'Available',
         years: 'Years',
         projects: 'Projects',
-        role: 'Full Stack Web Developer · Guatemala 🇬🇹',
+        role: 'Full Stack Web Developer Â· Guatemala ðŸ‡¬ðŸ‡¹',
         bio: 'Self-taught developer from <strong>Guatemala City</strong>, 25 years old. Passionate about building modern web projects, AI chatbots and useful tools for the community. Every line of code is a chance to learn something new.',
-        from: 'Originally from <strong>San Luis Jilotepeque</strong>, Jalapa — where I learned to dream big.',
+        from: 'Originally from <strong>San Luis Jilotepeque</strong>, Jalapa â€” where I learned to dream big.',
         viewCV: 'View full CV',
         contact: 'Contact me',
         navStats: 'Statistics', navSkills: 'Skills', navServices: 'Services',
@@ -7944,9 +7507,9 @@ function applyLang(lang) {
         const key = el.dataset.i18n;
         if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
-    // Actualizar botón
+    // Actualizar botÃ³n
     const btn = document.getElementById('lang-toggle');
-    if (btn) btn.textContent = lang === 'es' ? '🌐 EN' : '🌐 ES';
+    if (btn) btn.textContent = lang === 'es' ? 'ðŸŒ EN' : 'ðŸŒ ES';
     // Cambiar lang del html
     document.documentElement.lang = lang;
 }
@@ -7965,10 +7528,10 @@ document.addEventListener('DOMContentLoaded', () => {
   <!-- PWA Install Prompt -->
   <div id="pwa-install">
     <div class="pwa-card">
-      <div class="pwa-icon">⚡</div>
+      <div class="pwa-icon">âš¡</div>
       <div class="pwa-text">
         <div class="pwa-title">Instalar CodeHub</div>
-        <div class="pwa-sub">Acceso rápido · Sin browser</div>
+        <div class="pwa-sub">Acceso rÃ¡pido Â· Sin browser</div>
       </div>
       <div class="pwa-btns">
         <button class="pwa-btn-yes" onclick="installPWA()">Instalar</button>
@@ -7981,7 +7544,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   <script>
-  // ── PWA Install ─────────────────────────────────────
+  // â”€â”€ PWA Install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let _deferredPrompt = null;
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
@@ -8019,10 +7582,10 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('pwa_dismissed', Date.now());
   }
 
-  // ── Service Worker ───────────────────────────────────
+  // â”€â”€ Service Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then(reg => {
-      console.log('✅ SW registrado v4.1');
+      console.log('âœ… SW registrado v4.1');
 
       // Verificar actualizaciones cada 30 min (silencioso, sin banner para usuarios)
       setInterval(() => reg.update(), 30 * 60 * 1000);
@@ -8079,7 +7642,7 @@ document.addEventListener('DOMContentLoaded', () => {
   </script>
 
   <script>
-  // ── Expanding Panels ─────────────────────────
+  // â”€â”€ Expanding Panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   (function() {
     var panels = Array.from(document.querySelectorAll('.pueblo-panel'));
     var prevBtn = document.getElementById('pueblo-prev');
@@ -8134,12 +7697,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 
-/* ── MOOD BAR — Chat IA ── */
+/* â”€â”€ MOOD BAR â€” Chat IA â”€â”€ */
 var AI_MOODS = {
-  general:   ['🛠 ¿Qué herramientas hay?','📦 Base64 explicado','🔑 ¿Qué es un UUID?','🐍 Tip de Python'],
-  code:      ['⚡ Optimizar mi JS','🔍 Revisar mi código','🗂 Estructuras de datos','🐞 ¿Por qué falla esto?'],
-  portfolio: ['💼 Mejoras al diseño','📱 ¿Es responsive?','🌐 SEO tips','✨ Añadir animaciones'],
-  debug:     ['🔴 Error en consola','🔁 Loop infinito','📡 Fallo de API','🧩 Conflicto de CSS']
+  general:   ['ðŸ›  Â¿QuÃ© herramientas hay?','ðŸ“¦ Base64 explicado','ðŸ”‘ Â¿QuÃ© es un UUID?','ðŸ Tip de Python'],
+  code:      ['âš¡ Optimizar mi JS','ðŸ” Revisar mi cÃ³digo','ðŸ—‚ Estructuras de datos','ðŸž Â¿Por quÃ© falla esto?'],
+  portfolio: ['ðŸ’¼ Mejoras al diseÃ±o','ðŸ“± Â¿Es responsive?','ðŸŒ SEO tips','âœ¨ AÃ±adir animaciones'],
+  debug:     ['ðŸ”´ Error en consola','ðŸ” Loop infinito','ðŸ“¡ Fallo de API','ðŸ§© Conflicto de CSS']
 };
 function setAIMood(btn) {
   document.querySelectorAll('.ai-mood-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -8160,7 +7723,7 @@ function setAIMood(btn) {
 </script>
 
 <script>
-/* ── LIQUID EFFECT — CodeHub & Wilson.E ── */
+/* â”€â”€ LIQUID EFFECT â€” CodeHub & Wilson.E â”€â”€ */
 (function(){
   var PALETTE=[[255,69,0],[200,40,0],[255,120,30],[108,58,245],[64,196,255],[180,50,200]];
 
@@ -8332,3 +7895,6 @@ function setAIMood(btn) {
           },d*40);
         });
       
+
+
+
