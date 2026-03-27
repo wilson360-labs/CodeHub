@@ -787,13 +787,13 @@
 
 .logo-aura {
     position: absolute;
-    width: 420px;
-    height: 420px;
-    background: radial-gradient(circle, rgba(255,140,0,0.02) 0%, transparent 70%);
+    width: 520px;
+    height: 520px;
+    background: radial-gradient(circle, rgba(255,140,0,0.05) 0%, rgba(255,69,0,0.02) 40%, transparent 70%);
     border-radius: 50%;
     z-index: 4;
     animation: aura-pulse 3s ease-in-out infinite alternate;
-    filter: blur(18px);
+    filter: blur(22px);
 }
 
 @keyframes aura-pulse {
@@ -812,18 +812,55 @@
 }
 
 .splash-orbit-a {
-    width: 420px;
-    height: 420px;
+    width: 460px;
+    height: 460px;
     transform: translate(-50%, -50%);
     animation: orbit-spin 12s linear infinite;
+    border: 1.5px solid rgba(255,140,0,0.13);
 }
 
 .splash-orbit-b {
-    width: 310px;
-    height: 310px;
+    width: 350px;
+    height: 350px;
     transform: translate(-50%, -50%) rotate(18deg);
-    border-color: rgba(255,215,0,0.18);
+    border-color: rgba(255,215,0,0.22);
     animation: orbit-spin-reverse 9s linear infinite;
+}
+
+.splash-orbit-c {
+    width: 560px;
+    height: 560px;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    border-color: rgba(255,69,0,0.07);
+    border-width: 1px;
+    animation: orbit-spin 20s linear infinite;
+}
+
+/* Puntos orbitales en el anillo A */
+.splash-orbit-a::before,
+.splash-orbit-a::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, #ff8c00, rgba(255,140,0,0.3));
+    border-radius: 50%;
+    top: 50%;
+    box-shadow: 0 0 10px #ff8c00, 0 0 20px rgba(255,140,0,0.5);
+}
+.splash-orbit-a::before { left: -4px; margin-top: -4px; }
+.splash-orbit-a::after  { right: -4px; margin-top: -4px; }
+
+/* Punto orbital en anillo B */
+.splash-orbit-b::before {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: radial-gradient(circle, #ffd700, rgba(255,215,0,0.3));
+    border-radius: 50%;
+    top: -3px; left: 50%; margin-left: -3px;
+    box-shadow: 0 0 8px #ffd700, 0 0 16px rgba(255,215,0,0.4);
 }
 
 .splash-warp-shell .particles,
@@ -919,7 +956,7 @@
     z-index: 90;
     display: grid;
     place-items: center;
-    animation: logoReveal 1.5s ease-out, logoFloat 4s ease-in-out infinite 2s;
+    animation: logoReveal 1.5s ease-out both, logoFloat 4.5s ease-in-out infinite 2s;
 }
 
 .logo-3d::before {
@@ -931,30 +968,39 @@
 }
 
 .splash-logo-core {
-    width: 210px;
-    height: 210px;
+    width: 280px;
+    height: 280px;
     position: relative;
     z-index: 95;
     padding: 0;
     border-radius: 50%;
-    background: transparent;
+    background: radial-gradient(circle, rgba(255,140,0,0.06) 0%, transparent 70%);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    box-shadow: none;
+    box-shadow:
+        0 0 0 2px rgba(255,140,0,0.12),
+        0 0 40px rgba(255,100,0,0.18),
+        0 0 80px rgba(255,69,0,0.08);
     animation: logoPopIn 1.3s cubic-bezier(.2,.9,.2,1) both;
     display: grid;
     place-items: center;
 }
 
 .splash-logo-core img {
-    width: 86%;
-    height: 86%;
+    width: 88%;
+    height: 88%;
     object-fit: contain;
     display: block;
     position: relative;
     z-index: 100;
     opacity: 1;
-    filter: drop-shadow(0 0 10px rgba(255,140,0,.16)) contrast(1.04) brightness(1.03);
+    filter: drop-shadow(0 0 18px rgba(255,120,0,.32)) drop-shadow(0 0 6px rgba(255,200,80,.18)) contrast(1.05) brightness(1.05);
+    animation: logoGlow 3s ease-in-out infinite 1.5s;
+}
+
+@keyframes logoGlow {
+    0%, 100% { filter: drop-shadow(0 0 18px rgba(255,120,0,.32)) drop-shadow(0 0 6px rgba(255,200,80,.18)) contrast(1.05) brightness(1.05); }
+    50% { filter: drop-shadow(0 0 32px rgba(255,120,0,.55)) drop-shadow(0 0 14px rgba(255,200,80,.35)) contrast(1.07) brightness(1.1); }
 }
 
 .splash-logo-fallback {
@@ -982,6 +1028,9 @@
     color: rgba(255,255,255,0.76);
     z-index: 10;
     text-shadow: 0 0 18px rgba(255,69,0,0.28);
+    transition: opacity .4s ease, transform .4s ease;
+    min-height: 1.4em;
+    text-align: center;
 }
 
 @keyframes logoReveal {
@@ -999,10 +1048,10 @@
 
 @keyframes logoFloat {
     0%, 100% { 
-        transform: perspective(1000px) rotateX(0) translateY(0);
+        transform: translateY(0px);
     }
     50% { 
-        transform: perspective(1000px) rotateX(5deg) translateY(-10px);
+        transform: translateY(-9px);
     }
 }
 
@@ -1037,11 +1086,13 @@
 
 /* Subtítulo del splash */
 .splash-subtitle {
-    font-size: 1.18rem;
+    font-size: 1.32rem;
     color: #ffbd69;
-    letter-spacing: 0.28em;
-    margin-top: 14px;
-    text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    letter-spacing: 0.44em;
+    text-indent: 0.44em;
+    margin-top: 18px;
+    font-weight: 700;
+    text-shadow: 0 0 24px rgba(255,140,0,0.6), 0 0 8px rgba(255,107,53,0.4);
     animation: subtitleFade 2s ease-out 1.5s both;
 }
 
@@ -1060,44 +1111,46 @@
 
 /* 8 círculos en lugar de 3 */
 .circle-pulse:nth-child(1) { 
-    width: 200px; 
-    height: 200px; 
-    animation-delay: 0s; 
+    width: 310px; 
+    height: 310px; 
+    animation-delay: 0s;
+    border-color: rgba(255,100,0,0.5);
+    border-width: 2px;
 }
 .circle-pulse:nth-child(2) { 
-    width: 250px; 
-    height: 250px; 
-    animation-delay: 0.3s; 
+    width: 370px; 
+    height: 370px; 
+    animation-delay: 0.35s; 
 }
 .circle-pulse:nth-child(3) { 
-    width: 300px; 
-    height: 300px; 
-    animation-delay: 0.6s; 
+    width: 430px; 
+    height: 430px; 
+    animation-delay: 0.7s; 
 }
 .circle-pulse:nth-child(4) { 
-    width: 350px; 
-    height: 350px; 
-    animation-delay: 0.9s; 
+    width: 490px; 
+    height: 490px; 
+    animation-delay: 1.05s; 
 }
 .circle-pulse:nth-child(5) { 
-    width: 400px; 
-    height: 400px; 
-    animation-delay: 1.2s; 
-}
-.circle-pulse:nth-child(6) { 
-    width: 450px; 
-    height: 450px; 
-    animation-delay: 1.5s; 
-}
-.circle-pulse:nth-child(7) { 
-    width: 500px; 
-    height: 500px; 
-    animation-delay: 1.8s; 
-}
-.circle-pulse:nth-child(8) { 
     width: 550px; 
     height: 550px; 
+    animation-delay: 1.4s; 
+}
+.circle-pulse:nth-child(6) { 
+    width: 610px; 
+    height: 610px; 
+    animation-delay: 1.75s; 
+}
+.circle-pulse:nth-child(7) { 
+    width: 670px; 
+    height: 670px; 
     animation-delay: 2.1s; 
+}
+.circle-pulse:nth-child(8) { 
+    width: 730px; 
+    height: 730px; 
+    animation-delay: 2.45s; 
 }
 
 @keyframes pulse {
@@ -1185,26 +1238,34 @@
 
 .loading-container {
     position: absolute;
-    bottom: 12%;
-    width: min(320px, calc(100vw - 3rem));
+    bottom: 9%;
+    width: min(380px, calc(100vw - 3rem));
     z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
 }
 
 .status-header {
     display: flex;
     justify-content: space-between;
+    width: 100%;
     font-size: 9px;
     color: #ffd700;
     letter-spacing: 2px;
-    margin-bottom: 8px;
     font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .progress-track {
-    height: 2px;
-    background: rgba(255, 255, 255, 0.05);
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 4px;
     overflow: hidden;
     position: relative;
+    box-shadow: 0 0 12px rgba(255,69,0,0.15);
 }
 
 .progress-fill {
@@ -1216,15 +1277,16 @@
 .progress-bar-3d {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #ff4500, #ff6b35, #f7931e, #ffbd69, #ff4500);
-    background-size: 200% 100%;
-    border-radius: 10px;
+    background: linear-gradient(90deg, #c42800, #ff4500, #ff6b35, #ffbd69, #ff6b35, #ff4500);
+    background-size: 300% 100%;
+    border-radius: 4px;
     position: relative;
-    animation: loadProgress 6s ease-out forwards, gradientFlow 3s linear infinite, pulseGlow 2s ease-in-out infinite;
+    animation: gradientFlow 2s linear infinite, pulseGlow 2s ease-in-out infinite;
     box-shadow: 
-        0 0 20px #ff4500, 
-        0 0 40px #ff4500,
-        inset 0 0 10px rgba(255, 255, 255, 0.3);
+        0 0 12px rgba(255,69,0,0.9), 
+        0 0 28px rgba(255,69,0,0.5),
+        inset 0 0 8px rgba(255, 255, 255, 0.25);
+    transition: width 0.3s ease;
 }
 
 @keyframes loadProgress {
@@ -1350,20 +1412,20 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .logo-aura { width: 280px; height: 280px; }
-    .logo-3d { width: 224px; height: 224px; }
-    .splash-logo-core { width: 160px; height: 160px; border-radius: 50%; padding: 0; }
-    .splash-logo-fallback { width: 164px; height: 164px; font-size: 1.45rem; border-radius: 22px; }
+    .logo-aura { width: 340px; height: 340px; }
+    .logo-3d { width: 260px; height: 260px; }
+    .splash-logo-core { width: 200px; height: 200px; border-radius: 50%; padding: 0; }
+    .splash-logo-fallback { width: 204px; height: 204px; font-size: 1.6rem; border-radius: 22px; }
     .splash-subtitle { font-size: .92rem; letter-spacing: .2em; }
     .splash-brand-note { font-size: .7rem; letter-spacing: .18em; text-align: center; padding: 0 1rem; }
     .loading-container { bottom: 10%; }
     .progress-container-3d { width: 90%; }
-    .circle-pulse { width: 150px !important; height: 150px !important; }
-    .hex-ring { width: 200px; height: 200px; }
-    .radar-wave { width: 300px; height: 300px; }
+    .circle-pulse { width: 200px !important; height: 200px !important; }
+    .hex-ring { width: 220px; height: 220px; }
+    .radar-wave { width: 320px; height: 320px; }
     .loading-percentage { right: -48px; font-size: 1rem; }
-    .splash-orbit-a { width: 300px; height: 300px; }
-    .splash-orbit-b { width: 230px; height: 230px; }
+    .splash-orbit-a { width: 340px; height: 340px; }
+    .splash-orbit-b { width: 260px; height: 260px; }
 }
 
         /* Variables CSS para modo oscuro */
@@ -3869,6 +3931,7 @@
         <div class="logo-aura"></div>
         <div class="splash-orbit splash-orbit-a"></div>
         <div class="splash-orbit splash-orbit-b"></div>
+        <div class="splash-orbit splash-orbit-c"></div>
         <div class="scan-line"></div>
         
         <!-- Grid cibernético -->
@@ -4251,7 +4314,7 @@
                     <a href="https://wa.me/50241468185" target="_blank" rel="noopener" class="otw-btn otw-btn-primary">
                       <i class="fab fa-whatsapp"></i> WhatsApp
                     </a>
-                    <a href="mailto:wilson.e360labs@gmail.com" class="otw-btn otw-btn-ghost">
+                    <a href="/cdn-cgi/l/email-protection#6f1806031c0001410a5c595f030e0d1c2f08020e0603410c0002" class="otw-btn otw-btn-ghost">
                       <i class="fas fa-envelope"></i> Email
                     </a>
                   </div>
@@ -4633,11 +4696,11 @@
                     <p class="contact-sub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
 
                     <div class="contact-links">
-                        <a href="mailto:wilson.e360labs@gmail.com" class="clink">
+                        <a href="/cdn-cgi/l/email-protection#9cebf5f0eff3f2b2f9afaaacf0fdfeefdcfbf1fdf5f0b2fff3f1" class="clink">
                             <div class="clink-icon"><i class="fas fa-envelope"></i></div>
                             <div>
                                 <div class="clink-label">Email directo</div>
-                                <div class="clink-val">wilson.e360labs@gmail.com</div>
+                                <div class="clink-val"><span class="__cf_email__" data-cfemail="22554b4e514d4c0c471114124e43405162454f434b4e0c414d4f">[email&#160;protected]</span></div>
                             </div>
                         </a>
                         <a href="https://wa.me/50241468185" target="_blank" class="clink">
@@ -4882,7 +4945,7 @@
     <!-- Elementos del updater -->
     <div id="update-notification" class="update-notification"></div>
     <div id="loading-indicator" class="loading-indicator"></div>
-    <script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
       function toast(message, type, duration) {
         var el = document.getElementById('update-notification');
         if (!el) return;
@@ -4915,7 +4978,7 @@
                     <i class="fab fa-telegram"></i>
                     <span>Telegram</span>
                 </a>
-                <a href="mailto:wilson.e360labs@gmail.com" class="social-link social-em" aria-label="Email">
+                <a href="/cdn-cgi/l/email-protection#f4839d98879b9ada91c7c2c498959687b49399959d98da979b99" class="social-link social-em" aria-label="Email">
                     <i class="fas fa-envelope"></i>
                     <span>Email</span>
                 </a>
@@ -5600,7 +5663,7 @@
         </style>
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="updater.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="updater.js"></script>
     <script>
         console.log('Script started');
         // Crear partículas mejoradas con drift
@@ -5608,7 +5671,8 @@
             const container = document.getElementById('particles1');
             if (!container) return;
             container.innerHTML = '';
-            for (let i = 0; i < 80; i++) { // Aumentado de 50 a 80
+            const colors = ['#ff4500','#ff6b35','#ffbd69','#ffd700','#40c4ff','#b464ff','#00e676'];
+            for (let i = 0; i < 80; i++) {
                 const particle = document.createElement('div');
                 particle.className = 'particle';
                 particle.style.left = Math.random() * 100 + '%';
@@ -5616,12 +5680,12 @@
                 particle.style.setProperty('--drift', (Math.random() - 0.5) * 200 + 'px');
                 particle.style.animationDelay = Math.random() * 4 + 's';
                 particle.style.animationDuration = (3 + Math.random() * 4) + 's';
-                
-                // Variación de tamaño
                 const size = 2 + Math.random() * 4;
                 particle.style.width = size + 'px';
                 particle.style.height = size + 'px';
-                
+                const col = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.background = col;
+                particle.style.boxShadow = `0 0 7px ${col}, 0 0 14px ${col}`;
                 container.appendChild(particle);
             }
         }
@@ -5631,16 +5695,16 @@
             return;
         }
 
-        // Efecto de pulso en el logo
+        // Efecto de pulso en el logo — suave, no interfiere con CSS float
         function addLogoPulse() {
-            const logo = document.querySelector('.logo-3d');
-            if (!logo) return;
+            const core = document.querySelector('.splash-logo-core');
+            if (!core) return;
             setInterval(() => {
-                logo.style.transform = 'perspective(1000px) rotateX(0) scale(1.05)';
+                core.style.boxShadow = '0 0 0 2px rgba(255,140,0,0.22), 0 0 60px rgba(255,100,0,0.35), 0 0 120px rgba(255,69,0,0.15)';
                 setTimeout(() => {
-                    logo.style.transform = 'perspective(1000px) rotateX(0) scale(1)';
-                }, 200);
-            }, 3000);
+                    core.style.boxShadow = '0 0 0 2px rgba(255,140,0,0.12), 0 0 40px rgba(255,100,0,0.18), 0 0 80px rgba(255,69,0,0.08)';
+                }, 600);
+            }, 2800);
         }
 
         let warpStars = [];
@@ -5754,15 +5818,40 @@
             const tips = [
                 'INICIALIZANDO CODEHUB<span class="loading-dots"></span>',
                 '🧠 Cargando red neuronal...',
-                '🛠️ Activando 18 herramientas...',
+                '🛠️ Activando 27 herramientas...',
                 '🔐 Módulo de seguridad listo...',
                 '🎨 Calibrando paleta de colores...',
                 '📱 Sincronizando catálogo de apps...',
                 '⚡ Optimizando rendimiento...',
                 '🚀 ¡Todo listo. Bienvenido!'
             ];
+            const phrases = [
+                'INICIANDO EXPERIENCIA PREMIUM',
+                'CARGANDO MÓDULOS',
+                'ACTIVANDO HERRAMIENTAS',
+                'VERIFICANDO SEGURIDAD',
+                'CALIBRANDO INTERFAZ',
+                'SINCRONIZANDO DATOS',
+                'OPTIMIZANDO RENDIMIENTO',
+                '✦ BIENVENIDO A CODEHUB ✦'
+            ];
             let i = 0;
             const el = document.querySelector('.loading-text-3d');
+            const phrase = document.getElementById('phrase');
+
+            function updatePhrase(idx) {
+                if (!phrase) return;
+                phrase.style.opacity = '0';
+                phrase.style.transform = 'translateY(6px)';
+                setTimeout(() => {
+                    phrase.textContent = phrases[idx] || phrases[phrases.length - 1];
+                    phrase.style.transition = 'opacity .4s ease, transform .4s ease';
+                    phrase.style.opacity = '1';
+                    phrase.style.transform = 'translateY(0)';
+                }, 200);
+            }
+            updatePhrase(0);
+
             const iv = setInterval(() => {
                 i++;
                 if (i < tips.length && el) {
@@ -5773,6 +5862,7 @@
                         el.style.transition = 'opacity .3s';
                     }, 160);
                 }
+                updatePhrase(i);
                 if (i >= tips.length - 1) clearInterval(iv);
             }, 1000);
 
@@ -8220,25 +8310,4 @@ function setAIMood(btn) {
             o.style.color=d===0?'#ff6535':d===1?'#ff9060':d===2?'#ffb590':'';
           },d*40);
         });
-      });
-      el.addEventListener('mouseleave',function(){
-        setTimeout(function(){
-          waving=true;
-          letters.forEach(function(l){l.style.color='';});
-        },600);
-      });
-    });
-  }
-
-  function initAll(){
-    document.querySelectorAll('.liquid-word').forEach(setup);
-  }
-  if(document.readyState==='loading')
-    document.addEventListener('DOMContentLoaded',initAll);
-  else
-    setTimeout(initAll,0);
-})();
-</script>
-
-</body>
-</html>
+      
