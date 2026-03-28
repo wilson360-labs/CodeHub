@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -86,21 +86,7 @@
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
-    <!-- Anti-FOUC: aplicar tema ANTES de pintar la página -->
-    <script>
-      (function(){
-        try {
-          if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.add('light-mode-pre');
-          }
-        } catch(e){}
-      })();
-    </script>
-    <style>
-      /* Bloquear render hasta que el tema esté listo — evita flash blanco */
-      html.light-mode-pre body { background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf0 50%, #dde3ea 100%) !important; }
-      html:not(.light-mode-pre) body { background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%) !important; }
-    </style>
+
 
     <!-- Fuente sistema como fallback inmediato — evita FOUT -->
     <style id="font-fallback">
@@ -363,280 +349,6 @@
             padding-bottom: 110px;
         }
 
-        /* ===== LIGHT MODE — SISTEMA COMPLETO ===== */
-        body.light-mode {
-            background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf0 50%, #dde3ea 100%);
-            color: #1a1a2e;
-        }
-
-        /* Fondo de red neuronal — muy sutil en blanco */
-        body.light-mode #neural-network {
-            opacity: 0.08 !important;
-        }
-
-        /* Header */
-        body.light-mode header {
-            background: rgba(255,255,255,0.92) !important;
-            border-bottom: 1px solid rgba(255,69,0,0.15) !important;
-            backdrop-filter: blur(20px);
-        }
-        body.light-mode .header-logo-text,
-        body.light-mode .header-logo-badge,
-        body.light-mode .header-logo-desc {
-            color: #1a1a2e !important;
-            -webkit-text-fill-color: #1a1a2e !important;
-        }
-        body.light-mode nav a {
-            color: #2d2d44 !important;
-        }
-        body.light-mode nav a:hover {
-            color: var(--primary) !important;
-        }
-        body.light-mode #cfg-btn {
-            color: #2d2d44 !important;
-            background: rgba(0,0,0,0.06) !important;
-            border-color: rgba(0,0,0,0.12) !important;
-        }
-        body.light-mode .header-typing {
-            color: rgba(26,26,46,0.6) !important;
-        }
-
-        /* Sections */
-        body.light-mode section {
-            background: rgba(255,255,255,0.75) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-            color: #1a1a2e !important;
-        }
-        body.light-mode section h2,
-        body.light-mode section h3,
-        body.light-mode section p,
-        body.light-mode section span,
-        body.light-mode section li {
-            color: #1a1a2e !important;
-        }
-
-        /* Terminal text */
-        body.light-mode .terminal-text {
-            color: #cc3300 !important;
-        }
-
-        /* Stats cards */
-        body.light-mode .stat-card {
-            background: rgba(255,255,255,0.85) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-        }
-        body.light-mode .stat-number {
-            color: var(--primary) !important;
-        }
-        body.light-mode .stat-label,
-        body.light-mode .stat-sub {
-            color: rgba(26,26,46,0.65) !important;
-        }
-
-        /* Skill cards */
-        body.light-mode .skill {
-            background: rgba(255,255,255,0.8) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-        }
-        body.light-mode .skill-name,
-        body.light-mode .skill-percent {
-            color: #1a1a2e !important;
-        }
-        body.light-mode .skill-bar-fill {
-            background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
-        }
-
-        /* Service cards */
-        body.light-mode .service-card {
-            background: rgba(255,255,255,0.85) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
-        }
-        body.light-mode .service-card h3 {
-            color: #1a1a2e !important;
-        }
-        body.light-mode .service-card p {
-            color: rgba(26,26,46,0.65) !important;
-        }
-
-        /* About section */
-        body.light-mode .about-text p {
-            color: rgba(26,26,46,0.75) !important;
-        }
-
-        /* Project cards */
-        body.light-mode .project-card {
-            background: rgba(255,255,255,0.85) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-        }
-        body.light-mode .project-card h3,
-        body.light-mode .project-card p {
-            color: #1a1a2e !important;
-        }
-
-        /* Tools / Apps preview cards */
-        body.light-mode .tp-card,
-        body.light-mode .ap-card {
-            background: rgba(255,255,255,0.85) !important;
-            border-color: rgba(0,0,0,0.1) !important;
-        }
-        body.light-mode .tp-card-name,
-        body.light-mode .ap-app-name {
-            color: #1a1a2e !important;
-        }
-        body.light-mode .tp-card-desc,
-        body.light-mode .ap-app-cat {
-            color: rgba(26,26,46,0.55) !important;
-        }
-
-        /* Why Hire Me cards */
-        body.light-mode .wm-card {
-            background: rgba(255,255,255,0.8) !important;
-            border-color: rgba(0,0,0,0.08) !important;
-        }
-        body.light-mode .wm-card-title {
-            color: #1a1a2e !important;
-        }
-        body.light-mode .wm-card-desc {
-            color: rgba(26,26,46,0.6) !important;
-        }
-        body.light-mode .wm-title {
-            background: linear-gradient(135deg, #1a1a2e, rgba(26,26,46,0.65));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        /* Open to Work */
-        body.light-mode .otw-inner {
-            background: linear-gradient(135deg, rgba(0,180,100,0.08), rgba(0,180,100,0.03)) !important;
-        }
-        body.light-mode .otw-title {
-            color: #1a1a2e !important;
-        }
-        body.light-mode .otw-desc {
-            color: rgba(26,26,46,0.65) !important;
-        }
-        body.light-mode .otw-info-card {
-            background: rgba(255,255,255,0.6) !important;
-            border-color: rgba(0,0,0,0.08) !important;
-        }
-        body.light-mode .otw-info-val {
-            color: #1a1a2e !important;
-        }
-
-        /* Contact form */
-        body.light-mode .contact-form input,
-        body.light-mode .contact-form textarea,
-        body.light-mode .contact-form select {
-            background: rgba(255,255,255,0.9) !important;
-            border-color: rgba(255,69,0,0.25) !important;
-            color: #1a1a2e !important;
-        }
-        body.light-mode .contact-form label {
-            color: rgba(26,26,46,0.75) !important;
-        }
-
-        /* Footer */
-        body.light-mode footer {
-            background: linear-gradient(180deg, rgba(240,242,245,0) 0%, rgba(220,225,232,0.95) 40%) !important;
-            border-top-color: rgba(255,69,0,0.15) !important;
-        }
-        body.light-mode .footer-terminal {
-            background: rgba(0,0,0,0.06) !important;
-            color: rgba(26,26,46,0.65) !important;
-            border-color: rgba(255,69,0,0.15) !important;
-        }
-        body.light-mode .social-link {
-            color: rgba(26,26,46,0.7) !important;
-            background: rgba(0,0,0,0.05) !important;
-            border-color: rgba(0,0,0,0.1) !important;
-        }
-        body.light-mode .footer-bottom,
-        body.light-mode .footer-bottom strong {
-            color: rgba(26,26,46,0.5) !important;
-        }
-        body.light-mode .footer-visitors {
-            color: rgba(26,26,46,0.5) !important;
-        }
-
-        /* Dock flotante */
-        body.light-mode #hub-dock {
-            background: rgba(255,255,255,0.88) !important;
-            border-color: rgba(0,0,0,0.1) !important;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.15) !important;
-        }
-        body.light-mode .dock-label {
-            color: rgba(26,26,46,0.6) !important;
-        }
-
-        /* Theme toggle */
-        body.light-mode .theme-toggle {
-            background: rgba(255,255,255,0.9) !important;
-            border-color: rgba(255,69,0,0.35) !important;
-        }
-
-        /* Menú experimental */
-        body.light-mode #experimental-menu {
-            background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(240,242,248,0.97)) !important;
-        }
-        body.light-mode .menu-header h3 {
-            color: var(--accent) !important;
-        }
-        body.light-mode .menu-header p {
-            color: #666 !important;
-        }
-        body.light-mode .menu-item {
-            background: linear-gradient(145deg, rgba(0,0,0,0.03), rgba(255,69,0,0.04)) !important;
-            border-color: rgba(255,69,0,0.25) !important;
-        }
-        body.light-mode .menu-item-title {
-            color: #b34400 !important;
-        }
-        body.light-mode .menu-item-desc {
-            color: #666 !important;
-        }
-
-        /* Command palette */
-        body.light-mode .command-palette {
-            background: rgba(255,255,255,0.98) !important;
-            border-color: rgba(255,69,0,0.3) !important;
-        }
-        body.light-mode .command-input {
-            background: transparent !important;
-            color: #1a1a2e !important;
-        }
-        body.light-mode .command-item {
-            color: #2d2d44 !important;
-        }
-        body.light-mode .command-item:hover,
-        body.light-mode .command-item-active {
-            background: rgba(255,69,0,0.08) !important;
-        }
-        body.light-mode .command-hint {
-            color: rgba(26,26,46,0.45) !important;
-        }
-
-        /* Section eyebrows / muted text */
-        body.light-mode .section-eyebrow,
-        body.light-mode .section-label,
-        body.light-mode [class*="-eyebrow"] {
-            opacity: 0.9 !important;
-        }
-
-        /* Achievements / Testimonials */
-        body.light-mode .achievement-card,
-        body.light-mode .testimonial-card {
-            background: rgba(255,255,255,0.85) !important;
-            border-color: rgba(255,69,0,0.2) !important;
-        }
-        body.light-mode .achievement-card h3,
-        body.light-mode .testimonial-card p,
-        body.light-mode .testimonial-card strong {
-            color: #1a1a2e !important;
-        }
-
         /* Scroll Progress Bar */
         #scroll-progress {
             position: fixed;
@@ -647,48 +359,6 @@
             background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
             z-index: 9999;
             transition: width 0.1s ease;
-        }
-
-        /* Theme Toggle */
-        .theme-toggle {
-            position: fixed;
-            top: 72px; /* debajo del header */
-            right: 20px;
-            width: 52px;
-            height: 26px;
-            background: rgba(10,10,20,0.85);
-            border-radius: 50px;
-            cursor: pointer;
-            z-index: 450;
-            border: 1px solid rgba(255,69,0,0.4);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-        }
-
-        .theme-toggle:hover {
-            border-color: rgba(255,69,0,0.8);
-            box-shadow: 0 0 18px rgba(255,69,0,0.4);
-        }
-
-        .theme-toggle-circle {
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            transition: transform 0.3s cubic-bezier(.4,0,.2,1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.65rem;
-            color: white;
-            box-shadow: 0 2px 8px rgba(255,69,0,0.4);
-        }
-
-        body.light-mode .theme-toggle-circle {
-            transform: translateX(26px);
         }
 
         /* ========== MENÚ LATERAL EXPERIMENTAL ========== */
@@ -1309,10 +979,6 @@
             align-items: center;
             gap: 0.5rem;
             flex-shrink: 0;
-        }
-
-        #theme-toggle {
-            display: none;
         }
 
         #update-btn {
@@ -3791,12 +3457,6 @@
     <div id="scroll-progress"></div>
     <canvas id="neural-network"></canvas>
     
-    <div class="theme-toggle" onclick="toggleTheme()" title="Cambiar tema (Alt+T)">
-        <div class="theme-toggle-circle">
-            <i class="fas fa-moon"></i>
-        </div>
-    </div>
-
     <!-- ══ EASTER EGG OVERLAY ══ -->
     <div id="egg-overlay">
         <div class="egg-particles" id="egg-particles"></div>
@@ -3952,7 +3612,7 @@
 
         <div class="ch-brand">
             <div class="ch-brand-name">Code<span>Hub</span></div>
-            <div class="ch-brand-sub">by Wilson.E · Guatemala 🇬🇹</div>
+            <div class="ch-brand-sub">by Wilson.E · Guatemala</div>
         </div>
 
         <div class="ch-progress-wrap">
@@ -4021,22 +3681,6 @@
                 <button id="cfg-close" aria-label="Cerrar"><i class="fas fa-times"></i></button>
             </div>
             <div class="cfg-body">
-
-                <!-- Tema -->
-                <div class="cfg-group">
-                    <div class="cfg-label">Tema</div>
-                    <div class="cfg-options">
-                        <button class="cfg-opt active" onclick="setCfg('theme','dark',this)">
-                            <i class="fas fa-moon"></i> Oscuro
-                        </button>
-                        <button class="cfg-opt" onclick="setCfg('theme','light',this)">
-                            <i class="fas fa-sun"></i> Claro
-                        </button>
-                        <button class="cfg-opt" onclick="setCfg('theme','auto',this)">
-                            <i class="fas fa-circle-half-stroke"></i> Auto
-                        </button>
-                    </div>
-                </div>
 
                 <!-- Tamaño de fuente -->
                 <div class="cfg-group">
@@ -5805,33 +5449,6 @@
             setTimeout(() => particle.remove(), 1000);
         }
 
-        // Theme Toggle
-        function toggleTheme() {
-            const body = document.body;
-            const icon = document.querySelector('.theme-toggle-circle i');
-            
-            if (body.classList.contains('light-mode')) {
-                body.classList.remove('light-mode');
-                document.documentElement.classList.remove('light-mode-pre');
-                icon.className = 'fas fa-moon';
-                localStorage.setItem('theme', 'dark');
-            } else {
-                body.classList.add('light-mode');
-                document.documentElement.classList.add('light-mode-pre');
-                icon.className = 'fas fa-sun';
-                localStorage.setItem('theme', 'light');
-            }
-        }
-
-        // Aplicar tema guardado — sincronizar body con la clase ya puesta en <html>
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light-mode');
-            document.querySelector('.theme-toggle-circle i').className = 'fas fa-sun';
-        } else {
-            // Asegurarse de que no quede la clase pre en modo oscuro
-            document.documentElement.classList.remove('light-mode-pre');
-        }
-
         // ========== MENÚ EXPERIMENTAL ==========
         function toggleExperimentalMenu() {
             const menu = document.getElementById('experimental-menu');
@@ -6127,11 +5744,6 @@ DISPONIBILIDAD:
                 openCommandPalette();
             }
             
-            if (e.altKey && e.key === 't') {
-                e.preventDefault();
-                toggleTheme();
-            }
-            
             if (e.key === 'Escape') {
                 closeCommandPalette();
                 const menu = document.getElementById('experimental-menu');
@@ -6151,7 +5763,6 @@ DISPONIBILIDAD:
             { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
-            { name: 'Cambiar Tema', icon: 'fa-moon', action: toggleTheme },
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
@@ -6452,19 +6063,6 @@ DISPONIBILIDAD:
             console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
         });
 
-        // Dark mode automático según hora del día
-        function autoTheme() {
-            const hour = new Date().getHours();
-            if (hour >= 20 || hour < 6) {
-                if (!document.body.classList.contains('light-mode')) {
-                    // Ya está en modo oscuro
-                    console.log('🌙 Modo nocturno activo');
-                }
-            }
-        }
-
-        autoTheme();
-
         // Efecto parallax suave
         window.addEventListener('scroll', () => {
             const scrolled = window.pageYOffset;
@@ -6603,7 +6201,6 @@ DISPONIBILIDAD:
 </nav>
 
 <script src="script.js"></script>
-<script src="theme-switcher.js"></script>
 
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -7243,14 +6840,6 @@ function setCfg(key, val, btn) {
     btn.classList.add('active');
     localStorage.setItem('cfg_' + key, val);
 
-    if (key === 'theme') {
-        if (val === 'dark')  document.body.classList.remove('light-mode');
-        if (val === 'light') document.body.classList.add('light-mode');
-        if (val === 'auto') {
-            const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.body.classList.toggle('light-mode', !dark);
-        }
-    }
     if (key === 'font') {
         document.body.classList.remove('font-sm','font-lg');
         if (val !== 'md') document.body.classList.add('font-' + val);
@@ -7272,9 +6861,9 @@ function toggleNeural(chk) {
 
 function resetCfg() {
     // Borrar todas las preferencias guardadas
-    ['cfg_theme','cfg_font','cfg_anim','cfg_neural','cfg_lang'].forEach(k => localStorage.removeItem(k));
+    ['cfg_font','cfg_anim','cfg_neural','cfg_lang'].forEach(k => localStorage.removeItem(k));
     // Aplicar defaults
-    document.body.classList.remove('light-mode','font-sm','font-lg','no-anim');
+    document.body.classList.remove('font-sm','font-lg','no-anim');
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = '1';
     // Recargar estado visual del panel
@@ -7283,16 +6872,12 @@ function resetCfg() {
 }
 
 function loadCfg() {
-    const theme  = localStorage.getItem('cfg_theme')  || 'dark';
     const font   = localStorage.getItem('cfg_font')   || 'md';
     const anim   = localStorage.getItem('cfg_anim')   !== '0';
     const neural = localStorage.getItem('cfg_neural') !== '0';
     const lang   = localStorage.getItem('cfg_lang')   || 'es';
 
     // Marcar botones activos
-    document.querySelectorAll('[onclick*="setCfg(\'theme\'"]').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('onclick').includes("'"+theme+"'"));
-    });
     document.querySelectorAll('[onclick*="setCfg(\'font\'"]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('onclick').includes("'"+font+"'"));
     });
@@ -8205,7 +7790,7 @@ function setAIMood(btn) {
                 progress = 100;
                 setBar(100);
                 clearInterval(fillInterval);
-                // Pequeña pausa para que el usuario vea el 100%
+                // Pequeña pausa para que el usuario vea el 100% antes de intentar cerrar
                 setTimeout(tryClose, 420);
             } else {
                 setBar(progress);
@@ -8224,13 +7809,13 @@ function setAIMood(btn) {
         if (logoReady && minTimeDone) closeSplash();
     }
 
-    /* Tiempo mínimo de visualización: 1.8s */
-    setTimeout(function(){ minTimeDone = true; tryClose(); }, 1800);
+    /* Tiempo mínimo de visualización: 3s — el usuario debe ver bien el logo */
+    setTimeout(function(){ minTimeDone = true; tryClose(); }, 3000);
 
-    /* Fallback de seguridad: si el logo no carga en 4s, cerrar igual */
+    /* Fallback de seguridad: si el logo no carga en 6s, cerrar igual */
     setTimeout(function(){
         if (!logoReady) { window.chLogoLoaded(); }
-    }, 4000);
+    }, 6000);
 })();
 
 </script>
