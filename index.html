@@ -31,6 +31,10 @@
     <meta name="twitter:image" content="splash/codehub.png">
 
     <!-- PWA -->
+    <!-- Favicon & App Icons — CodeHub -->
+    <link rel="icon" type="image/png" href="splash/codehub.png">
+    <link rel="shortcut icon" type="image/png" href="splash/codehub.png">
+    <link rel="apple-touch-icon" href="splash/codehub.png">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -861,7 +865,7 @@
             .burger-btn { display: flex; }
             header nav { display: none; }
             .header-actions #beta-btn { display: none; }
-            .header-logo-mark { width: 46px; height: 46px; border-radius: 12px; }
+            .header-logo-mark { width: 54px; height: 54px; border-radius: 14px; }
             .header-logo-desc { display: none; }
         }
 
@@ -872,17 +876,21 @@
             gap: 0.6rem;
             flex-shrink: 0;
             text-decoration: none;
+            position: relative;
+            z-index: 1;
         }
 
         .header-logo-mark {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
+            width: 62px;
+            height: 62px;
+            border-radius: 16px;
             object-fit: cover;
             border: 1px solid rgba(255,255,255,0.14);
             box-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,69,0,0.12) inset;
             background: linear-gradient(135deg, rgba(255,69,0,0.12), rgba(255,189,105,0.08));
             flex-shrink: 0;
+            position: relative;
+            z-index: 3;
         }
 
         .header-logo-copy {
@@ -890,6 +898,9 @@
             flex-direction: column;
             gap: 0.18rem;
             min-width: 0;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
         }
 
         .header-logo-meta {
@@ -2659,7 +2670,7 @@
             font-family: var(--mono); animation: pop .2s ease;
         }
         @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.3)} 100%{transform:scale(1)} }
-        .header-logo { position: relative; }
+        /* .header-logo position consolidated above */
 
         /* Overlay easter egg */
         #egg-overlay {
@@ -3283,7 +3294,7 @@
         <div class="header-inner">
             <!-- Logo -->
             <a class="header-logo" href="#" id="logo-egg" onclick="eggClick(event)">
-                <img class="header-logo-mark" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="eager" decoding="async">
+                <img class="header-logo-mark" src="splash/codehub.png" alt="Logo CodeHub" loading="eager" decoding="async" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png';">
                 <span class="header-logo-copy">
                     <span class="header-logo-text">
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
@@ -4082,7 +4093,7 @@
                               alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
                               crossorigin="anonymous"
                               style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
-                              onerror="this.onerror=null;this.src='https://avatars.githubusercontent.com/u/0?v=4';" />
+                              onerror="this.onerror=null;this.src='https://avatars.githubusercontent.com/wilson360-labs?v=4';" />
                           </div>
                         </div>
                         <div class="about-avatar-badge" style="margin-top:.7rem;">
@@ -4115,7 +4126,7 @@
                         <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
                     </div>
                     <div class="about-brand-card">
-                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="lazy" decoding="async">
+                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='splash/codehub.png';">
                         <div class="about-brand-copy">
                             <div class="about-brand-kicker">CodeHub</div>
                             <div class="about-brand-title">Producto + creador en una misma experiencia</div>
@@ -6647,10 +6658,7 @@ function loadCfg() {
 // 1. Anti clic derecho
 document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  // Mostrar toast personalizado en lugar de menú
-  if (typeof toast === 'function') {
-    toast('🔒 Contenido protegido — Wilson.E © 2026');
-  }
+  if (typeof toast === 'function') toast('🔒 Contenido protegido — Wilson.E © 2026');
 });
 
 // 2. Anti selección de texto en secciones clave
@@ -6662,19 +6670,21 @@ protectedSelectors.forEach(sel => {
   });
 });
 
-// 3. Anti keyboard shortcuts de DevTools
+// 3. Protección de código fuente y copia masiva
 document.addEventListener('keydown', (e) => {
-  // Bloquear F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (ver fuente)
-  if (
-    e.key === 'F12' ||
-    (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key.toUpperCase())) ||
-    (e.ctrlKey && e.key.toLowerCase() === 'u')
-  ) {
+  // Ctrl+U → ver código fuente en el navegador
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'u') {
     e.preventDefault();
-    if (typeof toast === 'function') toast('🔒 Acceso restringido');
+    if (typeof toast === 'function') toast('🔒 Código fuente protegido — Wilson.E © 2026');
     return false;
   }
-  // Bloquear Ctrl+C en zonas protegidas
+  // Ctrl+S → guardar página
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (typeof toast === 'function') toast('🔒 Descarga restringida — Wilson.E © 2026');
+    return false;
+  }
+  // Ctrl+C con selección extensa (copia masiva de contenido)
   if (e.ctrlKey && e.key.toLowerCase() === 'c') {
     const sel = window.getSelection()?.toString();
     if (sel && sel.length > 50) {
@@ -6684,30 +6694,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// 4. Anti-DevTools — detectar si están abiertos por tamaño de ventana
-(function detectDevTools() {
-  const threshold = 160;
-  let devOpen = false;
-
-  function check() {
-    const widthDiff  = window.outerWidth  - window.innerWidth;
-    const heightDiff = window.outerHeight - window.innerHeight;
-    const isOpen = widthDiff > threshold || heightDiff > threshold;
-
-    if (isOpen && !devOpen) {
-      devOpen = true;
-      document.getElementById('devtools-warning')?.classList.add('show');
-    } else if (!isOpen && devOpen) {
-      devOpen = false;
-      document.getElementById('devtools-warning')?.classList.remove('show');
-    }
-  }
-
-  setInterval(check, 1000);
-})();
-
-// 5. Ofuscación básica — deshabilitar vista de fuente via URL
-// (Nota: esto disuade usuarios casuales, no a desarrolladores avanzados)
+// 4. Redirigir intento de view-source: en la URL
 if (window.location.href.includes('view-source:')) {
   window.location.href = 'https://wilson360-labs.vercel.app';
 }
@@ -7130,7 +7117,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <!-- PWA Install Prompt -->
   <div id="pwa-install">
     <div class="pwa-card">
-      <div class="pwa-icon">⚡</div>
+      <div class="pwa-icon"><img src="splash/codehub.png" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:8px;display:block;margin:auto;"></div>
       <div class="pwa-text">
         <div class="pwa-title">Instalar CodeHub</div>
         <div class="pwa-sub">Acceso rápido · Sin browser</div>
@@ -7383,7 +7370,7 @@ function setAIMood(btn) {
       rMax = size==='large'?26:size==='medium'?16:10;
       CNT  = size==='large'?8 :size==='medium'?5 :3;
     } else {
-      PAD  = size==='large'?70:size==='medium'?50:32;
+      PAD  = size==='large'?70:size==='medium'?50:14;
       rMin = size==='large'?22:size==='medium'?14:9;
       rMax = size==='large'?44:size==='medium'?30:18;
       CNT  = size==='large'?28:size==='medium'?18:11;
@@ -7469,7 +7456,7 @@ function setAIMood(btn) {
       balls.forEach(function(b){
         var pr=b.r*(1+Math.sin(b.pulse)*.14);
         var a=b.life*.72,r=b.col[0],g=b.col[1],bl=b.col[2];
-        var radius=IS_MOBILE?pr*3:pr*4.2;
+        var radius=IS_MOBILE?pr*2.8:(size==='small'?pr*2.2:pr*4.2);
         var gr=ctx.createRadialGradient(b.x,b.y,pr*.1,b.x,b.y,radius);
         gr.addColorStop(0,'rgba('+r+','+g+','+bl+','+a+')');
         gr.addColorStop(.4,'rgba('+r+','+g+','+bl+','+(a*.3)+')');
