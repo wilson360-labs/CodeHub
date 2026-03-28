@@ -86,6 +86,22 @@
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
+    <!-- Anti-FOUC: aplicar tema ANTES de pintar la página -->
+    <script>
+      (function(){
+        try {
+          if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.add('light-mode-pre');
+          }
+        } catch(e){}
+      })();
+    </script>
+    <style>
+      /* Bloquear render hasta que el tema esté listo — evita flash blanco */
+      html.light-mode-pre body { background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf0 50%, #dde3ea 100%) !important; }
+      html:not(.light-mode-pre) body { background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%) !important; }
+    </style>
+
     <!-- Fuente sistema como fallback inmediato — evita FOUT -->
     <style id="font-fallback">
       body, button, input, textarea, select {
@@ -347,24 +363,278 @@
             padding-bottom: 110px;
         }
 
-        /* Light Mode */
+        /* ===== LIGHT MODE — SISTEMA COMPLETO ===== */
         body.light-mode {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%);
-            color: #0c0c0c;
+            background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf0 50%, #dde3ea 100%);
+            color: #1a1a2e;
         }
 
-        body.light-mode section {
-            background: rgba(255, 255, 255, 0.9) !important;
-            border-color: rgba(255, 69, 0, 0.4) !important;
-        }
-
-        body.light-mode nav a,
-        body.light-mode .terminal-text {
-            color: #0c0c0c !important;
-        }
-
+        /* Fondo de red neuronal — muy sutil en blanco */
         body.light-mode #neural-network {
-            opacity: 0.3 !important;
+            opacity: 0.08 !important;
+        }
+
+        /* Header */
+        body.light-mode header {
+            background: rgba(255,255,255,0.92) !important;
+            border-bottom: 1px solid rgba(255,69,0,0.15) !important;
+            backdrop-filter: blur(20px);
+        }
+        body.light-mode .header-logo-text,
+        body.light-mode .header-logo-badge,
+        body.light-mode .header-logo-desc {
+            color: #1a1a2e !important;
+            -webkit-text-fill-color: #1a1a2e !important;
+        }
+        body.light-mode nav a {
+            color: #2d2d44 !important;
+        }
+        body.light-mode nav a:hover {
+            color: var(--primary) !important;
+        }
+        body.light-mode #cfg-btn {
+            color: #2d2d44 !important;
+            background: rgba(0,0,0,0.06) !important;
+            border-color: rgba(0,0,0,0.12) !important;
+        }
+        body.light-mode .header-typing {
+            color: rgba(26,26,46,0.6) !important;
+        }
+
+        /* Sections */
+        body.light-mode section {
+            background: rgba(255,255,255,0.75) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+            color: #1a1a2e !important;
+        }
+        body.light-mode section h2,
+        body.light-mode section h3,
+        body.light-mode section p,
+        body.light-mode section span,
+        body.light-mode section li {
+            color: #1a1a2e !important;
+        }
+
+        /* Terminal text */
+        body.light-mode .terminal-text {
+            color: #cc3300 !important;
+        }
+
+        /* Stats cards */
+        body.light-mode .stat-card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+        }
+        body.light-mode .stat-number {
+            color: var(--primary) !important;
+        }
+        body.light-mode .stat-label,
+        body.light-mode .stat-sub {
+            color: rgba(26,26,46,0.65) !important;
+        }
+
+        /* Skill cards */
+        body.light-mode .skill {
+            background: rgba(255,255,255,0.8) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+        }
+        body.light-mode .skill-name,
+        body.light-mode .skill-percent {
+            color: #1a1a2e !important;
+        }
+        body.light-mode .skill-bar-fill {
+            background: linear-gradient(90deg, var(--primary), var(--secondary)) !important;
+        }
+
+        /* Service cards */
+        body.light-mode .service-card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+        }
+        body.light-mode .service-card h3 {
+            color: #1a1a2e !important;
+        }
+        body.light-mode .service-card p {
+            color: rgba(26,26,46,0.65) !important;
+        }
+
+        /* About section */
+        body.light-mode .about-text p {
+            color: rgba(26,26,46,0.75) !important;
+        }
+
+        /* Project cards */
+        body.light-mode .project-card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+        }
+        body.light-mode .project-card h3,
+        body.light-mode .project-card p {
+            color: #1a1a2e !important;
+        }
+
+        /* Tools / Apps preview cards */
+        body.light-mode .tp-card,
+        body.light-mode .ap-card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: rgba(0,0,0,0.1) !important;
+        }
+        body.light-mode .tp-card-name,
+        body.light-mode .ap-app-name {
+            color: #1a1a2e !important;
+        }
+        body.light-mode .tp-card-desc,
+        body.light-mode .ap-app-cat {
+            color: rgba(26,26,46,0.55) !important;
+        }
+
+        /* Why Hire Me cards */
+        body.light-mode .wm-card {
+            background: rgba(255,255,255,0.8) !important;
+            border-color: rgba(0,0,0,0.08) !important;
+        }
+        body.light-mode .wm-card-title {
+            color: #1a1a2e !important;
+        }
+        body.light-mode .wm-card-desc {
+            color: rgba(26,26,46,0.6) !important;
+        }
+        body.light-mode .wm-title {
+            background: linear-gradient(135deg, #1a1a2e, rgba(26,26,46,0.65));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Open to Work */
+        body.light-mode .otw-inner {
+            background: linear-gradient(135deg, rgba(0,180,100,0.08), rgba(0,180,100,0.03)) !important;
+        }
+        body.light-mode .otw-title {
+            color: #1a1a2e !important;
+        }
+        body.light-mode .otw-desc {
+            color: rgba(26,26,46,0.65) !important;
+        }
+        body.light-mode .otw-info-card {
+            background: rgba(255,255,255,0.6) !important;
+            border-color: rgba(0,0,0,0.08) !important;
+        }
+        body.light-mode .otw-info-val {
+            color: #1a1a2e !important;
+        }
+
+        /* Contact form */
+        body.light-mode .contact-form input,
+        body.light-mode .contact-form textarea,
+        body.light-mode .contact-form select {
+            background: rgba(255,255,255,0.9) !important;
+            border-color: rgba(255,69,0,0.25) !important;
+            color: #1a1a2e !important;
+        }
+        body.light-mode .contact-form label {
+            color: rgba(26,26,46,0.75) !important;
+        }
+
+        /* Footer */
+        body.light-mode footer {
+            background: linear-gradient(180deg, rgba(240,242,245,0) 0%, rgba(220,225,232,0.95) 40%) !important;
+            border-top-color: rgba(255,69,0,0.15) !important;
+        }
+        body.light-mode .footer-terminal {
+            background: rgba(0,0,0,0.06) !important;
+            color: rgba(26,26,46,0.65) !important;
+            border-color: rgba(255,69,0,0.15) !important;
+        }
+        body.light-mode .social-link {
+            color: rgba(26,26,46,0.7) !important;
+            background: rgba(0,0,0,0.05) !important;
+            border-color: rgba(0,0,0,0.1) !important;
+        }
+        body.light-mode .footer-bottom,
+        body.light-mode .footer-bottom strong {
+            color: rgba(26,26,46,0.5) !important;
+        }
+        body.light-mode .footer-visitors {
+            color: rgba(26,26,46,0.5) !important;
+        }
+
+        /* Dock flotante */
+        body.light-mode #hub-dock {
+            background: rgba(255,255,255,0.88) !important;
+            border-color: rgba(0,0,0,0.1) !important;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.15) !important;
+        }
+        body.light-mode .dock-label {
+            color: rgba(26,26,46,0.6) !important;
+        }
+
+        /* Theme toggle */
+        body.light-mode .theme-toggle {
+            background: rgba(255,255,255,0.9) !important;
+            border-color: rgba(255,69,0,0.35) !important;
+        }
+
+        /* Menú experimental */
+        body.light-mode #experimental-menu {
+            background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(240,242,248,0.97)) !important;
+        }
+        body.light-mode .menu-header h3 {
+            color: var(--accent) !important;
+        }
+        body.light-mode .menu-header p {
+            color: #666 !important;
+        }
+        body.light-mode .menu-item {
+            background: linear-gradient(145deg, rgba(0,0,0,0.03), rgba(255,69,0,0.04)) !important;
+            border-color: rgba(255,69,0,0.25) !important;
+        }
+        body.light-mode .menu-item-title {
+            color: #b34400 !important;
+        }
+        body.light-mode .menu-item-desc {
+            color: #666 !important;
+        }
+
+        /* Command palette */
+        body.light-mode .command-palette {
+            background: rgba(255,255,255,0.98) !important;
+            border-color: rgba(255,69,0,0.3) !important;
+        }
+        body.light-mode .command-input {
+            background: transparent !important;
+            color: #1a1a2e !important;
+        }
+        body.light-mode .command-item {
+            color: #2d2d44 !important;
+        }
+        body.light-mode .command-item:hover,
+        body.light-mode .command-item-active {
+            background: rgba(255,69,0,0.08) !important;
+        }
+        body.light-mode .command-hint {
+            color: rgba(26,26,46,0.45) !important;
+        }
+
+        /* Section eyebrows / muted text */
+        body.light-mode .section-eyebrow,
+        body.light-mode .section-label,
+        body.light-mode [class*="-eyebrow"] {
+            opacity: 0.9 !important;
+        }
+
+        /* Achievements / Testimonials */
+        body.light-mode .achievement-card,
+        body.light-mode .testimonial-card {
+            background: rgba(255,255,255,0.85) !important;
+            border-color: rgba(255,69,0,0.2) !important;
+        }
+        body.light-mode .achievement-card h3,
+        body.light-mode .testimonial-card p,
+        body.light-mode .testimonial-card strong {
+            color: #1a1a2e !important;
         }
 
         /* Scroll Progress Bar */
@@ -915,12 +1185,56 @@
         .header-logo-badge {
             font-size: 0.68rem;
             font-weight: 700;
-            color: var(--accent);
-            background: rgba(255,69,0,0.12);
-            border: 1px solid rgba(255,69,0,0.3);
-            padding: 2px 7px;
+            color: #fff;
+            background: linear-gradient(135deg, #ff4500, #cc2200);
+            border: none;
+            padding: 3px 10px;
             border-radius: 20px;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            box-shadow: 0 2px 10px rgba(255,69,0,0.4);
+            transition: box-shadow .3s ease, transform .2s ease;
+            cursor: default;
+        }
+        .header-logo-badge:hover {
+            box-shadow: 0 4px 18px rgba(255,69,0,0.65);
+            transform: translateY(-1px);
+        }
+        /* Ondas líquidas dentro del badge */
+        .header-logo-badge .badge-wave {
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 100%;
+            height: 14px;
+            background: url("https://raw.githubusercontent.com/ojitoslanda/testing/master/img/wave.png");
+            background-size: 200px 14px;
+            opacity: 0.35;
+            pointer-events: none;
+        }
+        .header-logo-badge .badge-wave.bw1 {
+            animation: badgeWave1 3s linear infinite;
+            bottom: -3px;
+        }
+        .header-logo-badge .badge-wave.bw2 {
+            animation: badgeWave2 2s linear infinite;
+            bottom: -1px;
+            opacity: 0.2;
+        }
+        @keyframes badgeWave1 {
+            0%   { background-position-x: 0; }
+            100% { background-position-x: 200px; }
+        }
+        @keyframes badgeWave2 {
+            0%   { background-position-x: 0; }
+            100% { background-position-x: -200px; }
+        }
+        /* Texto del badge por encima de las olas */
+        .header-logo-badge span.badge-text {
+            position: relative;
+            z-index: 2;
         }
 
         .header-logo-desc {
@@ -1387,26 +1701,75 @@
 /* FAB */
 #ai-fab {
   position:fixed; right:20px; bottom:20px;
-  height:46px; padding:0 16px 0 12px; border-radius:23px;
-  background:linear-gradient(135deg,#7C4DFF,#00B0FF);
-  border:none; color:#fff; display:flex; align-items:center; gap:8px;
-  cursor:pointer; z-index:5000; white-space:nowrap;
-  box-shadow:0 4px 20px rgba(124,77,255,.45),0 1px 6px rgba(0,0,0,.4);
-  transition:transform .28s cubic-bezier(.2,.9,.2,1),box-shadow .28s,opacity .25s;
-  animation:aiFabPop .6s cubic-bezier(.2,.9,.2,1) both 1s;
+  height:50px; padding:0 18px 0 12px; border-radius:25px;
+  background: linear-gradient(135deg, #6a11ff 0%, #2575fc 50%, #00c6ff 100%);
+  border:none; color:#fff; display:flex; align-items:center; gap:9px;
+  cursor:pointer; z-index:5000; white-space:nowrap; overflow:hidden;
+  box-shadow: 0 4px 24px rgba(106,17,255,.5), 0 1px 6px rgba(0,0,0,.4);
+  transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s, opacity .25s;
+  animation: aiFabPop .6s cubic-bezier(.2,.9,.2,1) both 1s;
 }
 @keyframes aiFabPop{0%{opacity:0;transform:scale(0) rotate(-90deg)}75%{transform:scale(1.06) rotate(2deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
-#ai-fab::after{content:'';position:absolute;inset:-3px;border-radius:26px;border:1.5px solid rgba(124,77,255,.4);animation:fabRing 3s ease-in-out infinite;pointer-events:none;}
-@keyframes fabRing{0%,100%{opacity:0;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
-#ai-fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 8px 28px rgba(124,77,255,.6);}
-#ai-fab:active{transform:scale(.96);}
-#ai-fab.hidden{opacity:0;pointer-events:none;transform:scale(0) rotate(-90deg);}
-#ai-fab .ai-fab-icon{width:28px;height:28px;background:rgba(255,255,255,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;transition:transform .3s;}
-#ai-fab:hover .ai-fab-icon{transform:rotate(-15deg) scale(1.1);}
-#ai-fab .ai-fab-text{display:flex;flex-direction:column;line-height:1.15;}
-#ai-fab .ai-fab-label{font-size:.78rem;font-weight:700;font-family:'Space Grotesk',system-ui,sans-serif;}
-#ai-fab .ai-fab-sub{font-size:.6rem;color:rgba(255,255,255,.6);font-family:'JetBrains Mono',monospace;}
-#ai-fab .ai-notif{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#FF5252;border-radius:50%;border:2px solid #0a0a14;animation:notifBlink 2s infinite;}
+
+/* Ondas líquidas dentro del FAB */
+#ai-fab .fab-wave {
+  position: absolute;
+  bottom: -5px; left: 0;
+  width: 100%; height: 22px;
+  background: url("https://raw.githubusercontent.com/ojitoslanda/testing/master/img/wave.png");
+  background-size: 300px 22px;
+  pointer-events: none;
+}
+#ai-fab .fab-wave.fw1 {
+  animation: fabWave1 4s linear infinite;
+  opacity: 0.28; bottom: -4px;
+}
+#ai-fab .fab-wave.fw2 {
+  animation: fabWave2 2.5s linear infinite;
+  opacity: 0.18; bottom: -1px;
+}
+#ai-fab .fab-wave.fw3 {
+  animation: fabWave1 6s linear infinite;
+  opacity: 0.12; bottom: -7px;
+  animation-delay: -2s;
+}
+@keyframes fabWave1 { 0%{background-position-x:0} 100%{background-position-x:300px} }
+@keyframes fabWave2 { 0%{background-position-x:0} 100%{background-position-x:-300px} }
+
+/* Brillo animado de fondo */
+#ai-fab::before {
+  content:'';position:absolute;inset:0;border-radius:25px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.15) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: fabShine 3.5s ease-in-out infinite;
+}
+@keyframes fabShine { 0%,100%{transform:translateX(-100%)} 60%{transform:translateX(100%)} }
+
+/* Anillo exterior pulsante */
+#ai-fab::after {
+  content:'';position:absolute;inset:-3px;border-radius:28px;
+  border:1.5px solid rgba(106,17,255,.5);
+  animation:fabRing 3s ease-in-out infinite;pointer-events:none;
+}
+@keyframes fabRing{0%,100%{opacity:0;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+
+#ai-fab:hover { transform:translateY(-3px) scale(1.04); box-shadow:0 10px 32px rgba(106,17,255,.65), 0 0 0 4px rgba(37,117,252,.2); }
+#ai-fab:active { transform:scale(.96); }
+#ai-fab.hidden { opacity:0;pointer-events:none;transform:scale(0) rotate(-90deg); }
+
+#ai-fab .ai-fab-icon {
+  width:28px;height:28px;
+  background:rgba(255,255,255,.2);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.95rem;flex-shrink:0;
+  transition:transform .3s;
+  position:relative;z-index:2;
+}
+#ai-fab:hover .ai-fab-icon { transform:rotate(-15deg) scale(1.15); }
+#ai-fab .ai-fab-text { display:flex;flex-direction:column;line-height:1.15;position:relative;z-index:2; }
+#ai-fab .ai-fab-label { font-size:.78rem;font-weight:700;font-family:'Space Grotesk',system-ui,sans-serif; }
+#ai-fab .ai-fab-sub { font-size:.6rem;color:rgba(255,255,255,.65);font-family:'JetBrains Mono',monospace; }
+#ai-fab .ai-notif { position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#ff5252;border-radius:50%;border:2px solid #0a0a14;animation:notifBlink 2s infinite;z-index:3; }
 @keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.15}}
 /* Panel */
 #ai-panel{
@@ -1781,23 +2144,27 @@
 
 
         /* ════════════════════════════════════════
-           SPLASH SCREEN — CodeHub Pro
+           SPLASH SCREEN — CodeHub Pro (Rediseño Elegante)
         ════════════════════════════════════════ */
         #ch-splash {
             position: fixed;
             inset: 0;
             z-index: 99999;
-            background: #06060f;
+            background:
+                radial-gradient(ellipse 80% 60% at 50% 20%, rgba(106,17,255,.18) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,198,255,.1) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 20% 70%, rgba(37,117,252,.08) 0%, transparent 60%),
+                #06060f;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            transition: opacity .6s ease, transform .6s ease;
+            transition: opacity .8s cubic-bezier(.4,0,.2,1), transform .8s cubic-bezier(.4,0,.2,1);
         }
         #ch-splash.ch-splash--out {
             opacity: 0;
-            transform: scale(1.04);
+            transform: scale(1.06);
             pointer-events: none;
         }
 
@@ -1807,126 +2174,263 @@
             inset: 0;
             width: 100%;
             height: 100%;
+            z-index: 0;
+        }
+
+        /* ── Ondas líquidas en la base ── */
+        .ch-waves {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .ch-wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 110px;
+            background: url("https://raw.githubusercontent.com/ojitoslanda/testing/master/img/wave.png");
+            background-size: 1000px 110px;
+        }
+        /* Ola 1 — magenta/violeta principal, más opaca */
+        .ch-wave.w1 {
+            animation: chWave1 16s linear infinite;
+            z-index: 4;
+            opacity: 0.75;
+            bottom: 0;
+            filter: hue-rotate(200deg) saturate(2) brightness(1.4);
+        }
+        /* Ola 2 — cian eléctrico */
+        .ch-wave.w2 {
+            animation: chWave2 10s linear infinite;
+            z-index: 3;
+            opacity: 0.5;
+            bottom: 10px;
+            animation-delay: -3s;
+            filter: hue-rotate(160deg) saturate(3) brightness(1.6);
+        }
+        /* Ola 3 — naranja/coral suave de fondo */
+        .ch-wave.w3 {
+            animation: chWave1 24s linear infinite;
+            z-index: 2;
+            opacity: 0.22;
+            bottom: 18px;
+            animation-delay: -8s;
+            filter: hue-rotate(0deg) saturate(2) brightness(1.2);
+        }
+        /* Ola 4 — violeta profundo, rápida */
+        .ch-wave.w4 {
+            animation: chWave2 7s linear infinite;
+            z-index: 1;
+            opacity: 0.45;
+            bottom: 26px;
+            animation-delay: -1s;
+            filter: hue-rotate(240deg) saturate(2.5) brightness(1.3);
+        }
+        /* Gradiente sobre las olas para fusionarlas con el fondo */
+        .ch-waves::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 60%;
+            background: linear-gradient(to bottom,
+                #06060f 0%,
+                transparent 100%);
+            z-index: 6;
+            pointer-events: none;
+        }
+        /* Resplandor de color en la base */
+        .ch-waves::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 70px;
+            background: linear-gradient(to top,
+                rgba(106,17,255, 0.25) 0%,
+                rgba(0,198,255, 0.12) 50%,
+                transparent 100%);
+            z-index: 7;
+            pointer-events: none;
+        }
+        @keyframes chWave1 {
+            0%   { background-position-x: 0; }
+            100% { background-position-x: 1000px; }
+        }
+        @keyframes chWave2 {
+            0%   { background-position-x: 0; }
+            100% { background-position-x: -1000px; }
         }
 
         /* Anillo exterior giratorio */
         .ch-ring-wrap {
             position: relative;
-            width: 280px;
-            height: 280px;
+            width: 260px;
+            height: 260px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            z-index: 10;
+            animation: chFadeUp .7s cubic-bezier(.16,1,.3,1) .1s both;
         }
         .ch-ring {
             position: absolute;
             inset: 0;
             border-radius: 50%;
-            background: conic-gradient(from 0deg, #ff4500, #ff6b35, #ffbd69, #ff8c00, #ff4500, #cc2200, #ff4500);
-            animation: chSpin 3s linear infinite;
-            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 4px));
-            mask:         radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 4px));
+            background: conic-gradient(from 0deg, #6a11ff, #2575fc, #00c6ff, #7c4dff, #ff4500, #6a11ff);
+            animation: chSpin 3.5s linear infinite;
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
+            mask:         radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
         }
         .ch-ring-inner {
             position: absolute;
-            inset: 14px;
+            inset: 12px;
             border-radius: 50%;
-            background: conic-gradient(from 180deg, #ffbd69, #ff4500, #cc2200, #ff6b35, #ffbd69);
-            animation: chSpinRev 5s linear infinite;
-            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
-            mask:         radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
-            opacity: .7;
+            background: conic-gradient(from 180deg, #00c6ff, #2575fc, #6a11ff, #ff4500, #00c6ff);
+            animation: chSpinRev 6s linear infinite;
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px));
+            mask:         radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px));
+            opacity: .6;
         }
         .ch-glow-ring {
             position: absolute;
-            inset: -8px;
+            inset: -10px;
             border-radius: 50%;
-            box-shadow: 0 0 32px rgba(255,69,0,.9), 0 0 64px rgba(255,107,53,.5), 0 0 100px rgba(255,189,105,.25);
-            animation: chGlowPulse 2.2s ease-in-out infinite;
+            box-shadow:
+                0 0 28px rgba(106,17,255,.8),
+                0 0 56px rgba(37,117,252,.4),
+                0 0 90px rgba(0,198,255,.2);
+            animation: chGlowPulse 2.5s ease-in-out infinite;
         }
         @keyframes chSpin    { to { transform: rotate(360deg);  } }
         @keyframes chSpinRev { to { transform: rotate(-360deg); } }
         @keyframes chGlowPulse {
-            0%,100% { opacity: .75; }
-            50%      { opacity: 1;   }
+            0%,100% { opacity: .6;  box-shadow: 0 0 28px rgba(106,17,255,.8), 0 0 56px rgba(37,117,252,.4); }
+            50%     { opacity: 1;   box-shadow: 0 0 44px rgba(106,17,255,1),  0 0 88px rgba(0,198,255,.55); }
         }
 
-        /* Logo centrado */
+        /* Logo centrado — aparece al cargar */
         .ch-logo-img {
-            width: 175px;
-            height: 175px;
-            border-radius: 34px;
+            width: 160px;
+            height: 160px;
+            border-radius: 32px;
             object-fit: contain;
             position: relative;
             z-index: 2;
-            animation: chLogoIn .55s cubic-bezier(.16,1,.3,1) both;
-            filter: drop-shadow(0 0 18px rgba(255,69,0,.7));
+            opacity: 0;
+            transition: opacity .5s ease, filter .5s ease;
+            filter: drop-shadow(0 0 24px rgba(255,69,0,.8));
         }
-        @keyframes chLogoIn {
-            from { opacity: 0; transform: scale(.7); }
-            to   { opacity: 1; transform: scale(1);  }
+        .ch-logo-img.loaded {
+            opacity: 1;
+            animation: chLogoPop .6s cubic-bezier(.16,1,.3,1) both;
+        }
+        @keyframes chLogoPop {
+            from { transform: scale(.75); }
+            to   { transform: scale(1);   }
         }
 
         /* Texto inferior */
         .ch-brand {
-            margin-top: 2rem;
+            margin-top: 1.8rem;
             text-align: center;
             position: relative;
-            z-index: 2;
-            animation: chFadeUp .5s ease .3s both;
+            z-index: 10;
+            animation: chFadeUp .6s ease .5s both;
         }
         .ch-brand-name {
             font-family: 'Space Grotesk', system-ui, sans-serif;
-            font-size: 2rem;
+            font-size: 2.1rem;
             font-weight: 800;
             color: #fff;
-            letter-spacing: .04em;
+            letter-spacing: .05em;
             line-height: 1;
         }
-        .ch-brand-name span { color: #ff4500; }
+        .ch-brand-name span {
+            background: linear-gradient(90deg, #2575fc, #00c6ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .ch-brand-sub {
-            margin-top: .35rem;
+            margin-top: .4rem;
             font-family: 'JetBrains Mono', monospace;
-            font-size: .62rem;
-            letter-spacing: .28em;
-            color: rgba(255,255,255,.38);
+            font-size: .6rem;
+            letter-spacing: .3em;
+            color: rgba(255,255,255,.3);
             text-transform: uppercase;
         }
 
-        /* Barra de progreso */
+        /* Barra de progreso — Pro */
         .ch-progress-wrap {
-            margin-top: 2.4rem;
-            width: 180px;
+            margin-top: 2rem;
+            width: 220px;
             position: relative;
-            z-index: 2;
-            animation: chFadeUp .5s ease .5s both;
+            z-index: 10;
+            animation: chFadeUp .6s ease .65s both;
+        }
+        .ch-progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: .55rem;
+        }
+        .ch-progress-status {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .58rem;
+            color: rgba(255,255,255,.3);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+        .ch-progress-pct {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem;
+            font-weight: 700;
+            color: #00c6ff;
+            letter-spacing: .05em;
+            min-width: 36px;
+            text-align: right;
         }
         .ch-progress-track {
-            height: 3px;
-            background: rgba(255,255,255,.08);
+            height: 4px;
+            background: rgba(255,255,255,.06);
             border-radius: 99px;
             overflow: hidden;
+            position: relative;
+        }
+        .ch-progress-track::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255,69,0,.08);
+            border-radius: 99px;
         }
         .ch-progress-bar {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #ff4500, #ffbd69);
+            background: linear-gradient(90deg, #6a11ff, #2575fc, #00c6ff);
             border-radius: 99px;
-            transition: width .08s linear;
-            box-shadow: 0 0 10px rgba(255,69,0,.7);
+            transition: width .12s linear;
+            box-shadow: 0 0 14px rgba(106,17,255,.9), 0 0 4px #fff3;
+            position: relative;
         }
-        .ch-progress-pct {
-            margin-top: .5rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: .6rem;
-            color: rgba(255,255,255,.3);
-            letter-spacing: .15em;
-            text-align: center;
+        .ch-progress-bar::after {
+            content: '';
+            position: absolute;
+            right: 0; top: 50%;
+            transform: translateY(-50%);
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #00c6ff;
+            box-shadow: 0 0 8px #00c6ff, 0 0 16px rgba(0,198,255,.6);
         }
 
         @keyframes chFadeUp {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(14px); }
             to   { opacity: 1; transform: translateY(0);    }
         }
 
@@ -3424,16 +3928,26 @@
     <div id="ch-splash" role="status" aria-label="Cargando CodeHub">
         <canvas id="ch-splash-canvas"></canvas>
 
+        <!-- Ondas líquidas en la base -->
+        <div class="ch-waves">
+            <div class="ch-wave w1"></div>
+            <div class="ch-wave w2"></div>
+            <div class="ch-wave w3"></div>
+            <div class="ch-wave w4"></div>
+        </div>
+
         <div class="ch-ring-wrap">
             <div class="ch-glow-ring"></div>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
             <img class="ch-logo-img"
+                 id="ch-logo-img"
                  src="splash/codehub.PNG"
                  alt="CodeHub"
                  fetchpriority="high"
-                 decoding="sync"
-                 onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.PNG';">
+                 decoding="async"
+                 onload="chLogoLoaded()"
+                 onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.PNG';chLogoLoaded();">
         </div>
 
         <div class="ch-brand">
@@ -3442,10 +3956,13 @@
         </div>
 
         <div class="ch-progress-wrap">
+            <div class="ch-progress-label">
+                <span class="ch-progress-status" id="ch-status">Cargando...</span>
+                <span class="ch-progress-pct" id="ch-pct">0%</span>
+            </div>
             <div class="ch-progress-track">
                 <div class="ch-progress-bar" id="ch-bar"></div>
             </div>
-            <div class="ch-progress-pct" id="ch-pct">0%</div>
         </div>
     </div>
 
@@ -3459,7 +3976,7 @@
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
                     </span>
                     <span class="header-logo-meta">
-                        <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small">CodeHub</span>
+                        <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small"><span class="badge-text">CodeHub</span><div class="badge-wave bw1"></div><div class="badge-wave bw2"></div></span>
                         <span class="header-logo-desc">IA, tools y seguridad web en un solo lugar</span>
                     </span>
                 </span>
@@ -3485,10 +4002,6 @@
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
                 </button>
-
-                <a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" class="header-yt-btn" title="Canal de YouTube" aria-label="YouTube">
-                    <i class="fab fa-youtube"></i>
-                </a>
 
                 <!-- Burger button — solo visible en mobile -->
                 <button class="burger-btn" id="burger-btn" aria-label="Menú" onclick="toggleMobileNav()">
@@ -5299,18 +5812,24 @@
             
             if (body.classList.contains('light-mode')) {
                 body.classList.remove('light-mode');
+                document.documentElement.classList.remove('light-mode-pre');
                 icon.className = 'fas fa-moon';
                 localStorage.setItem('theme', 'dark');
             } else {
                 body.classList.add('light-mode');
+                document.documentElement.classList.add('light-mode-pre');
                 icon.className = 'fas fa-sun';
                 localStorage.setItem('theme', 'light');
             }
         }
 
+        // Aplicar tema guardado — sincronizar body con la clase ya puesta en <html>
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
             document.querySelector('.theme-toggle-circle i').className = 'fas fa-sun';
+        } else {
+            // Asegurarse de que no quede la clase pre en modo oscuro
+            document.documentElement.classList.remove('light-mode-pre');
         }
 
         // ========== MENÚ EXPERIMENTAL ==========
@@ -6245,6 +6764,9 @@ async function sendEmail(e) {
     <span class="ai-fab-sub">Pregúntame algo</span>
   </span>
   <span class="ai-notif"></span>
+  <div class="fab-wave fw1"></div>
+  <div class="fab-wave fw2"></div>
+  <div class="fab-wave fw3"></div>
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="Asistente IA CodeHub">
@@ -7581,8 +8103,15 @@ function setAIMood(btn) {
     var splash  = document.getElementById('ch-splash');
     var bar     = document.getElementById('ch-bar');
     var pct     = document.getElementById('ch-pct');
+    var status  = document.getElementById('ch-status');
     var canvas  = document.getElementById('ch-splash-canvas');
     if (!splash) return;
+
+    /* ── Estado de carga ── */
+    var logoReady   = false;   // logo terminó de cargar
+    var minTimeDone = false;   // tiempo mínimo de visualización
+    var progress    = 0;       // 0–100
+    var targetPct   = 15;      // hasta dónde avanzar antes del logo
 
     /* ── Partículas de fondo ── */
     var ctx = canvas.getContext('2d');
@@ -7594,18 +8123,16 @@ function setAIMood(btn) {
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    function Particle(){
-        this.reset();
-    }
+    function Particle(){ this.reset(); }
     Particle.prototype.reset = function(){
-        this.x  = Math.random() * W;
-        this.y  = Math.random() * H;
-        this.r  = .6 + Math.random() * 1.8;
-        this.vx = (Math.random() - .5) * .4;
-        this.vy = -(Math.random() * .6 + .2);
+        this.x    = Math.random() * W;
+        this.y    = Math.random() * H;
+        this.r    = .5 + Math.random() * 1.6;
+        this.vx   = (Math.random() - .5) * .35;
+        this.vy   = -(Math.random() * .5 + .15);
         this.life = 1;
-        this.decay = .004 + Math.random() * .004;
-        this.col = Math.random() < .5 ? '255,69,0' : '255,189,105';
+        this.decay= .003 + Math.random() * .004;
+        this.col  = Math.random() < .5 ? '255,69,0' : '255,189,105';
     };
     Particle.prototype.update = function(){
         this.x += this.vx;
@@ -7613,13 +8140,11 @@ function setAIMood(btn) {
         this.life -= this.decay;
         if (this.life <= 0 || this.y < -10) this.reset();
     };
-
-    for (var i = 0; i < 90; i++){
+    for (var i = 0; i < 80; i++){
         var p = new Particle();
-        p.y = Math.random() * H; /* distribuir inicialmente */
+        p.y = Math.random() * H;
         particles.push(p);
     }
-
     var animRunning = true;
     (function drawLoop(){
         if (!animRunning) return;
@@ -7629,43 +8154,83 @@ function setAIMood(btn) {
             p.update();
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(' + p.col + ',' + (p.life * .8) + ')';
+            ctx.fillStyle = 'rgba(' + p.col + ',' + (p.life * .75) + ')';
             ctx.fill();
         });
     })();
 
-    /* ── Barra de progreso ── */
-    var n = 0;
-    var iv = setInterval(function(){
-        n = Math.min(n + 1, 100);
-        if (bar) bar.style.width = n + '%';
-        if (pct) pct.textContent  = n + '%';
-        if (n >= 100) clearInterval(iv);
-    }, 28); /* ~2.8 s total */
+    /* ── Barra de progreso animada ── */
+    var rafId;
+    function animateBar(){
+        if (progress < targetPct) {
+            // Velocidad variable: rápido al inicio, lento al acercarse al target
+            var step = Math.max(0.3, (targetPct - progress) * 0.045);
+            progress = Math.min(progress + step, targetPct);
+            setBar(progress);
+            rafId = requestAnimationFrame(animateBar);
+        }
+    }
 
-    /* ── Cerrar al cargar la página ── */
+    function setBar(val){
+        val = Math.round(val);
+        if (bar) bar.style.width = val + '%';
+        if (pct) pct.textContent = val + '%';
+        // Actualizar texto de estado
+        if (status){
+            if (val < 30)       status.textContent = 'Iniciando...';
+            else if (val < 60)  status.textContent = 'Cargando recursos...';
+            else if (val < 90)  status.textContent = 'Casi listo...';
+            else                status.textContent = '¡Listo!';
+        }
+    }
+
+    /* Arrancar animación de barra — avanza libremente hasta 70% */
+    targetPct = 70;
+    animateBar();
+
+    /* ── Callback: logo cargado ── */
+    window.chLogoLoaded = function(){
+        logoReady = true;
+        cancelAnimationFrame(rafId);
+
+        // Mostrar el logo con animación
+        var img = document.getElementById('ch-logo-img');
+        if (img) img.classList.add('loaded');
+
+        // Completar barra hasta 100% rápidamente
+        targetPct = 100;
+        var fillInterval = setInterval(function(){
+            progress += 3.5;
+            if (progress >= 100){
+                progress = 100;
+                setBar(100);
+                clearInterval(fillInterval);
+                // Pequeña pausa para que el usuario vea el 100%
+                setTimeout(tryClose, 420);
+            } else {
+                setBar(progress);
+            }
+        }, 16);
+    };
+
+    /* ── Cerrar splash ── */
     function closeSplash(){
         animRunning = false;
         splash.classList.add('ch-splash--out');
-        setTimeout(function(){
-            splash.style.display = 'none';
-        }, 650);
+        setTimeout(function(){ splash.style.display = 'none'; }, 850);
     }
 
-    /* Cerrar cuando el DOM esté listo + mínimo 2s de visualización */
-    var domReady = false, minTimeReached = false;
-    function tryClose(){ if (domReady && minTimeReached) closeSplash(); }
-
-    setTimeout(function(){ minTimeReached = true; tryClose(); }, 2800);
-
-    if (document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', function(){ domReady = true; tryClose(); });
-    } else {
-        domReady = true; tryClose();
+    function tryClose(){
+        if (logoReady && minTimeDone) closeSplash();
     }
 
-    /* Fallback de seguridad: cerrar a los 5s pase lo que pase */
-    setTimeout(closeSplash, 5000);
+    /* Tiempo mínimo de visualización: 1.8s */
+    setTimeout(function(){ minTimeDone = true; tryClose(); }, 1800);
+
+    /* Fallback de seguridad: si el logo no carga en 6s, cerrar igual */
+    setTimeout(function(){
+        if (!logoReady) { window.chLogoLoaded(); }
+    }, 6000);
 })();
 
 </script>
