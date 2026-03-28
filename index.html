@@ -11,7 +11,7 @@
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ff4500">
     
-<link rel="preload" as="image" href="splash/codehub.png">
+<link rel="preload" as="image" href="splash/codehub.PNG">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/">
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
@@ -19,7 +19,7 @@
     <meta property="og:url" content="https://wilson360-labs.vercel.app/">
     <meta property="og:title" content="Wilson.E — Desarrollador Web Full Stack | CodeHub">
     <meta property="og:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas, proyectos web y apps Android. Disponible para freelance.">
-    <meta property="og:image" content="splash/codehub.png">
+    <meta property="og:image" content="splash/codehub.PNG">
     <meta property="og:locale" content="es_GT">
     <meta property="og:site_name" content="CodeHub by Wilson.E">
 
@@ -28,13 +28,13 @@
     <meta name="twitter:url" content="https://wilson360-labs.vercel.app/">
     <meta name="twitter:title" content="Wilson.E — Desarrollador Web Full Stack">
     <meta name="twitter:description" content="Portfolio de Wilson.E, dev full stack de Guatemala. 27 herramientas y proyectos web.">
-    <meta name="twitter:image" content="splash/codehub.png">
+    <meta name="twitter:image" content="splash/codehub.PNG">
 
     <!-- PWA -->
     <!-- Favicon & App Icons — CodeHub -->
-    <link rel="icon" type="image/png" href="splash/codehub.png">
-    <link rel="shortcut icon" type="image/png" href="splash/codehub.png">
-    <link rel="apple-touch-icon" href="splash/codehub.png">
+    <link rel="icon" type="image/png" href="splash/codehub.PNG">
+    <link rel="shortcut icon" type="image/png" href="splash/codehub.PNG">
+    <link rel="apple-touch-icon" href="splash/codehub.PNG">
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -880,18 +880,7 @@
             z-index: 1;
         }
 
-        .header-logo-mark {
-            width: 62px;
-            height: 62px;
-            border-radius: 16px;
-            object-fit: cover;
-            border: 1px solid rgba(255,255,255,0.14);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,69,0,0.12) inset;
-            background: linear-gradient(135deg, rgba(255,69,0,0.12), rgba(255,189,105,0.08));
-            flex-shrink: 0;
-            position: relative;
-            z-index: 3;
-        }
+        .header-logo-mark { display: none; }
 
         .header-logo-copy {
             display: flex;
@@ -1777,27 +1766,168 @@
             display: inline-block;
         }
 
-        /* ── LIQUID EFFECT — CodeHub & Wilson.E ── */
+        /* ── LIQUID LETTERS — CodeHub & Wilson.E ── */
         .liquid-word {
             display: inline-block;
             position: relative;
             cursor: default;
-            overflow: visible;
         }
         .liquid-letter {
             display: inline-block;
-            will-change: transform, color, text-shadow;
-            transition: transform .38s cubic-bezier(.34,1.56,.64,1), color .22s, text-shadow .28s;
+            position: relative;
+            will-change: transform, color;
+            transition: color .18s ease, text-shadow .18s ease;
+        }
+
+
+        /* ════════════════════════════════════════
+           SPLASH SCREEN — CodeHub Pro
+        ════════════════════════════════════════ */
+        #ch-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #06060f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: opacity .6s ease, transform .6s ease;
+        }
+        #ch-splash.ch-splash--out {
+            opacity: 0;
+            transform: scale(1.04);
+            pointer-events: none;
+        }
+
+        /* Partículas de fondo */
+        #ch-splash-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Anillo exterior giratorio */
+        .ch-ring-wrap {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .ch-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, #ff4500, #ff6b35, #ffbd69, #ff8c00, #ff4500, #cc2200, #ff4500);
+            animation: chSpin 3s linear infinite;
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 4px));
+            mask:         radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 4px));
+        }
+        .ch-ring-inner {
+            position: absolute;
+            inset: 14px;
+            border-radius: 50%;
+            background: conic-gradient(from 180deg, #ffbd69, #ff4500, #cc2200, #ff6b35, #ffbd69);
+            animation: chSpinRev 5s linear infinite;
+            -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
+            mask:         radial-gradient(farthest-side, transparent calc(100% - 3px), black calc(100% - 3px));
+            opacity: .7;
+        }
+        .ch-glow-ring {
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            box-shadow: 0 0 32px rgba(255,69,0,.9), 0 0 64px rgba(255,107,53,.5), 0 0 100px rgba(255,189,105,.25);
+            animation: chGlowPulse 2.2s ease-in-out infinite;
+        }
+        @keyframes chSpin    { to { transform: rotate(360deg);  } }
+        @keyframes chSpinRev { to { transform: rotate(-360deg); } }
+        @keyframes chGlowPulse {
+            0%,100% { opacity: .75; }
+            50%      { opacity: 1;   }
+        }
+
+        /* Logo centrado */
+        .ch-logo-img {
+            width: 175px;
+            height: 175px;
+            border-radius: 34px;
+            object-fit: contain;
             position: relative;
             z-index: 2;
+            animation: chLogoIn .55s cubic-bezier(.16,1,.3,1) both;
+            filter: drop-shadow(0 0 18px rgba(255,69,0,.7));
         }
-        .liquid-canvas-bg {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%,-50%);
-            pointer-events: none;
-            z-index: 0;
+        @keyframes chLogoIn {
+            from { opacity: 0; transform: scale(.7); }
+            to   { opacity: 1; transform: scale(1);  }
+        }
+
+        /* Texto inferior */
+        .ch-brand {
+            margin-top: 2rem;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            animation: chFadeUp .5s ease .3s both;
+        }
+        .ch-brand-name {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: .04em;
+            line-height: 1;
+        }
+        .ch-brand-name span { color: #ff4500; }
+        .ch-brand-sub {
+            margin-top: .35rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .62rem;
+            letter-spacing: .28em;
+            color: rgba(255,255,255,.38);
+            text-transform: uppercase;
+        }
+
+        /* Barra de progreso */
+        .ch-progress-wrap {
+            margin-top: 2.4rem;
+            width: 180px;
+            position: relative;
+            z-index: 2;
+            animation: chFadeUp .5s ease .5s both;
+        }
+        .ch-progress-track {
+            height: 3px;
+            background: rgba(255,255,255,.08);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .ch-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff4500, #ffbd69);
+            border-radius: 99px;
+            transition: width .08s linear;
+            box-shadow: 0 0 10px rgba(255,69,0,.7);
+        }
+        .ch-progress-pct {
+            margin-top: .5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .6rem;
+            color: rgba(255,255,255,.3);
+            letter-spacing: .15em;
+            text-align: center;
+        }
+
+        @keyframes chFadeUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0);    }
         }
 
         .hero-desc {
@@ -3290,11 +3420,40 @@
         </div>
     </div>
 
+    <!-- ══ SPLASH SCREEN ══ -->
+    <div id="ch-splash" role="status" aria-label="Cargando CodeHub">
+        <canvas id="ch-splash-canvas"></canvas>
+
+        <div class="ch-ring-wrap">
+            <div class="ch-glow-ring"></div>
+            <div class="ch-ring"></div>
+            <div class="ch-ring-inner"></div>
+            <img class="ch-logo-img"
+                 src="splash/codehub.PNG"
+                 alt="CodeHub"
+                 fetchpriority="high"
+                 decoding="sync"
+                 onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.PNG';">
+        </div>
+
+        <div class="ch-brand">
+            <div class="ch-brand-name">Code<span>Hub</span></div>
+            <div class="ch-brand-sub">by Wilson.E · Guatemala</div>
+        </div>
+
+        <div class="ch-progress-wrap">
+            <div class="ch-progress-track">
+                <div class="ch-progress-bar" id="ch-bar"></div>
+            </div>
+            <div class="ch-progress-pct" id="ch-pct">0%</div>
+        </div>
+    </div>
+
     <header>
         <div class="header-inner">
             <!-- Logo -->
             <a class="header-logo" href="#" id="logo-egg" onclick="eggClick(event)">
-                <img class="header-logo-mark" src="splash/codehub.png" alt="Logo CodeHub" loading="eager" decoding="async" onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png';">
+
                 <span class="header-logo-copy">
                     <span class="header-logo-text">
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
@@ -4089,9 +4248,8 @@
                           <div style="position:absolute;inset:14px;border-radius:50%;background:conic-gradient(from 180deg,#ffbd69,#ff4500,#cc2200,#ff6b35,#ffbd69);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));z-index:2;"></div>
                           <!-- Foto — ocupa todo el círculo -->
                           <div style="position:absolute;inset:12px;border-radius:50%;overflow:hidden;z-index:1;">
-                            <img src="https://i.ibb.co/G4JGM65y/1749331794644.jpg"
+                            <img src="https://i.ibb.co/MX1Kg6X/1749331794644.jpg"
                               alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
-                              crossorigin="anonymous"
                               style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
                               onerror="this.onerror=null;this.src='https://avatars.githubusercontent.com/wilson360-labs?v=4';" />
                           </div>
@@ -4126,7 +4284,7 @@
                         <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
                     </div>
                     <div class="about-brand-card">
-                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/wilson360-labs/main/assets/logo.png" alt="Logo CodeHub" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='splash/codehub.png';">
+                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.PNG" alt="Logo CodeHub" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='splash/codehub.PNG';">
                         <div class="about-brand-copy">
                             <div class="about-brand-kicker">CodeHub</div>
                             <div class="about-brand-title">Producto + creador en una misma experiencia</div>
@@ -7117,7 +7275,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <!-- PWA Install Prompt -->
   <div id="pwa-install">
     <div class="pwa-card">
-      <div class="pwa-icon"><img src="splash/codehub.png" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:8px;display:block;margin:auto;"></div>
+      <div class="pwa-icon"><img src="splash/codehub.PNG" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:8px;display:block;margin:auto;"></div>
       <div class="pwa-text">
         <div class="pwa-title">Instalar CodeHub</div>
         <div class="pwa-sub">Acceso rápido · Sin browser</div>
@@ -7312,247 +7470,204 @@ function setAIMood(btn) {
 </script>
 
 <script>
-/* ── LIQUID EFFECT v2 — CodeHub & Wilson.E ── */
+/* ── LIQUID LETTERS — CodeHub & Wilson.E ── */
 (function(){
-  /* ── Detección mobile para throttling ── */
-  var IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-                  || window.innerWidth < 768;
-  /* En móvil: reducir partículas y dibujar a ~30fps en lugar de 60fps */
-  var MOBILE_FPS_INTERVAL = IS_MOBILE ? 1000/30 : 0;
-  var _lastFrame = 0;
+  var IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-  var PALETTES={
-    codehub:[[255,80,0],[220,40,0],[255,140,30],[255,200,40],[255,60,100],[255,100,20]],
-    wilson: [[120,50,255],[70,180,255],[210,70,255],[30,230,210],[255,80,0],[160,60,255]]
+  /* Paletas de color para el ripple hover */
+  var PALETTES = {
+    codehub: ['#ff6535','#ff8f6a','#ffb590','#ffd0b0','#fff0e8'],
+    wilson:  ['#a06aff','#bf90ff','#d8b0ff','#ecdaff','#f8f0ff']
   };
 
-  function Ball(x,y,r,palette){
-    this.x=x;this.y=y;this.r=r;
-    this.vx=(Math.random()-.5)*2.2;this.vy=(Math.random()-.5)*2.2;
-    this.col=palette[Math.floor(Math.random()*palette.length)];
-    this.life=.9+Math.random()*.1;
-    this.decay=.0018+Math.random()*.002;
-    this.pulse=Math.random()*Math.PI*2;
-    this.pspeed=.018+Math.random()*.025;
-    this.angle=Math.random()*Math.PI*2;
-    this.spin=(Math.random()-.5)*.015;
-  }
-  Ball.prototype.update=function(W,H,mx,my){
-    this.pulse+=this.pspeed;
-    this.angle+=this.spin;
-    this.vx*=.975;this.vy*=.975;
-    this.vx+=Math.cos(this.angle)*.012;
-    this.vy+=Math.sin(this.angle)*.012;
-    this.x+=this.vx;this.y+=this.vy;
-    if(this.x<this.r){this.x=this.r;this.vx*=-.75;}
-    if(this.x>W-this.r){this.x=W-this.r;this.vx*=-.75;}
-    if(this.y<this.r){this.y=this.r;this.vy*=-.75;}
-    if(this.y>H-this.r){this.y=H-this.r;this.vy*=-.75;}
-    if(mx>-9999){
-      var dx=mx-this.x,dy=my-this.y,d=Math.sqrt(dx*dx+dy*dy);
-      if(d<160&&d>1){this.vx+=dx/d*.038;this.vy+=dy/d*.038;}
-    }
-    this.life-=this.decay;
-  };
-  Ball.prototype.alive=function(){return this.life>0;};
+  function setup(wrapper) {
+    var id = wrapper.id || '';
+    var palette = id.indexOf('wilson') > -1 ? PALETTES.wilson : PALETTES.codehub;
 
-  function setup(wrapper){
-    var paletteKey=wrapper.id&&wrapper.id.indexOf('wilson')>-1?'wilson':'codehub';
-    if(wrapper.id&&wrapper.id.indexOf('codehub')>-1) paletteKey='codehub';
-    var palette=PALETTES[paletteKey];
-
-    var size=wrapper.dataset.liqSize||'medium';
-    var PAD, rMin, rMax, CNT;
-    if(IS_MOBILE){
-      /* Móvil: mucho menos carga */
-      PAD  = size==='large'?40:size==='medium'?28:18;
-      rMin = size==='large'?14:size==='medium'?8:5;
-      rMax = size==='large'?26:size==='medium'?16:10;
-      CNT  = size==='large'?8 :size==='medium'?5 :3;
-    } else {
-      PAD  = size==='large'?70:size==='medium'?50:14;
-      rMin = size==='large'?22:size==='medium'?14:9;
-      rMax = size==='large'?44:size==='medium'?30:18;
-      CNT  = size==='large'?28:size==='medium'?18:11;
-    }
-
-    /* Split letters */
-    var textNodes=[];
-    wrapper.childNodes.forEach(function(n){
-      if(n.nodeType===3&&n.textContent.trim()) textNodes.push(n);
+    /* ── 1. Dividir texto en spans por letra ── */
+    var nodes = [];
+    wrapper.childNodes.forEach(function(n) {
+      if (n.nodeType === 3 && n.textContent.trim()) nodes.push(n);
     });
-    textNodes.forEach(function(node){
-      var frag=document.createDocumentFragment();
-      node.textContent.split('').forEach(function(ch){
-        if(ch===' '){frag.appendChild(document.createTextNode('\u00A0'));return;}
-        var s=document.createElement('span');
-        s.className='liquid-letter';s.textContent=ch;
-        s.style.cssText='position:relative;z-index:2;display:inline-block;';
+    nodes.forEach(function(node) {
+      var frag = document.createDocumentFragment();
+      node.textContent.split('').forEach(function(ch) {
+        if (ch === ' ') { frag.appendChild(document.createTextNode(' ')); return; }
+        var s = document.createElement('span');
+        s.className = 'liquid-letter';
+        s.textContent = ch;
         frag.appendChild(s);
       });
       node.replaceWith(frag);
     });
 
-    /* Canvas */
-    var cv=document.createElement('canvas');
-    cv.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;';
-    if(getComputedStyle(wrapper).position==='static') wrapper.style.position='relative';
-    wrapper.insertBefore(cv,wrapper.firstChild);
+    var letters = [].slice.call(wrapper.querySelectorAll('.liquid-letter'));
+    if (!letters.length) return;
 
-    /* En móvil usar willReadFrequently=false y desactivar smoothing */
-    var ctxOpts = IS_MOBILE ? {willReadFrequently:false,alpha:true} : {};
-    var ctx=cv.getContext('2d', ctxOpts);
-    if(IS_MOBILE) ctx.imageSmoothingEnabled=false;
-
-    var W=2,H=2,balls=[],ready=false,mx=-9999,my=-9999,lastSpawn=0;
-
-    function spawnBall(bx,by,fast){
-      var b=new Ball(
-        bx!==undefined?bx:PAD+Math.random()*(W-PAD*2),
-        by!==undefined?by:PAD+Math.random()*(H-PAD*2),
-        rMin+Math.random()*(rMax-rMin),palette);
-      if(fast){b.vx=(Math.random()-.5)*4.5;b.vy=(Math.random()-.5)*4.5;}
-      balls.push(b);
-    }
-
-    function resize(){
-      var rect=wrapper.getBoundingClientRect();
-      if(rect.width<4){setTimeout(resize,150);return;}
-      W=Math.round(rect.width)+PAD*2;H=Math.round(rect.height)+PAD*2;
-      cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';
-      if(!ready){ready=true;balls=[];for(var i=0;i<CNT;i++)spawnBall();}
-    }
-    setTimeout(resize,160);
-    if(window.ResizeObserver) new ResizeObserver(function(){if(!ready)resize();}).observe(wrapper);
-
-    function draw(ts){
-      requestAnimationFrame(draw);
-
-      /* Throttle a 30fps en móvil */
-      if(IS_MOBILE){
-        if(ts - _lastFrame < MOBILE_FPS_INTERVAL) return;
-        _lastFrame = ts;
-      }
-
-      ctx.clearRect(0,0,W,H);
-      if(!ready) return;
-
-      balls=balls.filter(function(b){return b.alive();});
-      while(balls.length<Math.ceil(CNT*.65)) spawnBall();
-
-      /* En móvil no spawneamos partículas extra por touch para ahorrar GPU */
-      if(!IS_MOBILE){
-        var now=Date.now();
-        if(mx>-9999&&now-lastSpawn>60){
-          spawnBall(mx+(Math.random()-.5)*22,my+(Math.random()-.5)*22,true);
-          lastSpawn=now;
-        }
-      }
-
-      balls.forEach(function(b){b.update(W,H,mx,my);});
-
-      /* En móvil: solo 1 capa (screen glow) para reducir fillRect calls */
-      ctx.save();ctx.globalCompositeOperation='screen';
-      balls.forEach(function(b){
-        var pr=b.r*(1+Math.sin(b.pulse)*.14);
-        var a=b.life*.72,r=b.col[0],g=b.col[1],bl=b.col[2];
-        var radius=IS_MOBILE?pr*2.8:(size==='small'?pr*2.2:pr*4.2);
-        var gr=ctx.createRadialGradient(b.x,b.y,pr*.1,b.x,b.y,radius);
-        gr.addColorStop(0,'rgba('+r+','+g+','+bl+','+a+')');
-        gr.addColorStop(.4,'rgba('+r+','+g+','+bl+','+(a*.3)+')');
-        gr.addColorStop(1,'rgba('+r+','+g+','+bl+',0)');
-        ctx.beginPath();ctx.arc(b.x,b.y,radius,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
-      });
-      ctx.restore();
-
-      /* Capa 2: core blobs — solo en desktop */
-      if(!IS_MOBILE){
-        ctx.save();ctx.globalCompositeOperation='lighter';
-        balls.forEach(function(b){
-          var pr=b.r*(1+Math.sin(b.pulse)*.1);
-          var a=b.life*.28,r=b.col[0],g=b.col[1],bl=b.col[2];
-          var gr=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,pr*2);
-          gr.addColorStop(0,'rgba('+r+','+g+','+bl+','+a+')');
-          gr.addColorStop(.6,'rgba('+r+','+g+','+bl+','+(a*.3)+')');
-          gr.addColorStop(1,'rgba('+r+','+g+','+bl+',0)');
-          ctx.beginPath();ctx.arc(b.x,b.y,pr*2,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
-        });
-        ctx.restore();
-
-        /* Capa 3: specular — solo desktop */
-        ctx.save();ctx.globalCompositeOperation='source-over';
-        balls.forEach(function(b){
-          var pr=b.r*(1+Math.sin(b.pulse)*.08);
-          var a=b.life*.22;
-          var gr=ctx.createRadialGradient(b.x-pr*.25,b.y-pr*.25,0,b.x,b.y,pr*.85);
-          gr.addColorStop(0,'rgba(255,255,255,'+a+')');
-          gr.addColorStop(1,'rgba(255,255,255,0)');
-          ctx.beginPath();ctx.arc(b.x,b.y,pr*.85,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
-        });
-        ctx.restore();
-      }
-    }
-    requestAnimationFrame(draw);
-
-    /* Mouse (desktop) */
-    wrapper.addEventListener('mousemove',function(e){
-      var rect=wrapper.getBoundingClientRect();
-      mx=(e.clientX-rect.left)+PAD;my=(e.clientY-rect.top)+PAD;
+    /* ── 2. Wave continuo — cada letra oscila como agua ── */
+    /*
+      Cada letra tiene su propia fase aleatoria para que el movimiento
+      no sea robótico. Se superponen 2 ondas con frecuencias distintas
+      para lograr el carácter irregular del agua real.
+    */
+    var phases = letters.map(function(_, i) {
+      return {
+        offset : i * 0.55,           /* desfase entre letras */
+        amp1   : 2.8 + Math.random() * 1.4,  /* amplitud onda 1 */
+        amp2   : 1.2 + Math.random() * 0.8,  /* amplitud onda 2 */
+        freq1  : 1.0 + Math.random() * 0.3,  /* frecuencia onda 1 */
+        freq2  : 1.7 + Math.random() * 0.4,  /* frecuencia onda 2 */
+        scaleA : 0.018 + Math.random() * 0.01 /* escala X suave */
+      };
     });
-    wrapper.addEventListener('mouseleave',function(){mx=-9999;my=-9999;});
 
-    /* Touch — en móvil solo atracción suave, sin spawn extra */
-    wrapper.addEventListener('touchmove',function(e){
-      var rect=wrapper.getBoundingClientRect();
-      var t=e.touches[0];
-      mx=(t.clientX-rect.left)+PAD;my=(t.clientY-rect.top)+PAD;
-    },{passive:true});
-    wrapper.addEventListener('touchend',function(){mx=-9999;my=-9999;});
+    var t = 0;
+    var waving = true;
+    var BASE_SPEED = IS_MOBILE ? 0.028 : 0.038;
 
-    /* Wave — en móvil ralentizar el wave también */
-    var letters=[].slice.call(wrapper.querySelectorAll('.liquid-letter'));
-    var wT=0,waving=true;
-    var waveStep=IS_MOBILE?.025:.04;
-    (function wave(){
-      if(waving){
-        wT+=waveStep;
-        letters.forEach(function(el,i){
-          var yo=Math.sin(wT+i*.65)*5;
-          var sx=1+Math.sin(wT+i*.85)*.03;
-          el.style.transform='translateY('+yo+'px) scaleX('+sx+')';
-        });
-      }
+    (function wave() {
       requestAnimationFrame(wave);
+      if (!waving) return;
+      t += BASE_SPEED;
+      letters.forEach(function(el, i) {
+        var p   = phases[i];
+        var off = p.offset;
+        /* Suma de dos senoides — crea irregularidad tipo agua */
+        var y   = Math.sin(t * p.freq1 + off) * p.amp1
+                + Math.sin(t * p.freq2 + off * 1.3) * p.amp2;
+        /* Escala horizontal muy sutil — efecto de "respiración" */
+        var sx  = 1 + Math.sin(t * 0.9 + off) * p.scaleA;
+        el.style.transform = 'translateY(' + y + 'px) scaleX(' + sx + ')';
+      });
     })();
 
-    /* Ripple — solo en desktop (mouseenter no aplica en touch) */
-    if(!IS_MOBILE){
-      var rippleCols=paletteKey==='codehub'
-        ?['#ff6535','#ff8f6a','#ffb590','#ffd0b0','#ffe8d5']
-        :['#a06aff','#bf90ff','#d8b0ff','#ecdaff','#f8f0ff'];
-      letters.forEach(function(el,idx){
-        el.addEventListener('mouseenter',function(){
-          waving=false;
-          letters.forEach(function(o,j){
-            var d=Math.abs(j-idx);
-            setTimeout(function(){
-              o.style.transform='translateY(-'+(Math.max(0,18-d*3.2))+'px) scale('+(1+Math.max(0,.3-d*.055))+')';
-              o.style.color=d<5?rippleCols[Math.min(d,4)]:'';
-              o.style.textShadow=d===0?'0 0 20px '+rippleCols[0]+',0 0 42px '+rippleCols[0]+'88':
-                                 d===1?'0 0 12px '+rippleCols[1]+'99':'';
-            },d*40);
+    /* ── 3. Ripple al hover — solo desktop ── */
+    if (!IS_MOBILE) {
+      letters.forEach(function(el, idx) {
+        el.addEventListener('mouseenter', function() {
+          waving = false;
+          letters.forEach(function(o, j) {
+            var d = Math.abs(j - idx);
+            var delay = d * 38;
+            setTimeout(function() {
+              var lift  = Math.max(0, 16 - d * 3.2);
+              var scale = 1 + Math.max(0, 0.28 - d * 0.055);
+              o.style.transform   = 'translateY(-' + lift + 'px) scale(' + scale + ')';
+              o.style.color       = d < 5 ? palette[Math.min(d, 4)] : '';
+              o.style.textShadow  = d === 0
+                ? '0 0 16px ' + palette[0] + ', 0 0 32px ' + palette[0] + '66'
+                : d === 1 ? '0 0 10px ' + palette[1] + '88' : '';
+            }, delay);
           });
         });
-        el.addEventListener('mouseleave',function(){
-          waving=true;
-          letters.forEach(function(o){o.style.color='';o.style.textShadow='';});
+
+        el.addEventListener('mouseleave', function() {
+          waving = true;
+          letters.forEach(function(o) {
+            o.style.color      = '';
+            o.style.textShadow = '';
+            /* El transform lo retoma el wave loop en el siguiente frame */
+          });
         });
       });
     }
   }
 
-  document.addEventListener('DOMContentLoaded',function(){
+  document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.liquid-word').forEach(setup);
   });
 })();
+
+// ══ SPLASH SCREEN JS ══════════════════════════════════════════════
+(function(){
+    var splash  = document.getElementById('ch-splash');
+    var bar     = document.getElementById('ch-bar');
+    var pct     = document.getElementById('ch-pct');
+    var canvas  = document.getElementById('ch-splash-canvas');
+    if (!splash) return;
+
+    /* ── Partículas de fondo ── */
+    var ctx = canvas.getContext('2d');
+    var W, H, particles = [];
+    function resizeCanvas(){
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    function Particle(){
+        this.reset();
+    }
+    Particle.prototype.reset = function(){
+        this.x  = Math.random() * W;
+        this.y  = Math.random() * H;
+        this.r  = .6 + Math.random() * 1.8;
+        this.vx = (Math.random() - .5) * .4;
+        this.vy = -(Math.random() * .6 + .2);
+        this.life = 1;
+        this.decay = .004 + Math.random() * .004;
+        this.col = Math.random() < .5 ? '255,69,0' : '255,189,105';
+    };
+    Particle.prototype.update = function(){
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life -= this.decay;
+        if (this.life <= 0 || this.y < -10) this.reset();
+    };
+
+    for (var i = 0; i < 90; i++){
+        var p = new Particle();
+        p.y = Math.random() * H; /* distribuir inicialmente */
+        particles.push(p);
+    }
+
+    var animRunning = true;
+    (function drawLoop(){
+        if (!animRunning) return;
+        requestAnimationFrame(drawLoop);
+        ctx.clearRect(0, 0, W, H);
+        particles.forEach(function(p){
+            p.update();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(' + p.col + ',' + (p.life * .8) + ')';
+            ctx.fill();
+        });
+    })();
+
+    /* ── Barra de progreso ── */
+    var n = 0;
+    var iv = setInterval(function(){
+        n = Math.min(n + 1, 100);
+        if (bar) bar.style.width = n + '%';
+        if (pct) pct.textContent  = n + '%';
+        if (n >= 100) clearInterval(iv);
+    }, 28); /* ~2.8 s total */
+
+    /* ── Cerrar al cargar la página ── */
+    function closeSplash(){
+        animRunning = false;
+        splash.classList.add('ch-splash--out');
+        setTimeout(function(){
+            splash.style.display = 'none';
+        }, 650);
+    }
+
+    /* Cerrar cuando el DOM esté listo + mínimo 2s de visualización */
+    var domReady = false, minTimeReached = false;
+    function tryClose(){ if (domReady && minTimeReached) closeSplash(); }
+
+    setTimeout(function(){ minTimeReached = true; tryClose(); }, 2800);
+
+    if (document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', function(){ domReady = true; tryClose(); });
+    } else {
+        domReady = true; tryClose();
+    }
+
+    /* Fallback de seguridad: cerrar a los 5s pase lo que pase */
+    setTimeout(closeSplash, 5000);
+})();
+
 </script>
