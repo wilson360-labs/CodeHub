@@ -11,7 +11,8 @@
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ff4500">
     
-<link rel="preload" as="image" href="splash/codehub.png">
+<link rel="preload" as="image" href="splash/codehub-splash.webp" type="image/webp">
+<link rel="preload" as="image" href="splash/codehub-splash.png" type="image/png">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/">
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
@@ -3600,14 +3601,17 @@
             <div class="ch-glow-ring"></div>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
-            <img class="ch-logo-img"
-                 id="ch-logo-img"
-                 src="splash/codehub.png"
-                 alt="CodeHub"
-                 fetchpriority="high"
-                 decoding="async"
-                 onload="chLogoLoaded()"
-                 onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png';chLogoLoaded();">
+            <picture>
+                <source srcset="splash/codehub-splash.webp" type="image/webp">
+                <img class="ch-logo-img"
+                     id="ch-logo-img"
+                     src="splash/codehub-splash.png"
+                     alt="CodeHub"
+                     fetchpriority="high"
+                     decoding="sync"
+                     onload="chLogoLoaded()"
+                     onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png';chLogoLoaded();">
+            </picture>
         </div>
 
         <div class="ch-brand">
