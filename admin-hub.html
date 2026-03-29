@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — CodeHub</title>
   <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://codehub-production-729d.up.railway.app; frame-src https://challenges.cloudflare.com;">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
@@ -543,7 +544,7 @@
     <div style="font-family:var(--mono);font-size:.6rem;color:rgba(255,107,107,.5);margin-bottom:.5rem">
       ⚠️ No compartas esta URL
     </div>
-    <input type="password" id="pwd-input" class="login-input" placeholder="••••••••"
+    <input type="password" id="pwd-input" class="login-input" placeholder="••••••••" autocomplete="current-password" spellcheck="false"
       onkeydown="if(event.key==='Enter')checkLogin()">
     <div class="cf-turnstile" data-sitekey="0x4AAAAAAClKd5T1R81GltW_" data-theme="dark" data-language="es" style="margin:.6rem auto;display:flex;justify-content:center" id="ts-admin"></div>
     <button class="login-btn" onclick="checkLogin()"><i class="fas fa-unlock"></i> Ingresar</button>
@@ -767,32 +768,45 @@ function setupUrlAutoConvert() {
 let ADMIN_KEY = '';
 
 // ── AUTH ──────────────────────────────────────────────────────
+let _loginAttempts = 0;
+let _loginLockedUntil = 0;
+
 async function checkLogin() {
+  const now = Date.now();
+  if (now < _loginLockedUntil) {
+    const secs = Math.ceil((_loginLockedUntil - now) / 1000);
+    document.getElementById('login-err').textContent = `⏳ Demasiados intentos. Espera ${secs}s`;
+    return;
+  }
+
   const pwd = document.getElementById('pwd-input').value.trim();
   if (!pwd) return;
-  // Verificar Turnstile
-  // Turnstile opcional — no bloquea el login si no carga
-  const tsToken = document.querySelector('#ts-admin input[name="cf-turnstile-response"]')?.value
-               || document.querySelector('input[name="cf-turnstile-response"]')?.value || '';
+
   const btn = document.querySelector('.login-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+
   try {
-    // Verificar contra el backend real
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       headers: { 'x-admin-key': pwd }
     });
     if (res.ok) {
+      _loginAttempts = 0;
       ADMIN_KEY = pwd;
       sessionStorage.setItem('admin_key', pwd);
       document.getElementById('login-screen').style.display = 'none';
       const data = await res.json();
       initAdmin(data.apps);
     } else {
-      document.getElementById('login-err').textContent = '❌ Contraseña incorrecta';
+      _loginAttempts++;
       document.getElementById('pwd-input').value = '';
+      if (_loginAttempts >= 5) {
+        _loginLockedUntil = Date.now() + 30000; // 30s lockout
+        document.getElementById('login-err').textContent = '🔒 5 intentos fallidos. Espera 30s';
+      } else {
+        document.getElementById('login-err').textContent = `❌ Contraseña incorrecta (${_loginAttempts}/5)`;
+      }
     }
   } catch {
-    // Si falla la red, intentar login local de emergencia
     document.getElementById('login-err').textContent = '❌ Error de conexión con el servidor';
   }
   btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock"></i> Ingresar';
@@ -1086,7 +1100,7 @@ function saveSchedule() {
   const badge = document.getElementById('sch-badge-' + appId);
   if (badge) { badge.className = 'sch-scheduled'; badge.textContent = '📅 ' + dt.slice(0,10); }
   closeSchedule();
-  toast('✅ Publicación programada para ' + new Date(dt).toLocaleString('es'));
+  toast('✅ Programado para ' + new Date(dt).toLocaleString('es') + ' — guardado localmente en este navegador');
   checkScheduledPublications();
 }
 
@@ -1478,6 +1492,18 @@ function renderAddForm() {
           <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">IMAGEN (ruta)</label>
           <input class="ver-input" id="new-imagen" style="width:100%" placeholder="img/NombreApp.png">
         </div>
+        <div style="grid-column:1/-1">
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">CHANGELOG</label>
+          <textarea class="changelog-input" id="new-changelog" rows="2" style="width:100%;resize:vertical" placeholder="v1.0.0 — Descripción de cambios..."></textarea>
+        </div>
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">LINK PLUGIN (opcional)</label>
+          <input class="ver-input" id="new-plugin" style="width:100%" placeholder="https://...">
+        </div>
+        <div>
+          <label style="font-family:var(--mono);font-size:.65rem;color:var(--muted);display:block;margin-bottom:.3rem">TUTORIAL YouTube (opcional)</label>
+          <input class="ver-input" id="new-tutorial" style="width:100%" placeholder="https://youtube.com/...">
+        </div>
       </div>
       <button class="publish-btn" style="background:linear-gradient(135deg,var(--p),#ff6b35)" onclick="createApp()">
         <i class="fas fa-plus"></i> Crear App
@@ -1487,15 +1513,18 @@ function renderAddForm() {
 
 async function createApp() {
   const body = {
-    appId:       document.getElementById('new-appId').value.trim(),
-    nombre:      document.getElementById('new-nombre').value.trim(),
-    version:     document.getElementById('new-version').value.trim(),
-    categoria:   document.getElementById('new-cat').value,
-    descripcion: document.getElementById('new-desc').value.trim(),
-    enlace:      document.getElementById('new-enlace').value.trim() || '#',
-    imagen:      document.getElementById('new-imagen').value.trim(),
-    tag:         '🆕',
-    verified:    true,
+    appId:        document.getElementById('new-appId').value.trim(),
+    nombre:       document.getElementById('new-nombre').value.trim(),
+    version:      document.getElementById('new-version').value.trim(),
+    categoria:    document.getElementById('new-cat').value,
+    descripcion:  document.getElementById('new-desc').value.trim(),
+    enlace:       document.getElementById('new-enlace').value.trim() || '#',
+    imagen:       document.getElementById('new-imagen').value.trim(),
+    changelog:    document.getElementById('new-changelog')?.value.trim() || '',
+    plugin_enlace: document.getElementById('new-plugin')?.value.trim() || null,
+    tutorial_url:  document.getElementById('new-tutorial')?.value.trim() || null,
+    tag:          '🆕',
+    verified:     true,
   };
   if (!body.appId || !body.nombre) return toast('❌ AppId y Nombre son obligatorios');
   try {
@@ -1639,6 +1668,12 @@ function applyUpdate() {
     else location.reload();
   });
 }
+</script>
+<script>
+// Limpiar sesión si el usuario cierra la pestaña (seguridad)
+window.addEventListener('beforeunload', () => {
+  sessionStorage.removeItem('admin_key');
+});
 </script>
 
 </body>
