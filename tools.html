@@ -1483,83 +1483,6 @@ async function doTranslate() {
   }
 }
 
-// ── 20 · CALCULADORA CIENTÍFICA ────────────────────────────
-(function buildCalc() {
-  const display = () => document.getElementById('calc-display');
-  let expr = '';
-  let lastResult = false;
-
-  const BTN = [
-    ['C','⌫','%','÷'],
-    ['7','8','9','×'],
-    ['4','5','6','−'],
-    ['1','2','3','+'],
-    ['±','0','.','='],
-    ['x²','√','sin','cos'],
-    ['tan','π','e','( )'],
-  ];
-
-  const container = document.getElementById('calc-btns');
-  if (!container) return;
-  container.style.gridTemplateColumns = 'repeat(4,1fr)';
-
-  BTN.forEach(row => row.forEach(lbl => {
-    const b = document.createElement('button');
-    b.textContent = lbl;
-    b.className = 'tb';
-    b.style.cssText = 'padding:.4rem;font-size:.82rem;margin:0';
-    const isOp   = ['÷','×','−','+','='].includes(lbl);
-    const isFn   = ['sin','cos','tan','√','x²','π','e','( )','%','±','⌫','C'].includes(lbl);
-    if (isOp) b.style.background = 'linear-gradient(135deg,var(--p),var(--s))';
-    if (isFn) b.style.background = 'rgba(255,255,255,.08)';
-
-    b.addEventListener('click', () => {
-      const d = display();
-      if (lbl === 'C')  { expr = ''; d.value = '0'; lastResult = false; return; }
-      if (lbl === '⌫')  { expr = expr.slice(0,-1); d.value = expr || '0'; return; }
-      if (lbl === '=') {
-        try {
-          let e = expr
-            .replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')
-            .replace(/π/g,'Math.PI').replace(/e(?![a-z])/g,'Math.E');
-          const r = Function('"use strict"; return (' + e + ')')();
-          expr = isFinite(r) ? String(+r.toFixed(10)) : '❌';
-          d.value = expr;
-          lastResult = true;
-        } catch { d.value = '❌ Error'; expr = ''; }
-        return;
-      }
-      if (lbl === 'x²')    { try { const _n=+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')\n')(); expr=String(_n*_n); d.value=expr; } catch{} return; }
-      if (lbl === '√')     { try { expr = String(Math.sqrt(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')())); d.value = expr; } catch{} return; }
-      if (lbl === 'sin')   { try { expr = String(+Math.sin(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
-      if (lbl === 'cos')   { try { expr = String(+Math.cos(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
-      if (lbl === 'tan')   { try { expr = String(+Math.tan(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
-      if (lbl === 'π')     { expr += 'π'; d.value = expr; return; }
-      if (lbl === 'e')     { expr += 'e'; d.value = expr; return; }
-      if (lbl === '±')     { expr = expr.startsWith('-') ? expr.slice(1) : '-'+expr; d.value = expr; return; }
-      if (lbl === '%')     { try { expr = String(+Function('"use strict";return('+expr+')')() / 100); d.value = expr; } catch{} return; }
-      if (lbl === '( )') {
-        const opens = (expr.match(/\(/g)||[]).length;
-        const closes= (expr.match(/\)/g)||[]).length;
-        expr += opens > closes ? ')' : '(';
-        d.value = expr; return;
-      }
-      if (lastResult && /[0-9.]/.test(lbl)) {
-        // Nuevo número después de resultado — empezar fresco
-        expr = lbl;
-      } else if (lastResult && ['÷','×','−','+'].includes(lbl)) {
-        // Operador después de resultado — continuar con el resultado
-        lastResult = false;
-        expr += lbl;
-        d.value = expr;
-        return;
-      } else { expr += lbl; }
-      d.value = expr;
-      lastResult = false;
-    });
-    container.appendChild(b);
-  }));
-})();
 
 // ── 21 · LOREM IPSUM ───────────────────────────────────────
 const LOREM_WORDS = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit voluptate velit esse cillum fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum'.split(' ');
@@ -2196,7 +2119,8 @@ function showHoroscope(sign) {
   function safeEvalCalc(input) {
     const normalized = String(input || '')
       .replace(/pi/g, 'Math.PI')
-      .replace(/(?<![a-zA-Z])e(?![a-zA-Z])/g, 'Math.E');
+      .replace(/(?<![a-zA-Z0-9.])e(?![a-zA-Z0-9])/g, 'Math.E');
+    if (!normalized.trim()) return 0;
     const result = Function('"use strict"; return (' + normalized + ')')();
     if (!Number.isFinite(result)) throw new Error('Resultado invalido');
     return +result.toFixed(10);
@@ -2277,7 +2201,7 @@ function showHoroscope(sign) {
       container.appendChild(b);
     }));
 
-    setCalcDisplay('');
+    setCalcDisplay('0');
   }
 
   window.analyzeApkFile = async function analyzeApkFile() {
@@ -2406,7 +2330,11 @@ function showHoroscope(sign) {
       '- Manten mobile-first y CTA siempre visible';
   };
 
-  initFixedCalculator();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFixedCalculator);
+  } else {
+    initFixedCalculator();
+  }
 })();
 </script>
 </body>

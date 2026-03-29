@@ -470,7 +470,7 @@ function buildAppCard(app) {
   return `
   <div class="app-card" data-id="${app.appId}" data-version="${version}" data-verified="${verified}" data-changelog="${changelog}" data-cat="${dataCat}" data-name="${app.nombre?.toLowerCase()} ${catTag.toLowerCase()}">
     <div class="app-thumb">
-      <img src="${img}" alt="${app.nombre}" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${meta.emoji||'📱'}</div>'">
+      <img src="${img}" alt="${app.nombre}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${meta.emoji||'📱'}</div>'">
       <span class="app-badge ${badgeClass}">${badge}</span>
       <span class="app-verified-badge" style="display:${app.verified?'flex':'none'}">✅ Verificado</span>
       <span class="app-version-tag">${version}</span>
@@ -534,6 +534,13 @@ async function loadAppsFromBackend() {
 // Cargar apps al iniciar
 loadAppsFromBackend();
 
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
