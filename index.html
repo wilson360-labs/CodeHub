@@ -11,8 +11,7 @@
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#ff4500">
     
-<link rel="preload" as="image" href="splash/codehub-splash.webp" type="image/webp">
-<link rel="preload" as="image" href="splash/codehub-splash.png" type="image/png">
+<link rel="preload" as="image" href="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/">
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
@@ -78,6 +77,16 @@
     <link rel="dns-prefetch" href="https://i.ibb.co">
     <link rel="dns-prefetch" href="https://i.postimg.cc">
     <link rel="dns-prefetch" href="https://codehub-production-729d.up.railway.app">
+
+    <!-- Splash: definir callback ANTES de que el img pueda cargar -->
+    <script>
+      window.chLogoLoaded = function(){
+        if (window._chLogoReady) return;
+        window._chLogoReady = true;
+        var el = document.getElementById('ch-logo-img');
+        if (el) { el.style.opacity = '1'; el.classList.add('loaded'); }
+      };
+    </script>
 
     <!-- Google Fonts — no bloqueante con display=swap -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -1935,8 +1944,8 @@
         /* Anillo exterior giratorio */
         .ch-ring-wrap {
             position: relative;
-            width: 260px;
-            height: 260px;
+            width: 320px;
+            height: 320px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1982,18 +1991,18 @@
 
         /* Logo centrado — aparece al cargar */
         .ch-logo-img {
-            width: 160px;
-            height: 160px;
-            border-radius: 32px;
+            width: 210px;
+            height: 210px;
+            border-radius: 42px;
             object-fit: contain;
             position: relative;
             z-index: 2;
             opacity: 0;
             transition: opacity .5s ease, filter .5s ease;
-            filter: drop-shadow(0 0 24px rgba(255,69,0,.8));
+            filter: drop-shadow(0 0 32px rgba(255,69,0,.9));
         }
         .ch-logo-img.loaded {
-            opacity: 1;
+            opacity: 1 !important;
             animation: chLogoPop .6s cubic-bezier(.16,1,.3,1) both;
         }
         @keyframes chLogoPop {
@@ -3601,17 +3610,14 @@
             <div class="ch-glow-ring"></div>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
-            <picture>
-                <source srcset="splash/codehub-splash.webp" type="image/webp">
-                <img class="ch-logo-img"
-                     id="ch-logo-img"
-                     src="splash/codehub-splash.png"
-                     alt="CodeHub"
-                     fetchpriority="high"
-                     decoding="sync"
-                     onload="chLogoLoaded()"
-                     onerror="this.onerror=null;this.src='https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png';chLogoLoaded();">
-            </picture>
+            <img class="ch-logo-img"
+                 id="ch-logo-img"
+                 src="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png"
+                 alt="CodeHub"
+                 fetchpriority="high"
+                 decoding="sync"
+                 onload="window.chLogoLoaded()"
+                 onerror="this.onerror=null;this.src='splash/codehub.png';window.chLogoLoaded();">
         </div>
 
         <div class="ch-brand">
@@ -7701,10 +7707,53 @@ function setAIMood(btn) {
     if (!splash) return;
 
     /* ── Estado de carga ── */
-    var logoReady   = false;   // logo terminó de cargar
-    var minTimeDone = false;   // tiempo mínimo de visualización
-    var progress    = 0;       // 0–100
-    var targetPct   = 15;      // hasta dónde avanzar antes del logo
+    var logoReady   = false;
+    var minTimeDone = false;
+    var progress    = 0;
+    var targetPct   = 15;
+
+    /* ── Cerrar splash ── */
+    function closeSplash(){
+        animRunning = false;
+        splash.classList.add('ch-splash--out');
+        setTimeout(function(){ splash.style.display = 'none'; }, 850);
+    }
+    function tryClose(){
+        if (logoReady && minTimeDone) closeSplash();
+    }
+
+    /* ── onLogoReady: lógica interna cuando el logo cargó ── */
+    function onLogoReady(){
+        if (logoReady) return;
+        logoReady = true;
+        var imgEl = document.getElementById('ch-logo-img');
+        if (imgEl) { imgEl.style.opacity = '1'; imgEl.classList.add('loaded'); }
+        cancelAnimationFrame(rafId);
+        targetPct = 100;
+        var fillInterval = setInterval(function(){
+            progress += 3.5;
+            if (progress >= 100){
+                progress = 100; setBar(100);
+                clearInterval(fillInterval);
+                setTimeout(tryClose, 420);
+            } else { setBar(progress); }
+        }, 16);
+    }
+
+    /* ── Sobrescribir chLogoLoaded del head encadenando la lógica del splash ── */
+    var _prevCb = window.chLogoLoaded;
+    window.chLogoLoaded = function(){
+        if (_prevCb) _prevCb();
+        onLogoReady();
+    };
+
+    /* ── Si el logo ya cargó antes de este script (caché) ── */
+    setTimeout(function(){
+        var imgEl = document.getElementById('ch-logo-img');
+        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0 && !logoReady) {
+            window.chLogoLoaded();
+        }
+    }, 0);
 
     /* ── Partículas de fondo ── */
     var ctx = canvas.getContext('2d');
@@ -7781,58 +7830,13 @@ function setAIMood(btn) {
     targetPct = 70;
     animateBar();
 
-    /* ── Verificar si el logo ya está cacheado y cargado ── */
-    (function checkCachedLogo(){
-        var imgEl = document.getElementById('ch-logo-img');
-        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
-            // Ya estaba en caché — disparar cargado de inmediato
-            window.chLogoLoaded();
-        }
-    })();
-
-    /* ── Callback: logo cargado ── */
-    window.chLogoLoaded = function(){
-        logoReady = true;
-        cancelAnimationFrame(rafId);
-
-        // Mostrar el logo con animación
-        var img = document.getElementById('ch-logo-img');
-        if (img) img.classList.add('loaded');
-
-        // Completar barra hasta 100% rápidamente
-        targetPct = 100;
-        var fillInterval = setInterval(function(){
-            progress += 3.5;
-            if (progress >= 100){
-                progress = 100;
-                setBar(100);
-                clearInterval(fillInterval);
-                // Pequeña pausa para que el usuario vea el 100% antes de intentar cerrar
-                setTimeout(tryClose, 420);
-            } else {
-                setBar(progress);
-            }
-        }, 16);
-    };
-
-    /* ── Cerrar splash ── */
-    function closeSplash(){
-        animRunning = false;
-        splash.classList.add('ch-splash--out');
-        setTimeout(function(){ splash.style.display = 'none'; }, 850);
-    }
-
-    function tryClose(){
-        if (logoReady && minTimeDone) closeSplash();
-    }
-
-    /* Tiempo mínimo de visualización: 3s — el usuario debe ver bien el logo */
+    /* Tiempo mínimo de visualización: 3s */
     setTimeout(function(){ minTimeDone = true; tryClose(); }, 3000);
 
-    /* Fallback de seguridad: si el logo no carga en 6s, cerrar igual */
+    /* Fallback: si el logo no cargó en 5s, forzar cierre */
     setTimeout(function(){
         if (!logoReady) { window.chLogoLoaded(); }
-    }, 6000);
+    }, 5000);
 })();
 
 </script>
