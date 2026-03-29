@@ -4409,7 +4409,7 @@
                           <div style="position:absolute;inset:12px;border-radius:50%;overflow:hidden;z-index:1;">
                             <img src="https://i.ibb.co/MX1Kg6X/1749331794644.jpg"
                               alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
-                              style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;"
+                              style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;opacity:1;"
                               onerror="this.onerror=null;this.src='https://avatars.githubusercontent.com/wilson360-labs?v=4';" />
                           </div>
                         </div>
@@ -4443,7 +4443,7 @@
                         <span data-i18n="role">Desarrollador Web Full Stack · Guatemala 🇬🇹</span>
                     </div>
                     <div class="about-brand-card">
-                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png" alt="Logo CodeHub" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='splash/codehub.png';">
+                        <img class="about-brand-logo" src="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png" alt="Logo CodeHub" loading="lazy" decoding="async" style="opacity:1;" onerror="this.onerror=null;this.src='splash/codehub.png';">
                         <div class="about-brand-copy">
                             <div class="about-brand-kicker">CodeHub</div>
                             <div class="about-brand-title">Producto + creador en una misma experiencia</div>
@@ -6002,8 +6002,8 @@ DISPONIBILIDAD:
 
         // Intersection Observer para animaciones al scroll
         const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -100px 0px'
+            threshold: 0.05,
+            rootMargin: '0px 0px 0px 0px'
         };
 
         const observer = new IntersectionObserver((entries) => {
@@ -6022,14 +6022,18 @@ DISPONIBILIDAD:
             observer.observe(section);
         });
 
-        // Preloader para imágenes
-        const images = document.querySelectorAll('img');
-        images.forEach(img => {
-            img.addEventListener('load', function() {
-                this.style.opacity = '1';
-            });
+        // Fade-in suave para imágenes — sin ocultar las ya cacheadas ni las marcadas con opacity:1
+        document.querySelectorAll('img').forEach(img => {
+            // Excluir el logo del splash (tiene su propio sistema)
+            if (img.id === 'ch-logo-img') return;
+            // Excluir imágenes ya marcadas como visibles
+            if (img.style.opacity === '1') return;
+            // Excluir imágenes ya cargadas (caché del browser)
+            if (img.complete && img.naturalWidth > 0) return;
             img.style.opacity = '0';
             img.style.transition = 'opacity 0.5s ease';
+            img.addEventListener('load', function() { this.style.opacity = '1'; });
+            img.addEventListener('error', function() { this.style.opacity = '1'; });
         });
 
         // Detectar si el usuario está inactivo
@@ -7773,9 +7777,18 @@ function setAIMood(btn) {
         }
     }
 
-    /* Arrancar animación de barra — avanza libremente hasta 70% */
+    /* ── Arrancar animación de barra — avanza libremente hasta 70% */
     targetPct = 70;
     animateBar();
+
+    /* ── Verificar si el logo ya está cacheado y cargado ── */
+    (function checkCachedLogo(){
+        var imgEl = document.getElementById('ch-logo-img');
+        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+            // Ya estaba en caché — disparar cargado de inmediato
+            window.chLogoLoaded();
+        }
+    })();
 
     /* ── Callback: logo cargado ── */
     window.chLogoLoaded = function(){
