@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https://api.puter.com https: wss://codehub-production-729d.up.railway.app;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com;">
 <title>Tools — CodeHub by Wilson.E</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1676,7 +1676,7 @@ async function generateImage() {
   const prompt = style ? promptRaw + ', ' + style : promptRaw;
   const parts  = size.split('x');
   const w = parts[0] || '512', h = parts[1] || '512';
-  const BACKEND = 'https://codehub-production-729d.up.railway.app';
+  const BACKEND = 'https://codehub-98s6.onrender.com';
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
@@ -1858,7 +1858,7 @@ async function analyzeLinkSafety() {
   const out = document.getElementById('link-check-out');
   const btn = document.getElementById('link-check-btn');
   const url = input.value.trim();
-  const BACKEND = 'https://codehub-production-729d.up.railway.app';
+  const BACKEND = 'https://codehub-98s6.onrender.com';
 
   if (!url) { toast('Pega un link para analizar'); return; }
 
@@ -1927,7 +1927,7 @@ async function analyzeFileSafety() {
   const out = document.getElementById('file-check-out');
   const btn = document.getElementById('file-check-btn');
   const file = input.files && input.files[0];
-  const BACKEND = 'https://codehub-production-729d.up.railway.app';
+  const BACKEND = 'https://codehub-98s6.onrender.com';
 
   if (!file) { toast('Selecciona un archivo primero'); return; }
 

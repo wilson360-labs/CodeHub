@@ -903,6 +903,24 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
   res.status(503).json({ ok: false, error: 'Todos los proveedores fallaron', details: errors });
 });
 
+// ── Helper: guardar log de escaneo en Supabase ───────────────
+async function saveScanLog({ type, target, verdict, riskScore, provider, metadata = {} }) {
+  if (!supabase) return;
+  try {
+    await supabase.from('scan_logs').insert({
+      type,
+      target,
+      verdict,
+      risk_score: riskScore,
+      provider,
+      metadata,
+      scanned_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn('⚠️  scan_logs insert error:', e.message);
+  }
+}
+
 // ── POST /api/check-link — VirusTotal URL checker ────────────
 app.post('/api/check-link', chatLimiter, async (req, res) => {
   const rawUrl = String(req.body?.url || '').trim();
@@ -974,6 +992,15 @@ app.post('/api/check-link', chatLimiter, async (req, res) => {
       verdict = 'unknown';
       recommendation = 'El analisis no fue concluyente. Revisa el dominio manualmente antes de confiar.';
     }
+
+    await saveScanLog({
+      type: 'url',
+      target: parsedUrl.toString(),
+      verdict,
+      riskScore,
+      provider: 'virustotal',
+      metadata: { malicious, suspicious, harmless, undetected, host: parsedUrl.hostname },
+    });
 
     res.json({
       ok: true,
@@ -1068,6 +1095,15 @@ app.post('/api/check-file', chatLimiter, (req, res) => {
         verdict = 'suspicious';
         recommendation = 'Tratalo como sospechoso. Evita ejecutarlo y confirma su origen primero.';
       }
+
+      await saveScanLog({
+        type: 'file',
+        target: req.file.originalname,
+        verdict,
+        riskScore,
+        provider: 'virustotal',
+        metadata: { sha256, malicious, suspicious, harmless, undetected, mime: req.file.mimetype, size: req.file.size },
+      });
 
       res.json({
         ok: true,
