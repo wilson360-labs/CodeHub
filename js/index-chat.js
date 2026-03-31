@@ -61,7 +61,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
       return 'http://localhost:3001';
     }
     // Producción → Railway
-    return 'https://codehub-production-729d.up.railway.app';
+    return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
 

@@ -3,7 +3,7 @@
    CodeHub by Wilson.E
 ═══════════════════════════════════════ */
 
-const BACKEND   = 'https://codehub-production-729d.up.railway.app';
+const BACKEND   = 'https://codehub-98s6.onrender.com';
 // ⚠️  La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Railway)
 // NO la guardes aquí en producción — este campo solo sirve para enviarla al servidor
 let ADMIN_KEY = '';

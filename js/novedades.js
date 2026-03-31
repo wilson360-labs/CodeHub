@@ -81,7 +81,7 @@ function applyFilter(q) {
 // ═══════════════════════════════════════════════════════════
 //  RATING + SOLICITUDES — MongoDB via Railway
 // ═══════════════════════════════════════════════════════════
-const BACKEND = 'https://codehub-production-729d.up.railway.app';
+const BACKEND = 'https://codehub-98s6.onrender.com';
 let allRatings = {};
 
 // Cargar ratings al iniciar
