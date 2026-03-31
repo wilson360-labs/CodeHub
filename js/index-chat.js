@@ -60,7 +60,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:3001';
     }
-    // Producción → Railway
+    // Producción → Render
     return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
