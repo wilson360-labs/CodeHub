@@ -516,32 +516,41 @@ app.get('/api/stats/live', (_, res) => {
 // ── POST /api/visit — Registrar visita con IPQuery ───────────
 app.post('/api/visit', async (req, res) => {
   try {
-    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-      || req.socket?.remoteAddress || req.ip || 'unknown';
+    // Vercel/Render: IP real del cliente
+    const rawIp =
+      req.headers['x-real-ip'] ||
+      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+      req.socket?.remoteAddress ||
+      req.ip || 'unknown';
 
-    const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost)/i.test(ip);
+    const finalIp = rawIp.replace(/^::ffff:/, '').trim();
+    const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost|^$)/i.test(finalIp);
+
     let geo = {};
-    if (!isLocal && ip !== 'unknown') {
+    if (!isLocal && finalIp !== 'unknown') {
       try {
-        const r = await fetch(`https://ipquery.io/${encodeURIComponent(ip)}`, {
-          signal: AbortSignal.timeout(5000),
+        const r = await fetch(`https://ipquery.io/${encodeURIComponent(finalIp)}`, {
+          signal: AbortSignal.timeout(6000),
         });
-        if (r.ok) geo = await r.json();
-      } catch (_) {}
+        if (r.ok) {
+          geo = await r.json();
+          console.log(`IPQuery [${finalIp}]:`, geo?.location?.country, geo?.location?.city);
+        }
+      } catch (e) { console.warn('IPQuery error:', e.message); }
     }
 
     const record = {
-      ip,
-      country:      geo?.location?.country       || null,
-      country_code: geo?.location?.country_code  || null,
-      city:         geo?.location?.city          || null,
-      region:       geo?.location?.state         || null,
-      isp:          geo?.isp?.isp                || null,
-      org:          geo?.isp?.org                || null,
-      is_vpn:       geo?.risk?.is_vpn            || false,
-      is_proxy:     geo?.risk?.is_proxy          || false,
-      is_bot:       geo?.risk?.is_bogon          || false,
-      risk_score:   geo?.risk?.risk_score        || 0,
+      ip:           finalIp,
+      country:      geo?.location?.country      || null,
+      country_code: geo?.location?.country_code || null,
+      city:         geo?.location?.city         || null,
+      region:       geo?.location?.state        || null,
+      isp:          geo?.isp?.isp               || null,
+      org:          geo?.isp?.org               || null,
+      is_vpn:       geo?.risk?.is_vpn           || false,
+      is_proxy:     geo?.risk?.is_proxy         || false,
+      is_bot:       geo?.risk?.is_bogon         || false,
+      risk_score:   geo?.risk?.risk_score       || 0,
       page:         String(req.body?.page || '/').slice(0, 200),
       ua:           (req.headers['user-agent'] || '').slice(0, 300),
       visited_at:   new Date().toISOString(),
@@ -551,7 +560,7 @@ app.post('/api/visit', async (req, res) => {
       await supabase.from('visitor_logs').insert(record);
     }
     trackVisit();
-    res.json({ ok: true });
+    res.json({ ok: true, ip: finalIp });
   } catch (e) {
     console.warn('visit error:', e.message);
     res.json({ ok: false });

@@ -7846,10 +7846,23 @@ function setAIMood(btn) {
 (function pingVisit() {
   if (sessionStorage.getItem('ch_visit_sent')) return;
   sessionStorage.setItem('ch_visit_sent', '1');
-  fetch('https://codehub-98s6.onrender.com/api/visit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ page: location.pathname }),
-  }).catch(function(){});
+  // Obtener IP pública del cliente y enviarla como respaldo
+  fetch('https://api.ipify.org?format=json')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      return fetch('https://codehub-98s6.onrender.com/api/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: location.pathname, ip: d.ip }),
+      });
+    })
+    .catch(function(){
+      // Fallback sin IP del cliente
+      fetch('https://codehub-98s6.onrender.com/api/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: location.pathname }),
+      }).catch(function(){});
+    });
 })();
 </script>
