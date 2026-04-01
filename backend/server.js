@@ -512,6 +512,79 @@ app.get('/api/stats/live', (_, res) => {
   res.json({ visitors: visits.today, total: visits.total, wsClients: wsClients.size });
 });
 
+
+// ── POST /api/visit — Registrar visita con IPQuery ───────────
+app.post('/api/visit', async (req, res) => {
+  try {
+    // Obtener IP real (Render pone la IP en x-forwarded-for)
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || req.socket?.remoteAddress
+      || req.ip
+      || 'unknown';
+
+    // Ignorar IPs locales / privadas
+    const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost)/i.test(ip);
+
+    let geoData = {};
+    if (!isLocal && ip !== 'unknown') {
+      try {
+        // IPQuery — gratis, sin API key, límite 1000/día por IP
+        const geoRes = await fetch(`https://ipquery.io/${encodeURIComponent(ip)}`, {
+          signal: AbortSignal.timeout(4000),
+        });
+        if (geoRes.ok) geoData = await geoRes.json();
+      } catch (_) { /* continuar sin geo si falla */ }
+    }
+
+    const record = {
+      ip,
+      country:    geoData?.location?.country      || null,
+      country_code: geoData?.location?.country_code || null,
+      city:       geoData?.location?.city         || null,
+      region:     geoData?.location?.state        || null,
+      isp:        geoData?.isp?.isp               || null,
+      org:        geoData?.isp?.org               || null,
+      is_vpn:     geoData?.risk?.is_vpn           || false,
+      is_proxy:   geoData?.risk?.is_proxy         || false,
+      is_bot:     geoData?.risk?.is_bogon         || false,
+      risk_score: geoData?.risk?.risk_score       || 0,
+      page:       req.body?.page || '/',
+      ua:         req.headers['user-agent']       || null,
+      visited_at: new Date().toISOString(),
+    };
+
+    // Guardar en Supabase
+    if (supabase) {
+      await supabase.from('visitor_logs').insert(record);
+    }
+
+    // También contar en el sistema existente
+    trackVisit();
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.warn('⚠️  /api/visit error:', e.message);
+    res.json({ ok: false });
+  }
+});
+
+// ── GET /api/admin/visitors — Listar visitas (admin) ─────────
+app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const { data, error } = await supabase
+      .from('visitor_logs')
+      .select('*')
+      .order('visited_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    res.json({ ok: true, visitors: data || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Info WebSocket para el frontend
 app.get('/api/ws-info', (_, res) => res.json({
   clients: wsClients.size,

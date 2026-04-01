@@ -156,11 +156,11 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     const ql = q.toLowerCase();
     if (ql.includes('qr'))       return 'El <strong>Generador de QR</strong> está en <code>tools.html</code>. Soporta 3 tamaños y 4 colores. Se puede descargar como PNG. 🔳';
     if (ql.includes('contraseña') || ql.includes('password')) return 'El <strong>Generador de Contraseñas</strong> usa <code>crypto.getRandomValues()</code> para máxima seguridad. Soporta hasta 64 caracteres con mayúsculas, números y símbolos. 🔐';
-    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Tools → Generador de UUID. 🎲';
-    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. 💻';
-    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
+    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Herramientas → Generador de UUID. 🎲';
+    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Herramientas puedes codificar y decodificar al instante. 💻';
+    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Herramientas → Generador de Hash. 🔒';
     if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
-    if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
+    if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Herramientas con notificaciones del navegador. 🍅';
     if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
     if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
     if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
