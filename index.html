@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -4588,6 +4588,12 @@
                 </a>
             </div>
 
+            <!-- Visitor counter -->
+            <div class="footer-visitors">
+                <i class="fas fa-eye"></i>
+                <span>Visitas registradas:</span>
+                <strong id="visitorCount">0</strong>
+            </div>
 
             <!-- Bottom bar -->
             <div class="footer-bottom">
@@ -5171,6 +5177,17 @@
         .social-tg:hover  { background: rgba(0,136,204,0.15);  border-color: rgba(0,136,204,0.4);  color: #0088cc; transform: translateY(-3px); }
         .social-em:hover  { background: rgba(255,69,0,0.15);   border-color: rgba(255,69,0,0.4);   color: #ff6b35; transform: translateY(-3px); }
 
+        /* Visitantes */
+        .footer-visitors {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .footer-visitors i { color: var(--primary); }
+        .footer-visitors strong { color: var(--accent); font-variant-numeric: tabular-nums; }
 
         /* Bottom bar */
         .footer-bottom {
@@ -5301,21 +5318,47 @@
             setTimeout(typeEffect, 800);
         });
 
+        // Visitor Counter — real con localStorage
+        function animateVisitorCounter() {
+            const KEY_COUNT = 'ch_visits';
+            const KEY_DATE  = 'ch_visit_date';
+            const today = new Date().toDateString();
 
-        // Registrar visita en backend con IPQuery
-        (function pingVisit() {
-          const BACKEND = 'https://codehub-98s6.onrender.com';
-          // Solo 1 ping por sesión
-          if (sessionStorage.getItem('ch_visit_sent')) return;
-          sessionStorage.setItem('ch_visit_sent', '1');
-          fetch(BACKEND + '/api/visit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page: location.pathname }),
-          }).catch(() => {});
+            let total  = parseInt(localStorage.getItem(KEY_COUNT) || '0');
+            const last = localStorage.getItem(KEY_DATE);
+
+            // Contar solo 1 visita nueva por día por dispositivo
+            if (last !== today) {
+                total += 1;
+                localStorage.setItem(KEY_COUNT, total);
+                localStorage.setItem(KEY_DATE, today);
+            }
+
+            // Animar el número
+            const counter = document.getElementById('visitorCount');
+            if (!counter) return;
+            const start = Math.max(0, total - 80);
+            const duration = 1600;
+            const startTime = performance.now();
+
+            function step(now) {
+                const p = Math.min((now - startTime) / duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                counter.textContent = Math.floor(start + (total - start) * ease).toLocaleString();
+                if (p < 1) requestAnimationFrame(step);
+                else counter.textContent = total.toLocaleString();
+            }
+            requestAnimationFrame(step);
+        }
+
+        // Actualizar label del counter y arrancar animación
+        (function() {
+            const wrap = document.querySelector('.footer-visitors span');
+            if (wrap) wrap.textContent = 'Visitas registradas:';
         })();
 
-
+        // Llamar al cargar
+        document.addEventListener('DOMContentLoaded', animateVisitorCounter);
 
         // Neural Network Animation
         const canvas = document.getElementById('neural-network');
@@ -6154,14 +6197,14 @@ DISPONIBILIDAD:
 <nav id="hub-dock" aria-label="Accesos rápidos">
   <a href="tools.html" class="dock-item" title="DevTools Suite">
     <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
-    <span class="dock-label">Tools</span>
+    <span class="dock-label">Herramientas</span>
   </a>
   <a href="novedades.html" class="dock-item" title="App Premium Store">
     <div class="dock-icon dock-icon-apps">
       <i class="fas fa-mobile-screen"></i>
       <span class="dock-notif"></span>
     </div>
-    <span class="dock-label">Apps</span>
+    <span class="dock-label">Apps Premium</span>
   </a>
   <div class="dock-sep"></div>
   <a href="#contact" class="dock-item" title="Chat IA / Contacto" onclick="event.preventDefault();scrollToSection('contact')">
@@ -7796,4 +7839,17 @@ function setAIMood(btn) {
     }, 5000);
 })();
 
+</script>
+
+<script>
+// Registrar visita en backend (1 vez por sesión)
+(function pingVisit() {
+  if (sessionStorage.getItem('ch_visit_sent')) return;
+  sessionStorage.setItem('ch_visit_sent', '1');
+  fetch('https://codehub-98s6.onrender.com/api/visit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page: location.pathname }),
+  }).catch(function(){});
+})();
 </script>

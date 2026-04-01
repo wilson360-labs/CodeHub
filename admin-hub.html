@@ -403,21 +403,25 @@
 
 
     /* ── Visitor logs ── */
-    .vt-table { width:100%; border-collapse:collapse; font-size:.75rem; }
-    .vt-table th { font-family:var(--mono); font-size:.65rem; color:var(--muted); text-align:left; padding:.55rem .75rem; border-bottom:1px solid var(--border); white-space:nowrap; }
-    .vt-table td { padding:.6rem .75rem; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text); vertical-align:middle; }
-    .vt-table tr:hover td { background:rgba(255,255,255,.025); }
-    .vt-flag { font-size:1.1rem; margin-right:.3rem; }
-    .vt-badge { display:inline-block; font-size:.6rem; font-family:var(--mono); padding:.15rem .45rem; border-radius:999px; margin-left:.3rem; }
-    .vt-badge.vpn  { background:rgba(255,189,46,.15); color:#ffbd2e; }
-    .vt-badge.proxy{ background:rgba(255,95,86,.15);  color:#ff5f56; }
-    .vt-badge.bot  { background:rgba(168,85,247,.15); color:#a855f7; }
-    .vt-risk-low   { color:#00e676; }
-    .vt-risk-med   { color:#ffbd2e; }
-    .vt-risk-high  { color:#ff5f56; }
-    .vt-search { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:10px; padding:.6rem 1rem; color:var(--text); font-family:var(--mono); font-size:.8rem; margin-bottom:1rem; outline:none; }
+    #tab-visitors { padding-top: .5rem; }
+    .vt-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+    .vt-table-wrap { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:auto; }
+    .vt-table { width:100%; border-collapse:collapse; font-size:.75rem; min-width:700px; }
+    .vt-table th { font-family:var(--mono); font-size:.62rem; color:var(--muted); text-align:left; padding:.55rem .8rem; border-bottom:1px solid var(--border); white-space:nowrap; }
+    .vt-table td { padding:.6rem .8rem; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text); vertical-align:middle; }
+    .vt-table tr:hover td { background:rgba(255,255,255,.03); }
+    .vt-search { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:10px; padding:.6rem 1rem; color:var(--text); font-family:var(--mono); font-size:.8rem; margin-bottom:1rem; outline:none; box-sizing:border-box; }
     .vt-search:focus { border-color:rgba(255,69,0,.4); }
-    .vt-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:.75rem; margin-bottom:1.5rem; }
+    /* JSON modal */
+    #vt-json-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:9999; align-items:center; justify-content:center; padding:1rem; }
+    #vt-json-modal { background:#0f0f1e; border:1px solid rgba(255,255,255,.1); border-radius:16px; width:100%; max-width:640px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
+    #vt-json-header { display:flex; align-items:center; justify-content:space-between; padding:.85rem 1.2rem; border-bottom:1px solid rgba(255,255,255,.07); }
+    #vt-json-header span { font-family:var(--mono); font-size:.8rem; color:#00e5ff; }
+    #vt-json-close { background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:.2rem .5rem; }
+    #vt-json-close:hover { color:#ff5f56; }
+    #vt-json-content { overflow:auto; padding:1.2rem; font-family:var(--mono); font-size:.75rem; line-height:1.7; color:#a8e6cf; white-space:pre; flex:1; }
+    .vt-actions { display:flex; gap:.75rem; margin-top:1rem; justify-content:flex-end; flex-wrap:wrap; }
+    .vt-btn { padding:.5rem 1.2rem; border-radius:8px; font-family:var(--mono); font-size:.75rem; cursor:pointer; border-width:1px; border-style:solid; }
 
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -678,47 +682,51 @@
       </button>
     </div>
   </div>
-
   <!-- TAB: VISITANTES -->
   <div class="tab-panel" id="tab-visitors">
-    <div class="section-title"><i class="fas fa-earth-americas"></i> Visitantes — IPQuery en tiempo real</div>
+    <div class="section-title"><i class="fas fa-earth-americas"></i> Visitantes en tiempo real — IPQuery</div>
 
-    <!-- KPIs -->
-    <div class="vt-summary" id="vt-summary">
-      <div class="stat-card"><div class="num" id="vt-total" style="color:#00e5ff">—</div><div class="lbl">Total visitas</div></div>
-      <div class="stat-card"><div class="num" id="vt-today" style="color:#00e676">—</div><div class="lbl">Hoy</div></div>
+    <div class="vt-kpis">
+      <div class="stat-card"><div class="num" id="vt-total"     style="color:#00e5ff">—</div><div class="lbl">Total visitas</div></div>
+      <div class="stat-card"><div class="num" id="vt-today"     style="color:#00e676">—</div><div class="lbl">Hoy</div></div>
       <div class="stat-card"><div class="num" id="vt-countries" style="color:#ffbd69">—</div><div class="lbl">Países</div></div>
-      <div class="stat-card"><div class="num" id="vt-vpn" style="color:#ff5f56">—</div><div class="lbl">VPN / Proxy</div></div>
+      <div class="stat-card"><div class="num" id="vt-vpn"       style="color:#ff5f56">—</div><div class="lbl">VPN / Proxy</div></div>
     </div>
 
-    <!-- Búsqueda -->
-    <input class="vt-search" id="vt-search" type="text" placeholder="🔍  Buscar por IP, país, ciudad, ISP..." oninput="filterVisitors()">
+    <input class="vt-search" id="vt-search" type="text"
+      placeholder="🔍  Buscar por IP, país, ciudad, ISP, página..."
+      oninput="filterVisitors()">
 
-    <!-- Tabla -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:auto">
+    <div class="vt-table-wrap">
       <table class="vt-table">
         <thead>
           <tr>
             <th>IP</th>
             <th>País</th>
             <th>Ciudad</th>
-            <th>ISP / Org</th>
+            <th>ISP</th>
             <th>Riesgo</th>
+            <th>Flags</th>
             <th>Página</th>
             <th>Fecha</th>
           </tr>
         </thead>
         <tbody id="vt-body">
-          <tr><td colspan="7" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Cargando...</td></tr>
+          <tr><td colspan="8" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Haz clic en la tab para cargar</td></tr>
         </tbody>
       </table>
     </div>
+    <p style="font-size:.68rem;color:var(--muted);font-family:var(--mono);margin-top:.5rem">
+      💡 Haz clic en cualquier fila para ver el JSON completo de ese visitante
+    </p>
 
-    <div style="display:flex;gap:.75rem;margin-top:1rem;justify-content:flex-end">
-      <button onclick="loadVisitors()" style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:#00e5ff;padding:.5rem 1.2rem;border-radius:8px;font-family:var(--mono);font-size:.75rem;cursor:pointer">
+    <div class="vt-actions">
+      <button class="vt-btn" onclick="loadVisitors()"
+        style="background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:#00e5ff">
         <i class="fas fa-rotate-right"></i> Actualizar
       </button>
-      <button onclick="exportVisitors()" style="background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);color:#00e676;padding:.5rem 1.2rem;border-radius:8px;font-family:var(--mono);font-size:.75rem;cursor:pointer">
+      <button class="vt-btn" onclick="exportVisitors()"
+        style="background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.3);color:#00e676">
         <i class="fas fa-download"></i> Exportar CSV
       </button>
     </div>
@@ -981,7 +989,6 @@ async function loadSupabaseStats() {
 
 function switchTab(id, btn) {
   if (id === 'stats') loadSupabaseStats();
-  if (id === 'visitors') loadVisitors();
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
@@ -1741,6 +1748,18 @@ window.addEventListener('beforeunload', () => {
   sessionStorage.removeItem('admin_key');
 });
 </script>
+
+
+<!-- ── VISITOR JSON MODAL ── -->
+<div id="vt-json-overlay" onclick="if(event.target===this)closeVisitorJSON()">
+  <div id="vt-json-modal">
+    <div id="vt-json-header">
+      <span><i class="fas fa-code"></i> Datos completos del visitante</span>
+      <button id="vt-json-close" onclick="closeVisitorJSON()">✕</button>
+    </div>
+    <pre id="vt-json-content"></pre>
+  </div>
+</div>
 
 </body>
 </html>

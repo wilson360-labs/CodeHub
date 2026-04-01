@@ -60,6 +60,7 @@ function switchTab(id, btn) {
   if (id === 'requests') loadAdminRequests();
   if (id === 'stats')    loadAdminRatings();
   if (id === 'add')      renderAddForm();
+  if (id === 'visitors') loadVisitors();
 }
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -430,6 +431,7 @@ function toast(m) {
   t.textContent = m; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
 }
+
 // ══════════════════════════════════════════════════════════════
 //  VISITANTES — IPQuery
 // ══════════════════════════════════════════════════════════════
@@ -438,62 +440,58 @@ let _allVisitors = [];
 async function loadVisitors() {
   const body = document.getElementById('vt-body');
   if (!body) return;
-  body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Cargando...</td></tr>';
-
+  body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Cargando visitantes...</td></tr>';
   try {
     const res  = await fetch(`${BACKEND}/api/admin/visitors?limit=200`, {
-      headers: { 'x-admin-key': localStorage.getItem('ch_admin_key') || '' }
+      headers: { 'x-admin-key': ADMIN_KEY }
     });
     const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.error || 'Error');
-
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Error del servidor');
     _allVisitors = data.visitors || [];
     renderVisitors(_allVisitors);
     updateVisitorKPIs(_allVisitors);
   } catch (e) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ff6b6b;font-family:var(--mono)">${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ff6b6b;font-family:var(--mono)">${e.message}</td></tr>`;
   }
 }
 
 function countryFlag(code) {
   if (!code || code.length !== 2) return '🌐';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 - 65 + c.charCodeAt(0)));
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
-function riskClass(score) {
-  if (score >= 70) return 'vt-risk-high';
-  if (score >= 30) return 'vt-risk-med';
-  return 'vt-risk-low';
+function riskColor(score) {
+  if (score >= 70) return '#ff5f56';
+  if (score >= 30) return '#ffbd2e';
+  return '#00e676';
 }
 
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('es-GT', { day:'2-digit', month:'short' })
-    + ' ' + d.toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('es-GT', { day: '2-digit', month: 'short', year: '2-digit' })
+       + ' ' + d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' });
 }
 
 function renderVisitors(list) {
   const body = document.getElementById('vt-body');
   if (!body) return;
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Sin visitas registradas aún</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;font-family:var(--mono);color:var(--muted)">Sin visitas registradas aún</td></tr>';
     return;
   }
   body.innerHTML = list.map(v => `
-    <tr>
-      <td style="font-family:var(--mono);font-size:.72rem">${v.ip || '—'}</td>
+    <tr style="cursor:pointer" onclick="showVisitorJSON(${JSON.stringify(JSON.stringify(v))})">
+      <td style="font-family:var(--mono);font-size:.72rem;color:#00e5ff">${v.ip || '—'}</td>
+      <td>${countryFlag(v.country_code)} ${v.country || '—'}</td>
+      <td style="color:var(--muted)">${v.city || '—'}${v.region ? ', ' + v.region : ''}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem" title="${v.isp||''}">${v.isp || v.org || '—'}</td>
+      <td style="font-weight:700;color:${riskColor(v.risk_score||0)}">${v.risk_score||0}/100</td>
       <td>
-        <span class="vt-flag">${countryFlag(v.country_code)}</span>
-        ${v.country || '—'}
-      </td>
-      <td>${v.city || '—'}${v.region ? ', ' + v.region : ''}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${v.isp || ''}">${v.isp || v.org || '—'}</td>
-      <td>
-        <span class="${riskClass(v.risk_score || 0)}">${v.risk_score || 0}/100</span>
-        ${v.is_vpn   ? '<span class="vt-badge vpn">VPN</span>'   : ''}
-        ${v.is_proxy ? '<span class="vt-badge proxy">PROXY</span>' : ''}
-        ${v.is_bot   ? '<span class="vt-badge bot">BOT</span>'   : ''}
+        ${v.is_vpn   ? '<span style="background:rgba(255,189,46,.15);color:#ffbd2e;font-size:.6rem;padding:.15rem .4rem;border-radius:999px;font-family:var(--mono)">VPN</span> '   : ''}
+        ${v.is_proxy ? '<span style="background:rgba(255,95,86,.15);color:#ff5f56;font-size:.6rem;padding:.15rem .4rem;border-radius:999px;font-family:var(--mono)">PROXY</span> ' : ''}
+        ${v.is_bot   ? '<span style="background:rgba(168,85,247,.15);color:#a855f7;font-size:.6rem;padding:.15rem .4rem;border-radius:999px;font-family:var(--mono)">BOT</span>'   : ''}
+        ${(!v.is_vpn && !v.is_proxy && !v.is_bot) ? '<span style="color:var(--muted);font-size:.7rem">—</span>' : ''}
       </td>
       <td style="font-family:var(--mono);font-size:.68rem;color:var(--muted)">${v.page || '/'}</td>
       <td style="font-family:var(--mono);font-size:.68rem;color:var(--muted);white-space:nowrap">${fmtDate(v.visited_at)}</td>
@@ -501,43 +499,52 @@ function renderVisitors(list) {
   `).join('');
 }
 
-function updateVisitorKPIs(list) {
-  const today = new Date().toDateString();
-  const todayCount = list.filter(v => new Date(v.visited_at).toDateString() === today).length;
-  const countries  = new Set(list.map(v => v.country_code).filter(Boolean)).size;
-  const vpnProxy   = list.filter(v => v.is_vpn || v.is_proxy).length;
+function showVisitorJSON(jsonStr) {
+  const data = JSON.parse(jsonStr);
+  const overlay = document.getElementById('vt-json-overlay');
+  const pre     = document.getElementById('vt-json-content');
+  pre.textContent = JSON.stringify(data, null, 2);
+  overlay.style.display = 'flex';
+}
 
-  const el = id => document.getElementById(id);
-  if (el('vt-total'))     el('vt-total').textContent     = list.length;
-  if (el('vt-today'))     el('vt-today').textContent     = todayCount;
-  if (el('vt-countries')) el('vt-countries').textContent = countries;
-  if (el('vt-vpn'))       el('vt-vpn').textContent       = vpnProxy;
+function closeVisitorJSON() {
+  document.getElementById('vt-json-overlay').style.display = 'none';
+}
+
+function updateVisitorKPIs(list) {
+  const today     = new Date().toDateString();
+  const todayN    = list.filter(v => new Date(v.visited_at).toDateString() === today).length;
+  const countries = new Set(list.map(v => v.country_code).filter(Boolean)).size;
+  const vpnProxy  = list.filter(v => v.is_vpn || v.is_proxy).length;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('vt-total',     list.length);
+  set('vt-today',     todayN);
+  set('vt-countries', countries);
+  set('vt-vpn',       vpnProxy);
 }
 
 function filterVisitors() {
   const q = (document.getElementById('vt-search')?.value || '').toLowerCase();
-  if (!q) { renderVisitors(_allVisitors); return; }
-  const filtered = _allVisitors.filter(v =>
-    [v.ip, v.country, v.city, v.region, v.isp, v.org, v.page]
-      .some(f => (f || '').toLowerCase().includes(q))
-  );
+  const filtered = q
+    ? _allVisitors.filter(v => [v.ip, v.country, v.city, v.region, v.isp, v.org, v.page]
+        .some(f => (f || '').toLowerCase().includes(q)))
+    : _allVisitors;
   renderVisitors(filtered);
 }
 
 function exportVisitors() {
   if (!_allVisitors.length) { toast('No hay datos para exportar'); return; }
-  const headers = ['IP','País','País Code','Ciudad','Región','ISP','Org','VPN','Proxy','Bot','Riesgo','Página','Fecha'];
+  const headers = ['IP','País','Código','Ciudad','Región','ISP','Org','VPN','Proxy','Bot','Riesgo','Página','User-Agent','Fecha'];
   const rows = _allVisitors.map(v => [
     v.ip, v.country, v.country_code, v.city, v.region,
     v.isp, v.org, v.is_vpn, v.is_proxy, v.is_bot,
-    v.risk_score, v.page, v.visited_at
-  ].map(x => `"${String(x ?? '').replace(/"/g, '""')}"`).join(','));
+    v.risk_score, v.page, v.ua, v.visited_at
+  ].map(x => `"${String(x ?? '').replace(/"/g,'""')}"`).join(','));
   const csv  = [headers.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a    = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(blob),
     download: `visitantes_${new Date().toISOString().slice(0,10)}.csv`
   });
-  a.click();
-  toast('✅ CSV exportado');
+  a.click(); toast('✅ CSV exportado');
 }
