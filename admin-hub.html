@@ -477,94 +477,103 @@
       main { padding: 1rem !important; }
     }
 
-    /* ═══ DRAWER LATERAL ═══ */
-    #drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:5000; opacity:0; pointer-events:none; transition:opacity .25s; }
-    #drawer-overlay.open { opacity:1; pointer-events:all; }
-    #drawer { position:fixed; left:0; top:0; bottom:0; width:270px; background:var(--surface); border-right:1px solid rgba(255,69,0,.15); z-index:5001; transform:translateX(-100%); transition:transform .28s cubic-bezier(.4,0,.2,1); display:flex; flex-direction:column; }
-    #drawer.open { transform:translateX(0); }
-    .drawer-head { padding:1.4rem 1.2rem .8rem; border-bottom:1px solid var(--border); }
-    .drawer-logo { font-size:1.1rem; font-weight:800; }
-    .drawer-logo span { color:var(--p); }
-    .drawer-logo small { display:block; font-family:var(--mono); font-size:.58rem; color:var(--muted); margin-top:.1rem; }
-    .drawer-search-wrap { padding:.8rem 1rem; border-bottom:1px solid var(--border); }
-    .drawer-search { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem; color:var(--text); font-family:var(--mono); font-size:.78rem; outline:none; box-sizing:border-box; }
-    .drawer-search:focus { border-color:rgba(255,69,0,.4); }
-    .drawer-nav { flex:1; overflow-y:auto; padding:.6rem 0; }
-    .drawer-item { display:flex; align-items:center; gap:.75rem; padding:.75rem 1.2rem; color:var(--muted); font-size:.82rem; font-weight:600; cursor:pointer; transition:all .15s; border-left:2px solid transparent; }
-    .drawer-item:hover { background:rgba(255,69,0,.05); color:var(--text); border-left-color:rgba(255,69,0,.3); }
-    .drawer-item.active { background:rgba(255,69,0,.08); color:var(--a); border-left-color:var(--p); }
-    .drawer-item i { width:16px; text-align:center; font-size:.85rem; }
-    .drawer-badge { margin-left:auto; background:var(--p); color:#fff; font-size:.6rem; font-weight:700; padding:.1rem .4rem; border-radius:10px; font-family:var(--mono); }
-    .drawer-section { font-family:var(--mono); font-size:.58rem; color:var(--muted); letter-spacing:.1em; padding:.6rem 1.2rem .3rem; text-transform:uppercase; }
-    .drawer-footer { padding:1rem 1.2rem; border-top:1px solid var(--border); }
-    .drawer-logout { width:100%; padding:.55rem; border-radius:8px; background:rgba(255,107,107,.08); border:1px solid rgba(255,107,107,.2); color:#ff6b6b; font-family:var(--mono); font-size:.72rem; cursor:pointer; }
-    .drawer-logout:hover { background:rgba(255,107,107,.18); }
+    /* ═══ SPLASH ═══ */
+    #splash{position:fixed;inset:0;z-index:99999;background:#030308;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,transform .6s}
+    #splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
+    .spl-img{width:88px;height:88px;border-radius:20px;object-fit:cover;animation:splPulse 2s ease-in-out infinite}
+    @keyframes splPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,69,0,.5)}50%{box-shadow:0 0 0 16px rgba(255,69,0,0)}}
+    .spl-title{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#f0f0fa;margin:.8rem 0 .2rem}
+    .spl-title span{color:#ff4500}
+    .spl-sub{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:rgba(240,240,250,.3);margin-bottom:2.5rem}
+    .spl-bar{width:130px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+    .spl-fill{height:100%;background:linear-gradient(90deg,#ff4500,#ffbd69);border-radius:2px;width:0;animation:splFill 1.8s ease forwards}
+    @keyframes splFill{0%{width:0}60%{width:75%}100%{width:100%}}
 
-    /* Historial de cambios en drawer */
-    .drawer-log { padding:.4rem 1rem; }
-    .log-item { font-family:var(--mono); font-size:.62rem; color:var(--muted); padding:.35rem .5rem; border-left:2px solid var(--border); margin-bottom:.3rem; line-height:1.5; }
-    .log-item.ok { border-left-color:var(--g); }
-    .log-item.err { border-left-color:#ff6b6b; }
+    /* ═══ HAMBURGER ═══ */
+    #menu-btn{background:none;border:none;color:var(--muted);font-size:1.15rem;cursor:pointer;padding:.35rem .5rem;transition:color .15s;flex-shrink:0}
+    #menu-btn:hover{color:var(--text)}
 
-    /* Botón hamburguesa */
-    #menu-btn { background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; padding:.3rem .5rem; transition:color .15s; margin-right:.3rem; }
-    #menu-btn:hover { color:var(--text); }
+    /* ═══ DRAWER ═══ */
+    #drw-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8000;opacity:0;pointer-events:none;transition:opacity .25s}
+    #drw-bg.on{opacity:1;pointer-events:all}
+    #drw{position:fixed;left:0;top:0;bottom:0;width:268px;background:var(--surface);border-right:1px solid rgba(255,69,0,.15);z-index:8001;transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column}
+    #drw.on{transform:translateX(0)}
+    .drw-head{padding:1.2rem 1.2rem .7rem;border-bottom:1px solid var(--border)}
+    .drw-logo{font-size:1.05rem;font-weight:800}.drw-logo span{color:var(--p)}
+    .drw-logo small{display:block;font-family:var(--mono);font-size:.55rem;color:var(--muted);margin-top:.1rem}
+    .drw-s{padding:.7rem 1rem;border-bottom:1px solid var(--border)}
+    .drw-si{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:.48rem .75rem;color:var(--text);font-family:var(--mono);font-size:.76rem;outline:none;box-sizing:border-box}
+    .drw-si:focus{border-color:rgba(255,69,0,.4)}
+    .drw-nav{flex:1;overflow-y:auto;padding:.5rem 0}
+    .drw-sec{font-family:var(--mono);font-size:.56rem;color:var(--muted);letter-spacing:.1em;padding:.55rem 1.2rem .25rem;text-transform:uppercase}
+    .drw-it{display:flex;align-items:center;gap:.7rem;padding:.7rem 1.2rem;color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+    .drw-it:hover{background:rgba(255,69,0,.05);color:var(--text);border-left-color:rgba(255,69,0,.3)}
+    .drw-it.on{background:rgba(255,69,0,.08);color:var(--a);border-left-color:var(--p)}
+    .drw-it i{width:15px;text-align:center;font-size:.82rem}
+    .drw-bdg{margin-left:auto;background:var(--p);color:#fff;font-size:.58rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;font-family:var(--mono);display:none}
+    .drw-log{padding:.35rem 1rem}
+    .log-row{font-family:var(--mono);font-size:.6rem;color:var(--muted);padding:.3rem .45rem;border-left:2px solid var(--border);margin-bottom:.28rem;line-height:1.5}
+    .log-row.ok{border-left-color:var(--g)}.log-row.err{border-left-color:#ff6b6b}
+    .drw-foot{padding:.9rem 1.2rem;border-top:1px solid var(--border)}
+    .drw-out{width:100%;padding:.5rem;border-radius:8px;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.2);color:#ff6b6b;font-family:var(--mono);font-size:.7rem;cursor:pointer}
+    .drw-out:hover{background:rgba(255,107,107,.16)}
 
-    /* ═══ BÚSQUEDA GLOBAL ═══ */
-    #global-search-bar { display:none; padding:.6rem 1.2rem; background:rgba(3,3,8,.98); border-bottom:1px solid var(--border); }
-    #global-search-bar.visible { display:block; }
-    #global-search-input { width:100%; background:rgba(255,255,255,.06); border:1px solid rgba(255,69,0,.3); border-radius:10px; padding:.6rem 1rem; color:var(--text); font-family:var(--mono); font-size:.85rem; outline:none; box-sizing:border-box; }
-    #search-results { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-top:.5rem; overflow:hidden; max-height:300px; overflow-y:auto; display:none; }
-    .search-result-item { padding:.7rem 1rem; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; display:flex; align-items:center; gap:.75rem; transition:background .12s; }
-    .search-result-item:hover { background:rgba(255,69,0,.05); }
-    .search-result-item:last-child { border-bottom:none; }
-    .sri-img { width:32px; height:32px; border-radius:8px; object-fit:contain; background:rgba(255,255,255,.05); }
-    .sri-name { font-weight:600; font-size:.82rem; }
-    .sri-cat { font-family:var(--mono); font-size:.62rem; color:var(--muted); }
+    /* ═══ SEARCH BAR ═══ */
+    #srch-bar{display:none;padding:.6rem 1.2rem;background:rgba(3,3,8,.98);border-bottom:1px solid var(--border)}
+    #srch-bar.on{display:block}
+    #srch-inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,69,0,.3);border-radius:10px;padding:.58rem 1rem;color:var(--text);font-family:var(--mono);font-size:.83rem;outline:none;box-sizing:border-box}
+    #srch-res{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-top:.5rem;overflow:hidden;max-height:280px;overflow-y:auto;display:none}
+    .srch-row{padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;display:flex;align-items:center;gap:.7rem;transition:background .12s}
+    .srch-row:hover{background:rgba(255,69,0,.05)}
+    .srch-row:last-child{border-bottom:none}
+    .srch-img{width:30px;height:30px;border-radius:7px;object-fit:contain;background:rgba(255,255,255,.05)}
+    .srch-name{font-weight:600;font-size:.8rem}.srch-cat{font-family:var(--mono);font-size:.6rem;color:var(--muted)}
 
-    /* ═══ FAB — Acciones rápidas ═══ */
-    #fab-wrap { position:fixed; bottom:1.8rem; right:1.5rem; z-index:4000; display:flex; flex-direction:column-reverse; align-items:flex-end; gap:.6rem; }
-    #fab-main { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--p),#ff6b35); border:none; color:#fff; font-size:1.3rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .2s, box-shadow .2s; }
-    #fab-main:hover { transform:scale(1.08); }
-    #fab-main.open { transform:rotate(45deg); }
-    .fab-action { display:flex; align-items:center; gap:.6rem; opacity:0; transform:translateY(8px); pointer-events:none; transition:all .2s; }
-    .fab-action.visible { opacity:1; transform:translateY(0); pointer-events:all; }
-    .fab-action-btn { padding:.45rem 1rem; border-radius:20px; border:none; font-family:var(--mono); font-size:.72rem; font-weight:700; cursor:pointer; white-space:nowrap; }
-    .fab-label { font-family:var(--mono); font-size:.68rem; color:var(--text); background:rgba(10,10,20,.92); padding:.25rem .6rem; border-radius:6px; border:1px solid var(--border); }
+    /* ═══ FAB ═══ */
+    #fab{position:fixed;bottom:1.8rem;right:1.5rem;z-index:4000;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:.55rem}
+    #fab-btn{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--p),#ff6b35);border:none;color:#fff;font-size:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .22s}
+    #fab-btn.on{transform:rotate(45deg)}
+    .fab-row{display:flex;align-items:center;gap:.55rem;opacity:0;transform:translateY(6px);pointer-events:none;transition:all .18s}
+    .fab-row.on{opacity:1;transform:translateY(0);pointer-events:all}
+    .fab-lbl{font-family:var(--mono);font-size:.66rem;color:var(--text);background:rgba(10,10,20,.92);padding:.22rem .6rem;border-radius:6px;border:1px solid var(--border);white-space:nowrap}
+    .fab-b{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center}
 
-    /* ═══ PIN de 4 dígitos ═══ */
-    #pin-screen { position:fixed; inset:0; z-index:9998; background:var(--bg); display:none; align-items:center; justify-content:center; }
-    #pin-screen.show { display:flex; }
-    .pin-box { text-align:center; }
-    .pin-logo { font-size:1.8rem; font-weight:800; margin-bottom:.2rem; }
-    .pin-logo span { color:var(--p); }
-    .pin-sub { font-family:var(--mono); font-size:.65rem; color:var(--muted); margin-bottom:2rem; }
-    .pin-dots { display:flex; gap:.8rem; justify-content:center; margin-bottom:1.8rem; }
-    .pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border); transition:all .15s; }
-    .pin-dot.filled { background:var(--p); border-color:var(--p); }
-    .pin-dot.error { background:#ff6b6b; border-color:#ff6b6b; animation:pinShake .3s ease; }
-    @keyframes pinShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-    .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; width:220px; margin:0 auto 1.2rem; }
-    .pin-key { padding:.9rem; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text); font-size:1.2rem; font-weight:700; cursor:pointer; font-family:var(--mono); transition:all .12s; }
-    .pin-key:hover { background:rgba(255,69,0,.12); border-color:rgba(255,69,0,.3); }
-    .pin-key:active { transform:scale(.93); }
-    .pin-key.del { font-size:.9rem; color:var(--muted); }
-    .pin-key.empty { background:transparent; border:none; cursor:default; }
-    .pin-err { font-family:var(--mono); font-size:.7rem; color:#ff6b6b; min-height:1.2em; margin-bottom:.6rem; }
-    .pin-alt { font-family:var(--mono); font-size:.68rem; color:var(--muted); cursor:pointer; margin-top:.5rem; }
-    .pin-alt:hover { color:var(--text); }
+    /* ═══ PIN ═══ */
+    #pin-scr{position:fixed;inset:0;z-index:9990;background:var(--bg);display:none;align-items:center;justify-content:center}
+    #pin-scr.on{display:flex}
+    .pin-logo{font-size:1.7rem;font-weight:800;text-align:center;margin-bottom:.2rem}.pin-logo span{color:var(--p)}
+    .pin-sub{font-family:var(--mono);font-size:.63rem;color:var(--muted);text-align:center;margin-bottom:1.8rem}
+    .pin-dots{display:flex;gap:.75rem;justify-content:center;margin-bottom:1.5rem}
+    .pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--border);transition:all .15s}
+    .pin-dot.on{background:var(--p);border-color:var(--p)}
+    .pin-dot.err{background:#ff6b6b;border-color:#ff6b6b;animation:pShake .3s ease}
+    @keyframes pShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+    .pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;width:210px;margin:0 auto 1rem}
+    .pin-k{padding:.85rem;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);font-size:1.15rem;font-weight:700;cursor:pointer;font-family:var(--mono);transition:all .1s}
+    .pin-k:active{transform:scale(.91);background:rgba(255,69,0,.14)}
+    .pin-k.del{font-size:.85rem;color:var(--muted)}
+    .pin-k.emp{background:transparent;border:none;cursor:default}
+    .pin-err{font-family:var(--mono);font-size:.68rem;color:#ff6b6b;text-align:center;min-height:1.2em;margin-bottom:.4rem}
+    .pin-alt{font-family:var(--mono);font-size:.66rem;color:var(--muted);cursor:pointer;text-align:center;margin-top:.4rem}
+    .pin-alt:hover{color:var(--text)}
 
-    /* ═══ AUTO-LOGOUT banner ═══ */
-    #inactivity-banner { position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:6000; background:rgba(255,69,0,.12); border:1px solid rgba(255,69,0,.3); border-radius:10px; padding:.5rem 1rem; font-family:var(--mono); font-size:.72rem; color:var(--a); display:none; white-space:nowrap; }
-    #inactivity-banner.show { display:block; }
+    /* ═══ BIOMETRÍA ═══ */
+    .bio-btn{width:100%;padding:.62rem;border-radius:10px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.25);color:#00e5ff;font-family:'Syne',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:.55rem}
+    .bio-btn:hover{background:rgba(0,229,255,.15)}
+    .bio-btn:disabled{opacity:.4;cursor:not-allowed}
+    .bio-divider{font-family:'JetBrains Mono',monospace;font-size:.63rem;color:rgba(240,240,250,.25);text-align:center;margin:.35rem 0 .55rem;display:flex;align-items:center;gap:.55rem}
+    .bio-divider::before,.bio-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07)}
+    #bio-status{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#00e5ff;text-align:center;margin-bottom:.45rem;min-height:1.1em}
 
-    /* ═══ OFFLINE banner ═══ */
-    #offline-banner { position:fixed; bottom:0; left:0; right:0; z-index:6000; background:rgba(255,189,69,.12); border-top:1px solid rgba(255,189,69,.25); padding:.5rem 1rem; font-family:var(--mono); font-size:.72rem; color:var(--a); text-align:center; display:none; }
-    #offline-banner.show { display:block; }
+    /* ═══ OFFLINE / INACTIVITY BANNERS ═══ */
+    #off-banner{position:fixed;bottom:0;left:0;right:0;z-index:7000;background:rgba(255,189,69,.1);border-top:1px solid rgba(255,189,69,.25);padding:.45rem 1rem;font-family:var(--mono);font-size:.7rem;color:var(--a);text-align:center;display:none}
+    #off-banner.on{display:block}
+    #inact-banner{position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:7000;background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.3);border-radius:9px;padding:.45rem 1rem;font-family:var(--mono);font-size:.7rem;color:var(--a);white-space:nowrap;display:none}
+    #inact-banner.on{display:block}
 
-    /* ═══ Imagen preview en tabla ═══ */
-    .app-thumb { width:36px; height:36px; border-radius:8px; object-fit:contain; background:rgba(255,255,255,.04); border:1px solid var(--border); margin-right:.5rem; vertical-align:middle; flex-shrink:0; }
-    .app-name-inner { display:flex; align-items:center; }
+    /* ═══ APP THUMB IN TABLE ═══ */
+    .app-thumb{width:34px;height:34px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,.04);border:1px solid var(--border);margin-right:.5rem;flex-shrink:0}
+    .app-name-inner{display:flex;align-items:center}
   </style>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -572,95 +581,93 @@
 <body>
 <div id="toast"></div>
 
-<!-- ═══ OFFLINE BANNER ═══ -->
-<div id="offline-banner">📶 Sin conexión — mostrando datos en caché</div>
+<!-- ═══ SPLASH ═══ -->
+<div id="splash">
+  <img class="spl-img" src="splash/codehub.png" alt="" onerror="this.style.display='none'">
+  <div class="spl-title">Admin<span>Hub</span></div>
+  <div class="spl-sub">// CodeHub · Panel de Administración</div>
+  <div class="spl-bar"><div class="spl-fill"></div></div>
+</div>
 
-<!-- ═══ INACTIVIDAD BANNER ═══ -->
-<div id="inactivity-banner"></div>
+<!-- ═══ OFFLINE / INACTIVITY ═══ -->
+<div id="off-banner">📶 Sin conexión — datos en caché</div>
+<div id="inact-banner"></div>
 
 <!-- ═══ PIN SCREEN ═══ -->
-<div id="pin-screen">
-  <div class="pin-box">
+<div id="pin-scr">
+  <div>
     <div class="pin-logo">Admin<span>Hub</span></div>
-    <div class="pin-sub">// ingresa tu PIN de acceso</div>
+    <div class="pin-sub">// ingresa tu PIN</div>
     <div class="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
+      <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
     </div>
     <div class="pin-err" id="pin-err"></div>
     <div class="pin-grid">
-      <button class="pin-key" onclick="pinPress('1')">1</button>
-      <button class="pin-key" onclick="pinPress('2')">2</button>
-      <button class="pin-key" onclick="pinPress('3')">3</button>
-      <button class="pin-key" onclick="pinPress('4')">4</button>
-      <button class="pin-key" onclick="pinPress('5')">5</button>
-      <button class="pin-key" onclick="pinPress('6')">6</button>
-      <button class="pin-key" onclick="pinPress('7')">7</button>
-      <button class="pin-key" onclick="pinPress('8')">8</button>
-      <button class="pin-key" onclick="pinPress('9')">9</button>
-      <button class="pin-key empty" disabled></button>
-      <button class="pin-key" onclick="pinPress('0')">0</button>
-      <button class="pin-key del" onclick="pinDel()"><i class="fas fa-delete-left"></i></button>
+      <button class="pin-k" onclick="pinPress('1')">1</button>
+      <button class="pin-k" onclick="pinPress('2')">2</button>
+      <button class="pin-k" onclick="pinPress('3')">3</button>
+      <button class="pin-k" onclick="pinPress('4')">4</button>
+      <button class="pin-k" onclick="pinPress('5')">5</button>
+      <button class="pin-k" onclick="pinPress('6')">6</button>
+      <button class="pin-k" onclick="pinPress('7')">7</button>
+      <button class="pin-k" onclick="pinPress('8')">8</button>
+      <button class="pin-k" onclick="pinPress('9')">9</button>
+      <button class="pin-k emp" disabled></button>
+      <button class="pin-k" onclick="pinPress('0')">0</button>
+      <button class="pin-k del" onclick="pinDel()"><i class="fas fa-delete-left"></i></button>
     </div>
-    <div class="pin-alt" onclick="showPasswordLogin()">Usar contraseña</div>
+    <div class="pin-alt" onclick="pinUsePassword()">Usar contraseña</div>
   </div>
 </div>
 
-<!-- ═══ DRAWER OVERLAY ═══ -->
-<div id="drawer-overlay" onclick="closeDrawer()"></div>
-
-<!-- ═══ DRAWER LATERAL ═══ -->
-<div id="drawer">
-  <div class="drawer-head">
-    <div class="drawer-logo">Admin<span>Hub</span><small>// CodeHub control panel</small></div>
+<!-- ═══ DRAWER BG + DRAWER ═══ -->
+<div id="drw-bg" onclick="drwClose()"></div>
+<div id="drw">
+  <div class="drw-head">
+    <div class="drw-logo">Admin<span>Hub</span><small>// CodeHub control panel</small></div>
   </div>
-  <div class="drawer-search-wrap">
-    <input class="drawer-search" id="drawer-search" placeholder="🔍 Buscar app..." oninput="globalSearch(this.value)">
+  <div class="drw-s">
+    <input class="drw-si" id="drw-si" placeholder="🔍 Buscar app..." oninput="srchRun(this.value)">
   </div>
-  <div class="drawer-nav">
-    <div class="drawer-section">navegación</div>
-    <div class="drawer-item active" id="di-apps" onclick="drawerNav('apps',this)"><i class="fas fa-mobile-screen"></i> Apps <span class="drawer-badge" id="db-apps">0</span></div>
-    <div class="drawer-item" id="di-requests" onclick="drawerNav('requests',this)"><i class="fas fa-inbox"></i> Solicitudes <span class="drawer-badge" id="db-req" style="display:none"></span></div>
-    <div class="drawer-item" id="di-stats" onclick="drawerNav('stats',this)"><i class="fas fa-chart-bar"></i> Stats</div>
-    <div class="drawer-item" id="di-add" onclick="drawerNav('add',this)"><i class="fas fa-plus"></i> Nueva App</div>
-    <div class="drawer-item" id="di-bulk" onclick="drawerNav('bulk',this)"><i class="fas fa-layer-group"></i> Bulk Upload</div>
-    <div class="drawer-item" id="di-visitors" onclick="drawerNav('visitors',this)"><i class="fas fa-earth-americas"></i> Visitantes</div>
-
-    <div class="drawer-section" style="margin-top:.5rem">historial de cambios</div>
-    <div class="drawer-log" id="change-log">
-      <div class="log-item" style="color:rgba(240,240,250,.2)">Sin cambios aún</div>
-    </div>
+  <div class="drw-nav">
+    <div class="drw-sec">navegación</div>
+    <div class="drw-it on" id="di-apps" onclick="drwGo('apps',this)"><i class="fas fa-mobile-screen"></i> Apps <span class="drw-bdg" id="db-apps"></span></div>
+    <div class="drw-it" id="di-requests" onclick="drwGo('requests',this)"><i class="fas fa-inbox"></i> Solicitudes <span class="drw-bdg" id="db-req"></span></div>
+    <div class="drw-it" id="di-stats" onclick="drwGo('stats',this)"><i class="fas fa-chart-bar"></i> Stats</div>
+    <div class="drw-it" id="di-add" onclick="drwGo('add',this)"><i class="fas fa-plus"></i> Nueva App</div>
+    <div class="drw-it" id="di-bulk" onclick="drwGo('bulk',this)"><i class="fas fa-layer-group"></i> Bulk Upload</div>
+    <div class="drw-it" id="di-visitors" onclick="drwGo('visitors',this)"><i class="fas fa-earth-americas"></i> Visitantes</div>
+    <div class="drw-sec" style="margin-top:.4rem">historial</div>
+    <div class="drw-log" id="ch-log"><div class="log-row" style="color:rgba(240,240,250,.2)">Sin cambios aún</div></div>
   </div>
-  <div class="drawer-footer">
-    <button class="drawer-logout" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Cerrar sesión</button>
+  <div class="drw-foot">
+    <button class="drw-out" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Cerrar sesión</button>
   </div>
 </div>
 
-<!-- ═══ BÚSQUEDA GLOBAL ═══ -->
-<div id="global-search-bar">
-  <input id="global-search-input" placeholder="🔍 Buscar por nombre, categoría, versión..." oninput="globalSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()">
-  <div id="search-results"></div>
+<!-- ═══ SEARCH BAR ═══ -->
+<div id="srch-bar">
+  <input id="srch-inp" placeholder="🔍 Buscar app por nombre, categoría, versión..." oninput="srchRun(this.value)" onkeydown="if(event.key==='Escape')srchClose()">
+  <div id="srch-res"></div>
 </div>
 
-<!-- ═══ FAB — Acciones rápidas ═══ -->
-<div id="fab-wrap">
-  <button id="fab-main" onclick="toggleFab()" title="Acciones rápidas"><i class="fas fa-plus"></i></button>
-  <div class="fab-action" id="fab-seed">
-    <span class="fab-label">Seed JSON</span>
-    <button class="fab-action-btn" style="background:rgba(255,189,69,.15);color:var(--a);border:1px solid rgba(255,189,69,.3)" onclick="seedFromJSON();toggleFab()"><i class="fas fa-database"></i></button>
+<!-- ═══ FAB ═══ -->
+<div id="fab">
+  <button id="fab-btn" onclick="fabToggle()" title="Acciones rápidas"><i class="fas fa-plus"></i></button>
+  <div class="fab-row" id="fr-seed">
+    <span class="fab-lbl">Seed JSON</span>
+    <button class="fab-b" style="background:rgba(255,189,69,.15);color:var(--a);border:1px solid rgba(255,189,69,.3)" onclick="seedFromJSON();fabToggle()"><i class="fas fa-database"></i></button>
   </div>
-  <div class="fab-action" id="fab-publish">
-    <span class="fab-label">Publicar todo</span>
-    <button class="fab-action-btn" style="background:rgba(0,230,118,.15);color:var(--g);border:1px solid rgba(0,230,118,.3)" onclick="publishAll();toggleFab()"><i class="fas fa-rocket"></i></button>
+  <div class="fab-row" id="fr-pub">
+    <span class="fab-lbl">Publicar todo</span>
+    <button class="fab-b" style="background:rgba(0,230,118,.15);color:var(--g);border:1px solid rgba(0,230,118,.3)" onclick="publishAll();fabToggle()"><i class="fas fa-rocket"></i></button>
   </div>
-  <div class="fab-action" id="fab-new">
-    <span class="fab-label">Nueva App</span>
-    <button class="fab-action-btn" style="background:rgba(255,69,0,.15);color:var(--p);border:1px solid rgba(255,69,0,.3)" onclick="drawerNav('add',null);toggleFab()"><i class="fas fa-plus"></i></button>
+  <div class="fab-row" id="fr-new">
+    <span class="fab-lbl">Nueva App</span>
+    <button class="fab-b" style="background:rgba(255,69,0,.15);color:var(--p);border:1px solid rgba(255,69,0,.3)" onclick="drwGo('add',document.getElementById('di-add'));fabToggle()"><i class="fas fa-plus"></i></button>
   </div>
 </div>
-
 <!-- ── SW Update Banner (admin only) ── -->
 <div id="sw-update-banner">
   <span class="sw-upd-dot"></span>
@@ -765,6 +772,11 @@
     <div style="font-family:var(--mono);font-size:.6rem;color:rgba(255,107,107,.5);margin-bottom:.5rem">
       ⚠️ No compartas esta URL
     </div>
+    <div id="bio-status"></div>
+    <button class="bio-btn" id="bio-btn" onclick="loginWithBio()">
+      <i class="fas fa-fingerprint"></i> Ingresar con Biometría
+    </button>
+    <div class="bio-divider">o usa tu contraseña</div>
     <input type="password" id="pwd-input" class="login-input" placeholder="••••••••" autocomplete="current-password" spellcheck="false"
       onkeydown="if(event.key==='Enter')checkLogin()">
     <div class="cf-turnstile" data-sitekey="0x4AAAAAAClKd5T1R81GltW_" data-theme="dark" data-language="es" style="margin:.6rem auto;display:flex;justify-content:center" id="ts-admin"></div>
@@ -775,7 +787,7 @@
 
 <!-- ── HEADER ── -->
 <header>
-  <button id="menu-btn" onclick="openDrawer()" title="Menú"><i class="fas fa-bars"></i></button>
+  <button id="menu-btn" onclick="drwOpen()" title="Menú"><i class="fas fa-bars"></i></button>
   <div class="admin-logo">
     Admin<span>Hub</span>
     <small>// CodeHub control panel</small>
@@ -788,7 +800,7 @@
     <button class="admin-tab" onclick="switchTab('bulk', this)"><i class="fas fa-layer-group"></i> Bulk Upload</button>
     <button class="admin-tab" onclick="switchTab('visitors', this)"><i class="fas fa-earth-americas"></i> Visitantes</button>
   </div>
-  <button class="logout-btn" onclick="toggleSearch()" style="margin-right:.3rem" title="Buscar"><i class="fas fa-search"></i></button>
+  <button class="logout-btn" onclick="srchToggle()" title="Buscar"><i class="fas fa-search"></i></button>
   <button class="logout-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Salir</button>
 </header>
 
@@ -1068,7 +1080,8 @@ async function checkLogin() {
       ADMIN_KEY = pwd;
       sessionStorage.setItem('admin_key', pwd);
       document.getElementById('login-screen').style.display = 'none';
-      setTimeout(() => registerPin(pwd), 1500);
+      registerBio(pwd);
+      setTimeout(()=>pinOffer(pwd), 1200);
       const data = await res.json();
       initAdmin(data.apps);
     } else {
@@ -1205,10 +1218,13 @@ let appsData = [];
 
 function initAdmin(apps) {
   appsData = apps || [];
-  localStorage.setItem('ch_apps_cache', JSON.stringify(appsData));
+  localStorage.setItem('ch_cache', JSON.stringify(appsData));
   localStorage.setItem('ch_cache_ts', Date.now());
   renderApps();
   loadAdminStats();
+  startInactivity();
+  drwRefreshBadges();
+  logRender();
 }
 
 // ── RENDER APPS ───────────────────────────────────────────────
@@ -1231,14 +1247,9 @@ function renderApps() {
     return `
     <div class="app-row" id="row-${app.appId}">
       <div class="app-name-cell">
-        <div class="app-name-inner">
-          <img class="app-thumb" src="${app.imagen || ''}" alt="" onerror="this.style.display='none'">
-          <div>
-            ${app.nombre}
-            <small>${app.categoria || 'Sin cat.'} · ${app.appId}</small>
-        <span class="b2-pill ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK en Supabase' : '📎 Sin APK'}</span>
-          </div>
-        </div>
+        <div class="app-name-inner"><img class="app-thumb" src="${app.imagen||''}" alt="" onerror="this.style.display='none'"><div>${app.nombre}
+        <small>${app.categoria || 'Sin cat.'} · ${app.appId}</small>
+        <span class="b2-pill ${hasB2 ? 'ok' : 'no'}">${hasB2 ? '☁️ APK en Supabase' : '📎 Sin APK'}</span></div></div>
       </div>
       <div>
         <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
@@ -1328,9 +1339,9 @@ async function saveRow(appId) {
     // Actualizar local
     Object.assign(app, d.app);
     btn.classList.add('saved'); btn.innerHTML = '<i class="fas fa-check"></i> OK';
-    haptic('success'); toast('✅ ' + app.nombre + ' actualizada'); logChange('ok', '✅ ' + app.nombre + ' actualizada');
+    haptic('success'); toast('✅ ' + app.nombre + ' actualizada'); logAdd('ok','✅ '+app.nombre);
   } catch (e) {
-    haptic('error'); toast('❌ Error: ' + e.message); logChange('err', '❌ Error: ' + e.message);
+    haptic('error'); toast('❌ Error: ' + e.message); logAdd('err','❌ '+e.message);
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
   }
   setTimeout(() => {
@@ -1972,338 +1983,457 @@ window.addEventListener('beforeunload', () => {
 
 
 <script>
-// ═══════════════════════════════════════════════════
-// VIBRACIÓN / HAPTIC FEEDBACK
-// ═══════════════════════════════════════════════════
-function haptic(type = 'light') {
-  if (!navigator.vibrate) return;
-  const patterns = { light:[30], success:[40,30,40], error:[80,40,80], heavy:[100] };
-  navigator.vibrate(patterns[type] || patterns.light);
+// ══════════════════════════════════════════════════
+// HAPTIC
+// ══════════════════════════════════════════════════
+function haptic(t){
+  if(!navigator.vibrate)return;
+  ({light:[25],success:[35,25,35],error:[70,35,70],heavy:[90]}[t]||[25]).forEach((v,i)=>
+    setTimeout(()=>navigator.vibrate(v),i*60)
+  );
+  navigator.vibrate({light:[25],success:[35,25,35],error:[70,35,70],heavy:[90]}[t]||[25]);
 }
 
-// ═══════════════════════════════════════════════════
-// HISTORIAL DE CAMBIOS
-// ═══════════════════════════════════════════════════
-const _changeLog = JSON.parse(localStorage.getItem('ch_log') || '[]');
-
-function logChange(type, msg) {
-  const entry = { type, msg, ts: new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'}) };
-  _changeLog.unshift(entry);
-  if (_changeLog.length > 20) _changeLog.pop();
-  localStorage.setItem('ch_log', JSON.stringify(_changeLog));
-  renderLog();
+// ══════════════════════════════════════════════════
+// HISTORIAL
+// ══════════════════════════════════════════════════
+let _log = JSON.parse(localStorage.getItem('ch_log')||'[]');
+function logAdd(type,msg){
+  _log.unshift({type,msg,t:new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})});
+  if(_log.length>20)_log.pop();
+  localStorage.setItem('ch_log',JSON.stringify(_log));
+  logRender();
+}
+function logRender(){
+  const el=document.getElementById('ch-log');
+  if(!el)return;
+  el.innerHTML=_log.length
+    ?_log.slice(0,10).map(e=>`<div class="log-row ${e.type}"><span style="opacity:.4">${e.t}</span> ${e.msg}</div>`).join('')
+    :'<div class="log-row" style="color:rgba(240,240,250,.2)">Sin cambios aún</div>';
 }
 
-function renderLog() {
-  const el = document.getElementById('change-log');
-  if (!el) return;
-  if (!_changeLog.length) { el.innerHTML = '<div class="log-item" style="color:rgba(240,240,250,.2)">Sin cambios aún</div>'; return; }
-  el.innerHTML = _changeLog.slice(0,10).map(e =>
-    `<div class="log-item ${e.type}"><span style="color:rgba(240,240,250,.3)">${e.ts}</span> ${e.msg}</div>`
-  ).join('');
+// ══════════════════════════════════════════════════
+// SPLASH
+// ══════════════════════════════════════════════════
+function splashHide(){
+  const el=document.getElementById('splash');
+  if(!el)return;
+  el.classList.add('hide');
+  setTimeout(()=>el.remove(),700);
+}
+// Bulletproof splash hide — multiple fallbacks guarantee it always runs
+(function(){
+  let _done = false;
+  function go(){ if(_done)return; _done=true; setTimeout(splashHide, 1800); }
+  // 1. After load event
+  window.addEventListener('load', go);
+  // 2. After DOMContentLoaded (faster)  
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(go, 2200); });
+  // 3. Hard timeout — no matter what, hide after 3.5s
+  setTimeout(function(){ _done=false; go(); }, 3500);
+  // 4. If document already complete when script runs
+  if(document.readyState === 'complete') setTimeout(go, 500);
+})();
+
+// ══════════════════════════════════════════════════
+// DRAWER
+// ══════════════════════════════════════════════════
+function drwOpen(){
+  document.getElementById('drw').classList.add('on');
+  document.getElementById('drw-bg').classList.add('on');
+  haptic('light'); logRender(); drwRefreshBadges();
+}
+function drwClose(){
+  document.getElementById('drw').classList.remove('on');
+  document.getElementById('drw-bg').classList.remove('on');
+}
+function drwGo(id, el){
+  drwClose();
+  const tab=document.querySelector(`.admin-tab[onclick*="'${id}'"]`);
+  if(tab)tab.click();
+  document.querySelectorAll('.drw-it').forEach(i=>i.classList.remove('on'));
+  if(el)el.classList.add('on');
+  else{const di=document.getElementById('di-'+id);if(di)di.classList.add('on');}
+}
+function drwRefreshBadges(){
+  const a=document.getElementById('st-apps'),da=document.getElementById('db-apps');
+  if(a&&da){da.textContent=a.textContent;da.style.display='';}
+  const r=document.getElementById('st-requests'),dr=document.getElementById('db-req');
+  if(r&&dr&&r.textContent!=='—'&&r.textContent!=='0'){dr.textContent=r.textContent;dr.style.display='';}
 }
 
-// ═══════════════════════════════════════════════════
-// DRAWER LATERAL
-// ═══════════════════════════════════════════════════
-function openDrawer() {
-  document.getElementById('drawer').classList.add('open');
-  document.getElementById('drawer-overlay').classList.add('open');
-  renderLog();
-  updateDrawerBadges();
+// ══════════════════════════════════════════════════
+// SEARCH
+// ══════════════════════════════════════════════════
+function srchToggle(){
+  const bar=document.getElementById('srch-bar');
+  bar.classList.toggle('on');
+  if(bar.classList.contains('on')){document.getElementById('srch-inp').focus();haptic('light');}
+  else document.getElementById('srch-res').style.display='none';
+}
+function srchClose(){
+  document.getElementById('srch-bar').classList.remove('on');
+  document.getElementById('srch-res').style.display='none';
+}
+function srchRun(q){
+  const box=document.getElementById('srch-res');
+  if(!q||q.length<2){box.style.display='none';return;}
+  const t=q.toLowerCase();
+  const hits=(window.appsData||[]).filter(a=>
+    (a.nombre||'').toLowerCase().includes(t)||
+    (a.categoria||'').toLowerCase().includes(t)||
+    (a.appId||'').toLowerCase().includes(t)||
+    (a.version||'').toLowerCase().includes(t)
+  ).slice(0,8);
+  box.style.display='block';
+  box.innerHTML=hits.length
+    ?hits.map(a=>`<div class="srch-row" onclick="srchGoTo('${a.appId}')">
+        <img class="srch-img" src="${a.imagen||''}" alt="" onerror="this.style.display='none'">
+        <div><div class="srch-name">${a.nombre}</div><div class="srch-cat">${a.categoria||''} · v${a.version||'?'}</div></div>
+      </div>`).join('')
+    :'<div style="padding:1rem;text-align:center;font-family:var(--mono);font-size:.73rem;color:var(--muted)">Sin resultados</div>';
+}
+function srchGoTo(id){
+  srchClose();
+  const tab=document.querySelector(".admin-tab[onclick*="'apps'"]");
+  if(tab)tab.click();
+  setTimeout(()=>{
+    const row=document.getElementById('row-'+id);
+    if(row){row.scrollIntoView({behavior:'smooth',block:'center'});row.style.outline='2px solid var(--p)';setTimeout(()=>row.style.outline='',1500);}
+  },200);
   haptic('light');
 }
 
-function closeDrawer() {
-  document.getElementById('drawer').classList.remove('open');
-  document.getElementById('drawer-overlay').classList.remove('open');
-}
-
-function drawerNav(id, el) {
-  closeDrawer();
-  const tab = document.querySelector(`.admin-tab[onclick*="'${id}'"]`);
-  if (tab) tab.click();
-  document.querySelectorAll('.drawer-item').forEach(i => i.classList.remove('active'));
-  const di = document.getElementById('di-' + id);
-  if (di) di.classList.add('active');
-}
-
-function updateDrawerBadges() {
-  const appsCount = document.getElementById('st-apps');
-  const db = document.getElementById('db-apps');
-  if (appsCount && db) db.textContent = appsCount.textContent;
-  const reqCount = document.getElementById('st-requests');
-  const dbReq = document.getElementById('db-req');
-  if (reqCount && dbReq && reqCount.textContent !== '—' && reqCount.textContent !== '0') {
-    dbReq.textContent = reqCount.textContent;
-    dbReq.style.display = '';
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// BÚSQUEDA GLOBAL
-// ═══════════════════════════════════════════════════
-function toggleSearch() {
-  const bar = document.getElementById('global-search-bar');
-  bar.classList.toggle('visible');
-  if (bar.classList.contains('visible')) {
-    document.getElementById('global-search-input').focus();
-    haptic('light');
-  } else {
-    document.getElementById('search-results').style.display = 'none';
-  }
-}
-
-function closeSearch() {
-  document.getElementById('global-search-bar').classList.remove('visible');
-  document.getElementById('search-results').style.display = 'none';
-}
-
-function globalSearch(q) {
-  const box = document.getElementById('search-results');
-  if (!q || q.length < 2) { box.style.display = 'none'; return; }
-  const term = q.toLowerCase();
-  const matches = (window.appsData || []).filter(a =>
-    (a.nombre||'').toLowerCase().includes(term) ||
-    (a.categoria||'').toLowerCase().includes(term) ||
-    (a.appId||'').toLowerCase().includes(term) ||
-    (a.version||'').toLowerCase().includes(term)
-  ).slice(0, 8);
-
-  if (!matches.length) {
-    box.style.display = 'block';
-    box.innerHTML = '<div style="padding:1rem;text-align:center;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Sin resultados</div>';
-    return;
-  }
-  box.style.display = 'block';
-  box.innerHTML = matches.map(a => `
-    <div class="search-result-item" onclick="goToApp('${a.appId}')">
-      <img class="sri-img" src="${a.imagen||''}" alt="" onerror="this.style.display='none'">
-      <div>
-        <div class="sri-name">${a.nombre}</div>
-        <div class="sri-cat">${a.categoria||''} · v${a.version||'?'}</div>
-      </div>
-    </div>`).join('');
-}
-
-function goToApp(appId) {
-  closeSearch();
-  // Switch to apps tab and scroll to row
-  const appsTab = document.querySelector('.admin-tab[onclick*="'apps'"]');
-  if (appsTab) appsTab.click();
-  setTimeout(() => {
-    const row = document.getElementById('row-' + appId);
-    if (row) { row.scrollIntoView({behavior:'smooth',block:'center'}); row.style.outline='2px solid var(--p)'; setTimeout(()=>row.style.outline='',1500); }
-  }, 200);
-  haptic('light');
-}
-
-// ═══════════════════════════════════════════════════
-// FAB — ACCIONES RÁPIDAS
-// ═══════════════════════════════════════════════════
-let _fabOpen = false;
-function toggleFab() {
-  _fabOpen = !_fabOpen;
-  document.getElementById('fab-main').classList.toggle('open', _fabOpen);
-  ['fab-new','fab-publish','fab-seed'].forEach((id,i) => {
-    const el = document.getElementById(id);
-    if (_fabOpen) {
-      setTimeout(() => el.classList.add('visible'), i * 55);
-    } else {
-      el.classList.remove('visible');
-    }
+// ══════════════════════════════════════════════════
+// FAB
+// ══════════════════════════════════════════════════
+let _fabOn=false;
+function fabToggle(){
+  _fabOn=!_fabOn;
+  document.getElementById('fab-btn').classList.toggle('on',_fabOn);
+  ['fr-new','fr-pub','fr-seed'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(_fabOn)setTimeout(()=>el.classList.add('on'),i*55);
+    else el.classList.remove('on');
   });
   haptic('light');
 }
+// Close FAB on outside click
+document.addEventListener('click',e=>{
+  if(_fabOn&&!document.getElementById('fab').contains(e.target))fabToggle();
+});
 
-// ═══════════════════════════════════════════════════
-// PIN DE 4 DÍGITOS
-// ═══════════════════════════════════════════════════
-const PIN_KEY      = 'ch_pin_hash';
-const PIN_ADM_KEY  = 'ch_pin_adminkey';
-let _pinBuffer = '';
-let _pinAttempts = 0;
-
-function hashPin(pin) {
-  let h = 0;
-  for (let i = 0; i < pin.length; i++) h = (Math.imul(31, h) + pin.charCodeAt(i)) | 0;
-  return h.toString(36);
+// ══════════════════════════════════════════════════
+// PIN
+// ══════════════════════════════════════════════════
+let _pin='',_pinTries=0;
+const PIN_H='ch_pin_h', PIN_K='ch_pin_k';
+function _h(p){let h=0;for(let c of p)h=(Math.imul(31,h)+c.charCodeAt(0))|0;return h.toString(36);}
+function pinShow(){
+  if(!localStorage.getItem(PIN_H))return false;
+  document.getElementById('pin-scr').classList.add('on');
+  _pin='';_pinTries=0;pinDots();return true;
 }
-
-function showPinScreen() {
-  if (!localStorage.getItem(PIN_KEY)) return; // No PIN set
-  document.getElementById('pin-screen').classList.add('show');
-  _pinBuffer = '';
-  updatePinDots();
+function pinHide(){document.getElementById('pin-scr').classList.remove('on');_pin='';}
+function pinUsePassword(){pinHide();document.getElementById('login-screen').style.display='flex';}
+function pinDots(){
+  for(let i=0;i<4;i++){const d=document.getElementById('pd'+i);if(d)d.classList.toggle('on',i<_pin.length);}
 }
-
-function hidePinScreen() {
-  document.getElementById('pin-screen').classList.remove('show');
-  _pinBuffer = '';
-  _pinAttempts = 0;
-  updatePinDots();
+function pinPress(d){
+  if(_pin.length>=4)return;
+  haptic('light');_pin+=d;pinDots();
+  if(_pin.length===4)setTimeout(pinCheck,80);
 }
-
-function showPasswordLogin() {
-  hidePinScreen();
-  document.getElementById('login-screen').style.display = 'flex';
-}
-
-function pinPress(digit) {
-  if (_pinBuffer.length >= 4) return;
-  haptic('light');
-  _pinBuffer += digit;
-  updatePinDots();
-  if (_pinBuffer.length === 4) setTimeout(checkPin, 80);
-}
-
-function pinDel() {
-  if (!_pinBuffer.length) return;
-  haptic('light');
-  _pinBuffer = _pinBuffer.slice(0,-1);
-  updatePinDots();
-}
-
-function updatePinDots() {
-  for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById('pd'+i);
-    if (dot) dot.classList.toggle('filled', i < _pinBuffer.length);
-  }
-}
-
-async function checkPin() {
-  const stored = localStorage.getItem(PIN_KEY);
-  if (hashPin(_pinBuffer) === stored) {
+function pinDel(){if(!_pin.length)return;haptic('light');_pin=_pin.slice(0,-1);pinDots();}
+async function pinCheck(){
+  if(_h(_pin)===localStorage.getItem(PIN_H)){
     haptic('success');
-    const adminKey = localStorage.getItem(PIN_ADM_KEY);
-    ADMIN_KEY = adminKey;
-    sessionStorage.setItem('admin_key', adminKey);
-    hidePinScreen();
-    // Try fetch, else use cache
-    try {
-      const res = await fetch(`${BACKEND}/api/admin/apps`, { headers: {'x-admin-key': adminKey} });
-      if (res.ok) { const d = await res.json(); initAdmin(d.apps); return; }
-    } catch {}
-    loadFromCache();
-  } else {
-    haptic('error');
-    _pinAttempts++;
-    document.getElementById('pin-err').textContent = `PIN incorrecto (${_pinAttempts}/5)`;
-    document.querySelectorAll('.pin-dot').forEach(d => { d.classList.add('error'); setTimeout(()=>d.classList.remove('error'),400); });
-    _pinBuffer = '';
-    updatePinDots();
-    if (_pinAttempts >= 5) {
-      document.getElementById('pin-err').textContent = '🔒 Bloqueado — usa tu contraseña';
-      setTimeout(() => { hidePinScreen(); document.getElementById('login-screen').style.display='flex'; }, 1200);
+    const key=localStorage.getItem(PIN_K);
+    ADMIN_KEY=key;sessionStorage.setItem('admin_key',key);
+    pinHide();
+    try{
+      const r=await fetch(`${BACKEND}/api/admin/apps`,{headers:{'x-admin-key':key}});
+      if(r.ok){const d=await r.json();initAdmin(d.apps);return;}
+    }catch{}
+    pinLoadCache();
+  }else{
+    haptic('error');_pinTries++;
+    document.getElementById('pin-err').textContent=`PIN incorrecto (${_pinTries}/5)`;
+    document.querySelectorAll('.pin-dot').forEach(d=>{d.classList.add('err');setTimeout(()=>d.classList.remove('err'),380);});
+    _pin='';pinDots();
+    if(_pinTries>=5){
+      document.getElementById('pin-err').textContent='🔒 Bloqueado — usa contraseña';
+      setTimeout(()=>{pinHide();document.getElementById('login-screen').style.display='flex';},1200);
     }
   }
 }
-
-function registerPin(adminKey) {
-  // Only offer PIN setup if biometrics not available
-  if (localStorage.getItem(PIN_KEY)) return; // Already set
-  const pin = prompt('Crea tu PIN de 4 dígitos (solo números):');
-  if (!pin || !/^\d{4}$/.test(pin)) { toast('PIN debe ser exactamente 4 dígitos'); return; }
-  localStorage.setItem(PIN_KEY, hashPin(pin));
-  localStorage.setItem(PIN_ADM_KEY, adminKey);
-  toast('✅ PIN registrado — próxima vez úsalo para entrar');
+function pinOffer(adminKey){
+  if(localStorage.getItem(PIN_H))return;
+  setTimeout(()=>{
+    const ok=confirm('¿Quieres crear un PIN de 4 dígitos para entrar más rápido?');
+    if(!ok)return;
+    const pin=prompt('Crea tu PIN (4 dígitos):');
+    if(pin&&/^\d{4}$/.test(pin)){
+      localStorage.setItem(PIN_H,_h(pin));
+      localStorage.setItem(PIN_K,adminKey);
+      toast('✅ PIN creado — úsalo la próxima vez');
+    }else if(pin){toast('⚠️ El PIN debe ser 4 números');}
+  },600);
 }
 
-// ═══════════════════════════════════════════════════
-// AUTO-LOGOUT POR INACTIVIDAD (10 min)
-// ═══════════════════════════════════════════════════
-const INACTIVITY_MS = 10 * 60 * 1000;
-const WARN_MS       = 9 * 60 * 1000;
-let _inactTimer, _warnTimer;
-
-function resetInactivityTimer() {
-  clearTimeout(_inactTimer);
-  clearTimeout(_warnTimer);
-  document.getElementById('inactivity-banner').classList.remove('show');
-
-  _warnTimer = setTimeout(() => {
-    const banner = document.getElementById('inactivity-banner');
-    banner.textContent = '⏱️ Cierre de sesión en 60 segundos por inactividad';
-    banner.classList.add('show');
-    haptic('light');
-  }, WARN_MS);
-
-  _inactTimer = setTimeout(() => {
-    toast('🔒 Sesión cerrada por inactividad');
-    logout();
-  }, INACTIVITY_MS);
+// ══════════════════════════════════════════════════
+// BIOMETRÍA
+// ══════════════════════════════════════════════════
+const BIO_ID='ch_bio_id',BIO_K='ch_bio_k';
+async function bioAvailable(){
+  if(!window.PublicKeyCredential||!navigator.credentials)return false;
+  try{return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}catch{return false;}
+}
+async function initBio(){
+  const btn=document.getElementById('bio-btn');if(!btn)return;
+  if(!await bioAvailable()){btn.style.display='none';return;}
+  if(!localStorage.getItem(BIO_K)){btn.innerHTML='<i class="fas fa-fingerprint"></i> Registrar Biometría';}
+}
+async function loginWithBio(){
+  const btn=document.getElementById('bio-btn'),st=document.getElementById('bio-status');
+  const key=localStorage.getItem(BIO_K);
+  if(!key){st.textContent='⚠️ Primero inicia sesión con contraseña';return;}
+  btn.disabled=true;st.textContent='🔐 Verificando...';
+  try{
+    const idB64=localStorage.getItem(BIO_ID);
+    const opts={publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),timeout:60000,userVerification:'required',
+      allowCredentials:idB64?[{id:Uint8Array.from(atob(idB64),c=>c.charCodeAt(0)),type:'public-key',transports:['internal']}]:[]}};
+    await navigator.credentials.get(opts);
+    st.textContent='✅ Verificado';st.style.color='var(--g)';
+    ADMIN_KEY=key;sessionStorage.setItem('admin_key',key);
+    const r=await fetch(`${BACKEND}/api/admin/apps`,{headers:{'x-admin-key':key}});
+    if(r.ok){document.getElementById('login-screen').style.display='none';const d=await r.json();initAdmin(d.apps);}
+    else{st.textContent='❌ Clave inválida — usa contraseña';localStorage.removeItem(BIO_K);localStorage.removeItem(BIO_ID);}
+  }catch(e){
+    st.textContent=e.name==='NotAllowedError'?'⚠️ Cancelado':'❌ '+e.message;
+    st.style.color='#ffbd69';
+  }
+  btn.disabled=false;
+}
+async function registerBio(key){
+  if(!await bioAvailable())return;
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:'CodeHub Admin',id:location.hostname},
+      user:{id:new TextEncoder().encode('ch-admin'),name:'admin@codehub',displayName:'Admin'},
+      pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+      timeout:60000
+    }});
+    localStorage.setItem(BIO_ID,btoa(String.fromCharCode(...new Uint8Array(cred.rawId))));
+    localStorage.setItem(BIO_K,key);
+    toast('✅ Biometría registrada');
+    const btn=document.getElementById('bio-btn');
+    if(btn)btn.innerHTML='<i class="fas fa-fingerprint"></i> Ingresar con Biometría';
+  }catch(e){if(e.name!=='NotAllowedError')console.warn('bio:',e.message);}
 }
 
-function startInactivityWatch() {
-  ['click','keydown','touchstart','mousemove'].forEach(ev =>
-    document.addEventListener(ev, resetInactivityTimer, { passive:true })
+// ══════════════════════════════════════════════════
+// OFFLINE CACHE
+// ══════════════════════════════════════════════════
+function pinLoadCache(){
+  const d=localStorage.getItem('ch_cache');
+  if(d){appsData=JSON.parse(d);renderApps();
+    const ts=localStorage.getItem('ch_cache_ts');
+    toast('📦 Caché (hace '+Math.round((Date.now()-(ts||0))/60000)+' min)');
+  }else toast('❌ Sin conexión y sin caché');
+}
+window.addEventListener('online',()=>{document.getElementById('off-banner').classList.remove('on');toast('✅ Conexión restaurada');refreshApps();});
+window.addEventListener('offline',()=>{document.getElementById('off-banner').classList.add('on');haptic('error');pinLoadCache();});
+if(!navigator.onLine)document.getElementById('off-banner').classList.add('on');
+
+// ══════════════════════════════════════════════════
+// AUTO-LOGOUT (10 min)
+// ══════════════════════════════════════════════════
+let _iTimer,_wTimer;
+function startInactivity(){
+  ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,resetInact,{passive:true}));
+  resetInact();
+}
+function resetInact(){
+  clearTimeout(_iTimer);clearTimeout(_wTimer);
+  document.getElementById('inact-banner').classList.remove('on');
+  _wTimer=setTimeout(()=>{
+    const b=document.getElementById('inact-banner');
+    b.textContent='⏱️ Cierre de sesión en 60 segundos';b.classList.add('on');haptic('light');
+  },9*60*1000);
+  _iTimer=setTimeout(()=>{toast('🔒 Sesión cerrada por inactividad');logout();},10*60*1000);
+}
+
+// ══════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){drwClose();srchClose();}
+});
+
+// ══════════════════════════════════════════════════
+// INIT ON LOAD
+// ══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  logRender();
+  initBio();
+  // Show PIN screen if PIN is set and no active session
+  if(localStorage.getItem(PIN_H)&&!sessionStorage.getItem('admin_key')){
+    setTimeout(()=>{
+      document.getElementById('login-screen').style.display='none';
+      pinShow();
+    },4200); // After splash fully removed
+  }
+});
+</script>
+
+<script>
+// ══════════════════════════════════════════════
+// PUBLISH ALL
+// ══════════════════════════════════════════════
+async function publishAll() {
+  const btn = document.querySelector('.publish-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...'; }
+  haptic('light');
+  try {
+    const updates = (window.appsData || []).map(app => ({
+      appId:    app.appId,
+      version:  document.getElementById('ver-'  + app.appId)?.value.trim() || app.version,
+      changelog:document.getElementById('cl-'   + app.appId)?.value.trim() || app.changelog,
+      tag:      document.getElementById('badge-'+ app.appId)?.value         || app.tag,
+      verified: app.verified,
+      enlace:   document.getElementById('link-' + app.appId)?.value.trim() || app.enlace,
+      plugin_enlace: document.getElementById('plugin-'  + app.appId)?.value.trim() || app.plugin_enlace || null,
+      tutorial_url:  document.getElementById('tutorial-'+ app.appId)?.value.trim() || app.tutorial_url  || null,
+    }));
+    let ok = 0, fail = 0;
+    for (const u of updates) {
+      try {
+        const res = await fetch(`${BACKEND}/api/admin/apps/${u.appId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+          body: JSON.stringify(u),
+        });
+        if (res.ok) ok++; else fail++;
+      } catch { fail++; }
+    }
+    haptic('success');
+    logAdd('ok', `🚀 Publicadas ${ok} apps${fail ? ', ' + fail + ' errores' : ''}`);
+    toast(`🚀 ${ok} apps publicadas${fail ? ' · ' + fail + ' errores' : ''}`);
+    document.getElementById('last-pub').textContent = new Date().toLocaleTimeString('es');
+  } catch(e) {
+    haptic('error');
+    toast('❌ Error al publicar: ' + e.message);
+  }
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rocket"></i> Publicar todos los cambios'; }
+}
+
+// ══════════════════════════════════════════════
+// VISITORS TAB
+// ══════════════════════════════════════════════
+let _visitorsData = [];
+
+async function loadVisitors() {
+  const tbody = document.getElementById('vt-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Cargando...</td></tr>';
+  try {
+    const res = await fetch(`${BACKEND}/api/visitors`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    if (!res.ok) throw new Error('Error ' + res.status);
+    const d = await res.json();
+    _visitorsData = d.visitors || d || [];
+    renderVisitors(_visitorsData);
+    // Update KPIs
+    const today = new Date().toISOString().slice(0,10);
+    const todayVisits = _visitorsData.filter(v => (v.date||v.createdAt||'').startsWith(today));
+    const countries = new Set(_visitorsData.map(v => v.country || v.country_code).filter(Boolean));
+    const vpn = _visitorsData.filter(v => v.vpn || v.proxy || v.is_vpn);
+    document.getElementById('vt-total').textContent     = _visitorsData.length;
+    document.getElementById('vt-today').textContent     = todayVisits.length;
+    document.getElementById('vt-countries').textContent = countries.size;
+    document.getElementById('vt-vpn').textContent       = vpn.length;
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;font-family:var(--mono);font-size:.75rem;color:#ff6b6b">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+function renderVisitors(data) {
+  const tbody = document.getElementById('vt-body');
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Sin visitantes registrados</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(v => {
+    const risk = v.risk_score || v.risk || 0;
+    const riskColor = risk > 70 ? '#ff6b6b' : risk > 40 ? 'var(--a)' : 'var(--g)';
+    const flags = [v.vpn&&'VPN', v.proxy&&'Proxy', v.tor&&'Tor'].filter(Boolean).join(' ') || '—';
+    const date = v.date || v.createdAt || v.timestamp || '';
+    return `<tr onclick="showVisitorJSON(${JSON.stringify(JSON.stringify(v)).replace(/"/g,'&quot;')})" style="cursor:pointer">
+      <td>${v.ip || '—'}</td>
+      <td>${v.country_name || v.country || '—'}</td>
+      <td>${v.city || '—'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.isp || v.org || '—'}</td>
+      <td style="color:${riskColor}">${risk}</td>
+      <td>${flags}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.page || v.path || '—'}</td>
+      <td style="white-space:nowrap">${date ? new Date(date).toLocaleDateString('es') : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterVisitors() {
+  const q = (document.getElementById('vt-search')?.value || '').toLowerCase();
+  if (!q) { renderVisitors(_visitorsData); return; }
+  const filtered = _visitorsData.filter(v =>
+    JSON.stringify(v).toLowerCase().includes(q)
   );
-  resetInactivityTimer();
+  renderVisitors(filtered);
 }
 
-// ═══════════════════════════════════════════════════
-// MODO OFFLINE
-// ═══════════════════════════════════════════════════
-function loadFromCache() {
-  const cached = localStorage.getItem('ch_apps_cache');
-  if (cached) {
-    appsData = JSON.parse(cached);
-    renderApps();
-    const ts = localStorage.getItem('ch_cache_ts');
-    const ago = ts ? Math.round((Date.now()-ts)/60000) : '?';
-    toast(`📦 Datos en caché (hace ${ago} min)`);
-  } else {
-    toast('❌ Sin conexión y sin caché disponible');
-  }
+function exportVisitors() {
+  if (!_visitorsData.length) { toast('Sin datos para exportar'); return; }
+  const headers = ['IP','País','Ciudad','ISP','Riesgo','Flags','Página','Fecha'];
+  const rows = _visitorsData.map(v => [
+    v.ip||'', v.country_name||v.country||'', v.city||'',
+    v.isp||v.org||'', v.risk_score||v.risk||0,
+    [v.vpn&&'VPN',v.proxy&&'Proxy',v.tor&&'Tor'].filter(Boolean).join(' ')||'',
+    v.page||v.path||'', v.date||v.createdAt||''
+  ].map(x => '"'+String(x).replace(/"/g,'""')+'"').join(','));
+  const csv = [headers.join(','), ...rows].join('
+');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'visitors-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  toast('📥 CSV descargado');
 }
 
-window.addEventListener('online', () => {
-  document.getElementById('offline-banner').classList.remove('show');
-  toast('✅ Conexión restaurada');
-  refreshApps();
-});
-
-window.addEventListener('offline', () => {
-  document.getElementById('offline-banner').classList.add('show');
-  haptic('error');
-  loadFromCache();
-});
-
-// Check on load
-if (!navigator.onLine) {
-  document.getElementById('offline-banner').classList.add('show');
-  loadFromCache();
+function showVisitorJSON(jsonStr) {
+  try {
+    const obj = JSON.parse(jsonStr);
+    const pre = document.getElementById('vt-json-content');
+    const overlay = document.getElementById('vt-json-overlay');
+    if (pre) pre.textContent = JSON.stringify(obj, null, 2);
+    if (overlay) overlay.style.display = 'flex';
+  } catch(e) {}
 }
 
-// ═══════════════════════════════════════════════════
-// HOOK LOGIN: registrar PIN después del login exitoso
-// ═══════════════════════════════════════════════════
-const _origCheckLogin = window.checkLogin;
-// Patch initAdmin to start inactivity watch
-const _origInitAdmin = window.initAdmin;
-window.initAdmin = function(apps) {
-  if (_origInitAdmin) _origInitAdmin(apps);
-  startInactivityWatch();
-  updateDrawerBadges();
-  renderLog();
+function closeVisitorJSON() {
+  const overlay = document.getElementById('vt-json-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// Hook switchTab to load visitors when tab opens
+const _origSwitchTab = switchTab;
+switchTab = function(id, btn) {
+  _origSwitchTab(id, btn);
+  if (id === 'visitors') loadVisitors();
 };
-
-// Keyboard shortcut: Escape closes drawer/search
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeDrawer(); closeSearch(); }
-});
-
-// Init log on load
-renderLog();
-
-// Show PIN screen on load if PIN exists (after splash hides)
-setTimeout(() => {
-  if (localStorage.getItem(PIN_KEY) && !sessionStorage.getItem('admin_key')) {
-    document.getElementById('login-screen').style.display = 'none';
-    showPinScreen();
-  }
-}, 2200);
 </script>
 
 </body>
-</html>
