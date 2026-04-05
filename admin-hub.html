@@ -67,6 +67,8 @@
     }
     .login-btn:hover { opacity: .88; }
     .login-err { font-family: var(--mono); font-size: .72rem; color: #ff6b6b; margin-top: .6rem; min-height: 1em; }
+    .login-label { font-family: var(--mono); font-size: .62rem; color: rgba(240,240,250,.35); text-align: left; display: block; margin-bottom: .25rem; letter-spacing: .06em; }
+    .login-divider { border: none; border-top: 1px solid rgba(255,255,255,.06); margin: .6rem 0; }
 
     /* ── HEADER ── */
     header {
@@ -478,7 +480,7 @@
     }
 
     /* ═══ SPLASH ═══ */
-    #splash{position:fixed;inset:0;z-index:99999;background:#030308;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease,transform .4s ease}
+    #splash{position:fixed;inset:0;z-index:99999;background:#030308;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,transform .6s}
     #splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
     .spl-img{width:88px;height:88px;border-radius:20px;object-fit:cover;animation:splPulse 2s ease-in-out infinite}
     @keyframes splPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,69,0,.5)}50%{box-shadow:0 0 0 16px rgba(255,69,0,0)}}
@@ -486,7 +488,7 @@
     .spl-title span{color:#ff4500}
     .spl-sub{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:rgba(240,240,250,.3);margin-bottom:2.5rem}
     .spl-bar{width:130px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
-    .spl-fill{height:100%;background:linear-gradient(90deg,#ff4500,#ffbd69);border-radius:2px;width:0;animation:splFill 1.7s ease forwards}
+    .spl-fill{height:100%;background:linear-gradient(90deg,#ff4500,#ffbd69);border-radius:2px;width:0;animation:splFill 1.8s ease forwards}
     @keyframes splFill{0%{width:0}60%{width:75%}100%{width:100%}}
 
     /* ═══ HAMBURGER ═══ */
@@ -777,6 +779,10 @@
       <i class="fas fa-fingerprint"></i> Ingresar con Biometría
     </button>
     <div class="bio-divider">o usa tu contraseña</div>
+    <label class="login-label">USUARIO</label>
+    <input type="text" id="user-input" class="login-input" placeholder="admin" autocomplete="username" spellcheck="false"
+      onkeydown="if(event.key==='Enter')document.getElementById('pwd-input').focus()" style="letter-spacing:.05em">
+    <label class="login-label" style="margin-top:.3rem">CONTRASEÑA</label>
     <input type="password" id="pwd-input" class="login-input" placeholder="••••••••" autocomplete="current-password" spellcheck="false"
       onkeydown="if(event.key==='Enter')checkLogin()">
     <div class="cf-turnstile" data-sitekey="0x4AAAAAAClKd5T1R81GltW_" data-theme="dark" data-language="es" style="margin:.6rem auto;display:flex;justify-content:center" id="ts-admin"></div>
@@ -1065,20 +1071,26 @@ async function checkLogin() {
     return;
   }
 
-  const pwd = document.getElementById('pwd-input').value.trim();
-  if (!pwd) return;
+  const user = (document.getElementById('user-input')?.value || '').trim();
+  const pwd  = document.getElementById('pwd-input').value.trim();
+  if (!user) { document.getElementById('login-err').textContent = '❌ Ingresa tu usuario'; return; }
+  if (!pwd)  { document.getElementById('login-err').textContent = '❌ Ingresa tu contraseña'; return; }
 
   const btn = document.querySelector('.login-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
 
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
-      headers: { 'x-admin-key': pwd }
+      headers: {
+        'x-admin-key':  pwd,
+        'x-admin-user': user
+      }
     });
     if (res.ok) {
       _loginAttempts = 0;
       ADMIN_KEY = pwd;
       sessionStorage.setItem('admin_key', pwd);
+      sessionStorage.setItem('admin_user', user);
       document.getElementById('login-screen').style.display = 'none';
       registerBio(pwd);
       setTimeout(()=>pinOffer(pwd), 1200);
@@ -1088,10 +1100,10 @@ async function checkLogin() {
       _loginAttempts++;
       document.getElementById('pwd-input').value = '';
       if (_loginAttempts >= 5) {
-        _loginLockedUntil = Date.now() + 30000; // 30s lockout
+        _loginLockedUntil = Date.now() + 30000;
         document.getElementById('login-err').textContent = '🔒 5 intentos fallidos. Espera 30s';
       } else {
-        document.getElementById('login-err').textContent = `❌ Contraseña incorrecta (${_loginAttempts}/5)`;
+        document.getElementById('login-err').textContent = `❌ Usuario o contraseña incorrectos (${_loginAttempts}/5)`;
       }
     }
   } catch {
@@ -2016,14 +2028,14 @@ function logRender(){
 // SPLASH
 // ══════════════════════════════════════════════════
 function splashHide(){
-  const el=document.getElementById('splash');
+  var el=document.getElementById('splash');
   if(!el||el._gone)return;
   el._gone=true;
-  el.classList.add('hide');
-  setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },700);
+  el.style.transition='opacity .4s ease';
+  el.style.opacity='0';
+  setTimeout(function(){ el.parentNode&&el.parentNode.removeChild(el); },450);
 }
-// Simple: hide after CSS animation (1.8s) + hard cutoff at 2.5s
-setTimeout(splashHide, 1900);
+setTimeout(splashHide,2000);
 
 // ══════════════════════════════════════════════════
 // DRAWER

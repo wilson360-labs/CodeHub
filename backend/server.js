@@ -239,9 +239,18 @@ async function connectDB() {
 
 // ── AUTH ADMIN ────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
-  const key   = req.headers['x-admin-key'] || req.body?.adminKey;
-  const valid = process.env.ADMIN_KEY || 'wilson2026ultra';
-  if (key !== valid) return res.status(403).json({ error: 'No autorizado' });
+  const key      = req.headers['x-admin-key']  || req.body?.adminKey;
+  const user     = req.headers['x-admin-user'] || req.body?.adminUser || null;
+  const validKey  = process.env.ADMIN_KEY;
+  const validUser = process.env.ADMIN_USER;   // opcional — si no está, solo valida la key
+
+  if (!validKey) {
+    console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
+    return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
+  }
+  if (key !== validKey) return res.status(403).json({ error: 'Credenciales incorrectas' });
+  // Si ADMIN_USER está configurado en Render, también lo validamos
+  if (validUser && user && user !== validUser) return res.status(403).json({ error: 'Credenciales incorrectas' });
   next();
 }
 
