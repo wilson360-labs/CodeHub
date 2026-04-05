@@ -478,7 +478,7 @@
     }
 
     /* ═══ SPLASH ═══ */
-    #splash{position:fixed;inset:0;z-index:99999;background:#030308;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,transform .6s}
+    #splash{position:fixed;inset:0;z-index:99999;background:#030308;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s ease,transform .4s ease}
     #splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
     .spl-img{width:88px;height:88px;border-radius:20px;object-fit:cover;animation:splPulse 2s ease-in-out infinite}
     @keyframes splPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,69,0,.5)}50%{box-shadow:0 0 0 16px rgba(255,69,0,0)}}
@@ -486,7 +486,7 @@
     .spl-title span{color:#ff4500}
     .spl-sub{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:rgba(240,240,250,.3);margin-bottom:2.5rem}
     .spl-bar{width:130px;height:3px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
-    .spl-fill{height:100%;background:linear-gradient(90deg,#ff4500,#ffbd69);border-radius:2px;width:0;animation:splFill 1.8s ease forwards}
+    .spl-fill{height:100%;background:linear-gradient(90deg,#ff4500,#ffbd69);border-radius:2px;width:0;animation:splFill 1.7s ease forwards}
     @keyframes splFill{0%{width:0}60%{width:75%}100%{width:100%}}
 
     /* ═══ HAMBURGER ═══ */
@@ -2017,23 +2017,13 @@ function logRender(){
 // ══════════════════════════════════════════════════
 function splashHide(){
   const el=document.getElementById('splash');
-  if(!el)return;
+  if(!el||el._gone)return;
+  el._gone=true;
   el.classList.add('hide');
-  setTimeout(()=>el.remove(),700);
+  setTimeout(()=>{ if(el.parentNode) el.parentNode.removeChild(el); },700);
 }
-// Bulletproof splash hide — multiple fallbacks guarantee it always runs
-(function(){
-  let _done = false;
-  function go(){ if(_done)return; _done=true; setTimeout(splashHide, 1800); }
-  // 1. After load event
-  window.addEventListener('load', go);
-  // 2. After DOMContentLoaded (faster)  
-  document.addEventListener('DOMContentLoaded', function(){ setTimeout(go, 2200); });
-  // 3. Hard timeout — no matter what, hide after 3.5s
-  setTimeout(function(){ _done=false; go(); }, 3500);
-  // 4. If document already complete when script runs
-  if(document.readyState === 'complete') setTimeout(go, 500);
-})();
+// Simple: hide after CSS animation (1.8s) + hard cutoff at 2.5s
+setTimeout(splashHide, 1900);
 
 // ══════════════════════════════════════════════════
 // DRAWER
