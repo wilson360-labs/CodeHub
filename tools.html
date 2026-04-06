@@ -2337,5 +2337,28 @@ function showHoroscope(sign) {
   }
 })();
 </script>
+<script>
+/* Registrar visita en backend (1 vez por sesión) */
+(function pingVisit() {
+  if (sessionStorage.getItem("ch_visit_sent")) return;
+  sessionStorage.setItem("ch_visit_sent", "1");
+  fetch("https://api.ipify.org?format=json")
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      return fetch("https://codehub-98s6.onrender.com/api/visit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: location.pathname, ip: d.ip }),
+      });
+    })
+    .catch(function(){
+      fetch("https://codehub-98s6.onrender.com/api/visit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ page: location.pathname }),
+      }).catch(function(){});
+    });
+})();
+</script>
 </body>
 </html>

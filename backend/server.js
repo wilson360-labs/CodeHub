@@ -529,6 +529,7 @@ app.post('/api/visit', async (req, res) => {
     const rawIp =
       req.headers['x-real-ip'] ||
       (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+      req.body?.ip ||
       req.socket?.remoteAddress ||
       req.ip || 'unknown';
 
