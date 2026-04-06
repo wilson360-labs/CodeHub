@@ -481,6 +481,44 @@
 
     /* ═══ SPLASH — REMOVED ═══ */
 
+
+    /* ═══ STATUS PANEL ═══ */
+    .svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .svc-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.1rem 1.2rem;
+      display: flex; align-items: center; gap: .85rem;
+      transition: border-color .2s;
+    }
+    .svc-card.online  { border-left: 3px solid var(--g); }
+    .svc-card.offline { border-left: 3px solid #ff5f56; }
+    .svc-card.warning { border-left: 3px solid var(--a); }
+    .svc-card.loading { border-left: 3px solid rgba(255,255,255,.12); }
+    .svc-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .svc-dot.online  { background: var(--g);  animation: svcPulse 2s infinite; }
+    .svc-dot.offline { background: #ff5f56; }
+    .svc-dot.warning { background: var(--a); }
+    .svc-dot.loading { background: rgba(255,255,255,.18); animation: svcBlink 1s infinite; }
+    @keyframes svcPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.5)} 50%{box-shadow:0 0 0 5px rgba(0,230,118,0)} }
+    @keyframes svcBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .svc-info { flex: 1; min-width: 0; }
+    .svc-name { font-weight: 700; font-size: .82rem; margin-bottom: .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .svc-detail { font-family: var(--mono); font-size: .62rem; color: var(--muted); }
+    .svc-latency { font-family: var(--mono); font-size: .65rem; flex-shrink: 0; }
+    .svc-latency.fast { color: var(--g); }
+    .svc-latency.slow { color: var(--a); }
+    .svc-latency.dead { color: #ff5f56; }
+    .status-badge { display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .85rem; border-radius: 20px; font-family: var(--mono); font-size: .72rem; font-weight: 700; }
+    .status-badge.all-ok  { background: rgba(0,230,118,.12); border: 1px solid rgba(0,230,118,.3); color: var(--g); }
+    .status-badge.partial { background: rgba(255,189,69,.1);  border: 1px solid rgba(255,189,69,.3); color: var(--a); }
+    .status-badge.outage  { background: rgba(255,69,0,.1);   border: 1px solid rgba(255,69,0,.3);  color: var(--p); }
+    .status-refresh-btn { padding: .4rem 1rem; border-radius: 8px; background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--muted); font-family: var(--mono); font-size: .72rem; cursor: pointer; transition: all .2s; }
+    .status-refresh-btn:hover { border-color: rgba(0,230,118,.4); color: var(--g); }
+    .env-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: .6rem; margin-top: .5rem; }
+    .env-pill { display: flex; align-items: center; gap: .5rem; padding: .45rem .75rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-family: var(--mono); font-size: .68rem; }
+    .env-pill.ok  { border-color: rgba(0,230,118,.2); }
+    .env-pill.mis { border-color: rgba(255,69,0,.2); opacity: .55; }
+
     /* ═══ HAMBURGER ═══ */
     #menu-btn{background:none;border:none;color:var(--muted);font-size:1.15rem;cursor:pointer;padding:.35rem .5rem;transition:color .15s;flex-shrink:0}
     #menu-btn:hover{color:var(--text)}
@@ -624,6 +662,7 @@
     <div class="drw-it" id="di-add" onclick="drwGo('add',this)"><i class="fas fa-plus"></i> Nueva App</div>
     <div class="drw-it" id="di-bulk" onclick="drwGo('bulk',this)"><i class="fas fa-layer-group"></i> Bulk Upload</div>
     <div class="drw-it" id="di-visitors" onclick="drwGo('visitors',this)"><i class="fas fa-earth-americas"></i> Visitantes</div>
+    <div class="drw-it" id="di-status" onclick="drwGo('status',this)"><i class="fas fa-signal"></i> Status Servicios <span id="status-dot-drw" style="margin-left:auto;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);flex-shrink:0"></span></div>
     <div class="drw-sec" style="margin-top:.4rem">historial</div>
     <div class="drw-log" id="ch-log"><div class="log-row" style="color:rgba(240,240,250,.2)">Sin cambios aún</div></div>
   </div>
@@ -972,6 +1011,46 @@
     <div id="bulk-results" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem">
       <div style="font-size:.82rem;font-family:var(--mono);color:var(--muted);margin-bottom:.8rem">RESULTADOS</div>
       <div id="bulk-results-list"></div>
+    </div>
+  </div>
+
+
+  <!-- ── TAB: STATUS ── -->
+  <div class="tab-panel" id="tab-status">
+    <div class="status-header">
+      <div>
+        <div class="section-title" style="margin-bottom:.3rem"><i class="fas fa-signal"></i> Estado de Servicios</div>
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--muted)">Monitoreo en tiempo real de todos los servicios de CodeHub</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <span id="status-global-badge" class="status-badge loading">⏳ Verificando...</span>
+        <button class="status-refresh-btn" id="status-refresh-btn" onclick="runStatusCheck()">
+          <i class="fas fa-rotate-right"></i> Actualizar
+        </button>
+      </div>
+    </div>
+    <div style="font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-bottom:1.2rem">
+      Última verificación: <span id="status-last-check">—</span>
+    </div>
+
+    <!-- Core Services -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.7rem">Servicios Principales</div>
+    <div class="svc-grid" id="svc-core"></div>
+
+    <!-- AI Providers -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.7rem;margin-top:.5rem">Proveedores de IA</div>
+    <div class="svc-grid" id="svc-ai"></div>
+
+    <!-- External APIs -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.7rem;margin-top:.5rem">APIs Externas</div>
+    <div class="svc-grid" id="svc-ext"></div>
+
+    <!-- Env Variables -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;margin-top:1rem">
+      <div style="font-size:.8rem;font-weight:700;margin-bottom:.8rem;display:flex;align-items:center;gap:.5rem">
+        <i class="fas fa-key" style="color:var(--a)"></i> Variables de Entorno
+      </div>
+      <div class="env-grid" id="svc-env"></div>
     </div>
   </div>
 
@@ -2315,7 +2394,7 @@ async function loadVisitors() {
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;font-family:var(--mono);font-size:.75rem;color:var(--muted)">Cargando...</td></tr>';
   try {
-    const res = await fetch(`${BACKEND}/api/visitors`, {
+    const res = await fetch(`${BACKEND}/api/admin/visitors`, {
       headers: { 'x-admin-key': ADMIN_KEY }
     });
     if (!res.ok) throw new Error('Error ' + res.status);
@@ -2324,9 +2403,9 @@ async function loadVisitors() {
     renderVisitors(_visitorsData);
     // Update KPIs
     const today = new Date().toISOString().slice(0,10);
-    const todayVisits = _visitorsData.filter(v => (v.date||v.createdAt||'').startsWith(today));
+    const todayVisits = _visitorsData.filter(v => (v.visited_at||v.date||v.createdAt||'').startsWith(today));
     const countries = new Set(_visitorsData.map(v => v.country || v.country_code).filter(Boolean));
-    const vpn = _visitorsData.filter(v => v.vpn || v.proxy || v.is_vpn);
+    const vpn = _visitorsData.filter(v => v.is_vpn || v.is_proxy || v.vpn || v.proxy);
     document.getElementById('vt-total').textContent     = _visitorsData.length;
     document.getElementById('vt-today').textContent     = todayVisits.length;
     document.getElementById('vt-countries').textContent = countries.size;
@@ -2346,8 +2425,8 @@ function renderVisitors(data) {
   tbody.innerHTML = data.map(v => {
     const risk = v.risk_score || v.risk || 0;
     const riskColor = risk > 70 ? '#ff6b6b' : risk > 40 ? 'var(--a)' : 'var(--g)';
-    const flags = [v.vpn&&'VPN', v.proxy&&'Proxy', v.tor&&'Tor'].filter(Boolean).join(' ') || '—';
-    const date = v.date || v.createdAt || v.timestamp || '';
+    const flags = [v.is_vpn&&'VPN', v.is_proxy&&'Proxy', v.tor&&'Tor', v.is_bot&&'Bot'].filter(Boolean).join(' ') || '—';
+    const date = v.visited_at || v.date || v.createdAt || v.timestamp || '';
     return `<tr onclick="showVisitorJSON(${JSON.stringify(JSON.stringify(v)).replace(/"/g,'&quot;')})" style="cursor:pointer">
       <td>${v.ip || '—'}</td>
       <td>${v.country_name || v.country || '—'}</td>
@@ -2377,7 +2456,7 @@ function exportVisitors() {
     v.ip||'', v.country_name||v.country||'', v.city||'',
     v.isp||v.org||'', v.risk_score||v.risk||0,
     [v.vpn&&'VPN',v.proxy&&'Proxy',v.tor&&'Tor'].filter(Boolean).join(' ')||'',
-    v.page||v.path||'', v.date||v.createdAt||''
+    v.page||v.path||'', v.visited_at||v.date||v.createdAt||''
   ].map(x => '"'+String(x).replace(/"/g,'""')+'"').join(','));
   const csv = [headers.join(','), ...rows].join('
 ');
@@ -2408,6 +2487,197 @@ const _origSwitchTab = switchTab;
 switchTab = function(id, btn) {
   _origSwitchTab(id, btn);
   if (id === 'visitors') loadVisitors();
+};
+</script>
+
+
+<script>
+// ══════════════════════════════════════════════════════
+// SERVICE STATUS ENGINE
+// ══════════════════════════════════════════════════════
+let _statusRunning = false;
+
+// Helper: ping with latency
+async function ping(url, opts = {}) {
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(opts.timeout || 8000),
+      ...opts.fetchOpts
+    });
+    const ms = Math.round(performance.now() - t0);
+    return { ok: res.ok, status: res.status, ms, data: opts.json ? await res.json().catch(()=>({})) : null };
+  } catch(e) {
+    return { ok: false, status: 0, ms: null, error: e.message };
+  }
+}
+
+function svcCard(id, name, icon, state, detail, ms) {
+  const latClass = ms === null ? 'dead' : ms < 400 ? 'fast' : 'slow';
+  const latText  = ms === null ? '✗ offline' : ms + ' ms';
+  return `<div class="svc-card ${state}" id="svc-${id}">
+    <div class="svc-dot ${state}"></div>
+    <div class="svc-info">
+      <div class="svc-name"><i class="${icon}" style="margin-right:.35rem;opacity:.65"></i>${name}</div>
+      <div class="svc-detail" id="svc-detail-${id}">${detail}</div>
+    </div>
+    <div class="svc-latency ${latClass}">${latText}</div>
+  </div>`;
+}
+
+function envPill(name, present) {
+  return `<div class="env-pill ${present ? 'ok' : 'mis'}">
+    <i class="fas fa-circle ${present ? 'ok' : 'mis'}" style="font-size:.45rem;color:${present ? 'var(--g)' : '#ff5f56'}"></i>
+    ${name}
+  </div>`;
+}
+
+async function runStatusCheck() {
+  if (_statusRunning) return;
+  _statusRunning = true;
+  const btn = document.getElementById('status-refresh-btn');
+  if (btn) btn.classList.add('spin');
+
+  // Init loading state
+  ['svc-core','svc-ai','svc-ext'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<div style="font-family:var(--mono);font-size:.72rem;color:var(--muted);padding:.5rem">Verificando...</div>';
+  });
+
+  const results = { online: 0, total: 0 };
+
+  // ── 1. BACKEND HEALTH ──────────────────────────────
+  const health = await ping(BACKEND + '/api/health', { json: true });
+  const hd = health.data || {};
+  results.total++;
+  if (health.ok) results.online++;
+
+  // ── 2. Vercel (frontend) ───────────────────────────
+  const vercel = await ping('https://wilson360-labs.vercel.app', { timeout: 7000 });
+  results.total++; if (vercel.ok) results.online++;
+
+  // ── 3. IPQuery API ─────────────────────────────────
+  const ipq = await ping('https://ipquery.io/8.8.8.8', { timeout: 6000 });
+  results.total++; if (ipq.ok) results.online++;
+
+  // ── 4. Supabase ────────────────────────────────────
+  const supState = hd.storage === 'supabase' ? 'online' : (hd.storage === 'missing' ? 'offline' : 'warning');
+  results.total++; if (supState === 'online') results.online++;
+
+  // ── 5. MongoDB ─────────────────────────────────────
+  const mongoState = hd.mongo === 'connected' ? 'online' : (hd.mongo ? 'offline' : 'warning');
+  results.total++; if (mongoState === 'online') results.online++;
+
+  // ── 6. Redis ──────────────────────────────────────
+  const redisState = hd.redis === 'connected' ? 'online' : 'warning';
+  results.total++; if (redisState !== 'offline') results.online++;
+
+  // Core services
+  const coreEl = document.getElementById('svc-core');
+  if (coreEl) coreEl.innerHTML =
+    svcCard('backend',  'Backend (Render)',  'fas fa-server',       health.ok ? 'online' : 'offline', health.ok ? 'v' + (hd.version||'?') + ' · uptime ' + (hd.uptime||'?') : (health.error||'Sin respuesta'), health.ms) +
+    svcCard('vercel',   'Frontend (Vercel)', 'fas fa-globe',        vercel.ok ? 'online' : 'offline', vercel.ok ? 'wilson360-labs.vercel.app' : 'No responde', vercel.ms) +
+    svcCard('mongodb',  'MongoDB',           'fas fa-database',     mongoState, hd.mongo || 'unknown', health.ms) +
+    svcCard('redis',    'Redis / Cache',     'fas fa-bolt',         redisState, hd.redis === 'memory' ? 'modo memoria (sin REDIS_URL)' : (hd.redis || 'unknown'), health.ms) +
+    svcCard('supabase', 'Supabase Storage',  'fas fa-cloud',        supState,   hd.storage || 'unknown', health.ms);
+
+  // ── AI Providers (from health response) ───────────
+  const aiSvcs = [
+    { key: 'groq',       name: 'Groq',       icon: 'fas fa-microchip' },
+    { key: 'gemini',     name: 'Gemini',     icon: 'fas fa-gem' },
+    { key: 'openrouter', name: 'OpenRouter', icon: 'fas fa-route' },
+    { key: 'mistral',    name: 'Mistral',    icon: 'fas fa-wind' },
+    { key: 'cohere',     name: 'Cohere',     icon: 'fas fa-brain' },
+    { key: 'minimax',    name: 'MiniMax',    icon: 'fas fa-robot' },
+    { key: 'virustotal', name: 'VirusTotal', icon: 'fas fa-shield-virus' },
+  ];
+  const aiEl = document.getElementById('svc-ai');
+  if (aiEl) {
+    aiEl.innerHTML = aiSvcs.map(s => {
+      const val   = hd[s.key] || 'missing';
+      const state = val === 'missing' ? 'offline' : (val.startsWith('ok') ? 'online' : 'warning');
+      const detail = val === 'missing' ? 'API key no configurada' : val;
+      results.total++;
+      if (state === 'online') results.online++;
+      return svcCard(s.key, s.name, s.icon, state, detail, null);
+    }).join('');
+  }
+
+  // ── External APIs ──────────────────────────────────
+  const extEl = document.getElementById('svc-ext');
+  if (extEl) extEl.innerHTML =
+    svcCard('ipquery',  'IPQuery (GeoIP)',   'fas fa-map-pin',      ipq.ok ? 'online' : 'offline', ipq.ok ? 'ipquery.io · ' + (ipq.ms||'?') + ' ms' : 'No responde', ipq.ms) +
+    svcCard('ipify',    'ipify.org',         'fas fa-location-dot', 'loading', 'Verificando...', null);
+
+  // Ping ipify separately
+  const ipify = await ping('https://api.ipify.org?format=json', { timeout: 5000 });
+  results.total++; if (ipify.ok) results.online++;
+  const ipifyCard = document.getElementById('svc-ipify');
+  if (ipifyCard) {
+    ipifyCard.className = 'svc-card ' + (ipify.ok ? 'online' : 'offline');
+    const dot = ipifyCard.querySelector('.svc-dot');
+    if (dot) dot.className = 'svc-dot ' + (ipify.ok ? 'online' : 'offline');
+    const detail = ipifyCard.querySelector('[id^="svc-detail"]');
+    if (detail) detail.textContent = ipify.ok ? 'Detección IP · ' + ipify.ms + ' ms' : 'No responde';
+    const lat = ipifyCard.querySelector('.svc-latency');
+    if (lat) { lat.textContent = ipify.ms !== null ? ipify.ms + ' ms' : '✗ offline'; lat.className = 'svc-latency ' + (ipify.ms === null ? 'dead' : ipify.ms < 400 ? 'fast' : 'slow'); }
+  }
+
+  // ── Env Vars ───────────────────────────────────────
+  const envEl = document.getElementById('svc-env');
+  if (envEl && health.ok) {
+    const envKeys = [
+      { label: 'GROQ_API_KEY',       val: hd.groq },
+      { label: 'GEMINI_API_KEY',      val: hd.gemini },
+      { label: 'OPENROUTER_API_KEY',  val: hd.openrouter },
+      { label: 'MISTRAL_API_KEY',     val: hd.mistral },
+      { label: 'COHERE_API_KEY',      val: hd.cohere },
+      { label: 'MINIMAX_API_KEY',     val: hd.minimax },
+      { label: 'VIRUSTOTAL_API_KEY',  val: hd.virustotal },
+      { label: 'MONGODB_URI',         val: hd.mongo === 'connected' ? 'ok' : 'missing' },
+      { label: 'SUPABASE_URL',        val: hd.storage === 'supabase' ? 'ok' : 'missing' },
+      { label: 'SUPABASE_KEY',        val: hd.storage === 'supabase' ? 'ok' : 'missing' },
+      { label: 'REDIS_URL',           val: hd.redis === 'connected' ? 'ok' : (hd.redis === 'memory' ? 'missing' : null) },
+      { label: 'ADMIN_KEY',           val: health.ok ? 'ok' : 'missing' },
+    ];
+    envEl.innerHTML = envKeys.map(e => envPill(e.label, e.val && e.val !== 'missing')).join('');
+  }
+
+  // ── Global badge ───────────────────────────────────
+  const badge = document.getElementById('status-global-badge');
+  if (badge) {
+    const allOk = results.online === results.total;
+    const noOk  = results.online === 0;
+    badge.className = 'status-badge ' + (allOk ? 'all-ok' : noOk ? 'outage' : 'partial');
+    badge.textContent = allOk
+      ? '✅ Todos los servicios operativos'
+      : noOk
+        ? '🔴 Caída general detectada'
+        : `⚠️ ${results.total - results.online} servicios con problemas`;
+  }
+
+  // ── Dot in drawer ──────────────────────────────────
+  const dot = document.getElementById('status-dot-drw');
+  if (dot) {
+    const allOk = results.online === results.total;
+    const noOk  = results.online === 0;
+    dot.style.background = allOk ? 'var(--g)' : noOk ? '#ff5f56' : 'var(--a)';
+    if (allOk) dot.style.animation = 'svcPulse 2s infinite';
+  }
+
+  // ── Last check time ────────────────────────────────
+  const lc = document.getElementById('status-last-check');
+  if (lc) lc.textContent = new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  if (btn) btn.classList.remove('spin');
+  _statusRunning = false;
+}
+
+// Hook switchTab to load status when opened
+const _origSwitchTab2 = switchTab;
+switchTab = function(id, btn) {
+  _origSwitchTab2(id, btn);
+  if (id === 'status') runStatusCheck();
 };
 </script>
 
