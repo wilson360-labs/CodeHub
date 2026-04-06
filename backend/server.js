@@ -84,7 +84,7 @@ const corsOptions = {
     cb(new Error('CORS bloqueado: ' + origin));
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-key', 'Accept', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'Accept', 'Authorization'],
   exposedHeaders: ['Content-Length', 'X-Cache'],
   credentials: true,
   preflightContinue: false,
