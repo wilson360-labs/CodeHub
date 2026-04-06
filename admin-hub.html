@@ -828,6 +828,7 @@
     <button class="admin-tab" onclick="switchTab('add', this)"><i class="fas fa-plus"></i> Nueva App</button>
     <button class="admin-tab" onclick="switchTab('bulk', this)"><i class="fas fa-layer-group"></i> Bulk Upload</button>
     <button class="admin-tab" onclick="switchTab('visitors', this)"><i class="fas fa-earth-americas"></i> Visitantes</button>
+    <button class="admin-tab" onclick="switchTab('status', this)"><i class="fas fa-signal"></i> Status</button>
   </div>
   <button class="logout-btn" onclick="srchToggle()" title="Buscar"><i class="fas fa-search"></i></button>
   <button class="logout-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Salir</button>
@@ -926,7 +927,7 @@
   </div>
   <!-- TAB: VISITANTES -->
   <div class="tab-panel" id="tab-visitors">
-    <div class="section-title"><i class="fas fa-earth-americas"></i> Visitantes en tiempo real — IPQuery</div>
+    <div class="section-title"><i class="fas fa-earth-americas"></i> Visitantes en tiempo real</div>
 
     <div class="vt-kpis">
       <div class="stat-card"><div class="num" id="vt-total"     style="color:#00e5ff">—</div><div class="lbl">Total visitas</div></div>
@@ -1286,6 +1287,8 @@ function switchTab(id, btn) {
   if (id === 'requests') loadAdminRequests();
   if (id === 'stats')    loadAdminRatings();
   if (id === 'add')      renderAddForm();
+  if (id === 'visitors') loadVisitors();
+  if (id === 'status')   runStatusCheck();
 }
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -1298,6 +1301,8 @@ function initAdmin(apps) {
   renderApps();
   loadAdminStats();
   startInactivity();
+  // Pre-cargar status en background para que esté listo al abrir la tab
+  setTimeout(() => runStatusCheck(), 1200);
   drwRefreshBadges();
   logRender();
 }
@@ -2482,12 +2487,7 @@ function closeVisitorJSON() {
   if (overlay) overlay.style.display = 'none';
 }
 
-// Hook switchTab to load visitors when tab opens
-const _origSwitchTab = switchTab;
-switchTab = function(id, btn) {
-  _origSwitchTab(id, btn);
-  if (id === 'visitors') loadVisitors();
-};
+// switchTab hooks consolidated into main function above
 </script>
 
 
@@ -2556,8 +2556,8 @@ async function runStatusCheck() {
   const vercel = await ping('https://wilson360-labs.vercel.app', { timeout: 7000 });
   results.total++; if (vercel.ok) results.online++;
 
-  // ── 3. IPQuery API ─────────────────────────────────
-  const ipq = await ping('https://ipquery.io/8.8.8.8', { timeout: 6000 });
+  // ── 3. ip-api.com (GeoIP) ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  const ipq = await ping('http://ip-api.com/json/8.8.8.8', { timeout: 6000 });
   results.total++; if (ipq.ok) results.online++;
 
   // ── 4. Supabase ────────────────────────────────────
@@ -2603,25 +2603,24 @@ async function runStatusCheck() {
     }).join('');
   }
 
-  // ── External APIs ──────────────────────────────────
+  // ── External APIs ─────────────────────────────────────────
+  // Ping ipify and ipwho.is in parallel
+  const [ipify, ipwho] = await Promise.all([
+    ping('https://api.ipify.org?format=json', { timeout: 5000 }),
+    ping('https://ipwho.is/8.8.8.8', { timeout: 6000 }),
+  ]);
+  results.total += 3; // ipq + ipify + ipwho
+  if (ipify.ok)  results.online++;
+  if (ipwho.ok)  results.online++;
+
   const extEl = document.getElementById('svc-ext');
   if (extEl) extEl.innerHTML =
-    svcCard('ipquery',  'IPQuery (GeoIP)',   'fas fa-map-pin',      ipq.ok ? 'online' : 'offline', ipq.ok ? 'ipquery.io · ' + (ipq.ms||'?') + ' ms' : 'No responde', ipq.ms) +
-    svcCard('ipify',    'ipify.org',         'fas fa-location-dot', 'loading', 'Verificando...', null);
-
-  // Ping ipify separately
-  const ipify = await ping('https://api.ipify.org?format=json', { timeout: 5000 });
-  results.total++; if (ipify.ok) results.online++;
-  const ipifyCard = document.getElementById('svc-ipify');
-  if (ipifyCard) {
-    ipifyCard.className = 'svc-card ' + (ipify.ok ? 'online' : 'offline');
-    const dot = ipifyCard.querySelector('.svc-dot');
-    if (dot) dot.className = 'svc-dot ' + (ipify.ok ? 'online' : 'offline');
-    const detail = ipifyCard.querySelector('[id^="svc-detail"]');
-    if (detail) detail.textContent = ipify.ok ? 'Detección IP · ' + ipify.ms + ' ms' : 'No responde';
-    const lat = ipifyCard.querySelector('.svc-latency');
-    if (lat) { lat.textContent = ipify.ms !== null ? ipify.ms + ' ms' : '✗ offline'; lat.className = 'svc-latency ' + (ipify.ms === null ? 'dead' : ipify.ms < 400 ? 'fast' : 'slow'); }
-  }
+    svcCard('ipapi',   'ip-api.com (GeoIP)',  'fas fa-map-pin',      ipq.ok   ? 'online' : 'offline',
+      ipq.ok   ? 'Geo primario · HTTP · ' + (ipq.ms||'?') + ' ms'  : 'No responde — revisar Railway outbound', ipq.ms) +
+    svcCard('ipwho',   'ipwho.is (Fallback)', 'fas fa-location-crosshairs', ipwho.ok ? 'online' : 'offline',
+      ipwho.ok ? 'Geo fallback · HTTPS · ' + (ipwho.ms||'?') + ' ms' : 'No responde', ipwho.ms) +
+    svcCard('ipify',   'ipify.org',           'fas fa-location-dot', ipify.ok ? 'online' : 'offline',
+      ipify.ok ? 'Detección IP cliente · ' + (ipify.ms||'?') + ' ms' : 'No responde', ipify.ms);
 
   // ── Env Vars ───────────────────────────────────────
   const envEl = document.getElementById('svc-env');
@@ -2639,6 +2638,7 @@ async function runStatusCheck() {
       { label: 'SUPABASE_KEY',        val: hd.storage === 'supabase' ? 'ok' : 'missing' },
       { label: 'REDIS_URL',           val: hd.redis === 'connected' ? 'ok' : (hd.redis === 'memory' ? 'missing' : null) },
       { label: 'ADMIN_KEY',           val: health.ok ? 'ok' : 'missing' },
+      { label: 'IP_GEO_PROVIDER',       val: hd.ip_geo ? 'ok' : null },
     ];
     envEl.innerHTML = envKeys.map(e => envPill(e.label, e.val && e.val !== 'missing')).join('');
   }
@@ -2673,12 +2673,7 @@ async function runStatusCheck() {
   _statusRunning = false;
 }
 
-// Hook switchTab to load status when opened
-const _origSwitchTab2 = switchTab;
-switchTab = function(id, btn) {
-  _origSwitchTab2(id, btn);
-  if (id === 'status') runStatusCheck();
-};
+// switchTab hooks consolidated into main function above
 </script>
 
 </body>

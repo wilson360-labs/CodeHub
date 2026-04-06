@@ -9,7 +9,7 @@
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
  *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
- *   SUPABASE_URL, SUPABASE_KEY
+ *   TOGETHER_API_KEY, OPENROUTER_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY
  */
 
 require('dotenv').config();
@@ -513,6 +513,7 @@ app.get('/api/health', (_, res) => res.json({
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
   storage:   supabase ? 'supabase' : 'missing',
   uptime:    Math.floor(process.uptime()) + 's',
+  ip_geo:    'ip-api.com + ipwho.is (fallback)',
 }));
 
 // Stats en vivo
@@ -538,37 +539,71 @@ app.post('/api/visit', async (req, res) => {
 
     let geo = {};
     if (!isLocal && finalIp !== 'unknown') {
+      // Primario: ip-api.com (gratuito, sin key, muy fiable)
       try {
-        const r = await fetch(`https://ipquery.io/${encodeURIComponent(finalIp)}`, {
-          signal: AbortSignal.timeout(6000),
-        });
+        const fields = 'status,country,countryCode,regionName,city,isp,org,proxy,hosting';
+        const r = await fetch(
+          `http://ip-api.com/json/${encodeURIComponent(finalIp)}?fields=${fields}`,
+          { signal: AbortSignal.timeout(6000) }
+        );
         if (r.ok) {
-          geo = await r.json();
-          console.log(`IPQuery [${finalIp}]:`, geo?.location?.country, geo?.location?.city);
+          const d = await r.json();
+          if (d.status === 'success') {
+            geo = d;
+            console.log(`ip-api [${finalIp}]:`, d.country, d.city);
+          }
         }
-      } catch (e) { console.warn('IPQuery error:', e.message); }
+      } catch (e) { console.warn('ip-api error:', e.message); }
+
+      // Fallback: ipwho.is (HTTPS, sin key)
+      if (!geo.country) {
+        try {
+          const r2 = await fetch(
+            `https://ipwho.is/${encodeURIComponent(finalIp)}`,
+            { signal: AbortSignal.timeout(6000) }
+          );
+          if (r2.ok) {
+            const d2 = await r2.json();
+            if (d2.success) {
+              geo = {
+                country:     d2.country,
+                countryCode: d2.country_code,
+                regionName:  d2.region,
+                city:        d2.city,
+                isp:         d2.connection?.isp  || null,
+                org:         d2.connection?.org  || null,
+                proxy:       false,
+                hosting:     false,
+              };
+              console.log(`ipwho.is [${finalIp}]:`, d2.country, d2.city);
+            }
+          }
+        } catch (e2) { console.warn('ipwho.is error:', e2.message); }
+      }
     }
 
     const record = {
       ip:           finalIp,
-      country:      geo?.location?.country      || null,
-      country_code: geo?.location?.country_code || null,
-      city:         geo?.location?.city         || null,
-      region:       geo?.location?.state        || null,
-      isp:          geo?.isp?.isp               || null,
-      org:          geo?.isp?.org               || null,
-      is_vpn:       geo?.risk?.is_vpn           || false,
-      is_proxy:     geo?.risk?.is_proxy         || false,
-      is_bot:       geo?.risk?.is_bogon         || false,
-      risk_score:   geo?.risk?.risk_score       || 0,
+      country:      geo?.country      || null,
+      country_code: geo?.countryCode  || null,
+      city:         geo?.city         || null,
+      region:       geo?.regionName   || null,
+      isp:          geo?.isp          || null,
+      org:          geo?.org          || null,
+      is_vpn:       geo?.proxy        || false,
+      is_proxy:     geo?.proxy        || false,
+      is_bot:       geo?.hosting      || false,
+      risk_score:   geo?.proxy ? 60 : (geo?.hosting ? 30 : 0),
       page:         String(req.body?.page || '/').slice(0, 200),
       ua:           (req.headers['user-agent'] || '').slice(0, 300),
       visited_at:   new Date().toISOString(),
     };
 
-    if (supabase) {
-      await supabase.from('visitor_logs').insert(record);
-    }
+    // Guardar en Supabase y registrar visita en paralelo
+    const [_saved] = await Promise.allSettled([
+      supabase ? supabase.from('visitor_logs').insert(record) : Promise.resolve(),
+    ]);
+    if (_saved?.status === 'rejected') console.warn('visitor_logs insert error:', _saved.reason?.message);
     trackVisit();
     res.json({ ok: true, ip: finalIp });
   } catch (e) {
