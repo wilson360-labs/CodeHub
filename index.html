@@ -1750,10 +1750,77 @@
 }
 
 /* ═══ HERO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══ */
+        /* ── PARALLAX HERO ── */
         #hero {
             padding: 2.5rem 0 1.5rem;
             position: relative;
+            overflow: hidden;
         }
+        /* Parallax canvas behind everything */
+        #hero-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: .55;
+        }
+        /* Floating gradient orbs */
+        .parallax-orb {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            filter: blur(60px);
+            will-change: transform;
+            z-index: 0;
+        }
+        .parallax-orb-1 {
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, rgba(255,69,0,.18) 0%, transparent 70%);
+            top: -80px; right: -60px;
+        }
+        .parallax-orb-2 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(0,229,255,.13) 0%, transparent 70%);
+            bottom: -40px; left: -40px;
+        }
+        .parallax-orb-3 {
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(0,230,118,.10) 0%, transparent 70%);
+            top: 40%; left: 35%;
+        }
+        /* Grid overlay */
+        .parallax-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+        }
+        /* Scanline shimmer */
+        .parallax-scanline {
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,69,0,.35), transparent);
+            pointer-events: none;
+            z-index: 1;
+            animation: scanMove 4s linear infinite;
+            top: 0;
+        }
+        @keyframes scanMove {
+            0%   { top: 0%; opacity: 0; }
+            5%   { opacity: 1; }
+            95%  { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        /* Hero inner content stays above parallax layers */
+        .hero-inner { position: relative; z-index: 2; }
         .hero-inner {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -3779,6 +3846,13 @@
         <main>
         <!-- ── HERO ── -->
         <section id="hero">
+            <!-- Parallax layers -->
+            <canvas id="hero-canvas" aria-hidden="true"></canvas>
+            <div class="parallax-grid" id="px-grid" aria-hidden="true"></div>
+            <div class="parallax-orb parallax-orb-1" id="px-orb1" aria-hidden="true"></div>
+            <div class="parallax-orb parallax-orb-2" id="px-orb2" aria-hidden="true"></div>
+            <div class="parallax-orb parallax-orb-3" id="px-orb3" aria-hidden="true"></div>
+            <div class="parallax-scanline" aria-hidden="true"></div>
             <div class="hero-inner">
                 <div class="hero-text">
                     <div class="hero-tag">
@@ -7866,3 +7940,109 @@ function setAIMood(btn) {
     });
 })();
 </script>
+
+<script>
+/* ══ PARALLAX HERO ENGINE ══════════════════════════════════════
+   Particle canvas + scroll/mouse depth layers — Wilson.E 2026
+══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  /* ── 1. PARTICLE CANVAS ─────────────────────────────────── */
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas) return;
+  const ctx  = canvas.getContext('2d');
+  const hero = document.getElementById('hero');
+
+  const COLORS = ['rgba(255,69,0,', 'rgba(0,229,255,', 'rgba(0,230,118,', 'rgba(180,100,255,'];
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width  = hero.offsetWidth;
+    H = canvas.height = hero.offsetHeight;
+  }
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+
+  function mkParticle() {
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    return {
+      x: rand(0, W), y: rand(0, H),
+      r: rand(1, 2.8),
+      vx: rand(-.18, .18), vy: rand(-.22, -.06),
+      a: rand(.15, .55), da: rand(-.003, .003),
+      color,
+    };
+  }
+
+  function initParticles(n = 68) {
+    particles = Array.from({ length: n }, mkParticle);
+  }
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, W, H);
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + p.a + ')';
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      p.a += p.da;
+      if (p.a <= .08 || p.a >= .65) p.da *= -1;
+      if (p.y < -10) { p.y = H + 5; p.x = rand(0, W); }
+      if (p.x < -10) p.x = W + 5;
+      if (p.x > W + 10) p.x = -5;
+    }
+  }
+
+  /* ── 2. SCROLL PARALLAX ──────────────────────────────────── */
+  const orb1 = document.getElementById('px-orb1');
+  const orb2 = document.getElementById('px-orb2');
+  const orb3 = document.getElementById('px-orb3');
+  const grid = document.getElementById('px-grid');
+
+  let scrollY = 0, ticking = false;
+
+  function applyScroll() {
+    const s = scrollY * 0.001;
+    if (orb1) orb1.style.transform = `translateY(${scrollY * 0.18}px) scale(${1 + s * .4})`;
+    if (orb2) orb2.style.transform = `translateY(${scrollY * 0.28}px)`;
+    if (orb3) orb3.style.transform = `translateY(${scrollY * 0.12}px) translateX(${scrollY * 0.04}px)`;
+    if (grid) grid.style.transform = `translateY(${scrollY * 0.07}px)`;
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', () => {
+    scrollY = window.scrollY;
+    if (!ticking) { requestAnimationFrame(applyScroll); ticking = true; }
+  }, { passive: true });
+
+  /* ── 3. MOUSE DEPTH ─────────────────────────────────────── */
+  let mx = 0, my = 0, mTick = false;
+
+  function applyMouse() {
+    const dx = (mx / window.innerWidth  - .5);
+    const dy = (my / window.innerHeight - .5);
+    if (orb1) orb1.style.transform += ` translate(${dx * 28}px, ${dy * 18}px)`;
+    if (orb3) orb3.style.transform += ` translate(${dx * 14}px, ${dy * 10}px)`;
+    if (grid) grid.style.transform += ` translate(${dx * 8}px, ${dy * 5}px)`;
+    mTick = false;
+  }
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    if (!mTick) { requestAnimationFrame(applyMouse); mTick = true; }
+  }, { passive: true });
+
+  /* ── 4. ANIMATION LOOP ──────────────────────────────────── */
+  function loop() { drawParticles(); requestAnimationFrame(loop); }
+
+  /* ── 5. INIT ────────────────────────────────────────────── */
+  resize();
+  initParticles();
+  loop();
+  window.addEventListener('resize', () => { resize(); initParticles(); }, { passive: true });
+})();
+</script>
+</body>
+</html>

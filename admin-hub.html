@@ -2513,8 +2513,11 @@ async function ping(url, opts = {}) {
 }
 
 function svcCard(id, name, icon, state, detail, ms) {
-  const latClass = ms === null ? 'dead' : ms < 400 ? 'fast' : 'slow';
-  const latText  = ms === null ? '✗ offline' : ms + ' ms';
+  // ms=null + online => no direct ping, key is configured
+  const latClass = ms === null ? (state === 'online' ? 'fast' : 'dead') : ms < 400 ? 'fast' : 'slow';
+  const latText  = ms === null
+    ? (state === 'online' ? '✓ key ok' : state === 'offline' ? '✗ no key' : '⚠ warning')
+    : ms + ' ms';
   return `<div class="svc-card ${state}" id="svc-${id}">
     <div class="svc-dot ${state}"></div>
     <div class="svc-info">
