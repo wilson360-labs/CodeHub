@@ -13,7 +13,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="google-adsense-account" content="ca-pub-3780093322926832">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; connect-src 'self' https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://codehub-labs.blogspot.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://challenges.cloudflare.com; connect-src 'self' https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E, desarrollador web full stack autodidacta de Guatemala. Portfolio con 27 herramientas, proyectos web, apps Android y chatbot con IA. Disponible para freelance.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson Enriquez, HTML CSS JavaScript Python Node.js MongoDB">
@@ -7234,41 +7234,46 @@ function showWeatherError(msg) {
 // ── BLOGGER RSS FEED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
 const BLOGGER_URL = 'https://codehub-labs.blogspot.com'; // Blog oficial de CodeHub
 
-async function loadBloggerPosts() {
-  const out = document.getElementById('blogger-out');
+// Carga posts via JSONP nativo de Blogger — sin proxy, sin CORS
+function loadBloggerPosts() {
+  const out  = document.getElementById('blogger-out');
   const link = document.getElementById('blogger-link');
   if (!out) return;
-
-  // Actualizar href del botón
   if (link) link.href = BLOGGER_URL;
 
-  // Si es el placeholder, mostrar posts de demo
-  if (BLOGGER_URL.includes('TU-BLOG')) {
-    renderBloggerPosts(BLOGGER_DEMO_POSTS);
-    return;
-  }
+  // Timeout: si en 8s no responde, mostrar posts de demo
+  const fallbackTimer = setTimeout(() => {
+    if (out.querySelector('.blogger-loading')) {
+      renderBloggerPosts(BLOGGER_DEMO_POSTS);
+    }
+  }, 8000);
 
-  try {
-    const feed = `${BLOGGER_URL}/feeds/posts/default?alt=json&max-results=6`;
-    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(feed)}`);
-    const data = await res.json();
-    const json = JSON.parse(data.contents);
-    const entries = json.feed.entry || [];
+  // Callback que Blogger llamará con los datos
+  window._bloggerCallback = function(data) {
+    clearTimeout(fallbackTimer);
+    try {
+      const entries = data.feed.entry || [];
+      if (!entries.length) { renderBloggerPosts(BLOGGER_DEMO_POSTS); return; }
+      const posts = entries.map(e => {
+        const title  = e.title.$t;
+        const url    = (e.link.find(l => l.rel === 'alternate') || {}).href || BLOGGER_URL;
+        const date   = new Date(e.published.$t).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
+        const desc   = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + '…' : '';
+        const thumb  = e['media$thumbnail'] ? e['media$thumbnail'].url.replace(/s72-c/,'s400-c') : null;
+        const author = e.author?.[0]?.name?.$t || 'Wilson.E';
+        return { title, url, date, desc, thumb, author };
+      });
+      renderBloggerPosts(posts);
+    } catch(e) {
+      renderBloggerPosts(BLOGGER_DEMO_POSTS);
+    }
+  };
 
-    const posts = entries.map(e => {
-      const title = e.title.$t;
-      const url   = (e.link.find(l => l.rel === 'alternate') || {}).href || BLOGGER_URL;
-      const date  = new Date(e.published.$t).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
-      const desc  = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + '…' : '';
-      const thumb = e['media$thumbnail'] ? e['media$thumbnail'].url.replace(/s72-c/,'s400-c') : null;
-      const author = e.author?.[0]?.name?.$t || 'Wilson.E';
-      return { title, url, date, desc, thumb, author };
-    });
-
-    renderBloggerPosts(posts);
-  } catch(err) {
-    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar los posts.<br><small>Verifica la URL del blog o revisa la conexión.</small></div>`;
-  }
+  // Inyectar script JSONP — Blogger lo llama automáticamente con los datos
+  const script = document.createElement('script');
+  script.src = `${BLOGGER_URL}/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`;
+  script.onerror = () => { clearTimeout(fallbackTimer); renderBloggerPosts(BLOGGER_DEMO_POSTS); };
+  document.head.appendChild(script);
 }
 
 const BLOGGER_DEMO_POSTS = [
