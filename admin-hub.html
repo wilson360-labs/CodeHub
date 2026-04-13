@@ -5,2028 +5,525 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — CodeHub</title>
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#0a0a14">
+  <meta name="theme-color" content="#ff4500">
   <link rel="icon" type="image/png" href="splash/codehub.png">
+  <link rel="shortcut icon" type="image/png" href="splash/codehub.png">
+  <link rel="apple-touch-icon" href="splash/codehub.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="CodeHub Admin">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin referrerpolicy="no-referrer">
-  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin></noscript>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#030308;--surface:#08080f;--card:#0d0d1a;--card2:#111120;
+      --p:#ff4500;--p2:#ff6b35;--a:#ffbd69;--g:#00e676;--c:#00e5ff;--pu:#a855f7;
+      --text:#f0f0fa;--muted:rgba(240,240,250,.38);
+      --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+      --font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+      --r:14px;--sh:0 8px 32px rgba(0,0,0,.5)
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;
+      background-image:linear-gradient(rgba(255,69,0,.025) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,69,0,.025) 1px,transparent 1px);
+      background-size:44px 44px;pointer-events:none;z-index:0}
 
-    :root {
-      --bg:      #050509;
-      --s1:      #0c0c18;
-      --s2:      #121220;
-      --s3:      #191928;
-      --border:  rgba(255,255,255,.07);
-      --border2: rgba(255,255,255,.12);
-      --text:    #eeeef8;
-      --muted:   rgba(220,220,240,.42);
-      --hint:    rgba(220,220,240,.24);
-      --p:    #ff4500;
-      --p2:   #ff6b35;
-      --cyan: #00e5ff;
-      --green:#00e676;
-      --amber:#ffbd69;
-      --red:  #ff5252;
-      --purple:#b464ff;
-      --font: 'Outfit', sans-serif;
-      --mono: 'IBM Plex Mono', monospace;
-      --r: 12px;
-      --r2: 18px;
-    }
+    /* LOGIN */
+    #login-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);
+      display:flex;align-items:center;justify-content:center;padding:1rem}
+    .login-box{background:var(--surface);border:1px solid rgba(255,69,0,.22);
+      border-radius:24px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center;
+      box-shadow:0 0 80px rgba(255,69,0,.06),var(--sh);position:relative;overflow:hidden}
+    .login-box::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);
+      width:240px;height:240px;background:radial-gradient(circle,rgba(255,69,0,.1),transparent 70%);pointer-events:none}
+    .login-icon{width:60px;height:60px;background:rgba(255,69,0,.1);border:1px solid rgba(255,69,0,.2);
+      border-radius:18px;display:flex;align-items:center;justify-content:center;
+      margin:0 auto 1.25rem;font-size:1.5rem;color:var(--p);position:relative}
+    .login-logo{font-size:2.1rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.2rem;position:relative}
+    .login-logo span{color:var(--p)}
+    .login-sub{font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:1.75rem;
+      letter-spacing:.1em;text-transform:uppercase}
+    .login-input{width:100%;padding:.85rem 1rem;border-radius:12px;
+      background:rgba(255,255,255,.05);border:1px solid var(--border2);
+      color:var(--text);font-family:var(--mono);font-size:.9rem;outline:none;
+      margin-bottom:.75rem;text-align:center;letter-spacing:.25em;
+      transition:border-color .2s,box-shadow .2s}
+    .login-input:focus{border-color:rgba(255,69,0,.5);box-shadow:0 0 0 3px rgba(255,69,0,.1)}
+    .login-btn{width:100%;padding:.9rem;border-radius:12px;
+      background:linear-gradient(135deg,var(--p),var(--p2));border:none;color:#fff;
+      font-family:var(--font);font-size:.95rem;font-weight:700;cursor:pointer;
+      transition:opacity .2s,transform .15s;letter-spacing:.02em}
+    .login-btn:hover{opacity:.9;transform:translateY(-1px)}
+    .login-btn:active{transform:translateY(0)}
+    .login-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .login-err{font-family:var(--mono);font-size:.72rem;color:#ff6b6b;margin-top:.6rem;min-height:1.2em}
+    #ts-admin{margin:.75rem 0;display:flex;justify-content:center}
 
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+    /* LAYOUT */
+    #admin-wrap{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;
+      padding:.85rem 1.25rem;background:rgba(8,8,15,.92);border-bottom:1px solid var(--border);
+      backdrop-filter:blur(14px);position:sticky;top:0;z-index:100;gap:.75rem}
+    .top-bar-brand{font-size:1.1rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+    .top-bar-brand span{color:var(--p)}
+    .top-badge{font-family:var(--mono);font-size:.55rem;background:rgba(255,69,0,.15);
+      border:1px solid rgba(255,69,0,.3);color:var(--p);padding:.2rem .55rem;
+      border-radius:999px;text-transform:uppercase;letter-spacing:.1em;margin-left:.4rem}
+    .top-actions{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+    .top-btn{padding:.38rem .8rem;border-radius:8px;background:rgba(255,255,255,.05);
+      border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:.68rem;
+      cursor:pointer;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:.35rem}
+    .top-btn:hover{color:var(--text);border-color:var(--border2)}
+    .top-btn.danger:hover{color:#ff6b6b;border-color:rgba(255,107,107,.3)}
 
-    /* ═══ SCROLLBAR ═══ */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,69,0,.3); border-radius: 99px; }
+    /* TABS */
+    .tabs-nav{display:flex;gap:.35rem;padding:.65rem .9rem;background:var(--surface);
+      border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;
+      -webkit-overflow-scrolling:touch}
+    .tabs-nav::-webkit-scrollbar{display:none}
+    .admin-tab{display:flex;align-items:center;gap:.38rem;padding:.42rem .85rem;
+      border-radius:10px;background:transparent;border:1px solid transparent;
+      color:var(--muted);font-family:var(--font);font-size:.78rem;font-weight:600;
+      cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+    .admin-tab:hover{color:var(--text);background:rgba(255,255,255,.04)}
+    .admin-tab.active{background:rgba(255,69,0,.12);border-color:rgba(255,69,0,.3);color:var(--a)}
+    .admin-tab i{font-size:.78rem}
 
-    /* ═══ LOGIN ═══ */
-    #login-screen {
-      position: fixed; inset: 0; z-index: 9999;
-      background: var(--bg);
-      display: flex; align-items: center; justify-content: center;
-    }
-    #login-screen.out {
-      animation: fadeOut .45s ease forwards;
-    }
-    @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
+    /* CONTENT */
+    .content-wrap{flex:1;padding:1.25rem 1rem;max-width:1280px;width:100%;margin:0 auto}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
 
-    .login-box {
-      width: 380px; max-width: calc(100vw - 2rem);
-      background: var(--s1);
-      border: 1px solid rgba(255,69,0,.2);
-      border-radius: 24px;
-      padding: 2.5rem 2rem;
-      text-align: center;
-      animation: loginIn .5s cubic-bezier(.2,.9,.2,1);
-    }
-    @keyframes loginIn { from { transform: scale(.9) translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    /* SECTION TITLE */
+    .section-title{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--muted);margin-bottom:.9rem;display:flex;align-items:center;gap:.45rem}
+    .section-title i{color:var(--p);font-size:.8rem}
 
-    .login-logo {
-      font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: .2rem;
-    }
-    .login-logo em { color: var(--p); font-style: normal; }
-    .login-sub {
-      font-family: var(--mono); font-size: .65rem; color: var(--muted);
-      letter-spacing: .12em; text-transform: uppercase; margin-bottom: 2.5rem;
-    }
-    .login-field { margin-bottom: 1rem; text-align: left; }
-    .login-label {
-      font-family: var(--mono); font-size: .62rem; color: var(--muted);
-      letter-spacing: .1em; text-transform: uppercase;
-      display: block; margin-bottom: .4rem;
-    }
-    .login-input {
-      width: 100%; padding: .75rem 1rem;
-      background: rgba(255,255,255,.05);
-      border: 1px solid var(--border2);
-      border-radius: var(--r);
-      color: var(--text);
-      font-family: var(--mono); font-size: .88rem;
-      outline: none; transition: border-color .2s, box-shadow .2s;
-    }
-    .login-input:focus {
-      border-color: var(--p);
-      box-shadow: 0 0 0 3px rgba(255,69,0,.12);
-    }
-    .login-btn {
-      width: 100%; margin-top: .5rem; padding: .85rem;
-      background: linear-gradient(135deg, var(--p), var(--p2));
-      border: none; border-radius: var(--r);
-      color: #fff; font-family: var(--font);
-      font-size: .92rem; font-weight: 700;
-      cursor: pointer; transition: all .2s;
-      box-shadow: 0 6px 20px rgba(255,69,0,.3);
-    }
-    .login-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255,69,0,.42); }
-    .login-btn:active { transform: scale(.97); }
-    .login-err {
-      font-family: var(--mono); font-size: .7rem;
-      color: var(--red); margin-top: .7rem; min-height: 1em;
-    }
-    .login-hint {
-      font-family: var(--mono); font-size: .6rem; color: var(--hint);
-      margin-top: 1.5rem; line-height: 1.6;
-    }
+    /* CARD */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem}
 
-    /* ═══ HEADER ═══ */
-    header {
-      background: rgba(5,5,9,.92);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 1.5rem;
-      position: sticky; top: 0; z-index: 200;
-      height: 58px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem;
-    }
-    header::after {
-      content: '';
-      position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--p), var(--p2), var(--amber), transparent);
-      background-size: 200% 100%;
-      animation: headerGlow 4s linear infinite;
-    }
-    @keyframes headerGlow { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    /* KPI GRID */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+    .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      padding:1rem 1.1rem;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+    .kpi-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+    .kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+      background:var(--kc,var(--p));opacity:.5}
+    .kpi-num{font-size:1.9rem;font-weight:800;line-height:1;color:var(--kc,var(--p))}
+    .kpi-lbl{font-family:var(--mono);font-size:.58rem;color:var(--muted);margin-top:.3rem;
+      text-transform:uppercase;letter-spacing:.08em}
+    .kpi-ico{position:absolute;top:.9rem;right:.9rem;font-size:1.3rem;color:var(--kc,var(--p));opacity:.15}
 
-    .h-logo {
-      display: flex; align-items: center; gap: .5rem;
-      font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
-      white-space: nowrap;
-    }
-    .h-logo em { color: var(--p); font-style: normal; }
-    .h-logo small {
-      font-family: var(--mono); font-size: .55rem;
-      color: var(--muted); letter-spacing: .12em;
-      text-transform: uppercase; display: block; margin-top: .05rem;
-    }
+    /* APPS TABLE */
+    .apps-table{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+    .apps-table-head,.app-row{display:grid;
+      grid-template-columns:2fr 1fr 90px 1fr 2.5fr 1.1fr;
+      gap:.5rem;align-items:center;padding:.7rem 1rem}
+    .apps-table-head{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;
+      letter-spacing:.1em;color:var(--muted);border-bottom:1px solid var(--border);
+      background:rgba(255,255,255,.02)}
+    .app-row{border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+    .app-row:last-child{border-bottom:none}
+    .app-row:hover{background:rgba(255,255,255,.02)}
+    .app-name-cell{font-size:.82rem;font-weight:700;overflow:hidden}
+    .app-name-cell small{display:block;font-family:var(--mono);font-size:.58rem;color:var(--muted);
+      font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
 
-    .h-badge {
-      display: inline-flex; align-items: center; gap: .35rem;
-      padding: .2rem .6rem; border-radius: 20px;
-      background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.2);
-      color: var(--green); font-family: var(--mono); font-size: .6rem; font-weight: 600;
-    }
-    .h-badge::before {
-      content: ''; width: 6px; height: 6px; border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 8px rgba(0,230,118,.6);
-      animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    /* INPUTS */
+    .ver-input{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;
+      padding:.32rem .5rem;color:var(--text);font-family:var(--mono);font-size:.7rem;outline:none;
+      width:100%;transition:border-color .2s}
+    .ver-input:focus{border-color:rgba(255,69,0,.4)}
+    .changelog-input{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;
+      padding:.32rem .5rem;color:var(--text);font-family:var(--mono);font-size:.63rem;outline:none;
+      width:100%;resize:vertical;transition:border-color .2s}
+    .changelog-input:focus{border-color:rgba(255,69,0,.4)}
 
-    .h-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+    /* BADGES */
+    .badge-verified{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .52rem;
+      border-radius:8px;font-family:var(--mono);font-size:.62rem;font-weight:700;cursor:pointer;transition:all .15s}
+    .badge-verified.yes{background:rgba(0,230,118,.12);color:var(--g);border:1px solid rgba(0,230,118,.25)}
+    .badge-verified.no{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+    .save-row-btn{padding:.32rem .65rem;border-radius:8px;background:rgba(255,69,0,.1);
+      border:1px solid rgba(255,69,0,.22);color:var(--p);font-family:var(--mono);font-size:.62rem;
+      font-weight:700;cursor:pointer;transition:all .2s;width:100%;white-space:nowrap}
+    .save-row-btn:hover{background:rgba(255,69,0,.2)}
+    .save-row-btn.saved{background:rgba(0,230,118,.12);border-color:rgba(0,230,118,.25);color:var(--g)}
 
-    .h-btn {
-      display: flex; align-items: center; gap: .4rem;
-      padding: .35rem .8rem; border-radius: 8px;
-      background: transparent; border: 1px solid var(--border2);
-      color: var(--muted); font-family: var(--mono); font-size: .7rem;
-      cursor: pointer; transition: all .18s; white-space: nowrap;
-    }
-    .h-btn:hover { border-color: rgba(255,69,0,.35); color: var(--amber); }
-    .h-btn.danger:hover { border-color: rgba(255,82,82,.4); color: var(--red); }
+    /* VISITANTES */
+    .vt-search{width:100%;padding:.72rem 1rem;border-radius:10px;background:var(--card);
+      border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.76rem;
+      outline:none;margin-bottom:.75rem;transition:border-color .2s}
+    .vt-search:focus{border-color:rgba(0,229,255,.35)}
+    .vt-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      overflow:auto;-webkit-overflow-scrolling:touch}
+    .vt-table{width:100%;border-collapse:collapse;font-size:.73rem;min-width:740px}
+    .vt-table th{font-family:var(--mono);font-size:.58rem;color:var(--muted);text-align:left;
+      padding:.62rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap;
+      background:rgba(255,255,255,.02);text-transform:uppercase;letter-spacing:.08em}
+    .vt-table td{padding:.62rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);
+      color:var(--text);vertical-align:middle}
+    .vt-table tr:last-child td{border-bottom:none}
+    .vt-table tr:hover td{background:rgba(255,255,255,.025);cursor:pointer}
+    .flag-badge{display:inline-flex;align-items:center;padding:.14rem .4rem;border-radius:999px;
+      font-family:var(--mono);font-size:.56rem;font-weight:700;margin-right:.15rem}
+    .risk-pill{display:inline-flex;align-items:center;padding:.16rem .45rem;border-radius:999px;
+      font-family:var(--mono);font-size:.58rem;font-weight:700}
+    .vt-actions{display:flex;gap:.6rem;margin-top:.75rem;flex-wrap:wrap}
+    .vt-btn{display:flex;align-items:center;gap:.38rem;padding:.52rem .95rem;border-radius:10px;
+      border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);
+      font-family:var(--mono);font-size:.7rem;font-weight:700;cursor:pointer;transition:all .2s}
+    .vt-btn:hover{color:var(--text);border-color:var(--border2)}
 
-    .h-time {
-      font-family: var(--mono); font-size: .68rem; color: var(--muted);
-      white-space: nowrap; padding: .3rem .7rem;
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
+    /* JSON MODAL */
+    #vt-json-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:9000;
+      align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(5px)}
+    .vt-json-box{background:var(--card);border:1px solid var(--border2);border-radius:18px;
+      padding:1.5rem;width:100%;max-width:520px;max-height:80vh;overflow-y:auto;position:relative}
+    .vt-json-title{font-family:var(--mono);font-size:.68rem;color:var(--c);text-transform:uppercase;
+      letter-spacing:.1em;margin-bottom:.75rem}
+    #vt-json-content{font-family:var(--mono);font-size:.68rem;color:var(--g);
+      white-space:pre-wrap;word-break:break-all;line-height:1.65}
+    .modal-close{position:absolute;top:.75rem;right:.75rem;background:rgba(255,255,255,.08);
+      border:none;color:var(--text);border-radius:8px;width:28px;height:28px;cursor:pointer;
+      font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:background .2s}
+    .modal-close:hover{background:rgba(255,69,0,.2);color:var(--p)}
 
-    /* ═══ SIDEBAR + LAYOUT ═══ */
-    .app-shell {
-      display: flex; min-height: calc(100vh - 58px);
-    }
+    /* SOLICITUDES */
+    .req-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;
+      gap:.6rem;padding:.72rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s}
+    .req-row:last-child{border-bottom:none}
+    .req-row:hover{background:rgba(255,255,255,.02)}
+    .req-name{font-size:.8rem;font-weight:600}
+    .req-name small{display:block;font-family:var(--mono);font-size:.6rem;color:var(--muted)}
+    .req-votes{font-family:var(--mono);font-size:.7rem;color:var(--a);white-space:nowrap}
+    .req-action{padding:.28rem .65rem;border-radius:8px;border:1px solid;font-family:var(--mono);
+      font-size:.6rem;font-weight:700;cursor:pointer;transition:all .15s;
+      display:flex;align-items:center;gap:.28rem;white-space:nowrap}
+    .req-done{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.25);color:var(--g)}
+    .req-reject{background:rgba(255,107,107,.1);border-color:rgba(255,107,107,.25);color:#ff6b6b}
+    .req-done:hover{background:rgba(0,230,118,.22)}
+    .req-reject:hover{background:rgba(255,107,107,.22)}
 
-    aside {
-      width: 220px; flex-shrink: 0;
-      background: var(--s1);
-      border-right: 1px solid var(--border);
-      padding: 1.2rem .8rem;
-      display: flex; flex-direction: column; gap: .2rem;
-      position: sticky; top: 58px;
-      height: calc(100vh - 58px); overflow-y: auto;
-    }
+    /* CHARTS */
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
 
-    .side-label {
-      font-family: var(--mono); font-size: .58rem;
-      color: var(--hint); letter-spacing: .14em;
-      text-transform: uppercase; padding: .4rem .7rem;
-      margin-top: .5rem;
-    }
+    /* STATUS */
+    .svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1.25rem}
+    .svc-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+      padding:1rem;border-left:3px solid transparent;transition:all .2s}
+    .svc-card.online{border-left-color:var(--g)}
+    .svc-card.offline{border-left-color:#ff5f56}
+    .svc-card.warning{border-left-color:var(--a)}
+    .svc-card.loading{border-left-color:rgba(255,255,255,.1)}
+    .svc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.4rem;vertical-align:middle}
+    .online .svc-dot{background:var(--g);box-shadow:0 0 6px var(--g)}
+    .offline .svc-dot{background:#ff5f56}
+    .warning .svc-dot{background:var(--a)}
+    .loading .svc-dot{background:var(--muted)}
+    .svc-name{font-weight:700;font-size:.82rem}
+    .svc-url{font-family:var(--mono);font-size:.57rem;color:var(--muted);margin-top:.2rem;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .svc-latency{font-family:var(--mono);font-size:.63rem;color:var(--a);margin-top:.4rem}
 
-    .side-btn {
-      display: flex; align-items: center; gap: .7rem;
-      padding: .6rem .85rem; border-radius: 10px;
-      background: transparent; border: none;
-      color: var(--muted); font-family: var(--font);
-      font-size: .8rem; font-weight: 600;
-      cursor: pointer; transition: all .18s;
-      text-align: left; width: 100%;
-      position: relative;
-    }
-    .side-btn i { width: 16px; text-align: center; font-size: .82rem; }
-    .side-btn:hover { background: rgba(255,255,255,.05); color: var(--text); }
-    .side-btn.active {
-      background: rgba(255,69,0,.12);
-      border: 1px solid rgba(255,69,0,.22);
-      color: var(--amber);
-    }
-    .side-btn.active i { color: var(--p); }
+    /* BULK */
+    .bulk-drop{border:2px dashed rgba(255,69,0,.22);border-radius:var(--r);padding:2rem;
+      text-align:center;background:rgba(255,69,0,.025);cursor:pointer;transition:all .2s;margin-bottom:1rem}
+    .bulk-drop:hover,.bulk-drop.drag-over{border-color:rgba(255,69,0,.5);background:rgba(255,69,0,.06)}
+    .bulk-list{display:flex;flex-direction:column;gap:.45rem}
+    .bulk-item{display:flex;align-items:center;gap:.7rem;background:var(--card2);
+      border:1px solid var(--border);border-radius:10px;padding:.55rem .85rem}
+    .bulk-item-name{flex:1;font-family:var(--mono);font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .bulk-item-size{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
 
-    .side-badge {
-      margin-left: auto; font-family: var(--mono); font-size: .58rem;
-      padding: .12rem .45rem; border-radius: 20px;
-      background: rgba(255,69,0,.2); color: var(--p);
-      font-weight: 700;
-    }
-    .side-badge.green { background: rgba(0,230,118,.15); color: var(--green); }
-    .side-badge.cyan { background: rgba(0,229,255,.1); color: var(--cyan); }
+    /* ENV */
+    .env-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem}
+    .env-pill{display:flex;align-items:center;gap:.5rem;padding:.48rem .75rem;
+      background:var(--card);border:1px solid var(--border);border-radius:8px;
+      font-family:var(--mono);font-size:.65rem;color:var(--muted)}
 
-    /* ═══ MAIN CONTENT ═══ */
-    .content {
-      flex: 1; min-width: 0;
-      padding: 1.5rem;
-      overflow-x: hidden;
-    }
+    /* SEARCH */
+    #srch-wrap{position:relative;flex:1;max-width:340px}
+    #srch-input{width:100%;padding:.58rem 1rem .58rem 2.4rem;border-radius:9px;
+      background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);
+      font-family:var(--mono);font-size:.75rem;outline:none;transition:border-color .2s}
+    #srch-input:focus{border-color:rgba(255,69,0,.35)}
+    .srch-icon{position:absolute;left:.8rem;top:50%;transform:translateY(-50%);
+      color:var(--muted);font-size:.75rem;pointer-events:none}
+    #srch-res{background:var(--card);border:1px solid var(--border);border-radius:10px;
+      margin-top:.3rem;overflow:hidden;max-height:250px;overflow-y:auto;display:none;
+      position:absolute;width:100%;z-index:20;box-shadow:var(--sh)}
+    .srch-row{display:flex;align-items:center;gap:.65rem;padding:.58rem 1rem;cursor:pointer;
+      transition:background .15s;border-bottom:1px solid rgba(255,255,255,.04)}
+    .srch-row:last-child{border-bottom:none}
+    .srch-row:hover{background:rgba(255,255,255,.04)}
+    .srch-name{font-size:.78rem;font-weight:600}
+    .srch-cat{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
 
-    /* ═══ TABS / VIEWS ═══ */
-    .view { display: none; }
-    .view.active { display: block; animation: viewIn .3s ease; }
-    @keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    /* PREVIEW MODAL */
+    #preview-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9000;
+      align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(6px)}
+    .preview-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;
+      padding:1.75rem;width:100%;max-width:400px;position:relative}
+    .prev-img{width:68px;height:68px;border-radius:16px;object-fit:cover;margin-bottom:1rem;background:var(--card2)}
+    .prev-name{font-size:1.1rem;font-weight:800;margin-bottom:.2rem}
+    .prev-ver{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-bottom:.6rem}
+    .prev-desc{font-size:.78rem;color:var(--muted);line-height:1.55}
 
-    /* ═══ PAGE HEADER ═══ */
-    .page-head {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
-    }
-    .page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; }
-    .page-subtitle {
-      font-family: var(--mono); font-size: .68rem; color: var(--muted);
-      margin-top: .25rem; letter-spacing: .04em;
-    }
+    /* TOAST */
+    #toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%) translateY(100px);
+      background:var(--card2);border:1px solid var(--border2);border-radius:12px;
+      padding:.68rem 1.4rem;font-family:var(--mono);font-size:.76rem;color:var(--text);
+      z-index:9999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+      box-shadow:var(--sh);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+    #toast.show{transform:translateX(-50%) translateY(0)}
 
-    .page-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-    .btn {
-      display: inline-flex; align-items: center; gap: .4rem;
-      padding: .5rem 1rem; border-radius: 10px;
-      font-family: var(--font); font-size: .8rem; font-weight: 700;
-      cursor: pointer; transition: all .18s; border: none; white-space: nowrap;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--p), var(--p2));
-      color: #fff; box-shadow: 0 4px 16px rgba(255,69,0,.3);
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,69,0,.45); }
-    .btn-ghost {
-      background: rgba(255,255,255,.05); border: 1px solid var(--border2);
-      color: var(--muted);
-    }
-    .btn-ghost:hover { background: rgba(255,255,255,.09); color: var(--text); }
+    /* PUBLISH BTN */
+    .pub-btn{padding:.62rem 1.35rem;border-radius:10px;border:none;color:#fff;
+      font-family:var(--font);font-size:.83rem;font-weight:700;cursor:pointer;
+      transition:opacity .2s,transform .15s}
+    .pub-btn:hover{opacity:.88;transform:translateY(-1px)}
 
-    /* ═══ STAT CARDS ROW ═══ */
-    .kpi-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 1rem; margin-bottom: 1.5rem;
+    /* RESPONSIVE */
+    @media(max-width:900px){
+      .kpi-grid{grid-template-columns:repeat(2,1fr)}
+      .charts-grid{grid-template-columns:1fr}
     }
-    .kpi-card {
-      background: var(--s2);
-      border: 1px solid var(--border);
-      border-radius: var(--r2);
-      padding: 1.2rem 1.1rem;
-      position: relative; overflow: hidden;
-      transition: border-color .2s, transform .2s;
+    @media(max-width:600px){
+      .apps-table-head{display:none!important}
+      .app-row{grid-template-columns:1fr;padding:.9rem;gap:.55rem}
+      .kpi-grid{grid-template-columns:repeat(2,1fr);gap:.5rem}
+      .kpi-num{font-size:1.55rem}
+      .content-wrap{padding:.85rem .75rem}
+      .top-bar{padding:.7rem .9rem}
+      .req-row{grid-template-columns:1fr 1fr;row-gap:.35rem}
+      .req-row>:nth-child(1){grid-column:1/-1}
+      .admin-tab span{display:none}
+      .admin-tab{padding:.4rem .65rem}
+      .admin-tab i{font-size:.9rem}
+      #srch-wrap{display:none}
     }
-    .kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-    .kpi-card::before {
-      content: ''; position: absolute;
-      top: 0; left: 0; right: 0; height: 2px;
-      border-radius: var(--r2) var(--r2) 0 0;
-    }
-    .kpi-card.orange::before { background: linear-gradient(90deg, var(--p), var(--p2)); }
-    .kpi-card.cyan::before   { background: linear-gradient(90deg, var(--cyan), #40c4ff); }
-    .kpi-card.green::before  { background: linear-gradient(90deg, var(--green), #00c853); }
-    .kpi-card.purple::before { background: linear-gradient(90deg, var(--purple), #7c3aed); }
-    .kpi-card.amber::before  { background: linear-gradient(90deg, var(--amber), #f59e0b); }
-    .kpi-card.red::before    { background: linear-gradient(90deg, var(--red), #ff1744); }
-
-    .kpi-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .9rem; margin-bottom: .85rem;
-    }
-    .kpi-icon.orange { background: rgba(255,69,0,.15); color: var(--p); }
-    .kpi-icon.cyan   { background: rgba(0,229,255,.12); color: var(--cyan); }
-    .kpi-icon.green  { background: rgba(0,230,118,.12); color: var(--green); }
-    .kpi-icon.purple { background: rgba(180,100,255,.12); color: var(--purple); }
-    .kpi-icon.amber  { background: rgba(255,189,105,.12); color: var(--amber); }
-    .kpi-icon.red    { background: rgba(255,82,82,.12); color: var(--red); }
-
-    .kpi-num { font-size: 1.9rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
-    .kpi-lbl { font-family: var(--mono); font-size: .62rem; color: var(--muted); margin-top: .25rem; letter-spacing: .04em; }
-    .kpi-trend {
-      position: absolute; top: 1rem; right: 1rem;
-      font-family: var(--mono); font-size: .62rem; display: flex; align-items: center; gap: .2rem;
-    }
-    .kpi-trend.up { color: var(--green); }
-    .kpi-trend.down { color: var(--red); }
-
-    /* ═══ GRID 2 COL ═══ */
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
-    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
-
-    .grid-3 { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 1.2rem; margin-bottom: 1.2rem; }
-    @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 700px) { .grid-3 { grid-template-columns: 1fr; } }
-
-    /* ═══ CARD CONTAINER ═══ */
-    .card {
-      background: var(--s2);
-      border: 1px solid var(--border);
-      border-radius: var(--r2);
-      overflow: hidden;
-    }
-    .card-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 1.2rem;
-      border-bottom: 1px solid var(--border);
-      gap: .8rem; flex-wrap: wrap;
-    }
-    .card-title {
-      display: flex; align-items: center; gap: .55rem;
-      font-size: .9rem; font-weight: 700;
-    }
-    .card-title i { color: var(--p); font-size: .85rem; }
-    .card-body { padding: 1.2rem; }
-    .card-footer {
-      padding: .85rem 1.2rem;
-      border-top: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-
-    /* ═══ LIVE FEED ═══ */
-    .feed-list {
-      display: flex; flex-direction: column; gap: 0;
-      max-height: 420px; overflow-y: auto;
-    }
-    .feed-item {
-      display: flex; align-items: flex-start; gap: .75rem;
-      padding: .75rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-      transition: background .15s;
-      animation: feedIn .3s ease;
-    }
-    @keyframes feedIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
-    .feed-item:last-child { border-bottom: none; }
-    .feed-item:hover { background: rgba(255,255,255,.03); }
-    .feed-item.new { border-left: 2px solid var(--p); padding-left: calc(1.2rem - 2px); }
-
-    .feed-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      flex-shrink: 0; margin-top: 5px;
-    }
-    .feed-dot.visit  { background: var(--cyan); }
-    .feed-dot.chat   { background: var(--purple); }
-    .feed-dot.contact{ background: var(--green); }
-    .feed-dot.alert  { background: var(--red); animation: pulse 1s infinite; }
-    .feed-dot.download{ background: var(--amber); }
-
-    .feed-body { flex: 1; min-width: 0; }
-    .feed-main { font-size: .8rem; font-weight: 600; margin-bottom: .1rem; }
-    .feed-meta { font-family: var(--mono); font-size: .62rem; color: var(--muted); }
-    .feed-tag {
-      font-family: var(--mono); font-size: .58rem; font-weight: 700;
-      padding: .1rem .4rem; border-radius: 6px; flex-shrink: 0;
-      align-self: flex-start; margin-top: 2px; white-space: nowrap;
-    }
-    .tag-visit   { background: rgba(0,229,255,.1); color: var(--cyan); }
-    .tag-chat    { background: rgba(180,100,255,.1); color: var(--purple); }
-    .tag-contact { background: rgba(0,230,118,.1); color: var(--green); }
-    .tag-alert   { background: rgba(255,82,82,.1); color: var(--red); }
-    .tag-download{ background: rgba(255,189,105,.1); color: var(--amber); }
-
-    /* ═══ TABLE ═══ */
-    .admin-table { width: 100%; border-collapse: collapse; }
-    .admin-table th {
-      font-family: var(--mono); font-size: .62rem; color: var(--muted);
-      letter-spacing: .1em; text-transform: uppercase;
-      padding: .65rem 1rem; text-align: left;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    .admin-table td {
-      padding: .75rem 1rem; font-size: .82rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-      vertical-align: middle;
-    }
-    .admin-table tr:last-child td { border-bottom: none; }
-    .admin-table tbody tr:hover { background: rgba(255,255,255,.025); }
-
-    .country-flag { font-size: 1rem; }
-    .device-icon { color: var(--muted); }
-
-    .pill {
-      display: inline-flex; align-items: center; gap: .25rem;
-      padding: .18rem .55rem; border-radius: 20px;
-      font-family: var(--mono); font-size: .62rem; font-weight: 700;
-    }
-    .pill-green { background: rgba(0,230,118,.1); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
-    .pill-red   { background: rgba(255,82,82,.1); color: var(--red); border: 1px solid rgba(255,82,82,.2); }
-    .pill-cyan  { background: rgba(0,229,255,.1); color: var(--cyan); border: 1px solid rgba(0,229,255,.2); }
-    .pill-amber { background: rgba(255,189,105,.1); color: var(--amber); border: 1px solid rgba(255,189,105,.2); }
-    .pill-purple{ background: rgba(180,100,255,.1); color: var(--purple); border: 1px solid rgba(180,100,255,.2); }
-    .pill-muted { background: rgba(255,255,255,.05); color: var(--muted); border: 1px solid var(--border); }
-
-    /* ═══ CHART WRAPPERS ═══ */
-    .chart-wrap { position: relative; }
-
-    /* ═══ AI CHAT LOG ═══ */
-    .chat-log-item {
-      padding: .85rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-    }
-    .chat-log-item:last-child { border-bottom: none; }
-    .chat-q { font-size: .8rem; color: var(--text); font-weight: 600; margin-bottom: .25rem; }
-    .chat-meta { font-family: var(--mono); font-size: .62rem; color: var(--muted); display: flex; gap: .8rem; }
-
-    /* ═══ CONTACT MESSAGES ═══ */
-    .msg-card {
-      padding: 1rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-      position: relative;
-    }
-    .msg-card:last-child { border-bottom: none; }
-    .msg-card.unread { border-left: 2px solid var(--green); padding-left: calc(1.2rem - 2px); }
-    .msg-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: .4rem; gap: .5rem; flex-wrap: wrap;
-    }
-    .msg-from { font-size: .85rem; font-weight: 700; }
-    .msg-email { font-family: var(--mono); font-size: .65rem; color: var(--cyan); }
-    .msg-subject { font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
-    .msg-body { font-size: .78rem; color: rgba(220,220,240,.6); line-height: 1.5; }
-    .msg-time { font-family: var(--mono); font-size: .6rem; color: var(--hint); }
-
-    /* ═══ SECURITY ALERTS ═══ */
-    .alert-row {
-      display: flex; align-items: flex-start; gap: .9rem;
-      padding: .9rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-    }
-    .alert-row:last-child { border-bottom: none; }
-    .alert-icon {
-      width: 34px; height: 34px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: .85rem; flex-shrink: 0;
-    }
-    .alert-high   { background: rgba(255,82,82,.15); color: var(--red); }
-    .alert-medium { background: rgba(255,189,105,.12); color: var(--amber); }
-    .alert-low    { background: rgba(0,229,255,.1); color: var(--cyan); }
-    .alert-info-text { flex: 1; min-width: 0; }
-    .alert-title { font-size: .82rem; font-weight: 700; margin-bottom: .15rem; }
-    .alert-desc  { font-family: var(--mono); font-size: .62rem; color: var(--muted); line-height: 1.5; }
-    .alert-sev {
-      font-family: var(--mono); font-size: .58rem; font-weight: 700;
-      padding: .15rem .5rem; border-radius: 20px; flex-shrink: 0;
-      align-self: flex-start; margin-top: 2px;
-    }
-    .sev-high   { background: rgba(255,82,82,.15); color: var(--red); }
-    .sev-medium { background: rgba(255,189,105,.12); color: var(--amber); }
-    .sev-low    { background: rgba(0,229,255,.1); color: var(--cyan); }
-
-    /* ═══ WORLD MAP (simplified) ═══ */
-    .geo-list { display: flex; flex-direction: column; gap: .45rem; }
-    .geo-row { display: flex; align-items: center; gap: .7rem; }
-    .geo-bar-wrap { flex: 1; height: 5px; background: rgba(255,255,255,.06); border-radius: 99px; overflow: hidden; }
-    .geo-bar { height: 100%; background: linear-gradient(90deg, var(--p), var(--p2)); border-radius: 99px; transition: width .8s ease; }
-    .geo-count { font-family: var(--mono); font-size: .65rem; color: var(--muted); min-width: 30px; text-align: right; }
-    .geo-name { font-size: .78rem; font-weight: 600; min-width: 100px; }
-
-    /* ═══ APPS MANAGER ═══ */
-    .app-item {
-      display: grid;
-      grid-template-columns: 48px 1fr auto auto auto;
-      align-items: center; gap: .8rem;
-      padding: .85rem 1.2rem;
-      border-bottom: 1px solid rgba(255,255,255,.04);
-    }
-    .app-item:last-child { border-bottom: none; }
-    .app-thumb {
-      width: 44px; height: 44px; border-radius: 12px;
-      object-fit: cover; background: var(--s3);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; flex-shrink: 0;
-    }
-    .app-thumb img { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
-    .app-info { min-width: 0; }
-    .app-name-t { font-size: .85rem; font-weight: 700; }
-    .app-cat { font-family: var(--mono); font-size: .62rem; color: var(--muted); }
-    .app-actions { display: flex; gap: .4rem; }
-
-    .icon-btn {
-      width: 30px; height: 30px; border-radius: 8px;
-      border: 1px solid var(--border2);
-      background: transparent; color: var(--muted);
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: .72rem; transition: all .18s;
-    }
-    .icon-btn:hover { background: rgba(255,255,255,.07); color: var(--text); }
-    .icon-btn.del:hover { border-color: rgba(255,82,82,.4); color: var(--red); background: rgba(255,82,82,.08); }
-    .icon-btn.edit:hover { border-color: rgba(0,229,255,.3); color: var(--cyan); background: rgba(0,229,255,.07); }
-    .icon-btn.save:hover { border-color: rgba(0,230,118,.3); color: var(--green); background: rgba(0,230,118,.07); }
-
-    /* ═══ FILTER BAR ═══ */
-    .filter-bar {
-      display: flex; gap: .5rem; margin-bottom: 1.2rem; flex-wrap: wrap; align-items: center;
-    }
-    .filter-input {
-      flex: 1; min-width: 160px; padding: .5rem .85rem;
-      background: var(--s2); border: 1px solid var(--border2);
-      border-radius: 10px; color: var(--text);
-      font-family: var(--mono); font-size: .78rem; outline: none; transition: border-color .2s;
-    }
-    .filter-input:focus { border-color: var(--p); }
-    .filter-input::placeholder { color: var(--hint); }
-    .filter-select {
-      padding: .5rem .85rem; background: var(--s2);
-      border: 1px solid var(--border2); border-radius: 10px;
-      color: var(--muted); font-family: var(--mono); font-size: .78rem; outline: none;
-      cursor: pointer; transition: border-color .2s;
-    }
-    .filter-select:focus { border-color: var(--p); }
-    .filter-select option { background: #1a1a2e; }
-
-    /* ═══ EMPTY STATE ═══ */
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: .7rem; padding: 3rem 1rem; color: var(--muted);
-      font-family: var(--mono); font-size: .75rem; text-align: center;
-    }
-    .empty-state i { font-size: 2rem; opacity: .3; }
-
-    /* ═══ LOADING SPINNER ═══ */
-    .loading-wrap {
-      display: flex; align-items: center; justify-content: center;
-      gap: .7rem; padding: 2rem; color: var(--muted);
-      font-family: var(--mono); font-size: .75rem;
-    }
-    .spinner {
-      width: 18px; height: 18px; border: 2px solid rgba(255,69,0,.2);
-      border-top-color: var(--p); border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ═══ TOAST ═══ */
-    #toast {
-      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
-      display: flex; flex-direction: column; gap: .5rem;
-      pointer-events: none;
-    }
-    .toast-item {
-      display: flex; align-items: center; gap: .7rem;
-      padding: .75rem 1.1rem; border-radius: 12px;
-      background: var(--s2); border: 1px solid var(--border2);
-      font-size: .82rem; font-weight: 600;
-      animation: toastIn .3s ease; pointer-events: all;
-      box-shadow: 0 8px 32px rgba(0,0,0,.5);
-    }
-    @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
-    .toast-item.success { border-color: rgba(0,230,118,.3); }
-    .toast-item.success i { color: var(--green); }
-    .toast-item.error { border-color: rgba(255,82,82,.3); }
-    .toast-item.error i { color: var(--red); }
-    .toast-item.info i { color: var(--cyan); }
-
-    /* ═══ MOBILE NAV ═══ */
-    .mobile-tab-bar {
-      display: none; position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(5,5,9,.97); border-top: 1px solid var(--border);
-      padding: .5rem .3rem calc(.5rem + env(safe-area-inset-bottom, 0px));
-      z-index: 300;
-      justify-content: space-around;
-    }
-    .m-tab {
-      display: flex; flex-direction: column; align-items: center; gap: .2rem;
-      background: transparent; border: none; color: var(--muted);
-      font-size: .55rem; font-family: var(--mono); cursor: pointer;
-      padding: .3rem .5rem; border-radius: 10px; transition: all .18s;
-      min-width: 50px;
-    }
-    .m-tab i { font-size: .9rem; }
-    .m-tab.active { color: var(--p); }
-
-    @media (max-width: 768px) {
-      aside { display: none; }
-      .mobile-tab-bar { display: flex; }
-      .content { padding: 1rem; padding-bottom: 80px; }
-      .kpi-row { grid-template-columns: repeat(2, 1fr); gap: .7rem; }
-      .grid-2, .grid-3 { grid-template-columns: 1fr; }
-      .page-title { font-size: 1.2rem; }
-      .h-time { display: none; }
-    }
-
-    /* ═══ MODAL ═══ */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      backdrop-filter: blur(6px); z-index: 5000;
-      display: none; align-items: center; justify-content: center;
-      padding: 1rem;
-    }
-    .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
-    @keyframes fadeIn { from { opacity: 0; } }
-    .modal-box {
-      background: var(--s1); border: 1px solid rgba(255,69,0,.2);
-      border-radius: 20px; padding: 2rem; width: 100%; max-width: 480px;
-      animation: loginIn .3s ease;
-    }
-    .modal-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 1.2rem; display: flex; align-items: center; gap: .5rem; }
-    .modal-title i { color: var(--p); }
-    .form-row-modal { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
-    .form-label { font-family: var(--mono); font-size: .62rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
-    .form-input {
-      padding: .65rem .9rem; background: rgba(255,255,255,.05);
-      border: 1px solid var(--border2); border-radius: 10px;
-      color: var(--text); font-family: var(--font); font-size: .85rem; outline: none;
-      transition: border-color .2s;
-    }
-    .form-input:focus { border-color: var(--p); }
-    .modal-actions { display: flex; gap: .6rem; justify-content: flex-end; margin-top: 1.5rem; }
-    .btn-sm { padding: .45rem .9rem; font-size: .78rem; }
-
-    /* Syntax highlight for visitor data */
-    .mono-cell { font-family: var(--mono); font-size: .72rem; }
-    .ip-text { color: var(--cyan); }
-    .path-text { color: var(--amber); }
-    .country-text { color: var(--text); }
   </style>
 </head>
 <body>
 
-<!-- ═══ LOGIN ═══ -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">Code<em>Hub</em></div>
-    <div class="login-sub">// admin dashboard · acceso restringido</div>
-    <div class="login-field">
-      <label class="login-label" for="l-user">usuario</label>
-      <input class="login-input" id="l-user" type="text" placeholder="admin" autocomplete="username">
-    </div>
-    <div class="login-field">
-      <label class="login-label" for="l-pass">clave de administrador</label>
-      <input class="login-input" id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="login-btn" onclick="doLogin()">
-      <i class="fas fa-unlock-alt"></i> Ingresar al panel
-    </button>
+    <div class="login-icon"><i class="fas fa-shield-halved"></i></div>
+    <div class="login-logo">&lt;<span>Admin</span>/&gt;</div>
+    <div class="login-sub">CodeHub Panel · Acceso Restringido</div>
+    <input class="login-input" id="pwd-input" type="password" placeholder="••••••••" autocomplete="current-password">
+    <div id="ts-admin"></div>
+    <button class="login-btn" onclick="checkLogin()"><i class="fas fa-unlock"></i> Ingresar</button>
     <div class="login-err" id="login-err"></div>
-    <div class="login-hint">Esta página es privada. Si no eres Wilson.E,<br>por favor cierra esta pestaña.</div>
   </div>
 </div>
 
-<!-- ═══ MAIN APP ═══ -->
-<div id="app" style="display:none">
+<!-- ADMIN WRAP -->
+<div id="admin-wrap" style="display:none">
 
-  <header>
-    <div class="h-logo">
-      <i class="fas fa-shield-halved" style="color:var(--p)"></i>
-      Code<em style="color:var(--p)">Hub</em>&nbsp;Admin
-      <small>// panel de control</small>
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+      <div class="top-bar-brand">&lt;<span>Wilson.E</span>/&gt;<span class="top-badge">Admin</span></div>
     </div>
-    <div class="h-badge" id="live-badge">En línea</div>
-    <div class="h-right">
-      <div class="h-time" id="clock">--:--:--</div>
-      <button class="h-btn" onclick="refreshAll()"><i class="fas fa-rotate-right"></i> Actualizar</button>
-      <button class="h-btn danger" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Salir</button>
+    <div id="srch-wrap">
+      <i class="fas fa-search srch-icon"></i>
+      <input id="srch-input" placeholder="Buscar app..." oninput="searchApps(this.value)">
+      <div id="srch-res"></div>
     </div>
-  </header>
-
-  <div class="app-shell">
-    <!-- SIDEBAR -->
-    <aside>
-      <div class="side-label">Principal</div>
-      <button class="side-btn active" onclick="switchView('overview',this)">
-        <i class="fas fa-chart-line"></i> Overview
-      </button>
-      <button class="side-btn" onclick="switchView('visitors',this)">
-        <i class="fas fa-users"></i> Visitantes
-        <span class="side-badge cyan" id="side-visitors">0</span>
-      </button>
-      <button class="side-btn" onclick="switchView('messages',this)">
-        <i class="fas fa-envelope"></i> Mensajes
-        <span class="side-badge green" id="side-msgs">0</span>
-      </button>
-      <button class="side-btn" onclick="switchView('ai-logs',this)">
-        <i class="fas fa-robot"></i> Chat IA
-        <span class="side-badge" id="side-ai">0</span>
-      </button>
-      <button class="side-btn" onclick="switchView('downloads',this)">
-        <i class="fas fa-download"></i> Descargas
-      </button>
-      <button class="side-btn" onclick="switchView('security',this)">
-        <i class="fas fa-shield-halved"></i> Seguridad
-        <span class="side-badge" id="side-sec">0</span>
-      </button>
-      <div class="side-label">Gestión</div>
-      <button class="side-btn" onclick="switchView('apps',this)">
-        <i class="fas fa-mobile-screen"></i> Apps Premium
-      </button>
-      <button class="side-btn" onclick="switchView('requests',this)">
-        <i class="fas fa-list-check"></i> Solicitudes
-      </button>
-      <div class="side-label">Sistema</div>
-      <button class="side-btn" onclick="switchView('settings',this)">
-        <i class="fas fa-sliders"></i> Configuración
-      </button>
-      <button class="side-btn" onclick="window.open('index.html','_blank')">
-        <i class="fas fa-up-right-from-square"></i> Ver web
-      </button>
-    </aside>
-
-    <main class="content">
-
-      <!-- ══ VIEW: OVERVIEW ══ -->
-      <div class="view active" id="v-overview">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Dashboard Overview</div>
-            <div class="page-subtitle" id="last-updated">// cargando datos en tiempo real…</div>
-          </div>
-          <div class="page-actions">
-            <button class="btn btn-ghost" onclick="exportData()"><i class="fas fa-file-export"></i> Exportar</button>
-            <button class="btn btn-primary" onclick="refreshAll()"><i class="fas fa-bolt"></i> Refresh</button>
-          </div>
-        </div>
-
-        <!-- KPIs -->
-        <div class="kpi-row">
-          <div class="kpi-card orange">
-            <div class="kpi-icon orange"><i class="fas fa-eye"></i></div>
-            <div class="kpi-num" id="kpi-today">—</div>
-            <div class="kpi-lbl">Visitas hoy</div>
-            <div class="kpi-trend up" id="kpi-today-trend"><i class="fas fa-arrow-up"></i> —</div>
-          </div>
-          <div class="kpi-card cyan">
-            <div class="kpi-icon cyan"><i class="fas fa-users"></i></div>
-            <div class="kpi-num" id="kpi-total">—</div>
-            <div class="kpi-lbl">Visitas totales</div>
-          </div>
-          <div class="kpi-card green">
-            <div class="kpi-icon green"><i class="fas fa-envelope"></i></div>
-            <div class="kpi-num" id="kpi-msgs">—</div>
-            <div class="kpi-lbl">Mensajes</div>
-          </div>
-          <div class="kpi-card purple">
-            <div class="kpi-icon purple"><i class="fas fa-robot"></i></div>
-            <div class="kpi-num" id="kpi-chats">—</div>
-            <div class="kpi-lbl">Chats IA</div>
-          </div>
-          <div class="kpi-card amber">
-            <div class="kpi-icon amber"><i class="fas fa-download"></i></div>
-            <div class="kpi-num" id="kpi-dl">—</div>
-            <div class="kpi-lbl">Descargas</div>
-          </div>
-          <div class="kpi-card red">
-            <div class="kpi-icon red"><i class="fas fa-triangle-exclamation"></i></div>
-            <div class="kpi-num" id="kpi-alerts">0</div>
-            <div class="kpi-lbl">Alertas</div>
-          </div>
-        </div>
-
-        <div class="grid-3">
-          <!-- Feed en vivo -->
-          <div class="card" style="grid-column: span 1 / span 1">
-            <div class="card-head">
-              <div class="card-title"><i class="fas fa-bolt"></i> Actividad en vivo</div>
-              <div class="h-badge">Live</div>
-            </div>
-            <div class="feed-list" id="live-feed">
-              <div class="loading-wrap"><div class="spinner"></div> Conectando…</div>
-            </div>
-          </div>
-
-          <!-- Visitas por hora -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-title"><i class="fas fa-chart-area"></i> Visitas por hora</div>
-            </div>
-            <div class="card-body">
-              <div class="chart-wrap" style="height:160px">
-                <canvas id="chart-hourly" role="img" aria-label="Visitas por hora del día"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- Países top -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-title"><i class="fas fa-globe"></i> Top países</div>
-            </div>
-            <div class="card-body">
-              <div class="geo-list" id="geo-list">
-                <div class="loading-wrap" style="padding:.8rem 0"><div class="spinner"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid-2">
-          <!-- Dispositivos -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-title"><i class="fas fa-mobile-screen"></i> Dispositivos</div>
-            </div>
-            <div class="card-body">
-              <div style="display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap">
-                <div class="chart-wrap" style="width:140px;height:140px;flex-shrink:0">
-                  <canvas id="chart-devices" role="img" aria-label="Distribución de dispositivos"></canvas>
-                </div>
-                <div id="devices-legend" style="flex:1;display:flex;flex-direction:column;gap:.5rem"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Páginas populares -->
-          <div class="card">
-            <div class="card-head">
-              <div class="card-title"><i class="fas fa-file-lines"></i> Páginas populares</div>
-            </div>
-            <div class="card-body">
-              <div class="geo-list" id="pages-list">
-                <div class="loading-wrap" style="padding:.8rem 0"><div class="spinner"></div></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: VISITANTES ══ -->
-      <div class="view" id="v-visitors">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Registro de Visitantes</div>
-            <div class="page-subtitle">// IPs, ubicaciones y dispositivos detectados</div>
-          </div>
-          <div class="page-actions">
-            <button class="btn btn-ghost btn-sm" onclick="loadVisitors()"><i class="fas fa-rotate-right"></i> Recargar</button>
-          </div>
-        </div>
-        <div class="filter-bar">
-          <input class="filter-input" id="visitor-search" placeholder="Buscar por IP, país, ciudad…" oninput="filterVisitors()">
-          <select class="filter-select" id="visitor-device" onchange="filterVisitors()">
-            <option value="">Todos los dispositivos</option>
-            <option value="mobile">Móvil</option>
-            <option value="desktop">Desktop</option>
-            <option value="tablet">Tablet</option>
-          </select>
-          <select class="filter-select" id="visitor-country" onchange="filterVisitors()">
-            <option value="">Todos los países</option>
-          </select>
-        </div>
-        <div class="card">
-          <div style="overflow-x:auto">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>IP</th><th>País</th><th>Ciudad</th><th>Dispositivo</th><th>Página</th><th>ISP</th><th>Fecha</th><th>Estado</th>
-                </tr>
-              </thead>
-              <tbody id="visitors-tbody">
-                <tr><td colspan="8"><div class="loading-wrap"><div class="spinner"></div> Cargando visitantes…</div></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-footer">
-            <span class="mono-cell" id="visitor-count" style="color:var(--muted)">0 registros</span>
-            <button class="btn btn-ghost btn-sm" onclick="loadMoreVisitors()">Ver más</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: MENSAJES ══ -->
-      <div class="view" id="v-messages">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Mensajes de Contacto</div>
-            <div class="page-subtitle">// formulario de contacto del portfolio</div>
-          </div>
-        </div>
-        <div class="card" id="messages-card">
-          <div class="loading-wrap"><div class="spinner"></div> Cargando mensajes…</div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: CHAT IA ══ -->
-      <div class="view" id="v-ai-logs">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Logs del Chat IA</div>
-            <div class="page-subtitle">// preguntas frecuentes y uso del asistente</div>
-          </div>
-        </div>
-        <div class="grid-2" style="margin-bottom:1.2rem">
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-comment-dots"></i> Preguntas frecuentes</div></div>
-            <div id="ai-top-questions">
-              <div class="loading-wrap"><div class="spinner"></div></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-chart-bar"></i> Chats por día</div></div>
-            <div class="card-body">
-              <div class="chart-wrap" style="height:180px">
-                <canvas id="chart-chats" role="img" aria-label="Número de chats por día"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title"><i class="fas fa-history"></i> Historial reciente</div></div>
-          <div id="ai-log-list">
-            <div class="loading-wrap"><div class="spinner"></div> Cargando historial…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: DESCARGAS ══ -->
-      <div class="view" id="v-downloads">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Descargas & Clics</div>
-            <div class="page-subtitle">// apps y herramientas más populares</div>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-mobile-screen"></i> Apps más descargadas</div></div>
-            <div id="dl-apps-list">
-              <div class="loading-wrap"><div class="spinner"></div></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-chart-line"></i> Tendencia de descargas</div></div>
-            <div class="card-body">
-              <div class="chart-wrap" style="height:220px">
-                <canvas id="chart-downloads" role="img" aria-label="Tendencia de descargas"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: SEGURIDAD ══ -->
-      <div class="view" id="v-security">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Centro de Seguridad</div>
-            <div class="page-subtitle">// actividad sospechosa e intentos de intrusión</div>
-          </div>
-        </div>
-        <div class="kpi-row" style="grid-template-columns: repeat(auto-fill,minmax(140px,1fr))">
-          <div class="kpi-card red">
-            <div class="kpi-icon red"><i class="fas fa-ban"></i></div>
-            <div class="kpi-num" id="sec-blocked">0</div>
-            <div class="kpi-lbl">IPs bloqueadas</div>
-          </div>
-          <div class="kpi-card amber">
-            <div class="kpi-icon amber"><i class="fas fa-spider"></i></div>
-            <div class="kpi-num" id="sec-bots">0</div>
-            <div class="kpi-lbl">Bots detectados</div>
-          </div>
-          <div class="kpi-card purple">
-            <div class="kpi-icon purple"><i class="fas fa-code"></i></div>
-            <div class="kpi-num" id="sec-devtools">0</div>
-            <div class="kpi-lbl">Abre DevTools</div>
-          </div>
-          <div class="kpi-card cyan">
-            <div class="kpi-icon cyan"><i class="fas fa-shield-check"></i></div>
-            <div class="kpi-num" id="sec-clean">100%</div>
-            <div class="kpi-lbl">Tráfico limpio</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-head"><div class="card-title"><i class="fas fa-triangle-exclamation"></i> Alertas recientes</div></div>
-          <div id="security-list">
-            <div class="loading-wrap"><div class="spinner"></div></div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:1.2rem">
-          <div class="card-head"><div class="card-title"><i class="fas fa-globe"></i> IPs con más actividad</div></div>
-          <div style="overflow-x:auto">
-            <table class="admin-table">
-              <thead>
-                <tr><th>IP</th><th>País</th><th>Visitas</th><th>Bot</th><th>Proxy</th><th>Acciones</th></tr>
-              </thead>
-              <tbody id="ip-activity-tbody">
-                <tr><td colspan="6"><div class="loading-wrap"><div class="spinner"></div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: APPS ══ -->
-      <div class="view" id="v-apps">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Apps Premium</div>
-            <div class="page-subtitle">// gestión del catálogo de aplicaciones</div>
-          </div>
-          <div class="page-actions">
-            <button class="btn btn-primary" onclick="openAddApp()"><i class="fas fa-plus"></i> Nueva App</button>
-          </div>
-        </div>
-        <div class="filter-bar">
-          <input class="filter-input" id="apps-search" placeholder="Buscar app…" oninput="filterApps()">
-          <select class="filter-select" id="apps-cat" onchange="filterApps()">
-            <option value="">Todas las categorías</option>
-            <option value="musica">Música</option>
-            <option value="video">Video</option>
-            <option value="productividad">Productividad</option>
-            <option value="redes">Redes Sociales</option>
-          </select>
-        </div>
-        <div class="card">
-          <div id="apps-list">
-            <div class="loading-wrap"><div class="spinner"></div> Cargando apps…</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: SOLICITUDES ══ -->
-      <div class="view" id="v-requests">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Solicitudes de Apps</div>
-            <div class="page-subtitle">// apps pedidas por la comunidad</div>
-          </div>
-        </div>
-        <div class="card" id="requests-card">
-          <div class="loading-wrap"><div class="spinner"></div> Cargando solicitudes…</div>
-        </div>
-      </div>
-
-      <!-- ══ VIEW: SETTINGS ══ -->
-      <div class="view" id="v-settings">
-        <div class="page-head">
-          <div>
-            <div class="page-title">Configuración del Panel</div>
-            <div class="page-subtitle">// preferencias y conexión con backend</div>
-          </div>
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-server"></i> Estado del backend</div></div>
-            <div class="card-body" id="backend-status">
-              <div class="loading-wrap"><div class="spinner"></div></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title"><i class="fas fa-key"></i> Sesión actual</div></div>
-            <div class="card-body">
-              <div style="display:flex;flex-direction:column;gap:.7rem">
-                <div>
-                  <div class="form-label">Admin user</div>
-                  <div class="mono-cell" id="session-user" style="margin-top:.3rem;color:var(--cyan)">—</div>
-                </div>
-                <div>
-                  <div class="form-label">Backend URL</div>
-                  <div class="mono-cell" id="session-url" style="margin-top:.3rem;color:var(--amber)">—</div>
-                </div>
-                <div>
-                  <div class="form-label">Sesión iniciada</div>
-                  <div class="mono-cell" id="session-since" style="margin-top:.3rem;color:var(--muted)">—</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="card" style="margin-top:1.2rem">
-          <div class="card-head"><div class="card-title"><i class="fas fa-database"></i> Datos en tiempo real</div></div>
-          <div class="card-body" id="health-info">
-            <div class="loading-wrap"><div class="spinner"></div></div>
-          </div>
-        </div>
-      </div>
-
-    </main>
+    <div class="top-actions">
+      <button class="top-btn" onclick="refreshApps()"><i class="fas fa-rotate-right"></i> <span>Refresh</span></button>
+      <button class="top-btn danger" onclick="logout()"><i class="fas fa-right-from-bracket"></i> <span>Salir</span></button>
+    </div>
   </div>
 
-  <!-- MOBILE TAB BAR -->
-  <div class="mobile-tab-bar">
-    <button class="m-tab active" onclick="switchView('overview',this)"><i class="fas fa-chart-line"></i>Overview</button>
-    <button class="m-tab" onclick="switchView('visitors',this)"><i class="fas fa-users"></i>Visitas</button>
-    <button class="m-tab" onclick="switchView('messages',this)"><i class="fas fa-envelope"></i>Mensajes</button>
-    <button class="m-tab" onclick="switchView('security',this)"><i class="fas fa-shield-halved"></i>Seguridad</button>
-    <button class="m-tab" onclick="switchView('apps',this)"><i class="fas fa-mobile-screen"></i>Apps</button>
+  <!-- TABS -->
+  <nav class="tabs-nav">
+    <button class="admin-tab active" onclick="switchTab('apps',this)"><i class="fas fa-mobile-screen"></i> <span>Apps</span></button>
+    <button class="admin-tab" onclick="switchTab('visitors',this)"><i class="fas fa-earth-americas"></i> <span>Visitantes</span></button>
+    <button class="admin-tab" onclick="switchTab('stats',this)"><i class="fas fa-chart-bar"></i> <span>Stats</span></button>
+    <button class="admin-tab" onclick="switchTab('requests',this)"><i class="fas fa-inbox"></i> <span>Solicitudes</span></button>
+    <button class="admin-tab" onclick="switchTab('add',this)"><i class="fas fa-plus"></i> <span>Nueva App</span></button>
+    <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
+    <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="content-wrap">
+
+    <!-- TAB: APPS -->
+    <div class="tab-panel active" id="tab-apps">
+      <!-- Mobile search -->
+      <div style="position:relative;margin-bottom:1rem">
+        <i class="fas fa-search" style="position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.75rem;pointer-events:none"></i>
+        <input id="srch-m" style="width:100%;padding:.62rem 1rem .62rem 2.4rem;border-radius:9px;background:var(--card);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.75rem;outline:none" placeholder="Buscar app..." oninput="searchAppsM(this.value)">
+        <div id="srch-res-m" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-top:.3rem;overflow:hidden;max-height:220px;overflow-y:auto;display:none;position:absolute;width:100%;z-index:20;box-shadow:var(--sh)"></div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-mobile-screen kpi-ico"></i><div class="kpi-num" id="st-apps">—</div><div class="kpi-lbl">Total Apps</div></div>
+        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-circle-check kpi-ico"></i><div class="kpi-num" id="st-verified">—</div><div class="kpi-lbl">Verificadas</div></div>
+        <div class="kpi-card" style="--kc:var(--a)"><i class="fas fa-star kpi-ico"></i><div class="kpi-num" id="st-ratings">—</div><div class="kpi-lbl">Ratings</div></div>
+        <div class="kpi-card" style="--kc:var(--pu)"><i class="fas fa-inbox kpi-ico"></i><div class="kpi-num" id="st-requests">—</div><div class="kpi-lbl">Solicitudes</div></div>
+      </div>
+
+      <div class="section-title"><i class="fas fa-mobile-screen"></i> Gestión de Apps</div>
+      <div class="apps-table">
+        <div class="apps-table-head">
+          <div>App</div><div>Versión</div><div>Verificada</div><div>Badge</div><div>Changelog / Links</div><div>Acciones</div>
+        </div>
+        <div id="apps-list"><div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">Cargando apps...</div></div>
+      </div>
+      <div style="margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap">
+        <button class="pub-btn" style="background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.25);color:var(--c)" onclick="seedFromJSON()">
+          <i class="fas fa-database"></i> Seed desde JSON
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB: VISITANTES -->
+    <div class="tab-panel" id="tab-visitors">
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-users kpi-ico"></i><div class="kpi-num" id="vt-total">—</div><div class="kpi-lbl">Total Visitas</div></div>
+        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-calendar-day kpi-ico"></i><div class="kpi-num" id="vt-today">—</div><div class="kpi-lbl">Hoy</div></div>
+        <div class="kpi-card" style="--kc:var(--a)"><i class="fas fa-globe kpi-ico"></i><div class="kpi-num" id="vt-countries">—</div><div class="kpi-lbl">Países</div></div>
+        <div class="kpi-card" style="--kc:#ff5f56"><i class="fas fa-shield-virus kpi-ico"></i><div class="kpi-num" id="vt-vpn">—</div><div class="kpi-lbl">VPN / Proxy</div></div>
+      </div>
+
+      <input class="vt-search" id="vt-search" type="text" placeholder="🔍  Buscar por IP, país, ciudad, ISP, página..." oninput="filterVisitors()">
+
+      <div class="section-title"><i class="fas fa-table"></i> Registro Supabase — visitor_logs</div>
+      <div class="vt-table-wrap">
+        <table class="vt-table">
+          <thead><tr>
+            <th>IP</th><th>País</th><th>Ciudad / Región</th><th>ISP / Org</th>
+            <th>Riesgo</th><th>Flags</th><th>Página</th><th>Fecha</th>
+          </tr></thead>
+          <tbody id="vt-body">
+            <tr><td colspan="8" style="text-align:center;padding:2.5rem;font-family:var(--mono);color:var(--muted)">Abre esta pestaña para cargar</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.63rem;color:var(--muted);font-family:var(--mono);margin-top:.45rem">💡 Clic en cualquier fila para ver JSON completo del visitante</p>
+      <div class="vt-actions">
+        <button class="vt-btn" onclick="loadVisitors()" style="background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--c)"><i class="fas fa-rotate-right"></i> Actualizar</button>
+        <button class="vt-btn" onclick="exportVisitors()" style="background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.3);color:var(--g)"><i class="fas fa-download"></i> Exportar CSV</button>
+      </div>
+    </div>
+
+    <!-- TAB: STATS -->
+    <div class="tab-panel" id="tab-stats">
+      <div class="section-title"><i class="fas fa-chart-line"></i> Estadísticas en Tiempo Real — Supabase</div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-bolt kpi-ico"></i><div class="kpi-num" id="sb-events">—</div><div class="kpi-lbl">Eventos Totales</div></div>
+        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-eye kpi-ico"></i><div class="kpi-num" id="sb-visits">—</div><div class="kpi-lbl">Visitas Hoy</div></div>
+        <div class="kpi-card" style="--kc:var(--a)"><i class="fas fa-download kpi-ico"></i><div class="kpi-num" id="sb-downloads">—</div><div class="kpi-lbl">Descargas Hoy</div></div>
+        <div class="kpi-card" style="--kc:var(--pu)"><i class="fas fa-robot kpi-ico"></i><div class="kpi-num" id="sb-chats">—</div><div class="kpi-lbl">Chats Hoy</div></div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:1rem;color:var(--a)">📈 Visitas últimos 30 días</div>
+        <canvas id="chart-visits" height="70"></canvas>
+      </div>
+      <div class="charts-grid">
+        <div class="card"><div style="font-size:.78rem;font-weight:700;margin-bottom:1rem;color:var(--c)">🛠️ Herramientas más usadas</div><canvas id="chart-tools" height="160"></canvas></div>
+        <div class="card"><div style="font-size:.78rem;font-weight:700;margin-bottom:1rem;color:var(--g)">📥 Apps más descargadas</div><canvas id="chart-downloads" height="160"></canvas></div>
+      </div>
+      <div class="section-title" style="margin-top:1.25rem"><i class="fas fa-star"></i> Ratings de Apps</div>
+      <div class="apps-table"><div id="ratings-list"><div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">Cargando ratings...</div></div></div>
+      <div style="text-align:right;margin-top:.75rem">
+        <button class="vt-btn" onclick="loadSupabaseStats()" style="background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--c)"><i class="fas fa-rotate-right"></i> Actualizar stats</button>
+      </div>
+    </div>
+
+    <!-- TAB: SOLICITUDES -->
+    <div class="tab-panel" id="tab-requests">
+      <div class="section-title"><i class="fas fa-inbox"></i> Solicitudes de Apps</div>
+      <div class="apps-table"><div id="req-list-admin"><div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">Cargando...</div></div></div>
+    </div>
+
+    <!-- TAB: ADD APP -->
+    <div class="tab-panel" id="tab-add"></div>
+
+    <!-- TAB: BULK -->
+    <div class="tab-panel" id="tab-bulk">
+      <div class="section-title"><i class="fas fa-layer-group"></i> Bulk Upload — Múltiples APKs</div>
+      <div class="card" style="margin-bottom:1rem">
+        <p style="font-size:.76rem;color:var(--muted);margin-bottom:1rem">Formato: <span style="color:var(--c);font-family:var(--mono)">appId_main.apk</span> o <span style="color:var(--c);font-family:var(--mono)">appId_plugin.apk</span></p>
+        <div class="bulk-drop" id="bulk-drop" onclick="document.getElementById('bulk-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleBulkDrop(event)">
+          <i class="fas fa-cloud-arrow-up" style="font-size:2.2rem;color:var(--p);opacity:.4;margin-bottom:.75rem;display:block"></i>
+          <div style="font-weight:700;margin-bottom:.3rem">Arrastra APKs aquí</div>
+          <div style="font-family:var(--mono);font-size:.66rem;color:var(--muted)">o haz clic para seleccionar</div>
+        </div>
+        <input type="file" id="bulk-file-input" multiple accept=".apk" style="display:none" onchange="handleBulkFiles(this.files)">
+        <div class="bulk-list" id="bulk-list"></div>
+        <div id="bulk-progress" style="display:none;margin-top:1rem">
+          <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);margin-bottom:.4rem" id="bulk-status">Procesando...</div>
+          <div style="background:rgba(255,255,255,.05);border-radius:999px;height:5px;overflow:hidden">
+            <div id="bulk-bar" style="height:100%;background:linear-gradient(90deg,var(--p),var(--p2));border-radius:999px;transition:width .3s;width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: STATUS -->
+    <div class="tab-panel" id="tab-status">
+      <div class="section-title"><i class="fas fa-signal"></i> Estado de Servicios</div>
+      <div class="svc-grid" id="svc-grid"></div>
+      <div class="section-title" style="margin-top:1rem"><i class="fas fa-key"></i> Variables de Entorno (Render)</div>
+      <div class="env-grid">
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> GROQ_API_KEY</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> GEMINI_API_KEY</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> MONGODB_URI</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> SUPABASE_URL</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> SUPABASE_KEY</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> ADMIN_KEY</div>
+        <div class="env-pill"><i class="fas fa-circle-check" style="color:var(--g)"></i> FRONTEND_URL</div>
+        <div class="env-pill"><i class="fas fa-circle-question" style="color:var(--a)"></i> REDIS_URL</div>
+      </div>
+    </div>
+
+  </div><!-- /content-wrap -->
+</div><!-- /admin-wrap -->
+
+<!-- VISITOR JSON MODAL -->
+<div id="vt-json-overlay">
+  <div class="vt-json-box">
+    <div class="vt-json-title"><i class="fas fa-code"></i> Datos del Visitante</div>
+    <button class="modal-close" onclick="closeVisitorJSON()"><i class="fas fa-times"></i></button>
+    <pre id="vt-json-content"></pre>
   </div>
 </div>
 
-<!-- MODAL: ADD/EDIT APP -->
-<div class="modal-overlay" id="app-modal">
-  <div class="modal-box">
-    <div class="modal-title"><i class="fas fa-mobile-screen"></i> <span id="modal-app-title">Nueva App</span></div>
-    <div class="form-row-modal">
-      <label class="form-label">Nombre</label>
-      <input class="form-input" id="app-name" placeholder="Spotify Premium">
-    </div>
-    <div class="form-row-modal">
-      <label class="form-label">Categoría</label>
-      <select class="form-input" id="app-cat">
-        <option value="musica">Música</option>
-        <option value="video">Video</option>
-        <option value="productividad">Productividad</option>
-        <option value="redes">Redes Sociales</option>
-      </select>
-    </div>
-    <div class="form-row-modal">
-      <label class="form-label">Versión</label>
-      <input class="form-input" id="app-ver" placeholder="8.9.12">
-    </div>
-    <div class="form-row-modal">
-      <label class="form-label">Imagen URL</label>
-      <input class="form-input" id="app-img" placeholder="https://…">
-    </div>
-    <div class="form-row-modal">
-      <label class="form-label">Descripción breve</label>
-      <input class="form-input" id="app-desc" placeholder="Premium desbloqueado">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('app-modal')">Cancelar</button>
-      <button class="btn btn-primary btn-sm" onclick="saveApp()"><i class="fas fa-floppy-disk"></i> Guardar</button>
-    </div>
+<!-- PREVIEW MODAL -->
+<div id="preview-overlay">
+  <div class="preview-card">
+    <button class="modal-close" onclick="closePreview()"><i class="fas fa-times"></i></button>
+    <img id="prev-img" class="prev-img" src="" alt="">
+    <div id="prev-name" class="prev-name"></div>
+    <div id="prev-ver" class="prev-ver"></div>
+    <div id="prev-desc" class="prev-desc"></div>
   </div>
 </div>
 
-<!-- TOAST CONTAINER -->
+<!-- TOAST -->
 <div id="toast"></div>
 
-<script>
-'use strict';
-
-// ══════════════════════════════════════════════════════
-//  CONFIG
-// ══════════════════════════════════════════════════════
-const API = 'https://codehub-98s6.onrender.com';
-let ADMIN_KEY  = '';
-let ADMIN_USER = '';
-let visitorData = [];
-let appsData    = [];
-let editingAppId = null;
-
-// ══════════════════════════════════════════════════════
-//  LOGIN
-// ══════════════════════════════════════════════════════
-function doLogin() {
-  const user = document.getElementById('l-user').value.trim();
-  const pass = document.getElementById('l-pass').value.trim();
-  const err  = document.getElementById('login-err');
-  if (!pass) { err.textContent = 'Ingresa tu clave de administrador'; return; }
-  err.textContent = '';
-  ADMIN_KEY  = pass;
-  ADMIN_USER = user || 'admin';
-
-  fetch(`${API}/api/health`)
-    .then(r => r.json())
-    .then(() => {
-      document.getElementById('login-screen').classList.add('out');
-      setTimeout(() => {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        document.getElementById('session-user').textContent = ADMIN_USER;
-        document.getElementById('session-url').textContent  = API;
-        document.getElementById('session-since').textContent = new Date().toLocaleString('es-GT');
-        initDashboard();
-      }, 480);
-    })
-    .catch(() => {
-      // Intentar de todas formas (Render puede tardar en arrancar)
-      document.getElementById('login-screen').classList.add('out');
-      setTimeout(() => {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        document.getElementById('session-user').textContent = ADMIN_USER;
-        document.getElementById('session-url').textContent  = API;
-        document.getElementById('session-since').textContent = new Date().toLocaleString('es-GT');
-        initDashboard();
-      }, 480);
-    });
-}
-
-document.getElementById('l-pass').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
-
-function logout() {
-  ADMIN_KEY = ''; ADMIN_USER = '';
-  location.reload();
-}
-
-// ══════════════════════════════════════════════════════
-//  API HELPER
-// ══════════════════════════════════════════════════════
-async function api(path, opts = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-admin-key':  ADMIN_KEY,
-    'x-admin-user': ADMIN_USER,
-    ...opts.headers
-  };
-  const r = await fetch(`${API}${path}`, { ...opts, headers });
-  if (!r.ok) {
-    if (r.status === 403) { showToast('Credenciales inválidas', 'error'); throw new Error('403'); }
-    throw new Error(`HTTP ${r.status}`);
-  }
-  return r.json();
-}
-
-// ══════════════════════════════════════════════════════
-//  NAVIGATION
-// ══════════════════════════════════════════════════════
-function switchView(id, btn) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById('v-' + id)?.classList.add('active');
-
-  document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.m-tab').forEach(b => b.classList.remove('active'));
-
-  if (btn) {
-    btn.classList.add('active');
-    // sync mobile tabs
-    const mTab = [...document.querySelectorAll('.m-tab')].find(t => t.getAttribute('onclick')?.includes(id));
-    if (mTab) { document.querySelectorAll('.m-tab').forEach(b => b.classList.remove('active')); mTab.classList.add('active'); }
-  }
-
-  // Lazy load per view
-  if (id === 'visitors')  loadVisitors();
-  if (id === 'messages')  loadMessages();
-  if (id === 'ai-logs')   loadAILogs();
-  if (id === 'downloads') loadDownloads();
-  if (id === 'security')  loadSecurity();
-  if (id === 'apps')      loadApps();
-  if (id === 'requests')  loadRequests();
-  if (id === 'settings')  loadSettings();
-}
-
-// ══════════════════════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════════════════════
-function initDashboard() {
-  startClock();
-  loadOverview();
-  startLiveFeed();
-  setInterval(loadOverview, 30000);
-}
-
-function refreshAll() {
-  const active = document.querySelector('.view.active')?.id?.replace('v-','');
-  if (active) switchView(active, document.querySelector(`.side-btn.active`));
-  else loadOverview();
-  showToast('Datos actualizados', 'success');
-}
-
-// ══════════════════════════════════════════════════════
-//  CLOCK
-// ══════════════════════════════════════════════════════
-function startClock() {
-  const el = document.getElementById('clock');
-  function tick() {
-    el.textContent = new Date().toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-  }
-  tick(); setInterval(tick, 1000);
-}
-
-// ══════════════════════════════════════════════════════
-//  OVERVIEW
-// ══════════════════════════════════════════════════════
-let hourlyChart, devicesChart;
-
-async function loadOverview() {
-  try {
-    const stats = await fetch(`${API}/api/stats/live`).then(r => r.json()).catch(() => ({}));
-    document.getElementById('kpi-today').textContent = stats.visitors ?? '—';
-    document.getElementById('kpi-total').textContent = stats.total ?? '—';
-    document.getElementById('last-updated').textContent = `// actualizado ${new Date().toLocaleTimeString('es-GT')}`;
-  } catch(e) {}
-
-  try {
-    const vis = await api('/api/admin/visitors?limit=500');
-    if (vis.ok && vis.visitors?.length) {
-      const all = vis.visitors;
-      document.getElementById('side-visitors').textContent = all.length;
-      renderGeo(all);
-      renderPages(all);
-      renderHourlyChart(all);
-      renderDevicesChart(all);
-      // Security counts
-      const bots  = all.filter(v => v.is_bot || v.hosting).length;
-      const proxy = all.filter(v => v.is_proxy).length;
-      document.getElementById('sec-bots').textContent = bots;
-      document.getElementById('side-sec').textContent = bots + proxy;
-      document.getElementById('kpi-alerts').textContent = bots + proxy;
-      const cleanPct = all.length > 0 ? Math.round(((all.length - bots - proxy) / all.length) * 100) : 100;
-      document.getElementById('sec-clean').textContent = cleanPct + '%';
-    }
-  } catch(e) {}
-
-  // Placeholders for msgs/chats/downloads
-  document.getElementById('kpi-msgs').textContent = localStorage.getItem('ch_msgs') || '0';
-  document.getElementById('kpi-chats').textContent = localStorage.getItem('ch_chats') || '0';
-  document.getElementById('kpi-dl').textContent = localStorage.getItem('ch_dl') || '0';
-}
-
-function renderGeo(visitors) {
-  const counts = {};
-  visitors.forEach(v => {
-    const c = (v.country || 'Desconocido').trim();
-    counts[c] = (counts[c] || 0) + 1;
-  });
-  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
-  const max = sorted[0]?.[1] || 1;
-  const flags = { 'Guatemala':'🇬🇹','Mexico':'🇲🇽','United States':'🇺🇸','Spain':'🇪🇸','Colombia':'🇨🇴','Argentina':'🇦🇷','Venezuela':'🇻🇪','El Salvador':'🇸🇻','Honduras':'🇭🇳','Costa Rica':'🇨🇷' };
-  document.getElementById('geo-list').innerHTML = sorted.map(([country, n]) => `
-    <div class="geo-row">
-      <span style="font-size:.9rem">${flags[country] || '🌍'}</span>
-      <span class="geo-name">${country}</span>
-      <div class="geo-bar-wrap"><div class="geo-bar" style="width:${Math.round(n/max*100)}%"></div></div>
-      <span class="geo-count">${n}</span>
-    </div>
-  `).join('') || '<div class="empty-state"><i class="fas fa-globe"></i>Sin datos</div>';
-}
-
-function renderPages(visitors) {
-  const counts = {};
-  visitors.forEach(v => {
-    const p = v.page || '/';
-    counts[p] = (counts[p] || 0) + 1;
-  });
-  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0,6);
-  const max = sorted[0]?.[1] || 1;
-  document.getElementById('pages-list').innerHTML = sorted.map(([page, n]) => `
-    <div class="geo-row">
-      <i class="fas fa-file" style="font-size:.7rem;color:var(--muted);width:14px"></i>
-      <span class="geo-name mono-cell path-text" style="font-size:.72rem">${page}</span>
-      <div class="geo-bar-wrap"><div class="geo-bar" style="width:${Math.round(n/max*100)}%;background:linear-gradient(90deg,var(--cyan),#40c4ff)"></div></div>
-      <span class="geo-count">${n}</span>
-    </div>
-  `).join('') || '<div class="empty-state"><i class="fas fa-file"></i>Sin datos</div>';
-}
-
-function renderHourlyChart(visitors) {
-  const hours = Array(24).fill(0);
-  visitors.forEach(v => {
-    try { const h = new Date(v.visited_at).getHours(); hours[h]++; } catch(e) {}
-  });
-  const labels = hours.map((_,i) => i + 'h');
-  const ctx = document.getElementById('chart-hourly').getContext('2d');
-  if (hourlyChart) hourlyChart.destroy();
-  hourlyChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Visitas',
-        data: hours,
-        borderColor: '#ff4500',
-        backgroundColor: 'rgba(255,69,0,.12)',
-        fill: true,
-        tension: .4,
-        pointRadius: 0,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-      scales: {
-        x: { ticks: { color: 'rgba(220,220,240,.3)', font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,.04)' } },
-        y: { ticks: { color: 'rgba(220,220,240,.3)', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,.04)' } }
-      }
-    }
-  });
-}
-
-function renderDevicesChart(visitors) {
-  let mobile = 0, desktop = 0, tablet = 0;
-  visitors.forEach(v => {
-    const ua = (v.user_agent || '').toLowerCase();
-    if (/tablet|ipad/.test(ua)) tablet++;
-    else if (/mobile|android|iphone/.test(ua)) mobile++;
-    else desktop++;
-  });
-  const total = mobile + desktop + tablet || 1;
-  const ctx = document.getElementById('chart-devices').getContext('2d');
-  if (devicesChart) devicesChart.destroy();
-  devicesChart = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Móvil','Desktop','Tablet'],
-      datasets: [{
-        data: [mobile, desktop, tablet],
-        backgroundColor: ['#ff4500','#00e5ff','#b464ff'],
-        borderWidth: 0,
-        hoverOffset: 4
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, cutout: '72%',
-      plugins: { legend: { display: false } }
-    }
-  });
-  const legend = document.getElementById('devices-legend');
-  const colors = ['#ff4500','#00e5ff','#b464ff'];
-  const labels = ['Móvil','Desktop','Tablet'];
-  const values = [mobile, desktop, tablet];
-  legend.innerHTML = labels.map((l,i) => `
-    <div style="display:flex;align-items:center;gap:.6rem">
-      <span style="width:10px;height:10px;border-radius:2px;background:${colors[i]};flex-shrink:0"></span>
-      <span style="font-size:.78rem;color:var(--text)">${l}</span>
-      <span style="font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-left:auto">${Math.round(values[i]/total*100)}%</span>
-    </div>
-  `).join('');
-}
-
-// ══════════════════════════════════════════════════════
-//  LIVE FEED
-// ══════════════════════════════════════════════════════
-const feedEvents = [];
-
-function startLiveFeed() {
-  // Seed con visitantes recientes
-  api('/api/admin/visitors?limit=20')
-    .then(d => {
-      if (d.ok && d.visitors) {
-        d.visitors.slice(0,10).forEach(v => {
-          addFeedEvent({
-            type: 'visit',
-            main: `${v.city || 'Desconocido'}, ${v.country || '—'}`,
-            meta: `${v.ip} · ${v.page || '/'} · ${timeAgo(v.visited_at)}`,
-            tag: 'Visita', tagClass: 'tag-visit', dot: 'visit'
-          });
-        });
-      }
-    }).catch(() => {});
-
-  // Simular eventos de chat en vivo cada 45s basado en stats
-  setInterval(async () => {
-    try {
-      const s = await fetch(`${API}/api/stats/live`).then(r => r.json());
-      if (s.wsClients > 0) {
-        addFeedEvent({
-          type: 'visit',
-          main: `${s.wsClients} usuario(s) activo(s) ahora`,
-          meta: `WebSocket · ${new Date().toLocaleTimeString('es-GT')}`,
-          tag: 'En vivo', tagClass: 'tag-visit', dot: 'visit'
-        }, true);
-      }
-    } catch(e) {}
-  }, 45000);
-}
-
-function addFeedEvent(ev, isNew = false) {
-  feedEvents.unshift(ev);
-  if (feedEvents.length > 40) feedEvents.pop();
-  renderFeed(isNew);
-}
-
-function renderFeed(highlightFirst = false) {
-  const list = document.getElementById('live-feed');
-  list.innerHTML = feedEvents.slice(0, 15).map((ev, i) => `
-    <div class="feed-item ${i===0 && highlightFirst ? 'new' : ''}">
-      <span class="feed-dot ${ev.dot}"></span>
-      <div class="feed-body">
-        <div class="feed-main">${ev.main}</div>
-        <div class="feed-meta">${ev.meta}</div>
-      </div>
-      <span class="feed-tag ${ev.tagClass}">${ev.tag}</span>
-    </div>
-  `).join('') || '<div class="empty-state"><i class="fas fa-bolt"></i>Sin actividad aún</div>';
-}
-
-// ══════════════════════════════════════════════════════
-//  VISITANTES
-// ══════════════════════════════════════════════════════
-async function loadVisitors() {
-  const tbody = document.getElementById('visitors-tbody');
-  tbody.innerHTML = '<tr><td colspan="8"><div class="loading-wrap"><div class="spinner"></div> Cargando…</div></td></tr>';
-  try {
-    const d = await api('/api/admin/visitors?limit=300');
-    visitorData = d.visitors || [];
-    renderVisitors(visitorData);
-    // Populate country filter
-    const countries = [...new Set(visitorData.map(v => v.country).filter(Boolean))].sort();
-    const sel = document.getElementById('visitor-country');
-    sel.innerHTML = '<option value="">Todos los países</option>' +
-      countries.map(c => `<option value="${c}">${c}</option>`).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i class="fas fa-xmark"></i>Error al cargar: ${e.message}</div></td></tr>`;
-  }
-}
-
-function renderVisitors(list) {
-  const tbody = document.getElementById('visitors-tbody');
-  document.getElementById('visitor-count').textContent = `${list.length} registros`;
-  if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-users"></i>Sin visitantes registrados</div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = list.slice(0,100).map(v => {
-    const ua = (v.user_agent || '').toLowerCase();
-    const isBot   = v.is_bot || v.hosting;
-    const isProxy = v.is_proxy;
-    const deviceIcon = /tablet|ipad/.test(ua) ? 'fa-tablet-screen-button' : /mobile|android|iphone/.test(ua) ? 'fa-mobile-screen' : 'fa-desktop';
-    return `<tr>
-      <td class="mono-cell ip-text">${v.ip || '—'}</td>
-      <td><span class="country-text">${flagFor(v.country_code)} ${v.country || '—'}</span></td>
-      <td class="mono-cell" style="color:var(--muted)">${v.city || '—'}</td>
-      <td><i class="fas ${deviceIcon} device-icon"></i></td>
-      <td class="mono-cell path-text" style="font-size:.7rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.page || '/'}</td>
-      <td class="mono-cell" style="color:var(--muted);font-size:.65rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.isp || '—'}</td>
-      <td class="mono-cell" style="color:var(--hint);font-size:.68rem;white-space:nowrap">${timeAgo(v.visited_at)}</td>
-      <td>
-        ${isBot ? '<span class="pill pill-red"><i class="fas fa-spider"></i> Bot</span>' : ''}
-        ${isProxy ? '<span class="pill pill-amber">Proxy</span>' : ''}
-        ${!isBot && !isProxy ? '<span class="pill pill-green">Limpio</span>' : ''}
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function filterVisitors() {
-  const q   = document.getElementById('visitor-search').value.toLowerCase();
-  const dev = document.getElementById('visitor-device').value.toLowerCase();
-  const cou = document.getElementById('visitor-country').value;
-  const filtered = visitorData.filter(v => {
-    const ua = (v.user_agent || '').toLowerCase();
-    const matchQ = !q || [v.ip, v.country, v.city, v.isp, v.page].some(f => (f||'').toLowerCase().includes(q));
-    const matchDev = !dev || (dev === 'mobile' && /mobile|android|iphone/.test(ua) && !/tablet|ipad/.test(ua)) || (dev === 'desktop' && !/mobile|android|iphone|tablet|ipad/.test(ua)) || (dev === 'tablet' && /tablet|ipad/.test(ua));
-    const matchCou = !cou || v.country === cou;
-    return matchQ && matchDev && matchCou;
-  });
-  renderVisitors(filtered);
-}
-
-function loadMoreVisitors() { showToast('Muestra los últimos 300 registros', 'info'); }
-
-// ══════════════════════════════════════════════════════
-//  MENSAJES DE CONTACTO
-// ══════════════════════════════════════════════════════
-async function loadMessages() {
-  const card = document.getElementById('messages-card');
-  card.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  // El backend broadcastea contact_form events pero no los almacena persistentemente
-  // Mostramos los guardados en localStorage + indicamos cómo ver en tiempo real
-  const saved = JSON.parse(localStorage.getItem('ch_admin_msgs') || '[]');
-  document.getElementById('side-msgs').textContent = saved.length;
-  localStorage.setItem('ch_msgs', saved.length);
-
-  if (!saved.length) {
-    card.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-envelope-open"></i>
-        <div>Sin mensajes almacenados localmente</div>
-        <div style="font-size:.65rem;color:var(--hint);margin-top:.3rem">Los mensajes nuevos aparecen aquí en tiempo real vía WebSocket.<br>Asegúrate de que el backend esté corriendo.</div>
-      </div>`;
-    return;
-  }
-  document.getElementById('kpi-msgs').textContent = saved.length;
-  card.innerHTML = saved.reverse().map((m,i) => `
-    <div class="msg-card ${i < 3 ? 'unread' : ''}">
-      <div class="msg-header">
-        <div>
-          <div class="msg-from">${m.name || 'Anónimo'}</div>
-          <div class="msg-email">${m.email || '—'}</div>
-        </div>
-        <div style="display:flex;gap:.4rem;align-items:center">
-          <span class="pill pill-cyan" style="font-size:.58rem">${m.subject || 'Mensaje'}</span>
-          <span class="msg-time">${m.time || '—'}</span>
-        </div>
-      </div>
-      <div class="msg-body">${m.message || '(sin mensaje)'}</div>
-    </div>
-  `).join('');
-}
-
-// ══════════════════════════════════════════════════════
-//  CHAT IA LOGS
-// ══════════════════════════════════════════════════════
-async function loadAILogs() {
-  const saved = JSON.parse(localStorage.getItem('ch_admin_chats') || '[]');
-  document.getElementById('side-ai').textContent = saved.length;
-  localStorage.setItem('ch_chats', saved.length);
-
-  // Top preguntas
-  const freq = {};
-  saved.forEach(c => {
-    const key = (c.q || '').slice(0,40);
-    freq[key] = (freq[key] || 0) + 1;
-  });
-  const topQ = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,6);
-
-  document.getElementById('ai-top-questions').innerHTML = topQ.length ? topQ.map(([q,n]) => `
-    <div class="chat-log-item">
-      <div class="chat-q">${q}</div>
-      <div class="chat-meta">
-        <span><i class="fas fa-repeat" style="color:var(--purple)"></i> ${n} veces</span>
-      </div>
-    </div>
-  `).join('') : '<div class="empty-state"><i class="fas fa-robot"></i>Sin datos de chat aún</div>';
-
-  // Historial reciente
-  document.getElementById('ai-log-list').innerHTML = saved.slice(0,20).map(c => `
-    <div class="chat-log-item">
-      <div class="chat-q">${c.q || '—'}</div>
-      <div class="chat-meta">
-        <span><i class="fas fa-clock" style="color:var(--muted)"></i> ${c.time || '—'}</span>
-        <span><i class="fas fa-tag" style="color:var(--purple)"></i> ${c.mood || 'general'}</span>
-      </div>
-    </div>
-  `).join('') || '<div class="empty-state"><i class="fas fa-robot"></i>Sin historial de chats</div>';
-
-  // Chart chats por día
-  renderChatsChart(saved);
-}
-
-let chatsChart;
-function renderChatsChart(data) {
-  const days = {};
-  data.forEach(c => {
-    try { const d = new Date(c.ts).toLocaleDateString('es-GT'); days[d] = (days[d]||0)+1; } catch(e) {}
-  });
-  const labels = Object.keys(days).slice(-7);
-  const values = labels.map(l => days[l]);
-  const ctx = document.getElementById('chart-chats').getContext('2d');
-  if (chatsChart) chatsChart.destroy();
-  chatsChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{ label: 'Chats', data: values, backgroundColor: 'rgba(180,100,255,.6)', borderColor: '#b464ff', borderWidth: 1, borderRadius: 4 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: 'rgba(220,220,240,.3)', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.04)' } },
-        y: { ticks: { color: 'rgba(220,220,240,.3)', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,.04)' } }
-      }
-    }
-  });
-}
-
-// ══════════════════════════════════════════════════════
-//  DESCARGAS
-// ══════════════════════════════════════════════════════
-let dlChart;
-async function loadDownloads() {
-  const saved = JSON.parse(localStorage.getItem('ch_admin_downloads') || '[]');
-  localStorage.setItem('ch_dl', saved.length);
-  document.getElementById('kpi-dl').textContent = saved.length;
-
-  const counts = {};
-  saved.forEach(d => { counts[d.app] = (counts[d.app]||0)+1; });
-  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8);
-
-  document.getElementById('dl-apps-list').innerHTML = sorted.length ? sorted.map(([app,n]) => `
-    <div class="feed-item">
-      <span class="feed-dot download"></span>
-      <div class="feed-body">
-        <div class="feed-main">${app}</div>
-        <div class="feed-meta">${n} descarga${n!==1?'s':''}</div>
-      </div>
-      <span class="pill pill-amber">${n}</span>
-    </div>
-  `).join('') : '<div class="empty-state"><i class="fas fa-download"></i>Sin descargas registradas</div>';
-
-  // Chart
-  const ctx = document.getElementById('chart-downloads').getContext('2d');
-  if (dlChart) dlChart.destroy();
-  dlChart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sorted.map(([a])=>a.length>12?a.slice(0,12)+'…':a),
-      datasets: [{ data: sorted.map(([,n])=>n), backgroundColor: 'rgba(255,189,105,.6)', borderColor: '#ffbd69', borderWidth: 1, borderRadius: 4 }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: 'rgba(220,220,240,.3)', font:{size:10} }, grid: { color: 'rgba(255,255,255,.04)' } },
-        y: { ticks: { color: 'rgba(220,220,240,.5)', font:{size:11} }, grid: { color: 'rgba(255,255,255,.04)' } }
-      }
-    }
-  });
-}
-
-// ══════════════════════════════════════════════════════
-//  SEGURIDAD
-// ══════════════════════════════════════════════════════
-async function loadSecurity() {
-  document.getElementById('security-list').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  try {
-    const d = await api('/api/admin/visitors?limit=500');
-    const all = d.visitors || [];
-    const bots   = all.filter(v => v.is_bot || v.hosting);
-    const proxies= all.filter(v => v.is_proxy);
-    document.getElementById('sec-bots').textContent    = bots.length;
-    document.getElementById('sec-blocked').textContent = proxies.length;
-    const cleanPct = all.length > 0 ? Math.round(((all.length-bots.length-proxies.length)/all.length)*100) : 100;
-    document.getElementById('sec-clean').textContent   = cleanPct + '%';
-
-    // Alerts list
-    const alerts = [
-      ...bots.slice(0,5).map(v => ({ sev:'medium', icon:'fa-spider', title:`Bot detectado — ${v.ip}`, desc:`${v.city||'—'}, ${v.country||'—'} · ${v.isp||'—'} · ${timeAgo(v.visited_at)}` })),
-      ...proxies.slice(0,3).map(v => ({ sev:'high', icon:'fa-mask', title:`Proxy/VPN — ${v.ip}`, desc:`${v.city||'—'}, ${v.country||'—'} · acceso vía proxy detectado` })),
-    ];
-
-    document.getElementById('security-list').innerHTML = alerts.length ? alerts.map(a => `
-      <div class="alert-row">
-        <div class="alert-icon alert-${a.sev}"><i class="fas ${a.icon}"></i></div>
-        <div class="alert-info-text">
-          <div class="alert-title">${a.title}</div>
-          <div class="alert-desc">${a.desc}</div>
-        </div>
-        <span class="alert-sev sev-${a.sev}">${a.sev.toUpperCase()}</span>
-      </div>
-    `).join('') : '<div class="empty-state"><i class="fas fa-shield-check"></i>Sin alertas — tráfico limpio</div>';
-
-    // IP activity table
-    const ipCount = {};
-    all.forEach(v => { ipCount[v.ip] = (ipCount[v.ip]||0)+1; });
-    const topIPs = Object.entries(ipCount).sort((a,b)=>b[1]-a[1]).slice(0,10)
-      .map(([ip, n]) => all.find(v => v.ip === ip && { ip, n })).filter(Boolean)
-      .map(([ip, n]) => {
-        const v = all.find(x => x.ip === ip) || {};
-        return { ip, n, country: v.country, country_code: v.country_code, is_bot: v.is_bot||v.hosting, is_proxy: v.is_proxy };
-      });
-
-    document.getElementById('ip-activity-tbody').innerHTML = topIPs.map(({ip, n, country, country_code, is_bot, is_proxy}) => `
-      <tr>
-        <td class="mono-cell ip-text">${ip}</td>
-        <td>${flagFor(country_code)} ${country||'—'}</td>
-        <td class="mono-cell">${n}</td>
-        <td>${is_bot ? '<span class="pill pill-red">Sí</span>' : '<span class="pill pill-muted">No</span>'}</td>
-        <td>${is_proxy ? '<span class="pill pill-amber">Sí</span>' : '<span class="pill pill-muted">No</span>'}</td>
-        <td><button class="icon-btn del" title="Ignorar"><i class="fas fa-xmark"></i></button></td>
-      </tr>
-    `).join('') || '<tr><td colspan="6"><div class="empty-state" style="padding:.8rem"><i class="fas fa-check"></i> Sin datos</div></td></tr>';
-
-  } catch(e) {
-    document.getElementById('security-list').innerHTML = `<div class="empty-state"><i class="fas fa-xmark"></i>Error: ${e.message}</div>`;
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  APPS
-// ══════════════════════════════════════════════════════
-async function loadApps() {
-  document.getElementById('apps-list').innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  try {
-    const d = await api('/api/admin/apps');
-    appsData = d.apps || d || [];
-    renderApps(appsData);
-  } catch(e) {
-    document.getElementById('apps-list').innerHTML = `<div class="empty-state"><i class="fas fa-xmark"></i>Error: ${e.message}</div>`;
-  }
-}
-
-function renderApps(list) {
-  if (!list.length) {
-    document.getElementById('apps-list').innerHTML = '<div class="empty-state"><i class="fas fa-mobile-screen"></i>Sin apps</div>';
-    return;
-  }
-  document.getElementById('apps-list').innerHTML = list.map(app => `
-    <div class="app-item">
-      <div class="app-thumb">
-        ${app.icon_url ? `<img src="${app.icon_url}" alt="${app.name}" onerror="this.style.display='none'">` : '📱'}
-      </div>
-      <div class="app-info">
-        <div class="app-name-t">${app.name || '—'}</div>
-        <div class="app-cat">${app.category||'—'} · v${app.version||'—'}</div>
-      </div>
-      <span class="pill ${app.verified ? 'pill-green' : 'pill-muted'}">${app.verified ? '✓ Verificado' : 'Pendiente'}</span>
-      <span class="pill pill-muted">${(app.downloads||0).toLocaleString()} dl</span>
-      <div class="app-actions">
-        <button class="icon-btn edit" onclick="editApp('${app._id||app.id}')" title="Editar"><i class="fas fa-pen"></i></button>
-        <button class="icon-btn del" onclick="deleteApp('${app._id||app.id}','${app.name}')" title="Eliminar"><i class="fas fa-trash"></i></button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function filterApps() {
-  const q = document.getElementById('apps-search').value.toLowerCase();
-  const cat = document.getElementById('apps-cat').value;
-  renderApps(appsData.filter(a => (!q || (a.name||'').toLowerCase().includes(q)) && (!cat || a.category === cat)));
-}
-
-function openAddApp() {
-  editingAppId = null;
-  document.getElementById('modal-app-title').textContent = 'Nueva App';
-  ['app-name','app-cat','app-ver','app-img','app-desc'].forEach(id => document.getElementById(id).value = '');
-  openModal('app-modal');
-}
-
-function editApp(id) {
-  const app = appsData.find(a => (a._id||a.id) === id);
-  if (!app) return;
-  editingAppId = id;
-  document.getElementById('modal-app-title').textContent = 'Editar App';
-  document.getElementById('app-name').value = app.name || '';
-  document.getElementById('app-cat').value  = app.category || 'musica';
-  document.getElementById('app-ver').value  = app.version || '';
-  document.getElementById('app-img').value  = app.icon_url || '';
-  document.getElementById('app-desc').value = app.description || '';
-  openModal('app-modal');
-}
-
-async function saveApp() {
-  const data = {
-    name: document.getElementById('app-name').value.trim(),
-    category: document.getElementById('app-cat').value,
-    version: document.getElementById('app-ver').value.trim(),
-    icon_url: document.getElementById('app-img').value.trim(),
-    description: document.getElementById('app-desc').value.trim(),
-  };
-  if (!data.name) { showToast('El nombre es obligatorio', 'error'); return; }
-  try {
-    if (editingAppId) {
-      await api(`/api/admin/apps/${editingAppId}`, { method: 'PATCH', body: JSON.stringify(data) });
-    } else {
-      await api('/api/admin/apps', { method: 'POST', body: JSON.stringify(data) });
-    }
-    closeModal('app-modal');
-    showToast(editingAppId ? 'App actualizada' : 'App creada', 'success');
-    loadApps();
-  } catch(e) { showToast('Error al guardar: ' + e.message, 'error'); }
-}
-
-async function deleteApp(id, name) {
-  if (!confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) return;
-  try {
-    await api(`/api/admin/apps/${id}`, { method: 'DELETE' });
-    showToast('App eliminada', 'success');
-    loadApps();
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-// ══════════════════════════════════════════════════════
-//  SOLICITUDES
-// ══════════════════════════════════════════════════════
-async function loadRequests() {
-  const card = document.getElementById('requests-card');
-  card.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  try {
-    const d = await fetch(`${API}/api/requests`).then(r => r.json());
-    const reqs = d.requests || d || [];
-    if (!reqs.length) { card.innerHTML = '<div class="empty-state"><i class="fas fa-list-check"></i>Sin solicitudes pendientes</div>'; return; }
-    card.innerHTML = reqs.sort((a,b)=>(b.votes||0)-(a.votes||0)).map(r => `
-      <div class="feed-item">
-        <span class="feed-dot visit"></span>
-        <div class="feed-body">
-          <div class="feed-main">${r.app_name||r.name||'—'}</div>
-          <div class="feed-meta">${r.description||'Sin descripción'}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3rem">
-          <span class="pill pill-amber"><i class="fas fa-thumbs-up"></i> ${r.votes||0}</span>
-          <span class="pill ${r.status==='done' ? 'pill-green' : r.status==='rejected' ? 'pill-red' : 'pill-muted'}">${r.status||'pendiente'}</span>
-        </div>
-      </div>
-    `).join('');
-  } catch(e) {
-    card.innerHTML = `<div class="empty-state"><i class="fas fa-xmark"></i>Error: ${e.message}</div>`;
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  SETTINGS
-// ══════════════════════════════════════════════════════
-async function loadSettings() {
-  const health = document.getElementById('health-info');
-  health.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
-  try {
-    const d = await fetch(`${API}/api/health`).then(r => r.json());
-    const rows = [
-      ['uptime',    `${Math.floor((d.uptime||0)/3600)}h ${Math.floor(((d.uptime||0)%3600)/60)}m`],
-      ['node',      d.node || '—'],
-      ['mongodb',   d.db || 'desconocido'],
-      ['supabase',  d.supabase ? 'conectado' : 'sin conexión'],
-      ['redis',     d.redis ? 'activo' : 'memoria'],
-      ['version',   d.version || '—'],
-    ];
-    health.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">` +
-      rows.map(([k,v]) => `
-        <div style="background:var(--s3);border-radius:10px;padding:.8rem 1rem">
-          <div class="form-label">${k}</div>
-          <div class="mono-cell" style="color:var(--cyan);margin-top:.25rem">${v}</div>
-        </div>
-      `).join('') + '</div>';
-
-    const status = document.getElementById('backend-status');
-    status.innerHTML = `
-      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
-        <div style="width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(0,230,118,.5)"></div>
-        <span style="font-weight:700">Backend online</span>
-      </div>
-      <div class="mono-cell" style="color:var(--muted);font-size:.68rem;line-height:1.8">
-        ${API}<br>
-        Render · Node.js ${d.node||'—'}
-      </div>
-    `;
-  } catch(e) {
-    health.innerHTML = `<div class="empty-state"><i class="fas fa-xmark"></i>Backend no responde: ${e.message}</div>`;
-    document.getElementById('backend-status').innerHTML = `
-      <div style="display:flex;align-items:center;gap:.7rem">
-        <div style="width:10px;height:10px;border-radius:50%;background:var(--red)"></div>
-        <span style="font-weight:700;color:var(--red)">Backend offline</span>
-      </div>
-    `;
-  }
-}
-
-// ══════════════════════════════════════════════════════
-//  UTILS
-// ══════════════════════════════════════════════════════
-function timeAgo(ts) {
-  if (!ts) return '—';
-  const d = Math.floor((Date.now() - new Date(ts)) / 1000);
-  if (d < 60) return `${d}s`;
-  if (d < 3600) return `${Math.floor(d/60)}m`;
-  if (d < 86400) return `${Math.floor(d/3600)}h`;
-  return `${Math.floor(d/86400)}d`;
-}
-
-function flagFor(code) {
-  if (!code || code.length !== 2) return '🌍';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E0 + c.charCodeAt(0) - 65));
-}
-
-function showToast(msg, type = 'info') {
-  const container = document.getElementById('toast');
-  const icons = { success: 'fa-check-circle', error: 'fa-xmark-circle', info: 'fa-info-circle' };
-  const el = document.createElement('div');
-  el.className = `toast-item ${type}`;
-  el.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i> ${msg}`;
-  container.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transition = '.3s'; setTimeout(() => el.remove(), 300); }, 3200);
-}
-
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-function exportData() {
-  const data = {
-    exported: new Date().toISOString(),
-    visitors: visitorData.length,
-    apps: appsData.length,
-    messages: JSON.parse(localStorage.getItem('ch_admin_msgs')||'[]').length,
-    chats: JSON.parse(localStorage.getItem('ch_admin_chats')||'[]').length,
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `codehub-admin-${Date.now()}.json`;
-  a.click();
-  showToast('Datos exportados', 'success');
-}
-
-// WebSocket: recibir eventos en tiempo real desde el backend
-(function connectWS() {
-  const wsUrl = 'wss://codehub-98s6.onrender.com/ws';
-  try {
-    const ws = new WebSocket(wsUrl);
-    ws.onopen  = () => { document.getElementById('live-badge').textContent = 'WebSocket ●'; };
-    ws.onclose = () => setTimeout(connectWS, 5000);
-    ws.onerror = () => {};
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'visit') {
-          addFeedEvent({ type:'visit', main:`${msg.data?.city||'?'}, ${msg.data?.country||'?'}`, meta:`${msg.data?.ip||'?'} · ${msg.data?.page||'/'} · ahora`, tag:'Visita', tagClass:'tag-visit', dot:'visit' }, true);
-        }
-        if (msg.type === 'contact_form') {
-          addFeedEvent({ type:'contact', main:`Nuevo mensaje de ${msg.data?.name||'Anónimo'}`, meta:`${msg.data?.email||'?'} · ahora`, tag:'Contacto', tagClass:'tag-contact', dot:'contact' }, true);
-          const saved = JSON.parse(localStorage.getItem('ch_admin_msgs')||'[]');
-          saved.push({ ...msg.data, time: new Date().toLocaleString('es-GT') });
-          localStorage.setItem('ch_admin_msgs', JSON.stringify(saved.slice(-100)));
-          document.getElementById('side-msgs').textContent = saved.length;
-          document.getElementById('kpi-msgs').textContent  = saved.length;
-          showToast(`Nuevo mensaje de ${msg.data?.name||'Anónimo'}`, 'success');
-        }
-        if (msg.type === 'chat') {
-          addFeedEvent({ type:'chat', main:`Chat IA: "${(msg.data?.message||'').slice(0,40)}"`, meta:`sesión ${(msg.data?.sessionId||'?').slice(-6)} · ahora`, tag:'Chat IA', tagClass:'tag-chat', dot:'chat' }, true);
-          const saved = JSON.parse(localStorage.getItem('ch_admin_chats')||'[]');
-          saved.push({ q: msg.data?.message, mood: msg.data?.mood||'general', time: new Date().toLocaleTimeString('es-GT'), ts: new Date().toISOString() });
-          localStorage.setItem('ch_admin_chats', JSON.stringify(saved.slice(-200)));
-          const cnt = parseInt(document.getElementById('side-ai').textContent||'0') + 1;
-          document.getElementById('side-ai').textContent = cnt;
-          document.getElementById('kpi-chats').textContent = cnt;
-        }
-      } catch(err) {}
-    };
-  } catch(e) {}
-})();
-
-// Close modal on overlay click
-document.getElementById('app-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal('app-modal');
-});
-</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="js/admin-hub.js"></script>
 </body>
 </html>

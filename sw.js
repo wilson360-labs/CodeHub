@@ -58,8 +58,8 @@ self.addEventListener('fetch', e => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // 1. Railway API — Network only, sin interceptar nunca
-  if (url.hostname.includes('railway.app') || url.hostname.includes('up.railway.app')) {
+  // 1. Backend API (Render) — Network only, sin interceptar nunca
+  if (url.hostname.includes("onrender.com")) {
     e.respondWith(fetch(request.clone()).catch(() =>
       new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
         headers: { 'Content-Type': 'application/json' }

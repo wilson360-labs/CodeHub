@@ -4570,7 +4570,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span style="color:#a855f7">Python</span>
                         <span style="color:#ff6b35">MongoDB</span>
                         <span style="color:#40c4ff">Express</span>
-                        <span style="color:#ff4081">Railway</span>
+                        <span style="color:#00e676">Render</span>
                     </div>
                     <div class="about-pro-actions">
                         <a href="cv.html" class="about-btn-cv">
@@ -5415,47 +5415,63 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             setTimeout(typeEffect, 800);
         });
 
-        // Visitor Counter — real con localStorage
-        function animateVisitorCounter() {
-            const KEY_COUNT = 'ch_visits';
-            const KEY_DATE  = 'ch_visit_date';
-            const today = new Date().toDateString();
+        // ── VISITOR TRACKER — llama al backend para geo IP real en Supabase ──
+        const _CH_BACKEND = 'https://codehub-98s6.onrender.com';
 
-            let total  = parseInt(localStorage.getItem(KEY_COUNT) || '0');
-            const last = localStorage.getItem(KEY_DATE);
-
-            // Contar solo 1 visita nueva por día por dispositivo
-            if (last !== today) {
-                total += 1;
-                localStorage.setItem(KEY_COUNT, total);
-                localStorage.setItem(KEY_DATE, today);
-            }
-
-            // Animar el número
-            const counter = document.getElementById('visitorCount');
-            if (!counter) return;
-            const start = Math.max(0, total - 80);
-            const duration = 1600;
-            const startTime = performance.now();
-
+        function animateCounter(el, target) {
+            if (!el) return;
+            const start = Math.max(0, target - 80);
+            const t0 = performance.now();
+            const dur = 1600;
             function step(now) {
-                const p = Math.min((now - startTime) / duration, 1);
+                const p = Math.min((now - t0) / dur, 1);
                 const ease = 1 - Math.pow(1 - p, 3);
-                counter.textContent = Math.floor(start + (total - start) * ease).toLocaleString();
+                el.textContent = Math.floor(start + (target - start) * ease).toLocaleString();
                 if (p < 1) requestAnimationFrame(step);
-                else counter.textContent = total.toLocaleString();
+                else el.textContent = target.toLocaleString();
             }
             requestAnimationFrame(step);
         }
 
-        // Actualizar label del counter y arrancar animación
+        async function registerVisit() {
+            const KEY_DATE = 'ch_visit_date';
+            const today = new Date().toDateString();
+            const isNew = localStorage.getItem(KEY_DATE) !== today;
+
+            if (isNew) {
+                localStorage.setItem(KEY_DATE, today);
+                try {
+                    // Registrar en backend → Supabase con geo IP real
+                    await fetch(_CH_BACKEND + '/api/visit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ page: '/' })
+                    });
+                } catch (e) { /* silencioso si backend offline */ }
+            }
+
+            // Mostrar contador desde backend (total real de Supabase)
+            try {
+                const r = await fetch(_CH_BACKEND + '/api/stats/live');
+                const d = await r.json();
+                const counter = document.getElementById('visitorCount');
+                animateCounter(counter, d.total || 0);
+            } catch (e) {
+                // Fallback local si backend no responde
+                const KEY_COUNT = 'ch_visits';
+                let total = parseInt(localStorage.getItem(KEY_COUNT) || '100');
+                if (isNew) { total++; localStorage.setItem(KEY_COUNT, total); }
+                animateCounter(document.getElementById('visitorCount'), total);
+            }
+        }
+
+        // Actualizar label del counter
         (function() {
             const wrap = document.querySelector('.footer-visitors span');
             if (wrap) wrap.textContent = 'Visitas registradas:';
         })();
 
-        // Llamar al cargar
-        document.addEventListener('DOMContentLoaded', animateVisitorCounter);
+        document.addEventListener('DOMContentLoaded', registerVisit);
 
         // Neural Network Animation
         const canvas = document.getElementById('neural-network');
