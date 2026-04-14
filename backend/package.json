@@ -1,7 +1,7 @@
 {
   "name": "codehub",
   "version": "3.0.0",
-  "description": "CodeHub Backend \u2014 Wilson.E",
+  "description": "CodeHub Backend — Wilson.E",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -20,7 +20,9 @@
     "multer": "^1.4.5-lts.1",
     "redis": "^4.6.13",
     "ws": "^8.17.0",
-    "@supabase/supabase-js": "^2.43.0"
+    "@supabase/supabase-js": "^2.43.0",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.2"
   },
   "engines": {
     "node": ">=18.0.0"

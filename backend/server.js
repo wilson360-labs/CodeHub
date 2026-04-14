@@ -205,6 +205,10 @@ const App = mongoose.model('App', new mongoose.Schema({
   b2_file_name:       { type: String, default: null },
   b2_plugin_file_id:  { type: String, default: null },
   b2_plugin_file_name:{ type: String, default: null },
+  tg_message_id:      { type: Number, default: null },  // ID mensaje Telegram APK main
+  tg_file_id:         { type: String, default: null },  // file_id Telegram APK main
+  tg_plugin_msg_id:   { type: Number, default: null },  // ID mensaje Telegram APK plugin
+  tg_plugin_file_id:  { type: String, default: null },  // file_id Telegram APK plugin
   tutorial_url:       { type: String, default: null },
   updatedAt:          { type: Date, default: Date.now },
   createdAt:          { type: Date, default: Date.now },
@@ -254,12 +258,70 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ── SUPABASE STORAGE ─────────────────────────────────────────
+// ── TELEGRAM STORAGE ─────────────────────────────────────────
+// APKs se almacenan en el chat personal del bot con el admin.
+// Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
+const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+/**
+ * Sube un buffer como documento a Telegram.
+ * Devuelve { messageId, fileId, downloadUrl }
+ */
+async function uploadToTelegram(buffer, fileName, caption = '') {
+  if (!TG_TOKEN || !TG_CHAT_ID) throw new Error('TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render');
+
+  const FormData = require('form-data');
+  const form = new FormData();
+  form.append('chat_id',  TG_CHAT_ID);
+  form.append('caption',  caption || fileName);
+  form.append('document', buffer, { filename: fileName, contentType: 'application/vnd.android.package-archive' });
+
+  const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendDocument`, {
+    method: 'POST',
+    body:   form,
+    headers: form.getHeaders(),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error('Telegram API error: ' + (data.description || JSON.stringify(data)));
+
+  const msg    = data.result;
+  const fileId = msg.document?.file_id;
+
+  // Obtener URL de descarga directa del archivo
+  const fileRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
+  const fileData = await fileRes.json();
+  const filePath = fileData.result?.file_path;
+  const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
+
+  console.log(`✅ Telegram upload: \${fileName} | msg_id=\${msg.message_id}`);
+  return { messageId: msg.message_id, fileId, downloadUrl };
+}
+
+/**
+ * Elimina un mensaje del chat de Telegram (borra el APK viejo).
+ */
+async function deleteFromTelegram(messageId) {
+  if (!TG_TOKEN || !TG_CHAT_ID || !messageId) return false;
+  try {
+    const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+    const res  = await fetch(
+      `https://api.telegram.org/bot\${TG_TOKEN}/deleteMessage?chat_id=\${TG_CHAT_ID}&message_id=\${messageId}`
+    );
+    const data = await res.json();
+    if (data.ok) { console.log(`🗑️ Telegram delete: msg_id=\${messageId}`); return true; }
+    console.warn('Telegram delete error:', data.description);
+    return false;
+  } catch (e) { console.warn('Telegram delete error:', e.message); return false; }
+}
+
+// ── SUPABASE STORAGE (se mantiene para archivos pequeños <50 MB) ──
 const STORAGE_BUCKET = 'CodeHub';
 
 async function uploadToStorage(buffer, fileName) {
   if (!supabase) throw new Error('Supabase no configurado');
-  console.log(`🔵 uploadToStorage START: ${fileName} (${(buffer.length/1024/1024).toFixed(1)} MB)`);
+  console.log(`🔵 uploadToStorage START: \${fileName} (\${(buffer.length/1024/1024).toFixed(1)} MB)`);
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .upload(fileName, buffer, {
@@ -268,7 +330,7 @@ async function uploadToStorage(buffer, fileName) {
     });
   if (error) throw new Error('Error subiendo a Supabase Storage: ' + error.message);
   const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-  console.log(`✅ Supabase Storage upload: ${fileName}`);
+  console.log(`✅ Supabase Storage upload: \${fileName}`);
   return { fileName, publicUrl: urlData.publicUrl };
 }
 
@@ -277,7 +339,7 @@ async function deleteFromStorage(fileName) {
   try {
     const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([fileName]);
     if (error) { console.warn('Storage delete error:', error.message); return false; }
-    console.log(`🗑️ Storage delete: ${fileName}`); return true;
+    console.log(`🗑️ Storage delete: \${fileName}`); return true;
   } catch (e) { console.warn('Storage delete error:', e.message); return false; }
 }
 
@@ -839,19 +901,47 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
 
 app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  if (!req.file) return res.status(400).json({ error: 'No se recibió archivo' });
-  const { appId } = req.params, isPlugin = req.body.slot === 'plugin';
+  if (!req.file)    return res.status(400).json({ error: 'No se recibió archivo' });
+  const { appId } = req.params;
+  const isPlugin   = req.body.slot === 'plugin';
+  const sizeMB     = (req.file.size / 1024 / 1024).toFixed(1);
   try {
-    const a = await App.findOne({ appId }); if (!a) return res.status(404).json({ error: 'App no encontrada' });
+    const a = await App.findOne({ appId });
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
+
     const fileName = `${appId}_${isPlugin ? 'plugin' : 'main'}_${Date.now()}.apk`;
-    if (!isPlugin && a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
-    if ( isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
-    const { publicUrl } = await uploadToStorage(req.file.buffer, fileName);
-    const upd = isPlugin
-      ? { b2_plugin_file_id: null, b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
-      : { b2_file_id: null,        b2_file_name: fileName,        enlace: publicUrl,         updatedAt: new Date() };
-    await App.updateOne({ appId }, upd); await cacheDel('apps:all');
-    res.json({ ok: true, fileName, downloadUrl: publicUrl, sizeMB: (req.file.size / 1024 / 1024).toFixed(1) });
+    const caption  = `📦 ${a.nombre} — ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'} (${sizeMB} MB)`;
+
+    // Usar Telegram si está configurado, si no caer en Supabase
+    const useTelegram = !!(TG_TOKEN && TG_CHAT_ID);
+    let downloadUrl, upd;
+
+    if (useTelegram) {
+      // 1. Eliminar mensaje anterior del chat (APK viejo)
+      const oldMsgId = isPlugin ? a.tg_plugin_msg_id : a.tg_message_id;
+      if (oldMsgId) await deleteFromTelegram(oldMsgId);
+
+      // 2. Subir nuevo APK a Telegram
+      const { messageId, fileId, downloadUrl: tgUrl } = await uploadToTelegram(req.file.buffer, fileName, caption);
+      downloadUrl = tgUrl;
+
+      upd = isPlugin
+        ? { tg_plugin_msg_id: messageId, tg_plugin_file_id: fileId, plugin_enlace: tgUrl, updatedAt: new Date() }
+        : { tg_message_id: messageId,    tg_file_id: fileId,        enlace: tgUrl,         updatedAt: new Date() };
+    } else {
+      // Fallback: Supabase Storage (límite 50 MB)
+      if (!isPlugin && a.b2_file_name) await deleteFromStorage(a.b2_file_name);
+      if  (isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
+      const { publicUrl } = await uploadToStorage(req.file.buffer, fileName);
+      downloadUrl = publicUrl;
+      upd = isPlugin
+        ? { b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
+        : { b2_file_name: fileName,        enlace: publicUrl,         updatedAt: new Date() };
+    }
+
+    await App.updateOne({ appId }, upd);
+    await cacheDel('apps:all');
+    res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: useTelegram ? 'telegram' : 'supabase' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
