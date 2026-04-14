@@ -469,17 +469,37 @@ async function loadAdminStats() {
 }
 
 // ── SUPABASE STATS ────────────────────────────────────────────
+// Backend devuelve: { daily[], tools[], downloads[], total_events }
+// daily[]     -> { date, visits, downloads, chat_msgs, tool_uses, contacts }
+// tools[]     -> { tool_name, uses }
+// downloads[] -> { app_name, downloads }
 async function loadSupabaseStats() {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
   try {
-    const res = await fetch(`${BACKEND}/api/stats/supabase`, { headers: { 'x-admin-key': ADMIN_KEY } });
-    const d   = await res.json();
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
-    set('sb-events',    d.total_events);
-    set('sb-visits',    d.today_visits);
-    set('sb-downloads', d.today_downloads);
-    set('sb-chats',     d.today_chats);
-    if (d.chart_data) renderCharts(d.chart_data);
-  } catch (e) { console.warn('Supabase stats error:', e.message); }
+    const res = await fetch(`${BACKEND}/api/stats/supabase`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+
+    // Fila de hoy para los KPIs diarios
+    const today = new Date().toISOString().slice(0, 10);
+    const todayRow = (d.daily || []).find(r => r.date === today) || {};
+
+    set('sb-events',    d.total_events       ?? 0);
+    set('sb-visits',    todayRow.visits       ?? 0);
+    set('sb-downloads', todayRow.downloads    ?? 0);
+    set('sb-chats',     todayRow.chat_msgs    ?? 0);
+
+    // Renderizar gráficas con el mapping correcto
+    renderCharts({
+      daily_visits:  (d.daily     || []).slice(0, 30).reverse(), // asc para el chart
+      top_tools:      d.tools     || [],
+      top_downloads:  d.downloads || [],
+    });
+  } catch (e) {
+    console.warn('Supabase stats error:', e.message);
+    ['sb-events','sb-visits','sb-downloads','sb-chats'].forEach(id => set(id, '—'));
+  }
 }
 
 // ── CHARTS ────────────────────────────────────────────────────
