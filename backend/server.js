@@ -94,10 +94,11 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 
-// Multer APKs (máx 200 MB) — sube a Supabase Storage
+// Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
+// El límite aquí (2 GB) es solo protección del servidor en tránsito, no un límite de Telegram.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 200 * 1024 * 1024 },
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB máx en tránsito (Telegram no tiene límite de storage)
   fileFilter: (_, f, cb) => {
     if (f.mimetype === 'application/vnd.android.package-archive' || f.originalname.endsWith('.apk'))
       cb(null, true);
@@ -924,10 +925,54 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
   try {
     const a = await App.findOne({ appId: req.params.appId });
     if (!a) return res.status(404).json({ error: 'App no encontrada' });
+
+    // Limpiar archivos en Telegram (mensajes con el APK)
+    if (a.tg_message_id)     await deleteFromTelegram(a.tg_message_id);
+    if (a.tg_plugin_msg_id)  await deleteFromTelegram(a.tg_plugin_msg_id);
+
+    // Limpiar archivos en Supabase (fallback)
     if (a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
     if (a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
-    await App.deleteOne({ appId: req.params.appId }); await cacheDel('apps:all');
+
+    await App.deleteOne({ appId: req.params.appId });
+    await cacheDel('apps:all');
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DELETE /api/admin/apps/:appId/apk — Elimina solo el APK de Telegram/Storage sin borrar la app
+// Útil para reemplazar un APK desactualizado antes de subir uno nuevo, o limpiar storage manualmente.
+// Query param: ?slot=main (default) | ?slot=plugin
+app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    const a = await App.findOne({ appId: req.params.appId });
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
+
+    const isPlugin = req.query.slot === 'plugin';
+    const upd = { updatedAt: new Date() };
+    let deleted = { telegram: false, supabase: false };
+
+    if (isPlugin) {
+      if (a.tg_plugin_msg_id)    { deleted.telegram = await deleteFromTelegram(a.tg_plugin_msg_id); }
+      if (a.b2_plugin_file_name) { deleted.supabase = await deleteFromStorage(a.b2_plugin_file_name); }
+      Object.assign(upd, {
+        tg_plugin_msg_id: null, tg_plugin_file_id: null,
+        b2_plugin_file_name: null, plugin_enlace: null,
+      });
+    } else {
+      if (a.tg_message_id) { deleted.telegram = await deleteFromTelegram(a.tg_message_id); }
+      if (a.b2_file_name)  { deleted.supabase = await deleteFromStorage(a.b2_file_name); }
+      Object.assign(upd, {
+        tg_message_id: null, tg_file_id: null,
+        b2_file_name: null, enlace: '#',
+      });
+    }
+
+    await App.updateOne({ appId: req.params.appId }, upd);
+    await cacheDel('apps:all');
+    console.log(`🗑️ APK eliminado: ${req.params.appId} [slot=${isPlugin ? 'plugin' : 'main'}]`);
+    res.json({ ok: true, appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

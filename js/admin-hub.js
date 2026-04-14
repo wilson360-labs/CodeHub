@@ -132,6 +132,9 @@ function renderApps() {
         <button onclick="openPreview('${app.appId}')" style="padding:.28rem .5rem;border-radius:8px;background:rgba(255,189,69,.08);border:1px solid rgba(255,189,69,.2);color:var(--a);font-family:var(--mono);font-size:.6rem;cursor:pointer">
           <i class="fas fa-eye"></i> Preview
         </button>
+        <button onclick="deleteAPKFile('${app.appId}','main','${app.nombre.replace(/'/g,'&#39;')}')" style="padding:.28rem .5rem;border-radius:8px;background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.25);color:#ffb347;font-family:var(--mono);font-size:.6rem;cursor:pointer">
+          <i class="fas fa-file-circle-xmark"></i> Limpiar APK
+        </button>
         <button onclick="deleteApp('${app.appId}','${app.nombre.replace(/'/g,'&#39;')}')" style="padding:.28rem .5rem;border-radius:8px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:#ff6b6b;font-family:var(--mono);font-size:.6rem;cursor:pointer">
           <i class="fas fa-trash"></i> Eliminar
         </button>
@@ -220,6 +223,23 @@ async function uploadAPK(appId, slot, input) {
 }
 
 // ── DELETE APP ────────────────────────────────────────────────
+// ── LIMPIAR APK (elimina solo el archivo de Telegram/Storage, mantiene la app) ─
+async function deleteAPKFile(appId, slot = 'main', nombre = '') {
+  if (!confirm(`¿Eliminar el APK de "${nombre}" de Telegram/Storage?\nLa app se mantiene en la tienda — solo se borra el archivo.\nTras esto puedes subir la nueva versión.`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/apk?slot=${slot}`, {
+      method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error);
+    // Actualizar el enlace localmente para reflejar que ya no hay APK
+    const app = appsData.find(a => a.appId === appId);
+    if (app) { if (slot === 'plugin') app.plugin_enlace = null; else app.enlace = '#'; }
+    renderApps();
+    toast(`🗑️ APK limpiado: ${nombre} — ahora sube la nueva versión.`);
+  } catch (e) { toast('❌ Error: ' + e.message); }
+}
+
 async function deleteApp(appId, nombre) {
   if (!confirm(`¿Eliminar "${nombre}" de la tienda? No se puede deshacer.`)) return;
   try {
