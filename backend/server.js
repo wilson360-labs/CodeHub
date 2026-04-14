@@ -271,47 +271,79 @@ const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 async function uploadToTelegram(buffer, fileName, caption = '') {
   if (!TG_TOKEN || !TG_CHAT_ID) throw new Error('TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render');
 
-  const FormData = require('form-data');
-  const form = new FormData();
-  form.append('chat_id',  TG_CHAT_ID);
-  form.append('caption',  caption || fileName);
-  form.append('document', buffer, { filename: fileName, contentType: 'application/vnd.android.package-archive' });
+  const https    = require('https');
+  const boundary = '----FormBoundary' + Date.now().toString(16);
+  const CRLF     = '\r\n';
 
-  const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
-  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendDocument`, {
-    method: 'POST',
-    body:   form,
-    headers: form.getHeaders(),
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error('Telegram API error: ' + (data.description || JSON.stringify(data)));
+  // Construir multipart/form-data manualmente sin dependencias
+  const addField = (name, value) =>
+    `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`;
+
+  const fileHeader =
+    `--${boundary}${CRLF}` +
+    `Content-Disposition: form-data; name="document"; filename="${fileName}"${CRLF}` +
+    `Content-Type: application/vnd.android.package-archive${CRLF}${CRLF}`;
+
+  const preamble = Buffer.from(addField('chat_id', TG_CHAT_ID) + addField('caption', caption || fileName) + fileHeader);
+  const closing  = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+  const body     = Buffer.concat([preamble, buffer, closing]);
+
+  // Helper para hacer requests HTTPS sin fetch
+  const httpsRequest = (hostname, path, method = 'GET', extraHeaders = {}, reqBody = null) =>
+    new Promise((resolve, reject) => {
+      const headers = method === 'POST'
+        ? { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length, ...extraHeaders }
+        : extraHeaders;
+      const req = https.request({ hostname, path, method, headers }, (res) => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+          catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+        });
+      });
+      req.on('error', reject);
+      if (reqBody) req.write(reqBody);
+      req.end();
+    });
+
+  // 1. Enviar documento a Telegram
+  const data = await httpsRequest('api.telegram.org', `/bot${TG_TOKEN}/sendDocument`, 'POST', {}, body);
+  if (!data.ok) throw new Error('Telegram sendDocument: ' + (data.description || JSON.stringify(data)));
 
   const msg    = data.result;
   const fileId = msg.document?.file_id;
 
-  // Obtener URL de descarga directa del archivo
-  const fileRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
-  const fileData = await fileRes.json();
-  const filePath = fileData.result?.file_path;
+  // 2. Obtener file_path para URL de descarga directa
+  const fileData = await httpsRequest('api.telegram.org', `/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
+  if (!fileData.ok) throw new Error('Telegram getFile: ' + fileData.description);
+
+  const filePath    = fileData.result?.file_path;
   const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
 
-  console.log(`✅ Telegram upload: \${fileName} | msg_id=\${msg.message_id}`);
+  console.log(`✅ Telegram upload: ${fileName} | msg_id=${msg.message_id}`);
   return { messageId: msg.message_id, fileId, downloadUrl };
 }
 
-/**
- * Elimina un mensaje del chat de Telegram (borra el APK viejo).
- */
 async function deleteFromTelegram(messageId) {
   if (!TG_TOKEN || !TG_CHAT_ID || !messageId) return false;
   try {
-    const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
-    const res  = await fetch(
-      `https://api.telegram.org/bot\${TG_TOKEN}/deleteMessage?chat_id=\${TG_CHAT_ID}&message_id=\${messageId}`
-    );
-    const data = await res.json();
-    if (data.ok) { console.log(`🗑️ Telegram delete: msg_id=\${messageId}`); return true; }
-    console.warn('Telegram delete error:', data.description);
+    const https = require('https');
+    const data  = await new Promise((resolve, reject) => {
+      https.get(
+        `https://api.telegram.org/bot${TG_TOKEN}/deleteMessage?chat_id=${TG_CHAT_ID}&message_id=${messageId}`,
+        (res) => {
+          const chunks = [];
+          res.on('data', c => chunks.push(c));
+          res.on('end', () => {
+            try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+            catch (e) { reject(e); }
+          });
+        }
+      ).on('error', reject);
+    });
+    if (data.ok) { console.log(`🗑️ Telegram delete: msg_id=${messageId}`); return true; }
+    console.warn('Telegram delete warning:', data.description);
     return false;
   } catch (e) { console.warn('Telegram delete error:', e.message); return false; }
 }
