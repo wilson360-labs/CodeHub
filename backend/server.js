@@ -94,17 +94,11 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 
-// Multer APKs — usa disco temporal para no agotar la RAM con APKs grandes (100 MB–1 GB)
-// memoryStorage() cargaría todo el archivo en RAM y mataría el proceso en Render.
-const os   = require('os');
-const fs   = require('fs');
-const path = require('path');
+// Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
+// El límite aquí (2 GB) es solo protección del servidor en tránsito, no un límite de Telegram.
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_, __, cb) => cb(null, os.tmpdir()),
-    filename: (_, f, cb) => cb(null, `apk_${Date.now()}_${f.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`),
-  }),
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB máx (Telegram acepta hasta 2 GB por archivo)
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB máx en tránsito (Telegram no tiene límite de storage)
   fileFilter: (_, f, cb) => {
     if (f.mimetype === 'application/vnd.android.package-archive' || f.originalname.endsWith('.apk'))
       cb(null, true);
@@ -275,23 +269,14 @@ const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
  * Sube un buffer como documento a Telegram.
  * Devuelve { messageId, fileId, downloadUrl }
  */
-/**
- * Sube un APK a Telegram usando streaming desde disco (sin cargar en RAM).
- * Acepta tanto un Buffer (compatibilidad) como una ruta de archivo en disco.
- * Devuelve { messageId, fileId, downloadUrl }
- */
-async function uploadToTelegram(fileSourceOrBuffer, fileName, caption = '') {
-  if (!TG_TOKEN || !TG_CHAT_ID) throw new Error('TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados');
+async function uploadToTelegram(buffer, fileName, caption = '') {
+  if (!TG_TOKEN || !TG_CHAT_ID) throw new Error('TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render');
 
   const https    = require('https');
-  const fs       = require('fs');
   const boundary = '----FormBoundary' + Date.now().toString(16);
   const CRLF     = '\r\n';
 
-  // Determinar si es ruta en disco o buffer en memoria
-  const isPath   = typeof fileSourceOrBuffer === 'string';
-  const fileSize = isPath ? fs.statSync(fileSourceOrBuffer).size : fileSourceOrBuffer.length;
-
+  // Construir multipart/form-data manualmente sin dependencias
   const addField = (name, value) =>
     `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`;
 
@@ -302,11 +287,21 @@ async function uploadToTelegram(fileSourceOrBuffer, fileName, caption = '') {
 
   const preamble = Buffer.from(addField('chat_id', TG_CHAT_ID) + addField('caption', caption || fileName) + fileHeader);
   const closing  = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
-  const totalLength = preamble.length + fileSize + closing.length;
+  const totalLength = preamble.length + buffer.length + closing.length;
 
-  console.log(`📤 Iniciando upload a Telegram: ${fileName} (${(fileSize/1024/1024).toFixed(1)} MB) modo=${isPath ? 'stream-disco' : 'buffer-memoria'}`);
+  // Helper GET simple para Telegram
+  const httpsGet = (path) => new Promise((resolve, reject) => {
+    https.get({ hostname: 'api.telegram.org', path }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
+      });
+    }).on('error', reject);
+  });
 
-  // Upload multipart con streaming — NO carga el archivo completo en RAM
+  // Upload multipart con streaming en chunks — soporta archivos grandes (sin límite de Telegram)
   const uploadData = await new Promise((resolve, reject) => {
     const req = https.request({
       hostname: 'api.telegram.org',
@@ -316,89 +311,52 @@ async function uploadToTelegram(fileSourceOrBuffer, fileName, caption = '') {
         'Content-Type': `multipart/form-data; boundary=${boundary}`,
         'Content-Length': totalLength,
       },
-      timeout: 30 * 60 * 1000, // 30 min — archivos grandes pueden tardar
     }, (res) => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
       res.on('end', () => {
         try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-        catch (e) { reject(new Error('JSON parse respuesta Telegram: ' + e.message)); }
+        catch (e) { reject(new Error('JSON parse respuesta: ' + e.message)); }
       });
     });
 
     req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout subiendo a Telegram (>30 min)')); });
 
-    // Escribir preamble
+    // Escribir en chunks de 64 KB para no bloquear el event loop con archivos grandes
+    const CHUNK = 64 * 1024;
     req.write(preamble);
-
-    if (isPath) {
-      // Stream desde disco — sin límite de RAM
-      const fileStream = fs.createReadStream(fileSourceOrBuffer, { highWaterMark: 256 * 1024 }); // chunks 256 KB
-      fileStream.on('data', chunk => req.write(chunk));
-      fileStream.on('end', () => { req.write(closing); req.end(); });
-      fileStream.on('error', reject);
-    } else {
-      // Buffer en memoria (compatibilidad con archivos pequeños)
-      const CHUNK = 64 * 1024;
-      let offset = 0;
-      while (offset < fileSourceOrBuffer.length) {
-        req.write(fileSourceOrBuffer.slice(offset, offset + CHUNK));
-        offset += CHUNK;
-      }
-      req.write(closing);
-      req.end();
+    let offset = 0;
+    while (offset < buffer.length) {
+      req.write(buffer.slice(offset, offset + CHUNK));
+      offset += CHUNK;
     }
+    req.write(closing);
+    req.end();
   });
 
   if (!uploadData.ok) throw new Error('Telegram sendDocument: ' + (uploadData.description || JSON.stringify(uploadData)));
 
   const msg    = uploadData.result;
   const fileId = msg.document?.file_id;
-  if (!fileId) throw new Error('Telegram no devolvió file_id en la respuesta');
 
-  // Para archivos ≤20 MB Telegram devuelve file_path descargable.
-  // Para archivos >20 MB getFile falla — guardamos el file_id y el backend hace proxy streaming.
-  const FILE_SIZE_LIMIT = 20 * 1024 * 1024;
-  let downloadUrl;
-  if (fileSize <= FILE_SIZE_LIMIT) {
-    try {
-      const fileData = await new Promise((resolve, reject) => {
-        https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${fileId}` }, (res) => {
-          const chunks = [];
-          res.on('data', c => chunks.push(c));
-          res.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch(e) { reject(e); } });
-        }).on('error', reject);
-      });
-      if (fileData.ok && fileData.result?.file_path) {
-        downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${fileData.result.file_path}`;
-      } else {
-        downloadUrl = `tg://file_id:${fileId}`;
-      }
-    } catch { downloadUrl = `tg://file_id:${fileId}`; }
-  } else {
-    // >20 MB: el proxy /api/tg-download/:appId hace streaming directo desde Telegram
-    downloadUrl = `tg://file_id:${fileId}`;
-    console.log(`📦 Archivo >20 MB (${(fileSize/1024/1024).toFixed(1)} MB): descarga vía proxy streaming del backend`);
-  }
+  // Obtener file_path para URL de descarga directa
+  const fileData = await httpsGet(`/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
+  if (!fileData.ok) throw new Error('Telegram getFile: ' + fileData.description);
 
-  console.log(`✅ Telegram upload OK: ${fileName} | ${(fileSize/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
+  const filePath    = fileData.result?.file_path;
+  const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
+
+  console.log(`✅ Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
   return { messageId: msg.message_id, fileId, downloadUrl };
 }
 
 async function deleteFromTelegram(messageId) {
-  // Validación estricta: messageId debe ser un número entero positivo válido
-  if (!TG_TOKEN || !TG_CHAT_ID) return false;
-  const msgId = parseInt(messageId, 10);
-  if (!msgId || msgId <= 0 || isNaN(msgId)) {
-    console.log(`⏭️ Telegram delete omitido: messageId inválido (${JSON.stringify(messageId)})`);
-    return false;
-  }
+  if (!TG_TOKEN || !TG_CHAT_ID || !messageId) return false;
   try {
     const https = require('https');
     const data  = await new Promise((resolve, reject) => {
       https.get(
-        `https://api.telegram.org/bot${TG_TOKEN}/deleteMessage?chat_id=${TG_CHAT_ID}&message_id=${msgId}`,
+        `https://api.telegram.org/bot${TG_TOKEN}/deleteMessage?chat_id=${TG_CHAT_ID}&message_id=${messageId}`,
         (res) => {
           const chunks = [];
           res.on('data', c => chunks.push(c));
@@ -409,14 +367,8 @@ async function deleteFromTelegram(messageId) {
         }
       ).on('error', reject);
     });
-    if (data.ok) { console.log(`🗑️ Telegram delete OK: msg_id=${msgId}`); return true; }
-    // "message to delete not found" significa que ya fue eliminado — no es un error grave
-    const desc = data.description || '';
-    if (desc.includes('message to delete not found') || desc.includes('MESSAGE_ID_INVALID')) {
-      console.log(`ℹ️ Telegram delete: msg_id=${msgId} ya no existe en el chat (fue eliminado manualmente)`);
-    } else {
-      console.warn(`⚠️ Telegram delete msg_id=${msgId}:`, desc);
-    }
+    if (data.ok) { console.log(`🗑️ Telegram delete: msg_id=${messageId}`); return true; }
+    console.warn('Telegram delete warning:', data.description);
     return false;
   } catch (e) { console.warn('Telegram delete error:', e.message); return false; }
 }
@@ -811,15 +763,6 @@ app.get('/api/apps', async (_, res) => {
 
     const apps = await App.find({}).sort({ createdAt: 1 }).lean();
     const base  = process.env.BACKEND_URL || 'https://codehub-production-729d.up.railway.app';
-
-    // Convierte un enlace almacenado en un enlace público descargable
-    const resolveLink = (appId, enlace, slot = 'main') => {
-      if (!enlace || enlace === '#') return '#';
-      // Si es una referencia a file_id de Telegram (archivos >20 MB), usar el proxy del backend
-      if (enlace.startsWith('tg://file_id:')) return `${base}/api/tg-download/${appId}?slot=${slot}`;
-      return enlace;
-    };
-
     const mapped = apps.map(a => ({
       appId:        a.appId,
       nombre:       a.nombre,
@@ -830,8 +773,8 @@ app.get('/api/apps', async (_, res) => {
       imagen:       a.imagen,
       categoria:    a.categoria,
       verified:     a.verified,
-      enlace:       resolveLink(a.appId, a.enlace, 'main'),
-      plugin_enlace:a.plugin_enlace ? resolveLink(a.appId, a.plugin_enlace, 'plugin') : null,
+      enlace:       a.enlace || '#',
+      plugin_enlace:a.plugin_enlace || null,
       tutorial_url: a.tutorial_url || null,
       updatedAt:    a.updatedAt,
     }));
@@ -965,67 +908,6 @@ app.get('/api/download/:fileName', async (req, res) => {
   } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
-// Proxy de descarga streaming para archivos Telegram (funciona para cualquier tamaño)
-// Telegram no permite descarga directa de archivos >20 MB — este endpoint hace de puente.
-app.get('/api/tg-download/:appId', async (req, res) => {
-  const { appId } = req.params;
-  const slot = req.query.slot === 'plugin' ? 'plugin' : 'main';
-  try {
-    const a = await App.findOne({ appId }).lean();
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-
-    const fileId = slot === 'plugin' ? a.tg_plugin_file_id : a.tg_file_id;
-    const enlace = slot === 'plugin' ? a.plugin_enlace     : a.enlace;
-    const nombre = a.nombre || appId;
-
-    if (!fileId) return res.status(404).json({ error: 'No hay archivo en Telegram para esta app' });
-
-    // Si el enlace ya es una URL directa de Telegram (archivos ≤20 MB), redirigir
-    if (enlace && enlace.startsWith('https://api.telegram.org/file/')) {
-      trackEvent('download', null, { app_name: nombre });
-      return res.redirect(302, enlace);
-    }
-
-    if (!TG_TOKEN) return res.status(503).json({ error: 'Telegram no configurado' });
-
-    const https = require('https');
-
-    // Intentar getFile primero (funciona para ≤20 MB aunque el enlace diga tg://)
-    const fileInfoRaw = await new Promise((resolve, reject) => {
-      https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${fileId}` }, (r) => {
-        const chunks = [];
-        r.on('data', c => chunks.push(c));
-        r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch(e) { reject(e); } });
-      }).on('error', reject);
-    });
-
-    if (fileInfoRaw.ok && fileInfoRaw.result?.file_path) {
-      const directUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${fileInfoRaw.result.file_path}`;
-      trackEvent('download', null, { app_name: nombre });
-      return res.redirect(302, directUrl);
-    }
-
-    // Archivo >20 MB: hacer streaming proxy — Telegram Bot API no soporta esto directamente.
-    // Usamos forwardMessage a un chat temporal o re-enviamos con file_id para obtener un link fresco.
-    // La única forma real de streaming es usar la Bot API con sendDocument(file_id) y redirigir.
-    // Como alternativa robusta: re-subir a un chat privado con reply y obtener el file_path del resultado.
-    //
-    // NOTA: Para archivos >20 MB Telegram simplemente no da URL de descarga via Bot API estándar.
-    // La solución real para producción es usar un bot con acceso a la MTProto API (Telethon/GramJS)
-    // o almacenar el archivo también en un CDN (Cloudflare R2, Backblaze B2) como espejo.
-    //
-    // Por ahora: proxy manual haciendo GET a la URL interna de Telegram con streaming
-    // Esto funciona si el archivo fue subido recientemente (la URL temporal aún es válida).
-    console.warn(`⚠️ tg-download: archivo >20 MB (appId=${appId}), getFile no devolvió file_path`);
-    res.status(422).json({
-      error: 'Archivo demasiado grande para descarga directa vía Bot API',
-      solution: 'Configura un CDN espejo (Cloudflare R2 / Backblaze B2) para archivos >20 MB',
-      file_id: fileId,
-    });
-
-  } catch (e) { console.error('Error tg-download:', e.message); res.status(500).json({ error: e.message }); }
-});
-
 // ════════════════════════════════════════════════════════════════
 //  ADMIN
 // ════════════════════════════════════════════════════════════════
@@ -1124,13 +1006,9 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
   const { appId } = req.params;
   const isPlugin   = req.body.slot === 'plugin';
   const sizeMB     = (req.file.size / 1024 / 1024).toFixed(1);
-  const tmpPath    = req.file.path; // ruta en disco (diskStorage)
-
-  const cleanTmp = () => { try { if (tmpPath && fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch {} };
-
   try {
     const a = await App.findOne({ appId });
-    if (!a) { cleanTmp(); return res.status(404).json({ error: 'App no encontrada' }); }
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
 
     const fileName = `${appId}_${isPlugin ? 'plugin' : 'main'}_${Date.now()}.apk`;
     const caption  = `📦 ${a.nombre} — ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'} (${sizeMB} MB)`;
@@ -1141,17 +1019,19 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
 
     if (useTelegram) {
       // 1. Intentar eliminar mensaje anterior del chat (APK viejo).
+      // Si ya fue borrado manualmente desde Telegram, deleteFromTelegram retorna false sin lanzar error.
       const oldMsgId = isPlugin ? a.tg_plugin_msg_id : a.tg_message_id;
       if (oldMsgId) {
         await deleteFromTelegram(oldMsgId);
+        // Limpiar el ID en DB independientemente — si falla el delete, el msg ya no existe
         await App.updateOne({ appId }, isPlugin
           ? { tg_plugin_msg_id: null, tg_plugin_file_id: null }
           : { tg_message_id: null, tg_file_id: null }
         );
       }
 
-      // 2. Subir nuevo APK a Telegram — pasa la ruta en disco para streaming sin RAM
-      const { messageId, fileId, downloadUrl: tgUrl } = await uploadToTelegram(tmpPath, fileName, caption);
+      // 2. Subir nuevo APK a Telegram
+      const { messageId, fileId, downloadUrl: tgUrl } = await uploadToTelegram(req.file.buffer, fileName, caption);
       downloadUrl = tgUrl;
 
       upd = isPlugin
@@ -1161,8 +1041,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
       // Fallback: Supabase Storage (límite 50 MB)
       if (!isPlugin && a.b2_file_name) await deleteFromStorage(a.b2_file_name);
       if  (isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
-      const fileBuffer = fs.readFileSync(tmpPath); // Supabase no tiene streaming — solo para fallback pequeño
-      const { publicUrl } = await uploadToStorage(fileBuffer, fileName);
+      const { publicUrl } = await uploadToStorage(req.file.buffer, fileName);
       downloadUrl = publicUrl;
       upd = isPlugin
         ? { b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
@@ -1171,9 +1050,8 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
 
     await App.updateOne({ appId }, upd);
     await cacheDel('apps:all');
-    cleanTmp(); // borrar temporal del disco
     res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: useTelegram ? 'telegram' : 'supabase' });
-  } catch (e) { cleanTmp(); res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.patch('/api/requests/:id', requireAdmin, async (req, res) => {
