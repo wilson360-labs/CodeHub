@@ -287,42 +287,66 @@ async function uploadToTelegram(buffer, fileName, caption = '') {
 
   const preamble = Buffer.from(addField('chat_id', TG_CHAT_ID) + addField('caption', caption || fileName) + fileHeader);
   const closing  = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
-  const body     = Buffer.concat([preamble, buffer, closing]);
+  const totalLength = preamble.length + buffer.length + closing.length;
 
-  // Helper para hacer requests HTTPS sin fetch
-  const httpsRequest = (hostname, path, method = 'GET', extraHeaders = {}, reqBody = null) =>
-    new Promise((resolve, reject) => {
-      const headers = method === 'POST'
-        ? { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length, ...extraHeaders }
-        : extraHeaders;
-      const req = https.request({ hostname, path, method, headers }, (res) => {
-        const chunks = [];
-        res.on('data', c => chunks.push(c));
-        res.on('end', () => {
-          try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-          catch (e) { reject(new Error('JSON parse: ' + e.message)); }
-        });
+  // Helper GET simple para Telegram
+  const httpsGet = (path) => new Promise((resolve, reject) => {
+    https.get({ hostname: 'api.telegram.org', path }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
       });
-      req.on('error', reject);
-      if (reqBody) req.write(reqBody);
-      req.end();
+    }).on('error', reject);
+  });
+
+  // Upload multipart con streaming en chunks — soporta archivos grandes (sin límite de Telegram)
+  const uploadData = await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      path: `/bot${TG_TOKEN}/sendDocument`,
+      method: 'POST',
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': totalLength,
+      },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+        catch (e) { reject(new Error('JSON parse respuesta: ' + e.message)); }
+      });
     });
 
-  // 1. Enviar documento a Telegram
-  const data = await httpsRequest('api.telegram.org', `/bot${TG_TOKEN}/sendDocument`, 'POST', {}, body);
-  if (!data.ok) throw new Error('Telegram sendDocument: ' + (data.description || JSON.stringify(data)));
+    req.on('error', reject);
 
-  const msg    = data.result;
+    // Escribir en chunks de 64 KB para no bloquear el event loop con archivos grandes
+    const CHUNK = 64 * 1024;
+    req.write(preamble);
+    let offset = 0;
+    while (offset < buffer.length) {
+      req.write(buffer.slice(offset, offset + CHUNK));
+      offset += CHUNK;
+    }
+    req.write(closing);
+    req.end();
+  });
+
+  if (!uploadData.ok) throw new Error('Telegram sendDocument: ' + (uploadData.description || JSON.stringify(uploadData)));
+
+  const msg    = uploadData.result;
   const fileId = msg.document?.file_id;
 
-  // 2. Obtener file_path para URL de descarga directa
-  const fileData = await httpsRequest('api.telegram.org', `/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
+  // Obtener file_path para URL de descarga directa
+  const fileData = await httpsGet(`/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
   if (!fileData.ok) throw new Error('Telegram getFile: ' + fileData.description);
 
   const filePath    = fileData.result?.file_path;
   const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
 
-  console.log(`✅ Telegram upload: ${fileName} | msg_id=${msg.message_id}`);
+  console.log(`✅ Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
   return { messageId: msg.message_id, fileId, downloadUrl };
 }
 
@@ -994,9 +1018,17 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
     let downloadUrl, upd;
 
     if (useTelegram) {
-      // 1. Eliminar mensaje anterior del chat (APK viejo)
+      // 1. Intentar eliminar mensaje anterior del chat (APK viejo).
+      // Si ya fue borrado manualmente desde Telegram, deleteFromTelegram retorna false sin lanzar error.
       const oldMsgId = isPlugin ? a.tg_plugin_msg_id : a.tg_message_id;
-      if (oldMsgId) await deleteFromTelegram(oldMsgId);
+      if (oldMsgId) {
+        await deleteFromTelegram(oldMsgId);
+        // Limpiar el ID en DB independientemente — si falla el delete, el msg ya no existe
+        await App.updateOne({ appId }, isPlugin
+          ? { tg_plugin_msg_id: null, tg_plugin_file_id: null }
+          : { tg_message_id: null, tg_file_id: null }
+        );
+      }
 
       // 2. Subir nuevo APK a Telegram
       const { messageId, fileId, downloadUrl: tgUrl } = await uploadToTelegram(req.file.buffer, fileName, caption);
