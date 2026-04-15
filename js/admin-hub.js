@@ -81,17 +81,32 @@ function convertToDirectLink(url) {
   }
 }
 
-// ── PREVIEW DE CONVERSIÓN DE LINK (en tiempo real) ────────────
+// ── PREVIEW DE CONVERSIÓN DE LINK (en tiempo real + al cargar) ────
 function previewLink(input, spanId) {
   const span = document.getElementById(spanId);
   if (!span) return;
-  const raw = input.value.trim();
-  if (!raw) { span.textContent = ''; return; }
+  const raw = (input.value || '').trim();
+  if (!raw || raw === '#') { span.innerHTML = ''; return; }
+
   const converted = convertToDirectLink(raw);
+
   if (converted !== raw) {
-    span.innerHTML = `<span style="color:#00e5ff">⚡ Se convertirá a:</span> ${converted}`;
+    // El link SERÁ convertido al guardar
+    span.innerHTML = `<span style="color:#00e5ff">⚡ Se convertirá al guardar →</span> <span style="opacity:.7">${converted}</span>`;
   } else {
-    span.textContent = '';
+    // Detectar si ya es un link directo conocido
+    try {
+      const host = new URL(raw).hostname.replace('www.', '');
+      const isDirect = host === 'dl.dropboxusercontent.com'
+                    || raw.includes('?dl=1')
+                    || host.includes('supabase.co')
+                    || host === 'api.telegram.org';
+      if (isDirect) {
+        span.innerHTML = `<span style="color:#00e57a">✅ Link directo detectado</span>`;
+      } else {
+        span.innerHTML = '';
+      }
+    } catch { span.innerHTML = ''; }
   }
 }
 
@@ -231,6 +246,16 @@ function renderApps() {
       </div>
     </div>`;
   }).join('');
+
+  // ── Auto-iniciar preview para inputs ya cargados con links que serán convertidos
+  appsData.forEach(app => {
+    const enlace    = app.b2_url || app.enlace || '#';
+    const plugin    = app.b2_plugin_url || app.plugin_enlace || '';
+    const linkInput   = document.getElementById('link-'   + app.appId);
+    const pluginInput = document.getElementById('plugin-' + app.appId);
+    if (linkInput)   previewLink(linkInput,   'lp-' + app.appId);
+    if (pluginInput && plugin) previewLink(pluginInput, 'pp-' + app.appId);
+  });
 }
 
 // ── TOGGLE VERIFIED ───────────────────────────────────────────
