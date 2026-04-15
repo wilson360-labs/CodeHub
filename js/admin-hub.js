@@ -8,78 +8,131 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 let ADMIN_KEY = '';
 
 // ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
-// Transforma links de plataformas de nube en URLs de descarga directa.
-// Se aplica al guardar en admin Y al renderizar en novedades.
+// Convierte links de plataformas en URLs de descarga directa.
+// Actualizado con los formatos reales vigentes en 2026.
 function convertToDirectLink(url) {
   if (!url || url === '#') return url;
   try {
-    const u = new URL(url);
+    const u    = new URL(url);
     const host = u.hostname.replace('www.', '');
+    const path = u.pathname;
 
     // ── Google Drive ──────────────────────────────────────────
-    // Formatos soportados:
-    //   drive.google.com/file/d/FILE_ID/view
-    //   drive.google.com/open?id=FILE_ID
-    //   drive.google.com/uc?id=FILE_ID
+    // Soporta todos los formatos actuales de Drive:
+    //   /file/d/FILE_ID/view  →  export=download
+    //   /file/d/FILE_ID/edit  →  export=download
+    //   open?id=FILE_ID       →  export=download
+    //   uc?id=FILE_ID         →  ya es descarga (normalizar)
     if (host === 'drive.google.com') {
       let id = u.searchParams.get('id');
       if (!id) {
-        const m = u.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        const m = path.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
         if (m) id = m[1];
       }
-      if (id) return `https://drive.google.com/uc?export=download&id=${id}&confirm=t`;
+      if (id) {
+        // Usar el endpoint de export que funciona sin confirmación
+        return `https://drive.usercontent.google.com/download?id=${id}&export=download&authuser=0`;
+      }
       return url;
     }
 
     // ── Dropbox ───────────────────────────────────────────────
-    // Cambia ?dl=0 por ?dl=1  (o agrega dl=1 si no existe)
-    // También soporta dropbox.com/scl/fi/... (links modernos compartidos)
+    // Formatos:
+    //   dropbox.com/s/HASH/file.apk?dl=0       → dl=1
+    //   dropbox.com/scl/fi/HASH/file.apk?...   → dl=1
+    //   dl.dropboxusercontent.com/...           → ya es directo
     if (host === 'dropbox.com' || host === 'dl.dropboxusercontent.com') {
-      u.searchParams.set('dl', '1');
-      return u.toString();
+      // Eliminar parámetro rlkey si existe (causa problemas) — mantener solo dl
+      const rlkey = u.searchParams.get('rlkey');
+      const newU  = new URL(url);
+      newU.searchParams.set('dl', '1');
+      // Cambiar dominio a dl.dropboxusercontent.com para descarga directa garantizada
+      if (host === 'dropbox.com') {
+        newU.hostname = 'dl.dropboxusercontent.com';
+        // Limpiar parámetros innecesarios dejando solo dl y rlkey si existe
+        const dl     = newU.searchParams.get('dl');
+        newU.search  = '';
+        newU.searchParams.set('dl', '1');
+        if (rlkey) newU.searchParams.set('rlkey', rlkey);
+      }
+      return newU.toString();
     }
 
-    // ── OneDrive / 1drv.ms ────────────────────────────────────
-    // onedrive.live.com/download?... ya es directo
-    // 1drv.ms es acortador — se deja pasar (redirige al archivo)
-    // onedrive.live.com/redir?...  se convierte a /download
+    // ── OneDrive ──────────────────────────────────────────────
+    // onedrive.live.com/redir?resid=...  → /download?resid=...
+    // 1drv.ms/u/s!...                    → se deja (acortador)
     if (host === 'onedrive.live.com') {
       u.pathname = u.pathname.replace('/redir', '/download');
+      u.searchParams.delete('authkey');
       u.searchParams.set('download', '1');
       return u.toString();
     }
-    if (host === '1drv.ms') return url; // acortador, redirige solo
+    if (host === '1drv.ms') return url;
 
     // ── MediaFire ─────────────────────────────────────────────
-    // mediafire.com/file/FILE_ID/nombre.apk/file  → descarga directa
-    // La descarga se inicia en la propia página de MediaFire;
-    // no existe un link 100% directo sin JS, pero podemos forzar:
-    if (host === 'mediafire.com' || host === 'www.mediafire.com') {
-      // Convertir /file/.../file a /download/.../file
-      const newPath = u.pathname.replace(/^\/file\//, '/download/');
-      u.pathname = newPath;
-      return u.toString();
-    }
+    // mediafire.com/file/HASH/nombre.apk/file
+    // El link /file/ redirige a página HTML — no hay API pública.
+    // Lo dejamos igual; el usuario llega a la página y descarga.
+    // Marcamos como "no convertible" para el preview.
+    if (host === 'mediafire.com') return url;
 
     // ── MEGA ──────────────────────────────────────────────────
-    // mega.nz no tiene link directo público — se deja igual,
-    // el usuario descarga desde la web de MEGA.
-    // Pero normalizamos el hash fragment para evitar errores:
-    if (host === 'mega.nz') return url;
+    // No tiene descarga directa pública — requiere cliente MEGA.
+    if (host === 'mega.nz' || host === 'mega.co.nz') return url;
 
-    // ── Terabox ───────────────────────────────────────────────
-    // terabox.com/s/SHARE_ID → se deja igual (requiere sesión)
+    // ── Terabox / 1024terabox ─────────────────────────────────
     if (host === 'terabox.com' || host === '1024terabox.com') return url;
 
-    // ── Telegram (links de file del bot ya son directos) ──────
+    // ── GitHub Releases ───────────────────────────────────────
+    // github.com/user/repo/releases/download/... ya es directo
+    if (host === 'github.com' && path.includes('/releases/download/')) return url;
+    // github.com/user/repo/releases/tag/... → no es descarga directa
+    if (host === 'github.com' && path.includes('/releases/tag/')) return url;
+
+    // ── Telegram file links ───────────────────────────────────
     if (host === 'api.telegram.org') return url;
 
-    // ── Cualquier otro link → se devuelve sin cambios ─────────
+    // ── Supabase Storage ─────────────────────────────────────
+    if (host.includes('supabase.co') || host.includes('supabase.in')) return url;
+
+    // ── Cualquier otro → sin cambios ──────────────────────────
     return url;
   } catch {
-    return url; // URL malformada → devolver tal cual
+    return url;
   }
 }
+
+// ── DETECTAR PLATAFORMA ───────────────────────────────────────
+function detectPlatform(url) {
+  if (!url || url === '#') return null;
+  try {
+    const host = new URL(url).hostname.replace('www.', '');
+    if (host === 'drive.google.com' || host === 'drive.usercontent.google.com') return 'gdrive';
+    if (host === 'dropbox.com' || host === 'dl.dropboxusercontent.com')         return 'dropbox';
+    if (host === 'onedrive.live.com' || host === '1drv.ms')                     return 'onedrive';
+    if (host === 'mediafire.com')                                                return 'mediafire';
+    if (host === 'mega.nz' || host === 'mega.co.nz')                            return 'mega';
+    if (host === 'terabox.com' || host === '1024terabox.com')                   return 'terabox';
+    if (host === 'github.com')                                                   return 'github';
+    if (host === 'api.telegram.org')                                             return 'telegram';
+    if (host.includes('supabase'))                                               return 'supabase';
+    return 'other';
+  } catch { return null; }
+}
+
+// Íconos y labels por plataforma
+const PLATFORM_INFO = {
+  gdrive:    { icon: 'fab fa-google-drive', label: 'Google Drive',  color: '#4285f4', direct: true  },
+  dropbox:   { icon: 'fab fa-dropbox',      label: 'Dropbox',       color: '#0061ff', direct: true  },
+  onedrive:  { icon: 'fab fa-microsoft',    label: 'OneDrive',      color: '#0078d4', direct: true  },
+  mediafire: { icon: 'fas fa-fire',         label: 'MediaFire',     color: '#ef3724', direct: false },
+  mega:      { icon: 'fas fa-m',            label: 'MEGA',          color: '#d9272e', direct: false },
+  terabox:   { icon: 'fas fa-box',          label: 'Terabox',       color: '#1677ff', direct: false },
+  github:    { icon: 'fab fa-github',       label: 'GitHub',        color: '#00e676', direct: true  },
+  telegram:  { icon: 'fab fa-telegram',     label: 'Telegram',      color: '#229ed9', direct: true  },
+  supabase:  { icon: 'fas fa-database',     label: 'Supabase',      color: '#3ecf8e', direct: true  },
+  other:     { icon: 'fas fa-link',         label: 'Link externo',  color: '#aaa',    direct: null  },
+};
 
 // ── PREVIEW DE CONVERSIÓN DE LINK (en tiempo real + al cargar) ────
 function previewLink(input, spanId) {
@@ -89,24 +142,26 @@ function previewLink(input, spanId) {
   if (!raw || raw === '#') { span.innerHTML = ''; return; }
 
   const converted = convertToDirectLink(raw);
+  const platform  = detectPlatform(raw);
+  const info      = PLATFORM_INFO[platform] || PLATFORM_INFO.other;
+
+  const platformBadge = platform
+    ? `<span style="display:inline-flex;align-items:center;gap:.25rem;background:${info.color}22;color:${info.color};border:1px solid ${info.color}44;border-radius:999px;padding:.1rem .45rem;font-size:.55rem;font-weight:700;margin-right:.3rem">
+        <i class="${info.icon}" style="font-size:.55rem"></i>${info.label}
+      </span>`
+    : '';
 
   if (converted !== raw) {
-    // El link SERÁ convertido al guardar
-    span.innerHTML = `<span style="color:#00e5ff">⚡ Se convertirá al guardar →</span> <span style="opacity:.7">${converted}</span>`;
+    // Link convertible — mostrar resultado
+    span.innerHTML = `${platformBadge}<span style="color:#00e5ff;font-size:.55rem">⚡ Convertido →</span> <span style="opacity:.6;font-size:.52rem;word-break:break-all">${converted}</span>`;
+  } else if (info.direct === false) {
+    // Plataforma sin descarga directa
+    span.innerHTML = `${platformBadge}<span style="color:var(--a);font-size:.55rem">⚠️ Sin descarga directa — el usuario verá la página de ${info.label}</span>`;
+  } else if (info.direct === true || platform) {
+    // Ya es link directo o plataforma reconocida
+    span.innerHTML = `${platformBadge}<span style="color:#00e676;font-size:.55rem">✅ Link directo</span>`;
   } else {
-    // Detectar si ya es un link directo conocido
-    try {
-      const host = new URL(raw).hostname.replace('www.', '');
-      const isDirect = host === 'dl.dropboxusercontent.com'
-                    || raw.includes('?dl=1')
-                    || host.includes('supabase.co')
-                    || host === 'api.telegram.org';
-      if (isDirect) {
-        span.innerHTML = `<span style="color:#00e57a">✅ Link directo detectado</span>`;
-      } else {
-        span.innerHTML = '';
-      }
-    } catch { span.innerHTML = ''; }
+    span.innerHTML = '';
   }
 }
 
