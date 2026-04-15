@@ -3,6 +3,40 @@
    CodeHub by Wilson.E
 ═══════════════════════════════════════ */
 
+// ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
+// Misma función que en admin-hub.js — convierte links de nube
+// a descarga directa al momento de renderizar las cards.
+function convertToDirectLink(url) {
+  if (!url || url === '#') return url;
+  try {
+    const u    = new URL(url);
+    const host = u.hostname.replace('www.', '');
+
+    // Google Drive
+    if (host === 'drive.google.com') {
+      let id = u.searchParams.get('id');
+      if (!id) { const m = u.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/); if (m) id = m[1]; }
+      if (id) return `https://drive.google.com/uc?export=download&id=${id}&confirm=t`;
+      return url;
+    }
+    // Dropbox
+    if (host === 'dropbox.com' || host === 'dl.dropboxusercontent.com') {
+      u.searchParams.set('dl', '1'); return u.toString();
+    }
+    // OneDrive
+    if (host === 'onedrive.live.com') {
+      u.pathname = u.pathname.replace('/redir', '/download');
+      u.searchParams.set('download', '1'); return u.toString();
+    }
+    // MediaFire
+    if (host === 'mediafire.com') {
+      u.pathname = u.pathname.replace(/^\/file\//, '/download/'); return u.toString();
+    }
+    // MEGA, Terabox, Telegram, resto → sin cambios
+    return url;
+  } catch { return url; }
+}
+
 // ── PROGRESO DE SCROLL ───────────────
 window.addEventListener('scroll', () => {
   const s = document.documentElement.scrollTop;
@@ -322,8 +356,8 @@ function buildAppCard(app) {
   const badgeClass = badge.includes('Actualiz') ? 'badge-updated' : 'badge-new';
   const changelog = app.changelog || '';
   const version   = app.version  || '';
-  const enlace    = app.enlace   || '#';
-  const plugin    = app.plugin_enlace || null;
+  const enlace    = convertToDirectLink(app.enlace   || '#');
+  const plugin    = convertToDirectLink(app.plugin_enlace || null);
   const tutorial  = app.tutorial_url  || null;
   const hasLink   = enlace && enlace !== '#';
 

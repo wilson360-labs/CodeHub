@@ -7,6 +7,94 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 // ⚠️ La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Render)
 let ADMIN_KEY = '';
 
+// ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
+// Transforma links de plataformas de nube en URLs de descarga directa.
+// Se aplica al guardar en admin Y al renderizar en novedades.
+function convertToDirectLink(url) {
+  if (!url || url === '#') return url;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace('www.', '');
+
+    // ── Google Drive ──────────────────────────────────────────
+    // Formatos soportados:
+    //   drive.google.com/file/d/FILE_ID/view
+    //   drive.google.com/open?id=FILE_ID
+    //   drive.google.com/uc?id=FILE_ID
+    if (host === 'drive.google.com') {
+      let id = u.searchParams.get('id');
+      if (!id) {
+        const m = u.pathname.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (m) id = m[1];
+      }
+      if (id) return `https://drive.google.com/uc?export=download&id=${id}&confirm=t`;
+      return url;
+    }
+
+    // ── Dropbox ───────────────────────────────────────────────
+    // Cambia ?dl=0 por ?dl=1  (o agrega dl=1 si no existe)
+    // También soporta dropbox.com/scl/fi/... (links modernos compartidos)
+    if (host === 'dropbox.com' || host === 'dl.dropboxusercontent.com') {
+      u.searchParams.set('dl', '1');
+      return u.toString();
+    }
+
+    // ── OneDrive / 1drv.ms ────────────────────────────────────
+    // onedrive.live.com/download?... ya es directo
+    // 1drv.ms es acortador — se deja pasar (redirige al archivo)
+    // onedrive.live.com/redir?...  se convierte a /download
+    if (host === 'onedrive.live.com') {
+      u.pathname = u.pathname.replace('/redir', '/download');
+      u.searchParams.set('download', '1');
+      return u.toString();
+    }
+    if (host === '1drv.ms') return url; // acortador, redirige solo
+
+    // ── MediaFire ─────────────────────────────────────────────
+    // mediafire.com/file/FILE_ID/nombre.apk/file  → descarga directa
+    // La descarga se inicia en la propia página de MediaFire;
+    // no existe un link 100% directo sin JS, pero podemos forzar:
+    if (host === 'mediafire.com' || host === 'www.mediafire.com') {
+      // Convertir /file/.../file a /download/.../file
+      const newPath = u.pathname.replace(/^\/file\//, '/download/');
+      u.pathname = newPath;
+      return u.toString();
+    }
+
+    // ── MEGA ──────────────────────────────────────────────────
+    // mega.nz no tiene link directo público — se deja igual,
+    // el usuario descarga desde la web de MEGA.
+    // Pero normalizamos el hash fragment para evitar errores:
+    if (host === 'mega.nz') return url;
+
+    // ── Terabox ───────────────────────────────────────────────
+    // terabox.com/s/SHARE_ID → se deja igual (requiere sesión)
+    if (host === 'terabox.com' || host === '1024terabox.com') return url;
+
+    // ── Telegram (links de file del bot ya son directos) ──────
+    if (host === 'api.telegram.org') return url;
+
+    // ── Cualquier otro link → se devuelve sin cambios ─────────
+    return url;
+  } catch {
+    return url; // URL malformada → devolver tal cual
+  }
+}
+
+// ── PREVIEW DE CONVERSIÓN DE LINK (en tiempo real) ────────────
+function previewLink(input, spanId) {
+  const span = document.getElementById(spanId);
+  if (!span) return;
+  const raw = input.value.trim();
+  if (!raw) { span.textContent = ''; return; }
+  const converted = convertToDirectLink(raw);
+  if (converted !== raw) {
+    span.innerHTML = `<span style="color:#00e5ff">⚡ Se convertirá a:</span> ${converted}`;
+  } else {
+    span.textContent = '';
+  }
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 async function checkLogin() {
   const pwd = document.getElementById('pwd-input').value.trim();
@@ -115,8 +203,10 @@ function renderApps() {
       </div>
       <div style="display:flex;flex-direction:column;gap:.38rem">
         <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
-        <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" id="link-${app.appId}" placeholder="https://... (o sube APK)">
-        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)">
+        <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" id="link-${app.appId}" placeholder="https://... (o sube APK)" oninput="previewLink(this,'lp-${app.appId}')">
+        <span id="lp-${app.appId}" style="font-family:var(--mono);font-size:.55rem;color:var(--muted);word-break:break-all;min-height:.8rem;display:block"></span>
+        <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" oninput="previewLink(this,'pp-${app.appId}')">
+        <span id="pp-${app.appId}" style="font-family:var(--mono);font-size:.55rem;color:var(--muted);word-break:break-all;min-height:.8rem;display:block"></span>
         <input class="ver-input" type="url" value="${app.tutorial_url||''}" id="tutorial-${app.appId}" placeholder="🎬 Tutorial YouTube (opcional)" style="border-color:rgba(255,0,80,.18)">
       </div>
       <div style="display:flex;flex-direction:column;gap:.38rem">
@@ -159,13 +249,24 @@ async function saveRow(appId) {
   if (!app) return;
   const btn = document.getElementById('sbtn-' + appId);
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  const rawEnlace       = document.getElementById('link-' + appId)?.value.trim() || app.enlace;
+  const rawPlugin       = document.getElementById('plugin-' + appId)?.value.trim() || null;
+  const convertedEnlace = convertToDirectLink(rawEnlace);
+  const convertedPlugin = convertToDirectLink(rawPlugin);
+
+  // Reflejar en el input si el link fue transformado
+  const linkInput   = document.getElementById('link-' + appId);
+  const pluginInput = document.getElementById('plugin-' + appId);
+  if (linkInput   && convertedEnlace !== rawEnlace)  linkInput.value   = convertedEnlace;
+  if (pluginInput && convertedPlugin !== rawPlugin)   pluginInput.value = convertedPlugin || '';
+
   const body = {
     version:       document.getElementById('ver-' + appId)?.value.trim(),
     changelog:     document.getElementById('cl-' + appId)?.value.trim(),
     tag:           document.getElementById('badge-' + appId)?.value,
     verified:      app.verified,
-    enlace:        document.getElementById('link-' + appId)?.value.trim() || app.enlace,
-    plugin_enlace: document.getElementById('plugin-' + appId)?.value.trim() || null,
+    enlace:        convertedEnlace,
+    plugin_enlace: convertedPlugin,
     tutorial_url:  document.getElementById('tutorial-' + appId)?.value.trim() || null,
   };
   try {
@@ -372,7 +473,7 @@ async function createApp() {
     version:     document.getElementById('new-version').value.trim(),
     categoria:   document.getElementById('new-cat').value,
     descripcion: document.getElementById('new-desc').value.trim(),
-    enlace:      document.getElementById('new-enlace').value.trim() || '#',
+    enlace:      convertToDirectLink(document.getElementById('new-enlace').value.trim() || '#'),
     imagen:      document.getElementById('new-imagen').value.trim(),
     tag: '🆕', verified: true,
   };
