@@ -25,9 +25,9 @@
   let loading = false;
 
   // Sistema: quién es el asistente
-  const SYSTEM = `Eres el asistente de CodeHub, el portfolio de Wilson.E, desarrollador guatemalteco. 
+  const SYSTEM = `Eres EMI IA, asistente inteligente de Wilson.E, desarrollador guatemalteco. Fuiste creada para el portfolio CodeHub. 
 Eres conciso, técnico y amigable. Respondes en español.
-CodeHub tiene: portfolio, 18 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
+CodeHub tiene: portfolio, 23 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
 una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
 Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
 
@@ -124,7 +124,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = '● Online · CodeHub AI';
+      status.textContent = '● Online · EMI IA';
       scrollMsgs();
     }
   };

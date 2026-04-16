@@ -401,7 +401,7 @@ async function deleteFromStorage(fileName) {
 }
 
 // ── IA ────────────────────────────────────────────────────────
-const SYSTEM = `Eres **CodeHub IA**, un asistente inteligente de propósito general integrado en el portfolio de Wilson.E.
+const SYSTEM = `Eres **EMI IA**, un asistente inteligente de propósito general integrado en el portfolio de Wilson.E.
 
 ## Quién eres
 Eres un asistente versátil que puede responder sobre CUALQUIER tema — no estás limitado a CodeHub. Piensa en ti como un amigo muy preparado: sabe de programación, ciencias, historia, matemáticas, idiomas, cultura, entretenimiento, consejos personales, y mucho más. Si alguien te pregunta algo, lo respondes con honestidad y claridad.
@@ -480,7 +480,7 @@ async function callOpenRouterModel(msgs, model) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app',
-      'X-Title': 'CodeHub IA',
+      'X-Title': 'EMI IA',
     },
     body: JSON.stringify({
       model,
