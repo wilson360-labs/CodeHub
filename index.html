@@ -1666,7 +1666,31 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 .ai-typing-dot:nth-child(2){animation-delay:.18s;}
 .ai-typing-dot:nth-child(3){animation-delay:.36s;}
 @keyframes typingBounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+/* Head action buttons */
+.ai-head-actions{display:flex;gap:5px;margin-left:auto;}
+.ai-head-btn{width:26px;height:26px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:rgba(200,200,230,.45);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:all .18s;}
+.ai-head-btn:hover{background:rgba(124,77,255,.2);color:#fff;border-color:rgba(124,77,255,.5);}
 /* Suggestions */
+.ai-sugs-wrap{display:flex;gap:5px;flex-wrap:wrap;padding:.4rem .95rem .5rem;flex-shrink:0;}
+.ai-sug-btn{font-size:.65rem;padding:.28rem .65rem;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:rgba(124,77,255,.06);color:rgba(200,200,230,.55);cursor:pointer;transition:all .18s;white-space:nowrap;font-family:inherit;}
+.ai-sug-btn:hover{background:rgba(124,77,255,.18);color:#fff;border-color:rgba(124,77,255,.4);transform:translateY(-1px);}
+/* Search results */
+.ai-search-results{background:rgba(17,17,31,.95);border:1px solid rgba(124,77,255,.18);border-radius:14px;overflow:hidden;margin-top:2px;width:100%;}
+.ai-sr-head{padding:.45rem .7rem .35rem;font-size:.65rem;color:rgba(200,200,230,.5);border-bottom:1px solid rgba(124,77,255,.12);display:flex;align-items:center;gap:5px;}
+.ai-sr-head span{color:#7C4DFF;font-weight:600;}
+.ai-sr-images{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:.5rem;}
+.ai-sr-img{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:1px solid rgba(124,77,255,.15);transition:transform .18s;background:rgba(26,26,46,.8);position:relative;}
+.ai-sr-img:hover{transform:scale(1.04);border-color:rgba(124,77,255,.5);}
+.ai-sr-img img{width:100%;height:100%;object-fit:cover;display:block;}
+.ai-sr-img-label{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(0,0,0,.8),transparent);font-size:.55rem;color:rgba(255,255,255,.8);padding:6px 5px 3px;font-family:'JetBrains Mono',monospace;}
+.ai-sr-links{padding:0 .5rem .5rem;display:flex;flex-direction:column;gap:3px;}
+.ai-sr-link{padding:.42rem .55rem;border-radius:8px;border:1px solid transparent;transition:all .18s;cursor:pointer;display:flex;align-items:flex-start;gap:7px;}
+.ai-sr-link:hover{background:rgba(124,77,255,.08);border-color:rgba(124,77,255,.18);}
+.ai-sr-link-icon{font-size:.8rem;margin-top:1px;flex-shrink:0;}
+.ai-sr-link-info{flex:1;min-width:0;}
+.ai-sr-link-title{font-size:.72rem;color:#d0d0f0;font-weight:500;margin-bottom:1px;}
+.ai-sr-link-url{font-size:.6rem;color:#7C4DFF;font-family:'JetBrains Mono',monospace;}
+.ai-sr-link-snippet{font-size:.63rem;color:rgba(200,200,230,.45);line-height:1.4;margin-top:1px;}
 /* Input */
 .ai-input-wrap{padding:.82rem .95rem .88rem;border-top:1px solid var(--ai-border2);display:flex;flex-direction:column;gap:.42rem;flex-shrink:0;background:linear-gradient(180deg, rgba(26,26,46,.96), rgba(18,18,32,.98));position:relative;z-index:1;}
 .ai-input-topline{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding:0 .08rem;}
@@ -6498,26 +6522,22 @@ async function sendEmail(e) {
 </button>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI IA">
-  <!-- Header con acciones rápidas -->
   <!-- Boot scan overlay — se muestra solo al abrir -->
   <div id="ai-boot-overlay" style="
     position:absolute;inset:0;z-index:10;pointer-events:none;
     display:none;flex-direction:column;justify-content:center;align-items:center;
     background:rgba(5,5,18,.92);border-radius:24px;overflow:hidden;
   ">
-    <!-- Scan line que barre de arriba a abajo -->
     <div id="ai-boot-scanline" style="
       position:absolute;top:0;left:0;right:0;height:2px;
       background:linear-gradient(90deg,transparent,#00E5FF,#7C4DFF,#00E5FF,transparent);
       box-shadow:0 0 18px rgba(0,229,255,.9);
     "></div>
-    <!-- Texto de terminal boot -->
     <div id="ai-boot-text" style="
       font-family:'JetBrains Mono',monospace;font-size:.7rem;
       color:#00E5FF;text-align:left;width:80%;
       text-shadow:0 0 8px rgba(0,229,255,.8);
     "></div>
-    <!-- Ícono central que pulsa -->
     <div id="ai-boot-icon" style="
       position:absolute;bottom:22%;font-size:2rem;
       opacity:0;transform:scale(.5);
@@ -6525,6 +6545,7 @@ async function sendEmail(e) {
     ">✦</div>
   </div>
 
+  <!-- Header mejorado con botones de acción -->
   <div class="ai-head">
     <div class="ai-head-avatar">✦</div>
     <div class="ai-head-info">
@@ -6534,15 +6555,10 @@ async function sendEmail(e) {
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
     </div>
-  </div>
-
-  <!-- Mood bar -->
-  <div class="ai-mood-bar" id="ai-mood-bar">
-    <span class="ai-mood-label">Modo:</span>
-    <button class="ai-mood-btn active" data-mood="general" onclick="setAIMood(this)">💬 General</button>
-    <button class="ai-mood-btn" data-mood="code" onclick="setAIMood(this)">🛠 Código</button>
-    <button class="ai-mood-btn" data-mood="portfolio" onclick="setAIMood(this)">🎨 Portfolio</button>
-    <button class="ai-mood-btn" data-mood="debug" onclick="setAIMood(this)">🐛 Debug</button>
+    <div class="ai-head-actions">
+      <button class="ai-head-btn" title="Exportar chat" onclick="demoAction('export')">↗</button>
+      <button class="ai-head-btn" title="Nuevo chat" id="ai-clear-btn2">↺</button>
+    </div>
   </div>
 
   <!-- Messages -->
@@ -6551,12 +6567,19 @@ async function sendEmail(e) {
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
-          ¡Hola! 👋 Soy el asistente de <strong>CodeHub</strong>. Puedo ayudarte con código, explicar herramientas o responder cualquier pregunta técnica. ¿En qué te ayudo hoy?
+          ¡Hola! 👋 Soy <strong>EMI IA</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
           <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
         </div>
         <span class="ai-msg-time" id="ai-welcome-time"></span>
       </div>
     </div>
+  </div>
+
+  <!-- Sugerencias rápidas -->
+  <div class="ai-sugs-wrap" id="ai-sugs">
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🔍 Busca fondos para landing page</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🛠 Herramientas de CodeHub</button>
+    <button class="ai-sug-btn" onclick="aiSugg(this)">🖼 Iconos para UI</button>
   </div>
 
   <!-- Input -->
@@ -6566,20 +6589,21 @@ async function sendEmail(e) {
       <span class="ai-input-hint" id="ai-input-hint">Debug, diseño, ideas y código en un solo lugar</span>
     </div>
     <div class="ai-input-shell">
-    <div class="ai-input-row">
-      <textarea id="ai-input" placeholder="Pregúntame algo…" rows="1"
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
-        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,104)+'px';updateCharCount()"></textarea>
-      <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
-        <i class="fas fa-paper-plane"></i>
-      </button>
-    </div>
+      <div class="ai-input-row">
+        <textarea id="ai-input" placeholder="Pregúntame algo o busca imágenes…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,104)+'px';updateCharCount()"></textarea>
+        <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
     </div>
     <div class="ai-input-footer">
       <span><span class="ai-kbd">Enter</span> enviar · <span class="ai-kbd">Shift</span>+<span class="ai-kbd">Enter</span> salto</span>
       <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
     </div>
   </div>
+
   <!-- Barra de acciones inferior -->
   <div class="ai-bottom-bar">
     <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversación">
@@ -6625,11 +6649,29 @@ async function sendEmail(e) {
   ];
 
   // Sistema: quién es el asistente
-  const SYSTEM = `Eres EMI IA, asistente inteligente de Wilson.E, desarrollador guatemalteco. Fuiste creada para el portfolio CodeHub. 
-Eres conciso, técnico y amigable. Respondes en español.
-CodeHub tiene: portfolio, 18 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
-una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
-Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
+  const SYSTEM = `Eres EMI IA, asistente inteligente de Wilson.E, desarrollador guatemalteco full stack.
+Fuiste creada exclusivamente para CodeHub — el portfolio hub de Wilson.E en wilson360-labs.vercel.app.
+
+SOBRE WILSON.E:
+- Desarrollador Full Stack autodidacta de Ciudad de Guatemala (25 años)
+- Especialista en: HTML, CSS, JavaScript, Python, Node.js, MongoDB
+- Disponible para proyectos freelance
+- Contacto: WhatsApp +502 4146 8185
+
+SOBRE CODEHUB:
+- Portfolio completo con proyectos web reales
+- 23+ herramientas web gratuitas: QR, contraseñas seguras, hash SHA-256/512, Base64, Regex tester, UUID v4, Pomodoro, conversor de unidades/monedas/IMC, calculadora de préstamos, test de velocidad y más
+- Tienda de apps Android: Spotify Premium mod, YouTube ReVanced, TikTok Mod, Remini Pro, Picsart
+- Juegos: Snake y Tetris con Canvas API
+- Sistema de noticias tech en tiempo real
+
+CAPACIDADES ESPECIALES:
+- Cuando el usuario pida buscar imágenes, fondos, iconos, fotos, diseños, o haga preguntas visuales, responde con el tag: [BUSCAR_IMAGENES: query_en_ingles]
+- Ejemplos: "busca fondos dark" → [BUSCAR_IMAGENES: dark aesthetic wallpapers], "iconos UI" → [BUSCAR_IMAGENES: modern UI icons set]
+- Siempre responde en español
+- Sé conciso: máximo 3-4 oraciones salvo que pidan más detalle
+- Para código, usa backticks inline o bloques cortos
+- Prioriza respuestas útiles y directas`;
 
   const ACTIVE_PROMPTS = [
     { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
@@ -6638,9 +6680,75 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     { placeholder: 'Ayudame con una automatizacion en Python...', hint: 'Codigo, logica y siguientes pasos claros' }
   ];
 
+  const SEARCH_TRIGGERS = [
+    'busca', 'buscar', 'muestra', 'imagen', 'imágenes', 'foto', 'fotos',
+    'fondo', 'fondos', 'icono', 'iconos', 'diseño', 'diseños', 'logo',
+    'wallpaper', 'ilustración', 'screenshot', 'ejemplo visual', 'cómo se ve',
+    'muéstrame', 'ver ejemplos', 'referencia visual'
+  ];
+
+  function isSearchQuery(text) {
+    const t = text.toLowerCase();
+    return SEARCH_TRIGGERS.some(trigger => t.includes(trigger));
+  }
+
+  function addSearchResults(query) {
+    const cleanQuery = query.replace(/[^\w\s]/g, '').trim();
+    const encodedQuery = encodeURIComponent(cleanQuery);
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-msg-wrap ai';
+    const av = document.createElement('div');
+    av.className = 'ai-msg-avatar';
+    av.textContent = '✦';
+    const content = document.createElement('div');
+    content.className = 'ai-msg-content';
+    content.style.flex = '1';
+    content.style.minWidth = '0';
+    const demoImages = [
+      { url: `https://source.unsplash.com/160x160/?${encodedQuery},1`, label: cleanQuery },
+      { url: `https://source.unsplash.com/160x160/?${encodedQuery},2`, label: cleanQuery },
+      { url: `https://source.unsplash.com/160x160/?${encodedQuery},3`, label: cleanQuery },
+    ];
+    const demoLinks = [
+      { icon: '🌐', title: 'Resultados en Unsplash', url: `https://unsplash.com/s/photos/${encodedQuery}`, snippet: `Imágenes libres de derechos sobre "${cleanQuery}"` },
+      { icon: '🖼', title: 'Búsqueda en Google Imágenes', url: `https://www.google.com/search?q=${encodedQuery}&tbm=isch`, snippet: 'Ver todos los resultados visuales en Google' },
+      { icon: '🎨', title: 'Explorar en Pinterest', url: `https://www.pinterest.com/search/pins/?q=${encodedQuery}`, snippet: 'Ideas de diseño e inspiración visual' },
+    ];
+    content.innerHTML = `
+      <div class="ai-search-results">
+        <div class="ai-sr-head">🔍 Resultados para <span>"${cleanQuery}"</span></div>
+        <div class="ai-sr-images">
+          ${demoImages.map(img => `
+            <div class="ai-sr-img" onclick="window.open('https://unsplash.com/s/photos/${encodedQuery}','_blank')">
+              <img src="${img.url}" alt="${img.label}" loading="lazy" onerror="this.parentElement.style.background='rgba(124,77,255,.2)';this.remove()">
+              <div class="ai-sr-img-label">${img.label}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="ai-sr-links">
+          ${demoLinks.map(r => `
+            <div class="ai-sr-link" onclick="window.open('${r.url}','_blank')">
+              <span class="ai-sr-link-icon">${r.icon}</span>
+              <div class="ai-sr-link-info">
+                <div class="ai-sr-link-title">${r.title}</div>
+                <div class="ai-sr-link-url">${r.url.substring(0,40)}...</div>
+                <div class="ai-sr-link-snippet">${r.snippet}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <span class="ai-msg-time">${getTime()}</span>`;
+    wrap.appendChild(av);
+    wrap.appendChild(content);
+    msgs.appendChild(wrap);
+    scrollMsgs();
+  }
+
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
   const clearB = document.getElementById('ai-clear-btn');
+  const clearB2 = document.getElementById('ai-clear-btn2');
   const resetChat = () => {
     msgs.innerHTML = '';
     history = [];
@@ -6648,6 +6756,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (sugs) sugs.style.display = 'flex';
   };
   if (clearB) clearB.addEventListener('click', resetChat);
+  if (clearB2) clearB2.addEventListener('click', resetChat);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close
   let touchStartY = 0;
@@ -6809,10 +6918,14 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     input.style.height = 'auto';
     updateCharCount();
 
+    const shouldSearch = isSearchQuery(text);
     loading = true;
     sendBtn.disabled = true;
     status.textContent = '● Pensando…';
     const typingEl = addMsg('typing', '▌');
+
+    history.push({ role: 'user', content: text });
+    if (history.length > 10) history = history.slice(-10);
 
     try {
       const res = await fetch(API_URL, {
@@ -6831,12 +6944,29 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
       }
 
       typingEl.remove();
-      addMsg('ai', formatAIReply(data.reply));
+      const replyText = data.reply || '¡Respuesta recibida!';
+      const searchMatch = replyText.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
+      const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
+
+      if (cleanReply.replace(/<[^>]*>/g,'').trim()) {
+        addMsg('ai', cleanReply);
+      }
+      if (searchMatch || shouldSearch) {
+        const query = searchMatch ? searchMatch[1].trim() : text.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+        setTimeout(() => addSearchResults(query), 200);
+      }
+
+      history.push({ role: 'assistant', content: replyText });
 
     } catch (err) {
       typingEl.remove();
-      // Fallback offline si el servidor no responde
-      addMsg('ai', getFallback(text));
+      const fallback = getFallback(text);
+      addMsg('ai', formatAIReply(fallback.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, '')));
+      const fMatch = fallback.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
+      if (fMatch || shouldSearch) {
+        const q = fMatch ? fMatch[1].trim() : text.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+        setTimeout(() => addSearchResults(q), 200);
+      }
       console.warn('Chat error:', err.message);
     } finally {
       loading = false;
@@ -6921,12 +7051,25 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
     if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
     if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
-    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
+    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>23+ herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
     if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
     if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
     if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
-    return 'Entendido. Para preguntas técnicas detalladas, la conexión a la IA requiere configuración del servidor. Mientras tanto, puedo responder sobre las herramientas de CodeHub. ¿Qué quieres saber? 🤖';
+    if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
+      return '[BUSCAR_IMAGENES: ' + q.replace(/busca|buscar|imágenes|imagen|muéstrame|muestra|fondo|fondos|icono|iconos/gi,'').trim() + ']';
+    return 'Entendido. Soy <strong>EMI IA</strong> de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
   }
+
+  window.aiSugg = function(btn) {
+    input.value = btn.textContent.replace(/^[^\s]+\s/,'');
+    sendAI();
+  };
+
+  window.demoAction = function(type) {
+    if (type === 'export') {
+      addMsg('ai', '📋 Función de exportar chat próximamente disponible.');
+    }
+  };
 
   // Mostrar notificación del FAB después de 8 segundos
   setTimeout(() => {
