@@ -1717,17 +1717,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 }
 .ai-input-shell{
   position:relative;
-  padding:.34rem;
-  border-radius:18px;
-  background:linear-gradient(135deg, rgba(124,77,255,.2), rgba(0,176,255,.12), rgba(255,255,255,.05));
-  box-shadow:0 10px 30px rgba(0,0,0,.24);
 }
-.ai-input-shell::before{
-  content:'';
-  position:absolute;inset:1px;border-radius:17px;
-  background:linear-gradient(180deg, rgba(14,14,24,.95), rgba(22,22,38,.96));
-  z-index:0;
-}
+.ai-input-shell::before{display:none;}
 .ai-input-row{display:flex;gap:.4rem;align-items:flex-end;}
 #ai-input,.ai-input-row,#ai-send-btn{position:relative;z-index:1;}
 #ai-input{flex:1;background:rgba(34,34,56,.78);border:1px solid rgba(255,255,255,.08);border-radius:14px;color:var(--ai-text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:.82rem;padding:.78rem .92rem;outline:none;resize:none;max-height:104px;min-height:46px;transition:border-color .2s,box-shadow .2s,transform .2s;line-height:1.45;backdrop-filter:blur(10px);}
@@ -6545,7 +6536,7 @@ async function sendEmail(e) {
     ">✦</div>
   </div>
 
-  <!-- Header mejorado con botones de acción -->
+  <!-- Header -->
   <div class="ai-head">
     <div class="ai-head-avatar">✦</div>
     <div class="ai-head-info">
@@ -6554,10 +6545,6 @@ async function sendEmail(e) {
         <span class="online-dot"></span>
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
-    </div>
-    <div class="ai-head-actions">
-      <button class="ai-head-btn" title="Exportar chat" onclick="demoAction('export')">↗</button>
-      <button class="ai-head-btn" title="Nuevo chat" id="ai-clear-btn2">↺</button>
     </div>
   </div>
 
@@ -6694,7 +6681,10 @@ CAPACIDADES ESPECIALES:
 
   function addSearchResults(query) {
     const cleanQuery = query.replace(/[^\w\s]/g, '').trim();
-    const encodedQuery = encodeURIComponent(cleanQuery);
+    const encodedQ   = encodeURIComponent(cleanQuery);
+    const uid        = Date.now();
+
+    // Mostrar skeleton con animación mientras carga
     const wrap = document.createElement('div');
     wrap.className = 'ai-msg-wrap ai';
     const av = document.createElement('div');
@@ -6704,38 +6694,13 @@ CAPACIDADES ESPECIALES:
     content.className = 'ai-msg-content';
     content.style.flex = '1';
     content.style.minWidth = '0';
-    const demoImages = [
-      { url: `https://source.unsplash.com/160x160/?${encodedQuery},1`, label: cleanQuery },
-      { url: `https://source.unsplash.com/160x160/?${encodedQuery},2`, label: cleanQuery },
-      { url: `https://source.unsplash.com/160x160/?${encodedQuery},3`, label: cleanQuery },
-    ];
-    const demoLinks = [
-      { icon: '🌐', title: 'Resultados en Unsplash', url: `https://unsplash.com/s/photos/${encodedQuery}`, snippet: `Imágenes libres de derechos sobre "${cleanQuery}"` },
-      { icon: '🖼', title: 'Búsqueda en Google Imágenes', url: `https://www.google.com/search?q=${encodedQuery}&tbm=isch`, snippet: 'Ver todos los resultados visuales en Google' },
-      { icon: '🎨', title: 'Explorar en Pinterest', url: `https://www.pinterest.com/search/pins/?q=${encodedQuery}`, snippet: 'Ideas de diseño e inspiración visual' },
-    ];
     content.innerHTML = `
       <div class="ai-search-results">
-        <div class="ai-sr-head">🔍 Resultados para <span>"${cleanQuery}"</span></div>
-        <div class="ai-sr-images">
-          ${demoImages.map(img => `
-            <div class="ai-sr-img" onclick="window.open('https://unsplash.com/s/photos/${encodedQuery}','_blank')">
-              <img src="${img.url}" alt="${img.label}" loading="lazy" onerror="this.parentElement.style.background='rgba(124,77,255,.2)';this.remove()">
-              <div class="ai-sr-img-label">${img.label}</div>
-            </div>
-          `).join('')}
-        </div>
-        <div class="ai-sr-links">
-          ${demoLinks.map(r => `
-            <div class="ai-sr-link" onclick="window.open('${r.url}','_blank')">
-              <span class="ai-sr-link-icon">${r.icon}</span>
-              <div class="ai-sr-link-info">
-                <div class="ai-sr-link-title">${r.title}</div>
-                <div class="ai-sr-link-url">${r.url.substring(0,40)}...</div>
-                <div class="ai-sr-link-snippet">${r.snippet}</div>
-              </div>
-            </div>
-          `).join('')}
+        <div class="ai-sr-head">🔍 Buscando imágenes de <span>"${cleanQuery}"</span>…</div>
+        <div id="ai-sr-grid-${uid}" style="display:flex;align-items:center;justify-content:center;padding:1.2rem 0;">
+          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out infinite;display:inline-block;margin:0 2px;"></span>
+          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .18s infinite;display:inline-block;margin:0 2px;"></span>
+          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .36s infinite;display:inline-block;margin:0 2px;"></span>
         </div>
       </div>
       <span class="ai-msg-time">${getTime()}</span>`;
@@ -6743,12 +6708,58 @@ CAPACIDADES ESPECIALES:
     wrap.appendChild(content);
     msgs.appendChild(wrap);
     scrollMsgs();
+
+    const grid  = content.querySelector(`#ai-sr-grid-${uid}`);
+    const srBox = content.querySelector('.ai-search-results');
+    const head  = content.querySelector('.ai-sr-head');
+
+    fetch(BACKEND_URL + '/api/image-search?q=' + encodedQ)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.images || data.images.length === 0) throw new Error('sin resultados');
+
+        head.innerHTML = `🔍 Resultados para <span>"${cleanQuery}"</span>`;
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:.5rem;';
+        grid.innerHTML = data.images.slice(0, 6).map(img => `
+          <div class="ai-sr-img" onclick="window.open('${img.link}','_blank')" title="${img.title}">
+            <img src="${img.thumbnail}" alt="${img.title}" loading="lazy"
+              onerror="this.parentElement.style.background='rgba(124,77,255,.15)';this.remove()">
+            <div class="ai-sr-img-label">${img.source || cleanQuery}</div>
+          </div>`).join('');
+
+        const links = document.createElement('div');
+        links.className = 'ai-sr-links';
+        links.innerHTML = `
+          <div class="ai-sr-link" onclick="window.open('https://www.google.com/search?q=${encodedQ}&tbm=isch','_blank')">
+            <span class="ai-sr-link-icon">🖼</span>
+            <div class="ai-sr-link-info">
+              <div class="ai-sr-link-title">Ver más en Google Imágenes</div>
+              <div class="ai-sr-link-snippet">Todos los resultados para "${cleanQuery}"</div>
+            </div>
+          </div>
+          <div class="ai-sr-link" onclick="window.open('https://unsplash.com/s/photos/${encodedQ}','_blank')">
+            <span class="ai-sr-link-icon">🎨</span>
+            <div class="ai-sr-link-info">
+              <div class="ai-sr-link-title">Fotos libres en Unsplash</div>
+              <div class="ai-sr-link-snippet">Imágenes de alta calidad sin derechos</div>
+            </div>
+          </div>`;
+        srBox.appendChild(links);
+        scrollMsgs();
+      })
+      .catch(() => {
+        head.innerHTML = `🔍 Resultados para <span>"${cleanQuery}"</span>`;
+        grid.style.cssText = '';
+        grid.innerHTML = `<div style="padding:.6rem .8rem;font-size:.72rem;color:rgba(200,200,230,.5);">
+          No se encontraron imágenes. <a href="https://www.google.com/search?q=${encodedQ}&tbm=isch" target="_blank" style="color:#7C4DFF;">Ver en Google →</a>
+        </div>`;
+        scrollMsgs();
+      });
   }
 
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
   const clearB = document.getElementById('ai-clear-btn');
-  const clearB2 = document.getElementById('ai-clear-btn2');
   const resetChat = () => {
     msgs.innerHTML = '';
     history = [];
@@ -6756,7 +6767,6 @@ CAPACIDADES ESPECIALES:
     if (sugs) sugs.style.display = 'flex';
   };
   if (clearB) clearB.addEventListener('click', resetChat);
-  if (clearB2) clearB2.addEventListener('click', resetChat);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close
   let touchStartY = 0;

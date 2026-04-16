@@ -1486,6 +1486,34 @@ app.get('/api/docs', (_, res) => {
 // ── GET /api/docs.json — spec en JSON ─────────────────────────
 app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
 
+// ── GET /api/image-search — Buscar imágenes via SerpAPI ───────
+app.get('/api/image-search', chatLimiter, async (req, res) => {
+  const { q } = req.query;
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
+
+  const SERP_KEY = process.env.SERPAPI_KEY || 'ee57e47c06b28164f49977cc56a421483001b0e058f6826d36c085579d92cab2';
+
+  try {
+    const url = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=6&api_key=${SERP_KEY}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('SerpAPI error: ' + response.status);
+    const data = await response.json();
+
+    const images = (data.images_results || []).slice(0, 6).map(img => ({
+      thumbnail: img.thumbnail,
+      original:  img.original,
+      title:     img.title || q,
+      source:    img.source || '',
+      link:      img.link  || img.original || '#',
+    }));
+
+    res.json({ images, query: q });
+  } catch (err) {
+    console.error('image-search error:', err.message);
+    res.status(500).json({ error: 'No se pudieron obtener imágenes.' });
+  }
+});
+
 // ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {
   await initRedis();
