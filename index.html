@@ -6325,6 +6325,235 @@ DISPONIBILIDAD:
 <!-- ====== TOOLS PREVIEW SECTION ====== -->
 
 
+<!-- ══════════════════════════════════════════════════════
+     REGISTRO DE ACTIVIDADES — Diálogo flotante
+     ══════════════════════════════════════════════════════ -->
+<div id="ch-activity-dialog" style="
+  position:fixed;bottom:90px;right:16px;z-index:8888;
+  background:linear-gradient(145deg,#0d0d1a,#111120);
+  border:1px solid rgba(255,69,0,.28);border-radius:18px;
+  width:300px;max-width:calc(100vw - 32px);
+  box-shadow:0 12px 40px rgba(0,0,0,.7);
+  display:none;flex-direction:column;overflow:hidden;
+  font-family:'JetBrains Mono',monospace;
+  animation:chDialogIn .25s ease
+">
+  <div style="
+    display:flex;align-items:center;justify-content:space-between;
+    padding:.65rem 1rem;border-bottom:1px solid rgba(255,255,255,.07);
+    background:rgba(255,69,0,.06)
+  ">
+    <span style="font-size:.7rem;font-weight:700;color:#ff4500;letter-spacing:.04em">
+      <i class="fas fa-list-check" style="margin-right:.4rem"></i>ACTIVIDAD RECIENTE
+    </span>
+    <button onclick="chCloseActivity()" style="
+      background:rgba(255,255,255,.07);border:none;color:rgba(240,240,250,.5);
+      border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:.7rem;
+      display:flex;align-items:center;justify-content:center
+    ">&#x2715;</button>
+  </div>
+  <div id="ch-activity-list" style="
+    max-height:240px;overflow-y:auto;padding:.5rem 0;
+    scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent
+  ">
+    <div style="padding:.6rem 1rem;font-size:.62rem;color:rgba(240,240,250,.35)">
+      Sin actividad registrada
+    </div>
+  </div>
+  <div style="padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:flex-end">
+    <button onclick="chClearActivity()" style="
+      font-size:.58rem;font-family:inherit;cursor:pointer;
+      background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+      color:rgba(240,240,250,.35);border-radius:6px;padding:.25rem .6rem
+    ">Limpiar</button>
+  </div>
+</div>
+
+<!-- Boton flotante Actividad -->
+<button id="ch-activity-btn" onclick="chToggleActivity()" title="Registro de actividades" style="
+  position:fixed;bottom:90px;right:16px;z-index:8887;
+  width:42px;height:42px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(255,69,0,.15),rgba(255,69,0,.08));
+  border:1px solid rgba(255,69,0,.3);color:rgba(255,69,0,.85);
+  cursor:pointer;font-size:.85rem;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.4)
+">
+  <i class="fas fa-list-check"></i>
+  <span id="ch-activity-count" style="
+    position:absolute;top:-4px;right:-4px;
+    background:#ff4500;color:#fff;border-radius:999px;
+    font-size:.48rem;font-weight:700;min-width:15px;height:15px;
+    display:none;align-items:center;justify-content:center;
+    border:2px solid #0a0a14;font-family:'JetBrains Mono',monospace;padding:0 3px
+  ">0</span>
+</button>
+
+<style>
+@keyframes chDialogIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+#ch-activity-list::-webkit-scrollbar{width:3px}
+#ch-activity-list::-webkit-scrollbar-thumb{background:rgba(255,69,0,.3);border-radius:3px}
+.ch-act-item{padding:.38rem 1rem;font-size:.6rem;color:rgba(240,240,250,.65);
+  border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:flex-start;gap:.5rem;line-height:1.4}
+.ch-act-item:last-child{border-bottom:none}
+.ch-act-time{font-size:.52rem;color:rgba(240,240,250,.28);white-space:nowrap;flex-shrink:0;margin-top:.05rem}
+#ch-activity-btn:hover{background:linear-gradient(135deg,rgba(255,69,0,.25),rgba(255,69,0,.12));transform:translateY(-2px)}
+</style>
+
+<script>
+// ACTIVIDAD LOG
+var CH_ACT_KEY = 'ch_activity_log';
+var chActivityOpen = false;
+var chLastSeenCount = parseInt(localStorage.getItem('ch_act_seen') || '0');
+
+function chGetLog() {
+  return JSON.parse(localStorage.getItem(CH_ACT_KEY) || '[]');
+}
+
+function chLogActivity(msg) {
+  var log = chGetLog();
+  log.unshift({ msg: msg, ts: Date.now() });
+  if (log.length > 50) log.length = 50;
+  localStorage.setItem(CH_ACT_KEY, JSON.stringify(log));
+  chUpdateBadge();
+}
+
+function chUpdateBadge() {
+  var log = chGetLog();
+  var badge = document.getElementById('ch-activity-count');
+  var unseen = Math.max(0, log.length - chLastSeenCount);
+  if (badge) {
+    if (unseen > 0) {
+      badge.textContent = unseen > 9 ? '9+' : unseen;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+}
+
+function chRenderLog() {
+  var list = document.getElementById('ch-activity-list');
+  if (!list) return;
+  var log = chGetLog();
+  if (!log.length) {
+    list.innerHTML = '<div style="padding:.6rem 1rem;font-size:.62rem;color:rgba(240,240,250,.35)">Sin actividad registrada</div>';
+    return;
+  }
+  list.innerHTML = log.map(function(item) {
+    var d = new Date(item.ts);
+    var timeStr = d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' })
+                + ' ' + d.toLocaleDateString('es-GT', { day: '2-digit', month: 'short' });
+    return '<div class="ch-act-item"><span style="flex:1">' + item.msg + '</span><span class="ch-act-time">' + timeStr + '</span></div>';
+  }).join('');
+}
+
+function chToggleActivity() {
+  var dialog = document.getElementById('ch-activity-dialog');
+  var btn    = document.getElementById('ch-activity-btn');
+  chActivityOpen = !chActivityOpen;
+  if (chActivityOpen) {
+    dialog.style.display = 'flex';
+    btn.style.display = 'none';
+    chRenderLog();
+    chLastSeenCount = chGetLog().length;
+    localStorage.setItem('ch_act_seen', chLastSeenCount);
+    chUpdateBadge();
+  } else {
+    chCloseActivity();
+  }
+}
+
+function chCloseActivity() {
+  var dialog = document.getElementById('ch-activity-dialog');
+  var btn    = document.getElementById('ch-activity-btn');
+  chActivityOpen = false;
+  dialog.style.display = 'none';
+  btn.style.display = 'flex';
+}
+
+function chClearActivity() {
+  localStorage.removeItem(CH_ACT_KEY);
+  chLastSeenCount = 0;
+  localStorage.setItem('ch_act_seen', '0');
+  chRenderLog();
+  chUpdateBadge();
+}
+
+// Escuchar actividades de otras paginas
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'CH_ACTIVITY' && e.data.msg) {
+    chLogActivity(e.data.msg);
+  }
+});
+
+window.addEventListener('DOMContentLoaded', function() {
+  chLogActivity('🏠 CodeHub visitado');
+  chUpdateBadge();
+  setTimeout(initIndexPush, 5000);
+});
+
+// PUSH EN INDEX
+var VAPID_PUBLIC_INDEX = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
+var BACKEND_INDEX = 'https://codehub-98s6.onrender.com';
+
+function urlBase64ToUint8ArrayIdx(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = atob(base64);
+  return Uint8Array.from(Array.from(rawData).map(function(c){ return c.charCodeAt(0); }));
+}
+
+async function initIndexPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (Notification.permission === 'denied') return;
+  var dismissed = parseInt(localStorage.getItem('ch_notif_dismissed') || '0');
+  var ONE_DAY = 86400000;
+  if (Notification.permission !== 'granted' && Date.now() - dismissed > ONE_DAY) {
+    showIndexNotifBanner();
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var existing = await reg.pushManager.getSubscription();
+      if (!existing) {
+        var sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8ArrayIdx(VAPID_PUBLIC_INDEX),
+        });
+        await fetch(BACKEND_INDEX + '/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON() }),
+        }).catch(function(){});
+      }
+    } catch(e) {}
+  }
+}
+
+function showIndexNotifBanner() {
+  if (document.getElementById('ch-push-banner-index')) return;
+  var banner = document.createElement('div');
+  banner.id = 'ch-push-banner-index';
+  banner.innerHTML = '<div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0d0d1a,#111120);border:1px solid rgba(255,69,0,.35);border-radius:16px;padding:.9rem 1.1rem;z-index:9999;max-width:340px;width:calc(100% - 2rem);box-shadow:0 8px 32px rgba(0,0,0,.6);display:flex;align-items:center;gap:.75rem;font-family:JetBrains Mono,monospace;animation:slideBannerIdx .3s ease"><div style="font-size:1.6rem;flex-shrink:0">&#x1F514;</div><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#f0f0fa;margin-bottom:.2rem">Notificaciones CodeHub</div><div style="font-size:.6rem;color:rgba(240,240,250,.5);line-height:1.4">Apps actualizadas y clima en tiempo real.</div></div><div style="display:flex;flex-direction:column;gap:.35rem;flex-shrink:0"><button id="idx-notif-allow" style="padding:.32rem .65rem;border-radius:8px;background:linear-gradient(135deg,#ff4500,#ff6b35);border:none;color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Activar</button><button id="idx-notif-deny" style="padding:.28rem .5rem;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(240,240,250,.45);font-size:.58rem;cursor:pointer;font-family:inherit">No gracias</button></div></div><style>@keyframes slideBannerIdx{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>';
+  document.body.appendChild(banner);
+  document.getElementById('idx-notif-allow').onclick = async function() {
+    banner.remove();
+    var perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      await initIndexPush();
+      chLogActivity('🔔 Notificaciones activadas en CodeHub');
+      if (typeof toast === 'function') toast('🔔 Notificaciones activadas');
+    }
+  };
+  document.getElementById('idx-notif-deny').onclick = function() {
+    banner.remove();
+    localStorage.setItem('ch_notif_dismissed', Date.now());
+  };
+}
+</script>
+
 <!-- ====== DOCK FLOTANTE ====== -->
 <nav id="hub-dock" aria-label="Accesos rápidos">
   <a href="tools.html" class="dock-item" title="DevTools Suite">

@@ -273,6 +273,10 @@ function renderApps() {
       </div>
       <div style="display:flex;flex-direction:column;gap:.38rem">
         <textarea class="changelog-input" rows="2" id="cl-${app.appId}">${app.changelog || ''}</textarea>
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <label style="font-family:var(--mono);font-size:.56rem;color:var(--muted);white-space:nowrap">📅 Actualizado:</label>
+          <input class="ver-input" type="date" id="upd-${app.appId}" value="${app.updatedAt ? app.updatedAt.substring(0,10) : new Date().toISOString().substring(0,10)}" style="flex:1;font-size:.58rem">
+        </div>
         <input class="ver-input" type="url" value="${enlace === '#' ? '' : enlace}" id="link-${app.appId}" placeholder="https://... (o sube APK)" oninput="previewLink(this,'lp-${app.appId}')">
         <span id="lp-${app.appId}" style="font-family:var(--mono);font-size:.55rem;color:var(--muted);word-break:break-all;min-height:.8rem;display:block"></span>
         <input class="ver-input" type="url" value="${pluginEnl}" id="plugin-${app.appId}" placeholder="🧩 Plugin URL (opcional)" oninput="previewLink(this,'pp-${app.appId}')">
@@ -348,6 +352,7 @@ async function saveRow(appId) {
     enlace:        convertedEnlace,
     plugin_enlace: convertedPlugin,
     tutorial_url:  document.getElementById('tutorial-' + appId)?.value.trim() || null,
+    updatedAt:     document.getElementById('upd-' + appId)?.value || new Date().toISOString().substring(0,10),
   };
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
@@ -360,6 +365,17 @@ async function saveRow(appId) {
     Object.assign(app, d.app);
     btn.classList.add('saved'); btn.innerHTML = '<i class="fas fa-check"></i> OK';
     toast('✅ ' + app.nombre + ' actualizada');
+
+    // ── Registrar en log de actividades ───────────────────
+    const verStr = body.version ? ' v' + body.version : '';
+    const clShort = body.changelog ? ' · ' + body.changelog.split(' · ')[0].substring(0, 40) : '';
+    logAdminActivity('🔄 ' + app.nombre + ' actualizada' + verStr + clShort);
+
+    // ── Disparar push notification a todos los suscriptores ─
+    if (body.tag && body.tag.includes('Actualiz')) {
+      sendAppUpdatePush(app, body);
+    }
+
   } catch (e) {
     toast('❌ Error: ' + e.message);
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
@@ -368,6 +384,49 @@ async function saveRow(appId) {
     btn.disabled = false; btn.classList.remove('saved');
     btn.innerHTML = '<i class="fas fa-save"></i> Guardar';
   }, 2500);
+}
+
+// ── ENVIAR PUSH A SUSCRIPTORES ────────────────────────────────
+async function sendAppUpdatePush(app, body) {
+  try {
+    const payload = {
+      type:      'app_update',
+      title:     app.nombre + ' se actualizó',
+      body:      body.changelog
+                   ? body.changelog.split(' · ')[0].substring(0, 80)
+                   : 'Nueva versión' + (body.version ? ' ' + body.version : '') + ' disponible',
+      appId:     app.appId,
+      version:   body.version || '',
+      changelog: body.changelog || '',
+      icon:      '/splash/codehub.png',
+      url:       '/novedades.html',
+      updatedAt: new Date().toISOString(),
+    };
+
+    const res = await fetch(BACKEND + '/api/push/notify', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body:    JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const d = await res.json();
+      toast('📲 Push enviado' + (d.sent ? ' · ' + d.sent + ' dispositivos' : ''));
+    }
+  } catch (e) {
+    console.warn('Push dispatch error:', e);
+  }
+}
+
+// ── LOG DE ACTIVIDADES ADMIN ──────────────────────────────────
+function logAdminActivity(msg) {
+  const KEY = 'ch_activity_log';
+  try {
+    const log = JSON.parse(localStorage.getItem(KEY) || '[]');
+    log.unshift({ msg, ts: Date.now() });
+    if (log.length > 80) log.length = 80;
+    localStorage.setItem(KEY, JSON.stringify(log));
+  } catch (e) {}
 }
 
 // ── UPLOAD APK ────────────────────────────────────────────────

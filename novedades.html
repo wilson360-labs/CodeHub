@@ -487,6 +487,7 @@ function buildAppCard(app) {
       <button class="app-changelog-btn" onclick="toggleChangelog(this)">
         <i class="fas fa-clock-rotate-left"></i> Ver cambios
       </button>
+      ${app.updatedAt ? '<div style=\'font-family:var(--mono);font-size:.55rem;color:var(--muted);margin-top:.3rem;\'>📅 Actualizado: ' + new Date(app.updatedAt).toLocaleDateString(\'es-GT\',{day:\'2-digit\',month:\'short\',year:\'numeric\'}) + '</div>' : ''}
       <div class="app-rating" data-init="false">
         <div class="stars-wrap">
           <span class="star" data-v="1">★</span>
@@ -535,6 +536,307 @@ async function loadAppsFromBackend() {
 loadAppsFromBackend();
 
 </script>
+
+<!-- ══════════════════════════════════════════════════
+     PUSH NOTIFICATIONS — App updates + Clima
+     ══════════════════════════════════════════════════ -->
+<script>
+// ── VAPID PUBLIC KEY (reemplaza con la tuya de web-push) ──
+// Genera con: npx web-push generate-vapid-keys
+const VAPID_PUBLIC = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
+const BACKEND = 'https://codehub-98s6.onrender.com';
+
+// Convierte base64url a Uint8Array (necesario para pushManager.subscribe)
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+// ── REGISTRAR SERVICE WORKER + SOLICITAR PERMISO ──────────
+async function initPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Si ya tiene permiso o es denied, no volver a pedir
+    if (Notification.permission === 'denied') return;
+
+    // Si aún no ha dado permiso, mostrar banner nativo
+    if (Notification.permission !== 'granted') {
+      showNotifBanner(reg);
+      return;
+    }
+
+    // Ya tiene permiso → suscribir silenciosamente
+    await subscribePush(reg);
+
+  } catch (e) {
+    console.warn('Push init error:', e);
+  }
+}
+
+// ── BANNER DE PERMISO ─────────────────────────────────────
+function showNotifBanner(reg) {
+  if (document.getElementById('ch-notif-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'ch-notif-banner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#0d0d1a,#111120);
+      border:1px solid rgba(255,69,0,.35);border-radius:16px;
+      padding:.9rem 1.1rem;z-index:9999;max-width:340px;width:calc(100% - 2rem);
+      box-shadow:0 8px 32px rgba(0,0,0,.6);display:flex;align-items:center;gap:.75rem;
+      font-family:'JetBrains Mono',monospace;animation:slideUpBanner .3s ease
+    ">
+      <div style="font-size:1.6rem;flex-shrink:0">🔔</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.72rem;font-weight:700;color:#f0f0fa;margin-bottom:.2rem">
+          Activar notificaciones
+        </div>
+        <div style="font-size:.6rem;color:rgba(240,240,250,.5);line-height:1.4">
+          Entérate cuando una app sea actualizada o consulta el clima en tiempo real.
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.35rem;flex-shrink:0">
+        <button id="ch-notif-allow" style="
+          padding:.32rem .65rem;border-radius:8px;
+          background:linear-gradient(135deg,#ff4500,#ff6b35);
+          border:none;color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;
+          font-family:inherit;white-space:nowrap
+        ">Activar</button>
+        <button id="ch-notif-deny" style="
+          padding:.28rem .5rem;border-radius:8px;
+          background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+          color:rgba(240,240,250,.45);font-size:.58rem;cursor:pointer;font-family:inherit
+        ">No, gracias</button>
+      </div>
+    </div>
+    <style>
+    @keyframes slideUpBanner{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    </style>
+  `;
+  document.body.appendChild(banner);
+
+  document.getElementById('ch-notif-allow').onclick = async () => {
+    banner.remove();
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      await subscribePush(reg);
+      toast('🔔 Notificaciones activadas');
+      // Registrar actividad
+      logActivity('🔔 Notificaciones activadas en Novedades');
+    }
+  };
+  document.getElementById('ch-notif-deny').onclick = () => {
+    banner.remove();
+    localStorage.setItem('ch_notif_dismissed', Date.now());
+  };
+}
+
+// ── SUSCRIBIR AL SERVIDOR PUSH ────────────────────────────
+async function subscribePush(reg) {
+  try {
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return existing; // ya suscrito
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+    });
+
+    // Enviar suscripción al backend para guardarla
+    await fetch(`${BACKEND}/api/push/subscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON() }),
+    }).catch(() => {});
+
+    console.log('✅ Push suscrito');
+    return sub;
+  } catch (e) {
+    console.warn('Push subscribe error:', e);
+  }
+}
+
+// ── DETECTAR APPS ACTUALIZADAS Y NOTIFICAR ────────────────
+// Se llama después de cargar las apps desde el backend
+async function checkAndNotifyUpdatedApps(apps) {
+  if (Notification.permission !== 'granted') return;
+
+  const STORE_KEY = 'ch_app_versions';
+  const stored = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+  const updated = [];
+
+  apps.forEach(app => {
+    const prevVer   = stored[app.appId]?.version;
+    const prevTag   = stored[app.appId]?.tag;
+    const isNew     = !prevVer;
+    const changed   = prevVer && prevVer !== app.version;
+    const tagUpdate = prevTag && prevTag !== app.tag && (app.tag || '').includes('Actualiz');
+
+    if (!isNew && (changed || tagUpdate)) {
+      updated.push(app);
+    }
+    // Actualizar store local
+    stored[app.appId] = { version: app.version, tag: app.tag, ts: Date.now() };
+  });
+
+  localStorage.setItem(STORE_KEY, JSON.stringify(stored));
+
+  // Notificar cada app actualizada (estilo Play Store)
+  for (const app of updated) {
+    const title = `${app.nombre} se actualizó`;
+    const body  = app.changelog
+      ? app.changelog.split(' · ')[0]
+      : `Nueva versión${app.version ? ' ' + app.version : ''} disponible`;
+
+    // Notificación local via SW
+    const reg = await navigator.serviceWorker.ready;
+    reg.showNotification(title, {
+      body,
+      icon: '/splash/codehub.png',
+      badge: '/splash/codehub.png',
+      tag: `app-update-${app.appId}`,
+      renotify: true,
+      vibrate: [200, 100, 200],
+      data: { url: '/novedades.html', type: 'app_update', appId: app.appId },
+      actions: [
+        { action: 'view',    title: '⬇️ Ver app' },
+        { action: 'dismiss', title: 'Cerrar' },
+      ],
+    });
+
+    // Registrar en actividad
+    logActivity(`🔄 ${app.nombre} actualizada${app.version ? ' v'+app.version : ''}`);
+    await new Promise(r => setTimeout(r, 500)); // delay entre notificaciones
+  }
+}
+
+// ── CLIMA EN TIEMPO REAL → notificación cada 3h ──────────
+async function initWeatherNotif() {
+  if (Notification.permission !== 'granted') return;
+  const lastWeatherNotif = parseInt(localStorage.getItem('ch_weather_notif_ts') || '0');
+  const THREE_HOURS = 3 * 60 * 60 * 1000;
+  if (Date.now() - lastWeatherNotif < THREE_HOURS) return;
+
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+    );
+    const { latitude: lat, longitude: lon } = pos.coords;
+
+    const res  = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=bd5e378503939ddaee76f12ad7a97608&units=metric&lang=es`
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const desc  = data.weather[0]?.description || '';
+    const temp  = Math.round(data.main?.temp || 0);
+    const city  = data.name || 'tu ubicación';
+    const feels = Math.round(data.main?.feels_like || 0);
+
+    const weatherEmoji = getWeatherEmoji(data.weather[0]?.id);
+    const title = `${weatherEmoji} Clima en ${city}`;
+    const body  = `${capitalize(desc)} · ${temp}°C (sensación ${feels}°C)`;
+
+    const reg = await navigator.serviceWorker.ready;
+    reg.showNotification(title, {
+      body,
+      icon: '/splash/codehub.png',
+      badge: '/splash/codehub.png',
+      tag: 'codehub-weather',
+      vibrate: [100],
+      data: { url: '/index.html#weather-section', type: 'weather' },
+      actions: [{ action: 'open', title: '🌤 Ver detalles' }],
+    });
+
+    localStorage.setItem('ch_weather_notif_ts', Date.now());
+    logActivity(`${weatherEmoji} Clima notificado: ${city} ${temp}°C`);
+  } catch (e) {
+    // Geolocation no disponible o bloqueada — silencioso
+  }
+}
+
+function getWeatherEmoji(id) {
+  if (!id) return '🌤';
+  if (id >= 200 && id < 300) return '⛈';
+  if (id >= 300 && id < 400) return '🌦';
+  if (id >= 500 && id < 600) return '🌧';
+  if (id >= 600 && id < 700) return '❄️';
+  if (id >= 700 && id < 800) return '🌫';
+  if (id === 800) return '☀️';
+  if (id > 800) return '⛅';
+  return '🌤';
+}
+
+function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+// ── REGISTRO DE ACTIVIDADES ───────────────────────────────
+function logActivity(msg) {
+  const KEY = 'ch_activity_log';
+  const log = JSON.parse(localStorage.getItem(KEY) || '[]');
+  log.unshift({ msg, ts: Date.now() });
+  if (log.length > 50) log.length = 50; // max 50 entradas
+  localStorage.setItem(KEY, JSON.stringify(log));
+  // Notificar a index.html si está abierto
+  try {
+    if (window.opener) window.opener.postMessage({ type: 'CH_ACTIVITY', msg }, '*');
+  } catch (e) {}
+}
+
+// ── HOOK en loadAppsFromBackend ───────────────────────────
+// Parchamos la función original para que llame al checker tras cargar
+const _origLoadApps = loadAppsFromBackend;
+async function loadAppsFromBackend() {
+  const grid = document.getElementById('app-grid');
+  try {
+    const res  = await fetch(`${BACKEND}/api/apps`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const apps = data.apps || data || [];
+
+    if (!apps.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No hay apps disponibles.</div>';
+      return;
+    }
+
+    grid.innerHTML = apps.map(buildAppCard).join('');
+
+    const scApps = document.getElementById('sc-apps');
+    if (scApps) scApps.textContent = apps.length;
+
+    if (typeof loadRatings    === 'function') loadRatings();
+    if (typeof filterApps     === 'function') filterApps();
+
+    // ▶ Revisar actualizaciones y notificar
+    checkAndNotifyUpdatedApps(apps);
+
+    console.log(`✅ ${apps.length} apps cargadas desde backend`);
+  } catch (e) {
+    console.error('Error cargando apps:', e);
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><i class="fas fa-exclamation-triangle" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>Error cargando apps. Recarga la página.</div>';
+  }
+}
+
+// ── INICIALIZAR TODO ──────────────────────────────────────
+window.addEventListener('load', async () => {
+  // No mostrar banner si lo cerró hace menos de 24h
+  const dismissed = parseInt(localStorage.getItem('ch_notif_dismissed') || '0');
+  const ONE_DAY   = 24 * 60 * 60 * 1000;
+  if (Date.now() - dismissed > ONE_DAY) {
+    await initPushNotifications();
+  }
+  setTimeout(() => initWeatherNotif(), 3000);
+  logActivity('👀 Sección Novedades visitada');
+});
+</script>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v4.1 — Wilson.E 2026
+//  CodeHub SW v4.2 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync + update
+//  + Push Notifications (app updates + clima)
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v4.1';
+const VERSION   = 'codehub-v4.2';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -34,7 +35,7 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// ── ACTIVATE — limpiar caches viejos ─────────────────
+// ── ACTIVATE ─────────────────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -44,7 +45,6 @@ self.addEventListener('activate', e => {
           .map(k => { console.log('🗑️ Cache eliminado:', k); return caches.delete(k); })
       )
     ).then(() => {
-      // Notificar a todos los clientes que hay nueva versión
       self.clients.matchAll({ includeUncontrolled: true }).then(clients => {
         clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: VERSION }));
       });
@@ -58,7 +58,6 @@ self.addEventListener('fetch', e => {
   const { request } = e;
   const url = new URL(request.url);
 
-  // 1. Backend API (Render) — Network only, sin interceptar nunca
   if (url.hostname.includes("onrender.com")) {
     e.respondWith(fetch(request.clone()).catch(() =>
       new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
@@ -67,27 +66,19 @@ self.addEventListener('fetch', e => {
     ));
     return;
   }
-
-  // 2. Supabase — Network only
   if (url.hostname.includes('supabase.co')) {
     e.respondWith(fetch(request.clone()).catch(() => new Response('', { status: 503 })));
     return;
   }
-
-  // 3. Admin panel — nunca cachear
   if (url.pathname.includes('admin-hub')) {
     e.respondWith(fetch(request.clone()).catch(() => new Response('', { status: 503 })));
     return;
   }
-
-  // 4. APIs externas — Network only
   if (!url.hostname.includes('wilson360-labs') && !url.hostname.includes('localhost') &&
       url.protocol === 'https:' && !url.pathname.match(/\.(html|css|js|png|jpg|svg|webp|ico|json|woff2?)$/)) {
     e.respondWith(fetch(request).catch(() => new Response('', { status: 503 })));
     return;
   }
-
-  // 5. Navegación — Network first, cache fallback
   if (request.mode === 'navigate') {
     e.respondWith(
       fetch(request)
@@ -105,8 +96,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-
-  // 6. Assets estáticos — Cache first, network fallback
   if (['style','script','image','font'].includes(request.destination)) {
     e.respondWith(
       caches.match(request).then(cached => {
@@ -122,10 +111,63 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
+  e.respondWith(fetch(request).catch(() => caches.match(request)));
+});
 
-  // 7. Todo lo demás — Network first
-  e.respondWith(
-    fetch(request).catch(() => caches.match(request))
+// ══════════════════════════════════════════════════════
+//  PUSH — recibir notificación del servidor
+// ══════════════════════════════════════════════════════
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  let payload;
+  try { payload = e.data.json(); }
+  catch { payload = { title: 'CodeHub', body: e.data.text(), type: 'general' }; }
+
+  const { title, body, type, appId, icon, url } = payload;
+
+  const options = {
+    body: body || '',
+    icon: icon || '/splash/codehub.png',
+    badge: '/splash/codehub.png',
+    vibrate: [200, 100, 200],
+    timestamp: Date.now(),
+    requireInteraction: false,
+    data: { url: url || '/novedades.html', type, appId },
+    actions: [],
+  };
+
+  if (type === 'app_update') {
+    options.tag       = `app-update-${appId}`;
+    options.renotify  = true;
+    options.actions   = [
+      { action: 'view',    title: '⬇️ Ver app' },
+      { action: 'dismiss', title: 'Cerrar' },
+    ];
+    options.data.url = '/novedades.html';
+  } else if (type === 'weather') {
+    options.tag      = 'codehub-weather';
+    options.renotify = false;
+    options.actions  = [{ action: 'open', title: '🌤 Ver clima' }];
+    options.data.url = '/index.html#weather-section';
+  } else {
+    options.tag = 'codehub-general';
+  }
+
+  e.waitUntil(self.registration.showNotification(title || 'CodeHub', options));
+});
+
+// ── NOTIFICATION CLICK ────────────────────────────────
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  if (e.action === 'dismiss') return;
+  const targetUrl = e.notification.data?.url || '/novedades.html';
+
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      const existing = clients.find(c => c.url.includes(self.location.origin));
+      if (existing) { existing.focus(); existing.navigate(targetUrl); return; }
+      return self.clients.openWindow(targetUrl);
+    })
   );
 });
 
@@ -133,7 +175,19 @@ self.addEventListener('fetch', e => {
 self.addEventListener('message', e => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
   if (e.data?.type === 'GET_VERSION')  e.ports[0]?.postMessage({ version: VERSION });
-  if (e.data?.type === 'CHECK_UPDATE') {
-    self.registration.update().catch(() => {});
+  if (e.data?.type === 'CHECK_UPDATE') self.registration.update().catch(() => {});
+
+  // Push local (clima en tiempo real desde la página)
+  if (e.data?.type === 'LOCAL_PUSH') {
+    const { title, body, notifType, appId, icon, url } = e.data;
+    self.registration.showNotification(title, {
+      body,
+      icon: icon || '/splash/codehub.png',
+      badge: '/splash/codehub.png',
+      tag: notifType === 'weather' ? 'codehub-weather' : `app-update-${appId || 'gen'}`,
+      vibrate: [150, 100, 150],
+      data: { url: url || '/novedades.html', type: notifType },
+      renotify: true,
+    });
   }
 });
