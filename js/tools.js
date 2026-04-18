@@ -682,7 +682,7 @@ async function doTranslate() {
         } catch { d.value = '❌ Error'; expr = ''; }
         return;
       }
-      if (lbl === 'x²')    { try { expr = String(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')() ** 2); d.value = expr; } catch{} return; }
+      if (lbl === 'x²')    { try { var _v=+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')(); expr = String(_v * _v); d.value = expr; } catch(e){} return; }
       if (lbl === '√')     { try { expr = String(Math.sqrt(+Function('"use strict";return('+expr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-')+')')())); d.value = expr; } catch{} return; }
       if (lbl === 'sin')   { try { expr = String(+Math.sin(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
       if (lbl === 'cos')   { try { expr = String(+Math.cos(+expr * Math.PI/180).toFixed(10)); d.value = expr; } catch{} return; }
@@ -728,9 +728,7 @@ function genLorem() {
   let result = '';
 
   if (type === 'p') {
-    result = Array.from({length:n}, loremParagraph).join('
-
-');
+    result = Array.from({length:n}, loremParagraph).join('\n\n');
   } else if (type === 's') {
     result = Array.from({length:n}, loremSentence).join(' ');
   } else {
@@ -1059,252 +1057,308 @@ function showHoroscope(sign) {
       </div>
     </div>`;
 }
-// ──────────────────────────────────
-//  UNIVERSAL RESOLVER  (multi-método + barra de progreso)
-// ──────────────────────────────────
-const RESOLVER_API = 'https://codehub-98s6.onrender.com/api/resolver/resolve';
 
-// Pasos de resolución con nombre y peso acumulado
-const RESOLVER_STEPS = [
-  { key: 'validate',  label: 'Validando URL…',              pct: 8  },
-  { key: 'backend',   label: 'Consultando backend…',        pct: 30 },
-  { key: 'method2',   label: 'Probando resolución directa…',pct: 55 },
-  { key: 'method3',   label: 'Usando servicio externo…',    pct: 78 },
-  { key: 'method4',   label: 'Análisis de meta-refresh…',   pct: 92 },
-  { key: 'done',      label: 'Resultado listo ✓',           pct: 100 },
+// ══════════════════════════════════════════════════════════════
+//  UNIVERSAL RESOLVER — 5 métodos · barra de progreso real
+// ══════════════════════════════════════════════════════════════
+
+const RV_BACKEND = 'https://codehub-98s6.onrender.com/api/resolver/resolve';
+
+const RV_STEPS = [
+  { id: 's1', pct:  10, label: '🔍 Validando URL…'              },
+  { id: 's2', pct:  28, label: '⚡ Backend CodeHub…'            },
+  { id: 's3', pct:  48, label: '↪️ Siguiendo redirects HTTP…'   },
+  { id: 's4', pct:  68, label: '🔗 Proxy CORS…'                 },
+  { id: 's5', pct:  86, label: '📄 Extrayendo página HTML…'     },
+  { id: 'ok', pct: 100, label: '✅ ¡Completado!'                },
 ];
 
-// Helper: timeout signal compatible con todos los browsers
-function _abortSignal(ms) {
-  const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), ms);
-  return ctrl.signal;
+function rvInitTrack() {
+  const track = document.getElementById('rv-track');
+  if (!track) return;
+  track.innerHTML = RV_STEPS.map((s, i) =>
+    '<div id="' + s.id + '" title="' + s.label + '" style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:.25;transition:opacity .4s,transform .3s">' +
+    '<div style="width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.15);transition:all .4s"></div>' +
+    '<span style="font-size:.5rem;font-family:var(--mono);color:var(--muted)">' + (i + 1) + '</span>' +
+    '</div>'
+  ).join('');
 }
 
-function resolverClear() {
-  const el = document.getElementById('resolver-out');
-  const pr = document.getElementById('resolver-progress');
-  if (el) { el.className = 'rb'; el.innerHTML = ''; }
-  if (pr) pr.style.display = 'none';
-}
-
-function _rpSet(stepKey) {
-  const step = RESOLVER_STEPS.find(s => s.key === stepKey);
+function rvStep(stepId) {
+  const step = RV_STEPS.find(function(s){ return s.id === stepId; });
   if (!step) return;
-  const bar   = document.getElementById('resolver-pbar');
-  const lbl   = document.getElementById('resolver-step-label');
-  const pct   = document.getElementById('resolver-pct');
-  const dots  = document.getElementById('resolver-steps-dots');
-  if (bar)  bar.style.width = step.pct + '%';
-  if (lbl)  lbl.textContent = step.label;
-  if (pct)  pct.textContent = step.pct + '%';
-  // Pintar dots
-  if (dots) {
-    dots.innerHTML = RESOLVER_STEPS.map(s => {
-      const done    = RESOLVER_STEPS.indexOf(s) <= RESOLVER_STEPS.findIndex(x => x.key === stepKey);
-      const active  = s.key === stepKey;
-      const col     = done ? 'var(--p)' : 'rgba(255,255,255,.12)';
-      const shadow  = active ? '0 0 8px rgba(255,69,0,.7)' : 'none';
-      return `<div title="${s.label}" style="width:8px;height:8px;border-radius:50%;background:${col};box-shadow:${shadow};transition:all .3s;flex-shrink:0"></div>`;
-    }).join('');
-  }
+  var bar = document.getElementById('rv-bar');
+  var lbl = document.getElementById('rv-step-lbl');
+  var pct = document.getElementById('rv-pct');
+  if (bar) bar.style.width = step.pct + '%';
+  if (lbl) { lbl.textContent = step.label; lbl.style.color = 'var(--a)'; }
+  if (pct) pct.textContent = step.pct + '%';
+
+  var idx = RV_STEPS.findIndex(function(s){ return s.id === stepId; });
+  RV_STEPS.forEach(function(s, i) {
+    var dot = document.getElementById(s.id);
+    if (!dot) return;
+    var circle = dot.querySelector('div');
+    if (i < idx) {
+      dot.style.opacity = '1'; dot.style.transform = 'scale(1)';
+      if (circle) { circle.style.background = 'var(--green)'; circle.style.borderColor = 'var(--green)'; circle.style.boxShadow = 'none'; }
+    } else if (i === idx) {
+      dot.style.opacity = '1'; dot.style.transform = 'scale(1.25)';
+      if (circle) { circle.style.background = 'var(--p)'; circle.style.borderColor = 'var(--p)'; circle.style.boxShadow = '0 0 10px rgba(255,69,0,.8)'; }
+    } else {
+      dot.style.opacity = '.25'; dot.style.transform = 'scale(1)';
+      if (circle) { circle.style.background = 'rgba(255,255,255,.2)'; circle.style.borderColor = 'rgba(255,255,255,.15)'; circle.style.boxShadow = 'none'; }
+    }
+  });
 }
 
-function _rpShow() {
-  const pr = document.getElementById('resolver-progress');
-  if (pr) { pr.style.display = 'block'; pr.offsetHeight; } // fuerza repaint
-  const btn = document.getElementById('resolver-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resolviendo…'; }
+function rvShow() {
+  var pr  = document.getElementById('rv-progress');
+  var btn = document.getElementById('rv-btn');
+  if (pr)  { pr.style.display = 'block'; void pr.offsetHeight; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Resolviendo…'; }
+  rvInitTrack();
 }
 
-function _rpHide() {
-  const btn = document.getElementById('resolver-btn');
+function rvHide() {
+  var btn = document.getElementById('rv-btn');
   if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Resolver'; }
 }
 
-function _renderResult(finalUrl, hops, method, cached, statusCode) {
-  const out = document.getElementById('resolver-out');
-  const methodIcons = {
-    http_redirect: '↪️ HTTP Redirect',
-    meta_refresh:  '🔄 Meta Refresh',
-    js_redirect:   '⚙️ JS Redirect',
-    direct:        '✅ URL Directa',
-    fetch_head:    '🔗 HEAD directo',
-    unshorten_api: '🌐 API Unshorten',
-    proxy_fetch:   '🛡️ Proxy fetch',
-    allorigins:    '🔄 AllOrigins proxy',
-  };
-  const cacheTag = cached
-    ? '<span style="font-size:.65rem;background:rgba(0,230,118,.12);color:var(--green);border-radius:6px;padding:1px 6px">⚡ caché</span>'
-    : '<span style="font-size:.65rem;background:rgba(64,196,255,.1);color:var(--blue);border-radius:6px;padding:1px 6px">🌐 en vivo</span>';
-
-  const hopsArr = Array.isArray(hops) ? hops : [];
-  const hopsHtml = hopsArr.length > 1
-    ? `<details style="margin-top:.4rem;font-size:.72rem;color:var(--muted)">
-         <summary style="cursor:pointer">${hopsArr.length} salto(s) detectado(s)</summary>
-         <ol style="margin:.4rem 0 0 1rem;display:flex;flex-direction:column;gap:.2rem">
-           ${hopsArr.slice(0,-1).map(u => `<li style="word-break:break-all">${u}</li>`).join('')}
-           <li style="color:var(--green);word-break:break-all">${finalUrl} ✅</li>
-         </ol>
-       </details>`
-    : '';
-
-  out.className = 'rb on';
-  out.innerHTML = `
-    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-      <span style="font-size:.72rem;color:var(--p);font-weight:700">${methodIcons[method] || ('🔍 ' + (method || 'Resuelto'))}</span>
-      ${cacheTag}
-    </div>
-    <div style="font-size:.68rem;color:var(--muted);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.06em">URL Final Descubierta</div>
-    <div class="rrow">
-      <span id="resolver-final" style="font-size:.8rem;color:var(--a);word-break:break-all">${finalUrl}</span>
-      <button class="btn bg bc" onclick="cp('resolver-final')" style="flex-shrink:0"><i class="fas fa-copy"></i></button>
-    </div>
-    <div style="display:flex;gap:1rem;margin-top:.4rem;font-size:.72rem;color:var(--muted)">
-      <span>Saltos: <b style="color:var(--text)">${hopsArr.length || 1}</b></span>
-      ${statusCode ? `<span>HTTP: <b style="color:var(--text)">${statusCode}</b></span>` : ''}
-    </div>
-    <div style="margin-top:.5rem">
-      <a href="${finalUrl}" target="_blank" rel="noopener noreferrer"
-         style="font-size:.72rem;color:var(--p);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem">
-        <i class="fas fa-arrow-up-right-from-square"></i> Abrir enlace real
-      </a>
-    </div>
-    ${hopsHtml}`;
+function rvClear() {
+  var out = document.getElementById('rv-out');
+  var pr  = document.getElementById('rv-progress');
+  var bar = document.getElementById('rv-bar');
+  var pct = document.getElementById('rv-pct');
+  var lbl = document.getElementById('rv-step-lbl');
+  if (out) { out.className = 'rb'; out.innerHTML = ''; }
+  if (pr)  pr.style.display = 'none';
+  if (bar) bar.style.width = '0%';
+  if (pct) pct.textContent = '0%';
+  if (lbl) { lbl.textContent = 'Iniciando…'; lbl.style.color = 'var(--muted)'; }
 }
 
-async function resolveUrl(forceRefresh = false) {
-  const input  = document.getElementById('resolver-input');
-  const out    = document.getElementById('resolver-out');
-  const rawUrl = input?.value?.trim();
+function rvRender(finalUrl, rawUrl, hops, method, cached, status) {
+  var out = document.getElementById('rv-out');
+  if (!out) return;
+  var icons = {
+    backend_cache: '⚡ Backend (caché)',
+    backend_live:  '🌐 Backend CodeHub',
+    head_redirect: '↪️ HTTP Redirect',
+    cors_proxy:    '🔗 Proxy CORS',
+    page_extract:  '📄 Extracción HTML',
+    meta_refresh:  '🔄 Meta Refresh',
+    js_redirect:   '⚙️ JS Redirect',
+  };
+  var methodLabel = icons[method] || ('🔍 ' + (method || 'Resuelto'));
+  var cacheTag = cached
+    ? '<span style="background:rgba(0,230,118,.12);color:var(--green);border-radius:6px;padding:1px 7px;font-size:.65rem">⚡ caché</span>'
+    : '<span style="background:rgba(64,196,255,.1);color:var(--blue);border-radius:6px;padding:1px 7px;font-size:.65rem">🌐 en vivo</span>';
+  var isSame = finalUrl === rawUrl;
+  var hopsArr = Array.isArray(hops) ? hops : [rawUrl, finalUrl];
+  var hopsList = hopsArr.length > 1
+    ? '<details style="margin-top:.5rem"><summary style="font-size:.7rem;color:var(--muted);cursor:pointer">' +
+      hopsArr.length + ' salto(s) — ver cadena</summary>' +
+      '<ol style="margin:.4rem 0 0 1rem;font-size:.7rem;font-family:var(--mono);color:var(--muted);display:flex;flex-direction:column;gap:.2rem">' +
+      hopsArr.map(function(u, i){ return '<li style="' + (i === hopsArr.length - 1 ? 'color:var(--green)' : '') + '">' + u + '</li>'; }).join('') +
+      '</ol></details>'
+    : '';
+
+  if (isSame) {
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ Sin redirección detectada</b><br>' +
+      '<span style="font-size:.75rem;color:var(--muted)">Este acortador requiere interacción humana o bloquea bots.</span>';
+    return;
+  }
+
+  out.className = 'rb on';
+  out.innerHTML =
+    '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem;flex-wrap:wrap">' +
+      '<span style="font-size:.72rem;color:var(--p);font-weight:700">' + methodLabel + '</span>' +
+      cacheTag +
+      (status ? '<span style="font-size:.65rem;color:var(--muted)">HTTP ' + status + '</span>' : '') +
+    '</div>' +
+    '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.28rem">URL real descubierta</div>' +
+    '<div style="display:flex;align-items:flex-start;gap:.5rem;background:rgba(0,0,0,.3);border-radius:9px;padding:.6rem .75rem;margin-bottom:.4rem">' +
+      '<span id="rv-final" style="font-size:.8rem;color:var(--a);word-break:break-all;flex:1;line-height:1.5">' + finalUrl + '</span>' +
+      '<button class="btn bg bc" onclick="cp(\'rv-final\')" title="Copiar"><i class="fas fa-copy"></i></button>' +
+    '</div>' +
+    '<a href="' + finalUrl + '" target="_blank" rel="noopener noreferrer" ' +
+      'style="font-size:.75rem;color:var(--p);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;' +
+      'padding:.3rem .7rem;border:1px solid rgba(255,69,0,.3);border-radius:7px;transition:all .2s" ' +
+      'onmouseover="this.style.background=\'rgba(255,69,0,.1)\'" onmouseout="this.style.background=\'transparent\'">' +
+      '<i class="fas fa-arrow-up-right-from-square"></i> Abrir enlace real' +
+    '</a>' +
+    hopsList;
+}
+
+function rvSignal(ms) {
+  var c = new AbortController();
+  setTimeout(function(){ c.abort(); }, ms);
+  return c.signal;
+}
+
+function rvTick(ms) {
+  return new Promise(function(r){ setTimeout(r, ms || 80); });
+}
+
+async function rvResolve(force) {
+  force = force || false;
+  var input  = document.getElementById('rv-input');
+  var out    = document.getElementById('rv-out');
+  var rawUrl = (input ? input.value : '').trim();
 
   if (!rawUrl) { toast('⚠️ Ingresa una URL'); return; }
 
-  // ── Validar URL ──────────────────────────────────────────
-  _rpShow();
-  _rpSet('validate');
+  rvShow();
+  rvStep('s1');
   out.className = 'rb on';
-  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">⏳ Iniciando resolución multi-método…</span>';
+  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Analizando URL…</span>';
+  await rvTick(120);
 
-  let parsed;
-  try { parsed = new URL(rawUrl); } catch {
-    out.className = 'rb on err';
-    out.innerHTML = '❌ URL inválida. Incluye https://';
-    _rpHide();
-    return;
-  }
-  if (!['http:', 'https:'].includes(parsed.protocol)) {
-    out.className = 'rb on err';
-    out.innerHTML = '❌ Solo se permiten URLs http/https';
-    _rpHide();
-    return;
-  }
-
-  await new Promise(r => setTimeout(r, 300));
-
-  // ── MÉTODO 1: Backend propio ─────────────────────────────
-  _rpSet('backend');
+  var parsedUrl;
   try {
-    const res  = await fetch(RESOLVER_API, {
-      method:  'POST',
+    parsedUrl = new URL(rawUrl);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') throw new Error('bad protocol');
+  } catch(e) {
+    out.className = 'rb on err';
+    out.innerHTML = '❌ URL inválida — asegúrate de incluir https://';
+    rvHide(); return;
+  }
+
+  await rvTick(100);
+
+  // ── MÉTODO 1: Backend CodeHub ────────────────────────────
+  rvStep('s2');
+  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Consultando backend CodeHub…</span>';
+  await rvTick(60);
+  try {
+    var r1 = await fetch(RV_BACKEND, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ url: rawUrl, force_refresh: forceRefresh }),
-      signal:  _abortSignal(12000),
+      body: JSON.stringify({ url: rawUrl, force_refresh: force }),
+      signal: rvSignal(10000),
     });
-    if (res.ok) {
-      const json = await res.json();
-      if (json.ok && json.data?.final_resolved_url && json.data.final_resolved_url !== rawUrl) {
-        _rpSet('done');
-        const d = json.data;
-        _renderResult(d.final_resolved_url, d.hops_chain || [], d.resolution_method, json.cached, d.status_code);
-        _rpHide();
-        return;
+    if (r1.ok) {
+      var j1 = await r1.json();
+      if (j1.ok && j1.data && j1.data.final_resolved_url) {
+        var d = j1.data;
+        rvStep('ok'); await rvTick(280);
+        rvRender(d.final_resolved_url, rawUrl, d.hops_chain || [rawUrl, d.final_resolved_url],
+          j1.cached ? 'backend_cache' : 'backend_live', j1.cached, d.status_code);
+        rvHide(); return;
       }
     }
-  } catch (_) { /* continuar con el siguiente método */ }
+  } catch(e) { /* continuar */ }
 
-  await new Promise(r => setTimeout(r, 200));
+  await rvTick(100);
 
-  // ── MÉTODO 2: HEAD fetch directo con follow redirects ────
-  _rpSet('method2');
+  // ── MÉTODO 2: fetch con redirect:follow (browser nativo) ─
+  rvStep('s3');
+  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Siguiendo redirecciones HTTP…</span>';
+  await rvTick(60);
   try {
-    // Usamos un proxy CORS para seguir redirects con cabeceras
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
-    const res = await fetch(proxyUrl, {
+    var r2 = await fetch(rawUrl, {
       method: 'GET',
       redirect: 'follow',
-      signal: _abortSignal(10000),
+      mode: 'no-cors',
+      signal: rvSignal(8000),
     });
-    const finalUrl = res.url;
-    // Limpiar el prefijo del proxy de la URL resultante
-    const cleanUrl = finalUrl.includes('corsproxy.io') 
-      ? decodeURIComponent(finalUrl.replace(/^https:\/\/corsproxy\.io\/\?/, ''))
-      : finalUrl;
-
-    if (cleanUrl && cleanUrl !== rawUrl && !cleanUrl.includes('corsproxy.io')) {
-      _rpSet('done');
-      _renderResult(cleanUrl, [rawUrl, cleanUrl], 'fetch_head', false, res.status);
-      _rpHide();
-      return;
+    if (r2.url && r2.url !== rawUrl) {
+      rvStep('ok'); await rvTick(280);
+      rvRender(r2.url, rawUrl, [rawUrl, r2.url], 'head_redirect', false, null);
+      rvHide(); return;
     }
-  } catch (_) { /* continuar */ }
+  } catch(e) { /* continuar */ }
 
-  await new Promise(r => setTimeout(r, 200));
+  await rvTick(100);
 
-  // ── MÉTODO 3: API pública unshorten.me ──────────────────
-  _rpSet('method3');
+  // ── MÉTODO 3: corsproxy.io ───────────────────────────────
+  rvStep('s4');
+  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Probando proxy CORS…</span>';
+  await rvTick(60);
+
+  var proxyList = [
+    'https://corsproxy.io/?' + encodeURIComponent(rawUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(rawUrl),
+  ];
+  for (var pi = 0; pi < proxyList.length; pi++) {
+    try {
+      var rp = await fetch(proxyList[pi], { method: 'GET', redirect: 'follow', signal: rvSignal(9000) });
+      var fu = rp.url || '';
+      // Limpiar prefijo del proxy
+      if (fu.indexOf('corsproxy.io') !== -1)
+        fu = decodeURIComponent(fu.replace(/^https:\/\/corsproxy\.io\/\?/, ''));
+      if (fu.indexOf('allorigins.win') !== -1)
+        fu = decodeURIComponent(fu.replace(/^https:\/\/api\.allorigins\.win\/raw\?url=/, ''));
+      if (fu && fu !== rawUrl && fu.indexOf('corsproxy.io') === -1 && fu.indexOf('allorigins.win') === -1) {
+        rvStep('ok'); await rvTick(280);
+        rvRender(fu, rawUrl, [rawUrl, fu], 'cors_proxy', false, rp.status);
+        rvHide(); return;
+      }
+    } catch(e) { /* siguiente proxy */ }
+  }
+
+  await rvTick(100);
+
+  // ── MÉTODO 4 y 5: AllOrigins GET + análisis de HTML ─────
+  rvStep('s5');
+  out.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Analizando contenido de la página…</span>';
+  await rvTick(60);
   try {
-    const apiUrl = `https://unshorten.me/json/${encodeURIComponent(rawUrl)}`;
-    const res = await fetch(apiUrl, { signal: _abortSignal(10000) });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.resolved_url && data.resolved_url !== rawUrl) {
-        _rpSet('done');
-        _renderResult(data.resolved_url, [rawUrl, data.resolved_url], 'unshorten_api', false, data.response_code);
-        _rpHide();
-        return;
+    var ao = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(rawUrl), { signal: rvSignal(12000) });
+    if (ao.ok) {
+      var aoData = await ao.json();
+
+      // URL final reportada por allorigins
+      var aoFinal = aoData && aoData.status && aoData.status.url;
+      if (aoFinal && aoFinal !== rawUrl && aoFinal.indexOf('allorigins') === -1) {
+        rvStep('ok'); await rvTick(280);
+        rvRender(aoFinal, rawUrl, [rawUrl, aoFinal], 'page_extract', false, aoData.status.http_code);
+        rvHide(); return;
+      }
+
+      var html = (aoData && aoData.contents) ? aoData.contents : '';
+
+      // Meta-refresh
+      var metaM = html.match(/<meta[^>]+http-equiv=["']?refresh["']?[^>]+content=["'][^"']*url=([^"'\s>]+)/i);
+      if (metaM && metaM[1]) {
+        var mu = metaM[1].replace(/['"]/g, '');
+        rvStep('ok'); await rvTick(280);
+        rvRender(mu, rawUrl, [rawUrl, mu], 'meta_refresh', false, null);
+        rvHide(); return;
+      }
+
+      // window.location / location.href en JS
+      var jsM = html.match(/(?:window\.location(?:\.href)?|location\.href)\s*=\s*["']([^"']{10,})["']/i);
+      if (jsM && jsM[1] && jsM[1].indexOf('http') === 0) {
+        rvStep('ok'); await rvTick(280);
+        rvRender(jsM[1], rawUrl, [rawUrl, jsM[1]], 'js_redirect', false, null);
+        rvHide(); return;
+      }
+
+      // og:url o canonical
+      var ogM  = html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
+      var canM = html.match(/<link[^>]+rel=["']?canonical["']?[^>]+href=["']([^"']+)["']/i);
+      var altUrl = (ogM && ogM[1]) || (canM && canM[1]);
+      if (altUrl && altUrl !== rawUrl && altUrl.indexOf('http') === 0) {
+        rvStep('ok'); await rvTick(280);
+        rvRender(altUrl, rawUrl, [rawUrl, altUrl], 'page_extract', false, null);
+        rvHide(); return;
       }
     }
-  } catch (_) { /* continuar */ }
+  } catch(e) { /* todos los métodos fallaron */ }
 
-  await new Promise(r => setTimeout(r, 200));
-
-  // ── MÉTODO 4: AllOrigins proxy (extrae Location de HTML) ─
-  _rpSet('method4');
-  try {
-    const aoUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
-    const res = await fetch(aoUrl, { signal: _abortSignal(12000) });
-    if (res.ok) {
-      const data = await res.json();
-      const finalUrl = data?.status?.url;
-      if (finalUrl && finalUrl !== rawUrl) {
-        _rpSet('done');
-        _renderResult(finalUrl, [rawUrl, finalUrl], 'allorigins', false, data?.status?.http_code);
-        _rpHide();
-        return;
-      }
-      // Intentar parsear meta-refresh del contenido
-      const html  = data?.contents || '';
-      const metaMatch = html.match(/meta[^>]+http-equiv=["']?refresh["']?[^>]+content=["'][^"']*url=([^"'\s>]+)/i);
-      if (metaMatch?.[1]) {
-        const metaUrl = metaMatch[1].replace(/['"]/g, '');
-        _rpSet('done');
-        _renderResult(metaUrl, [rawUrl, metaUrl], 'meta_refresh', false, null);
-        _rpHide();
-        return;
-      }
-    }
-  } catch (_) { /* todos los métodos fallaron */ }
-
-  // ── Todos los métodos fallaron ───────────────────────────
-  _rpSet('done');
+  // ── Fallo total ──────────────────────────────────────────
+  rvStep('ok'); await rvTick(280);
   out.className = 'rb on err';
-  out.innerHTML = `
-    ❌ <b>No se pudo resolver el enlace</b><br>
-    <span style="font-size:.75rem;color:var(--muted)">
-      El acortador posiblemente bloquea bots, requiere cookies, o es una URL directa sin redirección.<br>
-      Intenta abrirla directamente: 
-      <a href="${rawUrl}" target="_blank" rel="noopener" style="color:var(--p)">${rawUrl}</a>
-    </span>`;
-  _rpHide();
+  out.innerHTML =
+    '<b style="color:#ff6b6b">⚠️ No se pudo resolver automáticamente</b><br><br>' +
+    '<span style="font-size:.78rem;color:var(--muted);line-height:1.8">' +
+    'Este acortador usa protección anti-bot (Cloudflare, whitelist o página de espera JS).<br>' +
+    'Prueba manualmente en: ' +
+    '<a href="https://checkshorturl.com" target="_blank" style="color:var(--p)">checkshorturl.com</a> · ' +
+    '<a href="https://wheregoes.com" target="_blank" style="color:var(--p)">wheregoes.com</a>' +
+    '</span>';
+  rvHide();
 }

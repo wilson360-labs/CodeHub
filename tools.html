@@ -930,28 +930,38 @@ footer a{color:var(--p);text-decoration:none}
 <div class="card" data-tags="seg util dev">
   <div class="ch">
     <div class="ci ci-or"><i class="fas fa-link-slash"></i></div>
-    <div><h2>Resolver de Links</h2><div class="ct">Bypass acortadores · Multi-método</div></div>
+    <div><h2>Resolver de Links</h2><div class="ct">Bypass acortadores · 5 métodos</div></div>
   </div>
   <div class="cb">
-    <input class="ti" type="url" id="resolver-input" placeholder="https://bit.ly/ejemplo  ó  https://softurl.in/abc" oninput="resolverClear()">
+    <input class="ti" type="url" id="rv-input"
+      placeholder="https://bit.ly/… · https://tinyurl.com/… · https://softurl.in/…"
+      onkeydown="if(event.key==='Enter')rvResolve()"
+      oninput="rvClear()">
     <div class="ir">
-      <button class="btn bp" id="resolver-btn" onclick="resolveUrl(false)"><i class="fas fa-magnifying-glass"></i> Resolver</button>
-      <button class="btn bg bc" onclick="resolveUrl(true)" title="Ignorar caché y re-resolver"><i class="fas fa-rotate-right"></i></button>
+      <button class="btn bp" id="rv-btn" onclick="rvResolve()">
+        <i class="fas fa-magnifying-glass"></i> Resolver
+      </button>
+      <button class="btn bg bc" onclick="rvResolve(true)" title="Forzar re-resolución">
+        <i class="fas fa-rotate-right"></i>
+      </button>
     </div>
-    <!-- Barra de progreso por pasos -->
-    <div id="resolver-progress" style="display:none;margin-top:.2rem">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
-        <span id="resolver-step-label" style="font-size:.7rem;font-family:var(--mono);color:var(--muted)">Iniciando…</span>
-        <span id="resolver-pct" style="font-size:.7rem;font-family:var(--mono);color:var(--a)">0%</span>
+
+    <!-- Progreso -->
+    <div id="rv-progress" style="display:none;margin-top:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <span id="rv-step-lbl" style="font-size:.72rem;font-family:var(--mono);color:var(--muted);transition:color .3s">Iniciando…</span>
+        <span id="rv-pct" style="font-size:.72rem;font-family:var(--mono);color:var(--a);font-weight:700">0%</span>
       </div>
-      <div style="height:5px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden">
-        <div id="resolver-pbar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:5px;transition:width .4s ease"></div>
+      <div style="height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden">
+        <div id="rv-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:6px;transition:width .5s cubic-bezier(.4,0,.2,1)"></div>
       </div>
-      <div style="display:flex;gap:.3rem;margin-top:.5rem;flex-wrap:wrap" id="resolver-steps-dots">
-        <!-- dots inyectados por JS -->
+      <!-- Steps track -->
+      <div id="rv-track" style="display:flex;justify-content:space-between;margin-top:.5rem;position:relative">
+        <!-- inyectado por JS -->
       </div>
     </div>
-    <div id="resolver-out" class="rb"></div>
+
+    <div id="rv-out" class="rb"></div>
   </div>
 </div>
 
