@@ -1059,3 +1059,86 @@ function showHoroscope(sign) {
       </div>
     </div>`;
 }
+// ──────────────────────────────────
+//  UNIVERSAL RESOLVER
+// ──────────────────────────────────
+const RESOLVER_API = 'https://codehub-98s6.onrender.com/api/resolver/resolve';
+
+function resolverClear() {
+  const el = document.getElementById('resolver-out');
+  if (el) { el.className = 'rb'; el.innerHTML = ''; }
+}
+
+async function resolveUrl(forceRefresh = false) {
+  const input  = document.getElementById('resolver-input');
+  const out    = document.getElementById('resolver-out');
+  const rawUrl = input?.value?.trim();
+
+  if (!rawUrl) { toast('⚠️ Ingresa una URL'); return; }
+
+  try { new URL(rawUrl); } catch {
+    out.className = 'rb on err';
+    out.innerHTML = '❌ URL inválida. Incluye https://';
+    return;
+  }
+
+  out.className = 'rb on';
+  out.innerHTML = '<span style="color:var(--muted)">⏳ Resolviendo cadena de redirecciones…</span>';
+
+  try {
+    const res  = await fetch(RESOLVER_API, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ url: rawUrl, force_refresh: forceRefresh }),
+    });
+    const json = await res.json();
+
+    if (!json.ok) {
+      out.className = 'rb on err';
+      out.innerHTML = '❌ ' + (json.error || 'Error desconocido');
+      return;
+    }
+
+    const d = json.data;
+    const methodIcons = {
+      http_redirect: '↪️ HTTP Redirect',
+      meta_refresh:  '🔄 Meta Refresh',
+      js_redirect:   '⚙️ JS Redirect',
+      direct:        '✅ URL Directa',
+    };
+    const cacheTag = json.cached
+      ? '<span style="font-size:.65rem;background:rgba(0,230,118,.12);color:var(--green);border-radius:6px;padding:1px 6px">⚡ caché</span>'
+      : '<span style="font-size:.65rem;background:rgba(64,196,255,.1);color:var(--blue);border-radius:6px;padding:1px 6px">🌐 en vivo</span>';
+
+    const hopsHtml = d.hops_chain.length
+      ? `<details style="margin-top:.4rem;font-size:.72rem;color:var(--muted)">
+           <summary style="cursor:pointer">${d.hops_count} salto(s) detectado(s)</summary>
+           <ol style="margin:.4rem 0 0 1rem;display:flex;flex-direction:column;gap:.2rem">
+             ${d.hops_chain.map(u => `<li style="word-break:break-all">${u}</li>`).join('')}
+             <li style="color:var(--green);word-break:break-all">${d.final_resolved_url} ✅</li>
+           </ol>
+         </details>`
+      : '';
+
+    out.className = 'rb on';
+    out.innerHTML = `
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+        <span style="font-size:.72rem;color:var(--p);font-weight:700">${methodIcons[d.resolution_method] || d.resolution_method}</span>
+        ${cacheTag}
+      </div>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.25rem;text-transform:uppercase;letter-spacing:.06em">URL Final</div>
+      <div class="rrow">
+        <span id="resolver-final" style="font-size:.8rem;color:var(--a);word-break:break-all">${d.final_resolved_url}</span>
+        <button class="btn bg bc" onclick="cp('resolver-final')" style="flex-shrink:0"><i class="fas fa-copy"></i></button>
+      </div>
+      <div style="display:flex;gap:1rem;margin-top:.4rem;font-size:.72rem;color:var(--muted)">
+        <span>Saltos: <b style="color:var(--text)">${d.hops_count}</b></span>
+        <span>HTTP: <b style="color:var(--text)">${d.status_code}</b></span>
+      </div>
+      ${hopsHtml}`;
+
+  } catch (err) {
+    out.className = 'rb on err';
+    out.innerHTML = '❌ Error de red: ' + err.message;
+  }
+}

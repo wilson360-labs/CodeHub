@@ -8474,5 +8474,75 @@ function setAIMood(btn) {
   window.addEventListener('resize', () => { resize(); initParticles(); }, { passive: true });
 })();
 </script>
+
+<!-- ══ WHATS NEW OVERLAY ══════════════════════════════════════ -->
+<div id="whatsNewOverlay" aria-hidden="true">
+  <div class="whatsNewDialog" role="dialog" aria-modal="true" aria-label="Novedades de CodeHub">
+    <h3>✨ Novedades</h3>
+    <p class="whatsNewSub">Lo último en CodeHub v3</p>
+
+    <!-- Lista de novedades — agregar aquí futuras entradas -->
+    <ul style="list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:10px">
+
+      <!-- 🆕 NUEVA HERRAMIENTA -->
+      <li style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(255,69,0,.07);border:1px solid rgba(255,69,0,.2);border-radius:12px">
+        <span style="font-size:1.25rem;flex-shrink:0">🔗</span>
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Resolver de Links</div>
+          <div style="font-size:.75rem;color:rgba(232,232,240,.55);line-height:1.5">Descubre la URL real detrás de cualquier link acortado. Detecta redirecciones HTTP, meta-refresh y JS. Con caché inteligente.</div>
+        </div>
+      </li>
+
+      <li style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px">
+        <span style="font-size:1.25rem;flex-shrink:0">🛡️</span>
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Analizador de Links & Archivos</div>
+          <div style="font-size:.75rem;color:rgba(232,232,240,.55);line-height:1.5">Verifica URLs y APKs con VirusTotal antes de abrirlos. Phishing, malware, reputación.</div>
+        </div>
+      </li>
+
+      <li style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px">
+        <span style="font-size:1.25rem;flex-shrink:0">🤖</span>
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI IA — Chat de propósito general</div>
+          <div style="font-size:.75rem;color:rgba(232,232,240,.55);line-height:1.5">Asistente IA multimodo con fallback automático entre Groq, Gemini, Mistral y más.</div>
+        </div>
+      </li>
+    </ul>
+
+    <div class="whatsNewActions">
+      <button class="action-btn" id="openNovedades">
+        <i class="fas fa-mobile-screen-button"></i>
+        Ver Apps Android
+      </button>
+      <button class="action-btn" id="openTools">
+        <i class="fas fa-wrench"></i>
+        Ir a Herramientas
+      </button>
+    </div>
+    <button class="close-btn" id="closeWhatsNew">
+      <i class="fas fa-xmark"></i> Cerrar
+    </button>
+  </div>
+</div>
+
+<!-- Ícono flotante "¿Qué hay de nuevo?" -->
+<button id="whatsNewIcon" title="¿Qué hay de nuevo?" aria-label="Ver novedades de CodeHub">
+  <i class="fas fa-sparkles"></i>
+</button>
+
+<script>
+// Auto-registrar nueva herramienta en el log de actividad (1 vez)
+(function() {
+  var KEY = 'ch_resolver_announced';
+  if (localStorage.getItem(KEY)) return;
+  localStorage.setItem(KEY, '1');
+  setTimeout(function() {
+    if (typeof chLogActivity === 'function') {
+      chLogActivity('🔗 Nueva herramienta: <b>Resolver de Links</b> — detecta URLs reales detrás de acortadores');
+    }
+  }, 2000);
+})();
+</script>
 </body>
 </html>

@@ -926,10 +926,26 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
+<!-- ── UNIVERSAL RESOLVER ── -->
+<div class="card" data-tags="seg util dev">
+  <div class="ch">
+    <div class="ci ci-or"><i class="fas fa-link-slash"></i></div>
+    <div><h2>Resolver de Links</h2><div class="ct">Universal · Anti-SSRF</div></div>
+  </div>
+  <div class="cb">
+    <input class="ti" type="url" id="resolver-input" placeholder="https://bit.ly/ejemplo" oninput="resolverClear()">
+    <div class="ir">
+      <button class="btn bp" onclick="resolveUrl(false)"><i class="fas fa-magnifying-glass"></i> Resolver</button>
+      <button class="btn bg bc" onclick="resolveUrl(true)" title="Ignorar caché y re-resolver"><i class="fas fa-rotate-right"></i></button>
+    </div>
+    <div id="resolver-out" class="rb"></div>
+  </div>
+</div>
+
 </div><!-- /grid -->
 
 <footer>
-  <a href="index.html">&lt;Wilson.E/&gt;</a> · 32 herramientas · Ningun dato sale de tu navegador
+  <a href="index.html">&lt;Wilson.E/&gt;</a> · 33 herramientas · Ningun dato sale de tu navegador
 </footer>
 
 <script>

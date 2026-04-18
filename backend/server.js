@@ -595,6 +595,14 @@ async function validateTurnstile(token) {
 }
 
 // ════════════════════════════════════════════════════════════════
+//  MÓDULOS EXTERNOS
+// ════════════════════════════════════════════════════════════════
+
+// ── Universal Resolver — Desencriptación heurística de links ──
+const universalResolverRouter = require('./modules/universal-resolver');
+app.use('/api/resolver', universalResolverRouter);
+
+// ════════════════════════════════════════════════════════════════
 //  RUTAS
 // ════════════════════════════════════════════════════════════════
 
