@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com;">
 <title>Herramientas — CodeHub by Wilson.E</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -930,13 +930,26 @@ footer a{color:var(--p);text-decoration:none}
 <div class="card" data-tags="seg util dev">
   <div class="ch">
     <div class="ci ci-or"><i class="fas fa-link-slash"></i></div>
-    <div><h2>Resolver de Links</h2><div class="ct">Universal · Anti-SSRF</div></div>
+    <div><h2>Resolver de Links</h2><div class="ct">Bypass acortadores · Multi-método</div></div>
   </div>
   <div class="cb">
-    <input class="ti" type="url" id="resolver-input" placeholder="https://bit.ly/ejemplo" oninput="resolverClear()">
+    <input class="ti" type="url" id="resolver-input" placeholder="https://bit.ly/ejemplo  ó  https://softurl.in/abc" oninput="resolverClear()">
     <div class="ir">
-      <button class="btn bp" onclick="resolveUrl(false)"><i class="fas fa-magnifying-glass"></i> Resolver</button>
+      <button class="btn bp" id="resolver-btn" onclick="resolveUrl(false)"><i class="fas fa-magnifying-glass"></i> Resolver</button>
       <button class="btn bg bc" onclick="resolveUrl(true)" title="Ignorar caché y re-resolver"><i class="fas fa-rotate-right"></i></button>
+    </div>
+    <!-- Barra de progreso por pasos -->
+    <div id="resolver-progress" style="display:none;margin-top:.2rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem">
+        <span id="resolver-step-label" style="font-size:.7rem;font-family:var(--mono);color:var(--muted)">Iniciando…</span>
+        <span id="resolver-pct" style="font-size:.7rem;font-family:var(--mono);color:var(--a)">0%</span>
+      </div>
+      <div style="height:5px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden">
+        <div id="resolver-pbar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:5px;transition:width .4s ease"></div>
+      </div>
+      <div style="display:flex;gap:.3rem;margin-top:.5rem;flex-wrap:wrap" id="resolver-steps-dots">
+        <!-- dots inyectados por JS -->
+      </div>
     </div>
     <div id="resolver-out" class="rb"></div>
   </div>
