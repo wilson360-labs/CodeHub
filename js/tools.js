@@ -1074,6 +1074,13 @@ const RESOLVER_STEPS = [
   { key: 'done',      label: 'Resultado listo ✓',           pct: 100 },
 ];
 
+// Helper: timeout signal compatible con todos los browsers
+function _abortSignal(ms) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms);
+  return ctrl.signal;
+}
+
 function resolverClear() {
   const el = document.getElementById('resolver-out');
   const pr = document.getElementById('resolver-progress');
@@ -1105,7 +1112,7 @@ function _rpSet(stepKey) {
 
 function _rpShow() {
   const pr = document.getElementById('resolver-progress');
-  if (pr) pr.style.display = 'block';
+  if (pr) { pr.style.display = 'block'; pr.offsetHeight; } // fuerza repaint
   const btn = document.getElementById('resolver-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resolviendo…'; }
 }
@@ -1202,7 +1209,7 @@ async function resolveUrl(forceRefresh = false) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ url: rawUrl, force_refresh: forceRefresh }),
-      signal:  AbortSignal.timeout(12000),
+      signal:  _abortSignal(12000),
     });
     if (res.ok) {
       const json = await res.json();
@@ -1226,7 +1233,7 @@ async function resolveUrl(forceRefresh = false) {
     const res = await fetch(proxyUrl, {
       method: 'GET',
       redirect: 'follow',
-      signal: AbortSignal.timeout(10000),
+      signal: _abortSignal(10000),
     });
     const finalUrl = res.url;
     // Limpiar el prefijo del proxy de la URL resultante
@@ -1248,7 +1255,7 @@ async function resolveUrl(forceRefresh = false) {
   _rpSet('method3');
   try {
     const apiUrl = `https://unshorten.me/json/${encodeURIComponent(rawUrl)}`;
-    const res = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(apiUrl, { signal: _abortSignal(10000) });
     if (res.ok) {
       const data = await res.json();
       if (data?.resolved_url && data.resolved_url !== rawUrl) {
@@ -1266,7 +1273,7 @@ async function resolveUrl(forceRefresh = false) {
   _rpSet('method4');
   try {
     const aoUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(rawUrl)}`;
-    const res = await fetch(aoUrl, { signal: AbortSignal.timeout(12000) });
+    const res = await fetch(aoUrl, { signal: _abortSignal(12000) });
     if (res.ok) {
       const data = await res.json();
       const finalUrl = data?.status?.url;
