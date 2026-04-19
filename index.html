@@ -3559,7 +3559,162 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         .wm-card-title { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: .5rem; }
         .wm-card-desc { font-size: .8rem; color: rgba(240,240,250,.5); line-height: 1.65; }
 
-    </style>
+    
+        /* ── CHANGELOG BTN EN HEADER ── */
+        #changelog-btn {
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .38rem .75rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255,189,105,.25);
+            background: rgba(255,189,105,.07);
+            color: rgba(255,189,105,.85);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+            white-space: nowrap;
+        }
+        #changelog-btn:hover {
+            background: rgba(255,189,105,.15);
+            border-color: rgba(255,189,105,.5);
+            color: #ffbd69;
+            transform: translateY(-1px);
+        }
+        #changelog-btn i { font-size: .72rem; }
+        .changelog-label { display: inline; }
+        .changelog-dot {
+            position: absolute;
+            top: -3px; right: -3px;
+            width: 8px; height: 8px;
+            background: #ff4500;
+            border-radius: 50%;
+            border: 2px solid #0a0a14;
+            display: none;
+            animation: dotPulse 2s infinite;
+        }
+        .changelog-dot.show { display: block; }
+        @keyframes dotPulse {
+            0%,100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: .7; }
+        }
+        @media (max-width: 480px) {
+            .changelog-label { display: none; }
+            #changelog-btn { padding: .38rem .5rem; border-radius: 10px; }
+        }
+
+        /* ── DIÁLOGO iOS NOTIFICACIONES ── */
+        #ios-notif-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.55);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s ease;
+        }
+        #ios-notif-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .ios-notif-card {
+            background: #1c1c2e;
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 22px;
+            padding: 0;
+            width: 100%;
+            max-width: 340px;
+            overflow: hidden;
+            transform: scale(.88) translateY(30px);
+            transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+            box-shadow: 0 24px 80px rgba(0,0,0,.7);
+        }
+        #ios-notif-overlay.show .ios-notif-card {
+            transform: scale(1) translateY(0);
+        }
+        .ios-notif-header {
+            text-align: center;
+            padding: 1.6rem 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .ios-notif-icon {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg,#ff4500,#ff6b35);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem;
+            margin: 0 auto 1rem;
+            box-shadow: 0 8px 24px rgba(255,69,0,.4);
+        }
+        .ios-notif-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #f0f0fa;
+            margin-bottom: .4rem;
+        }
+        .ios-notif-sub {
+            font-size: .78rem;
+            color: rgba(240,240,250,.5);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.5;
+        }
+        .ios-notif-perks {
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: .6rem;
+        }
+        .ios-notif-perk {
+            display: flex;
+            align-items: flex-start;
+            gap: .75rem;
+            font-size: .8rem;
+            color: rgba(240,240,250,.75);
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.4;
+        }
+        .ios-notif-perk-icon {
+            width: 32px; height: 32px;
+            border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .95rem;
+            flex-shrink: 0;
+        }
+        .ios-notif-actions {
+            border-top: 1px solid rgba(255,255,255,.07);
+            display: flex;
+            flex-direction: column;
+        }
+        .ios-notif-actions button {
+            width: 100%;
+            padding: .95rem;
+            border: none;
+            background: transparent;
+            font-family: 'Syne', sans-serif;
+            font-size: .92rem;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .ios-notif-actions button:first-child {
+            font-weight: 700;
+            color: #ff6b35;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .ios-notif-actions button:first-child:hover { background: rgba(255,69,0,.1); }
+        .ios-notif-actions button:last-child {
+            color: rgba(240,240,250,.4);
+            font-size: .82rem;
+        }
+        .ios-notif-actions button:last-child:hover { background: rgba(255,255,255,.04); }
+</style>
 </head>
 <body>
     <!-- Google Tag Manager (noscript) -->
@@ -3775,6 +3930,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Acciones derecha -->
             <div class="header-actions">
+                <!-- Registro de cambios -->
+                <button id="changelog-btn" aria-label="Registro de cambios" title="¿Qué hay de nuevo?" onclick="openChangelog()">
+                    <i class="fas fa-sparkles"></i>
+                    <span class="changelog-label">Novedades</span>
+                    <span class="changelog-dot" id="changelog-dot"></span>
+                </button>
+
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
                 </button>
@@ -6532,25 +6694,112 @@ async function initIndexPush() {
   }
 }
 
+
+/* ══════════════════════════════════════════════════
+   CHANGELOG HEADER BTN
+══════════════════════════════════════════════════ */
+function openChangelog() {
+  var overlay = document.getElementById('whatsNewOverlay');
+  if (overlay) {
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
+    // Marcar como visto
+    localStorage.setItem('ch_changelog_seen', Date.now());
+    var dot = document.getElementById('changelog-dot');
+    if (dot) dot.classList.remove('show');
+  }
+}
+
+// Mostrar dot si hay novedades nuevas (última vista > 3 días)
+(function checkChangelogDot() {
+  var last = parseInt(localStorage.getItem('ch_changelog_seen') || '0');
+  var THREE_DAYS = 3 * 86400000;
+  if (Date.now() - last > THREE_DAYS) {
+    var dot = document.getElementById('changelog-dot');
+    if (dot) dot.classList.add('show');
+  }
+})();
+
+// Listeners del overlay de novedades
+(function initChangelogOverlay() {
+  function closeChangelog() {
+    var ov = document.getElementById('whatsNewOverlay');
+    if (ov) { ov.classList.remove('active'); ov.setAttribute('aria-hidden','true'); }
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    var btnClose = document.getElementById('closeWhatsNew');
+    var btnNov   = document.getElementById('openNovedades');
+    var btnTools = document.getElementById('openTools');
+    var ov       = document.getElementById('whatsNewOverlay');
+    if (btnClose) btnClose.addEventListener('click', closeChangelog);
+    if (btnNov)   btnNov.addEventListener('click', function(){ window.location.href = 'novedades.html'; });
+    if (btnTools) btnTools.addEventListener('click', function(){ window.location.href = 'tools.html'; });
+    if (ov) ov.addEventListener('click', function(e){ if (e.target === ov) closeChangelog(); });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') closeChangelog();
+    });
+  });
+})();
+
+/* ══════════════════════════════════════════════════
+   DIÁLOGO iOS NOTIFICACIONES — reemplaza banner
+══════════════════════════════════════════════════ */
 function showIndexNotifBanner() {
-  if (document.getElementById('ch-push-banner-index')) return;
-  var banner = document.createElement('div');
-  banner.id = 'ch-push-banner-index';
-  banner.innerHTML = '<div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#0d0d1a,#111120);border:1px solid rgba(255,69,0,.35);border-radius:16px;padding:.9rem 1.1rem;z-index:9999;max-width:340px;width:calc(100% - 2rem);box-shadow:0 8px 32px rgba(0,0,0,.6);display:flex;align-items:center;gap:.75rem;font-family:JetBrains Mono,monospace;animation:slideBannerIdx .3s ease"><div style="font-size:1.6rem;flex-shrink:0">&#x1F514;</div><div style="flex:1;min-width:0"><div style="font-size:.72rem;font-weight:700;color:#f0f0fa;margin-bottom:.2rem">Notificaciones CodeHub</div><div style="font-size:.6rem;color:rgba(240,240,250,.5);line-height:1.4">Apps actualizadas y clima en tiempo real.</div></div><div style="display:flex;flex-direction:column;gap:.35rem;flex-shrink:0"><button id="idx-notif-allow" style="padding:.32rem .65rem;border-radius:8px;background:linear-gradient(135deg,#ff4500,#ff6b35);border:none;color:#fff;font-size:.62rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Activar</button><button id="idx-notif-deny" style="padding:.28rem .5rem;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(240,240,250,.45);font-size:.58rem;cursor:pointer;font-family:inherit">No gracias</button></div></div><style>@keyframes slideBannerIdx{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>';
-  document.body.appendChild(banner);
-  document.getElementById('idx-notif-allow').onclick = async function() {
-    banner.remove();
+  // Mostrar el diálogo estilo iOS ya en el DOM
+  var overlay = document.getElementById('ios-notif-overlay');
+  if (!overlay || overlay.classList.contains('show')) return;
+  overlay.classList.add('show');
+
+  document.getElementById('ios-notif-allow').onclick = async function() {
+    overlay.classList.remove('show');
     var perm = await Notification.requestPermission();
     if (perm === 'granted') {
       await initIndexPush();
       chLogActivity('🔔 Notificaciones activadas en CodeHub');
-      if (typeof toast === 'function') toast('🔔 Notificaciones activadas');
+      if (typeof toast === 'function') toast('🔔 Notificaciones activadas ✓');
+      // Solicitar ubicación para clima en tiempo real
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          localStorage.setItem('ch_user_lat', pos.coords.latitude);
+          localStorage.setItem('ch_user_lon', pos.coords.longitude);
+          chNotifWeatherCheck(pos.coords.latitude, pos.coords.longitude);
+        }, function(){});
+      }
+    } else {
+      localStorage.setItem('ch_notif_dismissed', Date.now());
     }
   };
-  document.getElementById('idx-notif-deny').onclick = function() {
-    banner.remove();
+
+  document.getElementById('ios-notif-deny').onclick = function() {
+    overlay.classList.remove('show');
     localStorage.setItem('ch_notif_dismissed', Date.now());
   };
+
+  // Cerrar al click fuera
+  overlay.onclick = function(e) {
+    if (e.target === overlay) {
+      overlay.classList.remove('show');
+      localStorage.setItem('ch_notif_dismissed', Date.now());
+    }
+  };
+}
+
+/* Verificar clima y enviar notificación si hay alerta */
+async function chNotifWeatherCheck(lat, lon) {
+  try {
+    var r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&current=temperature_2m,weather_code,wind_speed_10m,precipitation&timezone=auto');
+    var d = await r.json();
+    var c = d.current;
+    var msg = '';
+    if (c.weather_code >= 61 && c.weather_code <= 67) msg = '🌧 Lluvia en tu zona — lleva paraguas';
+    else if (c.temperature_2m > 35) msg = '🌡 Calor extremo (' + c.temperature_2m + '°C) — hidratate y usa protector solar';
+    else if (c.wind_speed_10m > 50) msg = '💨 Viento fuerte (' + c.wind_speed_10m + ' km/h) — precaución al manejar';
+    else if (c.weather_code >= 95) msg = '⛈ Tormenta eléctrica — evita zonas abiertas';
+    if (msg && Notification.permission === 'granted') {
+      new Notification('🌤 CodeHub Clima', { body: msg, icon: '/splash/codehub.png' });
+    }
+  } catch(e) {}
 }
 </script>
 
@@ -8526,10 +8775,7 @@ function setAIMood(btn) {
   </div>
 </div>
 
-<!-- Ícono flotante "¿Qué hay de nuevo?" -->
-<button id="whatsNewIcon" title="¿Qué hay de nuevo?" aria-label="Ver novedades de CodeHub">
-  <i class="fas fa-sparkles"></i>
-</button>
+<!-- whatsNewIcon movido al header -->
 
 <script>
 // Auto-registrar nueva herramienta en el log de actividad (1 vez)
@@ -8544,5 +8790,39 @@ function setAIMood(btn) {
   }, 2000);
 })();
 </script>
+
+<!-- ── DIÁLOGO iOS NOTIFICACIONES ── -->
+<div id="ios-notif-overlay" role="dialog" aria-modal="true" aria-label="Activar notificaciones">
+  <div class="ios-notif-card">
+    <div class="ios-notif-header">
+      <div class="ios-notif-icon">🔔</div>
+      <div class="ios-notif-title">Notificaciones en tiempo real</div>
+      <div class="ios-notif-sub">CodeHub te avisará cuando haya algo nuevo</div>
+    </div>
+    <div class="ios-notif-perks">
+      <div class="ios-notif-perk">
+        <div class="ios-notif-perk-icon" style="background:rgba(255,69,0,.15);color:#ff6b35">📱</div>
+        <div><b style="color:#f0f0fa">Apps nuevas o actualizadas</b><br>Spotify, YouTube ReVanced, TikTok Mod y más en novedades.html</div>
+      </div>
+      <div class="ios-notif-perk">
+        <div class="ios-notif-perk-icon" style="background:rgba(64,196,255,.12);color:#40c4ff">🌤</div>
+        <div><b style="color:#f0f0fa">Clima en tu ubicación</b><br>Alertas de lluvia, calor extremo o viento fuerte cerca de ti</div>
+      </div>
+      <div class="ios-notif-perk">
+        <div class="ios-notif-perk-icon" style="background:rgba(0,230,118,.12);color:#00e676">✨</div>
+        <div><b style="color:#f0f0fa">Nuevas herramientas</b><br>Cuando se agregue algo nuevo a CodeHub Tools</div>
+      </div>
+      <div class="ios-notif-perk">
+        <div class="ios-notif-perk-icon" style="background:rgba(255,189,105,.12);color:#ffbd69">🔒</div>
+        <div><b style="color:#f0f0fa">Alertas de seguridad</b><br>Consejos de protección según tu ubicación y red</div>
+      </div>
+    </div>
+    <div class="ios-notif-actions">
+      <button id="ios-notif-allow">Activar notificaciones</button>
+      <button id="ios-notif-deny">Ahora no</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
