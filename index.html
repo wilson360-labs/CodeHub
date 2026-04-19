@@ -3560,51 +3560,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         .wm-card-desc { font-size: .8rem; color: rgba(240,240,250,.5); line-height: 1.65; }
 
     
-        /* ── CHANGELOG BTN EN HEADER ── */
-        #changelog-btn {
-            display: flex;
-            align-items: center;
-            gap: .35rem;
-            padding: .38rem .75rem;
-            border-radius: 20px;
-            border: 1px solid rgba(255,189,105,.25);
-            background: rgba(255,189,105,.07);
-            color: rgba(255,189,105,.85);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: .7rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all .2s;
-            position: relative;
-            white-space: nowrap;
-        }
-        #changelog-btn:hover {
-            background: rgba(255,189,105,.15);
-            border-color: rgba(255,189,105,.5);
-            color: #ffbd69;
-            transform: translateY(-1px);
-        }
-        #changelog-btn i { font-size: .72rem; }
-        .changelog-label { display: inline; }
-        .changelog-dot {
-            position: absolute;
-            top: -3px; right: -3px;
-            width: 8px; height: 8px;
-            background: #ff4500;
-            border-radius: 50%;
-            border: 2px solid #0a0a14;
-            display: none;
-            animation: dotPulse 2s infinite;
-        }
-        .changelog-dot.show { display: block; }
-        @keyframes dotPulse {
-            0%,100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3); opacity: .7; }
-        }
-        @media (max-width: 480px) {
-            .changelog-label { display: none; }
-            #changelog-btn { padding: .38rem .5rem; border-radius: 10px; }
-        }
+        /* changelog-btn eliminado */
 
         /* ── DIÁLOGO iOS NOTIFICACIONES ── */
         #ios-notif-overlay {
@@ -3930,12 +3886,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Acciones derecha -->
             <div class="header-actions">
-                <!-- Registro de cambios -->
-                <button id="changelog-btn" aria-label="Registro de cambios" title="¿Qué hay de nuevo?" onclick="openChangelog()">
-                    <i class="fas fa-sparkles"></i>
-                    <span class="changelog-label">Novedades</span>
-                    <span class="changelog-dot" id="changelog-dot"></span>
-                </button>
 
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
@@ -6560,6 +6510,9 @@ DISPONIBILIDAD:
 .ch-act-item:last-child{border-bottom:none}
 .ch-act-time{font-size:.52rem;color:rgba(240,240,250,.28);white-space:nowrap;flex-shrink:0;margin-top:.05rem}
 #ch-activity-btn:hover{background:linear-gradient(135deg,rgba(255,69,0,.25),rgba(255,69,0,.12));transform:translateY(-2px)}
+@media(max-width:600px){
+  #ch-activity-btn{right:auto!important;left:16px!important;}
+}
 </style>
 
 <script>
