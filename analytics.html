@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics — CodeHub</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ff4500">
+  <link rel="icon" type="image/png" href="splash/codehub.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin>
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin></noscript>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#020207;
+      --s1:#07070f;
+      --s2:#0c0c1a;
+      --s3:#101020;
+      --p:#ff4500;--p2:#ff6b35;
+      --a:#ffbd69;
+      --g:#00e676;
+      --c:#00e5ff;
+      --pu:#a855f7;
+      --text:#f0f0fa;
+      --muted:rgba(240,240,250,.38);
+      --border:rgba(255,255,255,.06);
+      --border2:rgba(255,255,255,.11);
+      --mono:'JetBrains Mono',monospace;
+      --font:'Syne',sans-serif;
+    }
+
+    html{scroll-behavior:smooth}
+    body{
+      font-family:var(--font);
+      background:var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    /* Grid bg */
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:
+        linear-gradient(rgba(255,69,0,.018) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(255,69,0,.018) 1px,transparent 1px);
+      background-size:48px 48px;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen{
+      position:fixed;inset:0;z-index:9999;
+      background:var(--bg);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .login-box{
+      background:var(--s1);
+      border:1px solid rgba(255,69,0,.2);
+      border-radius:22px;
+      padding:2.5rem 2rem;
+      width:100%;max-width:360px;
+      text-align:center;
+      position:relative;overflow:hidden;
+    }
+    .login-box::before{
+      content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+      width:200px;height:200px;
+      background:radial-gradient(circle,rgba(255,69,0,.08),transparent 70%);
+      pointer-events:none;
+    }
+    .login-logo{font-size:2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.25rem}
+    .login-logo span{color:var(--p)}
+    .login-sub{font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:2rem;letter-spacing:.12em;text-transform:uppercase}
+    .login-input{
+      width:100%;padding:.8rem 1rem;border-radius:10px;
+      background:rgba(255,255,255,.05);border:1px solid var(--border2);
+      color:var(--text);font-family:var(--mono);font-size:.9rem;
+      outline:none;margin-bottom:.75rem;text-align:center;letter-spacing:.2em;
+      transition:border-color .2s;
+    }
+    .login-input:focus{border-color:rgba(255,69,0,.5)}
+    .login-btn{
+      width:100%;padding:.8rem;border-radius:10px;
+      background:linear-gradient(135deg,var(--p),var(--p2));
+      border:none;color:#fff;font-family:var(--font);font-weight:700;
+      font-size:.9rem;cursor:pointer;transition:opacity .2s,transform .15s;
+    }
+    .login-btn:hover{opacity:.88;transform:translateY(-1px)}
+    .login-err{font-family:var(--mono);font-size:.7rem;color:#ff6b6b;margin-top:.6rem;min-height:1.2em}
+
+    /* ── LAYOUT ── */
+    #dash{position:relative;z-index:1;display:none;flex-direction:column;min-height:100vh}
+    #dash.visible{display:flex}
+
+    /* ── TOPBAR ── */
+    .topbar{
+      display:flex;align-items:center;gap:1rem;
+      padding:.75rem 1.5rem;
+      background:rgba(7,7,15,.92);
+      border-bottom:1px solid rgba(255,69,0,.12);
+      backdrop-filter:blur(16px);
+      position:sticky;top:0;z-index:100;
+    }
+    .topbar-brand{font-size:1rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+    .topbar-brand span{color:var(--p)}
+    .topbar-brand small{font-family:var(--mono);font-size:.55rem;color:var(--muted);display:block;letter-spacing:.08em}
+    .topbar-right{margin-left:auto;display:flex;align-items:center;gap:.75rem}
+    .ws-pill{
+      display:flex;align-items:center;gap:.45rem;
+      padding:.3rem .75rem;border-radius:999px;
+      font-family:var(--mono);font-size:.6rem;font-weight:700;
+      border:1px solid rgba(0,230,118,.25);
+      background:rgba(0,230,118,.07);color:var(--g);
+      transition:all .3s;
+    }
+    .ws-pill.disconnected{border-color:rgba(255,69,0,.25);background:rgba(255,69,0,.07);color:var(--p)}
+    .ws-dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:wsPulse 2s infinite}
+    .ws-pill.disconnected .ws-dot{background:var(--p);animation:none}
+    @keyframes wsPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+    .topbar-btn{
+      padding:.35rem .8rem;border-radius:8px;
+      border:1px solid var(--border2);background:transparent;
+      color:var(--muted);font-family:var(--mono);font-size:.65rem;
+      cursor:pointer;transition:all .2s;
+    }
+    .topbar-btn:hover{border-color:rgba(255,69,0,.4);color:var(--text)}
+
+    /* ── MAIN GRID ── */
+    .dash-main{
+      padding:1.5rem;
+      display:flex;flex-direction:column;gap:1.25rem;
+      max-width:1400px;width:100%;margin:0 auto;
+    }
+
+    /* ── STAT CARDS ROW ── */
+    .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.875rem}
+    .stat-card{
+      background:var(--s2);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:1.1rem 1.25rem;
+      position:relative;overflow:hidden;
+      transition:border-color .2s,transform .2s;
+    }
+    .stat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+    .stat-card::before{
+      content:'';position:absolute;inset:0;
+      background:radial-gradient(circle at 0% 0%,var(--card-glow,rgba(255,69,0,.06)),transparent 65%);
+      pointer-events:none;
+    }
+    .stat-label{font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
+    .stat-val{font-size:1.85rem;font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:.35rem}
+    .stat-sub{font-family:var(--mono);font-size:.6rem;color:var(--muted)}
+    .stat-icon{
+      position:absolute;top:1rem;right:1rem;
+      width:34px;height:34px;border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.9rem;
+    }
+
+    /* Card accent colors */
+    .sc-orange{--card-glow:rgba(255,69,0,.08)}
+    .sc-orange .stat-val{color:var(--p)}
+    .sc-orange .stat-icon{background:rgba(255,69,0,.12);color:var(--p)}
+    .sc-green{--card-glow:rgba(0,230,118,.07)}
+    .sc-green .stat-val{color:var(--g)}
+    .sc-green .stat-icon{background:rgba(0,230,118,.1);color:var(--g)}
+    .sc-cyan{--card-glow:rgba(0,229,255,.07)}
+    .sc-cyan .stat-val{color:var(--c)}
+    .sc-cyan .stat-icon{background:rgba(0,229,255,.1);color:var(--c)}
+    .sc-amber{--card-glow:rgba(255,189,105,.07)}
+    .sc-amber .stat-val{color:var(--a)}
+    .sc-amber .stat-icon{background:rgba(255,189,105,.1);color:var(--a)}
+    .sc-purple{--card-glow:rgba(168,85,247,.07)}
+    .sc-purple .stat-val{color:var(--pu)}
+    .sc-purple .stat-icon{background:rgba(168,85,247,.1);color:var(--pu)}
+
+    /* ── CHARTS ROW ── */
+    .charts-row{display:grid;grid-template-columns:2fr 1fr;gap:.875rem}
+    @media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+
+    .chart-card{
+      background:var(--s2);border:1px solid var(--border);border-radius:16px;
+      padding:1.25rem;display:flex;flex-direction:column;gap:1rem;
+    }
+    .chart-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+    .chart-title{font-size:.82rem;font-weight:700;color:var(--text)}
+    .chart-sub{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
+    .chart-wrap{position:relative;flex:1;min-height:200px}
+
+    /* ── BOTTOM ROW ── */
+    .bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
+    @media(max-width:768px){.bottom-row{grid-template-columns:1fr}}
+
+    /* ── LIVE FEED ── */
+    .feed-card{
+      background:var(--s2);border:1px solid var(--border);border-radius:16px;
+      padding:1.25rem;display:flex;flex-direction:column;gap:.875rem;
+    }
+    .feed-list{
+      display:flex;flex-direction:column;gap:.5rem;
+      max-height:300px;overflow-y:auto;
+      scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent;
+    }
+    .feed-list::-webkit-scrollbar{width:3px}
+    .feed-list::-webkit-scrollbar-thumb{background:rgba(255,69,0,.3);border-radius:3px}
+    .feed-item{
+      display:flex;align-items:flex-start;gap:.75rem;
+      padding:.6rem .75rem;
+      border-radius:10px;
+      background:var(--s3);
+      border:1px solid var(--border);
+      animation:feedIn .35s cubic-bezier(.2,.9,.2,1) both;
+      font-size:.75rem;
+    }
+    @keyframes feedIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+    .feed-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
+    .feed-body{flex:1;min-width:0}
+    .feed-title{font-weight:700;font-size:.73rem;margin-bottom:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .feed-meta{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
+    .feed-time{font-family:var(--mono);font-size:.55rem;color:var(--muted);flex-shrink:0;margin-top:.1rem}
+
+    /* ── TOOLS RANKING ── */
+    .rank-list{display:flex;flex-direction:column;gap:.5rem;max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent}
+    .rank-list::-webkit-scrollbar{width:3px}
+    .rank-list::-webkit-scrollbar-thumb{background:rgba(255,69,0,.3);border-radius:3px}
+    .rank-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;border-radius:10px;background:var(--s3);border:1px solid var(--border)}
+    .rank-num{font-family:var(--mono);font-size:.65rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0}
+    .rank-num.top{color:var(--a)}
+    .rank-name{flex:1;font-size:.75rem;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .rank-bar-wrap{width:80px;height:4px;background:rgba(255,255,255,.07);border-radius:4px;flex-shrink:0}
+    .rank-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--p),var(--p2));transition:width .6s ease}
+    .rank-count{font-family:var(--mono);font-size:.6rem;color:var(--muted);min-width:30px;text-align:right;flex-shrink:0}
+
+    /* ── HEALTH STATUS ── */
+    .health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.5rem}
+    .health-item{
+      background:var(--s3);border:1px solid var(--border);border-radius:10px;
+      padding:.65rem .75rem;display:flex;align-items:center;gap:.6rem;
+    }
+    .health-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .h-ok{background:var(--g)}
+    .h-warn{background:var(--a)}
+    .h-err{background:var(--p)}
+    .health-label{font-family:var(--mono);font-size:.6rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .health-val{font-family:var(--mono);font-size:.58rem;font-weight:700;margin-left:auto;flex-shrink:0}
+
+    /* ── SECTION HEADER ── */
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+    .section-title{font-size:.82rem;font-weight:700;color:var(--text)}
+    .section-badge{font-family:var(--mono);font-size:.58rem;color:var(--muted);background:var(--s3);border:1px solid var(--border);padding:.2rem .5rem;border-radius:6px}
+    .section-refresh{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;transition:color .2s,transform .3s}
+    .section-refresh:hover{color:var(--p);transform:rotate(180deg)}
+
+    /* ── MINI TABS ── */
+    .mini-tabs{display:flex;gap:.35rem}
+    .mini-tab{font-family:var(--mono);font-size:.58rem;padding:.25rem .6rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
+    .mini-tab.active{border-color:rgba(255,69,0,.4);background:rgba(255,69,0,.08);color:var(--p)}
+
+    /* ── EMPTY STATE ── */
+    .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:var(--muted);gap:.5rem;font-family:var(--mono);font-size:.68rem;text-align:center}
+
+    /* ── TICKER LIVE ── */
+    .live-ticker{
+      display:flex;align-items:center;gap:.6rem;
+      padding:.5rem 1rem;
+      background:rgba(255,69,0,.06);
+      border:1px solid rgba(255,69,0,.15);
+      border-radius:10px;
+      font-family:var(--mono);font-size:.65rem;
+      overflow:hidden;white-space:nowrap;
+    }
+    .ticker-dot{width:6px;height:6px;border-radius:50%;background:var(--p);animation:wsPulse 1.5s infinite;flex-shrink:0}
+    .ticker-label{color:var(--p);font-weight:700;flex-shrink:0}
+    .ticker-msg{color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+
+    /* ── RESPONSIVE MOBILE ── */
+    @media(max-width:600px){
+      .dash-main{padding:1rem;gap:1rem}
+      .topbar{padding:.65rem 1rem}
+      .stat-row{grid-template-columns:repeat(2,1fr)}
+      .stat-val{font-size:1.4rem}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Code<span>Hub</span></div>
+    <div class="login-sub">Analytics · Acceso restringido</div>
+    <input class="login-input" type="password" id="login-key" placeholder="Admin key" autocomplete="current-password">
+    <button class="login-btn" onclick="doLogin()"><i class="fas fa-chart-line" style="margin-right:.5rem"></i>Acceder</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dash">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      Code<span>Hub</span>
+      <small>Analytics Dashboard</small>
+    </div>
+    <div class="live-ticker" id="ticker">
+      <span class="ticker-dot"></span>
+      <span class="ticker-label">EN VIVO</span>
+      <span class="ticker-msg" id="ticker-msg">Conectando...</span>
+    </div>
+    <div class="topbar-right">
+      <div class="ws-pill disconnected" id="ws-pill">
+        <span class="ws-dot"></span>
+        <span id="ws-label">Conectando...</span>
+      </div>
+      <button class="topbar-btn" onclick="refreshAll()"><i class="fas fa-rotate-right"></i> Refresh</button>
+      <button class="topbar-btn" onclick="logout()"><i class="fas fa-right-from-bracket"></i></button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="dash-main">
+
+    <!-- STAT CARDS -->
+    <div class="stat-row" id="stat-row">
+      <div class="stat-card sc-orange">
+        <div class="stat-icon"><i class="fas fa-eye"></i></div>
+        <div class="stat-label">Visitas hoy</div>
+        <div class="stat-val" id="s-today">—</div>
+        <div class="stat-sub" id="s-today-sub">cargando...</div>
+      </div>
+      <div class="stat-card sc-green">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-label">Total visitas</div>
+        <div class="stat-val" id="s-total">—</div>
+        <div class="stat-sub" id="s-total-sub">acumulado</div>
+      </div>
+      <div class="stat-card sc-cyan">
+        <div class="stat-icon"><i class="fas fa-plug"></i></div>
+        <div class="stat-label">Conectados WS</div>
+        <div class="stat-val" id="s-ws">—</div>
+        <div class="stat-sub">clientes WebSocket</div>
+      </div>
+      <div class="stat-card sc-amber">
+        <div class="stat-icon"><i class="fas fa-wrench"></i></div>
+        <div class="stat-label">Usos de tools</div>
+        <div class="stat-val" id="s-tools">—</div>
+        <div class="stat-sub">total acumulado</div>
+      </div>
+      <div class="stat-card sc-purple">
+        <div class="stat-icon"><i class="fas fa-download"></i></div>
+        <div class="stat-label">Descargas</div>
+        <div class="stat-val" id="s-downloads">—</div>
+        <div class="stat-sub">total acumulado</div>
+      </div>
+      <div class="stat-card sc-cyan">
+        <div class="stat-icon"><i class="fas fa-robot"></i></div>
+        <div class="stat-label">Chats EMI IA</div>
+        <div class="stat-val" id="s-chats">—</div>
+        <div class="stat-sub">total acumulado</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-row">
+      <!-- Visitas 30 días -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <div class="chart-title">Visitas diarias</div>
+            <div class="chart-sub">Últimos 30 días · Supabase</div>
+          </div>
+          <div class="mini-tabs">
+            <button class="mini-tab active" onclick="setChartMetric('visits',this)">Visitas</button>
+            <button class="mini-tab" onclick="setChartMetric('tool_uses',this)">Tools</button>
+            <button class="mini-tab" onclick="setChartMetric('chat_msgs',this)">Chats</button>
+            <button class="mini-tab" onclick="setChartMetric('downloads',this)">Descargas</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-daily"></canvas>
+        </div>
+      </div>
+
+      <!-- Donut eventos -->
+      <div class="chart-card">
+        <div class="chart-head">
+          <div>
+            <div class="chart-title">Distribución de eventos</div>
+            <div class="chart-sub">Proporción últimos 30 días</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="min-height:180px">
+          <canvas id="chart-donut"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="bottom-row">
+
+      <!-- Live Feed -->
+      <div class="feed-card">
+        <div class="section-head">
+          <div class="section-title"><i class="fas fa-bolt" style="color:var(--p);margin-right:.4rem;font-size:.75rem"></i>Feed en tiempo real</div>
+          <span class="section-badge" id="feed-count">0 eventos</span>
+        </div>
+        <div class="feed-list" id="feed-list">
+          <div class="empty"><i class="fas fa-satellite-dish" style="font-size:1.5rem;opacity:.3"></i>Esperando eventos WS...</div>
+        </div>
+      </div>
+
+      <!-- Tools ranking -->
+      <div class="feed-card">
+        <div class="section-head">
+          <div class="section-title"><i class="fas fa-ranking-star" style="color:var(--a);margin-right:.4rem;font-size:.75rem"></i>Top herramientas</div>
+          <button class="section-refresh" title="Actualizar" onclick="loadSupabase()"><i class="fas fa-rotate-right"></i></button>
+        </div>
+        <div class="rank-list" id="rank-list">
+          <div class="empty"><i class="fas fa-chart-bar" style="font-size:1.5rem;opacity:.3"></i>Cargando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HEALTH + DOWNLOADS -->
+    <div class="bottom-row">
+
+      <!-- System Health -->
+      <div class="feed-card">
+        <div class="section-head">
+          <div class="section-title"><i class="fas fa-heart-pulse" style="color:var(--g);margin-right:.4rem;font-size:.75rem"></i>Estado del sistema</div>
+          <button class="section-refresh" title="Actualizar" onclick="loadHealth()"><i class="fas fa-rotate-right"></i></button>
+        </div>
+        <div class="health-grid" id="health-grid">
+          <div class="empty" style="grid-column:1/-1">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Top downloads -->
+      <div class="feed-card">
+        <div class="section-head">
+          <div class="section-title"><i class="fas fa-mobile-screen-button" style="color:var(--pu);margin-right:.4rem;font-size:.75rem"></i>Apps más descargadas</div>
+          <button class="section-refresh" title="Actualizar" onclick="loadSupabase()"><i class="fas fa-rotate-right"></i></button>
+        </div>
+        <div class="rank-list" id="dl-list">
+          <div class="empty"><i class="fas fa-download" style="font-size:1.5rem;opacity:.3"></i>Cargando...</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /dash-main -->
+</div><!-- /dash -->
+
+<script>
+/* ═══════════════════════════════════════════
+   CodeHub Analytics Dashboard
+   Endpoints:
+     GET  /api/stats/live      → { visitors, total, wsClients }
+     GET  /api/stats/supabase  → { daily[], tools[], downloads[], total_events }
+     GET  /api/health          → { status, mongo, redis, ws, groq, ... }
+     WS   /ws                  → broadcast events
+═══════════════════════════════════════════ */
+
+const BACKEND  = 'https://codehub-98s6.onrender.com';
+const WS_URL   = 'wss://codehub-production-729d.up.railway.app/ws';
+const ADMIN_KEY_LS = 'ch_analytics_key';
+
+let ADMIN_KEY = '';
+let ws = null;
+let chartDaily = null;
+let chartDonut = null;
+let currentMetric = 'visits';
+let dailyData = [];
+let feedCount = 0;
+let wsReconnectTimer = null;
+const MAX_FEED = 60;
+
+/* ── LOGIN ────────────────────────────── */
+document.getElementById('login-key').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogin() {
+  const key = document.getElementById('login-key').value.trim();
+  if (!key) { showErr('Ingresa la admin key'); return; }
+  ADMIN_KEY = key;
+  localStorage.setItem(ADMIN_KEY_LS, key);
+  initDash();
+}
+
+function showErr(msg) {
+  const el = document.getElementById('login-err');
+  el.textContent = msg;
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+function logout() {
+  localStorage.removeItem(ADMIN_KEY_LS);
+  if (ws) ws.close();
+  location.reload();
+}
+
+/* ── INIT ─────────────────────────────── */
+function initDash() {
+  document.getElementById('login-screen').style.display = 'none';
+  const dash = document.getElementById('dash');
+  dash.classList.add('visible');
+  initCharts();
+  loadLive();
+  loadSupabase();
+  loadHealth();
+  connectWS();
+  setInterval(loadLive, 30000);
+  setInterval(loadHealth, 60000);
+}
+
+/* Auto-login si ya tiene key guardada */
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(ADMIN_KEY_LS);
+  if (saved) {
+    ADMIN_KEY = saved;
+    document.getElementById('login-key').value = saved;
+    initDash();
+  }
+});
+
+/* ── LIVE STATS ──────────────────────── */
+async function loadLive() {
+  try {
+    const r = await fetch(`${BACKEND}/api/stats/live`);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    animNum('s-today', d.visitors || 0);
+    animNum('s-total', d.total    || 0);
+    animNum('s-ws',    d.wsClients || 0);
+    document.getElementById('s-today-sub').textContent = 'sesión activa · ' + new Date().toLocaleTimeString('es-GT', {hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    console.warn('live error:', e.message);
+  }
+}
+
+/* ── SUPABASE STATS ──────────────────── */
+async function loadSupabase() {
+  try {
+    const r = await fetch(`${BACKEND}/api/stats/supabase`, {
+      headers: { 'x-admin-key': ADMIN_KEY }
+    });
+    if (!r.ok) {
+      if (r.status === 503) { setFallbackSupabase(); return; }
+      throw new Error(r.status);
+    }
+    const d = await r.json();
+    dailyData = d.daily || [];
+    updateDailyChart(currentMetric);
+    updateDonut(dailyData);
+    renderToolRanking(d.tools || []);
+    renderDownloads(d.downloads || []);
+
+    // Totals acumulados
+    const totVisits = dailyData.reduce((a,x) => a + (x.visits||0), 0);
+    const totTools  = dailyData.reduce((a,x) => a + (x.tool_uses||0), 0);
+    const totDl     = dailyData.reduce((a,x) => a + (x.downloads||0), 0);
+    const totChat   = dailyData.reduce((a,x) => a + (x.chat_msgs||0), 0);
+    animNum('s-tools',     totTools);
+    animNum('s-downloads', totDl);
+    animNum('s-chats',     totChat);
+
+  } catch(e) {
+    console.warn('supabase stats error:', e.message);
+    setFallbackSupabase();
+  }
+}
+
+function setFallbackSupabase() {
+  ['s-tools','s-downloads','s-chats'].forEach(id => {
+    document.getElementById(id).textContent = 'N/A';
+  });
+  document.getElementById('rank-list').innerHTML = '<div class="empty"><i class="fas fa-plug-circle-xmark" style="opacity:.3;font-size:1.2rem"></i>Supabase no disponible</div>';
+  document.getElementById('dl-list').innerHTML = '<div class="empty"><i class="fas fa-plug-circle-xmark" style="opacity:.3;font-size:1.2rem"></i>Supabase no disponible</div>';
+}
+
+/* ── HEALTH ──────────────────────────── */
+async function loadHealth() {
+  try {
+    const r = await fetch(`${BACKEND}/api/health`);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    renderHealth(d);
+  } catch(e) {
+    document.getElementById('health-grid').innerHTML = '<div class="empty" style="grid-column:1/-1"><i class="fas fa-triangle-exclamation" style="opacity:.4;font-size:1.2rem"></i>Backend no responde</div>';
+  }
+}
+
+function renderHealth(d) {
+  const items = [
+    { label:'Backend',    val: d.status === 'ok' ? 'ok' : 'error', state: d.status === 'ok' ? 'ok' : 'err' },
+    { label:'MongoDB',    val: d.mongo,     state: d.mongo === 'connected' ? 'ok' : 'err' },
+    { label:'Redis',      val: d.redis,     state: d.redis === 'connected' ? 'ok' : 'warn' },
+    { label:'WebSockets', val: d.ws,        state: 'ok' },
+    { label:'Groq',       val: d.groq,      state: d.groq === 'ok' ? 'ok' : 'warn' },
+    { label:'Gemini',     val: d.gemini,    state: d.gemini === 'ok' ? 'ok' : 'warn' },
+    { label:'Mistral',    val: d.mistral,   state: d.mistral === 'ok' ? 'ok' : 'warn' },
+    { label:'OpenRouter', val: d.openrouter ? d.openrouter.slice(0,12) : '—', state: d.openrouter && d.openrouter.includes('ok') ? 'ok' : 'warn' },
+    { label:'Storage',    val: d.storage,   state: d.storage !== 'missing' ? 'ok' : 'err' },
+    { label:'VirusTotal', val: d.virustotal || '—', state: d.virustotal === 'ok' ? 'ok' : 'warn' },
+    { label:'Uptime',     val: d.uptime,    state: 'ok' },
+  ];
+  document.getElementById('health-grid').innerHTML = items.map(i => `
+    <div class="health-item">
+      <span class="health-dot h-${i.state}"></span>
+      <span class="health-label">${i.label}</span>
+      <span class="health-val" style="color:${i.state==='ok'?'var(--g)':i.state==='warn'?'var(--a)':'var(--p)'}">${i.val || '—'}</span>
+    </div>
+  `).join('');
+}
+
+/* ── CHARTS ──────────────────────────── */
+const chartDefaults = {
+  font: { family: "'JetBrains Mono', monospace" },
+  color: 'rgba(240,240,250,.35)',
+};
+Chart.defaults.font = chartDefaults.font;
+Chart.defaults.color = chartDefaults.color;
+
+function initCharts() {
+  /* Daily line chart */
+  const ctxD = document.getElementById('chart-daily').getContext('2d');
+  chartDaily = new Chart(ctxD, {
+    type: 'bar',
+    data: { labels: [], datasets: [{
+      label: 'Visitas',
+      data: [],
+      backgroundColor: 'rgba(255,69,0,.25)',
+      borderColor: '#ff4500',
+      borderWidth: 1.5,
+      borderRadius: 4,
+      hoverBackgroundColor: 'rgba(255,69,0,.45)',
+    }]},
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0c0c1a',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+          titleFont: { family: "'JetBrains Mono'" },
+          bodyFont:  { family: "'JetBrains Mono'" },
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { maxTicksLimit: 10, font: { size: 10 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,.04)' },
+          ticks: { font: { size: 10 }, precision: 0 },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+
+  /* Donut */
+  const ctxDo = document.getElementById('chart-donut').getContext('2d');
+  chartDonut = new Chart(ctxDo, {
+    type: 'doughnut',
+    data: {
+      labels: ['Visitas','Tools','Chats','Descargas','Contactos'],
+      datasets: [{
+        data: [0,0,0,0,0],
+        backgroundColor: ['#ff4500','#00e676','#a855f7','#00e5ff','#ffbd69'],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 10 }, padding: 12, boxWidth: 10 }
+        },
+        tooltip: {
+          backgroundColor: '#0c0c1a',
+          borderColor: 'rgba(255,255,255,.1)',
+          borderWidth: 1,
+        }
+      }
+    }
+  });
+}
+
+function setChartMetric(metric, btn) {
+  document.querySelectorAll('.mini-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMetric = metric;
+  updateDailyChart(metric);
+}
+
+function updateDailyChart(metric) {
+  if (!chartDaily || !dailyData.length) return;
+  const sorted = [...dailyData].sort((a,b) => a.date.localeCompare(b.date)).slice(-30);
+  const labels = sorted.map(d => {
+    const dt = new Date(d.date);
+    return `${dt.getDate()}/${dt.getMonth()+1}`;
+  });
+  const vals = sorted.map(d => d[metric] || 0);
+
+  const colorMap = {
+    visits:    { bg:'rgba(255,69,0,.25)',    border:'#ff4500' },
+    tool_uses: { bg:'rgba(255,189,105,.2)',  border:'#ffbd69' },
+    chat_msgs: { bg:'rgba(168,85,247,.2)',   border:'#a855f7' },
+    downloads: { bg:'rgba(0,229,255,.18)',   border:'#00e5ff' },
+  };
+  const col = colorMap[metric] || colorMap.visits;
+
+  chartDaily.data.labels = labels;
+  chartDaily.data.datasets[0].data = vals;
+  chartDaily.data.datasets[0].backgroundColor = col.bg;
+  chartDaily.data.datasets[0].borderColor = col.border;
+  chartDaily.data.datasets[0].hoverBackgroundColor = col.border + '70';
+  chartDaily.data.datasets[0].label = { visits:'Visitas', tool_uses:'Tools', chat_msgs:'Chats', downloads:'Descargas' }[metric];
+  chartDaily.update('active');
+}
+
+function updateDonut(daily) {
+  if (!chartDonut) return;
+  const tot = {visits:0, tool_uses:0, chat_msgs:0, downloads:0, contacts:0};
+  daily.forEach(d => {
+    tot.visits    += d.visits    || 0;
+    tot.tool_uses += d.tool_uses || 0;
+    tot.chat_msgs += d.chat_msgs || 0;
+    tot.downloads += d.downloads || 0;
+    tot.contacts  += d.contacts  || 0;
+  });
+  chartDonut.data.datasets[0].data = [tot.visits, tot.tool_uses, tot.chat_msgs, tot.downloads, tot.contacts];
+  chartDonut.update();
+}
+
+/* ── RANKINGS ────────────────────────── */
+function renderToolRanking(tools) {
+  if (!tools.length) {
+    document.getElementById('rank-list').innerHTML = '<div class="empty"><i class="fas fa-wrench" style="font-size:1.2rem;opacity:.3"></i>Sin datos de tools</div>';
+    return;
+  }
+  const maxUses = tools[0]?.uses || 1;
+  document.getElementById('rank-list').innerHTML = tools.map((t,i) => `
+    <div class="rank-item">
+      <span class="rank-num ${i<3?'top':''}">${i+1}</span>
+      <span class="rank-name" title="${t.tool_name}">${t.tool_name}</span>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${Math.round((t.uses/maxUses)*100)}%"></div></div>
+      <span class="rank-count">${t.uses.toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+function renderDownloads(downloads) {
+  if (!downloads.length) {
+    document.getElementById('dl-list').innerHTML = '<div class="empty"><i class="fas fa-download" style="font-size:1.2rem;opacity:.3"></i>Sin descargas registradas</div>';
+    return;
+  }
+  const max = downloads[0]?.downloads || 1;
+  document.getElementById('dl-list').innerHTML = downloads.map((d,i) => `
+    <div class="rank-item">
+      <span class="rank-num ${i<3?'top':''}">${i+1}</span>
+      <span class="rank-name" title="${d.app_name}">${d.app_name}</span>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${Math.round((d.downloads/max)*100)}%;background:linear-gradient(90deg,var(--pu),#c084fc)"></div></div>
+      <span class="rank-count">${d.downloads.toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+/* ── WEBSOCKET ───────────────────────── */
+function connectWS() {
+  if (ws && ws.readyState < 2) ws.close();
+  clearTimeout(wsReconnectTimer);
+
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    const pill = document.getElementById('ws-pill');
+    pill.className = 'ws-pill';
+    document.getElementById('ws-label').textContent = 'En vivo';
+    setTicker('WebSocket conectado · escuchando eventos');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      handleWSEvent(msg);
+    } catch(_) {}
+  };
+
+  ws.onclose = () => {
+    const pill = document.getElementById('ws-pill');
+    pill.className = 'ws-pill disconnected';
+    document.getElementById('ws-label').textContent = 'Reconectando...';
+    setTicker('Conexión perdida · reintentando en 5s...');
+    wsReconnectTimer = setTimeout(connectWS, 5000);
+  };
+
+  ws.onerror = () => {};
+}
+
+const eventConfig = {
+  visit:        { icon:'fa-eye',             color:'var(--p)',  bg:'rgba(255,69,0,.12)',  label:'Nueva visita' },
+  chat_used:    { icon:'fa-robot',           color:'var(--pu)', bg:'rgba(168,85,247,.12)',label:'Chat EMI IA' },
+  download:     { icon:'fa-download',        color:'var(--pu)', bg:'rgba(168,85,247,.12)',label:'Descarga APK' },
+  new_rating:   { icon:'fa-star',            color:'var(--a)',  bg:'rgba(255,189,105,.12)',label:'Nueva valoración' },
+  contact_form: { icon:'fa-envelope',        color:'var(--c)',  bg:'rgba(0,229,255,.12)', label:'Formulario de contacto' },
+  new_app:      { icon:'fa-mobile-screen-button', color:'var(--g)', bg:'rgba(0,230,118,.12)',label:'Nueva app publicada' },
+  connected:    { icon:'fa-plug',            color:'var(--g)',  bg:'rgba(0,230,118,.12)', label:'Cliente WS conectado' },
+};
+
+function handleWSEvent(msg) {
+  const cfg = eventConfig[msg.type];
+  if (!cfg) return;
+
+  // Update live ticker
+  let detail = '';
+  if (msg.type === 'visit')        { detail = `Hoy: ${msg.today || '?'} · Total: ${msg.total || '?'}`; animNum('s-today', msg.today || 0); animNum('s-total', msg.total || 0); }
+  if (msg.type === 'chat_used')    { detail = `Modelo: ${msg.model || '?'} · tokens: ${msg.tokens || 0}`; }
+  if (msg.type === 'download')     { detail = msg.fileName || ''; }
+  if (msg.type === 'new_rating')   { detail = `${msg.appName || ''} · ★ ${msg.stars || '?'} · avg ${msg.avg || '?'}`; }
+  if (msg.type === 'contact_form') { detail = `${msg.name || 'Anónimo'} · ${msg.email || '?'}`; }
+  if (msg.type === 'new_app')      { detail = msg.nombre || ''; }
+  if (msg.type === 'connected')    { detail = `${msg.clients || '?'} clientes conectados`; animNum('s-ws', msg.clients || 0); }
+
+  setTicker(`${cfg.label}${detail ? ' · ' + detail : ''}`);
+  addFeedItem(cfg, cfg.label, detail, msg.ts);
+}
+
+function setTicker(msg) {
+  document.getElementById('ticker-msg').textContent = msg;
+}
+
+function addFeedItem(cfg, title, meta, ts) {
+  const list = document.getElementById('feed-list');
+  const empty = list.querySelector('.empty');
+  if (empty) empty.remove();
+
+  feedCount++;
+  document.getElementById('feed-count').textContent = feedCount + ' eventos';
+
+  const time = ts ? new Date(ts).toLocaleTimeString('es-GT', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+  item.innerHTML = `
+    <div class="feed-icon" style="background:${cfg.bg};color:${cfg.color}">
+      <i class="fas ${cfg.icon}"></i>
+    </div>
+    <div class="feed-body">
+      <div class="feed-title">${title}</div>
+      <div class="feed-meta">${meta || '—'}</div>
+    </div>
+    <div class="feed-time">${time}</div>
+  `;
+  list.insertBefore(item, list.firstChild);
+
+  // Límite de items
+  while (list.children.length > MAX_FEED) {
+    list.removeChild(list.lastChild);
+  }
+}
+
+/* ── HELPERS ─────────────────────────── */
+function animNum(id, target) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = parseInt(el.textContent.replace(/[^0-9]/g,'')) || 0;
+  const diff  = target - start;
+  const steps = 20;
+  let i = 0;
+  const t = setInterval(() => {
+    i++;
+    el.textContent = Math.round(start + diff * (i/steps)).toLocaleString('es-GT');
+    if (i >= steps) { el.textContent = target.toLocaleString('es-GT'); clearInterval(t); }
+  }, 18);
+}
+
+function refreshAll() {
+  loadLive();
+  loadSupabase();
+  loadHealth();
+  setTicker('Refrescando datos...');
+}
+
+</script>
+</body>
+</html>
