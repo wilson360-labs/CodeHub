@@ -2,6 +2,12 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<!-- Google AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
+<meta name="google-adsense-account" content="ca-pub-3780093322926832">
+<link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
+<link rel="preconnect" href="https://googleads.g.doubleclick.net" crossorigin>
+<link rel="dns-prefetch" href="https://adservice.google.com">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Apps Premium — CodeHub by Wilson.E</title>
 <meta name="description" content="Aplicaciones Android con funciones premium desbloqueadas. Spotify, YouTube ReVanced, TikTok y más.">
@@ -446,18 +452,18 @@ function buildAppCard(app) {
 
   // Botón principal APK
   const mainBtn = hasLink
-    ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" ${enlace.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>
+    ? `<button class="dl-btn dl-primary" onclick="adGateOpen('${enlace}','${app.nombre}','${img}')">
          <i class="fas fa-download"></i> Descargar APK
-       </a>`
+       </button>`
     : `<span class="dl-btn" style="opacity:.45;cursor:not-allowed;pointer-events:none">
          <i class="fas fa-clock"></i> Próximamente
        </span>`;
 
   // Botón plugin — solo si existe, al lado del APK
   const pluginBtn = plugin
-    ? `<a class="dl-btn dl-plugin" href="${plugin}" onclick="countDl()" target="_blank" rel="noopener" title="Plugin requerido">
+    ? `<button class="dl-btn dl-plugin" onclick="adGateOpen('${plugin}','${app.nombre} · Plugin','${img}')" title="Plugin requerido">
          <i class="fas fa-puzzle-piece"></i> Plugin
-       </a>`
+       </button>`
     : '';
 
   // Botón tutorial — solo si existe, debajo de los botones
@@ -836,6 +842,203 @@ if ('serviceWorker' in navigator) {
         body: JSON.stringify({ page: location.pathname }),
       }).catch(function(){});
     });
+})();
+</script>
+
+<!-- ════════════════════════════════════════
+     AD GATE MODAL — Intersticial pre-descarga
+     ════════════════════════════════════════ -->
+<div id="adgate-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);align-items:center;justify-content:center;">
+  <div id="adgate-box" style="background:#111;border:1px solid rgba(255,69,0,.3);border-radius:22px;padding:1.8rem 1.6rem 1.4rem;max-width:400px;width:92%;font-family:'Syne',sans-serif;box-shadow:0 0 60px rgba(255,69,0,.12);position:relative;">
+
+    <!-- Close X (solo visible en paso "done") -->
+    <button id="adgate-x" onclick="adGateClose()" style="display:none;position:absolute;top:.9rem;right:1rem;background:none;border:none;color:#555;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>
+
+    <!-- App info header -->
+    <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1.1rem;">
+      <img id="adgate-img" src="" alt="" style="width:52px;height:52px;border-radius:13px;object-fit:cover;border:2px solid rgba(255,69,0,.25);">
+      <div>
+        <div id="adgate-name" style="font-weight:700;font-size:.92rem;color:#fff;"></div>
+        <div style="font-size:.72rem;color:#666;margin-top:.15rem;">Descarga gratuita · Solo Android</div>
+      </div>
+    </div>
+
+    <!-- STEP 1: Presentación -->
+    <div id="adgate-s1">
+      <div style="background:rgba(255,255,255,.04);border-radius:12px;padding:.9rem 1rem;margin-bottom:1.1rem;font-size:.78rem;color:#888;line-height:1.75;">
+        <div style="color:#ccc;font-weight:600;margin-bottom:.4rem;font-size:.82rem;">📺 Ver anuncio para descargar</div>
+        Se mostrará un anuncio breve.<br>
+        Al terminar, el botón de descarga se desbloqueará automáticamente.
+        <div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:1.2rem;">
+          <span><i class="fas fa-clock" style="color:#ff4500;margin-right:.3rem;"></i>~5–30 seg</span>
+          <span><i class="fas fa-shield-alt" style="color:#4caf50;margin-right:.3rem;"></i>Sin registro</span>
+          <span><i class="fas fa-download" style="color:#2196f3;margin-right:.3rem;"></i>Descarga directa</span>
+        </div>
+      </div>
+      <button onclick="adGateStartAd()" style="width:100%;padding:.82rem;background:linear-gradient(135deg,#ff4500,#ff6b35);border:none;border-radius:13px;color:#fff;font-weight:700;font-size:.93rem;cursor:pointer;font-family:'Syne',sans-serif;letter-spacing:.02em;">
+        <i class="fas fa-play" style="margin-right:.5rem;"></i>Ver anuncio y descargar
+      </button>
+      <button onclick="adGateClose()" style="width:100%;margin-top:.55rem;padding:.55rem;background:none;border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#555;font-size:.75rem;cursor:pointer;font-family:'Syne',sans-serif;">
+        Cancelar
+      </button>
+    </div>
+
+    <!-- STEP 2: Anuncio activo + timer -->
+    <div id="adgate-s2" style="display:none;">
+      <!-- Contenedor del anuncio gráfico -->
+      <div style="background:rgba(255,255,255,.03);border-radius:12px;overflow:hidden;margin-bottom:.9rem;min-height:100px;display:flex;align-items:center;justify-content:center;">
+        <ins id="adgate-ins" class="adsbygoogle"
+             style="display:block;width:100%;min-height:100px;"
+             data-ad-client="ca-pub-3780093322926832"
+             data-ad-slot="auto"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+      </div>
+      <!-- Timer visual -->
+      <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:.75rem 1rem;margin-bottom:.85rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+          <span style="font-size:.73rem;color:#888;">Tiempo restante</span>
+          <span id="adgate-secs" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.1rem;color:#ff4500;">0:30</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;">
+          <div id="adgate-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#ff4500,#ff6b35);border-radius:3px;transition:width .8s linear;"></div>
+        </div>
+        <div style="margin-top:.45rem;font-size:.68rem;color:#555;text-align:center;">El botón de descarga se desbloqueará al finalizar</div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Listo para descargar -->
+    <div id="adgate-s3" style="display:none;">
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:2.4rem;margin-bottom:.3rem;">✅</div>
+        <div style="color:#4caf50;font-weight:700;font-size:.95rem;">¡Listo! Descarga desbloqueada</div>
+        <div style="color:#666;font-size:.75rem;margin-top:.25rem;">La descarga iniciará automáticamente en un momento…</div>
+      </div>
+      <a id="adgate-dlbtn" href="#" target="_blank" rel="noopener"
+         style="display:block;text-align:center;width:100%;padding:.82rem;background:linear-gradient(135deg,#4caf50,#43a047);border-radius:13px;color:#fff;font-weight:700;font-size:.93rem;font-family:'Syne',sans-serif;text-decoration:none;box-sizing:border-box;">
+        <i class="fas fa-download" style="margin-right:.5rem;"></i>Descargar APK ahora
+      </a>
+      <button onclick="adGateClose()" style="width:100%;margin-top:.55rem;padding:.55rem;background:none;border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#555;font-size:.75rem;cursor:pointer;font-family:'Syne',sans-serif;">
+        Cerrar
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  #adgate-overlay.show { display:flex!important; }
+  @keyframes adgatePop {
+    from { transform:scale(.92);opacity:0; }
+    to   { transform:scale(1);opacity:1; }
+  }
+  #adgate-overlay.show #adgate-box { animation:adgatePop .22s ease; }
+</style>
+
+<script>
+/* ══ AD GATE — Intersticial pre-descarga ══ */
+(function(){
+  let _url='', _dur=30, _elapsed=0, _ticker=null;
+
+  function show(step){
+    ['s1','s2','s3'].forEach(function(s){
+      document.getElementById('adgate-'+s).style.display = s===step?'block':'none';
+    });
+  }
+
+  window.adGateOpen = function(url, name, img){
+    _url = url;
+    document.getElementById('adgate-img').src         = img  || '';
+    document.getElementById('adgate-name').textContent = name || '';
+    document.getElementById('adgate-x').style.display  = 'none';
+    document.getElementById('adgate-dlbtn').href        = url;
+    show('s1');
+    document.getElementById('adgate-overlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.adGateClose = function(){
+    document.getElementById('adgate-overlay').classList.remove('show');
+    document.body.style.overflow = '';
+    _clearTicker();
+  };
+
+  window.adGateStartAd = function(){
+    show('s2');
+    _elapsed = 0;
+
+    // Intentar cargar anuncio real
+    try {
+      var ins = document.getElementById('adgate-ins');
+      // Limpiar por si ya se cargó antes
+      ins.innerHTML = '';
+      ins.removeAttribute('data-adsbygoogle-status');
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    } catch(e){}
+
+    // Detectar duración real: si el iframe de AdSense reporta duración, usarla
+    // Mientras tanto arrancamos con 30s y ajustamos si detectamos menos
+    _dur     = 30;
+    _elapsed = 0;
+    _updateBar();
+    _startTicker();
+  };
+
+  function _startTicker(){
+    _clearTicker();
+    _ticker = setInterval(function(){
+      _elapsed++;
+
+      // Intentar autodetectar duración real del anuncio via iframe cargado
+      try {
+        var frames = document.querySelectorAll('iframe[id^="aswift"]');
+        if(frames.length > 0 && _elapsed === 3){
+          // Si hay iframe activo en menos de 30s, reducir duración a 10s (display ad)
+          _dur = 10;
+        }
+      } catch(e){}
+
+      _updateBar();
+
+      if(_elapsed >= _dur){
+        _clearTicker();
+        _onDone();
+      }
+    }, 1000);
+  }
+
+  function _updateBar(){
+    var rem = Math.max(0, _dur - _elapsed);
+    var pct = Math.min(100, (_elapsed/_dur)*100);
+    document.getElementById('adgate-secs').textContent = '0:' + (rem<10?'0'+rem:rem);
+    document.getElementById('adgate-bar').style.width  = pct + '%';
+  }
+
+  function _onDone(){
+    show('s3');
+    document.getElementById('adgate-x').style.display = 'block';
+    // Registrar descarga
+    countDl();
+    // Auto-trigger descarga al cabo de 1.2s
+    setTimeout(function(){
+      var btn = document.getElementById('adgate-dlbtn');
+      if(btn && btn.href && btn.href !== '#') btn.click();
+    }, 1200);
+  }
+
+  function _clearTicker(){
+    if(_ticker){ clearInterval(_ticker); _ticker=null; }
+  }
+
+  // Cerrar con Escape
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape') adGateClose();
+  });
+
+  // Cerrar al click fuera del box
+  document.getElementById('adgate-overlay').addEventListener('click', function(e){
+    if(e.target === this) adGateClose();
+  });
 })();
 </script>
 </body>
