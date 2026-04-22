@@ -1110,6 +1110,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         #open-to-work {
             margin-top: 0 !important;
         }
+        /* AdSense: ocultar cuando no hay anuncio activo */
+        ins.adsbygoogle[data-ad-status="unfilled"],
+        ins.adsbygoogle:not([data-ad-status]) {
+            display: none !important;
+        }
+        ins.adsbygoogle[data-ad-status="filled"] {
+            display: block !important;
+        }
 
         @keyframes slideInUp {
             from { opacity: 0; transform: translateY(50px); }
@@ -4114,9 +4122,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
         <!-- ══ GOOGLE ADSENSE — Anuncio ══ -->
-        <div style="text-align:center;padding:0.1rem 0;overflow:hidden;">
+        <div style="text-align:center;padding:0;overflow:hidden;min-height:0;line-height:0;">
             <ins class="adsbygoogle"
-                 style="display:block"
+                 style="display:block;min-height:0;"
                  data-ad-client="ca-pub-3780093322926832"
                  data-ad-slot="auto"
                  data-ad-format="auto"
