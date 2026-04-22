@@ -725,6 +725,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             transition: background 0.3s, color 0.3s;
             padding-top: 4.8rem;
         }
+        @media (max-width: 768px) {
+            body { padding-top: 3.8rem; }
+            .mobile-nav { padding-top: 52px; }
+        }
 
         /* ===== HEADER PRO ===== */
         header {
@@ -802,7 +806,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         .mobile-nav {
             display: none;
             position: fixed;
-            top: 58px; left: 0; right: 0;
+            top: 0; left: 0; right: 0;
+            padding-top: 58px;
             background: rgba(5,5,12,.97);
             backdrop-filter: blur(20px);
             border-bottom: 1px solid rgba(255,69,0,.2);
@@ -1088,7 +1093,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         }
 
         section {
-            margin: 4rem 0;
+            margin: 2rem 0;
             padding: 2rem;
             background: rgba(0, 0, 0, 0.2);
             backdrop-filter: blur(10px);
@@ -1097,6 +1102,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             position: relative;
             overflow: hidden;
             animation: slideInUp 0.8s ease-out;
+        }
+        #hero {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        #open-to-work {
+            margin-top: 0 !important;
         }
 
         @keyframes slideInUp {
@@ -3517,7 +3529,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       .fas, .fab, .far, .fa { display: inline-block; min-width: 1em; }
 
         /* ══ OPEN TO WORK â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•══ */
-        #open-to-work { padding: 3rem 0; }
+        #open-to-work { padding: 1rem 0; }
         .otw-inner {
           background: linear-gradient(135deg, rgba(0,230,118,.06), rgba(0,230,118,.02));
           border: 1px solid rgba(0,230,118,.2); border-radius: 24px;
@@ -4102,7 +4114,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 
         <!-- ══ GOOGLE ADSENSE — Anuncio ══ -->
-        <div style="text-align:center;padding:1.2rem 0;overflow:hidden;">
+        <div style="text-align:center;padding:0.1rem 0;overflow:hidden;">
             <ins class="adsbygoogle"
                  style="display:block"
                  data-ad-client="ca-pub-3780093322926832"
