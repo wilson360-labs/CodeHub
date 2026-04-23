@@ -1,0 +1,122 @@
+{
+  "id": "image-gen",
+  "version": "1.0.0",
+  "name": "Generador de Imágenes IA",
+  "description": "Genera imágenes educativas usando los proveedores de IA ya configurados en CodeHub (Together FLUX, Gemini Imagen 3, MiniMax, Pollinations).",
+  "icon": "🎨",
+  "category": "educativa",
+
+  "endpoint": "/api/generate-image",
+  "method": "POST",
+
+  "system_prompt_inject": "El usuario está usando la skill de **Generación de Imágenes IA**. Cuando sugiera imágenes o el usuario pida ayuda con prompts, guíalo para describir imágenes educativas claras. Sugiere presets como: 'diagrama', 'infografía', 'ilustración científica', 'mapa conceptual', 'poster educativo'. Ayuda a mejorar el prompt añadiendo detalles de estilo, colores y composición.",
+
+  "presets": [
+    {
+      "id": "diagrama",
+      "label": "Diagrama",
+      "icon": "📊",
+      "description": "Diagrama técnico con cajas, flechas y etiquetas. Fondo blanco, líneas limpias.",
+      "prompt_suffix": "educational diagram, clean white background, labeled boxes and arrows, technical illustration, clear typography, professional style",
+      "recommended_size": "768x512"
+    },
+    {
+      "id": "infografia",
+      "label": "Infografía",
+      "icon": "📋",
+      "description": "Infografía visual con datos, íconos y secciones organizadas.",
+      "prompt_suffix": "educational infographic, colorful sections, data visualization, icons, clean layout, modern design, white background",
+      "recommended_size": "512x768"
+    },
+    {
+      "id": "ilustracion-cientifica",
+      "label": "Ilustración Científica",
+      "icon": "🔬",
+      "description": "Ilustración estilo científico con detalles precisos y etiquetas.",
+      "prompt_suffix": "scientific illustration, detailed and accurate, labeled parts, textbook style, clean background, educational, high detail",
+      "recommended_size": "512x512"
+    },
+    {
+      "id": "mapa-conceptual",
+      "label": "Mapa Conceptual",
+      "icon": "🗺️",
+      "description": "Mapa conceptual con nodos, conexiones y jerarquías visuales.",
+      "prompt_suffix": "concept map, mind map style, nodes and connections, hierarchy, colorful bubbles, educational poster, white background",
+      "recommended_size": "768x512"
+    },
+    {
+      "id": "poster-educativo",
+      "label": "Póster Educativo",
+      "icon": "📌",
+      "description": "Póster visual atractivo con título, contenido y diseño llamativo.",
+      "prompt_suffix": "educational poster, bold typography, vibrant colors, organized layout, engaging visual design, classroom ready",
+      "recommended_size": "512x768"
+    },
+    {
+      "id": "ilustracion-historica",
+      "label": "Histórica",
+      "icon": "🏛️",
+      "description": "Escena o personaje histórico con estilo ilustrado.",
+      "prompt_suffix": "historical illustration, detailed scene, period-accurate, painterly style, educational, rich colors",
+      "recommended_size": "768x512"
+    },
+    {
+      "id": "matematica-visual",
+      "label": "Matemática Visual",
+      "icon": "📐",
+      "description": "Representación visual de conceptos matemáticos o geométricos.",
+      "prompt_suffix": "mathematical visualization, geometric shapes, clean lines, grid background, color-coded, educational diagram style",
+      "recommended_size": "512x512"
+    },
+    {
+      "id": "naturaleza-ciencias",
+      "label": "Ciencias Naturales",
+      "icon": "🌿",
+      "description": "Ilustración de biología, ecología o ciencias naturales.",
+      "prompt_suffix": "nature science illustration, botanical or biological style, detailed, labeled, educational textbook quality",
+      "recommended_size": "512x512"
+    }
+  ],
+
+  "sizes": [
+    { "id": "512x512",  "label": "Cuadrado (512×512)",       "use": "Avatar, ilustración" },
+    { "id": "768x512",  "label": "Horizontal (768×512)",     "use": "Diagrama, banner" },
+    { "id": "512x768",  "label": "Vertical (512×768)",       "use": "Infografía, póster" },
+    { "id": "1024x576", "label": "Widescreen (1024×576)",    "use": "Presentación, hero" }
+  ],
+
+  "providers_priority": [
+    { "id": "together",         "model": "FLUX.1-schnell",  "label": "FLUX (Together AI)",  "requires_key": "TOGETHER_API_KEY" },
+    { "id": "gemini",           "model": "Imagen 3 Fast",   "label": "Imagen 3 (Google)",   "requires_key": "GEMINI_API_KEY" },
+    { "id": "minimax",          "model": "image-01",        "label": "image-01 (MiniMax)",  "requires_key": "MINIMAX_API_KEY" },
+    { "id": "pollinations",     "model": "Flux",            "label": "Flux (Pollinations)", "requires_key": null },
+    { "id": "pollinations-turbo","model": "Turbo",          "label": "Turbo (Pollinations)","requires_key": null }
+  ],
+
+  "ui": {
+    "placeholder": "Ej: célula animal con sus partes etiquetadas",
+    "hint": "Describe qué quieres visualizar. El preset añade el estilo automáticamente.",
+    "cta": "Generar imagen educativa",
+    "loading_messages": [
+      "Preparando el prompt…",
+      "Contactando proveedor IA…",
+      "Generando imagen (10-30 seg)…",
+      "Casi lista…"
+    ]
+  },
+
+  "limits": {
+    "prompt_max_chars": 500,
+    "requests_per_session": 10,
+    "timeout_ms": 35000
+  },
+
+  "examples": [
+    { "label": "Célula animal",       "prompt": "célula animal con núcleo, mitocondria, ribosomas y membrana celular etiquetados",      "preset": "ilustracion-cientifica" },
+    { "label": "Sistema solar",       "prompt": "sistema solar con los 8 planetas y sus nombres, órbitas y el sol al centro",            "preset": "diagrama" },
+    { "label": "Ciclo del agua",      "prompt": "ciclo del agua mostrando evaporación, condensación, precipitación y escorrentía",      "preset": "infografia" },
+    { "label": "Tabla periódica",     "prompt": "sección de la tabla periódica con metales alcalinos resaltados y sus propiedades",     "preset": "matematica-visual" },
+    { "label": "Revolución Francesa", "prompt": "escena de la Revolución Francesa con la toma de la Bastilla en 1789",                  "preset": "ilustracion-historica" },
+    { "label": "Teorema de Pitágoras","prompt": "triángulo rectángulo mostrando el teorema de Pitágoras con cuadrados en cada lado",    "preset": "matematica-visual" }
+  ]
+}

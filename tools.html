@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+<link rel="stylesheet" href="css/skills-image-gen.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
 <style>
@@ -59,7 +60,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(8,8,16,.9);backdrop-fil
 .chip:hover,.chip.on{border-color:var(--p);color:var(--a);background:rgba(255,69,0,.1)}
 
 /* GRID */
-.grid{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 2rem 4rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.4rem}
+.grid{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 2rem 4rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem}
 
 /* CARD */
 .card{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;transition:var(--tr);animation:fadeUp .5s ease both}
@@ -197,6 +198,7 @@ footer a{color:var(--p);text-decoration:none}
 @keyframes metricIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
 .nm-loaded{animation:metricIn .4s ease both}
 
+@media(max-width:900px) and (min-width:601px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){
   .grid{grid-template-columns:1fr;padding:0 1rem 3rem}
   .fbar{padding:0 1rem}
@@ -225,6 +227,8 @@ footer a{color:var(--p);text-decoration:none}
 .img-quick{display:flex;flex-wrap:wrap;gap:.45rem}
 .img-chip{padding:.34rem .72rem;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer;transition:var(--tr)}
 .img-chip:hover{border-color:var(--border-h);background:rgba(255,69,0,.08);color:var(--text);transform:translateY(-1px)}
+.img-chip.active-edu{border-color:var(--p);background:rgba(255,69,0,.14);color:var(--text);font-weight:700}
+.img-mode-btn.active-tab{border-color:var(--p);background:rgba(255,69,0,.12);color:var(--text)}
 .img-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:.55rem}
 .img-stack{display:flex;flex-direction:column;gap:.55rem}
 .img-meta{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.66rem;color:var(--muted);font-family:var(--mono)}
@@ -658,47 +662,111 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 25 · GENERADOR DE IMÁGENES CON IA -->
 <div class="card" data-tags="dis util">
   <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span></div>
-  <div class="cd">Describe una imagen y la IA la genera gratis al instante.</div>
+  <div class="cd">Describe una imagen y la IA la genera gratis al instante. Modo educativo con presets para clases y materiales didácticos.</div>
   <div class="cp">
-  <textarea class="ti" id="img-prompt" rows="3" placeholder="Ej: Un dragon volando sobre las montanas de Guatemala al atardecer, cinematografico, ultra detallado..."></textarea>
-  <div class="img-quick">
-    <button class="img-chip" onclick="setImagePrompt('Un retrato futurista de un desarrollador guatemalteco con luces neon')">Retrato neon</button>
-    <button class="img-chip" onclick="setImagePrompt('Una interfaz futurista de inteligencia artificial sobre vidrio y luces holograficas')">UI futurista</button>
-    <button class="img-chip" onclick="setImagePrompt('Paisaje de Guatemala al amanecer con volcanes, nubes y luz dorada')">Guatemala epica</button>
-    <button class="img-chip" onclick="setImagePrompt('Mascota robot amigable para una app de tecnologia, estilo premium')">Mascota tech</button>
+
+  <!-- Selector de modo -->
+  <div style="display:flex;gap:.4rem;margin-bottom:.85rem">
+    <button class="tb active-tab img-mode-btn" id="img-mode-libre" onclick="switchImageMode('libre')"><i class="fas fa-paint-brush"></i> Modo libre</button>
+    <button class="tb img-mode-btn" id="img-mode-edu" onclick="switchImageMode('educativa')"><i class="fas fa-graduation-cap"></i> Modo educativo</button>
   </div>
-  <div class="img-grid">
-    <div class="img-stack">
-      <select class="ts" id="img-style">
-        <option value="">Sin estilo</option>
-        <option value="realistic photo, cinematic lighting">Foto realista</option>
-        <option value="digital art, polished details">Arte digital</option>
-        <option value="anime style, vibrant colors">Anime</option>
-        <option value="oil painting, rich brush strokes">Pintura al oleo</option>
-        <option value="pixel art, retro game aesthetic">Pixel art</option>
-        <option value="watercolor, soft texture">Acuarela</option>
-      </select>
-      <div class="img-toolbar">
-        <button class="tb" onclick="enhanceImagePrompt()"><i class="fas fa-wand-magic-sparkles"></i> Mejorar prompt</button>
-        <button class="tb" onclick="randomImagePrompt()"><i class="fas fa-shuffle"></i> Aleatorio</button>
+
+  <!-- ── MODO LIBRE ─────────────────────────────────── -->
+  <div id="img-panel-libre">
+    <textarea class="ti" id="img-prompt" rows="3" placeholder="Ej: Un dragon volando sobre las montanas de Guatemala al atardecer, cinematografico, ultra detallado..."></textarea>
+    <div class="img-quick">
+      <button class="img-chip" onclick="setImagePrompt('Un retrato futurista de un desarrollador guatemalteco con luces neon')">Retrato neon</button>
+      <button class="img-chip" onclick="setImagePrompt('Una interfaz futurista de inteligencia artificial sobre vidrio y luces holograficas')">UI futurista</button>
+      <button class="img-chip" onclick="setImagePrompt('Paisaje de Guatemala al amanecer con volcanes, nubes y luz dorada')">Guatemala epica</button>
+      <button class="img-chip" onclick="setImagePrompt('Mascota robot amigable para una app de tecnologia, estilo premium')">Mascota tech</button>
+    </div>
+    <div class="img-grid">
+      <div class="img-stack">
+        <select class="ts" id="img-style">
+          <option value="">Sin estilo</option>
+          <option value="realistic photo, cinematic lighting">Foto realista</option>
+          <option value="digital art, polished details">Arte digital</option>
+          <option value="anime style, vibrant colors">Anime</option>
+          <option value="oil painting, rich brush strokes">Pintura al oleo</option>
+          <option value="pixel art, retro game aesthetic">Pixel art</option>
+          <option value="watercolor, soft texture">Acuarela</option>
+        </select>
+        <div class="img-toolbar">
+          <button class="tb" onclick="enhanceImagePrompt()"><i class="fas fa-wand-magic-sparkles"></i> Mejorar prompt</button>
+          <button class="tb" onclick="randomImagePrompt()"><i class="fas fa-shuffle"></i> Aleatorio</button>
+        </div>
+      </div>
+      <div class="img-stack">
+        <select class="ts" id="img-size" onchange="updateImageHints()">
+          <option value="512x512">1:1 · 512x512</option>
+          <option value="768x512">3:2 · 768x512</option>
+          <option value="512x768">2:3 · 512x768</option>
+          <option value="1024x576">16:9 · 1024x576</option>
+        </select>
+        <div class="img-meta">
+          <span id="img-model-hint">Auto · rota entre Together, Gemini, MiniMax y Pollinations</span>
+          <span id="img-size-hint">Listo para web</span>
+        </div>
       </div>
     </div>
-    <div class="img-stack">
-      <select class="ts" id="img-size" onchange="updateImageHints()">
-        <option value="512x512">1:1 · 512x512</option>
-        <option value="768x512">3:2 · 768x512</option>
-        <option value="512x768">2:3 · 512x768</option>
-        <option value="1024x576">16:9 · 1024x576</option>
-      </select>
-      <div class="img-meta">
-        <span id="img-model-hint">Auto · rota entre Together, Gemini, MiniMax y Pollinations</span>
-        <span id="img-size-hint">Listo para web</span>
-      </div>
+    <div class="img-note"><strong>Tip:</strong> pide camara, iluminacion, estilo y composicion para obtener mejores resultados. Ejemplo: <em>"retrato editorial, luz volumetrica, fondo oscuro, alta definicion"</em>.</div>
+    <button class="tb primary" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
+  </div><!-- /img-panel-libre -->
+
+  <!-- ── MODO EDUCATIVO (skill image-gen) ──────────── -->
+  <div id="img-panel-edu" style="display:none">
+
+    <!-- Presets -->
+    <div style="font-family:var(--mono);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Tipo de imagen educativa</div>
+    <div class="img-quick" id="edu-presets" style="margin-bottom:.75rem;gap:.4rem">
+      <button class="img-chip edu-preset active-edu" data-id="diagrama" data-suffix="educational diagram, clean white background, labeled boxes and arrows, technical illustration, clear typography, professional style" data-size="768x512" data-hint="Diagrama técnico con cajas, flechas y etiquetas. Fondo blanco, líneas limpias." onclick="selectEduPreset(this)">📊 Diagrama</button>
+      <button class="img-chip edu-preset" data-id="infografia" data-suffix="educational infographic, colorful sections, data visualization, icons, clean layout, modern design, white background" data-size="512x768" data-hint="Infografía visual con datos, íconos y secciones organizadas." onclick="selectEduPreset(this)">📋 Infografía</button>
+      <button class="img-chip edu-preset" data-id="ilustracion-cientifica" data-suffix="scientific illustration, detailed and accurate, labeled parts, textbook style, clean background, educational, high detail" data-size="512x512" data-hint="Ilustración estilo científico con detalles precisos y etiquetas." onclick="selectEduPreset(this)">🔬 Científica</button>
+      <button class="img-chip edu-preset" data-id="mapa-conceptual" data-suffix="concept map, mind map style, nodes and connections, hierarchy, colorful bubbles, educational poster, white background" data-size="768x512" data-hint="Mapa conceptual con nodos, conexiones y jerarquías visuales." onclick="selectEduPreset(this)">🗺️ Mapa conceptual</button>
+      <button class="img-chip edu-preset" data-id="poster-educativo" data-suffix="educational poster, bold typography, vibrant colors, organized layout, engaging visual design, classroom ready" data-size="512x768" data-hint="Póster visual atractivo con título, contenido y diseño llamativo." onclick="selectEduPreset(this)">📌 Póster</button>
+      <button class="img-chip edu-preset" data-id="ilustracion-historica" data-suffix="historical illustration, detailed scene, period-accurate, painterly style, educational, rich colors" data-size="768x512" data-hint="Escena o personaje histórico con estilo ilustrado." onclick="selectEduPreset(this)">🏛️ Histórica</button>
+      <button class="img-chip edu-preset" data-id="matematica-visual" data-suffix="mathematical visualization, geometric shapes, clean lines, grid background, color-coded, educational diagram style" data-size="512x512" data-hint="Representación visual de conceptos matemáticos o geométricos." onclick="selectEduPreset(this)">📐 Matemática</button>
+      <button class="img-chip edu-preset" data-id="naturaleza-ciencias" data-suffix="nature science illustration, botanical or biological style, detailed, labeled, educational textbook quality" data-size="512x512" data-hint="Ilustración de biología, ecología o ciencias naturales." onclick="selectEduPreset(this)">🌿 Ciencias naturales</button>
     </div>
-  </div>
-  <div class="img-note"><strong>Tip:</strong> pide camara, iluminacion, estilo y composicion para obtener mejores resultados. Ejemplo: <em>"retrato editorial, luz volumetrica, fondo oscuro, alta definicion"</em>.</div>
-  <button class="tb primary" onclick="generateImage()" id="img-btn"><i class="fas fa-image"></i> Generar imagen</button>
+
+    <!-- Hint -->
+    <div id="edu-preset-hint" style="font-family:var(--mono);font-size:.74rem;color:var(--p);background:rgba(255,69,0,.07);border-left:3px solid var(--p);padding:.45rem .75rem;border-radius:0 8px 8px 0;margin-bottom:.75rem">📊 Diagrama técnico con cajas, flechas y etiquetas. Fondo blanco, líneas limpias.</div>
+
+    <!-- Prompt -->
+    <textarea class="ti" id="edu-prompt" rows="3" placeholder="Ej: célula animal con núcleo, mitocondria, ribosomas y membrana celular etiquetados"></textarea>
+
+    <!-- Ejemplos -->
+    <div style="font-family:var(--mono);font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:.65rem 0 .4rem">Ejemplos rápidos</div>
+    <div class="img-quick" style="margin-bottom:.75rem">
+      <button class="img-chip" onclick="setEduExample('célula animal con núcleo, mitocondria, ribosomas y membrana celular etiquetados','ilustracion-cientifica')">Célula animal</button>
+      <button class="img-chip" onclick="setEduExample('sistema solar con los 8 planetas y sus nombres, órbitas y el sol al centro','diagrama')">Sistema solar</button>
+      <button class="img-chip" onclick="setEduExample('ciclo del agua mostrando evaporación, condensación, precipitación y escorrentía','infografia')">Ciclo del agua</button>
+      <button class="img-chip" onclick="setEduExample('triángulo rectángulo mostrando el teorema de Pitágoras con cuadrados en cada lado','matematica-visual')">Pitágoras</button>
+      <button class="img-chip" onclick="setEduExample('escena de la Revolución Francesa con la toma de la Bastilla en 1789','ilustracion-historica')">Rev. Francesa</button>
+      <button class="img-chip" onclick="setEduExample('fotosíntesis mostrando luz solar, clorofila, CO2 y producción de glucosa y O2','ilustracion-cientifica')">Fotosíntesis</button>
+    </div>
+
+    <!-- Tamaño -->
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--muted);white-space:nowrap">Tamaño</span>
+      <select class="ts" id="edu-size" style="flex:1">
+        <option value="512x512">Cuadrado 512×512 — Avatar, ilustración</option>
+        <option value="768x512" selected>Horizontal 768×512 — Diagrama, banner</option>
+        <option value="512x768">Vertical 512×768 — Infografía, póster</option>
+        <option value="1024x576">Widescreen 1024×576 — Presentación, hero</option>
+      </select>
+    </div>
+
+    <div class="img-note" style="margin-bottom:.75rem">
+      <strong>Skill educativa:</strong> el preset añade instrucciones de estilo automáticamente para generar imágenes aptas para clases, presentaciones y materiales didácticos.
+    </div>
+
+    <button class="tb primary" onclick="generateImageEdu()" id="edu-btn"><i class="fas fa-graduation-cap"></i> Generar imagen educativa</button>
+  </div><!-- /img-panel-edu -->
+
+  <!-- Salida compartida -->
   <div id="img-out" class="img-out-shell"></div>
+
   </div><!-- /cp -->
 </div>
 
@@ -1835,6 +1903,149 @@ async function generateImage() {
   showError();
 }
 
+// ── SKILL: Modo imagen ─────────────────────────────────────────
+function switchImageMode(mode) {
+  var libre = document.getElementById('img-panel-libre');
+  var edu   = document.getElementById('img-panel-edu');
+  var btnL  = document.getElementById('img-mode-libre');
+  var btnE  = document.getElementById('img-mode-edu');
+  var out   = document.getElementById('img-out');
+  out.innerHTML = ''; out.classList.remove('on');
+  if (mode === 'libre') {
+    libre.style.display = ''; edu.style.display = 'none';
+    btnL.classList.add('active-tab'); btnE.classList.remove('active-tab');
+  } else {
+    libre.style.display = 'none'; edu.style.display = '';
+    btnE.classList.add('active-tab'); btnL.classList.remove('active-tab');
+  }
+}
+
+function selectEduPreset(btn) {
+  document.querySelectorAll('.edu-preset').forEach(function(b){ b.classList.remove('active-edu'); });
+  btn.classList.add('active-edu');
+  var hint = document.getElementById('edu-preset-hint');
+  if (hint) hint.textContent = btn.dataset.hint || '';
+  var sizeEl = document.getElementById('edu-size');
+  if (sizeEl && btn.dataset.size) {
+    var opt = Array.from(sizeEl.options).find(function(o){ return o.value === btn.dataset.size; });
+    if (opt) sizeEl.value = btn.dataset.size;
+  }
+}
+
+function setEduExample(prompt, presetId) {
+  document.getElementById('edu-prompt').value = prompt;
+  var btn = document.querySelector('.edu-preset[data-id="' + presetId + '"]');
+  if (btn) selectEduPreset(btn);
+}
+
+async function generateImageEdu() {
+  var promptRaw = document.getElementById('edu-prompt').value.trim();
+  var out       = document.getElementById('img-out');
+  var btn       = document.getElementById('edu-btn');
+  if (!promptRaw) { toast('Describe la imagen educativa que quieres generar'); return; }
+
+  var activePreset = document.querySelector('.edu-preset.active-edu');
+  var suffix  = activePreset ? activePreset.dataset.suffix : '';
+  var presetId= activePreset ? activePreset.dataset.id    : 'diagrama';
+  var size    = document.getElementById('edu-size').value || '768x512';
+  var parts   = size.split('x');
+  var w = parseInt(parts[0]) || 768, h = parseInt(parts[1]) || 512;
+  var prompt  = suffix ? promptRaw + ', ' + suffix : promptRaw;
+  var BACKEND = 'https://codehub-98s6.onrender.com';
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+  out.classList.add('on');
+
+  function setStatus(icon, title, sub, pct) {
+    out.innerHTML =
+      '<div style="padding:1.2rem;font-family:var(--mono)">' +
+        '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.7rem">' +
+          '<span style="font-size:1.4rem">' + icon + '</span>' +
+          '<div>' +
+            '<div style="font-size:.85rem;font-weight:700;color:var(--text)">' + title + '</div>' +
+            '<div style="font-size:.72rem;color:var(--muted);margin-top:.1rem">' + sub + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:rgba(255,255,255,.07);border-radius:4px;height:4px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:4px;transition:width .4s ease"></div>' +
+        '</div>' +
+        '<div style="margin-top:.6rem;font-size:.7rem;color:var(--muted);text-align:center">🎓 Skill educativa activa — preset: ' + presetId + '</div>' +
+      '</div>';
+  }
+
+  function showResult(src, provName) {
+    out.innerHTML =
+      '<div class="img-preview">' +
+        '<span class="img-badge">🎓 ' + provName + '</span>' +
+        '<img src="' + src + '" alt="Imagen educativa generada">' +
+      '</div>' +
+      '<div class="img-actions">' +
+        '<a href="' + src + '" target="_blank" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-external-link-alt"></i> Ver completa</a>' +
+        '<a href="' + src + '" download="educativa-' + presetId + '.png" class="tb" style="text-decoration:none;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-download"></i> Descargar</a>' +
+        '<button class="tb" onclick="generateImageEdu()"><i class="fas fa-rotate"></i> Regenerar</button>' +
+      '</div>' +
+      '<div class="img-caption">Skill IA educativa · Preset: ' + presetId + ' · ' + provName + '</div>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-graduation-cap"></i> Generar imagen educativa';
+  }
+
+  function showError() {
+    out.innerHTML =
+      '<div style="padding:1rem;text-align:center">' +
+        '<div style="font-size:.85rem;font-weight:700;color:#ff6b6b">Todos los modelos ocupados</div>' +
+        '<div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Las IAs gratuitas tienen alta demanda</div>' +
+        '<button class="tb" onclick="generateImageEdu()" style="margin-top:.8rem"><i class="fas fa-rotate"></i> Reintentar</button>' +
+      '</div>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-graduation-cap"></i> Generar imagen educativa';
+  }
+
+  function countdown(secs, msg) {
+    return new Promise(function(resolve) {
+      var remaining = secs;
+      var tick = setInterval(function() {
+        remaining--;
+        out.innerHTML = '<div style="padding:1.2rem;font-family:var(--mono);text-align:center"><div style="font-size:.82rem;color:var(--muted)">' + msg + '</div><div style="font-size:2rem;font-weight:700;color:var(--a);margin:.4rem 0">' + remaining + 's</div></div>';
+        if (remaining <= 0) { clearInterval(tick); resolve(); }
+      }, 1000);
+    });
+  }
+
+  var providers = [
+    { icon: '⚡', name: 'FLUX.1 Schnell', sub: 'Together AI', pct: 35, type: 'together' },
+    { icon: '💎', name: 'Imagen 3 Fast',  sub: 'Google Gemini', pct: 60, type: 'gemini' },
+    { icon: '🎨', name: 'image-01',       sub: 'MiniMax AI', pct: 78, type: 'minimax' },
+    { icon: '🌊', name: 'Flux',           sub: 'Pollinations AI', pct: 90, type: 'pollinations' },
+    { icon: '🌀', name: 'Turbo',          sub: 'Pollinations AI', pct: 97, type: 'pollinations' },
+  ];
+
+  for (var i = 0; i < providers.length; i++) {
+    var prov = providers[i];
+    setStatus(prov.icon, 'Generando con ' + prov.name + '...', prov.sub + ' — modelo ' + (i+1) + ' de ' + providers.length, prov.pct);
+    try {
+      var bodyData = { prompt: prompt, width: w, height: h, provider: prov.type, skill_id: 'image-gen', preset_id: presetId };
+      var resp = await Promise.race([
+        fetch(BACKEND + '/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyData)
+        }),
+        new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 35000); })
+      ]);
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data.ok && (data.image || data.url)) {
+          showResult(data.image || data.url, prov.sub + ' · ' + prov.name);
+          return;
+        }
+      }
+    } catch(e) { console.warn(prov.name + ' falló:', e.message); }
+    if (i < providers.length - 1) await countdown(3, prov.name + ' no disponible. Reintentando...');
+  }
+  showError();
+}
+
 function setImagePrompt(text) {
   document.getElementById('img-prompt').value = text;
 }
@@ -2705,5 +2916,6 @@ async function rvResolve(force) {
     });
 })();
 </script>
+<script src="js/skills-image-gen.js"></script>
 </body>
 </html>
