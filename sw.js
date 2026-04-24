@@ -32,7 +32,8 @@ self.addEventListener('install', e => {
       ))
     )
   );
-  self.skipWaiting();
+  // NO llamar self.skipWaiting() aquí.
+  // El SW nuevo queda en estado "waiting" hasta que el usuario confirme.
 });
 
 // ── ACTIVATE ─────────────────────────────────────────

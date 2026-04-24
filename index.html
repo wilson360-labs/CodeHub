@@ -3699,6 +3699,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </style>
 </head>
 <body>
+<!-- ── Banner de actualización (aparece solo cuando hay SW nuevo) ── -->
+<div id="sw-update-banner" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a2e;border:1px solid rgba(255,69,0,.45);border-radius:14px;padding:.75rem 1.1rem;align-items:center;gap:.85rem;box-shadow:0 8px 32px rgba(0,0,0,.55);font-family:var(--mono,monospace);font-size:.78rem;color:#e8e8f0;max-width:420px;width:calc(100% - 2rem)">
+  <span style="font-size:1.1rem">🔄</span>
+  <span style="flex:1;line-height:1.35">Nueva versión disponible.<br><span style="color:rgba(232,232,240,.55);font-size:.7rem">Recarga para aplicar los cambios.</span></span>
+  <button onclick="updatePWA()" style="background:rgba(255,69,0,.18);border:1px solid rgba(255,69,0,.5);border-radius:8px;color:#ff6a1a;padding:.38rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(255,69,0,.3)'" onmouseout="this.style.background='rgba(255,69,0,.18)'">Actualizar</button>
+  <button onclick="dismissUpdateBanner()" style="background:none;border:none;color:rgba(232,232,240,.4);font-size:1.1rem;cursor:pointer;padding:0 .2rem;line-height:1" title="Cerrar">×</button>
+</div>
+
     <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PFVCPFJJ"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -8265,18 +8273,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Service Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€───
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      console.log('✅ SW registrado v4.1');
+    let refreshing = false;
 
-      // Verificar actualizaciones cada 30 min (silencioso, sin banner para usuarios)
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('✅ SW registrado v4.2');
+
+      // Verificar actualizaciones cada 30 min
       setInterval(() => reg.update(), 30 * 60 * 1000);
+
+      // Mostrar banner cuando hay SW nuevo en espera — NO recargar automáticamente
+      function onSWWaiting() {
+        const banner = document.getElementById('sw-update-banner');
+        if (banner) banner.style.display = 'flex';
+      }
+
+      if (reg.waiting) onSWWaiting();
+
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW.addEventListener('statechange', () => {
+          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+            onSWWaiting();
+          }
+        });
+      });
 
     }).catch(e => console.warn('SW error:', e));
 
-
-
-    // Recargar cuando el SW nuevo tome control
-    let refreshing = false;
+    // Recargar solo cuando el usuario acepta la actualización (intencional)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (!refreshing) { refreshing = true; location.reload(); }
     });
@@ -8284,9 +8308,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updatePWA() {
     navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      else location.reload();
+      if (reg?.waiting) {
+        refreshing = true;
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        location.reload();
+      }
     });
+  }
+
+  function dismissUpdateBanner() {
+    const banner = document.getElementById('sw-update-banner');
+    if (banner) banner.style.display = 'none';
   }
   </script>
 
