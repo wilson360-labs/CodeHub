@@ -1885,3 +1885,25 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
   });
 })();
+
+// ── RENDER KEEPALIVE — se agrega después del server.listen ────
+// Render free tier apaga el servicio tras ~15 min de inactividad.
+// Self-ping cada 10 min mantiene el proceso vivo sin servicio externo.
+// Requiere: RENDER_EXTERNAL_URL en las variables de entorno de Render.
+
+function startRenderKeepalive() {
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL || null;
+  if (!SELF_URL) {
+    console.log('   Keepalive:  ⚠️  agrega RENDER_EXTERNAL_URL en Render > Environment');
+    return;
+  }
+  const target = SELF_URL.replace(//$/, '') + '/api/health';
+  const lib = target.startsWith('https') ? require('https') : require('http');
+  setInterval(() => {
+    lib.get(target, (res) => {
+      console.log('🔔 Render keepalive ping →', res.statusCode);
+    }).on('error', (e) => console.warn('⚠️  Keepalive error:', e.message));
+  }, 10 * 60 * 1000);
+  console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
+}
+startRenderKeepalive();

@@ -446,50 +446,84 @@ function logAdminActivity(msg) {
 }
 
 // ── UPLOAD APK ────────────────────────────────────────────────
-// El backend recibe el stream directamente y lo reenvía en tiempo real
-// a Telegram o Archive.org — sin buffer completo en RAM de Render.
-async function uploadAPK(appId, slot, input) {
+// Usa XHR para obtener progreso real de subida (fetch no expone upload progress).
+// Muestra barra de progreso inline junto al botón durante la subida.
+function uploadAPK(appId, slot, input) {
   const file = input.files[0];
   if (!file) return;
   const sizeMB  = (file.size / 1024 / 1024).toFixed(1);
   const destino = file.size > 50 * 1024 * 1024 ? '🏛️ Archive.org' : '📨 Telegram';
   const label   = input.previousElementSibling;
 
+  // Crear/reutilizar barra de progreso inline
+  let progressWrap = input.parentElement.querySelector('.apk-progress-wrap');
+  if (!progressWrap) {
+    progressWrap = document.createElement('div');
+    progressWrap.className = 'apk-progress-wrap';
+    progressWrap.style.cssText = 'margin-top:.4rem;height:5px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;';
+    const bar = document.createElement('div');
+    bar.className = 'apk-progress-bar';
+    bar.style.cssText = 'height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--p2));border-radius:999px;transition:width .2s;';
+    progressWrap.appendChild(bar);
+    input.parentElement.appendChild(progressWrap);
+  }
+  const progressBar = progressWrap.querySelector('.apk-progress-bar');
+  progressBar.style.width = '0%';
+  progressWrap.style.display = 'block';
+
   toast(`⬆️ ${file.name} (${sizeMB} MB) → ${destino}...`);
-  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${sizeMB} MB → ${destino}`;
+  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 0% · ${sizeMB} MB → ${destino}`;
   label.style.color = 'var(--a)';
 
-  try {
-    const formData = new FormData();
-    formData.append('apk', file);
-    formData.append('slot', slot);
+  const formData = new FormData();
+  formData.append('apk', file);
+  formData.append('slot', slot);
 
-    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/upload`, {
-      method: 'POST',
-      headers: { 'x-admin-key': ADMIN_KEY },
-      body: formData,
-    });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const d = await res.json();
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${BACKEND}/api/admin/apps/${appId}/upload`);
+  xhr.setRequestHeader('x-admin-key', ADMIN_KEY);
 
-    const storageLabel = { telegram: '📨 Telegram', supabase: '☁️ Supabase', archive: '🏛️ Archive.org' }[d.storage] || d.storage;
-    toast(`✅ APK subido · ${d.sizeMB} MB · ${storageLabel}`);
+  xhr.upload.addEventListener('progress', (e) => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round((e.loaded / e.total) * 100);
+    progressBar.style.width = pct + '%';
+    label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${pct}% · ${(e.loaded/1024/1024).toFixed(1)}/${sizeMB} MB → ${destino}`;
+  });
 
-    const linkInput = document.getElementById('link-' + appId);
-    if (linkInput) linkInput.value = d.downloadUrl;
-    const app = appsData.find(a => a.appId === appId);
-    if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
+  xhr.addEventListener('load', async () => {
+    progressBar.style.width = '100%';
+    try {
+      const d = JSON.parse(xhr.responseText);
+      if (xhr.status >= 400) throw new Error(d.error || 'Error del servidor');
+      const storageLabel = { telegram: '📨 Telegram', supabase: '☁️ Supabase', archive: '🏛️ Archive.org' }[d.storage] || d.storage;
+      toast(`✅ APK subido · ${d.sizeMB} MB · ${storageLabel}`);
+      const linkInput = document.getElementById('link-' + appId);
+      if (linkInput) linkInput.value = d.downloadUrl;
+      const app = appsData.find(a => a.appId === appId);
+      if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
+      label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
+      label.style.color = 'var(--g)';
+      setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }, 2000);
+      await refreshApps();
+    } catch (e) {
+      toast('❌ Error: ' + e.message);
+      label.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> APK → Storage';
+      label.style.color = 'var(--c)';
+      progressBar.style.background = '#ff6b6b';
+      setTimeout(() => { progressWrap.style.display = 'none'; progressBar.style.background = 'linear-gradient(90deg,var(--p),var(--p2))'; }, 2500);
+    }
+    input.value = '';
+  });
 
-    label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
-    label.style.color = 'var(--g)';
-    await refreshApps();
-
-  } catch (e) {
-    toast('❌ Error: ' + e.message);
+  xhr.addEventListener('error', () => {
+    toast('❌ Error de red al subir el APK');
     label.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> APK → Storage';
     label.style.color = 'var(--c)';
-  }
-  input.value = '';
+    progressWrap.style.display = 'none';
+    input.value = '';
+  });
+
+  xhr.send(formData);
 }
 
 // ── DELETE APP ────────────────────────────────────────────────
@@ -1011,37 +1045,72 @@ function handleBulkFiles(files) {
       <span class="bulk-item-name">${f.name}</span>
       <span class="bulk-item-size">${(f.size/1024/1024).toFixed(1)} MB</span>
       <span id="bstatus-${i}" style="font-family:var(--mono);font-size:.63rem;color:var(--muted);white-space:nowrap">Pendiente</span>
+      <div id="bbar-wrap-${i}" style="display:none;width:60px;height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden;">
+        <div id="bbar-${i}" style="height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--p2));border-radius:999px;transition:width .15s;"></div>
+      </div>
     </div>`).join('');
   if (!arr.length) return;
   const prog = document.getElementById('bulk-progress');
   const bar  = document.getElementById('bulk-bar');
   const stat = document.getElementById('bulk-status');
   prog.style.display = 'block';
-  let done = 0;
-  arr.forEach(async (file, i) => {
-    const match = file.name.match(/^(.+?)_(main|plugin)\.apk$/i);
-    const appId = match ? match[1] : null;
-    const slot  = match ? match[2] : 'main';
-    const bstat = document.getElementById('bstatus-' + i);
-    if (!appId || !appsData.find(a => a.appId === appId)) {
-      bstat.textContent = '⚠️ App no encontrada'; bstat.style.color = 'var(--a)';
-      done++; bar.style.width = (done/arr.length*100)+'%'; return;
-    }
-    bstat.textContent = '⬆️ Subiendo...'; bstat.style.color = 'var(--c)';
-    const fd = new FormData();
-    fd.append('apk', file); fd.append('slot', slot);
-    try {
-      const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/upload`, {
-        method: 'POST', headers: { 'x-admin-key': ADMIN_KEY }, body: fd,
+  bar.style.width = '0%';
+  stat.textContent = 'Procesando...';
+
+  // ⚠️ FIX: forEach+async no espera — usar for-of secuencial con Promise
+  (async () => {
+    for (let i = 0; i < arr.length; i++) {
+      const file  = arr[i];
+      const match = file.name.match(/^(.+?)_(main|plugin)\.apk$/i);
+      const appId = match ? match[1] : null;
+      const slot  = match ? match[2] : 'main';
+      const bstat    = document.getElementById('bstatus-' + i);
+      const bbarWrap = document.getElementById('bbar-wrap-' + i);
+      const bbar     = document.getElementById('bbar-' + i);
+
+      if (!appId || !appsData.find(a => a.appId === appId)) {
+        bstat.textContent = '⚠️ No encontrada'; bstat.style.color = 'var(--a)';
+        bar.style.width = ((i + 1) / arr.length * 100) + '%';
+        continue;
+      }
+
+      bstat.textContent = '⬆️ 0%'; bstat.style.color = 'var(--c)';
+      bbarWrap.style.display = 'block';
+      stat.textContent = `Subiendo ${i + 1}/${arr.length}: ${file.name}`;
+
+      await new Promise((resolve) => {
+        const fd = new FormData();
+        fd.append('apk', file); fd.append('slot', slot);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${BACKEND}/api/admin/apps/${appId}/upload`);
+        xhr.setRequestHeader('x-admin-key', ADMIN_KEY);
+        xhr.upload.addEventListener('progress', (e) => {
+          if (!e.lengthComputable) return;
+          const pct = Math.round(e.loaded / e.total * 100);
+          bbar.style.width = pct + '%';
+          bstat.textContent = `⬆️ ${pct}%`;
+        });
+        xhr.addEventListener('load', () => {
+          bbar.style.width = '100%';
+          if (xhr.status >= 400) {
+            bstat.textContent = '❌ Error'; bstat.style.color = '#ff6b6b';
+          } else {
+            bstat.textContent = '✅ OK'; bstat.style.color = 'var(--g)';
+          }
+          bar.style.width = ((i + 1) / arr.length * 100) + '%';
+          resolve();
+        });
+        xhr.addEventListener('error', () => {
+          bstat.textContent = '❌ Red'; bstat.style.color = '#ff6b6b';
+          bar.style.width = ((i + 1) / arr.length * 100) + '%';
+          resolve();
+        });
+        xhr.send(fd);
       });
-      if (!res.ok) throw new Error();
-      bstat.textContent = '✅ OK'; bstat.style.color = 'var(--g)';
-    } catch {
-      bstat.textContent = '❌ Error'; bstat.style.color = '#ff6b6b';
     }
-    done++; bar.style.width = (done/arr.length*100)+'%';
-    if (done === arr.length) { stat.textContent = '✅ Proceso completado'; refreshApps(); }
-  });
+    stat.textContent = '✅ Proceso completado';
+    refreshApps();
+  })();
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
