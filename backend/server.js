@@ -1325,38 +1325,60 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
           : { tg_message_id:    msg.message_id, tg_file_id:        fileId, enlace:        downloadUrl, updatedAt: new Date() };
 
       } else if (useIA) {
-        // ── STREAMING → Archive.org S3 ────────────────────────
+        // ── BUFFER → Archive.org S3 ───────────────────────────
+        // Archive.org S3 rechaza Transfer-Encoding: chunked (HTTP 411 Length Required).
+        // SOLUCIÓN: acumular en archivo temporal en disco para obtener el Content-Length
+        // exacto antes de hacer el PUT. Render tiene /tmp con espacio suficiente.
         storageLabel = 'archive';
+        const os   = require('os');
+        const path = require('path');
+        const fs   = require('fs');
+        const tmpPath = path.join(os.tmpdir(), fileName);
+
+        // 1. Escribir stream a disco temporal
+        await new Promise((resolve, reject) => {
+          const tmpWrite = fs.createWriteStream(tmpPath);
+          fileStream.on('data', chunk => { bytesOut += chunk.length; });
+          fileStream.pipe(tmpWrite);
+          tmpWrite.on('finish', resolve);
+          tmpWrite.on('error', reject);
+          fileStream.on('error', reject);
+        });
+
+        const fileSize = fs.statSync(tmpPath).size;
         const oldIaFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
         if (oldIaFile) await deleteFromArchive(oldIaFile).catch(() => {});
 
+        // 2. PUT con Content-Length exacto — Archive.org lo exige
         await new Promise((resolve, reject) => {
           const iaReq = https.request({
             hostname: 's3.us.archive.org',
             path:     `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
             method:   'PUT',
             headers:  {
-              'Authorization':          `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
-              'Content-Type':           'application/vnd.android.package-archive',
-              'Transfer-Encoding':      'chunked',
-              'x-amz-auto-make-bucket': '0',
-              'x-archive-queue-derive': '0',
+              'Authorization':            `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
+              'Content-Type':             'application/vnd.android.package-archive',
+              'Content-Length':           fileSize,
+              'x-amz-auto-make-bucket':   '0',
+              'x-archive-queue-derive':   '0',
               'x-archive-meta-mediatype': 'software',
-              'x-archive-meta-subject': 'android;apk;application',
-              ...(a.nombre    ? { 'x-archive-meta-title':       `${a.nombre} APK` } : {}),
-              ...(a.version   ? { 'x-archive-meta-description': `Version ${a.version}` } : {}),
+              'x-archive-meta-subject':   'android;apk;application',
+              ...(a.nombre  ? { 'x-archive-meta-title':       `${a.nombre} APK`    } : {}),
+              ...(a.version ? { 'x-archive-meta-description': `Version ${a.version}` } : {}),
             },
           }, (iaRes) => {
             const chunks = []; iaRes.on('data', c => chunks.push(c));
             iaRes.on('end', () => {
+              fs.unlink(tmpPath, () => {}); // limpiar temp
               if (iaRes.statusCode >= 200 && iaRes.statusCode < 300) return resolve();
-              reject(new Error(`Archive.org S3 ${iaRes.statusCode}: ${Buffer.concat(chunks).toString().slice(0,200)}`));
+              reject(new Error(`Archive.org S3 ${iaRes.statusCode}: ${Buffer.concat(chunks).toString().slice(0,300)}`));
             });
           });
-          iaReq.on('error', reject);
-          fileStream.on('data', chunk => { bytesOut += chunk.length; iaReq.write(chunk); });
-          fileStream.on('end', () => iaReq.end());
-          fileStream.on('error', reject);
+          iaReq.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
+          // Pipe desde disco → Archive.org
+          const tmpRead = fs.createReadStream(tmpPath);
+          tmpRead.pipe(iaReq);
+          tmpRead.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
         });
 
         downloadUrl = `https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`;
