@@ -405,31 +405,42 @@ async function deleteFromStorage(fileName) {
 }
 
 // ── INTERNET ARCHIVE (archive.org) ───────────────────────────
-// Variables Render: IA_ACCESS_KEY, IA_SECRET_KEY, IA_ITEM_ID
-// APKs > 50 MB se envían aquí automáticamente.
-// La URL de descarga directa generada es:
-//   https://archive.org/download/<IA_ITEM_ID>/<fileName>
+// Variables Render: IA_ACCESS_KEY, IA_SECRET_KEY
+// IA_ITEM_ID es OPCIONAL — si no se configura, se genera uno por appId.
+// URL de descarga: https://archive.org/download/<itemId>/<fileName>
 const IA_ACCESS_KEY = process.env.IA_ACCESS_KEY;
 const IA_SECRET_KEY = process.env.IA_SECRET_KEY;
-const IA_ITEM_ID    = process.env.IA_ITEM_ID;
+const IA_ITEM_ID    = process.env.IA_ITEM_ID || null; // opcional — ver getIAItemId()
+
+/**
+ * Genera un item ID de Archive.org seguro basado en el appId.
+ * Si hay IA_ITEM_ID global, lo usa; si no, crea uno por app.
+ * Con x-amz-auto-make-bucket:1 el item se crea solo en el primer upload.
+ */
+function getIAItemId(appId) {
+  if (IA_ITEM_ID) return IA_ITEM_ID;
+  const safe = (appId || 'app').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').slice(0, 40);
+  return 'codehub-' + safe + '-apk';
+}
 
 /**
  * Sube un buffer a Internet Archive vía S3-like API.
  * Devuelve { identifier, fileName, downloadUrl }
  */
-async function uploadToArchive(buffer, fileName, appName = '', appVersion = '') {
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID) {
-    throw new Error('IA_ACCESS_KEY, IA_SECRET_KEY o IA_ITEM_ID no configurados en Render');
+async function uploadToArchive(buffer, fileName, appName = '', appVersion = '', appId = '') {
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY) {
+    throw new Error('IA_ACCESS_KEY o IA_SECRET_KEY no configurados en Render');
   }
+  const itemId = getIAItemId(appId);
 
   const https = require('https');
   const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
-  console.log(`🔵 Archive.org upload START: ${fileName} (${sizeMB} MB)`);
+  console.log(`🔵 Archive.org upload START: ${fileName} (${sizeMB} MB) → item: ${itemId}`);
 
   await new Promise((resolve, reject) => {
     const req = https.request({
       hostname: 's3.us.archive.org',
-      path: `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+      path: `/${itemId}/${encodeURIComponent(fileName)}`,
       method: 'PUT',
       headers: {
         'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
@@ -439,7 +450,7 @@ async function uploadToArchive(buffer, fileName, appName = '', appVersion = '') 
         'x-archive-queue-derive': '0',
         'x-archive-meta-mediatype': 'software',
         'x-archive-meta-subject': 'android;apk;application',
-        'x-archive-meta-title':       appName    ? `${appName} APK`      : `${IA_ITEM_ID} APK`,
+        'x-archive-meta-title':       appName    ? `${appName} APK`      : `${itemId} APK`,
         'x-archive-meta-description': appVersion ? `Version ${appVersion}` : 'Android APK',
         'x-archive-meta-creator':     'CodeHub by Wilson.E',
         'x-archive-meta-language':    'es',
@@ -468,22 +479,23 @@ async function uploadToArchive(buffer, fileName, appName = '', appVersion = '') 
     req.end();
   });
 
-  const downloadUrl = `https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`;
+  const downloadUrl = `https://archive.org/download/${itemId}/${encodeURIComponent(fileName)}`;
   console.log(`✅ Archive.org upload OK: ${fileName} | ${sizeMB} MB | url=${downloadUrl}`);
-  return { identifier: IA_ITEM_ID, fileName, downloadUrl };
+  return { identifier: itemId, fileName, downloadUrl };
 }
 
 /**
  * Elimina un archivo de Internet Archive vía S3-like API.
  */
-async function deleteFromArchive(fileName) {
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID || !fileName) return false;
+async function deleteFromArchive(fileName, appId = '') {
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !fileName) return false;
+  const itemId = getIAItemId(appId);
   try {
     const https = require('https');
     await new Promise((resolve, reject) => {
       const req = https.request({
         hostname: 's3.us.archive.org',
-        path: `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+        path: `/${itemId}/${encodeURIComponent(fileName)}`,
         method: 'DELETE',
         headers: { 'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}` },
       }, (res) => {
@@ -737,7 +749,7 @@ app.get('/api/health', (_, res) => res.json({
   mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
   storage:   supabase ? 'supabase' : 'missing',
-  archive:   (IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID) ? `ok:${IA_ITEM_ID}` : 'missing',
+  archive:   (IA_ACCESS_KEY && IA_SECRET_KEY) ? `ok:per-app-item` : 'missing',
   uptime:    Math.floor(process.uptime()) + 's',
   ip_geo:    'ip-api.com + ipwho.is (fallback)',
 }));
@@ -1130,7 +1142,7 @@ app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
 // Luego notifica al backend con POST /api/admin/apps/:appId/archive-confirm
 app.get('/api/admin/apps/:appId/archive-credentials', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID) {
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY) {
     return res.status(503).json({ error: 'Archive.org no configurado en el servidor' });
   }
   try {
@@ -1144,11 +1156,11 @@ app.get('/api/admin/apps/:appId/archive-credentials', requireAdmin, async (req, 
     res.json({
       ok: true,
       fileName,
-      itemId:    IA_ITEM_ID,
+      itemId:    getIAItemId(req.params.appId),
       accessKey: IA_ACCESS_KEY,
       secretKey: IA_SECRET_KEY,
-      uploadUrl: `https://s3.us.archive.org/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
-      downloadUrl:`https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+      uploadUrl: `https://s3.us.archive.org/${getIAItemId(req.params.appId)}/${encodeURIComponent(fileName)}`,
+      downloadUrl:`https://archive.org/download/${getIAItemId(req.params.appId)}/${encodeURIComponent(fileName)}`,
       appName:   a.nombre,
       appVersion:a.version || '',
     });
@@ -1173,7 +1185,7 @@ app.post('/api/admin/apps/:appId/archive-confirm', requireAdmin, async (req, res
 
     const upd = isPlugin
       ? { ia_plugin_file_name: fileName, plugin_enlace: downloadUrl, updatedAt: new Date() }
-      : { ia_file_name: fileName, ia_identifier: IA_ITEM_ID, enlace: downloadUrl, updatedAt: new Date() };
+      : { ia_file_name: fileName, ia_identifier: getIAItemId(req.params.appId), enlace: downloadUrl, updatedAt: new Date() };
 
     await App.updateOne({ appId: req.params.appId }, upd);
     await cacheDel('apps:all');
@@ -1238,7 +1250,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
       const ts       = Date.now();
       fileName       = `${appId}_${isPlugin ? 'plugin' : 'main'}_${ts}.apk`;
       const hasTG    = !!(TG_TOKEN && TG_CHAT_ID);
-      const hasIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID);
+      const hasIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY);
 
       // Determinar tamaño estimado desde Content-Length para decidir destino ANTES de leer el stream
       // El browser siempre envía Content-Length en FormData uploads
@@ -1354,7 +1366,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         await new Promise((resolve, reject) => {
           const iaReq = https.request({
             hostname: 's3.us.archive.org',
-            path:     `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+            path:     `/${getIAItemId(appId)}/${encodeURIComponent(fileName)}`,
             method:   'PUT',
             headers:  {
               'Authorization':            `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
@@ -1364,7 +1376,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
               'x-archive-queue-derive':   '0',
               'x-archive-meta-mediatype': 'software',
               'x-archive-meta-subject':   'android;apk;application',
-              'x-archive-meta-title':       a.nombre  ? `${a.nombre} APK`      : `${IA_ITEM_ID} APK`,
+              'x-archive-meta-title':       a.nombre  ? `${a.nombre} APK`      : `${getIAItemId(appId)} APK`,
               'x-archive-meta-description': a.version ? `Version ${a.version}` : 'Android APK',
               'x-archive-meta-creator':     'CodeHub by Wilson.E',
               'x-archive-meta-language':    'es',
@@ -1384,10 +1396,10 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
           tmpRead.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
         });
 
-        downloadUrl = `https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`;
+        downloadUrl = `https://archive.org/download/${getIAItemId(appId)}/${encodeURIComponent(fileName)}`;
         upd = isPlugin
           ? { ia_plugin_file_name: fileName, plugin_enlace: downloadUrl, updatedAt: new Date() }
-          : { ia_file_name: fileName, ia_identifier: IA_ITEM_ID, enlace: downloadUrl, updatedAt: new Date() };
+          : { ia_file_name: fileName, ia_identifier: getIAItemId(appId), enlace: downloadUrl, updatedAt: new Date() };
 
       } else {
         // ── FALLBACK: Supabase (buffer en memoria, solo < 50 MB) ─
