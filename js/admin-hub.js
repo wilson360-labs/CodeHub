@@ -446,83 +446,39 @@ function logAdminActivity(msg) {
 }
 
 // ── UPLOAD APK ────────────────────────────────────────────────
+// El backend recibe el stream directamente y lo reenvía en tiempo real
+// a Telegram o Archive.org — sin buffer completo en RAM de Render.
 async function uploadAPK(appId, slot, input) {
   const file = input.files[0];
   if (!file) return;
-  const sizeMB   = (file.size / 1024 / 1024).toFixed(1);
-  const isLarge  = file.size > 50 * 1024 * 1024;
-  const destino  = isLarge ? '🏛️ Archive.org (> 50 MB)' : '📨 Telegram';
-  const label    = input.previousElementSibling;
+  const sizeMB  = (file.size / 1024 / 1024).toFixed(1);
+  const destino = file.size > 50 * 1024 * 1024 ? '🏛️ Archive.org' : '📨 Telegram';
+  const label   = input.previousElementSibling;
+
+  toast(`⬆️ ${file.name} (${sizeMB} MB) → ${destino}...`);
+  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${sizeMB} MB → ${destino}`;
   label.style.color = 'var(--a)';
 
   try {
-    if (isLarge) {
-      // ── Flujo directo: Browser → Archive.org (sin pasar por Render) ──
-      toast(`⬆️ ${file.name} (${sizeMB} MB) → ${destino}...`);
-      label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Obteniendo credenciales...`;
+    const formData = new FormData();
+    formData.append('apk', file);
+    formData.append('slot', slot);
 
-      // 1. Pedir credenciales al backend
-      const credRes = await fetch(`${BACKEND}/api/admin/apps/${appId}/archive-credentials?slot=${slot}`, {
-        headers: { 'x-admin-key': ADMIN_KEY }
-      });
-      if (!credRes.ok) throw new Error((await credRes.json()).error);
-      const creds = await credRes.json();
+    const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/upload`, {
+      method: 'POST',
+      headers: { 'x-admin-key': ADMIN_KEY },
+      body: formData,
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    const d = await res.json();
 
-      // 2. Subir DIRECTO a Archive.org S3 desde el navegador
-      label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Subiendo a Archive.org...`;
-      const uploadRes = await fetch(creds.uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `LOW ${creds.accessKey}:${creds.secretKey}`,
-          'Content-Type':  'application/vnd.android.package-archive',
-          'x-amz-auto-make-bucket': '0',
-          'x-archive-queue-derive': '0',
-          'x-archive-meta-mediatype': 'software',
-          'x-archive-meta-subject':   'android;apk;application',
-          'x-archive-meta-title':     `${creds.appName} APK`,
-        },
-        body: file,
-      });
-      if (!uploadRes.ok) {
-        const txt = await uploadRes.text();
-        throw new Error(`Archive.org S3 error ${uploadRes.status}: ${txt.slice(0,200)}`);
-      }
+    const storageLabel = { telegram: '📨 Telegram', supabase: '☁️ Supabase', archive: '🏛️ Archive.org' }[d.storage] || d.storage;
+    toast(`✅ APK subido · ${d.sizeMB} MB · ${storageLabel}`);
 
-      // 3. Notificar al backend para guardar en DB
-      label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Registrando...`;
-      const confirmRes = await fetch(`${BACKEND}/api/admin/apps/${appId}/archive-confirm`, {
-        method: 'POST',
-        headers: { 'x-admin-key': ADMIN_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: creds.fileName, downloadUrl: creds.downloadUrl, sizeMB, slot }),
-      });
-      if (!confirmRes.ok) throw new Error((await confirmRes.json()).error);
-      const d = await confirmRes.json();
-
-      toast(`✅ APK subido · ${sizeMB} MB · 🏛️ Archive.org`);
-      const linkInput = document.getElementById('link-' + appId);
-      if (linkInput) linkInput.value = d.downloadUrl;
-      const app = appsData.find(a => a.appId === appId);
-      if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
-
-    } else {
-      // ── Flujo normal: Browser → Render → Telegram/Supabase ──
-      toast(`⬆️ ${file.name} (${sizeMB} MB) → ${destino}...`);
-      label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${sizeMB} MB → ${destino}`;
-      const formData = new FormData();
-      formData.append('apk', file);
-      formData.append('slot', slot);
-      const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/upload`, {
-        method: 'POST', headers: { 'x-admin-key': ADMIN_KEY }, body: formData,
-      });
-      if (!res.ok) throw new Error((await res.json()).error);
-      const d = await res.json();
-      const storageLabel = { telegram: '📨 Telegram', supabase: '☁️ Supabase' }[d.storage] || d.storage;
-      toast(`✅ APK subido · ${d.sizeMB} MB · ${storageLabel}`);
-      const linkInput = document.getElementById('link-' + appId);
-      if (linkInput) linkInput.value = d.downloadUrl;
-      const app = appsData.find(a => a.appId === appId);
-      if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
-    }
+    const linkInput = document.getElementById('link-' + appId);
+    if (linkInput) linkInput.value = d.downloadUrl;
+    const app = appsData.find(a => a.appId === appId);
+    if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
 
     label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
     label.style.color = 'var(--g)';
