@@ -99,7 +99,7 @@ app.use(express.json({ limit: '10kb' }));
 // El límite aquí (2 GB) es solo protección del servidor en tránsito, no un límite de Telegram.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB máx — archivos mayores deben usar /archive-credentials (subida directa)
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB — solo para rutas que NO son /upload (security scan, etc.)
   fileFilter: (_, f, cb) => {
     if (f.mimetype === 'application/vnd.android.package-archive' || f.originalname.endsWith('.apk'))
       cb(null, true);
@@ -1235,20 +1235,26 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
 
       const ts       = Date.now();
       fileName       = `${appId}_${isPlugin ? 'plugin' : 'main'}_${ts}.apk`;
-      const useTG    = !!(TG_TOKEN && TG_CHAT_ID);
-      const useIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID);
+      const hasTG    = !!(TG_TOKEN && TG_CHAT_ID);
+      const hasIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID);
 
-      // ── Contar bytes on-the-fly para decidir destino y para caption ──
-      // Usamos un PassThrough para bifurcar: conteo + destino
-      const counter  = new PassThrough();
-      let   bytesOut = 0;
-      counter.on('data', chunk => { bytesOut += chunk.length; });
+      // Determinar tamaño estimado desde Content-Length para decidir destino ANTES de leer el stream
+      // El browser siempre envía Content-Length en FormData uploads
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+      const TG_MAX        = 49 * 1024 * 1024; // 49 MB — límite real de Telegram para bots
+      const likelyLarge   = contentLength > TG_MAX; // el multipart overhead es pequeño (~500 bytes)
 
-      // ── Decidir destino ANTES de ver el tamaño (streaming → no sabemos el size de antemano) ──
-      // Estrategia: si hay Telegram configurado úsalo para todo ≤ 2GB (no tiene límite real).
-      // Si NO hay Telegram pero sí Archive.org, usar Archive.org para todo.
-      // Supabase solo como último fallback (limit 50 MB, se cortará si es más grande).
+      // Enrutamiento:
+      //   Si el archivo cabe en Telegram (≤ 49 MB) y hay bot → Telegram
+      //   Si es grande (> 49 MB) y hay Archive.org → Archive.org streaming
+      //   Fallback → Supabase (solo si < 50 MB)
+      const useTG  = hasTG && !likelyLarge;
+      const useIA  = hasIA && (likelyLarge || !hasTG);
+
+      let bytesOut = 0;
       let downloadUrl, upd, storageLabel;
+
+      console.log(`📦 Upload routing: contentLength=${(contentLength/1024/1024).toFixed(1)}MB likelyLarge=${likelyLarge} useTG=${useTG} useIA=${useIA}`);
 
       if (useTG) {
         // ── STREAMING → Telegram ──────────────────────────────
