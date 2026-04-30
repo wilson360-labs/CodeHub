@@ -1041,6 +1041,16 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     const update = {};
     ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url']
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+
+    // No sobreescribir enlace con vacío o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
+    // Esto protege el enlace generado por el upload cuando el admin guarda otros campos
+    if (!update.enlace || update.enlace === '#') {
+      const current = await App.findOne({ appId: req.params.appId }).select('enlace ia_file_name tg_message_id b2_file_name').lean();
+      if (current && (current.ia_file_name || current.tg_message_id || current.b2_file_name)) {
+        delete update.enlace; // conservar el enlace existente en DB
+      }
+    }
+
     update.updatedAt = new Date();
     const a = await App.findOneAndUpdate({ appId: req.params.appId }, update, { new: true });
     if (!a) return res.status(404).json({ error: 'App no encontrada' });

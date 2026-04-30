@@ -250,8 +250,8 @@ function renderApps() {
   }
 
   list.innerHTML = appsData.map(app => {
-    const enlace    = app.b2_url || app.enlace || '#';
-    const pluginEnl = app.b2_plugin_url || app.plugin_enlace || '';
+    const enlace    = app.enlace || '#';
+    const pluginEnl = app.plugin_enlace || '';
     // Detectar qué storage tiene el APK principal
     const storageBadge = (() => {
       const url = enlace;
@@ -324,8 +324,8 @@ function renderApps() {
 
   // ── Auto-iniciar preview para inputs ya cargados con links que serán convertidos
   appsData.forEach(app => {
-    const enlace    = app.b2_url || app.enlace || '#';
-    const plugin    = app.b2_plugin_url || app.plugin_enlace || '';
+    const enlace    = app.enlace || '#';
+    const plugin    = app.plugin_enlace || '';
     const linkInput   = document.getElementById('link-'   + app.appId);
     const pluginInput = document.getElementById('plugin-' + app.appId);
     if (linkInput)   previewLink(linkInput,   'lp-' + app.appId);
