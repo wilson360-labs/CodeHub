@@ -1,0 +1,53 @@
+437,438c437,438
+<         'Content-Length': buffer.length,
+<         'x-amz-auto-make-bucket': '0',
+---
+>         'Content-Length': String(buffer.length), // STRING para evitar Transfer-Encoding: chunked
+>         'x-amz-auto-make-bucket': '1',
+439a440
+>         'x-archive-size-hint': String(buffer.length),
+452a454
+>           console.error(`❌ Archive.org PUT error ${res.statusCode}:`, body.slice(0, 500));
+458,466c460,461
+< 
+<     // Streaming en chunks de 256 KB para no bloquear el event loop
+<     const CHUNK = 256 * 1024;
+<     let offset = 0;
+<     while (offset < buffer.length) {
+<       req.write(buffer.slice(offset, offset + CHUNK));
+<       offset += CHUNK;
+<     }
+<     req.end();
+---
+>     // end() con el buffer completo — garantiza que Node.js NO use chunked encoding
+>     req.end(buffer);
+1352c1347,1350
+<         // 2. PUT con Content-Length exacto — Archive.org lo exige
+---
+>         // 2. PUT con Content-Length exacto — Archive.org rechaza Transfer-Encoding: chunked (HTTP 411)
+>         // CRÍTICO: Content-Length debe ser STRING. Node.js ignora Content-Length numérico en pipe()
+>         // y añade Transfer-Encoding: chunked automáticamente → Archive.org responde 411.
+>         // Con Content-Length como string + pipe(), Node respeta el header y NO agrega chunked.
+1361,1362c1359,1360
+<               'Content-Length':           fileSize,
+<               'x-amz-auto-make-bucket':   '0',
+---
+>               'Content-Length':           String(fileSize),  // STRING deshabilita chunked encoding
+>               'x-amz-auto-make-bucket':   '1',               // crear item si no existe
+1363a1362
+>               'x-archive-size-hint':      String(fileSize),
+1374c1373,1375
+<               reject(new Error(`Archive.org S3 ${iaRes.statusCode}: ${Buffer.concat(chunks).toString().slice(0,300)}`));
+---
+>               const body = Buffer.concat(chunks).toString();
+>               console.error(`❌ Archive.org S3 error ${iaRes.statusCode}:`, body.slice(0, 500));
+>               reject(new Error(`Archive.org S3 ${iaRes.statusCode}: ${body.slice(0, 300)}`));
+1378c1379,1380
+<           // Pipe desde disco → Archive.org
+---
+>           // Pipe desde disco → Archive.org (eficiente en memoria)
+>           // Content-Length como string garantiza que Node no añade Transfer-Encoding: chunked
+1380d1381
+<           tmpRead.pipe(iaReq);
+1381a1383
+>           tmpRead.pipe(iaReq);

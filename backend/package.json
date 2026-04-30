@@ -20,10 +20,11 @@
     "multer": "^1.4.5-lts.1",
     "redis": "^4.6.13",
     "ws": "^8.17.0",
-    "@supabase/supabase-js": "^2.43.0"
+    "@supabase/supabase-js": "^2.43.0",
+    "busboy": "^1.6.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": "20.x"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
