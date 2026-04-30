@@ -1340,9 +1340,8 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         // 1. Escribir stream a disco temporal
         await new Promise((resolve, reject) => {
           const tmpWrite = fs.createWriteStream(tmpPath);
-          fileStream.on('data', chunk => { bytesOut += chunk.length; });
           fileStream.pipe(tmpWrite);
-          tmpWrite.on('finish', resolve);
+          tmpWrite.on('finish', () => { bytesOut = fs.statSync(tmpPath).size; resolve(); });
           tmpWrite.on('error', reject);
           fileStream.on('error', reject);
         });
