@@ -210,6 +210,9 @@ const App = mongoose.model('App', new mongoose.Schema({
   tg_file_id:         { type: String, default: null },  // file_id Telegram APK main
   tg_plugin_msg_id:   { type: Number, default: null },  // ID mensaje Telegram APK plugin
   tg_plugin_file_id:  { type: String, default: null },  // file_id Telegram APK plugin
+  ia_file_name:       { type: String, default: null },  // Nombre archivo en Archive.org (APK main)
+  ia_identifier:      { type: String, default: null },  // Item ID de Archive.org
+  ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
   tutorial_url:       { type: String, default: null },
   updatedAt:          { type: Date, default: Date.now },
   createdAt:          { type: Date, default: Date.now },
@@ -398,6 +401,98 @@ async function deleteFromStorage(fileName) {
     if (error) { console.warn('Storage delete error:', error.message); return false; }
     console.log(`🗑️ Storage delete: \${fileName}`); return true;
   } catch (e) { console.warn('Storage delete error:', e.message); return false; }
+}
+
+// ── INTERNET ARCHIVE (archive.org) ───────────────────────────
+// Variables Render: IA_ACCESS_KEY, IA_SECRET_KEY, IA_ITEM_ID
+// APKs > 50 MB se envían aquí automáticamente.
+// La URL de descarga directa generada es:
+//   https://archive.org/download/<IA_ITEM_ID>/<fileName>
+const IA_ACCESS_KEY = process.env.IA_ACCESS_KEY;
+const IA_SECRET_KEY = process.env.IA_SECRET_KEY;
+const IA_ITEM_ID    = process.env.IA_ITEM_ID;
+
+/**
+ * Sube un buffer a Internet Archive vía S3-like API.
+ * Devuelve { identifier, fileName, downloadUrl }
+ */
+async function uploadToArchive(buffer, fileName, appName = '', appVersion = '') {
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID) {
+    throw new Error('IA_ACCESS_KEY, IA_SECRET_KEY o IA_ITEM_ID no configurados en Render');
+  }
+
+  const https = require('https');
+  const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
+  console.log(`🔵 Archive.org upload START: ${fileName} (${sizeMB} MB)`);
+
+  await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 's3.us.archive.org',
+      path: `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+      method: 'PUT',
+      headers: {
+        'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
+        'Content-Type': 'application/vnd.android.package-archive',
+        'Content-Length': buffer.length,
+        'x-amz-auto-make-bucket': '0',
+        'x-archive-queue-derive': '0',
+        'x-archive-meta-mediatype': 'software',
+        'x-archive-meta-subject': 'android;apk;application',
+        ...(appName    ? { 'x-archive-meta-title':       `${appName} APK` } : {}),
+        ...(appVersion ? { 'x-archive-meta-description': `Version ${appVersion}` } : {}),
+      },
+    }, (res) => {
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+        } else {
+          const body = Buffer.concat(chunks).toString();
+          reject(new Error(`Archive.org S3 PUT ${res.statusCode}: ${body.slice(0, 300)}`));
+        }
+      });
+    });
+    req.on('error', reject);
+
+    // Streaming en chunks de 256 KB para no bloquear el event loop
+    const CHUNK = 256 * 1024;
+    let offset = 0;
+    while (offset < buffer.length) {
+      req.write(buffer.slice(offset, offset + CHUNK));
+      offset += CHUNK;
+    }
+    req.end();
+  });
+
+  const downloadUrl = `https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`;
+  console.log(`✅ Archive.org upload OK: ${fileName} | ${sizeMB} MB | url=${downloadUrl}`);
+  return { identifier: IA_ITEM_ID, fileName, downloadUrl };
+}
+
+/**
+ * Elimina un archivo de Internet Archive vía S3-like API.
+ */
+async function deleteFromArchive(fileName) {
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID || !fileName) return false;
+  try {
+    const https = require('https');
+    await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 's3.us.archive.org',
+        path: `/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+        method: 'DELETE',
+        headers: { 'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}` },
+      }, (res) => {
+        res.resume(); // descartar body
+        res.on('end', resolve);
+      });
+      req.on('error', reject);
+      req.end();
+    });
+    console.log(`🗑️ Archive.org delete: ${fileName}`);
+    return true;
+  } catch (e) { console.warn('Archive.org delete error:', e.message); return false; }
 }
 
 // ── IA ────────────────────────────────────────────────────────
@@ -639,6 +734,7 @@ app.get('/api/health', (_, res) => res.json({
   mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
   cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
   storage:   supabase ? 'supabase' : 'missing',
+  archive:   (IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID) ? `ok:${IA_ITEM_ID}` : 'missing',
   uptime:    Math.floor(process.uptime()) + 's',
   ip_geo:    'ip-api.com + ipwho.is (fallback)',
 }));
@@ -966,6 +1062,10 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     if (a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
     if (a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
 
+    // Limpiar archivos en Archive.org
+    if (a.ia_file_name)         await deleteFromArchive(a.ia_file_name);
+    if (a.ia_plugin_file_name)  await deleteFromArchive(a.ia_plugin_file_name);
+
     await App.deleteOne({ appId: req.params.appId });
     await cacheDel('apps:all');
     res.json({ ok: true });
@@ -983,21 +1083,23 @@ app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
 
     const isPlugin = req.query.slot === 'plugin';
     const upd = { updatedAt: new Date() };
-    let deleted = { telegram: false, supabase: false };
+    let deleted = { telegram: false, supabase: false, archive: false };
 
     if (isPlugin) {
-      if (a.tg_plugin_msg_id)    { deleted.telegram = await deleteFromTelegram(a.tg_plugin_msg_id); }
-      if (a.b2_plugin_file_name) { deleted.supabase = await deleteFromStorage(a.b2_plugin_file_name); }
+      if (a.tg_plugin_msg_id)     { deleted.telegram = await deleteFromTelegram(a.tg_plugin_msg_id); }
+      if (a.b2_plugin_file_name)  { deleted.supabase = await deleteFromStorage(a.b2_plugin_file_name); }
+      if (a.ia_plugin_file_name)  { deleted.archive  = await deleteFromArchive(a.ia_plugin_file_name); }
       Object.assign(upd, {
         tg_plugin_msg_id: null, tg_plugin_file_id: null,
-        b2_plugin_file_name: null, plugin_enlace: null,
+        b2_plugin_file_name: null, ia_plugin_file_name: null, plugin_enlace: null,
       });
     } else {
       if (a.tg_message_id) { deleted.telegram = await deleteFromTelegram(a.tg_message_id); }
       if (a.b2_file_name)  { deleted.supabase = await deleteFromStorage(a.b2_file_name); }
+      if (a.ia_file_name)  { deleted.archive  = await deleteFromArchive(a.ia_file_name); }
       Object.assign(upd, {
         tg_message_id: null, tg_file_id: null,
-        b2_file_name: null, enlace: '#',
+        b2_file_name: null, ia_file_name: null, ia_identifier: null, enlace: '#',
       });
     }
 
@@ -1021,36 +1123,53 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
     const fileName = `${appId}_${isPlugin ? 'plugin' : 'main'}_${Date.now()}.apk`;
     const caption  = `📦 ${a.nombre} — ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'} (${sizeMB} MB)`;
 
-    // Usar Telegram si está configurado, si no caer en Supabase
-    const useTelegram = !!(TG_TOKEN && TG_CHAT_ID);
-    let downloadUrl, upd;
+    // ── Enrutamiento de storage ────────────────────────────────
+    // Regla: APK > 50 MB  → Archive.org  (sin límite de tamaño)
+    //        APK ≤ 50 MB  → Telegram     (si configurado) → Supabase (fallback)
+    const ARCHIVE_THRESHOLD_MB = 50;
+    const useArchive  = req.file.size > ARCHIVE_THRESHOLD_MB * 1024 * 1024 && !!(IA_ACCESS_KEY && IA_SECRET_KEY && IA_ITEM_ID);
+    const useTelegram = !useArchive && !!(TG_TOKEN && TG_CHAT_ID);
+    let downloadUrl, upd, storageLabel;
 
-    if (useTelegram) {
-      // 1. Intentar eliminar mensaje anterior del chat (APK viejo).
-      // Si ya fue borrado manualmente desde Telegram, deleteFromTelegram retorna false sin lanzar error.
+    if (useArchive) {
+      // ── Archive.org (APKs grandes > 50 MB) ──────────────────
+      // Eliminar archivo previo de Archive.org si existe
+      const oldIaFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
+      if (oldIaFile) await deleteFromArchive(oldIaFile);
+
+      const { identifier, downloadUrl: iaUrl } = await uploadToArchive(
+        req.file.buffer, fileName, a.nombre, a.version || ''
+      );
+      downloadUrl = iaUrl;
+      storageLabel = 'archive';
+      upd = isPlugin
+        ? { ia_plugin_file_name: fileName, plugin_enlace: iaUrl, updatedAt: new Date() }
+        : { ia_file_name: fileName, ia_identifier: identifier, enlace: iaUrl, updatedAt: new Date() };
+
+    } else if (useTelegram) {
+      // ── Telegram (APKs ≤ 50 MB con bot configurado) ─────────
       const oldMsgId = isPlugin ? a.tg_plugin_msg_id : a.tg_message_id;
       if (oldMsgId) {
         await deleteFromTelegram(oldMsgId);
-        // Limpiar el ID en DB independientemente — si falla el delete, el msg ya no existe
         await App.updateOne({ appId }, isPlugin
           ? { tg_plugin_msg_id: null, tg_plugin_file_id: null }
           : { tg_message_id: null, tg_file_id: null }
         );
       }
-
-      // 2. Subir nuevo APK a Telegram
       const { messageId, fileId, downloadUrl: tgUrl } = await uploadToTelegram(req.file.buffer, fileName, caption);
       downloadUrl = tgUrl;
-
+      storageLabel = 'telegram';
       upd = isPlugin
         ? { tg_plugin_msg_id: messageId, tg_plugin_file_id: fileId, plugin_enlace: tgUrl, updatedAt: new Date() }
         : { tg_message_id: messageId,    tg_file_id: fileId,        enlace: tgUrl,         updatedAt: new Date() };
+
     } else {
-      // Fallback: Supabase Storage (límite 50 MB)
+      // ── Supabase Storage (fallback, límite 50 MB) ────────────
       if (!isPlugin && a.b2_file_name) await deleteFromStorage(a.b2_file_name);
       if  (isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
       const { publicUrl } = await uploadToStorage(req.file.buffer, fileName);
       downloadUrl = publicUrl;
+      storageLabel = 'supabase';
       upd = isPlugin
         ? { b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
         : { b2_file_name: fileName,        enlace: publicUrl,         updatedAt: new Date() };
@@ -1058,7 +1177,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), as
 
     await App.updateOne({ appId }, upd);
     await cacheDel('apps:all');
-    res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: useTelegram ? 'telegram' : 'supabase' });
+    res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: storageLabel });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

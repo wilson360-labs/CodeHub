@@ -95,6 +95,10 @@ function convertToDirectLink(url) {
     // ── Supabase Storage ─────────────────────────────────────
     if (host.includes('supabase.co') || host.includes('supabase.in')) return url;
 
+    // ── Archive.org ───────────────────────────────────────────
+    // archive.org/download/ITEM/file.apk ya es descarga directa
+    if (host === 'archive.org' || host.includes('archive.org')) return url;
+
     // ── Cualquier otro → sin cambios ──────────────────────────
     return url;
   } catch {
@@ -116,6 +120,7 @@ function detectPlatform(url) {
     if (host === 'github.com')                                                   return 'github';
     if (host === 'api.telegram.org')                                             return 'telegram';
     if (host.includes('supabase'))                                               return 'supabase';
+    if (host === 'archive.org' || host.includes('archive.org'))                  return 'archive';
     return 'other';
   } catch { return null; }
 }
@@ -131,6 +136,7 @@ const PLATFORM_INFO = {
   github:    { icon: 'fab fa-github',       label: 'GitHub',        color: '#00e676', direct: true  },
   telegram:  { icon: 'fab fa-telegram',     label: 'Telegram',      color: '#229ed9', direct: true  },
   supabase:  { icon: 'fas fa-database',     label: 'Supabase',      color: '#3ecf8e', direct: true  },
+  archive:   { icon: 'fas fa-building-columns', label: 'Archive.org', color: '#428bca', direct: true  },
   other:     { icon: 'fas fa-link',         label: 'Link externo',  color: '#aaa',    direct: null  },
 };
 
@@ -246,13 +252,23 @@ function renderApps() {
   list.innerHTML = appsData.map(app => {
     const enlace    = app.b2_url || app.enlace || '#';
     const pluginEnl = app.b2_plugin_url || app.plugin_enlace || '';
-    const hasB2     = !!app.b2_url;
+    // Detectar qué storage tiene el APK principal
+    const storageBadge = (() => {
+      const url = enlace;
+      if (!url || url === '#') return '';
+      if (url.includes('archive.org'))    return '<small style="color:#428bca">🏛️ Archive.org</small>';
+      if (url.includes('api.telegram'))   return '<small style="color:#229ed9">📨 Telegram</small>';
+      if (url.includes('supabase'))       return '<small style="color:var(--g)">☁️ Supabase</small>';
+      if (url.includes('drive.google'))   return '<small style="color:#4285f4">🔵 Drive</small>';
+      if (url.includes('dropbox'))        return '<small style="color:#0061ff">📦 Dropbox</small>';
+      return '';
+    })();
     return `
     <div class="app-row" id="row-${app.appId}">
       <div class="app-name-cell">
         ${app.nombre}
         <small>${app.categoria || ''} · ${app.appId}</small>
-        ${hasB2 ? '<small style="color:var(--g)">☁️ APK en Storage</small>' : ''}
+        ${storageBadge}
       </div>
       <div>
         <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
@@ -433,9 +449,11 @@ function logAdminActivity(msg) {
 async function uploadAPK(appId, slot, input) {
   const file = input.files[0];
   if (!file) return;
-  toast(`⬆️ Subiendo ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)...`);
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  const destino = file.size > 50 * 1024 * 1024 ? '🏛️ Archive.org (> 50 MB)' : '📨 Telegram';
+  toast(`⬆️ Subiendo ${file.name} (${sizeMB} MB) → ${destino}...`);
   const label = input.previousElementSibling;
-  label.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
+  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${sizeMB} MB → ${destino}`;
   label.style.color = 'var(--a)';
   const formData = new FormData();
   formData.append('apk', file);
@@ -446,11 +464,12 @@ async function uploadAPK(appId, slot, input) {
     });
     if (!res.ok) throw new Error((await res.json()).error);
     const d = await res.json();
-    toast(`✅ APK subido · ${d.sizeMB} MB`);
+    const storageLabel = { telegram: '📨 Telegram', supabase: '☁️ Supabase', archive: '🏛️ Archive.org' }[d.storage] || d.storage;
+    toast(`✅ APK subido · ${d.sizeMB} MB · ${storageLabel}`);
     const linkInput = document.getElementById('link-' + appId);
     if (linkInput) linkInput.value = d.downloadUrl;
     const app = appsData.find(a => a.appId === appId);
-    if (app) app.b2_url = d.downloadUrl;
+    if (app) { if (slot === 'plugin') app.plugin_enlace = d.downloadUrl; else app.enlace = d.downloadUrl; }
     label.innerHTML = '<i class="fas fa-check"></i> Subido ✅';
     label.style.color = 'var(--g)';
     await refreshApps();
@@ -463,7 +482,7 @@ async function uploadAPK(appId, slot, input) {
 }
 
 // ── DELETE APP ────────────────────────────────────────────────
-// ── LIMPIAR APK (elimina solo el archivo de Telegram/Storage, mantiene la app) ─
+// ── LIMPIAR APK (elimina solo el archivo de Telegram/Storage/Archive.org, mantiene la app) ─
 async function deleteAPKFile(appId, slot = 'main', nombre = '') {
   if (!confirm(`¿Eliminar el APK de "${nombre}" de Telegram/Storage?\nLa app se mantiene en la tienda — solo se borra el archivo.\nTras esto puedes subir la nueva versión.`)) return;
   try {
@@ -476,7 +495,7 @@ async function deleteAPKFile(appId, slot = 'main', nombre = '') {
     const app = appsData.find(a => a.appId === appId);
     if (app) { if (slot === 'plugin') app.plugin_enlace = null; else app.enlace = '#'; }
     renderApps();
-    toast(`🗑️ APK limpiado: ${nombre} — ahora sube la nueva versión.`);
+    toast(`🗑️ APK eliminado de ${d.deleted.archive ? 'Archive.org' : d.deleted.telegram ? 'Telegram' : 'Storage'}: ${nombre}`);
   } catch (e) { toast('❌ Error: ' + e.message); }
 }
 

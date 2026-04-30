@@ -115,7 +115,7 @@ def load_env() -> dict:
                 k, _, v = line.partition("=")
                 env[k.strip()] = v.strip().strip('"').strip("'")
     # También del entorno actual
-    for key in ["MONGODB_URI","ADMIN_KEY","TELEGRAM_TOKEN","TELEGRAM_CHAT_ID"]:
+    for key in ["MONGODB_URI","ADMIN_KEY","TELEGRAM_TOKEN","TELEGRAM_CHAT_ID","IA_ACCESS_KEY","IA_SECRET_KEY","IA_ITEM_ID"]:
         if key in os.environ and key not in env:
             env[key] = os.environ[key]
     return env
@@ -222,6 +222,9 @@ def cmd_setup():
         "FRONTEND_URL":       f"URL del frontend (default: {FRONTEND_URL})",
         "TELEGRAM_TOKEN":     "Token del bot Telegram (@BotFather)",
         "TELEGRAM_CHAT_ID":   "Tu chat ID de Telegram",
+        "IA_ACCESS_KEY":      "Internet Archive S3 Access Key (archive.org/account/s3.php)",
+        "IA_SECRET_KEY":      "Internet Archive S3 Secret Key",
+        "IA_ITEM_ID":         "Internet Archive Item ID donde se subirán los APKs",
     }
     for var, desc in required_vars.items():
         current = env.get(var, "")
@@ -384,7 +387,9 @@ def cmd_health():
         if code == 200:
             extra = ""
             if path == "/api/health":
-                extra = f"v{data.get('version','?')} · mongo:{data.get('mongo','?')} · uptime:{data.get('uptime','?')}"
+                archive_status = data.get('archive','missing')
+                archive_icon   = '🏛️ ✅' if archive_status.startswith('ok') else '🏛️ ⚠️'
+                extra = f"v{data.get('version','?')} · mongo:{data.get('mongo','?')} · uptime:{data.get('uptime','?')} · archive:{archive_icon}" 
                 results["backend"] = "ok"
             elif path == "/api/apps":
                 extra = f"{data.get('total', len(data.get('apps',[])))} apps"
@@ -740,7 +745,8 @@ def cmd_status():
         mg  = "🟢" if "connected" in str(data.get("mongo","")) else "🔴"
         rd  = "🟢" if "connected" in str(data.get("redis","")) else "🟡"
         ws  = data.get("ws","?")
-        ok(f"Backend v{v} — uptime:{up} mongo:{mg} redis:{rd} ws:{ws}")
+        ia  = "🏛️ ✅" if str(data.get("archive","")).startswith("ok") else "🏛️ ⚠️"
+        ok(f"Backend v{v} — uptime:{up} mongo:{mg} redis:{rd} ws:{ws} archive:{ia}")
     else:
         err(f"Backend no responde (HTTP {code})")
 
