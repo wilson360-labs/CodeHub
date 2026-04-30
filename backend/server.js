@@ -1120,6 +1120,65 @@ app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+
+// ── GET /api/admin/apps/:appId/archive-credentials ───────────
+// Para APKs > 50 MB: el frontend obtiene las credenciales y sube
+// DIRECTAMENTE a Archive.org S3, sin pasar el buffer por Render.
+// Luego notifica al backend con POST /api/admin/apps/:appId/archive-confirm
+app.get('/api/admin/apps/:appId/archive-credentials', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !IA_ITEM_ID) {
+    return res.status(503).json({ error: 'Archive.org no configurado en el servidor' });
+  }
+  try {
+    const a = await App.findOne({ appId: req.params.appId });
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
+    const slot     = req.query.slot || 'main';
+    const isPlugin = slot === 'plugin';
+    const ts       = Date.now();
+    const fileName = `${req.params.appId}_${isPlugin ? 'plugin' : 'main'}_${ts}.apk`;
+
+    res.json({
+      ok: true,
+      fileName,
+      itemId:    IA_ITEM_ID,
+      accessKey: IA_ACCESS_KEY,
+      secretKey: IA_SECRET_KEY,
+      uploadUrl: `https://s3.us.archive.org/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+      downloadUrl:`https://archive.org/download/${IA_ITEM_ID}/${encodeURIComponent(fileName)}`,
+      appName:   a.nombre,
+      appVersion:a.version || '',
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/admin/apps/:appId/archive-confirm ───────────────
+// El frontend llama este endpoint DESPUÉS de subir directo a Archive.org
+// para registrar el fileName y enlace en la DB.
+app.post('/api/admin/apps/:appId/archive-confirm', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    const { fileName, downloadUrl, sizeMB, slot } = req.body;
+    if (!fileName || !downloadUrl) return res.status(400).json({ error: 'fileName y downloadUrl requeridos' });
+    const isPlugin = slot === 'plugin';
+    const a = await App.findOne({ appId: req.params.appId });
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
+
+    // Eliminar archivo previo de Archive.org si existe
+    const oldFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
+    if (oldFile && oldFile !== fileName) await deleteFromArchive(oldFile);
+
+    const upd = isPlugin
+      ? { ia_plugin_file_name: fileName, plugin_enlace: downloadUrl, updatedAt: new Date() }
+      : { ia_file_name: fileName, ia_identifier: IA_ITEM_ID, enlace: downloadUrl, updatedAt: new Date() };
+
+    await App.updateOne({ appId: req.params.appId }, upd);
+    await cacheDel('apps:all');
+    console.log(`✅ Archive confirm: ${req.params.appId} | ${fileName} | ${sizeMB} MB`);
+    res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: 'archive' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/admin/apps/:appId/upload', requireAdmin, upload.single('apk'), async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   if (!req.file)    return res.status(400).json({ error: 'No se recibió archivo' });
