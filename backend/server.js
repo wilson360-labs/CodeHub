@@ -1919,7 +1919,7 @@ function startRenderKeepalive() {
     console.log('   Keepalive:  ⚠️  agrega RENDER_EXTERNAL_URL en Render > Environment');
     return;
   }
-  const target = SELF_URL.replace(//$/, '') + '/api/health';
+  const target = SELF_URL.replace(/\/$/, '') + '/api/health';
   const lib = target.startsWith('https') ? require('https') : require('http');
   setInterval(() => {
     lib.get(target, (res) => {
