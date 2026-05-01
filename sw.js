@@ -11,16 +11,16 @@ const OFFLINE   = '/offline.html';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/tools.html',
-  '/novedades.html',
-  '/downloader.html',
-  '/servicios.html',
-  '/novedades.css',
+  '/pages/tools.html',
+  '/pages/novedades.html',
+  '/pages/downloader.html',
+  '/pages/servicios.html',
+  '/css/novedades.css',
   '/manifest.json',
   '/offline.html',
-  '/script.js',
-  '/theme-switcher.js',
-  '/updater.js',
+  '/js/script.js',
+  '/js/theme-switcher.js',
+  '/js/updater.js',
 ];
 
 // ── INSTALL ───────────────────────────────────────────
@@ -133,7 +133,7 @@ self.addEventListener('push', e => {
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
     requireInteraction: false,
-    data: { url: url || '/novedades.html', type, appId },
+    data: { url: url || '/pages/novedades.html', type, appId },
     actions: [],
   };
 
@@ -144,7 +144,7 @@ self.addEventListener('push', e => {
       { action: 'view',    title: '⬇️ Ver app' },
       { action: 'dismiss', title: 'Cerrar' },
     ];
-    options.data.url = '/novedades.html';
+    options.data.url = '/pages/novedades.html';
   } else if (type === 'weather') {
     options.tag      = 'codehub-weather';
     options.renotify = false;
@@ -161,7 +161,7 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
-  const targetUrl = e.notification.data?.url || '/novedades.html';
+  const targetUrl = e.notification.data?.url || '/pages/novedades.html';
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
@@ -187,7 +187,7 @@ self.addEventListener('message', e => {
       badge: '/splash/codehub.png',
       tag: notifType === 'weather' ? 'codehub-weather' : `app-update-${appId || 'gen'}`,
       vibrate: [150, 100, 150],
-      data: { url: url || '/novedades.html', type: notifType },
+      data: { url: url || '/pages/novedades.html', type: notifType },
       renotify: true,
     });
   }
