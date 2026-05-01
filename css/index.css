@@ -232,6 +232,14 @@
 
         :root {
             --primary: #ff4500;
+            /* ── Variables utilitarias (usadas por widgets internos) ── */
+            --mono: 'JetBrains Mono', 'Courier New', monospace;
+            --font: 'Space Grotesk', 'Segoe UI', sans-serif;
+            --text: rgba(232, 232, 240, 0.92);
+            --text-secondary: rgba(232, 232, 240, 0.6);
+            --muted: rgba(232, 232, 240, 0.45);
+            --a: #ff6b35;
+            --tc: rgba(255, 255, 255, 0.85);
             --secondary: #ff6b35;
             --accent: #ffbd69;
         }
@@ -2563,9 +2571,14 @@
         }
         @keyframes glowPulse { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.15);opacity:1} }
         .about-avatar-circle {
-            width: 120px; height: 120px; border-radius: 50%;
-            border: 3px solid rgba(255,69,0,.5);
-            box-shadow: 0 0 32px rgba(255,69,0,.3), 0 0 0 8px rgba(255,69,0,.06);
+            width: 145px; height: 145px; border-radius: 50%;
+            border: 3px solid rgba(255,69,0,.6);
+            box-shadow: 0 0 40px rgba(255,69,0,.35), 0 0 0 10px rgba(255,69,0,.07), 0 0 0 20px rgba(255,69,0,.03);
+            transition: transform .3s, box-shadow .3s;
+        }
+        .about-avatar-circle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 56px rgba(255,69,0,.5), 0 0 0 12px rgba(255,69,0,.1);
             overflow: hidden; position: relative; z-index: 1;
             background: linear-gradient(135deg, #ff4500, #6c3af5);
         }
@@ -2712,3 +2725,20 @@
             .pueblo-side-item { min-height: 90px; }
             .pueblo-iframe-wrap { height: 200px; }
         }
+/* ═══════════════════════════════════════
+   ACCESIBILIDAD — Reducir movimiento
+   Respeta la preferencia del SO del usuario
+═══════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Mantener solo feedback visual mínimo */
+  .dock-item:hover { transform: translateY(-4px) scale(1.05) !important; }
+  #whatsNewIcon { animation: none !important; transform: translateY(-50%) !important; }
+}
