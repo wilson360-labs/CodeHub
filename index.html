@@ -337,7 +337,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <li><a href="#services">Servicios</a></li>
                     <li><a href="#latest-projects">Proyectos</a></li>
                     <li><a href="#contact">Contacto</a></li>
-                    <li><a href="pages/pages/downloader.html">⬇ Descargar</a></li>
+                    <li><a href="pages/downloader.html">⬇ Descargar</a></li>
                     <li><a href="#weather-section">🌤 Clima</a></li>
                     <li><a href="#news-section">📰 Noticias</a></li>
                 </ul>
@@ -445,11 +445,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <li><a href="#weather-section" onclick="closeMobileNav()">🌤 Clima</a></li>
             <li><a href="#news-section" onclick="closeMobileNav()">📰 Noticias</a></li>
             <div class="mobile-nav-divider"></div>
-            <li><a href="pages/pages/tools.html" onclick="closeMobileNav()">🔧 Tools</a></li>
+            <li><a href="pages/tools.html" onclick="closeMobileNav()">🔧 Tools</a></li>
             <li><a href="pages/codehub-ultra.html" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">⚡ CodeHub Ultra</a></li>
             <li><a href="pages/cv.html" onclick="closeMobileNav()" style="color:#00e676">📄 Mi CV</a></li>
-            <li><a href="pages/pages/novedades.html" onclick="closeMobileNav()">📱 Apps Android</a></li>
-            <li><a href="pages/pages/downloader.html" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
+            <li><a href="pages/novedades.html" onclick="closeMobileNav()">📱 Apps Android</a></li>
+            <li><a href="pages/downloader.html" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
             <li><a href="https://www.youtube.com/@WilsonEnriquez-g7m" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
         </ul>
     </nav>
@@ -509,7 +509,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <a href="#contact" class="hero-btn hero-btn-ghost">
                             <i class="fas fa-envelope"></i> Contactar
                         </a>
-                        <a href="pages/pages/tools.html" class="hero-btn hero-btn-ghost">
+                        <a href="pages/tools.html" class="hero-btn hero-btn-ghost">
                             <i class="fas fa-screwdriver-wrench"></i> Tools
                         </a>
                         <a href="pages/cv.html" class="hero-btn hero-btn-ghost" style="border-color:rgba(0,230,118,.3);color:#00e676">
@@ -990,7 +990,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
             <div style="text-align:center;margin-top:2rem">
-                <a href="pages/pages/servicios.html" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:12px;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(255,69,0,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(255,69,0,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(255,69,0,.3)'">
+                <a href="pages/servicios.html" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:12px;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(255,69,0,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(255,69,0,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(255,69,0,.3)'">
                     <i class="fas fa-briefcase"></i> Ver todos los servicios
                 </a>
             </div>
@@ -1985,8 +1985,8 @@ DISPONIBILIDAD:
         // Game and Menu Functions
         function openGameWindow(game) {
             const games = {
-                'snake': 'snake.html',
-                'tetris': 'tetris.html'
+                'snake': 'games/snake.html',
+                'tetris': 'games/tetris.html'
             };
             
             if (games[game]) {
@@ -1995,7 +1995,7 @@ DISPONIBILIDAD:
         }
 
         function openNewWindow() {
-            window.open('pages/pages/novedades.html', '_blank', 'width=800,height=600,resizable=yes');
+            window.open('pages/novedades.html', '_blank', 'width=800,height=600,resizable=yes');
         }
 
         // Konami Code Easter Egg (↑ ↑ ↓ ↓ ← → ← → B A)
@@ -2342,12 +2342,12 @@ DISPONIBILIDAD:
       </div>
     </div>
     <div style="padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:6px;justify-content:flex-end">
-      <button onclick="window.location.href='pages/pages/novedades.html'" style="
+      <button onclick="window.location.href='pages/novedades.html'" style="
         font-size:.58rem;font-family:inherit;cursor:pointer;
         background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.25);
         color:rgba(255,150,80,.85);border-radius:6px;padding:.25rem .6rem
       "><i class="fas fa-mobile-screen-button" style="margin-right:.3rem"></i>Apps Android</button>
-      <button onclick="window.location.href='pages/pages/tools.html'" style="
+      <button onclick="window.location.href='pages/tools.html'" style="
         font-size:.58rem;font-family:inherit;cursor:pointer;
         background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
         color:rgba(240,240,250,.35);border-radius:6px;padding:.25rem .6rem
@@ -2624,11 +2624,11 @@ async function chNotifWeatherCheck(lat, lon) {
 
 <!-- ====== DOCK FLOTANTE ====== -->
 <nav id="hub-dock" aria-label="Accesos rápidos">
-  <a href="pages/pages/tools.html" class="dock-item" title="DevTools Suite">
+  <a href="pages/tools.html" class="dock-item" title="DevTools Suite">
     <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
     <span class="dock-label">Herramientas</span>
   </a>
-  <a href="pages/pages/novedades.html" class="dock-item" title="App Premium Store">
+  <a href="pages/novedades.html" class="dock-item" title="App Premium Store">
     <div class="dock-icon dock-icon-apps">
       <i class="fas fa-mobile-screen"></i>
       <span class="dock-notif"></span>
