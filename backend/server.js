@@ -1359,6 +1359,8 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         });
 
         const fileSize = fs.statSync(tmpPath).size;
+        console.log(`📁 Temp file: ${tmpPath} | size: ${(fileSize/1024/1024).toFixed(2)} MB`);
+        if (fileSize === 0) throw new Error('Archivo temporal vacío — stream no llegó correctamente');
         const oldIaFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
         if (oldIaFile) await deleteFromArchive(oldIaFile).catch(() => {});
 
