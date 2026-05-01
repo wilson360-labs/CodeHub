@@ -660,7 +660,7 @@ function renderAddForm() {
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Imagen (ruta o URL)</label>
-          <input class="ver-input" id="new-imagen" style="width:100%" placeholder="img/NombreApp.png">
+          <input class="ver-input" id="new-imagen" style="width:100%" placeholder="/img/NombreApp.png">
         </div>
       </div>
       <button class="pub-btn" style="background:linear-gradient(135deg,var(--p),var(--p2))" onclick="createApp()">

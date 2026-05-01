@@ -40,13 +40,13 @@
 <!-- HEADER -->
 <header>
   <div class="hdr">
-    <a class="logo-link" href="../index.html">
+    <a class="logo-link" href="/">
       <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
       <span class="logo-b">CodeHub</span>
     </a>
     <div class="hdr-right">
       <span class="update-badge" id="update-badge">● Actualizado</span>
-      <a class="back-link" href="../index.html"><i class="fas fa-arrow-left"></i> Volver</a>
+      <a class="back-link" href="/"><i class="fas fa-arrow-left"></i> Volver</a>
     </div>
   </div>
 </header>
@@ -121,7 +121,7 @@
 </div>
 
 <footer>
-  <a href="../index.html">&lt;Wilson.E/&gt;</a> · Apps verificadas · Solo para Android · Uso responsable
+  <a href="/">&lt;Wilson.E/&gt;</a> · Apps verificadas · Solo para Android · Uso responsable
 </footer>
 
 
@@ -431,12 +431,12 @@ async function submitRequest() {
 
 
 // ── CARGA DINÁMICA DE APPS DESDE BACKEND ─────────────────────
-const APP_META = {"app-1": {"img": "img/Spotify.png", "desc": "Música sin anuncios, calidad máxima, descargas y saltos ilimitados.", "catTag": "Música", "emoji": "🎵"}, "app-2": {"img": "img/SpoLite.png", "desc": "Versión ligera de Spotify con funciones premium activadas.", "catTag": "Música", "emoji": "🎵"}, "app-3": {"img": "img/YouTube.jpeg", "desc": "YouTube sin anuncios, SponsorBlock integrado y gestor de descargas.", "catTag": "Video", "emoji": "📺"}, "app-4": {"img": "img/YTMusic.png", "desc": "YouTube Music con reproducción en segundo plano sin restricciones.", "catTag": "Música", "emoji": "🎵"}, "app-5": {"img": "img/TikTok.svg", "desc": "TikTok sin anuncios, sin marca de agua en descargas y región desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-6": {"img": "img/Netflix.png", "desc": "Cliente alternativo de Netflix con calidad 4K desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-7": {"img": "img/Terabox.png", "desc": "Almacenamiento en la nube premium con transferencias más rápidas.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-8": {"img": "img/Player.jpg", "desc": "Reproductor de video con soporte para todos los formatos y AV1.", "catTag": "Video", "emoji": "📺"}, "app-9": {"img": "img/Picsart.jpg", "desc": "Editor de fotos con todas las herramientas IA desbloqueadas.", "catTag": "Foto", "emoji": "📸"}, "app-10": {"img": "img/Remini.png", "desc": "Mejora la calidad de fotos antiguas o borrosas con IA avanzada.", "catTag": "Foto", "emoji": "📸"}, "app-11": {"img": "img/Eraser.jpg", "desc": "Elimina objetos, personas o fondos de tus fotos con un toque.", "catTag": "Foto", "emoji": "📸"}, "app-12": {"img": "img/CamScanner.png", "desc": "Escáner de documentos con OCR preciso y múltiples formatos de exportación.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-13": {"img": "img/dnspro.png", "desc": "Bloquea anuncios y rastreadores a nivel DNS en todo el dispositivo.", "catTag": "Seguridad", "emoji": "🔒"}};
+const APP_META = {"app-1": {"img": "/img/Spotify.png", "desc": "Música sin anuncios, calidad máxima, descargas y saltos ilimitados.", "catTag": "Música", "emoji": "🎵"}, "app-2": {"img": "/img/SpoLite.png", "desc": "Versión ligera de Spotify con funciones premium activadas.", "catTag": "Música", "emoji": "🎵"}, "app-3": {"img": "/img/YouTube.jpeg", "desc": "YouTube sin anuncios, SponsorBlock integrado y gestor de descargas.", "catTag": "Video", "emoji": "📺"}, "app-4": {"img": "/img/YTMusic.png", "desc": "YouTube Music con reproducción en segundo plano sin restricciones.", "catTag": "Música", "emoji": "🎵"}, "app-5": {"img": "/img/TikTok.svg", "desc": "TikTok sin anuncios, sin marca de agua en descargas y región desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-6": {"img": "/img/Netflix.png", "desc": "Cliente alternativo de Netflix con calidad 4K desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-7": {"img": "/img/Terabox.png", "desc": "Almacenamiento en la nube premium con transferencias más rápidas.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-8": {"img": "/img/Player.jpg", "desc": "Reproductor de video con soporte para todos los formatos y AV1.", "catTag": "Video", "emoji": "📺"}, "app-9": {"img": "/img/Picsart.jpg", "desc": "Editor de fotos con todas las herramientas IA desbloqueadas.", "catTag": "Foto", "emoji": "📸"}, "app-10": {"img": "/img/Remini.png", "desc": "Mejora la calidad de fotos antiguas o borrosas con IA avanzada.", "catTag": "Foto", "emoji": "📸"}, "app-11": {"img": "/img/Eraser.jpg", "desc": "Elimina objetos, personas o fondos de tus fotos con un toque.", "catTag": "Foto", "emoji": "📸"}, "app-12": {"img": "/img/CamScanner.png", "desc": "Escáner de documentos con OCR preciso y múltiples formatos de exportación.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-13": {"img": "/img/dnspro.png", "desc": "Bloquea anuncios y rastreadores a nivel DNS en todo el dispositivo.", "catTag": "Seguridad", "emoji": "🔒"}};
 const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util"};
 
 function buildAppCard(app) {
   const meta      = APP_META[app.appId] || {};
-  const img       = meta.img     || 'img/default.png';
+  const img       = meta.img     || '/img/default.png';
   const desc      = meta.desc    || app.descripcion || '';
   const catTag    = meta.catTag  || app.categoria   || 'App';
   const dataCat   = CAT_MAP[catTag] || 'util';
