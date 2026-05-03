@@ -2871,9 +2871,8 @@
 }
 
 /* ── Mobile bottom nav bar ───────────────────────────────────── */
-#mobile-nav-bar {
-  display: none;
-}
+#mobile-nav-bar { display: none; }
+/* Hidden on desktop, shown only on mobile via media query below */
 @media (max-width: 640px) {
   #mobile-nav-bar {
     display: flex;

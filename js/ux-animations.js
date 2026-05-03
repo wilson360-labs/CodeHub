@@ -259,7 +259,8 @@
       });
     });
 
-    // Slide up after splash
+    // Only animate on mobile (640px)
+    if (window.innerWidth > 640) return;
     anime.set(bar, { translateY: 80, opacity: 0 });
     setTimeout(function () {
       anime({ targets: bar, translateY: 0, opacity: 1,
