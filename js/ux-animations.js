@@ -1,97 +1,197 @@
 // ═══════════════════════════════════════════════════════════════
-//  UX ANIMATIONS — CodeHub by Wilson.E
-//  Anime.js: logo, chips, counters, reveals, cursor, mobile nav
+//  UX ANIMATIONS v2 — CodeHub by Wilson.E
+//  Post-splash cinematic entrance + all UX enhancements
 // ═══════════════════════════════════════════════════════════════
 (function () {
   'use strict';
 
+  // ── Utilities ───────────────────────────────────────────────
+  function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+  function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
   function ready(cb) {
-    if (document.readyState !== 'loading') cb();
-    else document.addEventListener('DOMContentLoaded', cb);
+    document.readyState !== 'loading' ? cb() : document.addEventListener('DOMContentLoaded', cb);
   }
-
   function waitAnime(cb, n) {
     n = n || 0;
     if (window.anime) return cb();
-    if (n > 50) return;
+    if (n > 60) return;
     setTimeout(function () { waitAnime(cb, n + 1); }, 80);
   }
 
-  // ── 1. CUSTOM CURSOR ─────────────────────────────────────────
-  function initCursor() {
-    var cur = document.getElementById('ch-cursor');
-    var ring = document.getElementById('ch-cursor-ring');
-    if (!cur || !ring || window.matchMedia('(pointer:coarse)').matches) return;
+  // ── 1. POST-SPLASH CINEMATIC ENTRANCE ───────────────────────
+  // Runs once after the splash screen fades out
+  function initPostSplashEntrance() {
+    // Watch for splash removal
+    var splash = document.getElementById('ch-splash');
+    if (!splash) { runEntrance(); return; }
 
-    var mx = 0, my = 0, rx = 0, ry = 0;
-    document.addEventListener('mousemove', function (e) {
-      mx = e.clientX; my = e.clientY;
-      cur.style.transform = 'translate(' + mx + 'px,' + my + 'px) translate(-50%,-50%)';
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        m.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1 && node.classList && node.classList.contains('ch-splash--out')) {
+            setTimeout(runEntrance, 500); // wait for splash fade duration
+            observer.disconnect();
+          }
+        });
+        // Also watch for class change on splash itself
+        if (m.type === 'attributes' && m.attributeName === 'class') {
+          if (splash.classList.contains('ch-splash--out')) {
+            setTimeout(runEntrance, 500);
+            observer.disconnect();
+          }
+        }
+      });
     });
 
-    // Ring follows with lag
+    observer.observe(splash, { attributes: true, attributeFilter: ['class'] });
+
+    // Fallback: if splash is already gone or takes too long
+    setTimeout(function () {
+      if (splash.style.display === 'none' || splash.classList.contains('ch-splash--out')) {
+        runEntrance();
+        observer.disconnect();
+      }
+    }, 4500);
+  }
+
+  function runEntrance() {
+    if (window._chEntranceDone) return;
+    window._chEntranceDone = true;
+
+    waitAnime(function () {
+      var header  = $('header');
+      var hero    = $$('.hero-greeting, .hero-name, .hero-title, .hero-desc, .hero-stack, .hero-ctas, .hero-terminal');
+      var scanline = $('#hero-scanline, .hero-scanline');
+
+      // Set initial states
+      if (header) anime.set(header, { opacity: 0, translateY: -20 });
+      if (hero.length) anime.set(hero, { opacity: 0, translateY: 28, filter: 'blur(4px)' });
+
+      // Timeline: header → hero elements cascade
+      var tl = anime.timeline({ easing: 'easeOutExpo' });
+
+      if (header) {
+        tl.add({
+          targets: header,
+          opacity: [0, 1],
+          translateY: [-20, 0],
+          duration: 600
+        });
+      }
+
+      if (hero.length) {
+        tl.add({
+          targets: hero,
+          opacity: [0, 1],
+          translateY: [28, 0],
+          filter: ['blur(4px)', 'blur(0px)'],
+          duration: 700,
+          delay: anime.stagger(80)
+        }, '-=300');
+      }
+
+      // Subtle page-wide reveal: background particles appear
+      var canvas = $('#ch-hero-canvas, canvas:not(#ch-splash-canvas)');
+      if (canvas) {
+        tl.add({ targets: canvas, opacity: [0, 1], duration: 800 }, '-=400');
+      }
+    });
+  }
+
+  // ── 2. CUSTOM CURSOR ────────────────────────────────────────
+  function initCursor() {
+    if (window.matchMedia('(pointer:coarse)').matches) return;
+    var cur  = document.getElementById('ch-cursor');
+    var ring = document.getElementById('ch-cursor-ring');
+    if (!cur || !ring) return;
+
+    var mx = -100, my = -100, rx = -100, ry = -100;
+
+    document.addEventListener('mousemove', function (e) {
+      mx = e.clientX; my = e.clientY;
+      cur.style.left = mx + 'px';
+      cur.style.top  = my + 'px';
+    });
+
     (function loop() {
       rx += (mx - rx) * 0.13;
       ry += (my - ry) * 0.13;
-      ring.style.transform = 'translate(' + rx + 'px,' + ry + 'px) translate(-50%,-50%)';
+      ring.style.left = rx + 'px';
+      ring.style.top  = ry + 'px';
       requestAnimationFrame(loop);
     })();
 
-    // Hover state on interactive elements
     document.addEventListener('mouseover', function (e) {
-      if (e.target.closest('a,button,[onclick],[role=button],label')) {
+      if (e.target.closest('a,button,[onclick],[role=button],label,.skill-chip,.service-card')) {
         cur.classList.add('hovering');
         ring.classList.add('hovering');
       }
     });
     document.addEventListener('mouseout', function (e) {
-      if (e.target.closest('a,button,[onclick],[role=button],label')) {
+      if (e.target.closest('a,button,[onclick],[role=button],label,.skill-chip,.service-card')) {
         cur.classList.remove('hovering');
         ring.classList.remove('hovering');
       }
     });
   }
 
-  // ── 2. LOGO ENTRANCE + HOVER ─────────────────────────────────
+  // ── 3. LOGO ENTRANCE + HOVER ────────────────────────────────
   function initLogo() {
-    var b1  = document.querySelector('.header-logo-text .bracket:first-child');
-    var b2  = document.querySelector('.header-logo-text .bracket:last-child');
-    var name  = document.querySelector('#liq-logo-wilson');
-    var badge = document.querySelector('#liq-logo-codehub');
-    var logo  = document.querySelector('.header-logo');
+    var b1    = $('.header-logo-text .bracket:first-child');
+    var b2    = $('.header-logo-text .bracket:last-child');
+    var name  = $('#liq-logo-wilson');
+    var badge = $('#liq-logo-codehub');
+    var logo  = $('.header-logo');
     if (!logo || !b1) return;
 
     anime.set([b1, b2, name, badge], { opacity: 0 });
-    anime.timeline({ easing: 'easeOutExpo' })
+    anime.timeline({ easing: 'easeOutExpo', delay: 800 })
       .add({ targets: b1,    opacity: [0,1], translateX: [-14,0], duration: 380 })
-      .add({ targets: name,  opacity: [0,1], translateY: [-10,0], duration: 360 }, '-=180')
+      .add({ targets: name,  opacity: [0,1], translateY: [-10,0], duration: 360 }, '-=200')
       .add({ targets: b2,    opacity: [0,1], translateX: [14,0],  duration: 380 }, '-=280')
-      .add({ targets: badge, opacity: [0,1], scale: [0.65,1],     duration: 340 }, '-=200');
+      .add({ targets: badge, opacity: [0,1], scale: [0.6,1],      duration: 340, easing: 'easeOutBack' }, '-=200');
 
     logo.addEventListener('mouseenter', function () {
-      anime({ targets: badge, scale: [1,1.1,1], duration: 520, easing: 'easeInOutBack' });
+      anime({ targets: badge, scale: [1,1.12,1], duration: 500, easing: 'easeInOutBack' });
     });
   }
 
-  // ── 3. SKILL CHIPS STAGGER ───────────────────────────────────
+  // ── 4. SKILL CHIPS STAGGER ──────────────────────────────────
   function initChips() {
-    var grids = document.querySelectorAll('.skills-grid');
+    var grids = $$('.skills-grid');
     if (!grids.length) return;
     var seen = new Set();
-    var io = new IntersectionObserver(function (entries) {
+    new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         if (!e.isIntersecting || seen.has(e.target)) return;
         seen.add(e.target);
-        var items = e.target.querySelectorAll('.skill-chip,.tool-badge');
-        anime.set(items, { opacity: 0, translateY: 20, scale: 0.92 });
+        var items = $$('. skill-chip,.tool-badge', e.target);
+        // fix: remove space
+        items = Array.from(e.target.querySelectorAll('.skill-chip,.tool-badge'));
+        if (!items.length) return;
+        anime.set(items, { opacity: 0, translateY: 22, scale: 0.9 });
         anime({ targets: items, opacity: 1, translateY: 0, scale: 1,
-          duration: 400, delay: anime.stagger(50, { start: 60 }), easing: 'easeOutBack' });
+          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack' });
       });
-    }, { threshold: 0.1 });
-    grids.forEach(function (g) { io.observe(g); });
+    }, { threshold: 0.1 }).observe(grids[0].parentElement || grids[0]);
+
+    // Observe each grid individually
+    grids.forEach(function (g) {
+      var io = new IntersectionObserver(function (entries) {
+        if (!entries[0].isIntersecting || seen.has(entries[0].target)) return;
+        seen.add(entries[0].target);
+        var items = Array.from(entries[0].target.querySelectorAll('.skill-chip,.tool-badge'));
+        if (!items.length) return;
+        anime.set(items, { opacity: 0, translateY: 22, scale: 0.9 });
+        anime({ targets: items, opacity: 1, translateY: 0, scale: 1,
+          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack' });
+        io.disconnect();
+      }, { threshold: 0.08 });
+      io.observe(g);
+    });
   }
 
-  // ── 4. ANIMATED STAT COUNTERS ────────────────────────────────
+  // ── 5. STAT COUNTERS ────────────────────────────────────────
   function initCounters() {
     var section = document.getElementById('stats');
     if (!section) return;
@@ -99,118 +199,134 @@
     new IntersectionObserver(function (entries) {
       if (!entries[0].isIntersecting || done) return;
       done = true;
-      var els = section.querySelectorAll('.stat-number, [class*="stat-num"]');
-      els.forEach(function (el) {
+      section.querySelectorAll('.stat-number, [class*="stat-num"]').forEach(function (el) {
         var raw = parseInt(el.textContent.replace(/\D/g, ''), 10);
         if (!raw || raw < 2) return;
-        var suffix = el.textContent.replace(/[\d,]/g, '').trim();
+        var suffix = el.textContent.replace(/[\d,\s]/g, '');
         var obj = { n: 0 };
         anime({ targets: obj, n: raw, round: 1, duration: 1600, easing: 'easeOutExpo',
-          update: function () {
-            el.textContent = obj.n.toLocaleString() + (suffix ? ' ' + suffix : '');
-          }
+          update: function () { el.textContent = Math.round(obj.n).toLocaleString() + suffix; }
         });
       });
     }, { threshold: 0.3 }).observe(section);
   }
 
-  // ── 5. SCROLL REVEAL ─────────────────────────────────────────
+  // ── 6. SCROLL REVEAL ────────────────────────────────────────
   function initReveal() {
-    var targets = document.querySelectorAll(
-      '#services .service-card, .why-card, #skills .skills-header'
-    );
+    var targets = $$('#services .service-card, .why-card, #skills .skills-header');
     if (!targets.length) return;
-    anime.set(targets, { opacity: 0, translateY: 22 });
+    anime.set(targets, { opacity: 0, translateY: 26 });
     var io = new IntersectionObserver(function (entries) {
       var vis = entries.filter(function (e) { return e.isIntersecting; }).map(function (e) { return e.target; });
       if (!vis.length) return;
-      anime({ targets: vis, opacity: 1, translateY: 0, duration: 480,
-        delay: anime.stagger(65), easing: 'easeOutQuart' });
+      anime({ targets: vis, opacity: 1, translateY: 0, duration: 500,
+        delay: anime.stagger(70), easing: 'easeOutQuart' });
       vis.forEach(function (el) { io.unobserve(el); });
     }, { threshold: 0.1 });
     targets.forEach(function (el) { io.observe(el); });
   }
 
-  // ── 6. CHIP ICON BOUNCE ON HOVER ────────────────────────────
+  // ── 7. ICON BOUNCE ON HOVER ─────────────────────────────────
   function initIconHover() {
     document.addEventListener('mouseover', function (e) {
       var chip = e.target.closest('.skill-chip');
       if (!chip) return;
       var img = chip.querySelector('.sc-icon img');
-      if (img) anime({ targets: img, scale: [1,1.25,1], rotate: [0,-8,5,0],
-        duration: 450, easing: 'easeInOutBack' });
+      if (img) anime({ targets: img, scale: [1,1.3,1], rotate: [0,-10,6,0],
+        duration: 480, easing: 'easeInOutBack' });
     });
   }
 
-  // ── 7. MOBILE NAV — active state + haptic ───────────────────
+  // ── 8. MOBILE BOTTOM NAV ────────────────────────────────────
   function initMobileNav() {
     var bar = document.getElementById('mobile-nav-bar');
     if (!bar) return;
 
-    // Mark current page active
     var path = window.location.pathname.replace(/\/$/, '') || '/';
     bar.querySelectorAll('a').forEach(function (a) {
       a.classList.remove('active');
-      var href = a.getAttribute('href').replace(/\/$/, '') || '/';
+      var href = (a.getAttribute('href') || '').replace(/\/$/, '') || '/';
       if (path === href) a.classList.add('active');
     });
 
-    // Anime.js tap feedback + haptic
     bar.querySelectorAll('a').forEach(function (a) {
       a.addEventListener('click', function () {
-        var icon = a.querySelector('.mnb-icon');
-        anime({ targets: icon, scale: [1, 1.35, 1], duration: 380, easing: 'easeOutBack' });
-        if (navigator.vibrate) navigator.vibrate(45);
+        bar.querySelectorAll('a').forEach(function(x){ x.classList.remove('active'); });
+        a.classList.add('active');
+        anime({ targets: a.querySelector('.mnb-icon'), scale: [1,1.4,1],
+          duration: 400, easing: 'easeOutBack' });
+        if (navigator.vibrate) navigator.vibrate(42);
       });
     });
 
-    // Slide up entrance
-    anime({ targets: bar, translateY: [80, 0], opacity: [0, 1],
-      duration: 520, delay: 300, easing: 'easeOutExpo' });
+    // Slide up after splash
+    anime.set(bar, { translateY: 80, opacity: 0 });
+    setTimeout(function () {
+      anime({ targets: bar, translateY: 0, opacity: 1,
+        duration: 550, easing: 'easeOutExpo' });
+    }, 1200);
   }
 
-  // ── 8. DARK MODE CLIP-PATH TRANSITION ───────────────────────
+  // ── 9. DARK MODE CLIP-PATH ──────────────────────────────────
   function initThemeTransition() {
-    var btn = document.querySelector('[onclick*="theme"],[onclick*="Theme"],[onclick*="dark"],[onclick*="Dark"],.theme-toggle,.theme-btn,#theme-btn');
+    // Find theme button by common patterns
+    var btn = document.querySelector(
+      '[onclick*="theme"],[onclick*="Theme"],[onclick*="dark"],[onclick*="Dark"],' +
+      '[onclick*="toggleDark"],[onclick*="setTheme"],.theme-toggle,#theme-btn,.cfg-item-toggle'
+    );
     if (!btn) return;
-    btn.addEventListener('click', function (e) {
+    btn.addEventListener('click', function () {
       var r = btn.getBoundingClientRect();
       var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      var maxR = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy));
+      var maxR = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) + 20;
       var ov = document.createElement('div');
-      ov.style.cssText = 'position:fixed;inset:0;z-index:9990;pointer-events:none;' +
-        'background:var(--bg,#0a0a0f);clip-path:circle(0px at '+cx+'px '+cy+'px)';
+      var isDark = document.documentElement.classList.contains('light') || document.body.classList.contains('light');
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9992;pointer-events:none;' +
+        'background:' + (isDark ? '#06060f' : '#f5f5f0') + ';' +
+        'clip-path:circle(0px at ' + cx + 'px ' + cy + 'px)';
       document.body.appendChild(ov);
       anime({ targets: ov,
-        clipPath: ['circle(0px at '+cx+'px '+cy+'px)', 'circle('+(maxR+10)+'px at '+cx+'px '+cy+'px)'],
-        duration: 500, easing: 'easeInOutQuart',
+        clipPath: ['circle(0px at '+cx+'px '+cy+'px)',
+                   'circle('+maxR+'px at '+cx+'px '+cy+'px)'],
+        duration: 520, easing: 'easeInOutQuart',
         complete: function () { ov.remove(); }
       });
     }, true);
   }
 
-  // ── 9. HERO TEXT STAGGER ────────────────────────────────────
-  function initHero() {
-    var hero = document.querySelector('.hero-greeting, .hero-name, .hero-title');
-    if (!hero) return;
-    var els = document.querySelectorAll('.hero-greeting, .hero-name, .hero-title, .hero-sub, .hero-actions');
-    anime.set(els, { opacity: 0, translateY: 16 });
-    anime({ targets: els, opacity: 1, translateY: 0,
-      duration: 600, delay: anime.stagger(90, { start: 200 }), easing: 'easeOutQuart' });
+  // ── 10. SERVICE CARD MAGNETIC HOVER ────────────────────────
+  function initMagneticCards() {
+    if (window.matchMedia('(pointer:coarse)').matches) return;
+    $$('.service-card').forEach(function (card) {
+      card.addEventListener('mousemove', function (e) {
+        var r = card.getBoundingClientRect();
+        var dx = (e.clientX - r.left - r.width / 2) / r.width;
+        var dy = (e.clientY - r.top - r.height / 2) / r.height;
+        anime({ targets: card,
+          rotateY: dx * 8, rotateX: -dy * 6,
+          translateZ: 12,
+          duration: 200, easing: 'linear' });
+      });
+      card.addEventListener('mouseleave', function () {
+        anime({ targets: card, rotateY: 0, rotateX: 0, translateZ: 0,
+          duration: 400, easing: 'easeOutElastic(1,.6)' });
+      });
+    });
   }
 
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
     initCursor();
     initMobileNav();
+    initPostSplashEntrance();
     waitAnime(function () {
       initLogo();
-      initHero();
       initChips();
       initCounters();
       initReveal();
       initIconHover();
       initThemeTransition();
+      initMagneticCards();
     });
   });
 

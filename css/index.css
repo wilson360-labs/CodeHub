@@ -2815,6 +2815,8 @@
 
 /* ── Service cards — elevated hover with glow ───────────────── */
 .service-card {
+  transform-style: preserve-3d;
+  perspective: 800px;
   transition: transform .25s cubic-bezier(.4,0,.2,1),
               border-color .25s, box-shadow .25s;
   position: relative;
@@ -2837,33 +2839,35 @@
 
 /* ── Custom cursor (desktop only) ──────────────────────────── */
 @media (pointer: fine) {
-  body { cursor: none; }
-  a, button, [onclick], label, select, [role=button] { cursor: none; }
+  body, a, button, [onclick], label, select, [role=button] { cursor: none !important; }
   #ch-cursor {
     position: fixed;
     top: 0; left: 0;
-    width: 10px; height: 10px;
+    width: 8px; height: 8px;
     background: #ff4500;
     border-radius: 50%;
     pointer-events: none;
     z-index: 99999;
     transform: translate(-50%, -50%);
-    transition: transform .08s linear, width .15s, height .15s, background .15s;
+    will-change: left, top;
+    transition: width .15s, height .15s, background .15s;
     mix-blend-mode: difference;
   }
   #ch-cursor-ring {
     position: fixed;
     top: 0; left: 0;
-    width: 32px; height: 32px;
-    border: 1.5px solid rgba(255,69,0,.5);
+    width: 30px; height: 30px;
+    border: 1.5px solid rgba(255,69,0,.55);
     border-radius: 50%;
     pointer-events: none;
     z-index: 99998;
     transform: translate(-50%, -50%);
-    transition: transform .12s ease-out, width .2s, height .2s, border-color .2s, opacity .2s;
+    will-change: left, top;
+    transition: width .2s, height .2s, border-color .2s;
   }
-  #ch-cursor.hovering { width: 6px; height: 6px; background: #ff6b35; }
-  #ch-cursor-ring.hovering { width: 44px; height: 44px; border-color: rgba(255,107,53,.7); }
+  #ch-cursor.hovering { width: 5px; height: 5px; background: #ff6b35; }
+  #ch-cursor-ring.hovering { width: 42px; height: 42px; border-color: rgba(255,107,53,.65); }
+}
 }
 
 /* ── Mobile bottom nav bar ───────────────────────────────────── */
