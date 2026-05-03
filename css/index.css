@@ -2875,7 +2875,7 @@
 /* Hidden on desktop, shown only on mobile via media query below */
 @media (max-width: 640px) {
   #mobile-nav-bar {
-    display: flex;
+    display: flex !important;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     z-index: 5000;

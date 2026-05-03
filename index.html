@@ -106,8 +106,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
 
+    <!-- Estilos principales -->
+    <link rel="stylesheet" href="css/index.css">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
     <link rel="stylesheet" href="css/components.css">
+    <!-- Media queries responsive -->
+    <link rel="stylesheet" href="css/index-responsive.css">
 
 
 
@@ -3987,6 +3991,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Service Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€───
   if ('serviceWorker' in navigator) {
     let refreshing = false;
+    // Flag: solo recargar si el usuario inició la actualización manualmente
+    let userTriggeredUpdate = false;
 
     navigator.serviceWorker.register('/sw.js').then(reg => {
       console.log('✅ SW registrado v4.2');
@@ -4013,15 +4019,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }).catch(e => console.warn('SW error:', e));
 
-    // Recargar solo cuando el usuario acepta la actualización (intencional)
+    // BUGFIX: Solo recargar si el usuario aceptó la actualización explícitamente.
+    // Sin este guard, el primer 'controllerchange' (activación inicial del SW)
+    // disparaba location.reload() causando el bootloop intermitente.
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) { refreshing = true; location.reload(); }
+      if (userTriggeredUpdate && !refreshing) { refreshing = true; location.reload(); }
     });
   }
 
   function updatePWA() {
     navigator.serviceWorker.getRegistration().then(reg => {
       if (reg?.waiting) {
+        userTriggeredUpdate = true;
         refreshing = true;
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       } else {
@@ -4587,7 +4596,7 @@ function setAIMood(btn) {
 <script src="js/ux-animations.js"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
-<nav id="mobile-nav-bar" aria-label="Navegación móvil">
+<nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none">
   <a href="/" class="active" id="mnb-home">
     <span class="mnb-icon">🏠</span>
     <span>Inicio</span>
