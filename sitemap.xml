@@ -6,63 +6,70 @@
 
   <url>
     <loc>https://wilson360-labs.vercel.app/</loc>
-    <lastmod>2026-03-29</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/pages/novedades.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/novedades</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/pages/tools.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/tools</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/pages/servicios.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/servicios</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/pages/downloader.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/downloader</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/cv.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/cv</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/codehub-ultra.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/codehub-ultra</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.65</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/games/snake.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/analytics</loc>
+    <lastmod>2026-05-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <url>
+    <loc>https://wilson360-labs.vercel.app/snake</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/games/tetris.html</loc>
-    <lastmod>2026-03-29</lastmod>
+    <loc>https://wilson360-labs.vercel.app/tetris</loc>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

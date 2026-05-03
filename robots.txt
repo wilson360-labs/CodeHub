@@ -1,10 +1,12 @@
 User-agent: *
 Allow: /
+
 Disallow: /backend/
-Disallow: /admin-hub.html
-Disallow: /apps_data.json
 Disallow: /python/
 Disallow: /tests/
+Disallow: /apps_data.json
+Disallow: /pages/
+Disallow: /admin-hub
 
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
 

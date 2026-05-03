@@ -11,10 +11,10 @@ const OFFLINE   = '/offline.html';
 const PRECACHE = [
   '/',
   '/index.html',
-  '/pages/tools.html',
-  '/pages/novedades.html',
-  '/pages/downloader.html',
-  '/pages/servicios.html',
+  '/tools',
+  '/novedades',
+  '/downloader',
+  '/servicios',
   '/css/novedades.css',
   '/manifest.json',
   '/offline.html',
@@ -133,7 +133,7 @@ self.addEventListener('push', e => {
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
     requireInteraction: false,
-    data: { url: url || '/pages/novedades.html', type, appId },
+    data: { url: url || '/novedades', type, appId },
     actions: [],
   };
 
@@ -144,7 +144,7 @@ self.addEventListener('push', e => {
       { action: 'view',    title: '⬇️ Ver app' },
       { action: 'dismiss', title: 'Cerrar' },
     ];
-    options.data.url = '/pages/novedades.html';
+    options.data.url = '/novedades';
   } else if (type === 'weather') {
     options.tag      = 'codehub-weather';
     options.renotify = false;
@@ -161,7 +161,7 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
-  const targetUrl = e.notification.data?.url || '/pages/novedades.html';
+  const targetUrl = e.notification.data?.url || '/novedades';
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
@@ -187,7 +187,7 @@ self.addEventListener('message', e => {
       badge: '/splash/codehub.png',
       tag: notifType === 'weather' ? 'codehub-weather' : `app-update-${appId || 'gen'}`,
       vibrate: [150, 100, 150],
-      data: { url: url || '/pages/novedades.html', type: notifType },
+      data: { url: url || '/novedades', type: notifType },
       renotify: true,
     });
   }

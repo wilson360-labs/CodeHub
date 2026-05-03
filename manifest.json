@@ -45,7 +45,7 @@
       "name": "Herramientas",
       "short_name": "Tools",
       "description": "32 herramientas web gratuitas",
-      "url": "/tools.html",
+      "url": "/tools",
       "icons": [
         {
           "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
@@ -57,7 +57,7 @@
       "name": "Apps Android",
       "short_name": "Apps",
       "description": "Apps premium desbloqueadas",
-      "url": "/novedades.html",
+      "url": "/novedades",
       "icons": [
         {
           "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
@@ -69,7 +69,7 @@
       "name": "Servicios",
       "short_name": "Servicios",
       "description": "Servicios de desarrollo web",
-      "url": "/servicios.html",
+      "url": "/servicios",
       "icons": [
         {
           "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
@@ -81,7 +81,7 @@
       "name": "Descargar Videos",
       "short_name": "Downloader",
       "description": "Descarga videos de redes sociales",
-      "url": "/downloader.html",
+      "url": "/downloader",
       "icons": [
         {
           "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
@@ -90,6 +90,11 @@
       ]
     }
   ],
-  "categories": ["portfolio", "productivity", "utilities", "developer-tools"],
+  "categories": [
+    "portfolio",
+    "productivity",
+    "utilities",
+    "developer-tools"
+  ],
   "prefer_related_applications": false
 }
