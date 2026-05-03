@@ -1893,10 +1893,24 @@
             margin-bottom: .9rem;
         }
         .hero-name {
-            background: linear-gradient(135deg, #fff 0%, var(--accent) 40%, var(--primary) 100%);
+            /* Gradiente solo cuando NO hay liquid-letters activas.
+               Las .liquid-letter controlan su propio color vía JS (efecto agua).
+               Usamos color base en lugar de -webkit-text-fill-color para no
+               bloquear el efecto ripple de las letras hijas. */
+            color: #fff;
+        }
+        /* Gradiente sutil en letras del nombre cuando no hay hover */
+        .hero-name .liquid-letter {
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 60%, var(--primary) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            transition: color .18s ease, text-shadow .18s ease;
+        }
+        /* Al hacer hover el JS pone color inline → desactivar el clip para mostrar color real */
+        .hero-name .liquid-letter[style*="color"] {
+            -webkit-text-fill-color: unset;
+            background: none;
         }
         .hero-desc {
             font-size: .95rem;
