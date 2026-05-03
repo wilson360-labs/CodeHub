@@ -289,6 +289,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="ch-glow-ring"></div>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
+            <!-- Orbital dots -->
+            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpin 5s linear infinite;">
+                <div style="position:absolute;top:6px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#ff4500;box-shadow:0 0 14px rgba(255,69,0,1),0 0 28px rgba(255,69,0,.6);"></div>
+            </div>
+            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpinRev 7s linear infinite;">
+                <div style="position:absolute;bottom:6px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#00c6ff;box-shadow:0 0 12px rgba(0,198,255,1),0 0 22px rgba(0,198,255,.6);"></div>
+            </div>
+            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpin 9s linear infinite 1s;">
+                <div style="position:absolute;top:50%;right:5px;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:#7c4dff;box-shadow:0 0 10px rgba(124,77,255,1),0 0 20px rgba(124,77,255,.6);"></div>
+            </div>
             <img class="ch-logo-img"
                  id="ch-logo-img"
                  src="https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/splash/codehub.png"
@@ -2829,7 +2839,7 @@ async function sendEmail(e) {
   <div class="ai-input-wrap">
     <div class="ai-input-topline">
       <span class="ai-input-badge">AI Cockpit</span>
-      <span class="ai-input-hint" id="ai-input-hint">Debug, diseño, ideas y código en un solo lugar</span>
+      <span class="ai-input-hint" id="ai-input-hint">Pensado para responsive y UX real</span>
     </div>
     <div class="ai-input-shell">
       <div class="ai-input-row">
@@ -4288,7 +4298,23 @@ function setAIMood(btn) {
         if (logoReady) return;
         logoReady = true;
         var imgEl = document.getElementById('ch-logo-img');
-        if (imgEl) { imgEl.style.opacity = '1'; imgEl.classList.add('loaded'); }
+        if (imgEl) { 
+            imgEl.style.opacity = '1';
+            imgEl.classList.add('loaded');
+            /* Spin logo del splash */
+            var angle = 0;
+            var spinning = true;
+            var speedDeg = 0.5;
+            (function spinLogo() {
+                if (!spinning) return;
+                angle = (angle + speedDeg) % 360;
+                // Slow breathe spin - not full 360 rotation (it's a logo, not a spinner)
+                // Instead do a harmonic oscillation
+                var osc = Math.sin(angle * Math.PI / 180) * 6;
+                imgEl.style.transform = 'scale(1) rotate(' + osc + 'deg)';
+                requestAnimationFrame(spinLogo);
+            })();
+        }
         cancelAnimationFrame(rafId);
         targetPct = 100;
         var fillInterval = setInterval(function(){
@@ -4612,5 +4638,69 @@ function setAIMood(btn) {
 
 <div id="ch-cursor" aria-hidden="true"></div>
 <div id="ch-cursor-ring" aria-hidden="true"></div>
+
+<script>
+/* ══ NEON CURSOR TRACKER ══ */
+(function() {
+    var cursor = document.getElementById('ch-cursor');
+    var ring   = document.getElementById('ch-cursor-ring');
+    if (!cursor || !ring) return;
+    
+    var cx = -100, cy = -100, rx = -100, ry = -100;
+    var speed = 0.12;
+    
+    document.addEventListener('mousemove', function(e) {
+        cx = e.clientX;
+        cy = e.clientY;
+        cursor.style.left = cx + 'px';
+        cursor.style.top  = cy + 'px';
+    });
+    
+    function animRing() {
+        rx += (cx - rx) * speed;
+        ry += (cy - ry) * speed;
+        ring.style.left = rx + 'px';
+        ring.style.top  = ry + 'px';
+        requestAnimationFrame(animRing);
+    }
+    animRing();
+    
+    // Interactive: expand on hover
+    document.querySelectorAll('a, button, .dock-item, .service-card, .stat-card').forEach(function(el) {
+        el.addEventListener('mouseenter', function() {
+            ring.style.width  = '52px';
+            ring.style.height = '52px';
+            ring.style.borderColor = 'rgba(255,107,53,0.8)';
+        });
+        el.addEventListener('mouseleave', function() {
+            ring.style.width  = '34px';
+            ring.style.height = '34px';
+            ring.style.borderColor = 'rgba(255,69,0,0.45)';
+        });
+    });
+    
+    // Hide on mobile
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        cursor.style.display = 'none';
+        ring.style.display = 'none';
+    }
+})();
+
+/* ══ 3D TILT ON STAT CARDS ══ */
+(function() {
+    document.querySelectorAll('.stat-card, .service-card, .wm-card').forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+            var rect = card.getBoundingClientRect();
+            var x = (e.clientX - rect.left) / rect.width  - 0.5;
+            var y = (e.clientY - rect.top)  / rect.height - 0.5;
+            card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 8) + 'deg) translateZ(8px)';
+        });
+        card.addEventListener('mouseleave', function() {
+            card.style.transform = '';
+        });
+    });
+})();
+</script>
+
 </body>
 </html>
