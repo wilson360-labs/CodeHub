@@ -224,6 +224,55 @@
   #whatsNewIcon { right: 14px; width: 48px; height: 48px; font-size: 1.2rem; }
   .whatsNewDialog { padding: 20px; border-radius: 18px; }
 }
+
+/* ── index.css mobile 550px patches ── */
+@media (max-width: 550px) {
+  /* Anti-zoom Android/iOS en todos los inputs del sitio */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  /* Base font fluida */
+  body {
+    font-size: clamp(0.875rem, 2.8vw, 1rem);
+    line-height: 1.65;
+  }
+  /* Overflow horizontal bloqueado */
+  html, body { overflow-x: hidden; max-width: 100vw; }
+  /* Sections sin padding roto */
+  section { box-sizing: border-box; width: 100%; }
+  /* IOS notif overlay */
+  .ios-notif-card {
+    width: calc(100% - 2rem);
+    margin: 0 auto;
+    padding: 1.25rem;
+    border-radius: 18px;
+  }
+  .ios-notif-title { font-size: 1rem; }
+  .ios-notif-sub { font-size: 0.75rem; }
+  .ios-notif-perk { font-size: 0.72rem; }
+  #ios-notif-allow { min-height: 46px; font-size: 0.88rem; }
+  #ios-notif-deny { min-height: 40px; font-size: 0.8rem; }
+  /* SW update banner */
+  #sw-update-banner {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    transform: none;
+    font-size: 0.72rem;
+    border-radius: 12px;
+  }
+  /* Config panel */
+  .cfg-dialog {
+    width: calc(100vw - 2rem);
+    max-width: 100%;
+    border-radius: 16px;
+  }
+  .cfg-opt { font-size: 0.78rem; padding: 0.4rem 0.8rem; min-height: 38px; }
+  /* Devtools warning */
+  #devtools-warning h2 { font-size: 1.4rem; }
+  #devtools-warning p { font-size: 0.82rem; }
+}
         * {
             margin: 0;
             padding: 0;
@@ -2671,7 +2720,6 @@
   #ch-cursor.hovering { width: 5px; height: 5px; background: #ff6b35; }
   #ch-cursor-ring.hovering { width: 42px; height: 42px; border-color: rgba(255,107,53,.65); }
 }
-}
 
 /* ── Mobile bottom nav bar ───────────────────────────────────── */
 #mobile-nav-bar { display: none; }
@@ -2714,7 +2762,7 @@
   }
   #mobile-nav-bar a.active .mnb-icon { transform: scale(1.18); }
   /* Give bottom padding to page so content isn't behind nav */
-  body { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 
   /* ── 500px mobile refinements ───────────────────────────── */
   .skill-chip { padding: .9rem 1rem; gap: .75rem; }

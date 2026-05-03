@@ -1717,6 +1717,33 @@
     max-height:min(680px,calc(100dvh - 88px));
   }
 }
+
+/* ── AI panel 550px ── */
+@media(max-width:550px){
+  #ai-fab { right:14px; bottom:130px; height:46px; padding:0 14px 0 10px; }
+  #ai-fab .ai-fab-sub { display:none; }
+  #ai-panel {
+    right:0 !important; left:0 !important; bottom:0 !important;
+    width:100% !important;
+    height:min(90dvh,800px) !important;
+    max-height:min(90dvh,800px) !important;
+    border-radius:20px 20px 0 0 !important;
+    border-bottom:none !important;
+    transform:translateY(100%) !important;
+    transform-origin:bottom center !important;
+  }
+  #ai-panel.open { transform:translateY(0) !important; animation:mobileSlideUp .35s cubic-bezier(.2,.9,.2,1) both; }
+  #ai-input { font-size:16px !important; }
+  .ai-head { padding-top:1.5rem; padding-left:.9rem; padding-right:.9rem; }
+  .ai-head-title { font-size:.9rem; }
+  .ai-head-sub { font-size:.58rem; }
+  .ai-bottom-bar { min-height:66px; padding-left:.85rem; padding-right:.85rem; }
+  .ai-circle-btn { min-height:44px; }
+  .ai-input-wrap { padding:.65rem .85rem .75rem; }
+  #ai-send-btn { width:46px; height:44px; border-radius:12px; }
+  .ai-msg { font-size:.8rem; }
+  #ai-msgs { padding:.75rem .85rem 1rem; }
+}
 /* Mobile */
 @media(max-width:640px){
   #ai-panel{right:0;left:0;bottom:0;width:100%;height:min(92dvh,820px);max-height:min(92dvh,820px);min-height:0;border-radius:20px 20px 0 0;border-bottom:none;transform:translateY(100%);transform-origin:bottom center;}
@@ -4436,4 +4463,11 @@ body:has(button:hover) #ch-cursor { width: 22px; height: 22px; background: radia
 /* ═══ SPLASH WAVE SIZE FIX ═══ */
 .ch-wave {
     background-size: 400px 110px !important;
+}
+
+/* ── Experimental menu mobile ── */
+@media(max-width:550px){
+  .menu-toggle-text { display:none !important; }
+  .menu-toggle-btn { padding:.45rem .6rem; writing-mode:vertical-rl; }
+  #experimental-menu { width:260px; }
 }

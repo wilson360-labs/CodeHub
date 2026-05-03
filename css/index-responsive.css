@@ -914,3 +914,406 @@
         #devtools-warning.show { display: flex; }
         #devtools-warning h2 { font-size: 1.8rem; color: var(--primary); }
         #devtools-warning p { color: var(--muted); font-size: .9rem; max-width: 400px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE 500–550px — Auditoría completa CodeHub
+   Rango crítico Android: Samsung A/S, Motorola G, Xiaomi Redmi
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 550px) {
+
+  /* ── LAYOUT GENERAL ── */
+  main, section {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  section {
+    padding-top: 2.5rem;
+    padding-bottom: 2.5rem;
+  }
+  h2 {
+    font-size: clamp(1.4rem, 6.5vw, 1.8rem) !important;
+    line-height: 1.25;
+  }
+  p {
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+
+  /* ── HEADER ── */
+  .header-inner {
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+  }
+  .header-logo-desc { display: none !important; }
+  .header-logo-meta { gap: 0.3rem; }
+  .header-logo-badge { font-size: 0.62rem; padding: 2px 8px; }
+  .header-logo-text { font-size: 0.95rem !important; }
+  .burger-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #cfg-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .header-typing {
+    font-size: 0.72rem;
+    padding: 0.2rem 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── MOBILE NAV FULL SCREEN ── */
+  .mobile-nav {
+    padding: 1rem 0;
+  }
+  .mobile-nav ul li a {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── HERO ── */
+  #hero { padding: 1.5rem 0 1rem; }
+  .hero-inner {
+    grid-template-columns: 1fr !important;
+    padding: 1.5rem 1rem 1rem;
+    gap: 1.5rem;
+  }
+  .hero-tag { font-size: 0.72rem; }
+  .hero-kicker { font-size: 0.72rem; }
+  .hero-title-greeting { font-size: 1.1rem; }
+  .hero-name {
+    font-size: clamp(2.2rem, 10.5vw, 2.8rem) !important;
+    line-height: 1.1;
+  }
+  .hero-desc { font-size: 0.83rem; line-height: 1.65; }
+  .hero-proof {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .hero-proof span { font-size: 0.72rem; padding: 0.25rem 0.6rem; }
+  .hero-stack {
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .hero-stack span { font-size: 0.7rem; padding: 0.2rem 0.55rem; }
+  .hero-metrics {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem;
+  }
+  .hero-metric strong { font-size: 1.3rem; }
+  .hero-metric span { font-size: 0.62rem; }
+  .hero-ctas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .hero-btn {
+    font-size: 0.78rem;
+    padding: 0.65rem 0.8rem;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .hero-note { flex-wrap: wrap; gap: 0.3rem; }
+  .hero-note span { font-size: 0.68rem; }
+  .hero-visual { display: none !important; }
+
+  /* ── STATS ── */
+  #stats { padding: 2rem 1rem; }
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem;
+  }
+  .stat-card {
+    padding: 0.9rem 0.6rem;
+    border-radius: 14px;
+  }
+  .stat-number { font-size: 1.85rem !important; }
+  .stat-label { font-size: 0.78rem !important; }
+  .stat-sub { font-size: 0.6rem !important; }
+  .stat-icon { font-size: 1.1rem !important; margin-bottom: 0.4rem; }
+
+  /* ── SKILLS ── */
+  #skills { padding: 2rem 1rem; }
+  .skills-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+  .skills-tabs { gap: 0.25rem; }
+  .sk-tab { font-size: 0.75rem; padding: 0.3rem 0.75rem; }
+  .skill-chip {
+    padding: 0.6rem 0.8rem;
+    gap: 0.6rem;
+    border-radius: 12px;
+  }
+  .sc-icon img { width: 22px !important; height: 22px !important; }
+  .sc-top { font-size: 0.78rem; }
+  .sc-pct { font-size: 0.7rem; }
+  .tool-badge { font-size: 0.7rem !important; padding: 0.3rem 0.65rem !important; }
+  .sk-tools-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+    gap: 0.45rem;
+  }
+
+  /* ── SERVICIOS ── */
+  #services { padding: 2rem 1rem; }
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem;
+  }
+  .service-card {
+    padding: 1rem 0.75rem;
+    border-radius: 16px;
+  }
+  .service-card:hover { transform: none !important; }
+  .service-icon { font-size: 1.8rem !important; margin-bottom: 0.7rem; }
+  .service-card h3 { font-size: 0.88rem; margin-bottom: 0.35rem; }
+  .service-card p { font-size: 0.73rem; line-height: 1.5; }
+
+  /* ── SOBRE MÍ / MI PUEBLO ── */
+  #mi-pueblo { padding: 2rem 1rem; }
+  .about-pro-wrap {
+    flex-direction: column !important;
+    gap: 1.5rem;
+  }
+  .about-pro-left { width: 100%; display: flex; flex-direction: column; align-items: center; }
+  .about-avatar-ring > div { width: 140px !important; height: 140px !important; }
+  .about-mini-stats { gap: 0.8rem; }
+  .about-mini-num { font-size: 1.4rem !important; }
+  .about-mini-lbl { font-size: 0.62rem; }
+  .about-pro-right { width: 100%; }
+  .about-pro-name { font-size: 1.5rem; }
+  .about-pro-text { font-size: 0.82rem; line-height: 1.65; }
+  .about-brand-card {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.9rem;
+  }
+  .about-brand-logo { width: 44px; height: 44px; }
+  .pueblo-panel { height: 200px !important; }
+  .pueblo-controls { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+  .pueblo-nav-hint { font-size: 0.7rem; text-align: center; }
+
+  /* ── OPEN TO WORK ── */
+  .otw-inner { padding: 1.25rem 1rem; }
+  .otw-title { font-size: 1.2rem; }
+  .otw-desc { font-size: 0.8rem; }
+  .otw-tags { gap: 0.35rem; }
+  .otw-tags span { font-size: 0.7rem; padding: 0.25rem 0.6rem; }
+  .otw-btn { min-height: 44px; font-size: 0.8rem; }
+
+  /* ── WHY ME ── */
+  #why-me { padding: 2rem 1rem; }
+  .wm-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem; }
+  .wm-card { padding: 1rem 0.8rem; border-radius: 14px; }
+  .wm-icon { width: 36px; height: 36px; font-size: 0.9rem; margin-bottom: 0.6rem; }
+  .wm-card-title { font-size: 0.85rem; }
+  .wm-card-desc { font-size: 0.72rem; line-height: 1.5; }
+
+  /* ── CLIMA ── */
+  #weather-section { padding: 2rem 1rem; }
+  .wx-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+  .wx-location-btn { min-height: 44px; font-size: 0.78rem; padding: 0.5rem 1rem; }
+  .wx-card { padding: 1rem; border-radius: 16px; }
+  .wx-city { font-size: 1.1rem; }
+  .wx-temp { font-size: 3rem; }
+  .wx-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem;
+  }
+  .wx-stat { padding: 0.6rem; border-radius: 10px; }
+  .wx-stat span { font-size: 0.85rem; }
+  .wx-stat small { font-size: 0.62rem; }
+  .wx-input { min-height: 44px; font-size: 16px !important; border-radius: 10px; }
+  .wx-search-btn { min-width: 44px; min-height: 44px; }
+
+  /* ── BLOG / NOTICIAS ── */
+  #news-section { padding: 2rem 1rem; }
+  .blogger-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem;
+  }
+  .blogger-card-thumb { height: 120px !important; }
+  .blogger-card-title { font-size: 0.88rem; }
+  .blogger-card-desc { font-size: 0.73rem; line-height: 1.5; }
+  .blogger-card-meta { font-size: 0.65rem; }
+
+  /* ── CONTACTO ── */
+  #contact { padding: 2rem 1rem; }
+  .contact-wrap { grid-template-columns: 1fr !important; gap: 1.5rem; }
+  .contact-title { font-size: 1.4rem !important; }
+  .contact-sub { font-size: 0.8rem; }
+  .clink { gap: 0.6rem; padding: 0.75rem; }
+  .clink-icon { width: 36px !important; height: 36px !important; font-size: 0.9rem; }
+  .clink-label { font-size: 0.7rem; }
+  .clink-val { font-size: 0.8rem; }
+  .form-row { grid-template-columns: 1fr !important; gap: 0.75rem; }
+  .form-label { font-size: 0.78rem; }
+  .form-input,
+  .form-textarea,
+  .form-select { font-size: 16px !important; padding: 0.7rem 0.85rem; border-radius: 10px; }
+  .form-textarea { min-height: 110px; }
+  .form-submit {
+    min-height: 48px;
+    font-size: 0.88rem;
+    border-radius: 12px;
+  }
+
+  /* ── JUEGOS ── */
+  #game { padding: 2rem 1rem; }
+  #game button { min-height: 44px; font-size: 0.85rem; }
+
+  /* ── FOOTER ── */
+  footer { padding: 1.5rem 1rem; }
+  .footer-content { gap: 1.2rem; }
+  .footer-terminal { font-size: 0.72rem; flex-wrap: wrap; }
+  .footer-socials { gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+  .social-link { font-size: 0.75rem; padding: 0.4rem 0.75rem; min-height: 38px; }
+  .footer-bottom { font-size: 0.68rem; flex-direction: column; gap: 0.5rem; text-align: center; }
+  .footer-kbd { display: none; }
+
+  /* ── DOCK ── */
+  #hub-dock {
+    bottom: 70px;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .dock-icon {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px;
+    font-size: 1.1rem;
+  }
+  .dock-label { font-size: 0.54rem; }
+  .dock-sep { height: 30px; }
+
+  /* ── AI FAB ── */
+  #ai-fab {
+    right: 14px;
+    bottom: 130px;
+    height: 46px;
+    padding: 0 14px 0 10px;
+    gap: 8px;
+  }
+  #ai-fab .ai-fab-sub { display: none; }
+  #ai-fab .ai-fab-label { font-size: 0.78rem; }
+
+  /* ── AI PANEL ── */
+  #ai-panel {
+    right: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: min(90dvh, 800px) !important;
+    max-height: min(90dvh, 800px) !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+  }
+  #ai-input { font-size: 16px !important; }
+  .ai-head { padding-top: 1.5rem; }
+  .ai-circle-btn {
+    min-height: 44px;
+    padding: 0.5rem 0.65rem;
+  }
+  .ai-bottom-bar { min-height: 66px; }
+
+  /* ── EXPERIMENTAL MENU ── */
+  .menu-toggle-text { display: none !important; }
+  .menu-toggle-btn { padding: 0.5rem 0.7rem; }
+
+  /* ── SPLASH ── */
+  .ch-ring-wrap {
+    width: 240px !important;
+    height: 240px !important;
+  }
+  .ch-logo-img {
+    width: 160px !important;
+    height: 160px !important;
+    border-radius: 32px;
+  }
+  .ch-brand-name { font-size: 1.7rem !important; }
+  .ch-brand-sub { font-size: 0.72rem; }
+  .ch-progress-wrap { width: 85%; }
+  .ch-progress-label { font-size: 0.72rem; }
+
+  /* ── PWA INSTALL ── */
+  #pwa-install {
+    left: 1rem;
+    right: 1rem;
+    bottom: 80px;
+    width: auto;
+  }
+  .pwa-card { padding: 0.9rem 1rem; gap: 0.75rem; border-radius: 14px; }
+  .pwa-title { font-size: 0.88rem; }
+  .pwa-sub { font-size: 0.7rem; }
+  .pwa-btn-yes, .pwa-btn-no { min-height: 38px; font-size: 0.78rem; }
+
+  /* ── EASTER EGG OVERLAY ── */
+  .egg-title .e1, .egg-title .e2, .egg-title .e3 { font-size: 2.2rem !important; }
+  .egg-msg { font-size: 0.82rem; padding: 1rem; }
+  .egg-close { bottom: 1.5rem; font-size: 0.82rem; padding: 0.6rem 1.2rem; min-height: 44px; }
+
+  /* ── ACTIVITY DIALOG ── */
+  #ch-activity-dialog {
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    bottom: 80px;
+  }
+  #ch-activity-btn {
+    right: 0.75rem;
+    bottom: 130px;
+  }
+
+  /* ── SCROLL PROGRESS ── */
+  #scroll-progress { height: 3px; }
+
+  /* ── COMMAND PALETTE ── */
+  .command-palette { width: 95%; padding: 0.75rem; }
+  .command-input { font-size: 16px !important; }
+  .command-item { padding: 0.6rem 0.75rem; font-size: 0.82rem; min-height: 44px; }
+}
+
+/* ── 500px y menos: ajustes extra finos ── */
+@media (max-width: 500px) {
+  .hero-name { font-size: clamp(2rem, 10vw, 2.5rem) !important; }
+  .hero-ctas { grid-template-columns: 1fr 1fr; }
+  .hero-btn { font-size: 0.73rem; padding: 0.6rem 0.6rem; }
+  .services-grid { grid-template-columns: 1fr 1fr !important; gap: 0.6rem; }
+  .service-card { padding: 0.85rem 0.6rem; }
+  .service-icon { font-size: 1.6rem !important; }
+  .service-card h3 { font-size: 0.82rem; }
+  .wm-grid { grid-template-columns: 1fr 1fr !important; }
+  .stats-section { gap: 0.55rem; }
+  .stat-card { padding: 0.8rem 0.5rem; }
+  .stat-number { font-size: 1.7rem !important; }
+  .about-avatar-ring > div { width: 126px !important; height: 126px !important; }
+  .ch-ring-wrap { width: 210px !important; height: 210px !important; }
+  .ch-logo-img { width: 140px !important; height: 140px !important; }
+  .ch-brand-name { font-size: 1.5rem !important; }
+  #ai-fab { bottom: 120px; }
+  .dock-icon { width: 40px !important; height: 40px !important; }
+}
+
+/* ── Touch: desactivar hover-only transitions ── */
+@media (hover: none) and (pointer: coarse) {
+  .service-card:hover,
+  .stat-card:hover,
+  .wm-card:hover,
+  .proj-card:hover,
+  .skill-chip:hover,
+  .tp-card:hover,
+  .ap-card:hover { transform: none !important; box-shadow: none !important; }
+  .dock-item:hover { transform: none !important; }
+  .hero-btn:hover { transform: none !important; }
+  .about-pro-actions a:hover { transform: none !important; }
+  .social-link:hover { transform: none !important; }
+}
