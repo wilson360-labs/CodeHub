@@ -353,7 +353,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
                     </span>
                     <span class="header-logo-meta">
-                        <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small"><span class="badge-text">CodeHub</span><div class="badge-wave bw1"></div><div class="badge-wave bw2"></div></span>
+                        <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small"><span class="badge-text" id="ch-badge-text">CodeHub</span><div class="badge-wave bw1"></div><div class="badge-wave bw2"></div></span>
                         <span class="header-logo-desc">IA, tools y seguridad web en un solo lugar</span>
                     </span>
                 </span>
@@ -4719,6 +4719,59 @@ function setAIMood(btn) {
         });
     });
 })();
+</script>
+
+
+<!-- anime.js v4 CodeHub badge letter animation -->
+<script type="module">
+  import { animate, stagger, splitText } from 'https://esm.sh/animejs';
+
+  // Wait for splash to finish before animating
+  function initBadgeAnim() {
+    const el = document.getElementById('ch-badge-text');
+    if (!el) return;
+
+    // splitText splits the element's text into individual char spans
+    const { chars } = splitText(el, { words: false, chars: true });
+
+    // Style chars so they can transform independently
+    chars.forEach(c => {
+      c.style.display = 'inline-block';
+      c.style.willChange = 'transform';
+    });
+
+    animate(chars, {
+      y: [
+        { to: '-0.5rem', ease: 'outExpo',   duration: 500 },
+        { to: 0,         ease: 'outBounce',  duration: 700, delay: 80 }
+      ],
+      rotate: { from: '-1turn', delay: 0 },
+      scale: [
+        { to: 1.15, ease: 'outExpo',  duration: 300 },
+        { to: 1,    ease: 'outBack',  duration: 500 }
+      ],
+      delay: stagger(60),
+      ease: 'inOutCirc',
+      loopDelay: 3000,
+      loop: true
+    });
+  }
+
+  // Esperar a que el splash termine
+  const splash = document.getElementById('ch-splash');
+  if (splash) {
+    const observer = new MutationObserver(() => {
+      if (splash.style.display === 'none' || splash.classList.contains('hidden') || getComputedStyle(splash).opacity === '0') {
+        observer.disconnect();
+        setTimeout(initBadgeAnim, 400);
+      }
+    });
+    observer.observe(splash, { attributes: true, attributeFilter: ['style', 'class'] });
+    // Fallback por si el splash ya terminó
+    setTimeout(initBadgeAnim, 3500);
+  } else {
+    initBadgeAnim();
+  }
 </script>
 
 </body>

@@ -793,12 +793,13 @@
             color: #fff;
             background: linear-gradient(135deg, #ff4500, #cc2200);
             border: none;
-            padding: 3px 10px;
+            padding: 3px 10px 3px 10px;
             border-radius: 20px;
             letter-spacing: 0.06em;
             position: relative;
-            overflow: hidden;
-            display: inline-block;
+            overflow: visible;
+            display: inline-flex;
+            align-items: center;
             box-shadow: 0 2px 10px rgba(255,69,0,0.4), 0 0 0 0 rgba(255,69,0,0);
             transition: box-shadow .3s ease, transform .2s ease;
             cursor: default;
@@ -4478,3 +4479,17 @@ body:has(button:hover) #ch-cursor { width: 22px; height: 22px; background: radia
   .menu-toggle-btn { padding:.45rem .6rem; writing-mode:vertical-rl; }
   #experimental-menu { width:260px; }
 }
+
+        /* ── CodeHub badge letter animation chars ── */
+        #ch-badge-text {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            position: relative;
+            z-index: 2;
+        }
+        #ch-badge-text .char {
+            display: inline-block;
+            will-change: transform;
+            line-height: 1;
+        }
