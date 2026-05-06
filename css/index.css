@@ -231,6 +231,8 @@
   input, textarea, select {
     font-size: 16px !important;
   }
+  /* Sin dock ni nav bottom */
+  body { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
   /* Base font fluida */
   body {
     font-size: clamp(0.875rem, 2.8vw, 1rem);
@@ -2722,7 +2724,7 @@
 }
 
 /* ── Mobile bottom nav bar ───────────────────────────────────── */
-#mobile-nav-bar { display: none; }
+#mobile-nav-bar { display: none !important; }
 /* Hidden on desktop, shown only on mobile via media query below */
 @media (max-width: 640px) {
   #mobile-nav-bar {
@@ -2762,7 +2764,7 @@
   }
   #mobile-nav-bar a.active .mnb-icon { transform: scale(1.18); }
   /* Give bottom padding to page so content isn't behind nav */
-  body { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  body { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 
   /* ── 500px mobile refinements ───────────────────────────── */
   .skill-chip { padding: .9rem 1rem; gap: .75rem; }

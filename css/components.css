@@ -1395,8 +1395,8 @@
 @keyframes notifBlink{0%,100%{opacity:1}50%{opacity:.15}}
 /* Panel */
 #ai-panel{
-  position:fixed;right:20px;bottom:88px;width:min(400px,calc(100vw - 28px));
-  height:min(680px,calc(100dvh - 110px));max-height:min(680px,calc(100dvh - 110px));min-height:480px;
+  position:fixed;right:24px;bottom:24px;width:min(420px,calc(100vw - 32px));
+  height:min(660px,calc(100dvh - 48px));max-height:min(660px,calc(100dvh - 48px));min-height:500px;
   background:
     conic-gradient(from 180deg at 50% 0%, rgba(124,77,255,.08), rgba(0,176,255,.03), rgba(255,255,255,.02), rgba(124,77,255,.08)),
     radial-gradient(circle at top right, rgba(124,77,255,.18), transparent 38%),
@@ -1443,7 +1443,7 @@
 #ai-panel.open{animation:panelIn .42s cubic-bezier(.2,.9,.2,1) both, panelBreathe 7s ease-in-out infinite 1s;}
 @keyframes auroraSweep{0%{background-position:200% 0}100%{background-position:-200% 0}}
 /* Header */
-.ai-head{padding:1rem 1rem .82rem;border-bottom:1px solid var(--ai-border2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;background:linear-gradient(135deg,rgba(124,77,255,.12) 0%,rgba(0,176,255,.05) 100%);position:relative;z-index:1;}
+.ai-head{padding:.85rem 1rem .78rem;border-bottom:1px solid var(--ai-border2);display:flex;align-items:center;gap:.75rem;flex-shrink:0;background:linear-gradient(135deg,rgba(124,77,255,.12) 0%,rgba(0,176,255,.05) 100%);position:relative;z-index:1;}
 .ai-head-avatar{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7C4DFF,#00B0FF);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0;position:relative;box-shadow:0 3px 10px rgba(124,77,255,.4);}
 .ai-head-avatar::after{content:'';position:absolute;bottom:-2px;right:-2px;width:10px;height:10px;background:var(--ai-online);border-radius:50%;border:2px solid var(--ai-bg);animation:onlinePulse 2.5s ease-in-out infinite;}
 @keyframes onlinePulse{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.5)}60%{box-shadow:0 0 0 4px rgba(0,230,118,0)}}
@@ -1660,7 +1660,7 @@
 .ai-input-shell:focus-within::after{opacity:.6;}
 @keyframes inputGlow{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 .ai-input-shell::before{display:none;}
-.ai-input-row{display:flex;gap:.4rem;align-items:flex-end;position:relative;z-index:1;}
+.ai-input-row{display:flex;gap:.5rem;align-items:flex-end;position:relative;z-index:1;}
 #ai-input,.ai-input-row,#ai-send-btn{position:relative;z-index:1;}
 #ai-input{
   flex:1;
@@ -1669,14 +1669,20 @@
   border-radius:14px;
   color:#e8e8f8;
   font-family:'Space Grotesk',system-ui,sans-serif;
-  font-size:.85rem;
-  padding:.82rem 1rem;
+  font-size:.88rem;
+  padding:.78rem 1rem;
   outline:none;resize:none;
-  max-height:104px;min-height:48px;
-  transition:border-color .2s,box-shadow .2s,background .2s;
+  max-height:120px;min-height:44px;
+  height:44px;
+  transition:border-color .2s,box-shadow .2s,background .2s,height .18s ease;
   line-height:1.5;
   backdrop-filter:blur(12px);
   letter-spacing:.01em;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(124,77,255,.3) transparent;
+  word-break:break-word;
+  overflow-wrap:break-word;
 }
 #ai-input:focus{
   border-color:rgba(124,77,255,.7);
@@ -1685,13 +1691,14 @@
 }
 #ai-input::placeholder{color:rgba(180,180,220,.3);font-style:italic;}
 #ai-send-btn{
-  width:54px;height:48px;border-radius:14px;
+  width:50px;height:44px;border-radius:13px;
   background:linear-gradient(135deg,#7C4DFF,#2575fc);
-  border:none;color:#fff;font-size:1rem;
+  border:none;color:#fff;font-size:.95rem;
   cursor:pointer;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 18px rgba(124,77,255,.35), inset 0 1px 0 rgba(255,255,255,.2);
   transition:all .2s;overflow:hidden;position:relative;
+  align-self:flex-end;
 }
 #ai-send-btn::before{
   content:'';
@@ -1720,7 +1727,7 @@
 
 /* ── AI panel 550px ── */
 @media(max-width:550px){
-  #ai-fab { right:14px; bottom:130px; height:46px; padding:0 14px 0 10px; }
+  #ai-fab { right:16px; bottom:20px; height:46px; padding:0 14px 0 10px; }
   #ai-fab .ai-fab-sub { display:none; }
   #ai-panel {
     right:0 !important; left:0 !important; bottom:0 !important;

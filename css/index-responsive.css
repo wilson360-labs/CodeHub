@@ -1180,25 +1180,13 @@
   .footer-bottom { font-size: 0.68rem; flex-direction: column; gap: 0.5rem; text-align: center; }
   .footer-kbd { display: none; }
 
-  /* ── DOCK ── */
-  #hub-dock {
-    bottom: 70px;
-    gap: 6px;
-    padding: 8px 12px;
-  }
-  .dock-icon {
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 12px;
-    font-size: 1.1rem;
-  }
-  .dock-label { font-size: 0.54rem; }
-  .dock-sep { height: 30px; }
+  /* ── DOCK — oculto en mobile ── */
+  #hub-dock { display: none !important; }
 
   /* ── AI FAB ── */
   #ai-fab {
     right: 14px;
-    bottom: 130px;
+    bottom: 20px;
     height: 46px;
     padding: 0 14px 0 10px;
     gap: 8px;

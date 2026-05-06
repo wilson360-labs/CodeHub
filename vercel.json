@@ -193,5 +193,47 @@
       "destination": "/tetris",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/tools",
+      "destination": "/pages/tools.html"
+    },
+    {
+      "source": "/novedades",
+      "destination": "/pages/novedades.html"
+    },
+    {
+      "source": "/servicios",
+      "destination": "/pages/servicios.html"
+    },
+    {
+      "source": "/downloader",
+      "destination": "/pages/downloader.html"
+    },
+    {
+      "source": "/cv",
+      "destination": "/pages/cv.html"
+    },
+    {
+      "source": "/admin-hub",
+      "destination": "/pages/admin-hub.html"
+    },
+    {
+      "source": "/codehub-ultra",
+      "destination": "/pages/codehub-ultra.html"
+    },
+    {
+      "source": "/analytics",
+      "destination": "/pages/analytics.html"
+    },
+    {
+      "source": "/snake",
+      "destination": "/games/snake.html"
+    },
+    {
+      "source": "/tetris",
+      "destination": "/games/tetris.html"
+    }
   ]
 }

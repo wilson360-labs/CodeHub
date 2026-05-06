@@ -137,7 +137,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     var shown = window.innerWidth <= 640;
     if(shown){
       var safe = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sai-bottom') || '0');
-      document.body.style.paddingBottom = (76 + (safe||0)) + 'px';
+      document.body.style.paddingBottom = (20 + (safe||0)) + 'px';
     } else {
       document.body.style.paddingBottom = '';
     }
@@ -2863,7 +2863,7 @@ async function sendEmail(e) {
       <div class="ai-input-row">
         <textarea id="ai-input" placeholder="Pregúntame algo o busca imágenes…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
-          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,104)+'px';updateCharCount()"></textarea>
+          oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,120)+'px';updateCharCount()"></textarea>
         <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
           <i class="fas fa-paper-plane"></i>
         </button>
@@ -3209,7 +3209,8 @@ CAPACIDADES ESPECIALES:
 
     addMsg('user', text);
     input.value = '';
-    input.style.height = 'auto';
+    input.style.height = '44px';
+    input.style.overflow = 'hidden';
     updateCharCount();
 
     const shouldSearch = isSearchQuery(text);
@@ -4631,7 +4632,7 @@ function setAIMood(btn) {
 <script src="js/ux-animations.js"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
-<nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none">
+<nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
   <a href="/" class="active" id="mnb-home">
     <span class="mnb-icon">🏠</span>
     <span>Inicio</span>
