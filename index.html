@@ -2254,7 +2254,7 @@ DISPONIBILIDAD:
      REGISTRO DE ACTIVIDADES — Diálogo flotante
      ══════════════════════════════════════════════════════ -->
 <div id="ch-activity-dialog" style="
-  position:fixed;bottom:90px;right:16px;z-index:8888;
+  position:fixed;bottom:90px;right:16px;z-index:4800;
   background:linear-gradient(145deg,#0d0d1a,#111120);
   border:1px solid rgba(255,69,0,.28);border-radius:18px;
   width:300px;max-width:calc(100vw - 32px);
@@ -2352,7 +2352,7 @@ DISPONIBILIDAD:
 
 <!-- Boton flotante Actividad -->
 <button id="ch-activity-btn" onclick="chToggleActivity()" title="Registro de actividades" style="
-  position:fixed;bottom:90px;right:16px;z-index:8887;
+  position:fixed;bottom:90px;right:16px;z-index:4800;
   width:42px;height:42px;border-radius:12px;
   background:linear-gradient(135deg,rgba(255,69,0,.15),rgba(255,69,0,.08));
   border:1px solid rgba(255,69,0,.3);color:rgba(255,69,0,.85);
@@ -2837,6 +2837,11 @@ async function sendEmail(e) {
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
     </div>
+    <div class="ai-head-actions">
+      <button class="ai-head-btn" id="ai-head-close-btn" onclick="document.getElementById('ai-close-btn').click()" title="Cerrar" aria-label="Cerrar chat">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
   </div>
 
   <!-- Messages -->
@@ -3142,16 +3147,20 @@ CAPACIDADES ESPECIALES:
 
   function setOpen(v) {
     isOpen = v;
+    const backdrop = document.getElementById('ai-backdrop');
     if (v) {
-      /* Mostrar panel pero con boot overlay encima */
       panel.classList.add('open', 'boot-flash');
       fab.classList.add('hidden');
       const notif = fab.querySelector('.ai-notif');
       if (notif) notif.style.display = 'none';
-      /* Quitar boot-flash class después de la animación */
+      /* Backdrop blur */
+      if (backdrop) {
+        backdrop.style.pointerEvents = 'all';
+        requestAnimationFrame(() => { backdrop.style.opacity = '1'; });
+      }
+      document.body.style.overflow = 'hidden';
       setTimeout(function(){ panel.classList.remove('boot-flash'); }, 900);
       runBoot(function() {
-        /* Después del boot: focus y scroll */
         setTimeout(function() { if (input) input.focus(); }, 80);
         const wt = document.getElementById('ai-welcome-time');
         if (wt && !wt.textContent) wt.textContent = getTime();
@@ -3160,6 +3169,12 @@ CAPACIDADES ESPECIALES:
     } else {
       panel.classList.remove('open', 'boot-flash');
       fab.classList.remove('hidden');
+      /* Hide backdrop */
+      if (backdrop) {
+        backdrop.style.opacity = '0';
+        backdrop.style.pointerEvents = 'none';
+      }
+      document.body.style.overflow = '';
     }
   }
   rotatePrompt(true);
@@ -4726,52 +4741,54 @@ function setAIMood(btn) {
 <script type="module">
   import { animate, stagger, splitText } from 'https://esm.sh/animejs';
 
-  // Wait for splash to finish before animating
   function initBadgeAnim() {
     const el = document.getElementById('ch-badge-text');
-    if (!el) return;
+    if (!el || el.querySelector('.char')) return; // ya inicializado
 
-    // splitText splits the element's text into individual char spans
     const { chars } = splitText(el, { words: false, chars: true });
 
-    // Style chars so they can transform independently
     chars.forEach(c => {
       c.style.display = 'inline-block';
       c.style.willChange = 'transform';
+      c.style.lineHeight = '1';
     });
 
     animate(chars, {
       y: [
-        { to: '-0.5rem', ease: 'outExpo',   duration: 500 },
-        { to: 0,         ease: 'outBounce',  duration: 700, delay: 80 }
+        { to: '-2.75rem', ease: 'outExpo',   duration: 600 },
+        { to: 0,          ease: 'outBounce',  duration: 800, delay: 100 }
       ],
       rotate: { from: '-1turn', delay: 0 },
-      scale: [
-        { to: 1.15, ease: 'outExpo',  duration: 300 },
-        { to: 1,    ease: 'outBack',  duration: 500 }
-      ],
-      delay: stagger(60),
+      delay: stagger(50),
       ease: 'inOutCirc',
-      loopDelay: 3000,
+      loopDelay: 2500,
       loop: true
     });
   }
 
-  // Esperar a que el splash termine
-  const splash = document.getElementById('ch-splash');
-  if (splash) {
-    const observer = new MutationObserver(() => {
-      if (splash.style.display === 'none' || splash.classList.contains('hidden') || getComputedStyle(splash).opacity === '0') {
-        observer.disconnect();
-        setTimeout(initBadgeAnim, 400);
+  // Esperar a que el splash termine (observar opacity y display)
+  function waitForSplash(cb) {
+    const splash = document.getElementById('ch-splash');
+    if (!splash) { cb(); return; }
+
+    const check = () => {
+      const s = getComputedStyle(splash);
+      if (s.display === 'none' || parseFloat(s.opacity) < 0.1) {
+        cb();
+        return true;
       }
-    });
-    observer.observe(splash, { attributes: true, attributeFilter: ['style', 'class'] });
-    // Fallback por si el splash ya terminó
-    setTimeout(initBadgeAnim, 3500);
-  } else {
-    initBadgeAnim();
+      return false;
+    };
+
+    if (check()) return;
+
+    const obs = new MutationObserver(() => { if (check()) obs.disconnect(); });
+    obs.observe(splash, { attributes: true, attributeFilter: ['style','class'] });
+    // Fallback hard
+    setTimeout(() => { obs.disconnect(); cb(); }, 5000);
   }
+
+  waitForSplash(() => setTimeout(initBadgeAnim, 300));
 </script>
 
 </body>

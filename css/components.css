@@ -4493,3 +4493,32 @@ body:has(button:hover) #ch-cursor { width: 22px; height: 22px; background: radia
             will-change: transform;
             line-height: 1;
         }
+
+/* ── AI head X close button ── */
+.ai-head-actions { margin-left: auto; display: flex; gap: 4px; }
+.ai-head-btn {
+  width: 28px; height: 28px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  color: rgba(200,200,230,.5);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: .72rem;
+  transition: background .18s, color .18s, border-color .18s, transform .15s;
+}
+.ai-head-btn:hover {
+  background: rgba(255,80,80,.18);
+  color: #ff6b6b;
+  border-color: rgba(255,80,80,.4);
+  transform: scale(1.1);
+}
+.ai-head-btn:active { transform: scale(.92); }
+
+/* ── AI backdrop blur ── */
+#ai-backdrop {
+  will-change: opacity;
+}
+
+/* ── anime.js badge chars — fix overflow clipping ── */
+.header-logo-badge { overflow: visible !important; }
+.badge-wave { z-index: 0; }
+#ch-badge-text { position: relative; z-index: 2; display: inline-block; }
