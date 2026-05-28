@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Términos de Uso — CodeHub by Wilson.E</title>
+  <meta name="description" content="Términos y condiciones de uso de CodeHub. Lee las reglas de uso del sitio, herramientas web, chatbot EMI IA y contenido de wilson360-labs.vercel.app.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/terms">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="splash/codehub.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff4500;
+      --accent: #ffbd69;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --border: rgba(255,69,0,.18);
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.55);
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      min-height: 100vh;
+    }
+    nav.top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,5,16,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      padding: .75rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    nav.top-nav a { color: var(--text); text-decoration: none; font-size: .85rem; }
+    nav.top-nav a:first-child { color: var(--primary); font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+    nav.top-nav .sep { color: var(--border); }
+    nav.top-nav .badge {
+      margin-left: auto;
+      background: rgba(255,69,0,.1);
+      border: 1px solid rgba(255,69,0,.3);
+      color: var(--primary);
+      font-size: .7rem; font-family: var(--mono);
+      padding: .25rem .75rem; border-radius: 999px;
+    }
+    .hero {
+      padding: 4rem 2rem 2.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255,189,105,.07), transparent);
+    }
+    .hero-eyebrow { font-family: var(--mono); font-size: .75rem; color: var(--accent); margin-bottom: .75rem; letter-spacing: .08em; }
+    .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .75rem; }
+    .hero h1 span { color: var(--accent); }
+    .hero-meta { font-size: .8rem; color: var(--text-secondary); font-family: var(--mono); }
+    .page-wrap { max-width: 860px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+    .toc-title { font-family: var(--mono); font-size: .75rem; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 1rem; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin-bottom: .35rem; }
+    .toc a { color: var(--text-secondary); text-decoration: none; font-size: .9rem; transition: color .2s; }
+    .toc a:hover { color: var(--accent); }
+    .section { margin-bottom: 3rem; }
+    .section-anchor { display: block; visibility: hidden; height: 80px; margin-top: -80px; }
+    .section h2 {
+      font-size: 1.25rem; font-weight: 700;
+      color: var(--text);
+      border-left: 3px solid var(--accent);
+      padding-left: 1rem;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section h2 .num {
+      font-family: var(--mono); font-size: .65rem; color: var(--accent);
+      background: rgba(255,189,105,.1); border: 1px solid rgba(255,189,105,.25);
+      border-radius: 6px; padding: .15rem .45rem;
+    }
+    .section p { color: var(--text-secondary); margin-bottom: 1rem; }
+    .section p strong { color: var(--text); }
+    .section ul, .section ol { padding-left: 1.4rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .section li { margin-bottom: .4rem; }
+    .section li strong { color: var(--text); }
+    .warn-box {
+      background: rgba(255,69,0,.07);
+      border: 1px solid rgba(255,69,0,.25);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.2rem;
+      font-size: .88rem;
+      color: rgba(255,130,80,.85);
+    }
+    .warn-box strong { color: var(--primary); }
+    .ok-box {
+      background: rgba(0,230,118,.06);
+      border: 1px solid rgba(0,230,118,.2);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.2rem;
+      font-size: .88rem;
+      color: rgba(0,230,118,.8);
+    }
+    .ok-box strong { color: #00e676; }
+    .contact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: .6rem;
+    }
+    .contact-card a { color: var(--accent); text-decoration: none; font-size: .9rem; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 600px) {
+      .page-wrap { padding: 2rem 1rem 4rem; }
+      nav.top-nav { padding: .75rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="/">CodeHub</a>
+  <span class="sep">/</span>
+  <a href="/terms">Términos de Uso</a>
+  <span class="badge">Legal</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">// condiciones legales</div>
+  <h1>Términos de <span>Uso</span></h1>
+  <p class="hero-meta">Última actualización: 28 de mayo de 2026 &nbsp;·&nbsp; wilson360-labs.vercel.app</p>
+</div>
+
+<div class="page-wrap">
+
+  <div class="toc">
+    <div class="toc-title">// Índice de contenidos</div>
+    <ol>
+      <li><a href="#t1">Aceptación de los términos</a></li>
+      <li><a href="#t2">Descripción del servicio</a></li>
+      <li><a href="#t3">Uso permitido</a></li>
+      <li><a href="#t4">Uso prohibido</a></li>
+      <li><a href="#t5">Herramientas web gratuitas</a></li>
+      <li><a href="#t6">Chatbot EMI IA</a></li>
+      <li><a href="#t7">Aplicaciones de terceros (Android)</a></li>
+      <li><a href="#t8">Propiedad intelectual</a></li>
+      <li><a href="#t9">Limitación de responsabilidad</a></li>
+      <li><a href="#t10">Disponibilidad del servicio</a></li>
+      <li><a href="#t11">Publicidad</a></li>
+      <li><a href="#t12">Modificaciones</a></li>
+      <li><a href="#t13">Ley aplicable</a></li>
+      <li><a href="#t14">Contacto</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <div class="section">
+    <span class="section-anchor" id="t1"></span>
+    <h2><span class="num">01</span> Aceptación de los términos</h2>
+    <p>Al acceder y usar el sitio web <strong>wilson360-labs.vercel.app</strong> («CodeHub», «el Sitio»), aceptas quedar vinculado por estos Términos de Uso. Si no estás de acuerdo con alguna parte de estos términos, te pedimos que no uses el Sitio.</p>
+    <p>Estos Términos de Uso se aplican a todos los visitantes, usuarios y cualquier otra persona que acceda o use el Sitio.</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="section">
+    <span class="section-anchor" id="t2"></span>
+    <h2><span class="num">02</span> Descripción del servicio</h2>
+    <p>CodeHub es un portfolio personal y hub de herramientas web operado por <strong>Wilson Enríquez</strong>, desarrollador web autodidacta de Guatemala. El Sitio ofrece:</p>
+    <ul>
+      <li>Portfolio profesional con información sobre proyectos y servicios freelance</li>
+      <li>Más de 23 herramientas web gratuitas (generadores, convertidores, utilidades de código)</li>
+      <li>Chatbot con inteligencia artificial (EMI IA) para asistencia técnica general</li>
+      <li>Blog de desarrollo web (codehub-labs.blogspot.com)</li>
+      <li>Información sobre aplicaciones de terceros para Android</li>
+      <li>Información de clima en tiempo real basada en tu ubicación</li>
+      <li>Formulario de contacto para consultas de proyectos freelance</li>
+    </ul>
+  </div>
+
+  <!-- 3 -->
+  <div class="section">
+    <span class="section-anchor" id="t3"></span>
+    <h2><span class="num">03</span> Uso permitido</h2>
+    <div class="ok-box">
+      <strong>✅ Puedes:</strong> usar el Sitio para fines personales, educativos y profesionales legítimos.
+    </div>
+    <ul>
+      <li>Usar las herramientas web gratuitas para tus proyectos personales o profesionales</li>
+      <li>Contactar al operador para consultas sobre servicios freelance</li>
+      <li>Compartir el sitio o sus herramientas con otras personas</li>
+      <li>Leer y compartir el contenido del blog con atribución al autor</li>
+      <li>Instalar la aplicación web progresiva (PWA) en tu dispositivo</li>
+      <li>Usar el chatbot EMI IA para obtener ayuda técnica y de programación</li>
+    </ul>
+  </div>
+
+  <!-- 4 -->
+  <div class="section">
+    <span class="section-anchor" id="t4"></span>
+    <h2><span class="num">04</span> Uso prohibido</h2>
+    <div class="warn-box">
+      <strong>🚫 No puedes</strong> usar este Sitio de manera que viole leyes aplicables o derechos de terceros.
+    </div>
+    <p>Queda estrictamente prohibido:</p>
+    <ul>
+      <li><strong>Ataques y abuso técnico:</strong> intentar hackear, sobrecargar (DDoS), acceder de forma no autorizada o explotar vulnerabilidades del Sitio o su infraestructura.</li>
+      <li><strong>Scraping masivo:</strong> usar bots automatizados para extraer contenido del Sitio de forma masiva sin autorización expresa.</li>
+      <li><strong>Spam y phishing:</strong> usar el formulario de contacto o cualquier otra función del Sitio para enviar mensajes no solicitados o engañosos.</li>
+      <li><strong>Distribución de malware:</strong> usar el Sitio como vector para distribuir software malicioso.</li>
+      <li><strong>Uso comercial no autorizado del contenido:</strong> reproducir, revender o explotar comercialmente el código, diseño o contenido de CodeHub sin permiso escrito del operador.</li>
+      <li><strong>Suplantación:</strong> hacerse pasar por el operador o afirmar una relación oficial con CodeHub sin autorización.</li>
+      <li><strong>Actividades ilegales:</strong> cualquier uso del Sitio que viole leyes locales, nacionales o internacionales aplicables.</li>
+    </ul>
+  </div>
+
+  <!-- 5 -->
+  <div class="section">
+    <span class="section-anchor" id="t5"></span>
+    <h2><span class="num">05</span> Herramientas web gratuitas</h2>
+    <p>Las herramientas disponibles en la sección de Tools (generador de QR, contraseñas, hash SHA-256/512, Base64, UUID, Pomodoro, conversor de unidades, entre otras) se ofrecen <strong>de forma gratuita y sin garantías</strong>.</p>
+    <p>El operador no garantiza que los resultados de las herramientas sean precisos al 100% para usos críticos. Para aplicaciones que requieran alta exactitud (médica, financiera, legal), verifica los resultados con fuentes adicionales. El uso de estas herramientas es bajo tu propia responsabilidad.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="section">
+    <span class="section-anchor" id="t6"></span>
+    <h2><span class="num">06</span> Chatbot EMI IA</h2>
+    <p>El chatbot <strong>EMI IA</strong> es un asistente de inteligencia artificial diseñado para ayudar con preguntas técnicas de programación y desarrollo web. Al usarlo, aceptas que:</p>
+    <ul>
+      <li>Las respuestas son generadas por modelos de IA y pueden contener errores.</li>
+      <li>No debes usarlo para obtener asesoría médica, legal, financiera o en situaciones de emergencia.</li>
+      <li>Las conversaciones pueden ser procesadas por proveedores de IA de terceros (Anthropic, Groq, Google Gemini u otros).</li>
+      <li>Existe un límite de 30 mensajes por sesión para garantizar la disponibilidad del servicio para todos los usuarios.</li>
+      <li>No introduzcas información personal sensible, contraseñas o datos confidenciales en el chat.</li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <div class="section">
+    <span class="section-anchor" id="t7"></span>
+    <h2><span class="num">07</span> Aplicaciones de terceros (Android)</h2>
+    <p>La sección de novedades puede contener información o enlaces a aplicaciones de terceros para dispositivos Android. El operador <strong>no desarrolla, posee ni mantiene</strong> dichas aplicaciones.</p>
+    <div class="warn-box">
+      <strong>Advertencia:</strong> La instalación de aplicaciones desde fuentes externas a Google Play Store implica riesgos de seguridad. Verifica siempre la procedencia de las aplicaciones antes de instalarlas. CodeHub no se hace responsable de daños ocasionados por el uso de aplicaciones de terceros.
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="section">
+    <span class="section-anchor" id="t8"></span>
+    <h2><span class="num">08</span> Propiedad intelectual</h2>
+    <p>El diseño, código fuente, marca gráfica, logotipo, textos e interfaces de CodeHub son propiedad de <strong>Wilson Enríquez</strong> y están protegidos por las leyes de propiedad intelectual aplicables.</p>
+    <p>Queda permitido:</p>
+    <ul>
+      <li>Citar fragmentos breves del blog con atribución al autor y enlace a la fuente original.</li>
+      <li>Compartir capturas de pantalla del Sitio en redes sociales con mención al autor.</li>
+    </ul>
+    <p>Queda prohibido reproducir el código fuente, diseño o estructura del Sitio para crear un sitio web propio sin autorización escrita del operador.</p>
+  </div>
+
+  <!-- 9 -->
+  <div class="section">
+    <span class="section-anchor" id="t9"></span>
+    <h2><span class="num">09</span> Limitación de responsabilidad</h2>
+    <p>En la máxima medida permitida por la ley aplicable, CodeHub y su operador <strong>no serán responsables</strong> de:</p>
+    <ul>
+      <li>Pérdidas o daños directos, indirectos, incidentales o consecuentes derivados del uso del Sitio.</li>
+      <li>Interrupciones del servicio, errores técnicos o pérdida de datos.</li>
+      <li>Contenido de sitios web de terceros enlazados desde CodeHub.</li>
+      <li>Decisiones tomadas basándose en la información o resultados de las herramientas del Sitio.</li>
+      <li>Daños ocasionados por el uso de aplicaciones de terceros referenciadas en el Sitio.</li>
+    </ul>
+    <p>El Sitio se proporciona <strong>«tal cual»</strong> y <strong>«según disponibilidad»</strong> sin garantías de ningún tipo.</p>
+  </div>
+
+  <!-- 10 -->
+  <div class="section">
+    <span class="section-anchor" id="t10"></span>
+    <h2><span class="num">10</span> Disponibilidad del servicio</h2>
+    <p>El operador se esfuerza por mantener el Sitio disponible de forma continua, pero no garantiza una disponibilidad del 100%. El Sitio puede estar temporalmente no disponible por:</p>
+    <ul>
+      <li>Mantenimiento programado o actualizaciones</li>
+      <li>Fallas en los servicios de alojamiento (Vercel) o CDN</li>
+      <li>Eventos fuera del control del operador (fuerza mayor)</li>
+    </ul>
+    <p>Nos reservamos el derecho de modificar, suspender o discontinuar cualquier parte del Sitio en cualquier momento sin previo aviso.</p>
+  </div>
+
+  <!-- 11 -->
+  <div class="section">
+    <span class="section-anchor" id="t11"></span>
+    <h2><span class="num">11</span> Publicidad</h2>
+    <p>CodeHub muestra anuncios de <strong>Google AdSense</strong> para financiar los costos de operación del Sitio. Al usar el Sitio, aceptas la presencia de estos anuncios.</p>
+    <p>Los anuncios mostrados son gestionados por Google y pueden estar basados en tu historial de navegación. Puedes gestionar tus preferencias de publicidad personalizada en <a href="https://adssettings.google.com" target="_blank" rel="noopener" style="color:var(--accent)">adssettings.google.com</a>.</p>
+    <p>El operador no tiene control sobre el contenido específico de los anuncios mostrados por Google.</p>
+  </div>
+
+  <!-- 12 -->
+  <div class="section">
+    <span class="section-anchor" id="t12"></span>
+    <h2><span class="num">12</span> Modificaciones a los términos</h2>
+    <p>Nos reservamos el derecho de actualizar estos Términos de Uso en cualquier momento. Los cambios entrarán en vigor al ser publicados en esta página. La fecha de «Última actualización» al inicio del documento indica cuándo se realizó el último cambio.</p>
+    <p>El uso continuado del Sitio tras la publicación de cambios constituye tu aceptación de los nuevos términos.</p>
+  </div>
+
+  <!-- 13 -->
+  <div class="section">
+    <span class="section-anchor" id="t13"></span>
+    <h2><span class="num">13</span> Ley aplicable</h2>
+    <p>Estos Términos de Uso se rigen e interpretan conforme a las leyes de la <strong>República de Guatemala</strong>. Cualquier disputa derivada del uso del Sitio estará sujeta a la jurisdicción exclusiva de los tribunales competentes de Guatemala.</p>
+  </div>
+
+  <!-- 14 -->
+  <div class="section">
+    <span class="section-anchor" id="t14"></span>
+    <h2><span class="num">14</span> Contacto</h2>
+    <p>Para preguntas sobre estos Términos de Uso, contáctanos:</p>
+    <div class="contact-card">
+      <div>📧 <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a></div>
+      <div>💬 WhatsApp: <a href="https://wa.me/50241468185" target="_blank" rel="noopener">+502 4146 8185</a></div>
+      <div>🌐 <a href="https://wilson360-labs.vercel.app">wilson360-labs.vercel.app</a></div>
+      <div style="margin-top:.5rem;font-size:.8rem;color:var(--text-secondary)">Wilson Enríquez · Desarrollador Web · Guatemala 🇬🇹</div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>&copy; 2024–2026 <strong>Wilson.E</strong> · CodeHub</span>
+  &nbsp;·&nbsp;
+  <a href="/privacy">Privacidad</a>
+  &nbsp;·&nbsp;
+  <a href="/terms">Términos de Uso</a>
+  &nbsp;·&nbsp;
+  <a href="/">Volver al inicio</a>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidad — CodeHub by Wilson.E</title>
+  <meta name="description" content="Política de Privacidad de CodeHub. Conoce cómo recopilamos, usamos y protegemos tu información personal en wilson360-labs.vercel.app">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/privacy">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="splash/codehub.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #ff4500;
+      --accent: #ffbd69;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --border: rgba(255,69,0,.18);
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.55);
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav.top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,5,16,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      padding: .75rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    nav.top-nav a { color: var(--text); text-decoration: none; font-size: .85rem; }
+    nav.top-nav a:first-child { color: var(--primary); font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+    nav.top-nav .sep { color: var(--border); }
+    nav.top-nav .badge {
+      margin-left: auto;
+      background: rgba(255,69,0,.1);
+      border: 1px solid rgba(255,69,0,.3);
+      color: var(--primary);
+      font-size: .7rem; font-family: var(--mono);
+      padding: .25rem .75rem; border-radius: 999px;
+    }
+
+    /* HERO */
+    .hero {
+      padding: 4rem 2rem 2.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255,69,0,.08), transparent);
+    }
+    .hero-eyebrow { font-family: var(--mono); font-size: .75rem; color: var(--primary); margin-bottom: .75rem; letter-spacing: .08em; }
+    .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .75rem; }
+    .hero h1 span { color: var(--primary); }
+    .hero-meta { font-size: .8rem; color: var(--text-secondary); font-family: var(--mono); }
+
+    /* LAYOUT */
+    .page-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    /* TABLE OF CONTENTS */
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+    .toc-title { font-family: var(--mono); font-size: .75rem; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 1rem; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin-bottom: .35rem; }
+    .toc a { color: var(--text-secondary); text-decoration: none; font-size: .9rem; transition: color .2s; }
+    .toc a:hover { color: var(--primary); }
+
+    /* SECTIONS */
+    .section { margin-bottom: 3rem; }
+    .section-anchor { display: block; visibility: hidden; height: 80px; margin-top: -80px; }
+    .section h2 {
+      font-size: 1.25rem; font-weight: 700;
+      color: var(--text);
+      border-left: 3px solid var(--primary);
+      padding-left: 1rem;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section h2 .num {
+      font-family: var(--mono); font-size: .65rem; color: var(--primary);
+      background: rgba(255,69,0,.1); border: 1px solid rgba(255,69,0,.25);
+      border-radius: 6px; padding: .15rem .45rem;
+    }
+    .section p { color: var(--text-secondary); margin-bottom: 1rem; }
+    .section p strong { color: var(--text); }
+    .section ul, .section ol { padding-left: 1.4rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .section li { margin-bottom: .4rem; }
+    .section li strong { color: var(--text); }
+
+    /* INFO BOX */
+    .info-box {
+      background: rgba(255,189,105,.06);
+      border: 1px solid rgba(255,189,105,.2);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.2rem;
+      font-size: .88rem;
+      color: rgba(255,189,105,.8);
+    }
+    .info-box strong { color: var(--accent); }
+
+    /* DATA TABLE */
+    .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .85rem; }
+    .data-table th {
+      background: rgba(255,69,0,.1); color: var(--primary);
+      font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+      padding: .65rem 1rem; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .data-table td { padding: .65rem 1rem; border-bottom: 1px solid rgba(255,255,255,.05); color: var(--text-secondary); vertical-align: top; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table td:first-child { color: var(--text); font-weight: 500; }
+
+    /* CONTACT CARD */
+    .contact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: .6rem;
+    }
+    .contact-card a { color: var(--primary); text-decoration: none; font-size: .9rem; }
+    .contact-card a:hover { text-decoration: underline; }
+
+    /* FOOTER */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .page-wrap { padding: 2rem 1rem 4rem; }
+      nav.top-nav { padding: .75rem 1rem; }
+      .data-table { font-size: .75rem; }
+      .data-table th, .data-table td { padding: .5rem .6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="/">CodeHub</a>
+  <span class="sep">/</span>
+  <a href="/privacy">Privacidad</a>
+  <span class="badge">Legal</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">// política legal</div>
+  <h1>Política de <span>Privacidad</span></h1>
+  <p class="hero-meta">Última actualización: 28 de mayo de 2026 &nbsp;·&nbsp; wilson360-labs.vercel.app</p>
+</div>
+
+<div class="page-wrap">
+
+  <div class="toc">
+    <div class="toc-title">// Índice de contenidos</div>
+    <ol>
+      <li><a href="#s1">Información que recopilamos</a></li>
+      <li><a href="#s2">Cómo usamos tu información</a></li>
+      <li><a href="#s3">Google AdSense y publicidad</a></li>
+      <li><a href="#s4">Google Analytics</a></li>
+      <li><a href="#s5">Cookies</a></li>
+      <li><a href="#s6">Compartir información con terceros</a></li>
+      <li><a href="#s7">Seguridad de los datos</a></li>
+      <li><a href="#s8">Derechos del usuario</a></li>
+      <li><a href="#s9">Menores de edad</a></li>
+      <li><a href="#s10">Cambios a esta política</a></li>
+      <li><a href="#s11">Contacto</a></li>
+    </ol>
+  </div>
+
+  <div class="info-box">
+    <strong>Resumen:</strong> CodeHub recopila información mínima necesaria para operar el sitio. No vendemos tus datos personales a nadie. Usamos servicios de terceros como Google Analytics y Google AdSense que tienen sus propias políticas de privacidad.
+  </div>
+
+  <!-- 1 -->
+  <div class="section">
+    <span class="section-anchor" id="s1"></span>
+    <h2><span class="num">01</span> Información que recopilamos</h2>
+    <p>CodeHub, operado por Wilson Enríquez («nosotros», «el operador»), puede recopilar los siguientes tipos de información cuando visitas <strong>wilson360-labs.vercel.app</strong>:</p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tipo de dato</th>
+          <th>Cómo se recopila</th>
+          <th>Finalidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dirección IP</td>
+          <td>Automáticamente al visitar el sitio</td>
+          <td>Seguridad, geolocalización aproximada para clima</td>
+        </tr>
+        <tr>
+          <td>Tipo de navegador y dispositivo</td>
+          <td>Cabeceras HTTP</td>
+          <td>Optimización de la experiencia de usuario</td>
+        </tr>
+        <tr>
+          <td>Páginas visitadas y tiempo en el sitio</td>
+          <td>Google Analytics / Google Tag Manager</td>
+          <td>Análisis de uso y mejora del sitio</td>
+        </tr>
+        <tr>
+          <td>Nombre, correo electrónico y mensaje</td>
+          <td>Formulario de contacto (enviado voluntariamente)</td>
+          <td>Responder a consultas de proyectos freelance</td>
+        </tr>
+        <tr>
+          <td>Preferencias del sitio</td>
+          <td>localStorage del navegador</td>
+          <td>Guardar configuración de idioma, fuente y animaciones</td>
+        </tr>
+        <tr>
+          <td>Contador de visitas</td>
+          <td>Base de datos Supabase (anónimo)</td>
+          <td>Estadísticas agregadas del sitio</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>No recopilamos datos sensibles como contraseñas, información financiera ni documentos de identidad.</p>
+  </div>
+
+  <!-- 2 -->
+  <div class="section">
+    <span class="section-anchor" id="s2"></span>
+    <h2><span class="num">02</span> Cómo usamos tu información</h2>
+    <p>Utilizamos la información recopilada exclusivamente para:</p>
+    <ul>
+      <li><strong>Operar y mejorar el sitio:</strong> garantizar el correcto funcionamiento de todas las herramientas, el chatbot EMI IA, el sistema de noticias y las demás funciones de CodeHub.</li>
+      <li><strong>Responder consultas:</strong> cuando envías el formulario de contacto, usamos tu nombre y correo para responderte sobre proyectos freelance o colaboraciones.</li>
+      <li><strong>Análisis de uso:</strong> datos agregados y anónimos nos permiten saber qué herramientas son más populares y mejorar la experiencia.</li>
+      <li><strong>Publicidad contextual:</strong> Google AdSense muestra anuncios relevantes basados en el contenido de la página y, si lo autorizas, en tus intereses.</li>
+      <li><strong>Notificaciones push (opcional):</strong> si aceptas, enviamos alertas sobre novedades, apps nuevas y alertas de clima. Puedes revocar este permiso en cualquier momento desde la configuración de tu navegador.</li>
+    </ul>
+  </div>
+
+  <!-- 3 -->
+  <div class="section">
+    <span class="section-anchor" id="s3"></span>
+    <h2><span class="num">03</span> Google AdSense y publicidad</h2>
+    <p>Este sitio utiliza <strong>Google AdSense</strong> (ID del editor: <code style="color:var(--accent);font-family:var(--mono);font-size:.85em">ca-pub-3780093322926832</code>) para mostrar anuncios. Google puede usar cookies para personalizar los anuncios según tus visitas anteriores a este u otros sitios web.</p>
+    <p>Google y sus socios pueden:</p>
+    <ul>
+      <li>Usar cookies de DoubleClick para servir anuncios relevantes.</li>
+      <li>Recopilar datos sobre tu comportamiento de navegación para mostrar publicidad basada en intereses.</li>
+      <li>Usar la función de audiencias similares de Google para ampliar el alcance de los anuncios.</li>
+    </ul>
+    <p>Puedes optar por no recibir publicidad personalizada visitando <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener" style="color:var(--primary)">google.com/settings/ads</a> o usando el complemento de inhabilitación de Google Analytics.</p>
+  </div>
+
+  <!-- 4 -->
+  <div class="section">
+    <span class="section-anchor" id="s4"></span>
+    <h2><span class="num">04</span> Google Analytics</h2>
+    <p>Usamos <strong>Google Analytics 4</strong> (ID: G-205F26ETCC) y <strong>Google Tag Manager</strong> (ID: GTM-PFVCPFJJ) para analizar el tráfico del sitio de forma agregada y anónima. Estos servicios pueden recopilar:</p>
+    <ul>
+      <li>Páginas vistas y duración de la sesión</li>
+      <li>País y ciudad aproximados (basados en IP)</li>
+      <li>Tipo de dispositivo y navegador</li>
+      <li>Fuente de tráfico (búsqueda orgánica, redes sociales, directo)</li>
+    </ul>
+    <p>Google Analytics aplica anonimización de IP. Los datos son procesados por Google LLC bajo sus propios términos. Consulta la <a href="https://policies.google.com/privacy" target="_blank" rel="noopener" style="color:var(--primary)">Política de Privacidad de Google</a>.</p>
+  </div>
+
+  <!-- 5 -->
+  <div class="section">
+    <span class="section-anchor" id="s5"></span>
+    <h2><span class="num">05</span> Cookies</h2>
+    <p>CodeHub utiliza los siguientes tipos de cookies y almacenamiento local:</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Cookie / Clave</th><th>Tipo</th><th>Propósito</th><th>Duración</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>_ga, _gid</td><td>Google Analytics</td><td>Identificar sesiones únicas</td><td>2 años / 24h</td></tr>
+        <tr><td>__gads, __gpi</td><td>Google AdSense</td><td>Frecuencia y personalización de anuncios</td><td>13 meses</td></tr>
+        <tr><td>cfg_font, cfg_lang, cfg_anim</td><td>localStorage</td><td>Preferencias del sitio del usuario</td><td>Indefinido (local)</td></tr>
+        <tr><td>ch_visit_date</td><td>localStorage</td><td>Evitar contar múltiples visitas del mismo usuario el mismo día</td><td>1 día</td></tr>
+        <tr><td>pwa_installed, pwa_dismissed</td><td>localStorage</td><td>Estado de la instalación PWA</td><td>Indefinido (local)</td></tr>
+        <tr><td>ch_notif_dismissed</td><td>localStorage</td><td>Recordar si el usuario rechazó notificaciones push</td><td>7 días</td></tr>
+      </tbody>
+    </table>
+    <p>Puedes borrar las cookies y el almacenamiento local en cualquier momento desde la configuración de tu navegador. Esto puede afectar algunas funcionalidades del sitio como las preferencias guardadas.</p>
+  </div>
+
+  <!-- 6 -->
+  <div class="section">
+    <span class="section-anchor" id="s6"></span>
+    <h2><span class="num">06</span> Compartir información con terceros</h2>
+    <p><strong>No vendemos, alquilamos ni comercializamos tu información personal.</strong> Sin embargo, compartimos datos técnicos con los siguientes proveedores de servicios necesarios para operar el sitio:</p>
+    <ul>
+      <li><strong>Google LLC</strong> — Analytics, AdSense, Tag Manager, Fonts</li>
+      <li><strong>Vercel Inc.</strong> — Alojamiento web y entrega de contenido (CDN)</li>
+      <li><strong>Supabase</strong> — Base de datos para contador de visitas anónimo</li>
+      <li><strong>EmailJS</strong> — Envío de mensajes del formulario de contacto</li>
+      <li><strong>Cloudflare</strong> — Protección contra bots (Turnstile) y CDN</li>
+      <li><strong>Render / Railway</strong> — Servidor backend para el chatbot EMI IA</li>
+    </ul>
+    <p>Cada uno de estos proveedores tiene sus propias políticas de privacidad y procesamos los datos bajo contratos que garantizan un manejo adecuado.</p>
+  </div>
+
+  <!-- 7 -->
+  <div class="section">
+    <span class="section-anchor" id="s7"></span>
+    <h2><span class="num">07</span> Seguridad de los datos</h2>
+    <p>Implementamos medidas técnicas razonables para proteger la información:</p>
+    <ul>
+      <li>Comunicaciones cifradas mediante <strong>HTTPS/TLS</strong> en todas las páginas</li>
+      <li>Protección contra bots con <strong>Cloudflare Turnstile</strong> en formularios</li>
+      <li>El formulario de contacto valida los datos antes de enviarlos</li>
+      <li>No almacenamos contraseñas ni datos de pago en ningún sistema</li>
+    </ul>
+    <p>Sin embargo, ningún sistema de transmisión de datos por Internet es 100% seguro. Si detectas alguna vulnerabilidad, contáctanos en <a href="mailto:wilson.e360labs@gmail.com" style="color:var(--primary)">wilson.e360labs@gmail.com</a>.</p>
+  </div>
+
+  <!-- 8 -->
+  <div class="section">
+    <span class="section-anchor" id="s8"></span>
+    <h2><span class="num">08</span> Tus derechos como usuario</h2>
+    <p>Dependiendo de tu país de residencia, puedes tener los siguientes derechos respecto a tus datos personales:</p>
+    <ul>
+      <li><strong>Acceso:</strong> solicitar qué datos tenemos sobre ti.</li>
+      <li><strong>Rectificación:</strong> corregir datos incorrectos o desactualizados.</li>
+      <li><strong>Eliminación:</strong> pedir que eliminemos tus datos personales («derecho al olvido»).</li>
+      <li><strong>Oposición:</strong> oponerte al procesamiento de tus datos para publicidad personalizada.</li>
+      <li><strong>Portabilidad:</strong> recibir una copia de tus datos en formato legible por máquina.</li>
+    </ul>
+    <p>Para ejercer cualquiera de estos derechos, escríbenos a <a href="mailto:wilson.e360labs@gmail.com" style="color:var(--primary)">wilson.e360labs@gmail.com</a> con el asunto «Derechos de privacidad». Responderemos en un plazo máximo de 30 días.</p>
+  </div>
+
+  <!-- 9 -->
+  <div class="section">
+    <span class="section-anchor" id="s9"></span>
+    <h2><span class="num">09</span> Menores de edad</h2>
+    <p>CodeHub no está dirigido a menores de 13 años. No recopilamos conscientemente información personal de niños menores de esa edad. Si eres padre o tutor y crees que tu hijo nos ha proporcionado datos personales, contáctanos para eliminarlos de inmediato.</p>
+  </div>
+
+  <!-- 10 -->
+  <div class="section">
+    <span class="section-anchor" id="s10"></span>
+    <h2><span class="num">10</span> Cambios a esta política</h2>
+    <p>Podemos actualizar esta Política de Privacidad periódicamente. Los cambios se publicarán en esta misma página con la fecha de actualización indicada al inicio del documento. Te recomendamos revisar esta política regularmente. El uso continuado del sitio tras la publicación de cambios constituye tu aceptación de los mismos.</p>
+  </div>
+
+  <!-- 11 -->
+  <div class="section">
+    <span class="section-anchor" id="s11"></span>
+    <h2><span class="num">11</span> Contacto</h2>
+    <p>Si tienes preguntas, dudas o solicitudes relacionadas con esta política de privacidad, puedes contactarme a través de:</p>
+    <div class="contact-card">
+      <div>📧 <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a></div>
+      <div>💬 WhatsApp: <a href="https://wa.me/50241468185" target="_blank" rel="noopener">+502 4146 8185</a></div>
+      <div>🌐 <a href="https://wilson360-labs.vercel.app">wilson360-labs.vercel.app</a></div>
+      <div style="margin-top:.5rem;font-size:.8rem;color:var(--text-secondary)">Operado por Wilson Enríquez · Guatemala City, Guatemala 🇬🇹</div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<footer>
+  <span>&copy; 2024–2026 <strong>Wilson.E</strong> · CodeHub</span>
+  &nbsp;·&nbsp;
+  <a href="/privacy">Privacidad</a>
+  &nbsp;·&nbsp;
+  <a href="/terms">Términos de Uso</a>
+  &nbsp;·&nbsp;
+  <a href="/">Volver al inicio</a>
+</footer>
+
+</body>
+</html>
