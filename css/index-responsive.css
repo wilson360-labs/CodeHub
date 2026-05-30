@@ -1138,13 +1138,13 @@
   /* ── BLOG / NOTICIAS ── */
   #news-section { padding: 2rem 1rem; }
   .blogger-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.65rem;
   }
-  .blogger-card-thumb { height: 120px !important; }
-  .blogger-card-title { font-size: 0.88rem; }
-  .blogger-card-desc { font-size: 0.73rem; line-height: 1.5; }
-  .blogger-card-meta { font-size: 0.65rem; }
+  .blogger-card-thumb { height: 110px !important; }
+  .blogger-card-title { font-size: 0.82rem; }
+  .blogger-card-desc { font-size: 0.7rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .blogger-card-meta { font-size: 0.62rem; }
 
   /* ── CONTACTO ── */
   #contact { padding: 2rem 1rem; }

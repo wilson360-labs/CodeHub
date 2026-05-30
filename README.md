@@ -106,4 +106,4 @@ python python/codehub.py all       # todo en orden
 
 ## 📄 Licencia
 
-MIT © 2026 [Wilson Enriquez](https://wilson360-labs.vercel.app)
+MIT © 2026 [Wilson.E](https://wilson360-labs.vercel.app)
