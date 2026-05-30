@@ -149,6 +149,53 @@
     .app-name-cell small{display:block;font-family:var(--mono);font-size:.58rem;color:var(--muted);
       font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:.1rem}
 
+    /* ── BLOG TAB ── */
+    .blog-kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+    .blog-form{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.35rem;margin-bottom:1.25rem}
+    .blog-form-title{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--a);margin-bottom:1rem;display:flex;align-items:center;gap:.4rem}
+    .blog-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem}
+    .blog-label{font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em}
+    .blog-input{width:100%;padding:.72rem .9rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;outline:none;transition:border-color .2s,box-shadow .2s}
+    .blog-input:focus{border-color:rgba(255,189,105,.4);box-shadow:0 0 0 3px rgba(255,189,105,.07)}
+    .blog-textarea{width:100%;padding:.72rem .9rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:.78rem;outline:none;resize:vertical;min-height:140px;transition:border-color .2s,box-shadow .2s;line-height:1.6}
+    .blog-textarea:focus{border-color:rgba(255,189,105,.4);box-shadow:0 0 0 3px rgba(255,189,105,.07)}
+    .blog-tags-wrap{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.4rem}
+    .blog-tag{padding:.22rem .55rem;border-radius:6px;background:rgba(255,189,105,.1);border:1px solid rgba(255,189,105,.2);color:var(--a);font-family:var(--mono);font-size:.63rem;cursor:pointer;transition:all .15s}
+    .blog-tag:hover{background:rgba(255,189,105,.2)}
+    .blog-tag.sel{background:rgba(255,189,105,.25);border-color:rgba(255,189,105,.5)}
+    .blog-actions{display:flex;gap:.65rem;margin-top:1rem;flex-wrap:wrap}
+    .blog-btn-primary{display:flex;align-items:center;gap:.4rem;padding:.68rem 1.3rem;border-radius:10px;background:linear-gradient(135deg,var(--a),#ff9a2e);border:none;color:#0a0a10;font-family:var(--font);font-size:.82rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s}
+    .blog-btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .blog-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    .blog-btn-sec{display:flex;align-items:center;gap:.4rem;padding:.68rem 1rem;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s}
+    .blog-btn-sec:hover{color:var(--text);border-color:var(--border2)}
+    .blog-preview-box{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-top:.75rem;display:none}
+    .blog-preview-title{font-size:1rem;font-weight:700;margin-bottom:.4rem}
+    .blog-preview-body{font-size:.78rem;color:var(--muted);line-height:1.7;white-space:pre-wrap;font-family:var(--mono)}
+    .blog-posts-list{display:grid;gap:.65rem}
+    .blog-post-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.1rem;display:flex;align-items:flex-start;gap:.9rem;transition:border-color .2s}
+    .blog-post-card:hover{border-color:var(--border2)}
+    .blog-post-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.06)}
+    .blog-post-thumb-placeholder{width:56px;height:56px;border-radius:8px;flex-shrink:0;background:rgba(255,189,105,.08);border:1px solid rgba(255,189,105,.15);display:flex;align-items:center;justify-content:center;color:var(--a);font-size:1.3rem}
+    .blog-post-body{flex:1;min-width:0}
+    .blog-post-title{font-size:.85rem;font-weight:700;margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .blog-post-meta{font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-bottom:.35rem}
+    .blog-post-snippet{font-size:.74rem;color:var(--muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .blog-post-tags{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.4rem}
+    .blog-post-tag{padding:.12rem .38rem;border-radius:5px;background:rgba(255,255,255,.06);font-family:var(--mono);font-size:.58rem;color:var(--muted)}
+    .blog-post-actions{display:flex;flex-direction:column;gap:.35rem;flex-shrink:0}
+    .blog-post-btn{padding:.3rem .6rem;border-radius:7px;font-family:var(--mono);font-size:.6rem;font-weight:700;cursor:pointer;border:1px solid;transition:all .15s;white-space:nowrap}
+    .blog-post-btn.view{background:rgba(0,229,255,.08);border-color:rgba(0,229,255,.25);color:var(--c)}
+    .blog-post-btn.view:hover{background:rgba(0,229,255,.18)}
+    .blog-post-btn.edit{background:rgba(255,189,105,.08);border-color:rgba(255,189,105,.22);color:var(--a)}
+    .blog-post-btn.edit:hover{background:rgba(255,189,105,.18)}
+    .blog-empty{padding:3rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+    .blog-char-counter{font-family:var(--mono);font-size:.6rem;color:var(--muted);text-align:right;margin-top:.25rem;transition:color .2s}
+    .blog-char-counter.warn{color:var(--a)}
+    .blog-char-counter.danger{color:#ff6b6b}
+    .blog-tip{display:flex;align-items:flex-start;gap:.5rem;padding:.7rem .9rem;border-radius:9px;background:rgba(255,189,105,.05);border:1px solid rgba(255,189,105,.14);font-size:.73rem;color:rgba(255,189,105,.7);margin-bottom:.75rem;line-height:1.55}
+    .blog-tip i{margin-top:.1rem;flex-shrink:0}
+
     /* INPUTS */
     .ver-input{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;
       padding:.32rem .5rem;color:var(--text);font-family:var(--mono);font-size:.7rem;outline:none;
@@ -368,6 +415,7 @@
     <button class="admin-tab" onclick="switchTab('add',this)"><i class="fas fa-plus"></i> <span>Nueva App</span></button>
     <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
+    <button class="admin-tab" onclick="switchTab('blog',this)"><i class="fab fa-blogger-b"></i> <span>Blog</span></button>
   </nav>
 
   <!-- CONTENT -->
@@ -508,6 +556,100 @@
       </div>
     </div>
 
+
+    <!-- TAB: BLOG ─────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-blog">
+
+      <!-- KPIs -->
+      <div class="blog-kpi-grid">
+        <div class="kpi-card" style="--kc:var(--a)"><i class="fab fa-blogger-b kpi-ico"></i><div class="kpi-num" id="blg-total">—</div><div class="kpi-lbl">Posts publicados</div></div>
+        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-tag kpi-ico"></i><div class="kpi-num" id="blg-cats">—</div><div class="kpi-lbl">Categorías</div></div>
+        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-clock kpi-ico"></i><div class="kpi-num" id="blg-last">—</div><div class="kpi-lbl">Último post</div></div>
+      </div>
+
+      <!-- FORMULARIO NUEVO POST -->
+      <div class="blog-form">
+        <div class="blog-form-title"><i class="fab fa-blogger-b"></i> Redactar nueva entrada</div>
+
+        <div class="blog-tip">
+          <i class="fas fa-circle-info"></i>
+          <span>Completa el formulario y haz clic en <strong>Abrir en Blogger</strong>. El título y el cuerpo se copiarán automáticamente — solo pega y publica.</span>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <div class="blog-label">Título del post *</div>
+          <input id="blg-titulo" class="blog-input" type="text" placeholder="Ej: Cómo construí mi portfolio con HTML puro" oninput="blgUpdateCounters();blgAutoSlug()">
+          <div class="blog-char-counter" id="blg-titulo-cnt">0 / 70</div>
+        </div>
+
+        <div class="blog-grid-2">
+          <div>
+            <div class="blog-label">Slug (URL amigable)</div>
+            <input id="blg-slug" class="blog-input" type="text" placeholder="como-construi-mi-portfolio">
+          </div>
+          <div>
+            <div class="blog-label">Etiquetas (separadas por coma)</div>
+            <input id="blg-tags" class="blog-input" type="text" placeholder="html, css, tutorial, portfolio" oninput="blgRenderTagChips()">
+          </div>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <div class="blog-label">Etiquetas sugeridas — clic para agregar</div>
+          <div class="blog-tags-wrap" id="blg-sugg-tags">
+            <span class="blog-tag" onclick="blgAddTag('html')">html</span>
+            <span class="blog-tag" onclick="blgAddTag('css')">css</span>
+            <span class="blog-tag" onclick="blgAddTag('javascript')">javascript</span>
+            <span class="blog-tag" onclick="blgAddTag('python')">python</span>
+            <span class="blog-tag" onclick="blgAddTag('tutorial')">tutorial</span>
+            <span class="blog-tag" onclick="blgAddTag('portfolio')">portfolio</span>
+            <span class="blog-tag" onclick="blgAddTag('freelance')">freelance</span>
+            <span class="blog-tag" onclick="blgAddTag('nodejs')">nodejs</span>
+            <span class="blog-tag" onclick="blgAddTag('mongodb')">mongodb</span>
+            <span class="blog-tag" onclick="blgAddTag('api')">api</span>
+            <span class="blog-tag" onclick="blgAddTag('ia')">ia</span>
+            <span class="blog-tag" onclick="blgAddTag('Guatemala')">Guatemala</span>
+            <span class="blog-tag" onclick="blgAddTag('desarrollo web')">desarrollo web</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <div class="blog-label">Cuerpo del post * — puedes usar HTML básico (&lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;pre&gt;&lt;code&gt;)</div>
+          <textarea id="blg-body" class="blog-textarea" placeholder="Escribe aquí el contenido..." oninput="blgUpdateCounters()"></textarea>
+          <div class="blog-char-counter" id="blg-body-cnt">0 caracteres</div>
+        </div>
+
+        <div class="blog-actions">
+          <button class="blog-btn-primary" onclick="blgOpenBlogger()"><i class="fab fa-blogger-b"></i> Abrir en Blogger</button>
+          <button class="blog-btn-sec" onclick="blgTogglePreview()"><i class="fas fa-eye"></i> Vista previa</button>
+          <button class="blog-btn-sec" onclick="blgCopyBody()"><i class="fas fa-copy"></i> Copiar cuerpo</button>
+          <button class="blog-btn-sec" onclick="blgClearForm()"><i class="fas fa-eraser"></i> Limpiar</button>
+        </div>
+
+        <div class="blog-preview-box" id="blg-preview-box">
+          <div class="blog-preview-title" id="blg-preview-title">Sin título</div>
+          <hr style="border:none;border-top:1px solid var(--border);margin:.6rem 0">
+          <div class="blog-preview-body" id="blg-preview-body">El cuerpo aparecerá aquí...</div>
+        </div>
+      </div>
+
+      <!-- POSTS PUBLICADOS -->
+      <div class="section-title"><i class="fab fa-blogger-b"></i> Posts publicados en codehub-labs.blogspot.com</div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
+        <button class="vt-btn" onclick="blgLoadPosts()" style="background:rgba(255,189,105,.1);border-color:rgba(255,189,105,.3);color:var(--a)">
+          <i class="fas fa-rotate-right"></i> Recargar posts
+        </button>
+        <a href="https://www.blogger.com/blog/posts/4932034987684289893" target="_blank" rel="noopener"
+          style="display:flex;align-items:center;gap:.38rem;padding:.52rem .95rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-family:var(--mono);font-size:.7rem;font-weight:700;text-decoration:none;transition:all .2s"
+          onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border2)'"
+          onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+          <i class="fas fa-external-link-alt"></i> Panel de Blogger
+        </a>
+      </div>
+      <div class="blog-posts-list" id="blg-posts-list">
+        <div class="blog-empty"><i class="fab fa-blogger-b" style="font-size:2rem;opacity:.2;display:block;margin-bottom:.75rem"></i>Haz clic en "Recargar posts" para ver los publicados</div>
+      </div>
+    </div><!-- /tab-blog -->
+
   </div><!-- /content-wrap -->
 </div><!-- /admin-wrap -->
 
@@ -535,6 +677,243 @@
 <div id="toast"></div>
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   BLOG TAB — CodeHub Admin
+   Blog: https://codehub-labs.blogspot.com
+   Usa el Feed JSON público de Blogger (sin API Key)
+══════════════════════════════════════════════════════ */
+
+const BLOG_URL  = 'https://codehub-labs.blogspot.com';
+const BLOG_FEED = BLOG_URL + '/feeds/posts/default?alt=json&max-results=50';
+let   blgAllPosts = [];
+
+/* ── Cargar posts vía fetch + CORS proxy ── */
+async function blgLoadPosts() {
+  const list = document.getElementById('blg-posts-list');
+  list.innerHTML = '<div class="blog-empty"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;opacity:.4;display:block;margin-bottom:.5rem"></i>Cargando posts...</div>';
+
+  try {
+    // Intentar directamente primero (funciona si ya estás en el mismo dominio/vercel)
+    let data;
+    try {
+      const r = await fetch(BLOG_FEED);
+      data = await r.json();
+    } catch {
+      // Fallback: proxy CORS
+      const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(BLOG_FEED);
+      const r2 = await fetch(proxy);
+      const raw = await r2.json();
+      data = JSON.parse(raw.contents);
+    }
+
+    const feed   = data.feed;
+    const entries = feed.entry || [];
+    blgAllPosts   = entries;
+
+    /* KPIs */
+    document.getElementById('blg-total').textContent = entries.length;
+    const cats = new Set();
+    entries.forEach(e => (e.category || []).forEach(c => cats.add(c.term)));
+    document.getElementById('blg-cats').textContent = cats.size || '—';
+
+    if (entries.length > 0) {
+      const lastDate = new Date(entries[0].published.$t);
+      document.getElementById('blg-last').textContent =
+        lastDate.toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
+    } else {
+      document.getElementById('blg-last').textContent = 'Ninguno';
+    }
+
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="blog-empty"><i class="fab fa-blogger-b" style="font-size:2rem;opacity:.2;display:block;margin-bottom:.75rem"></i>Aún no hay posts publicados.<br><small style="font-size:.7rem">¡Usa el formulario de arriba para crear el primero!</small></div>';
+      return;
+    }
+
+    list.innerHTML = entries.map(e => blgRenderCard(e)).join('');
+
+  } catch(err) {
+    list.innerHTML = `<div class="blog-empty" style="color:#ff6b6b"><i class="fas fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:.5rem;opacity:.5"></i>Error cargando posts<br><small style="font-size:.68rem;opacity:.7">${err.message}</small></div>`;
+  }
+}
+
+/* ── Renderizar card de post ── */
+function blgRenderCard(entry) {
+  const title    = entry.title.$t;
+  const url      = (entry.link.find(l => l.rel === 'alternate') || {}).href || '#';
+  const published = new Date(entry.published.$t);
+  const dateStr  = published.toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
+  const snippet  = entry.summary?.$t?.replace(/<[^>]+>/g,'').substring(0,140) || 'Sin resumen';
+  const tags     = (entry.category || []).map(c => c.term);
+
+  // Miniatura: buscar imagen en el contenido
+  let thumb = '';
+  const content = entry.content?.$t || '';
+  const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/);
+  if (imgMatch) {
+    thumb = `<img class="blog-post-thumb" src="${imgMatch[1]}" alt="" onerror="this.style.display='none'">`;
+  } else {
+    thumb = `<div class="blog-post-thumb-placeholder"><i class="fab fa-blogger-b"></i></div>`;
+  }
+
+  const tagsHtml = tags.length
+    ? tags.map(t => `<span class="blog-post-tag">${t}</span>`).join('')
+    : '';
+
+  return `
+    <div class="blog-post-card">
+      ${thumb}
+      <div class="blog-post-body">
+        <div class="blog-post-title">${title}</div>
+        <div class="blog-post-meta"><i class="fas fa-calendar-day" style="margin-right:.3rem"></i>${dateStr} ${tags.length ? '· ' + tags[0] : ''}</div>
+        <div class="blog-post-snippet">${snippet}</div>
+        ${tagsHtml ? '<div class="blog-post-tags">' + tagsHtml + '</div>' : ''}
+      </div>
+      <div class="blog-post-actions">
+        <a href="${url}" target="_blank" rel="noopener" class="blog-post-btn view"><i class="fas fa-external-link-alt"></i> Ver</a>
+        <button class="blog-post-btn edit" onclick="blgLoadToEdit(${JSON.stringify(title).replace(/"/g,'&quot;')}, ${JSON.stringify(url).replace(/"/g,'&quot;')}, ${JSON.stringify(tags.join(', ')).replace(/"/g,'&quot;')})">
+          <i class="fas fa-pen"></i> Editar
+        </button>
+      </div>
+    </div>`;
+}
+
+/* ── Cargar datos del post en el formulario para edición ── */
+function blgLoadToEdit(title, url, tags) {
+  document.getElementById('blg-titulo').value = title;
+  document.getElementById('blg-tags').value = tags;
+  blgAutoSlug();
+  blgUpdateCounters();
+  // Scroll al formulario
+  document.querySelector('.blog-form').scrollIntoView({ behavior:'smooth', block:'start' });
+  if (typeof toast === 'function') toast('✏️ Título cargado — edita el cuerpo y abre Blogger');
+}
+
+/* ── Generar slug automático desde el título ── */
+function blgAutoSlug() {
+  const titulo = document.getElementById('blg-titulo').value;
+  const slug = titulo
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // quitar tildes
+    .replace(/[^a-z0-9\s-]/g,'')
+    .trim()
+    .replace(/\s+/g,'-')
+    .substring(0, 60);
+  document.getElementById('blg-slug').value = slug;
+}
+
+/* ── Contadores de caracteres ── */
+function blgUpdateCounters() {
+  const titulo = document.getElementById('blg-titulo').value.length;
+  const body   = document.getElementById('blg-body').value.length;
+
+  const tc = document.getElementById('blg-titulo-cnt');
+  tc.textContent = titulo + ' / 70';
+  tc.className = 'blog-char-counter' + (titulo > 70 ? ' danger' : titulo > 55 ? ' warn' : '');
+
+  const bc = document.getElementById('blg-body-cnt');
+  bc.textContent = body.toLocaleString() + ' caracteres' + (body < 300 ? ' — Google recomienda mínimo 300' : ' ✓');
+  bc.className = 'blog-char-counter' + (body < 300 ? ' warn' : '');
+}
+
+/* ── Agregar tag desde chips sugeridos ── */
+function blgAddTag(tag) {
+  const input = document.getElementById('blg-tags');
+  const current = input.value.split(',').map(t => t.trim()).filter(Boolean);
+  if (!current.includes(tag)) {
+    current.push(tag);
+    input.value = current.join(', ');
+  }
+  blgRenderTagChips();
+}
+
+/* ── Resaltar chips ya seleccionados ── */
+function blgRenderTagChips() {
+  const current = document.getElementById('blg-tags').value
+    .split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+  document.querySelectorAll('#blg-sugg-tags .blog-tag').forEach(chip => {
+    chip.classList.toggle('sel', current.includes(chip.textContent.trim().toLowerCase()));
+  });
+}
+
+/* ── Vista previa ── */
+function blgTogglePreview() {
+  const box = document.getElementById('blg-preview-box');
+  const visible = box.style.display === 'block';
+  if (!visible) {
+    document.getElementById('blg-preview-title').textContent =
+      document.getElementById('blg-titulo').value || 'Sin título';
+    document.getElementById('blg-preview-body').textContent =
+      document.getElementById('blg-body').value || 'Sin contenido';
+  }
+  box.style.display = visible ? 'none' : 'block';
+}
+
+/* ── Copiar cuerpo al portapapeles ── */
+async function blgCopyBody() {
+  const body = document.getElementById('blg-body').value;
+  if (!body) { if (typeof toast === 'function') toast('⚠️ El cuerpo está vacío'); return; }
+  try {
+    await navigator.clipboard.writeText(body);
+    if (typeof toast === 'function') toast('📋 Cuerpo copiado al portapapeles');
+  } catch {
+    if (typeof toast === 'function') toast('❌ No se pudo copiar');
+  }
+}
+
+/* ── Limpiar formulario ── */
+function blgClearForm() {
+  ['blg-titulo','blg-slug','blg-tags','blg-body'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('blg-preview-box').style.display = 'none';
+  blgUpdateCounters();
+  blgRenderTagChips();
+  if (typeof toast === 'function') toast('🧹 Formulario limpiado');
+}
+
+/* ── Abrir Blogger con el título ya copiado ── */
+async function blgOpenBlogger() {
+  const titulo = document.getElementById('blg-titulo').value.trim();
+  const body   = document.getElementById('blg-body').value.trim();
+  const tags   = document.getElementById('blg-tags').value.trim();
+
+  if (!titulo) { if (typeof toast === 'function') toast('⚠️ Escribe el título primero'); return; }
+
+  // Copiar el cuerpo al portapapeles para pegar en Blogger
+  const toCopy = body
+    ? '=== TÍTULO ===\n' + titulo + '\n\n=== ETIQUETAS ===\n' + tags + '\n\n=== CUERPO ===\n' + body
+    : titulo;
+
+  try {
+    await navigator.clipboard.writeText(toCopy);
+    if (typeof toast === 'function') toast('📋 Contenido copiado — pégalo en Blogger');
+  } catch { /* clipboard blocked, skip */ }
+
+  // Abrir nueva entrada en Blogger
+  setTimeout(() => {
+    window.open('https://www.blogger.com/blog/post/edit/4932034987684289893/new', '_blank', 'noopener');
+  }, 300);
+}
+
+/* ── Auto-cargar posts cuando se activa el tab ── */
+const _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+document.addEventListener('DOMContentLoaded', () => {
+  // Parche al switchTab existente para auto-cargar
+  const tabs = document.querySelectorAll('.admin-tab');
+  tabs.forEach(btn => {
+    if (btn.onclick && btn.getAttribute('onclick')?.includes("'blog'")) {
+      const orig = btn.onclick;
+      btn.onclick = function(e) {
+        orig.call(this, e);
+        if (blgAllPosts.length === 0) blgLoadPosts();
+      };
+    }
+  });
+});
+</script>
+
 <script src="../js/admin-hub.js"></script>
 </body>
 </html>
