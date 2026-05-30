@@ -2330,7 +2330,7 @@ DISPONIBILIDAD:
         <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px">
           <span style="font-size:1.1rem;flex-shrink:0">🤖</span>
           <div>
-            <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI IA — Chat de propósito general</div>
+            <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI COPILOT — Asistente IA de CodeHub</div>
             <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Asistente IA multimodo con fallback automático entre Groq, Gemini, Mistral y más.</div>
           </div>
         </div>
@@ -2792,10 +2792,22 @@ async function sendEmail(e) {
 
 
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
-<button id="ai-fab" aria-label="Abrir EMI IA" title="Habla con EMI IA">
-  <span class="ai-fab-icon">✦</span>
+<button id="ai-fab" aria-label="Abrir EMI COPILOT" title="Habla con EMI COPILOT">
+  <span class="ai-fab-icon">
+    <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <line x1="11" y1="1" x2="11" y2="4" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="11" cy="1" r="1.2" fill="#00e5ff"/>
+      <rect x="3" y="4" width="16" height="13" rx="3.5" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.7)" stroke-width="1.2"/>
+      <rect x="6" y="8" width="3.5" height="2.5" rx="1" fill="#00e5ff" opacity=".95"/>
+      <rect x="12.5" y="8" width="3.5" height="2.5" rx="1" fill="#00e5ff" opacity=".95"/>
+      <rect x="7" y="13" width="8" height="1.8" rx="0.9" fill="rgba(255,255,255,.5)"/>
+      <rect x="1.5" y="7.5" width="1.5" height="4" rx="0.75" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+      <rect x="19" y="7.5" width="1.5" height="4" rx="0.75" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+      <rect x="8.5" y="17" width="5" height="2.5" rx="1" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.3)" stroke-width=".8"/>
+    </svg>
+  </span>
   <span class="ai-fab-text">
-    <span class="ai-fab-label">EMI IA</span>
+    <span class="ai-fab-label">EMI COPILOT</span>
     <span class="ai-fab-sub">Pregúntame algo</span>
   </span>
   <span class="ai-notif"></span>
@@ -2804,7 +2816,7 @@ async function sendEmail(e) {
   <div class="fab-wave fw3"></div>
 </button>
 
-<div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI IA">
+<div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI COPILOT">
   <!-- Boot scan overlay — se muestra solo al abrir -->
   <div id="ai-boot-overlay" style="
     position:absolute;inset:0;z-index:10;pointer-events:none;
@@ -2830,9 +2842,27 @@ async function sendEmail(e) {
 
   <!-- Header -->
   <div class="ai-head">
-    <div class="ai-head-avatar">✦</div>
+    <div class="ai-head-avatar">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- Antena -->
+        <line x1="11" y1="1" x2="11" y2="4" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="11" cy="1" r="1.2" fill="#00e5ff"/>
+        <!-- Cabeza -->
+        <rect x="3" y="4" width="16" height="13" rx="3.5" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.55)" stroke-width="1.2"/>
+        <!-- Ojos -->
+        <rect x="6" y="8" width="3.5" height="2.5" rx="1" fill="#00e5ff" opacity=".95"/>
+        <rect x="12.5" y="8" width="3.5" height="2.5" rx="1" fill="#00e5ff" opacity=".95"/>
+        <!-- Boca -->
+        <rect x="7" y="13" width="8" height="1.8" rx="0.9" fill="rgba(255,255,255,.5)"/>
+        <!-- Orejas/tornillos -->
+        <rect x="1.5" y="7.5" width="1.5" height="4" rx="0.75" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+        <rect x="19" y="7.5" width="1.5" height="4" rx="0.75" fill="rgba(255,255,255,.3)" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>
+        <!-- Cuello -->
+        <rect x="8.5" y="17" width="5" height="2.5" rx="1" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.3)" stroke-width=".8"/>
+      </svg>
+    </div>
     <div class="ai-head-info">
-      <div class="ai-head-title">EMI IA</div>
+      <div class="ai-head-title">EMI COPILOT</div>
       <div class="ai-head-sub">
         <span class="online-dot"></span>
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
@@ -2847,7 +2877,7 @@ async function sendEmail(e) {
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
-          ¡Hola! 👋 Soy <strong>EMI IA</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
+          ¡Hola! 👋 Soy <strong>EMI COPILOT</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
           <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
         </div>
         <span class="ai-msg-time" id="ai-welcome-time"></span>
@@ -2883,7 +2913,7 @@ async function sendEmail(e) {
         </button>
       </div>
       <div class="ai-input-footer">
-        <span class="ai-input-hint-inline" id="ai-input-hint">✦ EMI IA · CodeHub</span>
+        <span class="ai-input-hint-inline" id="ai-input-hint">⬡ EMI COPILOT · CodeHub</span>
         <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
       </div>
     </div>
@@ -2934,13 +2964,13 @@ async function sendEmail(e) {
   ];
 
   // Sistema: quién es el asistente
-  const SYSTEM = `Eres EMI IA — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
+  const SYSTEM = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
 No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa.
 
 ━━━ IDENTIDAD ━━━
-- Nombre: EMI IA, creada por Wilson.E
-- NO reveles qué modelo de IA te impulsa. Si preguntan, di: "Soy EMI IA, una IA propia de CodeHub."
+- Nombre: EMI COPILOT, creada por Wilson.E
+- NO reveles qué modelo de IA te impulsa. Si preguntan, di: "Soy EMI COPILOT, la IA propia de CodeHub."
 
 ━━━ PERSONALIDAD ━━━
 - Directa. Sin "¡Claro!", "¡Por supuesto!" — ve al punto.
@@ -3309,7 +3339,7 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
         addMsg('ai', `
           <div class="ai-gen-img-wrap">
             <img src="${imgSrc}"
-              alt="Imagen generada por EMI IA"
+              alt="Imagen generada por EMI COPILOT"
               class="ai-gen-img"
               id="${uid}"
               onclick="window.open('${isBase64 ? '#' : imgSrc}','_blank')"
@@ -3318,7 +3348,7 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
               onerror="this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
             <div class="ai-gen-img-footer">
               <i class="fas fa-wand-magic-sparkles"></i>
-              Creada por EMI IA ·
+              Creada por EMI COPILOT ·
               <a href="${downloadHref}" download="emi-imagen.png" target="_blank"
                 style="color:#a0a0ff;text-decoration:none;">
                 Descargar
@@ -3508,7 +3538,7 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
     if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
     if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
       return '[BUSCAR_IMAGENES: ' + q.replace(/busca|buscar|imágenes|imagen|muéstrame|muestra|fondo|fondos|icono|iconos/gi,'').trim() + ']';
-    return 'Entendido. Soy <strong>EMI IA</strong> de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
+    return 'Entendido. Soy <strong>EMI COPILOT</strong> de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
   }
 
   window.aiSugg = function(btn) {
