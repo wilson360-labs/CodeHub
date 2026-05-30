@@ -1758,14 +1758,7 @@
   .ai-circle-btn { min-height:44px; }
   .ai-input-wrap { padding:.55rem .75rem .7rem; }
   #ai-send-btn { width:44px; height:44px; border-radius:12px; }
-}
-  display:inline-flex;align-items:center;gap:.34rem;
-  padding:.24rem .56rem;border-radius:999px;
-  font-size:.54rem;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;
-  color:#cbbcff;background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.24);
-  box-shadow:0 0 16px rgba(124,77,255,.12);
-}.ai-char-count.over{color:rgba(255,82,82,.8);}
-@media(max-width:920px){
+
   #ai-panel{
     right:14px;bottom:74px;
     width:min(420px,calc(100vw - 20px));
