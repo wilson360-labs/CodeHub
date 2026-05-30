@@ -715,8 +715,37 @@ async function callCohere(msgs) {
   return { reply: d.text || '', input: d.meta?.tokens?.input_tokens||0, output: d.meta?.tokens?.output_tokens||0, model: 'cohere/command-r' };
 }
 
+// ── Anthropic Claude ─────────────────────────────────────────────────────
+async function callClaude(msgs) {
+  const systemMsg = msgs.find(m => m.role === 'system');
+  const chatMsgs  = msgs.filter(m => m.role !== 'system');
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1024,
+      temperature: 0.65,
+      system: systemMsg?.content || '',
+      messages: chatMsgs.map(m => ({ role: m.role, content: m.content }))
+    })
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(`Claude API ${r.status}: ${e.error?.message || 'error'}`);
+  }
+  const d = await r.json();
+  const reply = d.content?.[0]?.text || '';
+  return { reply, input: d.usage?.input_tokens||0, output: d.usage?.output_tokens||0, model: 'anthropic/claude-sonnet' };
+}
+
 async function callAI(msgs) {
   const providers = [
+    { name: 'Claude',      fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
     { name: 'Groq',        fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
     { name: 'OpenRouter',  fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
     { name: 'Gemini',      fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
@@ -791,6 +820,7 @@ app.get('/api/health', (_, res) => res.json({
   redis:     redis       ? 'connected' : 'memory',
   ws:        wsClients.size + ' clients',
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
+  claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
   openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
   minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',

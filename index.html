@@ -3276,31 +3276,66 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
   const IMG_GEN_URL = BACKEND_URL + '/api/generate-image';
 
   async function generateImage(prompt) {
-    const cleanPrompt = prompt.replace(/^🎨\s*/,'').replace(/\b(genera|crea|diseña|dibuja|haz)\b.{0,10}\b(imagen|foto|ilustración|logo|banner|avatar)\b\s*(de|sobre|con|para|un|una)?\s*/i,'').trim() || prompt;
+    const cleanPrompt = prompt
+      .replace(/^🎨\s*/, '')
+      .replace(/\b(genera|crea|diseña|dibuja|haz)\b.{0,10}\b(imagen|foto|ilustración|logo|banner|avatar)\b\s*(de|sobre|con|para|un|una)?\s*/i, '')
+      .trim() || prompt;
+
     const typingEl = addMsg('typing', '▌');
-    status.textContent = '● Generando…';
+    status.textContent = '● Generando imagen…';
     loading = true; sendBtn.disabled = true;
+
     try {
       const res = await fetch(IMG_GEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID })
+        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID, width: 512, height: 512 })
       });
+
       typingEl.remove();
-      if (!res.ok) throw new Error('Error ' + res.status);
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
       const data = await res.json();
-      const imgUrl = data.url || data.image_url || data.data?.[0]?.url;
-      if (imgUrl) {
+
+      // El backend puede devolver base64 en data.image o URL en data.url
+      const imgSrc = data.image || data.url || data.image_url || data.data?.[0]?.url || null;
+
+      if (imgSrc) {
         const uid = 'img_' + Date.now();
-        addMsg('ai', `<div class="ai-gen-img-wrap"><img src="${imgUrl}" alt="Imagen generada" class="ai-gen-img" id="${uid}" onclick="window.open('${imgUrl}','_blank')" title="Click para abrir en tamaño completo" loading="lazy" onerror="this.parentElement.innerHTML='<span style=color:rgba(255,100,100,.7)>No se pudo cargar la imagen</span>'"><div class="ai-gen-img-footer"><i class="fas fa-wand-magic-sparkles"></i> Imagen generada · <a href="${imgUrl}" download target="_blank" style="color:#a0a0ff;text-decoration:none">Descargar</a></div></div>`);
+        const isBase64 = imgSrc.startsWith('data:');
+        const downloadHref = isBase64 ? imgSrc : imgSrc;
+
+        addMsg('ai', `
+          <div class="ai-gen-img-wrap">
+            <img src="${imgSrc}"
+              alt="Imagen generada por EMI IA"
+              class="ai-gen-img"
+              id="${uid}"
+              onclick="window.open('${isBase64 ? '#' : imgSrc}','_blank')"
+              title="Imagen generada"
+              loading="lazy"
+              onerror="this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
+            <div class="ai-gen-img-footer">
+              <i class="fas fa-wand-magic-sparkles"></i>
+              Creada por EMI IA ·
+              <a href="${downloadHref}" download="emi-imagen.png" target="_blank"
+                style="color:#a0a0ff;text-decoration:none;">
+                Descargar
+              </a>
+            </div>
+          </div>`);
       } else {
-        addMsg('ai', '⚠️ No se pudo generar la imagen. Intenta con una descripción más específica.');
+        addMsg('ai', '⚠️ No pude generar la imagen esta vez. Intenta con una descripción más detallada.');
       }
+
     } catch(e) {
       typingEl?.remove?.();
-      addMsg('ai', '⚠️ El servicio de imágenes no está disponible ahora mismo. Intenta de nuevo en un momento.');
+      addMsg('ai', '⚠️ El servicio de imágenes tuvo un problema. Intenta de nuevo en un momento.');
+      console.error('[EMI imagen]', e.message);
     } finally {
-      loading = false; sendBtn.disabled = false;
+      loading = false;
+      sendBtn.disabled = false;
       status.textContent = 'Online · Listo para ayudarte';
       scrollMsgs();
     }
