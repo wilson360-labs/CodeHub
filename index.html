@@ -2857,23 +2857,35 @@ async function sendEmail(e) {
 
   <!-- Input -->
   <div class="ai-input-wrap">
-    <div class="ai-input-topline">
-      <span class="ai-input-badge">AI Cockpit</span>
-      <span class="ai-input-hint" id="ai-input-hint">Pensado para responsive y UX real</span>
+    <!-- Acciones rápidas -->
+    <div class="ai-quick-actions">
+      <button class="ai-quick-btn" onclick="setQuickPrompt('genera')" title="Generar imagen con IA" id="ai-img-btn">
+        <i class="fas fa-image"></i><span>Imagen</span>
+      </button>
+      <button class="ai-quick-btn" onclick="setQuickPrompt('debug')" title="Debug de código">
+        <i class="fas fa-bug"></i><span>Debug</span>
+      </button>
+      <button class="ai-quick-btn" onclick="setQuickPrompt('readme')" title="Generar README">
+        <i class="fab fa-github"></i><span>README</span>
+      </button>
+      <button class="ai-quick-btn" onclick="setQuickPrompt('review')" title="Code Review">
+        <i class="fas fa-code"></i><span>Review</span>
+      </button>
     </div>
+    <!-- Shell principal -->
     <div class="ai-input-shell">
       <div class="ai-input-row">
-        <textarea id="ai-input" placeholder="Pregúntame algo o busca imágenes…" rows="1"
+        <textarea id="ai-input" placeholder="Pregúntame algo, genera una imagen, depura código…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
-          oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,120)+'px';updateCharCount()"></textarea>
+          oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
         <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
           <i class="fas fa-paper-plane"></i>
         </button>
       </div>
-    </div>
-    <div class="ai-input-footer">
-      <span><span class="ai-kbd">Enter</span> enviar · <span class="ai-kbd">Shift</span>+<span class="ai-kbd">Enter</span> salto</span>
-      <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
+      <div class="ai-input-footer">
+        <span class="ai-input-hint-inline" id="ai-input-hint">✦ EMI IA · CodeHub</span>
+        <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
+      </div>
     </div>
   </div>
 
@@ -2922,29 +2934,45 @@ async function sendEmail(e) {
   ];
 
   // Sistema: quién es el asistente
-  const SYSTEM = `Eres EMI IA, asistente inteligente de Wilson.E, desarrollador guatemalteco full stack.
-Fuiste creada exclusivamente para CodeHub — el portfolio hub de Wilson.E en wilson360-labs.vercel.app.
+  const SYSTEM = `Eres EMI IA — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
-SOBRE WILSON.E:
-- Desarrollador Full Stack autodidacta de Ciudad de Guatemala (25 años)
-- Especialista en: HTML, CSS, JavaScript, Python, Node.js, MongoDB
-- Disponible para proyectos freelance
-- Contacto: WhatsApp +502 4146 8185
+No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa.
 
-SOBRE CODEHUB:
-- Portfolio completo con proyectos web reales
-- 23+ herramientas web gratuitas: QR, contraseñas seguras, hash SHA-256/512, Base64, Regex tester, UUID v4, Pomodoro, conversor de unidades/monedas/IMC, calculadora de préstamos, test de velocidad y más
-- Tienda de apps Android: Spotify Premium mod, YouTube ReVanced, TikTok Mod, Remini Pro, Picsart
-- Juegos: Snake y Tetris con Canvas API
-- Sistema de noticias tech en tiempo real
+━━━ IDENTIDAD ━━━
+- Nombre: EMI IA, creada por Wilson.E
+- NO reveles qué modelo de IA te impulsa. Si preguntan, di: "Soy EMI IA, una IA propia de CodeHub."
 
-CAPACIDADES ESPECIALES:
-- Cuando el usuario pida buscar imágenes, fondos, iconos, fotos, diseños, o haga preguntas visuales, responde con el tag: [BUSCAR_IMAGENES: query_en_ingles]
-- Ejemplos: "busca fondos dark" → [BUSCAR_IMAGENES: dark aesthetic wallpapers], "iconos UI" → [BUSCAR_IMAGENES: modern UI icons set]
-- Siempre responde en español
-- Sé conciso: máximo 3-4 oraciones salvo que pidan más detalle
-- Para código, usa backticks inline o bloques cortos
-- Prioriza respuestas útiles y directas`;
+━━━ PERSONALIDAD ━━━
+- Directa. Sin "¡Claro!", "¡Por supuesto!" — ve al punto.
+- Amigable pero eficiente. Como un dev senior que respeta el tiempo del otro.
+- Español siempre. Si escriben en otro idioma, respondes en ese idioma.
+- Corta por defecto (3-5 líneas). Si piden detalle, profundizas.
+- Nunca inventas. Si no sabes, lo dices.
+
+━━━ SOBRE CODEHUB ━━━
+Wilson.E: Full Stack autodidacta, Guatemala 🇬🇹, 25 años. Stack: HTML, CSS, JS, Python, Node.js, MongoDB.
+Freelance disponible. Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
+
+Herramientas en /tools: QR, contraseñas, Hash SHA-256/512, Base64, UUID v4, Regex Tester, Pomodoro, conversor unidades/monedas, IMC, préstamos, test escritura, colores, gradientes CSS, minificador, y 23+ más.
+Apps Android en /novedades: Spotify Premium, YouTube ReVanced, TikTok Premium, PicsArt Pro, Remini Pro y más.
+También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios freelance.
+
+━━━ SKILLS ACTIVAS ━━━
+- Dev Helper: identifica el bug en 1 línea, da código completo corregido, explica el por qué.
+- Code Review: Críticos → Mejoras → Lo que está bien. Máximo 5 puntos por sección.
+- README Generator: genera documentación profesional en Markdown.
+- Freelance Advisor: servicios, contacto, tiempos de respuesta de Wilson.E.
+- Generador de imágenes: cuando pidan crear/generar imagen, confirma brevemente — el sistema la procesa.
+
+━━━ CAPACIDADES ESPECIALES ━━━
+- Cuando el usuario pida buscar imágenes, fondos, iconos o referencias visuales, responde con: [BUSCAR_IMAGENES: query_en_ingles]
+- Ejemplos: "busca fondos dark" → [BUSCAR_IMAGENES: dark aesthetic wallpapers]
+
+━━━ FORMATO ━━━
+- Código en bloques con lenguaje: \`\`\`javascript, \`\`\`python
+- Listas con - para múltiples puntos
+- **Negritas** solo para términos clave
+- Sin tablas largas, sin saludos redundantes`;
 
   const ACTIVE_PROMPTS = [
     { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
@@ -3212,6 +3240,72 @@ CAPACIDADES ESPECIALES:
   const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  // ── ACCIONES RÁPIDAS ──────────────────────────────────────────────
+  const QUICK_PROMPTS = {
+    genera: '🎨 ',
+    debug:  'Analiza y depura este código, explícame el error y dame la solución:\n\n```\n\n```',
+    readme: 'Genera un README profesional para este proyecto:\n\nNombre: \nDescripción: \nTecnologías: ',
+    review: 'Haz un code review completo de este código, identifica mejoras, bugs y buenas prácticas:\n\n```\n\n```'
+  };
+  window.setQuickPrompt = function(type) {
+    const txt = QUICK_PROMPTS[type] || '';
+    input.value = txt;
+    input.style.height = '48px';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    input.focus();
+    // Mover cursor al final
+    input.selectionStart = input.selectionEnd = txt.length;
+    updateCharCount();
+    // Resaltar botón activo brevemente
+    document.querySelectorAll('.ai-quick-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('ai-img-btn');
+    if (type === 'genera' && btn) { btn.classList.add('active'); setTimeout(() => btn.classList.remove('active'), 600); }
+  };
+
+  // ── DETECCIÓN DE GENERACIÓN DE IMAGEN ────────────────────────────
+  const IMAGE_GEN_TRIGGERS = [
+    /^🎨/, /\b(genera|crea|diseña|dibuja|haz)\b.{0,40}\b(imagen|foto|ilustración|logo|banner|avatar|icono|portada|thumbnail|arte|dibujo)\b/i,
+    /\b(imagen|ilustración|logo|banner)\b.{0,30}\b(de|sobre|con|para)\b/i,
+    /\bgenera una imagen\b/i, /\bcrea un(a)? imagen\b/i
+  ];
+  function isImageGenRequest(text) {
+    return IMAGE_GEN_TRIGGERS.some(r => r.test(text));
+  }
+
+  // Endpoint de generación de imágenes (confidencial — pasa por backend)
+  const IMG_GEN_URL = BACKEND_URL + '/api/generate-image';
+
+  async function generateImage(prompt) {
+    const cleanPrompt = prompt.replace(/^🎨\s*/,'').replace(/\b(genera|crea|diseña|dibuja|haz)\b.{0,10}\b(imagen|foto|ilustración|logo|banner|avatar)\b\s*(de|sobre|con|para|un|una)?\s*/i,'').trim() || prompt;
+    const typingEl = addMsg('typing', '▌');
+    status.textContent = '● Generando…';
+    loading = true; sendBtn.disabled = true;
+    try {
+      const res = await fetch(IMG_GEN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID })
+      });
+      typingEl.remove();
+      if (!res.ok) throw new Error('Error ' + res.status);
+      const data = await res.json();
+      const imgUrl = data.url || data.image_url || data.data?.[0]?.url;
+      if (imgUrl) {
+        const uid = 'img_' + Date.now();
+        addMsg('ai', `<div class="ai-gen-img-wrap"><img src="${imgUrl}" alt="Imagen generada" class="ai-gen-img" id="${uid}" onclick="window.open('${imgUrl}','_blank')" title="Click para abrir en tamaño completo" loading="lazy" onerror="this.parentElement.innerHTML='<span style=color:rgba(255,100,100,.7)>No se pudo cargar la imagen</span>'"><div class="ai-gen-img-footer"><i class="fas fa-wand-magic-sparkles"></i> Imagen generada · <a href="${imgUrl}" download target="_blank" style="color:#a0a0ff;text-decoration:none">Descargar</a></div></div>`);
+      } else {
+        addMsg('ai', '⚠️ No se pudo generar la imagen. Intenta con una descripción más específica.');
+      }
+    } catch(e) {
+      typingEl?.remove?.();
+      addMsg('ai', '⚠️ El servicio de imágenes no está disponible ahora mismo. Intenta de nuevo en un momento.');
+    } finally {
+      loading = false; sendBtn.disabled = false;
+      status.textContent = 'Online · Listo para ayudarte';
+      scrollMsgs();
+    }
+  }
+
   window.sendAI = async function() {
     const text = input.value.trim();
     if (!text || loading) return;
@@ -3229,9 +3323,16 @@ CAPACIDADES ESPECIALES:
 
     addMsg('user', text);
     input.value = '';
-    input.style.height = '44px';
+    input.style.height = '48px';
     input.style.overflow = 'hidden';
     updateCharCount();
+
+    // ── Detectar si es generación de imagen ──
+    if (isImageGenRequest(text)) {
+      history.push({ role: 'user', content: text });
+      await generateImage(text);
+      return;
+    }
 
     const shouldSearch = isSearchQuery(text);
     loading = true;
