@@ -27,7 +27,7 @@ const swaggerSpec        = require('./swagger');
 
 // ── SUPABASE ──────────────────────────────────────────────────
 const { createClient } = require('@supabase/supabase-js');
-const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_KEY)
+const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.trim())
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
   : null;
 
