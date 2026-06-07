@@ -53,7 +53,9 @@ jobs:
           BLOGGER_CLIENT_ID:     ${{ secrets.BLOGGER_CLIENT_ID }}
           BLOGGER_CLIENT_SECRET: ${{ secrets.BLOGGER_CLIENT_SECRET }}
           BLOGGER_REFRESH_TOKEN: ${{ secrets.BLOGGER_REFRESH_TOKEN }}
-        run: node refresh-token.js
+        run: |
+          TOKEN=$(node refresh-token.js | grep 'BLOGGER_ACCESS_TOKEN=' | cut -d'=' -f2-)
+          echo "BLOGGER_ACCESS_TOKEN=$TOKEN" >> $GITHUB_ENV
 
       - name: 🤖 Publicar post
         working-directory: ./autoposter
