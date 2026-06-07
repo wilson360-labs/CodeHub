@@ -4513,9 +4513,7 @@ body:has(button:hover) #ch-cursor { width: 22px; height: 22px; background: radia
 }
 
 /* ═══ SPLASH WAVE SIZE FIX ═══ */
-.ch-wave {
-    background-size: 400px 110px !important;
-}
+/* .ch-wave background-size override removido — usa el valor original 1000px 110px definido en el splash */
 
 /* ── Experimental menu mobile ── */
 @media(max-width:550px){

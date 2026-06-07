@@ -1305,3 +1305,220 @@
   .about-pro-actions a:hover { transform: none !important; }
   .social-link:hover { transform: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   RANGO CRÍTICO: 450px – 480px
+   Dispositivos: Samsung Galaxy A13/A23 (412px), Xiaomi Redmi 9/10
+   (393-412px), iPhone SE 3rd gen (375px a 430px a este ancho visual).
+   Ajustes MUY finos — no deben romper los breakpoints superiores.
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+
+  /* ── LAYOUT BASE ── */
+  main, section {
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+  }
+  h2 {
+    font-size: clamp(1.25rem, 6vw, 1.55rem) !important;
+  }
+
+  /* ── HEADER ── */
+  .header-inner { padding: 0.4rem 0.85rem; }
+  .header-logo-badge { font-size: 0.58rem; padding: 2px 6px; }
+  .header-logo-text { font-size: 0.88rem !important; }
+  .header-typing {
+    font-size: 0.68rem;
+    max-width: 55vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── HERO ── */
+  .hero-name {
+    font-size: clamp(1.85rem, 9.5vw, 2.2rem) !important;
+    letter-spacing: -0.5px;
+  }
+  .hero-title-greeting { font-size: 1rem; }
+  .hero-desc { font-size: 0.8rem; }
+  .hero-ctas {
+    grid-template-columns: 1fr !important;
+    gap: 0.45rem;
+  }
+  .hero-btn {
+    font-size: 0.8rem;
+    padding: 0.7rem 1rem;
+    min-height: 46px;
+    width: 100%;
+  }
+  .hero-metrics {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.4rem;
+  }
+  .hero-metric strong { font-size: 1.15rem; }
+  .hero-metric span { font-size: 0.58rem; }
+  .hero-proof span { font-size: 0.68rem; padding: 0.2rem 0.5rem; }
+  .hero-stack span { font-size: 0.65rem; padding: 0.18rem 0.5rem; }
+
+  /* ── STATS ── */
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.55rem;
+  }
+  .stat-card { padding: 0.75rem 0.5rem; }
+  .stat-number { font-size: 1.6rem !important; }
+  .stat-label { font-size: 0.72rem !important; }
+  .stat-sub { font-size: 0.58rem !important; }
+
+  /* ── SKILLS ── */
+  .sk-tab { font-size: 0.7rem; padding: 0.28rem 0.65rem; }
+  .skill-chip { padding: 0.5rem 0.65rem; gap: 0.5rem; }
+  .sc-top { font-size: 0.73rem; }
+  .sc-pct { font-size: 0.65rem; }
+  .sk-tools-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important;
+    gap: 0.4rem;
+  }
+  .tool-badge { font-size: 0.65rem !important; padding: 0.28rem 0.55rem !important; }
+
+  /* ── SERVICIOS ── */
+  .services-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.55rem;
+  }
+  .service-card { padding: 0.8rem 0.55rem; }
+  .service-icon { font-size: 1.5rem !important; margin-bottom: 0.5rem; }
+  .service-card h3 { font-size: 0.8rem; margin-bottom: 0.3rem; }
+  .service-card p { font-size: 0.68rem; line-height: 1.45; }
+
+  /* ── SOBRE MÍ ── */
+  .about-pro-name { font-size: 1.35rem; }
+  .about-pro-text { font-size: 0.78rem; }
+  .about-avatar-ring > div { width: 118px !important; height: 118px !important; }
+  .about-mini-num { font-size: 1.25rem !important; }
+  .about-mini-lbl { font-size: 0.58rem; }
+  .about-brand-card { padding: 0.75rem; gap: 0.6rem; }
+  .about-brand-logo { width: 38px; height: 38px; }
+  .about-brand-text { font-size: 0.72rem; }
+  .pueblo-panel { height: 170px !important; }
+
+  /* ── WHY ME ── */
+  .wm-grid { grid-template-columns: 1fr 1fr !important; gap: 0.55rem; }
+  .wm-card { padding: 0.85rem 0.65rem; }
+  .wm-icon { width: 32px; height: 32px; font-size: 0.82rem; }
+  .wm-card-title { font-size: 0.78rem; }
+  .wm-card-desc { font-size: 0.68rem; }
+
+  /* ── OPEN TO WORK ── */
+  .otw-title { font-size: 1.1rem; }
+  .otw-desc { font-size: 0.75rem; }
+  .otw-tags span { font-size: 0.65rem; padding: 0.2rem 0.5rem; }
+  .otw-btn { font-size: 0.78rem; min-height: 42px; }
+
+  /* ── BLOG ── */
+  .blogger-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem;
+  }
+  .blogger-card-thumb { height: 140px !important; }
+  .blogger-card-title { font-size: 0.85rem; }
+  .blogger-card-desc { font-size: 0.72rem; -webkit-line-clamp: 2; }
+
+  /* ── CLIMA ── */
+  .wx-temp { font-size: 2.5rem; }
+  .wx-city { font-size: 1rem; }
+  .wx-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem; }
+  .wx-stat span { font-size: 0.8rem; }
+  .wx-stat small { font-size: 0.58rem; }
+
+  /* ── CONTACTO ── */
+  .contact-title { font-size: 1.25rem !important; }
+  .contact-sub { font-size: 0.75rem; }
+  .clink { padding: 0.65rem; gap: 0.5rem; }
+  .clink-icon { width: 32px !important; height: 32px !important; font-size: 0.82rem; }
+  .clink-label { font-size: 0.65rem; }
+  .clink-val { font-size: 0.75rem; }
+  .form-input,
+  .form-textarea,
+  .form-select { font-size: 16px !important; padding: 0.65rem 0.75rem; }
+  .form-submit { font-size: 0.83rem; min-height: 46px; }
+
+  /* ── FOOTER ── */
+  .footer-terminal { font-size: 0.65rem; }
+  .social-link { font-size: 0.7rem; padding: 0.35rem 0.65rem; }
+
+  /* ── AI PANEL ── */
+  #ai-panel {
+    height: min(92dvh, 820px) !important;
+    max-height: min(92dvh, 820px) !important;
+  }
+  .ai-tab { font-size: 0.65rem; padding: 0.35rem 0.5rem; gap: 3px; }
+  .ai-tab svg, .ai-tab i { font-size: 0.75rem; }
+
+  /* ── SPLASH ── */
+  .ch-ring-wrap { width: 200px !important; height: 200px !important; }
+  .ch-logo-img { width: 130px !important; height: 130px !important; border-radius: 28px; }
+  .ch-brand-name { font-size: 1.4rem !important; }
+  .ch-brand-sub { font-size: 0.65rem; }
+  .ch-progress-wrap { width: 88%; }
+
+  /* ── PWA INSTALL ── */
+  .pwa-card { padding: 0.8rem 0.85rem; gap: 0.6rem; }
+  .pwa-title { font-size: 0.82rem; }
+  .pwa-sub { font-size: 0.65rem; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RANGO EXTREMO: ≤ 390px
+   Dispositivos: iPhone SE 1ra/2da gen (375px), Android muy pequeños,
+   Motorola Moto E, Samsung Galaxy A03 Core.
+══════════════════════════════════════════════════════════════════ */
+@media (max-width: 390px) {
+
+  /* ── LAYOUT ── */
+  main, section {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* ── HERO ── */
+  .hero-name {
+    font-size: clamp(1.65rem, 9vw, 2rem) !important;
+  }
+  .hero-ctas { grid-template-columns: 1fr !important; }
+  .hero-metrics { gap: 0.3rem; }
+  .hero-metric strong { font-size: 1rem; }
+  .hero-metric span { font-size: 0.55rem; }
+
+  /* ── STATS ── */
+  .stats-section { grid-template-columns: 1fr 1fr !important; }
+  .stat-number { font-size: 1.45rem !important; }
+
+  /* ── SERVICIOS ── */
+  .services-grid { grid-template-columns: 1fr !important; }
+  .service-card p { display: none; } /* oculta desc en pantallas muy pequeñas */
+
+  /* ── WHY ME ── */
+  .wm-grid { grid-template-columns: 1fr !important; }
+  .wm-card-desc { display: none; } /* solo muestra título e ícono */
+
+  /* ── BLOG ── */
+  .blogger-grid { grid-template-columns: 1fr !important; }
+
+  /* ── SKILLS ── */
+  .sk-tools-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ── CONTACTO ── */
+  .contact-title { font-size: 1.1rem !important; }
+
+  /* ── HEADER ── */
+  .header-logo-badge { display: none !important; } /* demasiado estrecho */
+  .header-typing { display: none !important; }
+
+  /* ── FOOTER ── */
+  .footer-socials { flex-direction: column; align-items: center; }
+  .social-link { width: 100%; justify-content: center; }
+}
