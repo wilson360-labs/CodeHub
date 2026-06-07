@@ -1,0 +1,91 @@
+name: 🤖 CodeHub Blogger AutoPoster
+
+on:
+  # Ejecutar cada 3 días a las 10:00 AM Guatemala (UTC-6 = 16:00 UTC)
+  schedule:
+    - cron: '0 16 */3 * *'
+
+  # Permitir ejecución manual desde GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Topic específico (slug o parte del título). Vacío = siguiente en cola'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry-run (genera sin publicar)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  publish-post:
+    runs-on: ubuntu-latest
+    name: Publicar post en Blogger
+
+    steps:
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: autoposter/package-lock.json
+
+      - name: 📦 Instalar dependencias
+        working-directory: ./autoposter
+        run: npm ci
+
+      # Restaurar estado previo (qué topics ya se publicaron)
+      - name: 🗂 Restaurar estado
+        uses: actions/cache@v4
+        with:
+          path: autoposter/.autoposter-state.json
+          key: autoposter-state-${{ runner.os }}
+          restore-keys: |
+            autoposter-state-
+
+      - name: 🔄 Renovar access token
+        working-directory: ./autoposter
+        env:
+          BLOGGER_CLIENT_ID:     ${{ secrets.BLOGGER_CLIENT_ID }}
+          BLOGGER_CLIENT_SECRET: ${{ secrets.BLOGGER_CLIENT_SECRET }}
+          BLOGGER_REFRESH_TOKEN: ${{ secrets.BLOGGER_REFRESH_TOKEN }}
+        run: node refresh-token.js
+
+      - name: 🤖 Publicar post
+        working-directory: ./autoposter
+        env:
+          GROQ_API_KEY:            ${{ secrets.GROQ_API_KEY }}
+          BLOGGER_BLOG_ID:         ${{ secrets.BLOGGER_BLOG_ID }}
+          BLOGGER_CLIENT_ID:       ${{ secrets.BLOGGER_CLIENT_ID }}
+          BLOGGER_CLIENT_SECRET:   ${{ secrets.BLOGGER_CLIENT_SECRET }}
+          BLOGGER_REFRESH_TOKEN:   ${{ secrets.BLOGGER_REFRESH_TOKEN }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.topic }}" ]; then
+            ARGS="$ARGS --topic '${{ github.event.inputs.topic }}'"
+          fi
+          node autoposter.js $ARGS
+
+      # Guardar posts generados como artefacto descargable
+      - name: 📎 Subir post generado
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: post-generado-${{ github.run_number }}
+          path: autoposter/generated-posts/
+          retention-days: 30
+
+      # Persistir estado actualizado en caché
+      - name: 💾 Guardar estado
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: autoposter/.autoposter-state.json
+          key: autoposter-state-${{ runner.os }}-${{ github.run_number }}
