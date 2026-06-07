@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google tag -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-205F26ETCC');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — CodeHub by Wilson.E</title>
+  <meta name="description" content="Blog de Wilson.E — Tutoriales de desarrollo web, proyectos, herramientas IA y reflexiones desde Guatemala.">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#ff4500">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/blog">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="shortcut icon" href="../splash/codehub.png">
+  <link rel="apple-touch-icon" href="../splash/codehub.png">
+  <link rel="manifest" href="../manifest.json">
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://wilson360-labs.vercel.app/blog">
+  <meta property="og:title"       content="Blog — CodeHub by Wilson.E">
+  <meta property="og:description" content="Tutoriales, proyectos y reflexiones sobre desarrollo web desde Guatemala.">
+  <meta property="og:image"       content="../splash/codehub.png">
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style"
+        onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #030308; --surface: #08080f; --card: #0d0d1a; --card2: #111120;
+      --p: #ff4500; --p2: #ff6b35; --a: #ffbd69; --g: #00e676; --c: #00e5ff;
+      --text: #f0f0fa; --muted: rgba(240,240,250,.38);
+      --border: rgba(255,255,255,.07); --border2: rgba(255,255,255,.12);
+      --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
+      --serif: 'Lora', serif;
+      --r: 14px; --sh: 0 8px 32px rgba(0,0,0,.5);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font); background: var(--bg); color: var(--text);
+      min-height: 100vh; overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,69,0,.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,69,0,.02) 1px, transparent 1px);
+      background-size: 44px 44px; pointer-events: none; z-index: 0;
+    }
+
+    /* ── NAV ── */
+    .blog-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(3,3,8,.88); backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+      padding: .65rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .blog-nav-logo {
+      font-size: 1rem; font-weight: 800; letter-spacing: -.02em;
+      color: var(--text); text-decoration: none;
+    }
+    .blog-nav-logo span { color: var(--p); }
+    .blog-nav-sep { color: var(--border2); font-size: .9rem; }
+    .blog-nav-title { font-family: var(--mono); font-size: .65rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+    .blog-nav-back {
+      margin-left: auto;
+      display: flex; align-items: center; gap: .4rem;
+      font-family: var(--mono); font-size: .65rem; color: var(--muted);
+      text-decoration: none; transition: color .2s;
+    }
+    .blog-nav-back:hover { color: var(--text); }
+    .blog-search-wrap {
+      display: flex; align-items: center;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 99px; padding: .3rem .75rem; gap: .5rem;
+      transition: border-color .2s;
+    }
+    .blog-search-wrap:focus-within { border-color: var(--border2); }
+    .blog-search-wrap i { color: var(--muted); font-size: .75rem; }
+    #blog-search {
+      background: none; border: none; outline: none;
+      color: var(--text); font-family: var(--mono); font-size: .72rem;
+      width: 160px;
+    }
+    #blog-search::placeholder { color: var(--muted); }
+
+    /* ── HERO ── */
+    .blog-hero {
+      position: relative; padding: 4rem 1.5rem 3rem;
+      text-align: center; overflow: hidden;
+    }
+    .blog-hero::before {
+      content: ''; position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
+      width: 500px; height: 300px;
+      background: radial-gradient(ellipse, rgba(255,69,0,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .blog-hero-label {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-family: var(--mono); font-size: .6rem; color: var(--a);
+      background: rgba(255,189,105,.1); border: 1px solid rgba(255,189,105,.2);
+      padding: .28rem .75rem; border-radius: 99px; letter-spacing: .12em;
+      text-transform: uppercase; margin-bottom: 1rem;
+    }
+    .blog-hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800;
+      letter-spacing: -.03em; line-height: 1.1; margin-bottom: .75rem;
+    }
+    .blog-hero h1 span { color: var(--p); }
+    .blog-hero-sub {
+      font-family: var(--mono); font-size: .78rem; color: var(--muted);
+      max-width: 420px; margin: 0 auto; line-height: 1.6;
+    }
+
+    /* ── TAGS FILTER ── */
+    .blog-tags-bar {
+      display: flex; gap: .4rem; flex-wrap: wrap;
+      padding: 0 1.5rem 1.5rem; justify-content: center;
+    }
+    .btag {
+      font-family: var(--mono); font-size: .62rem; font-weight: 700;
+      padding: .28rem .7rem; border-radius: 99px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer; transition: all .18s;
+      text-transform: lowercase; letter-spacing: .05em;
+    }
+    .btag:hover { color: var(--text); border-color: var(--border2); }
+    .btag.active {
+      background: rgba(255,69,0,.12); border-color: rgba(255,69,0,.35);
+      color: var(--p);
+    }
+
+    /* ── GRID ── */
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem; padding: 0 1.5rem 4rem;
+      max-width: 1100px; margin: 0 auto;
+      position: relative;
+    }
+
+    /* ── POST CARD ── */
+    .blog-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: border-color .22s, transform .22s, box-shadow .22s;
+      cursor: pointer; text-decoration: none; color: inherit;
+      position: relative;
+    }
+    .blog-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,69,0,.04), transparent);
+      opacity: 0; transition: opacity .22s; pointer-events: none;
+      border-radius: var(--r);
+    }
+    .blog-card:hover {
+      border-color: rgba(255,69,0,.3);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,69,0,.1);
+    }
+    .blog-card:hover::before { opacity: 1; }
+
+    .blog-card-cover {
+      width: 100%; height: 160px; object-fit: cover;
+      display: block; background: rgba(255,255,255,.04);
+    }
+    .blog-card-cover-placeholder {
+      width: 100%; height: 140px;
+      background: linear-gradient(135deg, rgba(255,69,0,.06), rgba(0,229,255,.04));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.5rem; opacity: .5;
+    }
+    .blog-card-body { padding: 1rem 1.1rem; flex: 1; display: flex; flex-direction: column; gap: .5rem; }
+    .blog-card-date {
+      font-family: var(--mono); font-size: .58rem; color: var(--muted);
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .blog-card-title {
+      font-size: 1rem; font-weight: 700; line-height: 1.3;
+      letter-spacing: -.01em;
+    }
+    .blog-card-excerpt {
+      font-family: var(--serif); font-size: .82rem; color: rgba(240,240,250,.65);
+      line-height: 1.55; flex: 1;
+    }
+    .blog-card-footer {
+      display: flex; align-items: center; gap: .4rem;
+      flex-wrap: wrap; margin-top: .25rem;
+    }
+    .blog-tag-pill {
+      font-family: var(--mono); font-size: .56rem;
+      padding: .18rem .55rem; border-radius: 99px;
+      background: rgba(255,189,105,.08); border: 1px solid rgba(255,189,105,.18);
+      color: var(--a);
+    }
+    .blog-card-read {
+      margin-left: auto; font-family: var(--mono); font-size: .58rem; color: var(--muted);
+    }
+
+    /* ── POST VIEW (modal/overlay) ── */
+    #blog-post-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(3,3,8,.97); backdrop-filter: blur(16px);
+      display: none; overflow-y: auto;
+    }
+    #blog-post-overlay.open { display: block; }
+    .post-inner {
+      max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 5rem;
+    }
+    .post-back {
+      display: inline-flex; align-items: center; gap: .5rem;
+      font-family: var(--mono); font-size: .68rem; color: var(--muted);
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      padding: .38rem .85rem; border-radius: 99px; cursor: pointer;
+      transition: all .18s; margin-bottom: 2rem; text-decoration: none;
+    }
+    .post-back:hover { color: var(--text); border-color: var(--border2); }
+    .post-header-label {
+      font-family: var(--mono); font-size: .58rem; color: var(--muted);
+      display: flex; align-items: center; gap: .75rem; margin-bottom: .75rem;
+      flex-wrap: wrap;
+    }
+    .post-title {
+      font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 800;
+      letter-spacing: -.03em; line-height: 1.15; margin-bottom: 1rem;
+    }
+    .post-tags { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .post-tag {
+      font-family: var(--mono); font-size: .6rem;
+      padding: .22rem .6rem; border-radius: 99px;
+      background: rgba(255,69,0,.1); border: 1px solid rgba(255,69,0,.25); color: var(--p);
+    }
+    .post-divider {
+      border: none; border-top: 1px solid var(--border); margin-bottom: 2rem;
+    }
+    .post-body {
+      font-family: var(--serif); font-size: 1rem; line-height: 1.8;
+      color: rgba(240,240,250,.88);
+    }
+    .post-body h2 {
+      font-family: var(--font); font-size: 1.25rem; font-weight: 700;
+      margin: 2rem 0 .75rem; color: var(--text); letter-spacing: -.02em;
+    }
+    .post-body h3 {
+      font-family: var(--font); font-size: 1rem; font-weight: 700;
+      margin: 1.5rem 0 .5rem; color: var(--text);
+    }
+    .post-body p { margin-bottom: 1rem; }
+    .post-body ul, .post-body ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    .post-body li { margin-bottom: .35rem; }
+    .post-body a { color: var(--c); text-decoration: underline; text-underline-offset: 3px; }
+    .post-body a:hover { color: var(--a); }
+    .post-body strong { color: var(--text); font-weight: 600; }
+    .post-body code {
+      font-family: var(--mono); font-size: .82em;
+      background: rgba(255,255,255,.08); padding: .15rem .4rem;
+      border-radius: 5px; color: var(--c);
+    }
+    .post-body pre {
+      background: rgba(8,8,15,.9); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.2rem; margin: 1.25rem 0;
+      overflow-x: auto;
+    }
+    .post-body pre code {
+      background: none; padding: 0; border-radius: 0; color: var(--a);
+      font-size: .82rem; line-height: 1.6;
+    }
+    .post-body img { max-width: 100%; border-radius: 10px; margin: 1rem 0; }
+    .post-cover {
+      width: 100%; max-height: 340px; object-fit: cover;
+      border-radius: 12px; margin-bottom: 2rem;
+      display: block;
+    }
+
+    /* ── EMPTY / LOADING ── */
+    .blog-empty {
+      grid-column: 1/-1; text-align: center;
+      padding: 4rem 1rem; color: var(--muted);
+      font-family: var(--mono); font-size: .78rem;
+    }
+    .blog-empty i { font-size: 2.5rem; display: block; margin-bottom: 1rem; opacity: .2; }
+
+    /* ── STATS BAR ── */
+    .blog-stats {
+      display: flex; align-items: center; gap: 1.5rem;
+      padding: 0 1.5rem 1.5rem;
+      font-family: var(--mono); font-size: .62rem; color: var(--muted);
+      max-width: 1100px; margin: 0 auto;
+    }
+    .blog-stats b { color: var(--text); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .blog-hero { padding: 2.5rem 1rem 2rem; }
+      .blog-grid { padding: 0 1rem 3rem; gap: 1rem; }
+      .blog-tags-bar { padding: 0 1rem 1rem; }
+      .blog-stats { padding: 0 1rem 1rem; flex-wrap: wrap; gap: .75rem; }
+      #blog-search { width: 110px; }
+      .post-inner { padding: 1.5rem 1rem 4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="blog-nav">
+  <a href="/" class="blog-nav-logo">Code<span>Hub</span></a>
+  <span class="blog-nav-sep">/</span>
+  <span class="blog-nav-title">Blog</span>
+  <div class="blog-search-wrap">
+    <i class="fas fa-magnifying-glass"></i>
+    <input id="blog-search" type="search" placeholder="Buscar posts…" autocomplete="off">
+  </div>
+  <a href="/" class="blog-nav-back">
+    <i class="fas fa-arrow-left"></i> Inicio
+  </a>
+</nav>
+
+<!-- HERO -->
+<section class="blog-hero">
+  <div class="blog-hero-label">
+    <i class="fas fa-rss"></i> Blog personal
+  </div>
+  <h1>Ideas en <span>código</span></h1>
+  <p class="blog-hero-sub">Tutoriales, proyectos y reflexiones sobre desarrollo web. Desde Guatemala 🇬🇹 para el mundo.</p>
+</section>
+
+<!-- TAGS FILTER -->
+<div class="blog-tags-bar" id="blog-tags-bar">
+  <button class="btag active" data-tag="all" onclick="filterTag('all', this)">Todos</button>
+  <!-- los tags se agregan dinámicamente -->
+</div>
+
+<!-- STATS -->
+<div class="blog-stats" id="blog-stats"></div>
+
+<!-- GRID -->
+<main class="blog-grid" id="blog-grid" role="main">
+  <div class="blog-empty">
+    <i class="fas fa-spinner fa-spin"></i>
+    Cargando posts…
+  </div>
+</main>
+
+<!-- POST OVERLAY -->
+<div id="blog-post-overlay" role="dialog" aria-modal="true" aria-label="Lectura de post">
+  <div class="post-inner" id="blog-post-inner"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   CODEHUB BLOG — Frontend estático
+   Fuente: /blog/index.json + /blog/posts/{id}.json
+══════════════════════════════════════════════════════ */
+
+const BASE = '/blog';
+let allPosts = [];
+let activeTag = 'all';
+let searchQuery = '';
+
+/* ── Cargar índice ── */
+async function loadIndex() {
+  try {
+    const r = await fetch(BASE + '/index.json');
+    if (!r.ok) throw new Error('No se pudo cargar el índice del blog');
+    const data = await r.json();
+    allPosts = (data.posts || []).filter(p => p.status === 'published');
+    renderTagsBar();
+    renderStats();
+    renderGrid(allPosts);
+  } catch (err) {
+    document.getElementById('blog-grid').innerHTML =
+      `<div class="blog-empty"><i class="fas fa-triangle-exclamation"></i>${err.message}</div>`;
+  }
+}
+
+/* ── Renderizar barra de tags ── */
+function renderTagsBar() {
+  const bar = document.getElementById('blog-tags-bar');
+  const tags = [...new Set(allPosts.flatMap(p => p.tags || []))].sort();
+  tags.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'btag';
+    btn.dataset.tag = tag;
+    btn.textContent = tag;
+    btn.onclick = () => filterTag(tag, btn);
+    bar.appendChild(btn);
+  });
+}
+
+/* ── Stats bar ── */
+function renderStats() {
+  const s = document.getElementById('blog-stats');
+  const tags = new Set(allPosts.flatMap(p => p.tags || []));
+  s.innerHTML = `<span><b>${allPosts.length}</b> posts</span><span><b>${tags.size}</b> tags</span>`;
+}
+
+/* ── Filtrar por tag ── */
+function filterTag(tag, btn) {
+  activeTag = tag;
+  document.querySelectorAll('.btag').forEach(b => b.classList.toggle('active', b === btn));
+  applyFilters();
+}
+
+/* ── Aplicar búsqueda + tag ── */
+function applyFilters() {
+  const q = searchQuery.toLowerCase().trim();
+  const filtered = allPosts.filter(p => {
+    const matchTag = activeTag === 'all' || (p.tags || []).includes(activeTag);
+    const matchQ   = !q ||
+      p.title.toLowerCase().includes(q) ||
+      (p.excerpt || '').toLowerCase().includes(q) ||
+      (p.tags || []).some(t => t.toLowerCase().includes(q));
+    return matchTag && matchQ;
+  });
+  renderGrid(filtered);
+}
+
+/* ── Renderizar grid ── */
+function renderGrid(posts) {
+  const grid = document.getElementById('blog-grid');
+  if (!posts.length) {
+    grid.innerHTML = '<div class="blog-empty"><i class="fas fa-magnifying-glass"></i>No hay posts que coincidan.</div>';
+    return;
+  }
+  grid.innerHTML = posts.map(p => cardHTML(p)).join('');
+}
+
+/* ── HTML de una card ── */
+function cardHTML(p) {
+  const date = new Date(p.date).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+  const coverHTML = p.cover
+    ? `<img class="blog-card-cover" src="${esc(p.cover)}" alt="${esc(p.title)}" loading="lazy">`
+    : `<div class="blog-card-cover-placeholder">✦</div>`;
+  const tagsHTML = (p.tags || []).slice(0, 3).map(t => `<span class="blog-tag-pill">${esc(t)}</span>`).join('');
+  return `
+    <article class="blog-card" onclick="openPost('${esc(p.id)}')" role="button" tabindex="0"
+      onkeydown="if(event.key==='Enter')openPost('${esc(p.id)}')">
+      ${coverHTML}
+      <div class="blog-card-body">
+        <div class="blog-card-date"><i class="fas fa-calendar-days"></i>${date}</div>
+        <div class="blog-card-title">${esc(p.title)}</div>
+        <div class="blog-card-excerpt">${esc(p.excerpt || '')}</div>
+        <div class="blog-card-footer">
+          ${tagsHTML}
+          <span class="blog-card-read">${p.read_time || '—'} min lectura</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+/* ── Abrir post ── */
+async function openPost(id) {
+  const overlay = document.getElementById('blog-post-overlay');
+  const inner   = document.getElementById('blog-post-inner');
+  const meta    = allPosts.find(p => p.id === id);
+  if (!meta) return;
+
+  inner.innerHTML = '<div class="blog-empty"><i class="fas fa-spinner fa-spin"></i>Cargando…</div>';
+  overlay.classList.add('open');
+  overlay.scrollTo(0, 0);
+  document.body.style.overflow = 'hidden';
+
+  /* Push state para URL limpia */
+  history.pushState({ postId: id }, meta.title, `/blog/${meta.slug}`);
+  document.title = meta.title + ' — CodeHub Blog';
+
+  try {
+    const r    = await fetch(`${BASE}/posts/${meta.file || id + '.json'}`);
+    if (!r.ok) throw new Error('Post no encontrado');
+    const post = await r.json();
+    renderPost(post, meta);
+  } catch (err) {
+    inner.innerHTML = `<div class="blog-empty"><i class="fas fa-triangle-exclamation"></i>${err.message}</div>`;
+  }
+}
+
+/* ── Renderizar post ── */
+function renderPost(post, meta) {
+  const inner = document.getElementById('blog-post-inner');
+  const date  = new Date(meta.date).toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+  const tagsHTML = (meta.tags || []).map(t => `<span class="post-tag">${esc(t)}</span>`).join('');
+  const coverHTML = meta.cover ? `<img class="post-cover" src="${esc(meta.cover)}" alt="${esc(meta.title)}">` : '';
+
+  inner.innerHTML = `
+    <button class="post-back" onclick="closePost()">
+      <i class="fas fa-arrow-left"></i> Volver al blog
+    </button>
+    ${coverHTML}
+    <div class="post-header-label">
+      <span><i class="fas fa-calendar-days"></i> ${date}</span>
+      <span><i class="fas fa-user"></i> ${esc(meta.author || 'Wilson.E')}</span>
+      <span><i class="fas fa-clock"></i> ${meta.read_time || '—'} min</span>
+    </div>
+    <h1 class="post-title">${esc(meta.title)}</h1>
+    <div class="post-tags">${tagsHTML}</div>
+    <hr class="post-divider">
+    <div class="post-body">${post.body || '<p>Sin contenido.</p>'}</div>
+  `;
+}
+
+/* ── Cerrar post ── */
+function closePost() {
+  const overlay = document.getElementById('blog-post-overlay');
+  overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  history.pushState({}, 'Blog — CodeHub', '/blog');
+  document.title = 'Blog — CodeHub by Wilson.E';
+}
+
+/* ── Escape HTML ── */
+function esc(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Búsqueda ── */
+document.getElementById('blog-search').addEventListener('input', e => {
+  searchQuery = e.target.value;
+  applyFilters();
+});
+
+/* ── Back button del navegador ── */
+window.addEventListener('popstate', (e) => {
+  if (!e.state?.postId) closePost();
+});
+
+/* ── Cerrar con Escape ── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePost();
+});
+
+/* ── Init ── */
+loadIndex();
+</script>
+</body>
+</html>

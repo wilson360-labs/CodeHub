@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "Índice del blog estático de CodeHub. Este archivo es el registro central de todos los posts. El admin-hub lo lee y lo escribe vía API del backend.",
+    "last_updated": "2026-06-07T00:00:00Z",
+    "total": 1
+  },
+  "posts": [
+    {
+      "id": "post-001",
+      "slug": "bienvenido-al-blog-de-codehub",
+      "title": "Bienvenido al Blog de CodeHub",
+      "excerpt": "Este es el primer post del blog estático de CodeHub. Aquí encontrarás tutoriales, proyectos y reflexiones sobre desarrollo web desde Guatemala.",
+      "author": "Wilson.E",
+      "date": "2026-06-07",
+      "tags": ["codehub", "desarrollo web", "Guatemala", "portfolio"],
+      "cover": "",
+      "status": "published",
+      "read_time": 2,
+      "views": 0,
+      "file": "post-001.json"
+    }
+  ]
+}
