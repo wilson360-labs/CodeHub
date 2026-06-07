@@ -1955,6 +1955,150 @@ app.get('/api/docs', (_, res) => {
 // ── GET /api/docs.json — spec en JSON ─────────────────────────
 app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
 
+// ── BLOG ESTÁTICO — GitHub API ────────────────────────────────
+// Requiere: GITHUB_TOKEN en env vars con permisos repo:contents
+// npm install @octokit/rest  (ya en package.json)
+
+let octokit = null;
+try {
+  const { Octokit } = require('@octokit/rest');
+  if (process.env.GITHUB_TOKEN) {
+    octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+    console.log('   Blog GitHub: ✅ Octokit listo');
+  } else {
+    console.log('   Blog GitHub: ⚠️  falta GITHUB_TOKEN en env vars');
+  }
+} catch(e) {
+  console.warn('   Blog GitHub: ⚠️  @octokit/rest no instalado —', e.message);
+}
+
+const GITHUB_OWNER  = process.env.GITHUB_OWNER  || 'wilson360-labs';
+const GITHUB_REPO   = process.env.GITHUB_REPO   || 'CodeHub';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+
+async function ghUpdateFile(filePath, content, message) {
+  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
+  let sha;
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, path: filePath, ref: GITHUB_BRANCH,
+    });
+    sha = data.sha;
+  } catch { /* archivo nuevo */ }
+
+  await octokit.repos.createOrUpdateFileContents({
+    owner: GITHUB_OWNER, repo: GITHUB_REPO, path: filePath,
+    message, content: Buffer.from(content).toString('base64'),
+    branch: GITHUB_BRANCH, ...(sha ? { sha } : {}),
+  });
+}
+
+async function getBlogIndex() {
+  try {
+    const r = await fetch(`https://${GITHUB_OWNER}.vercel.app/blog/index.json`);
+    if (r.ok) return await r.json();
+  } catch {}
+  // fallback vacío
+  return { _meta: { total: 0, last_updated: new Date().toISOString() }, posts: [] };
+}
+
+// GET /api/blog/posts — listar posts desde el index público
+app.get('/api/blog/posts', async (req, res) => {
+  try {
+    const idx = await getBlogIndex();
+    res.json({ ok: true, posts: idx.posts || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/blog/posts — crear nuevo post
+app.post('/api/blog/posts', requireAdmin, async (req, res) => {
+  try {
+    const { id: reqId, slug, title, excerpt, author, date, tags, cover, status, read_time, body } = req.body;
+    if (!title || !body) return res.status(400).json({ error: 'title y body son obligatorios' });
+
+    const id   = reqId || 'post-' + Date.now();
+    const file = id + '.json';
+    const postData  = { id, slug, title, excerpt, author: author || 'Wilson.E', date: date || new Date().toISOString().slice(0,10), tags: tags || [], cover: cover || '', status: status || 'published', read_time: read_time || 1, body };
+    const indexMeta = { id, slug, title, excerpt: excerpt || body.replace(/<[^>]+>/g,'').slice(0,180) + '…', author: postData.author, date: postData.date, tags: postData.tags, cover: postData.cover, status: postData.status, read_time: postData.read_time, file };
+
+    const idxData = await getBlogIndex();
+    idxData.posts = idxData.posts.filter(p => p.id !== id); // evitar duplicados
+    idxData.posts.push(indexMeta);
+    idxData._meta.total       = idxData.posts.length;
+    idxData._meta.last_updated = new Date().toISOString();
+
+    await ghUpdateFile('blog/posts/' + file, JSON.stringify(postData, null, 2),  `blog: add post "${title}"`);
+    await ghUpdateFile('blog/index.json',    JSON.stringify(idxData,  null, 2),  `blog: update index after "${title}"`);
+
+    res.json({ ok: true, id, slug });
+  } catch (err) {
+    console.error('POST /api/blog/posts error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/blog/posts/:id — editar post existente
+app.put('/api/blog/posts/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { slug, title, excerpt, author, date, tags, cover, status, read_time, body } = req.body;
+    if (!title || !body) return res.status(400).json({ error: 'title y body son obligatorios' });
+
+    const file     = id + '.json';
+    const postData = { id, slug, title, excerpt, author: author || 'Wilson.E', date, tags: tags || [], cover: cover || '', status: status || 'published', read_time: read_time || 1, body };
+    const indexMeta = { id, slug, title, excerpt: excerpt || body.replace(/<[^>]+>/g,'').slice(0,180) + '…', author: postData.author, date, tags: postData.tags, cover: postData.cover, status: postData.status, read_time: postData.read_time, file };
+
+    const idxData = await getBlogIndex();
+    idxData.posts = idxData.posts.filter(p => p.id !== id);
+    idxData.posts.push(indexMeta);
+    idxData._meta.total       = idxData.posts.length;
+    idxData._meta.last_updated = new Date().toISOString();
+
+    await ghUpdateFile('blog/posts/' + file, JSON.stringify(postData, null, 2), `blog: update post "${title}"`);
+    await ghUpdateFile('blog/index.json',    JSON.stringify(idxData,  null, 2), `blog: update index after edit "${title}"`);
+
+    res.json({ ok: true, id, slug });
+  } catch (err) {
+    console.error('PUT /api/blog/posts/:id error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/blog/posts/:id — borrar post
+app.delete('/api/blog/posts/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = id + '.json';
+
+    // Eliminar archivo del post en GitHub
+    if (octokit) {
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: GITHUB_OWNER, repo: GITHUB_REPO, path: 'blog/posts/' + file, ref: GITHUB_BRANCH,
+        });
+        await octokit.repos.deleteFile({
+          owner: GITHUB_OWNER, repo: GITHUB_REPO, path: 'blog/posts/' + file,
+          message: `blog: delete post ${id}`, sha: data.sha, branch: GITHUB_BRANCH,
+        });
+      } catch { /* el archivo puede no existir */ }
+    }
+
+    // Actualizar index.json
+    const idxData = await getBlogIndex();
+    idxData.posts = idxData.posts.filter(p => p.id !== id);
+    idxData._meta.total       = idxData.posts.length;
+    idxData._meta.last_updated = new Date().toISOString();
+    await ghUpdateFile('blog/index.json', JSON.stringify(idxData, null, 2), `blog: remove post ${id}`);
+
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('DELETE /api/blog/posts/:id error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── GET /api/image-search — Buscar imágenes via SerpAPI ───────
 app.get('/api/image-search', chatLimiter, async (req, res) => {
   const { q } = req.query;

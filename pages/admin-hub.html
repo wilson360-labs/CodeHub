@@ -189,6 +189,17 @@
     .blog-post-btn.view:hover{background:rgba(0,229,255,.18)}
     .blog-post-btn.edit{background:rgba(255,189,105,.08);border-color:rgba(255,189,105,.22);color:var(--a)}
     .blog-post-btn.edit:hover{background:rgba(255,189,105,.18)}
+    /* Blog estático — filas de post */
+    .sb-post-row{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .sb-post-row:last-child{border-bottom:none}
+    .sb-post-meta{display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+    .sb-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .sb-status-dot.pub{background:var(--g);box-shadow:0 0 6px rgba(0,230,118,.5)}
+    .sb-status-dot.draft{background:var(--muted)}
+    .sb-post-date{font-family:var(--mono);font-size:.58rem;color:var(--muted);white-space:nowrap}
+    .sb-post-title{font-size:.82rem;font-weight:600;flex:1;min-width:160px}
+    .sb-post-tags{display:flex;gap:.3rem;flex-wrap:wrap}
+    .sb-post-actions{display:flex;gap:.35rem;margin-left:auto;flex-shrink:0}
     .blog-empty{padding:3rem;text-align:center;font-family:var(--mono);font-size:.78rem;color:var(--muted)}
     .blog-char-counter{font-family:var(--mono);font-size:.6rem;color:var(--muted);text-align:right;margin-top:.25rem;transition:color .2s}
     .blog-char-counter.warn{color:var(--a)}
@@ -560,93 +571,101 @@
     <!-- TAB: BLOG ─────────────────────────────────────────── -->
     <div class="tab-panel" id="tab-blog">
 
-      <!-- KPIs -->
       <div class="blog-kpi-grid">
-        <div class="kpi-card" style="--kc:var(--a)"><i class="fab fa-blogger-b kpi-ico"></i><div class="kpi-num" id="blg-total">—</div><div class="kpi-lbl">Posts publicados</div></div>
-        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-tag kpi-ico"></i><div class="kpi-num" id="blg-cats">—</div><div class="kpi-lbl">Categorías</div></div>
-        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-clock kpi-ico"></i><div class="kpi-num" id="blg-last">—</div><div class="kpi-lbl">Último post</div></div>
+        <div class="kpi-card" style="--kc:var(--a)"><i class="fas fa-file-lines kpi-ico"></i><div class="kpi-num" id="sb-total">—</div><div class="kpi-lbl">Posts publicados</div></div>
+        <div class="kpi-card" style="--kc:var(--c)"><i class="fas fa-tag kpi-ico"></i><div class="kpi-num" id="sb-cats">—</div><div class="kpi-lbl">Tags únicos</div></div>
+        <div class="kpi-card" style="--kc:var(--g)"><i class="fas fa-clock kpi-ico"></i><div class="kpi-num" id="sb-last">—</div><div class="kpi-lbl">Último post</div></div>
       </div>
 
-      <!-- FORMULARIO NUEVO POST -->
-      <div class="blog-form">
-        <div class="blog-form-title"><i class="fab fa-blogger-b"></i> Redactar nueva entrada</div>
+      <div class="blog-form sb-form">
+        <div class="blog-form-title" id="sb-form-title">✦ Nuevo post</div>
 
         <div class="blog-tip">
           <i class="fas fa-circle-info"></i>
-          <span>Completa el formulario y haz clic en <strong>Abrir en Blogger</strong>. El título y el cuerpo se copiarán automáticamente — solo pega y publica.</span>
+          <span>El post se guarda directamente en <code>/blog/posts/</code> y aparece en <strong>/blog</strong> sin necesidad de Blogger.</span>
         </div>
 
         <div style="margin-bottom:.75rem">
           <div class="blog-label">Título del post *</div>
-          <input id="blg-titulo" class="blog-input" type="text" placeholder="Ej: Cómo construí mi portfolio con HTML puro" oninput="blgUpdateCounters();blgAutoSlug()">
-          <div class="blog-char-counter" id="blg-titulo-cnt">0 / 70</div>
+          <input id="sb-titulo" class="blog-input" type="text" placeholder="Ej: Cómo construí mi portfolio con HTML puro"
+            oninput="sbUpdateCounters();sbAutoSlug()">
+          <div class="blog-char-counter" id="sb-titulo-cnt">0 / 70</div>
         </div>
 
         <div class="blog-grid-2">
           <div>
-            <div class="blog-label">Slug (URL amigable)</div>
-            <input id="blg-slug" class="blog-input" type="text" placeholder="como-construi-mi-portfolio">
+            <div class="blog-label">Slug (URL del post)</div>
+            <input id="sb-slug" class="blog-input" type="text" placeholder="como-construi-mi-portfolio"
+              oninput="sbSlugManual()">
           </div>
           <div>
-            <div class="blog-label">Etiquetas (separadas por coma)</div>
-            <input id="blg-tags" class="blog-input" type="text" placeholder="html, css, tutorial, portfolio" oninput="blgRenderTagChips()">
+            <div class="blog-label">URL de imagen de portada</div>
+            <input id="sb-cover" class="blog-input" type="url" placeholder="https://…/imagen.jpg">
           </div>
         </div>
 
         <div style="margin-bottom:.75rem">
-          <div class="blog-label">Etiquetas sugeridas — clic para agregar</div>
-          <div class="blog-tags-wrap" id="blg-sugg-tags">
-            <span class="blog-tag" onclick="blgAddTag('html')">html</span>
-            <span class="blog-tag" onclick="blgAddTag('css')">css</span>
-            <span class="blog-tag" onclick="blgAddTag('javascript')">javascript</span>
-            <span class="blog-tag" onclick="blgAddTag('python')">python</span>
-            <span class="blog-tag" onclick="blgAddTag('tutorial')">tutorial</span>
-            <span class="blog-tag" onclick="blgAddTag('portfolio')">portfolio</span>
-            <span class="blog-tag" onclick="blgAddTag('freelance')">freelance</span>
-            <span class="blog-tag" onclick="blgAddTag('nodejs')">nodejs</span>
-            <span class="blog-tag" onclick="blgAddTag('mongodb')">mongodb</span>
-            <span class="blog-tag" onclick="blgAddTag('api')">api</span>
-            <span class="blog-tag" onclick="blgAddTag('ia')">ia</span>
-            <span class="blog-tag" onclick="blgAddTag('Guatemala')">Guatemala</span>
-            <span class="blog-tag" onclick="blgAddTag('desarrollo web')">desarrollo web</span>
-          </div>
+          <div class="blog-label">Extracto (descripción breve)</div>
+          <input id="sb-excerpt" class="blog-input" type="text" placeholder="Resumen del post para la card…">
         </div>
 
         <div style="margin-bottom:.75rem">
-          <div class="blog-label">Cuerpo del post * — puedes usar HTML básico (&lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;pre&gt;&lt;code&gt;)</div>
-          <textarea id="blg-body" class="blog-textarea" placeholder="Escribe aquí el contenido..." oninput="blgUpdateCounters()"></textarea>
-          <div class="blog-char-counter" id="blg-body-cnt">0 caracteres</div>
+          <div class="blog-label">Etiquetas (separadas por coma)</div>
+          <input id="sb-tags" class="blog-input" type="text" placeholder="html, css, tutorial" oninput="sbRenderTagChips()">
+          <div class="blog-tags-wrap" id="sb-tag-chips" style="margin-top:.4rem"></div>
+        </div>
+
+        <div class="blog-label" style="margin-bottom:.35rem">Etiquetas sugeridas</div>
+        <div class="blog-tags-wrap" style="margin-bottom:.75rem">
+          <span class="blog-tag" onclick="sbAddTag('html')">html</span>
+          <span class="blog-tag" onclick="sbAddTag('css')">css</span>
+          <span class="blog-tag" onclick="sbAddTag('javascript')">javascript</span>
+          <span class="blog-tag" onclick="sbAddTag('python')">python</span>
+          <span class="blog-tag" onclick="sbAddTag('tutorial')">tutorial</span>
+          <span class="blog-tag" onclick="sbAddTag('portfolio')">portfolio</span>
+          <span class="blog-tag" onclick="sbAddTag('ia')">ia</span>
+          <span class="blog-tag" onclick="sbAddTag('nodejs')">nodejs</span>
+          <span class="blog-tag" onclick="sbAddTag('Guatemala')">Guatemala</span>
+          <span class="blog-tag" onclick="sbAddTag('freelance')">freelance</span>
+          <span class="blog-tag" onclick="sbAddTag('api')">api</span>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <div class="blog-label">Cuerpo del post * — HTML básico permitido (&lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;pre&gt;&lt;code&gt;, &lt;a&gt;, &lt;strong&gt;)</div>
+          <textarea id="sb-body" class="blog-textarea" placeholder="Escribe aquí el contenido del post…" oninput="sbUpdateCounters()"></textarea>
+          <div class="blog-char-counter" id="sb-body-cnt">0 caracteres</div>
         </div>
 
         <div class="blog-actions">
-          <button class="blog-btn-primary" onclick="blgOpenBlogger()"><i class="fab fa-blogger-b"></i> Abrir en Blogger</button>
-          <button class="blog-btn-sec" onclick="blgTogglePreview()"><i class="fas fa-eye"></i> Vista previa</button>
-          <button class="blog-btn-sec" onclick="blgCopyBody()"><i class="fas fa-copy"></i> Copiar cuerpo</button>
-          <button class="blog-btn-sec" onclick="blgClearForm()"><i class="fas fa-eraser"></i> Limpiar</button>
+          <button class="blog-btn-primary" id="sb-publish-btn" onclick="sbPublish('published')">
+            <i class="fas fa-rocket"></i> Publicar
+          </button>
+          <button class="blog-btn-sec" onclick="sbSaveDraft()"><i class="fas fa-save"></i> Borrador</button>
+          <button class="blog-btn-sec" onclick="sbTogglePreview()"><i class="fas fa-eye"></i> Vista previa</button>
+          <button class="blog-btn-sec" onclick="sbClearForm()"><i class="fas fa-eraser"></i> Limpiar</button>
         </div>
 
-        <div class="blog-preview-box" id="blg-preview-box">
-          <div class="blog-preview-title" id="blg-preview-title">Sin título</div>
+        <div class="blog-preview-box" id="sb-preview-box" style="display:none">
+          <div class="blog-preview-title" id="sb-preview-title">Sin título</div>
           <hr style="border:none;border-top:1px solid var(--border);margin:.6rem 0">
-          <div class="blog-preview-body" id="blg-preview-body">El cuerpo aparecerá aquí...</div>
+          <div class="blog-preview-body" id="sb-preview-body">El cuerpo aparecerá aquí…</div>
         </div>
       </div>
 
-      <!-- POSTS PUBLICADOS -->
-      <div class="section-title"><i class="fab fa-blogger-b"></i> Posts publicados en codehub-labs.blogspot.com</div>
+      <div class="section-title" style="margin-top:1.5rem"><i class="fas fa-file-lines"></i> Posts del blog estático</div>
       <div style="display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap">
-        <button class="vt-btn" onclick="blgLoadPosts()" style="background:rgba(255,189,105,.1);border-color:rgba(255,189,105,.3);color:var(--a)">
-          <i class="fas fa-rotate-right"></i> Recargar posts
+        <button class="vt-btn" onclick="sbLoadPosts()" style="background:rgba(255,189,105,.1);border-color:rgba(255,189,105,.3);color:var(--a)">
+          <i class="fas fa-rotate-right"></i> Recargar
         </button>
-        <a href="https://www.blogger.com/blog/posts/4932034987684289893" target="_blank" rel="noopener"
+        <a href="/blog" target="_blank" rel="noopener"
           style="display:flex;align-items:center;gap:.38rem;padding:.52rem .95rem;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-family:var(--mono);font-size:.7rem;font-weight:700;text-decoration:none;transition:all .2s"
           onmouseover="this.style.color='var(--text)';this.style.borderColor='var(--border2)'"
           onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
-          <i class="fas fa-external-link-alt"></i> Panel de Blogger
+          <i class="fas fa-arrow-up-right-from-square"></i> Ver blog público
         </a>
       </div>
-      <div class="blog-posts-list" id="blg-posts-list">
-        <div class="blog-empty"><i class="fab fa-blogger-b" style="font-size:2rem;opacity:.2;display:block;margin-bottom:.75rem"></i>Haz clic en "Recargar posts" para ver los publicados</div>
+      <div id="sb-posts-list" class="blog-posts-list">
+        <div class="blog-empty">Haz clic en "Recargar" para cargar los posts</div>
       </div>
     </div><!-- /tab-blog -->
 
@@ -678,241 +697,6 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script>
-/* ══════════════════════════════════════════════════════
-   BLOG TAB — CodeHub Admin
-   Blog: https://codehub-labs.blogspot.com
-   Usa el Feed JSON público de Blogger (sin API Key)
-══════════════════════════════════════════════════════ */
-
-const BLOG_URL  = 'https://codehub-labs.blogspot.com';
-const BLOG_FEED = BLOG_URL + '/feeds/posts/default?alt=json&max-results=50';
-let   blgAllPosts = [];
-
-/* ── Cargar posts vía fetch + CORS proxy ── */
-async function blgLoadPosts() {
-  const list = document.getElementById('blg-posts-list');
-  list.innerHTML = '<div class="blog-empty"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;opacity:.4;display:block;margin-bottom:.5rem"></i>Cargando posts...</div>';
-
-  try {
-    // Intentar directamente primero (funciona si ya estás en el mismo dominio/vercel)
-    let data;
-    try {
-      const r = await fetch(BLOG_FEED);
-      data = await r.json();
-    } catch {
-      // Fallback: proxy CORS
-      const proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(BLOG_FEED);
-      const r2 = await fetch(proxy);
-      const raw = await r2.json();
-      data = JSON.parse(raw.contents);
-    }
-
-    const feed   = data.feed;
-    const entries = feed.entry || [];
-    blgAllPosts   = entries;
-
-    /* KPIs */
-    document.getElementById('blg-total').textContent = entries.length;
-    const cats = new Set();
-    entries.forEach(e => (e.category || []).forEach(c => cats.add(c.term)));
-    document.getElementById('blg-cats').textContent = cats.size || '—';
-
-    if (entries.length > 0) {
-      const lastDate = new Date(entries[0].published.$t);
-      document.getElementById('blg-last').textContent =
-        lastDate.toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
-    } else {
-      document.getElementById('blg-last').textContent = 'Ninguno';
-    }
-
-    if (entries.length === 0) {
-      list.innerHTML = '<div class="blog-empty"><i class="fab fa-blogger-b" style="font-size:2rem;opacity:.2;display:block;margin-bottom:.75rem"></i>Aún no hay posts publicados.<br><small style="font-size:.7rem">¡Usa el formulario de arriba para crear el primero!</small></div>';
-      return;
-    }
-
-    list.innerHTML = entries.map(e => blgRenderCard(e)).join('');
-
-  } catch(err) {
-    list.innerHTML = `<div class="blog-empty" style="color:#ff6b6b"><i class="fas fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:.5rem;opacity:.5"></i>Error cargando posts<br><small style="font-size:.68rem;opacity:.7">${err.message}</small></div>`;
-  }
-}
-
-/* ── Renderizar card de post ── */
-function blgRenderCard(entry) {
-  const title    = entry.title.$t;
-  const url      = (entry.link.find(l => l.rel === 'alternate') || {}).href || '#';
-  const published = new Date(entry.published.$t);
-  const dateStr  = published.toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
-  const snippet  = entry.summary?.$t?.replace(/<[^>]+>/g,'').substring(0,140) || 'Sin resumen';
-  const tags     = (entry.category || []).map(c => c.term);
-
-  // Miniatura: buscar imagen en el contenido
-  let thumb = '';
-  const content = entry.content?.$t || '';
-  const imgMatch = content.match(/<img[^>]+src=["']([^"']+)["']/);
-  if (imgMatch) {
-    thumb = `<img class="blog-post-thumb" src="${imgMatch[1]}" alt="" onerror="this.style.display='none'">`;
-  } else {
-    thumb = `<div class="blog-post-thumb-placeholder"><i class="fab fa-blogger-b"></i></div>`;
-  }
-
-  const tagsHtml = tags.length
-    ? tags.map(t => `<span class="blog-post-tag">${t}</span>`).join('')
-    : '';
-
-  return `
-    <div class="blog-post-card">
-      ${thumb}
-      <div class="blog-post-body">
-        <div class="blog-post-title">${title}</div>
-        <div class="blog-post-meta"><i class="fas fa-calendar-day" style="margin-right:.3rem"></i>${dateStr} ${tags.length ? '· ' + tags[0] : ''}</div>
-        <div class="blog-post-snippet">${snippet}</div>
-        ${tagsHtml ? '<div class="blog-post-tags">' + tagsHtml + '</div>' : ''}
-      </div>
-      <div class="blog-post-actions">
-        <a href="${url}" target="_blank" rel="noopener" class="blog-post-btn view"><i class="fas fa-external-link-alt"></i> Ver</a>
-        <button class="blog-post-btn edit" onclick="blgLoadToEdit(${JSON.stringify(title).replace(/"/g,'&quot;')}, ${JSON.stringify(url).replace(/"/g,'&quot;')}, ${JSON.stringify(tags.join(', ')).replace(/"/g,'&quot;')})">
-          <i class="fas fa-pen"></i> Editar
-        </button>
-      </div>
-    </div>`;
-}
-
-/* ── Cargar datos del post en el formulario para edición ── */
-function blgLoadToEdit(title, url, tags) {
-  document.getElementById('blg-titulo').value = title;
-  document.getElementById('blg-tags').value = tags;
-  blgAutoSlug();
-  blgUpdateCounters();
-  // Scroll al formulario
-  document.querySelector('.blog-form').scrollIntoView({ behavior:'smooth', block:'start' });
-  if (typeof toast === 'function') toast('✏️ Título cargado — edita el cuerpo y abre Blogger');
-}
-
-/* ── Generar slug automático desde el título ── */
-function blgAutoSlug() {
-  const titulo = document.getElementById('blg-titulo').value;
-  const slug = titulo
-    .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')  // quitar tildes
-    .replace(/[^a-z0-9\s-]/g,'')
-    .trim()
-    .replace(/\s+/g,'-')
-    .substring(0, 60);
-  document.getElementById('blg-slug').value = slug;
-}
-
-/* ── Contadores de caracteres ── */
-function blgUpdateCounters() {
-  const titulo = document.getElementById('blg-titulo').value.length;
-  const body   = document.getElementById('blg-body').value.length;
-
-  const tc = document.getElementById('blg-titulo-cnt');
-  tc.textContent = titulo + ' / 70';
-  tc.className = 'blog-char-counter' + (titulo > 70 ? ' danger' : titulo > 55 ? ' warn' : '');
-
-  const bc = document.getElementById('blg-body-cnt');
-  bc.textContent = body.toLocaleString() + ' caracteres' + (body < 300 ? ' — Google recomienda mínimo 300' : ' ✓');
-  bc.className = 'blog-char-counter' + (body < 300 ? ' warn' : '');
-}
-
-/* ── Agregar tag desde chips sugeridos ── */
-function blgAddTag(tag) {
-  const input = document.getElementById('blg-tags');
-  const current = input.value.split(',').map(t => t.trim()).filter(Boolean);
-  if (!current.includes(tag)) {
-    current.push(tag);
-    input.value = current.join(', ');
-  }
-  blgRenderTagChips();
-}
-
-/* ── Resaltar chips ya seleccionados ── */
-function blgRenderTagChips() {
-  const current = document.getElementById('blg-tags').value
-    .split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
-  document.querySelectorAll('#blg-sugg-tags .blog-tag').forEach(chip => {
-    chip.classList.toggle('sel', current.includes(chip.textContent.trim().toLowerCase()));
-  });
-}
-
-/* ── Vista previa ── */
-function blgTogglePreview() {
-  const box = document.getElementById('blg-preview-box');
-  const visible = box.style.display === 'block';
-  if (!visible) {
-    document.getElementById('blg-preview-title').textContent =
-      document.getElementById('blg-titulo').value || 'Sin título';
-    document.getElementById('blg-preview-body').textContent =
-      document.getElementById('blg-body').value || 'Sin contenido';
-  }
-  box.style.display = visible ? 'none' : 'block';
-}
-
-/* ── Copiar cuerpo al portapapeles ── */
-async function blgCopyBody() {
-  const body = document.getElementById('blg-body').value;
-  if (!body) { if (typeof toast === 'function') toast('⚠️ El cuerpo está vacío'); return; }
-  try {
-    await navigator.clipboard.writeText(body);
-    if (typeof toast === 'function') toast('📋 Cuerpo copiado al portapapeles');
-  } catch {
-    if (typeof toast === 'function') toast('❌ No se pudo copiar');
-  }
-}
-
-/* ── Limpiar formulario ── */
-function blgClearForm() {
-  ['blg-titulo','blg-slug','blg-tags','blg-body'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  document.getElementById('blg-preview-box').style.display = 'none';
-  blgUpdateCounters();
-  blgRenderTagChips();
-  if (typeof toast === 'function') toast('🧹 Formulario limpiado');
-}
-
-/* ── Abrir Blogger con el título ya copiado ── */
-async function blgOpenBlogger() {
-  const titulo = document.getElementById('blg-titulo').value.trim();
-  const body   = document.getElementById('blg-body').value.trim();
-  const tags   = document.getElementById('blg-tags').value.trim();
-
-  if (!titulo) { if (typeof toast === 'function') toast('⚠️ Escribe el título primero'); return; }
-
-  // Copiar el cuerpo al portapapeles para pegar en Blogger
-  const toCopy = body
-    ? '=== TÍTULO ===\n' + titulo + '\n\n=== ETIQUETAS ===\n' + tags + '\n\n=== CUERPO ===\n' + body
-    : titulo;
-
-  try {
-    await navigator.clipboard.writeText(toCopy);
-    if (typeof toast === 'function') toast('📋 Contenido copiado — pégalo en Blogger');
-  } catch { /* clipboard blocked, skip */ }
-
-  // Abrir nueva entrada en Blogger
-  setTimeout(() => {
-    window.open('https://www.blogger.com/blog/post/edit/4932034987684289893/new', '_blank', 'noopener');
-  }, 300);
-}
-
-/* ── Auto-cargar posts cuando se activa el tab ── */
-const _origSwitchTab = typeof switchTab === 'function' ? switchTab : null;
-document.addEventListener('DOMContentLoaded', () => {
-  // Parche al switchTab existente para auto-cargar
-  const tabs = document.querySelectorAll('.admin-tab');
-  tabs.forEach(btn => {
-    if (btn.onclick && btn.getAttribute('onclick')?.includes("'blog'")) {
-      const orig = btn.onclick;
-      btn.onclick = function(e) {
-        orig.call(this, e);
-        if (blgAllPosts.length === 0) blgLoadPosts();
-      };
-    }
-  });
-});
-</script>
 
 <script src="../js/admin-hub.js"></script>
 </body>
