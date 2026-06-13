@@ -2,14 +2,14 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
-  testDir: './tests/e2e',
+  testDir: './e2e',
   timeout: 30000,
   expect: { timeout: 5000 },
   fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ['html', { outputFolder: 'tests/report', open: 'never' }],
+    ['html', { outputFolder: 'report', open: 'never' }],
     ['list'],
   ],
   use: {

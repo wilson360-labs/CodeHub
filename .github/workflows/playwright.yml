@@ -8,7 +8,7 @@ on:
 jobs:
   test-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -28,7 +28,7 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Run Playwright tests
-        run: npm test
+        run: npx playwright test --config=tests/playwright.config.js
         env:
           BASE_URL: https://wilson360-labs.vercel.app
           CI: true
@@ -40,3 +40,4 @@ jobs:
           name: playwright-report
           path: tests/report/
           retention-days: 7
+          if-no-files-found: ignore

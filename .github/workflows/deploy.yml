@@ -12,14 +12,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Verificar archivos criticos
         run: |
-          for f in index.html novedades.html tools.html servicios.html sw.js manifest.json vercel.json; do
-            test -f "$f" && echo "OK $f" || echo "FALTA $f"
+          # Archivos en raíz
+          for f in index.html sw.js manifest.json vercel.json; do
+            test -f "$f" && echo "OK $f" || { echo "FALTA $f"; exit 1; }
           done
+          # Archivos en /pages (rutas reales del proyecto)
+          for f in pages/tools.html pages/novedades.html pages/servicios.html; do
+            test -f "$f" && echo "OK $f" || { echo "FALTA $f"; exit 1; }
+          done
+
       - name: Verificar tamano minimo
         run: |
-          for f in index.html tools.html; do
+          for f in index.html pages/tools.html; do
             size=$(wc -c < "$f")
             [ "$size" -lt 1000 ] && echo "ERROR $f vacio" && exit 1
             echo "OK $f - ${size} bytes"
@@ -43,7 +50,7 @@ jobs:
           test -f backend/package.json && echo "OK package.json"
 
   health-check:
-    name: Health Check
+    name: Verificacion de estado
     runs-on: ubuntu-latest
     needs: [verify-frontend, verify-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
