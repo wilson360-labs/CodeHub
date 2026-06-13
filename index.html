@@ -162,7 +162,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
          Guarda este archivo y continúa con la PARTE 2 que incluirá el resto del HTML y JavaScript -->
     
     <div id="scroll-progress"></div>
-    <canvas id="neural-network"></canvas>
+    <canvas id="neural-network" style="will-change:transform;transform:translateZ(0);"></canvas>
     
     <!-- ══ EASTER EGG OVERLAY ══ -->
     <div id="egg-overlay">
@@ -1416,25 +1416,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         document.addEventListener('DOMContentLoaded', registerVisit);
 
-        // Neural Network Animation
+        // Neural Network Animation — optimizado: menos nodos, sin sqrt, pausa en tab oculto
         const canvas = document.getElementById('neural-network');
         const ctx = canvas.getContext('2d');
         let nodes = [];
-        const mouse = { x: 0, y: 0 };
+        const mouse = { x: -9999, y: -9999 };
+        let nnVisible = true;
+        const CONNECT_DIST_SQ = 120 * 120; // evita sqrt en el loop O(n²)
+        const MOUSE_DIST_SQ   = 90 * 90;
+        const NODE_COUNT      = window.innerWidth < 768 ? 20 : 35; // menos en móvil
 
         class Node {
             constructor() {
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
-                this.radius = 2;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.radius = 1.5;
+                this.speedX = (Math.random() - 0.5) * 0.4;
+                this.speedY = (Math.random() - 0.5) * 0.4;
             }
 
             draw() {
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 69, 0, 0.8)';
+                ctx.fillStyle = 'rgba(255, 69, 0, 0.75)';
                 ctx.fill();
             }
 
@@ -1442,48 +1446,46 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 this.x += this.speedX;
                 this.y += this.speedY;
 
-                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
-                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+                if (this.x < 0 || this.x > canvas.width)  this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height)  this.speedY *= -1;
 
                 const dx = mouse.x - this.x;
                 const dy = mouse.y - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance < 100) {
-                    this.x += dx * 0.01;
-                    this.y += dy * 0.01;
+                if (dx * dx + dy * dy < MOUSE_DIST_SQ) {
+                    this.x += dx * 0.008;
+                    this.y += dy * 0.008;
                 }
             }
         }
 
         function init() {
-            canvas.width = window.innerWidth;
+            canvas.width  = window.innerWidth;
             canvas.height = window.innerHeight;
             nodes = [];
-            for (let i = 0; i < 60; i++) {
-                nodes.push(new Node());
-            }
+            for (let i = 0; i < NODE_COUNT; i++) nodes.push(new Node());
         }
 
         function animate() {
+            if (!nnVisible) { requestAnimationFrame(animate); return; }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            nodes.forEach(node => {
-                node.update();
-                node.draw();
-            });
+            for (let i = 0; i < nodes.length; i++) {
+                nodes[i].update();
+                nodes[i].draw();
+            }
 
+            ctx.lineWidth = 0.5;
             for (let i = 0; i < nodes.length; i++) {
                 for (let j = i + 1; j < nodes.length; j++) {
                     const dx = nodes[i].x - nodes[j].x;
                     const dy = nodes[i].y - nodes[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance < 150) {
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq < CONNECT_DIST_SQ) {
+                        const alpha = 0.25 * (1 - distSq / CONNECT_DIST_SQ);
                         ctx.beginPath();
                         ctx.moveTo(nodes[i].x, nodes[i].y);
                         ctx.lineTo(nodes[j].x, nodes[j].y);
-                        ctx.strokeStyle = `rgba(255, 69, 0, ${0.3 * (1 - distance / 150)})`;
-                        ctx.lineWidth = 0.5;
+                        ctx.strokeStyle = `rgba(255,69,0,${alpha.toFixed(2)})`;
                         ctx.stroke();
                     }
                 }
@@ -1492,27 +1494,45 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             requestAnimationFrame(animate);
         }
 
+        // Pausa cuando el tab está en segundo plano
+        document.addEventListener('visibilitychange', () => {
+            nnVisible = document.visibilityState === 'visible';
+        });
+
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
             
-            if (Math.random() > 0.85) {
+            if (Math.random() > 0.90) {
                 createCursorParticle(e.clientX, e.clientY);
             }
         });
 
-        window.addEventListener('resize', init);
-        init();
-        animate();
+        let _resizeTimer;
+        window.addEventListener('resize', () => { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(init, 200); });
 
-        // Cursor Particles
+        // Respeta preferencia de sistema: si pide menos movimiento, omite la animación
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            canvas.style.display = 'none';
+        } else {
+            init();
+            animate();
+        }
+
+        // Cursor Particles — throttled, máx 12 en DOM simultáneo
+        let _cpPool = [];
         function createCursorParticle(x, y) {
+            if (_cpPool.length >= 12) return; // evita acumulación en mousemove rápido
             const particle = document.createElement('div');
             particle.className = 'cursor-particle';
             particle.style.left = x + 'px';
-            particle.style.top = y + 'px';
+            particle.style.top  = y + 'px';
             document.body.appendChild(particle);
-            setTimeout(() => particle.remove(), 1000);
+            _cpPool.push(particle);
+            setTimeout(() => {
+                particle.remove();
+                _cpPool = _cpPool.filter(p => p !== particle);
+            }, 800);
         }
 
         // ========== MENÚ EXPERIMENTAL ==========
@@ -4651,11 +4671,21 @@ function setAIMood(btn) {
     };
   }
 
-  function initParticles(n = 68) {
+  function initParticles(n) {
+    // Menos partículas: 40 desktop, 18 móvil
+    n = n || (window.innerWidth < 768 ? 18 : 40);
     particles = Array.from({ length: n }, mkParticle);
   }
 
+  let heroInView = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(entries => {
+      heroInView = entries[0].isIntersecting;
+    }, { threshold: 0 }).observe(hero);
+  }
+
   function drawParticles() {
+    if (!heroInView) return;
     ctx.clearRect(0, 0, W, H);
     for (const p of particles) {
       ctx.beginPath();
@@ -4711,13 +4741,28 @@ function setAIMood(btn) {
   }, { passive: true });
 
   /* ── 4. ANIMATION LOOP ──────────────────────────────────── */
-  function loop() { drawParticles(); requestAnimationFrame(loop); }
+  let heroLoopActive = true;
+  document.addEventListener('visibilitychange', () => {
+    heroLoopActive = document.visibilityState === 'visible';
+  });
+  function loop() {
+    if (heroLoopActive) drawParticles();
+    requestAnimationFrame(loop);
+  }
 
   /* ── 5. INIT ────────────────────────────────────────────── */
-  resize();
-  initParticles();
-  loop();
-  window.addEventListener('resize', () => { resize(); initParticles(); }, { passive: true });
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    canvas.style.display = 'none';
+  } else {
+    resize();
+    initParticles();
+    loop();
+  }
+  let _heroResizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(_heroResizeTimer);
+    _heroResizeTimer = setTimeout(() => { resize(); initParticles(); }, 200);
+  }, { passive: true });
 })();
 </script>
 
