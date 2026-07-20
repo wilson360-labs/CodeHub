@@ -23,7 +23,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://codehub-labs.blogspot.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E, desarrollador web full stack autodidacta de Guatemala. Portfolio con 23 herramientas web gratuitas, proyectos, apps Android y chatbot con IA. Disponible para freelance.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson Enriquez, HTML CSS JavaScript Python Node.js MongoDB">
@@ -1065,17 +1065,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <section id="news-section">
             <div class="wx-header">
                 <div>
-                    <div class="wx-eyebrow">// blog · artículos y tutoriales</div>
-                    <h2 style="margin-bottom:0">Blog &amp; Dev Notes</h2>
+                    <div class="wx-eyebrow">// mundo · en tiempo real</div>
+                    <h2 style="margin-bottom:0">Noticias del Mundo</h2>
                 </div>
-                <a href="https://codehub-labs.blogspot.com" target="_blank" rel="noopener" class="blogger-view-btn" id="blogger-link">
-                    <i class="fab fa-blogger-b"></i> Ver blog completo
+                <a href="https://feeds.bbci.co.uk/mundo/rss.xml" target="_blank" rel="noopener" class="blogger-view-btn" id="news-source-link">
+                    <i class="fas fa-globe"></i> Fuente: BBC Mundo
                 </a>
             </div>
-            <div id="blogger-out">
+            <div id="news-real-out">
                 <div class="blogger-loading">
                     <i class="fas fa-circle-notch"></i>
-                    Cargando posts del blog...
+                    Cargando noticias...
                 </div>
             </div>
         </section>
@@ -1466,7 +1466,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
 
         function animate() {
-            if (!nnVisible) { requestAnimationFrame(animate); return; }
+            if (!nnVisible || nnManualOff || !nnInViewport) { requestAnimationFrame(animate); return; }
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < nodes.length; i++) {
@@ -1498,6 +1498,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         document.addEventListener('visibilitychange', () => {
             nnVisible = document.visibilityState === 'visible';
         });
+
+        // Pausa el cómputo real cuando el canvas sale del viewport (scroll)
+        let nnInViewport = true;
+        if ('IntersectionObserver' in window) {
+            new IntersectionObserver(entries => {
+                nnInViewport = entries[0].isIntersecting;
+            }, { threshold: 0 }).observe(canvas);
+        }
+
+        // Pausa el cómputo real cuando el usuario la apaga manualmente (no solo opacity)
+        let nnManualOff = (localStorage.getItem('cfg_neural') === '0');
+        window.setNeuralManualOff = (off) => { nnManualOff = !!off; };
 
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
@@ -3626,6 +3638,7 @@ function toggleNeural(chk) {
     localStorage.setItem('cfg_neural', chk.checked ? '1' : '0');
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = chk.checked ? '1' : '0';
+    if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(!chk.checked);
 }
 
 function resetCfg() {
@@ -3635,6 +3648,7 @@ function resetCfg() {
     document.body.classList.remove('font-sm','font-lg','no-anim');
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = '1';
+    if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(false);
     // Recargar estado visual del panel
     loadCfg();
     if (typeof toast === 'function') toast('✅ Configuración restablecida', 'info', 2000);
@@ -3862,84 +3876,56 @@ function showWeatherError(msg) {
 //  NOTICIAS EN EL INDEX
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
 
-// ── BLOGGER RSS FEED â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
-const BLOGGER_URL = 'https://codehub-labs.blogspot.com'; // Blog oficial de CodeHub
+// ── NOTICIAS REALES (RSS) ──────────────────────────────────
+// Fuente: BBC Mundo (RSS público, mundo/política/economía).
+// Se lee vía api.allorigins.win (ya permitido en el CSP) porque los feeds RSS
+// no envían cabeceras CORS para lectura directa desde el navegador.
+const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
+const NEWS_PROXY   = 'https://api.allorigins.win/raw?url=';
 
-// Carga posts via JSONP nativo de Blogger — sin proxy, sin CORS
-function loadBloggerPosts() {
-  const out  = document.getElementById('blogger-out');
-  const link = document.getElementById('blogger-link');
+async function loadRealNews() {
+  const out = document.getElementById('news-real-out');
   if (!out) return;
-  if (link) link.href = BLOGGER_URL;
 
-  // Timeout: si en 8s no responde, mostrar posts de demo
-  const fallbackTimer = setTimeout(() => {
-    if (out.querySelector('.blogger-loading')) {
-      renderBloggerPosts(BLOGGER_DEMO_POSTS);
-    }
-  }, 8000);
+  try {
+    const res = await fetch(NEWS_PROXY + encodeURIComponent(NEWS_RSS_URL));
+    if (!res.ok) throw new Error('fetch fallido');
+    const xmlText = await res.text();
+    const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
+    const items = Array.from(xml.querySelectorAll('item')).slice(0, 6).map(item => {
+      const title = item.querySelector('title')?.textContent || 'Sin título';
+      const url   = item.querySelector('link')?.textContent || NEWS_RSS_URL;
+      const pub   = item.querySelector('pubDate')?.textContent;
+      const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' }) : '';
+      let desc = item.querySelector('description')?.textContent || '';
+      desc = desc.replace(/<[^>]+>/g, '').slice(0, 130);
+      return { title, url, date, desc };
+    });
 
-  // Callback que Blogger llamará con los datos
-  window._bloggerCallback = function(data) {
-    clearTimeout(fallbackTimer);
-    try {
-      const entries = data.feed.entry || [];
-      if (!entries.length) { renderBloggerPosts(BLOGGER_DEMO_POSTS); return; }
-      const posts = entries.map(e => {
-        const title  = e.title.$t;
-        const url    = (e.link.find(l => l.rel === 'alternate') || {}).href || BLOGGER_URL;
-        const date   = new Date(e.published.$t).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' });
-        const desc   = e.summary ? e.summary.$t.replace(/<[^>]+>/g,'').slice(0,120) + '…' : '';
-        const thumb  = e['media$thumbnail'] ? e['media$thumbnail'].url.replace(/s72-c/,'s400-c') : null;
-        const author = e.author?.[0]?.name?.$t || 'Wilson.E';
-        return { title, url, date, desc, thumb, author };
-      });
-      renderBloggerPosts(posts);
-    } catch(e) {
-      renderBloggerPosts(BLOGGER_DEMO_POSTS);
-    }
-  };
-
-  // Inyectar script JSONP — Blogger lo llama automáticamente con los datos
-  const script = document.createElement('script');
-  script.src = `${BLOGGER_URL}/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`;
-  script.onerror = () => { clearTimeout(fallbackTimer); renderBloggerPosts(BLOGGER_DEMO_POSTS); };
-  document.head.appendChild(script);
+    if (!items.length) throw new Error('sin items');
+    renderRealNews(items);
+  } catch (e) {
+    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar las noticias en este momento.<br><small>Intenta recargar la página.</small></div>`;
+  }
 }
 
-const BLOGGER_DEMO_POSTS = [
-  { title:'Cómo construí mi portfolio con HTML, CSS y JS puro', url:'#', date:'23 mar 2026', desc:'Un recorrido por las decisiones técnicas detrás de CodeHub: la red neuronal en canvas, el splash screen y las 18 tools integradas.', thumb:null, author:'Wilson.E' },
-  { title:'Python Automation: scraping y tareas repetitivas en minutos', url:'#', date:'15 mar 2026', desc:'Guía práctica para automatizar tareas con BeautifulSoup, Requests y Pandas. Desde cero hasta producción.', thumb:null, author:'Wilson.E' },
-  { title:'Integrar una IA en tu web sin backend: GPT API desde el cliente', url:'#', date:'8 mar 2026', desc:'Cómo conectar la API de OpenAI directamente desde JavaScript, manejar el contexto y crear un chatbot útil.', thumb:null, author:'Wilson.E' },
-  { title:'MongoDB + Railway: deploy gratuito de tu base de datos', url:'#', date:'1 mar 2026', desc:'Paso a paso para desplegar una aplicación Node.js con MongoDB en Railway, con variables de entorno y dominio personalizado.', thumb:null, author:'Wilson.E' },
-  { title:'CSS sin frameworks: técnicas avanzadas que uso en mis proyectos', url:'#', date:'22 feb 2026', desc:'Conic-gradient, mask, container queries y custom properties que uso a diario sin necesitar Tailwind ni Bootstrap.', thumb:null, author:'Wilson.E' },
-  { title:'Cómo ganar tus primeros clientes freelance como dev en Guatemala', url:'#', date:'14 feb 2026', desc:'Mi experiencia conseguiendo proyectos reales: dónde buscarlos, cómo cotizar y qué errores evitar al inicio.', thumb:null, author:'Wilson.E' },
-];
-
-function renderBloggerPosts(posts) {
-  const out = document.getElementById('blogger-out');
-  if (!posts.length) {
-    out.innerHTML = `<div class="blogger-error"><i class="fas fa-pen-nib"></i>Aún no hay posts publicados.<br><small>¡Vuelve pronto!</small></div>`;
-    return;
-  }
-  out.innerHTML = `<div class="blogger-grid">${posts.map(p => `
-    <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="blogger-card">
-      <div class="blogger-card-thumb">
-        ${p.thumb ? `<img src="${p.thumb}" alt="${p.title}" loading="lazy">` : '<i class="fas fa-pen-nib"></i>'}
-      </div>
+function renderRealNews(items) {
+  const out = document.getElementById('news-real-out');
+  out.innerHTML = `<div class="blogger-grid">${items.map(n => `
+    <a href="${n.url}" target="_blank" rel="noopener noreferrer" class="blogger-card">
+      <div class="blogger-card-thumb"><i class="fas fa-earth-americas"></i></div>
       <div class="blogger-card-body">
-        <div class="blogger-card-label">// dev blog</div>
-        <div class="blogger-card-title">${p.title}</div>
-        <div class="blogger-card-desc">${p.desc}</div>
+        <div class="blogger-card-label">// BBC Mundo</div>
+        <div class="blogger-card-title">${n.title}</div>
+        <div class="blogger-card-desc">${n.desc}</div>
         <div class="blogger-card-meta">
-          <i class="fas fa-calendar-days"></i>${p.date}
-          <i class="fas fa-user" style="margin-left:.3rem"></i>${p.author}
+          <i class="fas fa-calendar-days"></i>${n.date}
         </div>
       </div>
     </a>`).join('')}</div>`;
 }
 
-window.addEventListener('load', loadBloggerPosts);
+window.addEventListener('load', loadRealNews);
 
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══

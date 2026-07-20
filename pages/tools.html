@@ -888,21 +888,6 @@ footer a{color:var(--p);text-decoration:none}
   </div><!-- /cp -->
 </div>
 
-<!-- 27 · NOTICIAS EN TIEMPO REAL -->
-<div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-newspaper"></i><span>Noticias en Tiempo Real</span></div>
-  <div class="cd">Últimas noticias de tecnología, gaming y ciencia.</div>
-  <div class="cp">
-  <div style="display:flex;gap:.4rem;margin-bottom:.3rem;flex-wrap:wrap">
-    <button class="tb news-tab active-tab" onclick="loadNews('technology',this)">💻 Tech</button>
-    <button class="tb news-tab" onclick="loadNews('gaming',this)">🎮 Gaming</button>
-    <button class="tb news-tab" onclick="loadNews('science',this)">🔬 Ciencia</button>
-    <button class="tb news-tab" onclick="loadNews('general',this)">🌎 General</button>
-  </div>
-  <div id="news-out" style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem"></div>
-  </div><!-- /cp -->
-</div>
-
 <!-- 27 · HORÓSCOPO DEL DÍA -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span></div>
@@ -2312,61 +2297,6 @@ async function analyzeFileSafety() {
     btn.innerHTML = '<i class="fas fa-file-shield"></i> Analizar archivo';
   }
 }
-
-
-// ── 26 · NOTICIAS ──────────────────────────────────────────
-const NEWS_SOURCES = {
-  technology: [
-    { title: 'OpenAI lanza nuevas capacidades de razonamiento en GPT', source: 'TechCrunch', time: 'hace 2h', url: 'https://techcrunch.com', icon: '🤖' },
-    { title: 'Apple anuncia chips M4 para toda la línea Mac', source: 'The Verge', time: 'hace 4h', url: 'https://theverge.com', icon: '🍎' },
-    { title: 'Google actualiza Android con nuevas funciones de IA', source: '9to5Google', time: 'hace 6h', url: 'https://9to5google.com', icon: '📱' },
-    { title: 'Microsoft integra Copilot en más productos de Office', source: 'ZDNet', time: 'hace 8h', url: 'https://zdnet.com', icon: '💼' },
-    { title: 'Meta lanza Llama 4 como modelo open source', source: 'VentureBeat', time: 'hace 10h', url: 'https://venturebeat.com', icon: '🦙' },
-  ],
-  gaming: [
-    { title: 'GTA VI confirma fecha de lanzamiento para 2025', source: 'IGN', time: 'hace 1h', url: 'https://ign.com', icon: '🎮' },
-    { title: 'Steam rompe récord con 35 millones de usuarios simultáneos', source: 'PC Gamer', time: 'hace 3h', url: 'https://pcgamer.com', icon: '💻' },
-    { title: 'Nintendo Switch 2 supera ventas de lanzamiento', source: 'GameSpot', time: 'hace 5h', url: 'https://gamespot.com', icon: '🕹️' },
-    { title: 'Valorant Mobile llega finalmente a Android e iOS', source: 'Riot Games', time: 'hace 7h', url: 'https://playvalorant.com', icon: '🔫' },
-    { title: 'Minecraft supera los 300 millones de copias vendidas', source: 'Mojang', time: 'hace 9h', url: 'https://minecraft.net', icon: '⛏️' },
-  ],
-  science: [
-    { title: 'James Webb descubre galaxia más antigua conocida', source: 'NASA', time: 'hace 2h', url: 'https://nasa.gov', icon: '🔭' },
-    { title: 'Científicos logran fusión nuclear con ganancia de energía neta', source: 'Nature', time: 'hace 5h', url: 'https://nature.com', icon: '⚡' },
-    { title: 'IA predice estructura de proteínas con 99% de precisión', source: 'DeepMind', time: 'hace 7h', url: 'https://deepmind.com', icon: '🧬' },
-    { title: 'Primera misión tripulada a Marte planificada para 2030', source: 'SpaceX', time: 'hace 10h', url: 'https://spacex.com', icon: '🚀' },
-    { title: 'Nuevo material conduce electricidad sin resistencia a temp. ambiente', source: 'Science', time: 'hace 12h', url: 'https://science.org', icon: '🔬' },
-  ],
-  general: [
-    { title: 'Economía global muestra signos de recuperación en 2025', source: 'Reuters', time: 'hace 1h', url: 'https://reuters.com', icon: '📈' },
-    { title: 'OMS aprueba nueva vacuna para enfermedades tropicales', source: 'WHO', time: 'hace 3h', url: 'https://who.int', icon: '💉' },
-    { title: 'Guatemala clasifica al mundial de fútbol 2026', source: 'FIFA', time: 'hace 4h', url: 'https://fifa.com', icon: '⚽' },
-    { title: 'Energías renovables superan al carbón por primera vez', source: 'BBC', time: 'hace 6h', url: 'https://bbc.com', icon: '🌱' },
-    { title: 'Record de turismo en Centroamérica durante 2025', source: 'UNWTO', time: 'hace 8h', url: 'https://unwto.org', icon: '✈️' },
-  ],
-};
-
-function loadNews(category, btn) {
-  document.querySelectorAll('.news-tab').forEach(b => b.classList.remove('active-tab'));
-  if (btn) btn.classList.add('active-tab');
-
-  const out = document.getElementById('news-out');
-  const items = NEWS_SOURCES[category] || [];
-
-  out.innerHTML = items.map(n => `
-    <a href="${n.url}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;align-items:flex-start;gap:.7rem;padding:.6rem .8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;transition:all .2s"
-      onmouseover="this.style.borderColor='var(--border-h)'" onmouseout="this.style.borderColor='rgba(255,255,255,.07)'">
-      <span style="font-size:1.3rem;flex-shrink:0">${n.icon}</span>
-      <div>
-        <div style="font-size:.82rem;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:.2rem">${n.title}</div>
-        <div style="font-size:.68rem;font-family:var(--mono);color:var(--muted)">${n.source} · ${n.time}</div>
-      </div>
-    </a>`).join('');
-}
-
-// Cargar noticias de tech al iniciar
-loadNews('technology', null);
-document.querySelector('.news-tab')?.classList.add('active-tab');
 
 
 // ── 27 · HORÓSCOPO ─────────────────────────────────────────
