@@ -72,7 +72,7 @@ console.log('Script started');
         const betaBtn = document.getElementById('beta-btn');
         if (betaBtn) {
             betaBtn.addEventListener('click', () => {
-                alert('¡Únete al Beta Test! Envía un email a beta@codehub.com para participar.');
+                alert('¡Únete al Beta Test! Envía un email a wilson.e360labs@gmail.com para participar.');
             });
         }
 

@@ -395,7 +395,7 @@
   100% { opacity: 0;  transform: scale(2); }
 }
 
-/* Toast fallback (solo si no existe #toast en CodeHub) */
+// Toast fallback (solo si no existe #toast en CodeHub)
 .emi-voice-toast {
   position: fixed;
   bottom: 5.5rem;

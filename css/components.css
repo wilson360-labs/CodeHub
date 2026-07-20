@@ -4216,21 +4216,10 @@
             border-color: var(--primary);
         }
 
-        .footer-signature {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 1rem;
-            border-radius: 10px;
+        .pueblo-terminal-wrap {
+            display: flex;
+            justify-content: center;
             margin-top: 2rem;
-        }
-
-        .terminal-text {
-            font-family: 'Courier New', monospace;
-            color: #00ff00;
-        }
-
-        .prompt {
-            color: var(--primary);
-            font-weight: bold;
         }
 
         #floating-menu {
@@ -4314,8 +4303,10 @@
             font-family: 'JetBrains Mono', 'Courier New', monospace;
             font-size: 0.88rem;
             color: rgba(255,255,255,0.5);
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,69,0,0.2);
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.55));
+            -webkit-backdrop-filter: blur(14px) saturate(140%);
+            backdrop-filter: blur(14px) saturate(140%);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
             padding: 14px 20px;
             display: flex;
@@ -4323,6 +4314,30 @@
             gap: 4px;
             flex-wrap: wrap;
             justify-content: center;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+            position: relative;
+            overflow: hidden;
+            transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+        }
+
+        .footer-terminal::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(120deg, rgba(255,69,0,0.35), transparent 35%, transparent 65%, rgba(255,189,105,0.3));
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: .7;
+        }
+
+        .footer-terminal:hover {
+            border-color: rgba(255,69,0,0.35);
+            box-shadow: 0 10px 34px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,69,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+            transform: translateY(-2px);
         }
 
         .footer-prompt {
@@ -4342,6 +4357,15 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50%       { opacity: 0; }
+        }
+
+        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+            .footer-terminal { background: rgba(10,10,14,0.92); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .footer-cursor { animation: none; opacity: 1; }
+            .footer-terminal { transition: none; }
         }
 
         /* Redes sociales */

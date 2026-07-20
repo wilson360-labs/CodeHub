@@ -316,7 +316,7 @@
         }
 
         body.light-mode nav a,
-        body.light-mode .terminal-text {
+        body.light-mode .footer-cmd {
             color: #0c0c0c !important;
         }
 
