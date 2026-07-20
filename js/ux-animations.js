@@ -213,7 +213,18 @@
 
   // ── 6. SCROLL REVEAL ────────────────────────────────────────
   function initReveal() {
-    var targets = $$('#services .service-card, .why-card, #skills .skills-header');
+    var targets = $$([
+      '#services .service-card',
+      '.why-card',
+      '#skills .skills-header',
+      '#stats .stat-card',
+      '#weather-section',
+      '#news-section',
+      '#why-me .wm-card',
+      '#open-to-work .otw-info-card',
+      '#mi-pueblo .about-brand-card',
+      '#contact'
+    ].join(', '));
     if (!targets.length) return;
     anime.set(targets, { opacity: 0, translateY: 26 });
     var io = new IntersectionObserver(function (entries) {
@@ -222,7 +233,7 @@
       anime({ targets: vis, opacity: 1, translateY: 0, duration: 500,
         delay: anime.stagger(70), easing: 'easeOutQuart' });
       vis.forEach(function (el) { io.unobserve(el); });
-    }, { threshold: 0.1 });
+    }, { threshold: 0.12 });
     targets.forEach(function (el) { io.observe(el); });
   }
 

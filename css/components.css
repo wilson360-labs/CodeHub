@@ -3148,6 +3148,31 @@
         }
         .blogger-loading i { font-size: 1.4rem; color: var(--primary); display: block; margin-bottom: .6rem; animation: spin 1.2s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .blogger-card.skeleton-card { pointer-events: none; }
+        .blogger-card.skeleton-card .blogger-card-thumb {
+            background: linear-gradient(90deg,
+                rgba(255,255,255,.05) 25%, rgba(255,255,255,.12) 37%, rgba(255,255,255,.05) 63%);
+            background-size: 400% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+        }
+        .blogger-card.skeleton-card .sk-line {
+            height: 11px; border-radius: 6px; margin: .25rem 0;
+            background: linear-gradient(90deg,
+                rgba(255,255,255,.06) 25%, rgba(255,255,255,.14) 37%, rgba(255,255,255,.06) 63%);
+            background-size: 400% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+        }
+        .blogger-card.skeleton-card .sk-line.w-70 { width: 70%; }
+        .blogger-card.skeleton-card .sk-line.w-90 { width: 90%; }
+        .blogger-card.skeleton-card .sk-line.w-40 { width: 40%; height: 9px; margin-top: .6rem; }
+        @keyframes skeleton-shimmer {
+            0%   { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .blogger-card.skeleton-card .blogger-card-thumb,
+            .blogger-card.skeleton-card .sk-line { animation: none; }
+        }
         .blogger-error {
             text-align: center; padding: 2rem 1rem;
             font-size: .82rem; color: var(--muted);

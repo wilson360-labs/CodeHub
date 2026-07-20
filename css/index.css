@@ -2228,7 +2228,7 @@
         }
         .wx-location-btn:hover { background: rgba(64,196,255,.2); }
         .wx-loading {
-            display: flex; align-items: center; gap: .8rem;
+            display: flex; align-items: stretch; gap: .8rem;
             color: var(--muted); font-family: var(--mono); font-size: .82rem;
             padding: 1.5rem 0;
         }
@@ -2240,6 +2240,32 @@
             animation: spin .8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── SKELETON LOADING (reemplaza spinners en clima/noticias) ── */
+        .skeleton-wrap { display: flex; flex-direction: column; gap: .6rem; padding: .3rem 0; }
+        .skeleton-block {
+            height: 14px; border-radius: 7px;
+            background: linear-gradient(90deg,
+                rgba(255,255,255,.06) 25%,
+                rgba(255,255,255,.14) 37%,
+                rgba(255,255,255,.06) 63%);
+            background-size: 400% 100%;
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+        }
+        .skeleton-block.sk-title  { width: 55%; height: 18px; }
+        .skeleton-block.sk-lg     { height: 46px; width: 40%; }
+        .skeleton-block.sk-sm     { width: 30%; }
+        .skeleton-block.sk-full   { width: 100%; }
+        .skeleton-row { display: flex; gap: .6rem; }
+        .skeleton-row .skeleton-block { flex: 1; }
+        @keyframes skeleton-shimmer {
+            0%   { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .skeleton-block { animation: none; }
+        }
+
         .wx-card {
             background: rgba(13,13,26,.9);
             border: 1px solid rgba(64,196,255,.2);

@@ -1007,8 +1007,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Estado de carga -->
             <div id="wx-loading" class="wx-loading">
-                <div class="wx-spinner"></div>
-                <span>Detectando tu ubicación…</span>
+                <div class="skeleton-wrap" style="width:100%">
+                    <div class="skeleton-block sk-sm"></div>
+                    <div class="skeleton-block sk-lg"></div>
+                    <div class="skeleton-row">
+                        <div class="skeleton-block"></div>
+                        <div class="skeleton-block"></div>
+                        <div class="skeleton-block"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Resultado clima -->
@@ -1073,9 +1080,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </a>
             </div>
             <div id="news-real-out">
-                <div class="blogger-loading">
-                    <i class="fas fa-circle-notch"></i>
-                    Cargando noticias...
+                <div class="blogger-grid">
+                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
+                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
+                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
                 </div>
             </div>
         </section>
