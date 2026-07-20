@@ -2968,9 +2968,6 @@
             transition: all .2s;
         }
         .header-yt-btn:hover { background: rgba(255,0,0,.22); transform: translateY(-2px); }
-        .social-yt { color: #fff !important; }
-        .social-yt i { color: #ff0000 !important; }
-        .social-yt:hover { border-color: #ff0000 !important; background: rgba(255,0,0,.12) !important; }
 
         /* Font size cfg */
         body.font-sm { font-size: 14px; }
@@ -4216,12 +4213,6 @@
             border-color: var(--primary);
         }
 
-        .pueblo-terminal-wrap {
-            display: flex;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-
         #floating-menu {
             position: fixed;
             bottom: 30px;
@@ -4308,12 +4299,10 @@
             backdrop-filter: blur(14px) saturate(140%);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 12px;
-            padding: 14px 20px;
+            padding: 0 0 14px;
             display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
-            justify-content: center;
+            flex-direction: column;
+            min-width: min(420px, 90vw);
             box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
             position: relative;
             overflow: hidden;
@@ -4338,6 +4327,30 @@
             border-color: rgba(255,69,0,0.35);
             box-shadow: 0 10px 34px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,69,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
             transform: translateY(-2px);
+        }
+
+        .footer-terminal-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 12px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 12px;
+        }
+
+        .ft-dot { width: 9px; height: 9px; border-radius: 50%; opacity: .85; }
+        .ft-dot-r { background: #ff5f56; }
+        .ft-dot-y { background: #ffbd2e; }
+        .ft-dot-g { background: #27c93f; }
+
+        .footer-terminal-line {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0 20px;
         }
 
         .footer-prompt {
@@ -4395,9 +4408,21 @@
 
         .social-link i { font-size: 1.1rem; }
 
-        .social-wa:hover  { background: rgba(37,211,102,0.15); border-color: rgba(37,211,102,0.4); color: #25d366; transform: translateY(-3px); }
-        .social-tg:hover  { background: rgba(0,136,204,0.15);  border-color: rgba(0,136,204,0.4);  color: #0088cc; transform: translateY(-3px); }
-        .social-em:hover  { background: rgba(255,69,0,0.15);   border-color: rgba(255,69,0,0.4);   color: #ff6b35; transform: translateY(-3px); }
+        .social-wa { color: rgba(37,211,102,.9); border-color: rgba(37,211,102,.22); background: rgba(37,211,102,.06); }
+        .social-wa i { color: #25d366; }
+        .social-wa:hover { background: rgba(37,211,102,0.16); border-color: rgba(37,211,102,0.5); box-shadow: 0 8px 20px rgba(37,211,102,.25); transform: translateY(-3px); }
+
+        .social-tg { color: rgba(0,136,204,.9); border-color: rgba(0,136,204,.22); background: rgba(0,136,204,.06); }
+        .social-tg i { color: #0088cc; }
+        .social-tg:hover { background: rgba(0,136,204,0.16); border-color: rgba(0,136,204,0.5); box-shadow: 0 8px 20px rgba(0,136,204,.25); transform: translateY(-3px); }
+
+        .social-em { color: rgba(255,107,53,.9); border-color: rgba(255,107,53,.22); background: rgba(255,107,53,.06); }
+        .social-em i { color: #ff6b35; }
+        .social-em:hover { background: rgba(255,69,0,0.16); border-color: rgba(255,69,0,0.5); box-shadow: 0 8px 20px rgba(255,69,0,.25); transform: translateY(-3px); }
+
+        .social-yt { color: rgba(255,0,0,.9); border-color: rgba(255,0,0,.22); background: rgba(255,0,0,.06); }
+        .social-yt i { color: #ff0000; }
+        .social-yt:hover { background: rgba(255,0,0,0.16); border-color: rgba(255,0,0,0.5); box-shadow: 0 8px 20px rgba(255,0,0,.25); transform: translateY(-3px); }
 
         /* Visitantes */
         .footer-visitors {

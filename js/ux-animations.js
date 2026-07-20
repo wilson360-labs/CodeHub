@@ -326,11 +326,41 @@
     });
   }
 
+  // ── 11. FOOTER TERMINAL — typing effect al entrar en viewport ──
+  function initFooterTerminalTyping() {
+    var box = document.getElementById('footer-terminal');
+    var cmd = document.getElementById('footer-terminal-cmd');
+    if (!box || !cmd) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var fullText = cmd.textContent;
+    var played = false;
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting || played) return;
+        played = true;
+        io.disconnect();
+        cmd.textContent = '';
+        var i = 0;
+        (function typeNext() {
+          if (i > fullText.length) return;
+          cmd.textContent = fullText.slice(0, i);
+          i++;
+          setTimeout(typeNext, 26);
+        })();
+      });
+    }, { threshold: 0.4 });
+
+    io.observe(box);
+  }
+
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
     initCursor();
     initMobileNav();
     initPostSplashEntrance();
+    initFooterTerminalTyping();
     waitAnime(function () {
       initLogo();
       initChips();

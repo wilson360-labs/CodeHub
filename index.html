@@ -787,14 +787,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
             
-            <!-- Terminal Signature -->
-            <div class="pueblo-terminal-wrap">
-                <div class="footer-terminal">
-                    <span class="footer-prompt">root@wilson<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
-                    <span class="footer-cmd"> echo "Código con pasión desde 2024"</span>
-                    <span class="footer-cursor">█</span>
-                </div>
-            </div>
         </section>
 
         <section id="stats">
@@ -1264,10 +1256,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <footer>
         <div class="footer-content">
             <!-- Terminal signature -->
-            <div class="footer-terminal">
-                <span class="footer-prompt">wilson@codehub<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
-                <span class="footer-cmd"> echo "Código con pasión desde Guatemala 🇬🇹"</span>
-                <span class="footer-cursor">█</span>
+            <div class="footer-terminal" id="footer-terminal">
+                <div class="footer-terminal-bar">
+                    <span class="ft-dot ft-dot-r"></span>
+                    <span class="ft-dot ft-dot-y"></span>
+                    <span class="ft-dot ft-dot-g"></span>
+                </div>
+                <div class="footer-terminal-line">
+                    <span class="footer-prompt">wilson@codehub<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
+                    <span class="footer-cmd" id="footer-terminal-cmd">echo "Código con pasión desde Guatemala 🇬🇹"</span><span class="footer-cursor">█</span>
+                </div>
             </div>
 
             <!-- Redes sociales -->
@@ -3841,7 +3839,7 @@ function requestGeoLocation() {
       if (btn) btn.disabled = false;
     },
     () => { detectWeatherByIP(); if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; } },
-    { timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
 
@@ -3886,18 +3884,35 @@ function showWeatherError(msg) {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
 
 // ── NOTICIAS REALES (RSS) ──────────────────────────────────
-// Fuente: BBC Mundo (RSS público, mundo/política/economía).
-// Se lee vía api.allorigins.win (ya permitido en el CSP) porque los feeds RSS
-// no envían cabeceras CORS para lectura directa desde el navegador.
-const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
-const NEWS_PROXY   = 'https://api.allorigins.win/raw?url=';
+// Fuente: BBC Mundo. Primero se intenta vía backend propio (más fiable,
+// sin depender de un proxy CORS público de terceros); si el backend no
+// responde, se cae al proxy público como respaldo.
+const NEWS_RSS_URL   = 'https://feeds.bbci.co.uk/mundo/rss.xml';
+const NEWS_PROXY     = 'https://api.allorigins.win/raw?url=';
+const NEWS_BACKEND_URL = (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : 'https://codehub-98s6.onrender.com') + '/api/news';
+
+function fetchWithTimeout(url, opts = {}, ms = 8000) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(t));
+}
 
 async function loadRealNews() {
   const out = document.getElementById('news-real-out');
   if (!out) return;
 
+  // 1) Intento primario: backend propio (ya parseado)
   try {
-    const res = await fetch(NEWS_PROXY + encodeURIComponent(NEWS_RSS_URL));
+    const res = await fetchWithTimeout(NEWS_BACKEND_URL, {}, 8000);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.items && data.items.length) { renderRealNews(data.items); return; }
+    }
+  } catch (e) { /* seguimos al plan B */ }
+
+  // 2) Respaldo: proxy CORS público + parseo en el navegador
+  try {
+    const res = await fetchWithTimeout(NEWS_PROXY + encodeURIComponent(NEWS_RSS_URL), {}, 8000);
     if (!res.ok) throw new Error('fetch fallido');
     const xmlText = await res.text();
     const xml = new DOMParser().parseFromString(xmlText, 'text/xml');

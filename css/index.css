@@ -2191,9 +2191,7 @@
             transition: all .2s;
         }
         .header-yt-btn:hover { background: rgba(255,0,0,.22); transform: translateY(-2px); }
-        .social-yt { color: #fff !important; }
-        .social-yt i { color: #ff0000 !important; }
-        .social-yt:hover { border-color: #ff0000 !important; background: rgba(255,0,0,.12) !important; }
+        /* .social-yt: color unificado en components.css (single source of truth) */
 
         /* Font size cfg */
         body.font-sm { font-size: 14px; }

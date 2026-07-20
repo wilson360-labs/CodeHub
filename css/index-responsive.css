@@ -665,12 +665,6 @@
             border-color: var(--primary);
         }
 
-        .pueblo-terminal-wrap {
-            display: flex;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-
         #floating-menu {
             position: fixed;
             bottom: 30px;
@@ -747,61 +741,7 @@
             gap: 2rem;
         }
 
-        /* Terminal */
-        .footer-terminal {
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            font-size: 0.88rem;
-            color: rgba(255,255,255,0.5);
-            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.55));
-            -webkit-backdrop-filter: blur(14px) saturate(140%);
-            backdrop-filter: blur(14px) saturate(140%);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 14px 20px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
-            justify-content: center;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
-            position: relative;
-            overflow: hidden;
-            transition: border-color .3s ease, box-shadow .3s ease, transform .3s ease;
-        }
-
-        .footer-terminal:hover {
-            border-color: rgba(255,69,0,0.35);
-            box-shadow: 0 10px 34px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,69,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
-            transform: translateY(-2px);
-        }
-
-        .footer-prompt {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .footer-sep { color: rgba(255,255,255,0.3); }
-
-        .footer-cmd { color: rgba(255,255,255,0.75); }
-
-        .footer-cursor {
-            color: var(--accent);
-            animation: blink 1.2s step-end infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50%       { opacity: 0; }
-        }
-
-        @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-            .footer-terminal { background: rgba(10,10,14,0.92); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .footer-cursor { animation: none; opacity: 1; }
-            .footer-terminal { transition: none; }
-        }
+        /* Terminal: definido en components.css (single source of truth) */
 
         /* Redes sociales */
         .footer-socials {
@@ -811,28 +751,7 @@
             justify-content: center;
         }
 
-        .social-link {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-size: 0.88rem;
-            font-weight: 600;
-            font-family: 'Space Grotesk', sans-serif;
-            border: 1px solid rgba(255,255,255,0.08);
-            background: rgba(255,255,255,0.04);
-            color: rgba(255,255,255,0.7);
-            transition: all 0.25s ease;
-            letter-spacing: 0.02em;
-        }
-
-        .social-link i { font-size: 1.1rem; }
-
-        .social-wa:hover  { background: rgba(37,211,102,0.15); border-color: rgba(37,211,102,0.4); color: #25d366; transform: translateY(-3px); }
-        .social-tg:hover  { background: rgba(0,136,204,0.15);  border-color: rgba(0,136,204,0.4);  color: #0088cc; transform: translateY(-3px); }
-        .social-em:hover  { background: rgba(255,69,0,0.15);   border-color: rgba(255,69,0,0.4);   color: #ff6b35; transform: translateY(-3px); }
+        /* .social-link y variantes de color: definidos en components.css (single source of truth) */
 
         /* Visitantes */
         .footer-visitors {

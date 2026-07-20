@@ -982,6 +982,49 @@ app.get('/api/apps', async (_, res) => {
   } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
 });
 
+// Noticias (BBC Mundo RSS) — leído server-side para evitar depender
+// de proxies CORS públicos poco fiables (allorigins, etc.) en el navegador.
+const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
+app.get('/api/news', async (_, res) => {
+  try {
+    const cached = await cacheGet('news:bbc-mundo');
+    if (cached) { res.set('X-Cache', 'HIT'); return res.json(cached); }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch(NEWS_RSS_URL, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
+    }).finally(() => clearTimeout(timeout));
+    if (!r.ok) throw new Error('RSS fetch fallido: ' + r.status);
+    const xml = await r.text();
+
+    const items = [];
+    const itemRe = /<item>([\s\S]*?)<\/item>/g;
+    const tag = (block, name) => {
+      const m = block.match(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
+      return m ? m[1].trim() : '';
+    };
+    let m;
+    while ((m = itemRe.exec(xml)) && items.length < 6) {
+      const block = m[1];
+      const title = tag(block, 'title');
+      const url   = tag(block, 'link');
+      const pub   = tag(block, 'pubDate');
+      const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+      let desc = tag(block, 'description').replace(/<[^>]+>/g, '').slice(0, 130);
+      if (title) items.push({ title, url, date, desc });
+    }
+    if (!items.length) throw new Error('sin items en el RSS');
+
+    const result = { items, source: 'BBC Mundo', fetchedAt: new Date().toISOString() };
+    await cacheSet('news:bbc-mundo', result, 900); // 15 min
+    res.set('X-Cache', 'MISS'); res.json(result);
+  } catch (e) {
+    res.status(502).json({ error: 'No se pudieron obtener las noticias', detail: e.message });
+  }
+});
+
 // Chat IA
 app.post('/api/chat', async (req, res) => {
   const { message, sessionId = 'anon' } = req.body;
