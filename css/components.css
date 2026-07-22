@@ -1743,17 +1743,41 @@
 /* Imagen generada en el chat */
 .ai-gen-img-wrap{margin:.3rem 0;}
 .ai-gen-img{
-  width:100%;max-width:100%;border-radius:12px;display:block;
-  cursor:pointer;transition:transform .2s,box-shadow .2s;
-  box-shadow:0 4px 20px rgba(0,0,0,.5);
+  width:auto;max-width:200px;max-height:200px;border-radius:12px;display:block;
+  cursor:zoom-in;transition:transform .2s,box-shadow .2s;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);object-fit:cover;
 }
-.ai-gen-img:hover{transform:scale(1.01);box-shadow:0 8px 32px rgba(124,77,255,.3);}
+.ai-gen-img:hover{transform:scale(1.02);box-shadow:0 8px 32px rgba(124,77,255,.3);}
 .ai-gen-img-footer{
   font-size:.65rem;color:rgba(180,180,220,.5);
   font-family:'JetBrains Mono',monospace;
   margin-top:.45rem;display:flex;align-items:center;gap:.4rem;
 }
 .ai-gen-img-footer i{color:rgba(255,107,170,.7);}
+
+/* ── Lightbox: toca la miniatura para verla en grande ── */
+#ai-img-lightbox{
+  position:fixed;inset:0;z-index:99998;background:rgba(6,6,10,.92);
+  display:none;align-items:center;justify-content:center;padding:1.2rem;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+#ai-img-lightbox.open{display:flex;animation:aiLightboxIn .18s ease-out both;}
+@keyframes aiLightboxIn{from{opacity:0}to{opacity:1}}
+#ai-img-lightbox img{
+  max-width:min(94vw,900px);max-height:88vh;border-radius:14px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:aiLightboxZoom .22s cubic-bezier(.2,.9,.2,1) both;
+}
+@keyframes aiLightboxZoom{from{transform:scale(.9);opacity:.4}to{transform:scale(1);opacity:1}}
+#ai-img-lightbox-close{
+  position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+@media(max-width:640px){
+  .ai-gen-img{max-width:150px;max-height:150px;}
+}
 @media(max-width:920px){
   .ai-bottom-bar { min-height:66px; padding-left:.85rem; padding-right:.85rem; }
   .ai-circle-btn { min-height:44px; }
@@ -3826,6 +3850,9 @@
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .service-card::before {
@@ -3851,18 +3878,23 @@
         }
 
         .service-icon {
-            font-size: 3.5rem;
+            font-size: clamp(1.6rem, 6vw, 3.5rem);
             color: var(--primary);
-            margin-bottom: 1.5rem;
+            margin-bottom: clamp(0.6rem, 2vw, 1.5rem);
+            line-height: 1;
             display: inline-block;
             animation: iconFloat 3s ease-in-out infinite;
             filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.5));
+            position: relative;
+            z-index: 1;
         }
 
         .service-card h3 {
             color: var(--accent);
             font-size: 1.5rem;
             margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
         }
 
         .service-card p {
@@ -4495,7 +4527,7 @@
             /* Servicios — 2 columnas en mobile */
             .services-grid { grid-template-columns: repeat(2,1fr); gap: 1rem; }
             .service-card { padding: 1.2rem .8rem; }
-            .service-icon { font-size: 2rem !important; margin-bottom: .8rem; }
+            /* .service-icon: tamaño fluido ahora controlado por clamp() en components.css */
             .service-card h3 { font-size: 1rem; margin-bottom: .4rem; }
             .service-card p { font-size: .78rem; line-height: 1.5; }
             .command-palette { width: 95%; }

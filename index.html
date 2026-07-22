@@ -134,11 +134,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/index.css?v=20260722c">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/components.css?v=20260722c">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260722c">
 
 
 
@@ -1338,7 +1338,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722c"></script>
     <script>
         console.log('Script started');
         // ========== FUNCIONES BÁSICAS ==========
@@ -2699,7 +2699,7 @@ async function chNotifWeatherCheck(lat, lon) {
 
 </nav>
 
-<script src="js/script.js"></script>
+<script src="js/script.js?v=20260722c"></script>
 
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -2876,6 +2876,28 @@ async function sendEmail(e) {
   <div class="fab-wave fw2"></div>
   <div class="fab-wave fw3"></div>
 </button>
+
+<div id="ai-img-lightbox" onclick="if(event.target===this)closeAiImgLightbox()">
+  <button id="ai-img-lightbox-close" onclick="closeAiImgLightbox()" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>
+  <img id="ai-img-lightbox-img" src="" alt="Imagen generada por EMI COPILOT (vista ampliada)">
+</div>
+<script>
+  function openAiImgLightbox(uid) {
+    var thumb = document.getElementById(uid);
+    var box = document.getElementById('ai-img-lightbox');
+    var full = document.getElementById('ai-img-lightbox-img');
+    if (!thumb || !box || !full) return;
+    full.src = thumb.src;
+    box.classList.add('open');
+  }
+  function closeAiImgLightbox() {
+    var box = document.getElementById('ai-img-lightbox');
+    if (box) box.classList.remove('open');
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeAiImgLightbox();
+  });
+</script>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI COPILOT">
   <!-- Boot scan overlay — se muestra solo al abrir -->
@@ -3173,12 +3195,19 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
   };
   if (clearB) clearB.addEventListener('click', resetChat);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
-  // Mobile: swipe down to close
+  // Mobile: swipe down to close — solo desde el header/handle, nunca
+  // mientras el usuario desliza dentro de la conversación para leerla.
   let touchStartY = 0;
-  panel.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
-  panel.addEventListener('touchend', e => {
+  const aiHead = panel.querySelector('.ai-head');
+  const swipeTarget = aiHead || panel;
+  swipeTarget.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  swipeTarget.addEventListener('touchend', e => {
     const diff = e.changedTouches[0].clientY - touchStartY;
-    if (diff > 80) setOpen(false);
+    // Además, si por alguna razón el evento viene del área de mensajes,
+    // solo cerrar cuando esa lista ya está arriba del todo (scrollTop 0),
+    // para no confundir "quiero leer mensajes anteriores" con "cerrar".
+    const msgsAtTop = !msgs || msgs.scrollTop <= 0;
+    if (diff > 80 && msgsAtTop) setOpen(false);
   }, { passive: true });
 
   function rotatePrompt(force = false) {
@@ -3403,8 +3432,8 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
               alt="Imagen generada por EMI COPILOT"
               class="ai-gen-img"
               id="${uid}"
-              onclick="window.open('${isBase64 ? '#' : imgSrc}','_blank')"
-              title="Imagen generada"
+              onclick="openAiImgLightbox('${uid}')"
+              title="Toca para ver en grande"
               loading="lazy"
               onerror="this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
             <div class="ai-gen-img-footer">
@@ -4880,9 +4909,9 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-<script src="js/device-detect.js"></script>
-<script src="js/thinking-orb.js"></script>
-<script src="js/ux-animations.js"></script>
+<script src="js/device-detect.js?v=20260722c"></script>
+<script src="js/thinking-orb.js?v=20260722c"></script>
+<script src="js/ux-animations.js?v=20260722c"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
