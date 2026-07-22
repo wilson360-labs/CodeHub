@@ -4541,35 +4541,7 @@
 }
 
 /* ═══ NEON CURSOR TRAIL ═══ */
-/* DISABLED: Custom cursor animation causes lag */
-#ch-cursor {
-    display: none!important;
-    visibility: hidden!important;
-    position: fixed;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,69,0,0.9) 0%, rgba(255,107,53,0.3) 60%, transparent 80%);
-    pointer-events: none;
-    z-index: 99998;
-    transform: translate(-50%, -50%);
-    transition: width .15s, height .15s, background .2s;
-    mix-blend-mode: screen;
-}
-#ch-cursor-ring {
-    display: none!important;
-    visibility: hidden!important;
-    position: fixed;
-    width: 34px; height: 34px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(255,69,0,0.45);
-    pointer-events: none;
-    z-index: 99997;
-    transform: translate(-50%, -50%);
-    transition: width .3s cubic-bezier(.2,.9,.2,1), height .3s cubic-bezier(.2,.9,.2,1), border-color .2s, left .08s ease, top .08s ease;
-    mix-blend-mode: screen;
-}
-body:has(a:hover) #ch-cursor { width: 20px; height: 20px; }
-body:has(button:hover) #ch-cursor { width: 22px; height: 22px; background: radial-gradient(circle, rgba(124,77,255,0.9) 0%, rgba(124,77,255,0.3) 60%, transparent 80%); }
+/* REMOVED: Custom cursor - using browser default for better performance */
 
 /* ═══ MAGNETIC CARD EFFECT ═══ */
 .stat-card, .service-card, .wm-card, .proj-card {
