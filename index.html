@@ -22,6 +22,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="google-adsense-account" content="ca-pub-3780093322926832">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <script>
+    /* Detección temprana de dispositivo (sincrónica, antes del primer
+       pintado) para evitar parpadeos y para que el resto del sitio no
+       dependa solo del ancho CSS, que puede fallar con zoom o modo
+       "escritorio" en navegadores móviles. Ver js/device-detect.js
+       para la versión completa que se re-evalúa en resize/orientación. */
+    (function () {
+      var d = document.documentElement;
+      var ua = navigator.userAgent || '';
+      var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      var touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      var mobileUA = /Mobi|Android|iPhone|iPod|IEMobile|BlackBerry|Opera Mini/i.test(ua);
+      var w = window.innerWidth;
+      if ((coarse || touch) && (mobileUA || w <= 900)) d.classList.add('is-mobile');
+      d.style.setProperty('--app-height', window.innerHeight + 'px');
+      d.style.setProperty('--app-width', window.innerWidth + 'px');
+    })();
+    </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
@@ -4862,6 +4880,7 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+<script src="js/device-detect.js"></script>
 <script src="js/thinking-orb.js"></script>
 <script src="js/ux-animations.js"></script>
 
@@ -4893,18 +4912,40 @@ function setAIMood(btn) {
 /* Puntero nativo del sistema — sin cursor personalizado */
 </script>
 
-/* ══ 3D TILT ON STAT CARDS ══ */
+<script>
+/* ══ 3D TILT ON STAT CARDS — ahora con soporte táctil (móvil) ══ */
 (function() {
+    function applyTilt(card, clientX, clientY) {
+        var rect = card.getBoundingClientRect();
+        var x = (clientX - rect.left) / rect.width  - 0.5;
+        var y = (clientY - rect.top)  / rect.height - 0.5;
+        card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 8) + 'deg) translateZ(8px)';
+    }
+    function resetTilt(card) {
+        card.style.transform = '';
+    }
+
     document.querySelectorAll('.stat-card, .service-card, .wm-card').forEach(function(card) {
+        // Escritorio: mousemove
         card.addEventListener('mousemove', function(e) {
-            var rect = card.getBoundingClientRect();
-            var x = (e.clientX - rect.left) / rect.width  - 0.5;
-            var y = (e.clientY - rect.top)  / rect.height - 0.5;
-            card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 8) + 'deg) translateZ(8px)';
+            applyTilt(card, e.clientX, e.clientY);
         });
         card.addEventListener('mouseleave', function() {
-            card.style.transform = '';
+            resetTilt(card);
         });
+
+        // Móvil / táctil: el dedo "inclina" la tarjeta mientras se desliza sobre ella
+        card.addEventListener('touchstart', function(e) {
+            var t = e.touches[0];
+            if (t) applyTilt(card, t.clientX, t.clientY);
+        }, { passive: true });
+        card.addEventListener('touchmove', function(e) {
+            var t = e.touches[0];
+            if (t) applyTilt(card, t.clientX, t.clientY);
+        }, { passive: true });
+        card.addEventListener('touchend', function() {
+            resetTilt(card);
+        }, { passive: true });
     });
 })();
 </script>

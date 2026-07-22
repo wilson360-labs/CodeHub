@@ -1,10 +1,11 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v4.2 — Wilson.E 2026
+//  CodeHub SW v4.3 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync + update
 //  + Push Notifications (app updates + clima)
+//  v4.3: fix de animaciones/detección móvil — fuerza refresco de caché
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v4.2';
+const VERSION   = 'codehub-v4.3';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -21,6 +22,7 @@ const PRECACHE = [
   '/js/script.js',
   '/js/theme-switcher.js',
   '/js/updater.js',
+  '/js/device-detect.js',
 ];
 
 // ── INSTALL ───────────────────────────────────────────
