@@ -39,6 +39,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   function setOpen(v) {
     isOpen = v;
     panel.classList.toggle('open', v);
+    fab.classList.toggle('hidden', v);
     if (v) {
       input.focus();
       fab.querySelector('.ai-notif').style.display = 'none';
