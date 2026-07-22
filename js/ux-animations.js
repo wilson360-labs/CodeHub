@@ -357,7 +357,7 @@
 
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
-    initCursor();
+    // initCursor(); // DISABLED: custom cursor animation causes lag
     initMobileNav();
     initPostSplashEntrance();
     initFooterTerminalTyping();
@@ -368,7 +368,7 @@
       initReveal();
       initIconHover();
       initThemeTransition();
-      initMagneticCards();
+      // initMagneticCards(); // DISABLED: magnetic hover causes lag on mousemove
     });
   });
 

@@ -570,8 +570,8 @@
             font-size: 1.2rem;
         }
 
-        /* Cursor Particles */
-        .cursor-particle {
+        /* ❌ DESACTIVADO: Cursor Particles causaban lag */
+        /*.cursor-particle {
             position: fixed;
             width: 6px;
             height: 6px;
@@ -587,7 +587,7 @@
                 opacity: 0;
                 transform: translateY(-30px) scale(0);
             }
-        }
+        }*/
 
         /* Neural Network Canvas */
         #neural-network {
@@ -1378,7 +1378,7 @@
 
 #ai-fab:hover { transform:translateY(-3px) scale(1.04); box-shadow:0 10px 32px rgba(106,17,255,.65), 0 0 0 4px rgba(37,117,252,.2); }
 #ai-fab:active { transform:scale(.96); }
-#ai-fab.hidden { display:none!important;opacity:0;pointer-events:none;transform:scale(0) rotate(-90deg); }
+#ai-fab.hidden { display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;transform:scale(0) rotate(-90deg)!important; }
 
 #ai-fab .ai-fab-icon {
   width:28px;height:28px;
@@ -4541,7 +4541,10 @@
 }
 
 /* ═══ NEON CURSOR TRAIL ═══ */
+/* DISABLED: Custom cursor animation causes lag */
 #ch-cursor {
+    display: none!important;
+    visibility: hidden!important;
     position: fixed;
     width: 14px; height: 14px;
     border-radius: 50%;
@@ -4553,6 +4556,8 @@
     mix-blend-mode: screen;
 }
 #ch-cursor-ring {
+    display: none!important;
+    visibility: hidden!important;
     position: fixed;
     width: 34px; height: 34px;
     border-radius: 50%;
