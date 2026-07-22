@@ -1067,13 +1067,16 @@
   /* ── BLOG / NOTICIAS ── */
   #news-section { padding: 2rem 1rem; }
   .blogger-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.65rem;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.5rem;
   }
-  .blogger-card-thumb { height: 110px !important; }
-  .blogger-card-title { font-size: 0.82rem; }
-  .blogger-card-desc { font-size: 0.7rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .blogger-card-meta { font-size: 0.62rem; }
+  .blogger-card-thumb { height: 70px !important; font-size: 1.3rem; }
+  .blogger-card-body { padding: 0.55rem 0.5rem; gap: 0.2rem; }
+  .blogger-card-label { font-size: 0.55rem; }
+  .blogger-card-title { font-size: 0.68rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .blogger-card-desc { display: none; }
+  .blogger-card-meta { font-size: 0.56rem; flex-wrap: wrap; gap: 0.3rem; }
+  .blogger-card-relative { margin-left: 0; }
 
   /* ── CONTACTO ── */
   #contact { padding: 2rem 1rem; }
@@ -1347,14 +1350,15 @@
 
   /* ── BLOG ── */
   .blogger-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 0.55rem;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.45rem;
   }
-  .blogger-card-thumb { height: 95px !important; }
-  .blogger-card-title { font-size: 0.78rem; -webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-  .blogger-card-desc { font-size: 0.68rem; -webkit-line-clamp: 2; }
-  .blogger-card-body { padding: 0.7rem 0.75rem; gap: 0.3rem; }
+  .blogger-card-thumb { height: 62px !important; font-size: 1.1rem; }
+  .blogger-card-title { font-size: 0.64rem; -webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
+  .blogger-card-desc { display: none; }
+  .blogger-card-body { padding: 0.5rem 0.45rem; gap: 0.2rem; }
   .blogger-card-relative { margin-left: 0; }
+  .blogger-card-meta { font-size: 0.52rem; }
 
   /* ── CLIMA ── */
   .wx-temp { font-size: 2.5rem; }
@@ -1435,10 +1439,12 @@
   .wm-card-desc { display: none; } /* solo muestra título e ícono */
 
   /* ── BLOG ── */
-  .blogger-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem; }
-  .blogger-card-thumb { height: 85px !important; }
-  .blogger-card-title { font-size: 0.74rem; }
+  .blogger-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 0.4rem; }
+  .blogger-card-thumb { height: 58px !important; font-size: 1rem; }
+  .blogger-card-title { font-size: 0.6rem; line-height: 1.25; }
+  .blogger-card-body { padding: 0.4rem 0.4rem; gap: 0.15rem; }
   .blogger-card-desc { display: none; } /* prioriza título+imagen en pantallas muy angostas */
+  .blogger-card-meta { font-size: 0.5rem; }
 
   /* ── SKILLS ── */
   .sk-tools-grid {

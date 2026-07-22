@@ -103,8 +103,17 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
 
     <!-- Font Awesome — diferido, no bloquea render -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link id="fa-preload" rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
+    <script>
+      /* Fallback: algunos navegadores/webviews móviles (WhatsApp, Instagram, Facebook)
+         no disparan onload en <link rel="preload">, dejando los íconos (y sus colores)
+         sin cargar. Forzamos el swap a stylesheet si no ocurrió tras 1.5s. */
+      setTimeout(function () {
+        var l = document.getElementById('fa-preload');
+        if (l && l.rel !== 'stylesheet') l.rel = 'stylesheet';
+      }, 1500);
+    </script>
 
     <!-- Estilos principales -->
     <link rel="stylesheet" href="css/index.css">
@@ -4895,6 +4904,12 @@ function setAIMood(btn) {
         cy = e.clientY;
         cursor.style.left = cx + 'px';
         cursor.style.top  = cy + 'px';
+        cursor.classList.add('ch-active');
+        ring.classList.add('ch-active');
+    });
+    document.addEventListener('mouseleave', function() {
+        cursor.classList.remove('ch-active');
+        ring.classList.remove('ch-active');
     });
     
     function animRing() {
