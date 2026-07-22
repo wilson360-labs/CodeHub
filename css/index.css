@@ -2263,9 +2263,7 @@
             0%   { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        @media (prefers-reduced-motion: reduce) {
-            .skeleton-block { animation: none; }
-        }
+        /* Skeleton loading: animación activa siempre (independiente del SO) */
 
         .wx-card {
             background: rgba(13,13,26,.9);
@@ -2607,22 +2605,16 @@
             .pueblo-iframe-wrap { height: 200px; }
         }
 /* ═══════════════════════════════════════
-   ACCESIBILIDAD — Reducir movimiento
-   Respeta la preferencia del SO del usuario
+   NOTA: antes existía aquí una regla @media
+   (prefers-reduced-motion: reduce) que apagaba
+   TODAS las animaciones del sitio (*, *::before,
+   *::after con !important) cuando el sistema
+   operativo del visitante tenía activado
+   "reducir movimiento". Por decisión explícita
+   del dueño del sitio, las animaciones de CodeHub
+   ya NO dependen de esa preferencia del SO — se
+   muestran siempre, en PC y en móvil.
 ═══════════════════════════════════════ */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  /* Mantener solo feedback visual mínimo */
-  .dock-item:hover { transform: translateY(-4px) scale(1.05) !important; }
-  #whatsNewIcon { animation: none !important; transform: translateY(-50%) !important; }
-}
 
 /* ═══════════════════════════════════════════════════════════════
    UX ENHANCEMENTS — thesvg icons + Anime.js polish

@@ -134,11 +134,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260722c">
+    <link rel="stylesheet" href="css/index.css?v=20260722d">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260722c">
+    <link rel="stylesheet" href="css/components.css?v=20260722d">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260722c">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260722d">
 
 
 
@@ -1338,7 +1338,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722c"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722d"></script>
     <script>
         console.log('Script started');
         // ========== FUNCIONES BÁSICAS ==========
@@ -1558,13 +1558,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         let _resizeTimer;
         window.addEventListener('resize', () => { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(init, 200); });
 
-        // Respeta preferencia de sistema: si pide menos movimiento, omite la animación
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            canvas.style.display = 'none';
-        } else {
-            init();
-            animate();
-        }
+        // Antes se ocultaba con prefers-reduced-motion; por decisión del
+        // dueño del sitio, esta animación ahora siempre se muestra.
+        init();
+        animate();
 
         // Cursor Particles — throttled, máx 12 en DOM simultáneo
         let _cpPool = [];
@@ -2699,7 +2696,7 @@ async function chNotifWeatherCheck(lat, lon) {
 
 </nav>
 
-<script src="js/script.js?v=20260722c"></script>
+<script src="js/script.js?v=20260722d"></script>
 
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -4841,14 +4838,11 @@ function setAIMood(btn) {
     requestAnimationFrame(loop);
   }
 
-  /* ── 5. INIT ────────────────────────────────────────────── */
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    canvas.style.display = 'none';
-  } else {
-    resize();
-    initParticles();
-    loop();
-  }
+  /* ── 5. INIT ── (antes se ocultaba con prefers-reduced-motion; ahora
+     siempre se muestra, por decisión del dueño del sitio) ────────── */
+  resize();
+  initParticles();
+  loop();
   let _heroResizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(_heroResizeTimer);
@@ -4909,9 +4903,9 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-<script src="js/device-detect.js?v=20260722c"></script>
-<script src="js/thinking-orb.js?v=20260722c"></script>
-<script src="js/ux-animations.js?v=20260722c"></script>
+<script src="js/device-detect.js?v=20260722d"></script>
+<script src="js/thinking-orb.js?v=20260722d"></script>
+<script src="js/ux-animations.js?v=20260722d"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

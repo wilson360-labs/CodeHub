@@ -6,7 +6,9 @@
 (function () {
   'use strict';
 
-  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Nota: antes se desactivaba con prefers-reduced-motion; por decisión
+  // del dueño del sitio, el orbe de "pensando" ahora siempre anima.
+  var reduceMotion = false;
 
   function withAlpha(rgbaStr, a) {
     return rgbaStr.replace(/[\d.]+\)\s*$/, a.toFixed(2) + ')');

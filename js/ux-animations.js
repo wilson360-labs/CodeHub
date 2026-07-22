@@ -331,7 +331,7 @@
     var box = document.getElementById('footer-terminal');
     var cmd = document.getElementById('footer-terminal-cmd');
     if (!box || !cmd) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Nota: antes se omitía con prefers-reduced-motion; ahora siempre anima.
 
     var fullText = cmd.textContent;
     var played = false;

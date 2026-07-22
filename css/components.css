@@ -3200,10 +3200,7 @@
             0%   { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        @media (prefers-reduced-motion: reduce) {
-            .blogger-card.skeleton-card .blogger-card-thumb,
-            .blogger-card.skeleton-card .sk-line { animation: none; }
-        }
+        /* Animación de skeleton-loading: se mantiene activa siempre (independiente del SO) */
         .blogger-error {
             text-align: center; padding: 2rem 1rem;
             font-size: .82rem; color: var(--muted);
@@ -4419,10 +4416,7 @@
             .footer-terminal { background: rgba(10,10,14,0.92); }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-            .footer-cursor { animation: none; opacity: 1; }
-            .footer-terminal { transition: none; }
-        }
+        /* Cursor del footer: animación activa siempre (independiente del SO) */
 
         /* Redes sociales */
         .footer-socials {
