@@ -106,6 +106,7 @@
 
         <!-- Progress -->
         <div class="sig-progress" id="sig-progress" style="display:none">
+          <canvas class="sig-orb" id="sig-orb" width="48" height="48" aria-label="Generando imagen"></canvas>
           <div class="sig-progress-bar" id="sig-progress-bar"></div>
           <p class="sig-progress-msg" id="sig-progress-msg">Preparando…</p>
         </div>
@@ -238,17 +239,23 @@
   }
 
   // ── UI helpers ───────────────────────────────────────────────
+  let orbInstance = null;
   function showProgress() {
     const el = document.getElementById('sig-progress');
     if (el) { el.style.display = 'block'; setProgressPct(10); setProgressMsg('Preparando prompt…'); }
     const btn = document.getElementById('sig-generate-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando…'; }
+    const orbEl = document.getElementById('sig-orb');
+    if (orbEl && window.ThinkingOrb) {
+      orbInstance = window.ThinkingOrb.create(orbEl, { state: 'working', size: 48, color: 'rgba(255,107,53,0.95)' });
+    }
   }
   function hideProgress() {
     const el = document.getElementById('sig-progress');
     if (el) el.style.display = 'none';
     const btn = document.getElementById('sig-generate-btn');
     if (btn) { btn.disabled = false; btn.textContent = '🎨 ' + (skillData?.ui?.cta || 'Generar imagen'); }
+    if (orbInstance) { orbInstance.destroy(); orbInstance = null; }
   }
   function setProgressMsg(msg) {
     const el = document.getElementById('sig-progress-msg');

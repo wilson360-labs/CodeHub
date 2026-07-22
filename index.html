@@ -3508,12 +3508,14 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
         <div class="ai-msg-avatar">✦</div>
         <div class="ai-msg-content">
           <div class="ai-msg">
-            <span class="ai-typing-dot"></span>
-            <span class="ai-typing-dot"></span>
-            <span class="ai-typing-dot"></span>
+            <canvas class="ai-orb" width="26" height="26" aria-label="EMI está pensando"></canvas>
           </div>
         </div>`;
       msgs.appendChild(wrap);
+      var orbCanvas = wrap.querySelector('.ai-orb');
+      if (orbCanvas && window.ThinkingOrb) {
+        window.ThinkingOrb.create(orbCanvas, { state: 'composing', size: 26, color: 'rgba(124,77,255,0.9)' });
+      }
       scrollMsgs();
       return wrap;
     }
@@ -4860,6 +4862,7 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+<script src="js/thinking-orb.js"></script>
 <script src="js/ux-animations.js"></script>
 
 <!-- Mobile Bottom Navigation Bar -->

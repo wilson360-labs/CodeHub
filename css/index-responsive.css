@@ -19,6 +19,9 @@
             transition: all 0.4s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .service-card::before {
@@ -47,16 +50,23 @@
             font-size: 3.5rem;
             color: var(--primary);
             margin-bottom: 1.5rem;
-            display: inline-block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1em;
+            order: 0;
             animation: iconFloat 3s ease-in-out infinite;
             filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.5));
         }
 
         .service-card h3 {
+            order: 1;
             color: var(--accent);
             font-size: 1.5rem;
             margin-bottom: 1rem;
         }
+
+        .service-card p { order: 2; }
 
         .service-card p {
             color: #cccccc;
