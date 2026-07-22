@@ -1341,13 +1341,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         function typeEffect() {
             const typingElement = document.getElementById('typingEffect');
             if (!typingElement) return;
-            const currentPhrase = typingPhrases[phraseIndex];
+            const chars = Array.from(typingPhrases[phraseIndex]);
             
             if (isDeleting) {
-                typingElement.textContent = currentPhrase.substring(0, charIndex - 1);
+                typingElement.textContent = chars.slice(0, charIndex - 1).join('');
                 charIndex--;
             } else {
-                typingElement.textContent = currentPhrase.substring(0, charIndex + 1);
+                typingElement.textContent = chars.slice(0, charIndex + 1).join('');
                 charIndex++;
             }
             
@@ -1360,7 +1360,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 typingElement.appendChild(cursor);
             }
             
-            if (!isDeleting && charIndex === currentPhrase.length) {
+            if (!isDeleting && charIndex === chars.length) {
                 setTimeout(() => isDeleting = true, 2000);
             } else if (isDeleting && charIndex === 0) {
                 isDeleting = false;
@@ -4886,61 +4886,9 @@ function setAIMood(btn) {
   </a>
 </nav>
 
-<div id="ch-cursor" aria-hidden="true"></div>
-<div id="ch-cursor-ring" aria-hidden="true"></div>
-
 <script>
-/* ══ NEON CURSOR TRACKER ══ */
-(function() {
-    var cursor = document.getElementById('ch-cursor');
-    var ring   = document.getElementById('ch-cursor-ring');
-    if (!cursor || !ring) return;
-    
-    var cx = -100, cy = -100, rx = -100, ry = -100;
-    var speed = 0.12;
-    
-    document.addEventListener('mousemove', function(e) {
-        cx = e.clientX;
-        cy = e.clientY;
-        cursor.style.left = cx + 'px';
-        cursor.style.top  = cy + 'px';
-        cursor.classList.add('ch-active');
-        ring.classList.add('ch-active');
-    });
-    document.addEventListener('mouseleave', function() {
-        cursor.classList.remove('ch-active');
-        ring.classList.remove('ch-active');
-    });
-    
-    function animRing() {
-        rx += (cx - rx) * speed;
-        ry += (cy - ry) * speed;
-        ring.style.left = rx + 'px';
-        ring.style.top  = ry + 'px';
-        requestAnimationFrame(animRing);
-    }
-    animRing();
-    
-    // Interactive: expand on hover
-    document.querySelectorAll('a, button, .dock-item, .service-card, .stat-card').forEach(function(el) {
-        el.addEventListener('mouseenter', function() {
-            ring.style.width  = '52px';
-            ring.style.height = '52px';
-            ring.style.borderColor = 'rgba(255,107,53,0.8)';
-        });
-        el.addEventListener('mouseleave', function() {
-            ring.style.width  = '34px';
-            ring.style.height = '34px';
-            ring.style.borderColor = 'rgba(255,69,0,0.45)';
-        });
-    });
-    
-    // Hide on mobile
-    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-        cursor.style.display = 'none';
-        ring.style.display = 'none';
-    }
-})();
+/* Puntero nativo del sistema — sin cursor personalizado */
+</script>
 
 /* ══ 3D TILT ON STAT CARDS ══ */
 (function() {

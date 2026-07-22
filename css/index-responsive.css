@@ -873,6 +873,7 @@
     padding: 0.5rem 1rem;
     gap: 0.5rem;
   }
+  section, [id] { scroll-margin-top: 95px; }
   .header-logo-desc { display: none !important; }
   .header-logo-meta { gap: 0.3rem; }
   .header-logo-badge { font-size: 0.62rem; padding: 2px 8px; }

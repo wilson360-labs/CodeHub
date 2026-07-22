@@ -333,6 +333,7 @@
             border-radius: 0 14px 14px 0;
             cursor: pointer;
             z-index: 999;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -4530,7 +4531,7 @@
 .ch-act-item:last-child{border-bottom:none}
 .ch-act-time{font-size:.52rem;color:rgba(240,240,250,.28);white-space:nowrap;flex-shrink:0;margin-top:.05rem}
 #ch-activity-btn:hover{background:linear-gradient(135deg,rgba(255,69,0,.25),rgba(255,69,0,.12));transform:translateY(-2px)}
-@media(max-width:600px){
+@media(max-width:768px){
   #ch-activity-btn{right:auto!important;left:16px!important;}
 }
 
@@ -4577,9 +4578,9 @@
 /* .ch-wave background-size override removido — usa el valor original 1000px 110px definido en el splash */
 
 /* ── Experimental menu mobile ── */
-@media(max-width:550px){
+@media(max-width:768px){
   .menu-toggle-text { display:none !important; }
-  .menu-toggle-btn { padding:.45rem .6rem; writing-mode:vertical-rl; }
+  .menu-toggle-btn { padding:.45rem .6rem; writing-mode:vertical-rl; overflow:hidden; }
   #experimental-menu { width:260px; }
 }
 

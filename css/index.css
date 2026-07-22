@@ -413,6 +413,7 @@
             border-radius: 0 14px 14px 0;
             cursor: pointer;
             z-index: 999;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1429,7 +1430,9 @@
             position: relative;
             overflow: hidden;
             animation: slideInUp 0.8s ease-out;
+            scroll-margin-top: 110px;
         }
+        [id] { scroll-margin-top: 110px; }
 
         @keyframes slideInUp {
             from { opacity: 0; transform: translateY(50px); }
@@ -2715,41 +2718,7 @@
   box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,69,0,.1);
 }
 
-/* ── Custom cursor (desktop only) ──────────────────────────── */
-@media (pointer: fine) {
-  body, a, button, [onclick], label, select, [role=button] { cursor: none !important; }
-  #ch-cursor {
-    position: fixed;
-    top: 0; left: 0;
-    width: 10px; height: 10px;
-    background: #ff4500;
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 2147483647;
-    transform: translate(-50%, -50%);
-    will-change: left, top;
-    transition: width .15s, height .15s, background .15s;
-    box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 10px rgba(255,69,0,.9);
-    opacity: 0;
-  }
-  #ch-cursor-ring {
-    position: fixed;
-    top: 0; left: 0;
-    width: 32px; height: 32px;
-    border: 1.5px solid rgba(255,69,0,.75);
-    background: rgba(255,69,0,.05);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 2147483646;
-    transform: translate(-50%, -50%);
-    will-change: left, top;
-    transition: width .2s, height .2s, border-color .2s;
-    opacity: 0;
-  }
-  #ch-cursor.ch-active, #ch-cursor-ring.ch-active { opacity: 1; }
-  #ch-cursor.hovering { width: 6px; height: 6px; background: #ff6b35; }
-  #ch-cursor-ring.hovering { width: 46px; height: 46px; border-color: rgba(255,107,53,.85); background: rgba(255,107,53,.1); }
-}
+/* ── Cursor: se usa el puntero nativo del sistema (flecha / mano) ── */
 
 /* ── Mobile bottom nav bar ───────────────────────────────────── */
 #mobile-nav-bar { display: none !important; }
