@@ -1455,4 +1455,20 @@
   /* ── FOOTER ── */
   .footer-socials { flex-direction: column; align-items: center; }
   .social-link { width: 100%; justify-content: center; }
+   
+  /* ── MEJORAS VISUALES PARA 390px ── */
+  .services-grid { gap: 0.6rem; }
+  .service-card { border-radius: 12px; }
+  .wm-card { border-radius: 12px; padding: 1rem; }
+  .sk-tools-grid { gap: 0.5rem; }
+  .blogger-grid { gap: 0.4rem; }
+   
+  /* Panel IA optimizado para 390px */
+  #ai-panel { height: min(88dvh, 750px) !important; }
+  .ai-msg-wrap { margin: 0.6rem 0; }
+  .ai-input-wrap { padding: 0.8rem; }
+   
+  /* Redes sociales compactas */
+  .footer-socials { gap: 0.5rem; }
+  .social-link { padding: 0.35rem 0.65rem; font-size: 0.65rem; }
 }

@@ -34,6 +34,18 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
+  
+  // Prevenir que el panel se cierre al cerrar el teclado en móvil (viewport height change)
+  let lastViewportHeight = window.visualViewport?.height || window.innerHeight;
+  window.addEventListener('resize', () => {
+    if (!isOpen) return;
+    const currentHeight = window.visualViewport?.height || window.innerHeight;
+    if (currentHeight < lastViewportHeight * 0.9) {
+      panel.style.position = 'fixed';
+      panel.style.bottom = '24px';
+    }
+    lastViewportHeight = currentHeight;
+  }, false);
 
   function toggle() { setOpen(!isOpen); }
   function setOpen(v) {
