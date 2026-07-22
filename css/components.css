@@ -3127,6 +3127,15 @@
             display: flex; gap: .6rem; align-items: center; margin-top: .3rem;
         }
         .blogger-card-meta i { color: var(--primary); font-size: .6rem; }
+        .blogger-card-relative {
+            margin-left: auto; display: inline-flex; align-items: center; gap: .3rem;
+            color: rgba(255,189,105,.85);
+        }
+        .news-fresh-label {
+            display: inline-block; margin-top: .3rem;
+            font-family: var(--mono); font-size: .65rem;
+            color: rgba(255,189,105,.75);
+        }
         .blogger-view-btn {
             display: inline-flex; align-items: center; gap: .4rem;
             margin-top: 1.8rem;

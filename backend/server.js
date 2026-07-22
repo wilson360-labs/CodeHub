@@ -1005,15 +1005,27 @@ app.get('/api/news', async (_, res) => {
       const m = block.match(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
       return m ? m[1].trim() : '';
     };
+    // Extrae imagen real del item (media:thumbnail / media:content / enclosure)
+    // para que cada tarjeta muestre una miniatura real y no un ícono genérico.
+    const imgTag = (block) => {
+      let m = block.match(/<media:thumbnail[^>]*url="([^"]+)"/);
+      if (m) return m[1];
+      m = block.match(/<media:content[^>]*url="([^"]+)"/);
+      if (m) return m[1];
+      m = block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image[^"]*"/);
+      if (m) return m[1];
+      return '';
+    };
     let m;
-    while ((m = itemRe.exec(xml)) && items.length < 6) {
+    while ((m = itemRe.exec(xml)) && items.length < 9) {
       const block = m[1];
       const title = tag(block, 'title');
       const url   = tag(block, 'link');
       const pub   = tag(block, 'pubDate');
       const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+      const image = imgTag(block);
       let desc = tag(block, 'description').replace(/<[^>]+>/g, '').slice(0, 130);
-      if (title) items.push({ title, url, date, desc });
+      if (title) items.push({ title, url, date, desc, image, pub });
     }
     if (!items.length) throw new Error('sin items en el RSS');
 
