@@ -56,7 +56,8 @@ console.log('Script started');
         }
 
         // Inicializar todo
-        createParticles();
+        // ❌ DESACTIVADO: Partículas causan lag en dispositivos móviles
+        // createParticles();
         animatePercentage();
         addLogoPulse();
         console.log('Initial functions called');
@@ -351,14 +352,16 @@ console.log('Script started');
             requestAnimationFrame(animate);
         }
 
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-            
-            if (Math.random() > 0.85) {
-                createCursorParticle(e.clientX, e.clientY);
-            }
-        });
+
+        // ❌ DESACTIVADO: Cursor particles causaban lag
+        // window.addEventListener('mousemove', (e) => {
+        //     mouse.x = e.clientX;
+        //     mouse.y = e.clientY;
+        //     
+        //     if (Math.random() > 0.85) {
+        //         createCursorParticle(e.clientX, e.clientY);
+        //     }
+        // });
 
         window.addEventListener('resize', init);
         init();
