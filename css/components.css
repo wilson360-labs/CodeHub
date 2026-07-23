@@ -1590,6 +1590,10 @@
 .ai-msg-copy{position:absolute;top:.3rem;right:.3rem;background:rgba(255,255,255,.06);border:none;border-radius:5px;color:rgba(255,255,255,.3);font-size:.58rem;padding:.15rem .35rem;cursor:pointer;opacity:0;transition:opacity .18s;line-height:1;}
 .ai-msg-wrap.ai .ai-msg:hover .ai-msg-copy{opacity:1;}
 .ai-msg-copy:hover{color:#fff;background:rgba(124,77,255,.3);}
+.ai-msg-reactions{display:flex;gap:.35rem;margin:.15rem .2rem 0;}
+.ai-msg-react-btn{all:unset;display:flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;border-radius:50%;background:linear-gradient(135deg,rgba(124,77,255,.18),rgba(0,176,255,.12));border:1px solid rgba(124,77,255,.3);color:var(--ai-text);font-size:.68rem;line-height:1;cursor:pointer;transition:transform .15s ease,background .15s ease,border-color .15s ease;box-shadow:none;margin:0;padding:0;}
+.ai-msg-react-btn:hover{transform:scale(1.12);background:linear-gradient(135deg,rgba(124,77,255,.3),rgba(0,176,255,.2));border-color:rgba(124,77,255,.5);}
+.ai-msg-react-btn.active{background:linear-gradient(135deg,#7C4DFF,#00B0FF);border-color:transparent;color:#fff;}
 .ai-msg strong{color:#C0B8FF;font-weight:600;}
 .ai-msg code{font-family:'JetBrains Mono',monospace;font-size:.72rem;background:rgba(0,0,0,.4);padding:.1rem .35rem;border-radius:4px;color:#80CFFF;border:1px solid rgba(128,207,255,.12);}
 /* Typing */

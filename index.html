@@ -2989,17 +2989,7 @@ async function sendEmail(e) {
     </div>
     <!-- Shell principal -->
     <div class="ai-input-shell">
-      <div id="ai-attach-preview" class="ai-attach-preview" style="display:none;">
-        <img id="ai-attach-thumb" src="" alt="Vista previa de la imagen adjunta">
-        <span id="ai-attach-name"></span>
-        <button onclick="removeAiAttachment()" aria-label="Quitar imagen"><i class="fas fa-xmark"></i></button>
-      </div>
       <div class="ai-input-row">
-        <input type="file" id="ai-attach-input" accept="image/*" style="display:none;" onchange="handleAiAttachment(this)">
-        <button id="ai-attach-btn" type="button" onclick="document.getElementById('ai-attach-input').click()"
-          title="Adjuntar imagen" aria-label="Adjuntar imagen">
-          <i class="fas fa-paperclip"></i>
-        </button>
         <textarea id="ai-input" placeholder="Pregúntame algo, genera una imagen, depura código…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
           oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
@@ -3667,36 +3657,8 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
     try { localStorage.setItem('ch_ai_disclaimer_seen', '1'); } catch (e) {}
   };
 
-  window.handleAiAttachment = function (inputEl) {
-    const file = inputEl.files && inputEl.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      addMsg('ai', '⚠️ Por ahora solo puedo recibir imágenes (jpg, png, webp…).');
-      inputEl.value = '';
-      return;
-    }
-    if (file.size > 4 * 1024 * 1024) {
-      addMsg('ai', '⚠️ La imagen es muy pesada (máx. 4MB). Intenta con una más liviana.');
-      inputEl.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = function (e) {
-      _pendingAttachment = { base64: e.target.result, name: file.name, mime: file.type };
-      const preview = document.getElementById('ai-attach-preview');
-      const thumb = document.getElementById('ai-attach-thumb');
-      const nameEl = document.getElementById('ai-attach-name');
-      thumb.src = _pendingAttachment.base64;
-      nameEl.textContent = file.name.length > 22 ? file.name.slice(0, 19) + '…' : file.name;
-      preview.style.display = 'flex';
-    };
-    reader.readAsDataURL(file);
-  };
-
   window.removeAiAttachment = function () {
     _pendingAttachment = null;
-    document.getElementById('ai-attach-preview').style.display = 'none';
-    document.getElementById('ai-attach-input').value = '';
   };
 
   window.copyMsg = function(btn) {
