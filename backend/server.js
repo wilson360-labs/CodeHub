@@ -93,6 +93,11 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+// /api/chat necesita un límite más alto que el resto (las imágenes van en
+// base64 dentro del JSON). Se registra ANTES del límite global de 10kb;
+// como ya deja el body parseado, el parser global de abajo lo detecta y
+// no vuelve a leer el stream, así el resto de rutas conserva el límite chico.
+app.use('/api/chat', express.json({ limit: '6mb' }));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
@@ -610,15 +615,36 @@ async function callGroq(msgs) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'groq/llama-3.3-70b' };
 }
 
-async function callGemini(msgs) {
+async function callGemini(msgs, imagePart) {
   const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+  // Si hay una imagen adjunta, se agrega como parte adicional del último turno del usuario
+  if (imagePart && contents.length) {
+    contents[contents.length - 1].parts.push({
+      inline_data: { mime_type: imagePart.mimeType, data: imagePart.data }
+    });
+  }
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 600, temperature: 0.7 } }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
-  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: 'gemini-1.5-flash' };
+  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: imagePart ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
+}
+
+// Convierte un data URL ("data:image/png;base64,AAAA...") en { mimeType, data }
+// listo para mandarle a Gemini. Devuelve null si el formato no es válido o el
+// tipo de imagen no está permitido.
+const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+function parseImageDataUrl(dataUrl) {
+  if (typeof dataUrl !== 'string') return null;
+  const m = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return null;
+  const mimeType = m[1].toLowerCase();
+  if (!ALLOWED_IMAGE_MIME.has(mimeType)) return null;
+  // ~4MB de imagen en base64 pesa ~5.5MB de texto; ponemos un techo razonable
+  if (m[2].length > 6_000_000) return null;
+  return { mimeType, data: m[2] };
 }
 
 
@@ -1039,10 +1065,20 @@ app.get('/api/news', async (_, res) => {
 
 // Chat IA
 app.post('/api/chat', async (req, res) => {
-  const { message, sessionId = 'anon' } = req.body;
+  const { message, sessionId = 'anon', image } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
+
+  // ── Imagen adjunta: valida formato/tamaño antes de gastar una llamada ──
+  let imagePart = null;
+  if (image) {
+    imagePart = parseImageDataUrl(image);
+    if (!imagePart) return res.status(400).json({ error: 'Imagen inválida o demasiado pesada (máx. ~4MB, png/jpeg/webp/gif).' });
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ error: 'El análisis de imágenes no está disponible en este momento.' });
+    }
+  }
 
   // Recuperar historial real de MongoDB (ultimos 10 mensajes de la sesion)
   let sessionHistory = [];
@@ -1067,17 +1103,22 @@ app.post('/api/chat', async (req, res) => {
   const msgs = [{ role: 'system', content: SYSTEM }, ...sessionHistory];
 
   try {
-    const { reply, input, output, model } = await callAI(msgs);
+    // Con imagen: va directo a Gemini (único proveedor con visión en esta
+    // cadena). Sin imagen: sigue el fallback normal Claude→Groq→...→Cohere.
+    const { reply, input, output, model } = imagePart
+      ? await callGemini(msgs, imagePart)
+      : await callAI(msgs);
     if (dbConnected) ChatMessage.insertMany([
-      { sessionId, role: 'user',      content: message.trim(), tokens: input,  model },
+      { sessionId, role: 'user',      content: message.trim() + (imagePart ? ' [imagen adjunta]' : ''), tokens: input,  model },
       { sessionId, role: 'assistant', content: reply,          tokens: output, model },
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
     res.json({ reply, usage: { input, output, total: input + output }, model });
   } catch (err) {
-    if (err.status === 401) return res.status(500).json({ error: 'API key inválida.' });
+    if (err.status === 401) return res.status(500).json({ error: imagePart ? 'Gemini: API key inválida.' : 'API key inválida.' });
     if (err.status === 429) return res.status(429).json({ error: 'Límite alcanzado.' });
+    if (imagePart) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
     res.status(500).json({ error: 'Error interno.' });
   }
 });

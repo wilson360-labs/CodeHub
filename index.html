@@ -134,11 +134,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260722e">
+    <link rel="stylesheet" href="css/index.css?v=20260722h">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260722e">
+    <link rel="stylesheet" href="css/components.css?v=20260722h">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260722e">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260722h">
 
 
 
@@ -1338,7 +1338,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722e"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722h"></script>
     <script>
         console.log('Script started');
         // ========== FUNCIONES BÁSICAS ==========
@@ -2696,7 +2696,7 @@ async function chNotifWeatherCheck(lat, lon) {
 
 </nav>
 
-<script src="js/script.js?v=20260722e"></script>
+<script src="js/script.js?v=20260722h"></script>
 
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -2953,6 +2953,11 @@ async function sendEmail(e) {
 
   <!-- Messages -->
   <div id="ai-msgs">
+    <div class="ai-disclaimer" id="ai-disclaimer" style="display:none;">
+      <i class="fas fa-circle-info"></i>
+      <span>EMI puede cometer errores. Verifica la información importante.</span>
+      <button onclick="dismissAiDisclaimer()" aria-label="Cerrar aviso"><i class="fas fa-xmark"></i></button>
+    </div>
     <div class="ai-msg-wrap ai ai-welcome">
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
@@ -2984,7 +2989,17 @@ async function sendEmail(e) {
     </div>
     <!-- Shell principal -->
     <div class="ai-input-shell">
+      <div id="ai-attach-preview" class="ai-attach-preview" style="display:none;">
+        <img id="ai-attach-thumb" src="" alt="Vista previa de la imagen adjunta">
+        <span id="ai-attach-name"></span>
+        <button onclick="removeAiAttachment()" aria-label="Quitar imagen"><i class="fas fa-xmark"></i></button>
+      </div>
       <div class="ai-input-row">
+        <input type="file" id="ai-attach-input" accept="image/*" style="display:none;" onchange="handleAiAttachment(this)">
+        <button id="ai-attach-btn" type="button" onclick="document.getElementById('ai-attach-input').click()"
+          title="Adjuntar imagen" aria-label="Adjuntar imagen">
+          <i class="fas fa-paperclip"></i>
+        </button>
         <textarea id="ai-input" placeholder="Pregúntame algo, genera una imagen, depura código…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
           oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
@@ -3032,6 +3047,7 @@ async function sendEmail(e) {
 
   // Historial de conversación
   let history = [];
+  let _pendingAttachment = null; // { base64, name, mime }
   let isOpen  = false;
   let loading = false;
   let placeholderIdx = 0;
@@ -3225,8 +3241,16 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
     '> ready.'
   ];
   var _booting = false;
+  var _bootedOnce = false;
+  try { _bootedOnce = sessionStorage.getItem('ch_ai_booted') === '1'; } catch (e) {}
 
   function runBoot(cb) {
+    // Solo la primera vez que se abre el panel en esta sesión: después
+    // se omite la animación de arranque para que abra al instante.
+    if (_bootedOnce) { cb && cb(); return; }
+    try { sessionStorage.setItem('ch_ai_booted', '1'); } catch (e) {}
+    _bootedOnce = true;
+
     var overlay  = document.getElementById('ai-boot-overlay');
     var scanline = document.getElementById('ai-boot-scanline');
     var bootText = document.getElementById('ai-boot-text');
@@ -3311,6 +3335,13 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
         setTimeout(function() { if (input) input.focus(); }, 80);
         const wt = document.getElementById('ai-welcome-time');
         if (wt && !wt.textContent) wt.textContent = getTime();
+        // Aviso de precisión de IA: solo la primera vez, para siempre
+        try {
+          if (!localStorage.getItem('ch_ai_disclaimer_seen')) {
+            const disc = document.getElementById('ai-disclaimer');
+            if (disc) disc.style.display = 'flex';
+          }
+        } catch (e) {}
         scrollMsgs();
       });
     } else {
@@ -3352,6 +3383,10 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
     return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
+  let _currentAbort = null;
+  window.stopAIGeneration = function () {
+    if (_currentAbort) { _currentAbort.abort(); _currentAbort = null; }
+  };
 
   // ID de sesión único por visita (no identifica al usuario, solo la sesión)
   const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -3460,7 +3495,8 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
 
   window.sendAI = async function() {
     const text = input.value.trim();
-    if (!text || loading) return;
+    const attachment = _pendingAttachment;
+    if ((!text && !attachment) || loading) return;
 
     // Anti-spam: máx 30 mensajes por sesión
     const chatCount = parseInt(sessionStorage.getItem('ch_chat_count') || '0');
@@ -3473,37 +3509,50 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
 
-    addMsg('user', text);
+    const effectiveText = text || 'Describe/analiza esta imagen';
+    let userBubbleHtml = effectiveText;
+    if (attachment) {
+      userBubbleHtml = `<div class="ai-attach-msg-img-wrap"><img src="${attachment.base64}" class="ai-attach-msg-img" alt="Imagen adjunta"></div>` +
+        (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+    }
+    addMsg('user', userBubbleHtml);
     input.value = '';
     input.style.height = '48px';
     input.style.overflow = 'hidden';
     updateCharCount();
+    window.removeAiAttachment();
 
-    // ── Detectar si es generación de imagen ──
-    if (isImageGenRequest(text)) {
-      history.push({ role: 'user', content: text });
-      await generateImage(text);
+    // ── Detectar si es generación de imagen (no aplica si hay adjunto) ──
+    if (!attachment && isImageGenRequest(effectiveText)) {
+      history.push({ role: 'user', content: effectiveText });
+      await generateImage(effectiveText);
       return;
     }
 
-    const shouldSearch = isSearchQuery(text);
+    const shouldSearch = !attachment && isSearchQuery(effectiveText);
     loading = true;
     sendBtn.disabled = true;
     status.textContent = '● Pensando…';
     const typingEl = addMsg('typing', '▌');
 
-    history.push({ role: 'user', content: text });
+    history.push({ role: 'user', content: effectiveText });
     if (history.length > 10) history = history.slice(-10);
 
     try {
+      _currentAbort = new AbortController();
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: _currentAbort.signal,
         body: JSON.stringify({
-          message: text,
-          sessionId: SESSION_ID
+          message: effectiveText,
+          sessionId: SESSION_ID,
+          // Si el backend soporta visión, puede leer este campo y
+          // reenviarlo al modelo. Si no lo usa, simplemente se ignora.
+          image: attachment ? attachment.base64 : undefined
         })
       });
+      _currentAbort = null;
 
       const data = await res.json();
 
@@ -3520,7 +3569,7 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
         addMsg('ai', cleanReply);
       }
       if (searchMatch || shouldSearch) {
-        const query = searchMatch ? searchMatch[1].trim() : text.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+        const query = searchMatch ? searchMatch[1].trim() : effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
         setTimeout(() => addSearchResults(query), 200);
       }
 
@@ -3528,11 +3577,21 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
 
     } catch (err) {
       typingEl.remove();
-      const fallback = getFallback(text);
+      _currentAbort = null;
+      if (err.name === 'AbortError') {
+        addMsg('ai', '⏹️ Generación detenida.');
+        return;
+      }
+      if (attachment) {
+        addMsg('ai', '⚠️ No pude analizar la imagen en este momento. Intenta de nuevo en un momento, o pregúntame algo sin la imagen.');
+        console.warn('Chat error (imagen):', err.message);
+        return;
+      }
+      const fallback = getFallback(effectiveText);
       addMsg('ai', formatAIReply(fallback.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, '')));
       const fMatch = fallback.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
       if (fMatch || shouldSearch) {
-        const q = fMatch ? fMatch[1].trim() : text.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+        const q = fMatch ? fMatch[1].trim() : effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
         setTimeout(() => addSearchResults(q), 200);
       }
       console.warn('Chat error:', err.message);
@@ -3551,8 +3610,12 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
       wrap.innerHTML = `
         <div class="ai-msg-avatar">✦</div>
         <div class="ai-msg-content">
-          <div class="ai-msg">
+          <div class="ai-msg ai-typing-msg">
             <canvas class="ai-orb" width="26" height="26" aria-label="EMI está pensando"></canvas>
+            <span class="ai-typing-phrase">Pensando…</span>
+            <button class="ai-typing-stop" onclick="stopAIGeneration()" title="Detener" aria-label="Detener generación">
+              <i class="fas fa-stop"></i>
+            </button>
           </div>
         </div>`;
       msgs.appendChild(wrap);
@@ -3560,6 +3623,18 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
       if (orbCanvas && window.ThinkingOrb) {
         window.ThinkingOrb.create(orbCanvas, { state: 'composing', size: 26, color: 'rgba(124,77,255,0.9)' });
       }
+      // Fases de texto para que se sienta "en proceso" en vez de colgado
+      var phraseEl = wrap.querySelector('.ai-typing-phrase');
+      var phrases = ['Pensando…', 'Analizando tu mensaje…', 'Redactando respuesta…'];
+      var pIdx = 0;
+      var phraseTimer = setInterval(function () {
+        pIdx++;
+        if (pIdx < phrases.length && phraseEl) phraseEl.textContent = phrases[pIdx];
+        else if (phraseEl) phraseEl.textContent = 'Esto está tardando más de lo normal…';
+      }, 2600);
+      wrap._phraseTimer = phraseTimer;
+      var origRemove = wrap.remove.bind(wrap);
+      wrap.remove = function () { clearInterval(phraseTimer); origRemove(); };
       scrollMsgs();
       return wrap;
     }
@@ -3574,12 +3649,55 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
           ${html}
           ${!isUser ? '<button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>' : ''}
         </div>
+        ${!isUser ? `
+        <div class="ai-msg-reactions">
+          <button class="ai-msg-react-btn" data-r="up" onclick="reactMsg(this,'up')" title="Buena respuesta" aria-label="Buena respuesta">👍</button>
+          <button class="ai-msg-react-btn" data-r="down" onclick="reactMsg(this,'down')" title="Mala respuesta" aria-label="Mala respuesta">👎</button>
+        </div>` : ''}
         <span class="ai-msg-time">${time}</span>
       </div>`;
     msgs.appendChild(wrap);
     scrollMsgs();
     return wrap;
   }
+
+  window.dismissAiDisclaimer = function () {
+    const disc = document.getElementById('ai-disclaimer');
+    if (disc) disc.style.display = 'none';
+    try { localStorage.setItem('ch_ai_disclaimer_seen', '1'); } catch (e) {}
+  };
+
+  window.handleAiAttachment = function (inputEl) {
+    const file = inputEl.files && inputEl.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      addMsg('ai', '⚠️ Por ahora solo puedo recibir imágenes (jpg, png, webp…).');
+      inputEl.value = '';
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      addMsg('ai', '⚠️ La imagen es muy pesada (máx. 4MB). Intenta con una más liviana.');
+      inputEl.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      _pendingAttachment = { base64: e.target.result, name: file.name, mime: file.type };
+      const preview = document.getElementById('ai-attach-preview');
+      const thumb = document.getElementById('ai-attach-thumb');
+      const nameEl = document.getElementById('ai-attach-name');
+      thumb.src = _pendingAttachment.base64;
+      nameEl.textContent = file.name.length > 22 ? file.name.slice(0, 19) + '…' : file.name;
+      preview.style.display = 'flex';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.removeAiAttachment = function () {
+    _pendingAttachment = null;
+    document.getElementById('ai-attach-preview').style.display = 'none';
+    document.getElementById('ai-attach-input').value = '';
+  };
 
   window.copyMsg = function(btn) {
     const msgEl = btn.closest('.ai-msg');
@@ -3588,6 +3706,24 @@ También: descargador de videos, juegos (Snake, Tetris), blog dev, servicios fre
       btn.textContent = '✓';
       setTimeout(() => btn.textContent = '⎘', 1500);
     });
+  };
+
+  window.reactMsg = function(btn, kind) {
+    const group = btn.closest('.ai-msg-reactions');
+    const wasActive = btn.classList.contains('active');
+    group.querySelectorAll('.ai-msg-react-btn').forEach(b => b.classList.remove('active'));
+    if (!wasActive) {
+      btn.classList.add('active');
+      // Guardado local del feedback (visible/tangible para el usuario).
+      // Si en el futuro el backend expone /api/feedback, aquí se puede
+      // enviar { sessionId: SESSION_ID, kind, messageText } con fetch().
+      try {
+        const key = 'ch_ai_feedback';
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        arr.push({ kind, at: Date.now() });
+        localStorage.setItem(key, JSON.stringify(arr.slice(-50)));
+      } catch (e) {}
+    }
   };
 
   window.updateCharCount = function() {
@@ -4903,9 +5039,9 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-<script src="js/device-detect.js?v=20260722e"></script>
-<script src="js/thinking-orb.js?v=20260722e"></script>
-<script src="js/ux-animations.js?v=20260722e"></script>
+<script src="js/device-detect.js?v=20260722h"></script>
+<script src="js/thinking-orb.js?v=20260722h"></script>
+<script src="js/ux-animations.js?v=20260722h"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
