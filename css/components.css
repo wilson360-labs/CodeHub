@@ -1770,11 +1770,26 @@
 }
 @keyframes aiLightboxZoom{from{transform:scale(.9);opacity:.4}to{transform:scale(1);opacity:1}}
 #ai-img-lightbox-close{
-  position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
-  color:#fff;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
-  cursor:pointer;
+  position:absolute;top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(20,20,28,.7);border:1px solid rgba(255,255,255,.16);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;padding:0;
+  box-shadow:0 4px 18px rgba(0,0,0,.4);
+  transition:background .18s ease, transform .18s ease, border-color .18s ease;
 }
+#ai-img-lightbox-close:hover{
+  background:rgba(255,69,0,.22);border-color:rgba(255,69,0,.5);
+  transform:scale(1.08);
+}
+#ai-img-lightbox-close:active{ transform:scale(.92); }
+#ai-img-lightbox-close::before,
+#ai-img-lightbox-close::after{
+  content:'';position:absolute;width:18px;height:2px;border-radius:2px;
+  background:#fff;
+}
+#ai-img-lightbox-close::before{ transform:rotate(45deg); }
+#ai-img-lightbox-close::after{ transform:rotate(-45deg); }
 @media(max-width:640px){
   .ai-gen-img{max-width:150px;max-height:150px;}
 }

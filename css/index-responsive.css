@@ -1125,7 +1125,7 @@
   .footer-kbd { display: none; }
 
   /* ── DOCK — oculto en mobile ── */
-  #hub-dock { display: none !important; }
+  /* El dock ya NO se oculta en móvil — ver reglas compactas más abajo */
 
   /* ── AI FAB ── */
   #ai-fab {
@@ -1502,7 +1502,33 @@
 ══════════════════════════════════════════════════════════════════ */
 
 /* ── Dock flotante de escritorio: nunca debe verse en móvil ── */
-html.is-mobile #hub-dock { display: none !important; }
+/* ── Dock flotante: en móvil se muestra siempre, pero compacto y
+   pulido (más pequeño, pegado a la zona segura inferior, sin invadir
+   los bordes) en vez de ocultarse por completo. ── */
+html.is-mobile #hub-dock {
+  bottom: max(14px, env(safe-area-inset-bottom));
+  gap: 4px;
+  padding: 7px 10px;
+  border-radius: 20px;
+  max-width: calc(100vw - 24px);
+}
+html.is-mobile .dock-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 1.05rem;
+  border-radius: 11px;
+}
+html.is-mobile .dock-label {
+  font-size: 0.5rem;
+  letter-spacing: 0;
+}
+html.is-mobile .dock-item { gap: 3px; }
+html.is-mobile .dock-sep { height: 28px; margin: 0 1px 6px; }
+@media (max-width: 360px) {
+  html.is-mobile #hub-dock { gap: 2px; padding: 6px 8px; }
+  html.is-mobile .dock-icon { width: 36px; height: 36px; font-size: .95rem; }
+  html.is-mobile .dock-label { font-size: .46rem; }
+}
 
 /* ── Noticias: cuadrícula real en móvil, nunca lista de 1 columna ── */
 html.is-mobile .blogger-grid {
