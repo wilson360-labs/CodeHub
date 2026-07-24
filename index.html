@@ -457,7 +457,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="cfg-group">
                     <div class="cfg-label">Fondo</div>
                     <div class="cfg-toggle-row">
-                        <span>Red neuronal animada</span>
+                        <span>Fondos animados (red + partículas)</span>
                         <label class="cfg-toggle">
                             <input type="checkbox" id="cfg-neural" onchange="toggleNeural(this)">
                             <span class="cfg-slider"></span>
@@ -3800,6 +3800,7 @@ function toggleNeural(chk) {
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = chk.checked ? '1' : '0';
     if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(!chk.checked);
+    if (typeof window.setHeroManualOff === 'function') window.setHeroManualOff(!chk.checked);
 }
 
 function resetCfg() {
@@ -3810,6 +3811,7 @@ function resetCfg() {
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = '0';
     if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(true);
+    if (typeof window.setHeroManualOff === 'function') window.setHeroManualOff(true);
     // Recargar estado visual del panel
     loadCfg();
     if (typeof toast === 'function') toast('✅ Configuración restablecida', 'info', 2000);
@@ -4933,12 +4935,14 @@ function setAIMood(btn) {
   }, { passive: true });
 
   /* ── 4. ANIMATION LOOP ──────────────────────────────────── */
+  let heroManualOff = (localStorage.getItem('cfg_neural') !== '1');
+  window.setHeroManualOff = (off) => { heroManualOff = !!off; if (off) { ctx.clearRect(0, 0, W, H); } };
   let heroLoopActive = true;
   document.addEventListener('visibilitychange', () => {
     heroLoopActive = document.visibilityState === 'visible';
   });
   function loop() {
-    if (heroLoopActive) drawParticles();
+    if (heroLoopActive && !heroManualOff) drawParticles();
     requestAnimationFrame(loop);
   }
 
