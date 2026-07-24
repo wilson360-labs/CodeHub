@@ -1,11 +1,12 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v4.3 — Wilson.E 2026
+//  CodeHub SW v4.4 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync + update
 //  + Push Notifications (app updates + clima)
-//  v4.3: fix de animaciones/detección móvil — fuerza refresco de caché
+//  v4.4: auto-update — el cliente ahora aplica el SW nuevo y
+//        limpia caché vieja automáticamente sin esperar clic manual
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v4.3';
+const VERSION   = 'codehub-v4.4';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 

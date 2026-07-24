@@ -636,7 +636,7 @@
             border: 2px solid rgba(255, 69, 0, 0.4);
         }
 
-        button {
+        #game button {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
             border: none;

@@ -656,6 +656,8 @@
             height: 100%;
             z-index: -1;
             opacity: 0.6;
+            -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 68%, transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,1) 32%, rgba(0,0,0,1) 68%, transparent 100%);
         }
 
         /* Splash Screen */

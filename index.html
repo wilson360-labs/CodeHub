@@ -134,11 +134,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260722h">
+    <link rel="stylesheet" href="css/index.css?v=20260724a">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260722h">
+    <link rel="stylesheet" href="css/components.css?v=20260724a">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260722h">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260724a">
 
 
 
@@ -459,7 +459,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <div class="cfg-toggle-row">
                         <span>Red neuronal animada</span>
                         <label class="cfg-toggle">
-                            <input type="checkbox" id="cfg-neural" checked onchange="toggleNeural(this)">
+                            <input type="checkbox" id="cfg-neural" onchange="toggleNeural(this)">
                             <span class="cfg-slider"></span>
                         </label>
                     </div>
@@ -1338,7 +1338,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260722h"></script>
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="js/updater.js?v=20260724a"></script>
     <script>
         console.log('Script started');
         // ========== FUNCIONES BÁSICAS ==========
@@ -1543,7 +1543,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
 
         // Pausa el cómputo real cuando el usuario la apaga manualmente (no solo opacity)
-        let nnManualOff = (localStorage.getItem('cfg_neural') === '0');
+        let nnManualOff = (localStorage.getItem('cfg_neural') !== '1');
         window.setNeuralManualOff = (off) => { nnManualOff = !!off; };
 
         window.addEventListener('mousemove', (e) => {
@@ -2696,7 +2696,7 @@ async function chNotifWeatherCheck(lat, lon) {
 
 </nav>
 
-<script src="js/script.js?v=20260722h"></script>
+<script src="js/script.js?v=20260724a"></script>
 
 <!-- EmailJS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -3808,8 +3808,8 @@ function resetCfg() {
     // Aplicar defaults
     document.body.classList.remove('font-sm','font-lg','no-anim');
     const canvas = document.getElementById('neural-network');
-    if (canvas) canvas.style.opacity = '1';
-    if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(false);
+    if (canvas) canvas.style.opacity = '0';
+    if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(true);
     // Recargar estado visual del panel
     loadCfg();
     if (typeof toast === 'function') toast('✅ Configuración restablecida', 'info', 2000);
@@ -3818,7 +3818,7 @@ function resetCfg() {
 function loadCfg() {
     const font   = localStorage.getItem('cfg_font')   || 'md';
     const anim   = localStorage.getItem('cfg_anim')   !== '0';
-    const neural = localStorage.getItem('cfg_neural') !== '0';
+    const neural = localStorage.getItem('cfg_neural') === '1';
     const lang   = localStorage.getItem('cfg_lang')   || 'es';
 
     // Marcar botones activos
@@ -3850,7 +3850,7 @@ function loadCfg() {
     if (font && font !== 'md') document.body.classList.add('font-' + font);
     if (anim === '0') document.body.classList.add('no-anim');
     const canvas = document.getElementById('neural-network');
-    if (canvas && neural === '0') canvas.style.opacity = '0';
+    if (canvas && neural !== '1') canvas.style.opacity = '0';
 })();
 
 
@@ -4365,15 +4365,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let userTriggeredUpdate = false;
 
     navigator.serviceWorker.register('/sw.js').then(reg => {
-      console.log('✅ SW registrado v4.2');
+      console.log('✅ SW registrado v4.3');
 
-      // Verificar actualizaciones cada 30 min
-      setInterval(() => reg.update(), 30 * 60 * 1000);
+      // Verificar actualizaciones cada 5 min + al volver a la pestaña
+      setInterval(() => reg.update(), 5 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update();
+      });
 
-      // Mostrar banner cuando hay SW nuevo en espera — NO recargar automáticamente
+      // Nuevo SW en espera → aplicar automáticamente (sin esperar clic manual)
       function onSWWaiting() {
         const banner = document.getElementById('sw-update-banner');
         if (banner) banner.style.display = 'flex';
+        userTriggeredUpdate = true;
+        refreshing = false;
+        reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
       }
 
       if (reg.waiting) onSWWaiting();
@@ -5001,9 +5007,9 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-<script src="js/device-detect.js?v=20260722h"></script>
-<script src="js/thinking-orb.js?v=20260722h"></script>
-<script src="js/ux-animations.js?v=20260722h"></script>
+<script src="js/device-detect.js?v=20260724a"></script>
+<script src="js/thinking-orb.js?v=20260724a"></script>
+<script src="js/ux-animations.js?v=20260724a"></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
