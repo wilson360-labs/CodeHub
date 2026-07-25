@@ -96,7 +96,7 @@
     .cv-hero-info { flex: 1; min-width: 200px; }
     .cv-name {
       font-size: 2.2rem; font-weight: 800; line-height: 1;
-      margin-bottom: .3rem;
+      margin: 0 0 .3rem;
     }
     .cv-name span { color: var(--primary); }
     .cv-role {
@@ -234,6 +234,9 @@
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"ProfilePage","mainEntity":{"@type":"Person","name":"Wilson.E","jobTitle":"Desarrollador Web Full Stack","url":"https://wilson360-labs.vercel.app","email":"wilson.e360labs@gmail.com","telephone":"+50241468185","address":{"@type":"PostalAddress","addressCountry":"GT","addressLocality":"Ciudad de Guatemala"},"knowsAbout":["JavaScript","Node.js","Python","MongoDB","HTML5","CSS3","Express.js","REST APIs","PWA","WebSockets","Git"],"sameAs":["https://github.com/wilson360-labs"]}}
   </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Inicio","item":"https://wilson360-labs.vercel.app/"},{"@type":"ListItem","position":2,"name":"CV","item":"https://wilson360-labs.vercel.app/cv"}]}
+  </script>
 </head>
 <body>
 
@@ -260,7 +263,7 @@
       </div>
       <div class="cv-hero-info">
         <div class="cv-available"><span class="avail-dot"></span> Disponible para freelance</div>
-        <div class="cv-name">Wilson<span>.E</span></div>
+        <h1 class="cv-name">Wilson<span>.E</span></h1>
         <div class="cv-role">// FULL STACK DEVELOPER · GUATEMALA 🇬🇹</div>
         <div class="cv-location"><i class="fas fa-location-dot" style="color:var(--primary)"></i> Ciudad de Guatemala, GT · Remoto worldwide</div>
         <div class="cv-contacts">
