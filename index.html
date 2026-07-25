@@ -4063,16 +4063,43 @@ function fetchWithTimeout(url, opts = {}, ms = 8000) {
   return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(t));
 }
 
+// ── PAÍS DEL USUARIO (IP) — reutiliza el mismo patrón que el widget
+// de clima: intenta ipapi.co y cae a ip-api.com. Se guarda en sesión
+// para no golpear estos servicios en cada recarga de la página.
+async function detectNewsCountry() {
+  const cached = sessionStorage.getItem('ch_news_country');
+  if (cached) return cached;
+  try {
+    const r1 = await fetchWithTimeout('https://ipapi.co/json/', {}, 4000);
+    const g1 = await r1.json();
+    if (g1.country_code && !g1.error) {
+      sessionStorage.setItem('ch_news_country', g1.country_code);
+      return g1.country_code;
+    }
+  } catch (e) {}
+  try {
+    const r2 = await fetchWithTimeout('https://ip-api.com/json/?fields=countryCode,status', {}, 4000);
+    const g2 = await r2.json();
+    if (g2.status === 'success' && g2.countryCode) {
+      sessionStorage.setItem('ch_news_country', g2.countryCode);
+      return g2.countryCode;
+    }
+  } catch (e) {}
+  return null; // sin país detectado → el backend cae a BBC Mundo
+}
+
 async function loadRealNews() {
   const out = document.getElementById('news-real-out');
   if (!out) return;
 
-  // 1) Intento primario: backend propio (ya parseado)
+  // 1) Intento primario: backend propio (ya parseado y geolocalizado)
   try {
-    const res = await fetchWithTimeout(NEWS_BACKEND_URL, {}, 8000);
+    const country = await detectNewsCountry();
+    const url = country ? `${NEWS_BACKEND_URL}?country=${encodeURIComponent(country)}` : NEWS_BACKEND_URL;
+    const res = await fetchWithTimeout(url, {}, 8000);
     if (res.ok) {
       const data = await res.json();
-      if (data.items && data.items.length) { renderRealNews(data.items, data.fetchedAt); return; }
+      if (data.items && data.items.length) { renderRealNews(data.items, data.fetchedAt, data.source); return; }
     }
   } catch (e) { /* seguimos al plan B */ }
 
@@ -4114,11 +4141,11 @@ function relativeTime(pub) {
   return `hace ${Math.floor(diffH / 24)} d`;
 }
 
-function renderRealNews(items, fetchedAt) {
+function renderRealNews(items, fetchedAt, sourceLabel) {
   const out = document.getElementById('news-real-out');
   const freshLabel = document.getElementById('news-fresh-label');
   if (freshLabel) freshLabel.textContent = fetchedAt ? `Actualizado ${relativeTime(fetchedAt)}` : '';
-  out.innerHTML = `<div class="blogger-grid">${items.map(n => `
+  const cardsHtml = items.map(n => `
     <a href="${n.url}" target="_blank" rel="noopener noreferrer" class="blogger-card">
       <div class="blogger-card-thumb">
         ${n.image
@@ -4126,7 +4153,7 @@ function renderRealNews(items, fetchedAt) {
           : `<i class="fas fa-earth-americas"></i>`}
       </div>
       <div class="blogger-card-body">
-        <div class="blogger-card-label">// BBC Mundo</div>
+        <div class="blogger-card-label">// ${n.source || sourceLabel || 'Noticias'}</div>
         <div class="blogger-card-title">${n.title}</div>
         <div class="blogger-card-desc">${n.desc}</div>
         <div class="blogger-card-meta">
@@ -4134,10 +4161,36 @@ function renderRealNews(items, fetchedAt) {
           ${n.pub ? `<span class="blogger-card-relative"><i class="fas fa-clock"></i>${relativeTime(n.pub)}</span>` : ''}
         </div>
       </div>
-    </a>`).join('')}</div>`;
+    </a>`).join('');
+
+  // El grid arranca colapsado (solo se ve en móvil vía CSS): en escritorio
+  // la clase no tiene efecto y se ven todas las tarjetas normalmente.
+  const toggleBtn = items.length > 3
+    ? `<div class="news-toggle-wrap">
+         <button class="news-toggle-btn" onclick="toggleNewsCollapse(this)">
+           <i class="fas fa-chevron-down"></i> Ver más noticias
+         </button>
+       </div>`
+    : '';
+
+  out.innerHTML = `<div class="blogger-grid is-collapsed">${cardsHtml}</div>${toggleBtn}`;
+}
+
+// ── DESPLEGAR / CONTRAER (solo aplica visualmente en móvil, ver CSS) ──
+function toggleNewsCollapse(btn) {
+  const grid = document.querySelector('#news-real-out .blogger-grid');
+  if (!grid) return;
+  const willExpand = grid.classList.contains('is-collapsed');
+  grid.classList.toggle('is-collapsed', !willExpand);
+  btn.classList.toggle('expanded', willExpand);
+  btn.innerHTML = willExpand
+    ? '<i class="fas fa-chevron-up"></i> Ver menos'
+    : '<i class="fas fa-chevron-down"></i> Ver más noticias';
+  if (!willExpand) grid.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 window.addEventListener('load', loadRealNews);
+
 
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══

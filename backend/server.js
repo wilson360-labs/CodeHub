@@ -1066,55 +1066,98 @@ app.get('/api/apps', async (_, res) => {
   } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
 });
 
-// Noticias (BBC Mundo RSS) — leído server-side para evitar depender
-// de proxies CORS públicos poco fiables (allorigins, etc.) en el navegador.
+// Noticias — geolocalizadas por país vía Google News RSS, con BBC Mundo
+// como respaldo fijo. Todo se lee server-side para evitar depender de
+// proxies CORS públicos poco fiables (allorigins, etc.) en el navegador.
 const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
-app.get('/api/news', async (_, res) => {
+
+// Locale (idioma de interfaz) por código de país para armar la URL de
+// Google News (hl/gl/ceid). Si el país no está en la lista se usa
+// 'es-419' (español latam) por defecto dentro de buildGoogleNewsUrl.
+const COUNTRY_LOCALE = {
+  GT: 'es-419', MX: 'es-419', HN: 'es-419', SV: 'es-419', NI: 'es-419',
+  CR: 'es-419', PA: 'es-419', DO: 'es-419', VE: 'es-419', CO: 'es-419',
+  EC: 'es-419', PE: 'es-419', BO: 'es-419', PY: 'es-419', UY: 'es-419',
+  AR: 'es-419', CL: 'es-419', ES: 'es',
+  US: 'en-US', GB: 'en-GB', CA: 'en-CA', BR: 'pt-BR', FR: 'fr', DE: 'de',
+  IT: 'it', PT: 'pt-PT',
+};
+
+function buildGoogleNewsUrl(country) {
+  const cc = (country || 'GT').toUpperCase();
+  const hl = COUNTRY_LOCALE[cc] || 'es-419';
+  return `https://news.google.com/rss?hl=${encodeURIComponent(hl)}&gl=${encodeURIComponent(cc)}&ceid=${encodeURIComponent(cc)}:${encodeURIComponent(hl.split('-')[0])}`;
+}
+
+const NEWS_TAG_RE = (block, name) => {
+  const m = block.match(new RegExp(`<${name}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
+  return m ? m[1].trim() : '';
+};
+// Extrae imagen real del item (media:thumbnail / media:content / enclosure)
+// para que cada tarjeta muestre una miniatura real cuando exista.
+const NEWS_IMG_RE = (block) => {
+  let m = block.match(/<media:thumbnail[^>]*url="([^"]+)"/);
+  if (m) return m[1];
+  m = block.match(/<media:content[^>]*url="([^"]+)"/);
+  if (m) return m[1];
+  m = block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image[^"]*"/);
+  if (m) return m[1];
+  return '';
+};
+
+async function fetchRssItems(url, { limit = 9, sourceLabel = null } = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  const r = await fetch(url, {
+    signal: controller.signal,
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
+  }).finally(() => clearTimeout(timeout));
+  if (!r.ok) throw new Error('RSS fetch fallido: ' + r.status);
+  const xml = await r.text();
+
+  const items = [];
+  const itemRe = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = itemRe.exec(xml)) && items.length < limit) {
+    const block = m[1];
+    const title = NEWS_TAG_RE(block, 'title');
+    const url_  = NEWS_TAG_RE(block, 'link');
+    const pub   = NEWS_TAG_RE(block, 'pubDate');
+    const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const image = NEWS_IMG_RE(block);
+    // Google News trae el medio original en <source>; BBC no lo trae (usamos sourceLabel fijo).
+    const src   = NEWS_TAG_RE(block, 'source') || sourceLabel || '';
+    let desc = NEWS_TAG_RE(block, 'description').replace(/<[^>]+>/g, '').slice(0, 130);
+    if (title) items.push({ title, url: url_, date, desc, image, pub, source: src });
+  }
+  if (!items.length) throw new Error('sin items en el RSS');
+  return items;
+}
+
+app.get('/api/news', async (req, res) => {
+  const country = (req.query.country || '').toUpperCase().slice(0, 2) || null;
+  const cacheKey = country ? `news:google:${country}` : 'news:bbc-mundo';
   try {
-    const cached = await cacheGet('news:bbc-mundo');
+    const cached = await cacheGet(cacheKey);
     if (cached) { res.set('X-Cache', 'HIT'); return res.json(cached); }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const r = await fetch(NEWS_RSS_URL, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
-    }).finally(() => clearTimeout(timeout));
-    if (!r.ok) throw new Error('RSS fetch fallido: ' + r.status);
-    const xml = await r.text();
-
-    const items = [];
-    const itemRe = /<item>([\s\S]*?)<\/item>/g;
-    const tag = (block, name) => {
-      const m = block.match(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
-      return m ? m[1].trim() : '';
-    };
-    // Extrae imagen real del item (media:thumbnail / media:content / enclosure)
-    // para que cada tarjeta muestre una miniatura real y no un ícono genérico.
-    const imgTag = (block) => {
-      let m = block.match(/<media:thumbnail[^>]*url="([^"]+)"/);
-      if (m) return m[1];
-      m = block.match(/<media:content[^>]*url="([^"]+)"/);
-      if (m) return m[1];
-      m = block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image[^"]*"/);
-      if (m) return m[1];
-      return '';
-    };
-    let m;
-    while ((m = itemRe.exec(xml)) && items.length < 9) {
-      const block = m[1];
-      const title = tag(block, 'title');
-      const url   = tag(block, 'link');
-      const pub   = tag(block, 'pubDate');
-      const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-      const image = imgTag(block);
-      let desc = tag(block, 'description').replace(/<[^>]+>/g, '').slice(0, 130);
-      if (title) items.push({ title, url, date, desc, image, pub });
+    let items, sourceName;
+    if (country) {
+      try {
+        items = await fetchRssItems(buildGoogleNewsUrl(country));
+        sourceName = `Google News (${country})`;
+      } catch (e) {
+        // Google News no disponible para ese país/red — caemos a BBC Mundo.
+        items = await fetchRssItems(NEWS_RSS_URL, { sourceLabel: 'BBC Mundo' });
+        sourceName = 'BBC Mundo';
+      }
+    } else {
+      items = await fetchRssItems(NEWS_RSS_URL, { sourceLabel: 'BBC Mundo' });
+      sourceName = 'BBC Mundo';
     }
-    if (!items.length) throw new Error('sin items en el RSS');
 
-    const result = { items, source: 'BBC Mundo', fetchedAt: new Date().toISOString() };
-    await cacheSet('news:bbc-mundo', result, 900); // 15 min
+    const result = { items, source: sourceName, country, fetchedAt: new Date().toISOString() };
+    await cacheSet(cacheKey, result, 900); // 15 min
     res.set('X-Cache', 'MISS'); res.json(result);
   } catch (e) {
     res.status(502).json({ error: 'No se pudieron obtener las noticias', detail: e.message });

@@ -1089,6 +1089,9 @@
   .blogger-card-desc { display: none; }
   .blogger-card-meta { font-size: 0.56rem; flex-wrap: wrap; gap: 0.3rem; }
   .blogger-card-relative { margin-left: 0; }
+  /* Colapsar a la primera fila (3 tarjetas) + mostrar botón desplegar/contraer */
+  .news-toggle-wrap { display: flex; }
+  .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
 
   /* ── CONTACTO ── */
   #contact { padding: 2rem 1rem; }
@@ -1538,6 +1541,8 @@ html.is-mobile .blogger-grid {
 }
 html.is-mobile .blogger-card-desc { display: none; }
 html.is-mobile .blogger-card-thumb { height: 76px !important; }
+html.is-mobile .news-toggle-wrap { display: flex; }
+html.is-mobile .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
 @media (max-width: 360px) {
   html.is-mobile .blogger-grid { grid-template-columns: 1fr !important; }
   html.is-mobile .blogger-card { flex-direction: row; }

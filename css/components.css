@@ -3190,6 +3190,24 @@
             align-self: flex-start;
         }
         .blogger-view-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(255,69,0,.42); }
+        /* Botón desplegar/contraer — solo tiene efecto visual en móvil,
+           ver reglas dentro de los @media en index-responsive.css */
+        .news-toggle-wrap { display: none; margin-top: 1.1rem; justify-content: center; }
+        .news-toggle-btn {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .55rem 1.2rem;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,69,0,.35);
+            color: var(--text); font-family: var(--mono);
+            font-size: .72rem; font-weight: 700; letter-spacing: .02em;
+            border-radius: 20px; cursor: pointer;
+            transition: all .2s;
+        }
+        .news-toggle-btn:hover, .news-toggle-btn:active {
+            background: rgba(255,69,0,.14); border-color: rgba(255,69,0,.55);
+        }
+        .news-toggle-btn i { transition: transform .25s ease; }
+        .news-toggle-btn.expanded i { transform: rotate(180deg); }
         .blogger-loading {
             text-align: center; padding: 2.5rem 1rem;
             font-family: var(--mono); font-size: .8rem; color: var(--muted);
