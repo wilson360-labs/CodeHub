@@ -628,6 +628,19 @@ async function callCerebras(msgs) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'cerebras/llama-3.3-70b' };
 }
 
+// ── Hugging Face (router unificado, compatible OpenAI) ────────────────────
+async function callHuggingFace(msgs) {
+  if (!process.env.HUGGINGFACE_API_KEY) throw new Error('Sin HUGGINGFACE_API_KEY');
+  const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
+    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: 800, temperature: 0.65, messages: msgs }),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `HuggingFace ${res.status}`); err.status = res.status; throw err; }
+  const d = await res.json();
+  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'huggingface/llama-3.3-70b' };
+}
+
 async function callGemini(msgs, imagePart) {
   const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
   // Si hay una imagen adjunta, se agrega como parte adicional del último turno del usuario
@@ -787,6 +800,7 @@ async function callAI(msgs) {
     { name: 'Claude',      fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
     { name: 'Groq',        fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
     { name: 'Cerebras',    fn: () => callCerebras(msgs),    key: process.env.CEREBRAS_API_KEY },
+    { name: 'HuggingFace', fn: () => callHuggingFace(msgs), key: process.env.HUGGINGFACE_API_KEY },
     { name: 'OpenRouter',  fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
     { name: 'Gemini',      fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
     { name: 'Mistral',     fn: () => callMistral(msgs),     key: process.env.MISTRAL_API_KEY },
@@ -861,6 +875,7 @@ app.get('/api/health', (_, res) => res.json({
   ws:        wsClients.size + ' clients',
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
   cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
+  huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
   claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
   openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
@@ -2251,6 +2266,7 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
     console.log(`   WebSockets: ✅ /ws`);
     console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? '✅' : '⚠️  sin configurar'}`);
     console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? '✅ (' + OR_FREE_MODELS.length + ' modelos gratis)' : '⚠️  sin configurar'));
     console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
