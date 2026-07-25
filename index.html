@@ -1106,8 +1106,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <h2 style="margin-bottom:0">Noticias del Mundo</h2>
                     <span id="news-fresh-label" class="news-fresh-label"></span>
                 </div>
-                <a href="https://feeds.bbci.co.uk/mundo/rss.xml" target="_blank" rel="noopener" class="blogger-view-btn" id="news-source-link">
-                    <i class="fas fa-globe"></i> Fuente: BBC Mundo
+                <a href="#" target="_blank" rel="noopener" class="blogger-view-btn" id="news-source-link" style="display:none">
+                    <i class="fas fa-globe"></i> <span id="news-source-text">Fuente</span>
                 </a>
             </div>
             <div id="news-real-out">
@@ -4099,7 +4099,11 @@ async function loadRealNews() {
     const res = await fetchWithTimeout(url, {}, 8000);
     if (res.ok) {
       const data = await res.json();
-      if (data.items && data.items.length) { renderRealNews(data.items, data.fetchedAt, data.source); return; }
+      if (data.items && data.items.length) {
+        updateNewsSourceBadge(data.source, data.country);
+        renderRealNews(data.items, data.fetchedAt, data.source);
+        return;
+      }
     }
   } catch (e) { /* seguimos al plan B */ }
 
@@ -4125,10 +4129,28 @@ async function loadRealNews() {
     });
 
     if (!items.length) throw new Error('sin items');
-    renderRealNews(items, new Date().toISOString());
+    updateNewsSourceBadge('BBC Mundo', null);
+    renderRealNews(items, new Date().toISOString(), 'BBC Mundo');
   } catch (e) {
     out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar las noticias en este momento.<br><small>Intenta recargar la página.</small></div>`;
   }
+}
+
+// ── BADGE DE FUENTE (dinámico) ────────────────────────────────
+// Reemplaza el rótulo fijo "Fuente: BBC Mundo": ahora refleja la fuente
+// real que respondió (Google News del país detectado, o BBC Mundo si
+// Google News no estuvo disponible).
+function updateNewsSourceBadge(source, country) {
+  const link = document.getElementById('news-source-link');
+  const text = document.getElementById('news-source-text');
+  if (!link || !text) return;
+  if (!source) { link.style.display = 'none'; return; }
+  const isGoogle = source.startsWith('Google News');
+  text.textContent = isGoogle ? `Fuente: Google News${country ? ' · ' + country : ''}` : `Fuente: ${source}`;
+  link.href = isGoogle
+    ? `https://news.google.com/${country ? `?hl=es-419&gl=${encodeURIComponent(country)}&ceid=${encodeURIComponent(country)}:es-419` : ''}`
+    : NEWS_RSS_URL;
+  link.style.display = 'inline-flex';
 }
 
 function relativeTime(pub) {

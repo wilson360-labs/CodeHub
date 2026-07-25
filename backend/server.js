@@ -1134,6 +1134,52 @@ async function fetchRssItems(url, { limit = 9, sourceLabel = null } = {}) {
   return items;
 }
 
+// ── MINIATURAS REALES PARA GOOGLE NEWS ────────────────────────
+// El RSS de Google News casi nunca trae media:thumbnail/enclosure (a
+// diferencia de BBC), así que para los items sin imagen visitamos el
+// artículo real (el <link> redirige del dominio news.google.com al medio
+// original) y leemos su og:image/twitter:image. Se limita cuánto HTML se
+// lee y cuánto tiempo total se invierte para no volver lenta la respuesta;
+// como el resultado se cachea 15 min, este costo se paga poco.
+async function fetchOgImage(url) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const r = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
+    }).finally(() => clearTimeout(timeout));
+    if (!r.ok || !r.body) return '';
+
+    const reader = r.body.getReader();
+    let html = '';
+    let received = 0;
+    while (received < 65536) { // ~64KB alcanza para llegar al <head>
+      const { done, value } = await reader.read();
+      if (done) break;
+      html += Buffer.from(value).toString('utf8');
+      received += value.length;
+    }
+    try { await reader.cancel(); } catch {}
+
+    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i)
+           || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+    return m ? m[1] : '';
+  } catch (e) { return ''; }
+}
+
+async function enrichMissingImages(items, budgetMs = 6000) {
+  const start = Date.now();
+  const pending = items.filter(it => !it.image);
+  if (!pending.length) return items;
+  await Promise.all(pending.map(async (it) => {
+    if (Date.now() - start > budgetMs) return; // no seguimos gastando tiempo pasado el presupuesto
+    it.image = await fetchOgImage(it.url);
+  }));
+  return items;
+}
+
 app.get('/api/news', async (req, res) => {
   const country = (req.query.country || '').toUpperCase().slice(0, 2) || null;
   const cacheKey = country ? `news:google:${country}` : 'news:bbc-mundo';
@@ -1145,6 +1191,7 @@ app.get('/api/news', async (req, res) => {
     if (country) {
       try {
         items = await fetchRssItems(buildGoogleNewsUrl(country));
+        items = await enrichMissingImages(items);
         sourceName = `Google News (${country})`;
       } catch (e) {
         // Google News no disponible para ese país/red — caemos a BBC Mundo.

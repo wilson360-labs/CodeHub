@@ -1536,8 +1536,8 @@ html.is-mobile .dock-sep { height: 28px; margin: 0 1px 6px; }
 /* ── Noticias: cuadrícula real en móvil, nunca lista de 1 columna ── */
 html.is-mobile .blogger-grid {
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 0.6rem !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 0.5rem !important;
 }
 html.is-mobile .blogger-card-desc { display: none; }
 html.is-mobile .blogger-card-thumb { height: 76px !important; }
