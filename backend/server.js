@@ -795,25 +795,53 @@ async function callClaude(msgs) {
   return { reply, input: d.usage?.input_tokens||0, output: d.usage?.output_tokens||0, model: 'anthropic/claude-sonnet' };
 }
 
-async function callAI(msgs) {
-  const providers = [
-    { name: 'Claude',      fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
-    { name: 'Groq',        fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
-    { name: 'Cerebras',    fn: () => callCerebras(msgs),    key: process.env.CEREBRAS_API_KEY },
-    { name: 'HuggingFace', fn: () => callHuggingFace(msgs), key: process.env.HUGGINGFACE_API_KEY },
-    { name: 'OpenRouter',  fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
-    { name: 'Gemini',      fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
-    { name: 'Mistral',     fn: () => callMistral(msgs),     key: process.env.MISTRAL_API_KEY },
-    { name: 'Cohere',      fn: () => callCohere(msgs),      key: process.env.COHERE_API_KEY },
-  ];
+// ── Router Inteligente (reglas, prioriza CALIDAD sobre velocidad) ─────────
+// Analiza el último mensaje del usuario y reordena los proveedores según
+// qué tan bien encajan con el tipo de consulta. Sin llamadas extra, sin
+// latencia adicional — solo heurísticas sobre el texto ya disponible.
+const CODE_HINTS = /```|\b(debug|bug|error|stack ?trace|excepci[oó]n|refactor|optimiza|funci[oó]n|c[oó]digo|script|compila|sintaxis)\b/i;
+const CREATIVE_HINTS = /\b(cuento|poema|historia|redacta|ensayo|gui[oó]n|narrativa|creativo)\b/i;
 
+function classifyRoute(msgs) {
+  const last = msgs.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
+
+  // Orden base: calidad primero, no velocidad
+  let order = ['Claude', 'Gemini', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+
+  if (last.length > 6000) {
+    // Documento largo / contexto RAG → prioriza ventana de contexto grande
+    order = ['Gemini', 'Claude', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+  } else if (CODE_HINTS.test(last)) {
+    // Código/debug → Claude es el más fuerte, luego OpenRouter (DeepSeek)
+    order = ['Claude', 'OpenRouter', 'Gemini', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+  } else if (CREATIVE_HINTS.test(last)) {
+    order = ['Claude', 'Mistral', 'Gemini', 'OpenRouter', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+  }
+
+  return order;
+}
+
+async function callAI(msgs) {
+  const providerMap = {
+    Claude:      { fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
+    Groq:        { fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
+    Cerebras:    { fn: () => callCerebras(msgs),    key: process.env.CEREBRAS_API_KEY },
+    HuggingFace: { fn: () => callHuggingFace(msgs), key: process.env.HUGGINGFACE_API_KEY },
+    OpenRouter:  { fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
+    Gemini:      { fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
+    Mistral:     { fn: () => callMistral(msgs),     key: process.env.MISTRAL_API_KEY },
+    Cohere:      { fn: () => callCohere(msgs),      key: process.env.COHERE_API_KEY },
+  };
+
+  const order = classifyRoute(msgs);
+  const providers = order.map(name => ({ name, ...providerMap[name] }));
   const available = providers.filter(p => p.key);
   if (!available.length) throw new Error('Sin API keys de IA configuradas');
 
   for (const provider of available) {
     try {
       const result = await provider.fn();
-      console.log(`✅ IA respondió via ${provider.name}`);
+      console.log(`✅ IA respondió via ${provider.name} (router: ${available.map(p=>p.name).join(' > ')})`);
       return result;
     } catch (e) {
       if (e.status === 401) { console.warn(`❌ ${provider.name}: API key inválida`); continue; }
