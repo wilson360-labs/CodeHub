@@ -243,11 +243,34 @@ const AppRequest = mongoose.model('AppRequest', new mongoose.Schema({
 }));
 
 let dbConnected = false;
+
+// ── MONGODB — LISTENERS DE RECONEXIÓN ──────────────────────────
+// Mantienen dbConnected sincronizado con el estado REAL de la conexión.
+// Sin esto, si Atlas cierra la conexión por inactividad o hay un corte
+// de red temporal, dbConnected se queda "true" para siempre (se asignaba
+// una sola vez al arrancar) y las rutas dejan de devolver el fallback 503.
+mongoose.connection.on('connected', () => {
+  dbConnected = true;
+  console.log('✅ MongoDB Atlas conectado');
+});
+mongoose.connection.on('disconnected', () => {
+  dbConnected = false;
+  console.warn('⚠️  MongoDB desconectado — reintentando en segundo plano...');
+});
+mongoose.connection.on('reconnected', () => {
+  dbConnected = true;
+  console.log('✅ MongoDB Atlas reconectado');
+});
+mongoose.connection.on('error', (err) => {
+  dbConnected = false;
+  console.error('❌ MongoDB error:', err.message);
+});
+
 async function connectDB() {
   if (!process.env.MONGODB_URI) { console.warn('⚠️  MONGODB_URI no configurado'); return false; }
   try {
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
-    console.log('✅ MongoDB Atlas conectado'); return true;
+    return true; // 'connected' listener ya deja el log y actualiza dbConnected
   } catch (err) { console.error('❌ MongoDB error:', err.message); return false; }
 }
 
