@@ -157,6 +157,10 @@
       "destination": "/pages/novedades.html"
     },
     {
+      "source": "/open-source",
+      "destination": "/pages/open-source.html"
+    },
+    {
       "source": "/servicios",
       "destination": "/pages/servicios.html"
     },
@@ -198,6 +202,11 @@
     {
       "source": "/novedades.html",
       "destination": "/novedades",
+      "permanent": true
+    },
+    {
+      "source": "/open-source.html",
+      "destination": "/open-source",
       "permanent": true
     },
     {
@@ -248,6 +257,11 @@
     {
       "source": "/pages/novedades",
       "destination": "/novedades",
+      "permanent": true
+    },
+    {
+      "source": "/pages/open-source",
+      "destination": "/open-source",
       "permanent": true
     },
     {

@@ -1082,6 +1082,7 @@ app.get('/api/apps', async (_, res) => {
       enlace:       a.enlace || '#',
       plugin_enlace:a.plugin_enlace || null,
       tutorial_url: a.tutorial_url || null,
+      source_repo:  a.source_repo || null,
       updatedAt:    a.updatedAt,
     }));
     const result = { apps: mapped, total: mapped.length };
