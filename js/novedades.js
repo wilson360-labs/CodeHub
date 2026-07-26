@@ -342,8 +342,25 @@ async function submitRequest() {
 
 
 // ── CARGA DINÁMICA DE APPS DESDE BACKEND ─────────────────────
+// Fuente única: /api/apps. Se separa en dos catálogos por la
+// presencia (o no) de `source_repo`, sin depender de una página
+// aparte — ver switchCatalog() / renderCatalog() más abajo.
 const APP_META = {"app-1": {"img": "/img/Spotify.png", "desc": "Música sin anuncios, calidad máxima, descargas y saltos ilimitados.", "catTag": "Música", "emoji": "🎵"}, "app-2": {"img": "/img/SpoLite.png", "desc": "Versión ligera de Spotify con funciones premium activadas.", "catTag": "Música", "emoji": "🎵"}, "app-3": {"img": "/img/YouTube.jpeg", "desc": "YouTube sin anuncios, SponsorBlock integrado y gestor de descargas.", "catTag": "Video", "emoji": "📺"}, "app-4": {"img": "/img/YTMusic.png", "desc": "YouTube Music con reproducción en segundo plano sin restricciones.", "catTag": "Música", "emoji": "🎵"}, "app-5": {"img": "/img/TikTok.svg", "desc": "TikTok sin anuncios, sin marca de agua en descargas y región desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-6": {"img": "/img/Netflix.png", "desc": "Cliente alternativo de Netflix con calidad 4K desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-7": {"img": "/img/Terabox.png", "desc": "Almacenamiento en la nube premium con transferencias más rápidas.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-8": {"img": "/img/Player.jpg", "desc": "Reproductor de video con soporte para todos los formatos y AV1.", "catTag": "Video", "emoji": "📺"}, "app-9": {"img": "/img/Picsart.jpg", "desc": "Editor de fotos con todas las herramientas IA desbloqueadas.", "catTag": "Foto", "emoji": "📸"}, "app-10": {"img": "/img/Remini.png", "desc": "Mejora la calidad de fotos antiguas o borrosas con IA avanzada.", "catTag": "Foto", "emoji": "📸"}, "app-11": {"img": "/img/Eraser.jpg", "desc": "Elimina objetos, personas o fondos de tus fotos con un toque.", "catTag": "Foto", "emoji": "📸"}, "app-12": {"img": "/img/CamScanner.png", "desc": "Escáner de documentos con OCR preciso y múltiples formatos de exportación.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-13": {"img": "/img/dnspro.png", "desc": "Bloquea anuncios y rastreadores a nivel DNS en todo el dispositivo.", "catTag": "Seguridad", "emoji": "🔒"}};
 const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util"};
+const PREMIUM_CHIPS = [
+  { id: 'musica', label: '🎵 Música' },
+  { id: 'video',  label: '📺 Video' },
+  { id: 'foto',   label: '📸 Foto' },
+  { id: 'util',   label: '🛠️ Utilidad' },
+];
+const OS_CAT_EMOJI = {
+  'Root y Sistema':   '🛠️',
+  'Música':            '🎵',
+  'Video':             '📺',
+  'VPN y Privacidad':  '🔒',
+  'Productividad':     '✅',
+  'Lectura':           '📖',
+};
 
 function buildAppCard(app) {
   const meta      = APP_META[app.appId] || {};
@@ -418,6 +435,115 @@ function buildAppCard(app) {
   </div>`;
 }
 
+function buildOSCard(app) {
+  const img     = app.imagen || '';
+  const version = app.version ? `v${app.version.replace(/^v/i, '')}` : 'Sin versión aún';
+  const desc    = app.descripcion || '';
+  const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
+  const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
+  const emoji   = OS_CAT_EMOJI[app.categoria] || '📦';
+  const badge   = app.tag || '🆕';
+
+  const dlBtn = enlace
+    ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" target="_blank" rel="noopener">
+         <i class="fas fa-download"></i> Descargar APK
+       </a>`
+    : `<a class="dl-btn" href="${repoUrl || '#'}" target="_blank" rel="noopener" style="opacity:.75">
+         <i class="fas fa-clock"></i> Ver en GitHub (sin release aún)
+       </a>`;
+
+  const repoBtn = repoUrl
+    ? `<a class="dl-btn dl-plugin" href="${repoUrl}" target="_blank" rel="noopener" title="Código fuente">
+         <i class="fab fa-github"></i> Repo
+       </a>`
+    : '';
+
+  return `
+  <div class="app-card" data-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}">
+    <div class="app-thumb">
+      <img src="${img}" alt="${app.nombre}" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
+      <span class="app-badge">${badge}</span>
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+      <span class="app-version-tag">${version}</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
+      <div class="app-name">${app.nombre}</div>
+      <div class="app-desc">${desc}</div>
+      <div class="app-actions">${dlBtn}${repoBtn}</div>
+    </div>
+  </div>`;
+}
+
+// ── ESTADO DE CATÁLOGO (Premium ⇄ Open Source) ────────────────
+let CURRENT_CATALOG = 'premium';
+let PREMIUM_APPS = [];
+let OS_APPS = [];
+
+function buildChips(list) {
+  const wrap = document.getElementById('cat-chips');
+  wrap.innerHTML = '<button class="cat-chip on" onclick="filterCat(\'all\',this)">Todas</button>';
+  list.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-chip';
+    btn.textContent = c.label;
+    btn.onclick = () => filterCat(c.id, btn);
+    wrap.appendChild(btn);
+  });
+}
+
+function renderCatalog() {
+  activeTag = 'all';
+  const grid = document.getElementById('app-grid');
+  const isOS = CURRENT_CATALOG === 'opensource';
+  const apps = isOS ? OS_APPS : PREMIUM_APPS;
+
+  document.getElementById('hero-tag').innerHTML = isOS
+    ? '<span class="hero-dot"></span> 100% Open Source · Gratis · Solo Android'
+    : `<span class="hero-dot"></span> ${PREMIUM_APPS.length} apps · Gratis · Solo Android`;
+  document.getElementById('hero-title').innerHTML = isOS ? 'Catálogo<br>Open Source' : 'Apps con todo<br>desbloqueado';
+  document.getElementById('hero-sub').textContent = isOS
+    ? 'Apps con código abierto, verificadas contra su repositorio oficial. Descarga directa desde GitHub Releases, sin modificaciones ni anuncios de por medio.'
+    : 'Curadas y probadas. Sin registros, sin pagos, solo descarga e instala.';
+
+  document.getElementById('sc-apps').textContent = apps.length;
+  document.getElementById('sc-apps-label').textContent = isOS ? 'Apps en el catálogo' : 'Apps disponibles';
+
+  if (isOS) {
+    const cats = [...new Set(apps.map(a => a.categoria).filter(Boolean))];
+    document.getElementById('sc-new').textContent = cats.length;
+    document.getElementById('sc-new-label').textContent = 'Categorías';
+    buildChips(cats.map(c => ({ id: c, label: `${OS_CAT_EMOJI[c] || '📦'} ${c}` })));
+  } else {
+    document.getElementById('sc-new').textContent = apps.filter(a => (a.tag || '').includes('🆕')).length;
+    document.getElementById('sc-new-label').textContent = 'Nuevas este mes';
+    buildChips(PREMIUM_CHIPS);
+  }
+
+  const search = document.getElementById('search');
+  search.value = '';
+  search.placeholder = isOS ? 'Buscar app open source…' : 'Buscar app…';
+
+  if (!apps.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">${isOS ? 'Aún no hay apps open source publicadas en el catálogo.' : 'No hay apps disponibles.'}</div>`;
+    return;
+  }
+
+  grid.innerHTML = apps.map(isOS ? buildOSCard : buildAppCard).join('');
+
+  if (!isOS && typeof loadRatings === 'function') loadRatings();
+  applyFilter('');
+}
+
+function switchCatalog(cat) {
+  if (cat === CURRENT_CATALOG) return;
+  CURRENT_CATALOG = cat;
+  document.getElementById('tab-premium').classList.toggle('on', cat === 'premium');
+  document.getElementById('tab-opensource').classList.toggle('on', cat === 'opensource');
+  history.replaceState(null, '', cat === 'opensource' ? '#open-source' : location.pathname + location.search);
+  renderCatalog();
+}
+
 async function loadAppsFromBackend() {
   const grid = document.getElementById('app-grid');
   try {
@@ -425,22 +551,19 @@ async function loadAppsFromBackend() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const apps = await res.json();
 
-    if (!apps.length) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No hay apps disponibles.</div>';
-      return;
+    // Una sola fuente de datos, separada por catálogo según
+    // tenga (open source) o no (premium) un `source_repo` vinculado.
+    PREMIUM_APPS = apps.filter(a => !a.source_repo);
+    OS_APPS      = apps.filter(a => !!a.source_repo);
+
+    if (location.hash === '#open-source') {
+      CURRENT_CATALOG = 'opensource';
+      document.getElementById('tab-premium').classList.remove('on');
+      document.getElementById('tab-opensource').classList.add('on');
     }
 
-    grid.innerHTML = apps.map(buildAppCard).join('');
-
-    // Actualizar contador de apps
-    const scApps = document.getElementById('sc-apps');
-    if (scApps) scApps.textContent = apps.length;
-
-    // Re-inicializar ratings, filtros y updater
-    if (typeof loadRatings    === 'function') loadRatings();
-    if (typeof filterApps     === 'function') filterApps();
-
-    console.log(`✅ ${apps.length} apps cargadas desde backend`);
+    renderCatalog();
+    console.log(`✅ ${PREMIUM_APPS.length} apps premium + ${OS_APPS.length} open source cargadas desde backend`);
   } catch (e) {
     console.error('Error cargando apps:', e);
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><i class="fas fa-exclamation-triangle" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>Error cargando apps. Recarga la página.</div>';

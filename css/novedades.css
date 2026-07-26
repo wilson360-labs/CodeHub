@@ -190,6 +190,27 @@ header {
 .search-inp:focus { border-color: var(--bh); box-shadow: 0 0 0 3px rgba(255,69,0,.1); }
 .search-inp::placeholder { color: var(--muted); }
 
+/* ── CATALOG TABS (Premium / Open Source) ── */
+.catalog-tabs {
+  position: relative; z-index: 1;
+  max-width: 1280px; margin: 0 auto 1.25rem;
+  padding: 0 2rem;
+  display: flex; gap: .6rem; flex-wrap: wrap;
+}
+.cat-tab {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .65rem 1.1rem; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); font-family: var(--font);
+  font-size: .85rem; font-weight: 700; cursor: pointer; transition: var(--tr);
+}
+.cat-tab i { font-size: .95rem; }
+.cat-tab:hover { border-color: var(--bh); color: var(--text); }
+.cat-tab.on {
+  border-color: var(--p); color: var(--a);
+  background: rgba(255,69,0,.1);
+}
+
 .cat-chips { display: flex; gap: .4rem; flex-wrap: wrap; }
 .cat-chip {
   padding: .35rem .85rem; border-radius: 20px;
