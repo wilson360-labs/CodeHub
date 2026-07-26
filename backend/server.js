@@ -220,6 +220,7 @@ const App = mongoose.model('App', new mongoose.Schema({
   ia_identifier:      { type: String, default: null },  // Item ID de Archive.org
   ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
   tutorial_url:       { type: String, default: null },
+  source_repo:        { type: String, default: null }, // "owner/repo" — habilita el monitor automático de actualizaciones vía GitHub Releases
   updatedAt:          { type: Date, default: Date.now },
   createdAt:          { type: Date, default: Date.now },
 }));
@@ -1386,10 +1387,10 @@ app.get('/api/admin/apps', requireAdmin, async (_, res) => {
 app.post('/api/admin/apps', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
-    const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace } = req.body;
+    const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo } = req.body;
     if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
     if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen, categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null });
+    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen, categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     res.json({ ok: true, app: a });
@@ -1400,7 +1401,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
     const update = {};
-    ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url']
+    ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo']
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
 
     // No sobreescribir enlace con vacío o '#' si ya hay un APK subido (Telegram/Archive/Supabase)

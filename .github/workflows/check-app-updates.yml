@@ -1,0 +1,34 @@
+name: 🔄 CodeHub Catálogo Open Source — Monitor de Actualizaciones
+
+on:
+  # Cada 12 horas
+  schedule:
+    - cron: '0 */12 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  check-updates:
+    name: Revisar GitHub Releases del catálogo
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Instalar dependencias (mongoose)
+        working-directory: ./backend
+        run: npm install mongoose --no-save
+
+      - name: 🔎 Revisar y actualizar catálogo
+        working-directory: ./backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/check-app-updates.js
