@@ -443,13 +443,14 @@ function buildOSCard(app) {
   const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
   const emoji   = OS_CAT_EMOJI[app.categoria] || '📦';
   const badge   = app.tag || '🆕';
+  const badgeClass = badge.includes('Actualiz') ? 'badge-upd' : 'badge-new';
 
   const dlBtn = enlace
     ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" target="_blank" rel="noopener">
          <i class="fas fa-download"></i> Descargar APK
        </a>`
-    : `<a class="dl-btn" href="${repoUrl || '#'}" target="_blank" rel="noopener" style="opacity:.75">
-         <i class="fas fa-clock"></i> Ver en GitHub (sin release aún)
+    : `<a class="dl-btn dl-ghost" href="${repoUrl || '#'}" target="_blank" rel="noopener">
+         <i class="fas fa-clock"></i> Ver en GitHub
        </a>`;
 
   const repoBtn = repoUrl
@@ -462,7 +463,7 @@ function buildOSCard(app) {
   <div class="app-card" data-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}">
     <div class="app-thumb">
       <img src="${img}" alt="${app.nombre}" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
-      <span class="app-badge">${badge}</span>
+      <span class="app-badge ${badgeClass}">${badge}</span>
       <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
       <span class="app-version-tag">${version}</span>
     </div>
