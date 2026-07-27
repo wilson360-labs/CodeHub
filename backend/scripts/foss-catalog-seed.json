@@ -159,6 +159,46 @@
       "categoria": "Lectura",
       "source_repo": "komikku-app/komikku",
       "imagen": "https://opengraph.githubassets.com/1/komikku-app/komikku"
+    },
+    {
+      "appId": "os-magisk",
+      "nombre": "Magisk",
+      "descripcion": "El framework de root más usado en Android. Systemless, con soporte de módulos y ocultamiento de root.",
+      "categoria": "Root y Sistema",
+      "source_repo": "topjohnwu/Magisk",
+      "imagen": ""
+    },
+    {
+      "appId": "os-termux",
+      "nombre": "Termux",
+      "descripcion": "Terminal Linux completa en tu Android, sin root. Instala paquetes reales vía APT y corre scripts, Python, Node y más.",
+      "categoria": "Root y Sistema",
+      "source_repo": "termux/termux-app",
+      "imagen": ""
+    },
+    {
+      "appId": "os-orbot",
+      "nombre": "Orbot",
+      "descripcion": "Proxy gratuito sobre la red Tor para anonimizar todo tu tráfico de red en Android.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "guardianproject/orbot",
+      "imagen": ""
+    },
+    {
+      "appId": "os-signal",
+      "nombre": "Signal",
+      "descripcion": "Mensajería y llamadas con cifrado de extremo a extremo, auditado y sin fines de lucro.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "signalapp/Signal-Android",
+      "imagen": ""
+    },
+    {
+      "appId": "os-mihon",
+      "nombre": "Mihon",
+      "descripcion": "Lector de manga y cómics configurable, con soporte de trackers (MyAnimeList, AniList) y extensiones.",
+      "categoria": "Lectura",
+      "source_repo": "mihonapp/mihon",
+      "imagen": ""
     }
   ]
 }

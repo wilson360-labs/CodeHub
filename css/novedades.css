@@ -368,6 +368,11 @@ header {
   font-family: var(--mono); font-size: .63rem;
   color: var(--a); text-transform: uppercase; letter-spacing: .08em;
 }
+.app-updated {
+  color: var(--muted); text-transform: none; letter-spacing: 0;
+  font-weight: 600;
+}
+.app-updated i { font-size: .6rem; margin-right: 2px; }
 .app-name { font-size: 1rem; font-weight: 700; color: #fff; }
 .app-desc { font-size: .8rem; color: var(--muted); line-height: 1.6; flex: 1; }
 
