@@ -601,7 +601,7 @@ function formatUpdated(dateStr) {
 
 function buildAppCard(app) {
   const meta      = APP_META[app.appId] || {};
-  const img       = meta.img     || '/img/default.png';
+  const img       = app.imagen   || meta.img || '/img/default.png';
   const desc      = meta.desc    || app.descripcion || '';
   const catTag    = meta.catTag  || app.categoria   || 'App';
   const dataCat   = CAT_MAP[catTag] || 'util';
@@ -785,12 +785,16 @@ function switchCatalog(cat) {
   renderCatalog();
 }
 
-async function loadAppsFromBackend() {
+async function loadAppsFromBackend(isRetry) {
   const grid = document.getElementById('app-grid');
   try {
     const res  = await fetch(`${BACKEND}/api/apps`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const apps = await res.json();
+    const data = await res.json();
+
+    // El backend devuelve { apps: [...], total }, no un array plano.
+    // Se acepta también un array plano por compatibilidad.
+    const apps = Array.isArray(data) ? data : (data.apps || []);
 
     // Una sola fuente de datos, separada por catálogo según
     // tenga (open source) o no (premium) un `source_repo` vinculado.
@@ -810,6 +814,15 @@ async function loadAppsFromBackend() {
     renderCatalog();
     console.log(`✅ ${PREMIUM_APPS.length} apps premium + ${OS_APPS.length} open source cargadas desde backend`);
   } catch (e) {
+    // El backend en Render (free tier) se duerme tras inactividad; la
+    // primera petición tras despertar puede fallar con "Failed to fetch".
+    // Se reintenta una vez, dando tiempo a que el servidor arranque.
+    if (!isRetry) {
+      console.warn('Primer intento falló, reintentando en 4s (posible cold-start de Render)…', e);
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><i class="fas fa-circle-notch fa-spin" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>Conectando con el servidor…</div>';
+      setTimeout(() => loadAppsFromBackend(true), 4000);
+      return;
+    }
     console.error('Error cargando apps:', e);
     grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)"><i class="fas fa-exclamation-triangle" style="font-size:1.5rem;margin-bottom:.8rem;display:block"></i>Error cargando apps. Recarga la página.</div>';
   }
