@@ -1,0 +1,41 @@
+name: 🌱 CodeHub Catálogo Open Source — Siembra inicial
+
+# Se ejecuta SOLO a mano desde la pestaña Actions (botón "Run workflow").
+# Inserta/actualiza (upsert por appId) las apps definidas en
+# backend/scripts/foss-catalog-seed.json — es seguro correrlo varias
+# veces, nunca duplica registros. Úsalo cada vez que agregues apps
+# nuevas a ese JSON.
+on:
+  workflow_dispatch:
+
+jobs:
+  seed-catalog:
+    name: Sembrar catálogo Open Source en MongoDB
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Instalar dependencias (mongoose)
+        working-directory: ./backend
+        run: npm install mongoose --no-save
+
+      - name: 🌱 Sembrar catálogo
+        working-directory: ./backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: node scripts/seed-foss-catalog.js
+
+      - name: 🔎 Revisar versiones/enlaces recién sembrados
+        working-directory: ./backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/check-app-updates.js
