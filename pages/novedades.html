@@ -229,6 +229,27 @@
    CodeHub by Wilson.E
 ═══════════════════════════════════════ */
 
+// ── OPTIMIZADOR DE MINIATURAS EXTERNAS ───────────────────────
+// Las imágenes locales (/img/...) se sirven tal cual. Las URLs
+// externas (repo de GitHub, links pegados en el admin, capturas
+// de Google Play, etc.) pasan por wsrv.nl para normalizar tamaño,
+// formato (webp) y calidad — evita miniaturas con proporciones o
+// pesos distintos según de dónde salió el link.
+function getOptimizedImageUrl(url, size = 160) {
+  if (!url) return '';
+  if (url.startsWith('/') || url.startsWith('data:')) return url;
+  let source = url;
+  // Google Play scrapea con parámetros de tamaño bajo (=w526-h296-rw);
+  // se fuerza una resolución alta antes de mandarla al proxy.
+  if (source.includes('googleusercontent.com') || source.includes('ggpht.com')) {
+    source = /=[swh]\d+/.test(source)
+      ? source.replace(/=[swh]\d+[^/]*$/, '=w512-h512-rw')
+      : source + '=w512-h512-rw';
+  }
+  const encoded = encodeURIComponent(source);
+  return `https://wsrv.nl/?url=${encoded}&output=webp&q=80&w=${size}&h=${size}&fit=cover&maxage=31d`;
+}
+
 // ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
 // Misma función que en admin-hub.js — convierte links de nube
 // a descarga directa al momento de renderizar las cards.
@@ -602,7 +623,7 @@ function formatUpdated(dateStr) {
 
 function buildAppCard(app) {
   const meta      = APP_META[app.appId] || {};
-  const img       = app.imagen   || meta.img || '/img/default.png';
+  const img       = app.imagen ? getOptimizedImageUrl(app.imagen, 160) : (meta.img || '/img/default.png');
   const desc      = meta.desc    || app.descripcion || '';
   const catTag    = meta.catTag  || app.categoria   || 'App';
   const dataCat   = CAT_MAP[catTag] || 'util';
@@ -675,7 +696,7 @@ function buildAppCard(app) {
 }
 
 function buildOSCard(app) {
-  const img     = app.imagen || (app.source_repo ? `https://opengraph.githubassets.com/1/${app.source_repo}` : '');
+  const img     = getOptimizedImageUrl(app.imagen || (app.source_repo ? `https://opengraph.githubassets.com/1/${app.source_repo}` : ''), 160);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : 'Sin versión aún';
   const desc    = app.descripcion || '';
   const updated = formatUpdated(app.updatedAt);

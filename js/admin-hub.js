@@ -7,6 +7,33 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 // ⚠️ La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Render)
 let ADMIN_KEY = '';
 
+// ── VALIDADOR DE LINKS DE IMAGEN ──────────────────────────────
+// Mismo criterio de aceptación que usa Orion Store para sus
+// miniaturas: extensión de imagen conocida, capturas scrapeadas
+// de Google Play, o raw de GitHub/GitLab/Codeberg (incluye el
+// proxy camo.githubusercontent.com). No bloquea rutas locales
+// (/img/...) ni el campo vacío.
+function isAcceptedImageLink(url) {
+  if (!url) return true; // vacío o ruta local: se valida aparte
+  if (url.startsWith('/')) return true;
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    const path = u.pathname;
+    if (host.startsWith('private-user')) return false;
+    const ext = (path.toLowerCase().split('?')[0] || '').split('#')[0];
+    if (['.jpg','.jpeg','.png','.webp','.gif','.bmp','.avif','.svg'].some(e => ext.endsWith(e))) return true;
+    if (host.endsWith('googleusercontent.com') && path.startsWith('/play-lh')) return true;
+    if (host === 'raw.githubusercontent.com') return true;
+    if (host === 'camo.githubusercontent.com') return true;
+    if (host === 'opengraph.githubassets.com') return true;
+    if ((host.endsWith('gitlab.com') || host.endsWith('gitlab.io')) && path.includes('/-/raw/')) return true;
+    if (host === 'codeberg.org' && path.includes('/raw/branch/')) return true;
+    return false;
+  } catch { return false; }
+}
+
 // ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
 // Convierte links de plataformas en URLs de descarga directa.
 // Actualizado con los formatos reales vigentes en 2026.
@@ -682,6 +709,9 @@ async function createApp() {
     tag: '🆕', verified: true,
   };
   if (!body.appId || !body.nombre) return toast('❌ AppId y Nombre son obligatorios');
+  if (body.imagen && !isAcceptedImageLink(body.imagen)) {
+    toast('⚠️ Ese link de imagen puede no cargar bien — usa jpg/png/webp, una captura de Play Store o un raw de GitHub/GitLab/Codeberg');
+  }
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       method: 'POST',
