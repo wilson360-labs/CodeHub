@@ -541,6 +541,7 @@ function switchCatalog(cat) {
   CURRENT_CATALOG = cat;
   document.getElementById('tab-premium').classList.toggle('on', cat === 'premium');
   document.getElementById('tab-opensource').classList.toggle('on', cat === 'opensource');
+  document.getElementById('tab-indicator').classList.toggle('os', cat === 'opensource');
   history.replaceState(null, '', cat === 'opensource' ? '#open-source' : location.pathname + location.search);
   renderCatalog();
 }
@@ -557,10 +558,14 @@ async function loadAppsFromBackend() {
     PREMIUM_APPS = apps.filter(a => !a.source_repo);
     OS_APPS      = apps.filter(a => !!a.source_repo);
 
+    document.getElementById('count-premium').textContent = PREMIUM_APPS.length;
+    document.getElementById('count-opensource').textContent = OS_APPS.length;
+
     if (location.hash === '#open-source') {
       CURRENT_CATALOG = 'opensource';
       document.getElementById('tab-premium').classList.remove('on');
       document.getElementById('tab-opensource').classList.add('on');
+      document.getElementById('tab-indicator').classList.add('os');
     }
 
     renderCatalog();

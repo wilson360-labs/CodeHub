@@ -228,30 +228,46 @@ header {
   display: flex; justify-content: center;
 }
 .catalog-tabs-inner {
+  position: relative;
   display: flex; gap: 4px; width: 100%;
   background: var(--surface-2); border: 1px solid var(--outline);
   border-radius: 16px; padding: 4px;
   box-shadow: var(--shadow-1);
 }
-.cat-tab {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: .5rem;
-  padding: .65rem .9rem; border-radius: 12px;
-  border: none; background: transparent;
-  color: var(--muted); font-family: var(--font);
-  font-size: .82rem; font-weight: 700; cursor: pointer; transition: var(--tr);
-}
-.cat-tab i { font-size: .9rem; }
-.cat-tab:hover { color: var(--text); }
-.cat-tab.on {
-  color: var(--on-primary-container);
+.tab-indicator {
+  position: absolute; top: 4px; left: 4px;
+  width: calc(50% - 4px); height: calc(100% - 8px);
+  border-radius: 12px;
   background: var(--primary-container);
   box-shadow: 0 2px 8px rgba(255,106,61,.18);
+  transition: transform .32s cubic-bezier(.4,0,.2,1), background .32s, box-shadow .32s;
+  z-index: 0;
 }
-#tab-opensource.on {
-  color: var(--on-secondary-container);
+.tab-indicator.os {
+  transform: translateX(calc(100% + 4px));
   background: var(--secondary-container);
   box-shadow: 0 2px 8px rgba(139,155,255,.18);
 }
+.cat-tab {
+  position: relative; z-index: 1;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: .45rem;
+  padding: .65rem .85rem; border-radius: 12px;
+  border: none; background: transparent;
+  color: var(--muted); font-family: var(--font);
+  font-size: .82rem; font-weight: 700; cursor: pointer; transition: color .25s;
+}
+.cat-tab i { font-size: .9rem; }
+.cat-tab:hover { color: var(--text); }
+.cat-tab:active { transform: scale(.97); }
+.cat-tab.on { color: var(--on-primary-container); }
+#tab-opensource.on { color: var(--on-secondary-container); }
+.cat-tab-count {
+  font-family: var(--mono); font-size: .65rem; font-weight: 700;
+  padding: .05rem .4rem; border-radius: 20px;
+  background: rgba(255,255,255,.08); color: var(--muted);
+  min-width: 1.4em; text-align: center;
+}
+.cat-tab.on .cat-tab-count { background: rgba(255,255,255,.14); color: inherit; }
 
 .cat-chips { display: flex; gap: .45rem; flex-wrap: wrap; justify-content: center; }
 .cat-chip {
@@ -427,6 +443,11 @@ footer a { color: var(--p); text-decoration: none; }
   .security-banner { padding: 0 1rem; }
   .app-actions { flex-direction: column; }
   .dl-btn { flex: none; width: 100%; }
+  .catalog-tabs { padding: 0 1rem; max-width: 100%; }
+  .cat-tab { padding: .6rem .5rem; font-size: .74rem; gap: .3rem; }
+  .cat-tab i { font-size: .8rem; }
+  .cat-tab-count { font-size: .58rem; padding: .04rem .32rem; }
+  .cat-chip { padding: .34rem .8rem; font-size: .7rem; }
 }
 
 /* Ajuste 2 columnas mobile */
@@ -573,4 +594,6 @@ footer a { color: var(--p); text-decoration: none; }
   .back-link span { display: none; }
   .back-link { padding: .38rem .6rem; }
   .update-badge { font-size: .6rem; padding: .18rem .5rem; }
+  .cat-tab-count { display: none; }
+  .cat-tab { font-size: .7rem; padding: .58rem .4rem; }
 }
