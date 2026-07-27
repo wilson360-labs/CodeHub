@@ -297,9 +297,16 @@ function renderApps() {
     return `
     <div class="app-row" id="row-${app.appId}">
       <div class="app-name-cell">
-        ${app.nombre}
-        <small>${app.categoria || ''} · ${app.appId}</small>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
+          <img id="img-prev-${app.appId}" src="${app.imagen || ''}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:var(--card2);flex-shrink:0;${app.imagen ? '' : 'display:none'}" onerror="this.style.display='none'">
+          <div>
+            ${app.nombre}
+            <small>${app.categoria || ''} · ${app.appId}</small>
+          </div>
+        </div>
         ${storageBadge}
+        <input class="ver-input" type="text" id="img-${app.appId}" value="${(app.imagen || '').replace(/"/g,'&quot;')}" placeholder="/img/NombreApp.png o URL" style="width:100%;margin-top:.35rem;font-size:.56rem" oninput="previewRowImagen('${app.appId}')">
+        <div id="img-hint-${app.appId}" style="font-size:.55rem;color:var(--muted);margin-top:.2rem;word-break:break-all"></div>
       </div>
       <div>
         <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
@@ -374,6 +381,45 @@ function toggleVerified(appId) {
   badge.textContent = app.verified ? '✅ Sí' : '○ No';
 }
 
+// ── PREVIEW EN VIVO DEL ÍCONO AL EDITAR UNA FILA ────────────────
+// Mismo criterio que previewNewImagen(), pero por appId, para poder
+// cambiar la miniatura de las apps ya publicadas desde el panel.
+let _rowImgDebounce = {};
+function previewRowImagen(appId) {
+  clearTimeout(_rowImgDebounce[appId]);
+  _rowImgDebounce[appId] = setTimeout(() => {
+    const input = document.getElementById('img-' + appId);
+    const img   = document.getElementById('img-prev-' + appId);
+    const hint  = document.getElementById('img-hint-' + appId);
+    if (!input || !img || !hint) return;
+    const val = input.value.trim();
+
+    if (!val) { img.style.display = 'none'; hint.textContent = ''; return; }
+
+    if (val.includes('opengraph.githubassets.com')) {
+      img.style.display = 'none';
+      hint.textContent = '⚠️ Ese es el banner/portada social del repo, no el ícono. Usa el ícono real (assets/, mipmap-xxxhdpi/, etc.)';
+      hint.style.color = 'var(--danger, #f66)';
+      return;
+    }
+
+    if (!isAcceptedImageLink(val)) {
+      img.style.display = 'none';
+      hint.textContent = '⚠️ Link no reconocido — usa jpg/png/webp, captura de Play Store o raw de GitHub/GitLab/Codeberg';
+      hint.style.color = 'var(--danger, #f66)';
+      return;
+    }
+
+    const optimized = (typeof getOptimizedImageUrl === 'function' && !val.startsWith('/'))
+      ? getOptimizedImageUrl(val, 72, 72)
+      : val;
+    img.src = optimized;
+    img.style.display = 'block';
+    img.onerror = () => { hint.textContent = '⚠️ El link parece válido pero la imagen no cargó — verifícalo'; hint.style.color = 'var(--danger, #f66)'; };
+    img.onload  = () => { hint.textContent = '✅ Imagen cargada correctamente'; hint.style.color = 'var(--ok, #6f6)'; };
+  }, 300);
+}
+
 // ── SAVE ROW ──────────────────────────────────────────────────
 async function saveRow(appId) {
   const app = appsData.find(a => a.appId === appId);
@@ -391,6 +437,8 @@ async function saveRow(appId) {
   if (linkInput   && convertedEnlace !== rawEnlace)  linkInput.value   = convertedEnlace;
   if (pluginInput && convertedPlugin !== rawPlugin)   pluginInput.value = convertedPlugin || '';
 
+  const rawImagen = document.getElementById('img-' + appId)?.value.trim();
+
   const body = {
     version:       document.getElementById('ver-' + appId)?.value.trim(),
     changelog:     document.getElementById('cl-' + appId)?.value.trim(),
@@ -399,8 +447,12 @@ async function saveRow(appId) {
     enlace:        convertedEnlace,
     plugin_enlace: convertedPlugin,
     tutorial_url:  document.getElementById('tutorial-' + appId)?.value.trim() || null,
+    imagen:        rawImagen,
     updatedAt:     document.getElementById('upd-' + appId)?.value || new Date().toISOString().substring(0,10),
   };
+  if (rawImagen && !isAcceptedImageLink(rawImagen)) {
+    toast('⚠️ Ese link de imagen puede no cargar bien — usa jpg/png/webp, una captura de Play Store o un raw de GitHub/GitLab/Codeberg');
+  }
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
       method: 'PATCH',
