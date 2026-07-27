@@ -2262,6 +2262,113 @@ async function ghUpdateFile(filePath, content, message) {
   });
 }
 
+// ── EXTRACCIÓN DE ÍCONOS DESDE URL "UNIVERSAL" ──────────────────
+// El admin pega el link que ya tiene a mano (repo de GitHub, ficha de
+// F-Droid, ficha de Play Store, o directamente la imagen) y esto baja
+// el ícono REAL de la app (no el banner social del repo) y lo sube a
+// img/ en GitHub vía Octokit, reutilizando ghUpdateFile(). No inventa
+// ni asume: si no encuentra el ícono, devuelve un error explicando qué
+// probó, para que el admin pegue el link directo como alternativa.
+const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'];
+
+function iconExtFromUrl(url) {
+  const clean = url.split('?')[0].split('#')[0].toLowerCase();
+  return ICON_EXTS.find(e => clean.endsWith(e)) || '.png';
+}
+
+// Busca fastlane/metadata/android/en-US/images/icon.png (o variantes de
+// ruta/rama comunes) en un repo público de GitHub, sin necesitar token
+// propio (la API de contenidos de GitHub es pública para repos públicos).
+async function fetchGithubFastlaneIcon(owner, repo) {
+  const branches = ['main', 'master', 'dev'];
+  const paths = [
+    'fastlane/metadata/android/en-US/images/icon.png',
+    'metadata/android/en-US/images/icon.png',
+  ];
+  for (const branch of branches) {
+    for (const path of paths) {
+      try {
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+        const r = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.raw' } });
+        if (r.ok) return { buffer: Buffer.from(await r.arrayBuffer()), ext: '.png' };
+      } catch { /* probar siguiente combinación */ }
+    }
+  }
+  return null;
+}
+
+// Extrae la URL de og:image de una página (F-Droid, Play Store, etc.)
+async function fetchOgImageUrl(pageUrl) {
+  const r = await fetch(pageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (CodeHub-IconBot)' } });
+  if (!r.ok) throw new Error(`No se pudo abrir ${pageUrl} (HTTP ${r.status})`);
+  const html = await r.text();
+  const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+         || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if (!m) throw new Error('No encontré una imagen (og:image) en esa página');
+  return m[1];
+}
+
+async function extractIconFromUniversalUrl(sourceUrl) {
+  const clean = (sourceUrl || '').trim();
+  const lower = clean.toLowerCase();
+  if (!clean) throw new Error('Falta la URL');
+
+  // 1) Link directo a la imagen
+  if (ICON_EXTS.some(e => lower.split('?')[0].endsWith(e))) {
+    const r = await fetch(clean);
+    if (!r.ok) throw new Error(`No se pudo descargar la imagen (HTTP ${r.status})`);
+    return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(clean) };
+  }
+
+  // 2) Repo de GitHub → ícono real en fastlane/ (no el banner social)
+  const ghMatch = clean.match(/github\.com\/([^\/]+)\/([^\/?#]+)/i);
+  if (ghMatch) {
+    const owner = ghMatch[1];
+    const repo  = ghMatch[2].replace(/\.git$/, '');
+    const found = await fetchGithubFastlaneIcon(owner, repo);
+    if (found) return found;
+    throw new Error(`No encontré fastlane/metadata/.../icon.png en ${owner}/${repo}. Probá pegando el link directo del ícono (ej. raw.githubusercontent.com/.../icon.png).`);
+  }
+
+  // 3) F-Droid, Play Store, o cualquier página con og:image
+  if (lower.includes('f-droid.org') || lower.includes('play.google.com') || lower.includes('apps.apple.com')) {
+    const imgUrl = await fetchOgImageUrl(clean);
+    const r = await fetch(imgUrl);
+    if (!r.ok) throw new Error(`No se pudo descargar el ícono (HTTP ${r.status})`);
+    return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(imgUrl) };
+  }
+
+  throw new Error('URL no reconocida. Usá un link directo a la imagen, un repo de GitHub, o la ficha de F-Droid/Play Store.');
+}
+
+// POST /api/admin/extract-icon — body: { sourceUrl, filename }
+// Extrae el ícono real desde la URL universal y lo sube a img/{filename}
+// en el repo de GitHub. No toca la base de datos: el admin sigue usando
+// "Guardar" (fila existente) o "Crear App" (app nueva) para persistir el
+// campo imagen, igual que con cualquier otro campo del panel.
+app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
+  try {
+    const { sourceUrl, filename } = req.body;
+    if (!sourceUrl) return res.status(400).json({ error: 'Falta sourceUrl' });
+    if (!filename)  return res.status(400).json({ error: 'Falta filename (usá el appId)' });
+
+    const { buffer, ext } = await extractIconFromUniversalUrl(sourceUrl);
+    if (buffer.length > 4 * 1024 * 1024) throw new Error('La imagen pesa más de 4MB');
+
+    const safeName = String(filename).trim().replace(/[^a-zA-Z0-9._-]/g, '') + ext;
+    if (!safeName || safeName === ext) throw new Error('filename inválido');
+    const repoPath = 'img/' + safeName;
+
+    await ghUpdateFile(repoPath, buffer, `img: extraer ícono (${safeName})`);
+    await cacheDel('apps:all');
+
+    res.json({ ok: true, imagen: '/' + repoPath, filename: safeName });
+  } catch (e) {
+    console.error('POST /api/admin/extract-icon error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 async function getBlogIndex() {
   try {
     const r = await fetch(`https://${GITHUB_OWNER}.vercel.app/blog/index.json`);

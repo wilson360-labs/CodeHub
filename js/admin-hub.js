@@ -311,6 +311,12 @@ function renderApps() {
         ${storageBadge}
         <input class="ver-input" type="text" id="img-${app.appId}" value="${(app.imagen || '').replace(/"/g,'&quot;')}" placeholder="/img/NombreApp.png o URL" style="width:100%;margin-top:.35rem;font-size:.56rem" oninput="previewRowImagen('${app.appId}')">
         <div id="img-hint-${app.appId}" style="font-size:.55rem;color:var(--muted);margin-top:.2rem;word-break:break-all"></div>
+        <div style="display:flex;gap:.3rem;margin-top:.35rem">
+          <input class="ver-input" type="text" id="srcurl-${app.appId}" placeholder="🔗 Repo GitHub / F-Droid / Play Store / imagen" style="flex:1;font-size:.55rem">
+          <button onclick="extractIcon('${app.appId}')" id="extract-btn-${app.appId}" title="Extraer el ícono real y subirlo a img/ en tu repo" style="padding:.28rem .5rem;border-radius:8px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--c);font-family:var(--mono);font-size:.55rem;cursor:pointer;white-space:nowrap;flex-shrink:0">
+            <i class="fas fa-download"></i> Extraer
+          </button>
+        </div>
       </div>
       <div>
         <input class="ver-input" type="text" value="${app.version || ''}" id="ver-${app.appId}" placeholder="1.0.0">
@@ -438,6 +444,43 @@ function previewRowImagen(appId) {
     img.onerror = () => { hint.textContent = '⚠️ El link parece válido pero la imagen no cargó — verifícalo'; hint.style.color = 'var(--danger, #f66)'; };
     img.onload  = () => { hint.textContent = '✅ Imagen cargada correctamente'; hint.style.color = 'var(--ok, #6f6)'; };
   }, 300);
+}
+
+// ── EXTRAER ÍCONO DESDE URL UNIVERSAL (repo/F-Droid/Play Store) ─
+// Le pega al backend con el link que el admin ya tiene a mano; el
+// backend baja el ícono real (no el banner del repo) y lo sube a
+// img/ en GitHub. Al terminar, completa el campo imagen y guarda
+// la fila automáticamente para que quede en un solo paso.
+async function extractIcon(appId) {
+  const app = appsData.find(a => a.appId === appId);
+  if (!app) return;
+  const urlInput = document.getElementById('srcurl-' + appId);
+  const sourceUrl = urlInput?.value.trim();
+  if (!sourceUrl) return toast('⚠️ Pegá primero el link del repo, F-Droid, Play Store o la imagen');
+
+  const btn = document.getElementById('extract-btn-' + appId);
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ sourceUrl, filename: appId }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'No se pudo extraer el ícono');
+
+    const imgInput = document.getElementById('img-' + appId);
+    if (imgInput) imgInput.value = d.imagen;
+    await previewRowImagen(appId);
+    toast('✅ Ícono subido a tu repo (' + d.imagen + ') — guardando...');
+    await saveRow(appId);
+    logAdminActivity('🖼️ Ícono de ' + app.nombre + ' extraído y subido a ' + d.imagen);
+  } catch (e) {
+    toast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = originalHtml;
+  }
 }
 
 // ── SAVE ROW ──────────────────────────────────────────────────
@@ -771,6 +814,12 @@ function renderAddForm() {
             <input class="ver-input" id="new-imagen" style="width:100%" placeholder="/img/NombreApp.png o https://raw.githubusercontent.com/..." oninput="previewNewImagen()">
           </div>
           <div id="new-imagen-hint" style="font-size:.62rem;color:var(--muted);margin-top:.35rem"></div>
+          <div style="display:flex;gap:.5rem;margin-top:.5rem">
+            <input class="ver-input" type="text" id="new-srcurl" placeholder="🔗 O pegá acá: repo GitHub / F-Droid / Play Store / imagen" style="flex:1">
+            <button type="button" onclick="extractIconNew()" id="extract-btn-new" title="Extraer el ícono real y subirlo a img/ en tu repo (necesita el AppId cargado arriba)" style="padding:.4rem .7rem;border-radius:8px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--c);font-family:var(--mono);font-size:.62rem;cursor:pointer;white-space:nowrap">
+              <i class="fas fa-download"></i> Extraer
+            </button>
+          </div>
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Repositorio Open Source (opcional)</label>
@@ -818,6 +867,38 @@ function previewNewImagen() {
     img.onerror = () => { hint.textContent = '⚠️ El link parece válido pero la imagen no cargó — verifícalo'; hint.style.color = 'var(--danger, #f66)'; };
     img.onload  = () => { hint.textContent = '✅ Imagen cargada correctamente'; hint.style.color = 'var(--ok, #6f6)'; };
   }, 300);
+}
+
+// ── EXTRAER ÍCONO EN EL FORMULARIO DE NUEVA APP ─────────────────
+// Igual que extractIcon(), pero para una app que todavía no existe
+// en la base de datos: solo sube la imagen a img/ y completa el
+// campo "Imagen" del formulario. "Crear App" hace el resto.
+async function extractIconNew() {
+  const appIdVal = document.getElementById('new-appId').value.trim();
+  if (!appIdVal) return toast('⚠️ Completá el AppId arriba primero (se usa como nombre del archivo)');
+  const sourceUrl = document.getElementById('new-srcurl').value.trim();
+  if (!sourceUrl) return toast('⚠️ Pegá primero el link del repo, F-Droid, Play Store o la imagen');
+
+  const btn = document.getElementById('extract-btn-new');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ sourceUrl, filename: appIdVal }),
+    });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'No se pudo extraer el ícono');
+
+    document.getElementById('new-imagen').value = d.imagen;
+    previewNewImagen();
+    toast('✅ Ícono subido a tu repo (' + d.imagen + ') — ahora dale "Crear App"');
+  } catch (e) {
+    toast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = originalHtml;
+  }
 }
 
 async function createApp() {
