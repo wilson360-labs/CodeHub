@@ -14,9 +14,13 @@ let ADMIN_KEY = '';
 // proxy camo.githubusercontent.com). No bloquea rutas locales
 // (/img/...) ni el campo vacío.
 function isAcceptedImageLink(url) {
-  if (!url) return true; // vacío o ruta local: se valida aparte
-  if (url.startsWith('/')) return true;
-  if (!/^https?:\/\//i.test(url)) return false;
+  if (!url) return true; // vacío: se valida aparte
+  // Ruta local del repo, con o sin "/" inicial — ej: img/Nombre.png o /img/Nombre.png
+  // (así es como apps_data.json guarda las rutas, sin barra inicial)
+  if (!/^https?:\/\//i.test(url)) {
+    const ext = (url.toLowerCase().split('?')[0] || '').split('#')[0];
+    return ['.jpg','.jpeg','.png','.webp','.gif','.bmp','.avif','.svg'].some(e => ext.endsWith(e));
+  }
   try {
     const u = new URL(url);
     const host = u.hostname;
@@ -368,6 +372,9 @@ function renderApps() {
     const pluginInput = document.getElementById('plugin-' + app.appId);
     if (linkInput)   previewLink(linkInput,   'lp-' + app.appId);
     if (pluginInput && plugin) previewLink(pluginInput, 'pp-' + app.appId);
+    // Muestra de una el aviso si la imagen guardada es un banner de repo
+    // u otro link no reconocido, sin que el admin tenga que tocar el campo.
+    if (app.imagen) previewRowImagen(app.appId);
   });
 }
 
@@ -381,6 +388,19 @@ function toggleVerified(appId) {
   badge.textContent = app.verified ? '✅ Sí' : '○ No';
 }
 
+// ── NORMALIZADOR DE RUTAS LOCALES DE IMAGEN ─────────────────────
+// getOptimizedImageUrl() (novedades.js) solo trata como ruta local
+// los valores que empiezan con "/" — cualquier otra cosa la manda
+// al proxy wsrv.nl como si fuera una URL externa, y una ruta local
+// sin "/" inicial (ej: "img/kernelsu.png") se rompe en el sitio.
+// Esta función corrige eso automáticamente: si es local y no trae
+// "/" inicial, se la agrega. URLs http(s), data: y blob: no se tocan.
+function normalizeImagePath(val) {
+  if (!val) return val;
+  if (/^https?:\/\//i.test(val) || val.startsWith('data:') || val.startsWith('blob:') || val.startsWith('/')) return val;
+  return '/' + val.replace(/^\.?\/+/, '');
+}
+
 // ── PREVIEW EN VIVO DEL ÍCONO AL EDITAR UNA FILA ────────────────
 // Mismo criterio que previewNewImagen(), pero por appId, para poder
 // cambiar la miniatura de las apps ya publicadas desde el panel.
@@ -392,7 +412,7 @@ function previewRowImagen(appId) {
     const img   = document.getElementById('img-prev-' + appId);
     const hint  = document.getElementById('img-hint-' + appId);
     if (!input || !img || !hint) return;
-    const val = input.value.trim();
+    const val = normalizeImagePath(input.value.trim());
 
     if (!val) { img.style.display = 'none'; hint.textContent = ''; return; }
 
@@ -437,7 +457,10 @@ async function saveRow(appId) {
   if (linkInput   && convertedEnlace !== rawEnlace)  linkInput.value   = convertedEnlace;
   if (pluginInput && convertedPlugin !== rawPlugin)   pluginInput.value = convertedPlugin || '';
 
-  const rawImagen = document.getElementById('img-' + appId)?.value.trim();
+  const rawImagen   = document.getElementById('img-' + appId)?.value.trim();
+  const normImagen  = normalizeImagePath(rawImagen);
+  const imgInput    = document.getElementById('img-' + appId);
+  if (imgInput && normImagen !== rawImagen) imgInput.value = normImagen;
 
   const body = {
     version:       document.getElementById('ver-' + appId)?.value.trim(),
@@ -447,10 +470,10 @@ async function saveRow(appId) {
     enlace:        convertedEnlace,
     plugin_enlace: convertedPlugin,
     tutorial_url:  document.getElementById('tutorial-' + appId)?.value.trim() || null,
-    imagen:        rawImagen,
+    imagen:        normImagen,
     updatedAt:     document.getElementById('upd-' + appId)?.value || new Date().toISOString().substring(0,10),
   };
-  if (rawImagen && !isAcceptedImageLink(rawImagen)) {
+  if (normImagen && !isAcceptedImageLink(normImagen)) {
     toast('⚠️ Ese link de imagen puede no cargar bien — usa jpg/png/webp, una captura de Play Store o un raw de GitHub/GitLab/Codeberg');
   }
   try {
@@ -805,7 +828,7 @@ async function createApp() {
     categoria:   document.getElementById('new-cat').value,
     descripcion: document.getElementById('new-desc').value.trim(),
     enlace:      convertToDirectLink(document.getElementById('new-enlace').value.trim() || '#'),
-    imagen:      document.getElementById('new-imagen').value.trim(),
+    imagen:      normalizeImagePath(document.getElementById('new-imagen').value.trim()),
     source_repo: document.getElementById('new-source-repo').value.trim() || null,
     tag: '🆕', verified: true,
   };
