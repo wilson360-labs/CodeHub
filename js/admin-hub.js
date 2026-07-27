@@ -27,7 +27,6 @@ function isAcceptedImageLink(url) {
     if (host.endsWith('googleusercontent.com') && path.startsWith('/play-lh')) return true;
     if (host === 'raw.githubusercontent.com') return true;
     if (host === 'camo.githubusercontent.com') return true;
-    if (host === 'opengraph.githubassets.com') return true;
     if ((host.endsWith('gitlab.com') || host.endsWith('gitlab.io')) && path.includes('/-/raw/')) return true;
     if (host === 'codeberg.org' && path.includes('/raw/branch/')) return true;
     // F-Droid: íconos oficiales de apps open source publicadas ahí,
@@ -721,6 +720,13 @@ function previewNewImagen() {
     const img   = document.getElementById('new-imagen-preview');
     const hint  = document.getElementById('new-imagen-hint');
     if (!val) { img.style.display = 'none'; hint.textContent = ''; return; }
+
+    if (val.includes('opengraph.githubassets.com')) {
+      img.style.display = 'none';
+      hint.textContent = '⚠️ Ese es el banner/portada social del repo, no el ícono de la app. Busca el ícono real dentro del repo (assets/, fastlane/, mipmap-xxxhdpi/) o en su ficha de F-Droid.';
+      hint.style.color = 'var(--danger, #f66)';
+      return;
+    }
 
     if (!isAcceptedImageLink(val)) {
       img.style.display = 'none';
