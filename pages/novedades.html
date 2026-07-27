@@ -693,12 +693,6 @@ function buildOSCard(app) {
          <i class="fas fa-clock"></i> Ver en GitHub
        </a>`;
 
-  const repoBtn = repoUrl
-    ? `<a class="dl-btn dl-plugin" href="${repoUrl}" target="_blank" rel="noopener" title="Código fuente">
-         <i class="fab fa-github"></i> Repo
-       </a>`
-    : '';
-
   return `
   <div class="app-card" data-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}">
     <div class="app-thumb">
@@ -711,7 +705,7 @@ function buildOSCard(app) {
       <div class="app-cat-tag">${emoji} ${app.categoria || ''}${updated ? ` <span class="app-updated">· <i class="fas fa-clock-rotate-left"></i> ${updated}</span>` : ''}</div>
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
-      <div class="app-actions">${dlBtn}${repoBtn}</div>
+      <div class="app-actions">${dlBtn}</div>
     </div>
   </div>`;
 }

@@ -6,7 +6,7 @@
 //        limpia caché vieja automáticamente sin esperar clic manual
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v4.4';
+const VERSION   = 'codehub-v4.5';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
