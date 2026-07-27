@@ -30,6 +30,10 @@ function isAcceptedImageLink(url) {
     if (host === 'opengraph.githubassets.com') return true;
     if ((host.endsWith('gitlab.com') || host.endsWith('gitlab.io')) && path.includes('/-/raw/')) return true;
     if (host === 'codeberg.org' && path.includes('/raw/branch/')) return true;
+    // F-Droid: íconos oficiales de apps open source publicadas ahí,
+    // en /repo/icons-*/{packageName}.{versionCode}.png
+    if (host === 'f-droid.org' && path.startsWith('/repo/')) return true;
+    if (host === 'imgs.f-droid.org') return true;
     return false;
   } catch { return false; }
 }
@@ -688,13 +692,51 @@ function renderAddForm() {
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Imagen (ruta o URL)</label>
-          <input class="ver-input" id="new-imagen" style="width:100%" placeholder="/img/NombreApp.png">
+          <div style="display:flex;gap:.7rem;align-items:center">
+            <img id="new-imagen-preview" src="" alt="" style="width:44px;height:44px;border-radius:12px;object-fit:cover;background:var(--card2);flex-shrink:0;display:none">
+            <input class="ver-input" id="new-imagen" style="width:100%" placeholder="/img/NombreApp.png o https://raw.githubusercontent.com/..." oninput="previewNewImagen()">
+          </div>
+          <div id="new-imagen-hint" style="font-size:.62rem;color:var(--muted);margin-top:.35rem"></div>
+        </div>
+        <div style="grid-column:1/-1">
+          <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Repositorio Open Source (opcional)</label>
+          <input class="ver-input" id="new-source-repo" style="width:100%" placeholder="owner/repo — ej: TeamNewPipe/NewPipe">
+          <div style="font-size:.62rem;color:var(--muted);margin-top:.35rem">Si lo llenas, la app aparece en el catálogo Open Source en vez de Premium, y activa el monitor automático de releases de GitHub.</div>
         </div>
       </div>
       <button class="pub-btn" style="background:linear-gradient(135deg,var(--p),var(--p2))" onclick="createApp()">
         <i class="fas fa-plus"></i> Crear App
       </button>
     </div>`;
+}
+
+// ── PREVIEW EN VIVO DEL ÍCONO AL CREAR APP ──────────────────────
+// Usa el mismo optimizador (wsrv.nl) que ya corre en novedades.js
+// para que el preview refleje exactamente lo que verá el usuario.
+let _previewDebounce = null;
+function previewNewImagen() {
+  clearTimeout(_previewDebounce);
+  _previewDebounce = setTimeout(() => {
+    const val   = document.getElementById('new-imagen').value.trim();
+    const img   = document.getElementById('new-imagen-preview');
+    const hint  = document.getElementById('new-imagen-hint');
+    if (!val) { img.style.display = 'none'; hint.textContent = ''; return; }
+
+    if (!isAcceptedImageLink(val)) {
+      img.style.display = 'none';
+      hint.textContent = '⚠️ Link no reconocido — usa jpg/png/webp, captura de Play Store, raw de GitHub/GitLab/Codeberg, o ícono de F-Droid';
+      hint.style.color = 'var(--danger, #f66)';
+      return;
+    }
+
+    const optimized = (typeof getOptimizedImageUrl === 'function' && !val.startsWith('/'))
+      ? getOptimizedImageUrl(val, 88, 88)
+      : val;
+    img.src = optimized;
+    img.style.display = 'block';
+    img.onerror = () => { hint.textContent = '⚠️ El link parece válido pero la imagen no cargó — verifícalo'; hint.style.color = 'var(--danger, #f66)'; };
+    img.onload  = () => { hint.textContent = '✅ Imagen cargada correctamente'; hint.style.color = 'var(--ok, #6f6)'; };
+  }, 300);
 }
 
 async function createApp() {
@@ -706,6 +748,7 @@ async function createApp() {
     descripcion: document.getElementById('new-desc').value.trim(),
     enlace:      convertToDirectLink(document.getElementById('new-enlace').value.trim() || '#'),
     imagen:      document.getElementById('new-imagen').value.trim(),
+    source_repo: document.getElementById('new-source-repo').value.trim() || null,
     tag: '🆕', verified: true,
   };
   if (!body.appId || !body.nombre) return toast('❌ AppId y Nombre son obligatorios');
