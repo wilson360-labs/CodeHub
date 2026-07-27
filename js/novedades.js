@@ -3,6 +3,39 @@
    CodeHub by Wilson.E
 ═══════════════════════════════════════ */
 
+// ── OPTIMIZADOR DE IMÁGENES (proxy wsrv.nl) ───────────────────
+// Mismo patrón que usa Orion Store: reescribe la URL original de
+// la app para que pase por un CDN de resize/compresión antes de
+// llegar al navegador. Solo se usa en el catálogo Open Source,
+// donde los íconos vienen de fuentes externas (raw de GitHub,
+// GitLab, Codeberg, capturas de Play Store, etc.) y suelen venir
+// en tamaño original sin optimizar.
+function getOptimizedImageUrl(url, width, height) {
+  if (!url) return '';
+  // Rutas locales (/img/...) y data URIs no necesitan proxy.
+  if (url.startsWith('/') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+
+  let sourceUrl = url;
+  // Si es una imagen scrapeada de Google Play, forzamos alta resolución
+  // antes de mandarla al proxy (evita íconos borrosos de 100x100).
+  if (sourceUrl.includes('googleusercontent.com')) {
+    sourceUrl = /=[swh]\d+/.test(sourceUrl)
+      ? sourceUrl.replace(/=[swh]\d+[^/]*$/, '=w512-h512-rw')
+      : sourceUrl + '=w512-h512-rw';
+  }
+
+  const encoded = encodeURIComponent(sourceUrl);
+  let quality = 80;
+  if (width && width <= 112) quality = 65;
+  else if (width && width < 200) quality = 72;
+
+  let query = `?url=${encoded}&output=webp&q=${quality}&l=1&il=${width && width < 200 ? 0 : 1}&maxage=31d&n=-1`;
+  if (width)  query += `&w=${width}`;
+  if (height) query += `&h=${height}`;
+
+  return `https://wsrv.nl/${query}`;
+}
+
 // ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
 // Misma función que en admin-hub.js — convierte links de nube
 // a descarga directa al momento de renderizar las cards.
@@ -436,7 +469,9 @@ function buildAppCard(app) {
 }
 
 function buildOSCard(app) {
-  const img     = app.imagen || '';
+  // Ícono optimizado vía proxy (resize + WebP + caché de 31 días).
+  // 192px cubre bien la retina para el thumb que pinta el CSS.
+  const img     = getOptimizedImageUrl(app.imagen || '', 192, 192);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : 'Sin versión aún';
   const desc    = app.descripcion || '';
   const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
