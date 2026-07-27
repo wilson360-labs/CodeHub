@@ -586,6 +586,7 @@ const OS_CAT_EMOJI = {
   'VPN y Privacidad':  '🔒',
   'Productividad':     '✅',
   'Lectura':           '📖',
+  'Mensajería':        '💬',
 };
 
 function formatUpdated(dateStr) {
@@ -674,7 +675,7 @@ function buildAppCard(app) {
 }
 
 function buildOSCard(app) {
-  const img     = app.imagen || '';
+  const img     = app.imagen || (app.source_repo ? `https://opengraph.githubassets.com/1/${app.source_repo}` : '');
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : 'Sin versión aún';
   const desc    = app.descripcion || '';
   const updated = formatUpdated(app.updatedAt);

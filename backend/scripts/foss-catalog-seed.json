@@ -199,6 +199,94 @@
       "categoria": "Lectura",
       "source_repo": "mihonapp/mihon",
       "imagen": ""
+    },
+    {
+      "appId": "os-shizuku",
+      "nombre": "Shizuku",
+      "descripcion": "Da a otras apps acceso a APIs de sistema/ADB sin necesidad de root.",
+      "categoria": "Root y Sistema",
+      "source_repo": "RikkaApps/Shizuku",
+      "imagen": ""
+    },
+    {
+      "appId": "os-lsposed",
+      "nombre": "LSPosed",
+      "descripcion": "Framework de módulos Xposed para Android moderno, basado en Riru/Zygisk.",
+      "categoria": "Root y Sistema",
+      "source_repo": "LSPosed/LSPosed",
+      "imagen": ""
+    },
+    {
+      "appId": "os-vlc",
+      "nombre": "VLC para Android",
+      "descripcion": "Reproductor de video y audio universal, compatible con casi cualquier formato.",
+      "categoria": "Video",
+      "source_repo": "videolan/vlc-android",
+      "imagen": ""
+    },
+    {
+      "appId": "os-seal",
+      "nombre": "Seal",
+      "descripcion": "Descargador de video/audio basado en yt-dlp, con Material Design 3.",
+      "categoria": "Video",
+      "source_repo": "JunkFood02/Seal",
+      "imagen": ""
+    },
+    {
+      "appId": "os-netguard",
+      "nombre": "NetGuard",
+      "descripcion": "Firewall sin root: bloquea el acceso a internet por app de forma granular.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "M66B/NetGuard",
+      "imagen": ""
+    },
+    {
+      "appId": "os-adaway",
+      "nombre": "AdAway",
+      "descripcion": "Bloqueador de anuncios a nivel de sistema basado en lista de hosts.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "AdAway/AdAway",
+      "imagen": ""
+    },
+    {
+      "appId": "os-antennapod",
+      "nombre": "AntennaPod",
+      "descripcion": "Gestor y reproductor de podcasts open source, sin anuncios ni rastreo.",
+      "categoria": "Productividad",
+      "source_repo": "AntennaPod/AntennaPod",
+      "imagen": ""
+    },
+    {
+      "appId": "os-nextcloud",
+      "nombre": "Nextcloud",
+      "descripcion": "Cliente oficial de Nextcloud: archivos, fotos y calendario autoalojados.",
+      "categoria": "Productividad",
+      "source_repo": "nextcloud/android",
+      "imagen": ""
+    },
+    {
+      "appId": "os-amaze",
+      "nombre": "Amaze File Manager",
+      "descripcion": "Explorador de archivos con diseño Material y soporte root opcional.",
+      "categoria": "Productividad",
+      "source_repo": "TeamAmaze/AmazeFileManager",
+      "imagen": ""
+    },
+    {
+      "appId": "os-tusky",
+      "nombre": "Tusky",
+      "descripcion": "Cliente open source para Mastodon, ligero y sin rastreo.",
+      "categoria": "Mensajería",
+      "source_repo": "tuskyapp/Tusky",
+      "imagen": ""
+    },
+    {
+      "appId": "os-k9mail",
+      "nombre": "K-9 Mail",
+      "descripcion": "Cliente de correo open source para Android, base del futuro Thunderbird móvil.",
+      "categoria": "Mensajería",
+      "source_repo": "thundernest/k-9",
+      "imagen": ""
     }
   ]
 }
