@@ -12,8 +12,13 @@
 // en tamaño original sin optimizar.
 function getOptimizedImageUrl(url, width, height) {
   if (!url) return '';
-  // Rutas locales (/img/...) y data URIs no necesitan proxy.
-  if (url.startsWith('/') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  // Local si NO es una URL http(s): cubre rutas con o sin "/" inicial
+  // y data:/blob: URIs. Se normaliza a raíz absoluta para que resuelva
+  // igual sin importar desde qué página (ej. /pages/...) se renderice.
+  if (!/^https?:\/\//i.test(url)) {
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url;
+    return '/' + url.replace(/^\.?\/+/, '');
+  }
 
   let sourceUrl = url;
   // Si es una imagen scrapeada de Google Play, forzamos alta resolución

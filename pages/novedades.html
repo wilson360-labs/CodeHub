@@ -237,7 +237,16 @@
 // pesos distintos según de dónde salió el link.
 function getOptimizedImageUrl(url, size = 160) {
   if (!url) return '';
-  if (url.startsWith('/') || url.startsWith('data:')) return url;
+  // Local si NO es una URL http(s): cubre "/img/x.png", "img/x.png"
+  // (sin barra inicial, como quedaron algunas apps sembradas desde
+  // apps_data.json), data: URIs y blob: URIs. Esta página vive en
+  // /pages/, así que una ruta local SIN "/" inicial se resolvería
+  // mal (buscaría /pages/img/... en vez de /img/...) — se normaliza
+  // agregando la barra para que siempre sea relativa a la raíz.
+  if (!/^https?:\/\//i.test(url)) {
+    if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url;
+    return '/' + url.replace(/^\.?\/+/, '');
+  }
   let source = url;
   // Google Play scrapea con parámetros de tamaño bajo (=w526-h296-rw);
   // se fuerza una resolución alta antes de mandarla al proxy.
