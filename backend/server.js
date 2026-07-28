@@ -1391,7 +1391,7 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo } = req.body;
     if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
     if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen, categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
+    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     res.json({ ok: true, app: a });
@@ -1404,6 +1404,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     const update = {};
     ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo']
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+    if (update.imagen) update.imagen = normalizeImagePath(update.imagen);
 
     // No sobreescribir enlace con vacío o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
     // Esto protege el enlace generado por el upload cuando el admin guarda otros campos
@@ -1806,12 +1807,17 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
     let created = 0, updated = 0;
     for (const a of apps) {
       const id = a.appId || a.id;
+      const imagen = normalizeImagePath(a.imagen || '');
       const exists = await App.findOne({ appId: id });
       if (exists) {
-        await App.updateOne({ appId: id }, { $set: { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() } });
+        const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() };
+        // Solo se pisa `imagen` si el seed trae una — evita borrar un
+        // ícono que el admin ya haya corregido a mano desde el panel.
+        if (imagen) set.imagen = imagen;
+        await App.updateOne({ appId: id }, { $set: set });
         updated++;
       } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen: a.imagen||'', categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null });
+        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null });
         created++;
       }
     }
@@ -2269,6 +2275,16 @@ async function ghUpdateFile(filePath, content, message) {
 // img/ en GitHub vía Octokit, reutilizando ghUpdateFile(). No inventa
 // ni asume: si no encuentra el ícono, devuelve un error explicando qué
 // probó, para que el admin pegue el link directo como alternativa.
+// Igual que normalizeImagePath() en admin-hub.js: si es una ruta local
+// (no http/https, no data:/blob:) sin "/" inicial, se la agrega, para
+// que siempre resuelva desde la raíz sin importar qué página la pinte.
+function normalizeImagePath(val) {
+  if (!val) return val;
+  const v = String(val).trim();
+  if (/^https?:\/\//i.test(v) || v.startsWith('data:') || v.startsWith('blob:') || v.startsWith('/')) return v;
+  return '/' + v.replace(/^\.?\/+/, '');
+}
+
 const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'];
 
 function iconExtFromUrl(url) {
