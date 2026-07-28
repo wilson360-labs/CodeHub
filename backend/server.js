@@ -827,7 +827,7 @@ async function callKimi(msgs) {
   const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
-    body: JSON.stringify({ model: 'kimi-k2-0711-preview', max_tokens: 800, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: 800, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
