@@ -858,7 +858,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <div class="stat-icon"><i class="fas fa-robot"></i></div>
                     <div class="stat-number" data-target="5">0</div>
                     <div class="stat-label">Proveedores IA</div>
-                    <div class="stat-sub">Groq, OpenRouter, Gemini+</div>
+                    <div class="stat-sub">Multi-IA con fallback</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
@@ -933,8 +933,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- TAB: Habilidades 2025 -->
             <div class="skills-grid hidden" id="sk-2025">
                 <div class="skill-chip skill-new">
-                    <div class="sc-icon"><img src="https://cdn.simpleicons.org/anthropic/191919" width="28" height="28" alt="Claude / AI" loading="lazy" style="display:block"></div>
-                    <div class="sc-info"><div class="sc-top"><span>Claude / AI</span><span class="sc-pct" style="color:#10b981">nuevo</span></div></div>
+                    <div class="sc-icon"><i class="fas fa-robot" style="font-size:28px;display:block"></i></div>
+                    <div class="sc-info"><div class="sc-top"><span>IA / Multi-modelo</span><span class="sc-pct" style="color:#10b981">nuevo</span></div></div>
                 </div>
                 <div class="skill-chip skill-new">
                     <div class="sc-icon"><img src="https://cdn.simpleicons.org/mongodb/47A248" width="28" height="28" alt="MongoDB" loading="lazy" style="display:block"></div>
@@ -2399,7 +2399,7 @@ DISPONIBILIDAD:
           <span style="font-size:1.1rem;flex-shrink:0">🤖</span>
           <div>
             <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI COPILOT — Asistente IA de CodeHub</div>
-            <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Asistente IA multimodo con fallback automático entre Groq, Gemini, Mistral y más.</div>
+            <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Asistente IA multimodo con fallback automático entre varios modelos de IA.</div>
           </div>
         </div>
       </div>
@@ -3030,7 +3030,7 @@ async function sendEmail(e) {
 <script>
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
 //  ASISTENTE IA — CODEHUB CHAT
-//  Usa la API de Anthropic via proxy seguro
+//  Usa un proxy seguro hacia el motor de IA
 //  Para activar: el panel funciona con
 //  respuestas inteligentes en tiempo real.
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
@@ -3237,7 +3237,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   var _bootLines = [
     '> CODEHUB_AI v2.6 — initializing...',
     '> loading neural context... OK',
-    '> connecting to Anthropic API... OK',
+    '> connecting to AI engine... OK',
     '> ready.'
   ];
   var _booting = false;

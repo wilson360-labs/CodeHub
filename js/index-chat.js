@@ -5,7 +5,7 @@
 
 // ═══════════════════════════════════════
 //  ASISTENTE IA — CODEHUB CHAT
-//  Usa la API de Anthropic via proxy seguro
+//  Usa un proxy seguro hacia el motor de IA
 //  Para activar: el panel funciona con
 //  respuestas inteligentes en tiempo real.
 // ═══════════════════════════════════════
