@@ -10,6 +10,7 @@
  *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
  *   TOGETHER_API_KEY, OPENROUTER_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY
+ *   KIMI_API_KEY (Moonshot AI — https://platform.moonshot.ai)
  */
 
 require('dotenv').config();
@@ -700,6 +701,7 @@ function parseImageDataUrl(dataUrl) {
 
 // Modelos gratuitos de OpenRouter en orden de preferencia
 const OR_FREE_MODELS = [
+  'moonshotai/kimi-k2:free',                       // Kimi K2 — muy fuerte en código/razonamiento
   'meta-llama/llama-3.3-70b-instruct:free',      // Llama 3.3 70B — mejor general
   'google/gemini-2.0-flash-exp:free',              // Gemini 2.0 Flash — 1M contexto
   'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 — muy bueno
@@ -819,6 +821,19 @@ async function callClaude(msgs) {
   return { reply, input: d.usage?.input_tokens||0, output: d.usage?.output_tokens||0, model: 'anthropic/claude-sonnet' };
 }
 
+// ── Kimi / Moonshot AI (endpoint compatible OpenAI) ───────────────────────
+async function callKimi(msgs) {
+  if (!process.env.KIMI_API_KEY) throw new Error('Sin KIMI_API_KEY');
+  const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
+    body: JSON.stringify({ model: 'kimi-k2-0711-preview', max_tokens: 800, temperature: 0.65, messages: msgs }),
+  });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
+  const d = await res.json();
+  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'moonshot/kimi-k2' };
+}
+
 // ── Router Inteligente (reglas, prioriza CALIDAD sobre velocidad) ─────────
 // Analiza el último mensaje del usuario y reordena los proveedores según
 // qué tan bien encajan con el tipo de consulta. Sin llamadas extra, sin
@@ -830,16 +845,16 @@ function classifyRoute(msgs) {
   const last = msgs.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
 
   // Orden base: calidad primero, no velocidad
-  let order = ['Claude', 'Gemini', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+  let order = ['Claude', 'Kimi', 'Gemini', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
 
   if (last.length > 6000) {
-    // Documento largo / contexto RAG → prioriza ventana de contexto grande
-    order = ['Gemini', 'Claude', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+    // Documento largo / contexto RAG → prioriza ventana de contexto grande (Kimi maneja hasta 128k)
+    order = ['Kimi', 'Gemini', 'Claude', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
   } else if (CODE_HINTS.test(last)) {
-    // Código/debug → Claude es el más fuerte, luego OpenRouter (DeepSeek)
-    order = ['Claude', 'OpenRouter', 'Gemini', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+    // Código/debug → Claude es el más fuerte, luego Kimi K2 (muy bueno en código) y OpenRouter (DeepSeek)
+    order = ['Claude', 'Kimi', 'OpenRouter', 'Gemini', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
   } else if (CREATIVE_HINTS.test(last)) {
-    order = ['Claude', 'Mistral', 'Gemini', 'OpenRouter', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
+    order = ['Claude', 'Mistral', 'Kimi', 'Gemini', 'OpenRouter', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
   }
 
   return order;
@@ -848,6 +863,7 @@ function classifyRoute(msgs) {
 async function callAI(msgs) {
   const providerMap = {
     Claude:      { fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
+    Kimi:        { fn: () => callKimi(msgs),        key: process.env.KIMI_API_KEY },
     Groq:        { fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
     Cerebras:    { fn: () => callCerebras(msgs),    key: process.env.CEREBRAS_API_KEY },
     HuggingFace: { fn: () => callHuggingFace(msgs), key: process.env.HUGGINGFACE_API_KEY },
@@ -929,6 +945,7 @@ app.get('/api/health', (_, res) => res.json({
   cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
   huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
   claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
+  kimi:      process.env.KIMI_API_KEY        ? 'ok' : 'missing',
   openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
   gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
   minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
@@ -1391,7 +1408,7 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo } = req.body;
     if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
     if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen, categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
+    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     res.json({ ok: true, app: a });
@@ -1404,6 +1421,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     const update = {};
     ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo']
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
+    if (update.imagen) update.imagen = normalizeImagePath(update.imagen);
 
     // No sobreescribir enlace con vacío o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
     // Esto protege el enlace generado por el upload cuando el admin guarda otros campos
@@ -1806,12 +1824,17 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
     let created = 0, updated = 0;
     for (const a of apps) {
       const id = a.appId || a.id;
+      const imagen = normalizeImagePath(a.imagen || '');
       const exists = await App.findOne({ appId: id });
       if (exists) {
-        await App.updateOne({ appId: id }, { $set: { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() } });
+        const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() };
+        // Solo se pisa `imagen` si el seed trae una — evita borrar un
+        // ícono que el admin ya haya corregido a mano desde el panel.
+        if (imagen) set.imagen = imagen;
+        await App.updateOne({ appId: id }, { $set: set });
         updated++;
       } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen: a.imagen||'', categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null });
+        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null });
         created++;
       }
     }
@@ -2269,6 +2292,16 @@ async function ghUpdateFile(filePath, content, message) {
 // img/ en GitHub vía Octokit, reutilizando ghUpdateFile(). No inventa
 // ni asume: si no encuentra el ícono, devuelve un error explicando qué
 // probó, para que el admin pegue el link directo como alternativa.
+// Igual que normalizeImagePath() en admin-hub.js: si es una ruta local
+// (no http/https, no data:/blob:) sin "/" inicial, se la agrega, para
+// que siempre resuelva desde la raíz sin importar qué página la pinte.
+function normalizeImagePath(val) {
+  if (!val) return val;
+  const v = String(val).trim();
+  if (/^https?:\/\//i.test(v) || v.startsWith('data:') || v.startsWith('blob:') || v.startsWith('/')) return v;
+  return '/' + v.replace(/^\.?\/+/, '');
+}
+
 const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'];
 
 function iconExtFromUrl(url) {
