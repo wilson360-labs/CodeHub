@@ -69,6 +69,10 @@
   SiteTour.prototype._clearHighlight = function () {
     if (this.highlighted) {
       this.highlighted.classList.remove('st-highlight');
+      if (this.highlighted.dataset.stAddedRelative) {
+        this.highlighted.classList.remove('st-highlight-relative');
+        delete this.highlighted.dataset.stAddedRelative;
+      }
       this.highlighted = null;
     }
   };
@@ -83,6 +87,14 @@
 
     this._clearHighlight();
     target.classList.add('st-highlight');
+    // Si el elemento es position:static, necesita position:relative para
+    // que el z-index del resplandor funcione. Si ya es fixed/absolute/sticky
+    // (como el botón "EXPERIMENTAL"), NO tocamos su position: hacerlo lo
+    // saca de su sitio en pantalla (bug: "el botón salta hasta arriba").
+    if (window.getComputedStyle(target).position === 'static') {
+      target.classList.add('st-highlight-relative');
+      target.dataset.stAddedRelative = '1';
+    }
     this.highlighted = target;
 
     if (this.card) this.card.remove();

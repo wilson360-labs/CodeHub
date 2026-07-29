@@ -18,14 +18,23 @@
 /* Capa base — no bloquea clics fuera de sus propios elementos */
 #st-layer { position: fixed; inset: 0; z-index: 9998; pointer-events: none; }
 
-/* Resplandor sobre el elemento señalado */
+/* Resplandor sobre el elemento señalado.
+   OJO: no forzamos "position: relative" aquí porque el elemento
+   señalado puede ya tener position:fixed/absolute/sticky en su
+   propio CSS (p. ej. el botón lateral "EXPERIMENTAL"). Sobrescribir
+   su position lo saca de su sitio y lo hace "saltar" al flujo normal
+   del documento (se ve como si el botón se fuera arriba del todo).
+   Si el elemento es position:static, el JS añade además la clase
+   .st-highlight-relative (ver site-tour.js → _renderStep). */
 .st-highlight {
-  position: relative;
   z-index: 9997;
   outline: 3px solid var(--st-accent);
   outline-offset: 4px;
   border-radius: 10px;
   animation: st-pulse 1.6s ease-in-out infinite;
+}
+.st-highlight-relative {
+  position: relative;
 }
 @keyframes st-pulse {
   0%, 100% { outline-color: rgba(59,109,255,.85); box-shadow: 0 0 0 0 rgba(59,109,255,.35); }
