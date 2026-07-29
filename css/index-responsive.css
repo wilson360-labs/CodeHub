@@ -1480,7 +1480,15 @@
 
   /* ── HEADER ── */
   .header-logo-badge { display: none !important; } /* demasiado estrecho */
-  .header-typing { display: none !important; }
+  .header-typing {
+    display: block !important;
+    font-size: 0.62rem;
+    max-width: 92vw;
+    padding: 0.15rem 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   /* ── FOOTER ── */
   .footer-socials { flex-direction: column; align-items: center; }

@@ -1411,7 +1411,7 @@
     linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)),
     var(--ai-bg);
   border:1px solid rgba(124,77,255,.22);border-radius:24px;
-  display:flex;flex-direction:column;z-index:4999;overflow:hidden;isolation:isolate;
+  display:flex;flex-direction:column;z-index:9600;overflow:hidden;isolation:isolate;
   box-shadow:0 24px 80px rgba(0,0,0,.82),0 0 0 1px rgba(255,255,255,.04) inset,0 0 48px rgba(124,77,255,.12);
   transform:scale(.88) translateY(16px);transform-origin:bottom right;
   opacity:0;pointer-events:none;
