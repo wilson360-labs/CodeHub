@@ -405,8 +405,9 @@
             left: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 36px;
-            height: 110px;
+            box-sizing: border-box;
+            width: 40px;
+            height: 118px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             border: 2px solid rgba(255,69,0,.6);
             border-left: none;
@@ -418,30 +419,34 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 6px;
+            padding: .3rem .2rem;
             transition: all 0.3s ease;
             box-shadow: 3px 0 15px rgba(255, 69, 0, 0.4);
         }
         .menu-toggle-btn:hover {
-            width: 44px;
+            width: 46px;
             box-shadow: 5px 0 25px rgba(255, 69, 0, 0.6);
         }
         .menu-toggle-btn i {
-            font-size: 1.1rem;
+            font-size: 1rem;
+            line-height: 1;
             color: white;
+            flex-shrink: 0;
             animation: pulse 2s ease-in-out infinite;
         }
         .menu-toggle-text {
             writing-mode: vertical-rl;
             color: white;
             font-weight: bold;
-            font-size: 0.62rem;
-            letter-spacing: 2px;
+            font-size: 0.6rem;
+            letter-spacing: 1.5px;
             opacity: .85;
+            white-space: nowrap;
         }
         /* Deslizador visible en desktop */
         .exp-drag-handle {
-            position: fixed; left: 36px; top: 50%;
+            position: fixed; left: 40px; top: 50%;
             transform: translateY(-50%);
             width: 14px; height: 40px;
             background: rgba(255,69,0,.25);

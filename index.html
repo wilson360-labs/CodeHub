@@ -1608,6 +1608,56 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         window.addEventListener('scroll', updateExperimentalMotion, { passive: true });
         window.addEventListener('load', updateExperimentalMotion);
 
+        // ── COACH TIPS — burbujas de ayuda contextual (patrón reutilizable) ──
+        // Muestra una burbuja apuntando a un elemento, explicando para qué sirve.
+        // Se cierra sola a los `duration` ms, al tocarla, o al tocar el elemento
+        // señalado — y no vuelve a aparecer (se recuerda en localStorage por `key`).
+        function showCoachTip(targetEl, text, { key, position = 'bottom', duration = 6000 } = {}) {
+            if (!targetEl) return;
+            const storeKey = 'ch_coach_' + (key || text.slice(0, 16));
+            if (localStorage.getItem(storeKey)) return; // el usuario ya la vio
+
+            const tip = document.createElement('div');
+            tip.className = 'coach-tip';
+            tip.dataset.pos = position;
+            tip.innerHTML = `${text}<span class="coach-tip-arrow"></span>`;
+            document.body.appendChild(tip);
+
+            const place = () => {
+                const r  = targetEl.getBoundingClientRect();
+                const tw = tip.offsetWidth  || 200;
+                const th = tip.offsetHeight || 50;
+                let left = r.left + r.width / 2 - tw / 2;
+                left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+                tip.style.top  = (position === 'bottom' ? r.bottom + 12 : r.top - th - 12) + 'px';
+                tip.style.left = left + 'px';
+                const arrowLeft = Math.max(14, Math.min(r.left + r.width / 2 - left - 5, tw - 24));
+                tip.querySelector('.coach-tip-arrow').style.left = arrowLeft + 'px';
+            };
+
+            requestAnimationFrame(() => { place(); tip.classList.add('show'); });
+
+            let dismissed = false;
+            const dismiss = () => {
+                if (dismissed) return;
+                dismissed = true;
+                tip.classList.remove('show');
+                localStorage.setItem(storeKey, '1');
+                window.removeEventListener('resize', place);
+                setTimeout(() => tip.remove(), 250);
+            };
+
+            tip.addEventListener('click', dismiss);
+            targetEl.addEventListener('click', dismiss, { once: true });
+            window.addEventListener('resize', place);
+            setTimeout(dismiss, duration);
+        }
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                showCoachTip(document.querySelector('.menu-toggle-btn'), '🧪 Funciones experimentales: juegos, chat IA y más — toca para abrir', { key: 'index_experimental_btn', position: 'bottom' });
+            }, 1500);
+        });
+
         // Matrix Mode
         function activateMatrixMode() {
             const matrixCanvas = document.createElement('canvas');

@@ -608,3 +608,37 @@ footer a { color: var(--p); text-decoration: none; }
   .cat-tab-count { font-size: .52rem; padding: .03rem .28rem; min-width: 1.1em; }
   .cat-tab { font-size: .68rem; padding: .58rem .35rem; gap: .22rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   COACH TIPS — burbujas de ayuda contextual (mismo patrón que en
+   components.css / index.html). Se usan acá para señalar los tabs
+   Premium / Open Source la primera vez que alguien entra.
+   ═══════════════════════════════════════════════════════════════ */
+.coach-tip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 210px;
+  background: linear-gradient(135deg, var(--primary,#ff4500), var(--secondary,#ff8c00));
+  color: #fff;
+  font-family: inherit;
+  font-size: .74rem;
+  line-height: 1.35;
+  font-weight: 600;
+  padding: .6rem .8rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08);
+  opacity: 0;
+  transform: translateY(6px) scale(.94);
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.coach-tip.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; cursor: pointer; }
+.coach-tip .coach-tip-arrow {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.coach-tip[data-pos="bottom"] .coach-tip-arrow { top: -5px; }
+.coach-tip[data-pos="top"] .coach-tip-arrow    { bottom: -5px; }
+@media (max-width:480px){ .coach-tip { max-width: 168px; font-size:.68rem; padding:.5rem .65rem; } }

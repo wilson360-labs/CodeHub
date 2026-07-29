@@ -1123,6 +1123,51 @@ function logActivity(msg) {
 
 
 
+// ── COACH TIPS — burbujas de ayuda contextual (patrón reutilizable) ──
+// Muestra una burbuja apuntando a un elemento, explicando para qué sirve.
+// Se cierra sola a los `duration` ms, al tocarla, o al tocar el elemento
+// señalado — y no vuelve a aparecer (se recuerda en localStorage por `key`).
+function showCoachTip(targetEl, text, { key, position = 'bottom', duration = 6000 } = {}) {
+  if (!targetEl) return;
+  const storeKey = 'ch_coach_' + (key || text.slice(0, 16));
+  if (localStorage.getItem(storeKey)) return; // el usuario ya la vio
+
+  const tip = document.createElement('div');
+  tip.className = 'coach-tip';
+  tip.dataset.pos = position;
+  tip.innerHTML = `${text}<span class="coach-tip-arrow"></span>`;
+  document.body.appendChild(tip);
+
+  const place = () => {
+    const r  = targetEl.getBoundingClientRect();
+    const tw = tip.offsetWidth  || 200;
+    const th = tip.offsetHeight || 50;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    tip.style.top  = (position === 'bottom' ? r.bottom + 12 : r.top - th - 12) + 'px';
+    tip.style.left = left + 'px';
+    const arrowLeft = Math.max(14, Math.min(r.left + r.width / 2 - left - 5, tw - 24));
+    tip.querySelector('.coach-tip-arrow').style.left = arrowLeft + 'px';
+  };
+
+  requestAnimationFrame(() => { place(); tip.classList.add('show'); });
+
+  let dismissed = false;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
+    tip.classList.remove('show');
+    localStorage.setItem(storeKey, '1');
+    window.removeEventListener('resize', place);
+    setTimeout(() => tip.remove(), 250);
+  };
+
+  tip.addEventListener('click', dismiss);
+  targetEl.addEventListener('click', dismiss, { once: true });
+  window.addEventListener('resize', place);
+  setTimeout(dismiss, duration);
+}
+
 // ── INICIALIZAR TODO ──────────────────────────────────────
 window.addEventListener('load', async () => {
   // No mostrar banner si lo cerró hace menos de 24h
@@ -1133,6 +1178,15 @@ window.addEventListener('load', async () => {
   }
   setTimeout(() => initWeatherNotif(), 3000);
   logActivity('👀 Sección Novedades visitada');
+
+  // Muestra de coach tips: explican los 2 catálogos disponibles
+  // (aparecen una sola vez por dispositivo, en secuencia)
+  setTimeout(() => {
+    showCoachTip(document.getElementById('tab-premium'), '💎 Apps modificadas y desbloqueadas, gratis', { key: 'nov_tab_premium', position: 'bottom' });
+  }, 1200);
+  setTimeout(() => {
+    showCoachTip(document.getElementById('tab-opensource'), '🌐 Toca aquí para cambiar al catálogo 100% Open Source', { key: 'nov_tab_opensource', position: 'bottom' });
+  }, 4200);
 });
 </script>
 

@@ -325,8 +325,9 @@
             left: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 36px;
-            height: 110px;
+            box-sizing: border-box;
+            width: 40px;
+            height: 118px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             border: 2px solid rgba(255,69,0,.6);
             border-left: none;
@@ -338,30 +339,34 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 6px;
+            padding: .3rem .2rem;
             transition: all 0.3s ease;
             box-shadow: 3px 0 15px rgba(255, 69, 0, 0.4);
         }
         .menu-toggle-btn:hover {
-            width: 44px;
+            width: 46px;
             box-shadow: 5px 0 25px rgba(255, 69, 0, 0.6);
         }
         .menu-toggle-btn i {
-            font-size: 1.1rem;
+            font-size: 1rem;
+            line-height: 1;
             color: white;
+            flex-shrink: 0;
             animation: pulse 2s ease-in-out infinite;
         }
         .menu-toggle-text {
             writing-mode: vertical-rl;
             color: white;
             font-weight: bold;
-            font-size: 0.62rem;
-            letter-spacing: 2px;
+            font-size: 0.6rem;
+            letter-spacing: 1.5px;
             opacity: .85;
+            white-space: nowrap;
         }
         /* Deslizador visible en desktop */
         .exp-drag-handle {
-            position: fixed; left: 36px; top: 50%;
+            position: fixed; left: 40px; top: 50%;
             transform: translateY(-50%);
             width: 14px; height: 40px;
             background: rgba(255,69,0,.25);
@@ -4640,8 +4645,20 @@
 
 /* ── Experimental menu mobile ── */
 @media(max-width:768px){
-  .menu-toggle-text { display:none !important; }
-  .menu-toggle-btn { padding:.45rem .6rem; writing-mode:vertical-rl; overflow:hidden; }
+  .menu-toggle-btn {
+    box-sizing: border-box;
+    width: 32px;
+    height: 132px;
+    padding: .4rem .25rem;
+    writing-mode: vertical-rl;
+    overflow: hidden;
+  }
+  .menu-toggle-btn i { font-size: .85rem; }
+  .menu-toggle-text {
+    display: block !important;
+    font-size: .52rem;
+    letter-spacing: 1px;
+  }
   #experimental-menu { width:260px; }
 }
 
@@ -4687,3 +4704,40 @@
 .header-logo-badge { overflow: visible !important; }
 .badge-wave { z-index: 0; }
 #ch-badge-text { position: relative; z-index: 2; display: inline-block; }
+
+/* ═══════════════════════════════════════════════════════════════
+   COACH TIPS — burbujas de ayuda contextual (patrón reutilizable)
+   Muestran brevemente para qué sirve un botón/función, apuntando
+   hacia él con una flechita. Se cierran solas, al tocarlas, o al
+   tocar el elemento señalado — y no vuelven a aparecer (se guardan
+   en localStorage por "key"). Ver showCoachTip() en el JS de cada
+   página que las use.
+   ═══════════════════════════════════════════════════════════════ */
+.coach-tip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 210px;
+  background: linear-gradient(135deg, var(--primary,#ff4500), var(--secondary,#ff8c00));
+  color: #fff;
+  font-family: inherit;
+  font-size: .74rem;
+  line-height: 1.35;
+  font-weight: 600;
+  padding: .6rem .8rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.08);
+  opacity: 0;
+  transform: translateY(6px) scale(.94);
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.coach-tip.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; cursor: pointer; }
+.coach-tip .coach-tip-arrow {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+.coach-tip[data-pos="bottom"] .coach-tip-arrow { top: -5px; }
+.coach-tip[data-pos="top"] .coach-tip-arrow    { bottom: -5px; }
+@media (max-width:480px){ .coach-tip { max-width: 168px; font-size:.68rem; padding:.5rem .65rem; } }

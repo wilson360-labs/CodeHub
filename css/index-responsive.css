@@ -1161,8 +1161,17 @@
   .ai-bottom-bar { min-height: 66px; }
 
   /* ── EXPERIMENTAL MENU ── */
-  .menu-toggle-text { display: none !important; }
-  .menu-toggle-btn { padding: 0.5rem 0.7rem; }
+  .menu-toggle-btn {
+    box-sizing: border-box;
+    width: 32px;
+    height: 132px;
+    padding: 0.4rem 0.25rem;
+  }
+  .menu-toggle-text {
+    display: block !important;
+    font-size: .52rem;
+    letter-spacing: 1px;
+  }
 
   /* ── SPLASH ── */
   .ch-ring-wrap {
