@@ -370,14 +370,30 @@ function showCoachTip(targetEl, text, { key, position = 'bottom', duration = 600
 window.addEventListener('load', () => {
   initAppBadges();
 
-  // Muestra de coach tips: explican los 2 catálogos disponibles
-  // (aparecen una sola vez por dispositivo, en secuencia)
+  // ── TOUR GUIADO — explica que Novedades tiene 2 catálogos en una
+  // sola página. Ver js/site-tour.js (tarjeta blanca + línea guía en
+  // desktop / hoja inferior en móvil). Se ve una sola vez; el botón
+  // "¿Necesitas ayuda?" la relanza.
   setTimeout(() => {
-    showCoachTip(document.getElementById('tab-premium'), '💎 Apps modificadas y desbloqueadas, gratis', { key: 'nov_tab_premium', position: 'bottom' });
+    if (typeof startTour !== 'function') return; // requiere js/site-tour.js
+    startTour('novedades', [
+      {
+        selector: '#tab-premium',
+        icon: 'fa-solid fa-bolt',
+        title: 'Apps Premium',
+        text: 'Este catálogo reúne apps modificadas y con todo desbloqueado, 100% gratis.'
+      },
+      {
+        selector: '#tab-opensource',
+        icon: 'fa-brands fa-github',
+        title: 'Open Source',
+        text: 'Toca esta pestaña para ver el otro catálogo: apps de código abierto. Son dos colecciones dentro de la misma página de Novedades.'
+      }
+    ], {
+      delay: 0,
+      helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía de catálogos' }
+    });
   }, 1200);
-  setTimeout(() => {
-    showCoachTip(document.getElementById('tab-opensource'), '🌐 Toca aquí para cambiar al catálogo 100% Open Source', { key: 'nov_tab_opensource', position: 'bottom' });
-  }, 4200);
 });
 
 // ═══════════════════════════════════════════════════════════

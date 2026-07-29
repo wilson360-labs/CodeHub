@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════════════
+   SITE TOUR — guía interactiva de funciones ocultas
+   Tarjeta blanca con línea guía apuntando al elemento (desktop) y
+   modo "hoja inferior" sin línea en pantallas móviles (≤720px),
+   donde el elemento señalado recibe un resplandor en su lugar.
+   Patrón reutilizable: index.html y pages/novedades.html
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --st-accent: #3b6dff;
+  --st-accent-dark: #2450d6;
+  --st-text: #16213e;
+  --st-text-soft: #4a5578;
+  --st-bg: #ffffff;
+  --st-line: #b9c2e6;
+}
+
+/* Capa base — no bloquea clics fuera de sus propios elementos */
+#st-layer { position: fixed; inset: 0; z-index: 9998; pointer-events: none; }
+
+/* Resplandor sobre el elemento señalado */
+.st-highlight {
+  position: relative;
+  z-index: 9997;
+  outline: 3px solid var(--st-accent);
+  outline-offset: 4px;
+  border-radius: 10px;
+  animation: st-pulse 1.6s ease-in-out infinite;
+}
+@keyframes st-pulse {
+  0%, 100% { outline-color: rgba(59,109,255,.85); box-shadow: 0 0 0 0 rgba(59,109,255,.35); }
+  50%      { outline-color: rgba(59,109,255,.4);  box-shadow: 0 0 0 8px rgba(59,109,255,0); }
+}
+
+/* Línea guía (solo desktop) */
+.st-connector { position: fixed; z-index: 9998; pointer-events: none; overflow: visible; }
+.st-connector circle { fill: var(--st-accent); }
+
+/* Tarjeta */
+.st-card {
+  position: fixed;
+  z-index: 9999;
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  background: var(--st-bg);
+  color: var(--st-text);
+  border-radius: 16px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, .28), 0 0 0 1px rgba(15, 23, 42, .06);
+  padding: 1.1rem 1.2rem 1rem;
+  font-family: inherit;
+  opacity: 0;
+  transform: translateY(8px) scale(.96);
+  transition: opacity .22s ease, transform .22s ease;
+  pointer-events: none;
+}
+.st-card.show { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+
+.st-card-title {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .95rem; font-weight: 800;
+  color: var(--st-accent-dark);
+  margin-bottom: .4rem;
+}
+.st-card-title i, .st-card-title .st-emoji { font-size: 1rem; }
+.st-card-text {
+  font-size: .84rem; line-height: 1.5;
+  color: var(--st-text-soft);
+  margin-bottom: .85rem;
+}
+.st-card-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .6rem; border-top: 1px solid #edf0fb; padding-top: .7rem;
+}
+.st-dots { display: flex; gap: 5px; }
+.st-dot { width: 6px; height: 6px; border-radius: 50%; background: #d7ddf5; transition: background .2s, transform .2s; }
+.st-dot.active { background: var(--st-accent); transform: scale(1.25); }
+
+.st-nav { display: flex; gap: .4rem; }
+.st-btn {
+  border: none; cursor: pointer; font-family: inherit;
+  font-size: .74rem; font-weight: 700; border-radius: 8px;
+  padding: .4rem .7rem; display: inline-flex; align-items: center; gap: .3rem;
+  transition: transform .15s ease, opacity .15s ease, background .15s ease;
+}
+.st-btn:active { transform: scale(.95); }
+.st-btn-prev { background: #eef1fb; color: var(--st-text-soft); }
+.st-btn-prev:disabled { opacity: .4; cursor: default; }
+.st-btn-prev:not(:disabled):hover { background: #e2e7fa; }
+.st-btn-next {
+  background: linear-gradient(135deg, var(--st-accent), var(--st-accent-dark));
+  color: #fff;
+}
+.st-btn-next:hover { filter: brightness(1.06); }
+.st-btn-skip {
+  background: transparent; color: #9aa2bf; font-weight: 600;
+  padding: .4rem .3rem;
+}
+.st-btn-skip:hover { color: var(--st-text-soft); }
+
+/* Botón flotante "¿Necesitas ayuda?" — relanza el tour */
+.st-help-btn {
+  position: fixed; left: 18px; bottom: 18px; z-index: 9500;
+  display: flex; align-items: center; gap: .55rem;
+  background: var(--st-bg); color: var(--st-text);
+  border: 1px solid #e7eaf7; border-radius: 14px;
+  padding: .65rem .9rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .18);
+  cursor: pointer; font-family: inherit;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity .25s ease, transform .25s ease;
+}
+.st-help-btn.show { opacity: 1; transform: translateY(0); }
+.st-help-btn .st-help-ico {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--st-accent), var(--st-accent-dark));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: .85rem; flex-shrink: 0;
+}
+.st-help-btn .st-help-copy { display: flex; flex-direction: column; line-height: 1.2; }
+.st-help-btn .st-help-title { font-size: .78rem; font-weight: 800; }
+.st-help-btn .st-help-sub { font-size: .66rem; color: #9aa2bf; font-weight: 600; }
+
+/* ── Responsive: 380px–720px (móvil / densidad reducida) ──
+   Sin línea guía; la tarjeta se ancla como hoja inferior y el
+   elemento recibe el resplandor para ubicarlo visualmente. */
+@media (max-width: 720px) {
+  .st-connector { display: none; }
+  .st-card {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 14px !important;
+    top: auto !important;
+    width: auto;
+    max-width: none;
+    transform: translateY(14px) scale(.98);
+  }
+  .st-card.show { transform: translateY(0) scale(1); }
+  .st-card-title { font-size: .88rem; }
+  .st-card-text { font-size: .8rem; }
+  .st-help-btn { left: 12px; bottom: 12px; padding: .55rem .75rem; }
+  .st-help-btn .st-help-title { font-size: .72rem; }
+  .st-help-btn .st-help-sub { display: none; }
+}
+
+@media (max-width: 380px) {
+  .st-card { padding: .9rem 1rem .85rem; border-radius: 14px; }
+  .st-card-text { font-size: .76rem; }
+  .st-btn { font-size: .68rem; padding: .36rem .55rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .st-highlight { animation: none; }
+  .st-card, .st-help-btn { transition: none; }
+}

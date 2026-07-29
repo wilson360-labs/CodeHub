@@ -149,6 +149,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="css/components.css?v=20260724a">
     <!-- Media queries responsive -->
     <link rel="stylesheet" href="css/index-responsive.css?v=20260724a">
+    <link rel="stylesheet" href="css/site-tour.css?v=20260728a">
 
 
 
@@ -1652,9 +1653,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             window.addEventListener('resize', place);
             setTimeout(dismiss, duration);
         }
+        // ── TOUR GUIADO — presenta las funciones ocultas del sitio ──
+        // Tarjeta blanca con línea guía (desktop) / hoja inferior (móvil).
+        // Se ve una sola vez; el botón "¿Necesitas ayuda?" la relanza.
         window.addEventListener('load', () => {
             setTimeout(() => {
-                showCoachTip(document.querySelector('.menu-toggle-btn'), '🧪 Funciones experimentales: juegos, chat IA y más — toca para abrir', { key: 'index_experimental_btn', position: 'bottom' });
+                startTour('index', [
+                    {
+                        selector: '#cfg-btn',
+                        icon: 'fa-solid fa-gear',
+                        title: 'Configuración',
+                        text: 'Personaliza el sitio: activa o desactiva animaciones, el fondo de red neuronal y otras preferencias, sin afectar tu experiencia.'
+                    },
+                    {
+                        selector: '.menu-toggle-btn',
+                        emoji: '🧪',
+                        title: 'Funciones experimentales',
+                        text: 'Toca aquí para abrir minijuegos, chat con IA y otras herramientas ocultas del sitio.'
+                    },
+                    {
+                        selector: '#wx-loc-btn',
+                        icon: 'fa-solid fa-location-crosshairs',
+                        title: 'Clima en tiempo real',
+                        text: 'Usa tu ubicación exacta para ver el clima donde estás, o busca otra ciudad manualmente.'
+                    }
+                ], {
+                    delay: 0,
+                    helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía del sitio' }
+                });
             }, 1500);
         });
 
@@ -5146,6 +5172,7 @@ function setAIMood(btn) {
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+<script src="js/site-tour.js?v=20260728a"></script>
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260724a"></script>

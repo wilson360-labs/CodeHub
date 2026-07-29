@@ -27,7 +27,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/novedades.css">
+<link rel="stylesheet" href="../css/site-tour.css?v=20260728a">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="../js/site-tour.js?v=20260728a"></script>
 
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://wilson360-labs.vercel.app/novedades">
@@ -1179,14 +1181,28 @@ window.addEventListener('load', async () => {
   setTimeout(() => initWeatherNotif(), 3000);
   logActivity('👀 Sección Novedades visitada');
 
-  // Muestra de coach tips: explican los 2 catálogos disponibles
-  // (aparecen una sola vez por dispositivo, en secuencia)
+  // ── TOUR GUIADO — explica que Novedades tiene 2 catálogos en una
+  // sola página. Tarjeta blanca con línea guía (desktop) / hoja
+  // inferior (móvil). Se ve una sola vez; "¿Necesitas ayuda?" la relanza.
   setTimeout(() => {
-    showCoachTip(document.getElementById('tab-premium'), '💎 Apps modificadas y desbloqueadas, gratis', { key: 'nov_tab_premium', position: 'bottom' });
+    startTour('novedades', [
+      {
+        selector: '#tab-premium',
+        icon: 'fa-solid fa-bolt',
+        title: 'Apps Premium',
+        text: 'Este catálogo reúne apps modificadas y con todo desbloqueado, 100% gratis.'
+      },
+      {
+        selector: '#tab-opensource',
+        icon: 'fa-brands fa-github',
+        title: 'Open Source',
+        text: 'Toca esta pestaña para ver el otro catálogo: apps de código abierto. Son dos colecciones dentro de la misma página de Novedades.'
+      }
+    ], {
+      delay: 0,
+      helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía de catálogos' }
+    });
   }, 1200);
-  setTimeout(() => {
-    showCoachTip(document.getElementById('tab-opensource'), '🌐 Toca aquí para cambiar al catálogo 100% Open Source', { key: 'nov_tab_opensource', position: 'bottom' });
-  }, 4200);
 });
 </script>
 
