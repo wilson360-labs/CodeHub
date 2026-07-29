@@ -1392,6 +1392,26 @@ app.get('/api/download/:fileName', async (req, res) => {
   } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
+// Download indirecta por appId — pensada para el catálogo Open Source.
+// El HTML público solo expone el appId (nunca el enlace real de GitHub
+// Releases); este endpoint resuelve el enlace actual en MongoDB y hace
+// un redirect 302. Ventajas: se puede cambiar el destino (nueva versión,
+// mirror, etc.) sin tocar el frontend, y queda trackeado igual que las
+// descargas Premium. OJO: esto no es "seguridad" — cualquiera puede ver
+// la URL final en la pestaña Network del navegador tras el redirect,
+// solo evita que quede pegada en el HTML/código fuente de la página.
+app.get('/api/dl/:appId', async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  const { appId } = req.params;
+  try {
+    const app_ = await App.findOne({ appId }).select('enlace nombre').lean();
+    if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aún' });
+    broadcast('download', { fileName: app_.nombre });
+    trackEvent('download', null, { app_name: app_.nombre, appId });
+    res.redirect(302, app_.enlace);
+  } catch (e) { console.error('Error /api/dl:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
+});
+
 // ════════════════════════════════════════════════════════════════
 //  ADMIN
 // ════════════════════════════════════════════════════════════════

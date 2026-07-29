@@ -384,12 +384,15 @@ async function submitRequest() {
 // presencia (o no) de `source_repo`, sin depender de una página
 // aparte — ver switchCatalog() / renderCatalog() más abajo.
 const APP_META = {"app-1": {"img": "/img/Spotify.png", "desc": "Música sin anuncios, calidad máxima, descargas y saltos ilimitados.", "catTag": "Música", "emoji": "🎵"}, "app-2": {"img": "/img/SpoLite.png", "desc": "Versión ligera de Spotify con funciones premium activadas.", "catTag": "Música", "emoji": "🎵"}, "app-3": {"img": "/img/YouTube.jpeg", "desc": "YouTube sin anuncios, SponsorBlock integrado y gestor de descargas.", "catTag": "Video", "emoji": "📺"}, "app-4": {"img": "/img/YTMusic.png", "desc": "YouTube Music con reproducción en segundo plano sin restricciones.", "catTag": "Música", "emoji": "🎵"}, "app-5": {"img": "/img/TikTok.svg", "desc": "TikTok sin anuncios, sin marca de agua en descargas y región desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-6": {"img": "/img/Netflix.png", "desc": "Cliente alternativo de Netflix con calidad 4K desbloqueada.", "catTag": "Video", "emoji": "📺"}, "app-7": {"img": "/img/Terabox.png", "desc": "Almacenamiento en la nube premium con transferencias más rápidas.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-8": {"img": "/img/Player.jpg", "desc": "Reproductor de video con soporte para todos los formatos y AV1.", "catTag": "Video", "emoji": "📺"}, "app-9": {"img": "/img/Picsart.jpg", "desc": "Editor de fotos con todas las herramientas IA desbloqueadas.", "catTag": "Foto", "emoji": "📸"}, "app-10": {"img": "/img/Remini.png", "desc": "Mejora la calidad de fotos antiguas o borrosas con IA avanzada.", "catTag": "Foto", "emoji": "📸"}, "app-11": {"img": "/img/Eraser.jpg", "desc": "Elimina objetos, personas o fondos de tus fotos con un toque.", "catTag": "Foto", "emoji": "📸"}, "app-12": {"img": "/img/CamScanner.png", "desc": "Escáner de documentos con OCR preciso y múltiples formatos de exportación.", "catTag": "Utilidad", "emoji": "🛠️"}, "app-13": {"img": "/img/dnspro.png", "desc": "Bloquea anuncios y rastreadores a nivel DNS en todo el dispositivo.", "catTag": "Seguridad", "emoji": "🔒"}};
-const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util"};
+const CAT_MAP  = {"Música": "musica", "Video": "video", "Foto": "foto", "Utilidad": "util", "Seguridad": "util", "Root y Sistema": "util", "Multimedia": "video", "Productividad": "util", "Lectura": "util", "Mensajería": "social", "VPN y Privacidad": "util", "Redes Sociales": "social", "Tecnología": "tech", "Juegos": "juegos"};
 const PREMIUM_CHIPS = [
   { id: 'musica', label: '🎵 Música' },
   { id: 'video',  label: '📺 Video' },
   { id: 'foto',   label: '📸 Foto' },
   { id: 'util',   label: '🛠️ Utilidad' },
+  { id: 'social', label: '📱 Redes Sociales' },
+  { id: 'tech',   label: '💻 Tecnología' },
+  { id: 'juegos', label: '🎮 Juegos' },
 ];
 const OS_CAT_EMOJI = {
   'Root y Sistema':   '🛠️',
@@ -401,6 +404,8 @@ const OS_CAT_EMOJI = {
   'Mensajería':        '💬',
   'Fotografía':        '📸',
   'Utilidades':        '🧰',
+  'Redes Sociales':    '📱',
+  'Tecnología':        '💻',
 };
 
 function buildAppCard(app) {
@@ -483,13 +488,17 @@ function buildOSCard(app) {
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : 'Sin versión aún';
   const desc    = app.descripcion || '';
   const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
+  // El botón de descarga NO apunta directo al enlace real (GitHub Releases,
+  // mirror, etc.) — pasa por /api/dl/:appId, que lo resuelve server-side.
+  // Así el HTML público no expone el link crudo y queda trackeado.
+  const dlUrl   = enlace ? `${BACKEND}/api/dl/${encodeURIComponent(app.appId)}` : null;
   const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
   const emoji   = OS_CAT_EMOJI[app.categoria] || '📦';
   const badge   = app.tag || '🆕';
   const badgeClass = badge.includes('Actualiz') ? 'badge-upd' : 'badge-new';
 
-  const dlBtn = enlace
-    ? `<a class="dl-btn dl-primary" href="${enlace}" onclick="countDl()" target="_blank" rel="noopener">
+  const dlBtn = dlUrl
+    ? `<a class="dl-btn dl-primary" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener">
          <i class="fas fa-download"></i> Descargar APK
        </a>`
     : `<a class="dl-btn dl-ghost" href="${repoUrl || '#'}" target="_blank" rel="noopener">

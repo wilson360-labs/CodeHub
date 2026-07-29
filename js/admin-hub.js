@@ -786,23 +786,28 @@ function renderAddForm() {
         </div>
         <div>
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Nombre</label>
-          <input class="ver-input" id="new-nombre" style="width:100%" placeholder="Spotify Premium">
+          <input class="ver-input" id="new-nombre" style="width:100%" placeholder="Spotify Premium" oninput="onNewAppFieldsChange()">
         </div>
         <div>
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Versión</label>
           <input class="ver-input" id="new-version" style="width:100%" placeholder="1.0.0">
         </div>
         <div>
-          <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Categoría</label>
+          <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">
+            Categoría <span id="new-catalog-badge" style="text-transform:none;letter-spacing:0;font-weight:700">💎 Premium</span>
+          </label>
           <select class="ver-input" id="new-cat" style="width:100%">
             <option>Música</option><option>Video</option><option>Foto</option>
             <option>Utilidad</option><option>Seguridad</option><option>Juegos</option>
             <option>Root y Sistema</option><option>Multimedia</option>
+            <option>Productividad</option><option>Lectura</option><option>Mensajería</option>
+            <option>VPN y Privacidad</option><option>Redes Sociales</option><option>Tecnología</option>
           </select>
+          <div id="new-cat-hint" style="font-size:.62rem;color:var(--muted);margin-top:.3rem"></div>
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Descripción</label>
-          <input class="ver-input" id="new-desc" style="width:100%" placeholder="Disfruta de...">
+          <input class="ver-input" id="new-desc" style="width:100%" placeholder="Disfruta de..." oninput="onNewAppFieldsChange()">
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Link Descarga</label>
@@ -824,7 +829,7 @@ function renderAddForm() {
         </div>
         <div style="grid-column:1/-1">
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Repositorio Open Source (opcional)</label>
-          <input class="ver-input" id="new-source-repo" style="width:100%" placeholder="owner/repo — ej: TeamNewPipe/NewPipe">
+          <input class="ver-input" id="new-source-repo" style="width:100%" placeholder="owner/repo — ej: TeamNewPipe/NewPipe" oninput="onNewAppFieldsChange()">
           <div style="font-size:.62rem;color:var(--muted);margin-top:.35rem">Si lo llenas, la app aparece en el catálogo Open Source en vez de Premium, y activa el monitor automático de releases de GitHub.</div>
         </div>
       </div>
@@ -832,6 +837,70 @@ function renderAddForm() {
         <i class="fas fa-plus"></i> Crear App
       </button>
     </div>`;
+  updateCatalogBadge();
+}
+
+// ── AUTO-DETECCIÓN DE CATÁLOGO (Open Source vs Premium) Y CATEGORÍA ──
+// Heurística por palabras clave, 100% en el navegador (sin llamar al
+// backend ni a ninguna IA). Corre sobre nombre + descripción + repo
+// cada vez que el admin escribe, y sugiere la categoría más probable.
+// El admin siempre puede corregirla a mano en el <select>.
+const CATEGORY_KEYWORDS = {
+  'Redes Sociales':   ['whatsapp', 'instagram', 'tiktok', 'facebook', 'twitter', 'threads', 'reddit', 'status', 'red social'],
+  'Mensajería':       ['mail', 'correo', 'messenger', 'sms', 'signal', 'tusky', 'mastodon', 'k-9', 'thunderbird', 'chat'],
+  'Música':           ['music', 'música', 'spotify', 'tidal', 'deezer', 'audio', 'song', 'podcast', 'antennapod', 'reproductor de música'],
+  'Video':            ['video', 'stream', 'pelicula', 'película', 'movie', 'netflix', 'player', 'reproductor de video', 'tv', 'anime', 'cloudstream', 'flix'],
+  'Foto':             ['photo', 'foto', 'gallery', 'galería', 'camera', 'cámara', 'picsart', 'remini', 'scanner', 'escáner', 'imagen'],
+  'Root y Sistema':   ['root', 'magisk', 'kernel', 'shizuku', 'debloat', 'uninstall', 'desinstal', 'freeze', 'congela', 'optimiz', 'lsposed', 'xposed', 'app manager'],
+  'VPN y Privacidad': ['vpn', 'proxy', 'privacy', 'privacidad', ' tor ', 'firewall', 'dns', 'adblock', 'bloquea anuncios', 'anti-track'],
+  'Productividad':    ['file manager', 'explorador de archivos', 'archivo', 'nota', 'tarea', 'calendar', 'calendario', 'password', 'contraseñ', 'nextcloud', 'office'],
+  'Lectura':          ['reader', 'lector', 'manga', 'book', 'libro', 'pdf', 'comic', 'cómic'],
+  'Tecnología':       ['sdk', 'terminal', 'developer', 'desarroll', 'api', 'debug', 'emulator', 'emulador', 'ide', 'compilador'],
+  'Utilidad':         ['tool', 'utilidad', 'recorder', 'grabad', 'saver', 'guarda', 'cleaner', 'limpia', 'booster', 'optimizador', 'descargador'],
+  'Juegos':           ['game', 'juego', 'gaming', 'emulador de juegos'],
+  'Seguridad':        ['security', 'seguridad', 'antivirus', 'malware', 'bitwarden', 'contraseñas'],
+};
+
+function detectCategoria() {
+  const text = [
+    document.getElementById('new-nombre')?.value || '',
+    document.getElementById('new-desc')?.value || '',
+    document.getElementById('new-source-repo')?.value || '',
+  ].join(' ').toLowerCase();
+  if (!text.trim()) return null;
+
+  let best = null, bestScore = 0;
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    const score = keywords.reduce((n, k) => n + (text.includes(k) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = cat; }
+  }
+  return best;
+}
+
+function updateCatalogBadge() {
+  const repo  = document.getElementById('new-source-repo')?.value.trim();
+  const badge = document.getElementById('new-catalog-badge');
+  if (!badge) return;
+  if (repo) { badge.textContent = '🌐 Open Source'; badge.style.color = 'var(--c, #00e5ff)'; }
+  else      { badge.textContent = '💎 Premium';      badge.style.color = 'var(--p, #ff0080)'; }
+}
+
+let _catDetectDebounce = null;
+function onNewAppFieldsChange() {
+  updateCatalogBadge();
+  clearTimeout(_catDetectDebounce);
+  _catDetectDebounce = setTimeout(() => {
+    const hint = document.getElementById('new-cat-hint');
+    const detected = detectCategoria();
+    const select = document.getElementById('new-cat');
+    if (!select) return;
+    if (detected) {
+      select.value = detected;
+      if (hint) hint.textContent = `🔍 Categoría detectada automáticamente: ${detected} (podés cambiarla si no es correcta)`;
+    } else if (hint) {
+      hint.textContent = '';
+    }
+  }, 350);
 }
 
 // ── PREVIEW EN VIVO DEL ÍCONO AL CREAR APP ──────────────────────
