@@ -797,6 +797,7 @@ function renderAddForm() {
           <select class="ver-input" id="new-cat" style="width:100%">
             <option>Música</option><option>Video</option><option>Foto</option>
             <option>Utilidad</option><option>Seguridad</option><option>Juegos</option>
+            <option>Root y Sistema</option><option>Multimedia</option>
           </select>
         </div>
         <div style="grid-column:1/-1">

@@ -398,6 +398,9 @@ const OS_CAT_EMOJI = {
   'VPN y Privacidad':  '🔒',
   'Productividad':     '✅',
   'Lectura':           '📖',
+  'Mensajería':        '💬',
+  'Fotografía':        '📸',
+  'Utilidades':        '🧰',
 };
 
 function buildAppCard(app) {

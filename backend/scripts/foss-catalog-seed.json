@@ -287,6 +287,102 @@
       "categoria": "Mensajería",
       "source_repo": "thundernest/k-9",
       "imagen": ""
+    },
+    {
+      "appId": "os-acca",
+      "nombre": "AccA",
+      "descripcion": "Interfaz gráfica para Advanced Charging Controller (ACC): configura límites y perfiles de carga de batería vía root o módulo Magisk.",
+      "categoria": "Root y Sistema",
+      "source_repo": "MatteCarra/AccA",
+      "imagen": "https://opengraph.githubassets.com/1/MatteCarra/AccA"
+    },
+    {
+      "appId": "os-optidroid",
+      "nombre": "OptiDroid",
+      "descripcion": "Optimiza la compilación ART de todas tus apps instaladas para lanzamientos más rápidos y menos lag, sin necesidad de root (usa Shizuku).",
+      "categoria": "Root y Sistema",
+      "source_repo": "androidexpert35/AppBooster",
+      "imagen": "https://opengraph.githubassets.com/1/androidexpert35/AppBooster"
+    },
+    {
+      "appId": "os-hail",
+      "nombre": "Hail",
+      "descripcion": "Congela (deshabilita, oculta o suspende) apps sin necesidad de root, ideal para debloatear el sistema y ahorrar batería.",
+      "categoria": "Root y Sistema",
+      "source_repo": "aistra0528/Hail",
+      "imagen": "https://opengraph.githubassets.com/1/aistra0528/Hail"
+    },
+    {
+      "appId": "os-canta",
+      "nombre": "Canta",
+      "descripcion": "Desinstala cualquier app del sistema sin root usando Shizuku, con recomendaciones seguras de la Universal Debloat List.",
+      "categoria": "Root y Sistema",
+      "source_repo": "samolego/Canta",
+      "imagen": "https://opengraph.githubassets.com/1/samolego/Canta"
+    },
+    {
+      "appId": "os-fossify-gallery",
+      "nombre": "Fossify Gallery",
+      "descripcion": "Galería de fotos y videos sin anuncios, con editor básico y control total de tu privacidad. Continuación de Simple Gallery.",
+      "categoria": "Fotografía",
+      "source_repo": "FossifyOrg/Gallery",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Gallery"
+    },
+    {
+      "appId": "os-fossify-filemanager",
+      "nombre": "Fossify File Manager",
+      "descripcion": "Explorador de archivos ligero y sin anuncios, con soporte para SD, USB y accesos directos. Continuación de Simple File Manager.",
+      "categoria": "Productividad",
+      "source_repo": "FossifyOrg/File-Manager",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/File-Manager"
+    },
+    {
+      "appId": "os-echo-nightly",
+      "nombre": "Echo Nightly",
+      "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales.",
+      "categoria": "Música",
+      "source_repo": "brahmkshatriya/echo",
+      "imagen": "https://opengraph.githubassets.com/1/brahmkshatriya/echo"
+    },
+    {
+      "appId": "os-refreezer",
+      "nombre": "Refreezer",
+      "descripcion": "Cliente alternativo de Deezer para streaming y descarga de música en alta calidad, continuación del proyecto Freezer.",
+      "categoria": "Música",
+      "source_repo": "DJDoubleD/refreezer",
+      "imagen": "https://opengraph.githubassets.com/1/DJDoubleD/refreezer"
+    },
+    {
+      "appId": "os-cloudstream",
+      "nombre": "Cloudstream",
+      "descripcion": "App para transmitir y descargar películas, series y anime desde múltiples fuentes mediante extensiones instalables.",
+      "categoria": "Video",
+      "source_repo": "recloudstream/cloudstream",
+      "imagen": "https://opengraph.githubassets.com/1/recloudstream/cloudstream"
+    },
+    {
+      "appId": "os-flixy",
+      "nombre": "Flixy",
+      "descripcion": "App hecha en Kotlin y Jetpack Compose para ver películas y series directamente desde tu dispositivo.",
+      "categoria": "Video",
+      "source_repo": "xAmarnath/FlixY",
+      "imagen": "https://opengraph.githubassets.com/1/xAmarnath/FlixY"
+    },
+    {
+      "appId": "os-ever-call-recorder",
+      "nombre": "Ever Call Recorder",
+      "descripcion": "Grabador de llamadas sin root que usa Shizuku para capturar ambos lados de la conversación como archivos de audio.",
+      "categoria": "Utilidades",
+      "source_repo": "hari161008/Ever-Call-Recorder",
+      "imagen": "https://opengraph.githubassets.com/1/hari161008/Ever-Call-Recorder"
+    },
+    {
+      "appId": "os-whatsave",
+      "nombre": "WhatSave",
+      "descripcion": "Guarda los estados de WhatsApp (fotos y videos) de tus contactos de la forma más simple, sin necesidad de root.",
+      "categoria": "Utilidades",
+      "source_repo": "ProjectOrbital/WhatSave",
+      "imagen": "https://opengraph.githubassets.com/1/ProjectOrbital/WhatSave"
     }
   ]
 }
