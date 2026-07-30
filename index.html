@@ -4532,8 +4532,12 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
       console.log('✅ SW registrado v4.3');
 
-      // Verificar actualizaciones cada 5 min + al volver a la pestaña
-      setInterval(() => reg.update(), 5 * 60 * 1000);
+      // Antes cada 5 min; ahora cada 60s + al volver a la pestaña, para
+      // detectar más rápido cualquier cambio real del sw.js mismo.
+      // El contenido (html/css/js de la página) ya no depende de esto:
+      // se sirve "network-first" (ver sw.js), así que se actualiza solo
+      // en cada carga de página sin esperar a este chequeo.
+      setInterval(() => reg.update(), 60 * 1000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update();
       });
@@ -4585,6 +4589,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (banner) banner.style.display = 'none';
   }
   </script>
+  <script src="/js/live-update-check.js"></script>
 
   <script>
   // Intersection Observer para lazy load de secciones pesadas

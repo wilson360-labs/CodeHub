@@ -1,14 +1,25 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v4.4 — Wilson.E 2026
+//  CodeHub SW v5.0 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync + update
 //  + Push Notifications (app updates + clima)
-//  v4.4: auto-update — el cliente ahora aplica el SW nuevo y
-//        limpia caché vieja automáticamente sin esperar clic manual
+//  v5.0: ESTRATEGIA DE CACHÉ CAMBIADA — antes html/css/js
+//        eran "cache-first" (¡el navegador podía quedarse con
+//        una versión vieja para siempre si no se subía VERSION
+//        a mano!). Ahora son "network-first": siempre se intenta
+//        la red primero, así un push a GitHub/Vercel se refleja
+//        al instante en la próxima carga de página, sin depender
+//        de recordar bumpear VERSION. La caché queda solo como
+//        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v4.6';
+const VERSION   = 'codehub-v5.0';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
+
+// Tiempo máximo que se espera a la red antes de servir la copia en
+// caché (si existe) mientras la red sigue intentando en segundo plano.
+// Bajo a propósito: preferimos "rápido y quizás offline" a "lento".
+const NETWORK_TIMEOUT_MS = 4000;
 
 const PRECACHE = [
   '/',
@@ -24,6 +35,7 @@ const PRECACHE = [
   '/js/theme-switcher.js',
   '/js/updater.js',
   '/js/device-detect.js',
+  '/js/live-update-check.js',
 ];
 
 // ── INSTALL ───────────────────────────────────────────
@@ -36,7 +48,8 @@ self.addEventListener('install', e => {
     )
   );
   // NO llamar self.skipWaiting() aquí.
-  // El SW nuevo queda en estado "waiting" hasta que el usuario confirme.
+  // El SW nuevo queda en estado "waiting" hasta que el cliente confirme
+  // (index.html ya hace esto automáticamente, ver onSWWaiting()).
 });
 
 // ── ACTIVATE ─────────────────────────────────────────
@@ -56,6 +69,53 @@ self.addEventListener('activate', e => {
   );
   self.clients.claim();
 });
+
+// ── ESTRATEGIAS DE CACHÉ ───────────────────────────────
+
+// network-first: intenta la red; si tarda más de NETWORK_TIMEOUT_MS o
+// falla (offline), usa la copia en caché mientras tanto. Si la red
+// responde bien, siempre actualiza la caché para la próxima vez.
+function networkFirst(request, fallback) {
+  return new Promise(resolve => {
+    let settled = false;
+    const timer = setTimeout(async () => {
+      if (settled) return;
+      const cached = await caches.match(request);
+      if (cached) { settled = true; resolve(cached); }
+    }, NETWORK_TIMEOUT_MS);
+
+    fetch(request).then(res => {
+      clearTimeout(timer);
+      if (res && res.ok) {
+        const clone = res.clone();
+        caches.open(VERSION).then(c => c.put(request, clone));
+      }
+      if (!settled) { settled = true; resolve(res); }
+    }).catch(async () => {
+      clearTimeout(timer);
+      if (settled) return;
+      const cached = await caches.match(request);
+      settled = true;
+      resolve(cached || fallback || new Response('', { status: 504 }));
+    });
+  });
+}
+
+// stale-while-revalidate: sirve la caché al instante si existe (rápido),
+// y en paralelo pide la versión fresca a la red para la próxima carga.
+// Pensado para imágenes/fuentes: cambian poco y priorizamos velocidad.
+function staleWhileRevalidate(request) {
+  return caches.match(request).then(cached => {
+    const fresh = fetch(request).then(res => {
+      if (res && res.ok) {
+        const clone = res.clone();
+        caches.open(VERSION).then(c => c.put(request, clone));
+      }
+      return res;
+    }).catch(() => cached);
+    return cached || fresh;
+  });
+}
 
 // ── FETCH ─────────────────────────────────────────────
 self.addEventListener('fetch', e => {
@@ -85,34 +145,27 @@ self.addEventListener('fetch', e => {
   }
   if (request.mode === 'navigate') {
     e.respondWith(
-      fetch(request)
-        .then(res => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(VERSION).then(c => c.put(request, clone));
-          }
-          return res;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
-          return cached || caches.match(OFFLINE);
-        })
+      networkFirst(request).then(async res => {
+        if (res && res.status === 504) {
+          const off = await caches.match(OFFLINE);
+          return off || res;
+        }
+        return res;
+      })
     );
     return;
   }
-  if (['style','script','image','font'].includes(request.destination)) {
-    e.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(res => {
-          if (res && res.ok) {
-            const clone = res.clone();
-            caches.open(VERSION).then(c => c.put(request, clone));
-          }
-          return res;
-        }).catch(() => new Response('', { status: 404 }));
-      })
-    );
+  // HTML/CSS/JS: network-first — así los pushes a GitHub/Vercel se ven
+  // al instante. Antes esto era cache-first y podía quedar "pegado" a
+  // una versión vieja indefinidamente.
+  if (['style', 'script'].includes(request.destination) ||
+      url.pathname.match(/\.(html|css|js)$/)) {
+    e.respondWith(networkFirst(request));
+    return;
+  }
+  // Imágenes/fuentes: stale-while-revalidate — rápido y se refresca solo.
+  if (['image', 'font'].includes(request.destination)) {
+    e.respondWith(staleWhileRevalidate(request));
     return;
   }
   e.respondWith(fetch(request).catch(() => caches.match(request)));
