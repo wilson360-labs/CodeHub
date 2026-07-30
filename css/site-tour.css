@@ -151,6 +151,20 @@
   .st-help-btn .st-help-sub { display: none; }
 }
 
+/* ── Bug fix (solo 380px–720px): el botón "¿Necesitas ayuda?" chocaba
+   con #hub-dock (queda por encima ~81px del borde en móvil) y, al
+   abrir el panel IA, tapaba los botones "Restablecer chat" / "Cerrar"
+   del panel. El panel IA debe verse por encima de TODO el contenido
+   mientras esté abierto, así que el botón se oculta mientras eso pase
+   y se sube para no invadir el dock cuando el panel está cerrado.
+   body.ai-panel-open se activa/desactiva en index.html → setOpen(v). */
+@media (max-width: 720px) {
+  .st-help-btn {
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+  body.ai-panel-open .st-help-btn { display: none !important; }
+}
+
 @media (max-width: 380px) {
   .st-card { padding: .9rem 1rem .85rem; border-radius: 14px; }
   .st-card-text { font-size: .76rem; }

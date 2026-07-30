@@ -3403,6 +3403,10 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         requestAnimationFrame(() => { backdrop.style.opacity = '1'; });
       }
       document.body.style.overflow = 'hidden';
+      /* Móvil (380–720px): el panel IA debe verse por encima de todo.
+         El botón flotante "¿Necesitas ayuda?" se oculta mientras el
+         panel está abierto (ver css/site-tour.css → body.ai-panel-open) */
+      document.body.classList.add('ai-panel-open');
       setTimeout(function(){ panel.classList.remove('boot-flash'); }, 900);
       runBoot(function() {
         setTimeout(function() { if (input) input.focus(); }, 80);
@@ -3429,6 +3433,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         backdrop.style.pointerEvents = 'none';
       }
       document.body.style.overflow = '';
+      document.body.classList.remove('ai-panel-open');
     }
   }
   rotatePrompt(true);
