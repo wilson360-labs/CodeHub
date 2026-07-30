@@ -144,6 +144,15 @@
     transform: translateY(14px) scale(.98);
   }
   .st-card.show { transform: translateY(0) scale(1); }
+  /* Cuando el elemento resaltado está en la mitad inferior de la
+     pantalla, la tarjeta se ancla arriba en vez de abajo (la clase
+     .st-card-top la agrega site-tour.js → _place), para no taparlo. */
+  .st-card.st-card-top {
+    top: 14px !important;
+    bottom: auto !important;
+    transform: translateY(-14px) scale(.98);
+  }
+  .st-card.st-card-top.show { transform: translateY(0) scale(1); }
   .st-card-title { font-size: .88rem; }
   .st-card-text { font-size: .8rem; }
   .st-help-btn { left: 12px; bottom: 12px; padding: .55rem .75rem; }

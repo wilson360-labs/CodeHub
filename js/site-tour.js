@@ -166,7 +166,19 @@
     var vw = window.innerWidth, vh = window.innerHeight;
 
     if (vw <= 720) {
-      // Modo hoja inferior: la posición la resuelve el CSS (@media).
+      // Hoja inferior/superior: el ancho y el resto lo resuelve el CSS
+      // (@media), pero elegimos arriba o abajo según dónde esté el
+      // elemento resaltado, para que la tarjeta NUNCA cubra la
+      // función/logo/texto que está describiendo.
+      var targetMidY = r.top + r.height / 2;
+      if (targetMidY > vh / 2) {
+        // El elemento está en la mitad inferior → tarjeta arriba.
+        card.classList.add('st-card-top');
+      } else {
+        // El elemento está en la mitad superior (o el elemento es muy
+        // grande y ocupa casi toda la pantalla) → tarjeta abajo.
+        card.classList.remove('st-card-top');
+      }
       return;
     }
 
