@@ -1463,8 +1463,15 @@ app.post('/api/ratings', async (req, res) => {
   if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos inválidos' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
-    let r = await AppRating.findOne({ appId });
-    if (!r) r = new AppRating({ appId, appName: appName || appId, ratings: [], total: 0, count: 0 });
+    // findOneAndUpdate + upsert es atómico — evita la condición de carrera
+    // que había con "findOne → new AppRating() → save()": si dos votos
+    // llegaban casi al mismo tiempo, ambos podían pasar el findOne antes
+    // de que el primero guardara, creando 2 documentos con el mismo appId.
+    let r = await AppRating.findOneAndUpdate(
+      { appId },
+      { $setOnInsert: { appId, appName: appName || appId, ratings: [], total: 0, count: 0 } },
+      { upsert: true, new: true }
+    );
     const already = r.ratings.find(x => x.ip === ip);
     if (already) return res.status(409).json({ error: 'Ya votaste', avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
     r.ratings.push({ ip, stars }); r.total += stars; r.count += 1;
