@@ -120,13 +120,13 @@ function buildOSCard(app) {
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
 
+  // Solo botón de descarga: el enlace real (GitHub Releases/mirror) nunca
+  // se expone directo en el DOM, siempre pasa por /api/dl/:appId. El botón
+  // "Código fuente" que enlazaba crudo a `repoUrl` fue removido a propósito;
+  // `repoUrl` se conserva únicamente como fallback interno de descarga.
   const dlBtn = dlUrl
     ? `<a class="dl-btn dl-primary" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
     : `<a class="dl-btn dl-primary" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
-
-  const repoBtn = repoUrl
-    ? `<a class="dl-btn dl-plugin" href="${repoUrl}" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>`
-    : '';
 
   return `
   <div class="app-card" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}">
@@ -140,7 +140,7 @@ function buildOSCard(app) {
       <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
-      <div class="app-actions">${dlBtn}${repoBtn}</div>
+      <div class="app-actions">${dlBtn}</div>
       ${updated ? `<div class="os-updated-tag" style="font-size:.68rem;color:var(--muted,#8a8a9a);margin-top:.5rem"><i class="fas fa-clock-rotate-left"></i> ${updated}</div>` : ''}
     </div>
   </div>`;
@@ -219,6 +219,11 @@ async function loadOpenSourceCatalog() {
     document.querySelectorAll('.app-grid').forEach(grid => {
       grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:1.2rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-exclamation-triangle"></i> No se pudo conectar con el servidor. Recarga la página.</div>`;
     });
+  } finally {
+    // Avisa a opensource.html que el catálogo ya terminó de renderizarse
+    // (con datos o con el mensaje de error), para que el guide tour pueda
+    // apuntar a un botón de descarga real en vez de al placeholder "Cargando…".
+    document.dispatchEvent(new CustomEvent('os:catalog-loaded'));
   }
 }
 

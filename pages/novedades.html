@@ -27,9 +27,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/novedades.css">
-<link rel="stylesheet" href="../css/site-tour.css?v=20260728a">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script src="../js/site-tour.js?v=20260728a"></script>
 
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://wilson360-labs.vercel.app/novedades">
@@ -1080,22 +1078,6 @@ window.addEventListener('load', async () => {
   }
   setTimeout(() => initWeatherNotif(), 3000);
   logActivity('👀 Sección Novedades visitada');
-
-  // ── TOUR GUIADO — presenta AppsHub. El catálogo Open Source ahora
-  // vive en su propia página (/opensource), enlazada debajo del hero.
-  setTimeout(() => {
-    startTour('novedades', [
-      {
-        selector: '#tab-premium',
-        icon: 'fa-solid fa-bolt',
-        title: 'AppsHub',
-        text: 'Este catálogo reúne apps modificadas y con todo desbloqueado, 100% gratis.'
-      }
-    ], {
-      delay: 0,
-      helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía del catálogo' }
-    });
-  }, 1200);
 });
 </script>
 

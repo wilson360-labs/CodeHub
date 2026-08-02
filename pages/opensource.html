@@ -26,6 +26,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
   <link rel="stylesheet" href="../css/novedades.css">
+  <link rel="stylesheet" href="../css/site-tour.css?v=20260728a">
   <style>
     body { font-family: 'Syne', sans-serif; }
     .os-intro {
@@ -186,5 +187,46 @@
 </footer>
 
 <script src="../js/opensource.js"></script>
+<script src="../js/site-tour.js?v=20260728a"></script>
+<script>
+// ── TOUR GUIADO — presenta el catálogo Open Source (independiente de
+// AppsHub desde que se dividió en su propia página). Se espera al
+// evento 'os:catalog-loaded' para que el paso del botón de descarga
+// apunte a una tarjeta real, no al placeholder "Cargando…"; un timeout
+// de respaldo evita que el tour se quede esperando si el evento no llega.
+(function () {
+  var started = false;
+  function launchTour() {
+    if (started) return;
+    started = true;
+    startTour('opensource', [
+      {
+        selector: '.os-toc',
+        icon: 'fa-solid fa-list-check',
+        title: 'Categorías',
+        text: 'Salta directo a la categoría que buscas: Música, Video, VPN, Productividad y más.'
+      },
+      {
+        selector: '.app-grid .dl-btn',
+        icon: 'fa-solid fa-download',
+        title: 'Descarga verificada',
+        text: 'El botón descarga el APK a través de nuestro sistema, que resuelve el enlace real (GitHub Releases u otro mirror) sin exponerlo directo en la página.'
+      },
+      {
+        selector: '.back-link',
+        icon: 'fa-solid fa-arrow-left',
+        title: 'AppsHub',
+        text: '¿Buscas apps modificadas/premium en vez de código abierto? Vuelve aquí para ver ese catálogo.'
+      }
+    ], {
+      delay: 0,
+      helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía del catálogo' }
+    });
+  }
+  document.addEventListener('os:catalog-loaded', launchTour, { once: true });
+  // Respaldo: si por lo que sea el evento no llega, igual se muestra el tour.
+  setTimeout(launchTour, 4000);
+})();
+</script>
 </body>
 </html>
