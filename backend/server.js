@@ -1851,10 +1851,13 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
         // Solo se pisa `imagen` si el seed trae una — evita borrar un
         // ícono que el admin ya haya corregido a mano desde el panel.
         if (imagen) set.imagen = imagen;
+        // Idem para `source_repo` — solo se pisa si el seed lo trae,
+        // para no desactivar el monitor de una app ya vinculada.
+        if (a.source_repo) set.source_repo = a.source_repo;
         await App.updateOne({ appId: id }, { $set: set });
         updated++;
       } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null });
+        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null });
         created++;
       }
     }

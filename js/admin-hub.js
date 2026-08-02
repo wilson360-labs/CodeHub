@@ -789,7 +789,7 @@ function renderAddForm() {
             <i class="fab fa-github"></i> Open Source
           </button>
         </div>
-        <div id="dest-hint" style="font-size:.62rem;color:var(--muted);margin-top:.4rem">Novedades publica directo al backend (aparece de inmediato en /novedades). Open Source genera el bloque HTML de la tarjeta — se pega en pages/opensource.html y se sube al repo (esa página es estática).</div>
+        <div id="dest-hint" style="font-size:.62rem;color:var(--muted);margin-top:.4rem">Ambos destinos publican directo al backend. Novedades aparece de inmediato en /novedades; Open Source aparece en /opensource y activa el monitor automático de GitHub Releases.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem">
         <div>
@@ -848,7 +848,6 @@ function renderAddForm() {
       <button class="pub-btn" id="create-app-btn" style="background:linear-gradient(135deg,var(--p),var(--p2))" onclick="createApp()">
         <i class="fas fa-plus"></i> Crear App
       </button>
-      <textarea id="os-html-output" readonly style="display:none;width:100%;margin-top:1rem;min-height:220px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:.68rem;padding:.75rem"></textarea>
     </div>`;
   setAppDestino(window._appDestino || 'novedades');
   updateCatalogBadge();
@@ -867,10 +866,10 @@ function setAppDestino(destino) {
   bNov.style = destino === 'novedades' ? on : off;
   bOs.style  = destino === 'opensource' ? on : off;
   if (btn) btn.innerHTML = destino === 'opensource'
-    ? '<i class="fas fa-code"></i> Generar tarjeta HTML'
+    ? '<i class="fab fa-github"></i> Crear App Open Source'
     : '<i class="fas fa-plus"></i> Crear App';
   if (hint) hint.textContent = destino === 'opensource'
-    ? 'Genera el bloque <div class="app-card">…</div> listo para pegar en pages/opensource.html (dentro de la categoría correcta) y subir al repo. Repositorio Open Source es obligatorio.'
+    ? 'Se crea directo en MongoDB con source_repo — aparece en /opensource y el cron de GitHub Releases empieza a monitorearla en la próxima corrida. Repositorio Open Source es obligatorio.'
     : 'Publica directo al backend — aparece de inmediato en /novedades.';
 }
 
@@ -1022,33 +1021,9 @@ async function createApp() {
     toast('⚠️ Ese link de imagen puede no cargar bien — usa jpg/png/webp, una captura de Play Store o un raw de GitHub/GitLab/Codeberg');
   }
 
-  // ── DESTINO: OPEN SOURCE — genera la tarjeta estática, no toca el backend ──
-  if (window._appDestino === 'opensource') {
-    if (!body.source_repo) return toast('❌ Repositorio Open Source (owner/repo) es obligatorio para este destino');
-    const out = document.getElementById('os-html-output');
-    const slug = body.imagen && body.imagen.startsWith('../img/opensource/')
-      ? body.imagen
-      : `../img/opensource/${body.appId}.png`;
-    out.value =
-`  <div class="app-card" data-cat="${body.categoria}" data-name="${body.nombre.toLowerCase()} ${body.categoria.toLowerCase()}">
-    <div class="app-thumb">
-      <img src="${slug}" alt="${body.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
-      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
-    </div>
-    <div class="app-body">
-      <div class="app-cat-tag">${body.categoria}</div>
-      <div class="app-name">${body.nombre}</div>
-      <div class="app-desc">${body.descripcion}</div>
-      <div class="app-actions">
-        <a class="dl-btn dl-primary" href="https://github.com/${body.source_repo}/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
-        <a class="dl-btn dl-plugin" href="https://github.com/${body.source_repo}" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
-      </div>
-    </div>
-  </div>`;
-    out.style.display = 'block';
-    out.select();
-    toast('✅ Tarjeta generada — pégala en pages/opensource.html (sube también la imagen a img/opensource/) y súbelo al repo');
-    return;
+  // ── DESTINO: OPEN SOURCE — requiere repo (activa el monitor de releases) ──
+  if (window._appDestino === 'opensource' && !body.source_repo) {
+    return toast('❌ Repositorio Open Source (owner/repo) es obligatorio para este destino');
   }
 
   try {
@@ -1058,7 +1033,9 @@ async function createApp() {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
-    toast('✅ App creada: ' + body.nombre);
+    toast(window._appDestino === 'opensource'
+      ? '✅ App Open Source creada: ' + body.nombre + ' — el monitor de releases la revisa en la próxima corrida del cron'
+      : '✅ App creada: ' + body.nombre);
     await refreshApps();
     document.querySelectorAll('.admin-tab')[0].click();
   } catch (e) { toast('❌ ' + e.message); }
@@ -1080,6 +1057,27 @@ async function seedFromJSON() {
     toast(`✅ Seed: ${d.created} creadas, ${d.updated} actualizadas`);
     await refreshApps();
   } catch (e) { toast('❌ Error en seed: ' + e.message); }
+}
+
+// Siembra las 48 apps del catálogo Open Source (con su source_repo)
+// desde opensource_seed.json — activa el monitor automático de
+// GitHub Releases para todas de una vez. Correr una sola vez;
+// vuelve a correrse sin duplicar (usa appId como clave de upsert).
+async function seedOpenSourceFromJSON() {
+  if (!confirm('Importar las 48 apps Open Source a MongoDB (con source_repo). ¿Continuar?')) return;
+  try {
+    const res = await fetch('/opensource_seed.json');
+    const apps = await res.json();
+    const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ apps }),
+    });
+    if (!seedRes.ok) throw new Error((await seedRes.json()).error);
+    const d = await seedRes.json();
+    toast(`✅ Seed Open Source: ${d.created} creadas, ${d.updated} actualizadas`);
+    await refreshApps();
+  } catch (e) { toast('❌ Error en seed Open Source: ' + e.message); }
 }
 
 // ── SOLICITUDES ───────────────────────────────────────────────
