@@ -1,0 +1,39 @@
+name: 🧹 CodeHub Catálogo — Eliminar apps duplicadas
+
+# Se ejecuta SOLO a mano desde la pestaña Actions (botón "Run workflow").
+# Limpia documentos duplicados en MongoDB causados por sembrar el mismo
+# repo con dos appId distintos (bug ya corregido en los JSON de seed).
+# Por defecto corre en modo --dry-run (no borra nada, solo muestra qué
+# borraría) — desmarcá "dry_run" para aplicar el borrado de verdad.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Modo simulación (no borra nada, solo muestra el plan)'
+        type: boolean
+        default: true
+
+jobs:
+  dedupe-catalog:
+    name: Eliminar duplicados del catálogo en MongoDB
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Instalar dependencias (mongoose)
+        working-directory: ./backend
+        run: npm install mongoose --no-save
+
+      - name: 🧹 Limpiar duplicados
+        working-directory: ./backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: node scripts/dedupe-catalog.js ${{ inputs.dry_run && '--dry-run' || '' }}

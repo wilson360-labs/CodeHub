@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "appId": "kernelsu",
+      "appId": "os-kernelsu",
       "nombre": "KernelSU",
       "descripcion": "Solución de root a nivel de kernel para Android, alternativa moderna a Magisk.",
       "categoria": "Root y Sistema",
@@ -9,7 +9,7 @@
       "imagen": "https://opengraph.githubassets.com/1/tiann/KernelSU"
     },
     {
-      "appId": "app-manager",
+      "appId": "os-app-manager",
       "nombre": "App Manager",
       "descripcion": "Gestor de paquetes open source con permisos, backups y logs avanzados.",
       "categoria": "Root y Sistema",
@@ -17,7 +17,7 @@
       "imagen": "https://opengraph.githubassets.com/1/MuntashirAkon/AppManager"
     },
     {
-      "appId": "key-mapper",
+      "appId": "os-key-mapper",
       "nombre": "Key Mapper",
       "descripcion": "Remapeo de teclas y gestos personalizados, open source.",
       "categoria": "Root y Sistema",
@@ -25,7 +25,7 @@
       "imagen": "https://opengraph.githubassets.com/1/keymapperorg/KeyMapper"
     },
     {
-      "appId": "simpmusic",
+      "appId": "os-simpmusic",
       "nombre": "SimpMusic",
       "descripcion": "Cliente de YouTube Music sin anuncios, con diseño Material.",
       "categoria": "Música",
@@ -33,7 +33,7 @@
       "imagen": "https://opengraph.githubassets.com/1/maxrave-dev/SimpMusic"
     },
     {
-      "appId": "metrolist",
+      "appId": "os-metrolist",
       "nombre": "Metrolist",
       "descripcion": "Cliente de YouTube Music para Android, ligero y sin anuncios.",
       "categoria": "Música",
@@ -41,7 +41,7 @@
       "imagen": "https://opengraph.githubassets.com/1/mostafaalagamy/Metrolist"
     },
     {
-      "appId": "spotube",
+      "appId": "os-spotube",
       "nombre": "Spotube",
       "descripcion": "Cliente de Spotify ligero que no requiere cuenta Premium.",
       "categoria": "Música",
@@ -49,7 +49,7 @@
       "imagen": "https://opengraph.githubassets.com/1/KRTirtho/spotube"
     },
     {
-      "appId": "auxio",
+      "appId": "os-auxio",
       "nombre": "Auxio",
       "descripcion": "Reproductor de música local simple y rápido.",
       "categoria": "Música",
@@ -57,7 +57,7 @@
       "imagen": "https://opengraph.githubassets.com/1/OxygenCobalt/Auxio"
     },
     {
-      "appId": "newpipe",
+      "appId": "os-newpipe",
       "nombre": "NewPipe",
       "descripcion": "Frontend alternativo de YouTube y otras plataformas, sin anuncios ni cuenta.",
       "categoria": "Video",
@@ -65,7 +65,7 @@
       "imagen": "https://opengraph.githubassets.com/1/TeamNewPipe/NewPipe"
     },
     {
-      "appId": "libretube",
+      "appId": "os-libretube",
       "nombre": "LibreTube",
       "descripcion": "Frontend alternativo de YouTube para Android, basado en Piped.",
       "categoria": "Video",
@@ -73,7 +73,7 @@
       "imagen": "https://opengraph.githubassets.com/1/libre-tube/LibreTube"
     },
     {
-      "appId": "ytdlnis",
+      "appId": "os-ytdlnis",
       "nombre": "YTDLnis",
       "descripcion": "Descargador de video/audio para Android basado en yt-dlp.",
       "categoria": "Video",
@@ -81,7 +81,7 @@
       "imagen": "https://opengraph.githubassets.com/1/deniscerri/ytdlnis"
     },
     {
-      "appId": "next-player",
+      "appId": "os-next-player",
       "nombre": "Next Player",
       "descripcion": "Reproductor de video ligero basado en Media3.",
       "categoria": "Video",
@@ -89,7 +89,7 @@
       "imagen": "https://opengraph.githubassets.com/1/anilbeesetti/nextplayer"
     },
     {
-      "appId": "protonvpn",
+      "appId": "os-protonvpn",
       "nombre": "ProtonVPN",
       "descripcion": "VPN suiza gratuita, open source, con enfoque en privacidad.",
       "categoria": "VPN y Privacidad",
@@ -97,7 +97,7 @@
       "imagen": "https://opengraph.githubassets.com/1/ProtonVPN/android-app"
     },
     {
-      "appId": "mullvadvpn",
+      "appId": "os-mullvad-vpn",
       "nombre": "Mullvad VPN",
       "descripcion": "VPN rápida y confiable enfocada en la privacidad, open source.",
       "categoria": "VPN y Privacidad",
@@ -105,7 +105,7 @@
       "imagen": "https://opengraph.githubassets.com/1/mullvad/mullvadvpn-app"
     },
     {
-      "appId": "rustdesk",
+      "appId": "os-rustdesk",
       "nombre": "RustDesk",
       "descripcion": "Alternativa open source a TeamViewer para escritorio remoto.",
       "categoria": "VPN y Privacidad",
@@ -113,7 +113,7 @@
       "imagen": "https://opengraph.githubassets.com/1/rustdesk/rustdesk"
     },
     {
-      "appId": "duckduckgo-browser",
+      "appId": "os-duckduckgo-privacy-browser",
       "nombre": "DuckDuckGo Privacy Browser",
       "descripcion": "Navegador open source enfocado en privacidad, sin rastreo.",
       "categoria": "VPN y Privacidad",
@@ -121,7 +121,7 @@
       "imagen": "https://opengraph.githubassets.com/1/duckduckgo/Android"
     },
     {
-      "appId": "obtainium",
+      "appId": "os-obtainium",
       "nombre": "Obtainium",
       "descripcion": "Recibe actualizaciones de tus apps directo desde el repositorio fuente.",
       "categoria": "Productividad",
@@ -129,7 +129,7 @@
       "imagen": "https://opengraph.githubassets.com/1/ImranR98/Obtainium"
     },
     {
-      "appId": "aurora-store",
+      "appId": "os-aurora-store",
       "nombre": "Aurora Store",
       "descripcion": "Alternativa open source a Google Play Store, con enfoque en privacidad.",
       "categoria": "Productividad",
@@ -137,7 +137,7 @@
       "imagen": "https://opengraph.githubassets.com/1/whyorean/AuroraStore"
     },
     {
-      "appId": "bitwarden",
+      "appId": "os-bitwarden",
       "nombre": "Bitwarden",
       "descripcion": "Gestor de contraseñas open source, gratuito y multiplataforma.",
       "categoria": "Productividad",
@@ -145,7 +145,7 @@
       "imagen": "https://opengraph.githubassets.com/1/bitwarden/android"
     },
     {
-      "appId": "librera-reader",
+      "appId": "os-librera-reader",
       "nombre": "Librera Reader",
       "descripcion": "Lector de libros y PDF open source.",
       "categoria": "Lectura",
@@ -153,7 +153,7 @@
       "imagen": "https://opengraph.githubassets.com/1/foobnix/LibreraReader"
     },
     {
-      "appId": "komikku",
+      "appId": "os-komikku",
       "nombre": "Komikku",
       "descripcion": "Lector de manga gratuito y open source para Android.",
       "categoria": "Lectura",
@@ -217,7 +217,7 @@
       "imagen": ""
     },
     {
-      "appId": "os-vlc",
+      "appId": "os-vlc-para-android",
       "nombre": "VLC para Android",
       "descripcion": "Reproductor de video y audio universal, compatible con casi cualquier formato.",
       "categoria": "Video",
@@ -265,7 +265,7 @@
       "imagen": ""
     },
     {
-      "appId": "os-amaze",
+      "appId": "os-amaze-file-manager",
       "nombre": "Amaze File Manager",
       "descripcion": "Explorador de archivos con diseño Material y soporte root opcional.",
       "categoria": "Productividad",
@@ -281,7 +281,7 @@
       "imagen": ""
     },
     {
-      "appId": "os-k9mail",
+      "appId": "os-k-9-mail",
       "nombre": "K-9 Mail",
       "descripcion": "Cliente de correo open source para Android, base del futuro Thunderbird móvil.",
       "categoria": "Mensajería",
@@ -329,7 +329,7 @@
       "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Gallery"
     },
     {
-      "appId": "os-fossify-filemanager",
+      "appId": "os-fossify-file-manager",
       "nombre": "Fossify File Manager",
       "descripcion": "Explorador de archivos ligero y sin anuncios, con soporte para SD, USB y accesos directos. Continuación de Simple File Manager.",
       "categoria": "Productividad",
