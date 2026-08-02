@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://googleads.g.doubleclick.net" crossorigin>
 <link rel="dns-prefetch" href="https://adservice.google.com">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Apps Premium — CodeHub by Wilson.E</title>
+<title>AppsHub — CodeHub by Wilson.E</title>
 <meta name="description" content="Aplicaciones Android con funciones premium desbloqueadas. Spotify, YouTube ReVanced, TikTok y más.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,13 +36,13 @@
   <meta name="theme-color" content="#ff4500">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://wilson360-labs.vercel.app/novedades">
-  <meta property="og:title" content="Apps Android Premium — CodeHub by Wilson.E">
+  <meta property="og:title" content="AppsHub — CodeHub by Wilson.E">
   <meta property="og:description" content="Descarga apps Android premium verificadas. Actualizaciones frecuentes, sin virus, sin registro. CodeHub by Wilson.E.">
   <meta property="og:image" content="https://wilson360-labs.vercel.app/splash/codehub.png">
   <meta property="og:locale" content="es_GT">
   <meta property="og:site_name" content="CodeHub by Wilson.E">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Apps Android Premium — CodeHub">
+  <meta name="twitter:title" content="AppsHub — CodeHub">
   <meta name="twitter:description" content="Apps Android premium verificadas. Sin registro.">
   <!-- Schema.org: CollectionPage + FAQPage para Google AdSense/Search -->
   <script type="application/ld+json">
@@ -50,7 +50,7 @@
     {
       "@context": "https://schema.org",
       "@type": "CollectionPage",
-      "name": "Apps Android Premium Desbloqueadas — CodeHub",
+      "name": "AppsHub — CodeHub",
       "url": "https://wilson360-labs.vercel.app/novedades",
       "description": "Colección curada de aplicaciones Android con funciones premium desbloqueadas: Spotify, YouTube ReVanced, TikTok con derechos de autor removidos, Picsart, Remini y más. Actualizadas mensualmente.",
       "author": {
@@ -95,7 +95,7 @@
       "@type": "BreadcrumbList",
       "itemListElement": [
         { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://wilson360-labs.vercel.app/" },
-        { "@type": "ListItem", "position": 2, "name": "Apps Premium", "item": "https://wilson360-labs.vercel.app/novedades" }
+        { "@type": "ListItem", "position": 2, "name": "AppsHub", "item": "https://wilson360-labs.vercel.app/novedades" }
       ]
     }
   ]
@@ -134,7 +134,7 @@
   <div class="catalog-tabs-inner">
     <span class="tab-indicator" id="tab-indicator"></span>
     <button class="cat-tab on" id="tab-premium" onclick="switchCatalog('premium')">
-      <i class="fas fa-bolt"></i> Apps Premium
+      <i class="fas fa-bolt"></i> AppsHub
       <span class="cat-tab-count" id="count-premium">—</span>
     </button>
     <button class="cat-tab" id="tab-opensource" onclick="switchCatalog('opensource')">
@@ -142,6 +142,9 @@
       <span class="cat-tab-count" id="count-opensource">—</span>
     </button>
   </div>
+</div>
+<div style="text-align:center;margin:.6rem 0 1.2rem;">
+  <a href="/opensource" style="font-size:.78rem;color:#8a8a9a;text-decoration:underline;">Ver el catálogo Open Source completo, con guía de cada app →</a>
 </div>
 
 <!-- STATS -->
@@ -155,7 +158,7 @@
 <!-- EDITORIAL CONTENT — Valor editorial para indexación (AdSense compliance) -->
 <section style="max-width:780px;margin:2rem auto 0;padding:0 1.25rem">
   <article>
-    <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:.75rem;color:inherit">¿Qué son las Apps Premium desbloqueadas?</h2>
+    <h2 style="font-size:1.15rem;font-weight:700;margin-bottom:.75rem;color:inherit">¿Qué es AppsHub?</h2>
     <p style="font-size:.93rem;line-height:1.8;color:rgba(232,232,240,.78);margin-bottom:1rem">
       Las <strong>apps Android modificadas</strong> son versiones de aplicaciones populares que han sido adaptadas por la comunidad de desarrolladores para eliminar restricciones de pago, publicidad intrusiva o funciones bloqueadas. Permiten acceder a características que en la versión oficial solo están disponibles con suscripción.
     </p>
@@ -850,7 +853,7 @@ async function loadAppsFromBackend(isRetry) {
     }
 
     renderCatalog();
-    console.log(`✅ ${PREMIUM_APPS.length} apps premium + ${OS_APPS.length} open source cargadas desde backend`);
+    console.log(`✅ ${PREMIUM_APPS.length} apps AppsHub + ${OS_APPS.length} open source cargadas desde backend`);
   } catch (e) {
     // El backend en Render (free tier) se duerme tras inactividad; la
     // primera petición tras despertar puede fallar con "Failed to fetch".
@@ -1189,7 +1192,7 @@ window.addEventListener('load', async () => {
       {
         selector: '#tab-premium',
         icon: 'fa-solid fa-bolt',
-        title: 'Apps Premium',
+        title: 'AppsHub',
         text: 'Este catálogo reúne apps modificadas y con todo desbloqueado, 100% gratis.'
       },
       {

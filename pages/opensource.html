@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-205F26ETCC');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://codehub-98s6.onrender.com;">
+  <title>Catálogo Open Source para Android — CodeHub by Wilson.E</title>
+  <meta name="description" content="48 apps de código abierto para Android, verificadas contra su repositorio oficial en GitHub: música, video, VPN, productividad, lectura y más. Sin mods, sin anuncios ocultos, sin cuentas obligatorias.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/opensource">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="../css/novedades.css">
+  <style>
+    body { font-family: 'Syne', sans-serif; }
+    .os-intro {
+      max-width: 760px; margin: 0 auto 2rem; padding: 0 1.2rem;
+      text-align: center;
+    }
+    .os-intro p { color: var(--muted, #8a8a9a); font-size: .92rem; line-height: 1.75; margin-top: .6rem; }
+    .os-category { max-width: 1180px; margin: 0 auto 2.8rem; padding: 0 1.2rem; }
+    .os-cat-header { margin-bottom: 1rem; }
+    .os-cat-header h2 { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: .35rem; }
+    .os-cat-header p { color: var(--muted, #8a8a9a); font-size: .82rem; line-height: 1.6; max-width: 720px; }
+    .os-toc { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; max-width: 900px; margin: 0 auto 2.5rem; padding: 0 1.2rem; }
+    .os-toc a {
+      font-size: .78rem; padding: .4rem .85rem; border-radius: 999px; text-decoration: none;
+      border: 1px solid rgba(255,255,255,.1); color: #cfcfe0; background: rgba(255,255,255,.03);
+      transition: all .2s;
+    }
+    .os-toc a:hover { border-color: rgba(255,106,61,.4); color: #ffb08a; }
+    .ad-slot { text-align:center; padding: 1.2rem 0; overflow: hidden; max-width: 1180px; margin: 0 auto 2rem; }
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <a class="logo-link" href="/">
+    <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
+    <span class="logo-b">CodeHub</span>
+  </a>
+  <a class="back-link" href="/novedades"><i class="fas fa-arrow-left"></i> Ver también AppsHub</a>
+</header>
+
+<section class="hero">
+  <div class="hero-tag"><span class="hero-dot"></span> 48 apps · Verificadas por repositorio · Solo Android</div>
+  <h1>Catálogo<br>Open Source</h1>
+  <p>Cada app de esta lista tiene su código publicado en GitHub. Nada de versiones modificadas ni desbloqueos: son proyectos independientes que resuelven lo mismo que su alternativa comercial, sin anuncios ocultos, sin cuentas obligatorias y con el código a la vista de cualquiera.</p>
+</section>
+
+<div class="os-intro">
+  <p>La descarga de cada app enlaza directamente a su página oficial de <strong>GitHub Releases</strong> — el mismo repositorio que puedes revisar antes de instalar. Si una app te sirve, considera darle una estrella o aportar al proyecto: la mantienen desarrolladores independientes, no una empresa.</p>
+</div>
+
+<div class="os-toc">
+  <a href="#cat-root-y-sistema">🛠️ Root y Sistema</a>
+  <a href="#cat-música">🎵 Música</a>
+  <a href="#cat-video">📺 Video</a>
+  <a href="#cat-vpn-y-privacidad">🔒 VPN y Privacidad</a>
+  <a href="#cat-productividad">✅ Productividad</a>
+  <a href="#cat-lectura">📖 Lectura</a>
+  <a href="#cat-mensajería">💬 Mensajería</a>
+  <a href="#cat-fotografía">📸 Fotografía</a>
+  <a href="#cat-utilidades">🧰 Utilidades</a>
+</div>
+
+<!-- ══ GOOGLE ADSENSE — Anuncio ══ -->
+<div class="ad-slot">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-3780093322926832"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<section class="os-category" id="cat-root-y-sistema">
+  <div class="os-cat-header">
+    <h2>🛠️ Root y Sistema</h2>
+    <p>Herramientas para quienes quieren control real sobre su Android: gestión de permisos, root, módulos y automatización, todas con el código disponible para revisión pública.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Root y Sistema" data-name="kernelsu root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/tiann/KernelSU" alt="KernelSU" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">KernelSU</div>
+      <div class="app-desc">Solución de root a nivel de kernel para Android, alternativa moderna a Magisk. A diferencia de Magisk, opera a nivel de kernel mediante un módulo GKI, lo que reduce la huella detectable por apps bancarias y de streaming en dispositivos compatibles.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/tiann/KernelSU/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/tiann/KernelSU" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="app manager root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/MuntashirAkon/AppManager" alt="App Manager" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">App Manager</div>
+      <div class="app-desc">Gestor de paquetes open source con permisos, backups y logs avanzados. Permite revisar permisos concedidos, componentes exportados y firmas APK de cualquier app instalada, algo que el gestor de apps de Android no muestra.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/MuntashirAkon/AppManager/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/MuntashirAkon/AppManager" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="key mapper root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/keymapperorg/KeyMapper" alt="Key Mapper" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Key Mapper</div>
+      <div class="app-desc">Remapeo de teclas y gestos personalizados, open source. Útil para adaptar mandos de videojuego, teclados Bluetooth o gestos de pantalla a acciones personalizadas sin necesidad de root.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/keymapperorg/KeyMapper/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/keymapperorg/KeyMapper" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="magisk root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/topjohnwu/Magisk" alt="Magisk" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Magisk</div>
+      <div class="app-desc">El framework de root más usado en Android. Systemless, con soporte de módulos y ocultamiento de root.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/topjohnwu/Magisk/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/topjohnwu/Magisk" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="termux root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/termux/termux-app" alt="Termux" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Termux</div>
+      <div class="app-desc">Terminal Linux completa en tu Android, sin root. Instala paquetes reales vía APT y corre scripts, Python, Node y más.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/termux/termux-app/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/termux/termux-app" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="shizuku root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/RikkaApps/Shizuku" alt="Shizuku" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Shizuku</div>
+      <div class="app-desc">Da a otras apps acceso a APIs de sistema/ADB sin necesidad de root.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/RikkaApps/Shizuku/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/RikkaApps/Shizuku" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="lsposed root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/LSPosed/LSPosed" alt="LSPosed" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">LSPosed</div>
+      <div class="app-desc">Framework de módulos Xposed para Android moderno, basado en Riru/Zygisk.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/LSPosed/LSPosed/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/LSPosed/LSPosed" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="acca root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/MatteCarra/AccA" alt="AccA" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">AccA</div>
+      <div class="app-desc">Interfaz gráfica para Advanced Charging Controller (ACC): configura límites y perfiles de carga de batería vía root o módulo Magisk.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/MatteCarra/AccA/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/MatteCarra/AccA" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="optidroid root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/androidexpert35/AppBooster" alt="OptiDroid" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">OptiDroid</div>
+      <div class="app-desc">Optimiza la compilación ART de todas tus apps instaladas para lanzamientos más rápidos y menos lag, sin necesidad de root (usa Shizuku).</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/androidexpert35/AppBooster/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/androidexpert35/AppBooster" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="hail root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/aistra0528/Hail" alt="Hail" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Hail</div>
+      <div class="app-desc">Congela (deshabilita, oculta o suspende) apps sin necesidad de root, ideal para debloatear el sistema y ahorrar batería.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/aistra0528/Hail/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/aistra0528/Hail" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Root y Sistema" data-name="canta root y sistema">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/samolego/Canta" alt="Canta" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🛠️</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🛠️ Root y Sistema</div>
+      <div class="app-name">Canta</div>
+      <div class="app-desc">Desinstala cualquier app del sistema sin root usando Shizuku, con recomendaciones seguras de la Universal Debloat List.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/samolego/Canta/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/samolego/Canta" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-música">
+  <div class="os-cat-header">
+    <h2>🎵 Música</h2>
+    <p>Reproductores y clientes que evitan las limitaciones de las apps oficiales gratuitas (anuncios, saltos limitados, reproducción en segundo plano bloqueada) sin recurrir a versiones modificadas de apps de pago.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Música" data-name="simpmusic música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/maxrave-dev/SimpMusic" alt="SimpMusic" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">SimpMusic</div>
+      <div class="app-desc">Cliente de YouTube Music sin anuncios, con diseño Material. Reproduce el catálogo completo de YouTube Music sin cuenta ni anuncios, con soporte para letras sincronizadas y descarga local.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/maxrave-dev/SimpMusic/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/maxrave-dev/SimpMusic" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Música" data-name="metrolist música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/mostafaalagamy/Metrolist" alt="Metrolist" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">Metrolist</div>
+      <div class="app-desc">Cliente de YouTube Music para Android, ligero y sin anuncios. Pensado para equipos de gama baja: consume menos batería y RAM que un cliente oficial mientras mantiene búsqueda y listas de reproducción.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/mostafaalagamy/Metrolist/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/mostafaalagamy/Metrolist" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Música" data-name="spotube música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/KRTirtho/spotube" alt="Spotube" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">Spotube</div>
+      <div class="app-desc">Cliente de Spotify ligero que no requiere cuenta Premium. Conecta con tu cuenta de Spotify solo para leer tus listas, pero reproduce el audio desde YouTube o fuentes libres, evitando el límite de skips de la cuenta gratuita.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/KRTirtho/spotube/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/KRTirtho/spotube" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Música" data-name="auxio música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/OxygenCobalt/Auxio" alt="Auxio" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">Auxio</div>
+      <div class="app-desc">Reproductor de música local simple y rápido. Ideal si ya tienes tu música descargada: organiza por álbum, artista y género con una interfaz Material You y cero telemetría.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/OxygenCobalt/Auxio/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/OxygenCobalt/Auxio" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Música" data-name="echo nightly música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/brahmkshatriya/echo" alt="Echo Nightly" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">Echo Nightly</div>
+      <div class="app-desc">Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/brahmkshatriya/echo/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/brahmkshatriya/echo" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Música" data-name="refreezer música">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/DJDoubleD/refreezer" alt="Refreezer" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🎵</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🎵 Música</div>
+      <div class="app-name">Refreezer</div>
+      <div class="app-desc">Cliente alternativo de Deezer para streaming y descarga de música en alta calidad, continuación del proyecto Freezer.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/DJDoubleD/refreezer/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/DJDoubleD/refreezer" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-video">
+  <div class="os-cat-header">
+    <h2>📺 Video</h2>
+    <p>Formas legítimas de ver o descargar video sin depender del cliente oficial, usando frontends alternativos o reproductores universales de código abierto.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Video" data-name="newpipe video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/TeamNewPipe/NewPipe" alt="NewPipe" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">NewPipe</div>
+      <div class="app-desc">Frontend alternativo de YouTube y otras plataformas, sin anuncios ni cuenta. No requiere cuenta de Google ni inicia sesión con las APIs oficiales de YouTube, por lo que evita el rastreo de reproducción asociado a tu cuenta.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/TeamNewPipe/NewPipe/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/TeamNewPipe/NewPipe" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="libretube video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/libre-tube/LibreTube" alt="LibreTube" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">LibreTube</div>
+      <div class="app-desc">Frontend alternativo de YouTube para Android, basado en Piped. Se conecta a instancias públicas de Piped, lo que permite ver YouTube sin ejecutar el JavaScript propietario de Google en tu dispositivo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/libre-tube/LibreTube/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/libre-tube/LibreTube" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="ytdlnis video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/deniscerri/ytdlnis" alt="YTDLnis" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">YTDLnis</div>
+      <div class="app-desc">Descargador de video/audio para Android basado en yt-dlp. Interfaz gráfica sobre yt-dlp para descargar video o solo audio en el formato y calidad que elijas, con soporte para cientos de sitios además de YouTube.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/deniscerri/ytdlnis/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/deniscerri/ytdlnis" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="next player video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/anilbeesetti/nextplayer" alt="Next Player" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">Next Player</div>
+      <div class="app-desc">Reproductor de video ligero basado en Media3. Reproductor local con decodificación por hardware, subtítulos externos y gestos táctiles configurables para adelantar o ajustar volumen.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/anilbeesetti/nextplayer/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/anilbeesetti/nextplayer" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="vlc para android video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/videolan/vlc-android" alt="VLC para Android" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">VLC para Android</div>
+      <div class="app-desc">Reproductor de video y audio universal, compatible con casi cualquier formato.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/videolan/vlc-android/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/videolan/vlc-android" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="seal video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/JunkFood02/Seal" alt="Seal" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">Seal</div>
+      <div class="app-desc">Descargador de video/audio basado en yt-dlp, con Material Design 3.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/JunkFood02/Seal/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/JunkFood02/Seal" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="cloudstream video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/recloudstream/cloudstream" alt="Cloudstream" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">Cloudstream</div>
+      <div class="app-desc">App para transmitir y descargar películas, series y anime desde múltiples fuentes mediante extensiones instalables.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/recloudstream/cloudstream/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/recloudstream/cloudstream" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Video" data-name="flixy video">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/xAmarnath/FlixY" alt="Flixy" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📺</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📺 Video</div>
+      <div class="app-name">Flixy</div>
+      <div class="app-desc">App hecha en Kotlin y Jetpack Compose para ver películas y series directamente desde tu dispositivo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/xAmarnath/FlixY/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/xAmarnath/FlixY" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-vpn-y-privacidad">
+  <div class="os-cat-header">
+    <h2>🔒 VPN y Privacidad</h2>
+    <p>Apps de seguridad y anonimato con código auditable, en lugar de confiar a ciegas en una VPN gratuita de origen desconocido.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="protonvpn vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/ProtonVPN/android-app" alt="ProtonVPN" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">ProtonVPN</div>
+      <div class="app-desc">VPN suiza gratuita, open source, con enfoque en privacidad. La versión gratuita no tiene límite de datos, algo poco común entre VPN gratuitas, y su código del cliente Android es auditable públicamente.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/ProtonVPN/android-app/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/ProtonVPN/android-app" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="mullvad vpn vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/mullvad/mullvadvpn-app" alt="Mullvad VPN" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">Mullvad VPN</div>
+      <div class="app-desc">VPN rápida y confiable enfocada en la privacidad, open source. No pide correo ni datos personales para crear cuenta — solo genera un número de cuenta aleatorio, lo que minimiza qué pueden asociar contigo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/mullvad/mullvadvpn-app/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/mullvad/mullvadvpn-app" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="rustdesk vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/rustdesk/rustdesk" alt="RustDesk" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">RustDesk</div>
+      <div class="app-desc">Alternativa open source a TeamViewer para escritorio remoto. Alternativa a TeamViewer/AnyDesk que puedes autoalojar en tu propio servidor, quitando la dependencia de infraestructura de terceros.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/rustdesk/rustdesk/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/rustdesk/rustdesk" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="duckduckgo privacy browser vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/duckduckgo/Android" alt="DuckDuckGo Privacy Browser" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">DuckDuckGo Privacy Browser</div>
+      <div class="app-desc">Navegador open source enfocado en privacidad, sin rastreo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/duckduckgo/Android/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/duckduckgo/Android" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="orbot vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/guardianproject/orbot" alt="Orbot" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">Orbot</div>
+      <div class="app-desc">Proxy gratuito sobre la red Tor para anonimizar todo tu tráfico de red en Android.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/guardianproject/orbot/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/guardianproject/orbot" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="signal vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/signalapp/Signal-Android" alt="Signal" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">Signal</div>
+      <div class="app-desc">Mensajería y llamadas con cifrado de extremo a extremo, auditado y sin fines de lucro.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/signalapp/Signal-Android/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/signalapp/Signal-Android" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="netguard vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/M66B/NetGuard" alt="NetGuard" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">NetGuard</div>
+      <div class="app-desc">Firewall sin root: bloquea el acceso a internet por app de forma granular.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/M66B/NetGuard/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/M66B/NetGuard" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="VPN y Privacidad" data-name="adaway vpn y privacidad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/AdAway/AdAway" alt="AdAway" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🔒</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🔒 VPN y Privacidad</div>
+      <div class="app-name">AdAway</div>
+      <div class="app-desc">Bloqueador de anuncios a nivel de sistema basado en lista de hosts.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/AdAway/AdAway/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/AdAway/AdAway" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-productividad">
+  <div class="os-cat-header">
+    <h2>✅ Productividad</h2>
+    <p>Alternativas a servicios de nube y gestión que no dependen de una cuenta comercial ni monetizan tus datos.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Productividad" data-name="obtainium productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/ImranR98/Obtainium" alt="Obtainium" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Obtainium</div>
+      <div class="app-desc">Recibe actualizaciones de tus apps directo desde el repositorio fuente. Instala y actualiza apps directamente desde su repositorio de GitHub (o F-Droid), notificándote de nuevas versiones sin pasar por ninguna tienda.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/ImranR98/Obtainium/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/ImranR98/Obtainium" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="aurora store productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/whyorean/AuroraStore" alt="Aurora Store" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Aurora Store</div>
+      <div class="app-desc">Alternativa open source a Google Play Store, con enfoque en privacidad. Da acceso al catálogo de Google Play sin iniciar sesión con tu cuenta real, usando una cuenta anónima o la tuya solo para autenticar descargas.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/whyorean/AuroraStore/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/whyorean/AuroraStore" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="bitwarden productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/bitwarden/android" alt="Bitwarden" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Bitwarden</div>
+      <div class="app-desc">Gestor de contraseñas open source, gratuito y multiplataforma. Gestor de contraseñas con cifrado de extremo a extremo cuyo código ha pasado auditorías de seguridad independientes públicas.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/bitwarden/android/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/bitwarden/android" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="antennapod productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/AntennaPod/AntennaPod" alt="AntennaPod" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">AntennaPod</div>
+      <div class="app-desc">Gestor y reproductor de podcasts open source, sin anuncios ni rastreo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/AntennaPod/AntennaPod/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/AntennaPod/AntennaPod" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="nextcloud productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/nextcloud/android" alt="Nextcloud" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Nextcloud</div>
+      <div class="app-desc">Cliente oficial de Nextcloud: archivos, fotos y calendario autoalojados.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/nextcloud/android/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/nextcloud/android" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="amaze file manager productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/TeamAmaze/AmazeFileManager" alt="Amaze File Manager" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Amaze File Manager</div>
+      <div class="app-desc">Explorador de archivos con diseño Material y soporte root opcional.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/TeamAmaze/AmazeFileManager/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/TeamAmaze/AmazeFileManager" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Productividad" data-name="fossify file manager productividad">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/FossifyOrg/File-Manager" alt="Fossify File Manager" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>✅</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">✅ Productividad</div>
+      <div class="app-name">Fossify File Manager</div>
+      <div class="app-desc">Explorador de archivos ligero y sin anuncios, con soporte para SD, USB y accesos directos. Continuación de Simple File Manager.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/FossifyOrg/File-Manager/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/FossifyOrg/File-Manager" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-lectura">
+  <div class="os-cat-header">
+    <h2>📖 Lectura</h2>
+    <p>Lectores de EPUB, PDF y manga/cómics sin anuncios ni cuentas obligatorias.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Lectura" data-name="librera reader lectura">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/foobnix/LibreraReader" alt="Librera Reader" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📖</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📖 Lectura</div>
+      <div class="app-name">Librera Reader</div>
+      <div class="app-desc">Lector de libros y PDF open source. Soporta EPUB, PDF, MOBI y DjVu con ajuste de tipografía y modo nocturno, sin cuenta ni sincronización obligatoria a la nube.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/foobnix/LibreraReader/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/foobnix/LibreraReader" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Lectura" data-name="komikku lectura">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/komikku-app/komikku" alt="Komikku" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📖</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📖 Lectura</div>
+      <div class="app-name">Komikku</div>
+      <div class="app-desc">Lector de manga gratuito y open source para Android. Fork activo de Tachiyomi orientado a lectura de manga/cómics, con soporte de extensiones para distintas fuentes.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/komikku-app/komikku/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/komikku-app/komikku" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Lectura" data-name="mihon lectura">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/mihonapp/mihon" alt="Mihon" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📖</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📖 Lectura</div>
+      <div class="app-name">Mihon</div>
+      <div class="app-desc">Lector de manga y cómics configurable, con soporte de trackers (MyAnimeList, AniList) y extensiones.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/mihonapp/mihon/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/mihonapp/mihon" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-mensajería">
+  <div class="os-cat-header">
+    <h2>💬 Mensajería</h2>
+    <p>Clientes de mensajería y correo con cifrado y protocolos abiertos, verificables por cualquiera.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Mensajería" data-name="tusky mensajería">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/tuskyapp/Tusky" alt="Tusky" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>💬</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">💬 Mensajería</div>
+      <div class="app-name">Tusky</div>
+      <div class="app-desc">Cliente open source para Mastodon, ligero y sin rastreo.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/tuskyapp/Tusky/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/tuskyapp/Tusky" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Mensajería" data-name="k-9 mail mensajería">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/thundernest/k-9" alt="K-9 Mail" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>💬</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">💬 Mensajería</div>
+      <div class="app-name">K-9 Mail</div>
+      <div class="app-desc">Cliente de correo open source para Android, base del futuro Thunderbird móvil.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/thundernest/k-9/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/thundernest/k-9" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-fotografía">
+  <div class="os-cat-header">
+    <h2>📸 Fotografía</h2>
+    <p>Gestión de galería sin telemetría ni anuncios integrados.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Fotografía" data-name="fossify gallery fotografía">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/FossifyOrg/Gallery" alt="Fossify Gallery" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📸</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">📸 Fotografía</div>
+      <div class="app-name">Fossify Gallery</div>
+      <div class="app-desc">Galería de fotos y videos sin anuncios, con editor básico y control total de tu privacidad. Continuación de Simple Gallery.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/FossifyOrg/Gallery/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/FossifyOrg/Gallery" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+
+<section class="os-category" id="cat-utilidades">
+  <div class="os-cat-header">
+    <h2>🧰 Utilidades</h2>
+    <p>Pequeñas herramientas del día a día que resuelven una tarea puntual sin pedir permisos de más.</p>
+  </div>
+  <div class="app-grid">
+  <div class="app-card" data-cat="Utilidades" data-name="ever call recorder utilidades">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/hari161008/Ever-Call-Recorder" alt="Ever Call Recorder" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🧰</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🧰 Utilidades</div>
+      <div class="app-name">Ever Call Recorder</div>
+      <div class="app-desc">Grabador de llamadas sin root que usa Shizuku para capturar ambos lados de la conversación como archivos de audio.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/hari161008/Ever-Call-Recorder/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/hari161008/Ever-Call-Recorder" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  <div class="app-card" data-cat="Utilidades" data-name="whatsave utilidades">
+    <div class="app-thumb">
+      <img src="https://opengraph.githubassets.com/1/ProjectOrbital/WhatSave" alt="WhatSave" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>🧰</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">🧰 Utilidades</div>
+      <div class="app-name">WhatSave</div>
+      <div class="app-desc">Guarda los estados de WhatsApp (fotos y videos) de tus contactos de la forma más simple, sin necesidad de root.</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/ProjectOrbital/WhatSave/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/ProjectOrbital/WhatSave" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>
+  </div>
+</section>
+<!-- ══ GOOGLE ADSENSE — Anuncio ══ -->
+<div class="ad-slot">
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-3780093322926832"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+</div>
+
+<footer style="text-align:center;padding:2rem 1.2rem;color:#666;font-size:.75rem;border-top:1px solid rgba(255,255,255,.06);margin-top:1rem;">
+  <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.</p>
+  <p style="margin-top:.5rem;"><a href="/novedades" style="color:#ff6a3d;">Ver también AppsHub →</a></p>
+</footer>
+
+</body>
+</html>
