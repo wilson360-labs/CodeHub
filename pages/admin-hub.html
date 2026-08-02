@@ -314,6 +314,21 @@
     .bulk-item-name{flex:1;font-family:var(--mono);font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .bulk-item-size{font-family:var(--mono);font-size:.58rem;color:var(--muted)}
 
+    /* DB RUNNER */
+    .db-select-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem}
+    .db-select-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);
+      padding:1rem;text-align:center;cursor:pointer;transition:all .2s}
+    .db-select-card:hover{border-color:var(--border2)}
+    .db-select-card.active{border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.07)}
+    .db-select-card i{font-size:1.4rem;margin-bottom:.4rem;display:block}
+    .db-select-name{font-weight:700;font-size:.85rem}
+    .db-select-sub{font-family:var(--mono);font-size:.6rem;color:var(--muted);margin-top:.2rem}
+    .db-log-line{padding:.4rem .1rem;border-bottom:1px solid rgba(255,255,255,.04);
+      display:flex;gap:.55rem;align-items:flex-start;font-family:var(--mono);font-size:.68rem}
+    .db-log-line:last-child{border-bottom:none}
+    .db-log-line i{margin-top:.15rem;flex-shrink:0}
+    @media(max-width:600px){.db-select-grid{grid-template-columns:1fr}}
+
     /* ENV */
     .env-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem}
     .env-pill{display:flex;align-items:center;gap:.5rem;padding:.48rem .75rem;
@@ -426,6 +441,7 @@
     <button class="admin-tab" onclick="switchTab('add',this)"><i class="fas fa-plus"></i> <span>Nueva App</span></button>
     <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
+    <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
     <button class="admin-tab" onclick="switchTab('blog',this)"><i class="fab fa-blogger-b"></i> <span>Blog</span></button>
   </nav>
 
@@ -571,6 +587,61 @@
       </div>
     </div>
 
+
+    <!-- TAB: BASE DE DATOS (DB RUNNER) ────────────────────────── -->
+    <div class="tab-panel" id="tab-dbrun">
+      <div class="section-title"><i class="fas fa-server"></i> Aplicar tablas / esquema a tu base de datos</div>
+
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:1rem;line-height:1.65">
+          Sube un archivo <b style="color:var(--text)">.sql</b> (Supabase) o <b style="color:var(--text)">.json</b> (esquema de colecciones para MongoDB), revisa/edita el contenido y ejecútalo directo contra tu base de datos en producción.
+          <br><span style="color:#ff6b6b">⚠️ Esto ejecuta cambios reales sobre datos en producción — revisa el contenido antes de correr.</span>
+        </div>
+
+        <!-- Selector de DB -->
+        <div class="db-select-grid">
+          <div class="db-select-card" id="db-card-supabase" onclick="selectDbTarget('supabase')">
+            <i class="fas fa-bolt" style="color:#3ecf8e"></i>
+            <div class="db-select-name">Supabase</div>
+            <div class="db-select-sub">Ejecuta SQL crudo (.sql)</div>
+          </div>
+          <div class="db-select-card" id="db-card-mongo" onclick="selectDbTarget('mongo')">
+            <i class="fas fa-leaf" style="color:#00ed64"></i>
+            <div class="db-select-name">MongoDB</div>
+            <div class="db-select-sub">Crea colecciones / índices (.json)</div>
+          </div>
+        </div>
+
+        <!-- Dropzone -->
+        <div class="bulk-drop" id="db-drop" onclick="document.getElementById('db-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleDbDrop(event)">
+          <i class="fas fa-cloud-arrow-up" style="font-size:2.2rem;color:var(--p);opacity:.4;margin-bottom:.75rem;display:block"></i>
+          <div style="font-weight:700;margin-bottom:.3rem" id="db-drop-label">Elige Supabase o MongoDB arriba primero</div>
+          <div style="font-family:var(--mono);font-size:.66rem;color:var(--muted)" id="db-drop-sub">luego arrastra el archivo aquí o haz clic</div>
+        </div>
+        <input type="file" id="db-file-input" style="display:none" onchange="handleDbFile(this.files)">
+
+        <!-- Preview / editor -->
+        <div class="blog-label" style="margin-top:.75rem">Contenido a ejecutar (editable antes de correr)</div>
+        <textarea class="blog-textarea" id="db-content" oninput="updateDbRunBtn()" placeholder="El contenido del archivo aparecerá aquí — también puedes pegarlo directo sin subir archivo" style="min-height:220px;font-size:.7rem"></textarea>
+
+        <div class="blog-actions">
+          <button class="blog-btn-primary" id="db-run-btn" onclick="runDbScript()" disabled>
+            <i class="fas fa-play"></i> Ejecutar en <span id="db-run-target">—</span>
+          </button>
+          <button class="blog-btn-sec" onclick="clearDbRunner()">
+            <i class="fas fa-broom"></i> Limpiar
+          </button>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="fas fa-terminal"></i> Resultado de la ejecución</div>
+      <div class="card" id="db-log">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:.7rem">Sin ejecuciones todavía.</div>
+      </div>
+    </div>
 
     <!-- TAB: BLOG ─────────────────────────────────────────── -->
     <div class="tab-panel" id="tab-blog">

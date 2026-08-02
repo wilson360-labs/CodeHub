@@ -64,6 +64,58 @@ async function trackEvent(type, page = null, metadata = {}) {
   } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
 }
 
+// ── DB RUNNER — divide un script .sql en sentencias individuales ──
+// Respeta strings entre comillas simples/dobles y bloques con
+// dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
+// plpgsql) para no cortar un ';' que esté dentro de esos bloques.
+function splitSqlStatements(sql) {
+  const statements = [];
+  let cur = '';
+  let i = 0;
+  const n = sql.length;
+  let inSingle = false, inDouble = false, dollarTag = null, inLineComment = false;
+  while (i < n) {
+    const ch = sql[i];
+    if (inLineComment) {
+      cur += ch;
+      if (ch === '\n') inLineComment = false;
+      i++; continue;
+    }
+    if (dollarTag) {
+      cur += ch;
+      if (sql.startsWith(dollarTag, i)) {
+        cur += dollarTag.slice(1);
+        i += dollarTag.length;
+        dollarTag = null;
+        continue;
+      }
+      i++; continue;
+    }
+    if (inSingle) {
+      cur += ch;
+      if (ch === "'" && sql[i + 1] === "'") { cur += "'"; i += 2; continue; }
+      if (ch === "'") inSingle = false;
+      i++; continue;
+    }
+    if (inDouble) {
+      cur += ch;
+      if (ch === '"') inDouble = false;
+      i++; continue;
+    }
+    if (ch === '-' && sql[i + 1] === '-') { inLineComment = true; cur += ch; i++; continue; }
+    if (ch === "'") { inSingle = true; cur += ch; i++; continue; }
+    if (ch === '"') { inDouble = true; cur += ch; i++; continue; }
+    if (ch === '$') {
+      const m = sql.slice(i).match(/^\$[a-zA-Z_]*\$/);
+      if (m) { dollarTag = m[0]; cur += dollarTag; i += dollarTag.length; continue; }
+    }
+    if (ch === ';') { statements.push(cur); cur = ''; i++; continue; }
+    cur += ch; i++;
+  }
+  if (cur.trim()) statements.push(cur);
+  return statements.map(s => s.trim()).filter(Boolean);
+}
+
 const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3001;
@@ -938,6 +990,69 @@ app.get('/api/stats/supabase', async (_, res) => {
       total_events: total.count || 0,
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── DB RUNNER — aplica un .sql (Supabase) o un esquema .json ─────
+// (MongoDB) subido desde admin-hub.html. Requiere ADMIN_KEY.
+//
+// Supabase: ejecuta SQL crudo vía la función `exec_sql` (debe existir
+// en la base — ver bootstrap_exec_sql.sql, se crea UNA vez a mano
+// desde el SQL Editor de Supabase, ya que hace falta para poder
+// correr SQL arbitrario desde el cliente JS).
+//
+// Mongo: espera { "collections": [ { "name": "...", "indexes": [{ "keys": {...}, "options": {...} }] } ] }
+app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
+  const { target, content } = req.body || {};
+  if (!target || !content) return res.status(400).json({ ok: false, error: 'Falta target o content' });
+
+  if (target === 'supabase') {
+    if (!supabase) return res.status(503).json({ ok: false, error: 'Supabase no configurado' });
+    const statements = splitSqlStatements(content);
+    if (!statements.length) return res.status(400).json({ ok: false, error: 'El archivo no tiene sentencias SQL' });
+    const results = [];
+    for (const stmt of statements) {
+      try {
+        const { error } = await supabase.rpc('exec_sql', { query: stmt });
+        if (error) throw error;
+        results.push({ ok: true, stmt: stmt.slice(0, 90).replace(/\s+/g, ' ') });
+      } catch (e) {
+        results.push({ ok: false, stmt: stmt.slice(0, 90).replace(/\s+/g, ' '), error: e.message });
+      }
+    }
+    const failed = results.filter(r => !r.ok).length;
+    return res.json({ ok: failed === 0, results, failed, total: results.length });
+  }
+
+  if (target === 'mongo') {
+    if (!dbConnected) return res.status(503).json({ ok: false, error: 'MongoDB no disponible' });
+    let schema;
+    try { schema = JSON.parse(content); } catch { return res.status(400).json({ ok: false, error: 'JSON inválido' }); }
+    const collections = Array.isArray(schema) ? schema : schema.collections;
+    if (!Array.isArray(collections)) {
+      return res.status(400).json({ ok: false, error: 'Formato esperado: { "collections": [ { "name": "...", "indexes": [...] } ] }' });
+    }
+    const results = [];
+    for (const col of collections) {
+      if (!col?.name) { results.push({ ok: false, collection: '(sin nombre)', error: 'Falta "name"' }); continue; }
+      try {
+        await mongoose.connection.db.createCollection(col.name).catch(e => {
+          if (!/already exists/i.test(e.message)) throw e;
+        });
+        if (Array.isArray(col.indexes)) {
+          for (const idx of col.indexes) {
+            await mongoose.connection.db.collection(col.name).createIndex(idx.keys, idx.options || {});
+          }
+        }
+        results.push({ ok: true, collection: col.name });
+      } catch (e) {
+        results.push({ ok: false, collection: col.name, error: e.message });
+      }
+    }
+    const failed = results.filter(r => !r.ok).length;
+    return res.json({ ok: failed === 0, results, failed, total: results.length });
+  }
+
+  res.status(400).json({ ok: false, error: 'target debe ser "supabase" o "mongo"' });
 });
 
 // Health

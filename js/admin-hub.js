@@ -260,6 +260,7 @@ function switchTab(id, btn) {
   if (id === 'visitors') loadVisitors();
   if (id === 'status')   checkStatus();
   if (id === 'blog')     sbInit();
+  if (id === 'dbrun')    updateDbRunBtn();
 }
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -1373,6 +1374,119 @@ function renderCharts(data) {
   if (data.daily_visits?.length)   mkBar('chart-visits',     data.daily_visits.map(d => d.date?.slice(5) || ''),   data.daily_visits.map(d => d.visits || 0),      '#00e5ff');
   if (data.top_tools?.length)      mkDoughnut('chart-tools',     data.top_tools.map(t => t.tool_name),              data.top_tools.map(t => t.uses));
   if (data.top_downloads?.length)  mkDoughnut('chart-downloads', data.top_downloads.map(t => t.app_name),           data.top_downloads.map(t => t.downloads));
+}
+
+// ═══════════════════════════════════════════
+//  DB RUNNER — subir .sql/.json y aplicarlo a Supabase o MongoDB
+// ═══════════════════════════════════════════
+let dbTarget = null;
+
+function selectDbTarget(target) {
+  dbTarget = target;
+  document.getElementById('db-card-supabase').classList.toggle('active', target === 'supabase');
+  document.getElementById('db-card-mongo').classList.toggle('active', target === 'mongo');
+
+  const input = document.getElementById('db-file-input');
+  input.accept = target === 'supabase' ? '.sql,.txt' : '.json';
+
+  document.getElementById('db-drop-label').textContent =
+    target === 'supabase' ? 'Arrastra tu archivo .sql aquí' : 'Arrastra tu archivo .json aquí';
+  document.getElementById('db-drop-sub').textContent =
+    target === 'supabase'
+      ? 'Se ejecutará como SQL crudo contra Postgres (requiere exec_sql — ver bootstrap_exec_sql.sql)'
+      : 'Formato: { "collections": [{ "name": "...", "indexes": [{ "keys": {...} }] }] }';
+  document.getElementById('db-run-target').textContent = target === 'supabase' ? 'Supabase' : 'MongoDB';
+  updateDbRunBtn();
+}
+
+function handleDbDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (e.dataTransfer.files?.length) handleDbFile(e.dataTransfer.files);
+}
+
+function handleDbFile(files) {
+  const f = files?.[0];
+  if (!f) return;
+  if (!dbTarget) { toast('⚠️ Elige primero Supabase o MongoDB'); return; }
+  const reader = new FileReader();
+  reader.onload = () => { document.getElementById('db-content').value = reader.result; updateDbRunBtn(); };
+  reader.onerror = () => toast('❌ No se pudo leer el archivo');
+  reader.readAsText(f);
+}
+
+function updateDbRunBtn() {
+  const btn = document.getElementById('db-run-btn');
+  if (!btn) return;
+  const has = !!dbTarget && document.getElementById('db-content').value.trim().length > 0;
+  btn.disabled = !has;
+}
+
+function clearDbRunner() {
+  document.getElementById('db-content').value = '';
+  document.getElementById('db-file-input').value = '';
+  updateDbRunBtn();
+  renderDbLog([]);
+}
+
+function dbEsc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function renderDbLog(results, meta) {
+  const box = document.getElementById('db-log');
+  if (!box) return;
+  if (!results || !results.length) {
+    box.innerHTML = '<div style="color:var(--muted);font-family:var(--mono);font-size:.7rem">Sin ejecuciones todavía.</div>';
+    return;
+  }
+  const head = meta ? `<div style="margin-bottom:.6rem;font-family:var(--mono);font-size:.72rem;font-weight:700">${dbEsc(meta)}</div>` : '';
+  box.innerHTML = head + results.map(r => {
+    const label = r.stmt || r.collection || '(sin nombre)';
+    return `<div class="db-log-line">
+      <i class="fas ${r.ok ? 'fa-circle-check' : 'fa-circle-xmark'}" style="color:${r.ok ? 'var(--g)' : '#ff6b6b'}"></i>
+      <div>
+        <div style="color:${r.ok ? 'var(--text)' : '#ff6b6b'}">${dbEsc(label)}</div>
+        ${r.ok ? '' : `<div style="color:#ff6b6b;opacity:.85;margin-top:.15rem">${dbEsc(r.error)}</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function runDbScript() {
+  if (!dbTarget) return;
+  const content = document.getElementById('db-content').value.trim();
+  if (!content) return;
+
+  const label = dbTarget === 'supabase' ? 'Supabase (SQL crudo)' : 'MongoDB (esquema de colecciones)';
+  if (!confirm(`⚠️ Vas a ejecutar cambios reales en ${label}.\n\nRevisa que el contenido sea correcto — esta acción no se deshace automáticamente.\n\n¿Continuar?`)) return;
+
+  const btn = document.getElementById('db-run-btn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ejecutando...';
+
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/db/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ target: dbTarget, content }),
+    });
+    const data = await res.json();
+    if (!res.ok && !data.results) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const total = data.total ?? (data.results || []).length;
+    const failed = data.failed ?? (data.results || []).filter(r => !r.ok).length;
+    renderDbLog(data.results || [], `${data.ok ? '✅' : '⚠️'} ${total - failed}/${total} sentencias OK`);
+    toast(data.ok ? '✅ Ejecutado sin errores' : `⚠️ ${failed} fallaron — revisa el log`);
+  } catch (e) {
+    renderDbLog([{ ok: false, stmt: 'Error de conexión', error: e.message }]);
+    toast('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    updateDbRunBtn();
+  }
 }
 
 // ═══════════════════════════════════════════
