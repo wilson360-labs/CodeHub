@@ -779,6 +779,18 @@ function renderAddForm() {
   panel.innerHTML = `
     <div class="section-title"><i class="fas fa-plus-circle"></i> Agregar Nueva App</div>
     <div class="card" style="max-width:640px">
+      <div style="margin-bottom:1rem">
+        <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.08em">¿A dónde va esta app?</label>
+        <div style="display:flex;gap:.5rem">
+          <button type="button" id="dest-btn-novedades" onclick="setAppDestino('novedades')" style="flex:1;padding:.6rem;border-radius:10px;background:rgba(255,69,0,.14);border:1px solid rgba(255,69,0,.4);color:var(--a);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer">
+            <i class="fas fa-bolt"></i> Novedades (AppsHub)
+          </button>
+          <button type="button" id="dest-btn-opensource" onclick="setAppDestino('opensource')" style="flex:1;padding:.6rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer">
+            <i class="fab fa-github"></i> Open Source
+          </button>
+        </div>
+        <div id="dest-hint" style="font-size:.62rem;color:var(--muted);margin-top:.4rem">Novedades publica directo al backend (aparece de inmediato en /novedades). Open Source genera el bloque HTML de la tarjeta — se pega en pages/opensource.html y se sube al repo (esa página es estática).</div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem">
         <div>
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">App ID</label>
@@ -833,11 +845,33 @@ function renderAddForm() {
           <div style="font-size:.62rem;color:var(--muted);margin-top:.35rem">Si lo llenas, la app aparece en el catálogo Open Source en vez de Premium, y activa el monitor automático de releases de GitHub.</div>
         </div>
       </div>
-      <button class="pub-btn" style="background:linear-gradient(135deg,var(--p),var(--p2))" onclick="createApp()">
+      <button class="pub-btn" id="create-app-btn" style="background:linear-gradient(135deg,var(--p),var(--p2))" onclick="createApp()">
         <i class="fas fa-plus"></i> Crear App
       </button>
+      <textarea id="os-html-output" readonly style="display:none;width:100%;margin-top:1rem;min-height:220px;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--mono);font-size:.68rem;padding:.75rem"></textarea>
     </div>`;
+  setAppDestino(window._appDestino || 'novedades');
   updateCatalogBadge();
+}
+
+// ── DESTINO DE LA NUEVA APP: Novedades (backend) u Open Source (estático) ──
+function setAppDestino(destino) {
+  window._appDestino = destino;
+  const bNov = document.getElementById('dest-btn-novedades');
+  const bOs  = document.getElementById('dest-btn-opensource');
+  const btn  = document.getElementById('create-app-btn');
+  const hint = document.getElementById('dest-hint');
+  if (!bNov || !bOs) return;
+  const on  = 'flex:1;padding:.6rem;border-radius:10px;background:rgba(255,69,0,.14);border:1px solid rgba(255,69,0,.4);color:var(--a);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer';
+  const off = 'flex:1;padding:.6rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer';
+  bNov.style = destino === 'novedades' ? on : off;
+  bOs.style  = destino === 'opensource' ? on : off;
+  if (btn) btn.innerHTML = destino === 'opensource'
+    ? '<i class="fas fa-code"></i> Generar tarjeta HTML'
+    : '<i class="fas fa-plus"></i> Crear App';
+  if (hint) hint.textContent = destino === 'opensource'
+    ? 'Genera el bloque <div class="app-card">…</div> listo para pegar en pages/opensource.html (dentro de la categoría correcta) y subir al repo. Repositorio Open Source es obligatorio.'
+    : 'Publica directo al backend — aparece de inmediato en /novedades.';
 }
 
 // ── AUTO-DETECCIÓN DE CATÁLOGO (Open Source vs Premium) Y CATEGORÍA ──
@@ -987,6 +1021,36 @@ async function createApp() {
   if (body.imagen && !isAcceptedImageLink(body.imagen)) {
     toast('⚠️ Ese link de imagen puede no cargar bien — usa jpg/png/webp, una captura de Play Store o un raw de GitHub/GitLab/Codeberg');
   }
+
+  // ── DESTINO: OPEN SOURCE — genera la tarjeta estática, no toca el backend ──
+  if (window._appDestino === 'opensource') {
+    if (!body.source_repo) return toast('❌ Repositorio Open Source (owner/repo) es obligatorio para este destino');
+    const out = document.getElementById('os-html-output');
+    const slug = body.imagen && body.imagen.startsWith('../img/opensource/')
+      ? body.imagen
+      : `../img/opensource/${body.appId}.png`;
+    out.value =
+`  <div class="app-card" data-cat="${body.categoria}" data-name="${body.nombre.toLowerCase()} ${body.categoria.toLowerCase()}">
+    <div class="app-thumb">
+      <img src="${slug}" alt="${body.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+      <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
+    </div>
+    <div class="app-body">
+      <div class="app-cat-tag">${body.categoria}</div>
+      <div class="app-name">${body.nombre}</div>
+      <div class="app-desc">${body.descripcion}</div>
+      <div class="app-actions">
+        <a class="dl-btn dl-primary" href="https://github.com/${body.source_repo}/releases" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>
+        <a class="dl-btn dl-plugin" href="https://github.com/${body.source_repo}" target="_blank" rel="noopener" title="Ver código fuente en GitHub"><i class="fab fa-github"></i> Código fuente</a>
+      </div>
+    </div>
+  </div>`;
+    out.style.display = 'block';
+    out.select();
+    toast('✅ Tarjeta generada — pégala en pages/opensource.html (sube también la imagen a img/opensource/) y súbelo al repo');
+    return;
+  }
+
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       method: 'POST',

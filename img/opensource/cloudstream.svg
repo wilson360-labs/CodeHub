@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00c8ff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#0d0d1a" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="28" fill="url(#g)"/>
+  <text x="100" y="112" font-size="64" text-anchor="middle" dominant-baseline="middle">📺</text>
+  <text x="100" y="168" font-size="20" font-family="sans-serif" font-weight="700" fill="#f0f0fa" text-anchor="middle">CL</text>
+</svg>
