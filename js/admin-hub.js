@@ -1066,7 +1066,13 @@ async function seedFromJSON() {
 async function seedOpenSourceFromJSON() {
   if (!confirm('Importar las 48 apps Open Source a MongoDB (con source_repo). ¿Continuar?')) return;
   try {
-    const res = await fetch('/opensource_seed.json');
+    // cache:'no-store' + query de cache-busting: evita que el navegador
+    // reuse una respuesta 404 vieja de intentos anteriores a que el
+    // archivo existiera en el deploy.
+    const res = await fetch(`/opensource_seed.json?v=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`No se pudo leer opensource_seed.json (HTTP ${res.status}) — confirma que esté en la raíz del repo y que el deploy ya lo tenga publicado`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('json')) throw new Error(`opensource_seed.json respondió con Content-Type "${ct}" en vez de JSON — probablemente es una página de error del hosting, no el archivo`);
     const apps = await res.json();
     const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
       method: 'POST',
