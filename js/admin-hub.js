@@ -271,6 +271,79 @@ function initAdmin(apps) {
   loadAdminStats();
 }
 
+// ── DETECCIÓN DE DUPLICADOS ─────────────────────────────────────
+// Se ejecuta en el cliente sobre `appsData` (ya cargado), así que
+// no depende de un match exacto en MongoDB — normaliza (trim,
+// minúsculas, sin ".git" ni "/" final) antes de comparar, por eso
+// detecta pares que el dedupe-script por igualdad exacta se salta
+// (ej. "TeamNewPipe/NewPipe" vs "teamnewpipe/newpipe ").
+// Agrupa por:
+//   1) source_repo normalizado (si la app lo tiene) — más confiable,
+//      dos apps nunca deberían compartir el mismo repo de GitHub.
+//   2) nombre normalizado — respaldo para apps sin source_repo o con
+//      source_repo distinto por error.
+let showOnlyDuplicates = false;
+
+function normRepo(s)   { return (s || '').trim().toLowerCase().replace(/\.git$/, '').replace(/\/+$/, ''); }
+function normNombre(s) { return (s || '').trim().toLowerCase(); }
+
+function computeDuplicateGroups() {
+  const byRepo = {}, byNombre = {};
+  appsData.forEach(a => {
+    const r = normRepo(a.source_repo);
+    if (r) (byRepo[r] = byRepo[r] || []).push(a);
+    const n = normNombre(a.nombre);
+    if (n) (byNombre[n] = byNombre[n] || []).push(a);
+  });
+
+  // appId -> { group: [apps...], keepAppId, reason }
+  const dupInfo = {};
+  const groups = [...Object.values(byRepo), ...Object.values(byNombre)]
+    .filter(g => g.length > 1);
+
+  groups.forEach(group => {
+    // Deduplicar por si el mismo grupo ya se armó por las dos vías.
+    const uniq = [...new Map(group.map(a => [a.appId, a])).values()];
+    if (uniq.length < 2) return;
+    // Sugerencia de cuál conservar: el que tenga enlace real, y entre
+    // esos el más reciente por updatedAt.
+    const conEnlace = uniq.filter(a => a.enlace && a.enlace !== '#');
+    const pool = conEnlace.length ? conEnlace : uniq;
+    const keep = pool.slice().sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+    uniq.forEach(a => {
+      dupInfo[a.appId] = { group: uniq, keepAppId: keep.appId };
+    });
+  });
+
+  return dupInfo;
+}
+
+function toggleDuplicateFilter() {
+  showOnlyDuplicates = !showOnlyDuplicates;
+  renderApps();
+}
+
+async function deleteAppSilent(appId) {
+  const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
+    method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+  });
+  if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
+}
+
+async function deleteDuplicateGroup(appIds, keepAppId) {
+  const losers = appIds.filter(id => id !== keepAppId);
+  const names = losers.map(id => (appsData.find(a => a.appId === id) || {}).nombre || id).join(', ');
+  if (!confirm(`Se conservará "${keepAppId}" y se eliminará: ${names}\n\n¿Continuar? No se puede deshacer.`)) return;
+  let ok = 0, fail = 0;
+  for (const id of losers) {
+    try { await deleteAppSilent(id); ok++; }
+    catch (e) { fail++; console.error('Error borrando', id, e); }
+  }
+  appsData = appsData.filter(a => !losers.includes(a.appId));
+  renderApps();
+  toast(fail ? `⚠️ ${ok} eliminada(s), ${fail} con error` : `🗑️ ${ok} duplicado(s) eliminado(s)`);
+}
+
 // ── RENDER APPS ───────────────────────────────────────────────
 function renderApps() {
   const list = document.getElementById('apps-list');
@@ -279,12 +352,28 @@ function renderApps() {
   set('st-apps', appsData.length);
   set('st-verified', verified);
 
-  if (!appsData.length) {
-    list.innerHTML = '<div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">No hay apps. Usa "Seed desde JSON" o agrega una manualmente.</div>';
+  const dupInfo = computeDuplicateGroups();
+  const dupAppIds = Object.keys(dupInfo);
+  const dupGroupCount = new Set(dupAppIds.map(id => dupInfo[id].group.map(a => a.appId).sort().join('|'))).size;
+
+  const banner = document.getElementById('dup-banner');
+  if (banner) {
+    banner.style.display = dupGroupCount ? 'flex' : 'none';
+    banner.innerHTML = dupGroupCount ? `
+      <span><i class="fas fa-triangle-exclamation"></i> ${dupGroupCount} grupo(s) de apps duplicadas detectadas (${dupAppIds.length} filas) — resaltadas en rojo abajo.</span>
+      <button onclick="toggleDuplicateFilter()" style="padding:.3rem .7rem;border-radius:8px;background:rgba(255,107,107,.12);border:1px solid rgba(255,107,107,.3);color:#ff6b6b;font-family:var(--mono);font-size:.62rem;cursor:pointer;white-space:nowrap">
+        ${showOnlyDuplicates ? '<i class="fas fa-list"></i> Ver todas' : '<i class="fas fa-filter"></i> Ver solo duplicadas'}
+      </button>` : '';
+  }
+
+  const rows = showOnlyDuplicates ? appsData.filter(a => dupInfo[a.appId]) : appsData;
+
+  if (!rows.length) {
+    list.innerHTML = `<div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">${showOnlyDuplicates ? 'No hay duplicados 🎉' : 'No hay apps. Usa "Seed desde JSON" o agrega una manualmente.'}</div>`;
     return;
   }
 
-  list.innerHTML = appsData.map(app => {
+  list.innerHTML = rows.map(app => {
     const enlace    = app.enlace || '#';
     const pluginEnl = app.plugin_enlace || '';
     // Detectar qué storage tiene el APK principal
@@ -299,7 +388,7 @@ function renderApps() {
       return '';
     })();
     return `
-    <div class="app-row" id="row-${app.appId}">
+    <div class="app-row" id="row-${app.appId}" style="${dupInfo[app.appId] ? 'outline:2px solid rgba(255,107,107,.55);outline-offset:-1px;background:rgba(255,107,107,.05)' : ''}">
       <div class="app-name-cell">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
           <img id="img-prev-${app.appId}" src="${app.imagen || ''}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:var(--card2);flex-shrink:0;${app.imagen ? '' : 'display:none'}" onerror="this.style.display='none'">
@@ -308,6 +397,18 @@ function renderApps() {
             <small>${app.categoria || ''} · ${app.appId}</small>
           </div>
         </div>
+        ${dupInfo[app.appId] ? `
+        <div style="margin-top:.35rem;padding:.4rem .5rem;border-radius:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25)">
+          <div style="font-family:var(--mono);font-size:.56rem;color:#ff6b6b;font-weight:700;margin-bottom:.25rem">
+            <i class="fas fa-clone"></i> Duplicado con: ${dupInfo[app.appId].group.filter(g => g.appId !== app.appId).map(g => g.appId).join(', ')}
+          </div>
+          ${app.appId === dupInfo[app.appId].keepAppId
+            ? `<span style="font-family:var(--mono);font-size:.55rem;color:var(--g)"><i class="fas fa-check"></i> Sugerido: conservar esta</span>`
+            : `<span style="font-family:var(--mono);font-size:.55rem;color:var(--muted)">Sugerido: conservar "${dupInfo[app.appId].keepAppId}"</span>`}
+          <button onclick='deleteDuplicateGroup(${JSON.stringify(dupInfo[app.appId].group.map(g => g.appId))}, "${dupInfo[app.appId].keepAppId}")' style="display:block;margin-top:.3rem;width:100%;padding:.28rem .4rem;border-radius:7px;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.35);color:#ff6b6b;font-family:var(--mono);font-size:.58rem;cursor:pointer;font-weight:700">
+            <i class="fas fa-broom"></i> Resolver duplicado (conservar ${dupInfo[app.appId].keepAppId})
+          </button>
+        </div>` : ''}
         ${storageBadge}
         <input class="ver-input" type="text" id="img-${app.appId}" value="${(app.imagen || '').replace(/"/g,'&quot;')}" placeholder="/img/NombreApp.png o URL" style="width:100%;margin-top:.35rem;font-size:.56rem" oninput="previewRowImagen('${app.appId}')">
         <div id="img-hint-${app.appId}" style="font-size:.55rem;color:var(--muted);margin-top:.2rem;word-break:break-all"></div>
