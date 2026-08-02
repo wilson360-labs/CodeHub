@@ -1059,6 +1059,41 @@ async function seedFromJSON() {
   } catch (e) { toast('❌ Error en seed: ' + e.message); }
 }
 
+// Parsea una Response como JSON de forma segura — si el body no es JSON
+// (ej. una página de error HTML del hosting/proxy), devuelve null en vez
+// de tronar con "Unexpected token '<'". Así el mensaje de error que ve
+// el admin siempre explica qué pasó de verdad.
+async function safeJson(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch { return null; }
+}
+
+async function postAdminSeed(apps, isRetry) {
+  const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    body: JSON.stringify({ apps }),
+  });
+  const data = await safeJson(seedRes);
+
+  if (!seedRes.ok || !data) {
+    // El backend en Render (free tier) se duerme tras inactividad — la
+    // primera petición tras despertar puede tardar y el proxy devuelve
+    // una página HTML de error en vez de JSON. Se reintenta una vez.
+    if (!isRetry) {
+      toast('⏳ El backend se está despertando (cold-start de Render), reintentando en 6s…');
+      await new Promise(r => setTimeout(r, 6000));
+      return postAdminSeed(apps, true);
+    }
+    throw new Error(
+      data?.error ||
+      `El backend respondió HTTP ${seedRes.status} sin JSON válido — puede seguir despertando, probá de nuevo en unos segundos, o revisa que ${BACKEND} esté arriba.`
+    );
+  }
+  return data;
+}
+
 // Siembra las 48 apps del catálogo Open Source (con su source_repo)
 // desde opensource_seed.json — activa el monitor automático de
 // GitHub Releases para todas de una vez. Correr una sola vez;
@@ -1074,13 +1109,8 @@ async function seedOpenSourceFromJSON() {
     const ct = res.headers.get('content-type') || '';
     if (!ct.includes('json')) throw new Error(`opensource_seed.json respondió con Content-Type "${ct}" en vez de JSON — probablemente es una página de error del hosting, no el archivo`);
     const apps = await res.json();
-    const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
-      body: JSON.stringify({ apps }),
-    });
-    if (!seedRes.ok) throw new Error((await seedRes.json()).error);
-    const d = await seedRes.json();
+
+    const d = await postAdminSeed(apps, false);
     toast(`✅ Seed Open Source: ${d.created} creadas, ${d.updated} actualizadas`);
     await refreshApps();
   } catch (e) { toast('❌ Error en seed Open Source: ' + e.message); }

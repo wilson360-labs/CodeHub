@@ -99,6 +99,11 @@ app.options('*', cors(corsOptions));
 // como ya deja el body parseado, el parser global de abajo lo detecta y
 // no vuelve a leer el stream, así el resto de rutas conserva el límite chico.
 app.use('/api/chat', express.json({ limit: '6mb' }));
+// /api/admin — algunas rutas mandan payloads más grandes que el límite
+// global de 10kb: el seed masivo del catálogo (ej. las 48 apps Open
+// Source, ~23kb) o extract-icon con imágenes en base64. Mismo patrón
+// que /api/chat arriba: se registra antes del límite global.
+app.use('/api/admin', express.json({ limit: '5mb' }));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
