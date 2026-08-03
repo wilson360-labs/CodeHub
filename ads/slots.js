@@ -29,14 +29,9 @@ const AD_SLOTS = {
       format: 'auto',
     },
 
-    // novedades.html — ad-gate (pre-descarga de apps)
-    'novedades-adgate': {
-      slot: null,
-      file: 'pages/novedades.html',
-      position: 'Intersticial pre-descarga (adGate)',
-      format: 'auto',
-      note: 'Este es el más importante — se muestra obligatoriamente antes de cada descarga',
-    },
+    // NOTA: novedades.html (Apps Premium) ya NO lleva AdSense —
+    // ese contenido no es apto para monetizar (apps modificadas/premium
+    // desbloqueadas). Solo index.html y opensource.html quedan con anuncios.
   },
 };
 

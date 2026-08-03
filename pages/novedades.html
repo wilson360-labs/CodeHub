@@ -13,12 +13,6 @@
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-PFVCPFJJ');</script>
   <!-- End Google Tag Manager -->
 <meta charset="UTF-8">
-<!-- Google AdSense -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
-<meta name="google-adsense-account" content="ca-pub-3780093322926832">
-<link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
-<link rel="preconnect" href="https://googleads.g.doubleclick.net" crossorigin>
-<link rel="dns-prefetch" href="https://adservice.google.com">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AppsHub — CodeHub by Wilson.E</title>
 <meta name="description" content="Aplicaciones Android con funciones premium desbloqueadas. Spotify, YouTube ReVanced, TikTok y más.">
@@ -1152,14 +1146,6 @@ if ('serviceWorker' in navigator) {
 
     <!-- STEP 2: Anuncio activo + timer -->
     <div id="adgate-s2" style="display:none;">
-      <!-- Contenedor del anuncio gráfico -->
-      <div style="background:rgba(255,255,255,.03);border-radius:12px;overflow:hidden;margin-bottom:.9rem;min-height:100px;display:flex;align-items:center;justify-content:center;">
-        <ins id="adgate-ins" class="adsbygoogle"
-             style="display:block;width:100%;min-height:100px;"
-             data-ad-client="ca-pub-3780093322926832"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-      </div>
       <!-- Timer visual -->
       <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:.75rem 1rem;margin-bottom:.85rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
@@ -1232,18 +1218,6 @@ if ('serviceWorker' in navigator) {
   window.adGateStartAd = function(){
     show('s2');
     _elapsed = 0;
-
-    // Intentar cargar anuncio real
-    try {
-      var ins = document.getElementById('adgate-ins');
-      // Limpiar por si ya se cargó antes
-      ins.innerHTML = '';
-      ins.removeAttribute('data-adsbygoogle-status');
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    } catch(e){}
-
-    // Detectar duración real: si el iframe de AdSense reporta duración, usarla
-    // Mientras tanto arrancamos con 30s y ajustamos si detectamos menos
     _dur     = 30;
     _elapsed = 0;
     _updateBar();
@@ -1254,16 +1228,6 @@ if ('serviceWorker' in navigator) {
     _clearTicker();
     _ticker = setInterval(function(){
       _elapsed++;
-
-      // Intentar autodetectar duración real del anuncio via iframe cargado
-      try {
-        var frames = document.querySelectorAll('iframe[id^="aswift"]');
-        if(frames.length > 0 && _elapsed === 3){
-          // Si hay iframe activo en menos de 30s, reducir duración a 10s (display ad)
-          _dur = 10;
-        }
-      } catch(e){}
-
       _updateBar();
 
       if(_elapsed >= _dur){
