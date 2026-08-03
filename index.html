@@ -185,10 +185,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 })();
 </script>
 <!-- ── Banner de actualización (aparece solo cuando hay SW nuevo) ── -->
-<div id="sw-update-banner" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a2e;border:1px solid rgba(255,69,0,.45);border-radius:14px;padding:.75rem 1.1rem;align-items:center;gap:.85rem;box-shadow:0 8px 32px rgba(0,0,0,.55);font-family:var(--mono,monospace);font-size:.78rem;color:#e8e8f0;max-width:420px;width:calc(100% - 2rem)">
+<div id="sw-update-banner" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a2e;border:1px solid rgba(255,69,0,.45);border-radius:var(--radius-md, 14px);padding:.75rem 1.1rem;align-items:center;gap:.85rem;box-shadow:0 8px 32px rgba(0,0,0,.55);font-family:var(--mono,monospace);font-size:.78rem;color:#e8e8f0;max-width:420px;width:calc(100% - 2rem)">
   <span style="font-size:1.1rem">🔄</span>
   <span style="flex:1;line-height:1.35">Nueva versión disponible.<br><span style="color:rgba(232,232,240,.55);font-size:.7rem">Recarga para aplicar los cambios.</span></span>
-  <button aria-label="Actualizar aplicación" onclick="updatePWA()" style="background:rgba(255,69,0,.18);border:1px solid rgba(255,69,0,.5);border-radius:8px;color:#ff6a1a;padding:.38rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(255,69,0,.3)'" onmouseout="this.style.background='rgba(255,69,0,.18)'">Actualizar</button>
+  <button aria-label="Actualizar aplicación" onclick="updatePWA()" style="background:rgba(255,69,0,.18);border:1px solid rgba(255,69,0,.5);border-radius:var(--radius-sm, 10px);color:#ff6a1a;padding:.38rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(255,69,0,.3)'" onmouseout="this.style.background='rgba(255,69,0,.18)'">Actualizar</button>
   <button aria-label="Cerrar notificación" onclick="dismissUpdateBanner()" style="background:none;border:none;color:rgba(232,232,240,.4);font-size:1.1rem;cursor:pointer;padding:0 .2rem;line-height:1" title="Cerrar">×</button>
 </div>
 
@@ -340,14 +340,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
             <!-- Orbital dots -->
-            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpin 5s linear infinite;">
-                <div style="position:absolute;top:6px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#ff4500;box-shadow:0 0 14px rgba(255,69,0,1),0 0 28px rgba(255,69,0,.6);"></div>
+            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpin 5s linear infinite;">
+                <div style="position:absolute;top:6px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:var(--radius-full, 50%);background:#ff4500;box-shadow:0 0 14px rgba(255,69,0,1),0 0 28px rgba(255,69,0,.6);"></div>
             </div>
-            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpinRev 7s linear infinite;">
-                <div style="position:absolute;bottom:6px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#00c6ff;box-shadow:0 0 12px rgba(0,198,255,1),0 0 22px rgba(0,198,255,.6);"></div>
+            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpinRev 7s linear infinite;">
+                <div style="position:absolute;bottom:6px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:var(--radius-full, 50%);background:#00c6ff;box-shadow:0 0 12px rgba(0,198,255,1),0 0 22px rgba(0,198,255,.6);"></div>
             </div>
-            <div style="position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:3;animation:chSpin 9s linear infinite 1s;">
-                <div style="position:absolute;top:50%;right:5px;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:#7c4dff;box-shadow:0 0 10px rgba(124,77,255,1),0 0 20px rgba(124,77,255,.6);"></div>
+            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpin 9s linear infinite 1s;">
+                <div style="position:absolute;top:50%;right:5px;width:5px;height:5px;margin-top:-2.5px;border-radius:var(--radius-full, 50%);background:#7c4dff;box-shadow:0 0 10px rgba(124,77,255,1),0 0 20px rgba(124,77,255,.6);"></div>
             </div>
             <img class="ch-logo-img"
                  id="ch-logo-img"
@@ -476,7 +476,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <h2>Acceso Restringido</h2>
         <p>Las herramientas de desarrollo están deshabilitadas en este sitio.<br>Por favor cierra DevTools para continuar.</p>
         <button onclick="document.getElementById('devtools-warning').classList.remove('show')" 
-            style="padding:.5rem 1.5rem;background:var(--primary);border:none;border-radius:8px;color:#fff;cursor:pointer;font-size:.85rem">
+            style="padding:.5rem 1.5rem;background:var(--primary);border:none;border-radius:var(--radius-sm, 10px);color:#fff;cursor:pointer;font-size:.85rem">
             Cerrar
         </button>
     </div>
@@ -685,13 +685,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <!-- Neon circle dev photo — colores CodeHub -->
                         <div style="position:relative;width:168px;height:168px;margin:0 auto;">
                           <!-- Glow exterior pulsante en naranja/rojo -->
-                          <div style="position:absolute;inset:-6px;border-radius:50%;box-shadow:0 0 28px rgba(255,69,0,.9),0 0 55px rgba(255,107,53,.6),0 0 90px rgba(255,189,105,.3);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;z-index:3;"></div>
+                          <div style="position:absolute;inset:-6px;border-radius:var(--radius-full, 50%);box-shadow:0 0 28px rgba(255,69,0,.9),0 0 55px rgba(255,107,53,.6),0 0 90px rgba(255,189,105,.3);animation:neonGlowPulse 2.5s ease-in-out infinite;pointer-events:none;z-index:3;"></div>
                           <!-- Anillo exterior giratorio — naranja/rojo/dorado -->
-                          <div style="position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#ff4500,#ff6b35,#ffbd69,#ff8c00,#ff4500,#cc2200,#ff4500);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));z-index:2;"></div>
+                          <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);background:conic-gradient(from 0deg,#ff4500,#ff6b35,#ffbd69,#ff8c00,#ff4500,#cc2200,#ff4500);animation:neonSpinConic 3.5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 11px),black calc(100% - 11px));z-index:2;"></div>
                           <!-- Anillo interior giratorio inverso — dorado/rojo -->
-                          <div style="position:absolute;inset:14px;border-radius:50%;background:conic-gradient(from 180deg,#ffbd69,#ff4500,#cc2200,#ff6b35,#ffbd69);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));z-index:2;"></div>
+                          <div style="position:absolute;inset:14px;border-radius:var(--radius-full, 50%);background:conic-gradient(from 180deg,#ffbd69,#ff4500,#cc2200,#ff6b35,#ffbd69);animation:neonSpinConic2 5s linear infinite;-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),black calc(100% - 5px));z-index:2;"></div>
                           <!-- Foto — ocupa todo el círculo -->
-                          <div style="position:absolute;inset:12px;border-radius:50%;overflow:hidden;z-index:1;">
+                          <div style="position:absolute;inset:12px;border-radius:var(--radius-full, 50%);overflow:hidden;z-index:1;">
                             <img src="https://i.ibb.co/MX1Kg6X/1749331794644.jpg"
                               alt="Wilson.E" fetchpriority="high" decoding="async" loading="eager"
                               style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;opacity:1;"
@@ -996,7 +996,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
             <div style="text-align:center;margin-top:2rem">
-                <a href="/servicios" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:12px;background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(255,69,0,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(255,69,0,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(255,69,0,.3)'">
+                <a href="/servicios" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:var(--radius-md, 14px);background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(255,69,0,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(255,69,0,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(255,69,0,.3)'">
                     <i class="fas fa-briefcase"></i> Ver todos los servicios
                 </a>
             </div>
@@ -1744,7 +1744,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         width: 10px;
                         height: 10px;
                         background: hsl(${Math.random() * 360}, 100%, 50%);
-                        border-radius: 50%;
+                        border-radius: var(--radius-full, 50%);
                         z-index: 9999;
                         pointer-events: none;
                     `;
@@ -2361,7 +2361,7 @@ DISPONIBILIDAD:
                     position: absolute;
                     width: ${size}px;
                     height: ${size}px;
-                    border-radius: 50%;
+                    border-radius: var(--radius-full, 50%);
                     background: rgba(255, 255, 255, 0.5);
                     left: ${x}px;
                     top: ${y}px;
@@ -2405,7 +2405,7 @@ DISPONIBILIDAD:
 <div id="ch-activity-dialog" style="
   position:fixed;bottom:162px;right:16px;z-index:4800;
   background:linear-gradient(145deg,#0d0d1a,#111120);
-  border:1px solid rgba(255,69,0,.28);border-radius:18px;
+  border:1px solid rgba(255,69,0,.28);border-radius:var(--radius-lg, 18px);
   width:300px;max-width:calc(100vw - 32px);
   box-shadow:0 12px 40px rgba(0,0,0,.7);
   display:none;flex-direction:column;overflow:hidden;
@@ -2432,7 +2432,7 @@ DISPONIBILIDAD:
     </div>
     <button onclick="chCloseActivity()" style="
       background:rgba(255,255,255,.07);border:none;color:rgba(240,240,250,.5);
-      border-radius:6px;width:22px;height:22px;cursor:pointer;font-size:.7rem;
+      border-radius:var(--radius-xs, 6px);width:22px;height:22px;cursor:pointer;font-size:.7rem;
       display:flex;align-items:center;justify-content:center;margin-bottom:.35rem
     ">&#x2715;</button>
   </div>
@@ -2451,7 +2451,7 @@ DISPONIBILIDAD:
       <button onclick="chClearActivity()" style="
         font-size:.58rem;font-family:inherit;cursor:pointer;
         background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-        color:rgba(240,240,250,.35);border-radius:6px;padding:.25rem .6rem
+        color:rgba(240,240,250,.35);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
       ">Limpiar</button>
     </div>
   </div>
@@ -2461,22 +2461,19 @@ DISPONIBILIDAD:
     <div style="max-height:280px;overflow-y:auto;padding:.65rem .75rem;scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent">
       <p style="font-size:.6rem;color:rgba(240,240,250,.4);margin:0 0 .6rem;text-align:center">Lo último en CodeHub v3</p>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,69,0,.07);border:1px solid rgba(255,69,0,.2);border-radius:10px">
-          <span style="font-size:1.1rem;flex-shrink:0">🔗</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,69,0,.07);border:1px solid rgba(255,69,0,.2);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🔗</span>
           <div>
             <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Resolver de Links</div>
             <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Descubre la URL real detrás de cualquier link acortado. Detecta redirecciones HTTP, meta-refresh y JS.</div>
           </div>
         </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px">
-          <span style="font-size:1.1rem;flex-shrink:0">🛡️</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🛡️</span>
           <div>
             <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Analizador de Links & Archivos</div>
             <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Verifica URLs y APKs con VirusTotal antes de abrirlos. Phishing, malware, reputación.</div>
           </div>
         </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px">
-          <span style="font-size:1.1rem;flex-shrink:0">🤖</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🤖</span>
           <div>
             <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI COPILOT — Asistente IA de CodeHub</div>
             <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Asistente IA multimodo con fallback automático entre varios modelos de IA.</div>
@@ -2488,12 +2485,12 @@ DISPONIBILIDAD:
       <button onclick="window.location.href='/novedades'" style="
         font-size:.58rem;font-family:inherit;cursor:pointer;
         background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.25);
-        color:rgba(255,150,80,.85);border-radius:6px;padding:.25rem .6rem
+        color:rgba(255,150,80,.85);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
       "><i class="fas fa-mobile-screen-button" style="margin-right:.3rem"></i>Apps Android</button>
       <button onclick="window.location.href='/tools'" style="
         font-size:.58rem;font-family:inherit;cursor:pointer;
         background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-        color:rgba(240,240,250,.35);border-radius:6px;padding:.25rem .6rem
+        color:rgba(240,240,250,.35);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
       "><i class="fas fa-wrench" style="margin-right:.3rem"></i>Herramientas</button>
     </div>
   </div>
@@ -2502,7 +2499,7 @@ DISPONIBILIDAD:
 <!-- Boton flotante Actividad -->
 <button id="ch-activity-btn" onclick="chToggleActivity()" title="Registro de actividades" style="
   position:fixed;bottom:162px;right:16px;z-index:4800;
-  width:42px;height:42px;border-radius:12px;
+  width:42px;height:42px;border-radius:var(--radius-md, 14px);
   background:linear-gradient(135deg,rgba(255,69,0,.15),rgba(255,69,0,.08));
   border:1px solid rgba(255,69,0,.3);color:rgba(255,69,0,.85);
   cursor:pointer;font-size:.85rem;transition:all .2s;
@@ -2512,7 +2509,7 @@ DISPONIBILIDAD:
   <i class="fas fa-list-check"></i>
   <span id="ch-activity-count" style="
     position:absolute;top:-4px;right:-4px;
-    background:#ff4500;color:#fff;border-radius:999px;
+    background:#ff4500;color:#fff;border-radius:var(--radius-pill, 999px);
     font-size:.48rem;font-weight:700;min-width:15px;height:15px;
     display:none;align-items:center;justify-content:center;
     border:2px solid #0a0a14;font-family:'JetBrains Mono',monospace;padding:0 3px
@@ -2995,7 +2992,7 @@ async function sendEmail(e) {
   <div id="ai-boot-overlay" style="
     position:absolute;inset:0;z-index:10;pointer-events:none;
     display:none;flex-direction:column;justify-content:center;align-items:center;
-    background:rgba(5,5,18,.92);border-radius:24px;overflow:hidden;
+    background:rgba(5,5,18,.92);border-radius:var(--radius-xl, 22px);overflow:hidden;
   ">
     <div id="ai-boot-scanline" style="
       position:absolute;top:0;left:0;right:0;height:2px;
@@ -3222,9 +3219,9 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
       <div class="ai-search-results">
         <div class="ai-sr-head">🔍 Buscando imágenes de <span>"${cleanQuery}"</span>…</div>
         <div id="ai-sr-grid-${uid}" style="display:flex;align-items:center;justify-content:center;padding:1.2rem 0;">
-          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out infinite;display:inline-block;margin:0 2px;"></span>
-          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .18s infinite;display:inline-block;margin:0 2px;"></span>
-          <span style="width:6px;height:6px;border-radius:50%;background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .36s infinite;display:inline-block;margin:0 2px;"></span>
+          <span style="width:6px;height:6px;border-radius:var(--radius-full, 50%);background:#7C4DFF;animation:typingBounce 1.3s ease-in-out infinite;display:inline-block;margin:0 2px;"></span>
+          <span style="width:6px;height:6px;border-radius:var(--radius-full, 50%);background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .18s infinite;display:inline-block;margin:0 2px;"></span>
+          <span style="width:6px;height:6px;border-radius:var(--radius-full, 50%);background:#7C4DFF;animation:typingBounce 1.3s ease-in-out .36s infinite;display:inline-block;margin:0 2px;"></span>
         </div>
       </div>
       <span class="ai-msg-time">${getTime()}</span>`;
@@ -4480,7 +4477,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <!-- PWA Install Prompt -->
   <div id="pwa-install">
     <div class="pwa-card">
-      <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:8px;display:block;margin:auto;"></div>
+      <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
       <div class="pwa-text">
         <div class="pwa-title">Instalar CodeHub</div>
         <div class="pwa-sub">Acceso rápido · Sin browser</div>

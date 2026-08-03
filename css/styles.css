@@ -24,7 +24,7 @@
     max-width: 350px;
     height: 250px;
     object-fit: cover;
-    border-radius: 14px;
+    border-radius: var(--radius-md, 14px);
     box-shadow: 0 4px 20px rgba(0,0,0,.4);
     margin: 0 auto 1.5rem;
     display: block;
@@ -41,7 +41,7 @@
     max-width: 580px;
     background: rgba(0,0,0,.5);
     padding: .9rem 1.3rem;
-    border-radius: 10px;
+    border-radius: var(--radius-sm, 10px);
     border: 1px solid rgba(255,69,0,.15);
 }
 #mi-pueblo .gallery-img {
@@ -49,7 +49,7 @@
     max-width: 340px;
     height: 210px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: var(--radius-md, 14px);
     box-shadow: 0 4px 16px rgba(0,0,0,.35);
     transition: all .35s cubic-bezier(.175,.885,.32,1.275);
     display: block;

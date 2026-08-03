@@ -63,14 +63,14 @@ header{
   font-size:.6rem;font-weight:700;font-family:var(--mono);
   color:var(--a);background:rgba(255,69,0,.1);
   border:1px solid rgba(255,69,0,.22);
-  padding:2px 8px;border-radius:20px;
+  padding:2px 8px;border-radius:var(--radius-xl, 22px);
 }
 .hdr-right{display:flex;align-items:center;gap:.6rem}
 .back-link{
   display:flex;align-items:center;gap:.4rem;
   text-decoration:none;font-size:.78rem;font-weight:600;
   color:var(--muted);padding:.36rem .8rem;
-  border-radius:8px;border:1px solid rgba(255,255,255,.08);
+  border-radius:var(--radius-sm, 10px);border:1px solid rgba(255,255,255,.08);
   transition:all .2s;
 }
 .back-link:hover{color:var(--text);border-color:var(--border-h);background:rgba(255,69,0,.06)}
@@ -78,7 +78,7 @@ header{
   display:flex;align-items:center;gap:.4rem;
   text-decoration:none;font-size:.78rem;font-weight:600;
   color:var(--p);padding:.36rem .8rem;
-  border-radius:8px;border:1px solid rgba(255,69,0,.25);
+  border-radius:var(--radius-sm, 10px);border:1px solid rgba(255,69,0,.25);
   background:rgba(255,69,0,.08);transition:all .2s;
 }
 .tools-link:hover{background:rgba(255,69,0,.16)}
@@ -95,10 +95,10 @@ header{
   font-family:var(--mono);font-size:.7rem;
   color:var(--a);background:rgba(255,189,105,.08);
   border:1px solid rgba(255,189,105,.2);
-  padding:.28rem .9rem;border-radius:20px;margin-bottom:1.1rem;
+  padding:.28rem .9rem;border-radius:var(--radius-xl, 22px);margin-bottom:1.1rem;
 }
 .hero-dot{
-  width:7px;height:7px;border-radius:50%;
+  width:7px;height:7px;border-radius:var(--radius-full, 50%);
   background:var(--green);
   animation:hdot 2.5s ease-in-out infinite;
 }
@@ -124,7 +124,7 @@ header{
 }
 .plat-chip{
   display:flex;align-items:center;gap:.4rem;
-  padding:.32rem .85rem;border-radius:20px;
+  padding:.32rem .85rem;border-radius:var(--radius-xl, 22px);
   font-size:.74rem;font-weight:700;font-family:var(--mono);
   border:1px solid;cursor:default;
   transition:all .2s;
@@ -143,7 +143,7 @@ header{
 .url-form{
   background:var(--card);
   border:1px solid var(--border);
-  border-radius:20px;
+  border-radius:var(--radius-xl, 22px);
   padding:2rem;
   box-shadow:0 20px 60px rgba(0,0,0,.5);
 }
@@ -161,7 +161,7 @@ header{
   padding:.7rem 1rem;
   background:rgba(255,255,255,.05);
   border:1px solid rgba(255,255,255,.1);
-  border-radius:12px;
+  border-radius:var(--radius-md, 14px);
   color:var(--text);
   font-family:var(--mono);
   font-size:.85rem;
@@ -173,7 +173,7 @@ header{
 .detect-btn{
   padding:.7rem 1.3rem;
   background:linear-gradient(135deg,var(--p),var(--p2));
-  border:none;border-radius:12px;
+  border:none;border-radius:var(--radius-md, 14px);
   color:#fff;font-family:var(--font);
   font-size:.85rem;font-weight:700;
   cursor:pointer;
@@ -190,7 +190,7 @@ header{
   padding:.65rem 1rem;
   background:rgba(0,230,118,.06);
   border:1px solid rgba(0,230,118,.2);
-  border-radius:10px;margin-bottom:1rem;
+  border-radius:var(--radius-sm, 10px);margin-bottom:1rem;
   font-size:.82rem;color:rgba(232,232,240,.75);
   animation:fadeUp .3s ease;
 }
@@ -218,7 +218,7 @@ header{
   padding:1rem 1.1rem;
   background:rgba(255,255,255,.04);
   border:1px solid rgba(255,255,255,.09);
-  border-radius:13px;
+  border-radius:var(--radius-md, 14px);
   color:var(--text);
   font-family:var(--font);
   cursor:pointer;
@@ -263,7 +263,7 @@ header{
 .how-card{
   background:var(--card);
   border:1px solid var(--border);
-  border-radius:16px;padding:1.4rem;
+  border-radius:var(--radius-lg, 18px);padding:1.4rem;
   transition:all .22s;
   animation:fadeUp .5s ease both;
 }
@@ -293,7 +293,7 @@ header{
 .plat-card{
   background:var(--card);
   border:1px solid var(--border);
-  border-radius:14px;
+  border-radius:var(--radius-md, 14px);
   padding:1.2rem;
   display:flex;flex-direction:column;
   align-items:flex-start;gap:.5rem;
@@ -318,7 +318,7 @@ header{
 .notice-inner{
   background:rgba(255,189,105,.05);
   border:1px solid rgba(255,189,105,.18);
-  border-radius:14px;
+  border-radius:var(--radius-md, 14px);
   padding:.9rem 1.2rem;
   display:flex;align-items:flex-start;gap:.9rem;
   font-size:.8rem;color:rgba(232,232,240,.55);
@@ -343,7 +343,7 @@ footer a{color:var(--p);text-decoration:none}
   transform:translateX(-50%) translateY(16px);
   background:rgba(18,18,28,.97);
   border:1px solid var(--border-h);
-  border-radius:11px;padding:.65rem 1.3rem;
+  border-radius:var(--radius-sm, 10px);padding:.65rem 1.3rem;
   font-size:.82rem;color:var(--a);
   font-family:var(--mono);
   pointer-events:none;opacity:0;

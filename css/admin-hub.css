@@ -20,13 +20,13 @@
     }
     .login-box {
       background: var(--surface); border: 1px solid rgba(255,69,0,.2);
-      border-radius: 20px; padding: 2.5rem; width: 360px; text-align: center;
+      border-radius: var(--radius-xl, 22px); padding: 2.5rem; width: 360px; text-align: center;
     }
     .login-logo { font-size: 2.5rem; font-weight: 800; margin-bottom: .3rem; }
     .login-logo span { color: var(--p); }
     .login-sub { font-family: var(--mono); font-size: .7rem; color: var(--muted); margin-bottom: 2rem; }
     .login-input {
-      width: 100%; padding: .75rem 1rem; border-radius: 10px;
+      width: 100%; padding: .75rem 1rem; border-radius: var(--radius-sm, 10px);
       background: rgba(255,255,255,.05); border: 1px solid var(--border);
       color: var(--text); font-family: var(--mono); font-size: .9rem;
       outline: none; margin-bottom: .8rem; text-align: center; letter-spacing: .2em;
@@ -34,7 +34,7 @@
     }
     .login-input:focus { border-color: var(--p); }
     .login-btn {
-      width: 100%; padding: .75rem; border-radius: 10px;
+      width: 100%; padding: .75rem; border-radius: var(--radius-sm, 10px);
       background: linear-gradient(135deg, var(--p), #ff6b35);
       border: none; color: #fff; font-family: var(--font);
       font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
@@ -54,13 +54,13 @@
     .admin-logo small { font-family: var(--mono); font-size: .6rem; color: var(--muted); display: block; }
     .admin-nav { display: flex; gap: .6rem; }
     .admin-tab {
-      padding: .4rem .9rem; border-radius: 8px; border: 1px solid var(--border);
+      padding: .4rem .9rem; border-radius: var(--radius-sm, 10px); border: 1px solid var(--border);
       background: transparent; color: var(--muted); font-family: var(--font);
       font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
     }
     .admin-tab.active { background: rgba(255,69,0,.15); border-color: rgba(255,69,0,.35); color: var(--a); }
     .logout-btn {
-      padding: .4rem .8rem; border-radius: 8px; border: 1px solid var(--border);
+      padding: .4rem .8rem; border-radius: var(--radius-sm, 10px); border: 1px solid var(--border);
       background: transparent; color: var(--muted); font-size: .75rem;
       font-family: var(--mono); cursor: pointer; transition: all .2s;
     }
@@ -74,7 +74,7 @@
       display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 2rem;
     }
     .stat-card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md, 14px); padding: 1.2rem;
     }
     .stat-card .num { font-size: 2rem; font-weight: 800; line-height: 1; }
     .stat-card .lbl { font-family: var(--mono); font-size: .65rem; color: var(--muted); margin-top: .2rem; }
@@ -86,7 +86,7 @@
     }
     .section-title i { color: var(--p); }
     .apps-table {
-      background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg, 18px); overflow: hidden;
     }
     .apps-table-head {
       display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 2fr 120px;
@@ -105,26 +105,26 @@
     .app-name-cell small { display: block; font-family: var(--mono); font-size: .6rem; color: var(--muted); margin-top: .1rem; }
     .ver-input {
       background: rgba(255,255,255,.05); border: 1px solid var(--border);
-      border-radius: 7px; padding: .3rem .6rem; color: var(--text);
+      border-radius: var(--radius-xs, 6px); padding: .3rem .6rem; color: var(--text);
       font-family: var(--mono); font-size: .72rem; width: 90%;
       outline: none; transition: border-color .2s;
     }
     .ver-input:focus { border-color: var(--p); }
     .badge-verified {
       display: inline-flex; align-items: center; gap: .3rem;
-      font-size: .65rem; font-family: var(--mono); padding: .18rem .5rem; border-radius: 20px; cursor: pointer;
+      font-size: .65rem; font-family: var(--mono); padding: .18rem .5rem; border-radius: var(--radius-xl, 22px); cursor: pointer;
     }
     .badge-verified.yes { background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.25); color: var(--g); }
     .badge-verified.no  { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--muted); }
     .changelog-input {
       background: rgba(255,255,255,.04); border: 1px solid var(--border);
-      border-radius: 7px; padding: .3rem .6rem; color: var(--text);
+      border-radius: var(--radius-xs, 6px); padding: .3rem .6rem; color: var(--text);
       font-family: var(--mono); font-size: .65rem; width: 100%;
       outline: none; transition: border-color .2s; resize: none;
     }
     .changelog-input:focus { border-color: var(--a); }
     .save-row-btn {
-      padding: .35rem .8rem; border-radius: 8px;
+      padding: .35rem .8rem; border-radius: var(--radius-sm, 10px);
       background: linear-gradient(135deg, var(--p), #ff6b35);
       border: none; color: #fff; font-family: var(--mono);
       font-size: .68rem; font-weight: 700; cursor: pointer; transition: all .2s;
@@ -139,7 +139,7 @@
     }
     .publish-btn {
       display: flex; align-items: center; gap: .5rem;
-      padding: .7rem 1.6rem; border-radius: 12px;
+      padding: .7rem 1.6rem; border-radius: var(--radius-md, 14px);
       background: linear-gradient(135deg, var(--g), #00c853);
       border: none; color: #000; font-family: var(--font);
       font-size: .88rem; font-weight: 800; cursor: pointer; transition: all .2s;
@@ -157,7 +157,7 @@
     .req-name { font-weight: 600; font-size: .88rem; }
     .req-votes { font-family: var(--mono); font-size: .72rem; color: var(--p); }
     .req-action {
-      padding: .28rem .7rem; border-radius: 8px; font-family: var(--mono);
+      padding: .28rem .7rem; border-radius: var(--radius-sm, 10px); font-family: var(--mono);
       font-size: .65rem; font-weight: 700; cursor: pointer; border: none; transition: all .2s;
     }
     .req-done { background: rgba(0,230,118,.15); color: var(--g); border: 1px solid rgba(0,230,118,.25); }
@@ -169,7 +169,7 @@
     #toast {
       position: fixed; bottom: 1.5rem; right: 1.5rem;
       background: rgba(15,15,30,.97); border: 1px solid rgba(255,189,105,.3);
-      color: var(--text); padding: .65rem 1.2rem; border-radius: 12px;
+      color: var(--text); padding: .65rem 1.2rem; border-radius: var(--radius-md, 14px);
       font-family: var(--mono); font-size: .78rem;
       opacity: 0; transition: all .3s; z-index: 9999; transform: translateY(10px);
     }
