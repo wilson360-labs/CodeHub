@@ -57,8 +57,8 @@ CodeHub-main/
 ├── terms.html                  ← Términos de Uso (en raíz, no en /pages/)
 │
 ├── pages/                      ← Páginas secundarias (todas ruteadas via vercel.json)
-│   ├── tools.html              → ruta pública: /tools
-│   ├── novedades.html          → ruta pública: /novedades
+│   ├── tools.html          → ruta pública: /tools
+│   ├── opensource.html     → ruta pública: /opensource
 │   ├── servicios.html          → ruta pública: /servicios
 │   ├── downloader.html         → ruta pública: /downloader
 │   ├── cv.html                 → ruta pública: /cv
@@ -77,7 +77,7 @@ CodeHub-main/
 │   ├── index-responsive.css    ← Media queries de index.html
 │   ├── components.css          ← Componentes reutilizables
 │   ├── tools.css               ← Estilos de /tools
-│   ├── novedades.css           ← Estilos de /novedades
+│   ├── opensource.css          ← Base styles del catálogo Open Source
 │   ├── servicios.css           ← Estilos de /servicios
 │   ├── downloader.css          ← Estilos de /downloader
 │   ├── admin-hub.css           ← Estilos extras del admin
@@ -90,7 +90,7 @@ CodeHub-main/
 │   ├── index-chat.js           ← Chatbot EMI IA (frontend)
 │   ├── index-emailjs.js        ← Formulario de contacto
 │   ├── index-whats-new.js      ← Panel "Qué hay de nuevo" en index
-│   ├── novedades.js            ← Lógica de /novedades (apps, filtros, ratings)
+│   ├── opensource.js           ← Lógica de /opensource (catálogo, filtros, ratings)
 │   ├── tools.js                ← Lógica de todas las 34 herramientas
 │   ├── admin-hub.js            ← Lógica completa del panel admin
 │   ├── servicios.js            ← Lógica de /servicios
@@ -130,7 +130,7 @@ CodeHub-main/
 │   └── e2e/
 │       ├── api.spec.js
 │       ├── home.spec.js
-│       ├── novedades.spec.js
+│       ├── opensource.spec.js
 │       └── tools.spec.js
 │
 ├── skills/                     ← Definiciones de skills IA
@@ -156,7 +156,7 @@ CodeHub-main/
 |-------------|---------------|------|
 | `/` | `index.html` | directo |
 | `/tools` | `pages/tools.html` | rewrite |
-| `/novedades` | `pages/novedades.html` | rewrite |
+| `/opensource` | `pages/opensource.html` | rewrite |
 | `/servicios` | `pages/servicios.html` | rewrite |
 | `/downloader` | `pages/downloader.html` | rewrite |
 | `/cv` | `pages/cv.html` | rewrite |
@@ -332,12 +332,19 @@ const BLOGGER_URL = 'https://codehub-labs.blogspot.com';
 
 ---
 
-### `pages/novedades.html` — Apps Android
-Listado de apps Android (premium/desbloqueadas), cargadas desde el backend MongoDB.
+### `pages/opensource.html` — Catálogo Open Source
+Listado de apps Android de código abierto, cargadas desde el backend MongoDB
+(solo apps con `source_repo` configurado, verificadas contra GitHub Releases).
 
-**JS cargado:** `../js/novedades.js`  
-**Backend usado:** `GET /api/apps`, `POST /api/ratings`, `POST /api/requests`, `POST /api/download/:fileName`  
+**JS cargado:** `../js/opensource.js`  
+**CSS cargado:** `../css/opensource.css`  
+**Backend usado:** `GET /api/apps`, `GET /api/dl/:appId`  
 **Constante:** `const BACKEND = 'https://codehub-98s6.onrender.com'`
+
+> ⚠️ **AppsHub / novedades.html fue ELIMINADO (Agosto 2026)** por incumplir
+> las políticas de AdSense (apps modificadas/premium desbloqueadas). El catálogo
+> Open Source quedó como la única sección de apps. `/novedades` redirige a
+> `/opensource` y está bloqueado en robots.txt.
 
 ---
 
@@ -422,7 +429,7 @@ El blog se usa en 2 lugares:
 
 **Service Worker:** `sw.js` (en raíz)  
 **Manifest:** `manifest.json` (en raíz)  
-**Shortcuts en PWA:** `/tools`, `/novedades`, `/servicios`, `/downloader`  
+**Shortcuts en PWA:** `/tools`, `/opensource`, `/servicios`, `/downloader`  
 **Iconos:** Cloudinary CDN  
 **Offline page:** `offline.html`
 
@@ -430,11 +437,14 @@ El blog se usa en 2 lugares:
 
 ## 10. Google AdSense — Estado de implementación
 
-> Actualizado: Mayo 2026 — en proceso de revisión por AdSense
+> Actualizado: Agosto 2026 — AppsHub/novedades.html ELIMINADO por violar políticas
+> (contenido con apps modificadas/premium desbloqueadas). Quedó como única sección
+> de apps el catálogo Open Source (sin riesgo de política). Pendiente re-solicitar
+> revisión en AdSense.
 
 | Requisito | Estado | Archivo |
 |-----------|--------|---------|
-| Script AdSense en `<head>` | ✅ Implementado | index.html, privacy.html, terms.html |
+| Script AdSense en `<head>` | ✅ Implementado | index.html, tools.html, opensource.html, privacy.html, terms.html |
 | ads.txt en raíz | ✅ Existe | ads.txt |
 | Política de Privacidad | ✅ Creada | privacy.html → /privacy |
 | Términos de Uso | ✅ Creados | terms.html → /terms |
@@ -444,6 +454,8 @@ El blog se usa en 2 lugares:
 | sitemap.xml incluye /privacy y /terms | ✅ Incluidos | sitemap.xml |
 | Anti-clic-derecho removido | ✅ Removido | index.html |
 | beforeunload molesto removido | ✅ Removido | index.html |
+| Contenido no apto (apps premium) | ✅ Removido | pages/novedades.html eliminado |
+| Slot IDs en unidades AdSense | ⚠️ Faltan | index/tools/opensource usan format=auto sin data-ad-slot |
 | Blog con artículos reales | ⏳ Pendiente publicar | codehub-labs.blogspot.com |
 | Solicitar revisión en AdSense | ⏳ Pendiente | Panel AdSense |
 
@@ -464,6 +476,7 @@ Disallow: /python/
 Disallow: /tests/
 Disallow: /apps_data.json
 Disallow: /admin-hub
+Disallow: /novedades
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
 ```
 
@@ -471,7 +484,7 @@ Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
 - `/` (priority 1.0)
 - `/privacy` (priority 0.6)
 - `/terms` (priority 0.6)
-- `/novedades` (priority 0.95)
+- `/opensource` (priority 0.9)
 - `/tools` (priority 0.9)
 - `/servicios` (priority 0.85)
 - `/downloader` (priority 0.8)

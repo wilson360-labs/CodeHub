@@ -498,7 +498,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <li><a href="/tools" onclick="closeMobileNav()">🔧 Tools</a></li>
             <li><a href="/codehub-ultra" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">⚡ CodeHub Ultra</a></li>
             <li><a href="/cv" onclick="closeMobileNav()" style="color:#00e676">📄 Mi CV</a></li>
-            <li><a href="/novedades" onclick="closeMobileNav()">📱 Apps Android</a></li>
             <li><a href="/opensource" onclick="closeMobileNav()">🌐 Open Source</a></li>
             <li><a href="/downloader" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
             <li><a href="https://www.youtube.com/@d3exg3aeyag1ko" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
@@ -1677,12 +1676,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         text: 'Suite DevTools: QR, contraseñas, hash SHA-256/512, Base64, UUID v4, regex tester, pomodoro, conversores, IMC, préstamos y más de 23 utilidades gratuitas.'
                     },
                     {
-                        selector: '#hub-dock a[href="/novedades"]',
-                        icon: 'fa-solid fa-mobile-screen',
-                        title: 'AppsHub',
-                        text: 'Catálogo de apps modificadas/premium con todo desbloqueado, con novedades y actualizaciones al día.'
-                    },
-                    {
                         selector: '#hub-dock a[href="/opensource"]',
                         icon: 'fa-solid fa-code-branch',
                         title: 'Catálogo Open Source',
@@ -1991,7 +1984,6 @@ DISPONIBILIDAD:
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
-            { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
             { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
             { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
@@ -2146,10 +2138,6 @@ DISPONIBILIDAD:
             if (games[game]) {
                 window.open(games[game], '_blank', 'width=500,height=500,resizable=yes');
             }
-        }
-
-        function openNewWindow() {
-            window.open('/novedades', '_blank', 'width=800,height=600,resizable=yes');
         }
 
         // Konami Code Easter Egg (↑ ↑ ↓ ↓ ← → ← → B A)
@@ -2431,11 +2419,6 @@ DISPONIBILIDAD:
         color:#ff4500;background:none;border:none;border-bottom:2px solid #ff4500;
         cursor:pointer;padding:.3rem .5rem .45rem;letter-spacing:.03em;transition:all .15s
       "><i class="fas fa-list-check" style="margin-right:.3rem"></i>ACTIVIDAD</button>
-      <button id="ch-tab-novedades" onclick="chSwitchTab('novedades')" style="
-        font-size:.62rem;font-weight:700;font-family:'JetBrains Mono',monospace;
-        color:rgba(240,240,250,.35);background:none;border:none;border-bottom:2px solid transparent;
-        cursor:pointer;padding:.3rem .5rem .45rem;letter-spacing:.03em;transition:all .15s
-      "><i class="fas fa-star" style="margin-right:.3rem"></i>NOVEDADES</button>
     </div>
     <button onclick="chCloseActivity()" style="
       background:rgba(255,255,255,.07);border:none;color:rgba(240,240,250,.5);
@@ -2460,45 +2443,6 @@ DISPONIBILIDAD:
         background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
         color:rgba(240,240,250,.35);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
       ">Limpiar</button>
-    </div>
-  </div>
-
-  <!-- Panel: Novedades -->
-  <div id="ch-panel-novedades" style="display:none">
-    <div style="max-height:280px;overflow-y:auto;padding:.65rem .75rem;scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent">
-      <p style="font-size:.6rem;color:rgba(240,240,250,.4);margin:0 0 .6rem;text-align:center">Lo último en CodeHub v3</p>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,69,0,.07);border:1px solid rgba(255,69,0,.2);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🔗</span>
-          <div>
-            <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Resolver de Links</div>
-            <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Descubre la URL real detrás de cualquier link acortado. Detecta redirecciones HTTP, meta-refresh y JS.</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🛡️</span>
-          <div>
-            <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">Analizador de Links & Archivos</div>
-            <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Verifica URLs y APKs con VirusTotal antes de abrirlos. Phishing, malware, reputación.</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px"> <span style="font-size:1.1rem;flex-shrink:0">🤖</span>
-          <div>
-            <div style="font-size:.72rem;font-weight:700;color:#ffbd69;margin-bottom:2px">EMI COPILOT — Asistente IA de CodeHub</div>
-            <div style="font-size:.63rem;color:rgba(232,232,240,.5);line-height:1.45">Asistente IA multimodo con fallback automático entre varios modelos de IA.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div style="padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:6px;justify-content:flex-end">
-      <button onclick="window.location.href='/novedades'" style="
-        font-size:.58rem;font-family:inherit;cursor:pointer;
-        background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.25);
-        color:rgba(255,150,80,.85);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
-      "><i class="fas fa-mobile-screen-button" style="margin-right:.3rem"></i>Apps Android</button>
-      <button onclick="window.location.href='/tools'" style="
-        font-size:.58rem;font-family:inherit;cursor:pointer;
-        background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
-        color:rgba(240,240,250,.35);border-radius:var(--radius-xs, 6px);padding:.25rem .6rem
-      "><i class="fas fa-wrench" style="margin-right:.3rem"></i>Herramientas</button>
     </div>
   </div>
 </div>
@@ -2573,25 +2517,8 @@ function chRenderLog() {
 
 function chSwitchTab(tab) {
   var panelAct = document.getElementById('ch-panel-actividad');
-  var panelNov = document.getElementById('ch-panel-novedades');
-  var tabAct   = document.getElementById('ch-tab-actividad');
-  var tabNov   = document.getElementById('ch-tab-novedades');
-  if (tab === 'novedades') {
-    panelAct.style.display = 'none';
-    panelNov.style.display = 'block';
-    tabNov.style.color = '#ff4500';
-    tabNov.style.borderBottomColor = '#ff4500';
-    tabAct.style.color = 'rgba(240,240,250,.35)';
-    tabAct.style.borderBottomColor = 'transparent';
-  } else {
-    panelNov.style.display = 'none';
-    panelAct.style.display = 'block';
-    tabAct.style.color = '#ff4500';
-    tabAct.style.borderBottomColor = '#ff4500';
-    tabNov.style.color = 'rgba(240,240,250,.35)';
-    tabNov.style.borderBottomColor = 'transparent';
-    chRenderLog();
-  }
+  panelAct.style.display = 'block';
+  chRenderLog();
 }
 
 function chToggleActivity() {
@@ -2680,24 +2607,24 @@ async function initIndexPush() {
 
 
 /* ══════════════════════════════════════════════════
-   CHANGELOG HEADER BTN — abre pestaña Novedades en botón flotante
+   CHANGELOG HEADER BTN — abre panel de actividad flotante
 ══════════════════════════════════════════════════ */
 function openChangelog() {
-  // Abrir el diálogo flotante en la pestaña Novedades
+  // Abrir el diálogo flotante en la pestaña Actividad
   var dialog = document.getElementById('ch-activity-dialog');
   var btn    = document.getElementById('ch-activity-btn');
   if (!dialog) return;
   chActivityOpen = true;
   dialog.style.display = 'flex';
   if (btn) btn.style.display = 'none';
-  chSwitchTab('novedades');
+  chSwitchTab('actividad');
   // Marcar como visto
   localStorage.setItem('ch_changelog_seen', Date.now());
   var dot = document.getElementById('changelog-dot');
   if (dot) dot.classList.remove('show');
 }
 
-// Mostrar dot si hay novedades nuevas (última vista > 3 días)
+// Mostrar dot si hay actividad nueva (última vista > 3 días)
 (function checkChangelogDot() {
   var last = parseInt(localStorage.getItem('ch_changelog_seen') || '0');
   var THREE_DAYS = 3 * 86400000;
@@ -2774,13 +2701,6 @@ async function chNotifWeatherCheck(lat, lon) {
   <a href="/tools" class="dock-item" title="DevTools Suite">
     <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
     <span class="dock-label">Herramientas</span>
-  </a>
-  <a href="/novedades" class="dock-item" title="AppsHub">
-    <div class="dock-icon dock-icon-apps">
-      <i class="fas fa-mobile-screen"></i>
-      <span class="dock-notif"></span>
-    </div>
-    <span class="dock-label">AppsHub</span>
   </a>
   <a href="/opensource" class="dock-item" title="Catálogo Open Source">
     <div class="dock-icon dock-icon-apps"><i class="fas fa-code-branch"></i></div>
@@ -3168,7 +3088,7 @@ Wilson.E: Full Stack autodidacta, Guatemala 🇬🇹, 25 años. Stack: HTML, CSS
 Freelance disponible. Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
 
 Herramientas en /tools: QR, contraseñas, Hash SHA-256/512, Base64, UUID v4, Regex Tester, Pomodoro, conversor unidades/monedas, IMC, préstamos, test escritura, colores, gradientes CSS, minificador, y 23+ más.
-Apps Android en /novedades: Spotify Premium, YouTube ReVanced, TikTok Premium, PicsArt Pro, Remini Pro y más.
+Catálogo Open Source en /opensource: apps verificadas contra su repositorio oficial de GitHub, sin modificaciones.
 También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
 ━━━ SKILLS ACTIVAS ━━━
@@ -3823,7 +3743,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
     if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
     if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>23+ herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
-    if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
+    if (ql.includes('app') || ql.includes('android')) return 'CodeHub tiene un <strong>catálogo de apps Open Source</strong> verificadas contra su repositorio oficial en GitHub. Todo en <code>opensource.html</code>. 📱';
     if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
     if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
     if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
@@ -5169,7 +5089,7 @@ function setAIMood(btn) {
     <div class="ios-notif-perks">
       <div class="ios-notif-perk">
         <div class="ios-notif-perk-icon" style="background:rgba(255,69,0,.15);color:#ff6b35">📱</div>
-        <div><b style="color:#f0f0fa">Apps nuevas o actualizadas</b><br>Spotify, YouTube ReVanced, TikTok Mod y más en novedades.html</div>
+        <div><b style="color:#f0f0fa">Apps verificadas</b><br>Nuevas apps Open Source verificadas contra su repositorio oficial de GitHub</div>
       </div>
       <div class="ios-notif-perk">
         <div class="ios-notif-perk-icon" style="background:rgba(64,196,255,.12);color:#40c4ff">🌤</div>
@@ -5209,7 +5129,7 @@ function setAIMood(btn) {
     <span class="mnb-icon">🔧</span>
     <span>Tools</span>
   </a>
-  <a href="/novedades" id="mnb-apps">
+  <a href="/opensource" id="mnb-apps">
     <span class="mnb-icon">📱</span>
     <span>Apps</span>
   </a>

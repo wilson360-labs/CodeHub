@@ -695,7 +695,6 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
             { name: 'Cambiar Tema', icon: 'fa-moon', action: toggleTheme },
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
-            { name: 'Ver Novedades', icon: 'fa-star', action: openNewWindow },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
             { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
             { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
@@ -799,10 +798,6 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
             if (games[game]) {
                 window.open(games[game], '_blank', 'width=500,height=500,resizable=yes');
             }
-        }
-
-        function openNewWindow() {
-            window.open('novedades.html', '_blank', 'width=800,height=600,resizable=yes');
         }
 
         // Konami Code Easter Egg (↑ ↑ ↓ ↓ ← → ← → B A)

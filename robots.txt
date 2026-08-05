@@ -8,5 +8,6 @@ Disallow: /python/
 Disallow: /tests/
 Disallow: /apps_data.json
 Disallow: /admin-hub
+Disallow: /novedades
 
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml

@@ -3,7 +3,7 @@
    Tarjeta blanca con línea guía apuntando al elemento (desktop) y
    modo "hoja inferior" sin línea en pantallas móviles (≤720px),
    donde el elemento señalado recibe un resplandor en su lugar.
-   Patrón reutilizable: index.html y pages/novedades.html
+   Patrón reutilizable: index.html y pages/opensource.html
    ═══════════════════════════════════════════════════════════════ */
 
 :root {

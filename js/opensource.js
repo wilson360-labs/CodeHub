@@ -2,7 +2,7 @@
    Open Source — Catálogo dinámico
    CodeHub by Wilson.E
 
-   Fuente única: GET /api/apps (mismo backend que /novedades).
+   Fuente única: GET /api/apps.
    Se muestran solo las apps que tengan `source_repo` ("owner/repo")
    configurado en MongoDB — esas son las que el cron
    backend/scripts/check-app-updates.js mantiene al día contra

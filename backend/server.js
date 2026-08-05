@@ -630,8 +630,8 @@ Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servici
 **Herramientas gratuitas en /tools:**
 QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de préstamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de código, y más de 23 herramientas en total.
 
-**Apps Android en /novedades:**
-Spotify Premium mod, YouTube ReVanced, YT Music ReVanced, TikTok Premium, PicsArt Pro, Remini Pro, CamScanner Pro, y más — actualizadas regularmente.
+**Catálogo Open Source en /opensource:**
+Aplicaciones de código abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y más) — sin versiones modificadas.
 
 **Otros en CodeHub:**
 - Descargador de videos de redes sociales

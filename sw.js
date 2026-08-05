@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v5.0';
+const VERSION   = 'codehub-v5.1';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -25,10 +25,10 @@ const PRECACHE = [
   '/',
   '/index.html',
   '/tools',
-  '/novedades',
+  '/opensource',
   '/downloader',
   '/servicios',
-  '/css/novedades.css',
+  '/css/opensource.css',
   '/manifest.json',
   '/offline.html',
   '/js/script.js',
@@ -189,7 +189,7 @@ self.addEventListener('push', e => {
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
     requireInteraction: false,
-    data: { url: url || '/novedades', type, appId },
+    data: { url: url || '/opensource', type, appId },
     actions: [],
   };
 
@@ -200,7 +200,7 @@ self.addEventListener('push', e => {
       { action: 'view',    title: '⬇️ Ver app' },
       { action: 'dismiss', title: 'Cerrar' },
     ];
-    options.data.url = '/novedades';
+    options.data.url = '/opensource';
   } else if (type === 'weather') {
     options.tag      = 'codehub-weather';
     options.renotify = false;
@@ -217,7 +217,7 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
-  const targetUrl = e.notification.data?.url || '/novedades';
+  const targetUrl = e.notification.data?.url || '/opensource';
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
@@ -243,7 +243,7 @@ self.addEventListener('message', e => {
       badge: '/splash/codehub.png',
       tag: notifType === 'weather' ? 'codehub-weather' : `app-update-${appId || 'gen'}`,
       vibrate: [150, 100, 150],
-      data: { url: url || '/novedades', type: notifType },
+      data: { url: url || '/opensource', type: notifType },
       renotify: true,
     });
   }

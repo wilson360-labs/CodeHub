@@ -405,7 +405,7 @@ def cmd_health():
     pages = [
         ("/",              "index.html"),
         ("/tools.html",    "tools.html"),
-        ("/novedades.html","novedades.html"),
+        ("/opensource.html","opensource.html"),
         ("/servicios.html","servicios.html"),
         ("/sw.js",         "Service Worker"),
         ("/manifest.json", "PWA Manifest"),

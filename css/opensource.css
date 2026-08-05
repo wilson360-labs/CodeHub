@@ -1,6 +1,7 @@
 /* ============================================
-   novedades.css — CodeHub by Wilson.E
-   Consistente con el design system del sitio
+   opensource.css — CodeHub by Wilson.E
+   Base styles del catálogo Open Source (heredadas
+   del antiguo novedades.css)
    ============================================ */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }

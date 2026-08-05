@@ -26,13 +26,6 @@
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/novedades</loc>
-    <lastmod>2026-06-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
-
-  <url>
     <loc>https://wilson360-labs.vercel.app/opensource</loc>
     <lastmod>2026-08-02</lastmod>
     <changefreq>weekly</changefreq>

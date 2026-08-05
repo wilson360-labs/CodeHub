@@ -12,7 +12,7 @@ test.describe('Página principal — CodeHub', () => {
   test('nav tiene links correctos', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('a[href*="tools"]')).toBeVisible();
-    await expect(page.locator('a[href*="novedades"]')).toBeVisible();
+    await expect(page.locator('a[href*="opensource"]')).toBeVisible();
     await expect(page.locator('a[href*="servicios"]')).toBeVisible();
   });
 

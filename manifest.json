@@ -54,10 +54,10 @@
       ]
     },
     {
-      "name": "Apps Android",
+      "name": "Open Source",
       "short_name": "Apps",
-      "description": "Apps premium desbloqueadas",
-      "url": "/novedades",
+      "description": "Catálogo de apps Android de código abierto",
+      "url": "/opensource",
       "icons": [
         {
           "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",

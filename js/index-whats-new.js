@@ -38,7 +38,7 @@
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeDialog(); });
 
   // acciones: abrir páginas (misma pestaña)
-  btnNovedades.addEventListener('click', () => { window.location.href = 'novedades.html'; });
+  btnNovedades.addEventListener('click', () => { window.location.href = 'opensource.html'; });
   btnTools.addEventListener('click', () => { window.location.href = 'tools.html'; });
 
   // Esc para cerrar

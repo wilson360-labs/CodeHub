@@ -497,7 +497,7 @@ function toggleVerified(appId) {
 }
 
 // ── NORMALIZADOR DE RUTAS LOCALES DE IMAGEN ─────────────────────
-// getOptimizedImageUrl() (novedades.js) solo trata como ruta local
+// getOptimizedImageUrl() (opensource.js) solo trata como ruta local
 // los valores que empiezan con "/" — cualquier otra cosa la manda
 // al proxy wsrv.nl como si fuera una URL externa, y una ruta local
 // sin "/" inicial (ej: "img/kernelsu.png") se rompe en el sitio.
@@ -666,7 +666,7 @@ async function sendAppUpdatePush(app, body) {
       version:   body.version || '',
       changelog: body.changelog || '',
       icon:      '/splash/codehub.png',
-      url:       '/novedades.html',
+      url:       '/opensource.html',
       updatedAt: new Date().toISOString(),
     };
 
@@ -882,16 +882,8 @@ function renderAddForm() {
     <div class="section-title"><i class="fas fa-plus-circle"></i> Agregar Nueva App</div>
     <div class="card" style="max-width:640px">
       <div style="margin-bottom:1rem">
-        <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.08em">¿A dónde va esta app?</label>
-        <div style="display:flex;gap:.5rem">
-          <button type="button" id="dest-btn-novedades" onclick="setAppDestino('novedades')" style="flex:1;padding:.6rem;border-radius:10px;background:rgba(255,69,0,.14);border:1px solid rgba(255,69,0,.4);color:var(--a);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer">
-            <i class="fas fa-bolt"></i> Novedades (AppsHub)
-          </button>
-          <button type="button" id="dest-btn-opensource" onclick="setAppDestino('opensource')" style="flex:1;padding:.6rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer">
-            <i class="fab fa-github"></i> Open Source
-          </button>
-        </div>
-        <div id="dest-hint" style="font-size:.62rem;color:var(--muted);margin-top:.4rem">Ambos destinos publican directo al backend. Novedades aparece de inmediato en /novedades; Open Source aparece en /opensource y activa el monitor automático de GitHub Releases.</div>
+        <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.08em">Catálogo</label>
+        <div id="dest-hint" style="font-size:.68rem;color:var(--c, #00e5ff);padding:.55rem .75rem;border-radius:10px;background:rgba(0,229,255,.06);border:1px solid rgba(0,229,255,.18)"><i class="fab fa-github"></i> Todas las apps se publican en el catálogo <strong>Open Source</strong> (aparecen en /opensource y activan el monitor automático de GitHub Releases).</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1rem">
         <div>
@@ -900,7 +892,7 @@ function renderAddForm() {
         </div>
         <div>
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Nombre</label>
-          <input class="ver-input" id="new-nombre" style="width:100%" placeholder="Spotify Premium" oninput="onNewAppFieldsChange()">
+          <input class="ver-input" id="new-nombre" style="width:100%" placeholder="NewPipe" oninput="onNewAppFieldsChange()">
         </div>
         <div>
           <label style="font-family:var(--mono);font-size:.58rem;color:var(--muted);display:block;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.08em">Versión</label>
@@ -951,28 +943,17 @@ function renderAddForm() {
         <i class="fas fa-plus"></i> Crear App
       </button>
     </div>`;
-  setAppDestino(window._appDestino || 'novedades');
+  setAppDestino('opensource');
   updateCatalogBadge();
 }
 
-// ── DESTINO DE LA NUEVA APP: Novedades (backend) u Open Source (estático) ──
+// ── DESTINO DE LA NUEVA APP: siempre Open Source (estático) ──
 function setAppDestino(destino) {
-  window._appDestino = destino;
-  const bNov = document.getElementById('dest-btn-novedades');
-  const bOs  = document.getElementById('dest-btn-opensource');
-  const btn  = document.getElementById('create-app-btn');
+  window._appDestino = 'opensource';
+  const btn = document.getElementById('create-app-btn');
   const hint = document.getElementById('dest-hint');
-  if (!bNov || !bOs) return;
-  const on  = 'flex:1;padding:.6rem;border-radius:10px;background:rgba(255,69,0,.14);border:1px solid rgba(255,69,0,.4);color:var(--a);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer';
-  const off = 'flex:1;padding:.6rem;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-family:var(--font);font-weight:700;font-size:.78rem;cursor:pointer';
-  bNov.style = destino === 'novedades' ? on : off;
-  bOs.style  = destino === 'opensource' ? on : off;
-  if (btn) btn.innerHTML = destino === 'opensource'
-    ? '<i class="fab fa-github"></i> Crear App Open Source'
-    : '<i class="fas fa-plus"></i> Crear App';
-  if (hint) hint.textContent = destino === 'opensource'
-    ? 'Se crea directo en MongoDB con source_repo — aparece en /opensource y el cron de GitHub Releases empieza a monitorearla en la próxima corrida. Repositorio Open Source es obligatorio.'
-    : 'Publica directo al backend — aparece de inmediato en /novedades.';
+  if (btn) btn.innerHTML = '<i class="fab fa-github"></i> Crear App Open Source';
+  if (hint) hint.textContent = 'Se crea directo en MongoDB con source_repo — aparece en /opensource y el cron de GitHub Releases empieza a monitorearla en la próxima corrida. Repositorio Open Source es obligatorio.';
 }
 
 // ── AUTO-DETECCIÓN DE CATÁLOGO (Open Source vs Premium) Y CATEGORÍA ──
@@ -1039,7 +1020,7 @@ function onNewAppFieldsChange() {
 }
 
 // ── PREVIEW EN VIVO DEL ÍCONO AL CREAR APP ──────────────────────
-// Usa el mismo optimizador (wsrv.nl) que ya corre en novedades.js
+// Usa el mismo optimizador (wsrv.nl) que ya corre en opensource.js
 // para que el preview refleje exactamente lo que verá el usuario.
 let _previewDebounce = null;
 function previewNewImagen() {
@@ -1124,8 +1105,8 @@ async function createApp() {
   }
 
   // ── DESTINO: OPEN SOURCE — requiere repo (activa el monitor de releases) ──
-  if (window._appDestino === 'opensource' && !body.source_repo) {
-    return toast('❌ Repositorio Open Source (owner/repo) es obligatorio para este destino');
+  if (!body.source_repo) {
+    return toast('❌ Repositorio Open Source (owner/repo) es obligatorio');
   }
 
   try {
@@ -1135,9 +1116,7 @@ async function createApp() {
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
-    toast(window._appDestino === 'opensource'
-      ? '✅ App Open Source creada: ' + body.nombre + ' — el monitor de releases la revisa en la próxima corrida del cron'
-      : '✅ App creada: ' + body.nombre);
+    toast('✅ App Open Source creada: ' + body.nombre + ' — el monitor de releases la revisa en la próxima corrida del cron');
     await refreshApps();
     document.querySelectorAll('.admin-tab')[0].click();
   } catch (e) { toast('❌ ' + e.message); }

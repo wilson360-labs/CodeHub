@@ -153,10 +153,6 @@
       "destination": "/pages/tools.html"
     },
     {
-      "source": "/novedades",
-      "destination": "/pages/novedades.html"
-    },
-    {
       "source": "/opensource",
       "destination": "/pages/opensource.html"
     },
@@ -201,7 +197,7 @@
     },
     {
       "source": "/novedades.html",
-      "destination": "/novedades",
+      "destination": "/opensource",
       "permanent": true
     },
     {
@@ -211,12 +207,12 @@
     },
     {
       "source": "/open-source.html",
-      "destination": "/novedades#open-source",
+      "destination": "/opensource",
       "permanent": true
     },
     {
       "source": "/open-source",
-      "destination": "/novedades#open-source",
+      "destination": "/opensource",
       "permanent": true
     },
     {
@@ -265,18 +261,13 @@
       "permanent": true
     },
     {
-      "source": "/pages/novedades",
-      "destination": "/novedades",
-      "permanent": true
-    },
-    {
       "source": "/pages/opensource",
       "destination": "/opensource",
       "permanent": true
     },
     {
       "source": "/pages/open-source",
-      "destination": "/novedades#open-source",
+      "destination": "/opensource",
       "permanent": true
     },
     {

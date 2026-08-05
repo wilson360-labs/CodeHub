@@ -29,9 +29,10 @@ const AD_SLOTS = {
       format: 'auto',
     },
 
-    // NOTA: novedades.html (Apps Premium) ya NO lleva AdSense —
-    // ese contenido no es apto para monetizar (apps modificadas/premium
-    // desbloqueadas). Solo index.html y opensource.html quedan con anuncios.
+    // NOTA: AppsHub / novedades.html fue eliminado (Agosto 2026) — ese
+    // contenido (apps modificadas/premium desbloqueadas) incumplía las
+    // políticas de AdSense y bloqueaba la aprobación. Las unidades activas
+    // hoy están en index.html, tools.html y opensource.html.
   },
 };
 

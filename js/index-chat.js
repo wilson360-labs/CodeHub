@@ -28,7 +28,7 @@
   const SYSTEM = `Eres EMI IA, asistente inteligente de Wilson.E, desarrollador guatemalteco. Fuiste creada para el portfolio CodeHub. 
 Eres conciso, técnico y amigable. Respondes en español.
 CodeHub tiene: portfolio, 23 herramientas web (QR, contraseñas, hash, regex, UUID, Pomodoro, etc.), 
-una tienda de apps Android (novedades.html) y juegos (Snake, Tetris).
+un catálogo de apps Android Open Source (opensource.html) y juegos (Snake, Tetris).
 Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones por respuesta salvo que pidan detalle.`;
 
   fab.addEventListener('click', toggle);
@@ -175,7 +175,7 @@ Cuando expliques código, usa bloques de código breves. Máximo 3-4 oraciones p
     if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
     if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Herramientas con notificaciones del navegador. 🍅';
     if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>18 herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
-    if (ql.includes('app') || ql.includes('android')) return 'La <strong>tienda de apps</strong> tiene Spotify Premium, YouTube ReVanced, TikTok Mod, Remini Pro y más. Todo en <code>novedades.html</code>. Solo para Android. 📱';
+    if (ql.includes('app') || ql.includes('android')) return 'CodeHub tiene un <strong>catálogo de apps Open Source</strong> verificadas contra su repositorio oficial en GitHub. Todo en <code>opensource.html</code>. 📱';
     if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
     if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
     return 'Entendido. Para preguntas técnicas detalladas, la conexión a la IA requiere configuración del servidor. Mientras tanto, puedo responder sobre las herramientas de CodeHub. ¿Qué quieres saber? 🤖';

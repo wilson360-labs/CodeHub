@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-Ready-blue)](https://wilson360-labs.vercel.app)
 
-[🌐 Ver sitio](https://wilson360-labs.vercel.app) · [🛠️ Tools](https://wilson360-labs.vercel.app/tools.html) · [📱 Apps](https://wilson360-labs.vercel.app/novedades.html) · [💼 Servicios](https://wilson360-labs.vercel.app/servicios.html)
+[🌐 Ver sitio](https://wilson360-labs.vercel.app) · [🛠️ Tools](https://wilson360-labs.vercel.app/tools.html) · [📱 Open Source](https://wilson360-labs.vercel.app/opensource.html) · [💼 Servicios](https://wilson360-labs.vercel.app/servicios.html)
 
 </div>
 
@@ -20,7 +20,7 @@
 Portfolio de **Wilson.E**, desarrollador web full stack de Guatemala. Incluye:
 
 - **27 herramientas web** gratuitas (contraseñas, QR, clima, traductor, imagen IA, y más)
-- **Apps Android premium** con sistema de descargas, ratings y solicitudes
+- **Catálogo de apps Open Source** verificadas contra su repositorio de GitHub
 - **Chat IA** powered by Groq (LLaMA 3.3 70B) con fallback a Gemini
 - **Descargador de videos** de redes sociales
 - **PWA** instalable con soporte offline y notificaciones en tiempo real
@@ -46,7 +46,7 @@ Portfolio de **Wilson.E**, desarrollador web full stack de Guatemala. Incluye:
 CodeHub/
 ├── index.html          # Portfolio principal
 ├── tools.html          # 27 herramientas web
-├── novedades.html      # Apps Android
+├── opensource.html     # Apps Android Open Source
 ├── servicios.html      # Servicios freelance
 ├── downloader.html     # Descargador de videos
 ├── cv.html             # Hoja de vida

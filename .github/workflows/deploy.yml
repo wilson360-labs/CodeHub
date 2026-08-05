@@ -20,7 +20,7 @@ jobs:
             test -f "$f" && echo "OK $f" || { echo "FALTA $f"; exit 1; }
           done
           # Archivos en /pages (rutas reales del proyecto)
-          for f in pages/tools.html pages/novedades.html pages/servicios.html; do
+          for f in pages/tools.html pages/opensource.html pages/servicios.html; do
             test -f "$f" && echo "OK $f" || { echo "FALTA $f"; exit 1; }
           done
 

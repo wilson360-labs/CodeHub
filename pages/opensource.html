@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
-  <link rel="stylesheet" href="../css/novedades.css">
+  <link rel="stylesheet" href="../css/opensource.css">
   <link rel="stylesheet" href="../css/site-tour.css?v=20260728a">
   <style>
     body { font-family: 'Syne', sans-serif; }
@@ -55,7 +55,7 @@
     <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
     <span class="logo-b">CodeHub</span>
   </a>
-  <a class="back-link" href="/novedades"><i class="fas fa-arrow-left"></i> Ver también AppsHub</a>
+  <a class="back-link" href="/"><i class="fas fa-arrow-left"></i> Volver al inicio</a>
 </header>
 
 <section class="hero">
@@ -183,14 +183,12 @@
 
 <footer style="text-align:center;padding:2rem 1.2rem;color:#666;font-size:.75rem;border-top:1px solid rgba(255,255,255,.06);margin-top:1rem;">
   <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.</p>
-  <p style="margin-top:.5rem;"><a href="/novedades" style="color:#ff6a3d;">Ver también AppsHub →</a></p>
 </footer>
 
 <script src="../js/opensource.js"></script>
 <script src="../js/site-tour.js?v=20260728a"></script>
 <script>
-// ── TOUR GUIADO — presenta el catálogo Open Source (independiente de
-// AppsHub desde que se dividió en su propia página). Se espera al
+// ── TOUR GUIADO — presenta el catálogo Open Source. Se espera al
 // evento 'os:catalog-loaded' para que el paso del botón de descarga
 // apunte a una tarjeta real, no al placeholder "Cargando…"; un timeout
 // de respaldo evita que el tour se quede esperando si el evento no llega.
@@ -211,12 +209,6 @@
         icon: 'fa-solid fa-download',
         title: 'Descarga verificada',
         text: 'El botón descarga el APK a través de nuestro sistema, que resuelve el enlace real (GitHub Releases u otro mirror) sin exponerlo directo en la página.'
-      },
-      {
-        selector: '.back-link',
-        icon: 'fa-solid fa-arrow-left',
-        title: 'AppsHub',
-        text: '¿Buscas apps modificadas/premium en vez de código abierto? Vuelve aquí para ver ese catálogo.'
       }
     ], {
       delay: 0,
