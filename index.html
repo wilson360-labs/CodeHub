@@ -906,6 +906,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <div class="sc-bar"><div class="sc-fill" style="--w:65%;--c:#68a063"></div></div>
                     </div>
                 </div>
+                <div class="skill-chip">
+                    <div class="sc-icon"><img src="https://cdn.simpleicons.org/typescript/3178C6" width="26" height="26" alt="TypeScript" loading="lazy" style="display:block"></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>TypeScript</span><span class="sc-pct">65%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:65%;--c:#3178c6"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon"><img src="https://cdn.simpleicons.org/mysql/4479A1" width="26" height="26" alt="SQL" loading="lazy" style="display:block"></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>SQL</span><span class="sc-pct">55%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:55%;--c:#4479a1"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon"><img src="https://cdn.simpleicons.org/gnubash/4EAA25" width="26" height="26" alt="Shell / Bash" loading="lazy" style="display:block"></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Shell / Bash</span><span class="sc-pct">50%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:50%;--c:#4eaa25"></div></div>
+                    </div>
+                </div>
+                <div class="skill-chip">
+                    <div class="sc-icon"><img src="https://cdn.simpleicons.org/kotlin/7F52FF" width="26" height="26" alt="Java / Kotlin" loading="lazy" style="display:block"></div>
+                    <div class="sc-info">
+                        <div class="sc-top"><span>Java / Kotlin</span><span class="sc-pct">45%</span></div>
+                        <div class="sc-bar"><div class="sc-fill" style="--w:45%;--c:#7f52ff"></div></div>
+                    </div>
+                </div>
             </div>
 
             <!-- TAB: Habilidades 2025 -->
@@ -2992,6 +3020,9 @@ async function sendEmail(e) {
         <textarea id="ai-input" placeholder="Pregúntame algo, genera una imagen, depura código…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
           oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
+        <button id="emi-mic-btn" type="button" aria-label="Hablar con EMI" title="Hablar con EMI (voz a texto)" onclick="emiVoice.toggle()">
+          <i class="fas fa-microphone"></i>
+        </button>
         <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
           <i class="fas fa-paper-plane"></i>
         </button>
@@ -4358,6 +4389,8 @@ let currentLang = localStorage.getItem('ch_lang') || 'es';
 function applyLang(lang) {
     currentLang = lang;
     localStorage.setItem('ch_lang', lang);
+    if (window.emiVoice?.setLang) emiVoice.setLang(lang === 'en' ? 'en-US' : 'es-GT');
+    document.dispatchEvent(new CustomEvent('ch:langchange', { detail: { lang } }));
     const dict = i18n[lang];
     // Traducir elementos con data-i18n
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -5099,6 +5132,7 @@ function setAIMood(btn) {
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260724a"></script>
+<script src="js/emi-voice.js?v=20260724a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

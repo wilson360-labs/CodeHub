@@ -1744,6 +1744,44 @@
 #ai-send-btn:hover::before{left:120%;}
 #ai-send-btn:active{transform:scale(.94);}
 #ai-send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;box-shadow:none;}
+#emi-mic-btn{
+  flex-shrink:0;width:42px;height:42px;border-radius:50%;
+  border:1px solid rgba(0,229,255,.25);background:rgba(0,229,255,.08);
+  color:var(--c,#00e5ff);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;transition:background .2s,border-color .2s,transform .15s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+#emi-mic-btn:hover{background:rgba(0,229,255,.16);border-color:rgba(0,229,255,.5);transform:scale(1.06);}
+#emi-mic-btn.emi-mic-active{
+  background:rgba(255,69,0,.18);border-color:rgba(255,69,0,.7);color:#ff4500;
+  box-shadow:0 0 16px rgba(255,69,0,.35);animation:emi-mic-pulse 1.4s ease-in-out infinite;
+}
+#emi-mic-btn.emi-mic-unsupported{opacity:.38;cursor:not-allowed;}
+@keyframes emi-mic-pulse{
+  0%,100%{box-shadow:0 0 10px rgba(255,69,0,.3);}
+  50%{box-shadow:0 0 22px rgba(255,69,0,.65);}
+}
+.emi-mic-ripple{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,69,0,.3) 0%,transparent 70%);
+  opacity:0;transform:scale(0);transition:none;
+}
+#emi-mic-btn.emi-mic-active .emi-mic-ripple{animation:emi-ripple-expand 1.4s ease-out infinite;}
+@keyframes emi-ripple-expand{
+  0%{opacity:.5;transform:scale(0);}
+  100%{opacity:0;transform:scale(2);}
+}
+/* Toast fallback (solo si no existe #toast en CodeHub) */
+.emi-voice-toast{
+  position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%) translateY(12px);
+  background:rgba(13,13,26,.96);border:1px solid rgba(255,255,255,.1);color:#f0f0fa;
+  padding:.55rem 1.1rem;border-radius:99px;font-size:.75rem;
+  font-family:var(--mono,monospace);opacity:0;pointer-events:none;z-index:9999;
+  transition:opacity .25s,transform .25s;white-space:nowrap;max-width:90vw;text-align:center;
+}
+.emi-voice-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.emi-voice-toast.error{border-color:rgba(255,69,0,.5);color:#ff9a7a;}
+.emi-voice-toast.warn{border-color:rgba(255,189,105,.5);color:var(--a,#ffbd69);}
 .ai-char-count{font-size:.59rem;font-family:'JetBrains Mono',monospace;color:rgba(180,180,220,.35);transition:color .2s;}
 .ai-char-count.warn{color:rgba(255,171,0,.7);}
 .ai-char-count.over{color:rgba(255,82,82,.8);}
