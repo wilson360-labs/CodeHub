@@ -807,16 +807,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
 
             <div class="pueblo-controls" aria-label="Controles de la galería">
-                <button class="pueblo-nav-btn" id="pueblo-prev" type="button" aria-label="Imagen anterior">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
                 <div class="pueblo-nav-hint">
                     <i class="fas fa-images" style="color:var(--accent)"></i>
-                    <span><strong>Galeria:</strong> toca la imagen o usa las flechas para verla una por una</span>
+                    <span><strong>Galería:</strong> reproducción automática · toca una imagen para verla</span>
                 </div>
-                <button class="pueblo-nav-btn" id="pueblo-next" type="button" aria-label="Imagen siguiente">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
+                <div class="pueblo-dots" id="pueblo-dots" role="group" aria-label="Seleccionar imagen"></div>
             </div>
 
             <!-- Video -->
@@ -4760,14 +4755,38 @@ document.addEventListener('DOMContentLoaded', () => {
   </script>
 
   <script>
-  // ── Expanding Panels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
+  // ── Expanding Panels — autoplay elegante, sin flechas ──
   (function() {
     var panels = Array.from(document.querySelectorAll('.pueblo-panel'));
-    var prevBtn = document.getElementById('pueblo-prev');
-    var nextBtn = document.getElementById('pueblo-next');
+    var wrap = document.getElementById('pueblo-panels');
+    var dotsWrap = document.getElementById('pueblo-dots');
     var current = panels.findIndex(function(panel) { return panel.classList.contains('active'); });
-    var hintShown = false;
+    var timer = null;
+    var AUTOPLAY_MS = 5000;
     if (current < 0) current = 0;
+
+    var dots = [];
+    if (dotsWrap) {
+      panels.forEach(function(panel, index) {
+        var dot = document.createElement('button');
+        dot.className = 'pueblo-dot';
+        dot.type = 'button';
+        dot.setAttribute('aria-label', 'Imagen ' + (index + 1) + ' de ' + panels.length);
+        dot.addEventListener('click', function() {
+          activatePanel(index, 'dot');
+          restartAutoplay();
+        });
+        dotsWrap.appendChild(dot);
+        dots.push(dot);
+      });
+    }
+
+    function syncDots() {
+      dots.forEach(function(dot, index) {
+        dot.classList.toggle('active', index === current);
+        dot.setAttribute('aria-current', index === current ? 'true' : 'false');
+      });
+    }
 
     function activatePanel(index, source) {
       if (!panels.length) return;
@@ -4776,11 +4795,7 @@ document.addEventListener('DOMContentLoaded', () => {
         panel.classList.toggle('active', panelIndex === current);
         panel.setAttribute('aria-hidden', panelIndex === current ? 'false' : 'true');
       });
-
-      if (!hintShown && source && typeof toast === 'function') {
-        toast('Usa las flechas para recorrer la galeria', 'info', 2200);
-        hintShown = true;
-      }
+      syncDots();
     }
 
     panels.forEach(function(panel, index) {
@@ -4788,28 +4803,38 @@ document.addEventListener('DOMContentLoaded', () => {
       panel.setAttribute('role', 'button');
       panel.addEventListener('click', function() {
         activatePanel(index, 'click');
+        restartAutoplay();
       });
       panel.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           activatePanel(index, 'keyboard');
+          restartAutoplay();
         }
       });
     });
 
-    if (prevBtn) {
-      prevBtn.addEventListener('click', function() {
-        activatePanel(current - 1, 'prev');
-      });
+    function startAutoplay() {
+      if (timer) clearInterval(timer);
+      if (panels.length < 2) return;
+      timer = setInterval(function() { activatePanel(current + 1, 'auto'); }, AUTOPLAY_MS);
+    }
+    function stopAutoplay() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+    function restartAutoplay() {
+      stopAutoplay();
+      startAutoplay();
     }
 
-    if (nextBtn) {
-      nextBtn.addEventListener('click', function() {
-        activatePanel(current + 1, 'next');
-      });
+    if (wrap) {
+      wrap.addEventListener('mouseenter', stopAutoplay);
+      wrap.addEventListener('mouseleave', startAutoplay);
+      wrap.addEventListener('touchstart', stopAutoplay, { passive: true });
     }
 
     activatePanel(current);
+    startAutoplay();
   })();
   </script>
 
