@@ -30,11 +30,11 @@
       --border:   rgba(255,255,255,.07);
 
       /* Colores por módulo */
-      --c-store:  #10b981;   /* naranja — MiniStore */
+      --c-store:  #2f80ed;   /* naranja — MiniStore */
       --c-card:   #00e5ff;   /* cyan — DevCard */
       --c-drop:   #a855f7;   /* morado — DropZone */
       --c-hub:    #00e676;   /* verde — HubStore */
-      --c-ultra:  #e8c978;   /* dorado — Ultra */
+      --c-ultra:  #38bdf8;   /* dorado — Ultra */
 
       --text:     #f0f0fa;
       --muted:    rgba(240,240,250,.45);
@@ -63,7 +63,7 @@
     }
     .cursor-ring {
       position: fixed; width: 36px; height: 36px;
-      border: 1.5px solid rgba(232,201,120,.5);
+      border: 1.5px solid rgba(56,189,248,.5);
       border-radius: 50%; pointer-events: none; z-index: 99998;
       transform: translate(-50%,-50%);
       transition: all .12s ease-out;
@@ -92,7 +92,7 @@
     header {
       position: fixed; top: 0; left: 0; right: 0; z-index: 500;
       background: rgba(5,5,15,.92); backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(232,201,120,.15);
+      border-bottom: 1px solid rgba(56,189,248,.15);
       padding: .75rem 2rem;
       display: flex; align-items: center; justify-content: space-between;
     }
@@ -152,12 +152,12 @@
     .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
     .btn-primary {
       padding: .75rem 2rem; border-radius: 12px;
-      background: linear-gradient(135deg, var(--c-store), #34d399);
+      background: linear-gradient(135deg, var(--c-store), #22c55e);
       border: none; color: #fff; font-family: var(--font);
       font-size: .9rem; font-weight: 700; cursor: none;
       transition: all .2s; text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
     }
-    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(16,185,129,.4); }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(47,128,237,.4); }
     .btn-ghost {
       padding: .75rem 2rem; border-radius: 12px;
       background: transparent; border: 1.5px solid rgba(255,255,255,.15);
@@ -172,7 +172,7 @@
       position: absolute; border-radius: 50%; filter: blur(80px);
       pointer-events: none; z-index: 0;
     }
-    .orb1 { width: 500px; height: 500px; background: rgba(16,185,129,.08); top: -100px; left: -200px; }
+    .orb1 { width: 500px; height: 500px; background: rgba(47,128,237,.08); top: -100px; left: -200px; }
     .orb2 { width: 400px; height: 400px; background: rgba(0,229,255,.06); top: 20%; right: -150px; }
     .orb3 { width: 300px; height: 300px; background: rgba(168,85,247,.07); bottom: 0; left: 30%; }
 
@@ -223,11 +223,11 @@
     .mod-half  { grid-column: span 6; }
 
     /* ── MiniStore (naranja) ── */
-    .mod-store { border-color: rgba(16,185,129,.2); }
-    .mod-store:hover { border-color: rgba(16,185,129,.5); box-shadow: 0 20px 60px rgba(16,185,129,.12); }
-    .mod-store::before { background: radial-gradient(circle at 80% 20%, rgba(16,185,129,.08), transparent 60%); }
+    .mod-store { border-color: rgba(47,128,237,.2); }
+    .mod-store:hover { border-color: rgba(47,128,237,.5); box-shadow: 0 20px 60px rgba(47,128,237,.12); }
+    .mod-store::before { background: radial-gradient(circle at 80% 20%, rgba(47,128,237,.08), transparent 60%); }
     .mod-store .mod-accent { color: var(--c-store); }
-    .mod-store .mod-icon { background: rgba(16,185,129,.12); color: var(--c-store); }
+    .mod-store .mod-icon { background: rgba(47,128,237,.12); color: var(--c-store); }
 
     /* ── DevCard (cyan) ── */
     .mod-devcard { border-color: rgba(0,229,255,.2); }
@@ -275,7 +275,7 @@
       font-size: .62rem; font-family: var(--mono);
       font-weight: 700; letter-spacing: .08em; margin-top: .8rem;
     }
-    .badge-soon { background: rgba(232,201,120,.12); color: var(--c-ultra); border: 1px solid rgba(232,201,120,.25); }
+    .badge-soon { background: rgba(56,189,248,.12); color: var(--c-ultra); border: 1px solid rgba(56,189,248,.25); }
     .badge-live { background: rgba(0,230,118,.12); color: var(--c-hub); border: 1px solid rgba(0,230,118,.25); }
     .badge-beta { background: rgba(0,229,255,.12); color: var(--c-card); border: 1px solid rgba(0,229,255,.25); }
     .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: blink 1.5s infinite; }
@@ -448,7 +448,7 @@
     /* ── TOAST ── */
     #toast {
       position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: rgba(15,15,30,.97); border: 1px solid rgba(232,201,120,.3);
+      background: rgba(15,15,30,.97); border: 1px solid rgba(56,189,248,.3);
       color: var(--text); padding: .65rem 1.4rem; border-radius: 12px;
       font-size: .82rem; font-family: var(--mono);
       opacity: 0; transition: all .3s; z-index: 9999; white-space: nowrap;
@@ -546,7 +546,7 @@
       </ul>
       <div class="mod-mockup">
         <div class="mock-bar">
-          <div class="mock-dot" style="background:#10b981"></div>
+          <div class="mock-dot" style="background:#2f80ed"></div>
           <div class="mock-dot" style="background:#ff9500"></div>
           <div class="mock-dot" style="background:#00e676"></div>
         </div>
@@ -781,7 +781,7 @@ function submitNotify() {
 
 // ── MÓDULOS HOVER COLOR CURSOR ───────────────────────
 const modColors = {
-  'mod-store':   '#10b981',
+  'mod-store':   '#2f80ed',
   'mod-devcard': '#00e5ff',
   'mod-drop':    '#a855f7',
   'mod-hub':     '#00e676',

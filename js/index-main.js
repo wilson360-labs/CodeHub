@@ -854,11 +854,11 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         }
 
         // Console Easter Egg
-        console.log('%c¡Hola Developer! 👋', 'color: #10b981; font-size: 24px; font-weight: bold;');
-        console.log('%c¿Curioseando el código? Me gusta tu estilo 😎', 'color: #e8c978; font-size: 16px;');
-        console.log('%cPrueba el código Konami: ↑ ↑ ↓ ↓ ← → ← → B A', 'color: #34d399; font-size: 14px;');
+        console.log('%c¡Hola Developer! 👋', 'color: #2f80ed; font-size: 24px; font-weight: bold;');
+        console.log('%c¿Curioseando el código? Me gusta tu estilo 😎', 'color: #38bdf8; font-size: 16px;');
+        console.log('%cPrueba el código Konami: ↑ ↑ ↓ ↓ ← → ← → B A', 'color: #22c55e; font-size: 14px;');
         console.log('%cO presiona Ctrl+K para la búsqueda rápida 🚀', 'color: #f7931e; font-size: 14px;');
-        console.log('%cAbre el Menú Experimental en el lado izquierdo 🧪', 'color: #10b981; font-size: 14px;');
+        console.log('%cAbre el Menú Experimental en el lado izquierdo 🧪', 'color: #2f80ed; font-size: 14px;');
 
         // Smooth scroll para todos los enlaces internos
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -1055,6 +1055,6 @@ Ubicación: San Luis Jilotepeque, Jalapa, Guatemala
         document.head.appendChild(rippleStyle);
 
         // Finalización de carga
-        console.log('%c✨ CodeHub Portfolio Cargado Completamente', 'color: #10b981; font-size: 16px; font-weight: bold;');
-        console.log('%c🧪 Menú Experimental disponible en el lado izquierdo', 'color: #e8c978; font-size: 14px;');
-        console.log('%c📝 Desarrollado por Wilson.E - 2024', 'color: #34d399; font-size: 12px;');
+        console.log('%c✨ CodeHub Portfolio Cargado Completamente', 'color: #2f80ed; font-size: 16px; font-weight: bold;');
+        console.log('%c🧪 Menú Experimental disponible en el lado izquierdo', 'color: #38bdf8; font-size: 14px;');
+        console.log('%c📝 Desarrollado por Wilson.E - 2024', 'color: #22c55e; font-size: 12px;');

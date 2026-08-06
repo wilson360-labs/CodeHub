@@ -167,7 +167,7 @@
             width: auto;
             height: auto;
             aspect-ratio: 1;
-            background: linear-gradient(145deg, rgba(16,185,129,0.08), rgba(52,211,153,0.04));
+            background: linear-gradient(145deg, rgba(47,128,237,0.08), rgba(34,197,94,0.04));
             border-radius: var(--radius-xl, 22px);
             display: flex;
             flex-direction: column;
@@ -175,7 +175,7 @@
             justify-content: center;
             gap: 0.6rem;
             padding: 1.4rem 0.8rem;
-            border: 1px solid rgba(16,185,129,0.25);
+            border: 1px solid rgba(47,128,237,0.25);
             transition: all 0.35s cubic-bezier(.2,.9,.2,1);
             cursor: pointer;
             position: relative;
@@ -187,15 +187,15 @@
             position: absolute;
             inset: 0;
             border-radius: var(--radius-xl, 22px);
-            background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(232,201,120,0.08));
+            background: linear-gradient(135deg, rgba(47,128,237,0.15), rgba(56,189,248,0.08));
             opacity: 0;
             transition: opacity 0.3s ease;
         }
 
         .badge:hover {
             transform: translateY(-8px) scale(1.04);
-            border-color: rgba(16,185,129,0.7);
-            box-shadow: 0 16px 40px rgba(16,185,129,0.35), 0 0 0 1px rgba(16,185,129,0.2);
+            border-color: rgba(47,128,237,0.7);
+            box-shadow: 0 16px 40px rgba(47,128,237,0.35), 0 0 0 1px rgba(47,128,237,0.2);
         }
 
         .badge:hover::after {
@@ -205,7 +205,7 @@
         .badge i {
             font-size: 2.2rem;
             color: var(--primary);
-            filter: drop-shadow(0 0 8px rgba(16,185,129,0.5));
+            filter: drop-shadow(0 0 8px rgba(47,128,237,0.5));
             position: relative;
             z-index: 1;
         }
@@ -287,7 +287,7 @@
         .pf-btn {
             padding: .38rem .9rem;
             border-radius: var(--radius-xl, 22px);
-            border: 1px solid rgba(16,185,129,.25);
+            border: 1px solid rgba(47,128,237,.25);
             background: transparent;
             color: rgba(232,232,240,.5);
             font-size: .78rem;
@@ -298,7 +298,7 @@
         .pf-btn:hover, .pf-btn.active {
             border-color: var(--primary);
             color: var(--accent);
-            background: rgba(16,185,129,.1);
+            background: rgba(47,128,237,.1);
         }
 
         .proj-grid {
@@ -315,7 +315,7 @@
         }
         .proj-card {
             background: rgba(19,19,31,1);
-            border: 1px solid rgba(16,185,129,.18);
+            border: 1px solid rgba(47,128,237,.18);
             border-radius: var(--radius-xl, 22px);
             overflow: hidden;
             display: flex;
@@ -323,9 +323,9 @@
             transition: all .25s cubic-bezier(.4,0,.2,1);
         }
         .proj-card:hover {
-            border-color: rgba(16,185,129,.5);
+            border-color: rgba(47,128,237,.5);
             transform: translateY(-5px);
-            box-shadow: 0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(16,185,129,.1);
+            box-shadow: 0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(47,128,237,.1);
         }
         .proj-card.proj-upcoming { opacity: .6; }
         .proj-card.proj-upcoming:hover { opacity: 1; }
@@ -335,7 +335,7 @@
             position: relative;
             height: 160px;
             overflow: hidden;
-            background: linear-gradient(135deg, var(--g1,#10b981), var(--g2,#34d399));
+            background: linear-gradient(135deg, var(--g1,#2f80ed), var(--g2,#22c55e));
         }
         .proj-thumb-bg {
             position: absolute;
@@ -387,15 +387,15 @@
             letter-spacing: .04em;
         }
         .proj-status.live  { background: rgba(0,230,118,.18); color: #00e676; border: 1px solid rgba(0,230,118,.35); }
-        .proj-status.wip   { background: rgba(52,211,153,.18); color: #34d399; border: 1px solid rgba(52,211,153,.35); }
-        .proj-status.done  { background: rgba(232,201,120,.18); color: #e8c978; border: 1px solid rgba(232,201,120,.35); }
+        .proj-status.wip   { background: rgba(34,197,94,.18); color: #22c55e; border: 1px solid rgba(34,197,94,.35); }
+        .proj-status.done  { background: rgba(56,189,248,.18); color: #38bdf8; border: 1px solid rgba(56,189,248,.35); }
         .proj-status.soon  { background: rgba(255,255,255,.08); color: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.12); }
 
         /* Body */
         .proj-body { padding: 1.3rem; flex: 1; display: flex; flex-direction: column; gap: .65rem; }
         .proj-meta { display: flex; align-items: center; gap: .6rem; }
         .proj-year  { font-family: 'JetBrains Mono', monospace; font-size: .68rem; color: rgba(232,232,240,.4); }
-        .proj-cat   { font-size: .68rem; font-weight: 600; color: var(--accent); background: rgba(232,201,120,.1); padding: .15rem .55rem; border-radius: var(--radius-xl, 22px); }
+        .proj-cat   { font-size: .68rem; font-weight: 600; color: var(--accent); background: rgba(56,189,248,.1); padding: .15rem .55rem; border-radius: var(--radius-xl, 22px); }
         .proj-title { font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.3; }
         .proj-desc  { font-size: .83rem; color: rgba(232,232,240,.55); line-height: 1.65; flex: 1; }
         .proj-stack { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .1rem; }
@@ -425,9 +425,9 @@
         .proj-btn-primary {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: #fff;
-            box-shadow: 0 4px 14px rgba(16,185,129,.28);
+            box-shadow: 0 4px 14px rgba(47,128,237,.28);
         }
-        .proj-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(16,185,129,.42); }
+        .proj-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(47,128,237,.42); }
         .proj-btn-ghost {
             background: rgba(255,255,255,.05);
             color: rgba(232,232,240,.6);
@@ -479,12 +479,12 @@
             color: inherit;
             transition: all .2s ease;
         }
-        .clink:hover { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.05); transform: translateX(4px); }
+        .clink:hover { border-color: rgba(47,128,237,.35); background: rgba(47,128,237,.05); transform: translateX(4px); }
         .clink-icon {
             width: 40px; height: 40px;
             border-radius: var(--radius-sm, 10px);
             display: flex; align-items: center; justify-content: center;
-            background: rgba(16,185,129,.12);
+            background: rgba(47,128,237,.12);
             color: var(--primary);
             font-size: 1rem;
             flex-shrink: 0;
@@ -515,7 +515,7 @@
         /* Formulario */
         .contact-form-wrap {
             background: rgba(19,19,31,.95);
-            border: 1px solid rgba(16,185,129,.2);
+            border: 1px solid rgba(47,128,237,.2);
             border-radius: var(--radius-xl, 22px);
             padding: 2rem;
         }
@@ -535,11 +535,11 @@
             transition: all .2s ease;
             width: 100%;
         }
-        .form-input:focus { border-color: rgba(16,185,129,.55); background: rgba(16,185,129,.04); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
+        .form-input:focus { border-color: rgba(47,128,237,.55); background: rgba(47,128,237,.04); box-shadow: 0 0 0 3px rgba(47,128,237,.1); }
         .form-input::placeholder { color: rgba(232,232,240,.3); }
         .form-input.error { border-color: rgba(255,100,100,.5); }
         .form-select { cursor: pointer; }
-        .form-select option { background: #0b3d2e; }
+        .form-select option { background: #1a1a2e; }
         .form-textarea { resize: vertical; min-height: 120px; font-family: inherit; }
         .form-err   { font-size: .72rem; color: #ff6b6b; min-height: 1em; }
         .form-char  { font-size: .68rem; color: rgba(232,232,240,.3); font-family: 'JetBrains Mono', monospace; text-align: right; margin-top: .2rem; }
@@ -556,9 +556,9 @@
             cursor: pointer;
             transition: all .2s ease;
             margin-top: .5rem;
-            box-shadow: 0 6px 20px rgba(16,185,129,.3);
+            box-shadow: 0 6px 20px rgba(47,128,237,.3);
         }
-        .form-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(16,185,129,.45); }
+        .form-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(47,128,237,.45); }
         .form-submit:disabled { opacity: .6; cursor: not-allowed; }
 
         .form-feedback {
@@ -730,7 +730,7 @@
             text-align: center;
             padding: 4rem 2rem 2.5rem;
             margin-top: 4rem;
-            border-top: 1px solid rgba(16,185,129,0.15);
+            border-top: 1px solid rgba(47,128,237,0.15);
             position: relative;
             overflow: hidden;
         }
@@ -740,7 +740,7 @@
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(16,185,129,0.5), rgba(232,201,120,0.5), rgba(16,185,129,0.5), transparent);
+            background: linear-gradient(90deg, transparent, rgba(47,128,237,0.5), rgba(56,189,248,0.5), rgba(47,128,237,0.5), transparent);
         }
 
         .footer-content {
@@ -797,11 +797,11 @@
             align-items: center;
             gap: 6px;
             font-family: 'JetBrains Mono', monospace;
-            background: rgba(16,185,129,0.12);
-            border: 1px solid rgba(16,185,129,0.25);
+            background: rgba(47,128,237,0.12);
+            border: 1px solid rgba(47,128,237,0.25);
             border-radius: var(--radius-sm, 10px);
             padding: 4px 10px;
-            color: rgba(232,201,120,0.7);
+            color: rgba(56,189,248,0.7);
         }
 
         .footer-kbd em { font-style: normal; color: rgba(255,255,255,0.3); }
@@ -841,7 +841,7 @@
         }
     
         /* ═══ PROTECCIÓN ANTI-COPIAR ════════════════════════════ */
-        ::selection { background: rgba(16,185,129,.15); color: var(--text); }
+        ::selection { background: rgba(47,128,237,.15); color: var(--text); }
 
         /* ═══ ANTI-DEVTOOLS OVERLAY ═════════════════════════════ */
         #devtools-warning {

@@ -2491,9 +2491,9 @@ app.get('/api/docs', (_, res) => {
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
   <style>
     body { margin: 0; background: #0a0a14; }
-    .swagger-ui .topbar { background: #10b981; }
+    .swagger-ui .topbar { background: #2f80ed; }
     .swagger-ui .topbar .download-url-wrapper { display: none; }
-    .swagger-ui .info .title { color: #10b981; }
+    .swagger-ui .info .title { color: #2f80ed; }
   </style>
 </head>
 <body>

@@ -1314,7 +1314,7 @@ async function loadSupabaseStats() {
 const _charts = {};
 function renderCharts(data) {
   if (typeof Chart === 'undefined') return;
-  const palette   = ['#10b981','#00e676','#00e5ff','#e8c978','#a855f7','#ff5f56','#34d399','#34d399'];
+  const palette   = ['#2f80ed','#00e676','#00e5ff','#38bdf8','#a855f7','#ff5f56','#22c55e','#22c55e'];
   const gridColor = 'rgba(255,255,255,.05)';
   const tickFont  = { size: 10, family: 'JetBrains Mono' };
   const tickColor = 'rgba(240,240,250,.4)';

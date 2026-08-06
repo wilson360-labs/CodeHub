@@ -6,7 +6,7 @@
 
 /* Wrapper principal */
 .sig-wrap {
-  background: var(--card, #0a3d2e);
+  background: var(--card, #1a1a2e);
   border: 1px solid color-mix(in srgb, var(--p, #7c3aed) 30%, transparent);
   border-radius: var(--radius-lg, 18px);
   padding: 1.5rem;

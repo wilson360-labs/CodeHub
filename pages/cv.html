@@ -23,7 +23,7 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg: #05050f; --surface: #0c0c1e;
-      --primary: #10b981; --accent: #e8c978; --cyan: #00e5ff; --green: #00e676;
+      --primary: #2f80ed; --accent: #38bdf8; --cyan: #00e5ff; --green: #00e676;
       --text: #f0f0fa; --muted: rgba(240,240,250,.45);
       --border: rgba(255,255,255,.08);
       --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
@@ -34,14 +34,14 @@
     }
     body::before {
       content: ''; position: fixed; inset: 0;
-      background-image: linear-gradient(rgba(16,185,129,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,.025) 1px, transparent 1px);
+      background-image: linear-gradient(rgba(47,128,237,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(47,128,237,.025) 1px, transparent 1px);
       background-size: 50px 50px; pointer-events: none; z-index: 0;
     }
 
     /* ── HEADER ── */
     .cv-header {
       background: rgba(5,5,15,.95); backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(16,185,129,.15);
+      border-bottom: 1px solid rgba(47,128,237,.15);
       padding: .8rem 2rem;
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: .6rem;
@@ -51,7 +51,7 @@
     .btn-dl {
       display: inline-flex; align-items: center; gap: .4rem;
       padding: .5rem 1.2rem; border-radius: 10px;
-      background: linear-gradient(135deg, var(--primary), #34d399);
+      background: linear-gradient(135deg, var(--primary), #22c55e);
       border: none; color: #fff; font-family: var(--font);
       font-size: .8rem; font-weight: 700; cursor: pointer; transition: all .2s;
     }
@@ -79,7 +79,7 @@
 
     /* ── HERO SECTION ── */
     .cv-hero {
-      background: linear-gradient(135deg, rgba(16,185,129,.12), rgba(108,58,245,.08), rgba(0,229,255,.06));
+      background: linear-gradient(135deg, rgba(47,128,237,.12), rgba(108,58,245,.08), rgba(0,229,255,.06));
       border-bottom: 1px solid var(--border);
       padding: 2.5rem 2.5rem 2rem;
       display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;
@@ -87,10 +87,10 @@
     .cv-avatar {
       width: 90px; height: 90px; border-radius: 50%;
       background: linear-gradient(135deg, var(--primary), #6c3af5);
-      border: 3px solid rgba(16,185,129,.4);
+      border: 3px solid rgba(47,128,237,.4);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0; overflow: hidden;
-      box-shadow: 0 0 32px rgba(16,185,129,.3);
+      box-shadow: 0 0 32px rgba(47,128,237,.3);
     }
     .cv-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
     .cv-hero-info { flex: 1; min-width: 200px; }
@@ -142,7 +142,7 @@
       font-family: var(--mono); font-size: .65rem; letter-spacing: .18em;
       text-transform: uppercase; color: var(--primary);
       margin-bottom: 1rem; padding-bottom: .4rem;
-      border-bottom: 1px solid rgba(16,185,129,.2);
+      border-bottom: 1px solid rgba(47,128,237,.2);
       display: flex; align-items: center; gap: .4rem;
     }
 
@@ -183,7 +183,7 @@
     /* Idiomas */
     .cv-lang-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
     .cv-lang-name { font-size: .82rem; }
-    .cv-lang-level { font-size: .65rem; font-family: var(--mono); color: var(--accent); background: rgba(232,201,120,.1); padding: .1rem .5rem; border-radius: 20px; }
+    .cv-lang-level { font-size: .65rem; font-family: var(--mono); color: var(--accent); background: rgba(56,189,248,.1); padding: .1rem .5rem; border-radius: 20px; }
 
     /* Footer del CV */
     .cv-footer {
@@ -196,7 +196,7 @@
     /* Toast */
     #toast {
       position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: rgba(15,15,30,.97); border: 1px solid rgba(232,201,120,.3);
+      background: rgba(15,15,30,.97); border: 1px solid rgba(56,189,248,.3);
       color: var(--text); padding: .65rem 1.4rem; border-radius: 12px;
       font-size: .82rem; font-family: var(--mono);
       opacity: 0; transition: all .3s; z-index: 9999; white-space: nowrap;
@@ -224,7 +224,7 @@
 
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://wilson360-labs.vercel.app/cv">
-  <meta name="theme-color" content="#10b981">
+  <meta name="theme-color" content="#2f80ed">
   <meta property="og:type" content="profile">
   <meta property="og:url" content="https://wilson360-labs.vercel.app/cv">
   <meta property="og:title" content="CV — Wilson.E | Desarrollador Web Full Stack Guatemala">
@@ -384,12 +384,12 @@ document.getElementById('cv-date').textContent =
 
 // ── SKILLS BARS ──────────────────────────────────────────
 const skills = [
-  { name: 'HTML / CSS',        pct: 90, color: '#10b981' },
-  { name: 'JavaScript',        pct: 78, color: '#e8c978' },
+  { name: 'HTML / CSS',        pct: 90, color: '#2f80ed' },
+  { name: 'JavaScript',        pct: 78, color: '#38bdf8' },
   { name: 'Node.js / Express', pct: 72, color: '#00e676' },
   { name: 'Python',            pct: 65, color: '#00e5ff' },
   { name: 'MongoDB',           pct: 68, color: '#a855f7' },
-  { name: 'Git / Deploy',      pct: 75, color: '#34d399' },
+  { name: 'Git / Deploy',      pct: 75, color: '#22c55e' },
 ];
 const grid = document.getElementById('skills-grid');
 grid.innerHTML = skills.map(s => `

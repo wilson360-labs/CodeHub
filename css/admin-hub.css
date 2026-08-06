@@ -6,7 +6,7 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --bg: #030308; --surface: #0a0a14; --card: #0f0f1e;
-      --p: #10b981; --a: #e8c978; --g: #00e676; --c: #00e5ff;
+      --p: #2f80ed; --a: #38bdf8; --g: #00e676; --c: #00e5ff;
       --text: #f0f0fa; --muted: rgba(240,240,250,.4);
       --border: rgba(255,255,255,.07);
       --font: 'Syne', sans-serif; --mono: 'JetBrains Mono', monospace;
@@ -19,7 +19,7 @@
       background: var(--bg); display: flex; align-items: center; justify-content: center;
     }
     .login-box {
-      background: var(--surface); border: 1px solid rgba(16,185,129,.2);
+      background: var(--surface); border: 1px solid rgba(47,128,237,.2);
       border-radius: var(--radius-xl, 22px); padding: 2.5rem; width: 360px; text-align: center;
     }
     .login-logo { font-size: 2.5rem; font-weight: 800; margin-bottom: .3rem; }
@@ -35,7 +35,7 @@
     .login-input:focus { border-color: var(--p); }
     .login-btn {
       width: 100%; padding: .75rem; border-radius: var(--radius-sm, 10px);
-      background: linear-gradient(135deg, var(--p), #34d399);
+      background: linear-gradient(135deg, var(--p), #22c55e);
       border: none; color: #fff; font-family: var(--font);
       font-size: .9rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
     }
@@ -45,7 +45,7 @@
     /* ── HEADER ── */
     header {
       background: rgba(3,3,8,.95); backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(16,185,129,.15);
+      border-bottom: 1px solid rgba(47,128,237,.15);
       padding: .8rem 2rem; display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
     }
@@ -58,7 +58,7 @@
       background: transparent; color: var(--muted); font-family: var(--font);
       font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
     }
-    .admin-tab.active { background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.35); color: var(--a); }
+    .admin-tab.active { background: rgba(47,128,237,.15); border-color: rgba(47,128,237,.35); color: var(--a); }
     .logout-btn {
       padding: .4rem .8rem; border-radius: var(--radius-sm, 10px); border: 1px solid var(--border);
       background: transparent; color: var(--muted); font-size: .75rem;
@@ -125,7 +125,7 @@
     .changelog-input:focus { border-color: var(--a); }
     .save-row-btn {
       padding: .35rem .8rem; border-radius: var(--radius-sm, 10px);
-      background: linear-gradient(135deg, var(--p), #34d399);
+      background: linear-gradient(135deg, var(--p), #22c55e);
       border: none; color: #fff; font-family: var(--mono);
       font-size: .68rem; font-weight: 700; cursor: pointer; transition: all .2s;
       white-space: nowrap;
@@ -168,7 +168,7 @@
     /* ── TOAST ── */
     #toast {
       position: fixed; bottom: 1.5rem; right: 1.5rem;
-      background: rgba(15,15,30,.97); border: 1px solid rgba(232,201,120,.3);
+      background: rgba(15,15,30,.97); border: 1px solid rgba(56,189,248,.3);
       color: var(--text); padding: .65rem 1.2rem; border-radius: var(--radius-md, 14px);
       font-family: var(--mono); font-size: .78rem;
       opacity: 0; transition: all .3s; z-index: 9999; transform: translateY(10px);

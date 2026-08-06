@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0c0c0c 0%, #0a3d2e 25%, #0b4a38 50%, #0e5e46 75%, #0c0c0c 100%);
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
             color: #ffffff;
             display: flex;
             justify-content: center;
@@ -39,7 +39,7 @@
         }
 
         #tetris-canvas {
-            border: 3px solid #10b981;
+            border: 3px solid #2f80ed;
             border-radius: 10px;
             background: rgba(0, 0, 0, 0.8);
             box-shadow: 0 0 30px rgba(255, 69, 0, 0.3);
@@ -61,7 +61,7 @@
         }
 
         .info-panel h3 {
-            color: #10b981;
+            color: #2f80ed;
             margin-bottom: 1rem;
             font-size: 1.2rem;
         }
@@ -69,7 +69,7 @@
         .score, .level, .lines {
             font-size: 2rem;
             font-weight: bold;
-            color: #e8c978;
+            color: #38bdf8;
             text-shadow: 0 0 10px rgba(255, 189, 105, 0.5);
         }
 
@@ -78,7 +78,7 @@
             width: 100px;
             height: 100px;
             margin: 1rem auto;
-            border: 2px solid #10b981;
+            border: 2px solid #2f80ed;
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -93,14 +93,14 @@
         }
 
         .controls h3 {
-            color: #10b981;
+            color: #2f80ed;
             margin-bottom: 1rem;
             text-align: center;
         }
 
         .controls p {
             margin: 0.5rem 0;
-            color: #e8c978;
+            color: #38bdf8;
             font-size: 0.9rem;
         }
 
@@ -112,7 +112,7 @@
         }
 
         .btn {
-            background: linear-gradient(45deg, #10b981, #34d399);
+            background: linear-gradient(45deg, #2f80ed, #22c55e);
             color: white;
             border: none;
             padding: 1rem 2rem;
@@ -142,20 +142,20 @@
             background: rgba(0, 0, 0, 0.9);
             padding: 2rem;
             border-radius: 20px;
-            border: 3px solid #10b981;
+            border: 3px solid #2f80ed;
             text-align: center;
             display: none;
             z-index: 100;
         }
 
         .game-over h2 {
-            color: #10b981;
+            color: #2f80ed;
             margin-bottom: 1rem;
             font-size: 2rem;
         }
 
         .game-over p {
-            color: #e8c978;
+            color: #38bdf8;
             margin-bottom: 1.5rem;
             font-size: 1.2rem;
         }
@@ -194,7 +194,7 @@
         }
 
         .control-btn {
-            background: linear-gradient(45deg, #10b981, #34d399);
+            background: linear-gradient(45deg, #2f80ed, #22c55e);
             color: white;
             border: none;
             padding: 1rem;
@@ -575,7 +575,7 @@
                 if (isPaused) {
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = '#10b981';
+                    ctx.fillStyle = '#2f80ed';
                     ctx.font = '48px Segoe UI';
                     ctx.textAlign = 'center';
                     ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2);

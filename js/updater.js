@@ -252,12 +252,12 @@ function showToast(changes) {
     ' con link actualizado</span><button onclick="this.parentNode.remove()">✕</button>';
   toast.style.cssText = [
     'position:fixed;bottom:24px;left:50%;transform:translateX(-50%)',
-    'background:#0a3d2e;border:1px solid rgba(16,185,129,.4);color:#fff',
+    'background:#1a1a2e;border:1px solid rgba(47,128,237,.4);color:#fff',
     'padding:10px 18px;border-radius:10px;font-size:.85rem',
     'display:flex;gap:12px;align-items:center;z-index:9999',
     'box-shadow:0 4px 20px rgba(0,0,0,.5)'
   ].join(';');
-  toast.querySelector('button').style.cssText = 'background:none;border:none;color:#34d399;cursor:pointer;font-size:1rem';
+  toast.querySelector('button').style.cssText = 'background:none;border:none;color:#22c55e;cursor:pointer;font-size:1rem';
   document.body.appendChild(toast);
   setTimeout(() => toast?.remove(), 7000);
 }
@@ -270,7 +270,7 @@ function animateCards(changes) {
     const card = document.querySelector('[data-id="' + id + '"]');
     if (!card) return;
     card.style.transition = 'box-shadow .4s';
-    card.style.boxShadow  = '0 0 0 2px rgba(16,185,129,.7)';
+    card.style.boxShadow  = '0 0 0 2px rgba(47,128,237,.7)';
     setTimeout(() => { card.style.boxShadow = ''; }, 2500);
   });
 }
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => checkForUpdates(), UPDATER_CONFIG.checkInterval);
   }
 
-  console.log('%c💎 CodeHub Premium Apps', 'color:#34d399;font-size:18px;font-weight:bold');
+  console.log('%c💎 CodeHub Premium Apps', 'color:#22c55e;font-size:18px;font-weight:bold');
   console.log('%c🔄 Updater v3.0  |  Dropbox · Drive · Mediafire', 'color:#64748b;font-size:.8rem');
 });
 
