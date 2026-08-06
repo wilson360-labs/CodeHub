@@ -1,6 +1,6 @@
 # CODEHUB — Documento Estructural
 > **Para uso de IA asistente.** Lee este archivo ANTES de modificar cualquier archivo del proyecto.  
-> Última actualización: Mayo 2026 · Autor: Wilson Enríquez · wilson.e360labs@gmail.com
+> Última actualización: Agosto 2026 · Autor: Wilson Enríquez · wilson.e360labs@gmail.com
 
 ---
 
@@ -40,7 +40,7 @@ Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y *
 ```
 CodeHub-main/
 │
-├── index.html                  ← Página principal (única SPA-like, ~4600 líneas)
+├── index.html                  ← Página principal (única SPA-like, ~5260 líneas)
 ├── 404.html                    ← Página de error personalizada
 ├── offline.html                ← Página offline PWA
 ├── manifest.json               ← PWA manifest
@@ -59,6 +59,7 @@ CodeHub-main/
 ├── pages/                      ← Páginas secundarias (todas ruteadas via vercel.json)
 │   ├── tools.html          → ruta pública: /tools
 │   ├── opensource.html     → ruta pública: /opensource
+│   ├── blog.html           → ruta pública: /blog ⚠️ NO RUTEADA en vercel.json
 │   ├── servicios.html          → ruta pública: /servicios
 │   ├── downloader.html         → ruta pública: /downloader
 │   ├── cv.html                 → ruta pública: /cv
@@ -87,19 +88,30 @@ CodeHub-main/
 │
 ├── js/
 │   ├── index-main.js           ← Lógica principal de index.html (canvas, scroll, etc.)
-│   ├── index-chat.js           ← Chatbot EMI IA (frontend)
+│   ├── index-chat.js           ← Chatbot EMI IA (⚠️ duplicado legacy; el código real del chat está inline en index.html)
 │   ├── index-emailjs.js        ← Formulario de contacto
 │   ├── index-whats-new.js      ← Panel "Qué hay de nuevo" en index
+│   ├── emi-voice.js            ← 🎙️ EMI Voice (micrófono + auto-speak) — integrado en index.html
 │   ├── opensource.js           ← Lógica de /opensource (catálogo, filtros, ratings)
 │   ├── tools.js                ← Lógica de todas las 34 herramientas
 │   ├── admin-hub.js            ← Lógica completa del panel admin
+│   ├── admin-blog-static.js    ← Gestor del blog estático (admin-hub → /blog)
 │   ├── servicios.js            ← Lógica de /servicios
 │   ├── downloader.js           ← Lógica del video downloader
 │   ├── skills-image-gen.js     ← Generador de imágenes IA (Pollinations)
 │   ├── theme-switcher.js       ← Cambio de tema claro/oscuro
 │   ├── updater.js              ← Detección de updates PWA
 │   ├── ux-animations.js        ← Animaciones globales (Intersection Observer)
+│   ├── thinking-orb.js         ← Orb de pensamiento de EMI
+│   ├── device-detect.js        ← Detección móvil/escritorio
+│   ├── site-tour.js            ← Tour guiado del sitio
+│   ├── live-update-check.js    ← Check de actualizaciones en vivo
 │   └── script.js               ← Utilidades globales
+│
+├── blog/                       ← Blog estático (posts JSON, gestionado desde admin-hub)
+│   ├── index.json              ← Registro central de posts
+│   └── posts/
+│       └── *.json              ← Posts individuales
 │
 ├── img/                        ← Imágenes de apps Android (thumbnails)
 ├── splash/                     ← Logo e imágenes del splash screen
@@ -169,6 +181,10 @@ CodeHub-main/
 | `/terms` | `terms.html` | rewrite |
 | `/404` | `404.html` | directo |
 | `/offline` | `offline.html` | directo |
+
+> ⚠️ **`/blog` (pages/blog.html) NO está ruteado en vercel.json.** El gestor
+> de admin-hub ya publica posts a `blog/posts/*.json`, pero falta agregar
+> rewrite + redirect para que `https://wilson360-labs.vercel.app/blog` funcione.
 
 ### Páginas que NO van en /pages/ (van en la raíz)
 - `privacy.html` → `/privacy`
@@ -254,14 +270,16 @@ VAPID_PRIVATE_KEY=...
 ## 7. Páginas y sus responsabilidades
 
 ### `index.html` — Página principal
-La página más grande del proyecto (~4600 líneas). Contiene todo en un solo archivo.
+La página más grande del proyecto (~5260 líneas). Contiene todo en un solo archivo.
 
 **Secciones en orden:**
 1. `#hero` — Presentación + foto de perfil con anillo animado + partículas canvas
 2. `#open-to-work` — Banner disponibilidad freelance
 3. `#mi-pueblo` — Sección "Sobre mí" con info personal
 4. `#stats` — Estadísticas animadas (proyectos, herramientas, años)
-5. `#skills` — Grid de tecnologías dominadas
+5. `#skills` — Grid de tecnologías dominadas (tabs: Core / 2025 / Tools)
+
+**TAB Core (lenguajes, con barras animadas):** HTML5 90%, CSS3 85%, JavaScript 75%, Python 80%, Git & GitHub 70%, Node.js 65%, TypeScript 65%, SQL 55%, Shell/Bash 50%, Java/Kotlin 45% (Agosto 2026).
 6. `#services` — Cards de servicios freelance
 7. `#weather-section` — Clima en tiempo real (Open-Meteo API)
 8. `#news-section` — Posts recientes del blog (Blogger JSONP feed)
@@ -275,8 +293,14 @@ La página más grande del proyecto (~4600 líneas). Contiene todo en un solo ar
 - Font Awesome 6.7.2
 - EmailJS
 - Cloudflare Turnstile
-- Google AdSense
-- js/index-main.js, index-chat.js, index-emailjs.js, index-whats-new.js, ux-animations.js
+- Google AdSense (Auto ads)
+- js/script.js, index-main.js, index-emailjs.js, index-whats-new.js, ux-animations.js, device-detect.js, thinking-orb.js, site-tour.js, emi-voice.js (defer)
+
+**EMI Voice (🎙️, integrado Agosto 2026):**
+- Botón micrófono `#emi-mic-btn` en `.ai-input-row` → voz a texto (Web Speech API).
+- Toggle "Voz EMI" inyectado en `.ai-bottom-bar` → lee las respuestas en voz alta (auto-speak).
+- Idioma automático: `es-GT` / `en-US` según `ch_lang`; se sincroniza en `applyLang()` vía evento `ch:langchange`.
+- ⚠️ Requiere `microphone=(self)` en la `Permissions-Policy` de `vercel.json`.
 
 **Elementos flotantes globales:**
 - `#ch-splash` — Splash screen inicial con canvas de partículas
@@ -410,18 +434,16 @@ Ruta pública: `/terms`
 
 ---
 
-## 8. Blog — Blogger integration
+## 8. Blog — Blogger + Blog estático
 
-**Blog ID:** `4932034987684289893`  
-**URL:** `https://codehub-labs.blogspot.com`  
-**Feed JSON:** `https://codehub-labs.blogspot.com/feeds/posts/default?alt=json&max-results=50`  
-**Feed JSONP:** `https://codehub-labs.blogspot.com/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`  
-**Panel de Blogger:** `https://www.blogger.com/blog/posts/4932034987684289893`  
-**Nueva entrada:** `https://www.blogger.com/blog/post/edit/4932034987684289893/new`
+**Blogger externo:** ID `4932034987684289893` · `https://codehub-labs.blogspot.com`
+- Feed JSONP: `https://codehub-labs.blogspot.com/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`
+- Se usa SOLO en `index.html` → sección `#news-section` (JSONP `_bloggerCallback`).
 
-El blog se usa en 2 lugares:
-1. `index.html` → sección `#news-section` → carga vía JSONP con `_bloggerCallback`
-2. `pages/admin-hub.html` → Tab Blog → carga vía fetch + fallback allorigins.win
+**Blog estático del sitio (`/blog`):**
+- `pages/blog.html` renderiza desde `blog/index.json` + `blog/posts/*.json`.
+- `js/admin-blog-static.js` (cargado en admin-hub) permite redactar y publicar posts; el backend hace commit vía GitHub API (env `GITHUB_TOKEN`).
+- ⚠️ **PENDIENTE:** `/blog` no está en `vercel.json` (rewrite/redirect) ni en `sitemap.xml` — la URL pública aún no funciona.
 
 ---
 
@@ -431,7 +453,8 @@ El blog se usa en 2 lugares:
 **Manifest:** `manifest.json` (en raíz)  
 **Shortcuts en PWA:** `/tools`, `/opensource`, `/servicios`, `/downloader`  
 **Iconos:** Cloudinary CDN  
-**Offline page:** `offline.html`
+**Offline page:** `offline.html`  
+**PRECACHE:** incluye los JS del chat (emi-voice.js, ux-animations.js, thinking-orb.js, site-tour.js) y css/components.css para que EMI funcione offline.
 
 ---
 

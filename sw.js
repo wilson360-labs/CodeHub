@@ -29,6 +29,7 @@ const PRECACHE = [
   '/downloader',
   '/servicios',
   '/css/opensource.css',
+  '/css/components.css',
   '/manifest.json',
   '/offline.html',
   '/js/script.js',
@@ -36,6 +37,10 @@ const PRECACHE = [
   '/js/updater.js',
   '/js/device-detect.js',
   '/js/live-update-check.js',
+  '/js/emi-voice.js',
+  '/js/ux-animations.js',
+  '/js/thinking-orb.js',
+  '/js/site-tour.js',
 ];
 
 // ── INSTALL ───────────────────────────────────────────
