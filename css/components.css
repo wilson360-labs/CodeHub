@@ -625,10 +625,10 @@
             background: var(--bg-color);
             color: var(--text-color);
             transition: background 0.3s, color 0.3s;
-            padding-top: 4.8rem;
+            padding-top: 7.5rem;
         }
         @media (max-width: 768px) {
-            body { padding-top: 3.8rem; }
+            body { padding-top: 8.2rem; }
             .mobile-nav { padding-top: 52px; }
         }
 
@@ -921,11 +921,12 @@
             transform: translateX(-50%) scaleX(1);
         }
 
-        /* Acciones del header (derecha) */
+        /* Acciones del header (derecha) — apiladas: ajustes arriba, burger abajo */
         .header-actions {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.35rem;
             flex-shrink: 0;
         }
 
@@ -4782,19 +4783,19 @@
 /* -- SIDE NAV � Barra lateral deslizable (flexbox layout) -- */
 #side-nav {
   position: fixed;
-  top: 0; left: 0;
+  top: 0; right: 0; left: auto;
   width: min(300px, 88vw);
   height: 100vh;
   height: 100dvh;
-  z-index: 550;
+  z-index: 99999;
   display: flex;
   flex-direction: column;
-  background: rgba(7,7,14,.96);
+  background: rgba(7,7,14,.98);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
-  border-right: 1px solid rgba(255,69,0,.22);
-  box-shadow: 20px 0 60px rgba(0,0,0,.55);
-  transform: translateX(-102%);
+  border-left: 1px solid rgba(255,69,0,.22);
+  box-shadow: -20px 0 60px rgba(0,0,0,.55);
+  transform: translateX(102%);
   transition: transform .32s cubic-bezier(.4,0,.2,1);
   visibility: hidden;
   overflow-y: auto;
@@ -4805,9 +4806,9 @@
 #side-scrim {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,.55);
-  backdrop-filter: blur(2px);
-  z-index: 540;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(3px);
+  z-index: 99998;
   opacity: 0;
   pointer-events: none;
   transition: opacity .32s ease;
