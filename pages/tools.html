@@ -17,7 +17,7 @@
   <!-- End Google Tag Manager -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com;">
 <title>27 Herramientas Web Gratis — CodeHub by Wilson.E</title>
 <meta name="description" content="27 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,6 +27,8 @@
 <link rel="stylesheet" href="../css/skills-image-gen.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://js.puter.com/v2/"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1100,10 +1102,56 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
+<!-- 34 · CAPTURA DE PANTALLA + OCR (PDNob) -->
+<div class="card" data-tags="util dis">
+  <div class="ch"><i class="fas fa-camera"></i><span>Captura de Pantalla + OCR</span></div>
+  <div class="cd">Captura un area de tu pantalla, guardala como PNG o extrae el texto con OCR para editar PDFs escaneados e imagenes. Todo en tu navegador.</div>
+  <div class="cp">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <button class="tb primary" onclick="pdnCapture()"><i class="fas fa-expand"></i> Capturar pantalla</button>
+      <label class="tb" style="cursor:pointer"><i class="fas fa-file-arrow-up"></i> Subir imagen/PDF<input type="file" id="pdn-file" accept="image/*,application/pdf" style="display:none" onchange="pdnHandleFile(this.files[0])"></label>
+      <select class="ts" id="pdn-lang" style="flex:0 0 150px">
+        <option value="spa">Español</option>
+        <option value="eng">English</option>
+        <option value="por">Português</option>
+      </select>
+    </div>
+    <div id="pdn-stage" style="display:none;position:relative;text-align:center;margin-bottom:.7rem">
+      <canvas id="pdn-canvas" style="max-width:100%;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:#000;cursor:crosshair"></canvas>
+      <div id="pdn-hint" style="font-size:.66rem;color:var(--muted);font-family:var(--mono);margin-top:.35rem">Arrastra para seleccionar el area · Enter = usar · Esc = cancelar</div>
+      <div id="pdn-actions" style="display:none;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-top:.6rem">
+        <button class="tb primary" onclick="pdnDownloadPng()"><i class="fas fa-download"></i> Descargar PNG</button>
+        <button class="tb" onclick="pdnRunOcr()"><i class="fas fa-font"></i> Extraer texto (OCR)</button>
+        <button class="tb" onclick="pdnReset()"><i class="fas fa-rotate-left"></i> Limpiar</button>
+      </div>
+    </div>
+    <div id="pdn-progress" style="display:none;align-items:center;gap:.6rem;margin-bottom:.7rem">
+      <div style="flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden">
+        <div id="pdn-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--p),var(--a));border-radius:6px;transition:width .3s"></div>
+      </div>
+      <span id="pdn-pct" style="font-size:.7rem;font-family:var(--mono);color:var(--a)">0%</span>
+    </div>
+    <div id="pdn-out" class="rb" style="display:none"></div>
+    <div style="height:1px;background:rgba(255,255,255,.08);margin:1rem 0"></div>
+    <div style="font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.55rem">Editar PDFs escaneados</div>
+    <div style="display:grid;gap:.5rem">
+      <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+        <strong style="color:#38bdf8">OCR sin servidor:</strong> el texto se reconoce en tu navegador con Tesseract.js; nada sale de tu dispositivo.
+      </div>
+      <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+        <strong style="color:#22c55e">PDF escaneado:</strong> sube un PDF escaneado y extrae el texto de cada pagina para copiarlo o guardarlo como .txt editable.
+      </div>
+      <div style="padding:.8rem;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.03)">
+        <strong style="color:#2f80ed">Captura de area:</strong> selecciona cualquier zona de tu pantalla (texto, PDF, tabla) y convierte solo esa parte.
+      </div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /grid -->
 
 <footer>
-  <a href="/">&lt;Wilson.E/&gt;</a> · 33 herramientas · Ningun dato sale de tu navegador
+  <a href="/">&lt;Wilson.E/&gt;</a> · 34 herramientas · Ningun dato sale de tu navegador
 </footer>
 
 <script>
@@ -2930,5 +2978,262 @@ async function rvResolve(force) {
 </script>
 <script src="../js/thinking-orb.js"></script>
 <script src="../js/skills-image-gen.js"></script>
+<script>
+/* ═══ CAPTURA DE PANTALLA + OCR (estilo PDNob) ═══ */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var pdnCanvas = null, pdnSel = null, pdnSelecting = false;
+  var pdnOcrWorker = null;
+
+  /* ---- Captura ---- */
+  window.pdnCapture = function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      toast('Tu navegador no soporta captura de pantalla');
+      return;
+    }
+    navigator.mediaDevices.getDisplayMedia({ video: true })
+      .then(function (stream) {
+        var video = document.createElement('video');
+        video.muted = true;
+        video.srcObject = stream;
+        video.play().then(function () {
+          video.addEventListener('loadeddata', function () {
+            var c = document.createElement('canvas');
+            c.width = video.videoWidth;
+            c.height = video.videoHeight;
+            c.getContext('2d').drawImage(video, 0, 0);
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            pdnCanvas = c;
+            pdnSel = null;
+            pdnShowCanvas();
+          }, { once: true });
+        });
+      })
+      .catch(function () { toast('Captura cancelada'); });
+  };
+
+  /* ---- Subir imagen o PDF ---- */
+  window.pdnHandleFile = function (file) {
+    if (!file) return;
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+      pdnHandlePdf(file);
+      return;
+    }
+    if (!/^image\//.test(file.type)) { toast('Sube una imagen o un PDF'); return; }
+    var img = new Image();
+    img.onload = function () {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      pdnCanvas = c;
+      pdnSel = null;
+      pdnShowCanvas();
+      toast('Imagen cargada');
+    };
+    img.onerror = function () { toast('No se pudo leer la imagen'); };
+    img.src = URL.createObjectURL(file);
+  };
+
+  /* ---- PDF -> canvas por pagina ---- */
+  function pdnHandlePdf(file) {
+    toast('Leyendo PDF…');
+    var fr = new FileReader();
+    fr.onload = function () {
+      var pdfjs = window.pdfjsLib;
+      if (!pdfjs) { toast('Librería PDF no disponible'); return; }
+      pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjs.getDocument({ data: fr.result }).promise.then(function (doc) {
+        var pages = doc.numPages;
+        var batch = [];
+        (function nextPage(i) {
+          if (i > pages) {
+            pdnCanvas = null;
+            pdnOcrPages(batch, 'spa');
+            return;
+          }
+          doc.getPage(i).then(function (page) {
+            var vp = page.getViewport({ scale: 2 });
+            var c = document.createElement('canvas');
+            c.width = Math.floor(vp.width);
+            c.height = Math.floor(vp.height);
+            page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise
+              .then(function () { batch.push(c); nextPage(i + 1); });
+          });
+        })(1);
+      }).catch(function () { toast('No se pudo leer el PDF'); });
+    };
+    fr.readAsArrayBuffer(file);
+  }
+
+  /* ---- Seleccion de area sobre el canvas ---- */
+  function pdnShowCanvas() {
+    var stage = $('pdn-stage'), cv = $('pdn-canvas');
+    stage.style.display = 'block';
+    $('pdn-actions').style.display = 'flex';
+    $('pdn-out').style.display = 'none';
+    var scale = Math.min(1, 560 / pdnCanvas.width);
+    cv.width = Math.round(pdnCanvas.width * scale);
+    cv.height = Math.round(pdnCanvas.height * scale);
+    var ctx = cv.getContext('2d');
+    ctx.drawImage(pdnCanvas, 0, 0, cv.width, cv.height);
+    pdnDrawSel(ctx, cv);
+    pdnBindSelect(cv);
+  }
+
+  function pdnDrawSel(ctx, cv) {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(pdnCanvas, 0, 0, cv.width, cv.height);
+    if (pdnSel) {
+      ctx.fillStyle = 'rgba(47,128,237,.18)';
+      ctx.fillRect(pdnSel.x, pdnSel.y, pdnSel.w, pdnSel.h);
+      ctx.strokeStyle = '#2f80ed';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(pdnSel.x, pdnSel.y, pdnSel.w, pdnSel.h);
+    }
+  }
+
+  function pdnBindSelect(cv) {
+    var ctx = cv.getContext('2d');
+    var start = null;
+    cv.onmousedown = function (e) {
+      var r = cv.getBoundingClientRect();
+      start = { x: e.clientX - r.left, y: e.clientY - r.top };
+      pdnSel = { x: start.x, y: start.y, w: 0, h: 0 };
+      pdnSelecting = true;
+    };
+    cv.onmousemove = function (e) {
+      if (!start) return;
+      var r = cv.getBoundingClientRect();
+      var cx = e.clientX - r.left, cy = e.clientY - r.top;
+      pdnSel = {
+        x: Math.min(start.x, cx), y: Math.min(start.y, cy),
+        w: Math.abs(cx - start.x), h: Math.abs(cy - start.y)
+      };
+      pdnDrawSel(ctx, cv);
+    };
+    cv.onmouseup = function () {
+      start = null; pdnSelecting = false;
+    };
+    cv.ondblclick = function () { pdnCrop(); };
+  }
+
+  window.pdnCrop = function () {
+    if (!pdnCanvas || !pdnSel || pdnSel.w < 3 || pdnSel.h < 3) {
+      toast('Arrastra para seleccionar un area');
+      return;
+    }
+    var cv = $('pdn-canvas');
+    var sx = pdnCanvas.width / cv.width, sy = pdnCanvas.height / cv.height;
+    var c = document.createElement('canvas');
+    c.width = Math.round(pdnSel.w * sx);
+    c.height = Math.round(pdnSel.h * sy);
+    c.getContext('2d').drawImage(pdnCanvas,
+      Math.round(pdnSel.x * sx), Math.round(pdnSel.y * sy),
+      c.width, c.height, 0, 0, c.width, c.height);
+    pdnCanvas = c;
+    pdnSel = null;
+    pdnShowCanvas();
+    toast('Area seleccionada');
+  };
+
+  window.pdnDownloadPng = function () {
+    if (!pdnCanvas) { toast('Primero captura o sube una imagen'); return; }
+    var a = document.createElement('a');
+    a.href = pdnCanvas.toDataURL('image/png');
+    a.download = 'captura.png';
+    a.click();
+  };
+
+  window.pdnReset = function () {
+    pdnCanvas = null; pdnSel = null;
+    $('pdn-stage').style.display = 'none';
+    $('pdn-actions').style.display = 'none';
+    $('pdn-out').style.display = 'none';
+    $('pdn-file').value = '';
+  };
+
+  /* ---- OCR ---- */
+  function pdnOcrCanvas(canvas, lang, label, onProgress) {
+    if (!window.Tesseract) { toast('OCR no disponible'); return Promise.resolve(''); }
+    return Tesseract.createWorker(lang, 1)
+      .then(function (worker) {
+      return worker.recognize(canvas)
+        .then(function (res) {
+          var text = (res && res.data && res.data.text) || '';
+          return worker.terminate().then(function () { return text; });
+        })
+        .catch(function (e) {
+          return worker.terminate().then(function () { throw e; });
+        });
+    });
+  }
+
+  function pdnOcrPages(canvases, lang) {
+    var out = $('pdn-out'), prog = $('pdn-progress'), bar = $('pdn-bar'), pct = $('pdn-pct');
+    out.style.display = 'block';
+    prog.style.display = 'flex';
+    out.innerHTML = '<div style="font-size:.72rem;font-family:var(--mono);color:var(--a);margin-bottom:.4rem">OCR en curso…</div>';
+    var total = canvases.length;
+    var results = [];
+    (function next(i) {
+      if (i >= total) {
+        prog.style.display = 'none';
+        var html = results.map(function (t, n) {
+          var esc = (t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var title = total > 1 ? '<div style="font-size:.66rem;font-family:var(--mono);color:var(--muted);margin:.2rem 0">Página ' + (n + 1) + '</div>' : '';
+          return title + '<div style="white-space:pre-wrap;word-break:break-word;margin-bottom:.6rem">' + esc + '</div>';
+        }).join('');
+        out.innerHTML = html +
+          '<div style="display:flex;gap:.5rem;margin-top:.5rem">' +
+          '<button class="tb" onclick="pdnCopyText()"><i class="fas fa-copy"></i> Copiar</button>' +
+          '<button class="tb" onclick="pdnDownloadTxt()"><i class="fas fa-file-arrow-down"></i> Descargar .txt</button>' +
+          '</div>';
+        toast('Texto extraído');
+        return;
+      }
+      bar.style.width = Math.round((i / total) * 100) + '%';
+      pct.textContent = Math.round((i / total) * 100) + '%';
+      pdnOcrCanvas(canvases[i], lang, 'pagina ' + (i + 1))
+        .then(function (t) { results.push(t || ''); next(i + 1); })
+        .catch(function () { results.push(''); next(i + 1); });
+    })(0);
+  }
+
+  window.pdnRunOcr = function () {
+    if (!pdnCanvas) { toast('Primero captura o sube una imagen/PDF'); return; }
+    var lang = $('pdn-lang').value;
+    pdnOcrPages([pdnCanvas], lang);
+  };
+
+  window.pdnCopyText = function () {
+    var t = $('pdn-out').innerText;
+    if (!t) return;
+    navigator.clipboard.writeText(t).then(function () { toast('Copiado'); })
+      .catch(function () { toast('No se pudo copiar'); });
+  };
+
+  window.pdnDownloadTxt = function () {
+    var t = $('pdn-out').innerText;
+    if (!t) return;
+    var blob = new Blob([t], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'texto-ocr.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && $('pdn-stage').style.display === 'block') {
+      pdnSel = null;
+      var cv = $('pdn-canvas');
+      pdnDrawSel(cv.getContext('2d'), cv);
+      toast('Selección cancelada');
+    }
+    if (e.key === 'Enter' && pdnSelecting) pdnCrop();
+  });
+})();
+</script>
 </body>
 </html>
