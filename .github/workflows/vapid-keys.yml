@@ -1,0 +1,109 @@
+name: Setup VAPID Keys (Render)
+
+# Genera un par de claves VAPID y las configura en el backend de Render,
+# luego dispara un redeploy para aplicarlas.
+#
+# SECRETS necesarios en el repositorio (Settings > Secrets > Actions):
+#   RENDER_API_KEY    → Render > Account Settings > API Keys > Create API Key
+#   RENDER_SERVICE_ID → Opcional. ID del servicio (srv-xxxx de la URL del
+#                       dashboard). Si no lo pones, se busca por nombre "codehub".
+#
+# Uso: Actions > "Setup VAPID Keys (Render)" > Run workflow.
+#   regenerate=true solo si quieres REEMPLAZAR las keys existentes
+#   (romperá las suscripciones push activas de los usuarios).
+
+on:
+  workflow_dispatch:
+    inputs:
+      regenerate:
+        description: 'Regenerar aunque ya existan (rompe suscripciones activas)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  setup-vapid:
+    name: Generar y configurar VAPID en Render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generar par VAPID
+        id: keys
+        run: |
+          npx -y web-push generate-vapid-keys --json > /tmp/vapid.json
+          echo "Claves generadas"
+          echo "public=$(jq -r '.publicKey' /tmp/vapid.json)" >> "$GITHUB_OUTPUT"
+          echo "private=$(jq -r '.privateKey' /tmp/vapid.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolver service ID de Render
+        id: svc
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          if [ -n "$RENDER_SERVICE_ID" ]; then
+            echo "id=$RENDER_SERVICE_ID" >> "$GITHUB_OUTPUT"
+          else
+            ID=$(curl -sf -H "Authorization: Bearer $RENDER_API_KEY" \
+              "https://api.render.com/v1/services?name=codehub&limit=1" | jq -r '.[0].id')
+            if [ -z "$ID" ] || [ "$ID" = "null" ]; then
+              echo "::error::No se encontró el servicio 'codehub'. Crea el secret RENDER_SERVICE_ID (ID srv-xxxx del dashboard) o revisa RENDER_API_KEY."
+              exit 1
+            fi
+            echo "id=$ID" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verificar si ya existen las VAPID keys
+        id: existing
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          ID="${{ steps.svc.outputs.id }}"
+          KEYS=$(curl -sf -H "Authorization: Bearer $RENDER_API_KEY" \
+            "https://api.render.com/v1/services/$ID/env-vars")
+          HAS_PUB=$(echo "$KEYS" | jq -r '.[].envVar.key | select(. == "VAPID_PUBLIC_KEY")')
+          HAS_PRIV=$(echo "$KEYS" | jq -r '.[].envVar.key | select(. == "VAPID_PRIVATE_KEY")')
+          if [ -n "$HAS_PUB" ] && [ -n "$HAS_PRIV" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configurar VAPID keys en Render
+        if: steps.existing.outputs.exists != 'true' || github.event.inputs.regenerate == 'true'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          VAPID_PUBLIC: ${{ steps.keys.outputs.public }}
+          VAPID_PRIVATE: ${{ steps.keys.outputs.private }}
+        run: |
+          ID="${{ steps.svc.outputs.id }}"
+          curl -sS -X PATCH "https://api.render.com/v1/services/$ID/env-vars" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"envVars\":[{\"key\":\"VAPID_PUBLIC_KEY\",\"value\":\"$VAPID_PUBLIC\"},{\"key\":\"VAPID_PRIVATE_KEY\",\"value\":\"$VAPID_PRIVATE\"}]}"
+          echo "✅ VAPID keys configuradas en el servicio $ID"
+
+      - name: Redesplegar para aplicar las variables
+        if: steps.existing.outputs.exists != 'true' || github.event.inputs.regenerate == 'true'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          ID="${{ steps.svc.outputs.id }}"
+          curl -sS -X POST "https://api.render.com/v1/services/$ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo "✅ Deploy disparado — las VAPID keys se aplican al terminar"
+
+      - name: Ya estaban configuradas
+        if: steps.existing.outputs.exists == 'true' && github.event.inputs.regenerate != 'true'
+        run: |
+          echo "VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY ya existen en Render."
+          echo "Para reemplazarlas, corre el workflow con 'regenerate=true' (romperá las suscripciones activas)."
