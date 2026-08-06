@@ -61,7 +61,7 @@ function strBar(p,id){
   if(/[A-Z]/.test(p))s+=15;if(/[a-z]/.test(p))s+=15;
   if(/[0-9]/.test(p))s+=15;if(/[^A-Za-z0-9]/.test(p))s+=15;
   const b=$(id);b.style.width=s+'%';
-  b.style.background=s<40?'#ff4444':s<70?'#ffbd69':'#00e676';
+  b.style.background=s<40?'#ff4444':s<70?'#e8c978':'#00e676';
 }
 
 // ──────────────────────────────────
@@ -78,7 +78,7 @@ function chkStr(){
   if(/[0-9]/.test(p))s+=15;else tips.push('Añade números');
   if(/[^A-Za-z0-9]/.test(p))s+=15;else tips.push('Añade símbolos');
   const lbl=s<40?'🔴 Débil':s<70?'🟡 Regular':s<90?'🟢 Fuerte':'💪 Muy fuerte';
-  const col=s<40?'#ff4444':s<70?'#ffbd69':'#00e676';
+  const col=s<40?'#ff4444':s<70?'#e8c978':'#00e676';
   const b=$('csb');b.style.width=s+'%';b.style.background=col;
   $('csr').innerHTML=`<span style="color:${col};font-family:var(--font);font-weight:700">${lbl}</span> <span style="color:var(--muted)">(${s}/100)</span>`
     +(tips.length?`<div style="font-size:.72rem;color:var(--muted);font-family:var(--font);margin-top:.3rem">${tips.join(' · ')}</div>`:'');
@@ -193,11 +193,11 @@ function calcBMI(){
   if(!w||!h||h<=0){toast('Ingresa peso y altura');return}
   const bmi=w/(h*h);
   let cat,col;
-  if(bmi<18.5){cat='Bajo peso';col='#40c4ff'}
+  if(bmi<18.5){cat='Bajo peso';col='#34d399'}
   else if(bmi<25){cat='Normal ✓';col='#00e676'}
-  else if(bmi<30){cat='Sobrepeso';col='#ffbd69'}
-  else if(bmi<40){cat='Obesidad';col='#ff6b35'}
-  else{cat='Obesidad severa';col='#ff4500'}
+  else if(bmi<30){cat='Sobrepeso';col='#e8c978'}
+  else if(bmi<40){cat='Obesidad';col='#34d399'}
+  else{cat='Obesidad severa';col='#10b981'}
   show('bmr',`IMC: <b style="color:${col};font-size:1.25rem">${bmi.toFixed(1)}</b> — <span style="color:${col}">${cat}</span>`);
   const lbl=$('bmi-lbl');lbl.style.display='block';lbl.style.color=col;lbl.textContent=`▲ ${bmi.toFixed(1)} — ${cat}`;
 }
@@ -476,36 +476,36 @@ function calcScore(ping, connType, vpn, localIP) {
   // Penalizaciones
   if (ping > 200) {
     score -= 25;
-    tips.push({ icon: 'fa-triangle-exclamation', color: '#ff6b35', text: `Latencia alta (${ping}ms). Puede afectar videollamadas y juegos online.` });
+    tips.push({ icon: 'fa-triangle-exclamation', color: '#34d399', text: `Latencia alta (${ping}ms). Puede afectar videollamadas y juegos online.` });
   } else if (ping > 80) {
     score -= 10;
-    tips.push({ icon: 'fa-circle-info', color: '#ffbd69', text: `Latencia moderada (${ping}ms). Aceptable para uso general.` });
+    tips.push({ icon: 'fa-circle-info', color: '#e8c978', text: `Latencia moderada (${ping}ms). Aceptable para uso general.` });
   } else {
     tips.push({ icon: 'fa-circle-check', color: '#00e676', text: `Excelente latencia (${ping}ms). Ideal para streaming y gaming.` });
   }
 
   if (connType === 'SLOW-2G' || connType === '2G') {
     score -= 20;
-    tips.push({ icon: 'fa-signal', color: '#ff6b35', text: 'Conexión lenta (2G). Considera conectarte a WiFi.' });
+    tips.push({ icon: 'fa-signal', color: '#34d399', text: 'Conexión lenta (2G). Considera conectarte a WiFi.' });
   }
 
   if (vpn) {
     tips.push({ icon: 'fa-shield-halved', color: '#00e676', text: 'Posible VPN o proxy detectado. Tu tráfico puede estar cifrado.' });
   } else {
     score -= 5;
-    tips.push({ icon: 'fa-lock-open', color: '#ffbd69', text: 'No se detectó VPN. Considera usar una para mayor privacidad en redes públicas.' });
+    tips.push({ icon: 'fa-lock-open', color: '#e8c978', text: 'No se detectó VPN. Considera usar una para mayor privacidad en redes públicas.' });
   }
 
   if (localIP.startsWith('192.168.') || localIP.startsWith('10.') || localIP.startsWith('172.')) {
-    tips.push({ icon: 'fa-house-signal', color: '#40c4ff', text: 'IP privada detectada. Estás detrás de un router NAT (normal y seguro).' });
+    tips.push({ icon: 'fa-house-signal', color: '#34d399', text: 'IP privada detectada. Estás detrás de un router NAT (normal y seguro).' });
   } else if (localIP === 'No disponible') {
     score -= 5;
-    tips.push({ icon: 'fa-circle-info', color: '#ffbd69', text: 'IP local no accesible (bloqueado por el navegador o incógnito).' });
+    tips.push({ icon: 'fa-circle-info', color: '#e8c978', text: 'IP local no accesible (bloqueado por el navegador o incógnito).' });
   }
 
   score = Math.max(0, Math.min(100, score));
   const label = score >= 80 ? '🟢 Buena' : score >= 55 ? '🟡 Regular' : '🔴 Riesgo';
-  const color = score >= 80 ? '#00e676' : score >= 55 ? '#ffbd69' : '#ff4500';
+  const color = score >= 80 ? '#00e676' : score >= 55 ? '#e8c978' : '#10b981';
 
   $('net-score-val').textContent = `${score}/100 ${label}`;
   $('net-score-val').style.color = color;
@@ -592,8 +592,8 @@ function calcScore(ping, connType, vpn, localIP) {
   <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
   <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
   <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
-    <input type="color" id="cc-picker" value="#ff4500" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
-    <input class="ti" type="text" id="cc-hex" value="#ff4500" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
+    <input type="color" id="cc-picker" value="#10b981" oninput="convertColor(this.value)" style="width:44px;height:36px;border:none;background:none;cursor:pointer;border-radius:8px">
+    <input class="ti" type="text" id="cc-hex" value="#10b981" placeholder="#rrggbb" oninput="convertColorHex(this.value)" style="flex:1">
   </div>
   <div id="cc-out" style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem"></div>
 </div>
@@ -821,7 +821,7 @@ function renderColorOut(hex) {
 }
 
 // Inicializar conversor de color
-convertColor('#ff4500');
+convertColor('#10b981');
 
 
 // ═══════════════════════════════════════════════════════════
@@ -974,7 +974,7 @@ const HOROSCOPES = {
   grid.innerHTML = ZODIAC.map(z => `
     <button onclick="showHoroscope('${z.sign}')" title="${z.dates}"
       style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.4rem;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:.15rem"
-      onmouseover="this.style.borderColor='var(--border-h)';this.style.background='rgba(255,69,0,.08)'"
+      onmouseover="this.style.borderColor='var(--border-h)';this.style.background='rgba(16,185,129,.08)'"
       onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.background='rgba(255,255,255,.04)'">
       <span style="font-size:1.2rem">${z.emoji}</span>
       <span style="font-size:.58rem;font-family:var(--mono);color:var(--muted)">${z.sign}</span>
@@ -989,7 +989,7 @@ function showHoroscope(sign) {
 
   out.style.display = 'block';
   out.innerHTML = `
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,69,0,.2);border-radius:12px;padding:1rem">
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:1rem">
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem">
         <span style="font-size:2rem">${zodiac?.emoji}</span>
         <div>
@@ -1050,7 +1050,7 @@ function rvStep(stepId) {
       if (circle) { circle.style.background = 'var(--green)'; circle.style.borderColor = 'var(--green)'; circle.style.boxShadow = 'none'; }
     } else if (i === idx) {
       dot.style.opacity = '1'; dot.style.transform = 'scale(1.25)';
-      if (circle) { circle.style.background = 'var(--p)'; circle.style.borderColor = 'var(--p)'; circle.style.boxShadow = '0 0 10px rgba(255,69,0,.8)'; }
+      if (circle) { circle.style.background = 'var(--p)'; circle.style.borderColor = 'var(--p)'; circle.style.boxShadow = '0 0 10px rgba(16,185,129,.8)'; }
     } else {
       dot.style.opacity = '.25'; dot.style.transform = 'scale(1)';
       if (circle) { circle.style.background = 'rgba(255,255,255,.2)'; circle.style.borderColor = 'rgba(255,255,255,.15)'; circle.style.boxShadow = 'none'; }
@@ -1099,7 +1099,7 @@ function rvRender(finalUrl, rawUrl, hops, method, cached, status) {
   var methodLabel = icons[method] || ('🔍 ' + (method || 'Resuelto'));
   var cacheTag = cached
     ? '<span style="background:rgba(0,230,118,.12);color:var(--green);border-radius:6px;padding:1px 7px;font-size:.65rem">⚡ caché</span>'
-    : '<span style="background:rgba(64,196,255,.1);color:var(--blue);border-radius:6px;padding:1px 7px;font-size:.65rem">🌐 en vivo</span>';
+    : '<span style="background:rgba(52,211,153,.1);color:var(--blue);border-radius:6px;padding:1px 7px;font-size:.65rem">🌐 en vivo</span>';
   var isSame = finalUrl === rawUrl;
   var hopsArr = Array.isArray(hops) ? hops : [rawUrl, finalUrl];
   var hopsList = hopsArr.length > 1
@@ -1131,8 +1131,8 @@ function rvRender(finalUrl, rawUrl, hops, method, cached, status) {
     '</div>' +
     '<a href="' + finalUrl + '" target="_blank" rel="noopener noreferrer" ' +
       'style="font-size:.75rem;color:var(--p);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;' +
-      'padding:.3rem .7rem;border:1px solid rgba(255,69,0,.3);border-radius:7px;transition:all .2s" ' +
-      'onmouseover="this.style.background=\'rgba(255,69,0,.1)\'" onmouseout="this.style.background=\'transparent\'">' +
+      'padding:.3rem .7rem;border:1px solid rgba(16,185,129,.3);border-radius:7px;transition:all .2s" ' +
+      'onmouseover="this.style.background=\'rgba(16,185,129,.1)\'" onmouseout="this.style.background=\'transparent\'">' +
       '<i class="fas fa-arrow-up-right-from-square"></i> Abrir enlace real' +
     '</a>' +
     hopsList;

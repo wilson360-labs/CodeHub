@@ -2491,9 +2491,9 @@ app.get('/api/docs', (_, res) => {
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
   <style>
     body { margin: 0; background: #0a0a14; }
-    .swagger-ui .topbar { background: #ff4500; }
+    .swagger-ui .topbar { background: #10b981; }
     .swagger-ui .topbar .download-url-wrapper { display: none; }
-    .swagger-ui .info .title { color: #ff4500; }
+    .swagger-ui .info .title { color: #10b981; }
   </style>
 </head>
 <body>
@@ -2703,11 +2703,293 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
   }
 });
 
+// ── PUSH NOTIFICATIONS (Web Push / VAPID) ─────────────────────
+// El frontend se suscribe con su ubicación y el servidor avisa por
+// push SOLO cuando cambia la condición del clima (sin spam).
+const webpush = require('web-push');
+
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKsg-I';
+webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
+const PUSH_SQL = `
+create table if not exists public.push_subs (
+  id bigint generated always as identity primary key,
+  endpoint text not null unique,
+  keys_p256dh text,
+  keys_auth text,
+  lat double precision,
+  lon double precision,
+  city text,
+  country text,
+  timezone text,
+  user_agent text,
+  alerts boolean default true,
+  last_alert_condition text,
+  last_alert_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists push_subs_alerts_idx on public.push_subs (alerts);
+`;
+
+let pushStore = new Map(); // fallback en memoria si Supabase no está disponible
+
+async function ensurePushTable() {
+  if (!supabase) return false;
+  const statements = splitSqlStatements(PUSH_SQL);
+  try {
+    for (const stmt of statements) {
+      const { error } = await supabase.rpc('exec_sql', { query: stmt });
+      if (error) {
+        console.warn('⚠️  Push: no se pudo crear tabla push_subs (' + error.message + ') — creala a mano con backend/push_subs.sql');
+        return false;
+      }
+    }
+    console.log('✅ Push: tabla push_subs lista');
+    return true;
+  } catch (e) {
+    console.warn('⚠️  Push: error asegurando tabla:', e.message);
+    return false;
+  }
+}
+
+function pushRowToSub(row) {
+  return {
+    endpoint: row.endpoint,
+    keys: { p256dh: row.keys_p256dh, auth: row.keys_auth },
+    lat: row.lat, lon: row.lon, city: row.city, country: row.country,
+    timezone: row.timezone, user_agent: row.user_agent,
+    alerts: row.alerts, last_alert_condition: row.last_alert_condition, last_alert_at: row.last_alert_at,
+  };
+}
+
+async function pushList() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('push_subs').select('*');
+      if (!error && Array.isArray(data)) return data.map(pushRowToSub);
+    } catch (e) { console.warn('Push list error:', e.message); }
+  }
+  return Array.from(pushStore.values());
+}
+
+async function pushSave(rec) {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('push_subs').upsert({
+        endpoint:       rec.endpoint,
+        keys_p256dh:    rec.keys?.p256dh || null,
+        keys_auth:      rec.keys?.auth   || null,
+        lat:            rec.lat  ?? null,
+        lon:            rec.lon  ?? null,
+        city:           rec.city || null,
+        country:        rec.country || null,
+        timezone:       rec.timezone || null,
+        user_agent:     rec.user_agent || null,
+        alerts:         rec.alerts !== false,
+        last_alert_condition: rec.last_alert_condition || null,
+        last_alert_at:  rec.last_alert_at || null,
+        updated_at:     new Date(),
+      }, { onConflict: 'endpoint' });
+      if (!error) return true;
+      console.warn('Push save supabase error:', error.message);
+    } catch (e) { console.warn('Push save error:', e.message); }
+  }
+  pushStore.set(rec.endpoint, rec);
+  return true;
+}
+
+async function pushDelete(endpoint) {
+  if (supabase) {
+    try { await supabase.from('push_subs').delete().eq('endpoint', endpoint); } catch (e) {}
+  }
+  pushStore.delete(endpoint);
+}
+
+async function sendPush(rec, payload) {
+  if (!rec || !rec.endpoint || !rec.keys || !rec.keys.p256dh || !rec.keys.auth) {
+    return { ok: false, reason: 'incomplete' };
+  }
+  try {
+    await webpush.sendNotification(
+      { endpoint: rec.endpoint, keys: { p256dh: rec.keys.p256dh, auth: rec.keys.auth } },
+      JSON.stringify(payload),
+      { TTL: 3600 }
+    );
+    return { ok: true };
+  } catch (e) {
+    if (e.statusCode === 404 || e.statusCode === 410) {
+      await pushDelete(rec.endpoint); // suscripción expirada — limpiar
+    }
+    return { ok: false, code: e.statusCode, message: e.message };
+  }
+}
+
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const { subscription, location, prefs } = req.body || {};
+    const sub = subscription || {};
+    if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+      return res.status(400).json({ ok: false, error: 'Suscripción inválida' });
+    }
+    const loc = location || {};
+    const rec = {
+      endpoint:   sub.endpoint,
+      keys:       { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
+      lat:        Number.isFinite(+loc.lat)  ? +loc.lat  : null,
+      lon:        Number.isFinite(+loc.lon)  ? +loc.lon  : null,
+      city:       (loc.city   || '').slice(0, 120) || null,
+      country:    (loc.country || '').slice(0, 80)  || null,
+      timezone:   (loc.timezone || '').slice(0, 60) || null,
+      user_agent: (req.get('user-agent') || '').slice(0, 200),
+      alerts:     prefs ? prefs.alerts !== false : true,
+    };
+    await pushSave(rec);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('push/subscribe error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/push/unsubscribe', async (req, res) => {
+  const { endpoint } = req.body || {};
+  if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
+  await pushDelete(endpoint);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/settings', async (req, res) => {
+  try {
+    const { endpoint, location, prefs } = req.body || {};
+    if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
+    const list = await pushList();
+    let rec = list.find(r => r.endpoint === endpoint);
+    if (!rec) return res.status(404).json({ ok: false, error: 'Suscripción no encontrada' });
+    if (location) {
+      if (Number.isFinite(+location.lat)) rec.lat = +location.lat;
+      if (Number.isFinite(+location.lon)) rec.lon = +location.lon;
+      if (location.city)     rec.city    = String(location.city).slice(0, 120);
+      if (location.country)  rec.country = String(location.country).slice(0, 80);
+      if (location.timezone) rec.timezone = String(location.timezone).slice(0, 60);
+    }
+    if (prefs && typeof prefs.alerts === 'boolean') rec.alerts = prefs.alerts;
+    await pushSave(rec);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/push/notify', async (req, res) => {
+  try {
+    const { endpoint, title, body, url } = req.body || {};
+    if (!endpoint || !title) return res.status(400).json({ ok: false, error: 'Falta endpoint o title' });
+    const list = await pushList();
+    const rec = list.find(r => r.endpoint === endpoint);
+    if (!rec) return res.status(404).json({ ok: false, error: 'Suscripción no encontrada' });
+    const r = await sendPush(rec, { title, body: body || '', type: 'general', icon: '/splash/codehub.png', url: url || '/' });
+    res.json(r);
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── CLIMA → PUSH (alertas y recomendaciones) ─────────────────
+const WX_ALERTS = [
+  { cond: 'storm', test: c => c.weather_code >= 95,
+    msg: c => '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas y desconecta aparatos' },
+  { cond: 'rain',  test: c => c.weather_code >= 61 && c.weather_code <= 67,
+    msg: () => '🌧️ Lluvia en tu zona — lleva paraguas y maneja con precaución' },
+  { cond: 'wind',  test: c => c.wind_speed_10m > 50,
+    msg: c => '💨 Viento fuerte (' + Math.round(c.wind_speed_10m) + ' km/h) — precaución al manejar' },
+  { cond: 'heat',  test: c => c.temperature_2m > 35,
+    msg: c => '🌡️ Calor extremo (' + Math.round(c.temperature_2m) + '°C) — hidrátate y evita el sol de 11 a 15h' },
+  { cond: 'cold',  test: c => c.temperature_2m < 0,
+    msg: c => '🥶 Frío intenso (' + Math.round(c.temperature_2m) + '°C) — abrígate bien' },
+];
+
+async function fetchWeatherFor(lat, lon) {
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('open-meteo ' + r.status);
+  return (await r.json()).current;
+}
+
+function detectAlert(current) {
+  for (const a of WX_ALERTS) {
+    try { if (a.test(current)) return { cond: a.cond, body: a.msg(current) }; } catch (e) {}
+  }
+  return null;
+}
+
+async function weatherPushPass() {
+  let subs;
+  try { subs = await pushList(); } catch (e) { return { sent: 0 }; }
+  const enabled = subs.filter(s => s.alerts && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  if (!enabled.length) return { sent: 0 };
+
+  // Agrupar por coordenadas redondeadas para no repetir llamadas a Open-Meteo
+  const groups = new Map();
+  for (const s of enabled) {
+    const key = (+s.lat).toFixed(1) + ',' + (+s.lon).toFixed(1);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+
+  let sent = 0;
+  for (const [key, group] of groups) {
+    const parts = key.split(',');
+    let current;
+    try { current = await fetchWeatherFor(parts[0], parts[1]); } catch (e) { continue; }
+    const alert = detectAlert(current);
+    for (const s of group) {
+      if (alert) {
+        // Solo avisar cuando la condición es nueva (cambió el clima)
+        if (s.last_alert_condition !== alert.cond) {
+          const r = await sendPush(s, {
+            title: 'CodeHub Clima',
+            body:  s.city ? alert.body + ' · ' + s.city : alert.body,
+            type:  'weather',
+            icon:  '/splash/codehub.png',
+            url:   '/#weather-section',
+          });
+          if (r.ok) {
+            s.last_alert_condition = alert.cond;
+            s.last_alert_at = new Date().toISOString();
+            await pushSave(s);
+            sent++;
+          }
+        }
+      } else if (s.last_alert_condition) {
+        // Condición superada — resetear para poder volver a avisar
+        s.last_alert_condition = null;
+        s.last_alert_at = null;
+        await pushSave(s);
+      }
+    }
+  }
+  return { sent };
+}
+
+app.get('/api/push/weather/check', async (req, res) => {
+  try {
+    const out = await weatherPushPass();
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Scheduler — revisa cada 25 min; solo envía push cuando cambia la condición
+setInterval(() => {
+  weatherPushPass()
+    .then(o => { if (o.sent) console.log('🌤️ Push clima enviado:', o.sent); })
+    .catch(e => console.warn('⚠️  Push clima error:', e.message));
+}, 25 * 60 * 1000);
+
 // ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {
   await initRedis();
   dbConnected = await connectDB();
   if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
+  await ensurePushTable();
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
@@ -2723,6 +3005,7 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
     console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Push Clima: ✅ VAPID + scheduler cada 25 min (solo avisa si cambia el clima)`);
   });
 })();
 

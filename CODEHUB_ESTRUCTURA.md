@@ -230,7 +230,11 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 | POST | `/api/admin/apps/:id/upload` | Subir APK (admin) | x-admin-key |
 | POST | `/api/admin/seed` | Seed inicial desde JSON | x-admin-key |
 | GET | `/api/admin/visitors` | Registro de visitantes | x-admin-key |
-| POST | `/api/push/notify` | Enviar push notification | x-admin-key |
+| POST | `/api/push/subscribe` | Registrar suscripción + ubicación del usuario | — |
+| POST | `/api/push/unsubscribe` | Eliminar suscripción | — |
+| POST | `/api/push/settings` | Actualizar ubicación/preferencias de alertas | — |
+| POST | `/api/push/notify` | Enviar push notification a una suscripción | — |
+| GET | `/api/push/weather/check` | Revisar clima y avisar por push si cambió | — |
 | GET | `/api/docs` | Documentación Swagger UI | — |
 
 ---
@@ -280,6 +284,18 @@ El backend empuja en tiempo real al chat del admin (`TELEGRAM_CHAT_ID`) eventos 
 - Eventos repetidos se **agrupan en un solo mensaje** (`🔁 xN`) durante la ventana `TG_BURST_MS` para no spamear.
 - El envío usa `https` nativo (sin dependencias) y nunca bloquea las peticiones (fire-and-forget).
 - El resumen periódico no envía nada hasta 20s después de iniciar el servidor, para no duplicar el de un reinicio.
+
+### Push Notifications — alertas de clima (backend/server.js)
+
+El usuario se suscribe desde `index.html` con su **ubicación** (lat/lon/ciudad/área/huso) y el servidor le avisa por **Web Push** al dispositivo (panel del teléfono) **solo cuando cambia la condición del clima** — sin spam:
+
+- **Suscripción:** el frontend hace `POST /api/push/subscribe` con `{ subscription, location, prefs }`. Los datos del usuario (endpoint, keys, lat/lon, ciudad, país, timezone, user-agent, `alerts`) se guardan en la tabla Supabase `push_subs` (o en memoria si Supabase no está configurado).
+- **Ubicación:** se detecta por GPS (`requestGeoLocation` + Nominatim con distrito/región), por IP (`ipapi.co` → `ipwho.is` → `ip-api.com`) o búsqueda manual, y se sincroniza con `POST /api/push/settings` (se guarda también en `localStorage`: `ch_user_lat/lon/city/country`).
+- **Scheduler:** cada 25 min el backend agrupa suscripciones por coordenadas (redondeadas a 0.1°) y consulta Open-Meteo. Si hay alerta nueva (lluvia 🌧, tormenta ⛈, viento 💨 >50 km/h, calor 🌡 >35°C, frío 🥶 <0°C) envía el push con la **recomendación/prevención**. Cuando la condición se supera, resetea el estado para volver a avisar en el próximo cambio.
+- **Prefs del usuario:** el toggle "Alertas de clima en mi dispositivo" (sección Clima) enciende/apaga `alerts` vía `/api/push/settings`. El estado queda en `localStorage` (`ch_weather_alerts`) y en el backend.
+- **Tabla Supabase:** `backend/push_subs.sql` (crear a mano en el SQL Editor, o el backend intenta crearla sola al arrancar vía `exec_sql`).
+- **VAPID:** `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (si faltan usa el par de ejemplo de web-push que coincide con el public key del frontend). Puedes generar tu propio par con `npx web-push generate-vapid-keys`.
+- **sw.js** muestra la notificación (tipo `weather`, acciones "Ver clima", tag `codehub-weather`) y al hacer clic abre `/#weather-section`.
 
 ---
 

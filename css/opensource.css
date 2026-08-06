@@ -66,8 +66,8 @@ body::before {
   content: '';
   position: fixed; inset: 0;
   background-image:
-    linear-gradient(rgba(255,69,0,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,69,0,.03) 1px, transparent 1px);
+    linear-gradient(rgba(16,185,129,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,185,129,.03) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none; z-index: 0;
 }
@@ -109,11 +109,11 @@ header {
   display: flex; align-items: center; gap: .5rem;
 }
 .logo-t { font-size: 1.1rem; font-weight: 800; letter-spacing: .04em; color: var(--text); }
-.logo-t .br { color: var(--p); text-shadow: 0 0 12px rgba(255,69,0,.5); }
+.logo-t .br { color: var(--p); text-shadow: 0 0 12px rgba(16,185,129,.5); }
 .logo-b {
   font-size: .62rem; font-weight: 700; font-family: var(--mono);
-  color: var(--a); background: rgba(255,69,0,.1);
-  border: 1px solid rgba(255,69,0,.25); padding: 2px 8px; border-radius: var(--radius-xl, 22px);
+  color: var(--a); background: rgba(16,185,129,.1);
+  border: 1px solid rgba(16,185,129,.25); padding: 2px 8px; border-radius: var(--radius-xl, 22px);
 }
 .hdr-right { display: flex; align-items: center; gap: .8rem; }
 .update-badge {
@@ -128,7 +128,7 @@ header {
   border-radius: var(--radius-sm, 10px); border: 1px solid rgba(255,255,255,.08);
   transition: var(--tr);
 }
-.back-link:hover { color: var(--text); border-color: var(--bh); background: rgba(255,69,0,.06); }
+.back-link:hover { color: var(--text); border-color: var(--bh); background: rgba(16,185,129,.06); }
 
 /* ── HERO ── */
 .hero {
@@ -140,7 +140,7 @@ header {
 .hero-tag {
   display: inline-flex; align-items: center; gap: .5rem;
   font-family: var(--mono); font-size: .72rem; color: var(--a);
-  background: rgba(255,189,105,.08); border: 1px solid rgba(255,189,105,.2);
+  background: rgba(232,201,120,.08); border: 1px solid rgba(232,201,120,.2);
   padding: .28rem .9rem; border-radius: var(--radius-xl, 22px); margin-bottom: 1rem;
 }
 .hero-dot {
@@ -218,7 +218,7 @@ header {
   font-family: var(--font); font-size: .85rem;
   outline: none; transition: var(--tr);
 }
-.search-inp:focus { border-color: var(--bh); box-shadow: 0 0 0 3px rgba(255,69,0,.1); }
+.search-inp:focus { border-color: var(--bh); box-shadow: 0 0 0 3px rgba(16,185,129,.1); }
 .search-inp::placeholder { color: var(--muted); }
 
 /* ── CATALOG TABS (Premium / Open Source) — segmented control ── */
@@ -488,7 +488,7 @@ footer a { color: var(--p); text-decoration: none; }
   cursor: pointer; transition: color .15s, transform .15s;
   user-select: none;
 }
-.star:hover, .star.active { color: #ffbd69; transform: scale(1.2); }
+.star:hover, .star.active { color: #e8c978; transform: scale(1.2); }
 .star.voted { color: #ff9500; cursor: default; transform: none; }
 .rating-info {
   font-size: .65rem; font-family: var(--mono);
@@ -503,13 +503,13 @@ footer a { color: var(--p); text-decoration: none; }
 .req-app-btn {
   display: flex; align-items: center; gap: .4rem;
   padding: .45rem 1rem;
-  background: linear-gradient(135deg, rgba(255,69,0,.15), rgba(255,107,53,.1));
-  border: 1px solid rgba(255,69,0,.35);
+  background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(52,211,153,.1));
+  border: 1px solid rgba(16,185,129,.35);
   border-radius: var(--radius-sm, 10px); color: var(--p);
   font-family: var(--font); font-size: .78rem; font-weight: 700;
   cursor: pointer; transition: all .2s; white-space: nowrap;
 }
-.req-app-btn:hover { background: rgba(255,69,0,.25); border-color: var(--p); }
+.req-app-btn:hover { background: rgba(16,185,129,.25); border-color: var(--p); }
 
 /* ═══ MODAL SOLICITAR APP ════════════════════════════════════ */
 .req-modal-bg {
@@ -519,7 +519,7 @@ footer a { color: var(--p); text-decoration: none; }
   padding: 1rem;
 }
 .req-modal {
-  background: #0d0d1a; border: 1px solid rgba(255,69,0,.3);
+  background: #0d0d1a; border: 1px solid rgba(16,185,129,.3);
   border-radius: var(--radius-xl, 22px); padding: 1.5rem;
   width: 100%; max-width: 460px;
   max-height: 85vh; overflow-y: auto;
@@ -543,7 +543,7 @@ footer a { color: var(--p); text-decoration: none; }
   color: var(--text); font-family: var(--font); font-size: .85rem;
   outline: none; transition: border-color .2s; resize: none;
 }
-.req-input:focus, .req-textarea:focus { border-color: rgba(255,69,0,.4); }
+.req-input:focus, .req-textarea:focus { border-color: rgba(16,185,129,.4); }
 .req-submit-btn {
   display: flex; align-items: center; justify-content: center; gap: .5rem;
   padding: .65rem; border-radius: var(--radius-sm, 10px);
@@ -562,7 +562,7 @@ footer a { color: var(--p); text-decoration: none; }
 .req-item-name { font-size: .82rem; font-weight: 600; }
 .req-item-votes {
   font-size: .65rem; font-family: var(--mono); color: var(--p);
-  background: rgba(255,69,0,.1); border-radius: var(--radius-xl, 22px); padding: .15rem .5rem;
+  background: rgba(16,185,129,.1); border-radius: var(--radius-xl, 22px); padding: .15rem .5rem;
 }
 .req-loading { font-size: .78rem; color: var(--muted); font-family: var(--mono); padding: .5rem 0; }
 
@@ -619,7 +619,7 @@ footer a { color: var(--p); text-decoration: none; }
   position: fixed;
   z-index: 9999;
   max-width: 210px;
-  background: linear-gradient(135deg, var(--primary,#ff4500), var(--secondary,#ff8c00));
+  background: linear-gradient(135deg, var(--primary,#10b981), var(--secondary,#e8c978));
   color: #fff;
   font-family: inherit;
   font-size: .74rem;

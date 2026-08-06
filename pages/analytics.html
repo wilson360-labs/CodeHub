@@ -17,7 +17,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Analytics — CodeHub</title>
   <meta name="robots" content="noindex, nofollow">
-  <meta name="theme-color" content="#ff4500">
+  <meta name="theme-color" content="#10b981">
   <link rel="icon" type="image/png" href="../splash/codehub.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,8 +33,8 @@
       --s1:#07070f;
       --s2:#0c0c1a;
       --s3:#101020;
-      --p:#ff4500;--p2:#ff6b35;
-      --a:#ffbd69;
+      --p:#10b981;--p2:#34d399;
+      --a:#e8c978;
       --g:#00e676;
       --c:#00e5ff;
       --pu:#a855f7;
@@ -59,8 +59,8 @@
     body::before{
       content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
       background-image:
-        linear-gradient(rgba(255,69,0,.018) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(255,69,0,.018) 1px,transparent 1px);
+        linear-gradient(rgba(16,185,129,.018) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(16,185,129,.018) 1px,transparent 1px);
       background-size:48px 48px;
     }
 
@@ -72,7 +72,7 @@
     }
     .login-box{
       background:var(--s1);
-      border:1px solid rgba(255,69,0,.2);
+      border:1px solid rgba(16,185,129,.2);
       border-radius:22px;
       padding:2.5rem 2rem;
       width:100%;max-width:360px;
@@ -82,7 +82,7 @@
     .login-box::before{
       content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
       width:200px;height:200px;
-      background:radial-gradient(circle,rgba(255,69,0,.08),transparent 70%);
+      background:radial-gradient(circle,rgba(16,185,129,.08),transparent 70%);
       pointer-events:none;
     }
     .login-logo{font-size:2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.25rem}
@@ -95,7 +95,7 @@
       outline:none;margin-bottom:.75rem;text-align:center;letter-spacing:.2em;
       transition:border-color .2s;
     }
-    .login-input:focus{border-color:rgba(255,69,0,.5)}
+    .login-input:focus{border-color:rgba(16,185,129,.5)}
     .login-btn{
       width:100%;padding:.8rem;border-radius:10px;
       background:linear-gradient(135deg,var(--p),var(--p2));
@@ -114,7 +114,7 @@
       display:flex;align-items:center;gap:1rem;
       padding:.75rem 1.5rem;
       background:rgba(7,7,15,.92);
-      border-bottom:1px solid rgba(255,69,0,.12);
+      border-bottom:1px solid rgba(16,185,129,.12);
       backdrop-filter:blur(16px);
       position:sticky;top:0;z-index:100;
     }
@@ -130,7 +130,7 @@
       background:rgba(0,230,118,.07);color:var(--g);
       transition:all .3s;
     }
-    .ws-pill.disconnected{border-color:rgba(255,69,0,.25);background:rgba(255,69,0,.07);color:var(--p)}
+    .ws-pill.disconnected{border-color:rgba(16,185,129,.25);background:rgba(16,185,129,.07);color:var(--p)}
     .ws-dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:wsPulse 2s infinite}
     .ws-pill.disconnected .ws-dot{background:var(--p);animation:none}
     @keyframes wsPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
@@ -140,7 +140,7 @@
       color:var(--muted);font-family:var(--mono);font-size:.65rem;
       cursor:pointer;transition:all .2s;
     }
-    .topbar-btn:hover{border-color:rgba(255,69,0,.4);color:var(--text)}
+    .topbar-btn:hover{border-color:rgba(16,185,129,.4);color:var(--text)}
 
     /* ── MAIN GRID ── */
     .dash-main{
@@ -162,7 +162,7 @@
     .stat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
     .stat-card::before{
       content:'';position:absolute;inset:0;
-      background:radial-gradient(circle at 0% 0%,var(--card-glow,rgba(255,69,0,.06)),transparent 65%);
+      background:radial-gradient(circle at 0% 0%,var(--card-glow,rgba(16,185,129,.06)),transparent 65%);
       pointer-events:none;
     }
     .stat-label{font-family:var(--mono);font-size:.58rem;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem}
@@ -176,18 +176,18 @@
     }
 
     /* Card accent colors */
-    .sc-orange{--card-glow:rgba(255,69,0,.08)}
+    .sc-orange{--card-glow:rgba(16,185,129,.08)}
     .sc-orange .stat-val{color:var(--p)}
-    .sc-orange .stat-icon{background:rgba(255,69,0,.12);color:var(--p)}
+    .sc-orange .stat-icon{background:rgba(16,185,129,.12);color:var(--p)}
     .sc-green{--card-glow:rgba(0,230,118,.07)}
     .sc-green .stat-val{color:var(--g)}
     .sc-green .stat-icon{background:rgba(0,230,118,.1);color:var(--g)}
     .sc-cyan{--card-glow:rgba(0,229,255,.07)}
     .sc-cyan .stat-val{color:var(--c)}
     .sc-cyan .stat-icon{background:rgba(0,229,255,.1);color:var(--c)}
-    .sc-amber{--card-glow:rgba(255,189,105,.07)}
+    .sc-amber{--card-glow:rgba(232,201,120,.07)}
     .sc-amber .stat-val{color:var(--a)}
-    .sc-amber .stat-icon{background:rgba(255,189,105,.1);color:var(--a)}
+    .sc-amber .stat-icon{background:rgba(232,201,120,.1);color:var(--a)}
     .sc-purple{--card-glow:rgba(168,85,247,.07)}
     .sc-purple .stat-val{color:var(--pu)}
     .sc-purple .stat-icon{background:rgba(168,85,247,.1);color:var(--pu)}
@@ -217,10 +217,10 @@
     .feed-list{
       display:flex;flex-direction:column;gap:.5rem;
       max-height:300px;overflow-y:auto;
-      scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent;
+      scrollbar-width:thin;scrollbar-color:rgba(16,185,129,.3) transparent;
     }
     .feed-list::-webkit-scrollbar{width:3px}
-    .feed-list::-webkit-scrollbar-thumb{background:rgba(255,69,0,.3);border-radius:3px}
+    .feed-list::-webkit-scrollbar-thumb{background:rgba(16,185,129,.3);border-radius:3px}
     .feed-item{
       display:flex;align-items:flex-start;gap:.75rem;
       padding:.6rem .75rem;
@@ -238,9 +238,9 @@
     .feed-time{font-family:var(--mono);font-size:.55rem;color:var(--muted);flex-shrink:0;margin-top:.1rem}
 
     /* ── TOOLS RANKING ── */
-    .rank-list{display:flex;flex-direction:column;gap:.5rem;max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(255,69,0,.3) transparent}
+    .rank-list{display:flex;flex-direction:column;gap:.5rem;max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(16,185,129,.3) transparent}
     .rank-list::-webkit-scrollbar{width:3px}
-    .rank-list::-webkit-scrollbar-thumb{background:rgba(255,69,0,.3);border-radius:3px}
+    .rank-list::-webkit-scrollbar-thumb{background:rgba(16,185,129,.3);border-radius:3px}
     .rank-item{display:flex;align-items:center;gap:.75rem;padding:.55rem .75rem;border-radius:10px;background:var(--s3);border:1px solid var(--border)}
     .rank-num{font-family:var(--mono);font-size:.65rem;color:var(--muted);width:16px;text-align:center;flex-shrink:0}
     .rank-num.top{color:var(--a)}
@@ -272,7 +272,7 @@
     /* ── MINI TABS ── */
     .mini-tabs{display:flex;gap:.35rem}
     .mini-tab{font-family:var(--mono);font-size:.58rem;padding:.25rem .6rem;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s}
-    .mini-tab.active{border-color:rgba(255,69,0,.4);background:rgba(255,69,0,.08);color:var(--p)}
+    .mini-tab.active{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08);color:var(--p)}
 
     /* ── EMPTY STATE ── */
     .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;color:var(--muted);gap:.5rem;font-family:var(--mono);font-size:.68rem;text-align:center}
@@ -281,8 +281,8 @@
     .live-ticker{
       display:flex;align-items:center;gap:.6rem;
       padding:.5rem 1rem;
-      background:rgba(255,69,0,.06);
-      border:1px solid rgba(255,69,0,.15);
+      background:rgba(16,185,129,.06);
+      border:1px solid rgba(16,185,129,.15);
       border-radius:10px;
       font-family:var(--mono);font-size:.65rem;
       overflow:hidden;white-space:nowrap;
@@ -650,11 +650,11 @@ function initCharts() {
     data: { labels: [], datasets: [{
       label: 'Visitas',
       data: [],
-      backgroundColor: 'rgba(255,69,0,.25)',
-      borderColor: '#ff4500',
+      backgroundColor: 'rgba(16,185,129,.25)',
+      borderColor: '#10b981',
       borderWidth: 1.5,
       borderRadius: 4,
-      hoverBackgroundColor: 'rgba(255,69,0,.45)',
+      hoverBackgroundColor: 'rgba(16,185,129,.45)',
     }]},
     options: {
       responsive: true,
@@ -691,7 +691,7 @@ function initCharts() {
       labels: ['Visitas','Tools','Chats','Descargas','Contactos'],
       datasets: [{
         data: [0,0,0,0,0],
-        backgroundColor: ['#ff4500','#00e676','#a855f7','#00e5ff','#ffbd69'],
+        backgroundColor: ['#10b981','#00e676','#a855f7','#00e5ff','#e8c978'],
         borderWidth: 0,
         hoverOffset: 6,
       }]
@@ -732,8 +732,8 @@ function updateDailyChart(metric) {
   const vals = sorted.map(d => d[metric] || 0);
 
   const colorMap = {
-    visits:    { bg:'rgba(255,69,0,.25)',    border:'#ff4500' },
-    tool_uses: { bg:'rgba(255,189,105,.2)',  border:'#ffbd69' },
+    visits:    { bg:'rgba(16,185,129,.25)',    border:'#10b981' },
+    tool_uses: { bg:'rgba(232,201,120,.2)',  border:'#e8c978' },
     chat_msgs: { bg:'rgba(168,85,247,.2)',   border:'#a855f7' },
     downloads: { bg:'rgba(0,229,255,.18)',   border:'#00e5ff' },
   };
@@ -828,10 +828,10 @@ function connectWS() {
 }
 
 const eventConfig = {
-  visit:        { icon:'fa-eye',             color:'var(--p)',  bg:'rgba(255,69,0,.12)',  label:'Nueva visita' },
+  visit:        { icon:'fa-eye',             color:'var(--p)',  bg:'rgba(16,185,129,.12)',  label:'Nueva visita' },
   chat_used:    { icon:'fa-robot',           color:'var(--pu)', bg:'rgba(168,85,247,.12)',label:'Chat EMI IA' },
   download:     { icon:'fa-download',        color:'var(--pu)', bg:'rgba(168,85,247,.12)',label:'Descarga APK' },
-  new_rating:   { icon:'fa-star',            color:'var(--a)',  bg:'rgba(255,189,105,.12)',label:'Nueva valoración' },
+  new_rating:   { icon:'fa-star',            color:'var(--a)',  bg:'rgba(232,201,120,.12)',label:'Nueva valoración' },
   contact_form: { icon:'fa-envelope',        color:'var(--c)',  bg:'rgba(0,229,255,.12)', label:'Formulario de contacto' },
   new_app:      { icon:'fa-mobile-screen-button', color:'var(--g)', bg:'rgba(0,230,118,.12)',label:'Nueva app publicada' },
   connected:    { icon:'fa-plug',            color:'var(--g)',  bg:'rgba(0,230,118,.12)', label:'Cliente WS conectado' },

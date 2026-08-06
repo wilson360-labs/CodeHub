@@ -42,7 +42,7 @@
     background: rgba(0,0,0,.5);
     padding: .9rem 1.3rem;
     border-radius: var(--radius-sm, 10px);
-    border: 1px solid rgba(255,69,0,.15);
+    border: 1px solid rgba(16,185,129,.15);
 }
 #mi-pueblo .gallery-img {
     width: 100%;
@@ -76,8 +76,8 @@
 }
 
 /* ── UTILIDADES GLOBALES ─────────────────── */
-.text-primary   { color: #ff4500 }
-.text-accent    { color: #ffbd69 }
+.text-primary   { color: #10b981 }
+.text-accent    { color: #e8c978 }
 .text-muted     { color: rgba(232,232,240,.45) }
 .text-green     { color: #00e676 }
 .mono           { font-family: 'JetBrains Mono', monospace }

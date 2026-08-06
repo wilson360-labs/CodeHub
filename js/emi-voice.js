@@ -366,7 +366,7 @@
 #emi-mic-btn.emi-mic-active {
   background: rgba(255, 69, 0, .18);
   border-color: rgba(255, 69, 0, .7);
-  color: #ff4500;
+  color: #10b981;
   box-shadow: 0 0 16px rgba(255, 69, 0, .35);
   animation: emi-mic-pulse 1.4s ease-in-out infinite;
 }
@@ -382,7 +382,7 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,69,0,.3) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(16,185,129,.3) 0%, transparent 70%);
   opacity: 0;
   transform: scale(0);
   transition: none;
@@ -420,7 +420,7 @@
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.emi-voice-toast.error  { border-color: rgba(255,69,0,.5); color: #ff9a7a; }
-.emi-voice-toast.warn   { border-color: rgba(255,189,105,.5); color: var(--a, #ffbd69); }
+.emi-voice-toast.error  { border-color: rgba(16,185,129,.5); color: #ff9a7a; }
+.emi-voice-toast.warn   { border-color: rgba(232,201,120,.5); color: var(--a, #e8c978); }
 
 ═══════════════════════════════════════════════════════════ */

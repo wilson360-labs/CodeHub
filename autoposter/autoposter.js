@@ -436,25 +436,25 @@ function buildFullPost(topic, bodyHtml) {
 
   // Header visual y structured data para el post
   const header = `
-<div style="background:linear-gradient(135deg,#0d0d1e,#1a0a2e);border:1px solid rgba(255,69,0,.2);border-radius:12px;padding:1.5rem 2rem;margin-bottom:2rem;">
-  <div style="font-family:'Courier New',monospace;font-size:.75rem;color:#ff4500;margin-bottom:.5rem;letter-spacing:.08em;">// codehub-labs.blogspot.com · ${today}</div>
+<div style="background:linear-gradient(135deg,#0d0d1e,#1a0a2e);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:1.5rem 2rem;margin-bottom:2rem;">
+  <div style="font-family:'Courier New',monospace;font-size:.75rem;color:#10b981;margin-bottom:.5rem;letter-spacing:.08em;">// codehub-labs.blogspot.com · ${today}</div>
   <h1 style="font-size:1.6rem;font-weight:700;color:#f0f0fa;margin:0 0 .75rem;line-height:1.3;">${topic.title}</h1>
   <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
-    ${topic.tags.map(t => `<span style="background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.3);color:#ff8c5a;font-size:.72rem;padding:.2rem .65rem;border-radius:999px;">${t}</span>`).join('')}
+    ${topic.tags.map(t => `<span style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#ff8c5a;font-size:.72rem;padding:.2rem .65rem;border-radius:999px;">${t}</span>`).join('')}
   </div>
 </div>
 `;
 
   // Footer con CTA y firma
   const footer = `
-<hr style="border:none;border-top:1px solid rgba(255,69,0,.2);margin:2.5rem 0;">
-<div style="background:linear-gradient(135deg,#0d0d1e,#1a0a2e);border:1px solid rgba(255,69,0,.2);border-radius:12px;padding:1.5rem 2rem;text-align:center;">
+<hr style="border:none;border-top:1px solid rgba(16,185,129,.2);margin:2.5rem 0;">
+<div style="background:linear-gradient(135deg,#0d0d1e,#1a0a2e);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:1.5rem 2rem;text-align:center;">
   <div style="font-size:1.1rem;font-weight:700;color:#f0f0fa;margin-bottom:.5rem;">Wilson.E — Desarrollador Web Full Stack</div>
   <div style="color:rgba(240,240,250,.6);font-size:.9rem;margin-bottom:1rem;">Guatemala 🇬🇹 · Disponible para proyectos freelance</div>
   <div style="display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;">
-    <a href="${CONFIG.siteUrl}" style="background:linear-gradient(135deg,#ff4500,#ff6b35);color:#fff;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:700;">🚀 Ver CodeHub</a>
-    <a href="${CONFIG.siteUrl}/tools" style="background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.3);color:#ff8c5a;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;">🛠 Herramientas</a>
-    <a href="${CONFIG.blogUrl}" style="background:rgba(255,69,0,.12);border:1px solid rgba(255,69,0,.3);color:#ff8c5a;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;">📝 Ver Blog</a>
+    <a href="${CONFIG.siteUrl}" style="background:linear-gradient(135deg,#10b981,#34d399);color:#fff;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:700;">🚀 Ver CodeHub</a>
+    <a href="${CONFIG.siteUrl}/tools" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#ff8c5a;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;">🛠 Herramientas</a>
+    <a href="${CONFIG.blogUrl}" style="background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#ff8c5a;text-decoration:none;padding:.5rem 1.2rem;border-radius:8px;font-size:.85rem;">📝 Ver Blog</a>
   </div>
   <div style="margin-top:1rem;font-family:'Courier New',monospace;font-size:.7rem;color:rgba(240,240,250,.3);">
     wilson.e360labs@gmail.com · wilson360-labs.vercel.app
@@ -535,10 +535,10 @@ function savePostLocally(topic, htmlContent) {
   <title>${topic.title}</title>
   <style>
     body { font-family: 'Segoe UI', sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1.5rem; background: #050510; color: #e8e8f0; line-height: 1.75; }
-    h2 { color: #ff6b35; margin: 2rem 0 .75rem; }
-    a  { color: #ff4500; }
+    h2 { color: #34d399; margin: 2rem 0 .75rem; }
+    a  { color: #10b981; }
     code { background: rgba(255,255,255,.08); padding: .1rem .4rem; border-radius: 4px; font-family: 'Courier New', monospace; font-size: .9em; }
-    pre  { background: #0d0d1e; border: 1px solid rgba(255,69,0,.2); border-radius: 8px; padding: 1.2rem; overflow-x: auto; }
+    pre  { background: #0d0d1e; border: 1px solid rgba(16,185,129,.2); border-radius: 8px; padding: 1.2rem; overflow-x: auto; }
     pre code { background: none; padding: 0; }
   </style>
 </head>

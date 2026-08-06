@@ -247,7 +247,7 @@
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando…'; }
     const orbEl = document.getElementById('sig-orb');
     if (orbEl && window.ThinkingOrb) {
-      orbInstance = window.ThinkingOrb.create(orbEl, { state: 'working', size: 48, color: 'rgba(255,107,53,0.95)' });
+      orbInstance = window.ThinkingOrb.create(orbEl, { state: 'working', size: 48, color: 'rgba(52,211,153,0.95)' });
     }
   }
   function hideProgress() {

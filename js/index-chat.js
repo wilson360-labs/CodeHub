@@ -708,7 +708,7 @@ function closeEgg() {
 function spawnParticles() {
     const container = document.getElementById('egg-particles');
     container.innerHTML = '';
-    const colors = ['#ff4500','#00e5ff','#ffbd69','#00e676','#a855f7','#ff6b35'];
+    const colors = ['#10b981','#00e5ff','#e8c978','#00e676','#a855f7','#34d399'];
     for (let i = 0; i < 60; i++) {
         const p = document.createElement('div');
         p.className = 'egg-particle';

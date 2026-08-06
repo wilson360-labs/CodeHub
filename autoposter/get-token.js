@@ -98,10 +98,10 @@ const server = http.createServer(async (req, res) => {
       <head><style>
         body { font-family: monospace; background: #050510; color: #e8e8f0; padding: 2rem; max-width: 700px; margin: 0 auto; }
         h2   { color: #00e676; }
-        .box { background: #0d0d1e; border: 1px solid rgba(255,69,0,.3); border-radius: 8px; padding: 1rem; margin: 1rem 0; word-break: break-all; font-size: .8rem; }
-        .lbl { color: #ff4500; font-size: .75rem; margin-bottom: .3rem; }
+        .box { background: #0d0d1e; border: 1px solid rgba(16,185,129,.3); border-radius: 8px; padding: 1rem; margin: 1rem 0; word-break: break-all; font-size: .8rem; }
+        .lbl { color: #10b981; font-size: .75rem; margin-bottom: .3rem; }
         .ok  { color: #00e676; }
-        .warn{ color: #ffbd69; }
+        .warn{ color: #e8c978; }
       </style></head>
       <body>
         <h2>✅ Autenticación exitosa</h2>

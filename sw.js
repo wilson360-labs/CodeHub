@@ -194,6 +194,8 @@ self.addEventListener('push', e => {
     vibrate: [200, 100, 200],
     timestamp: Date.now(),
     requireInteraction: false,
+    lang: 'es',
+    dir: 'auto',
     data: { url: url || '/opensource', type, appId },
     actions: [],
   };
@@ -210,7 +212,7 @@ self.addEventListener('push', e => {
     options.tag      = 'codehub-weather';
     options.renotify = false;
     options.actions  = [{ action: 'open', title: '🌤 Ver clima' }];
-    options.data.url = '/index.html#weather-section';
+    options.data.url = url || '/index.html#weather-section';
   } else {
     options.tag = 'codehub-general';
   }
