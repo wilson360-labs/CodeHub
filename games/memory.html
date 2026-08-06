@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memoria - Wilson.E</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: rgba(0,0,0,.3);
+            border: 1px solid rgba(47,128,237,.25);
+            border-radius: 18px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        }
+        h1 { font-size: 1.3rem; letter-spacing: .04em; }
+        h1 span { color: #22c55e; }
+        .bar {
+            display: flex;
+            gap: 1.4rem;
+            align-items: center;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: .9rem;
+        }
+        .bar .moves, .bar .pairs { color: #38bdf8; font-weight: 700; }
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 74px);
+            gap: 8px;
+            perspective: 800px;
+        }
+        .card {
+            width: 74px;
+            height: 74px;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform .5s cubic-bezier(.16,1,.3,1);
+        }
+        .card.flipped { transform: rotateY(180deg); }
+        .card.matched { opacity: .35; pointer-events: none; }
+        .card-face {
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        .card-back {
+            background: rgba(47,128,237,.15);
+            border: 1px solid rgba(47,128,237,.35);
+        }
+        .card-back:hover { background: rgba(47,128,237,.28); }
+        .card-front {
+            background: rgba(255,255,255,.07);
+            border: 1px solid rgba(255,255,255,.12);
+            transform: rotateY(180deg);
+        }
+        .btn {
+            padding: .6rem 1.6rem;
+            border: 1px solid rgba(47,128,237,.4);
+            border-radius: 10px;
+            background: rgba(47,128,237,.15);
+            color: #22c55e;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .btn:hover { background: rgba(47,128,237,.3); transform: translateY(-2px); }
+        .status { font-size: .85rem; color: rgba(232,232,240,.7); }
+        .status.win { color: #22c55e; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1><span>•</span> MEMORIA</h1>
+        <div class="bar">
+            <span>🔄 <span class="moves" id="moves">0</span> movimientos</span>
+            <span>🔗 <span class="pairs" id="pairs">0</span>/8 pares</span>
+        </div>
+        <div id="grid"></div>
+        <div class="status" id="status"></div>
+        <button class="btn" onclick="newGame()">🔄 Nuevo juego</button>
+    </div>
+    <script src="memory.js"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piedra Papel o Tijera - Wilson.E</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+            padding: 1.5rem 2rem;
+            background: rgba(0,0,0,.3);
+            border: 1px solid rgba(47,128,237,.25);
+            border-radius: 18px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        }
+        h1 { font-size: 1.3rem; letter-spacing: .04em; }
+        h1 span { color: #22c55e; }
+        .score {
+            display: flex;
+            gap: 2rem;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1rem;
+        }
+        .score .you { color: #38bdf8; }
+        .score .cpu { color: #fb7185; }
+        .arena {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            min-height: 130px;
+        }
+        .player-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: .5rem;
+        }
+        .player-box .emote {
+            font-size: 4rem;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.12);
+            transition: transform .3s cubic-bezier(.16,1,.3,1);
+        }
+        .player-box.playing .emote { animation: shake .4s ease-in-out infinite; }
+        .player-box .label { font-size: .75rem; color: rgba(232,232,240,.6); font-family: 'Consolas', monospace; }
+        .vs { font-size: 1.2rem; color: rgba(232,232,240,.4); font-weight: 700; }
+        @keyframes shake {
+            0%,100% { transform: rotate(-6deg); }
+            50% { transform: rotate(6deg); }
+        }
+        .choices { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+        .choice {
+            width: 74px;
+            height: 74px;
+            font-size: 2.2rem;
+            border-radius: 14px;
+            border: 1px solid rgba(47,128,237,.35);
+            background: rgba(47,128,237,.12);
+            cursor: pointer;
+            transition: all .2s cubic-bezier(.16,1,.3,1);
+        }
+        .choice:hover { background: rgba(47,128,237,.3); transform: translateY(-4px) scale(1.06); }
+        .result { font-size: 1.1rem; font-weight: 700; min-height: 1.5rem; }
+        .result.win { color: #22c55e; }
+        .result.lose { color: #fb7185; }
+        .result.tie { color: #38bdf8; }
+        .btn {
+            padding: .6rem 1.6rem;
+            border: 1px solid rgba(47,128,237,.4);
+            border-radius: 10px;
+            background: rgba(47,128,237,.15);
+            color: #22c55e;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .btn:hover { background: rgba(47,128,237,.3); transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1><span>•</span> PIEDRA · PAPEL · TIJERA</h1>
+        <div class="score">
+            <span>Tú: <span class="you" id="score-you">0</span></span>
+            <span>CPU: <span class="cpu" id="score-cpu">0</span></span>
+        </div>
+        <div class="arena">
+            <div class="player-box" id="box-you"><div class="emote" id="emote-you">🤚</div><div class="label">TÚ</div></div>
+            <div class="vs">VS</div>
+            <div class="player-box" id="box-cpu"><div class="emote" id="emote-cpu">🤖</div><div class="label">CPU</div></div>
+        </div>
+        <div class="choices">
+            <button class="choice" onclick="play('rock')">🪨</button>
+            <button class="choice" onclick="play('paper')">📄</button>
+            <button class="choice" onclick="play('scissors')">✂️</button>
+        </div>
+        <div class="result" id="result"></div>
+        <button class="btn" onclick="reset()">🔄 Reiniciar</button>
+    </div>
+    <script src="rps.js"></script>
+</body>
+</html>

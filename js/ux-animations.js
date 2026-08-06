@@ -217,10 +217,8 @@
       '#services .service-card',
       '.why-card',
       '#skills .skills-header',
-      '#stats .stat-card',
       '#weather-section',
       '#news-section',
-      '#why-me .wm-card',
       '#open-to-work .otw-info-card',
       '#mi-pueblo .about-brand-card',
       '#contact'

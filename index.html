@@ -165,6 +165,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <!-- PWA Install Prompt -->
 
     <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 <script>
@@ -434,7 +435,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a class="side-link" href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-simple"></i> Estadísticas</a>
             <a class="side-link" href="#skills" onclick="closeMobileNav()"><i class="fas fa-code"></i> Habilidades</a>
             <a class="side-link" href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
-            <a class="side-link" href="#latest-projects" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
+            <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
             <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
             <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
             <a class="side-link" href="#contact" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
@@ -585,7 +586,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </div>
                     </div>
                     <div class="hero-ctas">
-                        <a href="#latest-projects" class="hero-btn hero-btn-primary">
+                        <a href="#game" class="hero-btn hero-btn-primary">
                             <i class="fas fa-folder-open"></i> Ver proyectos
                         </a>
                         <a href="#contact" class="hero-btn hero-btn-ghost">
@@ -831,49 +832,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             
         </section>
 
-        <section id="stats">
-            <div class="stats-eyebrow">// números reales · actualizado 2026</div>
-            <h2>Mi Trayectoria</h2>
-            <div class="stats-section">
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-folder-open"></i></div>
-                    <div class="stat-number" data-target="25">0</div>
-                    <div class="stat-label">Proyectos</div>
-                    <div class="stat-sub">web, tools &amp; apps</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-code"></i></div>
-                    <div class="stat-number" data-target="20000">0</div>
-                    <div class="stat-label">Líneas de Código</div>
-                    <div class="stat-sub">solo en CodeHub</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-screwdriver-wrench"></i></div>
-                    <div class="stat-number" data-target="23">0</div>
-                    <div class="stat-label">Herramientas</div>
-                    <div class="stat-sub">gratuitas en tools</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-mobile-screen"></i></div>
-                    <div class="stat-number" data-target="13">0</div>
-                    <div class="stat-label">Apps Premium</div>
-                    <div class="stat-sub">Android desbloqueadas</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-robot"></i></div>
-                    <div class="stat-number" data-target="5">0</div>
-                    <div class="stat-label">Proveedores IA</div>
-                    <div class="stat-sub">Multi-IA con fallback</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
-                    <div class="stat-number" data-target="3">0</div>
-                    <div class="stat-label">Años Programando</div>
-                    <div class="stat-sub">autodidacta desde 2022</div>
-                </div>
-            </div>
-        </section>
-
         <!-- Skills Section (SOLO UNA VEZ) -->
         <section id="skills">
             <!-- Encabezado con tabs de año -->
@@ -995,10 +953,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="tool-badge"><img src="https://cdn.simpleicons.org/railway/0B0D0E" width="16" height="16" alt="" loading="lazy" style="vertical-align:middle;margin-right:6px"> Railway</div>
             </div>
         </section>
-
-        <!-- CONTINÚA: Necesitas la PARTE 2 con el resto de las secciones y TODO el JavaScript -->
-        <!-- PARTE 2 - Continuación desde Skills Section -->
-<!-- Copia este código y pégalo DESPUÉS de la sección Skills en la Parte 1 -->
 
         <!-- Services Section -->
         <section id="services">
@@ -1162,43 +1116,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         
 
 
-        
-        <!-- ══ ¿POR QUÉ CONTRATARME? ══ -->
-        <section id="why-me">
-          <div class="wm-eyebrow">// propuesta de valor</div>
-          <h2 class="wm-title">¿Por qué trabajar conmigo?</h2>
-          <div class="wm-grid">
-            <div class="wm-card">
-              <div class="wm-icon" style="background:linear-gradient(135deg,#2f80ed,#22c55e)">
-                <i class="fas fa-rocket"></i>
-              </div>
-              <h3 class="wm-card-title">Entrega rápida</h3>
-              <p class="wm-card-desc">Proyectos listos en tiempo récord. Sin burocracia, sin demoras innecesarias. Itero rápido y entrego.</p>
-            </div>
-            <div class="wm-card">
-              <div class="wm-icon" style="background:linear-gradient(135deg,#7c3aed,#b464ff)">
-                <i class="fas fa-brain"></i>
-              </div>
-              <h3 class="wm-card-title">Autodidacta</h3>
-              <p class="wm-card-desc">Aprendo lo que el proyecto necesita. Si algo no lo sé hoy, lo domino mañana. Cero excusas.</p>
-            </div>
-            <div class="wm-card">
-              <div class="wm-icon" style="background:linear-gradient(135deg,#0088cc,#22c55e)">
-                <i class="fas fa-code"></i>
-              </div>
-              <h3 class="wm-card-title">Stack moderno</h3>
-              <p class="wm-card-desc">HTML, CSS, JS, Node.js, Python, MongoDB, APIs de IA. Todo lo necesario para construir productos reales.</p>
-            </div>
-            <div class="wm-card">
-              <div class="wm-icon" style="background:linear-gradient(135deg,#00b248,#00e676)">
-                <i class="fas fa-comments"></i>
-              </div>
-              <h3 class="wm-card-title">Comunicación directa</h3>
-              <p class="wm-card-desc">Sin intermediarios. Hablas directamente conmigo. Actualizaciones constantes y total transparencia.</p>
-            </div>
-          </div>
-        </section>
-
         <section id="contact">
             <div class="contact-wrap">
                 <!-- Info izquierda -->
@@ -1296,6 +1213,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </button>
                 <button onclick="openGameWindow('tetris')">
                     <i class="fas fa-table-cells"></i> Jugar a Tetris
+                </button>
+                <button onclick="openGameWindow('mines')">
+                    <i class="fas fa-bomb"></i> Jugar a Buscaminas
+                </button>
+                <button onclick="openGameWindow('memory')">
+                    <i class="fas fa-brain"></i> Jugar a Memoria
+                </button>
+                <button onclick="openGameWindow('rps')">
+                    <i class="fas fa-hand-fist"></i> Piedra, Papel o Tijera
                 </button>
             </div>
         </section>
@@ -1951,7 +1877,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // Screenshot
         function takeScreenshot() {
             toggleExperimentalMenu();
-            if (typeof toast === 'function') toast('📸 Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac) para capturar', 'info', 4000);
+            var target = document.querySelector('main') || document.body;
+            if (typeof html2canvas !== 'function') {
+                if (typeof toast === 'function') toast('📸 Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac)', 'info', 4000);
+                return;
+            }
+            if (typeof toast === 'function') toast('📸 Capturando el sitio…', 'info', 2200);
+            html2canvas(target, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#0a0a0a',
+                logging: false
+            }).then(function(canvas) {
+                var link = document.createElement('a');
+                link.download = 'CodeHub_Web_' + new Date().toISOString().slice(0, 10) + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                if (typeof toast === 'function') toast('✅ Screenshot descargado', 'success', 3200);
+            }).catch(function(err) {
+                console.error(err);
+                if (typeof toast === 'function') toast('❌ No se pudo capturar', 'error', 3200);
+            });
         }
 
         // Export Portfolio
@@ -2032,6 +1979,9 @@ DISPONIBILIDAD:
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
             { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
+            { name: 'Jugar Buscaminas', icon: 'fa-bomb', action: () => openGameWindow('mines') },
+            { name: 'Jugar Memoria', icon: 'fa-brain', action: () => openGameWindow('memory') },
+            { name: 'Piedra Papel o Tijera', icon: 'fa-hand-fist', action: () => openGameWindow('rps') },
             { name: 'Menú Experimental', icon: 'fa-flask', action: toggleExperimentalMenu }
         ];
 
@@ -2111,53 +2061,6 @@ DISPONIBILIDAD:
             document.getElementById('scroll-progress').style.width = scrolled + '%';
         });
 
-        // Stats Counter Animation — con easing, sufijos y disparo por Intersection Observer
-        function animateCounters() {
-            const counters = document.querySelectorAll('.stat-number');
-            counters.forEach(counter => {
-                if (counter.dataset.animated) return; // evitar doble disparo
-                counter.dataset.animated = 'true';
-                const target = parseInt(counter.getAttribute('data-target'));
-                const duration = 2200;
-                const suffix = target >= 1000 ? '+' : '+';
-                let startTime = null;
-
-                const ease = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
-
-                const updateCounter = (timestamp) => {
-                    if (!startTime) startTime = timestamp;
-                    const elapsed = Math.min((timestamp - startTime) / duration, 1);
-                    const value = Math.floor(ease(elapsed) * target);
-                    // Formatear miles con coma
-                    counter.textContent = value >= 1000
-                        ? value.toLocaleString('es-GT')
-                        : value;
-                    if (elapsed < 1) {
-                        requestAnimationFrame(updateCounter);
-                    } else {
-                        counter.textContent = target >= 1000
-                            ? target.toLocaleString('es-GT') + '+'
-                            : target + '+';
-                        counter.classList.add('counter-done');
-                    }
-                };
-                requestAnimationFrame(updateCounter);
-            });
-        }
-
-        // Disparar counters cuando #stats entra en pantalla
-        (function(){
-            const statsSection = document.getElementById('stats');
-            if (!statsSection) return;
-            const statObs = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting) {
-                    animateCounters();
-                    statObs.disconnect();
-                }
-            }, { threshold: 0.2 });
-            statObs.observe(statsSection);
-        })();
-
         // Copy Email Function
         function copyEmail() {
             const email = 'wilson.e360labs@gmail.com';
@@ -2178,11 +2081,14 @@ DISPONIBILIDAD:
         function openGameWindow(game) {
             const games = {
                 'snake': 'games/snake.html',
-                'tetris': 'games/tetris.html'
+                'tetris': 'games/tetris.html',
+                'mines': 'games/mines.html',
+                'memory': 'games/memory.html',
+                'rps': 'games/rps.html'
             };
             
             if (games[game]) {
-                window.open(games[game], '_blank', 'width=500,height=500,resizable=yes');
+                window.open(games[game], '_blank', 'width=500,height=620,resizable=yes');
             }
         }
 
@@ -5387,7 +5293,7 @@ function setAIMood(btn) {
         card.style.transform = '';
     }
 
-    document.querySelectorAll('.stat-card, .service-card, .wm-card').forEach(function(card) {
+    document.querySelectorAll('.service-card').forEach(function(card) {
         // Escritorio: mousemove
         card.addEventListener('mousemove', function(e) {
             applyTilt(card, e.clientX, e.clientY);

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscaminas - Wilson.E</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #0c0c0c 100%);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: rgba(0,0,0,.3);
+            border: 1px solid rgba(47,128,237,.25);
+            border-radius: 18px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        }
+        h1 { font-size: 1.3rem; letter-spacing: .04em; }
+        h1 span { color: #22c55e; }
+        .bar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: .9rem;
+        }
+        .bar .mines, .bar .time { color: #38bdf8; font-weight: 700; }
+        #board {
+            display: grid;
+            gap: 3px;
+            user-select: none;
+        }
+        .cell {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            background: rgba(47,128,237,.12);
+            border: 1px solid rgba(47,128,237,.25);
+            transition: transform .1s ease, background .2s ease;
+        }
+        .cell:hover { transform: scale(1.06); }
+        .cell.open {
+            background: rgba(255,255,255,.06);
+            border-color: rgba(255,255,255,.08);
+            cursor: default;
+        }
+        .cell.open:hover { transform: none; }
+        .cell.flag { background: rgba(34,197,94,.15); border-color: rgba(34,197,94,.4); }
+        .cell.mine { background: rgba(255,80,80,.2); border-color: rgba(255,80,80,.5); }
+        .n1 { color: #38bdf8; }
+        .n2 { color: #22c55e; }
+        .n3 { color: #f59e0b; }
+        .n4 { color: #fb7185; }
+        .n5 { color: #a78bfa; }
+        .n6 { color: #38bdf8; }
+        .n7 { color: #e2e8f0; }
+        .n8 { color: #94a3b8; }
+        .btn {
+            padding: .6rem 1.6rem;
+            border: 1px solid rgba(47,128,237,.4);
+            border-radius: 10px;
+            background: rgba(47,128,237,.15);
+            color: #22c55e;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .btn:hover { background: rgba(47,128,237,.3); transform: translateY(-2px); }
+        .hint { font-size: .72rem; color: rgba(232,232,240,.6); font-family: 'Consolas', monospace; text-align: center; }
+        .win, .lose { color: #22c55e; font-weight: 700; }
+        .lose { color: #fb7185; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1><span>•</span> BUSCAMINAS</h1>
+        <div class="bar">
+            <span>💣 <span class="mines" id="mine-count">10</span></span>
+            <span>⏱ <span class="time" id="timer">000</span></span>
+        </div>
+        <div id="board"></div>
+        <div id="status"></div>
+        <button class="btn" onclick="newGame()">🔄 Nuevo juego</button>
+        <div class="hint">Clic: abrir · Clic derecho: bandera · Q: bandera en móvil</div>
+    </div>
+    <script src="mines.js"></script>
+</body>
+</html>
