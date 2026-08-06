@@ -455,11 +455,12 @@ El blog se usa en 2 lugares:
 | Anti-clic-derecho removido | ✅ Removido | index.html |
 | beforeunload molesto removido | ✅ Removido | index.html |
 | Contenido no apto (apps premium) | ✅ Removido | pages/novedades.html eliminado |
-| Slot IDs en unidades AdSense | ⚠️ Faltan | index/tools/opensource usan format=auto sin data-ad-slot |
+| Modalidad de anuncios | ✅ Auto ads | Sin unidades manuales; solo script en <head> |
 | Blog con artículos reales | ⏳ Pendiente publicar | codehub-labs.blogspot.com |
 | Solicitar revisión en AdSense | ⏳ Pendiente | Panel AdSense |
 
 **Publisher ID:** `ca-pub-3780093322926832`
+**Modalidad:** Auto ads — el script `adsbygoogle.js` se carga en index.html, tools.html, opensource.html, privacy.html y terms.html. Google decide las ubicaciones (activar desde AdSense → Anuncios → Anuncios automáticos).
 
 ---
 

@@ -201,6 +201,16 @@
       "permanent": true
     },
     {
+      "source": "/pages/novedades.html",
+      "destination": "/opensource",
+      "permanent": true
+    },
+    {
+      "source": "/pages/novedades",
+      "destination": "/opensource",
+      "permanent": true
+    },
+    {
       "source": "/opensource.html",
       "destination": "/opensource",
       "permanent": true

@@ -1,39 +1,26 @@
 /**
- * CodeHub — Configuración central de unidades AdSense
+ * CodeHub — Configuración de Google AdSense
  * Publisher: ca-pub-3780093322926832
  *
- * INSTRUCCIONES:
- * 1. Cuando Google apruebe tu cuenta, entra a AdSense → Anuncios → Por unidad de anuncio
- * 2. Crea cada unidad y copia el data-ad-slot (número de 10 dígitos)
- * 3. Reemplaza null por el slot ID en cada entrada
- * 4. Ejecuta: node ads/apply-slots.js  (o hazlo manualmente en el HTML)
+ * ⚠️ MODALIDAD: AUTO ADS (desde Agosto 2026)
+ * Google decide automáticamente dónde colocar los anuncios. Solo se carga
+ * el script `adsbygoogle.js` en el <head> de cada página; NO se usan
+ * unidades manuales <ins> ni data-ad-slot.
+ *
+ * Páginas con el script: index.html, pages/tools.html, pages/opensource.html,
+ * privacy.html, terms.html.
+ *
+ * Para activar Auto ads desde el panel de AdSense:
+ *   AdSense → Anuncios → Configuración de anuncios → Anuncios automáticos → activar.
+ *
+ * (Este archivo se mantiene como referencia del publisher id; ya no hace
+ *  falta rellenar slot IDs porque no se usan unidades manuales.)
  */
 
 const AD_SLOTS = {
   publisher: 'ca-pub-3780093322926832',
-
-  units: {
-    // index.html — debajo del hero
-    'index-hero': {
-      slot: null,          // ← reemplazar con el ID real, ej: '1234567890'
-      file: 'index.html',
-      position: 'Debajo del hero, antes de Open to Work',
-      format: 'auto',
-    },
-
-    // index.html — pre-footer
-    'index-prefooter': {
-      slot: null,
-      file: 'index.html',
-      position: 'Antes del footer',
-      format: 'auto',
-    },
-
-    // NOTA: AppsHub / novedades.html fue eliminado (Agosto 2026) — ese
-    // contenido (apps modificadas/premium desbloqueadas) incumplía las
-    // políticas de AdSense y bloqueaba la aprobación. Las unidades activas
-    // hoy están en index.html, tools.html y opensource.html.
-  },
+  mode: 'auto-ads',
+  units: {},
 };
 
 // Para uso en Node.js
