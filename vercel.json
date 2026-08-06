@@ -187,6 +187,10 @@
     {
       "source": "/tetris",
       "destination": "/games/tetris.html"
+    },
+    {
+      "source": "/flexbox-labs",
+      "destination": "/pages/flexbox-labs.html"
     }
   ],
   "redirects": [

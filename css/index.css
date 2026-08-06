@@ -325,7 +325,11 @@
             overflow-x: hidden;
             line-height: 1.6;
             transition: all 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
         }
+        main { flex: 1 0 auto; }
 
         /* Light Mode */
         body.light-mode {

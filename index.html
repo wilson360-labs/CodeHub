@@ -410,6 +410,62 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="header-typing" id="typingEffect"></div>
     </header>
 
+    <!-- ── SIDE NAV — Barra lateral deslizable ── -->
+    <aside id="side-nav" aria-label="Navegación lateral" aria-hidden="true">
+        <div class="side-head">
+            <a class="side-brand" href="#" onclick="closeMobileNav();return false;">
+                <img src="splash/codehub.png" alt="CodeHub" loading="lazy">
+                <span><b>CodeHub</b><small>by Wilson.E</small></span>
+            </a>
+            <button class="side-close" aria-label="Cerrar menú" onclick="closeMobileNav()"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <div class="side-profile">
+            <div class="sp-avatar">W</div>
+            <div>
+                <b>Wilson.E</b>
+                <span class="sp-status">Disponible para freelance</span>
+            </div>
+        </div>
+
+        <div class="side-group">
+            <div class="side-group-label">Navegación</div>
+            <a class="side-link" href="#mi-pueblo" onclick="closeMobileNav()"><i class="fas fa-user"></i> Sobre mí</a>
+            <a class="side-link" href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-simple"></i> Estadísticas</a>
+            <a class="side-link" href="#skills" onclick="closeMobileNav()"><i class="fas fa-code"></i> Habilidades</a>
+            <a class="side-link" href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
+            <a class="side-link" href="#latest-projects" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
+            <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
+            <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
+            <a class="side-link" href="#contact" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
+        </div>
+
+        <div class="side-group">
+            <div class="side-group-label">Páginas</div>
+            <a class="side-link" href="/tools" onclick="closeMobileNav()"><i class="fas fa-wrench"></i> Herramientas</a>
+            <a class="side-link" href="/opensource" onclick="closeMobileNav()"><i class="fas fa-globe"></i> Open Source</a>
+            <a class="side-link" href="/downloader" onclick="closeMobileNav()"><i class="fas fa-download"></i> Descargar Videos</a>
+            <a class="side-link" href="/codehub-ultra" onclick="closeMobileNav()"><i class="fas fa-bolt" style="color:#ffbd69"></i> CodeHub Ultra</a>
+            <a class="side-link" href="/cv" onclick="closeMobileNav()"><i class="fas fa-file-lines"></i> Mi CV</a>
+            <a class="side-link" href="/analytics" onclick="closeMobileNav()"><i class="fas fa-chart-line"></i> Analytics</a>
+        </div>
+
+        <div class="side-group">
+            <div class="side-group-label">Juegos</div>
+            <a class="side-link" href="/snake" onclick="closeMobileNav()"><i class="fas fa-gamepad"></i> Snake</a>
+            <a class="side-link" href="/tetris" onclick="closeMobileNav()"><i class="fas fa-cubes"></i> Tetris</a>
+        </div>
+
+        <div class="side-foot">
+            <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly93YS5tZS81MDI0MTQ2ODE4NQ=='),'_blank','noopener')" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
+            <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly90Lm1lL2QzZXhnM2FleWFnMWtv'),'_blank','noopener')" aria-label="Telegram"><i class="fab fa-telegram"></i></a>
+            <a href="https://www.youtube.com/@d3exg3aeyag1ko" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://github.com/wilson360-labs" target="_blank" rel="noopener" aria-label="GitHub"><i class="fab fa-github"></i></a>
+        </div>
+        <div class="side-copy">Desarrollado desde Guatemala 🇬🇹</div>
+    </aside>
+    <div id="side-scrim" onclick="closeMobileNav()" aria-hidden="true"></div>
+
     <!-- ── PANEL DE CONFIGURACIÓN ── -->
     <div id="config-panel" aria-hidden="true">
         <div class="cfg-dialog" role="dialog" aria-modal="true" aria-label="Configuración del sitio">
@@ -482,29 +538,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </button>
     </div>
 
-    <!-- Mobile Nav -->
-    <nav class="mobile-nav" id="mobile-nav" aria-label="Menú móvil">
-        <ul>
-            <li><a href="#mi-pueblo" onclick="closeMobileNav()">👤 Sobre mí</a></li>
-            <li><a href="#stats" onclick="closeMobileNav()">📊 Estadísticas</a></li>
-            <li><a href="#skills" onclick="closeMobileNav()">💡 Habilidades</a></li>
-            <li><a href="#services" onclick="closeMobileNav()">🛠 Servicios</a></li>
-            <li><a href="#latest-projects" onclick="closeMobileNav()">🚀 Proyectos</a></li>
-            <li><a href="#contact" onclick="closeMobileNav()">✉️ Contacto</a></li>
-            <div class="mobile-nav-divider"></div>
-            <li><a href="#weather-section" onclick="closeMobileNav()">🌤 Clima</a></li>
-            <li><a href="#news-section" onclick="closeMobileNav()">📰 Noticias</a></li>
-            <div class="mobile-nav-divider"></div>
-            <li><a href="/tools" onclick="closeMobileNav()">🔧 Tools</a></li>
-            <li><a href="/codehub-ultra" onclick="closeMobileNav()" style="color:#ffbd69;font-weight:700">⚡ CodeHub Ultra</a></li>
-            <li><a href="/cv" onclick="closeMobileNav()" style="color:#00e676">📄 Mi CV</a></li>
-            <li><a href="/opensource" onclick="closeMobileNav()">🌐 Open Source</a></li>
-            <li><a href="/downloader" onclick="closeMobileNav()">⬇️ Descargar Videos</a></li>
-            <li><a href="https://www.youtube.com/@d3exg3aeyag1ko" target="_blank" onclick="closeMobileNav()">▶️ YouTube</a></li>
-        </ul>
-    </nav>
-
-        <main>
+    <main>
         <!-- ── HERO ── -->
         <section id="hero">
             <!-- Parallax layers -->
@@ -4248,33 +4282,48 @@ window.addEventListener('load', loadRealNews);
 //  BURGER MENU MOBILE
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
 function toggleMobileNav() {
-    const nav = document.getElementById('mobile-nav');
+    const nav = document.getElementById('side-nav');
+    const scrim = document.getElementById('side-scrim');
     const btn = document.getElementById('burger-btn');
     const isOpen = nav.classList.contains('open');
     if (isOpen) {
         nav.classList.remove('open');
+        scrim.classList.remove('open');
+        nav.setAttribute('aria-hidden', 'true');
         btn.classList.remove('open');
         document.body.style.overflow = '';
     } else {
         nav.classList.add('open');
+        scrim.classList.add('open');
+        nav.setAttribute('aria-hidden', 'false');
         btn.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
 }
 function closeMobileNav() {
-    document.getElementById('mobile-nav')?.classList.remove('open');
+    const nav = document.getElementById('side-nav');
+    const scrim = document.getElementById('side-scrim');
+    nav?.classList.remove('open');
+    scrim?.classList.remove('open');
+    nav?.setAttribute('aria-hidden', 'true');
     document.getElementById('burger-btn')?.classList.remove('open');
     document.body.style.overflow = '';
 }
-// Cerrar al hacer scroll
+// Cerrar al hacer scroll (solo si sigue abierto tras un resize)
 window.addEventListener('scroll', () => {
-    if (document.getElementById('mobile-nav')?.classList.contains('open')) {
+    if (document.getElementById('side-nav')?.classList.contains('open')) {
         closeMobileNav();
     }
 }, { passive: true });
+// Cerrar con tecla Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('side-nav')?.classList.contains('open')) {
+        closeMobileNav();
+    }
+});
 // Cerrar al tocar fuera del menú
 document.addEventListener('click', (e) => {
-    const nav = document.getElementById('mobile-nav');
+    const nav = document.getElementById('side-nav');
     const btn = document.getElementById('burger-btn');
     if (nav?.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
         closeMobileNav();

@@ -168,6 +168,7 @@ CodeHub-main/
 | `/admin-hub` | `pages/admin-hub.html` | rewrite |
 | `/codehub-ultra` | `pages/codehub-ultra.html` | rewrite |
 | `/analytics` | `pages/analytics.html` | rewrite |
+| `/flexbox-labs` | `pages/flexbox-labs.html` | rewrite |
 | `/snake` | `games/snake.html` | rewrite |
 | `/tetris` | `games/tetris.html` | rewrite |
 | `/privacy` | `privacy.html` | rewrite |
@@ -316,6 +317,13 @@ La página más grande del proyecto (~5260 líneas). Contiene todo en un solo ar
 - Toggle "Voz EMI" inyectado en `.ai-bottom-bar` → lee las respuestas en voz alta (auto-speak).
 - Idioma automático: `es-GT` / `en-US` según `ch_lang`; se sincroniza en `applyLang()` vía evento `ch:langchange`.
 - ⚠️ Requiere `microphone=(self)` en la `Permissions-Policy` de `vercel.json`.
+
+**Layout flexbox (barra lateral deslizable, Agosto 2026):**
+- `body` es `display:flex; flex-direction:column; min-height:100dvh` + `main{flex:1}` → el pie de página queda siempre abajo.
+- `#side-nav` — sidebar deslizante (drawer a pantalla completa) sobre el header: perfil, navegación por secciones, páginas, juegos y redes.
+- `#side-scrim` — overlay oscurecido para cerrar; se cierra con el botón ✕, el scrim, `Escape`, clic en un enlace o al hacer scroll.
+- El botón burger del header (`#burger-btn`) está visible en todas las pantallas y controla `toggleMobileNav()` (definido en el inline JS y en `js/index-chat.js`).
+- Reemplazó al antiguo dropdown `.mobile-nav` (eliminado).
 
 **Elementos flotantes globales:**
 - `#ch-splash` — Splash screen inicial con canvas de partículas

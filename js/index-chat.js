@@ -606,36 +606,51 @@ window.addEventListener('load', () => {
 
 
 // ═══════════════════════════════════════════════════════════
-//  BURGER MENU MOBILE
+//  BURGER MENU — Sidebar lateral deslizable
 // ═══════════════════════════════════════════════════════════
 function toggleMobileNav() {
-    const nav = document.getElementById('mobile-nav');
+    const nav = document.getElementById('side-nav');
+    const scrim = document.getElementById('side-scrim');
     const btn = document.getElementById('burger-btn');
     const isOpen = nav.classList.contains('open');
     if (isOpen) {
         nav.classList.remove('open');
+        scrim.classList.remove('open');
+        nav.setAttribute('aria-hidden', 'true');
         btn.classList.remove('open');
         document.body.style.overflow = '';
     } else {
         nav.classList.add('open');
+        scrim.classList.add('open');
+        nav.setAttribute('aria-hidden', 'false');
         btn.classList.add('open');
         document.body.style.overflow = 'hidden';
     }
 }
 function closeMobileNav() {
-    document.getElementById('mobile-nav')?.classList.remove('open');
+    const nav = document.getElementById('side-nav');
+    const scrim = document.getElementById('side-scrim');
+    nav?.classList.remove('open');
+    scrim?.classList.remove('open');
+    nav?.setAttribute('aria-hidden', 'true');
     document.getElementById('burger-btn')?.classList.remove('open');
     document.body.style.overflow = '';
 }
 // Cerrar al hacer scroll
 window.addEventListener('scroll', () => {
-    if (document.getElementById('mobile-nav')?.classList.contains('open')) {
+    if (document.getElementById('side-nav')?.classList.contains('open')) {
         closeMobileNav();
     }
 }, { passive: true });
+// Cerrar con tecla Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('side-nav')?.classList.contains('open')) {
+        closeMobileNav();
+    }
+});
 // Cerrar al tocar fuera del menú
 document.addEventListener('click', (e) => {
-    const nav = document.getElementById('mobile-nav');
+    const nav = document.getElementById('side-nav');
     const btn = document.getElementById('burger-btn');
     if (nav?.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
         closeMobileNav();
