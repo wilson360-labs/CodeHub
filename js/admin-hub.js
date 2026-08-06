@@ -259,7 +259,6 @@ function switchTab(id, btn) {
   if (id === 'add')      renderAddForm();
   if (id === 'visitors') loadVisitors();
   if (id === 'status')   checkStatus();
-  if (id === 'blog')     sbInit();
   if (id === 'dbrun')    updateDbRunBtn();
 }
 

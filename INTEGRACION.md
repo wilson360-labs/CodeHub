@@ -3,7 +3,7 @@
 
 ---
 
-## 1. 🎙️ EMI Voice (`js/emi-voice.js`) — ✅ INTEGRADO (commit `7d8f6aa`)
+## 🎙️ EMI Voice (`js/emi-voice.js`) — ✅ INTEGRADO (commit `7d8f6aa`)
 
 **Qué hace:**
 - Botón micrófono `#emi-mic-btn` en `.ai-input-row` → voz a texto (Web Speech API).
@@ -15,26 +15,22 @@
 - `index.html` → botón micrófono + `<script src="js/emi-voice.js" defer>` + `applyLang()` dispatch.
 - `css/components.css` → estilos `#emi-mic-btn`, ripple, toast (después de `#ai-send-btn`).
 - `vercel.json` → `Permissions-Policy`: `microphone=(self)` (⚠️ si se bloquea con `microphone=()`, la voz NO funciona).
+- `sw.js` → `js/emi-voice.js` y `css/components.css` en el PRECACHE para que EMI funcione offline.
 
 **CSS embebido:** el bloque CSS vive al final de `js/emi-voice.js` en comentario, como referencia; la copia activa está en `css/components.css`.
 
 ---
 
-## 2. 📝 Blog Estático (`/blog`) — ⚠️ PENDIENTE RUTEO
+## 🗑️ Blog estático — ELIMINADO (Agosto 2026)
 
-**Hecho:**
-- `pages/blog.html` renderiza desde `blog/index.json` + `blog/posts/*.json`.
-- `js/admin-blog-static.js` en admin-hub (tab Blog) publica posts; el backend usa la GitHub API (`GITHUB_TOKEN`) para commitear los JSON.
-
-**Pendiente para que la URL pública funcione:**
-- `vercel.json` → rewrites: `/blog` → `/pages/blog.html` y `/blog/:slug` → `/pages/blog.html`.
-- `vercel.json` → redirects: `/blog.html` y `/pages/blog` → `/blog`.
-- `sitemap.xml` → agregar `/blog`.
-- Actualizar `CODEHUB_ESTRUCTURA.md` (rutas) al hacerlo.
+`pages/blog.html`, `blog/`, `js/admin-blog-static.js` y el tab "Blog" de admin-hub
+fueron removidos por completo. La sección frontal de blog fue reemplazada por
+`#news-section` en `index.html`, que consume el feed JSONP de Blogger
+(`codehub-labs.blogspot.com`). No reintroducir sin autorización.
 
 ---
 
-## 3. Verificación rápida
+## Verificación rápida
 
 | Test | Resultado esperado |
 |------|-------------------|
@@ -42,3 +38,4 @@
 | Hablar algo | El texto aparece en el textarea |
 | Activar "Voz EMI" → enviar mensaje | EMI responde en voz alta |
 | Preguntar a EMI "¿qué lenguajes dominas?" | Lista actualizada (TypeScript, SQL, Shell/Bash, Java/Kotlin) |
+| admin-hub → tabs | Ya NO aparece el tab "Blog" |

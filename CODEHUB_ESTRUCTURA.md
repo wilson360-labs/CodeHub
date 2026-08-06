@@ -59,7 +59,6 @@ CodeHub-main/
 ├── pages/                      ← Páginas secundarias (todas ruteadas via vercel.json)
 │   ├── tools.html          → ruta pública: /tools
 │   ├── opensource.html     → ruta pública: /opensource
-│   ├── blog.html           → ruta pública: /blog ⚠️ NO RUTEADA en vercel.json
 │   ├── servicios.html          → ruta pública: /servicios
 │   ├── downloader.html         → ruta pública: /downloader
 │   ├── cv.html                 → ruta pública: /cv
@@ -95,7 +94,6 @@ CodeHub-main/
 │   ├── opensource.js           ← Lógica de /opensource (catálogo, filtros, ratings)
 │   ├── tools.js                ← Lógica de todas las 34 herramientas
 │   ├── admin-hub.js            ← Lógica completa del panel admin
-│   ├── admin-blog-static.js    ← Gestor del blog estático (admin-hub → /blog)
 │   ├── servicios.js            ← Lógica de /servicios
 │   ├── downloader.js           ← Lógica del video downloader
 │   ├── skills-image-gen.js     ← Generador de imágenes IA (Pollinations)
@@ -107,11 +105,6 @@ CodeHub-main/
 │   ├── site-tour.js            ← Tour guiado del sitio
 │   ├── live-update-check.js    ← Check de actualizaciones en vivo
 │   └── script.js               ← Utilidades globales
-│
-├── blog/                       ← Blog estático (posts JSON, gestionado desde admin-hub)
-│   ├── index.json              ← Registro central de posts
-│   └── posts/
-│       └── *.json              ← Posts individuales
 │
 ├── img/                        ← Imágenes de apps Android (thumbnails)
 ├── splash/                     ← Logo e imágenes del splash screen
@@ -181,10 +174,6 @@ CodeHub-main/
 | `/terms` | `terms.html` | rewrite |
 | `/404` | `404.html` | directo |
 | `/offline` | `offline.html` | directo |
-
-> ⚠️ **`/blog` (pages/blog.html) NO está ruteado en vercel.json.** El gestor
-> de admin-hub ya publica posts a `blog/posts/*.json`, pero falta agregar
-> rewrite + redirect para que `https://wilson360-labs.vercel.app/blog` funcione.
 
 ### Páginas que NO van en /pages/ (van en la raíz)
 - `privacy.html` → `/privacy`
@@ -383,7 +372,7 @@ Panel privado con login por contraseña (validado contra el backend).
 - **Nueva App** — Formulario para añadir nueva app
 - **Bulk** — Subida masiva de APKs
 - **Status** — Estado de todos los servicios (health check)
-- **Blog** ← (agregado en Mayo 2026) — Redactar posts + ver publicados de Blogger
+- **Base de Datos** — Ejecutar sentencias SQL (dbrun)
 
 **JS cargado:** `../js/admin-hub.js`  
 **Auth:** header `x-admin-key: ADMIN_KEY` en cada request al backend  
@@ -434,16 +423,16 @@ Ruta pública: `/terms`
 
 ---
 
-## 8. Blog — Blogger + Blog estático
+## 8. Blog — Solo feed Blogger (Noticias)
 
 **Blogger externo:** ID `4932034987684289893` · `https://codehub-labs.blogspot.com`
 - Feed JSONP: `https://codehub-labs.blogspot.com/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`
-- Se usa SOLO en `index.html` → sección `#news-section` (JSONP `_bloggerCallback`).
+- Se usa en `index.html` → sección `#news-section` (JSONP `_bloggerCallback`).
 
-**Blog estático del sitio (`/blog`):**
-- `pages/blog.html` renderiza desde `blog/index.json` + `blog/posts/*.json`.
-- `js/admin-blog-static.js` (cargado en admin-hub) permite redactar y publicar posts; el backend hace commit vía GitHub API (env `GITHUB_TOKEN`).
-- ⚠️ **PENDIENTE:** `/blog` no está en `vercel.json` (rewrite/redirect) ni en `sitemap.xml` — la URL pública aún no funciona.
+> 🗑️ **Blog estático ELIMINADO (Agosto 2026):** `pages/blog.html`, `blog/`,
+> `js/admin-blog-static.js` y el tab "Blog" de admin-hub fueron removidos por
+> completo. La sección frontal fue reemplazada por `#news-section` (feed de Blogger).
+> `autoposter/` sigue disponible para generar posts para ese feed.
 
 ---
 
