@@ -175,8 +175,8 @@ const uploadSecurityFile = multer({
 });
 
 // Rate limiting
-const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' } });
-const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false });
+const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
+const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
 
@@ -344,7 +344,14 @@ function requireAdmin(req, res, next) {
     console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
     return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
   }
-  if (key !== validKey) return res.status(403).json({ error: 'Credenciales incorrectas' });
+  if (key !== validKey) {
+    tgAlert('adminfail', () => {
+      const ip = clientIp(req);
+      const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
+      return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(key || '').slice(0, 6)}…\nUA: ${ua}`;
+    }, { windowMs: 15000 });
+    return res.status(403).json({ error: 'Credenciales incorrectas' });
+  }
   // Si ADMIN_USER está configurado en Render, también lo validamos
   if (validUser && user && user !== validUser) return res.status(403).json({ error: 'Credenciales incorrectas' });
   next();
@@ -355,6 +362,104 @@ function requireAdmin(req, res, next) {
 // Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+// ── TELEGRAM ALERTS ─────────────────────────────────────────
+// Empuja en tiempo real al chat del admin: seguridad (rate-limit,
+// intentos fallidos de admin, errores) y actividad (descargas,
+// contactos, ratings, solicitudes, apps nuevas) + resumen periódico.
+// Variables: TG_ALERTS_ENABLED (default 'true'),
+//            TG_BURST_MS     (agrupar eventos, default 4000ms),
+//            TG_STATUS_HOURS (resumen periódico, default 6h).
+const TG_ALERTS_ENABLED = process.env.TG_ALERTS_ENABLED !== 'false';
+const TG_BURST_MS       = Math.max(500, parseInt(process.env.TG_BURST_MS || '4000', 10));
+const TG_STATUS_HOURS   = Math.max(1, parseInt(process.env.TG_STATUS_HOURS || '6', 10) || 6);
+const tgBurst = new Map(); // type -> { count, timer }
+
+function tgSend(text) {
+  if (!TG_TOKEN || !TG_CHAT_ID) return Promise.resolve(false);
+  const https = require('https');
+  const body = JSON.stringify({ chat_id: TG_CHAT_ID, text, disable_web_page_preview: true, parse_mode: 'HTML' });
+  return new Promise(resolve => {
+    const req = https.request({
+      hostname: 'api.telegram.org',
+      path: `/bot${TG_TOKEN}/sendMessage`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, res => { res.resume(); res.on('end', () => resolve(res.statusCode === 200)); });
+    req.on('error', () => resolve(false));
+    req.setTimeout(8000, () => { req.destroy(); resolve(false); });
+    req.write(body); req.end();
+  });
+}
+
+// Agrupa eventos iguales en una ventana corta para no spamear.
+// Si llegan 50 rate-limits en 3s, manda UN solo mensaje con el conteo.
+function tgAlert(type, text, opts = {}) {
+  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
+  const windowMs = opts.windowMs || TG_BURST_MS;
+  const cur = tgBurst.get(type);
+  if (cur) { cur.count++; return; }
+  const entry = { count: 1 };
+  tgBurst.set(type, entry);
+  entry.timer = setTimeout(() => {
+    tgBurst.delete(type);
+    const body = typeof text === 'function' ? text(entry.count) : text;
+    tgSend(body + (entry.count > 1 ? `\n🔁 x${entry.count} en ${Math.round(windowMs / 1000)}s` : ''));
+  }, windowMs);
+}
+
+function clientIp(req) {
+  return String(
+    req.headers['x-real-ip'] ||
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket?.remoteAddress ||
+    req.ip || '?'
+  ).replace(/^::ffff:/, '').trim();
+}
+
+// Handler de express-rate-limit: avisa al admin cuando alguien excede
+// el límite (posible abuso/bot) sin bloquear la respuesta HTTP.
+function rateLimitHandler(req, res, _next, options) {
+  const ip = clientIp(req);
+  const route = (req.originalUrl || req.path || '').split('?')[0];
+  const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
+  tgAlert('ratelimit:' + route, n =>
+    `🚨 <b>RATE LIMIT</b>\n<code>${route}</code>\nIP: <code>${ip}</code>\nUA: ${ua}\nBloqueos: ${n}`,
+    { windowMs: 30000 });
+  res.status(options.statusCode || 429).json(options.message || { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' });
+}
+
+// Resumen periódico de estado de la web (por defecto cada 6h).
+async function tgStatusReport() {
+  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
+  const up = Math.floor(process.uptime());
+  const dd = Math.floor(up / 86400), hh = Math.floor((up % 86400) / 3600), mm = Math.floor((up % 3600) / 60);
+  const today = new Date().toISOString().slice(0, 10);
+  let daily = null;
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('daily_stats').select('*').eq('date', today).single();
+      daily = data;
+    } catch {}
+  }
+  const msg =
+    `📊 <b>CodeHub — Estado</b>\n` +
+    `Uptime: ${dd}d ${hh}h ${mm}m · Mongo: ${dbConnected ? '✅' : '❌'} · Redis: ${redis ? '✅' : 'memoria'}\n` +
+    `WS: ${wsClients.size} clientes\n\n` +
+    `👁️ Visitas hoy: ${visits.today} (total ${visits.total})\n` +
+    (daily
+      ? `⬇️ Descargas: ${daily.downloads || 0}\n💬 Chats: ${daily.chat_msgs || 0}\n🛠️ Tools: ${daily.tool_uses || 0}\n📩 Contactos: ${daily.contacts || 0}`
+      : 'Stats diarias: sin datos (Supabase no configurado)') +
+    `\n\nhttps://wilson360-labs.vercel.app`;
+  await tgSend(msg);
+}
+
+if (TG_ALERTS_ENABLED) {
+  setTimeout(() => {
+    tgStatusReport();
+    setInterval(tgStatusReport, TG_STATUS_HOURS * 3600 * 1000);
+  }, 20000);
+}
 
 /**
  * Sube un buffer como documento a Telegram.
@@ -1424,8 +1529,12 @@ app.post('/api/chat', async (req, res) => {
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
+    tgAlert('chat', () => `💬 <b>Chat con EMI</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
     res.json({ reply, usage: { input, output, total: input + output }, model });
   } catch (err) {
+    tgAlert('chatfail', () =>
+      `⚠️ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
+      { windowMs: 30000 });
     if (err.status === 401) return res.status(500).json({ error: imagePart ? 'Gemini: API key inválida.' : 'API key inválida.' });
     if (err.status === 429) return res.status(429).json({ error: 'Límite alcanzado.' });
     if (imagePart) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
@@ -1435,8 +1544,12 @@ app.post('/api/chat', async (req, res) => {
 
 // Contacto (notifica vía WS)
 app.post('/api/contact', (req, res) => {
-  const { name, email } = req.body;
+  const { name, email, message } = req.body;
   trackEvent('contact');
+  tgAlert('contact', () => {
+    const ip = clientIp(req);
+    return `📩 <b>Nuevo contacto</b>\n👤 ${String(name || 'Anónimo').slice(0, 30)}\n📧 ${email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?'}\n💬 ${String(message || '').slice(0, 80)}\n🌐 ${ip}`;
+  }, { windowMs: 30000 });
   broadcast('contact_form', {
     name:  name  || 'Anónimo',
     email: email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?',
@@ -1478,6 +1591,7 @@ app.post('/api/ratings', async (req, res) => {
     await r.save(); await cacheDel('ratings:all');
     const avg = Math.round((r.total / r.count) * 10) / 10;
     broadcast('new_rating', { appId, appName: appName || appId, stars, avg, count: r.count });
+    tgAlert('rating', () => `⭐ <b>Rating nuevo</b>: ${stars}★ — ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
     res.json({ ok: true, avg, count: r.count });
   } catch { res.status(500).json({ error: 'Error guardando rating' }); }
 });
@@ -1502,7 +1616,9 @@ app.post('/api/requests', async (req, res) => {
       return res.json({ ok: true, message: 'Voto agregado', votes: existing.votes });
     }
     const newReq = new AppRequest({ appName: appName.trim(), reason: reason?.trim() || '', ip, voters: [ip] });
-    await newReq.save(); res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
+    await newReq.save();
+    tgAlert('appreq', () => `🙋 <b>Solicitud de app</b>\n📱 ${String(appName.trim()).slice(0, 40)}\n💬 ${String(reason || '').trim().slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
+    res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
   } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
 
@@ -1515,6 +1631,7 @@ app.get('/api/download/:fileName', async (req, res) => {
     const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(decodeURIComponent(fileName));
     broadcast('download', { fileName: decodeURIComponent(fileName) });
     trackEvent('download', null, { app_name: decodeURIComponent(fileName) });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${decodeURIComponent(fileName)}`, { windowMs: 15000 });
     res.redirect(302, data.publicUrl);
   } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
@@ -1535,6 +1652,7 @@ app.get('/api/dl/:appId', async (req, res) => {
     if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aún' });
     broadcast('download', { fileName: app_.nombre });
     trackEvent('download', null, { app_name: app_.nombre, appId });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
     res.redirect(302, app_.enlace);
   } catch (e) { console.error('Error /api/dl:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
@@ -1558,6 +1676,7 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
+    tgAlert('adminapp', () => `➕ <b>App publicada</b>\n📱 ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\n🏷️ ${categoria || 'sin categoría'}`, { windowMs: 30000 });
     res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

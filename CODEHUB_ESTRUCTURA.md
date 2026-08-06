@@ -252,7 +252,33 @@ RATE_LIMIT_MAX=...         # Máx req por minuto (default 20)
 REDIS_URL=...              # Opcional — Railway Redis addon
 VAPID_PUBLIC_KEY=...       # Web Push notificaciones
 VAPID_PRIVATE_KEY=...
+TELEGRAM_BOT_TOKEN=...     # Bot Telegram (storage APKs + alertas)
+TELEGRAM_CHAT_ID=...       # Chat del admin
+TG_ALERTS_ENABLED=true     # Activa alertas Telegram (opcional, default true)
+TG_BURST_MS=4000           # Agrupar eventos repetidos (ms, opcional)
+TG_STATUS_HOURS=6          # Resumen periódico cada N horas (opcional)
 ```
+
+### Telegram Alerts (backend/server.js)
+
+El backend empuja en tiempo real al chat del admin (`TELEGRAM_CHAT_ID`) eventos de **seguridad** y **actividad**:
+
+| Evento | Tipo (`tgAlert`) | Cuándo |
+|--------|------------------|--------|
+| 🚨 Rate limit superado | `ratelimit:<ruta>` | Alguien excede un limiter (`chatLimiter`/`adminLimiter`) |
+| 🔐 Admin key inválida | `adminfail` | Key incorrecta en un endpoint admin |
+| 💬 Chat con EMI | `chat` | Cada chat exitoso (agrupado cada 30s) |
+| ⚠️ Error `/api/chat` | `chatfail` | Fallo del proveedor IA (agrupado cada 30s) |
+| 📩 Contacto | `contact` | Nuevo formulario de contacto (cada 30s) |
+| ⭐ Rating | `rating` | Nueva valoración de app (cada 30s) |
+| 🙋 Solicitud de app | `appreq` | Nueva solicitud en el tab Requests (cada 30s) |
+| ⬇️ Descarga | `download` | Descarga de APK (cada 15s) |
+| ➕ App publicada | `adminapp` | Nueva app creada desde el admin-hub (cada 30s) |
+| 📊 Resumen de estado | — | Cada `TG_STATUS_HOURS` (6h) con uptime, visitas y stats del día |
+
+- Eventos repetidos se **agrupan en un solo mensaje** (`🔁 xN`) durante la ventana `TG_BURST_MS` para no spamear.
+- El envío usa `https` nativo (sin dependencias) y nunca bloquea las peticiones (fire-and-forget).
+- El resumen periódico no envía nada hasta 20s después de iniciar el servidor, para no duplicar el de un reinicio.
 
 ---
 
