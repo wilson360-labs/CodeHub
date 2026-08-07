@@ -865,6 +865,10 @@
     min-width: 40px;
     min-height: 40px;
   }
+  #theme-toggle {
+    min-width: 40px;
+    min-height: 40px;
+  }
   .header-typing {
     font-size: 0.72rem;
     padding: 0.2rem 1rem;

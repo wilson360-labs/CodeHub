@@ -41,6 +41,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       d.style.setProperty('--app-width', window.innerWidth + 'px');
     })();
     </script>
+    <script>
+    /* Aplicar tema guardado ANTES del primer pintado (anti-FOUC).
+       Prioridad: localStorage['theme'] > prefers-color-scheme > oscuro. */
+    (function () {
+      var theme = null;
+      try { theme = localStorage.getItem('theme'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+    </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://pl30669093.effectivecpmnetwork.com https://*.effectivecpmnetwork.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com https://*.effectivecpmnetwork.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
@@ -397,6 +409,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- Acciones derecha -->
             <div class="header-actions">
 
+                <button id="theme-toggle" aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
+                    <i class="fas theme-toggle-icon fa-moon"></i>
+                </button>
+
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
                     <i class="fas fa-sliders"></i>
                 </button>
@@ -493,6 +509,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <input type="checkbox" id="cfg-anim" checked onchange="toggleAnim(this)">
                             <span class="cfg-slider"></span>
                         </label>
+                    </div>
+                </div>
+
+                <!-- Tema -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Tema</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-theme-option="dark" onclick="setCfg('theme','dark',this)">🌙 Oscuro</button>
+                        <button class="cfg-opt" data-theme-option="light" onclick="setCfg('theme','light',this)">☀️ Claro</button>
                     </div>
                 </div>
 
@@ -3803,6 +3828,15 @@ function setCfg(key, val, btn) {
     if (key === 'lang') {
         if (typeof applyLang === 'function') applyLang(val);
     }
+    if (key === 'theme') {
+        if (window.CodeHubTheme?.apply) {
+            window.CodeHubTheme.apply(val, true);
+        } else {
+            document.documentElement.setAttribute('data-theme', val);
+            document.body.classList.toggle('light-mode', val === 'light');
+            localStorage.setItem('theme', val);
+        }
+    }
 }
 
 function toggleAnim(chk) {
@@ -3819,9 +3853,17 @@ function toggleNeural(chk) {
 
 function resetCfg() {
     // Borrar todas las preferencias guardadas
-    ['cfg_font','cfg_anim','cfg_neural','cfg_lang'].forEach(k => localStorage.removeItem(k));
+    ['cfg_font','cfg_anim','cfg_neural','cfg_lang','theme'].forEach(k => localStorage.removeItem(k));
     // Aplicar defaults
     document.body.classList.remove('font-sm','font-lg','no-anim');
+    // Tema: restablecer a la preferencia del sistema (o oscuro por defecto)
+    if (window.CodeHubTheme?.apply) {
+        var sysLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        window.CodeHubTheme.apply(sysLight ? 'light' : 'dark', false);
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.body.classList.remove('light-mode');
+    }
     const canvas = document.getElementById('neural-network');
     if (canvas) canvas.style.opacity = '0';
     if (typeof window.setNeuralManualOff === 'function') window.setNeuralManualOff(true);
@@ -3843,6 +3885,10 @@ function loadCfg() {
     });
     document.querySelectorAll('[onclick*="setCfg(\'lang\'"]').forEach(b => {
         b.classList.toggle('active', b.getAttribute('onclick').includes("'"+lang+"'"));
+    });
+    const theme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'dark';
+    document.querySelectorAll('[data-theme-option]').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme-option') === theme);
     });
 
     const animChk = document.getElementById('cfg-anim');
@@ -5173,6 +5219,7 @@ function setAIMood(btn) {
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
 <script src="js/site-tour.js?v=20260728a"></script>
+<script src="js/theme-switcher.js?v=20260724a"></script>
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260724a"></script>
