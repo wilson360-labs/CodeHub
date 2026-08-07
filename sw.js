@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v5.1';
+const VERSION   = 'codehub-v5.2';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -41,6 +41,7 @@ const PRECACHE = [
   '/js/ux-animations.js',
   '/js/thinking-orb.js',
   '/js/site-tour.js',
+  '/data/roadmap.json',
 ];
 
 // ── INSTALL ───────────────────────────────────────────

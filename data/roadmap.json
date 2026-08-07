@@ -1,0 +1,32 @@
+{
+  "updatedAt": "2026-08-07T00:00:00Z",
+  "items": [
+    {
+      "id": 1,
+      "emoji": "🤖",
+      "title": { "es": "Chatbot IA con memoria", "en": "AI chatbot with memory" },
+      "desc": { "es": "Conversaciones con contexto persistente y respuestas más precisas sobre tus proyectos.", "en": "Conversations with persistent context and more accurate answers about your projects." },
+      "status": { "es": "En desarrollo", "en": "In development" },
+      "statusClass": "wip",
+      "progress": 65
+    },
+    {
+      "id": 2,
+      "emoji": "📱",
+      "title": { "es": "PWA offline-first", "en": "Offline-first PWA" },
+      "desc": { "es": "Sincronización automática y soporte completo sin conexión en móviles y escritorio.", "en": "Automatic sync and full offline support on mobile and desktop." },
+      "status": { "es": "En prueba", "en": "Testing" },
+      "statusClass": "wip",
+      "progress": 80
+    },
+    {
+      "id": 3,
+      "emoji": "🎨",
+      "title": { "es": "Generador de CV con IA", "en": "AI CV generator" },
+      "desc": { "es": "Crea tu currículum en minutos con plantillas profesionales y sugerencias inteligentes.", "en": "Build your resume in minutes with professional templates and smart suggestions." },
+      "status": { "es": "Próximo", "en": "Upcoming" },
+      "statusClass": "next",
+      "progress": 20
+    }
+  ]
+}

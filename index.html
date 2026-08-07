@@ -1181,6 +1181,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </section>
 
+        <!-- Roadmap Section (trabajando en…) -->
+        <section id="roadmap-section" class="roadmap-section">
+            <div class="roadmap-head">
+                <span class="roadmap-badge"><i class="fas fa-hammer"></i> <span data-i18n="roadmapBadge">En desarrollo</span></span>
+                <h2 data-i18n="roadmapTitle">🔨 En qué estoy trabajando…</h2>
+                <p data-i18n="roadmapSub">Un vistazo a lo que viene en CodeHub: mejoras y nuevas herramientas en camino.</p>
+            </div>
+            <div id="roadmap-out" class="roadmap-grid">
+                <div class="roadmap-card skeleton-card"></div>
+                <div class="roadmap-card skeleton-card"></div>
+                <div class="roadmap-card skeleton-card"></div>
+            </div>
+            <p class="roadmap-updated" id="roadmap-updated"></p>
+        </section>
+
         <!-- Mi Pueblo Section -->
 
     </main>
@@ -4306,6 +4321,44 @@ function toggleNewsCollapse(btn) {
 
 window.addEventListener('load', loadRealNews);
 
+// ── ROADMAP (trabajando en…) ──────────────────────────────────
+async function loadRoadmap() {
+  const out = document.getElementById('roadmap-out');
+  if (!out) return;
+  const lang = typeof currentLang !== 'undefined' ? currentLang : (localStorage.getItem('ch_lang') || 'es');
+  const labels = typeof i18n !== 'undefined' && i18n[lang] ? i18n[lang] : null;
+  try {
+    const res = await fetchWithTimeout('data/roadmap.json', {}, 8000);
+    if (!res.ok) throw new Error('fetch fallido');
+    const data = await res.json();
+    if (!data.items || !data.items.length) throw new Error('sin items');
+    const t = (o) => (o && (o[lang] || o.es)) || '';
+    const cards = data.items.map(it => `
+      <article class="roadmap-card">
+        <div class="roadmap-card-head">
+          <span class="roadmap-emoji">${it.emoji || ''}</span>
+          <span class="roadmap-status ${it.statusClass || 'wip'}"><i class="fas fa-circle"></i>${t(it.status)}</span>
+        </div>
+        <h3>${t(it.title)}</h3>
+        <p>${t(it.desc)}</p>
+        <div class="roadmap-bar" aria-hidden="true"><span style="width:${it.progress || 0}%"></span></div>
+        <div class="roadmap-meta"><span>${it.progress || 0}%</span></div>
+      </article>`).join('');
+    const fresh = document.getElementById('roadmap-updated');
+    if (fresh && data.updatedAt) {
+      const label = labels ? labels.roadmapUpdated : 'Actualizado';
+      fresh.textContent = `${label} ${new Date(data.updatedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'es-GT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    }
+    out.innerHTML = cards;
+  } catch (e) {
+    const label = labels && labels.roadmapLoadErr ? labels.roadmapLoadErr : 'No se pudieron cargar los trabajos en curso.';
+    out.innerHTML = `<div class="roadmap-error"><i class="fas fa-triangle-exclamation"></i>${label}</div>`;
+  }
+}
+
+window.addEventListener('load', loadRoadmap);
+document.addEventListener('ch:langchange', function() { loadRoadmap(); });
+
 
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
@@ -4504,6 +4557,11 @@ const i18n = {
         game3D: 'Tablero 9×9 con 10 minas. Despeja el campo sin detonar ninguna.',
         game4D: 'Encuentra las 8 parejas de cartas en el menor número de intentos.',
         game5T: 'Piedra, Papel o Tijera', game5D: 'Reto rápido contra la máquina. A mejor de una ronda.',
+        // Roadmap
+        roadmapBadge: 'En desarrollo',
+        roadmapTitle: '🔨 En qué estoy trabajando…',
+        roadmapSub: 'Un vistazo a lo que viene en CodeHub: mejoras y nuevas herramientas en camino.',
+        roadmapUpdated: 'Actualizado', roadmapLoadErr: 'No se pudieron cargar los trabajos en curso.',
         // Footer
         footerCmd: 'echo "Desarrollado con 💖 desde Guatemala 🇬🇹 | CodeHub & Herramientas Web"',
         footerVisits: 'Visitas registradas:',
@@ -4592,6 +4650,11 @@ const i18n = {
         game3D: '9×9 board with 10 mines. Clear the field without detonating any.',
         game4D: 'Find the 8 matching pairs in the fewest attempts.',
         game5T: 'Rock, Paper, Scissors', game5D: 'Quick challenge against the machine. Best of one round.',
+        // Roadmap
+        roadmapBadge: 'In development',
+        roadmapTitle: '🔨 What I am working on…',
+        roadmapSub: 'A peek at what is coming to CodeHub: improvements and new tools on the way.',
+        roadmapUpdated: 'Updated', roadmapLoadErr: 'Could not load the works in progress.',
         // Footer
         footerCmd: 'echo "Built with 💖 from Guatemala 🇬🇹 | CodeHub & Web Tools"',
         footerVisits: 'Registered visits:',

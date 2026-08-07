@@ -1574,3 +1574,15 @@ html.is-touch .dock-item:active {
   transform: scale(0.95) !important;
   transition: transform .12s ease;
 }
+
+/* ─── Roadmap widget: ajustes móviles ──────────────────────── */
+@media (max-width: 640px) {
+  .roadmap-section { padding: 3.5rem 1rem; }
+  .roadmap-grid { grid-template-columns: 1fr; }
+  .roadmap-card { padding: 1.25rem; }
+  .roadmap-card-head { flex-direction: column; align-items: flex-start; gap: .6rem; }
+}
+html.is-touch .roadmap-card:active {
+  transform: translateY(-2px) scale(0.99) !important;
+  transition: transform .15s ease;
+}
