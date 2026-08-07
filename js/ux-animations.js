@@ -191,26 +191,6 @@
     });
   }
 
-  // ── 5. STAT COUNTERS ────────────────────────────────────────
-  function initCounters() {
-    var section = document.getElementById('stats');
-    if (!section) return;
-    var done = false;
-    new IntersectionObserver(function (entries) {
-      if (!entries[0].isIntersecting || done) return;
-      done = true;
-      section.querySelectorAll('.stat-number, [class*="stat-num"]').forEach(function (el) {
-        var raw = parseInt(el.textContent.replace(/\D/g, ''), 10);
-        if (!raw || raw < 2) return;
-        var suffix = el.textContent.replace(/[\d,\s]/g, '');
-        var obj = { n: 0 };
-        anime({ targets: obj, n: raw, round: 1, duration: 1600, easing: 'easeOutExpo',
-          update: function () { el.textContent = Math.round(obj.n).toLocaleString() + suffix; }
-        });
-      });
-    }, { threshold: 0.3 }).observe(section);
-  }
-
   // ── 6. SCROLL REVEAL ────────────────────────────────────────
   function initReveal() {
     var targets = $$([
@@ -220,7 +200,6 @@
       '#weather-section',
       '#news-section',
       '#open-to-work .otw-info-card',
-      '#mi-pueblo .about-brand-card',
       '#contact'
     ].join(', '));
     if (!targets.length) return;
@@ -362,7 +341,6 @@
     waitAnime(function () {
       initLogo();
       initChips();
-      initCounters();
       initReveal();
       initIconHover();
       initThemeTransition();

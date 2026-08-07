@@ -3380,170 +3380,6 @@
             z-index: -1;
         }
 
-        /* ═══ SOBRE MÍ PRO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-        .about-pro-wrap {
-            display: grid; grid-template-columns: 200px 1fr;
-            gap: 2.5rem; align-items: start; margin-bottom: 2.5rem;
-            background: linear-gradient(135deg, rgba(47,128,237,.04), rgba(108,58,245,.03));
-            border: 1px solid rgba(47,128,237,.12);
-            border-radius: var(--radius-xl, 22px); padding: 2rem;
-        }
-        /* Avatar left */
-        .about-pro-left { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; }
-        .about-avatar-ring { position: relative; display: flex; flex-direction: column; align-items: center; gap: .6rem; }
-        @keyframes glowPulse { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.15);opacity:1} }
-        @keyframes avatarSpin { to { transform: rotate(360deg); } }
-        .about-avatar-glow {
-            position: absolute; width: 180px; height: 180px; border-radius: var(--radius-full, 50%);
-            background: radial-gradient(circle, rgba(47,128,237,.3), rgba(108,58,245,.15), transparent 70%);
-            animation: glowPulse 3s ease-in-out infinite; z-index: 0;
-        }
-        .about-avatar-spin-ring {
-            position: absolute; width: 164px; height: 164px; border-radius: var(--radius-full, 50%);
-            background: conic-gradient(from 0deg, #2f80ed, #6c3af5, #22c55e, #2f80ed);
-            animation: avatarSpin 6s linear infinite; z-index: 0;
-        }
-        .about-avatar-spin-ring::after {
-            content: ''; position: absolute; inset: 3px; border-radius: var(--radius-full, 50%);
-            background: #0a0a0f;
-        }
-        .about-avatar-circle {
-            width: 148px; height: 148px; border-radius: var(--radius-full, 50%);
-            overflow: hidden; position: relative; z-index: 1;
-            background: linear-gradient(135deg, #2f80ed, #6c3af5);
-            flex-shrink: 0;
-        }
-        .about-avatar-img {
-            width: 100%; height: 100%; object-fit: cover;
-            object-position: center top;
-            border-radius: var(--radius-full, 50%); display: block;
-            transition: transform .4s ease;
-        }
-        .about-avatar-circle:hover .about-avatar-img { transform: scale(1.06); }
-        .about-avatar-badge {
-            display: flex; align-items: center; gap: .4rem;
-            font-size: .65rem; font-family: var(--mono); color: #00e676;
-            background: rgba(0,230,118,.1); border: 1px solid rgba(0,230,118,.25);
-            border-radius: var(--radius-xl, 22px); padding: .22rem .75rem; position: relative; z-index: 1;
-            box-shadow: 0 0 12px rgba(0,230,118,.15);
-        }
-        .about-pulse {
-            width: 6px; height: 6px; border-radius: var(--radius-full, 50%); background: #00e676;
-            animation: pulse 1.5s infinite;
-        }
-        .about-mini-stats {
-            display: flex; gap: .8rem; width: 100%; justify-content: center;
-        }
-        .about-mini-stat { text-align: center; }
-        .about-mini-num { display: block; font-size: 1.4rem; font-weight: 800; line-height: 1; }
-        .about-mini-lbl { font-size: .6rem; font-family: var(--mono); color: rgba(232,232,240,.45); }
-        /* Info right */
-        .about-pro-right { }
-        .about-eyebrow {
-            font-family: var(--mono); font-size: .65rem; letter-spacing: .15em;
-            color: rgba(56,189,248,.5); margin-bottom: .3rem; text-transform: uppercase;
-        }
-        .about-pro-name {
-            font-size: 2.4rem; font-weight: 900; line-height: 1; margin-bottom: .4rem;
-        }
-        .about-pro-role {
-            display: flex; align-items: center; gap: .5rem;
-            font-family: var(--mono); font-size: .75rem; color: var(--primary);
-            margin-bottom: .9rem;
-        }
-        .about-brand-card {
-            display: flex;
-            align-items: flex-start;
-            gap: .9rem;
-            padding: .95rem 1rem;
-            margin-bottom: 1rem;
-            border-radius: var(--radius-lg, 18px);
-            background: linear-gradient(135deg, rgba(47,128,237,.1), rgba(56,189,248,.06));
-            border: 1px solid rgba(47,128,237,.16);
-            box-shadow: 0 18px 40px rgba(0,0,0,.18);
-        }
-        .about-brand-logo {
-            width: 54px;
-            height: 54px;
-            border-radius: var(--radius-lg, 18px);
-            object-fit: cover;
-            flex-shrink: 0;
-            border: 1px solid rgba(255,255,255,.12);
-            background: rgba(255,255,255,.03);
-        }
-        .about-brand-copy {
-            min-width: 0;
-        }
-        .about-brand-kicker {
-            font-family: var(--mono);
-            font-size: .65rem;
-            color: rgba(56,189,248,.72);
-            letter-spacing: .12em;
-            text-transform: uppercase;
-            margin-bottom: .3rem;
-        }
-        .about-brand-title {
-            font-size: 1rem;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: .25rem;
-        }
-        .about-brand-text {
-            font-size: .8rem;
-            line-height: 1.65;
-            color: rgba(232,232,240,.62);
-            margin: 0;
-        }
-        .about-role-dot {
-            width: 6px; height: 6px; border-radius: var(--radius-full, 50%); background: var(--primary);
-            animation: pulse 2s infinite; flex-shrink: 0;
-        }
-        .about-pro-text {
-            font-size: .88rem; line-height: 1.8; color: rgba(232,232,240,.65);
-            margin-bottom: .6rem;
-        }
-        .about-pro-origin {
-            font-size: .78rem; color: rgba(232,232,240,.4);
-            margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem;
-        }
-        .about-pro-stack {
-            display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1.2rem;
-        }
-        .about-pro-stack span {
-            padding: .2rem .6rem; border-radius: var(--radius-xl, 22px);
-            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
-            font-size: .65rem; font-family: var(--mono); font-weight: 700;
-            transition: all .2s;
-        }
-        .about-pro-stack span:hover { background: rgba(255,255,255,.08); transform: translateY(-1px); }
-        .about-pro-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
-        .about-btn-cv, .about-btn-contact {
-            display: inline-flex; align-items: center; gap: .4rem;
-            padding: .5rem 1.1rem; border-radius: var(--radius-sm, 10px);
-            font-size: .78rem; font-weight: 700; text-decoration: none;
-            transition: all .2s;
-        }
-        .about-btn-cv {
-            background: linear-gradient(135deg, rgba(0,230,118,.15), rgba(0,230,118,.08));
-            border: 1px solid rgba(0,230,118,.3); color: #00e676;
-        }
-        .about-btn-cv:hover { background: rgba(0,230,118,.25); transform: translateY(-2px); }
-        .about-btn-contact {
-            background: rgba(47,128,237,.1); border: 1px solid rgba(47,128,237,.25); color: var(--accent);
-        }
-        .about-btn-contact:hover { background: rgba(47,128,237,.2); transform: translateY(-2px); }
-        @media (max-width: 700px) {
-            .about-pro-wrap { grid-template-columns: 1fr; gap: 1.5rem; padding: 1.3rem; }
-            .about-pro-left { flex-direction: row; align-items: center; gap: 1.2rem; }
-            .about-mini-stats { flex-direction: column; gap: .4rem; }
-            .about-pro-name { font-size: 1.8rem; }
-        }
-        @media (max-width: 480px) {
-            .about-pro-left { flex-direction: column; }
-            .about-mini-stats { flex-direction: row; }
-            .about-brand-card { flex-direction: column; align-items: center; text-align: center; }
-        }
-
         /* ═══ GALERÍA MI PUEBLO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•══ */
         #mi-pueblo { text-align: left; }
         .pueblo-eyebrow {
@@ -3701,23 +3537,6 @@
             .pueblo-iframe-wrap { height: 200px; }
         }
 
-        
-        /* Avatar size override */
-        .about-avatar-circle {
-            width: 145px !important;
-            height: 145px !important;
-            box-shadow: 0 0 40px rgba(47,128,237,.35), 0 0 0 10px rgba(47,128,237,.07), 0 0 0 20px rgba(47,128,237,.03) !important;
-            transition: transform .3s, box-shadow .3s;
-        }
-        .about-avatar-circle:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 56px rgba(47,128,237,.5), 0 0 0 12px rgba(47,128,237,.1) !important;
-        }
-        .about-avatar-glow {
-            width: 160px !important;
-            height: 160px !important;
-        }
-
 
 /* ════════════════════════════════════════════════════════
    PWA INSTALL PROMPT
@@ -3746,7 +3565,6 @@
 
 /* Reservar espacio para imágenes antes de cargar */
       img { content-visibility: auto; }
-      .about-avatar-img { width: 200px; height: 200px; object-fit: cover; }
       .ap-app-icon img { width: 48px; height: 48px; object-fit: contain; }
 
       /* Estabilizar fuentes — evitar FOUT que causa CLS */
@@ -4344,27 +4162,6 @@
         button:hover {
             transform: translateY(-5px) scale(1.05);
             box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
-        }
-
-        .image-gallery {
-            display: flex;
-            gap: 1rem;
-            margin: 2rem 0;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .gallery-img, .pueblo-img {
-            max-width: 300px;
-            border-radius: var(--radius-md, 14px);
-            transition: all 0.3s ease;
-            border: 3px solid rgba(255, 69, 0, 0.3);
-        }
-
-        .gallery-img:hover, .pueblo-img:hover {
-            transform: scale(1.05) rotate(2deg);
-            box-shadow: 0 15px 30px rgba(255, 69, 0, 0.4);
-            border-color: var(--primary);
         }
 
         #floating-menu {

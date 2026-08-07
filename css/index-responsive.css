@@ -655,27 +655,6 @@
             box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
         }
 
-        .image-gallery {
-            display: flex;
-            gap: 1rem;
-            margin: 2rem 0;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .gallery-img, .pueblo-img {
-            max-width: 300px;
-            border-radius: var(--radius-md, 14px);
-            transition: all 0.3s ease;
-            border: 3px solid rgba(255, 69, 0, 0.3);
-        }
-
-        .gallery-img:hover, .pueblo-img:hover {
-            transform: scale(1.05) rotate(2deg);
-            box-shadow: 0 15px 30px rgba(255, 69, 0, 0.4);
-            border-color: var(--primary);
-        }
-
         #floating-menu {
             position: fixed;
             bottom: 30px;
@@ -1019,26 +998,8 @@
   .service-card h3 { font-size: 0.88rem; margin-bottom: 0.35rem; }
   .service-card p { font-size: 0.73rem; line-height: 1.5; }
 
-  /* ── SOBRE MÍ / MI PUEBLO ── */
+  /* ── MI PUEBLO ── */
   #mi-pueblo { padding: 2rem 1rem; }
-  .about-pro-wrap {
-    flex-direction: column !important;
-    gap: 1.5rem;
-  }
-  .about-pro-left { width: 100%; display: flex; flex-direction: column; align-items: center; }
-  .about-avatar-ring > div { width: 140px !important; height: 140px !important; }
-  .about-mini-stats { gap: 0.8rem; }
-  .about-mini-num { font-size: 1.4rem !important; }
-  .about-mini-lbl { font-size: 0.62rem; }
-  .about-pro-right { width: 100%; }
-  .about-pro-name { font-size: 1.5rem; }
-  .about-pro-text { font-size: 0.82rem; line-height: 1.65; }
-  .about-brand-card {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 0.9rem;
-  }
-  .about-brand-logo { width: 44px; height: 44px; }
   .pueblo-panel { height: 200px !important; }
   .pueblo-controls { flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
   .pueblo-nav-hint { font-size: 0.7rem; text-align: center; }
@@ -1239,7 +1200,6 @@
   .stats-section { gap: 0.55rem; }
   .stat-card { padding: 0.8rem 0.5rem; }
   .stat-number { font-size: 1.7rem !important; }
-  .about-avatar-ring > div { width: 126px !important; height: 126px !important; }
   .ch-ring-wrap { width: 210px !important; height: 210px !important; }
   .ch-logo-img { width: 140px !important; height: 140px !important; }
   .ch-brand-name { font-size: 1.5rem !important; }
@@ -1258,7 +1218,6 @@
   .ap-card:hover { transform: none !important; box-shadow: none !important; }
   .dock-item:hover { transform: none !important; }
   .hero-btn:hover { transform: none !important; }
-  .about-pro-actions a:hover { transform: none !important; }
   .social-link:hover { transform: none !important; }
 }
 
@@ -1348,15 +1307,6 @@
   .service-card h3 { font-size: 0.8rem; margin-bottom: 0.3rem; }
   .service-card p { font-size: 0.68rem; line-height: 1.45; }
 
-  /* ── SOBRE MÍ ── */
-  .about-pro-name { font-size: 1.35rem; }
-  .about-pro-text { font-size: 0.78rem; }
-  .about-avatar-ring > div { width: 118px !important; height: 118px !important; }
-  .about-mini-num { font-size: 1.25rem !important; }
-  .about-mini-lbl { font-size: 0.58rem; }
-  .about-brand-card { padding: 0.75rem; gap: 0.6rem; }
-  .about-brand-logo { width: 38px; height: 38px; }
-  .about-brand-text { font-size: 0.72rem; }
   .pueblo-panel { height: 170px !important; }
 
   /* ── WHY ME ── */
@@ -1607,7 +1557,6 @@ html.is-touch .tp-card:hover,
 html.is-touch .ap-card:hover,
 html.is-touch .dock-item:hover,
 html.is-touch .hero-btn:hover,
-html.is-touch .about-pro-actions a:hover,
 html.is-touch .social-link:hover {
   transform: none;
   box-shadow: none;

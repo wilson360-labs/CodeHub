@@ -191,6 +191,18 @@
     {
       "source": "/flexbox-labs",
       "destination": "/pages/flexbox-labs.html"
+    },
+    {
+      "source": "/mines",
+      "destination": "/games/mines.html"
+    },
+    {
+      "source": "/memory",
+      "destination": "/games/memory.html"
+    },
+    {
+      "source": "/rps",
+      "destination": "/games/rps.html"
     }
   ],
   "redirects": [
@@ -322,6 +334,36 @@
     {
       "source": "/games/tetris",
       "destination": "/tetris",
+      "permanent": true
+    },
+    {
+      "source": "/games/mines",
+      "destination": "/mines",
+      "permanent": true
+    },
+    {
+      "source": "/games/memory",
+      "destination": "/memory",
+      "permanent": true
+    },
+    {
+      "source": "/games/rps",
+      "destination": "/rps",
+      "permanent": true
+    },
+    {
+      "source": "/games/mines.html",
+      "destination": "/mines",
+      "permanent": true
+    },
+    {
+      "source": "/games/memory.html",
+      "destination": "/memory",
+      "permanent": true
+    },
+    {
+      "source": "/games/rps.html",
+      "destination": "/rps",
       "permanent": true
     }
   ]

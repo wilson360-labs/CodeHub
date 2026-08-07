@@ -82,11 +82,9 @@ CodeHub-main/
 │   ├── downloader.css          ← Estilos de /downloader
 │   ├── admin-hub.css           ← Estilos extras del admin
 │   ├── skills-image-gen.css    ← Generador de imágenes IA
-│   ├── snake.css               ← Estilos del juego Snake
-│   └── styles.css              ← Reset global / variables base
+│   └── snake.css               ← Estilos del juego Snake
 │
 ├── js/
-│   ├── index-main.js           ← Lógica principal de index.html (canvas, scroll, etc.)
 │   ├── index-chat.js           ← Chatbot EMI IA (⚠️ duplicado legacy; el código real del chat está inline en index.html)
 │   ├── index-emailjs.js        ← Formulario de contacto
 │   ├── index-whats-new.js      ← Panel "Qué hay de nuevo" en index
@@ -326,7 +324,7 @@ La página más grande del proyecto (~5260 líneas). Contiene todo en un solo ar
 - EmailJS
 - Cloudflare Turnstile
 - Google AdSense (Auto ads)
-- js/script.js, index-main.js, index-emailjs.js, index-whats-new.js, ux-animations.js, device-detect.js, thinking-orb.js, site-tour.js, emi-voice.js (defer)
+- js/script.js, index-emailjs.js, index-whats-new.js, ux-animations.js, device-detect.js, thinking-orb.js, site-tour.js, emi-voice.js (defer)
 
 **EMI Voice (🎙️, integrado Agosto 2026):**
 - Botón micrófono `#emi-mic-btn` en `.ai-input-row` → voz a texto (Web Speech API).
