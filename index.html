@@ -4476,16 +4476,16 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
   <!-- PWA Install Prompt -->
-  <div id="pwa-install">
+  <div id="pwa-install" role="dialog" aria-live="polite" aria-label="Instalar CodeHub">
     <div class="pwa-card">
-      <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:36px;height:36px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
+      <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
       <div class="pwa-text">
-        <div class="pwa-title">Instalar CodeHub</div>
-        <div class="pwa-sub">Acceso rápido · Sin browser</div>
+        <div class="pwa-title" id="pwa-title">Instalar CodeHub</div>
+        <div class="pwa-sub" id="pwa-sub">Acceso rápido · funciona sin internet</div>
       </div>
       <div class="pwa-btns">
-        <button class="pwa-btn-yes" onclick="installPWA()">Instalar</button>
-        <button class="pwa-btn-no" onclick="dismissPWA()">Ahora no</button>
+        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">Instalar</button>
+        <button class="pwa-btn-no" onclick="dismissPWA()" id="pwa-btn-no">Ahora no</button>
       </div>
     </div>
   </div>
@@ -4496,39 +4496,72 @@ document.addEventListener('DOMContentLoaded', () => {
   <script>
   // ── PWA Install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   let _deferredPrompt = null;
+  const pwaInstallEl = document.getElementById('pwa-install');
+
+  function showPWA() {
+    if (pwaInstallEl) pwaInstallEl.style.display = 'block';
+  }
+  function hidePWA() {
+    if (pwaInstallEl) pwaInstallEl.style.display = 'none';
+  }
+  function pwaEligible() {
+    return !!_deferredPrompt || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }
+
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _deferredPrompt = e;
     const dismissed = localStorage.getItem('pwa_dismissed');
     const installed = localStorage.getItem('pwa_installed');
     if (!installed && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000)) {
-      setTimeout(() => { document.getElementById('pwa-install').style.display = 'block'; }, 15000);
+      setTimeout(showPWA, 5000);
     }
   });
 
   window.addEventListener('appinstalled', () => {
     localStorage.setItem('pwa_installed', '1');
-    document.getElementById('pwa-install').style.display = 'none';
+    hidePWA();
     _deferredPrompt = null;
   });
 
+  // iOS / Safari: sin beforeinstallprompt → mostrar guía breve
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  if (isIOS && !localStorage.getItem('pwa_installed') && !localStorage.getItem('pwa_dismissed') && !pwaEligible()) {
+    setTimeout(showPWA, 8000);
+  }
+
   function installPWA() {
-    if (!_deferredPrompt) return;
+    if (!_deferredPrompt) {
+      // iOS / Safari: no hay prompt nativo → mostrar guía breve
+      if (isIOS) {
+        const t = document.getElementById('pwa-title');
+        const s = document.getElementById('pwa-sub');
+        const b = document.getElementById('pwa-btn-install');
+        const n = document.getElementById('pwa-btn-no');
+        if (t) t.textContent = '📱 Agregar a pantalla de inicio';
+        if (s) s.innerHTML = 'En Safari: toca <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>.';
+        if (b) b.textContent = 'Entendido';
+        if (n) { n.style.display = 'none'; }
+        const cb = b ? b.onclick : null;
+        if (b) b.onclick = dismissPWA;
+      }
+      return;
+    }
     _deferredPrompt.prompt();
     _deferredPrompt.userChoice.then(r => {
       if (r.outcome === 'accepted') {
         localStorage.setItem('pwa_installed','1');
-        document.getElementById('pwa-install').style.display = 'none';
+        hidePWA();
       } else {
         localStorage.setItem('pwa_dismissed', Date.now());
-        document.getElementById('pwa-install').style.display = 'none';
+        hidePWA();
       }
       _deferredPrompt = null;
     });
   }
 
   function dismissPWA() {
-    document.getElementById('pwa-install').style.display = 'none';
+    hidePWA();
     localStorage.setItem('pwa_dismissed', Date.now());
   }
 
