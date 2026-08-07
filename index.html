@@ -400,7 +400,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </span>
                     <span class="header-logo-meta">
                         <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small"><span class="badge-text" id="ch-badge-text">CodeHub</span><div class="badge-wave bw1"></div><div class="badge-wave bw2"></div></span>
-                        <span class="header-logo-desc">IA, tools y seguridad web en un solo lugar</span>
+                        <span class="header-logo-desc" data-i18n="headerDesc">IA, tools y seguridad web en un solo lugar</span>
                     </span>
                 </span>
                 <span class="egg-counter" id="egg-counter"></span>
@@ -411,6 +411,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
                 <button id="theme-toggle" aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
                     <i class="fas theme-toggle-icon fa-moon"></i>
+                </button>
+
+                <button id="lang-toggle" aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
+                    <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
                 </button>
 
                 <button id="cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="openCfg()">
@@ -485,26 +489,26 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div id="config-panel" aria-hidden="true">
         <div class="cfg-dialog" role="dialog" aria-modal="true" aria-label="Configuración del sitio">
             <div class="cfg-head">
-                <div class="cfg-head-title"><i class="fas fa-sliders"></i> Configuración</div>
+                <div class="cfg-head-title"><i class="fas fa-sliders"></i> <span data-i18n-config="cfgTitle">Configuración</span></div>
                 <button id="cfg-close" aria-label="Cerrar"><i class="fas fa-times"></i></button>
             </div>
             <div class="cfg-body">
 
                 <!-- Tamaño de fuente -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Tamaño de texto</div>
+                    <div class="cfg-label" data-i18n-config="cfgFontLbl">Tamaño de texto</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt" onclick="setCfg('font','sm',this)">Pequeño</button>
-                        <button class="cfg-opt active" onclick="setCfg('font','md',this)">Normal</button>
-                        <button class="cfg-opt" onclick="setCfg('font','lg',this)">Grande</button>
+                        <button class="cfg-opt" onclick="setCfg('font','sm',this)" data-i18n-config="cfgSmall">Pequeño</button>
+                        <button class="cfg-opt active" onclick="setCfg('font','md',this)" data-i18n-config="cfgNormal">Normal</button>
+                        <button class="cfg-opt" onclick="setCfg('font','lg',this)" data-i18n-config="cfgLarge">Grande</button>
                     </div>
                 </div>
 
                 <!-- Animaciones -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Animaciones</div>
+                    <div class="cfg-label" data-i18n-config="cfgAnimLbl">Animaciones</div>
                     <div class="cfg-toggle-row">
-                        <span>Efectos visuales activos</span>
+                        <span data-i18n-config="cfgAnimRow">Efectos visuales activos</span>
                         <label class="cfg-toggle">
                             <input type="checkbox" id="cfg-anim" checked onchange="toggleAnim(this)">
                             <span class="cfg-slider"></span>
@@ -514,27 +518,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
                 <!-- Tema -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Tema</div>
+                    <div class="cfg-label" data-i18n-label="cfgTheme">Tema</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt" data-theme-option="dark" onclick="setCfg('theme','dark',this)">🌙 Oscuro</button>
-                        <button class="cfg-opt" data-theme-option="light" onclick="setCfg('theme','light',this)">☀️ Claro</button>
+                        <button class="cfg-opt" data-theme-option="dark" data-i18n-config="cfgDark" onclick="setCfg('theme','dark',this)">🌙 Oscuro</button>
+                        <button class="cfg-opt" data-theme-option="light" data-i18n-config="cfgLight" onclick="setCfg('theme','light',this)">☀️ Claro</button>
                     </div>
                 </div>
 
                 <!-- Idioma -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Idioma</div>
+                    <div class="cfg-label" data-i18n-config="cfgLangLbl">Idioma</div>
                     <div class="cfg-options">
-                        <button class="cfg-opt active" onclick="setCfg('lang','es',this)">🇬🇹 Español</button>
-                        <button class="cfg-opt" onclick="setCfg('lang','en',this)">🇺🇸 English</button>
+                        <button class="cfg-opt active" onclick="setCfg('lang','es',this)">🇬🇹 <span data-i18n-config="cfgEs">Español</span></button>
+                        <button class="cfg-opt" onclick="setCfg('lang','en',this)">🇺🇸 <span data-i18n-config="cfgEn">English</span></button>
                     </div>
                 </div>
 
                 <!-- Red neuronal -->
                 <div class="cfg-group">
-                    <div class="cfg-label">Fondo</div>
+                    <div class="cfg-label" data-i18n-config="cfgBgLbl">Fondo</div>
                     <div class="cfg-toggle-row">
-                        <span>Fondos animados (red + partículas)</span>
+                        <span data-i18n-config="cfgBgRow">Fondos animados (red + partículas)</span>
                         <label class="cfg-toggle">
                             <input type="checkbox" id="cfg-neural" onchange="toggleNeural(this)">
                             <span class="cfg-slider"></span>
@@ -545,7 +549,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
             <div class="cfg-foot">
                 <button class="cfg-reset" aria-label="Restablecer configuración" onclick="resetCfg()">
-                    <i class="fas fa-rotate-left"></i> Restablecer
+                    <i class="fas fa-rotate-left"></i> <span data-i18n-config="cfgReset">Restablecer</span>
                 </button>
             </div>
         </div>
@@ -576,21 +580,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="hero-text">
                     <div class="hero-tag">
                         <span class="hero-dot"></span>
-                        Disponible para proyectos · Guatemala 🇬🇹
+                        <span data-i18n="heroAvailable">Disponible para proyectos · Guatemala 🇬🇹</span>
                     </div>
-                    <span class="hero-kicker">Full stack builder · portfolio · tools · IA</span>
+                    <span class="hero-kicker" data-i18n="heroKicker">Full stack builder · portfolio · tools · IA</span>
                     <h1 class="hero-title">
-                        <span class="hero-title-greeting">Hola, soy</span>
+                        <span class="hero-title-greeting" data-i18n="heroGreeting">Hola, soy</span>
                         <span class="hero-name liquid-word" id="liq-hero-wilson" data-liq-size="large">Wilson.E</span>
                     </h1>
-                    <p class="hero-desc">
+                    <p class="hero-desc" data-i18n="heroDesc">
                         Diseño y construyo experiencias web con mejor presencia, herramientas útiles y automatizaciones con IA.
                         Me enfoco en que cada proyecto se vea serio, cargue rápido y comunique valor desde el primer vistazo.
                     </p>
                     <div class="hero-proof">
-                        <span><i class="fas fa-bolt"></i> Entrega rápida</span>
-                        <span><i class="fas fa-layer-group"></i> Frontend + backend</span>
-                        <span><i class="fas fa-wand-magic-sparkles"></i> UI con más nivel</span>
+                        <span><i class="fas fa-bolt"></i> <span data-i18n="heroProof1">Entrega rápida</span></span>
+                        <span><i class="fas fa-layer-group"></i> <span data-i18n="heroProof2">Frontend + backend</span></span>
+                        <span><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="heroProof3">UI con más nivel</span></span>
                     </div>
                     <div class="hero-stack">
                         <span>HTML</span><span>CSS</span><span>JavaScript</span>
@@ -599,34 +603,34 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <div class="hero-metrics">
                         <div class="hero-metric">
                             <strong>25+</strong>
-                            <span>Proyectos publicados</span>
+                            <span data-i18n="heroM1">Proyectos publicados</span>
                         </div>
                         <div class="hero-metric">
                             <strong>23</strong>
-                            <span>Herramientas activas</span>
+                            <span data-i18n="heroM2">Herramientas activas</span>
                         </div>
                         <div class="hero-metric">
                             <strong>&lt;24h</strong>
-                            <span>Respuesta inicial</span>
+                            <span data-i18n="heroM3">Respuesta inicial</span>
                         </div>
                     </div>
                     <div class="hero-ctas">
                         <a href="#game" class="hero-btn hero-btn-primary">
-                            <i class="fas fa-folder-open"></i> Ver proyectos
+                            <i class="fas fa-folder-open"></i> <span data-i18n="heroCta1">Ver proyectos</span>
                         </a>
                         <a href="#contact" class="hero-btn hero-btn-ghost">
-                            <i class="fas fa-envelope"></i> Contactar
+                            <i class="fas fa-envelope"></i> <span data-i18n="heroCta2">Contactar</span>
                         </a>
                         <a href="/tools" class="hero-btn hero-btn-ghost">
                             <i class="fas fa-screwdriver-wrench"></i> Tools
                         </a>
                         <a href="/cv" class="hero-btn hero-btn-ghost" style="border-color:rgba(0,230,118,.3);color:#00e676">
-                            <i class="fas fa-file-lines"></i> Mi CV
+                            <i class="fas fa-file-lines"></i> <span data-i18n="heroCta4">Mi CV</span>
                         </a>
                     </div>
                     <div class="hero-note">
-                        <span><i class="fas fa-circle-check"></i> Branding visual más limpio y profesional</span>
-                        <span><i class="fas fa-circle-check"></i> Compatible con mobile y desktop</span>
+                        <span><i class="fas fa-circle-check"></i> <span data-i18n="heroNote1">Branding visual más limpio y profesional</span></span>
+                        <span><i class="fas fa-circle-check"></i> <span data-i18n="heroNote2">Compatible con mobile y desktop</span></span>
                     </div>
                 </div>
                 <div class="hero-visual">
@@ -653,7 +657,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 };</pre>
                         </div>
                         <div class="hc-footer">
-                            <span class="hc-status">● Online</span>
+                            <span class="hc-status">● <span data-i18n="heroCodeOnline">Online</span></span>
                             <span>JS · ES2025</span>
                         </div>
                     </div>
@@ -667,18 +671,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           <div class="otw-inner">
             <div class="otw-badge">
               <span class="otw-dot"></span>
-              Disponible para proyectos
+              <span data-i18n="otwBadge">Disponible para proyectos</span>
             </div>
             <div class="otw-content">
               <div class="otw-left">
-                <h2 class="otw-title">¿Buscas un desarrollador?</h2>
-                <p class="otw-desc">Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rápida, código limpio y comunicación directa.</p>
+                <h2 class="otw-title" data-i18n="otwTitle">¿Buscas un desarrollador?</h2>
+                <p class="otw-desc" data-i18n="otwDesc">Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rápida, código limpio y comunicación directa.</p>
                 <div class="otw-tags">
-                  <span>🌐 Sitios web</span>
-                  <span>🤖 Bots IA</span>
-                  <span>⚙️ APIs REST</span>
+                  <span>🌐 <span data-i18n="otwT1">Sitios web</span></span>
+                  <span>🤖 <span data-i18n="otwT2">Bots IA</span></span>
+                  <span>⚙️ <span data-i18n="otwT3">APIs REST</span></span>
                   <span>📱 PWA</span>
-                  <span>🗄️ Bases de datos</span>
+                  <span>🗄️ <span data-i18n="otwT5">Bases de datos</span></span>
                   <span>🚀 Deploy</span>
                 </div>
               </div>
@@ -687,22 +691,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                   <div class="otw-info-row">
                     <i class="fas fa-clock"></i>
                     <div>
-                      <span class="otw-info-label">Disponibilidad</span>
-                      <span class="otw-info-val">Tiempo completo · Remoto</span>
+                      <span class="otw-info-label" data-i18n="otwAvail">Disponibilidad</span>
+                      <span class="otw-info-val" data-i18n="otwAvailVal">Tiempo completo · Remoto</span>
                     </div>
                   </div>
                   <div class="otw-info-row">
                     <i class="fas fa-location-dot"></i>
                     <div>
-                      <span class="otw-info-label">Ubicación</span>
-                      <span class="otw-info-val">Guatemala City 🇬🇹 · Worldwide</span>
+                      <span class="otw-info-label" data-i18n="otwLoc">Ubicación</span>
+                      <span class="otw-info-val" data-i18n="otwLocVal">Guatemala City 🇬🇹 · Worldwide</span>
                     </div>
                   </div>
                   <div class="otw-info-row">
                     <i class="fas fa-bolt"></i>
                     <div>
-                      <span class="otw-info-label">Tiempo de respuesta</span>
-                      <span class="otw-info-val">Menos de 24 horas</span>
+                      <span class="otw-info-label" data-i18n="otwResp">Tiempo de respuesta</span>
+                      <span class="otw-info-val" data-i18n="otwRespVal">Menos de 24 horas</span>
                     </div>
                   </div>
                   <div class="otw-actions">
@@ -774,7 +778,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="skills-header">
                 <div>
                     <div class="skills-eyebrow">// stack técnico</div>
-                    <h2 style="margin-bottom:0">Habilidades Técnicas</h2>
+                    <h2 style="margin-bottom:0" data-i18n="skillsTitle">Habilidades Técnicas</h2>
                 </div>
                 <div class="skills-tabs">
                     <button class="sk-tab active" onclick="switchSkillTab('core',this)">Core</button>
@@ -892,48 +896,48 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <!-- Services Section -->
         <section id="services">
-            <h2>🚀 Servicios que Ofrezco</h2>
-            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Soluciones digitales a medida — el precio depende del alcance de cada proyecto.</p>
+            <h2 data-i18n="servicesTitle">🚀 Servicios que Ofrezco</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7" data-i18n="servicesSub">Soluciones digitales a medida — el precio depende del alcance de cada proyecto.</p>
             <div class="services-grid">
                 <div class="service-card">
                     <i class="fas fa-shopping-cart service-icon"></i>
-                    <h3>Tienda Online</h3>
-                    <p>Tu tienda en internet lista para vender: catálogo, carrito, pagos y control desde un panel.</p>
+                    <h3 data-i18n="svc1T">Tienda Online</h3>
+                    <p data-i18n="svc1D">Tu tienda en internet lista para vender: catálogo, carrito, pagos y control desde un panel.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-rocket service-icon"></i>
-                    <h3>Landing Pages</h3>
-                    <p>Páginas de alto impacto para captar clientes, lanzar un producto o presentar tu negocio.</p>
+                    <h3 data-i18n="svc2T">Landing Pages</h3>
+                    <p data-i18n="svc2D">Páginas de alto impacto para captar clientes, lanzar un producto o presentar tu negocio.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-chart-line service-icon"></i>
-                    <h3>Sistemas / Dashboards</h3>
-                    <p>Paneles de gestión a medida: pedidos, inventario, empleados y reportes en tiempo real.</p>
+                    <h3 data-i18n="svc3T">Sistemas / Dashboards</h3>
+                    <p data-i18n="svc3D">Paneles de gestión a medida: pedidos, inventario, empleados y reportes en tiempo real.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-user-tie service-icon"></i>
-                    <h3>Portafolios</h3>
-                    <p>Tu presencia digital que impresiona. Para freelancers, diseñadores, fotógrafos y profesionales.</p>
+                    <h3 data-i18n="svc4T">Portafolios</h3>
+                    <p data-i18n="svc4D">Tu presencia digital que impresiona. Para freelancers, diseñadores, fotógrafos y profesionales.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-magnifying-glass service-icon"></i>
-                    <h3>SEO</h3>
-                    <p>Que Google te encuentre primero. Optimización técnica, velocidad y estrategia de contenido.</p>
+                    <h3 data-i18n="svc5T">SEO</h3>
+                    <p data-i18n="svc5D">Que Google te encuentre primero. Optimización técnica, velocidad y estrategia de contenido.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-robot service-icon"></i>
-                    <h3>Bots y Automatizaciones</h3>
-                    <p>Bots de WhatsApp y Telegram para atender clientes 24/7 y automatizar ventas.</p>
+                    <h3 data-i18n="svc6T">Bots y Automatizaciones</h3>
+                    <p data-i18n="svc6D">Bots de WhatsApp y Telegram para atender clientes 24/7 y automatizar ventas.</p>
                 </div>
                 <div class="service-card">
                     <i class="fas fa-wrench service-icon"></i>
-                    <h3>Mantenimiento Web</h3>
-                    <p>Soporte continuo, actualizaciones, backups y corrección de errores para tu sitio existente.</p>
+                    <h3 data-i18n="svc7T">Mantenimiento Web</h3>
+                    <p data-i18n="svc7D">Soporte continuo, actualizaciones, backups y corrección de errores para tu sitio existente.</p>
                 </div>
             </div>
             <div style="text-align:center;margin-top:2rem">
                 <a href="/servicios" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:var(--radius-md, 14px);background:linear-gradient(135deg,#2f80ed,#22c55e);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(47,128,237,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(47,128,237,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(47,128,237,.3)'">
-                    <i class="fas fa-briefcase"></i> Ver todos los servicios
+                    <i class="fas fa-briefcase"></i> <span data-i18n="servicesCta">Ver todos los servicios</span>
                 </a>
             </div>
         </section>
@@ -1057,14 +1061,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <!-- Info izquierda -->
                 <div class="contact-info">
                     <div class="contact-eyebrow">// hablemos</div>
-                    <h2 class="contact-title">¿Tienes un<br>proyecto en mente?</h2>
-                    <p class="contact-sub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
+                    <h2 class="contact-title" data-i18n="contactTitle">¿Tienes un<br>proyecto en mente?</h2>
+                    <p class="contact-sub" data-i18n="contactSub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
 
                     <div class="contact-links">
                         <a href="/cdn-cgi/l/email-protection#9cebf5f0eff3f2b2f9afaaacf0fdfeefdcfbf1fdf5f0b2fff3f1" class="clink">
                             <div class="clink-icon"><i class="fas fa-envelope"></i></div>
                             <div>
-                                <div class="clink-label">Email directo</div>
+                                <div class="clink-label" data-i18n="contactEmailLbl">Email directo</div>
                                 <div class="clink-val"><span class="__cf_email__" data-cfemail="22554b4e514d4c0c471114124e43405162454f434b4e0c414d4f">[email&#160;protected]</span></div>
                             </div>
                         </a>
@@ -1086,7 +1090,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
                     <div class="contact-status">
                         <span class="status-dot"></span>
-                        <span>Disponible para proyectos nuevos</span>
+                        <span data-i18n="contactStatus">Disponible para proyectos nuevos</span>
                     </div>
                 </div>
 
@@ -1095,29 +1099,29 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <form id="contact-form" onsubmit="sendEmail(event)" novalidate>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label" for="cf-name">Nombre</label>
-                                <input class="form-input" type="text" id="cf-name" name="from_name" placeholder="Tu nombre" required autocomplete="name">
+                                <label class="form-label" for="cf-name" data-i18n="cfName">Nombre</label>
+                                <input class="form-input" type="text" id="cf-name" name="from_name" placeholder="Tu nombre" data-i18n-placeholder="cfNamePh" required autocomplete="name">
                                 <div class="form-err" id="err-name"></div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="cf-email">Email</label>
-                                <input class="form-input" type="email" id="cf-email" name="reply_to" placeholder="tu@email.com" required autocomplete="email">
+                                <label class="form-label" for="cf-email" data-i18n="cfEmail">Email</label>
+                                <input class="form-input" type="email" id="cf-email" name="reply_to" placeholder="tu@email.com" data-i18n-placeholder="cfEmailPh" required autocomplete="email">
                                 <div class="form-err" id="err-email"></div>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="cf-subject">Asunto</label>
+                            <label class="form-label" for="cf-subject" data-i18n="cfSubject">Asunto</label>
                             <select class="form-input form-select" id="cf-subject" name="subject">
-                                <option value="Proyecto Web">💻 Proyecto Web</option>
-                                <option value="Automatización Python">🐍 Automatización Python</option>
-                                <option value="Consultoría">🤝 Consultoría</option>
-                                <option value="Colaboración">🚀 Colaboración</option>
-                                <option value="Otro">📌 Otro</option>
+                                <option value="Proyecto Web" data-i18n="cfOpt1">💻 Proyecto Web</option>
+                                <option value="Automatización Python" data-i18n="cfOpt2">🐍 Automatización Python</option>
+                                <option value="Consultoría" data-i18n="cfOpt3">🤝 Consultoría</option>
+                                <option value="Colaboración" data-i18n="cfOpt4">🚀 Colaboración</option>
+                                <option value="Otro" data-i18n="cfOpt5">📌 Otro</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label" for="cf-msg">Mensaje</label>
-                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" required rows="5"></textarea>
+                            <label class="form-label" for="cf-msg" data-i18n="cfMsg">Mensaje</label>
+                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" data-i18n-placeholder="cfMsgPh" required rows="5"></textarea>
                             <div class="form-err" id="err-msg"></div>
                             <div class="form-char"><span id="char-count">0</span>/500</div>
                         </div>
@@ -1130,8 +1134,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                              id="turnstile-contact">
                         </div>
                         <button type="submit" class="form-submit" id="form-submit">
-                            <span id="submit-text"><i class="fas fa-paper-plane"></i> Enviar mensaje</span>
-                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> Enviando…</span>
+                            <span id="submit-text"><i class="fas fa-paper-plane"></i> <span data-i18n="cfSubmit">Enviar mensaje</span></span>
+                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> <span data-i18n="cfSending">Enviando…</span></span>
                         </button>
                         <div id="form-feedback" class="form-feedback"></div>
                     </form>
@@ -1141,38 +1145,38 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         
         <!-- Game Section -->
         <section id="game">
-            <h2>🎮 Juegos Interactivos</h2>
-            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Cinco minijuegos para jugar en una ventana nueva. ¿Cuál es tu récord?</p>
+            <h2 data-i18n="gameTitle">🎮 Juegos Interactivos</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7" data-i18n="gameSub">Cinco minijuegos para jugar en una ventana nueva. ¿Cuál es tu récord?</p>
             <div class="game-grid">
                 <article class="game-card" style="--gc:#22c55e">
                     <div class="game-card-head"><i class="fas fa-gamepad"></i></div>
-                    <h3>La Serpiente</h3>
-                    <p>Crece todo lo que puedas sin chocar con las paredes ni contigo mismo.</p>
-                    <button onclick="openGameWindow('snake')">Jugar ahora</button>
+                    <h3 data-i18n="game1T">La Serpiente</h3>
+                    <p data-i18n="game1D">Crece todo lo que puedas sin chocar con las paredes ni contigo mismo.</p>
+                    <button onclick="openGameWindow('snake')" data-i18n="gamePlay">Jugar ahora</button>
                 </article>
                 <article class="game-card" style="--gc:#2f80ed">
                     <div class="game-card-head"><i class="fas fa-table-cells"></i></div>
                     <h3>Tetris</h3>
-                    <p>Apila las piezas y completa líneas antes de que la torre llegue arriba.</p>
-                    <button onclick="openGameWindow('tetris')">Jugar ahora</button>
+                    <p data-i18n="game2D">Apila las piezas y completa líneas antes de que la torre llegue arriba.</p>
+                    <button onclick="openGameWindow('tetris')" data-i18n="gamePlay">Jugar ahora</button>
                 </article>
                 <article class="game-card" style="--gc:#ff7043">
                     <div class="game-card-head"><i class="fas fa-bomb"></i></div>
                     <h3>Buscaminas</h3>
-                    <p>Tablero 9×9 con 10 minas. Despeja el campo sin detonar ninguna.</p>
-                    <button onclick="openGameWindow('mines')">Jugar ahora</button>
+                    <p data-i18n="game3D">Tablero 9×9 con 10 minas. Despeja el campo sin detonar ninguna.</p>
+                    <button onclick="openGameWindow('mines')" data-i18n="gamePlay">Jugar ahora</button>
                 </article>
                 <article class="game-card" style="--gc:#38bdf8">
                     <div class="game-card-head"><i class="fas fa-brain"></i></div>
                     <h3>Memoria</h3>
-                    <p>Encuentra las 8 parejas de cartas en el menor número de intentos.</p>
-                    <button onclick="openGameWindow('memory')">Jugar ahora</button>
+                    <p data-i18n="game4D">Encuentra las 8 parejas de cartas en el menor número de intentos.</p>
+                    <button onclick="openGameWindow('memory')" data-i18n="gamePlay">Jugar ahora</button>
                 </article>
                 <article class="game-card" style="--gc:#a855f7">
                     <div class="game-card-head"><i class="fas fa-hand-fist"></i></div>
-                    <h3>Piedra, Papel o Tijera</h3>
-                    <p>Reto rápido contra la máquina. A mejor de una ronda.</p>
-                    <button onclick="openGameWindow('rps')">Jugar ahora</button>
+                    <h3 data-i18n="game5T">Piedra, Papel o Tijera</h3>
+                    <p data-i18n="game5D">Reto rápido contra la máquina. A mejor de una ronda.</p>
+                    <button onclick="openGameWindow('rps')" data-i18n="gamePlay">Jugar ahora</button>
                 </article>
             </div>
         </section>
@@ -1218,7 +1222,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
                 <div class="footer-terminal-line">
                     <span class="footer-prompt">wilson@codehub<span class="footer-sep">:</span>~<span class="footer-sep">$</span></span>
-                    <span class="footer-cmd" id="footer-terminal-cmd">echo "Desarrollado con 💖 desde Guatemala 🇬🇹 | CodeHub & Herramientas Web"</span><span class="footer-cursor">█</span>
+                    <span class="footer-cmd" id="footer-terminal-cmd" data-i18n="footerCmd">echo "Desarrollado con 💖 desde Guatemala 🇬🇹 | CodeHub & Herramientas Web"</span><span class="footer-cursor">█</span>
                 </div>
             </div>
 
@@ -1245,18 +1249,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- Visitor counter -->
             <div class="footer-visitors">
                 <i class="fas fa-eye"></i>
-                <span>Visitas registradas:</span>
+                <span data-i18n="footerVisits">Visitas registradas:</span>
                 <strong id="visitorCount">0</strong>
             </div>
 
             <!-- Bottom bar -->
             <div class="footer-bottom">
-                <span>&copy; 2024–2026 <strong>Wilson.E</strong> · Todos los derechos reservados</span>
+                <span>&copy; 2024–2026 <strong>Wilson.E</strong> · <span data-i18n="footerRights">Todos los derechos reservados</span></span>
                 <span style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
-                    <a href="/privacy" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'">Política de Privacidad</a>
-                    <a href="/terms" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'">Términos de Uso</a>
+                    <a href="/privacy" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'" data-i18n="footerPrivacy">Política de Privacidad</a>
+                    <a href="/terms" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'" data-i18n="footerTerms">Términos de Uso</a>
                 </span>
-                <span class="footer-kbd">Ctrl + K <em>búsqueda rápida</em></span>
+                <span class="footer-kbd">Ctrl + K <em data-i18n="footerKbd">búsqueda rápida</em></span>
             </div>
         </div>
     </footer>
@@ -1270,14 +1274,25 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // ========== FUNCIONES BÁSICAS ==========
         
         // Typing Effect
-        const typingPhrases = [
-            'Desarrollador Web Full Stack 💻',
-            'Especialista en Python 🐍',
-            'Creador de Experiencias Digitales ✨',
-            'De Guatemala para el Mundo 🇬🇹',
-            'Programador Apasionado 🚀',
-            'Problem Solver 🧠'
-        ];
+        const typingPhrases = function () {
+            return currentLang === 'en'
+                ? [
+                    'Full Stack Web Developer 💻',
+                    'Python Specialist 🐍',
+                    'Creator of Digital Experiences ✨',
+                    'From Guatemala to the World 🇬🇹',
+                    'Passionate Programmer 🚀',
+                    'Problem Solver 🧠'
+                  ]
+                : [
+                    'Desarrollador Web Full Stack 💻',
+                    'Especialista en Python 🐍',
+                    'Creador de Experiencias Digitales ✨',
+                    'De Guatemala para el Mundo 🇬🇹',
+                    'Programador Apasionado 🚀',
+                    'Problem Solver 🧠'
+                  ];
+        };
         let phraseIndex = 0;
         let charIndex = 0;
         let isDeleting = false;
@@ -1285,7 +1300,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         function typeEffect() {
             const typingElement = document.getElementById('typingEffect');
             if (!typingElement) return;
-            const chars = Array.from(typingPhrases[phraseIndex]);
+            const phrases = typingPhrases();
+            const chars = Array.from(phrases[phraseIndex]);
             
             if (isDeleting) {
                 typingElement.textContent = chars.slice(0, charIndex - 1).join('');
@@ -1308,7 +1324,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 setTimeout(() => isDeleting = true, 2000);
             } else if (isDeleting && charIndex === 0) {
                 isDeleting = false;
-                phraseIndex = (phraseIndex + 1) % typingPhrases.length;
+                phraseIndex = (phraseIndex + 1) % phrases.length;
             }
             
             setTimeout(typeEffect, isDeleting ? 50 : 110);
@@ -1317,6 +1333,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // Arrancar el typing effect al cargar el DOM
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(typeEffect, 800);
+        });
+        // Reiniciar la frase actual al cambiar idioma
+        document.addEventListener('ch:langchange', function() {
+            phraseIndex = 0; charIndex = 0; isDeleting = false;
+            const el = document.getElementById('typingEffect');
+            if (el) { el.textContent = ''; }
+            setTimeout(typeEffect, 400);
         });
 
         // ── VISITOR TRACKER — llama al backend para geo IP real en Supabase ──
@@ -2707,7 +2730,7 @@ async function chNotifWeatherCheck(lat, lon) {
 <nav id="hub-dock" aria-label="Accesos rápidos">
   <a href="/tools" class="dock-item" title="DevTools Suite">
     <div class="dock-icon dock-icon-tools"><i class="fas fa-screwdriver-wrench"></i></div>
-    <span class="dock-label">Herramientas</span>
+    <span class="dock-label" data-i18n="dockTools">Herramientas</span>
   </a>
   <a href="/opensource" class="dock-item" title="Catálogo Open Source">
     <div class="dock-icon dock-icon-apps"><i class="fas fa-code-branch"></i></div>
@@ -2716,7 +2739,7 @@ async function chNotifWeatherCheck(lat, lon) {
   <div class="dock-sep"></div>
   <a href="#contact" class="dock-item" title="Chat IA / Contacto" onclick="event.preventDefault();scrollToSection('contact')">
     <div class="dock-icon dock-icon-chat"><i class="fas fa-comment-dots"></i></div>
-    <span class="dock-label">Chat</span>
+    <span class="dock-label" data-i18n="dockChat">Chat</span>
   </a>
 
 </nav>
@@ -4429,6 +4452,82 @@ const i18n = {
         // Nav
         navStats: 'Estadísticas', navSkills: 'Habilidades', navServices: 'Servicios',
         navExp: 'Experiencia', navProjects: 'Proyectos', navContact: 'Contacto',
+        // Header
+        headerDesc: 'IA, tools y seguridad web en un solo lugar',
+        // Hero
+        heroAvailable: 'Disponible para proyectos · Guatemala 🇬🇹',
+        heroKicker: 'Full stack builder · portfolio · tools · IA',
+        heroGreeting: 'Hola, soy',
+        heroDesc: 'Diseño y construyo experiencias web con mejor presencia, herramientas útiles y automatizaciones con IA. Me enfoco en que cada proyecto se vea serio, cargue rápido y comunique valor desde el primer vistazo.',
+        heroProof1: 'Entrega rápida', heroProof2: 'Frontend + backend', heroProof3: 'UI con más nivel',
+        heroM1: 'Proyectos publicados', heroM2: 'Herramientas activas', heroM3: 'Respuesta inicial',
+        heroCta1: 'Ver proyectos', heroCta2: 'Contactar', heroCta4: 'Mi CV',
+        heroNote1: 'Branding visual más limpio y profesional',
+        heroNote2: 'Compatible con mobile y desktop',
+        heroCodeOnline: 'Online',
+        // Open to work
+        otwBadge: 'Disponible para proyectos',
+        otwTitle: '¿Buscas un desarrollador?',
+        otwDesc: 'Acepto proyectos freelance de desarrollo web, bots con IA, APIs REST y automatizaciones. Entrega rápida, código limpio y comunicación directa.',
+        otwT1: 'Sitios web', otwT2: 'Bots IA', otwT3: 'APIs REST', otwT5: 'Bases de datos',
+        otwAvail: 'Disponibilidad', otwAvailVal: 'Tiempo completo · Remoto',
+        otwLoc: 'Ubicación', otwLocVal: 'Guatemala City 🇬🇹 · Worldwide',
+        otwResp: 'Tiempo de respuesta', otwRespVal: 'Menos de 24 horas',
+        // Skills
+        skillsTitle: 'Habilidades Técnicas',
+        // Services
+        servicesTitle: '🚀 Servicios que Ofrezco',
+        servicesSub: 'Soluciones digitales a medida — el precio depende del alcance de cada proyecto.',
+        svc1T: 'Tienda Online', svc1D: 'Tu tienda en internet lista para vender: catálogo, carrito, pagos y control desde un panel.',
+        svc2T: 'Landing Pages', svc2D: 'Páginas de alto impacto para captar clientes, lanzar un producto o presentar tu negocio.',
+        svc3T: 'Sistemas / Dashboards', svc3D: 'Paneles de gestión a medida: pedidos, inventario, empleados y reportes en tiempo real.',
+        svc4T: 'Portafolios', svc4D: 'Tu presencia digital que impresiona. Para freelancers, diseñadores, fotógrafos y profesionales.',
+        svc5T: 'SEO', svc5D: 'Que Google te encuentre primero. Optimización técnica, velocidad y estrategia de contenido.',
+        svc6T: 'Bots y Automatizaciones', svc6D: 'Bots de WhatsApp y Telegram para atender clientes 24/7 y automatizar ventas.',
+        svc7T: 'Mantenimiento Web', svc7D: 'Soporte continuo, actualizaciones, backups y corrección de errores para tu sitio existente.',
+        servicesCta: 'Ver todos los servicios',
+        // Contact
+        contactTitle: '¿Tienes un<br>proyecto en mente?',
+        contactSub: 'Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.',
+        contactEmailLbl: 'Email directo',
+        contactStatus: 'Disponible para proyectos nuevos',
+        cfName: 'Nombre', cfEmail: 'Email', cfSubject: 'Asunto',
+        cfNamePh: 'Tu nombre', cfEmailPh: 'tu@email.com',
+        cfOpt1: 'Proyecto Web', cfOpt2: 'Automatización Python', cfOpt3: 'Consultoría', cfOpt4: 'Colaboración', cfOpt5: 'Otro',
+        cfMsg: 'Mensaje', cfMsgPh: 'Cuéntame sobre tu proyecto o idea…', cfSubmit: 'Enviar mensaje', cfSending: 'Enviando…',
+        // Games
+        gameTitle: '🎮 Juegos Interactivos',
+        gameSub: 'Cinco minijuegos para jugar en una ventana nueva. ¿Cuál es tu récord?',
+        gamePlay: 'Jugar ahora',
+        game1T: 'La Serpiente', game1D: 'Crece todo lo que puedas sin chocar con las paredes ni contigo mismo.',
+        game2D: 'Apila las piezas y completa líneas antes de que la torre llegue arriba.',
+        game3D: 'Tablero 9×9 con 10 minas. Despeja el campo sin detonar ninguna.',
+        game4D: 'Encuentra las 8 parejas de cartas en el menor número de intentos.',
+        game5T: 'Piedra, Papel o Tijera', game5D: 'Reto rápido contra la máquina. A mejor de una ronda.',
+        // Footer
+        footerCmd: 'echo "Desarrollado con 💖 desde Guatemala 🇬🇹 | CodeHub & Herramientas Web"',
+        footerVisits: 'Visitas registradas:',
+        footerRights: 'Todos los derechos reservados',
+        footerPrivacy: 'Política de Privacidad', footerTerms: 'Términos de Uso',
+        footerKbd: 'búsqueda rápida',
+        // Dock / Nav
+        dockTools: 'Herramientas', dockChat: 'Chat',
+        mnbHome: 'Inicio', mnbDl: 'Descargar', mnbSv: 'Servicios',
+        // PWA
+        pwaTitle: 'Instalar CodeHub',
+        pwaSub: 'Acceso rápido · funciona sin internet',
+        pwaBtn: 'Instalar', pwaDismiss: 'Ahora no',
+        pwaIosTitle: '📱 Agregar a pantalla de inicio',
+        pwaIosSub: 'En Safari: toca <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>.',
+        pwaOk: 'Entendido',
+        // Config
+        cfgTheme: 'Tema', cfgDark: '🌙 Oscuro', cfgLight: '☀️ Claro',
+        cfgTitle: 'Configuración', cfgFontLbl: 'Tamaño de texto',
+        cfgSmall: 'Pequeño', cfgNormal: 'Normal', cfgLarge: 'Grande',
+        cfgAnimLbl: 'Animaciones', cfgAnimRow: 'Efectos visuales activos',
+        cfgLangLbl: 'Idioma', cfgEs: 'Español', cfgEn: 'English',
+        cfgBgLbl: 'Fondo', cfgBgRow: 'Fondos animados (red + partículas)',
+        cfgReset: 'Restablecer',
     },
     en: {
         available: 'Available',
@@ -4441,6 +4540,82 @@ const i18n = {
         contact: 'Contact me',
         navStats: 'Statistics', navSkills: 'Skills', navServices: 'Services',
         navExp: 'Experience', navProjects: 'Projects', navContact: 'Contact',
+        // Header
+        headerDesc: 'AI, tools and web security in one place',
+        // Hero
+        heroAvailable: 'Available for projects · Guatemala 🇬🇹',
+        heroKicker: 'Full stack builder · portfolio · tools · AI',
+        heroGreeting: 'Hi, I am',
+        heroDesc: 'I design and build web experiences with a stronger presence, useful tools and AI automations. I focus on making every project look serious, load fast and communicate value at first glance.',
+        heroProof1: 'Fast delivery', heroProof2: 'Frontend + backend', heroProof3: 'Higher-level UI',
+        heroM1: 'Published projects', heroM2: 'Active tools', heroM3: 'Initial response',
+        heroCta1: 'View projects', heroCta2: 'Contact', heroCta4: 'My CV',
+        heroNote1: 'Cleaner, more professional visual branding',
+        heroNote2: 'Mobile and desktop compatible',
+        heroCodeOnline: 'Online',
+        // Open to work
+        otwBadge: 'Available for projects',
+        otwTitle: 'Looking for a developer?',
+        otwDesc: 'I take freelance projects: web development, AI bots, REST APIs and automations. Fast delivery, clean code and direct communication.',
+        otwT1: 'Websites', otwT2: 'AI bots', otwT3: 'REST APIs', otwT5: 'Databases',
+        otwAvail: 'Availability', otwAvailVal: 'Full time · Remote',
+        otwLoc: 'Location', otwLocVal: 'Guatemala City 🇬🇹 · Worldwide',
+        otwResp: 'Response time', otwRespVal: 'Less than 24 hours',
+        // Skills
+        skillsTitle: 'Technical Skills',
+        // Services
+        servicesTitle: '🚀 Services I Offer',
+        servicesSub: 'Tailored digital solutions — pricing depends on each project scope.',
+        svc1T: 'Online Store', svc1D: 'Your internet store ready to sell: catalog, cart, payments and control from a panel.',
+        svc2T: 'Landing Pages', svc2D: 'High-impact pages to win clients, launch a product or present your business.',
+        svc3T: 'Systems / Dashboards', svc3D: 'Custom management panels: orders, inventory, employees and real-time reports.',
+        svc4T: 'Portfolios', svc4D: 'An impressive digital presence. For freelancers, designers, photographers and professionals.',
+        svc5T: 'SEO', svc5D: 'Let Google find you first. Technical optimization, speed and content strategy.',
+        svc6T: 'Bots & Automations', svc6D: 'WhatsApp and Telegram bots to serve clients 24/7 and automate sales.',
+        svc7T: 'Web Maintenance', svc7D: 'Ongoing support, updates, backups and bug fixing for your existing site.',
+        servicesCta: 'View all services',
+        // Contact
+        contactTitle: 'Got a<br>project in mind?',
+        contactSub: 'I am available for freelance, collaborations or just to talk code. I reply within 24 hours.',
+        contactEmailLbl: 'Direct email',
+        contactStatus: 'Available for new projects',
+        cfName: 'Name', cfEmail: 'Email', cfSubject: 'Subject',
+        cfNamePh: 'Your name', cfEmailPh: 'you@email.com',
+        cfOpt1: 'Web Project', cfOpt2: 'Python Automation', cfOpt3: 'Consulting', cfOpt4: 'Collaboration', cfOpt5: 'Other',
+        cfMsg: 'Message', cfMsgPh: 'Tell me about your project or idea…', cfSubmit: 'Send message', cfSending: 'Sending…',
+        // Games
+        gameTitle: '🎮 Interactive Games',
+        gameSub: 'Five mini-games to play in a new window. What is your high score?',
+        gamePlay: 'Play now',
+        game1T: 'Snake', game1D: 'Grow as much as you can without hitting the walls or yourself.',
+        game2D: 'Stack the pieces and clear lines before the tower reaches the top.',
+        game3D: '9×9 board with 10 mines. Clear the field without detonating any.',
+        game4D: 'Find the 8 matching pairs in the fewest attempts.',
+        game5T: 'Rock, Paper, Scissors', game5D: 'Quick challenge against the machine. Best of one round.',
+        // Footer
+        footerCmd: 'echo "Built with 💖 from Guatemala 🇬🇹 | CodeHub & Web Tools"',
+        footerVisits: 'Registered visits:',
+        footerRights: 'All rights reserved',
+        footerPrivacy: 'Privacy Policy', footerTerms: 'Terms of Use',
+        footerKbd: 'quick search',
+        // Dock / Nav
+        dockTools: 'Tools', dockChat: 'Chat',
+        mnbHome: 'Home', mnbDl: 'Download', mnbSv: 'Services',
+        // PWA
+        pwaTitle: 'Install CodeHub',
+        pwaSub: 'Quick access · works offline',
+        pwaBtn: 'Install', pwaDismiss: 'Not now',
+        pwaIosTitle: '📱 Add to Home Screen',
+        pwaIosSub: 'In Safari: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.',
+        pwaOk: 'Got it',
+        // Config
+        cfgTheme: 'Theme', cfgDark: '🌙 Dark', cfgLight: '☀️ Light',
+        cfgTitle: 'Settings', cfgFontLbl: 'Text size',
+        cfgSmall: 'Small', cfgNormal: 'Normal', cfgLarge: 'Large',
+        cfgAnimLbl: 'Animations', cfgAnimRow: 'Visual effects on',
+        cfgLangLbl: 'Language', cfgEs: 'Español', cfgEn: 'English',
+        cfgBgLbl: 'Background', cfgBgRow: 'Animated backgrounds (network + particles)',
+        cfgReset: 'Reset',
     }
 };
 
@@ -4457,9 +4632,43 @@ function applyLang(lang) {
         const key = el.dataset.i18n;
         if (dict[key] !== undefined) el.innerHTML = dict[key];
     });
+    // Traducir placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        if (dict[key] !== undefined) el.placeholder = dict[key];
+    });
+    // Traducir títulos / aria-labels
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.dataset.i18nTitle;
+        if (dict[key] !== undefined) { el.title = dict[key]; el.setAttribute('aria-label', dict[key]); }
+    });
+    // Traducir la card PWA (si no está en modo guía iOS)
+    const pwaCard = document.getElementById('pwa-install');
+    if (pwaCard && !pwaCard.classList.contains('ios-guide')) {
+        const t = document.getElementById('pwa-title');
+        const s = document.getElementById('pwa-sub');
+        const b = document.getElementById('pwa-btn-install');
+        const n = document.getElementById('pwa-btn-no');
+        if (t) t.textContent = dict.pwaTitle;
+        if (s) s.innerHTML = dict.pwaSub;
+        if (b) b.textContent = dict.pwaBtn;
+        if (n) n.textContent = dict.pwaDismiss;
+    }
+    // Traducir el panel de configuración
+    const cfgTheme = document.querySelector('#config-panel [data-i18n-label="cfgTheme"]');
+    if (cfgTheme) cfgTheme.textContent = dict.cfgTheme;
+    document.querySelectorAll('#config-panel [data-i18n-config]').forEach(el => {
+        const key = el.getAttribute('data-i18n-config');
+        if (dict[key] !== undefined) el.textContent = dict[key];
+    });
     // Actualizar botón
     const btn = document.getElementById('lang-toggle');
-    if (btn) btn.textContent = lang === 'es' ? '🌐 EN' : '🌐 ES';
+    if (btn) {
+        const t = btn.querySelector('.lang-toggle-text');
+        if (t) t.textContent = lang === 'es' ? 'EN' : 'ES';
+        btn.setAttribute('aria-label', lang === 'es' ? 'Cambiar a inglés' : 'Switch to Spanish');
+        btn.title = lang === 'es' ? 'Change language' : 'Cambiar idioma';
+    }
     // Cambiar lang del html
     document.documentElement.lang = lang;
 }
@@ -4534,6 +4743,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!_deferredPrompt) {
       // iOS / Safari: no hay prompt nativo → mostrar guía breve
       if (isIOS) {
+        const card = document.getElementById('pwa-install');
+        if (card) card.classList.add('ios-guide');
         const t = document.getElementById('pwa-title');
         const s = document.getElementById('pwa-sub');
         const b = document.getElementById('pwa-btn-install');
@@ -5262,7 +5473,7 @@ function setAIMood(btn) {
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
   <a href="/" class="active" id="mnb-home">
     <span class="mnb-icon">🏠</span>
-    <span>Inicio</span>
+    <span data-i18n="mnbHome">Inicio</span>
   </a>
   <a href="/tools" id="mnb-tools">
     <span class="mnb-icon">🔧</span>
@@ -5274,11 +5485,11 @@ function setAIMood(btn) {
   </a>
   <a href="/downloader" id="mnb-dl">
     <span class="mnb-icon">⬇️</span>
-    <span>Descargar</span>
+    <span data-i18n="mnbDl">Descargar</span>
   </a>
   <a href="/servicios" id="mnb-sv">
     <span class="mnb-icon">🚀</span>
-    <span>Servicios</span>
+    <span data-i18n="mnbSv">Servicios</span>
   </a>
 </nav>
 
