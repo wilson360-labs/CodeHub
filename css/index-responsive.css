@@ -633,26 +633,12 @@
 
         #game {
             background: linear-gradient(135deg, rgba(20, 20, 40, 0.8), rgba(40, 20, 60, 0.6));
-            border: 2px solid rgba(255, 69, 0, 0.4);
-        }
-
-        #game button {
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            padding: 1.5rem 3rem;
-            border-radius: var(--radius-pill, 999px);
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.4s ease;
-            box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4);
-            margin: 1rem;
+            border: 2px solid rgba(47, 128, 237, 0.35);
         }
 
         button:hover {
             transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 15px 40px rgba(255, 69, 0, 0.6);
+            box-shadow: 0 15px 40px rgba(47, 128, 237, 0.5);
         }
 
         #floating-menu {
@@ -1077,7 +1063,8 @@
 
   /* ── JUEGOS ── */
   #game { padding: 2rem 1rem; }
-  #game button { min-height: 44px; font-size: 0.85rem; }
+  .game-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; }
+  .game-card button { min-height: 44px; font-size: 0.8rem; }
 
   /* ── FOOTER ── */
   footer { padding: 1.5rem 1rem; }

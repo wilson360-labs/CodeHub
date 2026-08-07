@@ -1117,23 +1117,38 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <!-- Game Section -->
         <section id="game">
             <h2>🎮 Juegos Interactivos</h2>
-            <p>Haz clic en los botones para jugar a estos emocionantes juegos en una nueva ventana.</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <button onclick="openGameWindow('snake')">
-                    <i class="fas fa-gamepad"></i> Jugar a la Serpiente
-                </button>
-                <button onclick="openGameWindow('tetris')">
-                    <i class="fas fa-table-cells"></i> Jugar a Tetris
-                </button>
-                <button onclick="openGameWindow('mines')">
-                    <i class="fas fa-bomb"></i> Jugar a Buscaminas
-                </button>
-                <button onclick="openGameWindow('memory')">
-                    <i class="fas fa-brain"></i> Jugar a Memoria
-                </button>
-                <button onclick="openGameWindow('rps')">
-                    <i class="fas fa-hand-fist"></i> Piedra, Papel o Tijera
-                </button>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Cinco minijuegos para jugar en una ventana nueva. ¿Cuál es tu récord?</p>
+            <div class="game-grid">
+                <article class="game-card" style="--gc:#22c55e">
+                    <div class="game-card-head"><i class="fas fa-gamepad"></i></div>
+                    <h3>La Serpiente</h3>
+                    <p>Crece todo lo que puedas sin chocar con las paredes ni contigo mismo.</p>
+                    <button onclick="openGameWindow('snake')">Jugar ahora</button>
+                </article>
+                <article class="game-card" style="--gc:#2f80ed">
+                    <div class="game-card-head"><i class="fas fa-table-cells"></i></div>
+                    <h3>Tetris</h3>
+                    <p>Apila las piezas y completa líneas antes de que la torre llegue arriba.</p>
+                    <button onclick="openGameWindow('tetris')">Jugar ahora</button>
+                </article>
+                <article class="game-card" style="--gc:#ff7043">
+                    <div class="game-card-head"><i class="fas fa-bomb"></i></div>
+                    <h3>Buscaminas</h3>
+                    <p>Tablero 9×9 con 10 minas. Despeja el campo sin detonar ninguna.</p>
+                    <button onclick="openGameWindow('mines')">Jugar ahora</button>
+                </article>
+                <article class="game-card" style="--gc:#38bdf8">
+                    <div class="game-card-head"><i class="fas fa-brain"></i></div>
+                    <h3>Memoria</h3>
+                    <p>Encuentra las 8 parejas de cartas en el menor número de intentos.</p>
+                    <button onclick="openGameWindow('memory')">Jugar ahora</button>
+                </article>
+                <article class="game-card" style="--gc:#a855f7">
+                    <div class="game-card-head"><i class="fas fa-hand-fist"></i></div>
+                    <h3>Piedra, Papel o Tijera</h3>
+                    <p>Reto rápido contra la máquina. A mejor de una ronda.</p>
+                    <button onclick="openGameWindow('rps')">Jugar ahora</button>
+                </article>
             </div>
         </section>
 
