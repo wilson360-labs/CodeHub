@@ -46,6 +46,21 @@ img, svg, video, canvas, iframe, embed, object, audio {
 img, video { height: auto; }
 picture, figure { max-width: 100%; }
 
+/* Refuerzo absoluto: el documento nunca debe ser más ancho que la
+   pantalla, ni generar scroll horizontal ni forzar el zoom-out que hace
+   que el móvil muestre el sitio "en miniatura de escritorio". */
+html { overflow-x: hidden; overflow-x: clip; }
+html, body { max-width: 100%; }
+body { overflow-x: hidden; overflow-x: clip; width: 100%; }
+
+/* Cualquier elemento fijo/absoluto debe caber dentro del viewport */
+[class*="dock"], .side-nav, .mobile-nav, #ai-panel, #config-panel,
+#command-palette, #auth-panel, #experimental-menu, .menu-toggle-btn,
+#sw-update-banner, .ai-fab-wrap, .ai-bottom-bar, .ai-circle-btn,
+#egg-overlay, #devtools-warning, #ch-splash, #command-overlay {
+  max-width: 100vw;
+}
+
 /* Texto largo / palabras sin espacios no pueden empujar el layout */
 p, h1, h2, h3, h4, h5, h6, li, a, span, strong, em, small,
 button, label, legend, caption, blockquote, figcaption {
@@ -70,7 +85,9 @@ input, select, textarea, button {
    encogerse con el texto largo. Solo en contenedores con ancho fluido. */
 .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
 .flex-row > *, .flex-col > *, .services-grid > *, .stats-section > *,
-.wx-grid > *, .blogger-grid > * {
+.wx-grid > *, .blogger-grid > *, .skills-grid > *, .hero-inner > *,
+.hero-metrics > *, .otw-content > *, .otw-left > *, .otw-right > *,
+.hero-stack > *, .hero-ctas > *, .blogger-card > * {
   min-width: 0;
 }
 
@@ -87,6 +104,12 @@ input, select, textarea, button {
   .header-actions { gap: 0.35rem; }
   .burger-btn { min-width: 38px; min-height: 38px; }
 
+  /* Header: en el mínimo, el logo no puede empujar el layout */
+  .header-logo { flex-shrink: 1; min-width: 0; }
+  .header-logo-copy { min-width: 0; overflow: hidden; }
+  .header-logo-text { font-size: 0.95rem !important; }
+  .header-logo-badge { font-size: 0.6rem !important; padding: 2px 7px !important; }
+
   /* El hero y sus métricas no pueden desbordar en el mínimo */
   .hero-metrics { flex-wrap: wrap; }
   .hero-card { min-width: 0; }
@@ -98,11 +121,36 @@ input, select, textarea, button {
   }
 }
 
+/* 420px — teléfonos medianos: reforzar header y grids */
+@media (max-width: 420px) {
+  .header-logo-text { font-size: 1rem !important; }
+  .header-logo-meta { flex-wrap: nowrap; min-width: 0; }
+  .hero-inner { grid-template-columns: 1fr !important; }
+  .hero-visual { display: none !important; }
+  .blogger-card { flex-direction: column !important; }
+  .blogger-card-thumb { width: 100% !important; height: auto !important; max-height: 170px; }
+  .blogger-card-desc { display: none !important; }
+}
+
 /* 480px — teléfonos grandes en vertical */
 @media (max-width: 480px) {
   /* Textos de cabecera no desbordan */
   .header-logo-text { font-size: 0.9rem !important; }
   .header-logo-desc { max-width: 100%; }
+
+  /* Hero: ocultar visual y forzar una columna limpia */
+  .hero-visual { display: none !important; }
+  .hero-inner { grid-template-columns: 1fr !important; }
+  .hero-title { font-size: clamp(1.6rem, 8vw, 2.4rem) !important; }
+  .hero-ctas { flex-wrap: wrap; }
+  .hero-stack { flex-wrap: wrap; }
+
+  /* Skills y otw: una sola columna, sin desborde */
+  .skills-grid { grid-template-columns: 1fr !important; }
+  .otw-content { grid-template-columns: 1fr !important; }
+
+  /* Tablas/wx-grid no desbordan */
+  .wx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 /* 720px — tablets compactas / landscape de teléfonos */
@@ -111,10 +159,52 @@ input, select, textarea, button {
   .side-nav, .mobile-nav, [class*="dock"], .ai-circle-btn, .ai-bottom-bar {
     max-width: 100vw;
   }
+  /* Grids principales se apilan para no desbordar */
+  .otw-content, .hero-inner, .skills-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ── 4. GUARDAS DE COMPONENTES CRÍTICOS ────────────────────────────── */
 /* Si un componente nuevo se rompe en móvil, corrige AQUÍ abajo con el
    breakpoint canónico que corresponda. Nunca inventes anchos nuevos. */
+
+/* Secciones: nunca más anchas que la pantalla */
+section, main, .container, .wrap, .inner, .section-wrap {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* Noticias: tarjetas en una columna, texto limitado */
+.blogger-grid { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.blogger-card { min-width: 0; overflow: hidden; }
+.blogger-card-title { overflow-wrap: break-word; }
+.blogger-card-body { min-width: 0; }
+
+/* Pueblo: paneles y video no desbordan */
+.pueblo-panels, .pueblo-video-wrap, .pueblo-iframe-wrap {
+  max-width: 100%;
+}
+.pueblo-iframe-wrap iframe { max-width: 100%; }
+
+/* Contacto: grid apilado en móvil */
+.contact-wrap { grid-template-columns: 1fr; }
+
+/* Roadmap y stats: cards no desbordan */
+.roadmap-grid, .stats-grid { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
+
+/* Hero: código/visual nunca desborda */
+.hc-code pre { white-space: pre-wrap; overflow-wrap: break-word; }
+.hero-card { max-width: 100%; }
+
+/* Refuerzo mobile-first universal para rangos críticos: los hijos de
+   cualquier fila se encogen y el texto envuelve (regla de oro del proyecto). */
+@media (max-width: 768px) {
+  .hero-inner { grid-template-columns: 1fr !important; }
+  .hero-visual { display: none !important; }
+  .hero-text, .hero-visual-shell, .otw-inner, .otw-content {
+    min-width: 0;
+  }
+}
 
 /* Fin del guard. Todo lo nuevo va antes de esta línea. */
