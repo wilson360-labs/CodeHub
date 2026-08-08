@@ -60,6 +60,43 @@
     for (var i = 0; i < listeners.length; i++) {
       try { listeners[i](session); } catch (e) {}
     }
+    updateSideUI();
+  }
+
+  // ── Reflejar sesión en el menú lateral (botón cuenta + perfil) ──
+  function updateSideUI() {
+    var btn = document.getElementById('side-account-btn');
+    if (btn) {
+      var label = btn.querySelector('span');
+      var icon  = btn.querySelector('i');
+      if (session) {
+        if (label) {
+          var n = session.user ? (session.user.name || session.user.email) : 'Mi cuenta';
+          label.textContent = n.length > 18 ? n.slice(0, 18) + '…' : n;
+        }
+        if (icon) icon.className = 'fas fa-user-check';
+        btn.setAttribute('title', 'Ver mi cuenta');
+      } else {
+        var dict = (typeof i18n !== 'undefined' && i18n[typeof currentLang !== 'undefined' ? currentLang : 'es'])
+          ? i18n[typeof currentLang !== 'undefined' ? currentLang : 'es']
+          : {};
+        if (label) label.textContent = dict.sidePrefAccount || 'Mi cuenta';
+        if (icon) icon.className = 'fas fa-user-circle';
+        btn.setAttribute('title', 'Mi cuenta — Iniciar sesión');
+      }
+    }
+    var prof = document.querySelector('#side-nav .side-profile');
+    if (prof) {
+      var nameEl = prof.querySelector('b');
+      var stEl   = prof.querySelector('.sp-status');
+      if (session) {
+        if (nameEl) nameEl.textContent = session.user && session.user.name ? session.user.name : 'Wilson.E';
+        if (stEl) stEl.textContent = 'Sesión iniciada';
+      } else {
+        if (nameEl) nameEl.textContent = 'Wilson.E';
+        if (stEl) stEl.textContent = 'Disponible para freelance';
+      }
+    }
   }
 
   // ── Límites de uso (EMI y funciones premium) ──────────────────────
@@ -299,4 +336,17 @@
   } else {
     bind();
   }
+  // Reflejar el estado inicial y actualizar si cambia el idioma
+  updateSideUI();
+  document.addEventListener('ch:langchange', function () {
+    if (session) { updateSideUI(); return; }
+    // Invitado: restaurar el texto traducido
+    var btn = document.getElementById('side-account-btn');
+    if (btn) {
+      var label = btn.querySelector('span');
+      var dict = (typeof i18n !== 'undefined' && i18n[currentLang])
+        ? i18n[currentLang] : {};
+      if (label) label.textContent = dict.sidePrefAccount || 'Mi cuenta';
+    }
+  });
 })();
