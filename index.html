@@ -4432,8 +4432,6 @@ document.addEventListener('click', (e) => {
     if (!header) return;
     let lastY = window.scrollY;
     const THRESHOLD = 48;
-    const mq = window.matchMedia('(max-width: 768px)');
-    let isMobile = mq.matches;
     const isOpen = () =>
         document.getElementById('side-nav')?.classList.contains('open') ||
         document.getElementById('config-panel')?.classList.contains('open') ||
@@ -4441,7 +4439,6 @@ document.addEventListener('click', (e) => {
         document.getElementById('command-overlay')?.classList.contains('active');
 
     function onScroll() {
-        if (!isMobile) { header.classList.remove('nav-hide'); lastY = window.scrollY; return; }
         const y = window.scrollY;
         if (isOpen()) { header.classList.remove('nav-hide'); lastY = y; return; }
         const diff = y - lastY;
@@ -4453,12 +4450,6 @@ document.addEventListener('click', (e) => {
         lastY = y;
     }
     window.addEventListener('scroll', onScroll, { passive: true });
-    // En escritorio el navbar siempre permanece como encabezado fijo
-    const apply = () => {
-        isMobile = mq.matches;
-        if (!isMobile) header.classList.remove('nav-hide');
-    };
-    mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
 })();
 
 

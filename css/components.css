@@ -4799,8 +4799,8 @@
 .side-foot a:hover { color: #fff; border-color: rgba(47,128,237,.5); background: rgba(47,128,237,.1); transform: translateY(-2px); }
 .side-copy { padding: .7rem 1rem .9rem; text-align: center; font-size: .58rem; color: rgba(240,240,250,.3); font-family: var(--mono,'JetBrains Mono'); flex-shrink: 0; }
 
-/* Preferencias en el menú lateral — solo mobile (desktop los muestra en el header) */
-.side-prefs { display: none; }
+/* Preferencias en el menú lateral — siempre visibles (todo vive en el único burger) */
+.side-prefs { display: block; }
 .side-pref-btn {
   display: flex; align-items: center; gap: .7rem; width: 100%;
   padding: .55rem .65rem; margin: .12rem 0;
@@ -4813,13 +4813,12 @@
 .side-pref-btn:hover { background: rgba(47,128,237,.12); color: #fff; border-color: rgba(47,128,237,.22); }
 .side-pref-btn.active { background: rgba(47,128,237,.12); color: var(--accent); border-color: rgba(47,128,237,.22); }
 
-@media (max-width: 768px) {
-  .side-prefs { display: block; }
-  /* En mobile los controles viven en el menú; el header solo logo + burger */
-  .header-actions #theme-toggle,
-  .header-actions #lang-toggle,
-  .header-actions #cfg-btn { display: none !important; }
-}
+/* El header solo logo + burger en TODAS las pantallas; los controles viven en el menú */
+.header-actions #theme-toggle,
+.header-actions #lang-toggle,
+.header-actions #cfg-btn { display: none !important; }
+/* Nav central de escritorio oculta en todas las pantallas (todo en el menú) */
+header nav { display: none !important; }
 
 /* Burger visible en todas las pantallas */
 .burger-btn { display: flex !important; }
