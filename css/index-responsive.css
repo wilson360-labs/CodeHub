@@ -890,12 +890,6 @@
     flex-wrap: wrap;
   }
   .hero-stack span { font-size: 0.7rem; padding: 0.2rem 0.55rem; }
-  .hero-metrics {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.5rem;
-  }
-  .hero-metric strong { font-size: 1.3rem; }
-  .hero-metric span { font-size: 0.62rem; }
   .hero-ctas {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -935,11 +929,18 @@
   }
   .skills-tabs { gap: 0.25rem; }
   .sk-tab { font-size: 0.75rem; padding: 0.3rem 0.75rem; }
-  .skill-chip {
-    padding: 0.6rem 0.8rem;
+  .skills-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.6rem;
+  }
+  .skill-chip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.8rem 0.8rem;
     border-radius: var(--radius-md, 14px);
   }
+  .skill-chip .sc-icon { width: auto; }
   .sc-icon img { width: 22px !important; height: 22px !important; }
   .sc-top { font-size: 0.78rem; }
   .sc-pct { font-size: 0.7rem; }
@@ -1038,8 +1039,11 @@
 
   /* ── JUEGOS ── */
   #game { padding: 2rem 1rem; }
-  .game-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; }
-  .game-card button { min-height: 44px; font-size: 0.8rem; }
+  .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
+  .game-card { padding: 1rem 0.9rem; gap: 0.5rem; }
+  .game-card-head { width: 44px; height: 44px; font-size: 1.05rem; }
+  .game-card p { font-size: 0.75rem; line-height: 1.4; margin-bottom: 0.1rem; }
+  .game-card button { min-height: 42px; font-size: 0.78rem; padding: 0.5rem 0.7rem; }
 
   /* ── FOOTER ── */
   footer { padding: 1.5rem 1rem; }
@@ -1229,12 +1233,6 @@
     min-height: 46px;
     width: 100%;
   }
-  .hero-metrics {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.4rem;
-  }
-  .hero-metric strong { font-size: 1.15rem; }
-  .hero-metric span { font-size: 0.58rem; }
   .hero-proof span { font-size: 0.68rem; padding: 0.2rem 0.5rem; }
   .hero-stack span { font-size: 0.65rem; padding: 0.18rem 0.5rem; }
 
@@ -1354,9 +1352,6 @@
     font-size: clamp(1.65rem, 9vw, 2rem) !important;
   }
   .hero-ctas { grid-template-columns: 1fr !important; }
-  .hero-metrics { gap: 0.3rem; }
-  .hero-metric strong { font-size: 1rem; }
-  .hero-metric span { font-size: 0.55rem; }
 
   /* ── STATS ── */
   .stats-section { grid-template-columns: 1fr 1fr !important; }
@@ -1541,9 +1536,11 @@ html.is-touch .dock-item:active {
 /* ─── Roadmap widget: ajustes móviles ──────────────────────── */
 @media (max-width: 640px) {
   .roadmap-section { padding: 3.5rem 1rem; }
-  .roadmap-grid { grid-template-columns: 1fr; }
-  .roadmap-card { padding: 1.25rem; }
-  .roadmap-card-head { flex-direction: column; align-items: flex-start; gap: .6rem; }
+  .roadmap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .roadmap-card { padding: 0.9rem; }
+  .roadmap-card-head { flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
+  .roadmap-card h3 { font-size: 0.88rem; }
+  .roadmap-card p { font-size: 0.76rem; line-height: 1.45; }
 }
 html.is-touch .roadmap-card:active {
   transform: translateY(-2px) scale(0.99) !important;

@@ -86,7 +86,7 @@ input, select, textarea, button {
 .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
 .flex-row > *, .flex-col > *, .services-grid > *, .stats-section > *,
 .wx-grid > *, .blogger-grid > *, .skills-grid > *, .hero-inner > *,
-.hero-metrics > *, .otw-content > *, .otw-left > *, .otw-right > *,
+.otw-content > *, .otw-left > *, .otw-right > *,
 .hero-stack > *, .hero-ctas > *, .blogger-card > * {
   min-width: 0;
 }
@@ -110,8 +110,7 @@ input, select, textarea, button {
   .header-logo-text { font-size: 0.95rem !important; }
   .header-logo-badge { font-size: 0.6rem !important; padding: 2px 7px !important; }
 
-  /* El hero y sus métricas no pueden desbordar en el mínimo */
-  .hero-metrics { flex-wrap: wrap; }
+  /* El hero y sus botones no pueden desbordar en el mínimo */
   .hero-card { min-width: 0; }
 
   /* Paneles flotantes (config, ai, command) nunca más anchos que el viewport */
@@ -145,8 +144,8 @@ input, select, textarea, button {
   .hero-ctas { flex-wrap: wrap; }
   .hero-stack { flex-wrap: wrap; }
 
-  /* Skills y otw: una sola columna, sin desborde */
-  .skills-grid { grid-template-columns: 1fr !important; }
+  /* Skills en cuadrícula compacta (2 col) y otw en una columna */
+  .skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.6rem !important; }
   .otw-content { grid-template-columns: 1fr !important; }
 
   /* Tablas/wx-grid no desbordan */
@@ -159,10 +158,14 @@ input, select, textarea, button {
   .side-nav, .mobile-nav, [class*="dock"], .ai-circle-btn, .ai-bottom-bar {
     max-width: 100vw;
   }
-  /* Grids principales se apilan para no desbordar */
-  .otw-content, .hero-inner, .skills-grid {
+  /* Grids principales no desbordan: otw/hero en 1 col, skills en 2 */
+  .otw-content, .hero-inner {
     grid-template-columns: 1fr !important;
   }
+  .skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.6rem !important; }
+  /* Roadmap en cuadrícula compacta en tablets/móvil */
+  .roadmap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.6rem !important; }
+  .roadmap-card { padding: 0.9rem; }
 }
 
 /* ── 4. GUARDAS DE COMPONENTES CRÍTICOS ────────────────────────────── */

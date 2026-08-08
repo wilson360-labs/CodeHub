@@ -2424,12 +2424,6 @@
             cursor: pointer;
             transition: all .2s ease;
         }
-        .hero-btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: #fff;
-            box-shadow: 0 4px 18px rgba(47,128,237,.3);
-        }
-        .hero-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(47,128,237,.45); }
         .hero-btn-ghost {
             background: rgba(255,255,255,.05);
             color: rgba(232,232,240,.65);
@@ -2590,35 +2584,6 @@
         .hero-proof i {
             color: var(--accent);
         }
-        .hero-metrics {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: .8rem;
-            max-width: 620px;
-            margin: 0 0 1.45rem;
-        }
-        .hero-metric {
-            padding: .9rem 1rem;
-            border-radius: var(--radius-lg, 18px);
-            background: rgba(255,255,255,.04);
-            border: 1px solid rgba(255,255,255,.08);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
-        }
-        .hero-metric strong {
-            display: block;
-            font-size: 1.45rem;
-            line-height: 1;
-            margin-bottom: .28rem;
-            color: #fff;
-        }
-        .hero-metric span {
-            display: block;
-            font-size: .72rem;
-            font-family: 'JetBrains Mono', monospace;
-            color: rgba(232,232,240,.46);
-            text-transform: uppercase;
-            letter-spacing: .08em;
-        }
         .hero-ctas {
             margin-bottom: 1.1rem;
         }
@@ -2690,11 +2655,6 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-8px); }
         }
-        @media(max-width:1080px) {
-            .hero-metrics {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
         @media(max-width:860px) {
             .hero-inner {
                 grid-template-columns: 1fr;
@@ -2705,9 +2665,6 @@
         @media(max-width:640px) {
             .hero-title {
                 max-width: none;
-            }
-            .hero-metrics {
-                grid-template-columns: 1fr;
             }
             .hero-note {
                 flex-direction: column;

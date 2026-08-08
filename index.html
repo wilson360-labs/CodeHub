@@ -157,15 +157,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260808e">
+    <link rel="stylesheet" href="css/index.css?v=20260808f">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260808f">
+    <link rel="stylesheet" href="css/components.css?v=20260808g">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260808c">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260808d">
     <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-    <link rel="stylesheet" href="css/viewport-guard.css?v=20260808f">
+    <link rel="stylesheet" href="css/viewport-guard.css?v=20260808g">
 
 
 
@@ -681,30 +681,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span>HTML</span><span>CSS</span><span>JavaScript</span>
                         <span>Python</span><span>Node.js</span><span>MongoDB</span><span>GPT API</span>
                     </div>
-                    <div class="hero-metrics">
-                        <div class="hero-metric">
-                            <strong>25+</strong>
-                            <span data-i18n="heroM1">Proyectos publicados</span>
-                        </div>
-                        <div class="hero-metric">
-                            <strong>23</strong>
-                            <span data-i18n="heroM2">Herramientas activas</span>
-                        </div>
-                        <div class="hero-metric">
-                            <strong>&lt;24h</strong>
-                            <span data-i18n="heroM3">Respuesta inicial</span>
-                        </div>
-                    </div>
                     <div class="hero-ctas">
-                        <a href="#game" class="hero-btn hero-btn-primary">
-                            <i class="fas fa-folder-open"></i> <span data-i18n="heroCta1">Ver proyectos</span>
-                        </a>
-                        <a href="#open-to-work" class="hero-btn hero-btn-ghost">
-                            <i class="fas fa-envelope"></i> <span data-i18n="heroCta2">Contactar</span>
-                        </a>
-                        <a href="/tools" class="hero-btn hero-btn-ghost">
-                            <i class="fas fa-screwdriver-wrench"></i> Tools
-                        </a>
                         <a href="/cv" class="hero-btn hero-btn-ghost" style="border-color:rgba(0,230,118,.3);color:#00e676">
                             <i class="fas fa-file-lines"></i> <span data-i18n="heroCta4">Mi CV</span>
                         </a>
@@ -890,15 +867,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="pueblo-video-wrap">
                 <div class="pueblo-eyebrow" style="margin-bottom:.6rem">// mi pueblo en video</div>
                 <h3 style="color:#22c55e;margin-bottom:.5rem;font-size:1.1rem">Conoce más de San Luis Jilotepeque</h3>
-                <div class="pueblo-iframe-wrap">
-                    <iframe
-                        width="100%" height="100%"
-                        src="https://www.youtube.com/embed?listType=search&list=San+Luis+Jilotepeque+Guatemala"
-                        title="San Luis Jilotepeque" frameborder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen loading="lazy" style="display:block">
-                    </iframe>
-                </div>
+                <video width="100%" controls preload="metadata" style="border-radius:18px;border:1px solid rgba(47,128,237,.25);box-shadow:0 20px 60px rgba(0,0,0,.6);max-width:640px;display:block">
+                    <source src="video/video.mp4" type="video/mp4">
+                    Tu navegador no soporta video. <a href="/video/video.mp4" download>Descárgalo aquí</a>.
+                </video>
             </div>
             
         </section>
@@ -4570,8 +4542,7 @@ const i18n = {
         heroGreeting: 'Hola, soy',
         heroDesc: 'Diseño y construyo experiencias web con mejor presencia, herramientas útiles y automatizaciones con IA. Me enfoco en que cada proyecto se vea serio, cargue rápido y comunique valor desde el primer vistazo.',
         heroProof1: 'Entrega rápida', heroProof2: 'Frontend + backend', heroProof3: 'UI con más nivel',
-        heroM1: 'Proyectos publicados', heroM2: 'Herramientas activas', heroM3: 'Respuesta inicial',
-        heroCta1: 'Ver proyectos', heroCta2: 'Contactar', heroCta4: 'Mi CV',
+        heroCta4: 'Mi CV',
         heroNote1: 'Branding visual más limpio y profesional',
         heroNote2: 'Compatible con mobile y desktop',
         heroCodeOnline: 'Online',
@@ -4675,8 +4646,7 @@ const i18n = {
         heroGreeting: 'Hi, I am',
         heroDesc: 'I design and build web experiences with a stronger presence, useful tools and AI automations. I focus on making every project look serious, load fast and communicate value at first glance.',
         heroProof1: 'Fast delivery', heroProof2: 'Frontend + backend', heroProof3: 'Higher-level UI',
-        heroM1: 'Published projects', heroM2: 'Active tools', heroM3: 'Initial response',
-        heroCta1: 'View projects', heroCta2: 'Contact', heroCta4: 'My CV',
+        heroCta4: 'My CV',
         heroNote1: 'Cleaner, more professional visual branding',
         heroNote2: 'Mobile and desktop compatible',
         heroCodeOnline: 'Online',
