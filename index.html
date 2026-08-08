@@ -409,11 +409,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- Acciones derecha -->
             <div class="header-actions">
 
-                <button id="theme-toggle" aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
+                <button id="theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
                     <i class="fas theme-toggle-icon fa-moon"></i>
                 </button>
 
-                <button id="lang-toggle" aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
+                <button id="lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
                     <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
                 </button>
 
@@ -473,6 +473,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="side-group-label">Juegos</div>
             <a class="side-link" href="/snake" onclick="closeMobileNav()"><i class="fas fa-gamepad"></i> Snake</a>
             <a class="side-link" href="/tetris" onclick="closeMobileNav()"><i class="fas fa-cubes"></i> Tetris</a>
+        </div>
+
+        <div class="side-group side-prefs">
+            <div class="side-group-label">Preferencias</div>
+            <button class="side-pref-btn" id="side-theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
+                <i class="fas theme-toggle-icon fa-moon"></i><span data-i18n="sidePrefTheme">Tema claro/oscuro</span>
+            </button>
+            <button class="side-pref-btn" id="side-lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
+                <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
+            </button>
+            <button class="side-pref-btn" id="side-cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="closeMobileNav();openCfg()">
+                <i class="fas fa-sliders"></i><span data-i18n="sidePrefCfg">Configuración</span>
+            </button>
         </div>
 
         <div class="side-foot">
@@ -4413,6 +4426,41 @@ document.addEventListener('click', (e) => {
     }
 });
 
+//  SMART-NAVBAR — ocultar al bajar, mostrar al subir
+(function () {
+    const header = document.querySelector('header');
+    if (!header) return;
+    let lastY = window.scrollY;
+    const THRESHOLD = 48;
+    const mq = window.matchMedia('(max-width: 768px)');
+    let isMobile = mq.matches;
+    const isOpen = () =>
+        document.getElementById('side-nav')?.classList.contains('open') ||
+        document.getElementById('config-panel')?.classList.contains('open') ||
+        document.getElementById('ai-panel')?.classList.contains('open') ||
+        document.getElementById('command-overlay')?.classList.contains('active');
+
+    function onScroll() {
+        if (!isMobile) { header.classList.remove('nav-hide'); lastY = window.scrollY; return; }
+        const y = window.scrollY;
+        if (isOpen()) { header.classList.remove('nav-hide'); lastY = y; return; }
+        const diff = y - lastY;
+        if (diff > 0 && y > THRESHOLD) {
+            header.classList.add('nav-hide');
+        } else if (diff < 0) {
+            header.classList.remove('nav-hide');
+        }
+        lastY = y;
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // En escritorio el navbar siempre permanece como encabezado fijo
+    const apply = () => {
+        isMobile = mq.matches;
+        if (!isMobile) header.classList.remove('nav-hide');
+    };
+    mq.addEventListener ? mq.addEventListener('change', apply) : mq.addListener(apply);
+})();
+
 
 // SW registrado por PWA install prompt ↓
 
@@ -4586,6 +4634,7 @@ const i18n = {
         cfgLangLbl: 'Idioma', cfgEs: 'Español', cfgEn: 'English',
         cfgBgLbl: 'Fondo', cfgBgRow: 'Fondos animados (red + partículas)',
         cfgReset: 'Restablecer',
+        sidePrefTheme: 'Tema claro/oscuro', sidePrefCfg: 'Configuración',
     },
     en: {
         available: 'Available',
@@ -4679,6 +4728,7 @@ const i18n = {
         cfgLangLbl: 'Language', cfgEs: 'Español', cfgEn: 'English',
         cfgBgLbl: 'Background', cfgBgRow: 'Animated backgrounds (network + particles)',
         cfgReset: 'Reset',
+        sidePrefTheme: 'Light/dark theme', sidePrefCfg: 'Settings',
     }
 };
 
@@ -4724,14 +4774,13 @@ function applyLang(lang) {
         const key = el.getAttribute('data-i18n-config');
         if (dict[key] !== undefined) el.textContent = dict[key];
     });
-    // Actualizar botón
-    const btn = document.getElementById('lang-toggle');
-    if (btn) {
+    // Actualizar botones de idioma (header + menú lateral)
+    document.querySelectorAll('[data-lang-toggle]').forEach(btn => {
         const t = btn.querySelector('.lang-toggle-text');
         if (t) t.textContent = lang === 'es' ? 'EN' : 'ES';
         btn.setAttribute('aria-label', lang === 'es' ? 'Cambiar a inglés' : 'Switch to Spanish');
         btn.title = lang === 'es' ? 'Change language' : 'Cambiar idioma';
-    }
+    });
     // Cambiar lang del html
     document.documentElement.lang = lang;
 }

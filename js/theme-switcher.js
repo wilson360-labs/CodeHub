@@ -3,7 +3,6 @@
 
   var STORAGE_KEY = 'theme';
   var root = document.documentElement;
-  var btn = null;
 
   function getInitialTheme() {
     var saved = null;
@@ -13,11 +12,15 @@
     return 'dark';
   }
 
+  function getThemeBtns() {
+    return Array.prototype.slice.call(document.querySelectorAll('[data-theme-toggle]'));
+  }
+
   function applyTheme(theme, save) {
     var isLight = theme === 'light';
     root.setAttribute('data-theme', isLight ? 'light' : 'dark');
     document.body.classList.toggle('light-mode', isLight);
-    if (btn) {
+    getThemeBtns().forEach(function (btn) {
       btn.classList.toggle('active', isLight);
       var icon = btn.querySelector('.theme-toggle-icon');
       if (icon) {
@@ -25,7 +28,7 @@
       }
       btn.setAttribute('aria-pressed', String(isLight));
       btn.setAttribute('title', isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
-    }
+    });
     if (save) {
       try { localStorage.setItem(STORAGE_KEY, theme); } catch (e) {}
     }
@@ -38,10 +41,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    btn = document.getElementById('theme-toggle');
-    if (btn) {
+    getThemeBtns().forEach(function (btn) {
       btn.addEventListener('click', toggleTheme);
-    }
+    });
     // Sincronizar con el panel de configuración si existe el grupo tema
     var themeGroup = document.querySelectorAll('#config-panel [data-theme-option]');
     if (themeGroup.length) {
