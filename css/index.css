@@ -402,9 +402,9 @@
         [data-theme="light"] .hero-metric span { color: #475569; }
 
         [data-theme="light"] .hero-card {
-            background: rgba(250,251,253,.98);
-            border-color: rgba(47,128,237,.25);
-            box-shadow: 0 24px 72px rgba(15,23,42,.14);
+            background: rgba(12,12,22,.95);
+            border-color: rgba(47,128,237,.2);
+            box-shadow: 0 24px 72px rgba(0,0,0,.35);
         }
 
         [data-theme="light"] .stat-card {
@@ -1249,6 +1249,10 @@
             --text-color: #000;
             --accent-color: #2f80ed;
             --card-bg: rgba(0, 0, 0, 0.05);
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --muted: #64748b;
+            --tc: rgba(15, 23, 42, 0.85);
         }
 
         body {
