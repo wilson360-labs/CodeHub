@@ -357,6 +357,73 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ── AUTH USUARIOS (Supabase Auth) ────────────────────────────────
+// Frontend (js/auth.js) usa estos endpoints para login/registro de
+// usuarios normales (NO admin). Supabase Auth maneja contraseñas y
+// sesiones; aquí solo validamos y devolvemos la sesión al cliente.
+// Requiere SUPABASE_URL y SUPABASE_KEY (service role) en Render.
+const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos. Espera un poco.', code: 'AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
+app.use('/api/auth', authLimiter);
+
+// POST /api/auth/register — crear cuenta con email + contraseña
+app.post('/api/auth/register', async (req, res) => {
+  const email    = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
+  if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    // 422 = user_already_exists o email ocupado
+    if (error.status === 422 || /already|exists|registered/i.test(error.message)) {
+      return res.status(409).json({ error: 'Ese correo ya está registrado' });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+  const user = data.user;
+  if (!user) return res.status(500).json({ error: 'No se pudo crear el usuario' });
+
+  res.status(201).json({
+    ok: true,
+    user: { id: user.id, email: user.email },
+    session: data.session || null,
+    needsConfirmation: !data.session,
+    message: data.session ? 'Cuenta creada' : 'Revisa tu correo para confirmar la cuenta',
+  });
+});
+
+// POST /api/auth/login — iniciar sesión con email + contraseña
+app.post('/api/auth/login', async (req, res) => {
+  const email    = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
+  if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseña' });
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (error.status === 400 || /invalid login|invalid credentials/i.test(error.message)) {
+      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    }
+    return res.status(400).json({ error: error.message });
+  }
+  const user = data.user;
+  if (!user) return res.status(500).json({ error: 'No se pudo iniciar sesión' });
+
+  res.status(200).json({
+    ok: true,
+    user: { id: user.id, email: user.email },
+    session: data.session || null,
+  });
+});
+
+// POST /api/auth/logout — revocar la sesión del token (opcional)
+app.post('/api/auth/logout', async (req, res) => {
+  const token = String(req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || String(req.body?.token || '');
+  if (token && supabase) await supabase.auth.admin.signOut(token);
+  res.json({ ok: true });
+});
+
 // ── TELEGRAM STORAGE ─────────────────────────────────────────
 // APKs se almacenan en el chat personal del bot con el admin.
 // Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID

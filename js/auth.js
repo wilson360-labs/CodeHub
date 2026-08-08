@@ -1,10 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════
    CodeHub — AUTH (invitado/registrado) — Wilson.E 2026
    ──────────────────────────────────────────────────────────────────
-   Módulo de sesión del frontend. Hoy funciona con estado local
-   (localStorage) como base probable; la capa _api() está preparada
-   para conectar /api/auth/* del backend (Supabase Auth + reCAPTCHA v3)
-   sin tocar el resto del módulo.
+   Módulo de sesión del frontend. Se conecta a /api/auth/* del backend
+   (Supabase Auth: registro y login con email+password). Google OAuth y
+   reCAPTCHA v3 se agregan luego. La sesión se guarda en sessionStorage
+   (se borra al cerrar la pestaña) — no en localStorage, para reducir
+   exposición.
 
    API expuesta: window.CodeHubAuth = {
      isLogged(), getUser(), openLogin(mode), closeLogin(),
@@ -143,16 +144,18 @@
     setUsage(u);
   }
 
-  // ── Capa backend (preparada; hoy no hace fetch real) ─────────────
+  // ── Capa backend (Supabase Auth vía servidor) ────────────────────
   function _api(path, payload) {
-    // TODO: cuando existan /api/auth/register|login|google en el backend,
-    // sustituir por:
-    //   return fetch(BACKEND + path, {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(payload)
-    //   }).then(r => r.json());
-    return Promise.resolve({ ok: true, simulated: true });
+    return fetch(BACKEND + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      return r.json().catch(function () { return { error: 'Respuesta inválida' }; }).then(function (body) {
+        if (!r.ok) throw body;
+        return body;
+      });
+    });
   }
 
   // ── Modal ────────────────────────────────────────────────────────
@@ -227,14 +230,12 @@
     var pass  = getField('#auth-login-pass');
     if (!email || !pass) { setStatus('Completa email y contraseña', true); return; }
     setStatus('Verificando…');
-    _api('/api/auth/login', { email: email, password: pass }).then(function () {
-      // Simulación local: guardamos el usuario. Con backend real se
-      // guardaría la sesión devuelta por Supabase Auth.
-      saveSession({ id: email.replace(/[^a-zA-Z0-9]/g, '') + Date.now(), user: { email: email, name: email.split('@')[0] } });
+    _api('/api/auth/login', { email: email, password: pass }).then(function (r) {
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
       closeLogin();
       setStatus('');
-    }).catch(function () {
-      setStatus('Error al iniciar sesión', true);
+    }).catch(function (e) {
+      setStatus(e && e.error ? e.error : 'Error al iniciar sesión', true);
     });
   }
 
@@ -246,24 +247,26 @@
     if (pass.length < 8) { setStatus('La contraseña debe tener al menos 8 caracteres', true); return; }
     if (pass !== pass2) { setStatus('Las contraseñas no coinciden', true); return; }
     setStatus('Creando cuenta…');
-    _api('/api/auth/register', { email: email, password: pass, device_id: deviceId() }).then(function () {
-      saveSession({ id: email.replace(/[^a-zA-Z0-9]/g, '') + Date.now(), user: { email: email, name: email.split('@')[0] } });
+    _api('/api/auth/register', { email: email, password: pass, device_id: deviceId() }).then(function (r) {
+      if (r.needsConfirmation) {
+        setStatus('Revisa tu correo para confirmar la cuenta. Luego inicia sesión.', false);
+        return;
+      }
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
       closeLogin();
       setStatus('');
-    }).catch(function () {
-      setStatus('Error al crear la cuenta', true);
+    }).catch(function (e) {
+      setStatus(e && e.error ? e.error : 'Error al crear la cuenta', true);
     });
   }
 
   function loginWithGoogle() {
-    setStatus('Abriendo Google…');
-    // TODO: con backend real, redirigir a OAuth de Google vía Supabase.
-    saveSession({ id: 'google_' + Date.now(), user: { email: '', name: 'Usuario Google', provider: 'google' } });
-    closeLogin();
-    setStatus('');
+    setStatus('Google estará disponible pronto. Usa email + contraseña.', true);
   }
 
   function logout() {
+    var t = session && session.token;
+    if (t) _api('/api/auth/logout', { token: t }).catch(function () {});
     saveSession(null);
     closeLogin();
   }
