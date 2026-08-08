@@ -629,10 +629,8 @@
             background: var(--bg-color);
             color: var(--text-color);
             transition: background 0.3s, color 0.3s;
-            padding-top: 7.5rem;
         }
         @media (max-width: 768px) {
-            body { padding-top: 8.2rem; }
             .mobile-nav { padding-top: 52px; }
         }
 
