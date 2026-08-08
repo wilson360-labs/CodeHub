@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v5.9';
+const VERSION   = 'codehub-v6.0';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 

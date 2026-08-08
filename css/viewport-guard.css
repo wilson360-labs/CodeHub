@@ -187,9 +187,6 @@ section, main, .container, .wrap, .inner, .section-wrap {
 }
 .pueblo-iframe-wrap iframe { max-width: 100%; }
 
-/* Contacto: grid apilado en móvil */
-.contact-wrap { grid-template-columns: 1fr; }
-
 /* Roadmap y stats: cards no desbordan */
 .roadmap-grid, .stats-grid { grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); }
 
@@ -205,6 +202,8 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .hero-text, .hero-visual-shell, .otw-inner, .otw-content {
     min-width: 0;
   }
+  /* Contacto unificado dentro de otw: se apila en móvil */
+  .contact-wrap { grid-template-columns: 1fr; }
 }
 
 /* Fin del guard. Todo lo nuevo va antes de esta línea. */

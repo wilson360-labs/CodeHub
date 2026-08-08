@@ -314,7 +314,7 @@ La página más grande del proyecto (~5260 líneas). Contiene todo en un solo ar
 7. `#weather-section` — Clima en tiempo real (Open-Meteo API)
 8. `#news-section` — Posts recientes del blog (Blogger JSONP feed)
 9. `#why-me` — Razones para contratarme
-10. `#contact` — Formulario de contacto (EmailJS + Turnstile)
+10. `#open-to-work` — "¿Buscas un desarrollador?" con formulario de contacto unificado (EmailJS + Turnstile) — el antiguo `#contact` se unificó aquí
 11. `#game` — Mini-juego Snake integrado
 12. `#sobre-codehub` — Sección SEO con texto indexable para Google
 

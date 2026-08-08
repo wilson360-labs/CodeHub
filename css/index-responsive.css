@@ -436,8 +436,6 @@
         .proj-btn-ghost:hover { background: rgba(255,255,255,.1); color: #fff; }
 
         /* ── CONTACTO ── */
-        #contact { padding: 3rem 0; }
-
         .contact-wrap {
             display: grid;
             grid-template-columns: 1fr 1.4fr;
@@ -465,32 +463,6 @@
             margin-bottom: 1rem;
         }
         .contact-sub { font-size: .9rem; color: rgba(232,232,240,.5); line-height: 1.7; margin-bottom: 1.8rem; }
-
-        .contact-links { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.8rem; }
-        .clink {
-            display: flex;
-            align-items: center;
-            gap: .9rem;
-            padding: .85rem 1rem;
-            background: rgba(255,255,255,.03);
-            border: 1px solid rgba(255,255,255,.07);
-            border-radius: var(--radius-md, 14px);
-            text-decoration: none;
-            color: inherit;
-            transition: all .2s ease;
-        }
-        .clink:hover { border-color: rgba(47,128,237,.35); background: rgba(47,128,237,.05); transform: translateX(4px); }
-        .clink-icon {
-            width: 40px; height: 40px;
-            border-radius: var(--radius-sm, 10px);
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(47,128,237,.12);
-            color: var(--primary);
-            font-size: 1rem;
-            flex-shrink: 0;
-        }
-        .clink-label { font-size: .7rem; color: rgba(232,232,240,.4); font-family: 'JetBrains Mono', monospace; }
-        .clink-val   { font-size: .85rem; font-weight: 600; color: rgba(232,232,240,.85); }
 
         .contact-status {
             display: inline-flex;
@@ -1049,14 +1021,9 @@
   .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
 
   /* ── CONTACTO ── */
-  #contact { padding: 2rem 1rem; }
   .contact-wrap { grid-template-columns: 1fr !important; gap: 1.5rem; }
   .contact-title { font-size: 1.4rem !important; }
   .contact-sub { font-size: 0.8rem; }
-  .clink { gap: 0.6rem; padding: 0.75rem; }
-  .clink-icon { width: 36px !important; height: 36px !important; font-size: 0.9rem; }
-  .clink-label { font-size: 0.7rem; }
-  .clink-val { font-size: 0.8rem; }
   .form-row { grid-template-columns: 1fr !important; gap: 0.75rem; }
   .form-label { font-size: 0.78rem; }
   .form-input,
@@ -1339,10 +1306,6 @@
   /* ── CONTACTO ── */
   .contact-title { font-size: 1.25rem !important; }
   .contact-sub { font-size: 0.75rem; }
-  .clink { padding: 0.65rem; gap: 0.5rem; }
-  .clink-icon { width: 32px !important; height: 32px !important; font-size: 0.82rem; }
-  .clink-label { font-size: 0.65rem; }
-  .clink-val { font-size: 0.75rem; }
   .form-input,
   .form-textarea,
   .form-select { font-size: 16px !important; padding: 0.65rem 0.75rem; }

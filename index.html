@@ -159,9 +159,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <!-- Estilos principales -->
     <link rel="stylesheet" href="css/index.css?v=20260808e">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260808e">
+    <link rel="stylesheet" href="css/components.css?v=20260808f">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260808b">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260808c">
     <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
@@ -461,7 +461,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
             <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
             <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
-            <a class="side-link" href="#contact" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
+            <a class="side-link" href="#open-to-work" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
         </div>
 
         <div class="side-group">
@@ -699,7 +699,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <a href="#game" class="hero-btn hero-btn-primary">
                             <i class="fas fa-folder-open"></i> <span data-i18n="heroCta1">Ver proyectos</span>
                         </a>
-                        <a href="#contact" class="hero-btn hero-btn-ghost">
+                        <a href="#open-to-work" class="hero-btn hero-btn-ghost">
                             <i class="fas fa-envelope"></i> <span data-i18n="heroCta2">Contactar</span>
                         </a>
                         <a href="/tools" class="hero-btn hero-btn-ghost">
@@ -790,15 +790,65 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                       <span class="otw-info-val" data-i18n="otwRespVal">Menos de 24 horas</span>
                     </div>
                   </div>
-                  <div class="otw-actions">
-                    <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly93YS5tZS81MDI0MTQ2ODE4NQ=='),'_blank','noopener')" class="otw-btn otw-btn-primary">
-                      <i class="fab fa-whatsapp"></i> WhatsApp
-                    </a>
-                    <a href="/cdn-cgi/l/email-protection#6f1806031c0001410a5c595f030e0d1c2f08020e0603410c0002" class="otw-btn otw-btn-ghost">
-                      <i class="fas fa-envelope"></i> Email
-                    </a>
-                  </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Contacto unificado: el formulario de email vive aquí -->
+            <div class="contact-wrap" style="margin-top:2rem">
+              <div class="contact-info">
+                <div class="contact-eyebrow">// hablemos</div>
+                <h2 class="contact-title" data-i18n="contactTitle">¿Tienes un<br>proyecto en mente?</h2>
+                <p class="contact-sub" data-i18n="contactSub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
+                <div class="contact-status">
+                  <span class="status-dot"></span>
+                  <span data-i18n="contactStatus">Disponible para proyectos nuevos</span>
+                </div>
+              </div>
+              <div class="contact-form-wrap">
+                <form id="contact-form" onsubmit="sendEmail(event)" novalidate>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label" for="cf-name" data-i18n="cfName">Nombre</label>
+                      <input class="form-input" type="text" id="cf-name" name="from_name" placeholder="Tu nombre" data-i18n-placeholder="cfNamePh" required autocomplete="name">
+                      <div class="form-err" id="err-name"></div>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="cf-email" data-i18n="cfEmail">Email</label>
+                      <input class="form-input" type="email" id="cf-email" name="reply_to" placeholder="tu@email.com" data-i18n-placeholder="cfEmailPh" required autocomplete="email">
+                      <div class="form-err" id="err-email"></div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="cf-subject" data-i18n="cfSubject">Asunto</label>
+                    <select class="form-input form-select" id="cf-subject" name="subject">
+                      <option value="Proyecto Web" data-i18n="cfOpt1">💻 Proyecto Web</option>
+                      <option value="Automatización Python" data-i18n="cfOpt2">🐍 Automatización Python</option>
+                      <option value="Consultoría" data-i18n="cfOpt3">🤝 Consultoría</option>
+                      <option value="Colaboración" data-i18n="cfOpt4">🚀 Colaboración</option>
+                      <option value="Otro" data-i18n="cfOpt5">📌 Otro</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="cf-msg" data-i18n="cfMsg">Mensaje</label>
+                    <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" data-i18n-placeholder="cfMsgPh" required rows="5"></textarea>
+                    <div class="form-err" id="err-msg"></div>
+                    <div class="form-char"><span id="char-count">0</span>/500</div>
+                  </div>
+                  <!-- Cloudflare Turnstile -->
+                  <div class="cf-turnstile"
+                       data-sitekey="0x4AAAAAAClKd5T1R81GltW_"
+                       data-theme="dark"
+                       data-language="es"
+                       style="margin-bottom:.8rem"
+                       id="turnstile-contact">
+                  </div>
+                  <button type="submit" class="form-submit" id="form-submit">
+                    <span id="submit-text"><i class="fas fa-paper-plane"></i> <span data-i18n="cfSubmit">Enviar mensaje</span></span>
+                    <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> <span data-i18n="cfSending">Enviando…</span></span>
+                  </button>
+                  <div id="form-feedback" class="form-feedback"></div>
+                </form>
               </div>
             </div>
           </div>
@@ -1134,96 +1184,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </section>
 
-        
-
-
-        <section id="contact">
-            <div class="contact-wrap">
-                <!-- Info izquierda -->
-                <div class="contact-info">
-                    <div class="contact-eyebrow">// hablemos</div>
-                    <h2 class="contact-title" data-i18n="contactTitle">¿Tienes un<br>proyecto en mente?</h2>
-                    <p class="contact-sub" data-i18n="contactSub">Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.</p>
-
-                    <div class="contact-links">
-                        <a href="/cdn-cgi/l/email-protection#9cebf5f0eff3f2b2f9afaaacf0fdfeefdcfbf1fdf5f0b2fff3f1" class="clink">
-                            <div class="clink-icon"><i class="fas fa-envelope"></i></div>
-                            <div>
-                                <div class="clink-label" data-i18n="contactEmailLbl">Email directo</div>
-                                <div class="clink-val"><span class="__cf_email__" data-cfemail="22554b4e514d4c0c471114124e43405162454f434b4e0c414d4f">[email&#160;protected]</span></div>
-                            </div>
-                        </a>
-                        <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly93YS5tZS81MDI0MTQ2ODE4NQ=='),'_blank','noopener')" class="clink">
-                            <div class="clink-icon" style="background:rgba(37,211,102,.12);color:#25d366"><i class="fab fa-whatsapp"></i></div>
-                            <div>
-                                <div class="clink-label">WhatsApp</div>
-                                <div class="clink-val"><span class="__cf_email__" data-cfemail="protected" title="Número protegido">[&#119;&#104;&#97;&#116;&#115;&#97;&#112;&#112;&#160;&#112;&#114;&#111;&#116;&#101;&#103;&#105;&#100;&#111;]</span></div>
-                            </div>
-                        </a>
-                        <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly90Lm1lL2QzZXhnM2FleWFnMWtv'),'_blank','noopener')" class="clink">
-                            <div class="clink-icon" style="background:rgba(0,136,204,.12);color:#0088cc"><i class="fab fa-telegram"></i></div>
-                            <div>
-                                <div class="clink-label">Telegram</div>
-                                <div class="clink-val"><span class="__cf_email__" data-cfemail="protected" title="Usuario protegido">[&#116;&#101;&#108;&#101;&#103;&#114;&#97;&#109;&#160;&#112;&#114;&#111;&#116;&#101;&#103;&#105;&#100;&#111;]</span></div>
-                            </div>
-                        </a>
-                    </div>
-
-                    <div class="contact-status">
-                        <span class="status-dot"></span>
-                        <span data-i18n="contactStatus">Disponible para proyectos nuevos</span>
-                    </div>
-                </div>
-
-                <!-- Formulario derecha -->
-                <div class="contact-form-wrap">
-                    <form id="contact-form" onsubmit="sendEmail(event)" novalidate>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label" for="cf-name" data-i18n="cfName">Nombre</label>
-                                <input class="form-input" type="text" id="cf-name" name="from_name" placeholder="Tu nombre" data-i18n-placeholder="cfNamePh" required autocomplete="name">
-                                <div class="form-err" id="err-name"></div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label" for="cf-email" data-i18n="cfEmail">Email</label>
-                                <input class="form-input" type="email" id="cf-email" name="reply_to" placeholder="tu@email.com" data-i18n-placeholder="cfEmailPh" required autocomplete="email">
-                                <div class="form-err" id="err-email"></div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="cf-subject" data-i18n="cfSubject">Asunto</label>
-                            <select class="form-input form-select" id="cf-subject" name="subject">
-                                <option value="Proyecto Web" data-i18n="cfOpt1">💻 Proyecto Web</option>
-                                <option value="Automatización Python" data-i18n="cfOpt2">🐍 Automatización Python</option>
-                                <option value="Consultoría" data-i18n="cfOpt3">🤝 Consultoría</option>
-                                <option value="Colaboración" data-i18n="cfOpt4">🚀 Colaboración</option>
-                                <option value="Otro" data-i18n="cfOpt5">📌 Otro</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label" for="cf-msg" data-i18n="cfMsg">Mensaje</label>
-                            <textarea class="form-input form-textarea" id="cf-msg" name="message" placeholder="Cuéntame sobre tu proyecto o idea…" data-i18n-placeholder="cfMsgPh" required rows="5"></textarea>
-                            <div class="form-err" id="err-msg"></div>
-                            <div class="form-char"><span id="char-count">0</span>/500</div>
-                        </div>
-                        <!-- Cloudflare Turnstile -->
-                        <div class="cf-turnstile"
-                             data-sitekey="0x4AAAAAAClKd5T1R81GltW_"
-                             data-theme="dark"
-                             data-language="es"
-                             style="margin-bottom:.8rem"
-                             id="turnstile-contact">
-                        </div>
-                        <button type="submit" class="form-submit" id="form-submit">
-                            <span id="submit-text"><i class="fas fa-paper-plane"></i> <span data-i18n="cfSubmit">Enviar mensaje</span></span>
-                            <span id="submit-loading" style="display:none"><i class="fas fa-spinner fa-spin"></i> <span data-i18n="cfSending">Enviando…</span></span>
-                        </button>
-                        <div id="form-feedback" class="form-feedback"></div>
-                    </form>
-                </div>
-            </div>
-        </section>
-        
         <!-- Game Section -->
         <section id="game">
             <h2 data-i18n="gameTitle">🎮 Juegos Interactivos</h2>
@@ -1897,7 +1857,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 if (command.includes('inicio')) {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else if (command.includes('contacto')) {
-                    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('open-to-work').scrollIntoView({ behavior: 'smooth' });
                 } else if (command.includes('habilidad')) {
                     document.getElementById('skills').scrollIntoView({ behavior: 'smooth' });
                 }
@@ -2044,7 +2004,7 @@ DISPONIBILIDAD:
             { name: 'Ir a Logros', icon: 'fa-trophy', action: () => scrollToSection('achievements') },
             { name: 'Ir a Testimonios', icon: 'fa-comment', action: () => scrollToSection('testimonials') },
             { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
-            { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('contact') },
+            { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('open-to-work') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
@@ -2833,7 +2793,7 @@ async function chNotifWeatherCheck(lat, lon) {
     <span class="dock-label">Open Source</span>
   </a>
   <div class="dock-sep"></div>
-  <a href="#contact" class="dock-item" title="Chat IA / Contacto" onclick="event.preventDefault();scrollToSection('contact')">
+  <a href="#open-to-work" class="dock-item" title="Chat IA / Contacto" onclick="event.preventDefault();scrollToSection('open-to-work')">
     <div class="dock-icon dock-icon-chat"><i class="fas fa-comment-dots"></i></div>
     <span class="dock-label" data-i18n="dockChat">Chat</span>
   </a>
@@ -4639,7 +4599,6 @@ const i18n = {
         // Contact
         contactTitle: '¿Tienes un<br>proyecto en mente?',
         contactSub: 'Estoy disponible para freelance, colaboraciones o simplemente para charlar sobre código. Respondo en menos de 24h.',
-        contactEmailLbl: 'Email directo',
         contactStatus: 'Disponible para proyectos nuevos',
         cfName: 'Nombre', cfEmail: 'Email', cfSubject: 'Asunto',
         cfNamePh: 'Tu nombre', cfEmailPh: 'tu@email.com',
@@ -4745,7 +4704,6 @@ const i18n = {
         // Contact
         contactTitle: 'Got a<br>project in mind?',
         contactSub: 'I am available for freelance, collaborations or just to talk code. I reply within 24 hours.',
-        contactEmailLbl: 'Direct email',
         contactStatus: 'Available for new projects',
         cfName: 'Name', cfEmail: 'Email', cfSubject: 'Subject',
         cfNamePh: 'Your name', cfEmailPh: 'you@email.com',

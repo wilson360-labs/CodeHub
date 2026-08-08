@@ -4174,8 +4174,6 @@
 
         /* ── PROYECTOS ── */
         /* ── CONTACTO ── */
-        #contact { padding: 3rem 0; }
-
         .contact-wrap {
             display: grid;
             grid-template-columns: 1fr 1.4fr;
@@ -4203,32 +4201,6 @@
             margin-bottom: 1rem;
         }
         .contact-sub { font-size: .9rem; color: rgba(232,232,240,.5); line-height: 1.7; margin-bottom: 1.8rem; }
-
-        .contact-links { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.8rem; }
-        .clink {
-            display: flex;
-            align-items: center;
-            gap: .9rem;
-            padding: .85rem 1rem;
-            background: rgba(255,255,255,.03);
-            border: 1px solid rgba(255,255,255,.07);
-            border-radius: var(--radius-md, 14px);
-            text-decoration: none;
-            color: inherit;
-            transition: all .2s ease;
-        }
-        .clink:hover { border-color: rgba(47,128,237,.35); background: rgba(47,128,237,.05); transform: translateX(4px); }
-        .clink-icon {
-            width: 40px; height: 40px;
-            border-radius: var(--radius-sm, 10px);
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(47,128,237,.12);
-            color: var(--primary);
-            font-size: 1rem;
-            flex-shrink: 0;
-        }
-        .clink-label { font-size: .7rem; color: rgba(232,232,240,.4); font-family: 'JetBrains Mono', monospace; }
-        .clink-val   { font-size: .85rem; font-weight: 600; color: rgba(232,232,240,.85); }
 
         .contact-status {
             display: inline-flex;
@@ -5186,9 +5158,6 @@ header nav { display: none !important; }
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 [data-theme="light"] .contact-sub { color: #475569; }
-[data-theme="light"] .clink { background: #fff; border-color: rgba(15,23,42,.1); box-shadow: 0 2px 12px rgba(15,23,42,.05); }
-[data-theme="light"] .clink-label { color: #64748b; }
-[data-theme="light"] .clink-val { color: #0f172a; }
 [data-theme="light"] .contact-status { color: #475569; }
 [data-theme="light"] .contact-form-wrap {
   background: #fff; border-color: rgba(15,23,42,.1);

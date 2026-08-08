@@ -200,7 +200,7 @@
       '#weather-section',
       '#news-section',
       '#open-to-work .otw-info-card',
-      '#contact'
+      '#open-to-work .contact-form-wrap'
     ].join(', '));
     if (!targets.length) return;
     anime.set(targets, { opacity: 0, translateY: 26 });
