@@ -1427,6 +1427,25 @@ const NEWS_TAG_RE = (block, name) => {
   const m = block.match(new RegExp(`<${name}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
   return m ? m[1].trim() : '';
 };
+
+// Limpia texto plano de un item RSS: decodifica entidades HTML (&lt; &gt;
+// &amp; ...), quita cualquier tag sobrante y colapsa espacios. Evita que la
+// tarjeta muestre código fuente crudo de la noticia.
+const NEWS_ENTITIES = { '&lt;':'<', '&gt;':'>', '&amp;':'&', '&quot;':'"', '&#39;':"'", '&apos;':"'", '&nbsp;':' ' };
+const cleanNewsText = (raw) => {
+  let s = String(raw || '');
+  s = s.replace(/&(?:#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (m, code) => {
+    if (code[0] === '#') {
+      const isHex = code[1] === 'x' || code[1] === 'X';
+      const n = parseInt(code.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+      return Number.isNaN(n) ? m : String.fromCodePoint(n);
+    }
+    return NEWS_ENTITIES[m] !== undefined ? NEWS_ENTITIES[m] : m;
+  });
+  s = s.replace(/<\/?(?:script|style)[^>]*>[\s\S]*?<\/?(?:script|style)>/gi, ' ');
+  s = s.replace(/<[^>]+>/g, ' ');
+  return s.replace(/\s+/g, ' ').trim();
+};
 // Extrae imagen real del item (media:thumbnail / media:content / enclosure)
 // para que cada tarjeta muestre una miniatura real cuando exista.
 const NEWS_IMG_RE = (block) => {
@@ -1454,14 +1473,14 @@ async function fetchRssItems(url, { limit = 9, sourceLabel = null } = {}) {
   let m;
   while ((m = itemRe.exec(xml)) && items.length < limit) {
     const block = m[1];
-    const title = NEWS_TAG_RE(block, 'title');
+    const title = cleanNewsText(NEWS_TAG_RE(block, 'title')).slice(0, 160);
     const url_  = NEWS_TAG_RE(block, 'link');
     const pub   = NEWS_TAG_RE(block, 'pubDate');
     const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
     const image = NEWS_IMG_RE(block);
     // Google News trae el medio original en <source>; BBC no lo trae (usamos sourceLabel fijo).
-    const src   = NEWS_TAG_RE(block, 'source') || sourceLabel || '';
-    let desc = NEWS_TAG_RE(block, 'description').replace(/<[^>]+>/g, '').slice(0, 130);
+    const src   = cleanNewsText(NEWS_TAG_RE(block, 'source') || sourceLabel || '');
+    let desc = cleanNewsText(NEWS_TAG_RE(block, 'description')).slice(0, 130);
     if (title) items.push({ title, url: url_, date, desc, image, pub, source: src });
   }
   if (!items.length) throw new Error('sin items en el RSS');

@@ -157,9 +157,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260808c">
+    <link rel="stylesheet" href="css/index.css?v=20260808e">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260808c">
+    <link rel="stylesheet" href="css/components.css?v=20260808e">
     <!-- Media queries responsive -->
     <link rel="stylesheet" href="css/index-responsive.css?v=20260808b">
     <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
@@ -4366,19 +4366,22 @@ function renderRealNews(items, fetchedAt, sourceLabel) {
   const out = document.getElementById('news-real-out');
   const freshLabel = document.getElementById('news-fresh-label');
   if (freshLabel) freshLabel.textContent = fetchedAt ? `Actualizado ${relativeTime(fetchedAt)}` : '';
+  // Sanitiza texto antes de inyectarlo en las tarjetas (las noticias no
+  // deben renderizar HTML ni código fuente crudo).
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const cardsHtml = items.map(n => `
-    <a href="${n.url}" target="_blank" rel="noopener noreferrer" class="blogger-card">
+    <a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer" class="blogger-card">
       <div class="blogger-card-thumb">
         ${n.image
-          ? `<img src="${n.image}" alt="${n.title.replace(/"/g, '&quot;')}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<i class=&quot;fas fa-earth-americas&quot;></i>'">`
+          ? `<img src="${esc(n.image)}" alt="${esc(n.title)}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<i class=&quot;fas fa-earth-americas&quot;></i>'">`
           : `<i class="fas fa-earth-americas"></i>`}
       </div>
       <div class="blogger-card-body">
-        <div class="blogger-card-label">// ${n.source || sourceLabel || 'Noticias'}</div>
-        <div class="blogger-card-title">${n.title}</div>
-        <div class="blogger-card-desc">${n.desc}</div>
+        <div class="blogger-card-label">// ${esc(n.source || sourceLabel || 'Noticias')}</div>
+        <div class="blogger-card-title">${esc(n.title)}</div>
+        <div class="blogger-card-desc">${esc(n.desc)}</div>
         <div class="blogger-card-meta">
-          <i class="fas fa-calendar-days"></i>${n.date}
+          <i class="fas fa-calendar-days"></i>${esc(n.date)}
           ${n.pub ? `<span class="blogger-card-relative"><i class="fas fa-clock"></i>${relativeTime(n.pub)}</span>` : ''}
         </div>
       </div>

@@ -672,7 +672,7 @@
         .header-inner {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: flex-end;
             padding: 0.65rem 2rem;
             max-width: 1300px;
             margin: 0 auto;
