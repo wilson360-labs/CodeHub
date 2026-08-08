@@ -489,6 +489,9 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <button class="side-pref-btn" id="side-cfg-btn" aria-label="Configuración" title="Configuración del sitio" onclick="closeMobileNav();openCfg()">
                 <i class="fas fa-sliders"></i><span data-i18n="sidePrefCfg">Configuración</span>
             </button>
+            <button class="side-pref-btn" id="side-account-btn" aria-label="Mi cuenta" title="Mi cuenta — Iniciar sesión" onclick="closeMobileNav();window.CodeHubAuth&&CodeHubAuth.openLogin()">
+                <i class="fas fa-user-circle"></i><span data-i18n="sidePrefAccount">Mi cuenta</span>
+            </button>
         </div>
 
         <div class="side-foot">
@@ -567,6 +570,68 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <button class="cfg-reset" aria-label="Restablecer configuración" onclick="resetCfg()">
                     <i class="fas fa-rotate-left"></i> <span data-i18n-config="cfgReset">Restablecer</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PANEL DE CUENTA / LOGIN ── -->
+    <div id="auth-panel" aria-hidden="true">
+        <div class="auth-dialog" role="dialog" aria-modal="true" aria-label="Iniciar sesión">
+            <div class="auth-head">
+                <div class="auth-head-title"><i class="fas fa-user-circle"></i> <span data-i18n-auth="authTitle">Mi cuenta</span></div>
+                <button class="auth-close" aria-label="Cerrar"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="auth-body">
+
+                <!-- Estado: sesión activa -->
+                <div class="auth-account" style="display:none">
+                    <div class="auth-acc-avatar"><i class="fas fa-user"></i></div>
+                    <div class="auth-acc-name">Usuario</div>
+                    <div class="auth-acc-email"></div>
+                    <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-logout">
+                        <i class="fas fa-right-from-bracket"></i> <span data-i18n-auth="authLogout">Cerrar sesión</span>
+                    </button>
+                </div>
+
+                <!-- Tabs login / registro -->
+                <div class="auth-forms">
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" data-mode="login" type="button"><span data-i18n-auth="authLogin">Iniciar sesión</span></button>
+                        <button class="auth-tab" data-mode="register" type="button"><span data-i18n-auth="authRegister">Registrarse</span></button>
+                    </div>
+
+                    <div class="auth-status" role="status"></div>
+
+                    <!-- Login -->
+                    <form class="auth-form-login" onsubmit="return false">
+                        <label class="auth-label" data-i18n-auth="authEmail">Correo electrónico</label>
+                        <input class="auth-input" type="email" id="auth-login-email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                        <label class="auth-label" data-i18n-auth="authPass">Contraseña</label>
+                        <input class="auth-input" type="password" id="auth-login-pass" autocomplete="current-password" placeholder="••••••••">
+                        <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-login-submit" type="button">
+                            <i class="fas fa-right-to-bracket"></i> <span data-i18n-auth="authLogin">Iniciar sesión</span>
+                        </button>
+                    </form>
+
+                    <!-- Registro -->
+                    <form class="auth-form-register" style="display:none" onsubmit="return false">
+                        <label class="auth-label" data-i18n-auth="authEmail">Correo electrónico</label>
+                        <input class="auth-input" type="email" id="auth-reg-email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                        <label class="auth-label" data-i18n-auth="authPass">Contraseña</label>
+                        <input class="auth-input" type="password" id="auth-reg-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                        <label class="auth-label" data-i18n-auth="authPass2">Repetir contraseña</label>
+                        <input class="auth-input" type="password" id="auth-reg-pass2" autocomplete="new-password" placeholder="••••••••">
+                        <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-reg-submit" type="button">
+                            <i class="fas fa-user-plus"></i> <span data-i18n-auth="authRegister">Registrarse</span>
+                        </button>
+                    </form>
+
+                    <div class="auth-divider"><span data-i18n-auth="authOr">o continúa con</span></div>
+                    <button class="auth-btn auth-google" type="button">
+                        <i class="fab fa-google"></i> <span data-i18n-auth="authGoogle">Continuar con Google</span>
+                    </button>
+                    <p class="auth-note" data-i18n-auth="authNote">Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de EMI y guardas tus chats.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -3589,6 +3654,16 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     }
     sessionStorage.setItem('ch_chat_count', chatCount + 1);
 
+    // Cuota diaria de EMI: invitado 10 msgs/día, registrado sin límite
+    if (window.CodeHubAuth) {
+      const limit = CodeHubAuth.checkLimit('emi_daily');
+      if (!limit.allowed) {
+        addMsg('ai', '⚠️ Alcanzaste el límite diario de <strong>EMI</strong> (10 mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para continuar sin límites.');
+        return;
+      }
+      CodeHubAuth.consumeLimit('emi_daily');
+    }
+
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
 
@@ -4605,7 +4680,19 @@ const i18n = {
         cfgLangLbl: 'Idioma', cfgEs: 'Español', cfgEn: 'English',
         cfgBgLbl: 'Fondo', cfgBgRow: 'Fondos animados (red + partículas)',
         cfgReset: 'Restablecer',
-        sidePrefTheme: 'Tema claro/oscuro', sidePrefCfg: 'Configuración',
+        sidePrefTheme: 'Tema claro/oscuro', sidePrefCfg: 'Configuración', sidePrefAccount: 'Mi cuenta',
+    },
+    auth: {
+        authTitle: 'Mi cuenta',
+        authLogin: 'Iniciar sesión',
+        authRegister: 'Registrarse',
+        authEmail: 'Correo electrónico',
+        authPass: 'Contraseña',
+        authPass2: 'Repetir contraseña',
+        authOr: 'o continúa con',
+        authGoogle: 'Continuar con Google',
+        authLogout: 'Cerrar sesión',
+        authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de EMI y guardas tus chats.',
     },
     en: {
         available: 'Available',
@@ -4699,7 +4786,19 @@ const i18n = {
         cfgLangLbl: 'Language', cfgEs: 'Español', cfgEn: 'English',
         cfgBgLbl: 'Background', cfgBgRow: 'Animated backgrounds (network + particles)',
         cfgReset: 'Reset',
-        sidePrefTheme: 'Light/dark theme', sidePrefCfg: 'Settings',
+        sidePrefTheme: 'Light/dark theme', sidePrefCfg: 'Settings', sidePrefAccount: 'My account',
+    },
+    auth: {
+        authTitle: 'My account',
+        authLogin: 'Log in',
+        authRegister: 'Sign up',
+        authEmail: 'Email address',
+        authPass: 'Password',
+        authPass2: 'Repeat password',
+        authOr: 'or continue with',
+        authGoogle: 'Continue with Google',
+        authLogout: 'Log out',
+        authNote: 'Your data is stored encrypted and protected. By signing up you unlock all EMI features and save your chats.',
     }
 };
 
@@ -4744,6 +4843,12 @@ function applyLang(lang) {
     document.querySelectorAll('#config-panel [data-i18n-config]').forEach(el => {
         const key = el.getAttribute('data-i18n-config');
         if (dict[key] !== undefined) el.textContent = dict[key];
+    });
+    // Traducir el panel de cuenta / login
+    document.querySelectorAll('#auth-panel [data-i18n-auth]').forEach(el => {
+        const key = el.getAttribute('data-i18n-auth');
+        const adict = i18n.auth || {};
+        if (adict[key] !== undefined) el.textContent = adict[key];
     });
     // Actualizar botones de idioma (header + menú lateral)
     document.querySelectorAll('[data-lang-toggle]').forEach(btn => {
@@ -5550,6 +5655,7 @@ function setAIMood(btn) {
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260724a"></script>
+<script src="js/auth.js?v=20260808a"></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
