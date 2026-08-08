@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v5.2';
+const VERSION   = 'codehub-v5.3';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -30,6 +30,9 @@ const PRECACHE = [
   '/servicios',
   '/css/opensource.css',
   '/css/components.css',
+  '/css/index-responsive.css',
+  '/css/site-tour.css',
+  '/css/viewport-guard.css',
   '/manifest.json',
   '/offline.html',
   '/js/script.js',

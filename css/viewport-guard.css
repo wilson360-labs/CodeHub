@@ -1,0 +1,120 @@
+/* ═══════════════════════════════════════════════════════════════════
+   CodeHub — VIEWPORT GUARD  (última capa CSS, se carga SIEMPRE al final)
+   Wilson.E 2026
+
+   PROPÓSITO
+   ─────────
+   Red de seguridad para que NINGUNA modificación de componentes rompa
+   la visualización en pantallas de distintos tamaños. Este archivo se
+   carga después de index.css, components.css, index-responsive.css y
+   site-tour.css, por lo que sus reglas ganan la cascada y actúan como
+   "última palabra" para evitar desbordes horizontales y roturas de layout.
+
+   BREAKPOINTS CANÓNICOS DEL PROYECTO (no usar otros)
+   ───────────────────────────────────────────────────
+   Usar SIEMPRE estos rangos al escribir @media nuevas. No inventar
+   anchos nuevos: la fragmentación de breakpoints es lo que rompe
+   pantallas pequeñas (380–720px).
+
+     ≤ 360px   teléfonos muy antiguos (iPhone SE 1ª gen, Galaxy pequeños)
+     ≤ 380px   teléfonos compactos   — rango mínimo soportado
+     ≤ 420px   teléfonos medianos (p.ej. ciertos Android)
+     ≤ 480px   teléfonos grandes (iPhone 12/13 mini en vertical)
+     ≤ 550px   phablets / teléfonos grandes
+     ≤ 640px   teléfonos XXL y tablets pequeñas en vertical
+     ≤ 720px   tablets compactas / landscape de teléfonos
+     ≤ 768px   tablets verticales  — breakpoint principal mobile/desktop
+     ≤ 860px   tablets grandes vertical / desktop compacto
+     ≤ 1080px  desktop medio
+
+   REGLA DE ORO
+   ────────────
+   - Toda nueva regla de layout DEBE comprobarse en 380, 480, 640, 720
+     y 768 px (al menos), además de escritorio.
+   - Los contenedores de grid/flex deben usar `min-width: 0` en sus
+     hijos cuando puedan desbordar (texto largo, tablas, pre, code).
+   - Todo medio (img/video/canvas/iframe/table) debe tener max-width:100%.
+   - Cualquier corrección de un componente debe añadirse AL FINAL de
+     este archivo o dentro de su @media canónica, nunca inventando
+     breakpoints intermedios arbitrarios.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. SANIDAD GLOBAL — impedir desbordes horizontales ───────────── */
+img, svg, video, canvas, iframe, embed, object, audio {
+  max-width: 100%;
+}
+img, video { height: auto; }
+picture, figure { max-width: 100%; }
+
+/* Texto largo / palabras sin espacios no pueden empujar el layout */
+p, h1, h2, h3, h4, h5, h6, li, a, span, strong, em, small,
+button, label, legend, caption, blockquote, figcaption {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+code, pre, kbd, samp {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Inputs/selects/textareas: no crecen más que su contenedor */
+input, select, textarea, button {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ── 2. PROTECCIÓN DE CONTENEDORES — grids/flex no desbordan ───────── */
+/* Hijos de contenedores flexibles necesitan min-width:0 para poder
+   encogerse con el texto largo. Solo en contenedores con ancho fluido. */
+.grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
+.flex-row > *, .flex-col > *, .services-grid > *, .stats-section > *,
+.wx-grid > *, .blogger-grid > * {
+  min-width: 0;
+}
+
+/* ── 3. FIXES DE RANGO MÓVIL — 380px a 720px ───────────────────────── */
+/* Estas reglas solo aplican en pantallas pequeñas. Su objetivo es
+   absorber errores de layout y garantizar el soporte del rango móvil
+   completo, aunque la corrección original solo se haya pensado en
+   un ancho concreto. */
+
+/* 380px — el ancho mínimo soportado */
+@media (max-width: 380px) {
+  /* Cualquier fila/barra del header debe caber en 380px sin desbordar */
+  .header-inner { gap: 0.5rem; }
+  .header-actions { gap: 0.35rem; }
+  .burger-btn { min-width: 38px; min-height: 38px; }
+
+  /* El hero y sus métricas no pueden desbordar en el mínimo */
+  .hero-metrics { flex-wrap: wrap; }
+  .hero-card { min-width: 0; }
+
+  /* Paneles flotantes (config, ai, command) nunca más anchos que el viewport */
+  #config-panel, #ai-panel, #command-palette {
+    max-width: calc(100vw - 16px);
+    width: auto;
+  }
+}
+
+/* 480px — teléfonos grandes en vertical */
+@media (max-width: 480px) {
+  /* Textos de cabecera no desbordan */
+  .header-logo-text { font-size: 0.9rem !important; }
+  .header-logo-desc { max-width: 100%; }
+}
+
+/* 720px — tablets compactas / landscape de teléfonos */
+@media (max-width: 720px) {
+  /* Red de seguridad: ningún elemento posicionado o flotante se sale */
+  .side-nav, .mobile-nav, [class*="dock"], .ai-circle-btn, .ai-bottom-bar {
+    max-width: 100vw;
+  }
+}
+
+/* ── 4. GUARDAS DE COMPONENTES CRÍTICOS ────────────────────────────── */
+/* Si un componente nuevo se rompe en móvil, corrige AQUÍ abajo con el
+   breakpoint canónico que corresponda. Nunca inventes anchos nuevos. */
+
+/* Fin del guard. Todo lo nuevo va antes de esta línea. */
