@@ -149,6 +149,7 @@
     return fetch(BACKEND + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // guardar/enviar cookies del backend (Google OAuth PKCE)
       body: JSON.stringify(payload),
     }).then(function (r) {
       return r.json().catch(function () { return { error: 'Respuesta inválida' }; }).then(function (body) {
