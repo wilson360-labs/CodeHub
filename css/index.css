@@ -2708,22 +2708,6 @@
   overflow: hidden;
   transition: background .2s, border-color .2s, box-shadow .2s;
 }
-.header-logo:hover .header-logo-badge {
-  background: rgba(47,128,237,.22);
-  border-color: rgba(47,128,237,.6);
-  box-shadow: 0 0 14px rgba(47,128,237,.35);
-}
-
-/* Badge shimmer sweep on hover */
-.header-logo-badge::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.25) 50%, transparent 70%);
-  transform: translateX(-100%);
-  transition: transform .45s ease;
-}
-.header-logo:hover .header-logo-badge::after { transform: translateX(100%); }
 
 /* ── Skill chips — animated progress bar on visibility ──────── */
 .sc-fill {

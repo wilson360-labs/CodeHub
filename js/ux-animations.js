@@ -135,20 +135,6 @@
     });
   }
 
-  // ── 3. LOGO ENTRANCE + HOVER ────────────────────────────────
-  function initLogo() {
-    // El logo del navbar es solo el badge textmorph (Wilson.E se eliminó).
-    // Nada debe ocultarlo ni reintroducirlo con anime: el textmorph cicla
-    // sus palabras por su cuenta y un anime.set con opacity:0 lo rompería.
-    var badge = $('#liq-logo-codehub');
-    var logo  = $('.header-logo');
-    if (!logo || !badge) return;
-
-    logo.addEventListener('mouseenter', function () {
-      anime({ targets: badge, scale: [1,1.12,1], duration: 500, easing: 'easeInOutBack' });
-    });
-  }
-
   // ── 4. SKILL CHIPS STAGGER ──────────────────────────────────
   function initChips() {
     var grids = $$('.skills-grid');
@@ -325,11 +311,11 @@
     io.observe(box);
   }
 
-  // ── 12. TEXT MORPH — badge del logo cicla roles con gooey ──
+  // ── 12. TEXT MORPH — badge del logo cicla roles con fade ──
   // Recrea el componente textmorph de originkit en vanilla:
   // las palabras están apiladas (grid 1/1) y se alterna .is-active;
-  // la transición blur+scale+fade + el filtro SVG #tm-goo funden
-  // las letras entre una palabra y la siguiente.
+  // la transición blur+scale+fade funde las letras entre una palabra
+  // y la siguiente (sin filtro gooey, que rompía la legibilidad).
   function initTextMorph() {
     var wrap = document.getElementById('tm-words');
     if (!wrap) return;
@@ -360,7 +346,6 @@
     initFooterTerminalTyping();
     initTextMorph();
     waitAnime(function () {
-      initLogo();
       initChips();
       initReveal();
       initIconHover();
