@@ -137,19 +137,12 @@
 
   // ── 3. LOGO ENTRANCE + HOVER ────────────────────────────────
   function initLogo() {
-    var b1    = $('.header-logo-text .bracket:first-child');
-    var b2    = $('.header-logo-text .bracket:last-child');
-    var name  = $('#liq-logo-wilson');
+    // El logo del navbar es solo el badge textmorph (Wilson.E se eliminó).
+    // Nada debe ocultarlo ni reintroducirlo con anime: el textmorph cicla
+    // sus palabras por su cuenta y un anime.set con opacity:0 lo rompería.
     var badge = $('#liq-logo-codehub');
     var logo  = $('.header-logo');
-    if (!logo || !b1) return;
-
-    anime.set([b1, b2, name, badge], { opacity: 0 });
-    anime.timeline({ easing: 'easeOutExpo', delay: 800 })
-      .add({ targets: b1,    opacity: [0,1], translateX: [-14,0], duration: 380 })
-      .add({ targets: name,  opacity: [0,1], translateY: [-10,0], duration: 360 }, '-=200')
-      .add({ targets: b2,    opacity: [0,1], translateX: [14,0],  duration: 380 }, '-=280')
-      .add({ targets: badge, opacity: [0,1], scale: [0.6,1],      duration: 340, easing: 'easeOutBack' }, '-=200');
+    if (!logo || !badge) return;
 
     logo.addEventListener('mouseenter', function () {
       anime({ targets: badge, scale: [1,1.12,1], duration: 500, easing: 'easeInOutBack' });
