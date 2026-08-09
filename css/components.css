@@ -5298,3 +5298,132 @@ header nav { display: none !important; }
 [data-theme="light"] #ai-panel.open,
 [data-theme="light"] #ai-panel.boot-flash { animation:panelIn .42s cubic-bezier(.2,.9,.2,1) both; }
 
+/* ═══════════════════════════════════════════════════════════════
+   REDISEÑO ANIMADO — batch 2026-08-09
+   border-beam (hover), sheen en barras de skill, text-reveal por
+   palabras en h2, tilt 3D del hero-card y depth-lift de chips.
+   Todo GPU-only (transform/opacity), gateado a dispositivos con
+   hover+puntero fino y desactivado con prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════ */
+
+@property --beam-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes beamRotate { to { --beam-angle: 360deg; } }
+@keyframes scSheen {
+    from { transform: translateX(-130%) skewX(-20deg); }
+    to   { transform: translateX(340%) skewX(-20deg); }
+}
+
+/* ── 1. BORDER-BEAM en hover (skill-chip, game-card, service-card) ── */
+@media (hover: hover) and (pointer: fine) {
+    .skill-chip,
+    .game-card,
+    .service-card {
+        position: relative;
+    }
+    .skill-chip::after,
+    .game-card::after,
+    .service-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 2px;
+        background: conic-gradient(from var(--beam-angle, 0deg), transparent 0deg, var(--beam, var(--primary)) 70deg, transparent 170deg);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .3s ease;
+    }
+    .skill-chip:hover::after,
+    .game-card:hover::after,
+    .service-card:hover::after,
+    .skill-chip:focus-within::after,
+    .game-card:focus-within::after,
+    .service-card:focus-within::after {
+        opacity: 1;
+        animation: beamRotate 2.4s linear infinite;
+    }
+    .skill-chip { --beam: rgba(47,128,237,.9); }
+    .game-card { --beam: var(--gc, var(--primary)); }
+    .service-card { --beam: rgba(255,69,0,.85); }
+}
+
+/* ── 2. SHEEN en las barras de skill (al entrar en viewport) ── */
+.sc-fill {
+    position: relative;
+    overflow: hidden;
+}
+.sc-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(255,255,255,.55), transparent);
+    transform: translateX(-130%) skewX(-20deg);
+    pointer-events: none;
+}
+.skills-grid.in-view .sc-fill::after {
+    animation: scSheen 1s cubic-bezier(.4,0,.2,1) .95s 1;
+}
+
+/* ── 4. TEXT-REVEAL por palabras en h2 ── */
+.tw-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(.65em);
+    filter: blur(6px);
+    background: linear-gradient(45deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: opacity .6s cubic-bezier(.22,1,.36,1),
+                transform .6s cubic-bezier(.22,1,.36,1),
+                filter .6s cubic-bezier(.22,1,.36,1);
+}
+h2.tw-split { background: none; }
+h2.tw-split .tw-word.tw-in {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+}
+
+/* ── 3D: DEPTH-LIFT de chips + TILT del hero-card ── */
+@media (hover: hover) and (pointer: fine) {
+    #skills .skills-grid { perspective: 900px; }
+    .skill-chip { transform-style: preserve-3d; }
+    .skill-chip:hover {
+        transform: translateY(-3px) translateZ(16px);
+    }
+    .hero-card.tilt-ready {
+        animation: none;
+        transition: transform .45s cubic-bezier(.22,1,.36,1);
+    }
+}
+
+/* ── Reduced motion: todo quieto, textos visibles ── */
+@media (prefers-reduced-motion: reduce) {
+    .skill-chip::after,
+    .game-card::after,
+    .service-card::after { animation: none !important; }
+    .sc-fill { animation: none !important; }
+    .skills-grid.in-view .sc-fill::after { animation: none !important; }
+    .tw-word {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+    .skill-chip:hover,
+    .skill-chip { transform: none !important; }
+    .hero-card.tilt-ready { transition: none !important; }
+}
+

@@ -136,6 +136,12 @@
   }
 
   // ── 4. SKILL CHIPS STAGGER ──────────────────────────────────
+  // Marca cada grid con .in-view (activa el sheen de las barras) y
+  // limpia el transform inline que deja anime.js al terminar, para
+  // que el depth-lift por CSS (:hover translateZ) no quede pisado.
+  function finishChips(items) {
+    items.forEach(function (el) { el.style.transform = ''; el.style.opacity = ''; });
+  }
   function initChips() {
     var grids = $$('.skills-grid');
     if (!grids.length) return;
@@ -144,13 +150,12 @@
       entries.forEach(function (e) {
         if (!e.isIntersecting || seen.has(e.target)) return;
         seen.add(e.target);
-        var items = $$('. skill-chip,.tool-badge', e.target);
-        // fix: remove space
-        items = Array.from(e.target.querySelectorAll('.skill-chip,.tool-badge'));
+        var items = Array.from(e.target.querySelectorAll('.skill-chip,.tool-badge'));
         if (!items.length) return;
         anime.set(items, { opacity: 0, translateY: 22, scale: 0.9 });
         anime({ targets: items, opacity: 1, translateY: 0, scale: 1,
-          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack' });
+          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack',
+          complete: function () { finishChips(items); } });
       });
     }, { threshold: 0.1 }).observe(grids[0].parentElement || grids[0]);
 
@@ -159,11 +164,14 @@
       var io = new IntersectionObserver(function (entries) {
         if (!entries[0].isIntersecting || seen.has(entries[0].target)) return;
         seen.add(entries[0].target);
-        var items = Array.from(entries[0].target.querySelectorAll('.skill-chip,.tool-badge'));
+        var grid = entries[0].target;
+        grid.classList.add('in-view');
+        var items = Array.from(grid.querySelectorAll('.skill-chip,.tool-badge'));
         if (!items.length) return;
         anime.set(items, { opacity: 0, translateY: 22, scale: 0.9 });
         anime({ targets: items, opacity: 1, translateY: 0, scale: 1,
-          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack' });
+          duration: 420, delay: anime.stagger(55, { start: 50 }), easing: 'easeOutBack',
+          complete: function () { finishChips(items); } });
         io.disconnect();
       }, { threshold: 0.08 });
       io.observe(g);
@@ -338,6 +346,106 @@
     })();
   }
 
+  // ── 7. TEXT-REVEAL POR PALABRAS EN h2 ────────────────────────
+  // Divide el título en spans .tw-word (con gradiente propio) y los
+  // revela en cascada al entrar en viewport. Al cambiar de idioma
+  // (applyLang reemplaza innerHTML) se re-dividen los títulos y se
+  // muestra al instante si ya habían sido revelados.
+  function splitIntoWords(h2) {
+    var parts = h2.innerHTML.split(/(<br\s*\/?>)/i);
+    var html = parts.map(function (p) {
+      if (/^<br/i.test(p)) return p;
+      var t = p.trim();
+      if (!t) return '';
+      return t.split(/\s+/).map(function (w) {
+        return '<span class="tw-word">' + w + '</span>';
+      }).join(' ');
+    }).join('');
+    h2.innerHTML = html;
+    h2.classList.add('tw-split');
+  }
+  function revealWords(h2, instant) {
+    $$('.tw-word', h2).forEach(function (w, i) {
+      w.style.transitionDelay = (instant ? i * 30 : i * 55) + 'ms';
+      requestAnimationFrame(function () { w.classList.add('tw-in'); });
+    });
+  }
+  function initTitleReveal() {
+    var heads = $$('main h2');
+    if (!heads.length) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var done = new Set();
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        if (done.has(en.target)) return;
+        done.add(en.target);
+        revealWords(en.target, false);
+      });
+    }, { threshold: 0.2 });
+    heads.forEach(function (h2) {
+      splitIntoWords(h2);
+      io.observe(h2);
+    });
+    document.addEventListener('ch:langchange', function () {
+      requestAnimationFrame(function () {
+        heads.forEach(function (h2) {
+          if (!h2.classList.contains('tw-split')) return;
+          splitIntoWords(h2);
+          if (done.has(h2)) revealWords(h2, true);
+        });
+      });
+    });
+  }
+
+  // ── 8. TILT 3D DEL HERO-CARD ────────────────────────────────
+  // La tarjeta del hero se inclina siguiendo el ratón (solo con
+  // puntero fino y sin reduced-motion). Se desactiva la animación
+  // de entrada antes de aplicar transform, porque su fill-mode
+  // pisaría los transform inline del JS.
+  function initHeroCardTilt() {
+    var shell = document.querySelector('.hero-visual-shell');
+    var card = shell && shell.querySelector('.hero-card');
+    if (!shell || !card) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+    var DEG = 5;
+    var enabled = false;
+    var raf = null;
+
+    function enable() {
+      if (enabled) return;
+      enabled = true;
+      card.classList.add('tilt-ready');
+    }
+
+    // La entrada heroCardIn tarda 0.3s delay + 0.8s dur en terminar
+    setTimeout(enable, 1600);
+
+    shell.addEventListener('pointerenter', enable, { passive: true });
+    shell.addEventListener('pointermove', function (e) {
+      if (!enabled || raf) return;
+      var r = shell.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      var px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      var py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      var rx = (0.5 - py) * DEG * 2;
+      var ry = (px - 0.5) * DEG * 2;
+      raf = requestAnimationFrame(function () {
+        raf = null;
+        card.style.transform = 'perspective(1000px) rotateX(' + rx.toFixed(2) +
+          'deg) rotateY(' + ry.toFixed(2) + 'deg)';
+      });
+    }, { passive: true });
+    shell.addEventListener('pointerleave', function () {
+      if (!enabled) return;
+      if (raf) { cancelAnimationFrame(raf); raf = null; }
+      card.style.transform = '';
+    }, { passive: true });
+  }
+
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
     // initCursor(); // DISABLED: custom cursor animation causes lag
@@ -345,6 +453,8 @@
     initPostSplashEntrance();
     initFooterTerminalTyping();
     initTextMorph();
+    initTitleReveal();
+    initHeroCardTilt();
     waitAnime(function () {
       initChips();
       initReveal();
