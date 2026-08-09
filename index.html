@@ -583,11 +583,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
             <div class="auth-body">
 
-                <!-- Estado: sesión activa -->
+                <!-- Estado: sesión activa (dashboard privado) -->
                 <div class="auth-account" style="display:none">
+                    <div class="auth-acc-badge"><i class="fas fa-shield-halved"></i> <span data-i18n-auth="authPriv">Cuenta privada</span></div>
                     <div class="auth-acc-avatar"><i class="fas fa-user"></i></div>
                     <div class="auth-acc-name">Usuario</div>
                     <div class="auth-acc-email"></div>
+                    <div class="auth-acc-plan"><i class="fas fa-crown"></i> <span data-i18n-auth="authMember">Miembro verificado</span></div>
+                    <div class="auth-acc-stats">
+                        <div class="auth-acc-stat"><b id="auth-stat-session">●</b><span data-i18n-auth="authStatSes">Sesión</span></div>
+                        <div class="auth-acc-stat"><b>∞</b><span data-i18n-auth="authStatLimit">Sin límites</span></div>
+                        <div class="auth-acc-stat"><b id="auth-stat-prov">—</b><span data-i18n-auth="authStatProv">Acceso</span></div>
+                    </div>
                     <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-logout">
                         <i class="fas fa-right-from-bracket"></i> <span data-i18n-auth="authLogout">Cerrar sesión</span>
                     </button>
@@ -5585,7 +5592,7 @@ function setAIMood(btn) {
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260724a"></script>
-<script src="js/auth.js?v=20260808h"></script>
+<script src="js/auth.js?v=20260808i"></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

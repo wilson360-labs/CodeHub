@@ -3053,6 +3053,53 @@
             color: #fff;
             box-shadow: 0 6px 22px rgba(47,128,237,.4);
         }
+        .auth-acc-badge {
+            display: inline-flex; align-items: center; gap: .4rem;
+            background: rgba(47,128,237,.15);
+            border: 1px solid rgba(47,128,237,.35);
+            color: var(--accent);
+            padding: .3rem .75rem;
+            border-radius: var(--radius-full, 50px);
+            font-size: .7rem;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+        .auth-acc-plan {
+            display: inline-flex; align-items: center; gap: .4rem;
+            color: var(--secondary);
+            font-size: .75rem;
+            font-weight: 600;
+        }
+        .auth-acc-stats {
+            display: flex;
+            gap: .4rem;
+            width: 100%;
+            margin: .25rem 0 .35rem;
+        }
+        .auth-acc-stat {
+            flex: 1;
+            display: flex; flex-direction: column; align-items: center; gap: .1rem;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: var(--radius-sm, 10px);
+            padding: .5rem .25rem;
+        }
+        .auth-acc-stat b {
+            font-size: .85rem;
+            color: var(--accent);
+        }
+        .auth-acc-stat span {
+            font-size: .62rem;
+            color: rgba(232,232,240,.5);
+            text-align: center;
+            line-height: 1.1;
+        }
+        [data-theme="light"] .auth-acc-stat {
+            background: rgba(15,23,42,.04);
+            border-color: rgba(15,23,42,.08);
+        }
+        [data-theme="light"] .auth-acc-stat span { color: rgba(15,23,42,.5); }
         .auth-acc-name {
             font-size: 1rem;
             font-weight: 700;

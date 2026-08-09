@@ -209,6 +209,10 @@
     var email = p.querySelector('.auth-acc-email');
     if (name) name.textContent = session.user.name || session.user.email || 'Usuario';
     if (email) email.textContent = session.user.email || '';
+    var prov = p.querySelector('#auth-stat-prov');
+    if (prov) prov.textContent = session.provider ? session.provider.toUpperCase() : 'GOOGLE';
+    var ses = p.querySelector('#auth-stat-session');
+    if (ses) ses.textContent = '●';
   }
 
   function getField(selector) {
@@ -285,9 +289,8 @@
     if (!token) return;
     setStatus('Recuperando tu sesión…');
     _api('/api/auth/google/session', { token: token }).then(function (r) {
-      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
-      closeLogin();
-      setStatus('');
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token, provider: 'google' });
+      openLogin('login');
       if (typeof toast === 'function') toast('✔ ¡Sesión iniciada con Google, ' + (r.user.name || '') + '!', 'success');
     }).catch(function (e) {
       setStatus(e && e.error ? e.error : 'No se pudo recuperar la sesión de Google', true);
@@ -370,6 +373,8 @@
   } else {
     bind();
   }
+  // Procesar el retorno del flujo Google OAuth (?auth=google&token=...) y abrir el dashboard
+  handleGoogleReturn();
   // Reflejar el estado inicial y actualizar si cambia el idioma
   updateSideUI();
   document.addEventListener('ch:langchange', function () {
