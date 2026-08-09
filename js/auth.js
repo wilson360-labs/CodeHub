@@ -261,7 +261,43 @@
   }
 
   function loginWithGoogle() {
-    setStatus('Google estará disponible pronto. Usa email + contraseña.', true);
+    setStatus('Conectando con Google…');
+    _api('/api/auth/google').then(function (r) {
+      if (r && r.url) {
+        window.location.href = r.url;
+      } else {
+        setStatus(r && r.error ? r.error : 'No se pudo iniciar con Google', true);
+      }
+    }).catch(function (e) {
+      setStatus(e && e.error ? e.error : 'Error al conectar con Google', true);
+    });
+  }
+
+  // Retorno del flujo Google OAuth: /?auth=google&token=...  o  ?auth=google&error=...
+  function handleGoogleReturn() {
+    var params;
+    try { params = new URLSearchParams(window.location.search); }
+    catch (e) { return; }
+    if (params.get('auth') !== 'google') return;
+    // Limpiar la URL de inmediato (no dejar el token/error visible)
+    try { history.replaceState({}, '', window.location.pathname + (window.location.hash || '')); } catch (e) {}
+
+    if (params.get('error')) {
+      setStatus('No se pudo iniciar con Google. Intenta de nuevo.', true);
+      openLogin('login');
+      return;
+    }
+    var token = params.get('token');
+    if (!token) return;
+    setStatus('Recuperando tu sesión…');
+    _api('/api/auth/google/session', { token: token }).then(function (r) {
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
+      closeLogin();
+      setStatus('');
+    }).catch(function (e) {
+      setStatus(e && e.error ? e.error : 'No se pudo recuperar la sesión de Google', true);
+      openLogin('login');
+    });
   }
 
   function logout() {

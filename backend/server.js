@@ -424,6 +424,123 @@ app.post('/api/auth/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── GOOGLE OAUTH — login con credenciales de Google ──────────────
+// Flujo redirect con callback en el backend (PKCE gestionado aquí,
+// sin depender del storage interno de supabase-js):
+//   1) POST /api/auth/google          → devuelve la URL de authorize (Google vía Supabase)
+//   2) El navegador vuelve a  GET /api/auth/google/callback?code=...&state=...
+//   3) El backend intercambia el code por una sesión y redirige al frontend
+//      con  /?auth=google&token=...  (token de un solo uso, TTL 5 min)
+//   4) POST /api/auth/google/session  → el frontend recupera la sesión con ese token
+// Requiere en Supabase → Auth → URL Configuration → Redirect URLs:
+//   https://<host-del-backend>/api/auth/google/callback
+const googlePkce   = new Map(); // state          -> { verifier, expiresAt }
+const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
+const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida útil del code PKCE
+const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida útil del token de sesión
+
+function base64url(buf) {
+  return Buffer.from(buf).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+function frontendUrl() {
+  return process.env.FRONTEND_URL?.trim() || 'https://wilson360-labs.vercel.app';
+}
+function supabaseUrl() {
+  return process.env.SUPABASE_URL?.trim() || '';
+}
+
+// Limpieza periódica de estados/tokens expirados (evita fuga de memoria)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of googlePkce)   if (v.expiresAt < now) googlePkce.delete(k);
+  for (const [k, v] of googleTokens) if (v.expiresAt < now) googleTokens.delete(k);
+}, 15 * 60 * 1000).unref();
+
+// POST /api/auth/google — iniciar el flujo OAuth con Google
+app.post('/api/auth/google', (req, res) => {
+  if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
+
+  const state     = base64url(crypto.randomBytes(24));
+  const verifier  = base64url(crypto.randomBytes(48));
+  const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+  googlePkce.set(state, { verifier, expiresAt: Date.now() + GOOGLE_STATE_TTL });
+
+  const callback = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+  const url = `${supabaseUrl()}/auth/v1/authorize?` + new URLSearchParams({
+    provider: 'google',
+    redirect_to: callback,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state,
+    prompt: 'select_account',
+  }).toString();
+
+  res.status(200).json({ ok: true, url });
+});
+
+// GET /api/auth/google/callback — Supabase vuelve aquí tras autorizar en Google
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  const FRONT = frontendUrl();
+  const fail  = msg => res.redirect(`${FRONT}/?auth=google&error=${encodeURIComponent(msg)}`);
+  if (error) return fail(String(error));
+  if (!code || !state) return fail('missing_code');
+
+  const entry = googlePkce.get(String(state));
+  googlePkce.delete(String(state)); // un solo uso
+  if (!entry || entry.expiresAt < Date.now()) return fail('state_expired');
+
+  // Intercambiar el code por una sesión usando NUESTRO code_verifier
+  const tokenUrl = `${supabaseUrl()}/auth/v1/token?grant_type=pkce`;
+  let resp;
+  try {
+    resp = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: process.env.SUPABASE_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_KEY}`,
+      },
+      body: JSON.stringify({ auth_code: String(code), code_verifier: entry.verifier }),
+    });
+  } catch (e) {
+    console.error('Google token exchange error:', e.message);
+    return fail('token_exchange_failed');
+  }
+  const payload = await resp.json().catch(() => ({}));
+  if (!resp.ok || !payload.access_token || !payload.user) {
+    console.error('Google token exchange rejected:', payload.error_description || payload.error);
+    return fail(payload.error_description || payload.error || 'token_exchange_failed');
+  }
+
+  const user = payload.user;
+  const name = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  const oneTime = base64url(crypto.randomBytes(24));
+  googleTokens.set(oneTime, {
+    user: { id: user.id, email: user.email, name: name || String(user.email || '').split('@')[0] },
+    session: {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token || null,
+      expires_at: payload.expires_at || null,
+      expires_in: payload.expires_in || null,
+    },
+    expiresAt: Date.now() + GOOGLE_TOKEN_TTL,
+  });
+
+  res.redirect(`${FRONT}/?auth=google&token=${oneTime}`);
+});
+
+// POST /api/auth/google/session — el frontend recupera la sesión (token de un solo uso)
+app.post('/api/auth/google/session', (req, res) => {
+  const token = String(req.body?.token || '');
+  if (!token) return res.status(400).json({ error: 'Falta el token' });
+  const entry = googleTokens.get(token);
+  googleTokens.delete(token); // un solo uso
+  if (!entry || entry.expiresAt < Date.now()) return res.status(401).json({ error: 'Sesión de Google no válida o expirada' });
+  res.status(200).json({ ok: true, user: entry.user, session: entry.session });
+});
+
 // ── TELEGRAM STORAGE ─────────────────────────────────────────
 // APKs se almacenan en el chat personal del bot con el admin.
 // Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
