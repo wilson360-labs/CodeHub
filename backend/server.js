@@ -425,19 +425,22 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 // ── GOOGLE OAUTH — login con credenciales de Google ──────────────
-// Flujo redirect con callback en el backend (PKCE gestionado aquí,
-// sin depender del storage interno de supabase-js):
-//   1) POST /api/auth/google          → devuelve la URL de authorize (Google vía Supabase)
-//   2) El navegador vuelve a  GET /api/auth/google/callback?code=...&state=...
-//   3) El backend intercambia el code por una sesión y redirige al frontend
-//      con  /?auth=google&token=...  (token de un solo uso, TTL 5 min)
-//   4) POST /api/auth/google/session  → el frontend recupera la sesión con ese token
+// Flujo redirect con callback en el backend (PKCE gestionado aquí):
+//   1) POST /api/auth/google          → guarda el code_verifier en una cookie
+//      httpOnly y devuelve la URL de authorize (Google vía Supabase).
+//      IMPORTANTE: NO se pasa un state propio — Supabase usa ese
+//      parámetro para su validación interna (bad_oauth_state).
+//   2) El navegador vuelve a  GET /api/auth/google/callback?code=...
+//   3) El backend intercambia el code por una sesión (cookie → verifier)
+//      y redirige al frontend con  /?auth=google&token=...  (token de
+//      un solo uso, TTL 5 min)
+//   4) POST /api/auth/google/session  → el frontend recupera la sesión
 // Requiere en Supabase → Auth → URL Configuration → Redirect URLs:
 //   https://<host-del-backend>/api/auth/google/callback
-const googlePkce   = new Map(); // state          -> { verifier, expiresAt }
-const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
-const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida útil del code PKCE
+const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida útil del code PKCE (cookie)
 const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida útil del token de sesión
+const GOOGLE_PKCE_COOKIE = 'ch_google_pkce';
+const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
 
 function base64url(buf) {
   return Buffer.from(buf).toString('base64')
@@ -449,11 +452,15 @@ function frontendUrl() {
 function supabaseUrl() {
   return process.env.SUPABASE_URL?.trim() || '';
 }
+function getCookie(req, name) {
+  const header = req.headers.cookie || '';
+  const m = header.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
+  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
+}
 
-// Limpieza periódica de estados/tokens expirados (evita fuga de memoria)
+// Limpieza periódica de tokens expirados (evita fuga de memoria)
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of googlePkce)   if (v.expiresAt < now) googlePkce.delete(k);
   for (const [k, v] of googleTokens) if (v.expiresAt < now) googleTokens.delete(k);
 }, 15 * 60 * 1000).unref();
 
@@ -461,10 +468,11 @@ setInterval(() => {
 app.post('/api/auth/google', (req, res) => {
   if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
 
-  const state     = base64url(crypto.randomBytes(24));
   const verifier  = base64url(crypto.randomBytes(48));
   const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
-  googlePkce.set(state, { verifier, expiresAt: Date.now() + GOOGLE_STATE_TTL });
+
+  // Guardar el code_verifier en una cookie httpOnly (viaja con el navegador)
+  res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(GOOGLE_STATE_TTL / 1000)}`);
 
   const callback = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
   const url = `${supabaseUrl()}/auth/v1/authorize?` + new URLSearchParams({
@@ -472,7 +480,6 @@ app.post('/api/auth/google', (req, res) => {
     redirect_to: callback,
     code_challenge: challenge,
     code_challenge_method: 'S256',
-    state,
     prompt: 'select_account',
   }).toString();
 
@@ -481,17 +488,19 @@ app.post('/api/auth/google', (req, res) => {
 
 // GET /api/auth/google/callback — Supabase vuelve aquí tras autorizar en Google
 app.get('/api/auth/google/callback', async (req, res) => {
-  const { code, state, error } = req.query;
+  const { code, error } = req.query;
   const FRONT = frontendUrl();
-  const fail  = msg => res.redirect(`${FRONT}/?auth=google&error=${encodeURIComponent(msg)}`);
+  const fail  = msg => {
+    res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+    res.redirect(`${FRONT}/?auth=google&error=${encodeURIComponent(msg)}`);
+  };
   if (error) return fail(String(error));
-  if (!code || !state) return fail('missing_code');
+  if (!code) return fail('missing_code');
 
-  const entry = googlePkce.get(String(state));
-  googlePkce.delete(String(state)); // un solo uso
-  if (!entry || entry.expiresAt < Date.now()) return fail('state_expired');
+  const verifier = getCookie(req, GOOGLE_PKCE_COOKIE);
+  if (!verifier) return fail('missing_verifier');
 
-  // Intercambiar el code por una sesión usando NUESTRO code_verifier
+  // Intercambiar el code por una sesión usando el code_verifier de la cookie
   const tokenUrl = `${supabaseUrl()}/auth/v1/token?grant_type=pkce`;
   let resp;
   try {
@@ -502,7 +511,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
         apikey: process.env.SUPABASE_KEY,
         Authorization: `Bearer ${process.env.SUPABASE_KEY}`,
       },
-      body: JSON.stringify({ auth_code: String(code), code_verifier: entry.verifier }),
+      body: JSON.stringify({ auth_code: String(code), code_verifier: verifier }),
     });
   } catch (e) {
     console.error('Google token exchange error:', e.message);
@@ -528,6 +537,8 @@ app.get('/api/auth/google/callback', async (req, res) => {
     expiresAt: Date.now() + GOOGLE_TOKEN_TTL,
   });
 
+  // Borrar la cookie y redirigir al frontend con el token de un solo uso
+  res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
   res.redirect(`${FRONT}/?auth=google&token=${oneTime}`);
 });
 
