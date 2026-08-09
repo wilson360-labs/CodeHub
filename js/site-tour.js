@@ -271,9 +271,28 @@
     var tour = new SiteTour(tourId, steps, opts);
     registry[tourId] = tour;
     ensureHelpButton(tourId, opts);
-    // Pequeño retraso para no competir con animaciones de carga inicial.
     var delay = (opts && opts.delay) || 1200;
-    setTimeout(function () { tour.start(false); }, delay);
+    // Si waitForInteraction está activo, el tour NO se auto-abre: espera la
+    // primera interacción real del usuario (scroll, mousemove, touch o tecla)
+    // para no tapar el header/logo ni interrumpir la entrada a la página.
+    // Solo se dispara una vez; si el tour ya fue visto, start() lo ignora.
+    if (opts && opts.waitForInteraction) {
+      var fired = false;
+      var launch = function () {
+        if (fired) return;
+        fired = true;
+        ['scroll', 'mousemove', 'touchstart', 'keydown'].forEach(function (evt) {
+          document.removeEventListener(evt, launch, { capture: true });
+        });
+        setTimeout(function () { tour.start(false); }, 260);
+      };
+      ['scroll', 'mousemove', 'touchstart', 'keydown'].forEach(function (evt) {
+        document.addEventListener(evt, launch, { capture: true, once: true });
+      });
+    } else {
+      // Pequeño retraso para no competir con animaciones de carga inicial.
+      setTimeout(function () { tour.start(false); }, delay);
+    }
     return tour;
   };
 
