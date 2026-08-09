@@ -262,16 +262,9 @@
   }
 
   function loginWithGoogle() {
-    setStatus('Conectando con Google…');
-    _api('/api/auth/google').then(function (r) {
-      if (r && r.url) {
-        window.location.href = r.url;
-      } else {
-        setStatus(r && r.error ? r.error : 'No se pudo iniciar con Google', true);
-      }
-    }).catch(function (e) {
-      setStatus(e && e.error ? e.error : 'Error al conectar con Google', true);
-    });
+    // Navegación directa (no fetch) para que la cookie PKCE se guarde en
+    // el navegador en contexto first-party y llegue al callback.
+    window.location.href = BACKEND + '/api/auth/google';
   }
 
   // Retorno del flujo Google OAuth: /?auth=google&token=...  o  ?auth=google&error=...

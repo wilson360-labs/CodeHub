@@ -464,8 +464,10 @@ setInterval(() => {
   for (const [k, v] of googleTokens) if (v.expiresAt < now) googleTokens.delete(k);
 }, 15 * 60 * 1000).unref();
 
-// POST /api/auth/google — iniciar el flujo OAuth con Google
-app.post('/api/auth/google', (req, res) => {
+// GET /api/auth/google — iniciar el flujo OAuth con Google
+// Se usa navegación directa (no fetch) para que la cookie se guarde en
+// contexto first-party del backend y sobreviva al viaje por Google.
+app.get('/api/auth/google', (req, res) => {
   if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
 
   const verifier  = base64url(crypto.randomBytes(48));
@@ -483,7 +485,7 @@ app.post('/api/auth/google', (req, res) => {
     prompt: 'select_account',
   }).toString();
 
-  res.status(200).json({ ok: true, url });
+  res.redirect(url);
 });
 
 // GET /api/auth/google/callback — Supabase vuelve aquí tras autorizar en Google
