@@ -369,6 +369,8 @@ app.use('/api/auth', authLimiter);
 app.post('/api/auth/register', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
+  const tsToken  = String(req.body?.turnstileToken || '');
+  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
   if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
@@ -397,6 +399,8 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
+  const tsToken  = String(req.body?.turnstileToken || '');
+  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
   if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
   if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseña' });
 

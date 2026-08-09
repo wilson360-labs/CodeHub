@@ -2,10 +2,11 @@
    CodeHub — AUTH (invitado/registrado) — Wilson.E 2026
    ──────────────────────────────────────────────────────────────────
    Módulo de sesión del frontend. Se conecta a /api/auth/* del backend
-   (Supabase Auth: registro y login con email+password). Google OAuth y
-   reCAPTCHA v3 se agregan luego. La sesión se guarda en sessionStorage
-   (se borra al cerrar la pestaña) — no en localStorage, para reducir
-   exposición.
+   (Supabase Auth: registro y login con email+password). Incluye Google
+   OAuth (flujo redirect con PKCE vía cookie) y Cloudflare Turnstile
+   (anti-bots, se valida en el servidor). La sesión se guarda en
+   sessionStorage (se borra al cerrar la pestaña) — no en localStorage,
+   para reducir exposición.
 
    API expuesta: window.CodeHubAuth = {
      isLogged(), getUser(), openLogin(mode), closeLogin(),
@@ -17,7 +18,7 @@
    - El frontend NUNCA recibe la service role key de Supabase.
    - La sesión se guarda en sessionStorage (se borra al cerrar la
      pestaña) — no en localStorage, para reducir exposición.
-   - reCAPTCHA v3 se verifica en el servidor (no aquí).
+   - Cloudflare Turnstile se verifica en el servidor (no aquí).
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -84,18 +85,6 @@
         if (label) label.textContent = dict.sidePrefAccount || 'Mi cuenta';
         if (icon) icon.className = 'fas fa-user-circle';
         btn.setAttribute('title', 'Mi cuenta — Iniciar sesión');
-      }
-    }
-    var prof = document.querySelector('#side-nav .side-profile');
-    if (prof) {
-      var nameEl = prof.querySelector('b');
-      var stEl   = prof.querySelector('.sp-status');
-      if (session) {
-        if (nameEl) nameEl.textContent = session.user && session.user.name ? session.user.name : 'Wilson.E';
-        if (stEl) stEl.textContent = 'Sesión iniciada';
-      } else {
-        if (nameEl) nameEl.textContent = 'Wilson.E';
-        if (stEl) stEl.textContent = 'Disponible para freelance';
       }
     }
   }
@@ -181,22 +170,24 @@
   }
 
   // ── Acciones ─────────────────────────────────────────────────────
+  function closeLogin() {
+    var p = ensurePanel();
+    if (!p) return;
+    p.classList.remove('open');
+    p.setAttribute('aria-hidden', 'true');
+  }
+
   function openLogin(mode) {
     var p = ensurePanel();
     if (!p) return;
     p.classList.add('open');
     p.setAttribute('aria-hidden', 'false');
     setMode(mode || 'login');
+    // Turnstile: renderizar (o refrescar) el widget anti-bots del panel
+    renderTurnstile();
     if (session && session.user) {
       showAccount(p);
     }
-  }
-
-  function closeLogin() {
-    var p = ensurePanel();
-    if (!p) return;
-    p.classList.remove('open');
-    p.setAttribute('aria-hidden', 'true');
   }
 
   function showAccount(p) {
@@ -221,6 +212,58 @@
     return el ? el.value.trim() : '';
   }
 
+  // ── Turnstile (anti-bots) ────────────────────────────────────────
+  var TURNSTILE_SITEKEY = '0x4AAAAAAClKd5T1R81GltW_';
+  var tsWidgetId = null;
+  var tsTokenValue = '';
+
+  function tsContainer() {
+    var p = ensurePanel();
+    return p ? p.querySelector('#turnstile-auth') : null;
+  }
+
+  function tsTheme() {
+    return (document.documentElement.getAttribute('data-theme') === 'light') ? 'light' : 'dark';
+  }
+
+  function renderTurnstile(attempt) {
+    attempt = attempt || 0;
+    var el = tsContainer();
+    if (!el) return;
+    if (typeof window.turnstile === 'undefined') {
+      if (attempt < 20) setTimeout(function () { renderTurnstile(attempt + 1); }, 250);
+      return;
+    }
+    if (tsWidgetId !== null) {
+      try { window.turnstile.reset(tsWidgetId); } catch (e) {}
+      return;
+    }
+    try {
+      tsWidgetId = window.turnstile.render(el, {
+        sitekey: TURNSTILE_SITEKEY,
+        theme: tsTheme(),
+        language: (typeof currentLang !== 'undefined' && currentLang === 'es') ? 'es' : 'en',
+        callback: function (token) { tsTokenValue = token || ''; },
+        'expired-callback': function () { tsTokenValue = ''; },
+      });
+    } catch (e) {}
+  }
+
+  function resetTurnstile() {
+    tsTokenValue = '';
+    if (tsWidgetId !== null && typeof window.turnstile !== 'undefined') {
+      try { window.turnstile.reset(tsWidgetId); } catch (e) {}
+    }
+  }
+
+  function getTurnstileToken() {
+    if (tsTokenValue) return tsTokenValue;
+    var el = tsContainer();
+    if (!el) return '';
+    var inp = el.querySelector('input[name="cf-turnstile-response"]');
+    return inp ? inp.value : '';
+  }
+
   function setStatus(msg, isError) {
     var p = ensurePanel();
     if (!p) return;
@@ -234,13 +277,17 @@
     var email = getField('#auth-login-email');
     var pass  = getField('#auth-login-pass');
     if (!email || !pass) { setStatus('Completa email y contraseña', true); return; }
+    var ts = getTurnstileToken();
+    if (!ts) { setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return; }
     setStatus('Verificando…');
-    _api('/api/auth/login', { email: email, password: pass }).then(function (r) {
+    _api('/api/auth/login', { email: email, password: pass, turnstileToken: ts }).then(function (r) {
       saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
       closeLogin();
       setStatus('');
+      resetTurnstile();
     }).catch(function (e) {
       setStatus(e && e.error ? e.error : 'Error al iniciar sesión', true);
+      if (e && /verificac/i.test(e.error)) renderTurnstile();
     });
   }
 
@@ -251,17 +298,22 @@
     if (!email || !pass) { setStatus('Completa email y contraseña', true); return; }
     if (pass.length < 8) { setStatus('La contraseña debe tener al menos 8 caracteres', true); return; }
     if (pass !== pass2) { setStatus('Las contraseñas no coinciden', true); return; }
+    var ts = getTurnstileToken();
+    if (!ts) { setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return; }
     setStatus('Creando cuenta…');
-    _api('/api/auth/register', { email: email, password: pass, device_id: deviceId() }).then(function (r) {
+    _api('/api/auth/register', { email: email, password: pass, device_id: deviceId(), turnstileToken: ts }).then(function (r) {
       if (r.needsConfirmation) {
         setStatus('Revisa tu correo para confirmar la cuenta. Luego inicia sesión.', false);
+        resetTurnstile();
         return;
       }
       saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
       closeLogin();
       setStatus('');
+      resetTurnstile();
     }).catch(function (e) {
       setStatus(e && e.error ? e.error : 'Error al crear la cuenta', true);
+      if (e && /verificac/i.test(e.error)) renderTurnstile();
     });
   }
 
@@ -340,6 +392,19 @@
           if (inp.closest('.auth-form-login')) submitLogin();
           else submitRegister();
         }
+      });
+    });
+
+    // Ojito: mostrar/ocultar contraseña
+    p.querySelectorAll('.auth-eye').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var input = p.querySelector('#' + btn.getAttribute('data-toggle-pass'));
+        if (!input) return;
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.classList.toggle('active', show);
+        btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        btn.querySelector('i').className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
       });
     });
   }

@@ -87,7 +87,7 @@ input, select, textarea, button {
 .flex-row > *, .flex-col > *, .services-grid > *, .stats-section > *,
 .wx-grid > *, .blogger-grid > *, .skills-grid > *, .hero-inner > *,
 .otw-content > *, .otw-left > *, .otw-right > *,
-.hero-stack > *, .hero-ctas > *, .blogger-card > * {
+.hero-stack > *, .hero-ctas > *, .blogger-card > *, .game-grid > * {
   min-width: 0;
 }
 
@@ -166,6 +166,10 @@ input, select, textarea, button {
   /* Roadmap en cuadrícula compacta en tablets/móvil */
   .roadmap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.6rem !important; }
   .roadmap-card { padding: 0.9rem; }
+  /* Juegos: forzar cuadrícula de 2 columnas en todo el rango móvil
+     (el auto-fit con minmax(210px) de base degenera a una sola columna
+     en pantallas <420px y en 551-720px, viéndose como lista) */
+  .game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 /* ── 4. GUARDAS DE COMPONENTES CRÍTICOS ────────────────────────────── */

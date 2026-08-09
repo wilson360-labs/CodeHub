@@ -402,7 +402,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span class="bracket">&lt;</span><span class="liquid-word" id="liq-logo-wilson" data-liq-size="small">Wilson.E</span><span class="bracket">/&gt;</span>
                     </span>
                     <span class="header-logo-meta">
-                        <span class="header-logo-badge liquid-word" id="liq-logo-codehub" data-liq-size="small"><span class="badge-text" id="ch-badge-text">CodeHub</span><div class="badge-wave bw1"></div><div class="badge-wave bw2"></div></span>
+                        <span class="header-logo-badge" id="liq-logo-codehub" aria-label="CodeHub: Developer, Full Stack, Freelancer, Guatemala">
+                            <span class="tm-words" id="tm-words" aria-hidden="true">
+                                <span class="tm-word is-active">CodeHub</span>
+                                <span class="tm-word">Developer</span>
+                                <span class="tm-word">Full Stack</span>
+                                <span class="tm-word">Freelancer</span>
+                                <span class="tm-word">Guatemala</span>
+                            </span>
+                        </span>
                         <span class="header-logo-desc" data-i18n="headerDesc">IA, tools y seguridad web en un solo lugar</span>
                     </span>
                 </span>
@@ -432,6 +440,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
         <!-- Typing effect debajo -->
         <div class="header-typing" id="typingEffect"></div>
+
+        <!-- Filtro gooey para el textmorph del badge del logo -->
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+            <defs>
+                <filter id="tm-goo">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
+                    <feComposite in="SourceGraphic" in2="goo" operator="atop"/>
+                </filter>
+            </defs>
+        </svg>
     </header>
 
     <!-- ── SIDE NAV — Barra lateral deslizable ── -->
@@ -442,14 +461,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span><b>CodeHub</b><small>by Wilson.E</small></span>
             </a>
             <button class="side-close" aria-label="Cerrar menú" onclick="closeMobileNav()"><i class="fas fa-xmark"></i></button>
-        </div>
-
-        <div class="side-profile">
-            <div class="sp-avatar">W</div>
-            <div>
-                <b>Wilson.E</b>
-                <span class="sp-status">Disponible para freelance</span>
-            </div>
         </div>
 
         <div class="side-group">
@@ -498,7 +509,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly93YS5tZS81MDI0MTQ2ODE4NQ=='),'_blank','noopener')" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
             <a href="#" onclick="event.preventDefault();window.open(atob('aHR0cHM6Ly90Lm1lL2QzZXhnM2FleWFnMWtv'),'_blank','noopener')" aria-label="Telegram"><i class="fab fa-telegram"></i></a>
             <a href="https://www.youtube.com/@d3exg3aeyag1ko" target="_blank" rel="noopener" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
-            <a href="https://github.com/wilson360-labs" target="_blank" rel="noopener" aria-label="GitHub"><i class="fab fa-github"></i></a>
         </div>
         <div class="side-copy">Desarrollado desde Guatemala 🇬🇹</div>
     </aside>
@@ -614,7 +624,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <label class="auth-label" data-i18n-auth="authEmail">Correo electrónico</label>
                         <input class="auth-input" type="email" id="auth-login-email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
                         <label class="auth-label" data-i18n-auth="authPass">Contraseña</label>
-                        <input class="auth-input" type="password" id="auth-login-pass" autocomplete="current-password" placeholder="••••••••">
+                        <div class="auth-pass-wrap">
+                            <input class="auth-input" type="password" id="auth-login-pass" autocomplete="current-password" placeholder="••••••••">
+                            <button type="button" class="auth-eye" aria-label="Mostrar contraseña" data-toggle-pass="auth-login-pass"><i class="fas fa-eye"></i></button>
+                        </div>
                         <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-login-submit" type="button">
                             <i class="fas fa-right-to-bracket"></i> <span data-i18n-auth="authLogin">Iniciar sesión</span>
                         </button>
@@ -625,13 +638,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <label class="auth-label" data-i18n-auth="authEmail">Correo electrónico</label>
                         <input class="auth-input" type="email" id="auth-reg-email" autocomplete="email" placeholder="tucorreo@ejemplo.com">
                         <label class="auth-label" data-i18n-auth="authPass">Contraseña</label>
-                        <input class="auth-input" type="password" id="auth-reg-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                        <div class="auth-pass-wrap">
+                            <input class="auth-input" type="password" id="auth-reg-pass" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+                            <button type="button" class="auth-eye" aria-label="Mostrar contraseña" data-toggle-pass="auth-reg-pass"><i class="fas fa-eye"></i></button>
+                        </div>
                         <label class="auth-label" data-i18n-auth="authPass2">Repetir contraseña</label>
-                        <input class="auth-input" type="password" id="auth-reg-pass2" autocomplete="new-password" placeholder="••••••••">
+                        <div class="auth-pass-wrap">
+                            <input class="auth-input" type="password" id="auth-reg-pass2" autocomplete="new-password" placeholder="••••••••">
+                            <button type="button" class="auth-eye" aria-label="Mostrar contraseña" data-toggle-pass="auth-reg-pass2"><i class="fas fa-eye"></i></button>
+                        </div>
                         <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-reg-submit" type="button">
                             <i class="fas fa-user-plus"></i> <span data-i18n-auth="authRegister">Registrarse</span>
                         </button>
                     </form>
+
+                    <div class="auth-turnstile" id="turnstile-auth"></div>
 
                     <div class="auth-divider"><span data-i18n-auth="authOr">o continúa con</span></div>
                     <button class="auth-btn auth-google" type="button">
@@ -5591,8 +5612,8 @@ function setAIMood(btn) {
 <script src="js/theme-switcher.js?v=20260724a"></script>
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
-<script src="js/ux-animations.js?v=20260724a"></script>
-<script src="js/auth.js?v=20260808i"></script>
+<script src="js/ux-animations.js?v=20260808a"></script>
+<script src="js/auth.js?v=20260808j"></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
@@ -5662,59 +5683,7 @@ function setAIMood(btn) {
 </script>
 
 
-<!-- anime.js v4 CodeHub badge letter animation -->
-<script type="module">
-  import { animate, stagger, splitText } from 'https://esm.sh/animejs';
-
-  function initBadgeAnim() {
-    const el = document.getElementById('ch-badge-text');
-    if (!el || el.querySelector('.char')) return; // ya inicializado
-
-    const { chars } = splitText(el, { words: false, chars: true });
-
-    chars.forEach(c => {
-      c.style.display = 'inline-block';
-      c.style.willChange = 'transform';
-      c.style.lineHeight = '1';
-    });
-
-    animate(chars, {
-      y: [
-        { to: '-2.75rem', ease: 'outExpo',   duration: 600 },
-        { to: 0,          ease: 'outBounce',  duration: 800, delay: 100 }
-      ],
-      rotate: { from: '-1turn', delay: 0 },
-      delay: stagger(50),
-      ease: 'inOutCirc',
-      loopDelay: 2500,
-      loop: true
-    });
-  }
-
-  // Esperar a que el splash termine (observar opacity y display)
-  function waitForSplash(cb) {
-    const splash = document.getElementById('ch-splash');
-    if (!splash) { cb(); return; }
-
-    const check = () => {
-      const s = getComputedStyle(splash);
-      if (s.display === 'none' || parseFloat(s.opacity) < 0.1) {
-        cb();
-        return true;
-      }
-      return false;
-    };
-
-    if (check()) return;
-
-    const obs = new MutationObserver(() => { if (check()) obs.disconnect(); });
-    obs.observe(splash, { attributes: true, attributeFilter: ['style','class'] });
-    // Fallback hard
-    setTimeout(() => { obs.disconnect(); cb(); }, 5000);
-  }
-
-  waitForSplash(() => setTimeout(initBadgeAnim, 300));
-</script>
+<!-- anime.js v4 badge letter animation: REMOVIDO — reemplazado por textmorph (.tm-words) en ux-animations.js -->
 
 </body>
 </html>

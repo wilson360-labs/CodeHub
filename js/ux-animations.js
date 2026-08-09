@@ -332,12 +332,40 @@
     io.observe(box);
   }
 
+  // ── 12. TEXT MORPH — badge del logo cicla roles con gooey ──
+  // Recrea el componente textmorph de originkit en vanilla:
+  // las palabras están apiladas (grid 1/1) y se alterna .is-active;
+  // la transición blur+scale+fade + el filtro SVG #tm-goo funden
+  // las letras entre una palabra y la siguiente.
+  function initTextMorph() {
+    var wrap = document.getElementById('tm-words');
+    if (!wrap) return;
+    var words = [].slice.call(wrap.querySelectorAll('.tm-word'));
+    if (words.length < 2) return;
+
+    // Sin animación si el usuario prefiere reducir movimiento
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    var HOLD = 2400;      // ms que cada palabra queda visible
+    var i = 0;
+
+    (function cycle() {
+      setTimeout(function () {
+        words[i].classList.remove('is-active');
+        i = (i + 1) % words.length;
+        words[i].classList.add('is-active');
+        cycle();
+      }, HOLD);
+    })();
+  }
+
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
     // initCursor(); // DISABLED: custom cursor animation causes lag
     initMobileNav();
     initPostSplashEntrance();
     initFooterTerminalTyping();
+    initTextMorph();
     waitAnime(function () {
       initLogo();
       initChips();
