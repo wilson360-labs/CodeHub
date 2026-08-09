@@ -295,6 +295,7 @@
       saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
       closeLogin();
       setStatus('');
+      if (typeof toast === 'function') toast('✔ ¡Sesión iniciada con Google, ' + (r.user.name || '') + '!', 'success');
     }).catch(function (e) {
       setStatus(e && e.error ? e.error : 'No se pudo recuperar la sesión de Google', true);
       openLogin('login');
