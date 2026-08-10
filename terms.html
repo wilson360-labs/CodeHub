@@ -1,7 +1,24 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous"></script>
+  <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar AdSense) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Términos de Uso — CodeHub by Wilson.E</title>
@@ -358,5 +375,6 @@
   <a href="/">Volver al inicio</a>
 </footer>
 
+<script src="js/consent-banner.js?v=20260810a" defer></script>
 </body>
 </html>

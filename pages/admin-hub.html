@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <!-- Google AdSense — Auto Ads -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
   <script>
@@ -671,5 +690,9 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <script src="../js/admin-hub.js"></script>
+<script src="../js/consent-banner.js?v=20260810a" defer></script>
+<footer>
+  <a href="/">&lt;Wilson.E/&gt;</a> · Admin Hub · <a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a>
+</footer>
 </body>
 </html>

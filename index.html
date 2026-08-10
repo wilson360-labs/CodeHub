@@ -1,8 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      (function () {
+        var granted = false;
+        try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+        gtag('consent', 'default', {
+          'ad_storage': granted ? 'granted' : 'denied',
+          'ad_user_data': granted ? 'granted' : 'denied',
+          'ad_personalization': granted ? 'granted' : 'denied',
+          'analytics_storage': granted ? 'granted' : 'denied',
+          'wait_for_update': 500
+        });
+      })();
+    </script>
+    <!-- Google AdSense — Auto Ads -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832"
-     crossorigin="anonymous"></script>
+     crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
 <script>
@@ -21,7 +38,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
     <meta name="google-adsense-account" content="ca-pub-3780093322926832">
     <meta charset="UTF-8">
-    <meta name="admaven-placement" content="BqHs6rdU5">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <script>
     /* Detección temprana de dispositivo (sincrónica, antes del primer
@@ -54,7 +70,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://pl30669093.effectivecpmnetwork.com https://*.effectivecpmnetwork.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com https://*.effectivecpmnetwork.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E, desarrollador web full stack autodidacta de Guatemala. Portfolio con 23 herramientas web gratuitas, proyectos, apps Android y chatbot con IA. Disponible para freelance.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -1247,11 +1263,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </script>
     
 
-        <!-- ══ ADSTERRA — Bandera nativa ══ -->
-        <div style="text-align:center;padding:1.2rem 0;overflow:hidden;">
-            <script async="async" data-cfasync="false" src="https://pl30669093.effectivecpmnetwork.com/89b64f78f9fbbb5e9be9a5ad3bc3635d/invoke.js"></script>
-            <div id="container-89b64f78f9fbbb5e9be9a5ad3bc3635d"></div>
-        </div>
     <footer>
         <div class="footer-content">
             <!-- Terminal signature -->
@@ -5672,5 +5683,6 @@ function setAIMood(btn) {
 
 <!-- anime.js v4 badge letter animation: REMOVIDO — reemplazado por textmorph (.tm-words) en ux-animations.js -->
 
+<script src="js/consent-banner.js?v=20260810a" defer></script>
 </body>
 </html>
