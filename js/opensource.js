@@ -141,7 +141,7 @@ function buildOSCard(app) {
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
       <div class="app-actions">${dlBtn}</div>
-      ${updated ? `<div class="os-updated-tag" style="font-size:.68rem;color:var(--muted,#8a8a9a);margin-top:.5rem"><i class="fas fa-clock-rotate-left"></i> ${updated}</div>` : ''}
+      ${updated ? `<div class="os-updated-tag"><i class="fas fa-clock-rotate-left"></i> ${updated}</div>` : ''}
     </div>
   </div>`;
 }
