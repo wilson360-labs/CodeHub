@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.16';
+const VERSION   = 'codehub-v6.17';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 
@@ -46,6 +46,7 @@ const PRECACHE = [
   '/js/thinking-orb.js',
   '/js/site-tour.js',
   '/js/consent-banner.js',
+  '/js/connection-alert.js',
   '/data/roadmap.json',
 ];
 
