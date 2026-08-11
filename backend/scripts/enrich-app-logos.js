@@ -2,12 +2,22 @@
  * enrich-app-logos.js — Busca y aplica el logo REAL a las apps Open Source
  * Módulo: Catálogo Open Source · CodeHub v3
  * ─────────────────────────────────────────────────────────────────
- * Recorre las apps con `source_repo` cuyo `imagen` apunta a la
- * portada social del repo (opengraph.githubassets.com/... en vez del
- * logo de la app), intenta encontrar el ícono real dentro del repo
- * (fastlane, mipmap) y, si no hay, usa el avatar de la organización.
- * Sube el logo a img/opensource/{appId}.png en GitHub y actualiza el
- * campo `imagen` en MongoDB a la ruta local.
+ * DISPARO UNIVERSAL: no es solo una corrección puntual. Recorre TODAS las
+ * apps con `source_repo` que NO tienen un logo oficial (imagen vacía o la
+ * portada social del repo opengraph.githubassets.com) — sean las que ya
+ * existen o las que se agreguen a futuro. Las que ya tienen un logo local
+ * (/img/...) o una URL externa elegida a mano se dejan intactas.
+ *
+ * Para cada candidata intenta en orden:
+ *   1) fastlane/metadata/android/.../icon.png   (ícono real de la app)
+ *   2) mipmap-*/ic_launcher.png                 (ícono de Android)
+ *   3) avatar de la ORGANIZACIÓN (solo si el dueño es una org, cuyo avatar
+ *      normalmente ES el logo de la app). Los repos de usuarios personales
+ *      NO usan avatar para no ponerle una foto de desarrollador de logo.
+ *
+ * El logo encontrado se sube a img/opensource/{appId}.png en GitHub y se
+ * actualiza `imagen` en MongoDB a la ruta local. Es idempotente: si ya se
+ * aplicó, la app ya tiene /img/ y se saltea.
  *
  * Uso:
  *   MONGODB_URI=... GITHUB_TOKEN=... node backend/scripts/enrich-app-logos.js
@@ -44,13 +54,29 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
   updatedAt: Date, createdAt: Date,
 }, { strict: false }));
 
+// Logo oficial local o URL externa elegida a mano → no se toca.
+function hasOfficialImage(img) {
+  if (!img) return false;
+  const v = String(img).trim();
+  return /^\/img\//.test(v) || /^https?:\/\//i.test(v);
+}
+
 function ghHeaders(extra = {}) {
   return { Accept: 'application/vnd.github+json', ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}), ...extra };
 }
 
-// Ícono real dentro del repo: fastlane y mipmap (PNG), en varias ramas.
-async function findRepoIcon(owner, repo) {
-  const branches = ['main', 'master', 'dev'];
+// Info del repo: rama default y tipo de dueño (org vs usuario).
+async function fetchRepoInfo(owner, repo) {
+  try {
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: ghHeaders() });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+// Ícono real dentro del repo: fastlane y mipmap (PNG), en la rama default.
+async function findRepoIcon(owner, repo, defaultBranch) {
+  const branches = [defaultBranch, 'main', 'master'].filter(Boolean);
   const paths = [
     'fastlane/metadata/android/en-US/images/icon.png',
     'metadata/android/en-US/images/icon.png',
@@ -73,8 +99,9 @@ async function findRepoIcon(owner, repo) {
   return null;
 }
 
-// Avatar de la organización/usuario del repo (https://github.com/{owner}.png).
-// Suena a fallback para apps cuyo repo no expone fastlane/mipmap.
+// Avatar de la ORGANIZACIÓN del repo. Solo aplica cuando el dueño es una
+// org (su avatar suele ser el logo oficial de la app). Los repos de
+// usuarios personales se saltan para no poner una foto de perfil de logo.
 async function fetchOwnerAvatar(owner) {
   try {
     const r = await fetch(`https://github.com/${encodeURIComponent(owner)}.png`, {
@@ -83,7 +110,7 @@ async function fetchOwnerAvatar(owner) {
     });
     if (r.ok) {
       const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > 0) return { buffer: buf, ext: '.png', source: `avatar:${owner}` };
+      if (buf.length > 0) return { buffer: buf, ext: '.png', source: `avatar-org:${owner}` };
     }
   } catch {}
   return null;
@@ -114,29 +141,39 @@ async function ghUploadFile(filePath, content) {
   return true;
 }
 
-const OPENGGRAPH_RE = /opengraph\.githubassets\.com/i;
+// Candidatas: apps open source cuyo logo NO es oficial — vacío, '#' o la
+// portada del repo (opengraph). Cualquier app nueva sembrada con source_repo
+// e imagen opengraph/ vacía entra sola la próxima vez que se dispare.
+const NO_LOGO_RE = /opengraph\.githubassets\.com/i;
 
 (async () => {
   await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8000 });
   console.log('✅ Conectado a MongoDB');
 
-  const apps = await App.find({
-    source_repo: { $ne: null },
-    imagen: OPENGGRAPH_RE,
-  }).lean();
-  console.log(`🔎 ${apps.length} apps muestran la portada del repo (opengraph) — buscando logo real...`);
+  const all = await App.find({ source_repo: { $ne: null } }).lean();
+  const candidates = all.filter(a => !hasOfficialImage(a.imagen) || NO_LOGO_RE.test(a.imagen || ''));
+  console.log(`🔎 ${candidates.length} app(s) sin logo oficial de ${all.length} open source — buscando logo real...`);
 
-  let aplicadas = 0, fallidas = 0;
+  let aplicadas = 0, fallidas = 0, saltadas = 0;
 
-  for (const app of apps) {
+  for (const app of candidates) {
     const [owner, repo] = (app.source_repo || '').split('/');
     const appId = app.appId;
     try {
       if (!owner || !repo) throw new Error('source_repo inválido');
 
-      let icon = await findRepoIcon(owner, repo);
-      if (!icon) icon = await fetchOwnerAvatar(owner);
-      if (!icon) throw new Error(`sin ícono encontrado en ${app.source_repo}`);
+      const info = await fetchRepoInfo(owner, repo);
+      const defaultBranch = info?.default_branch;
+      const isOrg = info?.owner?.type === 'Organization';
+
+      let icon = await findRepoIcon(owner, repo, defaultBranch);
+      if (!icon && isOrg) icon = await fetchOwnerAvatar(owner);
+      if (!icon) {
+        const motivo = !info ? 'repo no accesible' : (isOrg ? 'sin ícono ni avatar disponible' : 'repo de usuario sin fastlane/mipmap (no se usa avatar de usuario)');
+        console.log(`⏭️  ${app.nombre}: ${motivo}`);
+        saltadas++;
+        continue;
+      }
 
       const targetPath = `img/opensource/${appId}${icon.ext}`;
       const localImagen = `/${targetPath}`;
@@ -157,6 +194,6 @@ const OPENGGRAPH_RE = /opengraph\.githubassets\.com/i;
     await new Promise(r => setTimeout(r, 600));
   }
 
-  console.log(`\n✅ Listo — ${aplicadas} logo(s) aplicado(s), ${fallidas} fallido(s) de ${apps.length}.`);
+  console.log(`\n✅ Listo — ${aplicadas} logo(s) aplicado(s), ${saltadas} sin logo disponible, ${fallidas} error(es) de ${candidates.length}.`);
   await mongoose.disconnect();
 })().catch(err => { console.error('❌ Error fatal:', err); process.exit(1); });

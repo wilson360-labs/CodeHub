@@ -1,10 +1,12 @@
 name: 🖼️ CodeHub — Buscar y aplicar logos Open Source
 
 # Se ejecuta SOLO a mano (botón "Run workflow") o desde admin-hub.
-# Recorre las apps del catálogo cuyo `imagen` es la portada social del
-# repo (opengraph.githubassets.com), encuentra el logo real (fastlane,
-# mipmap o avatar de la org), lo sube a img/opensource/ y actualiza el
-# campo imagen en MongoDB.
+# Disparo UNIVERSAL: recorre TODAS las apps open source (existentes o que
+# se agreguen a futuro) que NO tienen logo oficial — imagen vacía o la
+# portada social del repo (opengraph.githubassets.com). Encuentra el logo
+# real (fastlane, mipmap o avatar de la org), lo sube a img/opensource/ y
+# actualiza el campo imagen en MongoDB. No toca logos locales ni URLs
+# externas elegidas a mano. Idempotente: las que ya tienen /img/ se saltan.
 on:
   workflow_dispatch:
     inputs:
