@@ -34,5 +34,5 @@ jobs:
         with:
           name: backups-${{ github.run_number }}
           path: backups/
-          retention-days: 30
+          retention-days: 3
           if-no-files-found: ignore

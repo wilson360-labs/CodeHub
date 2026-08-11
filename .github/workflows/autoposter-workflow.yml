@@ -82,7 +82,7 @@ jobs:
         with:
           name: post-generado-${{ github.run_number }}
           path: autoposter/generated-posts/
-          retention-days: 30
+          retention-days: 3
 
       # Persistir estado actualizado en caché
       - name: 💾 Guardar estado
