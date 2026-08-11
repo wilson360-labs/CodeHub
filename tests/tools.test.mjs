@@ -47,10 +47,10 @@ describe('Tools — herramientas web (estático)', () => {
   });
 
   it('los assets locales referenciados existen', () => {
-    const refs = [...tools.matchAll(/(?:src|href)="(\.\.\/(?:css|js)\/[^"]+)"/g)].map(m => m[1]);
+    const refs = [...tools.matchAll(/(?:src|href)="(\.\.\/(?:css|js)\/[^"]+)"/g)].map(m => m[1].replace(/^\.\.\//, ''));
     expect(refs.length).toBeGreaterThan(0);
     for (const ref of new Set(refs)) {
-      expect(fs.existsSync(path.resolve(ROOT, ref)), `falta ${ref}`).toBe(true);
+      expect(fs.existsSync(path.join(ROOT, ref)), `falta ${ref}`).toBe(true);
     }
   });
 
