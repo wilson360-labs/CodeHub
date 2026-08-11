@@ -4973,8 +4973,13 @@ document.addEventListener('DOMContentLoaded', () => {
     navigator.serviceWorker.getRegistration().then(reg => {
       if (reg?.waiting) {
         userTriggeredUpdate = true;
-        refreshing = true;
+        // Dejar refreshing=false: el handler de 'controllerchange' es quien
+        // hace location.reload() al tomar control el SW nuevo. Si aquí se
+        // pone true, ese handler se bloquea y la web nunca recarga.
+        refreshing = false;
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        // Fallback: si el controllerchange no llega (p.ej. SW lento), recargar igual.
+        setTimeout(() => { if (!refreshing) location.reload(); }, 2500);
       } else {
         location.reload();
       }

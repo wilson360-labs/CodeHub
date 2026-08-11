@@ -4880,7 +4880,7 @@
 .coach-tip[data-pos="top"] .coach-tip-arrow    { bottom: -5px; }
 @media (max-width:480px){ .coach-tip { max-width: 168px; font-size:.68rem; padding:.5rem .65rem; } }
 
-/* -- SIDE NAV � Barra lateral deslizable (flexbox layout) -- */
+/* -- SIDE NAV — Barra lateral deslizable (flexbox layout) -- */
 #side-nav {
   position: fixed;
   top: 0; right: 0; left: auto;
