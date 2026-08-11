@@ -1,5 +1,4 @@
-// @ts-check
-const { describe, it, expect } = require('vitest');
+import { describe, it, expect } from 'vitest';
 
 const API = 'https://codehub-98s6.onrender.com';
 

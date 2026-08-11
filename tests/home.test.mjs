@@ -1,8 +1,9 @@
-// @ts-check
-const { describe, it, expect, beforeAll } = require('vitest');
-const fs = require('fs');
-const path = require('path');
+import { describe, it, expect, beforeAll } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
 let home;
