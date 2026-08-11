@@ -5,13 +5,12 @@
   "private": true,
   "scripts": {
     "start":       "cd backend && node server.js",
-    "test":        "cd tests && npx playwright test",
-    "test:ui":     "cd tests && npx playwright test --ui",
-    "test:api":    "cd tests && npx playwright test e2e/api.spec.js",
-    "test:e2e":    "cd tests && npx playwright test e2e/home.spec.js e2e/tools.spec.js",
-    "test:report": "cd tests && npx playwright show-report report"
+    "test":        "vitest run",
+    "test:watch":  "vitest",
+    "test:api":    "vitest run tests/api.test.js",
+    "test:ui":     "vitest run tests/home.test.js tests/tools.test.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.43.0"
+    "vitest": "^2.1.9"
   }
 }
