@@ -1500,7 +1500,7 @@ app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
 // Info WebSocket para el frontend
 app.get('/api/ws-info', (_, res) => res.json({
   clients: wsClients.size,
-  url: process.env.WS_URL || 'wss://codehub-production-729d.up.railway.app/ws',
+  url: process.env.WS_URL || 'wss://codehub-98s6.onrender.com/ws',
 }));
 
 // Apps públicas (con caché 5 min)
@@ -1511,7 +1511,7 @@ app.get('/api/apps', async (_, res) => {
     if (cached) { res.set('X-Cache', 'HIT'); return res.json(cached); }
 
     const apps = await App.find({}).sort({ createdAt: 1 }).lean();
-    const base  = process.env.BACKEND_URL || 'https://codehub-production-729d.up.railway.app';
+    const base  = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
     const mapped = apps.map(a => ({
       appId:        a.appId,
       nombre:       a.nombre,

@@ -5,7 +5,7 @@
 **Portfolio profesional · 27 herramientas web · Apps Android · Chat IA**
 
 [![Deploy](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://wilson360-labs.vercel.app)
-[![Backend](https://img.shields.io/badge/Backend-Railway-purple?logo=railway)](https://codehub-production-729d.up.railway.app/api/health)
+[![Backend](https://img.shields.io/badge/Backend-Render-purple?logo=render)](https://codehub-98s6.onrender.com/api/health)
 [![License](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
 [![PWA](https://img.shields.io/badge/PWA-Ready-blue)](https://wilson360-labs.vercel.app)
 
@@ -85,7 +85,7 @@ B2_BUCKET_ID        # Backblaze B2
 B2_BUCKET_NAME      # Backblaze B2
 TELEGRAM_TOKEN      # Bot Telegram
 TELEGRAM_CHAT_ID    # Tu chat ID
-BACKEND_URL         # https://codehub-production-729d.up.railway.app
+BACKEND_URL         # https://codehub-98s6.onrender.com
 ```
 
 ## 🤖 AutoScript

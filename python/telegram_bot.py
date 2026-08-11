@@ -16,7 +16,7 @@ except ImportError:
 
 TOKEN    = os.getenv("TELEGRAM_TOKEN", "").strip()
 CHAT_ID  = os.getenv("TELEGRAM_CHAT_ID", "").strip()
-BACKEND  = os.getenv("BACKEND_URL", "https://codehub-production-729d.up.railway.app").strip().rstrip("/")
+BACKEND  = os.getenv("BACKEND_URL", "https://codehub-98s6.onrender.com").strip().rstrip("/")
 ADMIN_KEY= os.getenv("ADMIN_KEY", "").strip()
 
 

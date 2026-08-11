@@ -60,6 +60,6 @@ jobs:
       - name: Verificar backend
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://codehub-production-729d.up.railway.app/api/health --max-time 30)
+            https://codehub-98s6.onrender.com/api/health --max-time 30)
           echo "HTTP: $STATUS"
           [ "$STATUS" = "200" ] && echo "Backend OK" || echo "Status $STATUS"

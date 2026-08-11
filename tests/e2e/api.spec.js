@@ -1,7 +1,7 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
 
-const API = 'https://codehub-production-729d.up.railway.app';
+const API = 'https://codehub-98s6.onrender.com';
 
 test.describe('Backend API — Health y endpoints', () => {
 

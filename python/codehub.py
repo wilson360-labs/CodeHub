@@ -65,7 +65,7 @@ BACKEND   = ROOT / "backend"
 LOG_DIR   = ROOT / "logs"
 BACKUP_DIR= ROOT / "backups"
 
-BACKEND_URL = "https://codehub-production-729d.up.railway.app"
+BACKEND_URL = "https://codehub-98s6.onrender.com"
 FRONTEND_URL= "https://wilson360-labs.vercel.app"
 
 GT_TZ = timezone(timedelta(hours=-6))

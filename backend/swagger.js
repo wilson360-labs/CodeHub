@@ -8,7 +8,7 @@ const swaggerSpec = {
   info: {
     title: 'CodeHub API',
     version: '3.0.0',
-    description: 'API REST de CodeHub — Wilson.E 2026\n\nBase URL: `https://codehub-production-729d.up.railway.app`',
+    description: 'API REST de CodeHub — Wilson.E 2026\n\nBase URL: `https://codehub-98s6.onrender.com`',
     contact: {
       name: 'Wilson.E',
       email: 'wilson.e360labs@gmail.com',
@@ -17,7 +17,7 @@ const swaggerSpec = {
     license: { name: 'MIT' },
   },
   servers: [
-    { url: 'https://codehub-production-729d.up.railway.app', description: 'Producción (Railway)' },
+    { url: 'https://codehub-98s6.onrender.com', description: 'Producción (Render)' },
     { url: 'http://localhost:3001', description: 'Desarrollo local' },
   ],
   tags: [
