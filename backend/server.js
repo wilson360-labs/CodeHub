@@ -23,6 +23,8 @@ const multer    = require('multer');
 const Busboy    = require('busboy');   // dep transitiva de multer — parseo multipart sin buffer
 const crypto    = require('crypto');
 const http      = require('http');
+const fs        = require('fs');
+const path      = require('path');
 const { WebSocketServer } = require('ws');
 const swaggerSpec        = require('./swagger');
 
@@ -62,6 +64,28 @@ async function trackEvent(type, page = null, metadata = {}) {
       else await supabase.from('download_stats').insert({ app_name: metadata.app_name, downloads: 1 });
     }
   } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
+}
+
+// ── SKILLS — catálogo de capacidades de IA (skills/…) ──────────
+// Cada skill es un folder con skill.json. Se sirven por GET /api/skills
+// y su system_prompt_inject se inyecta en /api/chat cuando el usuario
+// manda skill_id (p.ej. 'pdf-ia' al adjuntar un PDF).
+const SKILLS_DIR = path.join(__dirname, '../skills');
+const skillsCache = new Map();
+
+function loadSkillJson(id) {
+  if (!id || typeof id !== 'string') return null;
+  if (skillsCache.has(id)) return skillsCache.get(id);
+  const file = path.join(SKILLS_DIR, id, 'skill.json');
+  try {
+    if (!fs.existsSync(file)) return null;
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    skillsCache.set(id, data);
+    return data;
+  } catch (e) {
+    console.warn('Skill no cargable:', id, e.message);
+    return null;
+  }
 }
 
 // ── DB RUNNER — divide un script .sql en sentencias individuales ──
@@ -1043,21 +1067,24 @@ async function callHuggingFace(msgs) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'huggingface/llama-3.3-70b' };
 }
 
-async function callGemini(msgs, imagePart) {
+async function callGemini(msgs, imageParts) {
+  const sysMsg = msgs.find(m => m.role === 'system');
   const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-  // Si hay una imagen adjunta, se agrega como parte adicional del último turno del usuario
-  if (imagePart && contents.length) {
-    contents[contents.length - 1].parts.push({
-      inline_data: { mime_type: imagePart.mimeType, data: imagePart.data }
-    });
+  // Imágenes adjuntas (imagen simple, o varias páginas de un PDF escaneado): se
+  // agregan como partes inline del último turno del usuario.
+  const parts = Array.isArray(imageParts) ? imageParts : (imageParts ? [imageParts] : []);
+  if (parts.length && contents.length) {
+    for (const p of parts) {
+      if (p && p.data) contents[contents.length - 1].parts.push({ inline_data: { mime_type: p.mimeType, data: p.data } });
+    }
   }
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 600, temperature: 0.7 } }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 600, temperature: 0.7 } }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
-  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: imagePart ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
+  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: parts.length ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
 }
 
 // Convierte un data URL ("data:image/png;base64,AAAA...") en { mimeType, data }
@@ -1712,18 +1739,57 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
+// ── SKILLS — catálogo servido al frontend ──────────────────────
+app.get('/api/skills', (req, res) => {
+  try {
+    const indexPath = path.join(SKILLS_DIR, 'index.json');
+    if (!fs.existsSync(indexPath)) return res.json({ skills: [], total: 0 });
+    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+    const enriched = (index.skills || [])
+      .filter(s => s.active)
+      .map(s => {
+        const detail = loadSkillJson(s.id);
+        return detail ? {
+          ...s,
+          presets: detail.presets,
+          ui: detail.ui,
+          examples: detail.examples,
+          sizes: detail.sizes,
+          providers: detail.providers_priority,
+          system_prompt_inject: detail.system_prompt_inject,
+        } : s;
+      });
+    res.json({ skills: enriched, total: enriched.length });
+  } catch (e) {
+    res.status(500).json({ error: 'Error cargando skills', detail: e.message });
+  }
+});
+
+app.get('/api/skills/:id', (req, res) => {
+  const skill = loadSkillJson(req.params.id);
+  if (!skill) return res.status(404).json({ error: 'Skill no encontrada' });
+  res.json(skill);
+});
+
 // Chat IA
 app.post('/api/chat', async (req, res) => {
-  const { message, sessionId = 'anon', image } = req.body;
+  const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
 
-  // ── Imagen adjunta: valida formato/tamaño antes de gastar una llamada ──
-  let imagePart = null;
-  if (image) {
-    imagePart = parseImageDataUrl(image);
-    if (!imagePart) return res.status(400).json({ error: 'Imagen inválida o demasiado pesada (máx. ~4MB, png/jpeg/webp/gif).' });
+  // ── Imagen / PDF escaneado adjunto: valida formato/tamaño antes de gastar una llamada ──
+  // "image" es una imagen suelta (data URL). "images" es un array de páginas
+  // renderizadas (PDF escaneado). Ambos van a Gemini Vision.
+  let imageParts = null;
+  const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
+  if (imgList && imgList.length) {
+    imageParts = [];
+    for (const u of imgList) {
+      const p = parseImageDataUrl(u);
+      if (!p) return res.status(400).json({ error: 'Imagen inválida o demasiado pesada (máx. ~4MB c/u, png/jpeg/webp/gif).' });
+      imageParts.push(p);
+    }
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ error: 'El análisis de imágenes no está disponible en este momento.' });
     }
@@ -1749,16 +1815,33 @@ app.post('/api/chat', async (req, res) => {
   }
 
   sessionHistory.push({ role: 'user', content: message.trim() });
-  const msgs = [{ role: 'system', content: SYSTEM }, ...sessionHistory];
+  // PDF adjunto: el texto extraído se inyecta como contexto antes de la pregunta
+  // del usuario (aplica a cualquier proveedor de texto, no solo Gemini).
+  if (typeof pdfText === 'string' && pdfText.trim()) {
+    sessionHistory.splice(sessionHistory.length - 1, 0, {
+      role: 'user',
+      content: '[Documento adjunto — lee este contenido y responde usando SOLO este documento como referencia, en español]:\n' + pdfText.slice(0, 40000)
+    });
+  }
+  let system = SYSTEM;
+  // Skill activa: inyecta su guía (system_prompt_inject) para que EMI delegue
+  // en procesamiento local / use el contexto correcto sin gastar tokens de más.
+  if (skill_id) {
+    const skill = loadSkillJson(String(skill_id));
+    if (skill && skill.system_prompt_inject) {
+      system = skill.system_prompt_inject + '\n\n' + system;
+    }
+  }
+  const msgs = [{ role: 'system', content: system }, ...sessionHistory];
 
   try {
-    // Con imagen: va directo a Gemini (único proveedor con visión en esta
-    // cadena). Sin imagen: sigue el fallback normal Claude→Groq→...→Cohere.
-    const { reply, input, output, model } = imagePart
-      ? await callGemini(msgs, imagePart)
+    // Con imagen/PDF escaneado: va directo a Gemini (único proveedor con visión
+    // en esta cadena). Sin imagen: sigue el fallback normal Claude→Groq→...→Cohere.
+    const { reply, input, output, model } = imageParts
+      ? await callGemini(msgs, imageParts)
       : await callAI(msgs);
     if (dbConnected) ChatMessage.insertMany([
-      { sessionId, role: 'user',      content: message.trim() + (imagePart ? ' [imagen adjunta]' : ''), tokens: input,  model },
+      { sessionId, role: 'user',      content: message.trim() + (imageParts ? ' [imagen adjunta]' : '') + (pdfText ? ' [PDF adjunto]' : ''), tokens: input,  model },
       { sessionId, role: 'assistant', content: reply,          tokens: output, model },
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
@@ -1769,9 +1852,9 @@ app.post('/api/chat', async (req, res) => {
     tgAlert('chatfail', () =>
       `⚠️ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
       { windowMs: 30000 });
-    if (err.status === 401) return res.status(500).json({ error: imagePart ? 'Gemini: API key inválida.' : 'API key inválida.' });
+    if (err.status === 401) return res.status(500).json({ error: imageParts ? 'Gemini: API key inválida.' : 'API key inválida.' });
     if (err.status === 429) return res.status(429).json({ error: 'Límite alcanzado.' });
-    if (imagePart) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
+    if (imageParts) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
     res.status(500).json({ error: 'Error interno.' });
   }
 });
@@ -2359,15 +2442,28 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
 
 // ── POST /api/generate-image — Generador IA con 4 proveedores ─
 app.post('/api/generate-image', chatLimiter, async (req, res) => {
-  const { prompt, width = 512, height = 512, provider = 'auto' } = req.body;
+  const { prompt, width = 512, height = 512, provider = 'auto', skill_id = null, preset_id = null } = req.body;
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 2) {
     return res.status(400).json({ error: 'Prompt requerido' });
   }
 
-  const p   = prompt.trim().slice(0, 500);
-  const w   = Math.min(Math.max(parseInt(width)  || 512, 256), 1024);
-  const h   = Math.min(Math.max(parseInt(height) || 512, 256), 1024);
+  let p = prompt.trim().slice(0, 500);
+  let w = Math.min(Math.max(parseInt(width)  || 512, 256), 1024);
+  let h = Math.min(Math.max(parseInt(height) || 512, 256), 1024);
   const errors = [];
+
+  // ── Skill + preset: inyecta el prompt_suffix y el tamaño recomendado ──
+  if (skill_id && preset_id) {
+    const skill = loadSkillJson(String(skill_id));
+    const preset = skill && (skill.presets || []).find(x => x.id === preset_id);
+    if (preset) {
+      p = `${p}, ${preset.prompt_suffix}`.slice(0, 700);
+      if (preset.recommended_size && !req.body.width) {
+        const [pw, ph] = String(preset.recommended_size).split('x').map(Number);
+        if (pw && ph) { w = pw; h = ph; }
+      }
+    }
+  }
 
   // ── 1. Together AI — FLUX.1 Schnell ───────────────────────
   if (process.env.TOGETHER_API_KEY && (provider === 'auto' || provider === 'together')) {

@@ -331,7 +331,10 @@
     if (words.length < 2) return;
 
     // Sin animación si el usuario prefiere reducir movimiento
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // NOTA: por decisión explícita del dueño del sitio (ver nota en
+    // index.css), las animaciones ya NO dependen de prefers-reduced-motion
+    // — se muestran siempre, en PC y en móvil. Guard desactivado.
+    // if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     var HOLD = 2400;      // ms que cada palabra queda visible
     var i = 0;
@@ -373,7 +376,7 @@
   function initTitleReveal() {
     var heads = $$('main h2');
     if (!heads.length) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Guard de reduced-motion desactivado por decisión del dueño (ver index.css).
     var done = new Set();
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {

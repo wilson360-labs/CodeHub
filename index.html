@@ -70,7 +70,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E, desarrollador web full stack autodidacta de Guatemala. Portfolio con 23 herramientas web gratuitas, proyectos, apps Android y chatbot con IA. Disponible para freelance.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -3091,11 +3091,17 @@ async function sendEmail(e) {
       </button>
     </div>
     <!-- Shell principal -->
+    <div class="ai-attach-slot" id="ai-attach-chip" style="display:none"></div>
     <div class="ai-input-shell">
       <div class="ai-input-row">
         <textarea id="ai-input" placeholder="Pregúntame algo, genera una imagen, depura código…" rows="1"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"
           oninput="this.style.height='48px';this.style.height=Math.min(this.scrollHeight,140)+'px';updateCharCount()"></textarea>
+        <input type="file" id="ai-attach-input" accept="image/*,.pdf" style="display:none"
+          onchange="handleAiAttach(this.files[0])">
+        <button id="emi-attach-btn" type="button" aria-label="Adjuntar imagen o PDF" title="Adjuntar imagen o PDF" onclick="document.getElementById('ai-attach-input').click()">
+          <i class="fas fa-paperclip"></i>
+        </button>
         <button id="emi-mic-btn" type="button" aria-label="Hablar con EMI" title="Hablar con EMI (voz a texto)" onclick="emiVoice.toggle()">
           <i class="fas fa-microphone"></i>
         </button>
@@ -3624,18 +3630,27 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
 
-    const effectiveText = text || 'Describe/analiza esta imagen';
+    const effectiveText = text || (attachment && attachment.type === 'pdf'
+      ? 'Resume el contenido de este documento'
+      : 'Describe/analiza esta imagen');
     let userBubbleHtml = effectiveText;
     if (attachment) {
-      userBubbleHtml = `<div class="ai-attach-msg-img-wrap"><img src="${attachment.base64}" class="ai-attach-msg-img" alt="Imagen adjunta"></div>` +
-        (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+      if (attachment.type === 'pdf') {
+        userBubbleHtml = `<div class="ai-attach-msg-pdf-wrap"><i class="fas fa-file-pdf"></i> <span>${escHtml(attachment.name)}</span> · ${attachment.pages} pág${attachment.pages === 1 ? '' : 's'}</div>` +
+          (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+      } else {
+        userBubbleHtml = `<div class="ai-attach-msg-img-wrap"><img src="${attachment.base64}" class="ai-attach-msg-img" alt="Imagen adjunta"></div>` +
+          (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+      }
     }
     addMsg('user', userBubbleHtml);
     input.value = '';
     input.style.height = '48px';
     input.style.overflow = 'hidden';
     updateCharCount();
-    window.removeAiAttachment();
+    // El PDF se mantiene adjunto entre mensajes para que EMI conserve el contexto;
+    // las imágenes se sueltan tras enviarse.
+    if (!attachment || attachment.type !== 'pdf') window.removeAiAttachment();
 
     // ── Detectar si es generación de imagen (no aplica si hay adjunto) ──
     if (!attachment && isImageGenRequest(effectiveText)) {
@@ -3655,17 +3670,27 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
     try {
       _currentAbort = new AbortController();
+      const body = {
+        message: effectiveText,
+        sessionId: SESSION_ID
+      };
+      // Adjunto: imagen suelta → "image"; PDF con texto → "pdfText";
+      // PDF escaneado → "images" (páginas renderizadas para Gemini Vision).
+      if (attachment) {
+        if (attachment.type === 'image') body.image = attachment.base64;
+        else if (attachment.scanned) body.images = attachment.images;
+        else {
+          body.pdfText = attachment.pdfText;
+          // Activa la skill PDF IA en el backend: inyecta su guía en el prompt
+          // para que EMI use SOLO el documento como contexto.
+          body.skill_id = 'pdf-ia';
+        }
+      }
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: _currentAbort.signal,
-        body: JSON.stringify({
-          message: effectiveText,
-          sessionId: SESSION_ID,
-          // Si el backend soporta visión, puede leer este campo y
-          // reenviarlo al modelo. Si no lo usa, simplemente se ignora.
-          image: attachment ? attachment.base64 : undefined
-        })
+        body: JSON.stringify(body)
       });
       _currentAbort = null;
 
@@ -3698,8 +3723,10 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         return;
       }
       if (attachment) {
-        addMsg('ai', '⚠️ No pude analizar la imagen en este momento. Intenta de nuevo en un momento, o pregúntame algo sin la imagen.');
-        console.warn('Chat error (imagen):', err.message);
+        addMsg('ai', attachment.type === 'pdf'
+          ? '⚠️ No pude procesar el documento en este momento. Intenta de nuevo, o pregúntame algo sin el PDF.'
+          : '⚠️ No pude analizar la imagen en este momento. Intenta de nuevo en un momento, o pregúntame algo sin la imagen.');
+        console.warn('Chat error (adjunto):', err.message);
         return;
       }
       const fallback = getFallback(effectiveText);
@@ -3784,7 +3811,110 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
   window.removeAiAttachment = function () {
     _pendingAttachment = null;
+    const chip = document.getElementById('ai-attach-chip');
+    if (chip) { chip.style.display = 'none'; chip.innerHTML = ''; }
   };
+
+  // ── ADJUNTAR IMAGEN O PDF (Chat con tu PDF) ─────────────────────
+  function escHtml(str) {
+    return String(str == null ? '' : str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // pdf.js se carga solo cuando el usuario adjunta un PDF (lazy-load)
+  let _pdfjsPromise = null;
+  function loadPdfJs() {
+    if (_pdfjsPromise) return _pdfjsPromise;
+    _pdfjsPromise = new Promise(function (resolve, reject) {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function () {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = function () { reject(new Error('No se pudo cargar la librería PDF')); };
+      document.head.appendChild(s);
+    });
+    return _pdfjsPromise;
+  }
+
+  window.handleAiAttach = function (file) {
+    if (!file) return;
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+      handlePdfAttach(file);
+    } else if (/^image\//.test(file.type)) {
+      const r = new FileReader();
+      r.onload = function () {
+        _pendingAttachment = { type: 'image', base64: r.result, name: file.name, mime: file.type };
+        updateAiAttachmentChip();
+        toast('Imagen lista para adjuntar', 'success');
+      };
+      r.readAsDataURL(file);
+    } else {
+      toast('Solo se admiten imágenes o PDF', 'error');
+    }
+  };
+
+  async function handlePdfAttach(file) {
+    toast('Leyendo PDF…', 'info');
+    try {
+      const pdfjs = await loadPdfJs();
+      const buf = await file.arrayBuffer();
+      const doc = await pdfjs.getDocument({ data: buf }).promise;
+      let text = '';
+      // Extrae el texto real (funciona con PDF digitales con capa de texto)
+      for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const tc = await page.getTextContent();
+        text += tc.items.map(function (it) { return it.str || ''; }).join(' ') + '\n';
+        if (text.length > 40000) break;
+      }
+      text = text.trim();
+      if (text.length >= 50) {
+        _pendingAttachment = { type: 'pdf', name: file.name, pages: doc.numPages, pdfText: text.slice(0, 40000) };
+        updateAiAttachmentChip();
+        toast('PDF leído (' + doc.numPages + ' pág). Pregúntame sobre él.', 'success');
+      } else {
+        // PDF escaneado sin texto: renderiza las primeras páginas como imagen
+        // para que Gemini Vision lo lea.
+        const imgs = [];
+        const max = Math.min(doc.numPages, 4);
+        for (let i = 1; i <= max; i++) {
+          const page = await doc.getPage(i);
+          const vp1 = page.getViewport({ scale: 1 });
+          const scale = Math.min(2, 1400 / vp1.width);
+          const vp = page.getViewport({ scale: scale });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width; canvas.height = vp.height;
+          const ctx = canvas.getContext('2d');
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          imgs.push(canvas.toDataURL('image/jpeg', 0.7));
+        }
+        _pendingAttachment = { type: 'pdf', name: file.name, pages: doc.numPages, scanned: true, images: imgs };
+        updateAiAttachmentChip();
+        toast('PDF escaneado: lo leeré como imagen (primeras ' + imgs.length + ' páginas).', 'success');
+      }
+    } catch (e) {
+      console.warn('[EMI PDF]', e.message);
+      toast('No se pudo leer el PDF', 'error');
+    }
+  }
+
+  function updateAiAttachmentChip() {
+    const chip = document.getElementById('ai-attach-chip');
+    if (!chip || !_pendingAttachment) return;
+    const a = _pendingAttachment;
+    let meta = 'imagen';
+    if (a.type === 'pdf') {
+      meta = a.scanned
+        ? 'escaneado · IA lo lee como imagen'
+        : a.pages + ' pág · texto extraído';
+    }
+    chip.innerHTML = '<i class="fas ' + (a.type === 'pdf' ? 'fa-file-pdf' : 'fa-file-image') + '"></i>' +
+      '<span title="' + escHtml(a.name) + '">' + escHtml(a.name) + '</span>' +
+      '<em>' + meta + '</em>' +
+      '<button type="button" onclick="removeAiAttachment()" title="Quitar adjunto" aria-label="Quitar adjunto"><i class="fas fa-xmark"></i></button>';
+    chip.style.display = 'flex';
+  }
 
   window.copyMsg = function(btn) {
     const msgEl = btn.closest('.ai-msg');

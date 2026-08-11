@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
-  "updated": "2025-04-23",
+  "version": "1.1.0",
+  "updated": "2026-08-11",
   "skills": [
     {
       "id": "image-gen",
@@ -12,6 +12,30 @@
       "entry": "skill.json",
       "tags": ["imagen", "visual", "educación", "diagrama", "infografía"],
       "providers": ["together", "gemini", "minimax", "pollinations"],
+      "active": true
+    },
+    {
+      "id": "pdf-ia",
+      "name": "PDF IA — Chat con tu documento",
+      "description": "Sube un PDF y chatea con EMI sobre su contenido. La extracción del texto es 100% local (pdf.js): solo la respuesta usa IA.",
+      "icon": "📄",
+      "category": "productividad",
+      "folder": "skills/pdf-ia",
+      "entry": "skill.json",
+      "tags": ["pdf", "documento", "resumen", "extraer datos", "facturas", "chat"],
+      "providers": ["gemini"],
+      "active": true
+    },
+    {
+      "id": "ocr-ia",
+      "name": "OCR IA — Lector local",
+      "description": "Extrae texto de imágenes y PDFs escaneados con Tesseract.js en el navegador. 0 consumo de API.",
+      "icon": "🔍",
+      "category": "productividad",
+      "folder": "skills/ocr-ia",
+      "entry": "skill.json",
+      "tags": ["ocr", "escaneado", "imagen", "texto", "tesseract"],
+      "providers": [],
       "active": true
     }
   ]

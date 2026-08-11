@@ -1,0 +1,69 @@
+{
+  "id": "ocr-ia",
+  "version": "1.0.0",
+  "name": "OCR IA — Lector local de imágenes y PDFs escaneados",
+  "description": "Extrae texto de imágenes y PDFs escaneados con Tesseract.js directamente en el navegador. 0 consumo de API: el reconocimiento no sale de tu dispositivo.",
+  "icon": "🔍",
+  "category": "productividad",
+  "folder": "skills/ocr-ia",
+  "entry": "skill.json",
+  "tags": ["ocr", "escaneado", "imagen", "texto", "tesseract"],
+
+  "endpoint": null,
+  "method": null,
+  "mode": "offline-only",
+
+  "client_side": [
+    "tesseract-ocr (reconocimiento en el navegador, idiomas: spa/eng)",
+    "render-pdf-a-canvas (páginas escaneadas → imagen → OCR)"
+  ],
+
+  "system_prompt_inject": "El usuario está relacionado con la skill **OCR IA** (lector local). El reconocimiento de texto se ejecuta 100% en su navegador con Tesseract.js, SIN gastar tokens de IA. Reglas: 1) Si el usuario quiere leer el texto de una imagen o PDF escaneado, NO lo proceses tú: indícale que use la herramienta OCR de CodeHub (tools.html, sección 'Editar PDFs escaneados'), donde el texto se reconoce localmente y puede copiarlo o guardarlo como .txt. 2) Si el usuario pega texto ya extraído y pide analizarlo o resumirlo, entonces sí puedes ayudarlo aquí. 3) El resultado del OCR puede tener errores en imágenes de baja calidad: sugiere imágenes nítidas y en buena resolución.",
+
+  "presets": [
+    {
+      "id": "spanish",
+      "label": "Español",
+      "icon": "🇪🇸",
+      "description": "Reconocimiento de texto en español.",
+      "prompt_suffix": "esp"
+    },
+    {
+      "id": "english",
+      "label": "Inglés",
+      "icon": "🇬🇧",
+      "description": "Reconocimiento de texto en inglés.",
+      "prompt_suffix": "eng"
+    },
+    {
+      "id": "autodetect",
+      "label": "Automático",
+      "icon": "🌐",
+      "description": "Intenta detectar el idioma del texto automáticamente.",
+      "prompt_suffix": "auto"
+    }
+  ],
+
+  "ui": {
+    "placeholder": "Sube una imagen o PDF escaneado…",
+    "hint": "El OCR corre en tu navegador: nada se sube a ningún servidor.",
+    "cta": "Extraer texto",
+    "loading_messages": [
+      "Cargando motor OCR…",
+      "Reconociendo texto…",
+      "Terminando…"
+    ]
+  },
+
+  "limits": {
+    "max_file_mb": 30,
+    "languages_supported": ["spa", "eng"],
+    "requests_per_session": 30
+  },
+
+  "examples": [
+    { "label": "Foto de un recibo",   "preset": "spanish", "prompt": "Recibo de compra escaneado para extraer el total." },
+    { "label": "Página de un libro",  "preset": "spanish", "prompt": "Página escaneada de un libro." },
+    { "label": "Documento en inglés", "preset": "english", "prompt": "Documento en inglés para extraer el texto." }
+  ]
+}

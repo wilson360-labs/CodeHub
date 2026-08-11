@@ -138,7 +138,9 @@ CodeHub-main/
 │
 ├── skills/                     ← Definiciones de skills IA
 │   ├── index.json
-│   └── image-gen/skill.json
+│   ├── image-gen/skill.json    ← Generador de imágenes educativas
+│   ├── pdf-ia/skill.json       ← PDF IA — chat con tu documento (extracción 100% local)
+│   └── ocr-ia/skill.json       ← OCR local con Tesseract.js (0 tokens)
 │
 └── docs/
     └── CNAME                   ← Dominio personalizado (legacy)
@@ -206,6 +208,8 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 | Método | Ruta | Descripción | Auth |
 |--------|------|-------------|------|
 | GET | `/api/health` | Estado de todos los servicios | — |
+| GET | `/api/skills` | Catálogo de skills IA (con presets/UI) | — |
+| GET | `/api/skills/:id` | Detalle de una skill (p.ej. `pdf-ia`) | — |
 | GET | `/api/apps` | Lista de apps Android | — |
 | GET | `/api/stats/supabase` | Stats de Supabase | — |
 | GET | `/api/stats/live` | Stats en tiempo real (WebSocket) | — |

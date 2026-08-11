@@ -1757,6 +1757,49 @@
   0%{opacity:.5;transform:scale(0);}
   100%{opacity:0;transform:scale(2);}
 }
+/* ── Botón adjuntar imagen/PDF ── */
+#emi-attach-btn{
+  flex-shrink:0;width:42px;height:42px;border-radius:50%;
+  border:1px solid rgba(124,77,255,.28);background:rgba(124,77,255,.08);
+  color:#9d8cff;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:.9rem;transition:background .2s,border-color .2s,transform .15s,box-shadow .2s;
+  margin:0 .15rem .1rem 0;align-self:flex-end;
+}
+#emi-attach-btn:hover{background:rgba(124,77,255,.16);border-color:rgba(124,77,255,.55);color:#c4b8ff;transform:scale(1.06);}
+/* ── Chip de adjunto sobre el input ── */
+.ai-attach-slot{
+  display:flex;align-items:center;gap:.5rem;min-width:0;
+  background:rgba(124,77,255,.1);
+  border:1px solid rgba(124,77,255,.3);
+  border-radius:var(--radius-md, 12px);
+  padding:.42rem .7rem;margin:0 0 .4rem;
+  font-size:.72rem;font-family:'JetBrains Mono',monospace;
+  color:#d0c4ff;
+}
+.ai-attach-slot>i{color:#ff8fb8;font-size:.8rem;flex-shrink:0;}
+.ai-attach-slot>span{
+  flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e6e0ff;
+}
+.ai-attach-slot>em{font-style:normal;color:rgba(180,160,255,.55);white-space:nowrap;flex-shrink:0;}
+.ai-attach-slot>button{
+  flex-shrink:0;width:22px;height:22px;border-radius:50%;
+  border:none;background:rgba(255,82,82,.15);color:#ff9a9a;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;transition:background .2s;
+}
+.ai-attach-slot>button:hover{background:rgba(255,82,82,.32);}
+@media (max-width:480px){
+  .ai-attach-slot>em{display:none;}
+}
+/* Bubble de PDF adjunto en el chat */
+.ai-attach-msg-pdf-wrap{
+  display:flex;align-items:center;gap:.5rem;max-width:100%;min-width:0;
+  padding:.5rem .7rem;border-radius:var(--radius-md, 12px);
+  background:rgba(124,77,255,.12);border:1px solid rgba(124,77,255,.3);
+  color:#d0c4ff;font-size:.75rem;font-family:'JetBrains Mono',monospace;
+}
+.ai-attach-msg-pdf-wrap i{color:#ff8fb8;flex-shrink:0;}
+.ai-attach-msg-pdf-wrap span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e6e0ff;}
 /* Toast fallback (solo si no existe #toast en CodeHub) */
 .emi-voice-toast{
   position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%) translateY(12px);
@@ -5282,6 +5325,12 @@ header nav { display: none !important; }
 [data-theme="light"] .ai-quick-btn { color: rgba(124,77,255,.85); border-color: rgba(124,77,255,.25); background: rgba(124,77,255,.07); }
 [data-theme="light"] .ai-quick-btn:hover,
 [data-theme="light"] .ai-quick-btn.active { color: #6a3dff; background: rgba(124,77,255,.14); }
+[data-theme="light"] #emi-attach-btn { border-color: rgba(124,77,255,.32); background: rgba(124,77,255,.06); color: #6a3dff; }
+[data-theme="light"] .ai-attach-slot { background: rgba(124,77,255,.08); border-color: rgba(124,77,255,.28); }
+[data-theme="light"] .ai-attach-slot>span { color: #4a3f8f; }
+[data-theme="light"] .ai-attach-slot>em { color: rgba(90,70,160,.65); }
+[data-theme="light"] .ai-attach-msg-pdf-wrap { background: rgba(124,77,255,.08); border-color: rgba(124,77,255,.3); }
+[data-theme="light"] .ai-attach-msg-pdf-wrap span { color: #4a3f8f; }
 [data-theme="light"] .ai-status-text {
   background: linear-gradient(90deg, #3b3b52, #6a3dff, #0284c7, #3b3b52);
   background-size: 220% 100%;

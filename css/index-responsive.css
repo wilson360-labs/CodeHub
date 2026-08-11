@@ -1382,7 +1382,8 @@
   .contact-title { font-size: 1.1rem !important; }
 
   /* ── HEADER ── */
-  .header-logo-badge { display: none !important; } /* demasiado estrecho */
+  .header-logo-badge { display: inline-flex !important; font-size: 0.55rem; padding: 2px 6px; }
+  .header-logo-badge .tm-word { font-size: 0.55rem; letter-spacing: 0.02em; }
   .header-typing {
     display: block !important;
     font-size: 0.62rem;

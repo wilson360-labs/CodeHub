@@ -166,6 +166,29 @@ const swaggerSpec = {
         },
       },
     },
+    '/api/skills': {
+      get: {
+        tags: ['Skills'],
+        summary: 'Listar skills de IA disponibles (con presets/UI)',
+        responses: {
+          200: {
+            description: 'Lista de skills',
+            content: { 'application/json': { schema: { type: 'object', properties: { skills: { type: 'array', items: { type: 'object' } }, total: { type: 'integer' } } } } },
+          },
+        },
+      },
+    },
+    '/api/skills/{id}': {
+      get: {
+        tags: ['Skills'],
+        summary: 'Detalle de una skill (p.ej. pdf-ia, ocr-ia, image-gen)',
+        parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'string' } }],
+        responses: {
+          200: { description: 'Skill completa (presets, ui, system_prompt_inject)' },
+          404: { description: 'Skill no encontrada' },
+        },
+      },
+    },
     '/api/chat': {
       post: {
         tags: ['Chat'],
@@ -181,6 +204,10 @@ const swaggerSpec = {
                   message:   { type: 'string', maxLength: 1000, example: 'Hola, ¿qué herramientas tiene CodeHub?' },
                   sessionId: { type: 'string', example: 'user-abc123' },
                   history:   { type: 'array', items: { type: 'object' } },
+                  image:     { type: 'string', description: 'Data URL de una imagen adjunta (png/jpeg/webp/gif, máx ~4MB). Va a Gemini Vision.' },
+                  images:    { type: 'array', items: { type: 'string' }, description: 'Páginas renderizadas de un PDF escaneado (data URL JPEG). Máx 5, va a Gemini Vision.' },
+                  pdfText:   { type: 'string', maxLength: 40000, description: 'Texto extraído de un PDF adjunto (Chat con tu PDF). Se inyecta como contexto del documento.' },
+                  skill_id:  { type: 'string', example: 'pdf-ia', description: 'Activa una skill (p.ej. pdf-ia) e inyecta su system_prompt_inject en el prompt.' },
                 },
               },
             },

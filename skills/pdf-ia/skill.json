@@ -1,0 +1,85 @@
+{
+  "id": "pdf-ia",
+  "version": "1.0.0",
+  "name": "PDF IA — Chat con tu documento",
+  "description": "Sube un PDF y chatea con EMI sobre su contenido. La extracción del texto ocurre 100% en el navegador con pdf.js (0 tokens de IA); solo la respuesta usa el modelo.",
+  "icon": "📄",
+  "category": "productividad",
+  "folder": "skills/pdf-ia",
+  "entry": "skill.json",
+  "tags": ["pdf", "documento", "resumen", "extraer datos", "facturas", "chat"],
+
+  "endpoint": "/api/chat",
+  "method": "POST",
+  "mode": "offline-first",
+
+  "client_side": [
+    "extraer-texto-pdf (pdf.js en el navegador, máx 40k caracteres)",
+    "render-paginas-escaneadas (primera páginas como imagen → Gemini Vision)"
+  ],
+
+  "system_prompt_inject": "El usuario está usando la skill **PDF IA** (Chat con tu documento). La extracción del texto ya se hizo 100% en su navegador con pdf.js, sin gastar tokens. Reglas: 1) Responde SOLO usando el contenido del documento adjunto que recibes como contexto; no inventes datos. 2) Si el texto no alcanza a responder, dilo y sugiere subir un PDF con menos páginas o consultar más páginas. 3) Presets sugeridos: resumen de puntos clave, extracción de datos (fechas, precios, nombres, números de factura/contrato), responder preguntas sobre el documento, explicar conceptos en lenguaje sencillo, comparar secciones. 4) Si el PDF es escaneado, EMI lo lee como imagen (Gemini Vision): describe lo que ves con precisión.",
+
+  "presets": [
+    {
+      "id": "resumen",
+      "label": "Resumir documento",
+      "icon": "📝",
+      "description": "Resumen en puntos clave del contenido del PDF.",
+      "prompt_suffix": "Haz un resumen en puntos clave de este documento, en español."
+    },
+    {
+      "id": "datos",
+      "label": "Extraer datos",
+      "icon": "🔢",
+      "description": "Extrae fechas, precios, nombres, números de factura/contrato, etc.",
+      "prompt_suffix": "Extrae los datos clave de este documento (fechas, precios, nombres, identificadores) y preséntalos en una lista clara, en español."
+    },
+    {
+      "id": "preguntas",
+      "label": "Responder preguntas",
+      "icon": "❓",
+      "description": "Responde preguntas específicas usando solo el contenido del PDF.",
+      "prompt_suffix": "Responde mi pregunta usando SOLO la información de este documento. Si no está en el documento, dilo claramente."
+    },
+    {
+      "id": "explicar",
+      "label": "Explicar sencillo",
+      "icon": "💡",
+      "description": "Explica el contenido en lenguaje simple, como para una persona sin contexto.",
+      "prompt_suffix": "Explícame el contenido de este documento en lenguaje sencillo, paso a paso, como si se lo explicaras a alguien sin contexto."
+    },
+    {
+      "id": "comparar",
+      "label": "Comparar secciones",
+      "icon": "⚖️",
+      "description": "Compara partes del documento o detecta inconsistencias.",
+      "prompt_suffix": "Compara la información de este documento: busca inconsistencias, contradicciones o secciones clave y resúmelas en una tabla."
+    }
+  ],
+
+  "ui": {
+    "placeholder": "Pregúntame algo sobre tu PDF…",
+    "hint": "Adjunta el PDF en el chat (botón 📎) y hazme preguntas. El texto se lee en tu navegador.",
+    "cta": "Chatear con el PDF",
+    "loading_messages": [
+      "Leyendo el documento…",
+      "Analizando contenido…",
+      "Preparando respuesta…"
+    ]
+  },
+
+  "limits": {
+    "pages_max": 60,
+    "text_max_chars": 40000,
+    "scanned_pages_max": 4,
+    "requests_per_session": 30
+  },
+
+  "examples": [
+    { "label": "Resumen de un informe",  "preset": "resumen",   "prompt": "Resume este informe en 5 puntos clave." },
+    { "label": "Datos de una factura",   "preset": "datos",     "prompt": "Extrae fecha, monto y emisor de esta factura." },
+    { "label": "Explicar un contrato",   "preset": "explicar",  "prompt": "Explícame este contrato en lenguaje sencillo." },
+    { "label": "Preguntar por un tema",  "preset": "preguntas", "prompt": "¿Qué condiciones de pago aparecen en el documento?" }
+  ]
+}
