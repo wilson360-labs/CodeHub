@@ -4,13 +4,6 @@
   "description": "CodeHub — Wilson.E Portfolio",
   "private": true,
   "scripts": {
-    "start":       "cd backend && node server.js",
-    "test":        "vitest run",
-    "test:watch":  "vitest",
-    "test:api":    "vitest run tests/api.test.js",
-    "test:ui":     "vitest run tests/home.test.js tests/tools.test.js"
-  },
-  "devDependencies": {
-    "vitest": "^2.1.9"
+    "start":       "cd backend && node server.js"
   }
 }
