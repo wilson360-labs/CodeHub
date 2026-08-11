@@ -383,6 +383,166 @@
       "categoria": "Utilidades",
       "source_repo": "ProjectOrbital/WhatSave",
       "imagen": "https://opengraph.githubassets.com/1/ProjectOrbital/WhatSave"
+    },
+    {
+      "appId": "os-tasks",
+      "nombre": "Tasks",
+      "descripcion": "Gestor de tareas open source con sincronización CalDAV y Google Tasks, recordatorios, subtareas y widget.",
+      "categoria": "Productividad",
+      "source_repo": "tasks/tasks",
+      "imagen": "https://opengraph.githubassets.com/1/tasks/tasks"
+    },
+    {
+      "appId": "os-material-files",
+      "nombre": "Material Files",
+      "descripcion": "Explorador de archivos con Material Design, compresión ZIP, FTP/SFTP y servidor WebDAV.",
+      "categoria": "Productividad",
+      "source_repo": "zhanghai/MaterialFiles",
+      "imagen": "https://opengraph.githubassets.com/1/zhanghai/MaterialFiles"
+    },
+    {
+      "appId": "os-syncthing",
+      "nombre": "SyncThing",
+      "descripcion": "Sincroniza archivos y carpetas entre tus dispositivos de forma continua y peer-to-peer, sin pasar por la nube.",
+      "categoria": "Productividad",
+      "source_repo": "syncthing/syncthing-android",
+      "imagen": "https://opengraph.githubassets.com/1/syncthing/syncthing-android"
+    },
+    {
+      "appId": "os-organic-maps",
+      "nombre": "Organic Maps",
+      "descripcion": "Mapas offline gratuitos con datos de OpenStreetMap: navegación para conductores, ciclistas y senderistas sin anuncios ni rastreo.",
+      "categoria": "Productividad",
+      "source_repo": "organicmaps/organicmaps",
+      "imagen": "https://opengraph.githubassets.com/1/organicmaps/organicmaps"
+    },
+    {
+      "appId": "os-breezy-weather",
+      "nombre": "Breezy Weather",
+      "descripcion": "App del clima con Material Design 3 y más de 50 fuentes de datos, sin publicidad y open source.",
+      "categoria": "Productividad",
+      "source_repo": "breezy-weather/breezy-weather",
+      "imagen": "https://opengraph.githubassets.com/1/breezy-weather/breezy-weather"
+    },
+    {
+      "appId": "os-inner-tune",
+      "nombre": "InnerTune",
+      "descripcion": "Cliente de YouTube Music con Material 3: sin anuncios, reproducción en segundo plano y descarga de canciones.",
+      "categoria": "Música",
+      "source_repo": "z-huang/InnerTune",
+      "imagen": "https://opengraph.githubassets.com/1/z-huang/InnerTune"
+    },
+    {
+      "appId": "os-voice-audiobooks",
+      "nombre": "Voice",
+      "descripcion": "Reproductor de audiolibros minimalista con velocidad ajustable, capítulos y administración de tu biblioteca local.",
+      "categoria": "Música",
+      "source_repo": "PaulWoitaschek/Voice",
+      "imagen": "https://opengraph.githubassets.com/1/PaulWoitaschek/Voice"
+    },
+    {
+      "appId": "os-mpv-android",
+      "nombre": "mpv-android",
+      "descripcion": "Reproductor de video basado en libmpv: casi todos los formatos y códecs, controles de gestos y ajustes finos.",
+      "categoria": "Video",
+      "source_repo": "mpv-android/mpv-android",
+      "imagen": "https://opengraph.githubassets.com/1/mpv-android/mpv-android"
+    },
+    {
+      "appId": "os-jellyfin",
+      "nombre": "Jellyfin",
+      "descripcion": "Cliente oficial de Jellyfin para reproducir tu biblioteca multimedia autoalojada en cualquier dispositivo.",
+      "categoria": "Video",
+      "source_repo": "jellyfin/jellyfin-android",
+      "imagen": "https://opengraph.githubassets.com/1/jellyfin/jellyfin-android"
+    },
+    {
+      "appId": "os-pcapdroid",
+      "nombre": "PCAPdroid",
+      "descripcion": "Monitor de red y firewall sin root: captura el tráfico de cada app, exporta PCAP y bloquea conexiones.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "emanuele-f/PCAPdroid",
+      "imagen": "https://opengraph.githubassets.com/1/emanuele-f/PCAPdroid"
+    },
+    {
+      "appId": "os-blokada",
+      "nombre": "Blokada",
+      "descripcion": "Bloquea anuncios, rastreadores y contenido malicioso a nivel de sistema, open source y sin conexión a la nube.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "blokadaorg/blokada",
+      "imagen": "https://opengraph.githubassets.com/1/blokadaorg/blokada"
+    },
+    {
+      "appId": "os-read-you",
+      "nombre": "Read You",
+      "descripcion": "Lector RSS estilo Material You con suscripciones, modo lectura y sincronización de marcadores.",
+      "categoria": "Lectura",
+      "source_repo": "ReadYouApp/ReadYou",
+      "imagen": "https://opengraph.githubassets.com/1/ReadYouApp/ReadYou"
+    },
+    {
+      "appId": "os-element",
+      "nombre": "Element",
+      "descripcion": "Cliente de Matrix con cifrado de extremo a extremo: salas, llamadas y mensajería federada y abierta.",
+      "categoria": "Mensajería",
+      "source_repo": "element-hq/element-android",
+      "imagen": "https://opengraph.githubassets.com/1/element-hq/element-android"
+    },
+    {
+      "appId": "os-simplex-chat",
+      "nombre": "SimpleX Chat",
+      "descripcion": "Red de mensajería que no usa identificadores de usuario: 100% privada por diseño, con cifrado E2E.",
+      "categoria": "Mensajería",
+      "source_repo": "simplex-chat/simplex-chat",
+      "imagen": "https://opengraph.githubassets.com/1/simplex-chat/simplex-chat"
+    },
+    {
+      "appId": "os-aves-gallery",
+      "nombre": "Aves Gallery",
+      "descripcion": "Galería y explorador de metadatos para Android con Flutter: busca, clasifica y organiza por EXIF y ubicación.",
+      "categoria": "Fotografía",
+      "source_repo": "deckerst/aves",
+      "imagen": "https://opengraph.githubassets.com/1/deckerst/aves"
+    },
+    {
+      "appId": "os-fossify-camera",
+      "nombre": "Fossify Camera",
+      "descripcion": "Cámara simple y rápida sin anuncios, con foto, video y flash ajustable. Continuación de Simple Camera.",
+      "categoria": "Fotografía",
+      "source_repo": "FossifyOrg/Camera",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Camera"
+    },
+    {
+      "appId": "os-localsend",
+      "nombre": "LocalSend",
+      "descripcion": "Comparte archivos entre tus dispositivos por la red local sin internet, gratis y open source.",
+      "categoria": "Utilidades",
+      "source_repo": "localsend/localsend",
+      "imagen": "https://opengraph.githubassets.com/1/localsend/localsend"
+    },
+    {
+      "appId": "os-aegis",
+      "nombre": "Aegis",
+      "descripcion": "Autenticador 2FA open source con backups encriptados, copias de seguridad en la nube opcionales y Material Design.",
+      "categoria": "Utilidades",
+      "source_repo": "beemdevelopment/Aegis",
+      "imagen": "https://opengraph.githubassets.com/1/beemdevelopment/Aegis"
+    },
+    {
+      "appId": "os-keepassdx",
+      "nombre": "KeePassDX",
+      "descripcion": "Gestor de contraseñas compatible con KeePass: cifrado local, autocompletado y biometría.",
+      "categoria": "Utilidades",
+      "source_repo": "Kunzisoft/KeePassDX",
+      "imagen": "https://opengraph.githubassets.com/1/Kunzisoft/KeePassDX"
+    },
+    {
+      "appId": "os-florisboard",
+      "nombre": "FlorisBoard",
+      "descripcion": "Teclado open source con Material Design 3, gestos, extensiones y sin rastreo del usuario.",
+      "categoria": "Utilidades",
+      "source_repo": "florisboard/florisboard",
+      "imagen": "https://opengraph.githubassets.com/1/florisboard/florisboard"
     }
   ]
 }
