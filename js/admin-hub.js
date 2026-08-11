@@ -278,6 +278,7 @@ const GH_WORKFLOWS = [
   { file: 'check-app-updates.yml',      name: '🔄 Monitor de actualizaciones', desc: 'Revisa GitHub Releases del catálogo y actualiza versiones/APKs.' },
   { file: 'dedupe-catalog.yml',         name: '🧹 Limpiar duplicados',      desc: 'Elimina apps duplicadas (dry-run por defecto).' },
   { file: 'autoposter-workflow.yml',    name: '🤖 AutoPoster Blogger',      desc: 'Publica el siguiente post del blog en cola.' },
+  { file: 'enrich-app-logos.yml',       name: '🖼️ Aplicar logos FOSS',      desc: 'Busca el logo real (fastlane/mipmap/avatar org) para apps que muestran la portada del repo y lo sube a img/.' },
 ];
 
 async function loadGhAutomation() {

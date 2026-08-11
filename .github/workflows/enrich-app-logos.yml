@@ -1,0 +1,46 @@
+name: 🖼️ CodeHub — Buscar y aplicar logos Open Source
+
+# Se ejecuta SOLO a mano (botón "Run workflow") o desde admin-hub.
+# Recorre las apps del catálogo cuyo `imagen` es la portada social del
+# repo (opengraph.githubassets.com), encuentra el logo real (fastlane,
+# mipmap o avatar de la org), lo sube a img/opensource/ y actualiza el
+# campo imagen en MongoDB.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry-run (solo reporta, no modifica nada)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  enrich-logos:
+    name: Aplicar logos a apps Open Source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Necesario para subir los PNG a img/opensource/ del propio repo
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Instalar dependencias (mongoose)
+        working-directory: ./backend
+        run: npm install mongoose --no-save
+
+      - name: 🖼️ Buscar y aplicar logos
+        working-directory: ./backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+        run: node scripts/enrich-app-logos.js

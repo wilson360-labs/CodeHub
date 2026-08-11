@@ -234,6 +234,20 @@ function broadcast(type, data = {}) {
   wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
 }
 
+// Avisa a los clientes conectados (ej. la página de Open Source) que el
+// catálogo cambió — total y total de apps open source para actualizar el
+// contador en tiempo real sin depender del TTL de la caché de /api/apps.
+async function broadcastAppsChanged() {
+  if (!dbConnected) return;
+  try {
+    const [total, os] = await Promise.all([
+      App.countDocuments({}),
+      App.countDocuments({ source_repo: { $ne: null } }),
+    ]);
+    broadcast('apps_changed', { total, os });
+  } catch {}
+}
+
 // Contador visitas en memoria
 const visits = { today: 0, total: 0, date: new Date().toDateString() };
 function trackVisit() {
@@ -1896,6 +1910,7 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
+    broadcastAppsChanged();
     tgAlert('adminapp', () => `➕ <b>App publicada</b>\n📱 ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\n🏷️ ${categoria || 'sin categoría'}`, { windowMs: 30000 });
     res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1921,7 +1936,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     update.updatedAt = new Date();
     const a = await App.findOneAndUpdate({ appId: req.params.appId }, update, { new: true });
     if (!a) return res.status(404).json({ error: 'App no encontrada' });
-    await cacheDel('apps:all'); res.json({ ok: true, app: a });
+    await cacheDel('apps:all'); broadcastAppsChanged(); res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1945,6 +1960,7 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
 
     await App.deleteOne({ appId: req.params.appId });
     await cacheDel('apps:all');
+    broadcastAppsChanged();
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2316,7 +2332,14 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
         const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() };
         // Solo se pisa `imagen` si el seed trae una — evita borrar un
         // ícono que el admin ya haya corregido a mano desde el panel.
-        if (imagen) set.imagen = imagen;
+        if (imagen) {
+          // Guarda anti-revert: si el seed trae la portada social del repo
+          // (opengraph) y la DB ya tiene un logo real local (/img/...), se
+          // conserva el logo local.
+          const seedIsPortada = /opengraph\.githubassets\.com/i.test(imagen);
+          const prevIsLocal   = /^\/img\//.test(exists.imagen || '');
+          if (!(seedIsPortada && prevIsLocal)) set.imagen = imagen;
+        }
         // Idem para `source_repo` — solo se pisa si el seed lo trae,
         // para no desactivar el monitor de una app ya vinculada.
         if (a.source_repo) set.source_repo = a.source_repo;
@@ -2328,6 +2351,7 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
       }
     }
     await cacheDel('apps:all');
+    broadcastAppsChanged();
     res.json({ ok: true, created, updated });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2901,6 +2925,7 @@ const GITHUB_WORKFLOWS = [
   'check-app-updates.yml',
   'dedupe-catalog.yml',
   'autoposter-workflow.yml',
+  'enrich-app-logos.yml',
 ];
 
 // POST /api/admin/github/dispatch — body: { workflow, inputs }

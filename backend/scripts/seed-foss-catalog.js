@@ -36,6 +36,14 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
 
   let creadas = 0, existentes = 0;
   for (const app of seed.apps) {
+    // Guarda anti-revert: si el seed trae la portada social del repo
+    // (opengraph.githubassets.com) y la DB ya tiene un logo real local
+    // (/img/...), se conserva el logo local en vez de pisarlo.
+    const prev = await App.findOne({ appId: app.appId }).select('imagen').lean();
+    const seedIsPortada = /opengraph\.githubassets\.com/i.test(app.imagen || '');
+    const prevIsLocal   = !!prev?.imagen && /^\/img\//.test(prev.imagen);
+    const imagenFinal   = (seedIsPortada && prevIsLocal) ? prev.imagen : (app.imagen || '');
+
     const res = await App.updateOne(
       { appId: app.appId },
       {
@@ -48,7 +56,7 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
           descripcion: app.descripcion,
           categoria: app.categoria,
           source_repo: app.source_repo,
-          imagen: app.imagen,
+          imagen: imagenFinal,
           tag: '🆕',
           verified: true,
           enlace: '#', // el monitor de actualizaciones lo llenará con el .apk del release más reciente

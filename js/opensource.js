@@ -227,4 +227,55 @@ async function loadOpenSourceCatalog() {
   }
 }
 
+// ── TIEMPO REAL ─────────────────────────────────────────
+// El backend emite 'apps_changed' (total y apps open source) cada vez que
+// el admin crea, edita, borra o siembra apps. Con el contador se actualiza
+// al instante sin esperar el TTL de la caché; el catálogo se recarga solo
+// si el número de apps open source cambió.
+let _ws = null;
+let _wsTimer = null;
+let _lastOsCount = null;
+
+function connectOSWebSocket() {
+  try {
+    if (_ws) { try { _ws.close(); } catch {} }
+    clearTimeout(_wsTimer);
+    const wsUrl = (BACKEND.startsWith('https://') ? 'wss://' : 'ws://') + BACKEND.replace(/^https?:\/\//, '') + '/ws';
+    _ws = new WebSocket(wsUrl);
+    _ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'apps_changed' && typeof msg.os === 'number') {
+          const heroCount = document.getElementById('os-hero-count');
+          if (heroCount) heroCount.textContent = `${msg.os} apps`;
+          if (msg.os !== _lastOsCount) { _lastOsCount = msg.os; loadOpenSourceCatalog(); }
+        } else if (msg.type === 'new_app') {
+          loadOpenSourceCatalog();
+        }
+      } catch {}
+    };
+    _ws.onclose = () => { _wsTimer = setTimeout(connectOSWebSocket, 10000); };
+    _ws.onerror = () => { try { _ws.close(); } catch {} };
+  } catch {}
+}
+
 loadOpenSourceCatalog();
+connectOSWebSocket();
+setInterval(() => {
+  // Respaldo: si el WS no está disponible (firewalls, proxies), refrescar
+  // el contador cada 5 min vía el endpoint cacheado (sin recargar tarjetas
+  // si no cambió la cantidad).
+  if (!_ws || _ws.readyState !== 1) {
+    const heroCount = document.getElementById('os-hero-count');
+    if (heroCount) fetch(`${BACKEND}/api/apps`)
+      .then(r => r.json())
+      .then(data => {
+        const apps = Array.isArray(data) ? data : (data.apps || []);
+        const os = apps.filter(a => !!a.source_repo).length;
+        heroCount.textContent = `${os} apps`;
+        if (os !== _lastOsCount) { _lastOsCount = os; loadOpenSourceCatalog(); }
+        else _lastOsCount = os;
+      })
+      .catch(() => {});
+  }
+}, 5 * 60 * 1000);
