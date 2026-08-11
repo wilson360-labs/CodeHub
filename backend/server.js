@@ -2891,6 +2891,71 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
   }
 });
 
+// ── ADMIN: WORKFLOWS DE GITHUB (Automatización) ──────────────
+// Permite que el panel admin (admin-hub) dispare los workflows de
+// mantenimiento del repositorio (seed del catálogo FOSS, monitor de
+// actualizaciones, dedupe, autoposter) sin salir de la UI.
+// Requiere GITHUB_TOKEN con permiso `workflow` en Render.
+const GITHUB_WORKFLOWS = [
+  'seed-foss-catalog.yml',
+  'check-app-updates.yml',
+  'dedupe-catalog.yml',
+  'autoposter-workflow.yml',
+];
+
+// POST /api/admin/github/dispatch — body: { workflow, inputs }
+app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
+  try {
+    const { workflow, inputs = {} } = req.body || {};
+    if (!workflow || !GITHUB_WORKFLOWS.includes(workflow)) {
+      return res.status(400).json({ error: 'Workflow no permitido', allowed: GITHUB_WORKFLOWS });
+    }
+    if (!octokit) {
+      return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render (se requiere con permiso workflow)' });
+    }
+    await octokit.rest.actions.createWorkflowDispatch({
+      owner: GITHUB_OWNER,
+      repo:  GITHUB_REPO,
+      workflow_id: workflow,
+      ref:   GITHUB_BRANCH,
+      inputs,
+    });
+    tgAlert('ghdispatch', () =>
+      `🚀 <b>Workflow disparado</b>\n<code>${workflow}</code>\nRef: <code>${GITHUB_BRANCH}</code>\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, workflow, ref: GITHUB_BRANCH, run_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${workflow}` });
+  } catch (e) {
+    const code = e?.status || 500;
+    const hint = code === 403 ? ' — ¿GITHUB_TOKEN tiene permiso workflow?' : '';
+    console.error('POST /api/admin/github/dispatch error:', e.message);
+    res.status(code).json({ error: (e.message || 'Error disparando workflow') + hint });
+  }
+});
+
+// GET /api/admin/github/runs — estado del último run de cada workflow
+app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render' });
+    const out = {};
+    for (const wf of GITHUB_WORKFLOWS) {
+      try {
+        const { data } = await octokit.rest.actions.listWorkflowRuns({
+          owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: wf, per_page: 1,
+        });
+        const run = data.workflow_runs?.[0] || null;
+        out[wf] = run ? {
+          status: run.status, conclusion: run.conclusion,
+          created_at: run.created_at, html_url: run.html_url,
+          display_title: run.display_title,
+        } : null;
+      } catch { out[wf] = null; }
+    }
+    res.json({ ok: true, runs: out });
+  } catch (e) {
+    console.error('GET /api/admin/github/runs error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────
 // Búsqueda de imágenes
 // ─────────────────────────────────────────────────────────────

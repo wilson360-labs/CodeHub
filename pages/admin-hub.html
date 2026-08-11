@@ -461,6 +461,7 @@
     <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
     <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
+    <button class="admin-tab" onclick="switchTab('github',this)"><i class="fas fa-brands fa-github"></i> <span>GitHub</span></button>
   </nav>
 
   <!-- CONTENT -->
@@ -661,9 +662,24 @@
       </div>
     </div>
 
+    <!-- TAB: GITHUB AUTOMATION ──────────────────────────────── -->
+    <div class="tab-panel" id="tab-github">
+      <div class="section-title"><i class="fas fa-brands fa-github"></i> Automatización (GitHub Actions)</div>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:1rem;line-height:1.65">
+          Dispara los workflows de mantenimiento del repositorio directamente desde el panel, sin abrir GitHub.
+          Requiere que <b style="color:var(--text)">GITHUB_TOKEN</b> esté configurado en Render con permiso <b style="color:var(--text)">workflow</b>.
+        </div>
+        <div id="gh-workflow-list"></div>
+      </div>
+      <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Última ejecución</div>
+      <div class="card" id="gh-runs-list">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:.7rem">Cargando…</div>
+      </div>
+    </div>
+
   </div><!-- /content-wrap -->
 </div><!-- /admin-wrap -->
-
 <!-- VISITOR JSON MODAL -->
 <div id="vt-json-overlay">
   <div class="vt-json-box">

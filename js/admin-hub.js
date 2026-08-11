@@ -260,6 +260,7 @@ function switchTab(id, btn) {
   if (id === 'visitors') loadVisitors();
   if (id === 'status')   checkStatus();
   if (id === 'dbrun')    updateDbRunBtn();
+  if (id === 'github')   loadGhAutomation();
 }
 
 // ── INIT ──────────────────────────────────────────────────────
@@ -269,6 +270,80 @@ function initAdmin(apps) {
   appsData = apps || [];
   renderApps();
   loadAdminStats();
+}
+
+// ── GITHUB AUTOMATION ─────────────────────────────────────────
+const GH_WORKFLOWS = [
+  { file: 'seed-foss-catalog.yml',      name: '🌱 Seed catálogo FOSS',      desc: 'Upsert de las apps de foss-catalog-seed.json en MongoDB + check de versiones.' },
+  { file: 'check-app-updates.yml',      name: '🔄 Monitor de actualizaciones', desc: 'Revisa GitHub Releases del catálogo y actualiza versiones/APKs.' },
+  { file: 'dedupe-catalog.yml',         name: '🧹 Limpiar duplicados',      desc: 'Elimina apps duplicadas (dry-run por defecto).' },
+  { file: 'autoposter-workflow.yml',    name: '🤖 AutoPoster Blogger',      desc: 'Publica el siguiente post del blog en cola.' },
+];
+
+async function loadGhAutomation() {
+  const listEl  = document.getElementById('gh-workflow-list');
+  const runsEl  = document.getElementById('gh-runs-list');
+  listEl.innerHTML = GH_WORKFLOWS.map(w =>
+    `<div class="blog-row" style="display:flex;align-items:center;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
+       <div style="min-width:0;flex:1">
+         <div style="font-weight:700;font-size:.8rem">${w.name}</div>
+         <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${w.desc}</div>
+       </div>
+       <button class="blog-btn-primary" onclick="dispatchWorkflow('${w.file}', this)" style="white-space:nowrap">
+         <i class="fas fa-play"></i> Ejecutar
+       </button>
+     </div>`
+  ).join('');
+  await loadGhRuns();
+}
+
+async function loadGhRuns() {
+  const runsEl = document.getElementById('gh-runs-list');
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    if (!res.ok) { runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${(await res.json()).error || 'Error cargando runs'}</div>`; return; }
+    const { runs } = await res.json();
+    const rows = GH_WORKFLOWS.map(w => {
+      const r = runs[w.file];
+      if (!r) return `<div style="font-size:.72rem;padding:.35rem 0"><b style="color:var(--text)">${w.name}:</b> <span style="color:var(--muted)">sin ejecuciones todavía</span></div>`;
+      const icon = r.conclusion === 'success' ? '✅' : (r.conclusion ? '❌' : (r.status === 'completed' ? '⚠️' : '⏳'));
+      const when = new Date(r.created_at).toLocaleString();
+      return `<div style="font-size:.72rem;padding:.35rem 0;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <b style="color:var(--text)">${w.name}:</b>
+        <span>${icon} ${r.status}${r.conclusion ? ' / ' + r.conclusion : ''}</span>
+        <span style="color:var(--muted)">${when}</span>
+        <a href="${r.html_url}" target="_blank" rel="noopener" style="color:var(--a)">ver run ↗</a>
+      </div>`;
+    }).join('');
+    runsEl.innerHTML = rows || '<div style="color:var(--muted);font-size:.7rem">Sin datos.</div>';
+  } catch (e) {
+    runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">Error de conexión: ${e.message}</div>`;
+  }
+}
+
+async function dispatchWorkflow(file, btn) {
+  const w = GH_WORKFLOWS.find(x => x.file === file);
+  if (!confirm(`¿Disparar el workflow "${w ? w.name : file}"?`)) return;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disparando…';
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ workflow: file }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast('🚀 Workflow disparado. Revisá la pestaña de runs en un momento.');
+      setTimeout(loadGhRuns, 4000);
+    } else {
+      alert('❌ ' + (data.error || 'Error disparando workflow'));
+    }
+  } catch (e) {
+    alert('❌ Error de conexión: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar';
 }
 
 // ── DETECCIÓN DE DUPLICADOS ─────────────────────────────────────
