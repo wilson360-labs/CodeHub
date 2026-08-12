@@ -66,6 +66,15 @@
   <p>La descarga de cada app enlaza directamente a su página oficial de <strong>GitHub Releases</strong> — el mismo repositorio que puedes revisar antes de instalar. Si una app te sirve, considera darle una estrella o aportar al proyecto: la mantienen desarrolladores independientes, no una empresa.</p>
 </div>
 
+<button class="we-trigger" id="we-trigger" type="button" aria-haspopup="dialog" aria-controls="we-drawer" aria-expanded="false">
+  <span class="we-trigger-icon"><i class="fa-brands fa-windows"></i></span>
+  <span class="we-trigger-body">
+    <strong>Windows Enhance <span class="we-tag">PC · Windows</span></strong>
+    <span>Recuperación y optimización de Windows: las mejores herramientas con enlaces directos y guías de uso paso a paso — USB de arranque, reparación del sistema y limpieza.</span>
+  </span>
+  <span class="we-trigger-cta"><i class="fa-solid fa-angles-right"></i></span>
+</button>
+
 <div class="os-toc">
   <a href="#cat-root-y-sistema">🛠️ Root y Sistema</a>
   <a href="#cat-música">🎵 Música</a>
@@ -160,11 +169,28 @@
   </div>
 </section>
 
+<div class="we-backdrop" id="we-backdrop"></div>
+<div class="we-drawer" id="we-drawer" role="dialog" aria-modal="true" aria-label="Windows Enhance — recuperación y optimización de Windows" inert>
+  <div class="we-drawer-head">
+    <div class="we-drawer-title"><i class="fa-brands fa-windows"></i> Windows Enhance</div>
+    <button class="we-drawer-close" id="we-close" type="button" aria-label="Cerrar Windows Enhance"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="we-tabs" role="tablist" aria-label="Secciones">
+    <button class="we-tab on" id="we-tab-recuperacion" type="button" role="tab" data-tab="recuperacion" aria-selected="true" aria-controls="we-panel-recuperacion">🛟 Recuperación</button>
+    <button class="we-tab" id="we-tab-optimizacion" type="button" role="tab" data-tab="optimizacion" aria-selected="false" aria-controls="we-panel-optimizacion">🚀 Optimización</button>
+  </div>
+  <div class="we-drawer-body">
+    <section class="we-panel on" id="we-panel-recuperacion" role="tabpanel" aria-labelledby="we-tab-recuperacion" data-panel="recuperacion"></section>
+    <section class="we-panel" id="we-panel-optimizacion" role="tabpanel" aria-labelledby="we-tab-optimizacion" data-panel="optimizacion"></section>
+  </div>
+</div>
+
 <footer>
   <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.</p>
 </footer>
 
 <script src="../js/opensource.js"></script>
+<script src="../js/windows-enhance.js"></script>
 <script src="../js/site-tour.js?v=20260809a"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>

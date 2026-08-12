@@ -236,6 +236,11 @@
 
     // Only animate on mobile (640px)
     if (window.innerWidth > 640) return;
+    // Guard: si anime.js aún no cargó (red lenta/CDN bloqueado), NO lanzar
+    // error aquí — antes esto abortaba todo el ready() y mataba a
+    // initTextMorph en móvil (en PC >640px esta función retorna temprano,
+    // por eso el morph solo se veía en escritorio).
+    if (!window.anime) return;
     anime.set(bar, { translateY: 80, opacity: 0 });
     setTimeout(function () {
       anime({ targets: bar, translateY: 0, opacity: 1,
@@ -451,18 +456,26 @@
 
   // ── INIT ────────────────────────────────────────────────────
   ready(function () {
-    // initCursor(); // DISABLED: custom cursor animation causes lag
-    initMobileNav();
-    initPostSplashEntrance();
-    initFooterTerminalTyping();
-    initTextMorph();
-    initTitleReveal();
-    initHeroCardTilt();
+    // Cada inicializador corre aislado: un error en uno (p.ej. anime.js
+    // sin cargar en móvil) no puede abortar el resto. Antes, un fallo en
+    // initMobileNav mataba a initTextMorph y a las demás animaciones en
+    // teléfonos — por eso el textmorph solo se veía en PC.
+    function safeRun(fn) {
+      try { fn(); }
+      catch (e) { if (window.console) console.warn('ux-animations:', fn.name || fn, e); }
+    }
+
+    safeRun(initMobileNav);
+    safeRun(initPostSplashEntrance);
+    safeRun(initFooterTerminalTyping);
+    safeRun(initTextMorph);
+    safeRun(initTitleReveal);
+    safeRun(initHeroCardTilt);
     waitAnime(function () {
-      initChips();
-      initReveal();
-      initIconHover();
-      initThemeTransition();
+      safeRun(initChips);
+      safeRun(initReveal);
+      safeRun(initIconHover);
+      safeRun(initThemeTransition);
       // initMagneticCards(); // DISABLED: magnetic hover causes lag on mousemove
     });
   });
