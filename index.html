@@ -3060,6 +3060,21 @@ async function sendEmail(e) {
 
   </div>
 
+  <div class="ai-status-strip" aria-label="Acciones rápidas de EMI COPILOT">
+    <button class="ai-status-chip" data-prompt="debug" type="button">🧠 Debug</button>
+    <button class="ai-status-chip" data-prompt="review" type="button">🛠️ Review</button>
+    <button class="ai-status-chip" data-prompt="readme" type="button">📘 README</button>
+    <button class="ai-status-chip" data-prompt="genera" type="button">🎨 Imagen</button>
+  </div>
+
+  <div class="ai-smart-suggestions" aria-label="Sugerencias inteligentes de EMI COPILOT">
+    <button class="ai-suggestion-btn" data-prompt="project" type="button">📌 Proyecto</button>
+    <button class="ai-suggestion-btn" data-prompt="tools" type="button">🧰 Tools</button>
+    <button class="ai-suggestion-btn" data-prompt="contact" type="button">📞 Contacto</button>
+    <button class="ai-suggestion-btn" data-prompt="weather" type="button">🌤️ Clima</button>
+    <button class="ai-suggestion-btn" data-prompt="opensource" type="button">📦 Open Source</button>
+  </div>
+
   <!-- Messages -->
   <div id="ai-msgs">
     <div class="ai-disclaimer" id="ai-disclaimer" style="display:none;">
@@ -3159,6 +3174,7 @@ async function sendEmail(e) {
   let isOpen  = false;
   let loading = false;
   let placeholderIdx = 0;
+  const CHAT_STORAGE_KEY = 'codehub_emi_history_v2';
 
   const PLACEHOLDER_ROTATION = [
     { placeholder: 'Explícame este error de JavaScript...', hint: 'Debug rápido para frontend, backend y APIs' },
@@ -3166,6 +3182,33 @@ async function sendEmail(e) {
     { placeholder: 'Dame una solución para móvil y PC...', hint: 'Pensado para responsive y UX real' },
     { placeholder: 'Ayúdame con una automatización en Python...', hint: 'Código, lógica y siguientes pasos claros' }
   ];
+
+  function setAiStatus(text, tone) {
+    const el = document.getElementById('ai-status');
+    if (!el) return;
+    const label = text || 'Online · Listo para ayudarte';
+    el.textContent = label;
+    el.dataset.tone = tone || 'ready';
+  }
+
+  function applyPromptPreset(preset) {
+    if (!input) return;
+    const txt = (SMART_PROMPTS && SMART_PROMPTS[preset]) || QUICK_PROMPTS[preset] || '';
+    if (!txt) return;
+    input.value = txt;
+    input.style.height = '48px';
+    input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+    input.focus();
+    input.selectionStart = input.selectionEnd = txt.length;
+    updateCharCount();
+    document.querySelectorAll('.ai-status-chip, .ai-suggestion-btn').forEach(chip => {
+      chip.classList.toggle('active', chip.dataset.prompt === preset);
+    });
+  }
+
+  document.querySelectorAll('.ai-status-chip, .ai-suggestion-btn').forEach(chip => {
+    chip.addEventListener('click', () => applyPromptPreset(chip.dataset.prompt));
+  });
 
   // Sistema: quién es el asistente
   const SYSTEM = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
@@ -3312,13 +3355,42 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   fab.addEventListener('click', toggle);
   closeB.addEventListener('click', () => setOpen(false));
   const clearB = document.getElementById('ai-clear-btn');
+  function persistChat() {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history.slice(-12)));
+    } catch (e) {}
+  }
+
+  function restoreChat() {
+    try {
+      const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!Array.isArray(saved) || !saved.length) return;
+      const welcome = msgs.querySelector('.ai-welcome');
+      if (welcome) welcome.remove();
+      msgs.innerHTML = '';
+      history = [];
+      saved.forEach(item => {
+        if (!item || !item.role || !item.content) return;
+        const role = item.role === 'user' ? 'user' : 'ai';
+        const safe = String(item.content || '').trim();
+        if (!safe) return;
+        history.push({ role, content: safe });
+        addMsg(role, role === 'user' ? escHtml(safe) : formatAIReply(safe));
+      });
+    } catch (e) {}
+  }
+
   const resetChat = () => {
     msgs.innerHTML = '';
     history = [];
+    try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch (e) {}
     addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
     if (sugs) sugs.style.display = 'flex';
   };
   if (clearB) clearB.addEventListener('click', resetChat);
+  restoreChat();
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close — solo desde el header/handle, nunca
   // mientras el usuario desliza dentro de la conversación para leerla.
@@ -3516,6 +3588,14 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     readme: 'Genera un README profesional para este proyecto:\n\nNombre: \nDescripción: \nTecnologías: ',
     review: 'Haz un code review completo de este código, identifica mejoras, bugs y buenas prácticas:\n\n```\n\n```'
   };
+
+  const SMART_PROMPTS = {
+    project: 'Explica qué es CodeHub, qué proyectos y herramientas tiene y qué valor ofrece a un visitante nuevo.',
+    tools: 'Muéstrame las herramientas más útiles de CodeHub y dime cómo podrías recomendarlas a un usuario nuevo.',
+    contact: '¿Cómo puedo contactar a Wilson.E y qué servicios o colaboraciones ofrece CodeHub?',
+    weather: 'Explica cómo funciona el clima de CodeHub y qué utilidad tiene para la experiencia del sitio.',
+    opensource: 'Hazme un resumen de la sección Open Source de CodeHub y explica por qué es importante para la comunidad.'
+  };
   window.setQuickPrompt = function(type) {
     const txt = QUICK_PROMPTS[type] || '';
     input.value = txt;
@@ -3551,7 +3631,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
       .trim() || prompt;
 
     const typingEl = addMsg('typing', '▌');
-    status.textContent = '● Generando imagen…';
+setAiStatus('Generando imagen…', 'busy');
     loading = true; sendBtn.disabled = true;
 
     try {
@@ -3569,6 +3649,8 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
       // El backend puede devolver base64 en data.image o URL en data.url
       const imgSrc = data.image || data.url || data.image_url || data.data?.[0]?.url || null;
+      history.push({ role: 'assistant', content: 'Generé una imagen con EMI COPILOT.' });
+      persistChat();
 
       if (imgSrc) {
         const uid = 'img_' + Date.now();
@@ -3605,7 +3687,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = 'Online · Listo para ayudarte';
+      setAiStatus('Online · Listo para ayudarte', 'ready');
       scrollMsgs();
     }
   }
@@ -3639,6 +3721,8 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     const effectiveText = text || (attachment && attachment.type === 'pdf'
       ? 'Resume el contenido de este documento'
       : 'Describe/analiza esta imagen');
+
+    setAiStatus('Procesando tu consulta…', 'busy');
     let userBubbleHtml = effectiveText;
     if (attachment) {
       if (attachment.type === 'pdf') {
@@ -3661,18 +3745,19 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     // ── Detectar si es generación de imagen (no aplica si hay adjunto) ──
     if (!attachment && isImageGenRequest(effectiveText)) {
       history.push({ role: 'user', content: effectiveText });
-      await generateImage(effectiveText);
-      return;
+      persistChat();
     }
 
     const shouldSearch = !attachment && isSearchQuery(effectiveText);
     loading = true;
     sendBtn.disabled = true;
-    status.textContent = '● Pensando…';
+    setAiStatus('Pensando…', 'busy');
     const typingEl = addMsg('typing', '▌');
 
     history.push({ role: 'user', content: effectiveText });
     if (history.length > 10) history = history.slice(-10);
+    persistChat();
+    persistChat();
 
     try {
       _currentAbort = new AbortController();
@@ -3720,6 +3805,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
       }
 
       history.push({ role: 'assistant', content: replyText });
+      persistChat();
 
     } catch (err) {
       typingEl.remove();
@@ -3746,7 +3832,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     } finally {
       loading = false;
       sendBtn.disabled = false;
-      status.textContent = '● Online · Listo para ayudarte';
+      setAiStatus('Online · Listo para ayudarte', 'ready');
       scrollMsgs();
     }
   };
