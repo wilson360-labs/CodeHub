@@ -413,13 +413,25 @@ header {
   font-size: .64rem;
 }
 .os-echo-raw {
-  display: inline-flex; align-items: center; justify-content: space-between; gap: .5rem;
-  padding: .34rem .52rem; margin-top: .3rem;
-  border-radius: 999px; border: 1px solid rgba(0,229,255,.2);
+  display: flex; align-items: stretch; justify-content: space-between; gap: .5rem;
+  padding: .5rem .6rem; margin-top: .3rem;
+  border-radius: var(--radius-sm, 10px); border: 1px solid rgba(0,229,255,.2);
   background: rgba(0,229,255,.06); color: #bfeeff; font-size: .58rem; font-family: var(--mono);
 }
-.os-echo-raw a {
-  color: #fff; text-decoration: none; font-weight: 700;
+.os-echo-raw span {
+  display: flex; align-items: center;
+  color: #bfeeff; font-size: .65rem; font-weight: 600;
+}
+.os-echo-copy-btn {
+  padding: .3rem .6rem;
+  background: rgba(0,229,255,.12); border: 1px solid rgba(0,229,255,.35);
+  color: #fff; border-radius: var(--radius-xs, 6px);
+  font-size: .58rem; font-weight: 700; font-family: var(--font);
+  cursor: pointer; transition: background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.os-echo-copy-btn:hover {
+  background: rgba(0,229,255,.2); border-color: rgba(0,229,255,.6);
 }
 .dl-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
@@ -839,4 +851,180 @@ footer a:hover { text-decoration: underline; }
     transition-duration: .01ms !important;
   }
   .app-card::after { animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHIZUKU MODAL — Diálogo de instrucciones
+   ═══════════════════════════════════════════════════════════════ */
+.shizuku-modal {
+  position: fixed; inset: 0; z-index: 2000;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s;
+  padding: 1.2rem;
+}
+.shizuku-modal.active {
+  opacity: 1; visibility: visible;
+}
+.shizuku-modal-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.shizuku-modal-content {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 620px;
+  background: linear-gradient(135deg, rgba(21,26,46,.95), rgba(10,14,26,.98));
+  border: 1px solid rgba(56,189,248,.25);
+  border-radius: var(--radius-lg, 18px);
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  display: flex; flex-direction: column;
+  max-height: 90dvh; overflow-y: auto;
+}
+
+.shizuku-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.4rem 1.6rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0;
+}
+.shizuku-modal-header h2 {
+  font-size: 1.35rem; font-weight: 800; color: #fff;
+  letter-spacing: -.01em;
+}
+.shizuku-modal-close {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--radius-sm, 10px);
+  color: var(--muted); font-size: 1.1rem; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.shizuku-modal-close:hover {
+  background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.2); color: #fff;
+}
+
+.shizuku-modal-body {
+  padding: 1.4rem 1.6rem;
+  overflow-y: auto;
+}
+.shizuku-instructions {
+  list-style: decimal; padding-left: 1.8rem;
+  display: flex; flex-direction: column; gap: .8rem;
+  margin-bottom: 1.4rem;
+}
+.shizuku-instructions li {
+  font-size: .95rem; line-height: 1.65; color: var(--text);
+}
+.shizuku-instructions strong {
+  color: #fff; font-weight: 700;
+}
+.shizuku-instructions em {
+  font-style: italic; color: var(--accent);
+}
+
+.shizuku-info-box {
+  background: rgba(56,189,248,.08);
+  border: 1px solid rgba(56,189,248,.25);
+  border-radius: var(--radius-md, 14px);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.4rem;
+}
+.shizuku-info-box strong {
+  display: block; font-size: .95rem; font-weight: 800;
+  color: var(--accent); margin-bottom: .4rem;
+}
+.shizuku-info-box p {
+  font-size: .88rem; line-height: 1.65; color: var(--muted);
+}
+
+.shizuku-echo-section {
+  margin-top: 1.6rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.shizuku-echo-section h3 {
+  font-size: 1.05rem; font-weight: 700; color: #fff;
+  margin-bottom: .6rem;
+}
+.shizuku-echo-section p {
+  font-size: .88rem; color: var(--muted); line-height: 1.6;
+  margin-bottom: .8rem;
+}
+
+.shizuku-echo-box {
+  background: rgba(124,77,255,.08);
+  border: 1px solid rgba(124,77,255,.25);
+  border-radius: var(--radius-md, 14px);
+  padding: 1rem 1.2rem;
+  display: flex; flex-direction: column; gap: .6rem;
+}
+.shizuku-echo-box code {
+  font-family: var(--mono); font-size: .75rem;
+  color: #c8b7ff; word-break: break-all;
+  background: rgba(0,0,0,.3); padding: .5rem .7rem;
+  border-radius: var(--radius-xs, 6px);
+  display: block;
+}
+
+.shizuku-copy-btn,
+.os-mini-btn {
+  width: 100%;
+  padding: .75rem 1rem;
+  background: linear-gradient(135deg, rgba(124,77,255,.2), rgba(56,189,248,.1));
+  border: 1px solid rgba(124,77,255,.4);
+  border-radius: var(--radius-md, 14px);
+  color: #fff; font-family: var(--font); font-size: .88rem; font-weight: 700;
+  cursor: pointer; transition: background .2s, border-color .2s, transform .15s;
+  text-align: left;
+}
+.shizuku-copy-btn:hover,
+.os-mini-btn:hover {
+  background: linear-gradient(135deg, rgba(124,77,255,.3), rgba(56,189,248,.2));
+  border-color: rgba(124,77,255,.6);
+  transform: translateY(-1px);
+}
+.shizuku-copy-btn:active,
+.os-mini-btn:active {
+  transform: translateY(0);
+}
+
+.shizuku-feedback {
+  font-size: .8rem; font-weight: 700;
+  padding: .5rem; text-align: center;
+  color: #86efac; animation: slideInDown .3s ease-out;
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Estilos para el botón del mini menú de Shizuku ── */
+.os-mini-btn {
+  display: flex; flex-direction: column;
+  gap: .3rem; text-align: left;
+}
+.os-mini-btn strong {
+  color: #e7e4ff; font-size: .68rem;
+}
+.os-mini-btn span {
+  color: var(--muted); font-size: .62rem; font-weight: 400; line-height: 1.4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .shizuku-modal { padding: .8rem; }
+  .shizuku-modal-content { max-height: 92dvh; }
+  .shizuku-modal-header { padding: 1.1rem 1.2rem; }
+  .shizuku-modal-header h2 { font-size: 1.15rem; }
+  .shizuku-modal-body { padding: 1.1rem 1.2rem; }
+  .shizuku-instructions { font-size: .88rem; }
+  .shizuku-echo-box code { font-size: .7rem; }
+  .shizuku-copy-btn { font-size: .82rem; padding: .65rem .9rem; }
+}
+
+@media (max-width: 480px) {
+  .shizuku-modal-header h2 { font-size: 1rem; }
+  .shizuku-modal-close { width: 32px; height: 32px; font-size: 1rem; }
+  .shizuku-instructions { font-size: .82rem; gap: .65rem; }
 }

@@ -240,5 +240,38 @@
   setTimeout(launchTour, 4000);
 })();
 </script>
+
+<!-- Diálogo de instrucciones de Shizuku -->
+<div id="shizuku-how-to-use-modal" class="shizuku-modal">
+  <div class="shizuku-modal-overlay" onclick="closeHowToUseDialog()"></div>
+  <div class="shizuku-modal-content">
+    <div class="shizuku-modal-header">
+      <h2>¿Cómo usar Shizuku?</h2>
+      <button class="shizuku-modal-close" onclick="closeHowToUseDialog()">✕</button>
+    </div>
+    <div class="shizuku-modal-body">
+      <ol class="shizuku-instructions">
+        <li><strong>Instala Shizuku:</strong> Descarga el APK desde el enlace de la tarjeta y sigue las instrucciones de configuración en tu dispositivo Android.</li>
+        <li><strong>Activa Shizuku:</strong> Abre la aplicación desde tu teléfono, ve a <em>Ajustes</em> y actívala.</li>
+        <li><strong>Otorga permisos:</strong> Dale permisos de sistema a las aplicaciones que quieras usar con Shizuku (debloat, control de sistema, módulos, etc.).</li>
+        <li><strong>Usa las herramientas:</strong> Una vez activo, cualquier app que use Shizuku podrá acceder a APIs de sistema sin necesidad de root.</li>
+      </ol>
+      <div class="shizuku-info-box">
+        <strong>¿Para qué sirve?</strong>
+        <p>Shizuku permite a apps de Android acceder a APIs de sistema sin tener que rootear el dispositivo. Es la base para muchas herramientas avanzadas de control, optimización, limpieza y automatización.</p>
+      </div>
+      <div class="shizuku-echo-section">
+        <h3>🎵 Extensiones de Echo Music</h3>
+        <p>Si usas Echo Music Nightly, puedes importar extensiones desde el siguiente enlace:</p>
+        <div class="shizuku-echo-box">
+          <code>https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json</code>
+          <button class="shizuku-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
+          <div id="echo-copy-feedback" class="shizuku-feedback" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

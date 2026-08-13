@@ -107,6 +107,37 @@ const OS_CATEGORIES = [
 ];
 const CAT_EMOJI = Object.fromEntries(OS_CATEGORIES.map(c => [c.categoria, c.emoji]));
 
+// ── DIÁLOGO DE INSTRUCCIONES ────────────────────────────────
+function showHowToUseDialog() {
+  const modal = document.getElementById('shizuku-how-to-use-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeHowToUseDialog() {
+  const modal = document.getElementById('shizuku-how-to-use-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function copyEchoExtensionUrl() {
+  const extensionUrl = 'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json';
+  navigator.clipboard.writeText(extensionUrl).then(() => {
+    const feedback = document.getElementById('echo-copy-feedback');
+    if (feedback) {
+      feedback.textContent = '✅ URL copiada al portapapeles';
+      feedback.style.display = 'block';
+      setTimeout(() => { feedback.style.display = 'none'; }, 2500);
+    }
+  }).catch(err => {
+    console.error('Error al copiar:', err);
+    const feedback = document.getElementById('echo-copy-feedback');
+    if (feedback) {
+      feedback.textContent = '❌ No se pudo copiar';
+      feedback.style.display = 'block';
+      setTimeout(() => { feedback.style.display = 'none'; }, 2500);
+    }
+  });
+}
+
 function buildOSCard(app) {
   const img     = getOptimizedImageUrl(app.imagen || '', 192, 192);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
@@ -124,10 +155,10 @@ function buildOSCard(app) {
     <div class="os-mini-menu" aria-label="Mini menú de Shizuku">
       <div class="os-mini-summary">Mini menú</div>
       <div class="os-mini-panel">
-        <div class="os-mini-item">
+        <button class="os-mini-btn" onclick="showHowToUseDialog()">
           <strong>¿Cómo usar?</strong>
-          <span>Instala Shizuku, activa la aplicación desde el teléfono y dale permisos a la app que quieras usar: debloat, control de sistema, módulos y utilidades avanzadas.</span>
-        </div>
+          <span>Abre el diálogo de instrucciones</span>
+        </button>
         <div class="os-mini-item">
           <strong>¿Para qué sirve?</strong>
           <span>Permite a apps de Android acceder a APIs de sistema sin root. Es la base para muchas herramientas de control, optimización y limpieza avanzada.</span>
@@ -138,7 +169,7 @@ function buildOSCard(app) {
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
       <span>Extensiones</span>
-      <a href="${app.plugin_enlace || 'https://raw.githubusercontent.com/brahmkshatriya/echo/main/README.md'}" target="_blank" rel="noopener noreferrer">Pegar raw</a>
+      <button class="os-echo-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
     </div>` : '';
 
   // Solo botón de descarga: el enlace real (GitHub Releases/mirror) nunca
