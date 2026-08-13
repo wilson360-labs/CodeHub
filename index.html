@@ -5063,7 +5063,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const pwaInstallEl = document.getElementById('pwa-install');
   const installAppBtn = document.getElementById('install-app-btn');
 
+  function isPublicInstallPage() {
+    const path = (window.location.pathname || '').toLowerCase();
+    return !path.includes('/admin') && !path.includes('admin-hub');
+  }
+
   function showPWA() {
+    if (!isPublicInstallPage()) return;
     if (pwaInstallEl) pwaInstallEl.style.display = 'block';
   }
   function hidePWA() {
@@ -5074,6 +5080,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function updateInstallButtonVisibility() {
     if (!installAppBtn) return;
+    if (!isPublicInstallPage()) {
+      installAppBtn.style.display = 'none';
+      return;
+    }
     const installed = localStorage.getItem('pwa_installed');
     const dismissed = localStorage.getItem('pwa_dismissed');
     const canInstall = !!_deferredPrompt || (/iphone|ipad|ipod/i.test(navigator.userAgent || ''));
@@ -5098,6 +5108,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (installAppBtn) installAppBtn.style.display = 'none';
     _deferredPrompt = null;
   });
+
+  if (!isPublicInstallPage()) {
+    hidePWA();
+    if (installAppBtn) installAppBtn.style.display = 'none';
+  }
 
   // iOS / Safari: sin beforeinstallprompt → mostrar guía breve
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');

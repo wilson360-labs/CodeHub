@@ -146,7 +146,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(request.clone()).catch(() => new Response('', { status: 503 })));
     return;
   }
-  if (url.pathname.includes('admin-hub')) {
+  if (url.pathname.includes('admin-hub') || url.pathname.includes('/admin') || url.pathname.includes('/api/admin')) {
     e.respondWith(fetch(request.clone()).catch(() => new Response('', { status: 503 })));
     return;
   }
