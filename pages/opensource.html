@@ -219,16 +219,29 @@
     started = true;
     startTour('opensource', [
       {
+        selector: '.we-trigger',
+        icon: 'fa-brands fa-windows',
+        title: 'Windows Enhance',
+        text: 'Herramientas profesionales para recuperación y optimización de Windows. Incluye guías paso a paso, USB de arranque, reparación del sistema y limpieza avanzada.'
+      },
+      {
         selector: '.os-toc',
         icon: 'fa-solid fa-list-check',
-        title: 'Categorías',
-        text: 'Salta directo a la categoría que buscas: Música, Video, VPN, Productividad y más.'
+        title: 'Categorías de Android',
+        text: 'Salta directo a la categoría que buscas: Música, Video, VPN, Productividad, Root y más. Todas las apps tienen código abierto verificado.'
+      },
+      {
+        selector: '.app-grid .how-to-btn',
+        icon: 'fa-solid fa-book',
+        title: '¿Cómo usar?',
+        text: 'Apps avanzadas (Magisk, Shizuku, etc.) tienen diálogos con instrucciones paso a paso y recomendaciones de seguridad. Toca el botón azul para ver los pasos.',
+        optional: true
       },
       {
         selector: '.app-grid .dl-btn',
         icon: 'fa-solid fa-download',
         title: 'Descarga verificada',
-        text: 'El botón descarga el APK a través de nuestro sistema, que resuelve el enlace real (GitHub Releases u otro mirror) sin exponerlo directo en la página.'
+        text: 'El botón descarga el APK directamente desde GitHub. CodeHub no aloja ni modifica ninguno de estos APKs. Código abierto al 100%.'
       }
     ], {
       delay: 0,
