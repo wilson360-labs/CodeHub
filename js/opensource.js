@@ -136,6 +136,23 @@ function copyEchoExtensionUrl() {
   });
 }
 
+function setupBackToTopButton() {
+  const btn = document.getElementById('to-top-btn');
+  if (!btn) return;
+
+  const toggleVisibility = () => {
+    const shouldShow = window.scrollY > 500;
+    btn.classList.toggle('visible', shouldShow);
+  };
+
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  window.addEventListener('scroll', toggleVisibility, { passive: true });
+  toggleVisibility();
+}
+
 function buildOSCard(app) {
   const img     = getOptimizedImageUrl(app.imagen || '', 192, 192);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
