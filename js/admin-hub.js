@@ -259,8 +259,53 @@ function switchTab(id, btn) {
   if (id === 'add')      renderAddForm();
   if (id === 'visitors') loadVisitors();
   if (id === 'status')   checkStatus();
+  if (id === 'push')     {
+    const summary = document.getElementById('push-summary');
+    if (summary) summary.textContent = 'Se enviará a todos los dispositivos suscritos y activos.';
+  }
   if (id === 'dbrun')    updateDbRunBtn();
   if (id === 'github')   loadGhAutomation();
+}
+
+async function sendAdminBroadcast() {
+  const title = document.getElementById('push-title')?.value.trim();
+  const body = document.getElementById('push-body')?.value.trim();
+  const url = document.getElementById('push-url')?.value.trim() || '/';
+  const type = document.getElementById('push-type')?.value || 'announcement';
+  if (!title || !body) {
+    toast('⚠️ Completa el título y el mensaje antes de enviar');
+    return;
+  }
+
+  const btn = document.getElementById('push-send-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+  }
+
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/push/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ title, body, url, type })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Error enviando la notificación');
+
+    const summary = document.getElementById('push-summary');
+    if (summary) summary.textContent = `✅ Push enviado correctamente a ${data.sent || 0} de ${data.total || 0} dispositivos activos.`;
+    toast(`📲 Push enviado · ${data.sent || 0} dispositivos`);
+    document.getElementById('push-title').value = '';
+    document.getElementById('push-body').value = '';
+    document.getElementById('push-url').value = '/';
+  } catch (e) {
+    toast('❌ ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a todos';
+    }
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────────

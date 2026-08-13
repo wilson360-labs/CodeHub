@@ -460,6 +460,7 @@
     <button class="admin-tab" onclick="switchTab('add',this)"><i class="fas fa-plus"></i> <span>Nueva App</span></button>
     <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
+    <button class="admin-tab" onclick="switchTab('push',this)"><i class="fas fa-bell"></i> <span>Push</span></button>
     <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
     <button class="admin-tab" onclick="switchTab('github',this)"><i class="fas fa-brands fa-github"></i> <span>GitHub</span></button>
   </nav>
@@ -606,6 +607,42 @@
       </div>
     </div>
 
+
+    <!-- TAB: PUSH -->
+    <div class="tab-panel" id="tab-push">
+      <div class="section-title"><i class="fas fa-bell"></i> Notificaciones Push</div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="blog-tip"><i class="fas fa-circle-info"></i><span>Envía alertas, anuncios relevantes o actualizaciones a todos los usuarios con suscripción activa. Esta pantalla es privada y no se expone en la app pública.</span></div>
+        <div class="blog-grid-2">
+          <div>
+            <div class="blog-label">Título</div>
+            <input class="blog-input" id="push-title" type="text" maxlength="80" placeholder="Ej: Código actualizado / Aviso importante / Clima extremo">
+          </div>
+          <div>
+            <div class="blog-label">Tipo</div>
+            <select class="blog-input" id="push-type" style="appearance:auto">
+              <option value="announcement">Anuncio</option>
+              <option value="project_update">Actualización del proyecto</option>
+              <option value="weather">Alerta meteorológica</option>
+              <option value="maintenance">Mantenimiento</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">Mensaje</div>
+          <textarea class="blog-textarea" id="push-body" maxlength="180" placeholder="Describe la información importante para tus usuarios..."></textarea>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">URL</div>
+          <input class="blog-input" id="push-url" type="text" value="/" placeholder="/opensource.html o /#weather-section">
+        </div>
+        <div class="blog-actions">
+          <button class="blog-btn-primary" id="push-send-btn" type="button" onclick="sendAdminBroadcast()"><i class="fas fa-paper-plane"></i> Enviar a todos</button>
+          <button class="blog-btn-sec" type="button" onclick="document.getElementById('push-form')?.reset();"><i class="fas fa-broom"></i> Limpiar</button>
+        </div>
+        <div id="push-summary" style="margin-top:.9rem;font-size:.68rem;color:var(--muted);font-family:var(--mono)">Se enviará a todos los dispositivos suscritos y activos.</div>
+      </div>
+    </div>
 
     <!-- TAB: BASE DE DATOS (DB RUNNER) ────────────────────────── -->
     <div class="tab-panel" id="tab-dbrun">

@@ -3298,26 +3298,64 @@ app.post('/api/push/notify', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
+  try {
+    const { title, body, url, type } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ ok: false, error: 'Falta el título de la notificación' });
+    }
+    const subs = await pushList();
+    let sent = 0;
+    for (const sub of subs) {
+      const result = await sendPush(sub, {
+        title: String(title).trim().slice(0, 80),
+        body: String(body || '').trim().slice(0, 180),
+        type: type || 'announcement',
+        icon: '/splash/codehub.png',
+        url: url || '/'
+      });
+      if (result.ok) sent += 1;
+    }
+    res.json({ ok: true, sent, total: subs.length });
+  } catch (e) {
+    console.error('admin/push/broadcast error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ── CLIMA → PUSH (alertas y recomendaciones) ─────────────────
 const WX_ALERTS = [
-  { cond: 'storm', test: c => c.weather_code >= 95,
+  { cond: 'storm', test: c => c.weather_code >= 95 || (c.precipitation > 8 && c.wind_speed_10m > 35),
     msg: c => '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas y desconecta aparatos' },
-  { cond: 'rain',  test: c => c.weather_code >= 61 && c.weather_code <= 67,
-    msg: () => '🌧️ Lluvia en tu zona — lleva paraguas y maneja con precaución' },
+  { cond: 'rain',  test: c => (c.weather_code >= 61 && c.weather_code <= 67) || Number(c.precipitation_probability || 0) >= 70,
+    msg: c => '🌧️ Probabilidad alta de lluvia (' + Math.round(Number(c.precipitation_probability || 0)) + '%) — lleva paraguas y revisa el pronóstico antes de salir' },
   { cond: 'wind',  test: c => c.wind_speed_10m > 50,
     msg: c => '💨 Viento fuerte (' + Math.round(c.wind_speed_10m) + ' km/h) — precaución al manejar' },
-  { cond: 'heat',  test: c => c.temperature_2m > 35,
-    msg: c => '🌡️ Calor extremo (' + Math.round(c.temperature_2m) + '°C) — hidrátate y evita el sol de 11 a 15h' },
+  { cond: 'radiation', test: c => Number(c.uv_index || 0) >= 7,
+    msg: c => '☀️ Radiación alta (' + Number(c.uv_index || 0).toFixed(1) + ') — usa bloqueador y evita el sol fuerte al mediodía' },
+  { cond: 'heat',  test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
+    msg: c => '🌡️ Calor extremo (' + Math.round(c.temperature_2m) + '°C, sensación ' + Math.round(c.apparent_temperature) + '°C) — hidrátate y evita el sol de 11 a 15h' },
   { cond: 'cold',  test: c => c.temperature_2m < 0,
     msg: c => '🥶 Frío intenso (' + Math.round(c.temperature_2m) + '°C) — abrígate bien' },
 ];
 
 async function fetchWeatherFor(lat, lon) {
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto';
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation' +
+    '&hourly=temperature_2m,precipitation_probability,uv_index' +
+    '&forecast_days=2&wind_speed_unit=kmh&timezone=auto';
   const r = await fetch(url);
   if (!r.ok) throw new Error('open-meteo ' + r.status);
-  return (await r.json()).current;
+  const data = await r.json();
+  const hourly = data.hourly || {};
+  const rainProb = (hourly.precipitation_probability || []).map(v => Number(v || 0));
+  const uvIndex = (hourly.uv_index || []).map(v => Number(v || 0));
+  const current = data.current || {};
+  return {
+    ...current,
+    precipitation_probability: rainProb.length ? Math.max(...rainProb) : (Number(current.precipitation || 0) > 0 ? 70 : 0),
+    uv_index: uvIndex.length ? Math.max(...uvIndex) : 0,
+  };
 }
 
 function detectAlert(current) {
