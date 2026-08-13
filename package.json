@@ -4,6 +4,9 @@
   "description": "CodeHub — Wilson.E Portfolio",
   "private": true,
   "scripts": {
-    "start":       "cd backend && node server.js"
+    "start": "cd backend && node server.js",
+    "audit:project": "node scripts/audit-project.js",
+    "check:install": "node scripts/audit-project.js --install",
+    "check:health": "node scripts/audit-project.js --health"
   }
 }

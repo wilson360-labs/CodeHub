@@ -5036,6 +5036,10 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
   <!-- PWA Install Prompt -->
+  <button id="install-app-btn" type="button" aria-label="Instalar CodeHub" onclick="installPWA()" style="display:none; position:fixed; right:1rem; top:5.25rem; z-index:9998; border:1px solid rgba(96,165,250,.55); background:linear-gradient(135deg, rgba(47,128,237,.96), rgba(56,189,248,.85)); color:#fff; border-radius:999px; padding:.7rem 1rem; font-weight:800; font-size:.74rem; letter-spacing:.04em; box-shadow:0 12px 28px rgba(47,128,237,.35); cursor:pointer;">
+    <i class="fas fa-download"></i> Instalar app
+  </button>
+
   <div id="pwa-install" role="dialog" aria-live="polite" aria-label="Instalar CodeHub">
     <div class="pwa-card">
       <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
@@ -5057,6 +5061,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── PWA Install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
   let _deferredPrompt = null;
   const pwaInstallEl = document.getElementById('pwa-install');
+  const installAppBtn = document.getElementById('install-app-btn');
 
   function showPWA() {
     if (pwaInstallEl) pwaInstallEl.style.display = 'block';
@@ -5067,10 +5072,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function pwaEligible() {
     return !!_deferredPrompt || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   }
+  function updateInstallButtonVisibility() {
+    if (!installAppBtn) return;
+    const installed = localStorage.getItem('pwa_installed');
+    const dismissed = localStorage.getItem('pwa_dismissed');
+    const canInstall = !!_deferredPrompt || (/iphone|ipad|ipod/i.test(navigator.userAgent || ''));
+    const shouldShow = !installed && canInstall && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000);
+    installAppBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+  }
 
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _deferredPrompt = e;
+    updateInstallButtonVisibility();
     const dismissed = localStorage.getItem('pwa_dismissed');
     const installed = localStorage.getItem('pwa_installed');
     if (!installed && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000)) {
@@ -5081,6 +5095,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('appinstalled', () => {
     localStorage.setItem('pwa_installed', '1');
     hidePWA();
+    if (installAppBtn) installAppBtn.style.display = 'none';
     _deferredPrompt = null;
   });
 
@@ -5114,11 +5129,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (r.outcome === 'accepted') {
         localStorage.setItem('pwa_installed','1');
         hidePWA();
+        if (installAppBtn) installAppBtn.style.display = 'none';
       } else {
         localStorage.setItem('pwa_dismissed', Date.now());
         hidePWA();
       }
       _deferredPrompt = null;
+      updateInstallButtonVisibility();
     });
   }
 
