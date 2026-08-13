@@ -107,34 +107,32 @@ const OS_CATEGORIES = [
 ];
 const CAT_EMOJI = Object.fromEntries(OS_CATEGORIES.map(c => [c.categoria, c.emoji]));
 
-// ── DIÁLOGO DE INSTRUCCIONES ────────────────────────────────
-function showHowToUseDialog() {
-  const modal = document.getElementById('shizuku-how-to-use-modal');
+// ── DIÁLOGOS DE INSTRUCCIONES ────────────────────────────────
+function openHowToDialog(appId) {
+  const modal = document.getElementById(`how-to-${appId}-modal`);
   if (modal) modal.classList.add('active');
 }
 
-function closeHowToUseDialog() {
-  const modal = document.getElementById('shizuku-how-to-use-modal');
+function closeHowToDialog(appId) {
+  const modal = document.getElementById(`how-to-${appId}-modal`);
   if (modal) modal.classList.remove('active');
 }
 
 function copyEchoExtensionUrl() {
   const extensionUrl = 'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json';
   navigator.clipboard.writeText(extensionUrl).then(() => {
-    const feedback = document.getElementById('echo-copy-feedback');
-    if (feedback) {
-      feedback.textContent = '✅ URL copiada al portapapeles';
-      feedback.style.display = 'block';
-      setTimeout(() => { feedback.style.display = 'none'; }, 2500);
-    }
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(34,197,94,.95);color:#fff;padding:1rem 1.5rem;border-radius:8px;font-weight:700;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+    toast.textContent = '✅ URL de extensiones copiada';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 2500);
   }).catch(err => {
     console.error('Error al copiar:', err);
-    const feedback = document.getElementById('echo-copy-feedback');
-    if (feedback) {
-      feedback.textContent = '❌ No se pudo copiar';
-      feedback.style.display = 'block';
-      setTimeout(() => { feedback.style.display = 'none'; }, 2500);
-    }
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,.95);color:#fff;padding:1rem 1.5rem;border-radius:8px;font-weight:700;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+    toast.textContent = '❌ No se pudo copiar';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.remove(); }, 2500);
   });
 }
 
@@ -151,11 +149,12 @@ function buildOSCard(app) {
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
 
+  // Mini menú solo para Shizuku
   const shizukuMenu = app.appId === 'os-shizuku' ? `
     <div class="os-mini-menu" aria-label="Mini menú de Shizuku">
       <div class="os-mini-summary">Mini menú</div>
       <div class="os-mini-panel">
-        <button class="os-mini-btn" onclick="showHowToUseDialog()">
+        <button class="os-mini-btn" onclick="openHowToDialog('os-shizuku')">
           <strong>¿Cómo usar?</strong>
           <span>Abre el diálogo de instrucciones</span>
         </button>
@@ -166,11 +165,19 @@ function buildOSCard(app) {
       </div>
     </div>` : '';
 
+  // Botón de extensiones solo para Echo Nightly
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
       <span>Extensiones</span>
       <button class="os-echo-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
     </div>` : '';
+
+  // Botón de instrucciones para apps avanzadas (root, Shizuku, etc.)
+  const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly'];
+  const howToBtn = advancedApps.includes(app.appId) && app.appId !== 'os-shizuku' ? `
+    <button class="how-to-btn" onclick="openHowToDialog('${app.appId}')">
+      <i class="fas fa-book"></i> ¿Cómo usar?
+    </button>` : '';
 
   // Solo botón de descarga: el enlace real (GitHub Releases/mirror) nunca
   // se expone directo en el DOM, siempre pasa por /api/dl/:appId. El botón
@@ -194,7 +201,10 @@ function buildOSCard(app) {
       <div class="app-desc">${desc}</div>
       ${echoRaw}
       ${shizukuMenu}
-      <div class="app-actions">${dlBtn}</div>
+      <div class="app-actions">
+        ${howToBtn}
+        ${dlBtn}
+      </div>
       ${updated ? `<div class="os-updated-tag"><i class="fas fa-clock-rotate-left"></i> ${updated}</div>` : ''}
     </div>
   </div>`;

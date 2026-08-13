@@ -241,33 +241,165 @@
 })();
 </script>
 
-<!-- Diálogo de instrucciones de Shizuku -->
-<div id="shizuku-how-to-use-modal" class="shizuku-modal">
-  <div class="shizuku-modal-overlay" onclick="closeHowToUseDialog()"></div>
-  <div class="shizuku-modal-content">
-    <div class="shizuku-modal-header">
+<!-- DIÁLOGOS DE INSTRUCCIONES PARA APPS AVANZADAS -->
+
+<!-- Shizuku -->
+<div id="how-to-os-shizuku-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-shizuku')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
       <h2>¿Cómo usar Shizuku?</h2>
-      <button class="shizuku-modal-close" onclick="closeHowToUseDialog()">✕</button>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-shizuku')">✕</button>
     </div>
-    <div class="shizuku-modal-body">
-      <ol class="shizuku-instructions">
-        <li><strong>Instala Shizuku:</strong> Descarga el APK desde el enlace de la tarjeta y sigue las instrucciones de configuración en tu dispositivo Android.</li>
-        <li><strong>Activa Shizuku:</strong> Abre la aplicación desde tu teléfono, ve a <em>Ajustes</em> y actívala.</li>
-        <li><strong>Otorga permisos:</strong> Dale permisos de sistema a las aplicaciones que quieras usar con Shizuku (debloat, control de sistema, módulos, etc.).</li>
-        <li><strong>Usa las herramientas:</strong> Una vez activo, cualquier app que use Shizuku podrá acceder a APIs de sistema sin necesidad de root.</li>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Instala Shizuku:</strong> Descarga el APK desde el enlace de descarga y sigue el asistente de instalación.</li>
+        <li><strong>Abre la aplicación:</strong> Ejecuta Shizuku en tu dispositivo Android.</li>
+        <li><strong>Sigue las instrucciones:</strong> La app te guiará para conectar mediante ADB (Android Debug Bridge). Si no tienes experiencia, la interfaz tiene guías visuales paso a paso.</li>
+        <li><strong>Otorga permisos:</strong> Una vez conectado, dale permisos de sistema a las apps que quieras usar (gestor de aplicaciones, utilidades, módulos, etc.).</li>
       </ol>
-      <div class="shizuku-info-box">
-        <strong>¿Para qué sirve?</strong>
-        <p>Shizuku permite a apps de Android acceder a APIs de sistema sin tener que rootear el dispositivo. Es la base para muchas herramientas avanzadas de control, optimización, limpieza y automatización.</p>
+      <div class="how-to-info-box">
+        <strong>💡 ¿Para qué sirve?</strong>
+        <p>Shizuku permite a apps acceder a APIs de sistema de Android sin necesidad de root. Es la base de muchas herramientas avanzadas: debloat, control de sistema, automation, limpieza y optimización.</p>
       </div>
-      <div class="shizuku-echo-section">
-        <h3>🎵 Extensiones de Echo Music</h3>
-        <p>Si usas Echo Music Nightly, puedes importar extensiones desde el siguiente enlace:</p>
-        <div class="shizuku-echo-box">
-          <code>https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json</code>
-          <button class="shizuku-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
-          <div id="echo-copy-feedback" class="shizuku-feedback" style="display:none;"></div>
-        </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Importante:</strong> Requiere conectar el teléfono a una computadora con ADB instalado para la configuración inicial. Una vez activado, no necesita la computadora.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Magisk -->
+<div id="how-to-os-magisk-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-magisk')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar Magisk?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-magisk')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Descargar APK:</strong> Descarga el archivo Magisk.apk desde el enlace en la tarjeta.</li>
+        <li><strong>Instalar:</strong> Abre el APK e instala la aplicación en tu dispositivo.</li>
+        <li><strong>Primer inicio:</strong> Magisk te pedirá confirmar la instalación del binario de root. Toca "Instalar" y espera a que reinicie el dispositivo.</li>
+        <li><strong>Verificar instalación:</strong> Una vez reiniciado, abre Magisk nuevamente. Si ves "Instalado" en la tarjeta de versión, ¡listo! Tienes root.</li>
+        <li><strong>Instalar módulos:</strong> Descarga módulos desde repositorios conocidos (Magisk Modules Repository) e instálalos desde Magisk. Algunos requieren reinicio.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🔓 ¿Qué es root?</strong>
+        <p>Root es acceso administrativo total a tu dispositivo Android. Con Magisk, obtienes root de forma "systemless" (sin modificar el sistema), lo que ayuda a pasar verificaciones de seguridad en apps bancarias y de streaming.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Riesgos:</strong> Root puede romper apps, vulnerar seguridad bancaria o dañar el sistema. Instala solo módulos de fuentes confiables.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KernelSU -->
+<div id="how-to-os-kernelsu-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-kernelsu')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar KernelSU?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-kernelsu')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Requisitos:</strong> Tu dispositivo debe tener un kernel compatible con GKI (Generic Kernel Image). Verifica en la documentación oficial de KernelSU.</li>
+        <li><strong>Descarga APK:</strong> Obtén la app desde el enlace en la tarjeta.</li>
+        <li><strong>Instala:</strong> Abre el APK e instala KernelSU.</li>
+        <li><strong>Primera vez:</strong> La app te guiará para reemplazar el kernel. Esto puede requerir acceso de root previo o instalador personalizado.</li>
+        <li><strong>Verifica estado:</strong> Abre KernelSU. Si aparece "Sudomod instalado", tienes root activo.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>⚡ ¿Diferencia con Magisk?</strong>
+        <p>KernelSU opera a nivel de kernel, lo que reduce huellas detectables en apps bancarias. Es más moderno pero requiere kernel compatible. Magisk es más universal.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Compatibilidad:</strong> No todos los dispositivos soportan KernelSU. Verifica antes de intentar instalar.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LSPosed -->
+<div id="how-to-os-lsposed-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-lsposed')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar LSPosed?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-lsposed')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Requisitos previos:</strong> Necesitas root activo (Magisk o KernelSU) instalado en tu dispositivo.</li>
+        <li><strong>Descarga LSPosed:</strong> Obtén el archivo de módulo de Magisk desde el enlace en la tarjeta.</li>
+        <li><strong>Instala como módulo:</strong> Abre Magisk → Módulos → (+) → Selecciona el archivo de LSPosed → Instala.</li>
+        <li><strong>Reinicia:</strong> Después de instalar, reinicia el dispositivo.</li>
+        <li><strong>Abre LSPosed:</strong> Una vez reiniciado, busca "LSPosed" en tus apps. Aparecerá en el menú como una nueva aplicación.</li>
+        <li><strong>Descarga módulos Xposed:</strong> En LSPosed, descarga módulos desde el mercado integrado e actívalos en sus apps correspondientes.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🧩 ¿Qué es Xposed?</strong>
+        <p>Xposed es un framework que permite módulos modificar el comportamiento de otras apps sin tocar archivos del sistema. LSPosed es la versión moderna para Android actual.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Importante:</strong> Requiere root y Magisk/KernelSU. Módulos malos pueden romper el sistema. Instala solo desde fuentes confiables.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App Manager -->
+<div id="how-to-os-app-manager-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-app-manager')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar App Manager?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-app-manager')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Instala la app:</strong> Descarga desde el enlace y abre el APK.</li>
+        <li><strong>Primer inicio:</strong> App Manager pedirá permisos. Dale acceso de "Uso especial" en Ajustes → Permisos especiales → Acceso especial de app (en cada Android es diferente).</li>
+        <li><strong>Opcional - Shizuku:</strong> Para funciones avanzadas (debloat, backup), conecta con Shizuku siguiendo sus instrucciones.</li>
+        <li><strong>Navega la interfaz:</strong> Verás todas las apps instaladas. Toca cualquiera para ver permisos, componentes, tamaño, versión y firma.</li>
+        <li><strong>Usa funciones:</strong> Puedes desinstalar, congelar, eliminar datos, hacer backups y revisar permisos peligrosos.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🔍 ¿Qué puedes hacer?</strong>
+        <p>Ver permisos que cada app solicita, identificar apps del sistema innecesarias, hacer backup de APKs, analizar firmas y componentes exportados, debloat seguro con Shizuku.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Ten cuidado:</strong> No desinstales apps del sistema a menos que sepas qué hacen. Mejor congelarlas primero.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Echo Nightly -->
+<div id="how-to-os-echo-nightly-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-echo-nightly')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar Echo Nightly?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-echo-nightly')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Descarga e instala:</strong> Obtén el APK desde el enlace en la tarjeta. Es una build nightly (experimental).</li>
+        <li><strong>Abre Echo:</strong> Al iniciar, añade fuentes de música. Puedes usar Spotify, YouTube Music, streaming local, etc.</li>
+        <li><strong>Instala extensiones:</strong> Ve a Ajustes → Extensiones → (+) → Pega el raw de extensiones o URL JSON.</li>
+        <li><strong>Usa el botón en la tarjeta:</strong> Toca "Copiar extension de pluhings" para copiar la URL oficial de extensiones Echo.</li>
+        <li><strong>Disfruta:</strong> Una vez activas las extensiones, reproducemusica libremente.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🎵 ¿Qué son las extensiones?</strong>
+        <p>Las extensiones agregan nuevas fuentes de música a Echo. Pueden ser plugins para Spotify, YouTube, SoundCloud, etc. Cada extensión amplía lo que puede reproducir.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>ℹ️ Nota:</strong> Echo Nightly es experimental. Puede tener bugs. Si quieres estabilidad, usa la versión estable en Google Play.
       </div>
     </div>
   </div>
