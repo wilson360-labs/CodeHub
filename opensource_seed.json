@@ -196,6 +196,20 @@
     "source_repo": "KRTirtho/spotube"
   },
   {
+    "appId": "os-spotui",
+    "nombre": "SpotUI",
+    "descripcion": "Interfaz alternativa y ligera para Spotify con un diseño más limpio y personalizable. Útil para quienes quieren una experiencia más enfocada en el audio y menos saturada por la app oficial.",
+    "version": "",
+    "tag": "🆕",
+    "changelog": "",
+    "imagen": "/img/opensource/spotui.png",
+    "categoria": "Música",
+    "verified": true,
+    "enlace": "#",
+    "plugin_enlace": null,
+    "source_repo": "KRTirtho/spotube"
+  },
+  {
     "appId": "os-auxio",
     "nombre": "Auxio",
     "descripcion": "Reproductor de música local simple y rápido. Ideal si ya tienes tu música descargada: organiza por álbum, artista y género con una interfaz Material You y cero telemetría.",
@@ -212,7 +226,7 @@
   {
     "appId": "os-echo-nightly",
     "nombre": "Echo Nightly",
-    "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales.",
+    "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales. Para añadir extensiones, pega el raw del repositorio o usa la URL de la extensión indicada en la sección de extensiones del proyecto.",
     "version": "",
     "tag": "🆕",
     "changelog": "",
@@ -220,7 +234,7 @@
     "categoria": "Música",
     "verified": true,
     "enlace": "#",
-    "plugin_enlace": null,
+    "plugin_enlace": "https://raw.githubusercontent.com/brahmkshatriya/echo/main/README.md",
     "source_repo": "brahmkshatriya/echo"
   },
   {

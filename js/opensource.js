@@ -120,6 +120,27 @@ function buildOSCard(app) {
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
 
+  const shizukuMenu = app.appId === 'os-shizuku' ? `
+    <div class="os-mini-menu" aria-label="Mini menú de Shizuku">
+      <div class="os-mini-summary">Mini menú</div>
+      <div class="os-mini-panel">
+        <div class="os-mini-item">
+          <strong>¿Cómo usar?</strong>
+          <span>Instala Shizuku, activa la aplicación desde el teléfono y dale permisos a la app que quieras usar: debloat, control de sistema, módulos y utilidades avanzadas.</span>
+        </div>
+        <div class="os-mini-item">
+          <strong>¿Para qué sirve?</strong>
+          <span>Permite a apps de Android acceder a APIs de sistema sin root. Es la base para muchas herramientas de control, optimización y limpieza avanzada.</span>
+        </div>
+      </div>
+    </div>` : '';
+
+  const echoRaw = app.appId === 'os-echo-nightly' ? `
+    <div class="os-echo-raw">
+      <span>Extensiones</span>
+      <a href="${app.plugin_enlace || 'https://raw.githubusercontent.com/brahmkshatriya/echo/main/README.md'}" target="_blank" rel="noopener noreferrer">Pegar raw</a>
+    </div>` : '';
+
   // Solo botón de descarga: el enlace real (GitHub Releases/mirror) nunca
   // se expone directo en el DOM, siempre pasa por /api/dl/:appId. El botón
   // "Código fuente" que enlazaba crudo a `repoUrl` fue removido a propósito;
@@ -140,6 +161,8 @@ function buildOSCard(app) {
       <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
+      ${echoRaw}
+      ${shizukuMenu}
       <div class="app-actions">${dlBtn}</div>
       ${updated ? `<div class="os-updated-tag"><i class="fas fa-clock-rotate-left"></i> ${updated}</div>` : ''}
     </div>
