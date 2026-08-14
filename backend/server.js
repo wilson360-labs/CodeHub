@@ -339,6 +339,18 @@ const AppRequest = mongoose.model('AppRequest', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }));
 
+// CodeHub Releases — novedades del proyecto (nuevas funciones/versiones
+// integradas). Se publican desde el admin-hub y caen en la campana de
+// notificaciones. NO están vinculadas al historial de git.
+const Release = mongoose.model('Release', new mongoose.Schema({
+  title:     { type: String, required: true },
+  body:      { type: String, default: '' },
+  version:   { type: String, default: '' },
+  url:       { type: String, default: '/' },
+  type:      { type: String, enum: ['release','feature','fix','maintenance'], default: 'release' },
+  createdAt: { type: Date, default: Date.now },
+}));
+
 let dbConnected = false;
 
 // ── MONGODB — LISTENERS DE RECONEXIÓN ──────────────────────────
@@ -1995,6 +2007,20 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     broadcastAppsChanged();
     tgAlert('adminapp', () => `➕ <b>App publicada</b>\n📱 ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\n🏷️ ${categoria || 'sin categoría'}`, { windowMs: 30000 });
+    // Notificación automática: nueva app open source en el catálogo
+    if (a.source_repo) {
+      try {
+        const r = await broadcastPush({
+          title: '🆕 Nueva app open source: ' + a.nombre,
+          body: (a.descripcion ? String(a.descripcion).slice(0, 120) : 'Ya disponible en el catálogo open source de CodeHub'),
+          type: 'app_update',
+          appId: a.appId,
+          version: a.version || '',
+          url: '/opensource.html',
+        });
+        if (r.sent) console.log('📲 Push nueva app open source:', r.sent);
+      } catch (e) { console.warn('Push nueva app open source error:', e.message); }
+    }
     res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3298,31 +3324,96 @@ app.post('/api/push/notify', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Envía un push a todos los suscriptores (broadcast reutilizable por
+// los flujos automáticos: nueva app, app actualizada, CodeHub Release).
+async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
+  const subs = await pushList();
+  let sent = 0;
+  for (const sub of subs) {
+    const result = await sendPush(sub, {
+      title: String(title).trim().slice(0, 80),
+      body: String(body || '').trim().slice(0, 180),
+      type: type || 'announcement',
+      appId: appId || undefined,
+      version: version || '',
+      icon: '/splash/codehub.png',
+      url: url || '/'
+    });
+    if (result.ok) sent += 1;
+  }
+  return { sent, total: subs.length };
+}
+
 app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
   try {
     const { title, body, url, type, appId, version } = req.body || {};
     if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: 'Falta el título de la notificación' });
     }
-    const subs = await pushList();
-    let sent = 0;
-    for (const sub of subs) {
-      const result = await sendPush(sub, {
-        title: String(title).trim().slice(0, 80),
-        body: String(body || '').trim().slice(0, 180),
-        type: type || 'announcement',
-        appId: appId || undefined,
-        version: version || '',
-        icon: '/splash/codehub.png',
-        url: url || '/'
-      });
-      if (result.ok) sent += 1;
-    }
-    res.json({ ok: true, sent, total: subs.length });
+    const r = await broadcastPush({ title, body, url, type, appId, version });
+    res.json({ ok: true, ...r });
   } catch (e) {
     console.error('admin/push/broadcast error:', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── CODEHUB RELEASES ────────────────────────────────────────────
+// Novedades del proyecto publicadas desde el admin-hub. Al publicar se
+// guardan en MongoDB, se avisa por WebSocket y se envía push a todos.
+
+app.post('/api/admin/releases', requireAdmin, async (req, res) => {
+  try {
+    const { title, body, version, url, type } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ ok: false, error: 'Falta el título del release' });
+    }
+    const rel = await Release.create({
+      title: String(title).trim().slice(0, 80),
+      body: String(body || '').slice(0, 500),
+      version: String(version || '').slice(0, 40),
+      url: url || '/',
+      type: type || 'release',
+    });
+    broadcast('codehub_release', { id: String(rel._id), title: rel.title, version: rel.version });
+    tgAlert('release', () => `🚀 <b>CodeHub Release</b>\n${String(rel.title).slice(0, 50)}${rel.version ? ' · ' + rel.version : ''}`, { windowMs: 15000 });
+    const push = await broadcastPush({
+      title: rel.version ? '🚀 CodeHub ' + rel.version : '🚀 CodeHub Release',
+      body: rel.title + (rel.body ? ' — ' + String(rel.body).slice(0, 120) : ''),
+      type: 'release',
+      version: rel.version || '',
+      url: rel.url || '/',
+    });
+    res.json({ ok: true, release: rel, push });
+  } catch (e) {
+    console.error('admin/releases error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/admin/releases', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    const releases = await Release.find({}).sort({ createdAt: -1 }).limit(50).lean();
+    res.json({ ok: true, releases });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    await Release.deleteOne({ _id: req.params.id });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Lista pública de releases (campana de notificaciones / página)
+app.get('/api/releases', async (req, res) => {
+  if (!dbConnected) return res.json({ ok: true, releases: [] });
+  try {
+    const releases = await Release.find({}).sort({ createdAt: -1 }).limit(20).lean();
+    res.json({ ok: true, releases });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 // ── CLIMA → PUSH (alertas y recomendaciones) ─────────────────
@@ -3423,12 +3514,101 @@ app.get('/api/push/weather/check', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Scheduler — revisa cada 25 min; solo envía push cuando cambia la condición
+// Scheduler — revisa cada 30 min; solo envía push cuando cambia la condición
 setInterval(() => {
   weatherPushPass()
     .then(o => { if (o.sent) console.log('🌤️ Push clima enviado:', o.sent); })
     .catch(e => console.warn('⚠️  Push clima error:', e.message));
-}, 25 * 60 * 1000);
+}, 30 * 60 * 1000);
+
+// ── MONITOR AUTOMÁTICO DE RELEASES (apps open source) ──────────
+// Revisa periódicamente las apps con `source_repo` vía la API pública
+// de GitHub; si hay una versión nueva publicada actualiza el documento
+// en MongoDB y envía push a todos los suscriptores ("app se actualizó").
+const AUTO_UPDATE_MS = Math.max(30 * 60 * 1000, Number(process.env.AUTO_UPDATE_MS) || 6 * 60 * 60 * 1000);
+const GITHUB_MONITOR_TOKEN = process.env.GITHUB_TOKEN || null;
+
+async function fetchLatestRelease(ownerRepo) {
+  const url = `https://api.github.com/repos/${ownerRepo}/releases/latest`;
+  const headers = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'CodeHub-App-Update-Monitor' };
+  if (GITHUB_MONITOR_TOKEN) headers['Authorization'] = 'Bearer ' + GITHUB_MONITOR_TOKEN;
+  const res = await fetch(url, { headers });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('GitHub API ' + res.status + ' para ' + ownerRepo);
+  return res.json();
+}
+
+function pickApkAsset(release) {
+  if (!Array.isArray(release.assets)) return null;
+  const apk = release.assets.find(a => a.name && a.name.toLowerCase().endsWith('.apk'));
+  return apk ? apk.browser_download_url : null;
+}
+
+function truncate(text, max = 400) {
+  if (!text) return '';
+  const clean = String(text).replace(/\r\n/g, '\n').trim();
+  return clean.length > max ? clean.slice(0, max).trim() + '…' : clean;
+}
+
+async function autoCheckAppUpdates() {
+  if (!dbConnected) return { ok: false, reason: 'no-db', updated: 0, sent: 0 };
+  const apps = await App.find({ source_repo: { $ne: null } }).lean().catch(() => []);
+  if (!apps.length) return { ok: true, updated: 0, sent: 0, checked: 0 };
+
+  let updated = 0, sent = 0;
+  for (const app of apps) {
+    try {
+      const release = await fetchLatestRelease(app.source_repo);
+      if (!release) continue;
+      const nuevaVersion = release.tag_name || release.name || null;
+      if (!nuevaVersion || nuevaVersion === app.version) continue;
+
+      const apkUrl = pickApkAsset(release);
+      const update = {
+        version: nuevaVersion,
+        changelog: truncate(release.body),
+        tag: '🔄 Actualizada',
+        updatedAt: new Date(),
+      };
+      if (apkUrl) update.enlace = apkUrl;
+
+      await App.updateOne({ appId: app.appId }, { $set: update });
+      await cacheDel('apps:all');
+      broadcastAppsChanged();
+      updated++;
+
+      const r = await broadcastPush({
+        title: '🔄 ' + app.nombre + ' se actualizó',
+        body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
+        type: 'app_update',
+        appId: app.appId,
+        version: nuevaVersion,
+        url: '/opensource.html',
+      });
+      sent += r.sent || 0;
+      console.log('⬆️  Auto: ' + app.nombre + ' → ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
+    } catch (e) {
+      console.warn('⚠️  Auto update ' + app.appId + ':', e.message);
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return { ok: true, checked: apps.length, updated, sent };
+}
+
+// Scheduler del monitor — cada 6h por defecto (configurable con AUTO_UPDATE_MS)
+setInterval(() => {
+  autoCheckAppUpdates()
+    .then(o => { if (o.updated) console.log('🤖 Monitor releases: ' + o.updated + ' actualizada(s)'); })
+    .catch(e => console.warn('⚠️  Monitor releases error:', e.message));
+}, AUTO_UPDATE_MS);
+
+// Endpoint para disparar el monitor manualmente (admin-hub / cron externo)
+app.get('/api/admin/apps/check-updates', requireAdmin, async (req, res) => {
+  try {
+    const out = await autoCheckAppUpdates();
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 // ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {
@@ -3451,7 +3631,8 @@ setInterval(() => {
     console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Push Clima: ✅ VAPID + scheduler cada 25 min (solo avisa si cambia el clima)`);
+    console.log(`   Push Clima: ✅ VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
+    console.log(`   Monitor Releases: ✅ auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
   });
 })();
 

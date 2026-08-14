@@ -262,6 +262,7 @@ function switchTab(id, btn) {
   if (id === 'push')     {
     const summary = document.getElementById('push-summary');
     if (summary) summary.textContent = 'Se enviará a todos los dispositivos suscritos y activos.';
+    loadReleasesList();
   }
   if (id === 'dbrun')    updateDbRunBtn();
   if (id === 'github')   loadGhAutomation();
@@ -306,6 +307,95 @@ async function sendAdminBroadcast() {
       btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar a todos';
     }
   }
+}
+
+// ── CODEHUB RELEASES ────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function publishRelease() {
+  const title   = document.getElementById('release-title')?.value.trim();
+  const body    = document.getElementById('release-body')?.value.trim() || '';
+  const version = document.getElementById('release-version')?.value.trim() || '';
+  const url     = document.getElementById('release-url')?.value.trim() || '/';
+  const type    = document.getElementById('release-type')?.value || 'release';
+  if (!title) {
+    toast('⚠️ Escribe el título del release antes de publicar');
+    return;
+  }
+
+  const btn = document.getElementById('release-send-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publicando...'; }
+
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/releases`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ title, body, version, url, type }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Error publicando el release');
+
+    toast('🚀 Release publicado' + (data.push?.sent ? ' · push a ' + data.push.sent + ' dispositivos' : ''));
+    ['release-title','release-body','release-version'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    loadReleasesList();
+  } catch (e) {
+    toast('❌ ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-rocket"></i> Publicar release';
+    }
+  }
+}
+
+async function loadReleasesList() {
+  const box = document.getElementById('release-list');
+  if (!box) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/releases`, {
+      headers: { 'x-admin-key': ADMIN_KEY },
+    });
+    const data = await res.json().catch(() => ({}));
+    const list = data.releases || [];
+    if (!list.length) {
+      box.innerHTML = '<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">Todavía no hay releases publicados.</div>';
+      return;
+    }
+    box.innerHTML = list.map(r =>
+      '<div style="display:flex;align-items:flex-start;gap:.6rem;padding:.6rem 0;border-top:1px solid var(--border);justify-content:space-between">' +
+        '<div style="min-width:0">' +
+          '<div style="font-size:.72rem;font-weight:700;color:var(--text)">' +
+            (r.version ? '🚀 CodeHub ' + escapeHtml(r.version) + ' — ' : '🚀 ') + escapeHtml(r.title) +
+          '</div>' +
+          (r.body ? '<div style="font-size:.66rem;color:var(--muted);margin-top:.2rem">' + escapeHtml(r.body).slice(0, 100) + '</div>' : '') +
+          '<div style="font-size:.6rem;color:var(--muted);font-family:var(--mono);margin-top:.2rem">' + new Date(r.createdAt).toLocaleString('es-GT') + '</div>' +
+        '</div>' +
+        '<button class="blog-btn-sec" style="padding:.3rem .5rem;font-size:.6rem" onclick="deleteRelease(\'' + r._id + '\')"><i class="fas fa-trash"></i></button>' +
+      '</div>'
+    ).join('');
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:.68rem;color:#ff6b6b">Error cargando releases.</div>';
+  }
+}
+
+async function deleteRelease(id) {
+  if (!confirm('¿Eliminar este release? Los usuarios ya notificados lo conservarán en su campana.')) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/releases/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': ADMIN_KEY },
+    });
+    if (!res.ok) throw new Error((await res.json()).error);
+    toast('🗑️ Release eliminado');
+    loadReleasesList();
+  } catch (e) { toast('❌ ' + e.message); }
 }
 
 // ── INIT ──────────────────────────────────────────────────────

@@ -642,6 +642,43 @@
         </div>
         <div id="push-summary" style="margin-top:.9rem;font-size:.68rem;color:var(--muted);font-family:var(--mono)">Se enviará a todos los dispositivos suscritos y activos.</div>
       </div>
+
+      <div class="section-title"><i class="fas fa-rocket"></i> CodeHub Releases</div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="blog-tip"><i class="fas fa-circle-info"></i><span>Publica una novedad del proyecto (nueva función, versión o aviso). Se guarda en el backend y aparece automáticamente en la campana de notificaciones de todos los usuarios, además del push en vivo.</span></div>
+        <div class="blog-grid-2">
+          <div>
+            <div class="blog-label">Versión (opcional)</div>
+            <input class="blog-input" id="release-version" type="text" maxlength="40" placeholder="Ej: v3.2">
+          </div>
+          <div>
+            <div class="blog-label">Tipo</div>
+            <select class="blog-input" id="release-type" style="appearance:auto">
+              <option value="release">Nuevo release</option>
+              <option value="feature">Nueva función</option>
+              <option value="fix">Corrección</option>
+              <option value="maintenance">Mantenimiento</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">Título del release</div>
+          <input class="blog-input" id="release-title" type="text" maxlength="80" placeholder="Ej: Centro de notificaciones, nuevo sistema de clima...">
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">Descripción</div>
+          <textarea class="blog-textarea" id="release-body" maxlength="500" placeholder="Qué incluye esta novedad..."></textarea>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">URL</div>
+          <input class="blog-input" id="release-url" type="text" value="/" placeholder="/ o /opensource.html">
+        </div>
+        <div class="blog-actions">
+          <button class="blog-btn-primary" id="release-send-btn" type="button" onclick="publishRelease()"><i class="fas fa-rocket"></i> Publicar release</button>
+          <button class="blog-btn-sec" type="button" onclick="loadReleasesList()"><i class="fas fa-clock-rotate-left"></i> Ver publicados</button>
+        </div>
+        <div id="release-list" style="margin-top:1rem"></div>
+      </div>
     </div>
 
     <!-- TAB: BASE DE DATOS (DB RUNNER) ────────────────────────── -->

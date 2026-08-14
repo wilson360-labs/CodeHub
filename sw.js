@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.18';
+const VERSION   = 'codehub-v6.19';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -257,6 +257,14 @@ self.addEventListener('push', e => {
     options.renotify = false;
     options.actions  = [{ action: 'open', title: '🌤 Ver clima' }];
     options.data.url = url || '/index.html#weather-section';
+  } else if (type === 'release') {
+    options.tag      = 'codehub-release';
+    options.renotify = true;
+    options.actions  = [
+      { action: 'view',    title: '🔎 Ver novedad' },
+      { action: 'dismiss', title: 'Cerrar' },
+    ];
+    options.data.url = url || '/';
   } else {
     options.tag = 'codehub-general';
   }

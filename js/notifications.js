@@ -52,6 +52,10 @@
       system:       '<i class="fas fa-rotate"></i>',
       activity:     '<i class="fas fa-list-check"></i>',
       security:     '<i class="fas fa-shield-halved"></i>',
+      release:      '<i class="fas fa-rocket"></i>',
+      feature:      '<i class="fas fa-lightbulb"></i>',
+      fix:          '<i class="fas fa-wrench"></i>',
+      maintenance:  '<i class="fas fa-plug-circle-bolt"></i>',
     };
     return icons[type] || '<i class="fas fa-bell"></i>';
   }
@@ -64,6 +68,10 @@
       system:       'rgba(139,92,246,.16)',
       activity:     'rgba(34,197,94,.14)',
       security:     'rgba(248,113,113,.14)',
+      release:      'rgba(168,85,247,.18)',
+      feature:      'rgba(34,197,94,.16)',
+      fix:          'rgba(59,130,246,.16)',
+      maintenance:  'rgba(234,179,8,.16)',
     };
     return colors[type] || 'rgba(47,128,237,.12)';
   }
@@ -276,6 +284,53 @@
     } catch (e) {}
   }
 
+  // ── Cargar CodeHub Releases recientes ───────────────────
+  // Los releases publicados desde el admin-hub se guardan en el backend
+  // (MongoDB) y se muestran en la campana aunque el push nativo no haya
+  // llegado (app cerrada o permisos sin otorgar).
+  function loadReleases() {
+    var backend = (typeof window.BACKEND !== 'undefined' && window.BACKEND)
+      || (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : '')
+      || 'https://codehub-98s6.onrender.com';
+    if (!backend) return;
+    try {
+      fetch(backend + '/api/releases')
+        .then(r => r.ok ? r.json() : { ok: false })
+        .then(data => {
+          if (!data || !data.ok || !Array.isArray(data.releases) || !data.releases.length) return;
+          var log = getLog();
+          var existingIds = log.map(function (n) { return n.title + '|' + n.body; });
+          var added = 0;
+          data.releases.forEach(function (rel) {
+            var ts = new Date(rel.createdAt).getTime() || Date.now();
+            var title = rel.version ? ('🚀 CodeHub ' + rel.version) : '🚀 CodeHub Release';
+            var body = rel.title + (rel.body ? ' — ' + String(rel.body).slice(0, 120) : '');
+            var key = title + '|' + body;
+            if (existingIds.indexOf(key) !== -1) return;
+            log.push({
+              id: ts + '-' + Math.random().toString(36).slice(2, 7),
+              title: title,
+              body: body.slice(0, 180),
+              type: rel.type || 'release',
+              url: rel.url || '/',
+              icon: '/splash/codehub.png',
+              ts: ts,
+              read: false,
+            });
+            existingIds.push(key);
+            added++;
+          });
+          if (added) {
+            log.sort(function (a, b) { return b.ts - a.ts; });
+            saveLog(log);
+            render();
+            updateBadge();
+          }
+        })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
   // ── Escuchar Service Worker (push real / updates) ────
   function wireSW() {
     if (!('serviceWorker' in navigator)) return;
@@ -309,6 +364,8 @@
       // Recuperar push recibidos con la app cerrada (un poco después,
       // cuando el SW ya esté controlando la página).
       setTimeout(loadFromSW, 1500);
+      // CodeHub Releases recientes publicados desde el admin-hub.
+      setTimeout(loadReleases, 2500);
     });
     wireSW();
   }
