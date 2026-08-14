@@ -594,11 +594,9 @@ footer a:hover { text-decoration: underline; }
 }
 @media (max-width: 640px) {
   .os-toc {
-    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
-    padding-bottom: .4rem; scrollbar-width: none;
-    -ms-overflow-style: none;
+    flex-wrap: wrap; justify-content: center;
+    gap: .4rem;
   }
-  .os-toc::-webkit-scrollbar { display: none; }
   .os-toc a { flex: 0 0 auto; }
   .app-actions {
     flex-direction: column;
