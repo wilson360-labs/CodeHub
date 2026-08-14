@@ -242,6 +242,78 @@
           'Optimiza el disco: escribe <code>dfrgui</code> (HDD desfragmenta, SSD ejecuta TRIM).'
         ]
       }
+    },
+    activacion: {
+      intro: 'Activa Windows 10/11 y Microsoft Office con scripts oficiales y automatizados. Ejecuta los comandos como administrador. Si tu equipo es de empresa o lo usas para negocio, usa tu licencia oficial (MAK/KMS de tu organización).',
+      commands: {
+        title: 'Scripts de activación',
+        note: 'Abre PowerShell o el Símbolo del sistema como administrador, pega el comando y presiona Enter. MAS detecta la edición instalada y elige el método correcto (HWID para Windows 10/11, Ohook para Office).',
+        items: [
+          { cmd: 'irm https://get.activated.win | iex', desc: 'Microsoft Activation Scripts (MAS): activa Windows 10/11 (HWID) y Office 2013–2024 (Ohook). Repo oficial: github.com/massgravel/Microsoft-Activation-Scripts.' },
+          { cmd: 'slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX', desc: 'Instala la clave de licencia de Windows 11 Pro (Genuine Key oficial). Sustituye por la clave de la edición que tengas.' },
+          { cmd: 'slmgr /skms kms8.msguides.com', desc: 'Apunta a un servidor KMS para activación por volumen. Solo para equipos con licencia KMS de su organización.' },
+          { cmd: 'slmgr /ato', desc: 'Activa la licencia instalada (carga los servidores de activación de Microsoft o del KMS configurado).' },
+          { cmd: 'cscript "C:\\Program Files\\Microsoft Office\\Office16\\OSPP.VBS" /act', desc: 'Activa Microsoft Office por volumen (OSPP). Ajusta la ruta Office16 según tu versión instalada.' }
+        ]
+      },
+      tools: [
+        {
+          icon: 'fa-solid fa-key',
+          name: 'MAS — Microsoft Activation Scripts',
+          badge: 'os',
+          desc: 'El script de activación de referencia para Windows y Office: activación HWID (Windows 10/11), Ohook (Office) y métodos KMS. Proyecto open source con miles de estrellas.',
+          links: [
+            { label: 'GitHub oficial', url: 'https://github.com/massgravel/Microsoft-Activation-Scripts' }
+          ],
+          guide: [
+            'Abre PowerShell como administrador (clic derecho en el menú Inicio → Terminal como administrador).',
+            'Ejecuta: <code>irm https://get.activated.win | iex</code>',
+            'En el menú, elige la opción <strong>1 (HWID)</strong> para activar Windows 10/11 de forma permanente.',
+            'Para Office, ejecuta de nuevo y elige la opción <strong>2 (Ohook)</strong> — activa Office 2013 a 2024.',
+            'Reinicia o abre la app y verifica que aparezca "Producto activado".'
+          ]
+        },
+        {
+          icon: 'fa-solid fa-box',
+          name: 'Office Deployment Tool (ODT)',
+          badge: 'gratis',
+          desc: 'Herramienta oficial de Microsoft para descargar e instalar Office con la arquitectura, idioma y licencia que defines en un archivo XML.',
+          links: [
+            { label: 'Microsoft oficial', url: 'https://learn.microsoft.com/es-es/deployoffice/office-deployment-tool' },
+            { label: 'Guía de configuración', url: 'https://config.office.com/deploymentsettings' }
+          ],
+          guide: [
+            'Descarga el ODT desde la página oficial de Microsoft y ejecútalo para extraer setup.exe.',
+            'Crea un archivo <code>configuration.xml</code> con tu canal, edición y <code>&lt;PID Key="clave"/&gt;</code>.',
+            'Ejecuta: <code>setup.exe /configure configuration.xml</code> como administrador.',
+            'Para activar, usa tu clave de producto o <code>ospp.vbs</code> con el servidor KMS de tu organización.'
+          ]
+        },
+        {
+          icon: 'fa-solid fa-server',
+          name: 'KMS_VL_ALL',
+          badge: 'os',
+          desc: 'Script para activación KMS de Windows y Office por volumen, pensado para equipos de organizaciones que ya tienen licencia KMS.',
+          links: [
+            { label: 'GitHub oficial', url: 'https://github.com/kkkgo/KMS_VL_ALL_AIO' }
+          ],
+          guide: [
+            'Es ideal para laboratorios/empresas con licenciamiento por volumen; verifica que tu organización lo permita.',
+            'Descarga el script del release y ejecútalo como administrador en un equipo unido al dominio/volumen.',
+            'El script instala el GVLK correcto y activa contra el KMS configurado.',
+            'Verifica con <code>slmgr /xpr</code> la fecha de expiración de la licencia.'
+          ]
+        }
+      ],
+      steps: {
+        title: 'Verificar que todo quedó activado',
+        items: [
+          'Windows: pulsa <code>Win+R</code>, escribe <code>slmgr /xpr</code> y Enter — muestra el estado de la licencia.',
+          'Windows: también puedes ir a <strong>Configuración → Sistema → Activación</strong>.',
+          'Office: abre Word o Excel → <strong>Cuenta</strong> — debe decir "Producto activado".',
+          'Si falla: revisa que el reloj/fecha del equipo estén correctos y que ejecutaste el script como administrador.'
+        ]
+      }
     }
   };
 
@@ -315,6 +387,7 @@
 
   renderPanel(document.getElementById('we-panel-recuperacion'), WE.recuperacion);
   renderPanel(document.getElementById('we-panel-optimizacion'), WE.optimizacion);
+  renderPanel(document.getElementById('we-panel-activacion'), WE.activacion);
 
   /* ── ABRIR / CERRAR ────────────────────────────────────────── */
   function openDrawer() {

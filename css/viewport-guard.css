@@ -104,6 +104,10 @@ input, select, textarea, button {
   .header-actions { gap: 0.35rem; }
   .burger-btn { min-width: 38px; min-height: 38px; }
 
+  /* Drawer Windows Enhance: las 3 pestañas caben en 380px sin apretar */
+  .we-tabs { gap: 0.3rem; padding-left: 0.6rem; padding-right: 0.6rem; }
+  .we-tab { font-size: 0.66rem !important; padding: 0.4rem 0.3rem !important; }
+
   /* Header: en el mínimo, el logo no puede empujar el layout */
   .header-logo { flex-shrink: 1; min-width: 0; }
   .header-logo-copy { min-width: 0; overflow: hidden; }
