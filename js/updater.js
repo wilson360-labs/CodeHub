@@ -260,6 +260,14 @@ function showToast(changes) {
   toast.querySelector('button').style.cssText = 'background:none;border:none;color:#22c55e;cursor:pointer;font-size:1rem';
   document.body.appendChild(toast);
   setTimeout(() => toast?.remove(), 7000);
+
+  // Registro en el Centro de Notificaciones (mejoras de instalación/links APK)
+  if (typeof window.chNotifLog === 'function') {
+    const names = changes.map(c => c.nombre).slice(0, 3).join(', ') +
+      (changes.length > 3 ? ' y ' + (changes.length - 3) + ' más' : '');
+    window.chNotifLog('🔄 Links actualizados', changes.length + ' app' +
+      (changes.length > 1 ? 's' : '') + ' con nuevo enlace de descarga: ' + names, 'app_update', '#apps');
+  }
 }
 
 // ─── ANIMACIÓN EN CARDS ───────────────────────────────────────

@@ -445,6 +445,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <i class="fas fa-sliders"></i>
                 </button>
 
+                <!-- Campana de notificaciones — visible en PC y móvil -->
+                <button id="notif-btn" aria-label="Notificaciones" title="Notificaciones" aria-haspopup="true" aria-expanded="false">
+                    <i class="fas fa-bell"></i>
+                    <span id="notif-badge" style="display:none">0</span>
+                </button>
+
                 <!-- Burger button — solo visible en mobile -->
                 <button class="burger-btn" id="burger-btn" aria-label="Menú" onclick="toggleMobileNav()">
                     <span></span><span></span><span></span>
@@ -2380,6 +2386,22 @@ DISPONIBILIDAD:
 
 
 <!-- ══════════════════════════════════════════════════════
+     CENTRO DE NOTIFICACIONES — panel flotante (PC + móvil)
+     ══════════════════════════════════════════════════════ -->
+<div id="notif-panel" role="dialog" aria-modal="false" aria-label="Centro de notificaciones">
+  <div class="notif-panel-head">
+    <div class="notif-panel-title"><i class="fas fa-bell"></i> Notificaciones</div>
+    <button id="notif-clear" title="Limpiar notificaciones" aria-label="Limpiar notificaciones">
+      <i class="fas fa-trash-can"></i>
+    </button>
+  </div>
+  <div id="notif-list" class="notif-list"></div>
+  <div class="notif-panel-foot">
+    <span><i class="fas fa-circle-info"></i> Apps, clima y novedades de CodeHub</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
      REGISTRO DE ACTIVIDADES — Diálogo flotante
      ══════════════════════════════════════════════════════ -->
 <div id="ch-activity-dialog" style="
@@ -2737,6 +2759,7 @@ function showIndexNotifBanner() {
     if (perm === 'granted') {
       await initIndexPush();
       chLogActivity('🔔 Notificaciones activadas en CodeHub');
+      if (typeof chNotifLog === 'function') chNotifLog('🔔 Notificaciones activadas', 'Recibirás alertas de apps, clima y novedades en tu dispositivo', 'system', '/');
       if (typeof toast === 'function') toast('🔔 Notificaciones activadas ✓', 'success', 2800);
       // Solicitar ubicación para clima en tiempo real
       if (navigator.geolocation) {
@@ -2780,6 +2803,8 @@ async function chNotifWeatherCheck(lat, lon) {
     else if (c.weather_code >= 95) msg = '⛈ Tormenta eléctrica — evita zonas abiertas';
     if (msg && Notification.permission === 'granted') {
       new Notification('🌤 CodeHub Clima', { body: msg, icon: '/splash/codehub.png' });
+      // Registro en el panel sin duplicar la nativa (6º arg = skipNative)
+      if (typeof chNotifLog === 'function') chNotifLog('🌤 Clima en tu zona', msg, 'weather', '/#weather-section', '', true);
     }
   } catch(e) {}
 }
@@ -5929,5 +5954,6 @@ function setAIMood(btn) {
 
 <script src="js/consent-banner.js?v=20260810a" defer></script>
 <script src="js/connection-alert.js?v=20260810a" defer></script>
+<script src="js/notifications.js?v=20260813a" defer></script>
 </body>
 </html>

@@ -12,9 +12,11 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.17';
+const VERSION   = 'codehub-v6.18';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
+// Historial de notificaciones push para el Centro de Notificaciones
+const NOTIF_CACHE = 'codehub-notifs-v1';
 
 // Tiempo máximo que se espera a la red antes de servir la copia en
 // caché (si existe) mientras la red sigue intentando en segundo plano.
@@ -47,6 +49,7 @@ const PRECACHE = [
   '/js/site-tour.js',
   '/js/consent-banner.js',
   '/js/connection-alert.js',
+  '/js/notifications.js',
   '/data/roadmap.json',
 ];
 
@@ -127,6 +130,40 @@ function staleWhileRevalidate(request) {
     }).catch(() => cached);
     return cached || fresh;
   });
+}
+
+// ── HISTORIAL DE NOTIFICACIONES (para el panel en-app) ──
+// Guarda las últimas notificaciones push recibidas (aunque la app esté
+// cerrada) para que el Centro de Notificaciones las muestre al reabrir.
+const NOTIF_MAX = 25;
+
+function readNotifStore() {
+  return caches.open(NOTIF_CACHE).then(c => c.match('/ch-notifs')).then(r => {
+    if (!r) return [];
+    return r.json().catch(() => []);
+  });
+}
+
+function writeNotifStore(list) {
+  return caches.open(NOTIF_CACHE).then(c =>
+    c.put('/ch-notifs', new Response(JSON.stringify(list.slice(0, NOTIF_MAX)), {
+      headers: { 'Content-Type': 'application/json' }
+    }))
+  ).catch(() => {});
+}
+
+function pushToNotifStore(payload) {
+  readNotifStore().then(list => {
+    list.unshift({
+      title: payload.title || 'CodeHub',
+      body: payload.body || '',
+      type: payload.type || 'general',
+      url: payload.url || '/opensource',
+      icon: payload.icon || '/splash/codehub.png',
+      ts: Date.now(),
+    });
+    return writeNotifStore(list);
+  }).catch(() => {});
 }
 
 // ── FETCH ─────────────────────────────────────────────
@@ -225,6 +262,23 @@ self.addEventListener('push', e => {
   }
 
   e.waitUntil(self.registration.showNotification(title || 'CodeHub', options));
+
+  // Reenviar a las páginas abiertas para que el Centro de
+  // Notificaciones (js/notifications.js) las muestre también.
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      clients.forEach(client => client.postMessage({
+        type: 'CH_PUSH',
+        title: title || 'CodeHub',
+        body: body || '',
+        notifType: type || 'general',
+        url: url || '/opensource',
+        icon: icon || '/splash/codehub.png',
+      }));
+    }).catch(() => {})
+  );
+  // Guardar en el historial para el panel (aunque la app esté cerrada)
+  e.waitUntil(pushToNotifStore({ title, body, type, url, icon }));
 });
 
 // ── NOTIFICATION CLICK ────────────────────────────────
@@ -248,6 +302,16 @@ self.addEventListener('message', e => {
   if (e.data?.type === 'GET_VERSION')  e.ports[0]?.postMessage({ version: VERSION });
   if (e.data?.type === 'CHECK_UPDATE') self.registration.update().catch(() => {});
 
+  // Pedir el historial de notificaciones guardadas (panel en-app)
+  if (e.data?.type === 'GET_NOTIFS') {
+    readNotifStore().then(list => e.ports[0]?.postMessage({ notifs: list })).catch(() => {});
+  }
+
+  // Vaciar el historial de notificaciones (usuario limpió el panel)
+  if (e.data?.type === 'CLEAR_NOTIFS') {
+    writeNotifStore([]).then(() => e.ports[0]?.postMessage({ cleared: true })).catch(() => {});
+  }
+
   // Push local (clima en tiempo real desde la página)
   if (e.data?.type === 'LOCAL_PUSH') {
     const { title, body, notifType, appId, icon, url } = e.data;
@@ -260,5 +324,16 @@ self.addEventListener('message', e => {
       data: { url: url || '/opensource', type: notifType },
       renotify: true,
     });
+    // También al Centro de Notificaciones de la página abierta
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      clients.forEach(client => client.postMessage({
+        type: 'CH_PUSH',
+        title,
+        body: body || '',
+        notifType: notifType || 'general',
+        url: url || '/opensource',
+        icon: icon || '/splash/codehub.png',
+      }));
+    }).catch(() => {});
   }
 });

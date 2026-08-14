@@ -214,3 +214,43 @@ section, main, .container, .wrap, .inner, .section-wrap {
 }
 
 /* Fin del guard. Todo lo nuevo va antes de esta línea. */
+
+/* ── 5. CENTRO DE NOTIFICACIONES — seguridad responsiva ────────── */
+/* El panel flotante nunca más ancho que el viewport y bien anclado */
+#notif-panel {
+  max-width: calc(100vw - 20px);
+  right: 10px;
+}
+#notif-panel.open {
+  transform: translateY(0) scale(1);
+}
+
+/* 380px — mínimo soportado */
+@media (max-width: 380px) {
+  #notif-panel {
+    width: calc(100vw - 16px);
+    right: 8px;
+    left: 8px;
+    top: 4.2rem;
+    max-height: 60vh;
+  }
+  #notif-btn { min-width: 34px; min-height: 34px; }
+  #notif-badge { min-width: 14px; height: 14px; font-size: .45rem; }
+}
+
+/* 480px — panel casi a lo ancho, sin pegarse al borde */
+@media (max-width: 480px) {
+  #notif-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+    left: 12px;
+  }
+  .notif-item { padding: .55rem .7rem; }
+}
+
+/* 720px — en tablets/landscape el panel queda a la derecha y tope superior ajustado */
+@media (max-width: 720px) {
+  #notif-panel { top: 4.4rem; }
+  .header-inner { gap: 0.5rem; }
+  .header-actions { gap: 0.4rem; }
+}
