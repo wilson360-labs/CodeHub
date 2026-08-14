@@ -166,22 +166,6 @@ function buildOSCard(app) {
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
 
-  // Mini menú solo para Shizuku
-  const shizukuMenu = app.appId === 'os-shizuku' ? `
-    <div class="os-mini-menu" aria-label="Mini menú de Shizuku">
-      <div class="os-mini-summary">Mini menú</div>
-      <div class="os-mini-panel">
-        <button class="os-mini-btn" onclick="openHowToDialog('os-shizuku')">
-          <strong>¿Cómo usar?</strong>
-          <span>Abre el diálogo de instrucciones</span>
-        </button>
-        <div class="os-mini-item">
-          <strong>¿Para qué sirve?</strong>
-          <span>Permite a apps de Android acceder a APIs de sistema sin root. Es la base para muchas herramientas de control, optimización y limpieza avanzada.</span>
-        </div>
-      </div>
-    </div>` : '';
-
   // Botón de extensiones solo para Echo Nightly
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
@@ -190,8 +174,8 @@ function buildOSCard(app) {
     </div>` : '';
 
   // Botón de instrucciones para apps avanzadas (root, Shizuku, etc.)
-  const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly'];
-  const howToBtn = advancedApps.includes(app.appId) && app.appId !== 'os-shizuku' ? `
+  const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly', 'os-shizuku'];
+  const howToBtn = advancedApps.includes(app.appId) ? `
     <button class="how-to-btn" onclick="openHowToDialog('${app.appId}')">
       <i class="fas fa-book"></i> ¿Cómo usar?
     </button>` : '';
@@ -217,7 +201,6 @@ function buildOSCard(app) {
       <div class="app-name">${app.nombre}</div>
       <div class="app-desc">${desc}</div>
       ${echoRaw}
-      ${shizukuMenu}
       <div class="app-actions">
         ${howToBtn}
         ${dlBtn}

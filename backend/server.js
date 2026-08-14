@@ -3300,7 +3300,7 @@ app.post('/api/push/notify', async (req, res) => {
 
 app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
   try {
-    const { title, body, url, type } = req.body || {};
+    const { title, body, url, type, appId, version } = req.body || {};
     if (!title || !String(title).trim()) {
       return res.status(400).json({ ok: false, error: 'Falta el título de la notificación' });
     }
@@ -3311,6 +3311,8 @@ app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
         title: String(title).trim().slice(0, 80),
         body: String(body || '').trim().slice(0, 180),
         type: type || 'announcement',
+        appId: appId || undefined,
+        version: version || '',
         icon: '/splash/codehub.png',
         url: url || '/'
       });

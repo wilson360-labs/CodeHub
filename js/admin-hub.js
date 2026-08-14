@@ -790,7 +790,9 @@ async function sendAppUpdatePush(app, body) {
       updatedAt: new Date().toISOString(),
     };
 
-    const res = await fetch(BACKEND + '/api/push/notify', {
+    // Broadcast: envía a todos los dispositivos suscritos (el endpoint
+    // /api/push/notify requiere un endpoint único y no sirve aquí).
+    const res = await fetch(BACKEND + '/api/admin/push/broadcast', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
       body:    JSON.stringify(payload),
