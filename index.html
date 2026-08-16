@@ -5298,10 +5298,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="pwa-close" onclick="dismissPWA()" aria-label="Cerrar" title="Cerrar">×</button>
       </div>
       <div class="pwa-feats" id="pwa-feats">
+        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span><strong>Sincronización en tiempo real</strong> — conectado y actualizado siempre</span></div>
         <div class="pwa-feat"><i class="fas fa-bell"></i><span>Notificaciones en <strong>tiempo real</strong> (apps, clima, novedades)</span></div>
         <div class="pwa-feat"><i class="fas fa-wifi-slash"></i><span>Funciona <strong>sin internet</strong> — modo offline</span></div>
+        <div class="pwa-feat"><i class="fas fa-mobile-alt"></i><span>Compatible con <strong>Android e iOS</strong> — misma app, mismo icono</span></div>
         <div class="pwa-feat"><i class="fas fa-rocket"></i><span><strong>Acceso rápido</strong> desde tu pantalla de inicio</span></div>
-        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span><strong>Actualizaciones automáticas</strong> y sincronización</span></div>
         <div class="pwa-feat"><i class="fas fa-puzzle-piece"></i><span><strong>Plugins y herramientas</strong> compatibles integrados</span></div>
       </div>
       <div class="pwa-guide" id="pwa-guide" style="display:none">
@@ -5345,15 +5346,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ¿Es momento de mostrar el banner de instalación?
   // - Nunca si ya está instalada.
-  // - Cada visita nueva (no mostrar de nuevo en la misma sesión) para
-  //   usuarios que aún no han instalado, salvo que lo hayan cerrado
-  //   hace menos de 1 día.
+  // - Cada visita nueva (nueva sesión) se ofrece instalar, siempre con
+  //   las recomendaciones y la sincronización en tiempo real. No se
+  //   muestra dos veces en la misma sesión para no molestar.
   function shouldShowInstallPrompt() {
     const installed = localStorage.getItem('pwa_installed');
     if (installed) return false;
     if (sessionStorage.getItem('pwa_prompted_session')) return false;
-    const dismissed = parseInt(localStorage.getItem('pwa_dismissed') || '0', 10);
-    if (dismissed && Date.now() - dismissed < 24 * 60 * 60 * 1000) return false;
     return true;
   }
 
@@ -5364,8 +5363,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const installed = localStorage.getItem('pwa_installed');
-    const canInstall = !!_deferredPrompt || (/iphone|ipad|ipod/i.test(navigator.userAgent || ''));
-    installAppBtn.style.display = (!installed && canInstall) ? 'inline-flex' : 'none';
+    // Siempre visible mientras no esté instalada: en iOS/Android el clic
+    // abre la guía o el prompt nativo del navegador.
+    installAppBtn.style.display = installed ? 'none' : 'inline-flex';
   }
 
   window.addEventListener('beforeinstallprompt', e => {
@@ -5409,11 +5409,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!isPublicInstallPage()) {
     hidePWA();
     if (installAppBtn) installAppBtn.style.display = 'none';
-  } else if (!localStorage.getItem('pwa_installed') && shouldShowInstallPrompt()) {
-    // Sin beforeinstallprompt (iOS, o el navegador no lo dispara):
-    // la web igual solicita la instalación al abrir, con la guía.
-    sessionStorage.setItem('pwa_prompted_session', '1');
-    setTimeout(showPWA, 4000);
+  } else {
+    // Botón flotante de instalación siempre visible mientras no esté instalada.
+    updateInstallButtonVisibility();
+    if (!localStorage.getItem('pwa_installed') && shouldShowInstallPrompt()) {
+      // Sin beforeinstallprompt (iOS, o el navegador no lo dispara):
+      // la web igual solicita la instalación al abrir, con la guía.
+      sessionStorage.setItem('pwa_prompted_session', '1');
+      setTimeout(showPWA, 4000);
+    }
   }
 
   // Alterna la guía de instalación por dispositivo
