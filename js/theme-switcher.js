@@ -22,9 +22,13 @@
     document.body.classList.toggle('light-mode', isLight);
     getThemeBtns().forEach(function (btn) {
       btn.classList.toggle('active', isLight);
-      var icon = btn.querySelector('.theme-toggle-icon');
-      if (icon) {
-        icon.className = 'fas theme-toggle-icon ' + (isLight ? 'fa-sun' : 'fa-moon');
+      if (window.CodeHubMorphTo) {
+        CodeHubMorphTo(btn, isLight ? 'sun' : 'moon');
+      } else {
+        var icon = btn.querySelector('[data-fa-theme-icon]');
+        if (icon) {
+          icon.className = 'fas theme-toggle-icon ' + (isLight ? 'fa-sun' : 'fa-moon');
+        }
       }
       btn.setAttribute('aria-pressed', String(isLight));
       btn.setAttribute('title', isLight ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');

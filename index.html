@@ -434,7 +434,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="header-actions">
 
                 <button id="theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
-                    <i class="fas theme-toggle-icon fa-moon"></i>
+                    <i class="fas theme-toggle-icon fa-moon" data-fa-theme-icon></i>
+                    <morph-icon class="theme-toggle-icon" data-morph theme-icon size="17" color="currentColor" icon="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></morph-icon>
                 </button>
 
                 <button id="lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
@@ -500,7 +501,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="side-group side-prefs">
             <div class="side-group-label">Preferencias</div>
             <button class="side-pref-btn" id="side-theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
-                <i class="fas theme-toggle-icon fa-moon"></i><span data-i18n="sidePrefTheme">Tema claro/oscuro</span>
+                <i class="fas theme-toggle-icon fa-moon" data-fa-theme-icon></i><morph-icon class="theme-toggle-icon" data-morph theme-icon size="16" color="currentColor" icon="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></morph-icon><span data-i18n="sidePrefTheme">Tema claro/oscuro</span>
             </button>
             <button class="side-pref-btn" id="side-lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
                 <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
@@ -1102,7 +1103,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Toggle elegante: alertas de clima por push -->
             <div class="wx-alerts-toggle" id="wx-alerts-toggle" onclick="chToggleWeatherAlerts(!this.classList.contains('on'))" title="Recibe notificaciones en tu dispositivo cuando cambie el clima">
-                <span class="wx-alerts-icon"><i class="fas fa-bell"></i></span>
+                <span class="wx-alerts-icon"><i class="fas fa-bell" data-fa-wx-icon></i><morph-icon data-morph wx-icon size="15" color="currentColor" icon="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"></morph-icon></span>
                 <span class="wx-alerts-text">Alertas de clima en mi dispositivo</span>
                 <span class="wx-switch"><span class="wx-switch-knob"></span></span>
             </div>
@@ -2399,6 +2400,9 @@ DISPONIBILIDAD:
   <div class="notif-panel-foot">
     <span><i class="fas fa-circle-info"></i> Apps, clima y novedades de CodeHub</span>
   </div>
+  <button class="notif-perms-btn" onclick="chShowAppPerms()" title="Ver permisos y sincronización de la app">
+    <i class="fas fa-shield-halved"></i> Permisos y sincronización
+  </button>
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -2666,7 +2670,14 @@ async function chSavePushLocation(lat, lon, city, country) {
 function chToggleWeatherAlerts(on) {
   localStorage.setItem('ch_weather_alerts', on ? '1' : '0');
   var toggle = document.getElementById('wx-alerts-toggle');
-  if (toggle) toggle.classList.toggle('on', on);
+  if (toggle) {
+    toggle.classList.toggle('on', on);
+    if (window.CodeHubMorphTo) CodeHubMorphTo(toggle, on ? 'bell' : 'bellOff');
+    else {
+      var fa = toggle.querySelector('[data-fa-wx-icon]');
+      if (fa) fa.className = 'fas ' + (on ? 'fa-bell' : 'fa-bell-slash');
+    }
+  }
   var endpoint = localStorage.getItem('ch_push_endpoint');
   if (!on) {
     if (endpoint) {
@@ -2711,7 +2722,10 @@ function chAutoDetectAndSave() {
 }
 
 function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alerts-toggle');
-  if (toggle) toggle.classList.toggle('on', chWeatherAlertsOn());
+  if (toggle) {
+    toggle.classList.toggle('on', chWeatherAlertsOn());
+    if (window.CodeHubMorphTo) CodeHubMorphTo(toggle, chWeatherAlertsOn() ? 'bell' : 'bellOff');
+  }
 }
 
 /* ══════════════════════════════════════════════════
@@ -2769,6 +2783,9 @@ function enableSyncPermissions() {
   } catch(e) {}
 
   localStorage.setItem('ch_sync_perms', '1');
+
+  // Mostrar el panel de permisos de la app (recursos en tiempo real)
+  setTimeout(chShowAppPerms, 600);
 }
 
 
@@ -2799,6 +2816,154 @@ function openChangelog() {
     if (dot) dot.classList.add('show');
   }
 })();
+
+/* ══════════════════════════════════════════════════
+   PANEL DE PERMISOS DE LA APP (recursos en tiempo real)
+   Muestra el estado REAL de cada recurso que CodeHub
+   necesita: notificaciones, internet/sincronización,
+   almacenamiento persistente, ubicación y modo offline.
+══════════════════════════════════════════════════ */
+function chShowAppPerms() {
+  var overlay = document.getElementById('ch-app-perms-overlay');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  var list = document.getElementById('ch-perms-list');
+  if (!list) return;
+
+  var items = [];
+  var pushState, pushBadge;
+  if (!('Notification' in window)) {
+    pushState = 'bad'; pushBadge = 'no soportado';
+  } else {
+    var p = Notification.permission;
+    if (p === 'granted') { pushState = 'ok'; pushBadge = 'otorgado'; }
+    else if (p === 'denied') { pushState = 'bad'; pushBadge = 'bloqueado'; }
+    else { pushState = 'warn'; pushBadge = 'pendiente'; }
+  }
+  items.push({ icon: '🔔', name: 'Notificaciones push', desc: pushState === 'ok' ? 'Recibes apps nuevas, clima y novedades al instante' : (pushState === 'warn' ? 'Pendiente — se pedirá al abrir' : 'Bloqueado — actívalas en ajustes del navegador'), badge: pushBadge, state: pushState });
+
+  // Internet / conexión (estado real)
+  var online = navigator.onLine;
+  items.push({
+    icon: online ? '🌐' : '📴',
+    name: 'Conexión a internet',
+    desc: online ? 'En línea — sincronizando datos en tiempo real' : 'Sin conexión — modo offline activo; se sincronizará al volver la red',
+    badge: online ? 'en línea' : 'offline',
+    state: online ? 'ok' : 'warn',
+  });
+
+  // Background sync + periodic sync (estado real del SW)
+  var swOk = 'serviceWorker' in navigator;
+  var bgSyncOk = false, periodicOk = false;
+  if (swOk) {
+    try {
+      navigator.serviceWorker.ready.then(function(reg) {
+        bgSyncOk = 'sync' in reg;
+        periodicOk = 'periodicSync' in reg && typeof reg.periodicSync.register === 'function';
+        chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk);
+      }).catch(function(){ chRenderAppPerms(list, items, false, false, swOk); });
+    } catch(e) { chRenderAppPerms(list, items, false, false, swOk); }
+  } else {
+    chRenderAppPerms(list, items, false, false, swOk);
+  }
+}
+
+function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
+  var syncSupport = typeof ServiceWorkerRegistration !== 'undefined' && 'sync' in ServiceWorkerRegistration;
+  var syncIcon = syncSupport ? (bgSyncOk ? '🔄' : '⏸') : '🚫';
+  items.push({
+    icon: syncIcon,
+    name: 'Sincronización automática',
+    desc: bgSyncOk ? 'Al recuperar conexión, CodeHub revisa novedades y te avisa' : 'Tu navegador no la soporta — usa la app instalada o actualiza el navegador',
+    badge: bgSyncOk ? 'activo' : 'no soportado',
+    state: bgSyncOk ? 'ok' : 'warn',
+  });
+  items.push({
+    icon: periodicOk ? '📅' : '⏸',
+    name: 'Sincronización periódica',
+    desc: periodicOk ? 'Revisa novedades cada ~30 min incluso con la app cerrada' : 'Requiere app instalada y navegador compatible',
+    badge: periodicOk ? 'cada 30 min' : 'no soportado',
+    state: periodicOk ? 'ok' : 'warn',
+  });
+  items.push({
+    icon: '💾',
+    name: 'Almacenamiento persistente',
+    desc: 'Evita que el navegador borre la app y sus datos al poco de usarse',
+    badge: 'solicitado',
+    state: 'ok',
+  });
+
+  // Ubicación (para clima en tiempo real)
+  var hasLoc = parseFloat(localStorage.getItem('ch_user_lat'));
+  var locState = hasLoc ? 'ok' : 'warn';
+  items.push({
+    icon: '📍',
+    name: 'Ubicación',
+    desc: hasLoc ? 'Se usa para el clima en tiempo real de tu zona' : 'Se pedirá para el clima cuando la necesite',
+    badge: hasLoc ? 'activa' : 'pendiente',
+    state: locState,
+  });
+
+  // Modo offline (Service Worker)
+  items.push({
+    icon: '📴',
+    name: 'Modo offline',
+    desc: swOk ? 'Carga rápida y acceso sin conexión a la interfaz' : 'Navegador sin Service Worker',
+    badge: swOk ? 'activo' : 'no soportado',
+    state: swOk ? 'ok' : 'warn',
+  });
+
+  list.innerHTML = items.map(function(it) {
+    var badgeCls = it.state === 'ok' ? 'ok' : (it.state === 'warn' ? 'warn' : 'bad');
+    return '<div class="ch-perm-item">' +
+      '<div class="ch-perm-icon">' + it.icon + '</div>' +
+      '<div class="ch-perm-info">' +
+        '<div class="ch-perm-name">' + it.name + '</div>' +
+        '<div class="ch-perm-desc">' + it.desc + '</div>' +
+      '</div>' +
+      '<span class="ch-perm-badge ' + badgeCls + '">' + it.badge + '</span>' +
+    '</div>';
+  }).join('');
+
+  // Mostrar el panel de permisos automáticamente cuando la app está
+  // instalada y aún no se han mostrado (primera vez tras instalar).
+  var shownKey = 'ch_app_perms_shown';
+  if (!localStorage.getItem(shownKey)) {
+    var installed = localStorage.getItem('pwa_installed') ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    if (installed) {
+      localStorage.setItem(shownKey, '1');
+      setTimeout(function() {
+        var overlay = document.getElementById('ch-app-perms-overlay');
+        if (overlay) overlay.classList.add('show');
+      }, 1200);
+    }
+  }
+}
+
+// Botones del panel de permisos
+document.addEventListener('DOMContentLoaded', function() {
+  var ok = document.getElementById('ch-perms-ok');
+  if (ok) ok.onclick = function() {
+    var o = document.getElementById('ch-app-perms-overlay');
+    if (o) o.classList.remove('show');
+  };
+  var retry = document.getElementById('ch-perms-retry');
+  if (retry) retry.onclick = function() {
+    enableSyncPermissions();
+    var o = document.getElementById('ch-app-perms-overlay');
+    if (o) o.classList.remove('show');
+    setTimeout(showIndexNotifBanner, 400);
+  };
+  // Cerrar al click fuera
+  var overlay = document.getElementById('ch-app-perms-overlay');
+  if (overlay) overlay.onclick = function(e) {
+    if (e.target === overlay) overlay.classList.remove('show');
+  };
+});
+
+// Exponer para abrirlo desde cualquier parte (ej. centro de notificaciones)
+window.chShowAppPerms = chShowAppPerms;
 
 /* ══════════════════════════════════════════════════
    DIÁLOGO iOS NOTIFICACIONES — reemplaza banner
@@ -5124,13 +5289,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <div id="pwa-install" role="dialog" aria-live="polite" aria-label="Instalar CodeHub">
     <div class="pwa-card">
-      <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
-      <div class="pwa-text">
-        <div class="pwa-title" id="pwa-title">Instalar CodeHub</div>
-        <div class="pwa-sub" id="pwa-sub">Acceso rápido · funciona sin internet</div>
+      <div class="pwa-top">
+        <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
+        <div class="pwa-text">
+          <div class="pwa-title" id="pwa-title">Instalar CodeHub</div>
+          <div class="pwa-sub" id="pwa-sub">Instala la app y aprovecha todo en tu dispositivo</div>
+        </div>
+        <button class="pwa-close" onclick="dismissPWA()" aria-label="Cerrar" title="Cerrar">×</button>
+      </div>
+      <div class="pwa-feats" id="pwa-feats">
+        <div class="pwa-feat"><i class="fas fa-bell"></i><span>Notificaciones en <strong>tiempo real</strong> (apps, clima, novedades)</span></div>
+        <div class="pwa-feat"><i class="fas fa-wifi-slash"></i><span>Funciona <strong>sin internet</strong> — modo offline</span></div>
+        <div class="pwa-feat"><i class="fas fa-rocket"></i><span><strong>Acceso rápido</strong> desde tu pantalla de inicio</span></div>
+        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span><strong>Actualizaciones automáticas</strong> y sincronización</span></div>
+        <div class="pwa-feat"><i class="fas fa-puzzle-piece"></i><span><strong>Plugins y herramientas</strong> compatibles integrados</span></div>
+      </div>
+      <div class="pwa-guide" id="pwa-guide" style="display:none">
+        <div class="pwa-guide-title">Cómo instalar en tu dispositivo</div>
+        <div class="pwa-guide-step" data-device="ios"><b>iPhone / iPad (Safari):</b> toca el botón <strong>Compartir</strong> (cuadro con flecha ↑) → <strong>Añadir a pantalla de inicio</strong>.</div>
+        <div class="pwa-guide-step" data-device="android"><b>Android (Chrome):</b> toca el menú <strong>⋮</strong> → <strong>Instalar aplicación</strong> / <em>Add to Home screen</em>.</div>
+        <div class="pwa-guide-step" data-device="desktop"><b>PC / Mac:</b> usa el botón <strong>Instalar</strong> de la barra del navegador (icono de descarga) o el menú del navegador.</div>
       </div>
       <div class="pwa-btns">
-        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">Instalar</button>
+        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">Instalar app</button>
+        <button class="pwa-btn-how" onclick="togglePWAGuide()" id="pwa-btn-how">❔ ¿Cómo instalar?</button>
         <button class="pwa-btn-no" onclick="dismissPWA()" id="pwa-btn-no">Ahora no</button>
       </div>
     </div>
@@ -5160,6 +5342,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function pwaEligible() {
     return !!_deferredPrompt || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   }
+
+  // ¿Es momento de mostrar el banner de instalación?
+  // - Nunca si ya está instalada.
+  // - Cada visita nueva (no mostrar de nuevo en la misma sesión) para
+  //   usuarios que aún no han instalado, salvo que lo hayan cerrado
+  //   hace menos de 1 día.
+  function shouldShowInstallPrompt() {
+    const installed = localStorage.getItem('pwa_installed');
+    if (installed) return false;
+    if (sessionStorage.getItem('pwa_prompted_session')) return false;
+    const dismissed = parseInt(localStorage.getItem('pwa_dismissed') || '0', 10);
+    if (dismissed && Date.now() - dismissed < 24 * 60 * 60 * 1000) return false;
+    return true;
+  }
+
   function updateInstallButtonVisibility() {
     if (!installAppBtn) return;
     if (!isPublicInstallPage()) {
@@ -5167,20 +5364,19 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const installed = localStorage.getItem('pwa_installed');
-    const dismissed = localStorage.getItem('pwa_dismissed');
     const canInstall = !!_deferredPrompt || (/iphone|ipad|ipod/i.test(navigator.userAgent || ''));
-    const shouldShow = !installed && canInstall && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000);
-    installAppBtn.style.display = shouldShow ? 'inline-flex' : 'none';
+    installAppBtn.style.display = (!installed && canInstall) ? 'inline-flex' : 'none';
   }
 
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _deferredPrompt = e;
     updateInstallButtonVisibility();
-    const dismissed = localStorage.getItem('pwa_dismissed');
-    const installed = localStorage.getItem('pwa_installed');
-    if (!installed && (!dismissed || Date.now() - parseInt(dismissed) > 7 * 86400000)) {
-      setTimeout(showPWA, 5000);
+    // La web siempre ofrece instalar al abrir: si no está instalada y
+    // aún no se pidió en esta sesión, mostramos el banner.
+    if (shouldShowInstallPrompt()) {
+      sessionStorage.setItem('pwa_prompted_session', '1');
+      setTimeout(showPWA, 2500);
     }
   });
 
@@ -5199,36 +5395,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   if (isStandalone) {
     setTimeout(enableSyncPermissions, 2500);
+    // Primera apertura con app instalada: mostrar el panel de permisos
+    // (internet, sincronización, almacenamiento, etc.) una sola vez.
+    if (!localStorage.getItem('ch_app_perms_shown')) {
+      setTimeout(function() {
+        var overlay = document.getElementById('ch-app-perms-overlay');
+        if (overlay) overlay.classList.add('show');
+        chShowAppPerms();
+      }, 5000);
+    }
   }
 
   if (!isPublicInstallPage()) {
     hidePWA();
     if (installAppBtn) installAppBtn.style.display = 'none';
+  } else if (!localStorage.getItem('pwa_installed') && shouldShowInstallPrompt()) {
+    // Sin beforeinstallprompt (iOS, o el navegador no lo dispara):
+    // la web igual solicita la instalación al abrir, con la guía.
+    sessionStorage.setItem('pwa_prompted_session', '1');
+    setTimeout(showPWA, 4000);
   }
 
-  // iOS / Safari: sin beforeinstallprompt → mostrar guía breve
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
-  if (isIOS && !localStorage.getItem('pwa_installed') && !localStorage.getItem('pwa_dismissed') && !pwaEligible()) {
-    setTimeout(showPWA, 8000);
+  // Alterna la guía de instalación por dispositivo
+  function togglePWAGuide() {
+    const guide = document.getElementById('pwa-guide');
+    const how = document.getElementById('pwa-btn-how');
+    if (!guide) return;
+    const isOpen = guide.style.display !== 'none';
+    guide.style.display = isOpen ? 'none' : 'block';
+    if (how) how.textContent = isOpen ? '❔ ¿Cómo instalar?' : '▲ Ocultar guía';
+    // Resaltar el paso según el dispositivo
+    if (!isOpen) {
+      const ua = (navigator.userAgent || '').toLowerCase();
+      const isIOS = /iphone|ipad|ipod/.test(ua);
+      const isAndroid = /android/.test(ua);
+      document.querySelectorAll('.pwa-guide-step').forEach(s => {
+        const dev = s.getAttribute('data-device');
+        s.style.display = 'block';
+        s.style.opacity = '1';
+        if ((isIOS && dev === 'ios') || (isAndroid && dev === 'android') || (!isIOS && !isAndroid && dev === 'desktop')) {
+          s.style.fontWeight = '700';
+          s.style.background = 'rgba(47,128,237,.12)';
+        }
+      });
+    }
   }
 
   function installPWA() {
     if (!_deferredPrompt) {
-      // iOS / Safari: no hay prompt nativo → mostrar guía breve
-      if (isIOS) {
-        const card = document.getElementById('pwa-install');
-        if (card) card.classList.add('ios-guide');
-        const t = document.getElementById('pwa-title');
-        const s = document.getElementById('pwa-sub');
-        const b = document.getElementById('pwa-btn-install');
-        const n = document.getElementById('pwa-btn-no');
-        if (t) t.textContent = '📱 Agregar a pantalla de inicio';
-        if (s) s.innerHTML = 'En Safari: toca <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>.';
-        if (b) b.textContent = 'Entendido';
-        if (n) { n.style.display = 'none'; }
-        const cb = b ? b.onclick : null;
-        if (b) b.onclick = dismissPWA;
-      }
+      // Sin prompt nativo (iOS/Safari u otro navegador): mostrar la guía
+      // de instalación en lugar del prompt del navegador.
+      togglePWAGuide();
       return;
     }
     _deferredPrompt.prompt();
@@ -5939,11 +6156,33 @@ function setAIMood(btn) {
   </div>
 </div>
 
+<!-- ═══ PERMISOS DE LA APP INSTALADA ═══
+     Muestra TODOS los recursos que CodeHub usa en tiempo real:
+     notificaciones, internet/sincronización, almacenamiento
+     persistente, ubicación y modo offline. -->
+<div id="ch-app-perms-overlay" role="dialog" aria-modal="true" aria-label="Permisos de la app CodeHub">
+  <div class="ios-notif-card ch-perms-card">
+    <div class="ios-notif-header">
+      <div class="ios-notif-icon">📡</div>
+      <div class="ios-notif-title">Permisos de CodeHub</div>
+      <div class="ios-notif-sub">Recursos que la app usa para mantenerse conectada en tiempo real</div>
+    </div>
+    <div class="ch-perms-list" id="ch-perms-list">
+      <!-- se llena por JS -->
+    </div>
+    <div class="ios-notif-actions">
+      <button id="ch-perms-ok" style="background:linear-gradient(135deg,#2f80ed,#22c55e);color:#fff">Entendido</button>
+      <button id="ch-perms-retry" style="color:rgba(240,240,250,.6)">Reintentar permisos</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- Anime.js + UX Animations -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
 <script src="js/site-tour.js?v=20260809a"></script>
 <script src="js/theme-switcher.js?v=20260724a"></script>
+<script type="module" src="js/morphicons-init.js?v=20260816a"></script>
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
 <script src="js/ux-animations.js?v=20260811a"></script>

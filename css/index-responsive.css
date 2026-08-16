@@ -1122,10 +1122,12 @@
     bottom: 80px;
     width: auto;
   }
-  .pwa-card { padding: 0.9rem 1rem; gap: 0.75rem; border-radius: var(--radius-md, 14px); }
+  .pwa-card { padding: 0.9rem 1rem; gap: 0.7rem; border-radius: var(--radius-md, 14px); max-width: none; }
   .pwa-title { font-size: 0.88rem; }
-  .pwa-sub { font-size: 0.7rem; }
-  .pwa-btn-yes, .pwa-btn-no { min-height: 38px; font-size: 0.78rem; }
+  .pwa-sub { font-size: 0.68rem; }
+  .pwa-feat { font-size: 0.66rem; }
+  .pwa-guide-step { font-size: 0.64rem; }
+  .pwa-btn-yes, .pwa-btn-no, .pwa-btn-how { min-height: 38px; font-size: 0.78rem; }
 
   /* ── EASTER EGG OVERLAY ── */
   .egg-title .e1, .egg-title .e2, .egg-title .e3 { font-size: 2.2rem !important; }
@@ -1331,7 +1333,9 @@
   /* ── PWA INSTALL ── */
   .pwa-card { padding: 0.8rem 0.85rem; gap: 0.6rem; }
   .pwa-title { font-size: 0.82rem; }
-  .pwa-sub { font-size: 0.65rem; }
+  .pwa-sub { font-size: 0.63rem; }
+  .pwa-feat { font-size: 0.63rem; }
+  .pwa-guide-step { font-size: 0.62rem; }
 }
 
 /* ══════════════════════════════════════════════════════════════════

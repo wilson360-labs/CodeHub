@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.20';
+const VERSION   = 'codehub-v6.21';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -50,6 +50,13 @@ const PRECACHE = [
   '/js/consent-banner.js',
   '/js/connection-alert.js',
   '/js/notifications.js',
+  '/js/morphicons-init.js',
+  '/js/vendor/morphicons/element.js',
+  '/js/vendor/morphicons/controller-CXZuwJ_M.js',
+  '/js/vendor/morphicons/dom.js',
+  '/js/vendor/morphicons/index.js',
+  '/js/vendor/morphicons/normalize-CYnN3Npw.js',
+  '/js/vendor/morphicons/spring-CFHloqPP.js',
   '/data/roadmap.json',
 ];
 
