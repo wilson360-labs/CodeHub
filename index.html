@@ -2710,9 +2710,65 @@ function chAutoDetectAndSave() {
   }
 }
 
-function chInitWeatherToggle() {
-  var toggle = document.getElementById('wx-alerts-toggle');
+function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alerts-toggle');
   if (toggle) toggle.classList.toggle('on', chWeatherAlertsOn());
+}
+
+/* ══════════════════════════════════════════════════
+   PERMISOS DE INTERNET + SINCRONIZACIÓN (app instalada)
+   Cuando la app se instala o ya está instalada, solicita
+   los permisos para recibir notificaciones en TIEMPO REAL:
+    1. Permiso de notificaciones (push del backend).
+    2. Background Sync — despierta el SW al recuperar conexión.
+    3. Periodic Background Sync — revisa novedades cada ~30 min
+       incluso con la app cerrada.
+    4. Almacenamiento persistente — evita que el navegador
+       borre la caché/SW al poco de usarse.
+   Solo se pide una vez (localStorage ch_sync_perms); el usuario
+   puede reactivar desde el diálogo de notificaciones.
+══════════════════════════════════════════════════ */
+function enableSyncPermissions() {
+  if (!('serviceWorker' in navigator)) return;
+  if (localStorage.getItem('ch_sync_perms') === '1') return;
+
+  // 1) Notificaciones push (si aún está en "default" lo pedimos)
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().then(function(perm) {
+      if (perm === 'granted') {
+        initIndexPush();
+        if (typeof chNotifLog === 'function') chNotifLog('🔔 Sincronización activada', 'CodeHub instalado: recibirás novedades y clima en tiempo real', 'system', '/');
+      } else {
+        localStorage.setItem('ch_notif_dismissed', Date.now());
+      }
+    }).catch(function(){});
+  } else if (Notification.permission === 'granted') {
+    initIndexPush();
+  }
+
+  // 2/3) Background sync + periodic sync via el SW
+  navigator.serviceWorker.ready.then(function(reg) {
+    try {
+      if ('sync' in reg) reg.sync.register('codehub-sync');
+    } catch(e) {}
+    try {
+      if ('periodicSync' in reg && typeof reg.periodicSync.register === 'function') {
+        reg.periodicSync.register('codehub-periodic-sync', { minInterval: 30 * 60 * 1000 }).catch(function(){});
+      }
+    } catch(e) {}
+    // Avisar al SW para que registre sus propios tags
+    try {
+      reg.active.postMessage({ type: 'REGISTER_SYNC' });
+    } catch(e) {}
+  }).catch(function(){});
+
+  // 4) Almacenamiento persistente (navegador no borra datos del sitio)
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(function(){});
+    }
+  } catch(e) {}
+
+  localStorage.setItem('ch_sync_perms', '1');
 }
 
 
@@ -2758,6 +2814,7 @@ function showIndexNotifBanner() {
     var perm = await Notification.requestPermission();
     if (perm === 'granted') {
       await initIndexPush();
+      enableSyncPermissions();
       chLogActivity('🔔 Notificaciones activadas en CodeHub');
       if (typeof chNotifLog === 'function') chNotifLog('🔔 Notificaciones activadas', 'Recibirás alertas de apps, clima y novedades en tu dispositivo', 'system', '/');
       if (typeof toast === 'function') toast('🔔 Notificaciones activadas ✓', 'success', 2800);
@@ -5132,7 +5189,17 @@ document.addEventListener('DOMContentLoaded', () => {
     hidePWA();
     if (installAppBtn) installAppBtn.style.display = 'none';
     _deferredPrompt = null;
+    // App instalada → solicitar permisos de internet/sincronización y
+    // activar las notificaciones en tiempo real (push + background sync).
+    setTimeout(enableSyncPermissions, 1500);
   });
+
+  // Si la app YA estaba instalada (modo standalone), activar la
+  // sincronización y el push automáticamente al abrir.
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  if (isStandalone) {
+    setTimeout(enableSyncPermissions, 2500);
+  }
 
   if (!isPublicInstallPage()) {
     hidePWA();

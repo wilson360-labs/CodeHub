@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.19';
+const VERSION   = 'codehub-v6.20';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -310,6 +310,17 @@ self.addEventListener('message', e => {
   if (e.data?.type === 'GET_VERSION')  e.ports[0]?.postMessage({ version: VERSION });
   if (e.data?.type === 'CHECK_UPDATE') self.registration.update().catch(() => {});
 
+  // La app instalada pide sincronización (permisos de internet + sync)
+  if (e.data?.type === 'REGISTER_SYNC') {
+    const reg = self.registration;
+    try { if ('sync' in reg) reg.sync.register(SYNC_TAG); } catch (err) {}
+    try {
+      if ('periodicSync' in reg && typeof reg.periodicSync.register === 'function') {
+        reg.periodicSync.register(PERIODIC_TAG, { minInterval: 30 * 60 * 1000 }).catch(() => {});
+      }
+    } catch (err) {}
+  }
+
   // Pedir el historial de notificaciones guardadas (panel en-app)
   if (e.data?.type === 'GET_NOTIFS') {
     readNotifStore().then(list => e.ports[0]?.postMessage({ notifs: list })).catch(() => {});
@@ -343,5 +354,103 @@ self.addEventListener('message', e => {
         icon: icon || '/splash/codehub.png',
       }));
     }).catch(() => {});
+  }
+});
+
+// ── BACKGROUND SYNC ────────────────────────────────────
+// Con la app instalada y permiso de notificaciones otorgado, el
+// navegador despierta el SW cuando recupera conexión ("sincronización
+// de internet") y cuando hay una sincronización periódica. Aquí
+// re-chequeamos novedades (CodeHub Releases) y clima para notificar
+// en tiempo real aunque la app esté cerrada.
+const SYNC_TAG   = 'codehub-sync';
+const PERIODIC_TAG = 'codehub-periodic-sync';
+const SYNC_BACKEND = 'https://codehub-98s6.onrender.com';
+
+// Revisa si hay releases recientes y, si el usuario no los ha visto,
+// muestra la notificación y la guarda en el Centro de Notificaciones.
+function syncCheckReleases() {
+  return fetch(SYNC_BACKEND + '/api/releases', { headers: { 'Accept': 'application/json' } })
+    .then(r => r.ok ? r.json() : { releases: [] })
+    .then(data => {
+      if (!data || !data.ok || !Array.isArray(data.releases) || !data.releases.length) return;
+      const latest = data.releases[0];
+      return readNotifStore().then(list => {
+        const seen = list.some(n => n.url === latest.url || (n.body || '').includes(latest.title));
+        if (seen) return;
+        const title = latest.version ? ('🚀 CodeHub ' + latest.version) : '🚀 CodeHub Release';
+        const body = latest.title + (latest.body ? ' — ' + String(latest.body).slice(0, 110) : '');
+        self.registration.showNotification(title, {
+          body,
+          icon: '/splash/codehub.png',
+          badge: '/splash/codehub.png',
+          tag: 'codehub-release',
+          vibrate: [200, 100, 200],
+          data: { url: latest.url || '/', type: 'release' },
+          actions: [{ action: 'view', title: '🔎 Ver novedad' }],
+        });
+        pushToNotifStore({ title, body, type: 'release', url: latest.url || '/', icon: '/splash/codehub.png' });
+        // Avisar a la página abierta (panel en-app)
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+          clients.forEach(c => c.postMessage({
+            type: 'CH_PUSH', title, body, notifType: 'release', url: latest.url || '/', icon: '/splash/codehub.png',
+          }));
+        }).catch(() => {});
+      });
+    })
+    .catch(() => {});
+}
+
+// Guarda el último estado de clima sincronizado para evitar spam
+function syncWeatherLast() {
+  return caches.open(NOTIF_CACHE).then(c => c.match('/ch-sync-wx')).then(r => r ? r.json() : {});
+}
+function syncWeatherSave(state) {
+  return caches.open(NOTIF_CACHE).then(c =>
+    c.put('/ch-sync-wx', new Response(JSON.stringify(state), { headers: { 'Content-Type': 'application/json' } }))
+  ).catch(() => {});
+}
+
+// Chequeo de clima (misma lógica de alertas que el backend)
+function syncCheckWeather() {
+  return fetch('https://api.open-meteo.com/v1/forecast?latitude=14.63&longitude=-90.51&current=temperature_2m,weather_code,wind_speed_10m,precipitation&timezone=auto')
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      if (!d || !d.current) return;
+      const c = d.current;
+      let msg = '';
+      let cond = '';
+      if (c.weather_code >= 95)            { msg = '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas'; cond = 'storm'; }
+      else if (c.weather_code >= 61 && c.weather_code <= 67) { msg = '🌧️ Lluvia en tu zona — lleva paraguas'; cond = 'rain'; }
+      else if (c.wind_speed_10m > 50)      { msg = '💨 Viento fuerte (' + c.wind_speed_10m + ' km/h) — precaución'; cond = 'wind'; }
+      else if (c.temperature_2m > 33)      { msg = '🌡️ Calor extremo (' + c.temperature_2m + '°C) — hidrátate'; cond = 'heat'; }
+      else if (c.temperature_2m < 0)       { msg = '🥶 Frío intenso — abrígate bien'; cond = 'cold'; }
+      if (!msg) return syncWeatherSave({ cond: null, ts: Date.now() });
+      return syncWeatherLast().then(prev => {
+        if (prev && prev.cond === cond && Date.now() - (prev.ts || 0) < 2 * 60 * 60 * 1000) return;
+        self.registration.showNotification('CodeHub Clima', {
+          body: msg + ' · Ciudad de Guatemala',
+          icon: '/splash/codehub.png',
+          badge: '/splash/codehub.png',
+          tag: 'codehub-weather',
+          vibrate: [150, 100, 150],
+          data: { url: '/index.html#weather-section', type: 'weather' },
+        });
+        pushToNotifStore({ title: 'CodeHub Clima', body: msg, type: 'weather', url: '/#weather-section', icon: '/splash/codehub.png' });
+        return syncWeatherSave({ cond, ts: Date.now() });
+      });
+    })
+    .catch(() => {});
+}
+
+self.addEventListener('sync', e => {
+  if (e.tag === SYNC_TAG) {
+    e.waitUntil(Promise.allSettled([syncCheckReleases(), syncCheckWeather()]));
+  }
+});
+
+self.addEventListener('periodicsync', e => {
+  if (e.tag === PERIODIC_TAG) {
+    e.waitUntil(Promise.allSettled([syncCheckReleases(), syncCheckWeather()]));
   }
 });
