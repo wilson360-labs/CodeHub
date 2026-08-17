@@ -3852,12 +3852,13 @@
   .pwa-feats{display:flex;flex-direction:column;gap:.35rem;min-width:0}
   .pwa-feat{display:flex;align-items:center;gap:.55rem;font-size:.68rem;color:rgba(232,232,240,.75);font-family:'JetBrains Mono',monospace;line-height:1.35}
   .pwa-feat i{width:20px;flex-shrink:0;text-align:center;color:#38bdf8;font-size:.75rem}
-  .pwa-feat strong{color:#fff}
+  .pwa-feat-highlight{font-weight:700;color:#fff}
   .pwa-feat span{min-width:0}
   .pwa-guide{display:flex;flex-direction:column;gap:.4rem;padding:.6rem .7rem;border:1px dashed rgba(47,128,237,.35);border-radius:var(--radius-sm, 10px);background:rgba(47,128,237,.06)}
   .pwa-guide-title{font-size:.68rem;font-weight:800;color:#38bdf8;letter-spacing:.04em;text-transform:uppercase}
   .pwa-guide-step{font-size:.66rem;color:rgba(232,232,240,.75);font-family:'JetBrains Mono',monospace;line-height:1.5}
   .pwa-guide-step strong{color:#fff}
+.pwa-guide-device{font-weight:700;color:rgba(232,232,240,.9)}
   .pwa-btns{display:flex;flex-direction:column;gap:.4rem;flex-shrink:0}
   .pwa-btn-yes{padding:.45rem .8rem;background:linear-gradient(135deg,#2f80ed,#22c55e);color:#fff;border:none;border-radius:var(--radius-sm, 10px);font-size:.78rem;font-weight:700;cursor:pointer;transition:transform .15s, box-shadow .15s;white-space:nowrap}
   .pwa-btn-yes:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(47,128,237,.45)}
@@ -3869,10 +3870,11 @@
   [data-theme="light"] .pwa-title{color:#0c0c0c}
   [data-theme="light"] .pwa-sub{color:#475569}
   [data-theme="light"] .pwa-feat{color:#334155}
-  [data-theme="light"] .pwa-feat strong{color:#0c0c0c}
+  [data-theme="light"] .pwa-feat-highlight{color:#0c0c0c}
   [data-theme="light"] .pwa-feat i{color:#2f80ed}
-  [data-theme="light"] .pwa-guide-step{color:#334155}
-  [data-theme="light"] .pwa-guide-step strong{color:#0c0c0c}
+[data-theme="light"] .pwa-guide-step{color:#334155}
+[data-theme="light"] .pwa-guide-step strong{color:#0c0c0c}
+[data-theme="light"] .pwa-guide-device{color:#1e293b}
   [data-theme="light"] .pwa-close{background:rgba(15,23,42,.08);color:#475569}
   [data-theme="light"] .pwa-close:hover{background:rgba(15,23,42,.15);color:#0c0c0c}
   [data-theme="light"] .pwa-btn-no{color:#64748b}
