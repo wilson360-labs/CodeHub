@@ -8,5 +8,10 @@ Disallow: /python/
 Disallow: /tests/
 Disallow: /apps_data.json
 Disallow: /admin-hub
+Disallow: /snake
+Disallow: /tetris
+Disallow: /mines
+Disallow: /memory
+Disallow: /rps
 
 Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
