@@ -125,5 +125,23 @@
     "utilities",
     "developer-tools"
   ],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "permissions": [
+    "notifications",
+    "geolocation",
+    "microphone",
+    "clipboard-read",
+    "persistent-storage",
+    "background-sync",
+    "background-sync"
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

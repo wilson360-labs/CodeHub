@@ -87,6 +87,10 @@
     } else {
       badge.style.display = 'none';
     }
+    if ('setAppBadge' in navigator) {
+      if (unread > 0) { navigator.setAppBadge(unread).catch(function(){}); }
+      else { navigator.clearAppBadge().catch(function(){}); }
+    }
   }
 
   // ── Render del panel ─────────────────────────────────
