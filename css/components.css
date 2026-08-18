@@ -5816,3 +5816,60 @@ h2.tw-split .tw-word.tw-in {
   border-top-color: rgba(15,23,42,.08);
   background: rgba(47,128,237,.07);
 }
+
+/* ═══ Office Download Bar ═══ */
+.office-dl-bar {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  margin-top: .6rem; padding: .5rem .7rem;
+  background: rgba(124,77,255,.08); border: 1px solid rgba(124,77,255,.2);
+  border-radius: 10px; animation: aiFadeIn .3s ease;
+}
+.office-dl-label {
+  font-size: .62rem; color: rgba(232,232,240,.5); font-weight: 600;
+  letter-spacing: .02em; text-transform: uppercase;
+}
+.office-dl-btn {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .3rem .6rem; border-radius: 8px; border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.05); color: rgba(232,232,240,.8);
+  font-size: .6rem; font-weight: 600; cursor: pointer;
+  transition: all .15s ease; font-family: inherit;
+}
+.office-dl-btn i { font-size: .7rem; }
+.office-dl-btn:hover { background: rgba(124,77,255,.25); border-color: rgba(124,77,255,.4); color: #fff; }
+.office-dl-btn[data-fmt="docx"]:hover { color: #2b579a; }
+.office-dl-btn[data-fmt="xlsx"]:hover { color: #217346; }
+.office-dl-btn[data-fmt="pptx"]:hover { color: #b7472a; }
+.office-dl-btn[data-fmt="pdf"]:hover { color: #e2574c; }
+[data-theme="light"] .office-dl-bar { background: rgba(124,77,255,.05); border-color: rgba(124,77,255,.15); }
+[data-theme="light"] .office-dl-label { color: rgba(15,23,42,.45); }
+[data-theme="light"] .office-dl-btn { background: rgba(124,77,255,.06); border-color: rgba(124,77,255,.15); color: rgba(15,23,42,.7); }
+[data-theme="light"] .office-dl-btn:hover { background: rgba(124,77,255,.12); color: #4a3f8f; }
+
+/* ═══ Deep Search Results ═══ */
+.deep-search-answer {
+  margin-bottom: .5rem; padding: .5rem .7rem;
+  background: rgba(47,128,237,.08); border-left: 3px solid rgba(47,128,237,.5);
+  border-radius: 0 8px 8px 0; font-size: .72rem;
+  color: rgba(232,232,240,.85); line-height: 1.5;
+}
+.deep-search-sources {
+  display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+  margin-top: .4rem; padding-top: .4rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.deep-search-label {
+  font-size: .58rem; color: rgba(232,232,240,.4);
+  font-weight: 600; text-transform: uppercase; letter-spacing: .02em;
+}
+.deep-search-source {
+  font-size: .58rem; color: rgba(56,189,248,.8);
+  text-decoration: none; padding: .15rem .4rem;
+  border-radius: 6px; background: rgba(56,189,248,.08);
+  transition: background .15s;
+}
+.deep-search-source:hover { background: rgba(56,189,248,.2); color: #38bdf8; }
+[data-theme="light"] .deep-search-answer { background: rgba(47,128,237,.06); border-left-color: rgba(47,128,237,.4); color: rgba(15,23,42,.8); }
+[data-theme="light"] .deep-search-sources { border-top-color: rgba(15,23,42,.06); }
+[data-theme="light"] .deep-search-label { color: rgba(15,23,42,.4); }
+[data-theme="light"] .deep-search-source { background: rgba(47,128,237,.06); color: rgba(47,128,237,.8); }

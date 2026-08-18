@@ -198,6 +198,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
     <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+    <!-- Office document generation libraries -->
+    <script src="https://unpkg.com/docx/dist/index.umd.js" defer></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body>
 <script>
@@ -3982,10 +3987,29 @@ setAiStatus('Generando imagen…', 'busy');
     }
 
     const shouldSearch = !attachment && isSearchQuery(effectiveText);
+    const shouldDeepSearch = !attachment && typeof DeepSearch !== 'undefined' && DeepSearch.needsSearch(effectiveText);
     loading = true;
     sendBtn.disabled = true;
     setAiStatus('Pensando…', 'busy');
     const typingEl = addMsg('typing', '▌');
+
+    // ── Búsqueda profunda (Google + Tavily) ──
+    let deepSearchContext = '';
+    let deepSearchResults = null;
+    if (shouldDeepSearch) {
+      try {
+        setAiStatus('🔍 Buscando en la web…', 'busy');
+        deepSearchResults = await DeepSearch.search(effectiveText);
+        if (deepSearchResults && deepSearchResults.items.length > 0) {
+          deepSearchContext = '\n\n[RESULTADOS DE BÚSQUEDA WEB]\n';
+          if (deepSearchResults.answer) deepSearchContext += `Resumen: ${deepSearchResults.answer}\n`;
+          deepSearchResults.items.forEach((item, i) => {
+            deepSearchContext += `[${i + 1}] ${item.title} — ${item.snippet} (Fuente: ${item.url})\n`;
+          });
+          deepSearchContext += '[FIN DE RESULTADOS]\nUsa esta información para responder con datos actualizados y cita las fuentes.';
+        }
+      } catch (e) { console.warn('Deep search error:', e); }
+    }
 
     history.push({ role: 'user', content: effectiveText });
     if (history.length > 10) history = history.slice(-10);
@@ -3995,7 +4019,7 @@ setAiStatus('Generando imagen…', 'busy');
     try {
       _currentAbort = new AbortController();
       const body = {
-        message: effectiveText,
+        message: effectiveText + deepSearchContext,
         sessionId: SESSION_ID
       };
       // Adjunto: imagen suelta → "image"; PDF con texto → "pdfText";
@@ -4030,7 +4054,25 @@ setAiStatus('Generando imagen…', 'busy');
       const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
 
       if (cleanReply.replace(/<[^>]*>/g,'').trim()) {
-        addMsg('ai', cleanReply);
+        const msgWrap = addMsg('ai', cleanReply);
+        // ── Agregar resultados de búsqueda profunda ──
+        if (deepSearchResults && deepSearchResults.items.length > 0) {
+          const searchHtml = DeepSearch.formatResults(deepSearchResults);
+          if (searchHtml) {
+            const searchEl = document.createElement('div');
+            searchEl.className = 'deep-search-wrap';
+            searchEl.innerHTML = searchHtml;
+            msgWrap.querySelector('.ai-msg-content').appendChild(searchEl);
+          }
+        }
+        // ── Agregar botones de descarga Office ──
+        if (typeof OfficeGen !== 'undefined') {
+          const plainText = cleanReply.replace(/<[^>]+>/g, '');
+          if (plainText.length > 80) {
+            const dlBar = OfficeGen.createDownloadBar(_extractTitleFromReply(plainText), plainText);
+            msgWrap.querySelector('.ai-msg-content').appendChild(dlBar);
+          }
+        }
       }
       if (searchMatch || shouldSearch) {
         const query = searchMatch ? searchMatch[1].trim() : effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
@@ -4278,6 +4320,13 @@ setAiStatus('Generando imagen…', 'busy');
 
   function scrollMsgs() {
     requestAnimationFrame(() => msgs.scrollTop = msgs.scrollHeight);
+  }
+
+  function _extractTitleFromReply(text) {
+    const m = text.match(/^[\s]*[#!]+\s*(.+)/);
+    if (m) return m[1].trim().substring(0, 60);
+    const first = text.split('\n').find(l => l.trim());
+    return first ? first.trim().substring(0, 60) : 'Respuesta EMI';
   }
 
   function formatAIReply(text) {
