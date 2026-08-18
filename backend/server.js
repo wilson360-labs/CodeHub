@@ -1587,6 +1587,36 @@ app.get('/api/apps', async (_, res) => {
   } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
 });
 
+// ── App Updates — verificar versiones desde GitHub Releases ──
+// POST /api/app-updates  { apps: [{ appId, version, source_repo }] }
+// Retorna: [{ appId, currentVersion, latestVersion, hasUpdate, downloadUrl }]
+app.post('/api/app-updates', async (req, res) => {
+  try {
+    const { apps } = req.body;
+    if (!Array.isArray(apps) || apps.length === 0) return res.json([]);
+    const results = await Promise.allSettled(apps.map(async (app) => {
+      if (!app.source_repo) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+      const cacheKey = `update:${app.source_repo}`;
+      const cached = await cacheGet(cacheKey);
+      if (cached) return { appId: app.appId, currentVersion: app.version, ...cached };
+      const ghRes = await fetch(`https://api.github.com/repos/${app.source_repo}/releases/latest`, {
+        headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+      const release = await ghRes.json();
+      const latest = (release.tag_name || '').replace(/^v/i, '');
+      const current = (app.version || '').replace(/^v/i, '');
+      const apkAsset = (release.assets || []).find(a => a.name && a.name.endsWith('.apk'));
+      const downloadUrl = apkAsset ? apkAsset.browser_download_url : release.html_url;
+      const result = { latestVersion: release.tag_name || latest, hasUpdate: latest !== current && !!latest, downloadUrl };
+      await cacheSet(cacheKey, result, 600);
+      return { appId: app.appId, currentVersion: app.version, ...result };
+    }));
+    res.json(results.map(r => r.status === 'fulfilled' ? r.value : { appId: '?', hasUpdate: false }));
+  } catch { res.status(500).json({ error: 'Error checking updates' }); }
+});
+
 // Noticias — geolocalizadas por país vía Google News RSS, con BBC Mundo
 // como respaldo fijo. Todo se lee server-side para evitar depender de
 // proxies CORS públicos poco fiables (allorigins, etc.) en el navegador.

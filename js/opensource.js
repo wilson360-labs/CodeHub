@@ -158,43 +158,39 @@ function buildOSCard(app) {
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
   const desc    = app.descripcion || '';
   const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
-  // El botón de descarga pasa por /api/dl/:appId (no expone el link
-  // crudo de GitHub Releases/mirror y queda trackeado server-side).
   const dlUrl   = enlace ? `${BACKEND}/api/dl/${encodeURIComponent(app.appId)}` : null;
   const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
   const emoji   = CAT_EMOJI[app.categoria] || '📦';
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
+  const isFav   = MyApps.has(app.appId);
 
-  // Botón de extensiones solo para Echo Nightly
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
       <span>Extensiones</span>
       <button class="os-echo-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
     </div>` : '';
 
-  // Botón de instrucciones para apps avanzadas (root, Shizuku, etc.)
   const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly', 'os-shizuku'];
   const howToBtn = advancedApps.includes(app.appId) ? `
     <button class="how-to-btn" onclick="openHowToDialog('${app.appId}')">
       <i class="fas fa-book"></i> ¿Cómo usar?
     </button>` : '';
 
-  // Solo botón de descarga: el enlace real (GitHub Releases/mirror) nunca
-  // se expone directo en el DOM, siempre pasa por /api/dl/:appId. El botón
-  // "Código fuente" que enlazaba crudo a `repoUrl` fue removido a propósito;
-  // `repoUrl` se conserva únicamente como fallback interno de descarga.
   const dlBtn = dlUrl
     ? `<a class="dl-btn dl-primary" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
     : `<a class="dl-btn dl-primary" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
 
   return `
-  <div class="app-card" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}">
+  <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}">
     <div class="app-thumb">
       <img src="${img}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
       ${badge ? `<span class="app-badge badge-upd">${badge}</span>` : ''}
       <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
       ${version ? `<span class="app-version-tag">${version}</span>` : ''}
+      <button class="os-fav-btn ${isFav ? 'active' : ''}" onclick="MyApps.toggle('${app.appId}')" title="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}" aria-label="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}">
+        <i class="fas ${isFav ? 'fa-heart' : 'fa-heart'}"></i>
+      </button>
     </div>
     <div class="app-body">
       <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
@@ -326,9 +322,6 @@ function connectOSWebSocket() {
 loadOpenSourceCatalog();
 connectOSWebSocket();
 setInterval(() => {
-  // Respaldo: si el WS no está disponible (firewalls, proxies), refrescar
-  // el contador cada 5 min vía el endpoint cacheado (sin recargar tarjetas
-  // si no cambió la cantidad).
   if (!_ws || _ws.readyState !== 1) {
     const heroCount = document.getElementById('os-hero-count');
     if (heroCount) fetch(`${BACKEND}/api/apps`)
@@ -343,3 +336,128 @@ setInterval(() => {
       .catch(() => {});
   }
 }, 5 * 60 * 1000);
+
+/* ═══════════════════════════════════════════════════════════════
+   MyApps — Guardar apps favoritas + verificar actualizaciones
+   ═══════════════════════════════════════════════════════════════ */
+const MyApps = (() => {
+  const STORAGE_KEY = 'ch_my_apps';
+
+  function _load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+    catch { return []; }
+  }
+
+  function _save(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function has(appId) {
+    return _load().some(a => a.appId === appId);
+  }
+
+  function toggle(appId) {
+    let list = _load();
+    const idx = list.findIndex(a => a.appId === appId);
+    if (idx >= 0) {
+      list.splice(idx, 1);
+    } else {
+      const card = document.querySelector(`.app-card[data-app-id="${appId}"]`);
+      if (card) {
+        const nombre = card.querySelector('.app-name')?.textContent || '';
+        const version = card.querySelector('.app-version-tag')?.textContent?.replace(/^v/, '') || '';
+        const imagen = card.querySelector('.app-thumb img')?.src || '';
+        const repo = card.dataset.repo || '';
+        list.push({ appId, nombre, version, imagen, source_repo: repo });
+      }
+    }
+    _save(list);
+    _updateUI();
+    _refreshFavButtons();
+    if (typeof toast === 'function') {
+      toast(idx >= 0 ? '📦 App removida de Mis apps' : '❤️ App guardada en Mis apps', 'info', 2000);
+    }
+  }
+
+  function _refreshFavButtons() {
+    document.querySelectorAll('.os-fav-btn').forEach(btn => {
+      const card = btn.closest('.app-card');
+      const appId = card?.dataset?.appId;
+      if (!appId) return;
+      const fav = has(appId);
+      btn.classList.toggle('active', fav);
+      btn.title = fav ? 'Quitar de Mis apps' : 'Guardar en Mis apps';
+      btn.querySelector('i').className = 'fas fa-heart';
+    });
+  }
+
+  async function _updateUI() {
+    const list = _load();
+    const section = document.getElementById('my-apps-section');
+    const tocLink = document.getElementById('my-apps-toc-link');
+    const grid = document.getElementById('my-apps-grid');
+    if (!section || !grid) return;
+
+    if (list.length === 0) {
+      section.style.display = 'none';
+      if (tocLink) tocLink.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    if (tocLink) tocLink.style.display = '';
+
+    // Check for updates via backend
+    let updates = {};
+    try {
+      const res = await fetch(`${BACKEND}/api/app-updates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apps: list })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        data.forEach(u => { updates[u.appId] = u; });
+      }
+    } catch (e) { console.warn('Update check failed:', e); }
+
+    grid.innerHTML = list.map(app => {
+      const u = updates[app.appId];
+      const hasUpdate = u && u.hasUpdate;
+      const latestVersion = u?.latestVersion || '';
+      const dlUrl = u?.downloadUrl || `https://github.com/${app.source_repo}/releases/latest`;
+
+      return `
+      <div class="app-card my-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
+        <div class="app-thumb">
+          <img src="${app.imagen}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
+        </div>
+        <div class="app-body">
+          <div class="app-name">${app.nombre}</div>
+          ${hasUpdate
+            ? `<div class="my-app-version-diff"><span class="my-app-old">v${app.version || '?'}</span> → <span class="my-app-new">${latestVersion}</span></div>`
+            : `<div class="my-app-version">v${app.version || 'desconocida'}</div>`
+          }
+          <div class="app-actions">
+            ${hasUpdate
+              ? `<a class="dl-btn dl-primary my-app-update-btn" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Actualizar ahora</a>`
+              : `<a class="dl-btn dl-primary" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-check"></i> Última versión</a>`
+            }
+            <button class="os-fav-btn active" onclick="MyApps.toggle('${app.appId}')" title="Quitar de Mis apps">
+              <i class="fas fa-heart"></i>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  return { has, toggle, updateUI: _updateUI };
+})();
+
+// Render initial My Apps state after catalog loads
+document.addEventListener('os:catalog-loaded', () => MyApps.updateUI());
+
+// ── Check periódico de actualizaciones (cada 5 min) ──
+setInterval(() => { MyApps.updateUI(); }, 5 * 60 * 1000);
