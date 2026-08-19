@@ -6000,3 +6000,25 @@ h2.tw-split .tw-word.tw-in {
 [data-theme="light"] .perms-item-status.granted { background: rgba(34,197,94,.1); color: #16a34a; }
 [data-theme="light"] .perms-item-status.denied { background: rgba(239,68,68,.1); color: #dc2626; }
 [data-theme="light"] .perms-btn-secondary { background: rgba(0,0,0,.04); color: rgba(15,23,42,.6); border-color: rgba(0,0,0,.08); }
+
+/* ── Denied dialog ── */
+.perms-card-denied { border-color: rgba(239,68,68,.25) !important; }
+.perms-card-denied .perms-card-glow { background: radial-gradient(circle, rgba(239,68,68,.2), transparent 70%); }
+
+.perms-denied-steps {
+  padding: .5rem 1.5rem 1rem; display: flex; flex-direction: column; gap: .5rem;
+}
+.perms-denied-step {
+  display: flex; align-items: center; gap: .6rem;
+  font-size: .7rem; color: rgba(232,232,240,.7);
+}
+.perms-step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(239,68,68,.15); color: #fca5a5;
+  font-size: .6rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+[data-theme="light"] .perms-denied-step { color: rgba(15,23,42,.7); }
+[data-theme="light"] .perms-step-num { background: rgba(239,68,68,.1); color: #dc2626; }
+[data-theme="light"] .perms-card-denied { border-color: rgba(239,68,68,.15) !important; }

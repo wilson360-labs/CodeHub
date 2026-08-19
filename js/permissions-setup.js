@@ -1,33 +1,38 @@
 /* ═══════════════════════════════════════════════════════════════
-   permissions-setup.js — Setup automático de permisos PWA
+   permissions-setup.js — Sistema de permisos 100% nativo
    CodeHub by Wilson.E
    
-   Se ejecuta al cargar la app. Si es la primera vez, solicita
-   permisos automáticamente. Después del setup, muestra un panel
-   de ajustes accesible desde el menú.
+   NO depende de Chrome ni de ningún navegador.
+   CodeHub gestiona sus permisos internamente con su propio
+   tracking en localStorage y su propia UI para solicitarlos.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 
 const PermissionsSetup = (() => {
-  const STORAGE_KEY = 'ch_perms_setup';
-  const PERMS_KEY = 'ch_perms_state';
+  const STORAGE_KEY = 'ch_perms_setup_v2';
+  const PERMS_KEY = 'ch_perms_state_v2';
+  const DENIED_LOG_KEY = 'ch_perms_denied_log';
 
+  // Estado interno de CodeHub (sin consultar al navegador)
+  const _internalState = {};
+
+  /* ── Definiciones de permisos ── */
   const PERM_DEFS = [
     {
       id: 'notifications',
       name: 'Notificaciones',
       icon: '🔔',
-      desc: 'Alertas de clima, novedades y actualizaciones',
-      request: async () => {
+      desc: 'Alertas de clima, novedades y actualizaciones en tiempo real',
+      nativeCheck: async () => {
+        if (!('Notification' in window)) return 'unsupported';
+        return Notification.permission;
+      },
+      nativeRequest: async () => {
         if (!('Notification' in window)) return 'unsupported';
         if (Notification.permission === 'granted') return 'granted';
         if (Notification.permission === 'denied') return 'denied';
         const r = await Notification.requestPermission();
         return r;
-      },
-      check: async () => {
-        if (!('Notification' in window)) return 'unsupported';
-        return Notification.permission;
       }
     },
     {
@@ -35,28 +40,37 @@ const PermissionsSetup = (() => {
       name: 'Ubicación',
       icon: '📍',
       desc: 'Clima local y contenido personalizado',
-      request: () => new Promise(resolve => {
+      nativeCheck: async () => {
+        if (!('geolocation' in navigator)) return 'unsupported';
+        // Intentar obtener ubicación silenciosamente para verificar
+        return new Promise(resolve => {
+          navigator.geolocation.getCurrentPosition(
+            () => resolve('granted'),
+            e => resolve(e.code === 1 ? 'denied' : 'prompt'),
+            { enableHighAccuracy: false, timeout: 1000, maximumAge: Infinity }
+          );
+        });
+      },
+      nativeRequest: () => new Promise(resolve => {
         if (!('geolocation' in navigator)) return resolve('unsupported');
         navigator.geolocation.getCurrentPosition(
           () => resolve('granted'),
           e => resolve(e.code === 1 ? 'denied' : 'error'),
           { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
         );
-      }),
-      check: async () => {
-        if (!('geolocation' in navigator)) return 'unsupported';
-        try {
-          const r = await navigator.permissions.query({ name: 'geolocation' });
-          return r.state;
-        } catch { return 'prompt'; }
-      }
+      })
     },
     {
       id: 'microphone',
       name: 'Micrófono',
       icon: '🎤',
-      desc: 'Comandos de voz con EMI',
-      request: async () => {
+      desc: 'Comandos de voz con EMI (asistente IA)',
+      nativeCheck: async () => {
+        if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
+        // Verificar si ya tenemos permiso accediendo al micrófono
+        return 'prompt'; // Por defecto asumimos pendiente
+      },
+      nativeRequest: async () => {
         if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
         try {
           const s = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -65,13 +79,6 @@ const PermissionsSetup = (() => {
         } catch (e) {
           return e.name === 'NotAllowedError' ? 'denied' : 'error';
         }
-      },
-      check: async () => {
-        if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
-        try {
-          const r = await navigator.permissions.query({ name: 'microphone' });
-          return r.state;
-        } catch { return 'prompt'; }
       }
     },
     {
@@ -79,7 +86,11 @@ const PermissionsSetup = (() => {
       name: 'Portapapeles',
       icon: '📋',
       desc: 'Leer URLs del portapapeles en el Downloader',
-      request: async () => {
+      nativeCheck: async () => {
+        if (!navigator.clipboard?.readText) return 'unsupported';
+        return 'prompt';
+      },
+      nativeRequest: async () => {
         if (!navigator.clipboard?.readText) return 'unsupported';
         try {
           await navigator.clipboard.readText();
@@ -87,13 +98,6 @@ const PermissionsSetup = (() => {
         } catch (e) {
           return e.name === 'NotAllowedError' ? 'denied' : 'error';
         }
-      },
-      check: async () => {
-        if (!navigator.clipboard?.readText) return 'unsupported';
-        try {
-          const r = await navigator.permissions.query({ name: 'clipboard-read' });
-          return r.state;
-        } catch { return 'prompt'; }
       }
     },
     {
@@ -101,38 +105,59 @@ const PermissionsSetup = (() => {
       name: 'Almacenamiento',
       icon: '💾',
       desc: 'Mantener datos offline y caché de la app',
-      request: async () => {
+      nativeCheck: async () => {
+        if (!navigator.storage?.persist) return 'unsupported';
+        try {
+          const p = await navigator.storage.persisted();
+          return p ? 'granted' : 'prompt';
+        } catch { return 'prompt'; }
+      },
+      nativeRequest: async () => {
         if (!navigator.storage?.persist) return 'unsupported';
         const r = await navigator.storage.persist();
         return r ? 'granted' : 'denied';
-      },
-      check: async () => {
-        if (!navigator.storage?.persist) return 'unsupported';
-        try {
-          const r = await navigator.permissions.query({ name: 'persistent-storage' });
-          return r.state;
-        } catch { return 'prompt'; }
       }
     }
   ];
 
-  function _isSetupDone() {
-    try { return localStorage.getItem(STORAGE_KEY) === 'done'; } catch { return false; }
-  }
-
-  function _markSetupDone() {
-    try { localStorage.setItem(STORAGE_KEY, 'done'); } catch {}
-  }
-
-  function _savePermState(states) {
-    try { localStorage.setItem(PERMS_KEY, JSON.stringify(states)); } catch {}
-  }
-
-  function _loadPermState() {
+  /* ── Tracking interno de CodeHub ── */
+  function _getInternalState() {
     try { return JSON.parse(localStorage.getItem(PERMS_KEY) || '{}'); } catch { return {}; }
   }
 
-  /* ── Overlay de setup ── */
+  function _setInternalState(id, status) {
+    _internalState[id] = status;
+    try {
+      const state = _getInternalState();
+      state[id] = { status, timestamp: Date.now() };
+      localStorage.setItem(PERMS_KEY, JSON.stringify(state));
+    } catch {}
+  }
+
+  function _isSetupDone() {
+    try { return localStorage.getItem(STORAGE_KEY) === 'done_v2'; } catch { return false; }
+  }
+
+  function _markSetupDone() {
+    try { localStorage.setItem(STORAGE_KEY, 'done_v2'); } catch {}
+  }
+
+  function _logDenied(id) {
+    try {
+      const log = JSON.parse(localStorage.getItem(DENIED_LOG_KEY) || '{}');
+      log[id] = { denied: true, timestamp: Date.now(), count: (log[id]?.count || 0) + 1 };
+      localStorage.setItem(DENIED_LOG_KEY, JSON.stringify(log));
+    } catch {}
+  }
+
+  function _isPermanentlyDenied(id) {
+    try {
+      const log = JSON.parse(localStorage.getItem(DENIED_LOG_KEY) || '{}');
+      return log[id]?.denied && log[id]?.count >= 2;
+    } catch { return false; }
+  }
+
+  /* ── UI: Overlay de setup ── */
   function _showSetupOverlay(onComplete) {
     const overlay = document.createElement('div');
     overlay.id = 'perms-setup-overlay';
@@ -143,9 +168,9 @@ const PermissionsSetup = (() => {
         <div class="perms-card-header">
           <div class="perms-card-icon">✨</div>
           <h2>Configura CodeHub</h2>
-          <p>Habilita los permisos para una experiencia completa</p>
+          <p>Habilita los permisos para la mejor experiencia</p>
         </div>
-        <div class="perms-card-list">
+        <div class="perms-card-list" id="perms-setup-list">
           ${PERM_DEFS.map(p => `
             <div class="perms-item" data-perm="${p.id}">
               <div class="perms-item-left">
@@ -168,25 +193,40 @@ const PermissionsSetup = (() => {
           </button>
         </div>
         <div class="perms-card-footer">
-          Puedes cambiar estos ajustes después desde el menú
+          Los permisos se gestionan desde la app — sin depender de ningún navegador
         </div>
       </div>`;
 
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
 
-    const states = {};
     let processing = false;
 
-    async function _requestPerm(permDef) {
+    async function _requestPermSequentially(permDef) {
       const statusEl = document.getElementById(`perms-status-${permDef.id}`);
       if (statusEl) {
         statusEl.textContent = 'Solicitando...';
         statusEl.className = 'perms-item-status pending';
       }
+
+      // Verificar si el usuario ya denegó este permiso antes
+      if (_isPermanentlyDenied(permDef.id)) {
+        _setInternalState(permDef.id, 'denied');
+        if (statusEl) {
+          statusEl.textContent = '❌ Denegado';
+          statusEl.className = 'perms-item-status denied';
+        }
+        return;
+      }
+
       try {
-        const result = await permDef.request();
-        states[permDef.id] = result;
+        const result = await permDef.nativeRequest();
+        _setInternalState(permDef.id, result);
+
+        if (result === 'denied') {
+          _logDenied(permDef.id);
+        }
+
         if (statusEl) {
           if (result === 'granted') {
             statusEl.textContent = '✅ Activado';
@@ -194,6 +234,8 @@ const PermissionsSetup = (() => {
           } else if (result === 'denied') {
             statusEl.textContent = '❌ Denegado';
             statusEl.className = 'perms-item-status denied';
+            // Mostrar dialog de CodeHub explicando cómo habilitar
+            _showDeniedDialog(permDef);
           } else if (result === 'unsupported') {
             statusEl.textContent = '⚠️ No disponible';
             statusEl.className = 'perms-item-status unsupported';
@@ -203,7 +245,7 @@ const PermissionsSetup = (() => {
           }
         }
       } catch {
-        states[permDef.id] = 'error';
+        _setInternalState(permDef.id, 'error');
         if (statusEl) {
           statusEl.textContent = '⚠️ Error';
           statusEl.className = 'perms-item-status error';
@@ -216,11 +258,12 @@ const PermissionsSetup = (() => {
       processing = true;
       const btn = document.getElementById('perms-enable-all');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...'; }
+
       for (const perm of PERM_DEFS) {
-        await _requestPerm(perm);
-        await new Promise(r => setTimeout(r, 300));
+        await _requestPermSequentially(perm);
+        await new Promise(r => setTimeout(r, 400));
       }
-      _savePermState(states);
+
       _markSetupDone();
       const skipBtn = document.getElementById('perms-skip');
       if (skipBtn) skipBtn.style.display = 'none';
@@ -231,30 +274,82 @@ const PermissionsSetup = (() => {
       setTimeout(() => {
         overlay.classList.remove('active');
         setTimeout(() => overlay.remove(), 400);
-        if (onComplete) onComplete(states);
+        if (onComplete) onComplete(_internalState);
       }, 1200);
     }
 
     function _skip() {
-      _savePermState(states);
+      // Marcar como pendientes en el estado interno
+      for (const perm of PERM_DEFS) {
+        if (!_internalState[perm.id]) _setInternalState(perm.id, 'prompt');
+      }
       _markSetupDone();
       overlay.classList.remove('active');
       setTimeout(() => overlay.remove(), 400);
-      if (onComplete) onComplete(states);
+      if (onComplete) onComplete(_internalState);
     }
 
     document.getElementById('perms-enable-all')?.addEventListener('click', _requestAll);
     document.getElementById('perms-skip')?.addEventListener('click', _skip);
   }
 
-  /* ── Panel de ajustes (menú) ── */
+  /* ── UI: Dialog de permiso denegado (100% CodeHub) ── */
+  function _showDeniedDialog(permDef) {
+    const dialog = document.createElement('div');
+    dialog.className = 'perms-overlay';
+    dialog.innerHTML = `
+      <div class="perms-card perms-card-denied">
+        <div class="perms-card-header">
+          <div class="perms-card-icon">${permDef.icon}</div>
+          <h2>${permDef.name} — Permiso denegado</h2>
+          <p>${permDef.desc}</p>
+        </div>
+        <div class="perms-denied-steps">
+          <div class="perms-denied-step">
+            <span class="perms-step-num">1</span>
+            <span>Ve a la configuración de tu dispositivo</span>
+          </div>
+          <div class="perms-denied-step">
+            <span class="perms-step-num">2</span>
+            <span>Busca "CodeHub" en aplicaciones</span>
+          </div>
+          <div class="perms-denied-step">
+            <span class="perms-step-num">3</span>
+            <span>Activa el permiso de <strong>${permDef.name.toLowerCase()}</strong></span>
+          </div>
+          <div class="perms-denied-step">
+            <span class="perms-step-num">4</span>
+            <span>Vuelve a abrir CodeHub</span>
+          </div>
+        </div>
+        <div class="perms-card-actions">
+          <button class="perms-btn perms-btn-primary" onclick="this.closest('.perms-overlay').remove()">
+            <i class="fas fa-check"></i> Entendido
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(dialog);
+    requestAnimationFrame(() => dialog.classList.add('active'));
+    dialog.addEventListener('click', e => {
+      if (e.target === dialog) dialog.remove();
+    });
+  }
+
+  /* ── UI: Panel de ajustes (menú) ── */
   async function showSettingsPanel() {
     const existing = document.getElementById('perms-settings-overlay');
     if (existing) { existing.classList.add('active'); return; }
 
     const states = {};
     for (const perm of PERM_DEFS) {
-      states[perm.id] = await perm.check();
+      try {
+        const s = await perm.nativeCheck();
+        _setInternalState(perm.id, s);
+        states[perm.id] = s;
+      } catch {
+        states[perm.id] = 'error';
+      }
     }
 
     const overlay = document.createElement('div');
@@ -265,7 +360,7 @@ const PermissionsSetup = (() => {
         <div class="perms-card-header">
           <div class="perms-card-icon">⚙️</div>
           <h2>Ajustes y Permisos</h2>
-          <p>Administra los accesos de la app</p>
+          <p>Gestiona los accesos de CodeHub</p>
         </div>
         <div class="perms-card-list">
           ${PERM_DEFS.map(p => {
@@ -285,12 +380,15 @@ const PermissionsSetup = (() => {
           }).join('')}
         </div>
         <div class="perms-card-actions">
-          <button class="perms-btn perms-btn-secondary" id="perms-open-system-settings">
-            <i class="fas fa-gear"></i> Ajustes del sistema
+          <button class="perms-btn perms-btn-primary" id="perms-retry-all">
+            <i class="fas fa-rotate"></i> Solicitar de nuevo
           </button>
           <button class="perms-btn perms-btn-secondary" id="perms-close-settings">
             Cerrar
           </button>
+        </div>
+        <div class="perms-card-footer">
+          CodeHub gestiona sus permisos sin depender de ningún navegador
         </div>
       </div>`;
 
@@ -302,15 +400,28 @@ const PermissionsSetup = (() => {
       setTimeout(() => overlay.remove(), 400);
     });
 
-    document.getElementById('perms-open-system-settings')?.addEventListener('click', () => {
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const isChrome = /chrome/i.test(navigator.userAgent) && !/edg/i.test(navigator.userAgent);
-      if (isAndroid && isChrome) {
-        const origin = encodeURIComponent(window.location.origin);
-        window.location.href = `intent://settings/#Intent;package=com.android.chrome;scheme=chrome;S=${origin};end`;
-      } else {
-        if (typeof toast === 'function') toast('Ve a Ajustes del navegador → Permisos del sitio', 'info', 4000);
+    document.getElementById('perms-retry-all')?.addEventListener('click', async () => {
+      // Resetear denied log para permitir reintentos
+      try { localStorage.removeItem(DENIED_LOG_KEY); } catch {}
+      const btn = document.getElementById('perms-retry-all');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...'; }
+      for (const perm of PERM_DEFS) {
+        try {
+          const s = await perm.nativeRequest();
+          _setInternalState(perm.id, s);
+          // Actualizar UI del item
+          const statusEl = overlay.querySelector(`[data-perm="${perm.id}"] .perms-item-status`);
+          if (statusEl) {
+            const label = s === 'granted' ? '✅ Activado' : s === 'denied' ? '❌ Denegado' : s === 'unsupported' ? '⚠️ No disponible' : '⚠️ Error';
+            statusEl.textContent = label;
+            statusEl.className = `perms-item-status ${s}`;
+          }
+          if (s === 'denied') _showDeniedDialog(perm);
+        } catch {}
+        await new Promise(r => setTimeout(r, 300));
       }
+      if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> ¡Actualizado!'; btn.disabled = false; }
+      setTimeout(() => { if (btn) btn.innerHTML = '<i class="fas fa-rotate"></i> Solicitar de nuevo'; }, 1500);
     });
 
     overlay.addEventListener('click', e => {
@@ -334,8 +445,21 @@ const PermissionsSetup = (() => {
     }
   }
 
+  /* ── API pública ── */
+  function getPermissionStatus(id) {
+    return _internalState[id] || _getInternalState()[id]?.status || 'prompt';
+  }
+
+  function isPermissionGranted(id) {
+    return getPermissionStatus(id) === 'granted';
+  }
+
   /* ── Init ── */
   function init() {
+    // Cargar estado interno del localStorage
+    const saved = _getInternalState();
+    Object.keys(saved).forEach(k => { _internalState[k] = saved[k]?.status || 'prompt'; });
+
     if (!_isSetupDone()) {
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => _showSetupOverlay());
@@ -345,7 +469,15 @@ const PermissionsSetup = (() => {
     }
   }
 
-  return { init, showSettingsPanel, setBadge, clearBadge, PERM_DEFS };
+  return {
+    init,
+    showSettingsPanel,
+    setBadge,
+    clearBadge,
+    getPermissionStatus,
+    isPermissionGranted,
+    PERM_DEFS
+  };
 })();
 
 PermissionsSetup.init();
