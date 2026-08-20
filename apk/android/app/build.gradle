@@ -53,6 +53,8 @@ dependencies {
     // versiones recientes del BOM — sin esto, NoClassDefFoundError al
     // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
+    // AdMob — anuncio recompensado (ca-app-pub-3780093322926832/4285173985)
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
 }
 
 // La librería androidx.datastore migró a Kotlin Multiplatform en versiones

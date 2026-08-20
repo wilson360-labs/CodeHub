@@ -3,6 +3,8 @@ package com.codehub.app;
 import android.app.Application;
 import android.util.Log;
 
+import com.google.android.gms.ads.MobileAds;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -19,6 +21,8 @@ public class CodeHubApp extends Application {
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
         // (sin internet en el momento del crash), lo reintenta ahora.
         CrashReporter.flushPendingLog(this);
+        // Inicializa el SDK de AdMob (una sola vez, en segundo plano).
+        MobileAds.initialize(this, initializationStatus -> {});
     }
 
     private static final class CrashHandler implements Thread.UncaughtExceptionHandler {

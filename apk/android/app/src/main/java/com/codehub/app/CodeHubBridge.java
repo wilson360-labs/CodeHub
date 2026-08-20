@@ -153,6 +153,30 @@ public class CodeHubBridge {
         });
     }
 
+    // ── ANUNCIO RECOMPENSADO (AdMob) ────────────────────────────
+    // ca-app-pub-3780093322926832/4285173985
+    @JavascriptInterface
+    public void loadRewardedAd() {
+        activity.runOnUiThread(() -> RewardedAdManager.load(activity));
+    }
+
+    @JavascriptInterface
+    public boolean isRewardedAdReady() {
+        return RewardedAdManager.isReady();
+    }
+
+    // callbackName: nombre de una función global en window, invocada como
+    // callbackName(earned, amount, type) — earned=true solo si el usuario
+    // vio el anuncio completo y ganó la recompensa.
+    @JavascriptInterface
+    public void showRewardedAd(final String callbackName) {
+        activity.runOnUiThread(() -> RewardedAdManager.show(activity, (earned, amount, type) -> {
+            String safeType = type == null ? "" : type.replace("'", "\\'");
+            webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
+                "(" + earned + "," + amount + ",'" + safeType + "');}catch(e){}");
+        }));
+    }
+
     @JavascriptInterface
     public void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

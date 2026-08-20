@@ -30,6 +30,11 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <!-- AdMob App ID — obligatorio para inicializar el SDK -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3780093322926832~5602908901"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
