@@ -46,7 +46,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install Bubblewrap CLI
-        run: npm install -g @nickvdh/nickvdh
+        run: npm install -g @bubblewrap/cli
 
       - name: Generate icon from Cloudinary
         run: |
@@ -75,12 +75,12 @@ jobs:
       - name: Build APK with Bubblewrap
         run: |
           cd apk
-          bubblewrap rebuild \
+          bubblewrap build \
             --manifest=twa-manifest.json \
-            --signingKey=codehub-release-key.jks \
-            --keystorePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
-            --keyPassword="${{ secrets.KEY_PASSWORD }}" \
-            --overwrite
+            --skipPwaValidation
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Get version
         id: version
