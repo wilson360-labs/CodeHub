@@ -62,9 +62,9 @@
 
     /* Mostrar tooltip si no hay soporte */
     if (!HAS_RECOGNITION) {
-      micBtn.title = 'Tu navegador no soporta voz. Prueba Chrome o Edge.';
+      micBtn.title = 'Tu navegador no soporta voz. Prueba un navegador moderno.';
       micBtn.classList.add('emi-mic-unsupported');
-      micBtn.onclick = () => showVoiceToast('⚠️ Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.', 'warn');
+      micBtn.onclick = () => showVoiceToast('⚠️ Tu navegador no soporta reconocimiento de voz. Usa un navegador moderno.', 'warn');
       return;
     }
 

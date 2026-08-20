@@ -274,3 +274,141 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .header-inner { gap: 0.5rem; }
   .header-actions { gap: 0.4rem; }
 }
+
+/* ═══ 6. PWA INSTALADA — comportamiento de app nativa ═══════════════ */
+/* Cuando CodeHub se ejecuta como app instalada (standalone), se activan
+   ajustes para que se comporte como una app compilada, no como un sitio web. */
+
+/* General: cuando está instalada, el header se adapta al status bar */
+@media (display-mode: standalone) {
+  /* Status bar transparente — el header se extiende detrás */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Body: contenido debajo del header + status bar */
+  body {
+    padding-top: calc(env(safe-area-inset-top) + 60px);
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ocultar barra de direcciones del navegador */
+  html {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Desactivar zoom en inputs */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Scroll suave sin rebote */
+  body, html {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Links no abren en nueva pestaña */
+  a[href^="http"]:not([href*="wilson360-labs.vercel.app"]) {
+    target: _self;
+  }
+
+  /* Ocultar elementos de "navegador" */
+  #install-app-btn,
+  .pwa-install-guide,
+  .browser-only {
+    display: none !important;
+  }
+
+  /* Swipe back gesture hint */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    z-index: 99999;
+    pointer-events: none;
+  }
+
+  /* Pull-to-refresh indicator */
+  .ptr-indicator {
+    display: none;
+  }
+}
+
+/* Android standalone */
+@media (display-mode: standalone) and (platform: android) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* iOS standalone */
+@supports (-webkit-touch-callout: none) {
+  @media (display-mode: standalone) {
+    body {
+      padding-top: calc(env(safe-area-inset-top) + 50px);
+    }
+    header {
+      padding-top: env(safe-area-inset-top);
+      height: calc(50px + env(safe-area-inset-top));
+    }
+  }
+}
+
+/* ═══ 7. VIEW TRANSITIONS — transiciones tipo app nativa ═══════════ */
+/* Transiciones suaves entre páginas como una app compilada */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: slide-out-left;
+}
+
+::view-transition-new(root) {
+  animation-name: slide-in-right;
+}
+
+@keyframes slide-out-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-30px); opacity: 0; }
+}
+
+@keyframes slide-in-right {
+  from { transform: translateX(30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Navegación activa — indicador animado */
+.native-app #mobile-nav-bar a.active::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: linear-gradient(135deg, #7c4dff, #2f80ed);
+  border-radius: 2px;
+  animation: navIndicator 0.3s ease;
+}
+
+@keyframes navIndicator {
+  from { width: 0; opacity: 0; }
+  to { width: 20px; opacity: 1; }
+}

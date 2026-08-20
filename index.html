@@ -206,7 +206,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 </head>
 <body>
 <script>
-/* ── Safe area + dock padding for Android Chrome ── */
+/* ── Safe area + dock padding for Android ── */
 (function(){
   function updateSafeArea(){
     var bar = document.getElementById('mobile-nav-bar');
@@ -5351,27 +5351,29 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
         <div class="pwa-text">
           <div class="pwa-title" id="pwa-title">Instalar CodeHub</div>
-          <div class="pwa-sub" id="pwa-sub">Instala la app y aprovecha todo en tu dispositivo</div>
+          <div class="pwa-sub" id="pwa-sub">Descarga e instala la app en tu dispositivo</div>
         </div>
         <button class="pwa-close" onclick="dismissPWA()" aria-label="Cerrar" title="Cerrar">×</button>
       </div>
       <div class="pwa-feats" id="pwa-feats">
-        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span class="pwa-feat-highlight">Sincronización en tiempo real</span> — conectado y actualizado siempre</div>
-        <div class="pwa-feat"><i class="fas fa-bell"></i><span>Notificaciones en <span class="pwa-feat-highlight">tiempo real</span> (apps, clima, novedades)</span></div>
-        <div class="pwa-feat"><i class="fas fa-wifi-slash"></i><span>Funciona <span class="pwa-feat-highlight">sin internet</span> — modo offline</span></div>
-        <div class="pwa-feat"><i class="fas fa-mobile-alt"></i><span>Compatible con <span class="pwa-feat-highlight">Android e iOS</span> — misma app, mismo icono</span></div>
-        <div class="pwa-feat"><i class="fas fa-rocket"></i><span class="pwa-feat-highlight">Acceso rápido</span> desde tu pantalla de inicio</div>
-        <div class="pwa-feat"><i class="fas fa-puzzle-piece"></i><span class="pwa-feat-highlight">Plugins y herramientas</span> compatibles integrados</div>
+        <div class="pwa-feat"><i class="fas fa-bolt"></i><span class="pwa-feat-highlight">Rendimiento nativo</span> — se ejecuta como una app compilada</div>
+        <div class="pwa-feat"><i class="fas fa-wifi-slash"></i><span>Funciona <span class="pwa-feat-highlight">sin internet</span> — modo offline completo</span></div>
+        <div class="pwa-feat"><i class="fas fa-bell"></i><span>Notificaciones en <span class="pwa-feat-highlight">tiempo real</span></span></div>
+        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span>Sincronización <span class="pwa-feat-highlight">automática</span> en segundo plano</span></div>
+        <div class="pwa-feat"><i class="fas fa-shield-halved"></i><span>Permisos <span class="pwa-feat-highlight">gestionados por la app</span> — sin dependencias</span></div>
+        <div class="pwa-feat"><i class="fas fa-mobile-alt"></i><span>Compatible con <span class="pwa-feat-highlight">Android e iOS</span></span></div>
       </div>
       <div class="pwa-guide" id="pwa-guide" style="display:none">
-        <div class="pwa-guide-title">Cómo instalar en tu dispositivo</div>
-        <div class="pwa-guide-step" data-device="ios"><span class="pwa-guide-device">iPhone / iPad (Safari):</span> toca el botón <strong>Compartir</strong> (cuadro con flecha ↑) → <strong>Añadir a pantalla de inicio</strong>.</div>
-        <div class="pwa-guide-step" data-device="android"><span class="pwa-guide-device">Android (Chrome):</span> toca el menú <strong>⋮</strong> → <strong>Instalar aplicación</strong> / <em>Add to Home screen</em>.</div>
-        <div class="pwa-guide-step" data-device="desktop"><span class="pwa-guide-device">PC / Mac:</span> usa el botón <strong>Instalar</strong> de la barra del navegador (icono de descarga) o el menú del navegador.</div>
+        <div class="pwa-guide-title">Cómo instalar</div>
+        <div class="pwa-guide-step" data-device="android"><span class="pwa-guide-device">Android:</span> toca el menú <strong>⋮</strong> → <strong>Instalar aplicación</strong>.</div>
+        <div class="pwa-guide-step" data-device="ios"><span class="pwa-guide-device">iPhone / iPad:</span> toca <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>.</div>
+        <div class="pwa-guide-step" data-device="desktop"><span class="pwa-guide-device">PC / Mac:</span> usa el botón <strong>Instalar</strong> de la barra del navegador.</div>
       </div>
       <div class="pwa-btns">
-        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">Instalar app</button>
-        <button class="pwa-btn-how" onclick="togglePWAGuide()" id="pwa-btn-how">❔ ¿Cómo instalar?</button>
+        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">
+          <i class="fas fa-download"></i> Instalar app
+        </button>
+        <button class="pwa-btn-how" onclick="togglePWAGuide()" id="pwa-btn-how">¿Cómo instalar?</button>
         <button class="pwa-btn-no" onclick="dismissPWA()" id="pwa-btn-no">Ahora no</button>
       </div>
     </div>
@@ -5505,17 +5507,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function installPWA() {
     if (!_deferredPrompt) {
-      // Sin prompt nativo (iOS/Safari u otro navegador): mostrar la guía
-      // de instalación en lugar del prompt del navegador.
+      // Sin prompt nativo: mostrar guía de instalación
       togglePWAGuide();
       return;
     }
+
+    // Mostrar estado de instalación como app compilada
+    const installBtn = document.getElementById('pwa-btn-install');
+    if (installBtn) {
+      installBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Instalando...';
+      installBtn.disabled = true;
+    }
+
     _deferredPrompt.prompt();
     _deferredPrompt.userChoice.then(r => {
       if (r.outcome === 'accepted') {
-        localStorage.setItem('pwa_installed','1');
-        hidePWA();
-        if (installAppBtn) installAppBtn.style.display = 'none';
+        localStorage.setItem('pwa_installed', '1');
+        localStorage.setItem('pwa_installed_at', Date.now());
+        // Mostrar confirmación de instalación exitosa
+        if (installBtn) {
+          installBtn.innerHTML = '<i class="fas fa-check"></i> ¡App instalada!';
+          installBtn.className = 'pwa-btn-installed';
+        }
+        setTimeout(() => {
+          hidePWA();
+          if (installAppBtn) installAppBtn.style.display = 'none';
+          // Mostrar toast de bienvenida
+          if (typeof toast === 'function') {
+            toast('CodeHub instalado — abre desde tu pantalla de inicio', 'success', 4000);
+          }
+        }, 1500);
       } else {
         localStorage.setItem('pwa_dismissed', Date.now());
         hidePWA();
@@ -6324,5 +6345,6 @@ function setAIMood(btn) {
 <script src="js/connection-alert.js?v=20260810a" defer></script>
 <script src="js/notifications.js?v=20260814a" defer></script>
 <script src="js/permissions-setup.js?v=20260818a" defer></script>
+<script src="js/native-nav.js?v=20260818a" defer></script>
 </body>
 </html>

@@ -36,6 +36,13 @@
     if (save) {
       try { localStorage.setItem(STORAGE_KEY, theme); } catch (e) {}
     }
+    // Sync theme-color meta tag — app nativa cambia el color de la status bar
+    var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', isLight ? '#f8fafc' : '#080810');
+    }
+    // Sync background-color CSS variable
+    root.style.setProperty('--app-bg', isLight ? '#f8fafc' : '#080810');
     document.dispatchEvent(new CustomEvent('ch:themechange', { detail: { theme: theme } }));
   }
 
