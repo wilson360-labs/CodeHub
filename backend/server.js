@@ -3729,25 +3729,50 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
 async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
   const t = String(title).trim().slice(0, 80);
   const b = String(body || '').trim().slice(0, 180);
-  let sent = 0;
+  let sentWeb = 0, sentAndroid = 0;
+  const failures = [];
 
   // 1) Web Push (VAPID) — suscriptores del navegador
   const webSubs = await pushList();
   for (const sub of webSubs) {
     const result = await sendPush(sub, { title: t, body: b, type, appId, version, icon: '/splash/codehub.png', url });
-    if (result.ok) sent += 1;
-  }
-
-  // 2) FCM — app Android nativa
-  if (fcmEnabled) {
-    const fcmSubs = await fcmListTokens();
-    for (const rec of fcmSubs) {
-      const result = await sendFCM(rec.token, { title: t, body: b, type, url });
-      if (result.ok) sent += 1;
+    if (result.ok) {
+      sentWeb += 1;
+    } else {
+      failures.push({ kind: 'web', endpoint: (sub.endpoint || '').slice(-24), code: result.code, message: result.message || result.reason });
     }
   }
 
-  return { sent, total: webSubs.length + (fcmEnabled ? (await fcmListTokens()).length : 0) };
+  // 2) FCM — app Android nativa
+  let fcmTotal = 0;
+  if (fcmEnabled) {
+    const fcmSubs = await fcmListTokens();
+    fcmTotal = fcmSubs.length;
+    for (const rec of fcmSubs) {
+      const result = await sendFCM(rec.token, { title: t, body: b, type, url });
+      if (result.ok) {
+        sentAndroid += 1;
+      } else {
+        failures.push({ kind: 'android', token: (rec.token || '').slice(-12), code: result.code, message: result.message });
+      }
+    }
+  }
+
+  const sent = sentWeb + sentAndroid;
+  const total = webSubs.length + fcmTotal;
+
+  // Log detallado: sin esto, un "0 de 12" en el admin-hub no dice NADA de
+  // por qué falló. Con esto, en Render → Logs se ve el motivo exacto de
+  // cada fallo (clave VAPID desactualizada, token FCM inválido, etc.)
+  if (sent < total) {
+    console.warn(`⚠️  broadcastPush: ${sent}/${total} entregados (web ${sentWeb}/${webSubs.length}, android ${sentAndroid}/${fcmTotal})`);
+    failures.slice(0, 20).forEach(f => {
+      console.warn(`   ✗ [${f.kind}] ${f.kind === 'web' ? 'endpoint …' + f.endpoint : 'token …' + f.token} — code ${f.code || '?'}: ${f.message || '(sin detalle)'}`);
+    });
+    if (failures.length > 20) console.warn(`   … y ${failures.length - 20} fallos más`);
+  }
+
+  return { sent, total, sentWeb, sentAndroid, webTotal: webSubs.length, androidTotal: fcmTotal, failures: failures.slice(0, 20) };
 }
 
 app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
