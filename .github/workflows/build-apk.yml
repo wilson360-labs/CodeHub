@@ -81,13 +81,6 @@ jobs:
           echo "path=$APK" >> $GITHUB_OUTPUT
           echo "Found APK: $APK"
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: codehub-apk-${{ steps.version.outputs.version }}
-          path: ${{ steps.find-apk.outputs.path }}
-          retention-days: 30
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
