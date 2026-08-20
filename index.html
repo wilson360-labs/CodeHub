@@ -2694,6 +2694,10 @@ async function chSavePushLocation(lat, lon, city, country) {
   if (Number.isFinite(+lon)) localStorage.setItem('ch_user_lon', lon);
   if (city) localStorage.setItem('ch_user_city', city);
   if (country) localStorage.setItem('ch_user_country', country);
+  // Sync to native bridge for background worker polling
+  if (typeof CodeHubNative !== 'undefined' && Number.isFinite(+lat) && Number.isFinite(+lon)) {
+    try { CodeHubNative.saveLocation(+lat, +lon); } catch(e) {}
+  }
   var endpoint = localStorage.getItem('ch_push_endpoint');
   if (!endpoint || !('serviceWorker' in navigator) || Notification.permission !== 'granted') return;
   try {
@@ -2789,6 +2793,22 @@ function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alert
 function enableSyncPermissions() {
   if (!('serviceWorker' in navigator)) return;
   if (localStorage.getItem('ch_sync_perms') === '1') return;
+
+  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+  if (isNativeAPK) {
+    // In native APK, notifications are managed by Java — skip web request
+    localStorage.setItem('ch_sync_perms', '1');
+    try {
+      navigator.serviceWorker.ready.then(function(reg) {
+        try { reg.active.postMessage({ type: 'REGISTER_SYNC' }); } catch(e) {}
+      }).catch(function(){});
+    } catch(e) {}
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});
+    } catch(e) {}
+    return;
+  }
 
   // 1) Notificaciones push (si aún está en "default" lo pedimos)
   if ('Notification' in window && Notification.permission === 'default') {
@@ -5524,7 +5544,43 @@ document.addEventListener('DOMContentLoaded', () => {
         chShowAppPerms();
       }, 5000);
     }
+
+    // ── APK AUTO-UPDATE CHECK ────────────────────────────────
+    if (typeof CodeHubNative !== 'undefined') {
+      setTimeout(function() {
+        try {
+          var localVer = window.__apkVersion || '1.0.0';
+          var resp = CodeHubNative.checkForUpdate();
+          if (!resp) return;
+          var data = JSON.parse(resp);
+          var remoteTag = (data.tag || '').replace(/^v/i, '');
+          if (!remoteTag || remoteTag === localVer) return;
+          if (localStorage.getItem('ch_update_skip_' + remoteTag)) return;
+          var body = data.body || 'Nueva versión disponible.';
+          var sizeMB = data.apk_size ? (data.apk_size / 1048576).toFixed(1) : '?';
+          var html = '<div style="padding:18px;font-family:system-ui,sans-serif;color:#e0e0e0;background:#0a0a14;max-width:380px;margin:0 auto">' +
+            '<div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#00ff88">🔄 Actualización disponible</div>' +
+            '<div style="margin-bottom:6px"><b>' + localTag(localVer) + '</b> → <b style="color:#00ff88">' + localTag(remoteTag) + '</b></div>' +
+            '<div style="font-size:13px;color:#aaa;margin-bottom:10px;white-space:pre-wrap">' + escHtml(body) + '</div>' +
+            '<div style="font-size:12px;color:#888;margin-bottom:12px">Tamaño: ' + sizeMB + ' MB</div>' +
+            '<div style="display:flex;gap:8px">' +
+              '<button onclick="CodeHubNative.downloadUpdate(\'' + (data.apk_url || '') + '\');this.textContent=\'Descargando...\';this.disabled=true" ' +
+              'style="flex:1;padding:10px;background:#00ff88;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">Descargar e instalar</button>' +
+              '<button onclick="localStorage.setItem(\'ch_update_skip_' + remoteTag + '\',\'1\');this.closest(\'[id]\').remove()" ' +
+              'style="padding:10px 14px;background:#222;color:#aaa;border:1px solid #333;border-radius:8px;cursor:pointer">Ahora no</button>' +
+            '</div></div>';
+          var d = document.createElement('div');
+          d.id = 'ch-apk-update';
+          d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';
+          d.innerHTML = html;
+          document.body.appendChild(d);
+        } catch(e) {}
+      }, 6000);
+    }
   }
+
+  function localTag(v) { return 'v' + (v || '?'); }
+  function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   if (!isPublicInstallPage()) {
     hidePWA();
