@@ -1,0 +1,5 @@
+*.jks
+*.keystore
+app-release-signed.apk
+app-release-unaligned.apk
+```

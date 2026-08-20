@@ -1,0 +1,49 @@
+{
+  "packageId": "com.wilson360.codehub",
+  "host": "wilson360-labs.vercel.app",
+  "name": "CodeHub",
+  "shortName": "CodeHub",
+  "themeColor": "#2f80ed",
+  "backgroundColor": "#080810",
+  "splashColor": "#080810",
+  "signingKey": {
+    "path": "./codehub-release-key.jks",
+    "alias": "codehub",
+    "keystorePassword": "CHANGE_ME",
+    "keyPassword": "CHANGE_ME"
+  },
+  "icon": "./icon-512.png",
+  "maskableIcon": "./icon-maskable-512.png",
+  "isRelease": true,
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "startUrl": "/",
+  "navBarColor": "#080810",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    },
+    "cameraDelegation": {
+      "enabled": false
+    },
+    "mediaDelegation": {
+      "enabled": true
+    },
+    "midiDelegation": {
+      "enabled": false
+    },
+    "notificationsDelegation": {
+      "enabled": true
+    },
+    "pushForceShowVibration": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "ultrawideNarrowScreen": {
+    "enabled": false
+  }
+}

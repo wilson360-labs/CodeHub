@@ -461,10 +461,20 @@ const PermissionsSetup = (() => {
     Object.keys(saved).forEach(k => { _internalState[k] = saved[k]?.status || 'prompt'; });
 
     if (!_isSetupDone()) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => _showSetupOverlay());
-      } else {
+      // Esperar a que el splash termine (3-5s) para no bloquear la app
+      function _tryShow() {
+        const splash = document.getElementById('ch-splash');
+        if (splash && splash.style.display !== 'none') {
+          // El splash sigue visible, esperar 1s más
+          setTimeout(_tryShow, 1000);
+          return;
+        }
         _showSetupOverlay();
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(_tryShow, 500));
+      } else {
+        setTimeout(_tryShow, 500);
       }
     }
   }
