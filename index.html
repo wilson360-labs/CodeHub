@@ -2794,6 +2794,21 @@ function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alert
    Solo se pide una vez (localStorage ch_sync_perms); el usuario
    puede reactivar desde el diálogo de notificaciones.
 ══════════════════════════════════════════════════ */
+// Espera a que el splash (#ch-splash) termine de mostrarse antes de
+// ejecutar cualquier flujo que pueda disparar un permiso, para que
+// nunca aparezca un diálogo de permisos encima del splashscreen.
+function chWaitForSplash(cb, extraDelay) {
+  function tryRun() {
+    var splash = document.getElementById('ch-splash');
+    if (splash && splash.style.display !== 'none') {
+      setTimeout(tryRun, 500);
+      return;
+    }
+    setTimeout(cb, extraDelay || 300);
+  }
+  tryRun();
+}
+
 function enableSyncPermissions() {
   if (!('serviceWorker' in navigator)) return;
   if (localStorage.getItem('ch_sync_perms') === '1') return;
@@ -2814,16 +2829,11 @@ function enableSyncPermissions() {
     return;
   }
 
-  // 1) Notificaciones push (si aún está en "default" lo pedimos)
+  // 1) Notificaciones push — primero se explica con el diálogo propio de
+  // CodeHub (showIndexNotifBanner) y solo si el usuario acepta se pide
+  // el permiso nativo. Nunca se solicita directamente sin contexto.
   if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().then(function(perm) {
-      if (perm === 'granted') {
-        initIndexPush();
-        if (typeof chNotifLog === 'function') chNotifLog('🔔 Sincronización activada', 'CodeHub instalado: recibirás novedades y clima en tiempo real', 'system', '/');
-      } else {
-        localStorage.setItem('ch_notif_dismissed', Date.now());
-      }
-    }).catch(function(){});
+    showIndexNotifBanner();
   } else if (Notification.permission === 'granted') {
     initIndexPush();
   }
@@ -5521,7 +5531,8 @@ document.addEventListener('DOMContentLoaded', () => {
     _deferredPrompt = null;
     // App instalada → solicitar permisos de internet/sincronización y
     // activar las notificaciones en tiempo real (push + background sync).
-    setTimeout(enableSyncPermissions, 1500);
+    // Se espera a que el splash haya terminado.
+    chWaitForSplash(enableSyncPermissions);
   });
 
   // Si la app YA estaba instalada (modo standalone), activar la
@@ -5538,15 +5549,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const pwaFloat = document.getElementById('pwa-install-float');
     if (pwaFloat) pwaFloat.style.display = 'none';
 
-    setTimeout(enableSyncPermissions, 2500);
+    chWaitForSplash(enableSyncPermissions);
     // Primera apertura con app instalada: mostrar el panel de permisos
-    // (internet, sincronización, almacenamiento, etc.) una sola vez.
+    // (internet, sincronización, almacenamiento, etc.) una sola vez,
+    // también después de que el splash haya terminado.
     if (!localStorage.getItem('ch_app_perms_shown')) {
-      setTimeout(function() {
+      chWaitForSplash(function() {
         var overlay = document.getElementById('ch-app-perms-overlay');
         if (overlay) overlay.classList.add('show');
         chShowAppPerms();
-      }, 5000);
+      }, 1500);
     }
 
     // ── APK AUTO-UPDATE CHECK ────────────────────────────────

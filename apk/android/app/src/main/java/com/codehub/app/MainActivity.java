@@ -62,7 +62,10 @@ public class MainActivity extends Activity implements LocationListener {
 
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
-        try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
+        // Los permisos ya NO se piden aquí. Se disparan desde JS
+        // (CodeHubNative.requestRuntimePermissions, ver permissions-setup.js)
+        // una vez que el splash terminó y el usuario vio el diálogo
+        // explicando para qué se necesita cada permiso.
         try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
@@ -117,7 +120,9 @@ public class MainActivity extends Activity implements LocationListener {
     }
 
     // ── PERMISSIONS ─────────────────────────────────────────────
-    private void requestAllPermissions() {
+    // Público: invocado desde CodeHubBridge.requestRuntimePermissions()
+    // cuando JS (permissions-setup.js) dispara el flujo tras el splash.
+    public void requestAllPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(new String[]{
                 Manifest.permission.POST_NOTIFICATIONS,
@@ -364,12 +369,23 @@ public class MainActivity extends Activity implements LocationListener {
         String versionName = "1.2.0";
         try { versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
         String fcmToken = getSharedPreferences("codehub", MODE_PRIVATE).getString("fcm_token", "");
+        boolean notifGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        boolean locGranted = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean camGranted = checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean micGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         String js = "javascript:" +
             "window.__apkNative=true;" +
             "window.__apkOnline=" + online + ";" +
             "window.__apkVersion='" + versionName + "';" +
             "window.__apkFCMToken='" + fcmToken + "';" +
-            "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,storage:true,offline:true};" +
+            // Refleja el estado REAL otorgado por el usuario (no valores fijos).
+            "window.__apkPermissions={notifications:" + notifGranted + ",location:" + locGranted +
+            ",camera:" + camGranted + ",microphone:" + micGranted +
+            ",backgroundSync:true,periodicSync:true,internet:true,storage:true,offline:true};" +
+            // Avisa a permissions-setup.js si está esperando el resultado del diálogo nativo.
+            "if(window.__onApkPermsUpdated){try{window.__onApkPermsUpdated();}catch(e){}}" +
             "try{localStorage.setItem('pwa_installed','1');}catch(e){}" +
             // Reporta errores JS no atrapados y promesas rechazadas sin catch
             // al bridge nativo, que los reenvía a /api/crash-report (Telegram).
