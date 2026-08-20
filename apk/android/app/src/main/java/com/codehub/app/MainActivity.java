@@ -63,7 +63,7 @@ public class MainActivity extends Activity implements LocationListener {
         createNotificationChannels();
         requestAllPermissions();
         setupWebView();
-        scheduleBackgroundWork();
+        registerFCMToken();
         checkInternetAndLoad();
 
         // Handle intent from notification tap
@@ -181,9 +181,24 @@ public class MainActivity extends Activity implements LocationListener {
         return ni != null && ni.isConnected();
     }
 
-    // ── BACKGROUND WORK ─────────────────────────────────────────
-    private void scheduleBackgroundWork() {
-        CodeHubWorker.schedule(this);
+    // ── FCM TOKEN ──────────────────────────────────────────────
+    private void registerFCMToken() {
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+            .addOnCompleteListener(new com.google.android.gms.tasks.OnCompleteListener<String>() {
+                @Override
+                public void onComplete(com.google.android.gms.tasks.Task<String> task) {
+                    if (!task.isSuccessful() || task.getResult() == null) return;
+                    final String token = task.getResult();
+                    getSharedPreferences("codehub", MODE_PRIVATE).edit()
+                        .putString("fcm_token", token).apply();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            FcmHelper.registerToken(getApplicationContext(), token);
+                        }
+                    }).start();
+                }
+            });
     }
 
     // ── LOCATION ────────────────────────────────────────────────
@@ -331,12 +346,14 @@ public class MainActivity extends Activity implements LocationListener {
     private void injectNativeFlags(WebView view) {
         if (view == null) return;
         String online = isOnline() ? "true" : "false";
-        String versionName = "1.1.0";
+        String versionName = "1.2.0";
         try { versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
+        String fcmToken = getSharedPreferences("codehub", MODE_PRIVATE).getString("fcm_token", "");
         String js = "javascript:" +
             "window.__apkNative=true;" +
             "window.__apkOnline=" + online + ";" +
             "window.__apkVersion='" + versionName + "';" +
+            "window.__apkFCMToken='" + fcmToken + "';" +
             "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,storage:true,offline:true};" +
             "try{localStorage.setItem('pwa_installed','1');}catch(e){}";
         view.loadUrl(js);

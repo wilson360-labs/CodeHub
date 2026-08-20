@@ -3,11 +3,12 @@ buildscript {
         compileSdk = 34
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 }
 
 plugins {
     id 'com.android.application' version '8.2.2' apply false
+    id 'com.google.gms.google-services' version '4.5.0' apply false
 }

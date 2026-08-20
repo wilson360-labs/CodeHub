@@ -23,7 +23,8 @@
     "@supabase/supabase-js": "^2.43.0",
     "busboy": "^1.6.0",
     "@octokit/rest": "^20.1.1",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "firebase-admin": "^13.4.0"
   },
   "engines": {
     "node": ">=18"

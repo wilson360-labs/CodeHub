@@ -18,6 +18,8 @@ import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -153,5 +155,26 @@ public class CodeHubBridge {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.setData(Uri.parse("package:" + activity.getPackageName()));
         activity.startActivity(intent);
+    }
+
+    @JavascriptInterface
+    public void getFCMToken(final String callbackName) {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+            if (!task.isSuccessful() || task.getResult() == null) return;
+            final String token = task.getResult();
+            // Save locally
+            activity.getSharedPreferences("codehub", Context.MODE_PRIVATE)
+                .edit().putString("fcm_token", token).apply();
+            // Register with backend
+            new Thread(() -> FcmHelper.registerToken(activity.getApplicationContext(), token)).start();
+            // Callback to JS
+            activity.runOnUiThread(() -> webView.loadUrl("javascript:" + callbackName + "('" + token + "')"));
+        });
+    }
+
+    @JavascriptInterface
+    public String getStoredFCMToken() {
+        return activity.getSharedPreferences("codehub", Context.MODE_PRIVATE)
+            .getString("fcm_token", "");
     }
 }

@@ -3316,6 +3316,26 @@ const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BEl62iUYgUivxIkv69yV
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKsg-I';
 webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
+// ── FIREBASE CLOUD MESSAGING (FCM) ───────────────────────────
+// Push instantáneo para la app Android nativa.
+let admin = null;
+let fcmEnabled = false;
+try {
+  admin = require('firebase-admin');
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    : null;
+  if (serviceAccount) {
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    fcmEnabled = true;
+    console.log('✅ FCM: Firebase Cloud Messaging habilitado');
+  } else {
+    console.warn('⚠️  FCM: FIREBASE_SERVICE_ACCOUNT no configurado — push web-push únicamente');
+  }
+} catch (e) {
+  console.warn('⚠️  FCM: firebase-admin no disponible:', e.message);
+}
+
 const PUSH_SQL = `
 create table if not exists public.push_subs (
   id bigint generated always as identity primary key,
@@ -3496,24 +3516,165 @@ app.post('/api/push/notify', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── FCM TOKEN MANAGEMENT ─────────────────────────────────────
+let fcmTokens = new Map(); // fallback en memoria
+
+const FCM_SQL = `
+create table if not exists public.fcm_tokens (
+  id bigint generated always as identity primary key,
+  token text not null unique,
+  lat double precision,
+  lon double precision,
+  city text,
+  country text,
+  app_name text default 'CodeHub',
+  app_version text,
+  platform text default 'android',
+  user_agent text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+`;
+
+async function ensureFCMTable() {
+  if (!supabase) return false;
+  try {
+    const statements = splitSqlStatements(FCM_SQL);
+    for (const stmt of statements) {
+      const { error } = await supabase.rpc('exec_sql', { query: stmt });
+      if (error) {
+        console.warn('⚠️  FCM: no se pudo crear tabla fcm_tokens — ' + error.message);
+        return false;
+      }
+    }
+    console.log('✅ FCM: tabla fcm_tokens lista');
+    return true;
+  } catch (e) {
+    console.warn('⚠️  FCM: error asegurando tabla:', e.message);
+    return false;
+  }
+}
+
+async function fcmListTokens() {
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('fcm_tokens').select('*');
+      if (!error && Array.isArray(data)) return data;
+    } catch (e) {}
+  }
+  return Array.from(fcmTokens.values());
+}
+
+async function fcmSaveToken(rec) {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('fcm_tokens').upsert({
+        token: rec.token,
+        lat: rec.lat ?? null,
+        lon: rec.lon ?? null,
+        city: rec.city || null,
+        country: rec.country || null,
+        app_name: rec.appName || 'CodeHub',
+        app_version: rec.appVersion || null,
+        platform: rec.platform || 'android',
+        user_agent: rec.userAgent || null,
+        updated_at: new Date(),
+      }, { onConflict: 'token' });
+      if (!error) return true;
+      console.warn('FCM save error:', error.message);
+    } catch (e) { console.warn('FCM save error:', e.message); }
+  }
+  fcmTokens.set(rec.token, rec);
+  return true;
+}
+
+async function fcmUpdateLocation(token, lat, lon) {
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('fcm_tokens').update({ lat, lon, updated_at: new Date() }).eq('token', token);
+      if (!error) return true;
+    } catch (e) {}
+  }
+  const rec = fcmTokens.get(token);
+  if (rec) { rec.lat = lat; rec.lon = lon; }
+  return true;
+}
+
+async function fcmDeleteToken(token) {
+  if (supabase) {
+    try { await supabase.from('fcm_tokens').delete().eq('token', token); } catch (e) {}
+  }
+  fcmTokens.delete(token);
+}
+
+// Enviar vía FCM a un token específico
+async function sendFCM(token, payload) {
+  if (!fcmEnabled || !admin) return { ok: false, reason: 'fcm_disabled' };
+  try {
+    await admin.messaging().send({
+      token: token,
+      notification: { title: payload.title, body: payload.body },
+      data: { type: payload.type || 'general', url: payload.url || '/' },
+      android: {
+        notification: {
+          channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
+          icon: 'ic_launcher_real',
+          color: '#00ff88',
+        },
+      },
+    });
+    return { ok: true };
+  } catch (e) {
+    if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-registration-token') {
+      await fcmDeleteToken(token);
+    }
+    return { ok: false, code: e.code, message: e.message };
+  }
+}
+
+app.post('/api/push/fcm-subscribe', async (req, res) => {
+  try {
+    const { token, lat, lon, appName, appVersion, platform, userAgent } = req.body || {};
+    if (!token) return res.status(400).json({ ok: false, error: 'Falta token FCM' });
+    await fcmSaveToken({ token, lat, lon, appName, appVersion, platform, userAgent });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/push/fcm-location', async (req, res) => {
+  try {
+    const { token, lat, lon } = req.body || {};
+    if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
+    await fcmUpdateLocation(token, lat, lon);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // Envía un push a todos los suscriptores (broadcast reutilizable por
 // los flujos automáticos: nueva app, app actualizada, CodeHub Release).
+// Envía vía Web Push (VAPID) + FCM (app nativa).
 async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
-  const subs = await pushList();
+  const t = String(title).trim().slice(0, 80);
+  const b = String(body || '').trim().slice(0, 180);
   let sent = 0;
-  for (const sub of subs) {
-    const result = await sendPush(sub, {
-      title: String(title).trim().slice(0, 80),
-      body: String(body || '').trim().slice(0, 180),
-      type: type || 'announcement',
-      appId: appId || undefined,
-      version: version || '',
-      icon: '/splash/codehub.png',
-      url: url || '/'
-    });
+
+  // 1) Web Push (VAPID) — suscriptores del navegador
+  const webSubs = await pushList();
+  for (const sub of webSubs) {
+    const result = await sendPush(sub, { title: t, body: b, type, appId, version, icon: '/splash/codehub.png', url });
     if (result.ok) sent += 1;
   }
-  return { sent, total: subs.length };
+
+  // 2) FCM — app Android nativa
+  if (fcmEnabled) {
+    const fcmSubs = await fcmListTokens();
+    for (const rec of fcmSubs) {
+      const result = await sendFCM(rec.token, { title: t, body: b, type, url });
+      if (result.ok) sent += 1;
+    }
+  }
+
+  return { sent, total: webSubs.length + (fcmEnabled ? (await fcmListTokens()).length : 0) };
 }
 
 app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
@@ -3788,12 +3949,14 @@ app.get('/api/admin/apps/check-updates', requireAdmin, async (req, res) => {
   dbConnected = await connectDB();
   if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
   await ensurePushTable();
+  await ensureFCMTable();
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
     console.log(`   MongoDB:    ${dbConnected ? '✅' : '⚠️  sin conexión'}`);
     console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
     console.log(`   WebSockets: ✅ /ws`);
+    console.log(`   FCM:        ${fcmEnabled ? '✅ push nativo Android' : '⚠️  solo web-push'}`);
     console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? '✅' : '⚠️  sin configurar'}`);

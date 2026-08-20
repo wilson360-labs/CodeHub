@@ -2618,22 +2618,9 @@ function urlBase64ToUint8ArrayIdx(base64String) {
 
 async function initIndexPush() {
   var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  // En APK nativo, FCM ya está registrado desde Java — no intentar Web Push
+  if (isNativeAPK) return;
   if (!('serviceWorker' in navigator)) return;
-  // En APK nativo, el push ya se gestiona desde Java — solo registrar en backend
-  if (isNativeAPK) {
-    try {
-      var reg = await navigator.serviceWorker.ready;
-      if ('PushManager' in window) {
-        var sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8ArrayIdx(VAPID_PUBLIC_INDEX) });
-        }
-        localStorage.setItem('ch_push_endpoint', sub.endpoint);
-        chPushRegister(sub);
-      }
-    } catch(e) {}
-    return;
-  }
   if ('PushManager' in window && Notification.permission === 'denied') return;
   var dismissed = parseInt(localStorage.getItem('ch_notif_dismissed') || '0');
   var ONE_DAY = 86400000;
