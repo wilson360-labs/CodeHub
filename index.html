@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <!-- Polyfill de window.Notification — el WebView de la app nativa
+         (Android, ciertos dispositivos/versiones) no implementa la API
+         Notification del navegador; sin esto, cualquier referencia a
+         Notification.permission o `new Notification(...)` lanza
+         ReferenceError y rompe la app (incluye reg.showNotification,
+         que depende de la misma API). El resto del código ya compara
+         Notification.permission contra 'granted'/'denied'/'default',
+         así que un stub 'denied' hace que esos flujos se salten
+         limpiamente sin tocar cada sitio de uso. -->
+    <script>
+      if (typeof window.Notification === 'undefined') {
+        window.Notification = {
+          permission: 'denied',
+          requestPermission: function () { return Promise.resolve('denied'); }
+        };
+      }
+    </script>
     <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
     <script>
       window.dataLayer = window.dataLayer || [];
