@@ -64,7 +64,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(grep -oP "const VERSION = '\\K[^']+" sw.js)
+          VERSION=$(grep "const VERSION" sw.js | sed "s/.*'\(.*\)'.*/\1/")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Find APK
