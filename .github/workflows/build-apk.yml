@@ -1,7 +1,6 @@
 # ═══════════════════════════════════════════════════════════════
-# CodeHub APK Builder — GitHub Actions (Docker)
-# Compila el APK usando el contenedor oficial de Bubblewrap
-# que incluye JDK, Android SDK y licencias pre-aceptadas
+# CodeHub APK Builder — GitHub Actions
+# Compila el APK usando Docker solo para el paso de build
 # ═══════════════════════════════════════════════════════════════
 name: Build CodeHub APK
 
@@ -26,15 +25,10 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container:
-      image: ghcr.io/googlechromelabs/bubblewrap:latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Ensure apk directory exists
-        run: mkdir -p apk
 
       - name: Generate icon from Cloudinary
         run: |
@@ -45,7 +39,7 @@ jobs:
         run: |
           keytool -genkeypair \
             -v \
-            -keystore ${{ github.workspace }}/apk/codehub-release-key.jks \
+            -keystore apk/codehub-release-key.jks \
             -alias codehub \
             -keyalg RSA \
             -keysize 2048 \
@@ -56,19 +50,21 @@ jobs:
 
       - name: Update TWA manifest with secrets
         run: |
-          cd apk
-          sed -i "s/CHANGE_ME/${{ secrets.KEYSTORE_PASSWORD }}/g" twa-manifest.json
-          cat twa-manifest.json
+          sed -i "s/CHANGE_ME/${{ secrets.KEYSTORE_PASSWORD }}/g" apk/twa-manifest.json
+          cat apk/twa-manifest.json
 
-      - name: Build APK
+      - name: Build APK with Bubblewrap Docker
         run: |
-          cd apk
-          bubblewrap build \
-            --manifest=. \
-            --skipPwaValidation
-        env:
-          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace/apk \
+            -e BUBBLEWRAP_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -e BUBBLEWRAP_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}" \
+            ghcr.io/googlechromelabs/bubblewrap:latest \
+            bubblewrap build --manifest=. --skipPwaValidation
+
+      - name: List output
+        run: ls -la apk/*.apk 2>/dev/null || echo "No APK found"
 
       - name: Get version
         id: version
@@ -90,21 +86,12 @@ jobs:
           name: "📱 CodeHub APK ${{ steps.version.outputs.version }}"
           body: |
             ## CodeHub APK — App Nativa Android
-
             **Versión:** ${{ steps.version.outputs.version }}
-
             ### Instalación
             1. Descarga el APK
-            2. Abre el archivo en tu dispositivo Android
-            3. Acepta la instalación de fuentes desconocidas
+            2. Abre en tu Android
+            3. Acepta fuentes desconocidas
             4. ¡Listo!
-
-            ### Características
-            - ✅ Notificaciones push
-            - ✅ Modo offline
-            - ✅ Sincronización automática
-            - ✅ Geolocation
-            - ✅ Sin dependencia de Chrome
           files: apk/app-release-signed.apk
           make_latest: true
           generate_release_notes: true
