@@ -265,7 +265,10 @@ function switchTab(id, btn) {
     loadReleasesList();
   }
   if (id === 'dbrun')    updateDbRunBtn();
-  if (id === 'github')   loadGhAutomation();
+  if (id === 'github') {
+    loadGhAutomation();
+    setTimeout(() => { loadGhSecrets(); loadGhVariables(); }, 300);
+  }
 }
 
 async function sendAdminBroadcast() {
@@ -414,6 +417,7 @@ const GH_WORKFLOWS = [
   { file: 'dedupe-catalog.yml',         name: '🧹 Limpiar duplicados',      desc: 'Elimina apps duplicadas (dry-run por defecto).' },
   { file: 'autoposter-workflow.yml',    name: '🤖 AutoPoster Blogger',      desc: 'Publica el siguiente post del blog en cola.' },
   { file: 'enrich-app-logos.yml',       name: '🖼️ Aplicar logos FOSS',      desc: 'Universal: para cualquier app open source (nueva o existente) sin logo oficial (portada opengraph o vacío), busca el logo real y lo sube a img/. No toca logos locales ni URLs puestas a mano.' },
+  { file: 'build-apk.yml',             name: '📱 Compilar APK Android',    desc: 'Compila el APK nativo de CodeHub con Bubblewrap/TWA. Genera release con el APK para descarga directa.' },
 ];
 
 async function loadGhAutomation() {
@@ -480,6 +484,135 @@ async function dispatchWorkflow(file, btn) {
   }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar';
+}
+
+// ── GITHUB SECRETS & VARIABLES ────────────────────────────────
+async function loadGhSecrets() {
+  const el = document.getElementById('gh-secrets-list');
+  if (!el) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/secrets`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
+    const { secrets } = await res.json();
+    if (!secrets.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin secrets configurados</div>'; return; }
+    el.innerHTML = secrets.map(s => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.72rem">
+        <div style="display:flex;align-items:center;gap:.5rem;min-width:0">
+          <span style="color:var(--text);font-weight:600;font-family:var(--mono)">${s.name}</span>
+          <span style="color:var(--muted);font-size:.65rem">actualizado: ${new Date(s.updated_at).toLocaleDateString()}</span>
+        </div>
+        <button class="blog-btn-danger" onclick="deleteGhSecret('${s.name}')" style="font-size:.65rem;padding:.25rem .5rem">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `).join('');
+  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${e.message}</div>`; }
+}
+
+async function saveGhSecret() {
+  const nameEl = document.getElementById('gh-secret-name');
+  const valueEl = document.getElementById('gh-secret-value');
+  const name = nameEl?.value?.trim();
+  const value = valueEl?.value?.trim();
+  if (!name || !value) { toast('⚠️ Completa nombre y valor', 'warn'); return; }
+  if (!confirm(`¿Guardar secret "${name}"?`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/secrets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ name, value }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast(`✅ Secret "${name}" guardado`);
+      nameEl.value = '';
+      valueEl.value = '';
+      loadGhSecrets();
+    } else {
+      toast(`❌ Error: ${data.error}`, 'error');
+    }
+  } catch (e) { toast(`❌ Error: ${e.message}`, 'error'); }
+}
+
+async function deleteGhSecret(name) {
+  if (!confirm(`¿Eliminar secret "${name}"?`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/secrets/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': ADMIN_KEY },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast(`🗑️ Secret "${name}" eliminado`);
+      loadGhSecrets();
+    } else {
+      toast(`❌ Error: ${data.error}`, 'error');
+    }
+  } catch (e) { toast(`❌ Error: ${e.message}`, 'error'); }
+}
+
+async function loadGhVariables() {
+  const el = document.getElementById('gh-variables-list');
+  if (!el) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/variables`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
+    const { variables } = await res.json();
+    if (!variables.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin variables configuradas</div>'; return; }
+    el.innerHTML = variables.map(v => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.72rem">
+        <div style="display:flex;align-items:center;gap:.5rem;min-width:0;flex:1">
+          <span style="color:var(--text);font-weight:600;font-family:var(--mono)">${v.name}</span>
+          <span style="color:var(--muted);font-family:var(--mono);font-size:.65rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.value}</span>
+        </div>
+        <button class="blog-btn-danger" onclick="deleteGhVariable('${v.name}')" style="font-size:.65rem;padding:.25rem .5rem">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `).join('');
+  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${e.message}</div>`; }
+}
+
+async function saveGhVariable() {
+  const nameEl = document.getElementById('gh-var-name');
+  const valueEl = document.getElementById('gh-var-value');
+  const name = nameEl?.value?.trim();
+  const value = valueEl?.value?.trim();
+  if (!name || !value) { toast('⚠️ Completa nombre y valor', 'warn'); return; }
+  if (!confirm(`¿Guardar variable "${name}" = "${value}"?`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/variables`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      body: JSON.stringify({ name, value }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast(`✅ Variable "${name}" guardada`);
+      nameEl.value = '';
+      valueEl.value = '';
+      loadGhVariables();
+    } else {
+      toast(`❌ Error: ${data.error}`, 'error');
+    }
+  } catch (e) { toast(`❌ Error: ${e.message}`, 'error'); }
+}
+
+async function deleteGhVariable(name) {
+  if (!confirm(`¿Eliminar variable "${name}"?`)) return;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/variables/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': ADMIN_KEY },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast(`🗑️ Variable "${name}" eliminada`);
+      loadGhVariables();
+    } else {
+      toast(`❌ Error: ${data.error}`, 'error');
+    }
+  } catch (e) { toast(`❌ Error: ${e.message}`, 'error'); }
 }
 
 // ── DETECCIÓN DE DUPLICADOS ─────────────────────────────────────
@@ -1022,14 +1155,44 @@ async function deleteApp(appId, nombre) {
 
 // ── REFRESH APPS ──────────────────────────────────────────────
 async function refreshApps() {
-  try {
-    const res = await fetch(`${BACKEND}/api/admin/apps`, { headers: { 'x-admin-key': ADMIN_KEY } });
-    if (!res.ok) return;
-    const d = await res.json();
-    appsData = d.apps;
-    renderApps();
-    toast('🔄 Apps actualizadas');
-  } catch {}
+  const btn = document.querySelector('.top-actions .blog-btn-primary, .top-actions button[onclick*="refresh"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...'; }
+
+  const tasks = [];
+
+  // 1. Apps
+  tasks.push(
+    fetch(`${BACKEND}/api/admin/apps`, { headers: { 'x-admin-key': ADMIN_KEY } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) { appsData = d.apps; renderApps(); } })
+      .catch(() => {})
+  );
+
+  // 2. Stats
+  tasks.push(loadAdminStats().catch(() => {}));
+
+  // 3. GitHub workflows + runs
+  tasks.push(loadGhAutomation().catch(() => {}));
+
+  // 4. GitHub secrets
+  tasks.push(loadGhSecrets().catch(() => {}));
+
+  // 5. GitHub variables
+  tasks.push(loadGhVariables().catch(() => {}));
+
+  // 6. Releases
+  tasks.push(loadReleasesList().catch(() => {}));
+
+  // 7. Visitors
+  tasks.push(loadVisitors().catch(() => {}));
+
+  // 8. Backend status
+  tasks.push(checkStatus().catch(() => {}));
+
+  await Promise.allSettled(tasks);
+
+  if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh'; }
+  toast('🔄 Panel actualizado — todo al día');
 }
 
 // ── PREVIEW ───────────────────────────────────────────────────
@@ -1929,3 +2092,69 @@ function toast(m) {
   t.textContent = m; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
 }
+
+// ── REAL-TIME AUTO-REFRESH ────────────────────────────────────
+// Actualiza el panel automáticamente cada 30s si hay pestaña activa.
+// También detecta cambios en GitHub Actions runs para notificar.
+(function initRealTimeRefresh() {
+  let lastRuns = {};
+  let refreshTimer = null;
+
+  // Guardar estado de runs para detectar cambios
+  async function snapshotRuns() {
+    try {
+      const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-key': ADMIN_KEY } });
+      if (!res.ok) return;
+      const { runs } = await res.json();
+      const snapshot = {};
+      for (const [k, v] of Object.entries(runs)) {
+        snapshot[k] = v ? `${v.status}/${v.conclusion}` : 'none';
+      }
+      return snapshot;
+    } catch { return null; }
+  }
+
+  // Detectar cambios y notificar
+  async function checkForChanges() {
+    if (!ADMIN_KEY) return;
+    const newRuns = await snapshotRuns();
+    if (!newRuns || !lastRuns) { lastRuns = newRuns || {}; return; }
+
+    for (const [wf, status] of Object.entries(newRuns)) {
+      if (lastRuns[wf] && lastRuns[wf] !== status) {
+        const wfInfo = GH_WORKFLOWS.find(w => w.file === wf);
+        const name = wfInfo ? wfInfo.name : wf;
+        if (status.includes('success')) {
+          toast(`✅ ${name} completado exitosamente`);
+        } else if (status.includes('failure')) {
+          toast(`❌ ${name} falló — revisá el log`);
+        } else if (status.includes('in_progress')) {
+          toast(`⏳ ${name} en ejecución...`);
+        }
+      }
+    }
+    lastRuns = newRuns;
+  }
+
+  // Auto-refresh cada 30s
+  function startAutoRefresh() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(() => {
+      if (document.hidden) return; // No refrescar si la pestaña está oculta
+      if (!ADMIN_KEY) return;
+      checkForChanges();
+    }, 30000);
+  }
+
+  // Iniciar cuando se hace login
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver(() => {
+      const adminWrap = document.getElementById('admin-wrap');
+      if (adminWrap && adminWrap.style.display !== 'none' && ADMIN_KEY) {
+        startAutoRefresh();
+        snapshotRuns().then(s => { lastRuns = s || {}; });
+      }
+    });
+    observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
+  });
+})();

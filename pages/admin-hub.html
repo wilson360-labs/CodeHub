@@ -750,6 +750,42 @@
       <div class="card" id="gh-runs-list">
         <div style="color:var(--muted);font-family:var(--mono);font-size:.7rem">Cargando…</div>
       </div>
+
+      <!-- SECRETS & VARIABLES -->
+      <div class="section-title" style="margin-top:1.2rem"><i class="fas fa-lock"></i> Secrets del Repositorio</div>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:.8rem;line-height:1.65">
+          Gestiona los secrets de GitHub Actions. Estos se usan en los workflows (build APK, deploy, etc.).
+          <b style="color:var(--text)">Solo administradores.</b>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap">
+          <input id="gh-secret-name" type="text" placeholder="Nombre del secret" style="flex:1;min-width:120px;padding:.45rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem">
+          <input id="gh-secret-value" type="password" placeholder="Valor del secret" style="flex:2;min-width:150px;padding:.45rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem">
+          <button class="blog-btn-primary" onclick="saveGhSecret()" style="white-space:nowrap">
+            <i class="fas fa-plus"></i> Guardar
+          </button>
+        </div>
+        <div id="gh-secrets-list">
+          <div style="color:var(--muted);font-size:.7rem">Cargando...</div>
+        </div>
+      </div>
+
+      <div class="section-title"><i class="fas fa-sliders"></i> Variables del Repositorio</div>
+      <div class="card">
+        <div style="font-size:.76rem;color:var(--muted);margin-bottom:.8rem;line-height:1.65">
+          Variables públicas de GitHub Actions (no encriptadas). Útiles para configuración general.
+        </div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap">
+          <input id="gh-var-name" type="text" placeholder="Nombre de la variable" style="flex:1;min-width:120px;padding:.45rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem">
+          <input id="gh-var-value" type="text" placeholder="Valor" style="flex:2;min-width:150px;padding:.45rem .6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.72rem">
+          <button class="blog-btn-primary" onclick="saveGhVariable()" style="white-space:nowrap">
+            <i class="fas fa-plus"></i> Guardar
+          </button>
+        </div>
+        <div id="gh-variables-list">
+          <div style="color:var(--muted);font-size:.7rem">Cargando...</div>
+        </div>
+      </div>
     </div>
 
   </div><!-- /content-wrap -->

@@ -3078,6 +3078,7 @@ const GITHUB_WORKFLOWS = [
   'dedupe-catalog.yml',
   'autoposter-workflow.yml',
   'enrich-app-logos.yml',
+  'build-apk.yml',
 ];
 
 // POST /api/admin/github/dispatch — body: { workflow, inputs }
@@ -3129,6 +3130,147 @@ app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
     res.json({ ok: true, runs: out });
   } catch (e) {
     console.error('GET /api/admin/github/runs error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GITHUB SECRETS & VARIABLES ────────────────────────────────
+// Gestión completa de secrets y variables del repositorio desde admin-hub.
+// Solo el administrador tiene acceso (requireAdmin).
+
+// GET /api/admin/github/secrets — listar secrets del repositorio
+app.get('/api/admin/github/secrets', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { data } = await octokit.rest.actions.listRepoSecrets({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100,
+    });
+    res.json({ ok: true, secrets: data.secrets.map(s => ({ name: s.name, created_at: s.created_at, updated_at: s.updated_at })) });
+  } catch (e) {
+    console.error('GET /api/admin/github/secrets error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/github/secrets — crear/actualizar un secret
+app.post('/api/admin/github/secrets', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { name, value } = req.body || {};
+    if (!name || !value) return res.status(400).json({ error: 'Falta name o value' });
+
+    // Obtener la public key del repositorio
+    const { data: pubKey } = await octokit.rest.actions.getRepoPublicKey({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO,
+    });
+
+    // Encriptar el valor con libsodium
+    const sodium = require('libsodium-wrappers');
+    await sodium.ready;
+    const key = sodium.from_base64(pubKey.key, sodium.base64_variants.ORIGINAL);
+    const encrypted = sodium.crypto_box_seal(
+      sodium.from_string(value),
+      key
+    );
+    const encryptedValue = sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
+
+    // Crear o actualizar el secret
+    try {
+      await octokit.rest.actions.createOrUpdateRepoSecret({
+        owner: GITHUB_OWNER, repo: GITHUB_REPO,
+        secret_name: name, encrypted_value: encryptedValue,
+        key_id: pubKey.key_id,
+      });
+    } catch (createErr) {
+      if (createErr.status === 404) {
+        // Si no existe, intentar crear
+        await octokit.rest.actions.createOrUpdateRepoSecret({
+          owner: GITHUB_OWNER, repo: GITHUB_REPO,
+          secret_name: name, encrypted_value: encryptedValue,
+          key_id: pubKey.key_id,
+        });
+      } else { throw createErr; }
+    }
+
+    tgAlert('ghsecret', () =>
+      `🔐 <b>Secret actualizado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name });
+  } catch (e) {
+    console.error('POST /api/admin/github/secrets error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/github/secrets/:name — eliminar un secret
+app.delete('/api/admin/github/secrets/:name', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { name } = req.params;
+    await octokit.rest.actions.deleteRepoSecret({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, secret_name: name,
+    });
+    tgAlert('ghsecret_del', () =>
+      `🗑️ <b>Secret eliminado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name });
+  } catch (e) {
+    console.error('DELETE /api/admin/github/secrets error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/variables — listar variables del repositorio
+app.get('/api/admin/github/variables', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { data } = await octokit.rest.actions.listRepoVariables({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100,
+    });
+    res.json({ ok: true, variables: data.variables.map(v => ({ name: v.name, value: v.value, created_at: v.created_at, updated_at: v.updated_at })) });
+  } catch (e) {
+    console.error('GET /api/admin/github/variables error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/github/variables — crear/actualizar una variable
+app.post('/api/admin/github/variables', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { name, value } = req.body || {};
+    if (!name || !value) return res.status(400).json({ error: 'Falta name o value' });
+    try {
+      await octokit.rest.actions.createRepoVariable({
+        owner: GITHUB_OWNER, repo: GITHUB_REPO, name, value,
+      });
+    } catch (createErr) {
+      if (createErr.status === 422) {
+        await octokit.rest.actions.updateRepoVariable({
+          owner: GITHUB_OWNER, repo: GITHUB_REPO, name, value,
+        });
+      } else { throw createErr; }
+    }
+    tgAlert('ghvar', () =>
+      `⚙️ <b>Variable actualizada</b>\n<code>${name}</code>=<code>${value.slice(0,20)}${value.length>20?'…':''}</code>\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name, value });
+  } catch (e) {
+    console.error('POST /api/admin/github/variables error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/github/variables/:name — eliminar una variable
+app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) => {
+  try {
+    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
+    const { name } = req.params;
+    await octokit.rest.actions.deleteRepoVariable({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, name,
+    });
+    tgAlert('ghvar_del', () =>
+      `🗑️ <b>Variable eliminada</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name });
+  } catch (e) {
+    console.error('DELETE /api/admin/github/variables error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
