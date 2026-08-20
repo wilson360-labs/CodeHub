@@ -178,4 +178,12 @@ public class CodeHubBridge {
         return activity.getSharedPreferences("codehub", Context.MODE_PRIVATE)
             .getString("fcm_token", "");
     }
+
+    // Llamado desde window.onerror / unhandledrejection (inyectado en
+    // MainActivity.injectNativeFlags) para reportar errores JS del sitio
+    // dentro del WebView al chat de Telegram del admin vía backend.
+    @JavascriptInterface
+    public void reportJsError(String message, String source, String line, String col, String stack) {
+        CrashReporter.reportJs(activity.getApplicationContext(), message, source, line, col, stack);
+    }
 }

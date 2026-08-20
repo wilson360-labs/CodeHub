@@ -16,6 +16,9 @@ public class CodeHubApp extends Application {
         super.onCreate();
         crashDir = getFilesDir();
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(this));
+        // Si quedó un crash.log de una sesión anterior que no pudo enviarse
+        // (sin internet en el momento del crash), lo reintenta ahora.
+        CrashReporter.flushPendingLog(this);
     }
 
     private static final class CrashHandler implements Thread.UncaughtExceptionHandler {
@@ -27,6 +30,10 @@ public class CodeHubApp extends Application {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
+            // Intento síncrono con timeout corto — el proceso está a punto de
+            // morir, así que esto se hace ANTES de tocar el archivo/handler
+            // anterior para maximizar la chance de que el reporte salga.
+            try { CrashReporter.reportFatal(app, t, e); } catch (Throwable ignored) {}
             try {
                 File dir = app.crashDir;
                 if (dir == null) dir = app.getFilesDir();

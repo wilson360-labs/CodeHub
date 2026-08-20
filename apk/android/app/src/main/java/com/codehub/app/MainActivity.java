@@ -73,6 +73,7 @@ public class MainActivity extends Activity implements LocationListener {
     private void crashLog(String tag, Throwable t) {
         String msg = tag + ": " + t.getClass().getSimpleName() + " — " + t.getMessage();
         android.util.Log.e("CodeHub", msg, t);
+        CrashReporter.reportCaught(getApplicationContext(), tag, t);
         try {
             File f = new File(getFilesDir(), "crash.log");
             PrintWriter pw = new PrintWriter(new FileWriter(f, true));
@@ -369,7 +370,19 @@ public class MainActivity extends Activity implements LocationListener {
             "window.__apkVersion='" + versionName + "';" +
             "window.__apkFCMToken='" + fcmToken + "';" +
             "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,storage:true,offline:true};" +
-            "try{localStorage.setItem('pwa_installed','1');}catch(e){}";
+            "try{localStorage.setItem('pwa_installed','1');}catch(e){}" +
+            // Reporta errores JS no atrapados y promesas rechazadas sin catch
+            // al bridge nativo, que los reenvía a /api/crash-report (Telegram).
+            // Se instala solo una vez por carga de página (flag __apkCrashHooked).
+            "if(!window.__apkCrashHooked){window.__apkCrashHooked=true;" +
+            "window.onerror=function(m,s,l,c,er){try{if(window.CodeHubNative&&CodeHubNative.reportJsError){" +
+            "CodeHubNative.reportJsError(String(m),String(s||location.href),String(l||0),String(c||0),(er&&er.stack)?String(er.stack):'');" +
+            "}}catch(e){}return false;};" +
+            "window.addEventListener('unhandledrejection',function(ev){try{var r=ev.reason;" +
+            "var msg=(r&&r.message)?r.message:String(r);var st=(r&&r.stack)?String(r.stack):'';" +
+            "if(window.CodeHubNative&&CodeHubNative.reportJsError){" +
+            "CodeHubNative.reportJsError('UnhandledRejection: '+msg,location.href,'0','0',st);" +
+            "}}catch(e){}});}";
         view.loadUrl(js);
     }
 

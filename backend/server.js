@@ -180,6 +180,9 @@ app.use('/api/chat', express.json({ limit: '6mb' }));
 // Source, ~23kb) o extract-icon con imágenes en base64. Mismo patrón
 // que /api/chat arriba: se registra antes del límite global.
 app.use('/api/admin', express.json({ limit: '5mb' }));
+// /api/crash-report — stack traces + log de crash acumulado (app Android)
+// pueden superar el límite chico global; mismo patrón de arriba.
+app.use('/api/crash-report', express.json({ limit: '200kb' }));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
@@ -201,6 +204,9 @@ const uploadSecurityFile = multer({
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
+// App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
+// crash reales) sin abrir la puerta a flood del endpoint público.
+const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
 
@@ -3646,6 +3652,49 @@ app.post('/api/push/fcm-location', async (req, res) => {
     const { token, lat, lon } = req.body || {};
     if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
     await fcmUpdateLocation(token, lat, lon);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── CRASH REPORTING (app Android) ────────────────────────────
+// La app nativa (WebView wrapper) reporta acá tanto crashes fatales
+// (Thread.UncaughtExceptionHandler) como excepciones atrapadas y
+// errores de JS del sitio dentro del WebView (window.onerror /
+// unhandledrejection). Reenviamos al chat de Telegram del admin
+// agrupando por firma (misma clase+tag) para no floodear si el
+// mismo bug crashea la app repetidas veces seguidas.
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+app.post('/api/crash-report', crashLimiter, async (req, res) => {
+  try {
+    const {
+      fatal, tag, exceptionClass, message, stackTrace,
+      appVersion, platform, deviceModel, androidVersion, timestamp,
+    } = req.body || {};
+
+    if (!exceptionClass && !stackTrace && !message) {
+      return res.status(400).json({ ok: false, error: 'Reporte vacío' });
+    }
+
+    const when  = timestamp ? new Date(Number(timestamp) || timestamp) : new Date();
+    const trace = String(stackTrace || '').slice(0, 3200); // margen para el límite de 4096 de Telegram
+    const key   = `crash:${fatal ? 'fatal' : 'caught'}:${tag || ''}:${exceptionClass || ''}`;
+    const icon  = fatal ? '💥' : '⚠️';
+    const kind  = fatal ? 'CRASH FATAL' : 'Excepción capturada';
+
+    tgAlert(key, () =>
+      `${icon} <b>${kind} — App Android</b>\n` +
+      (tag ? `Módulo: <code>${escHtml(tag)}</code>\n` : '') +
+      `Clase: <code>${escHtml(exceptionClass || '?')}</code>\n` +
+      `Mensaje: ${escHtml(message || '(sin mensaje)')}\n` +
+      `Dispositivo: ${escHtml(deviceModel || '?')} · Android ${escHtml(androidVersion || '?')}\n` +
+      `Versión app: ${escHtml(appVersion || '?')} · Plataforma: ${escHtml(platform || 'android')}\n` +
+      `Hora: ${when.toISOString()}\n\n` +
+      (trace ? `<pre>${escHtml(trace)}</pre>` : ''),
+      { windowMs: 10000 });
+
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
