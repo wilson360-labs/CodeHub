@@ -61,7 +61,7 @@ jobs:
             -e BUBBLEWRAP_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
             -e BUBBLEWRAP_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}" \
             ghcr.io/googlechromelabs/bubblewrap:latest \
-            bubblewrap build --manifest=. --skipPwaValidation
+            build --manifest=. --skipPwaValidation
 
       - name: List output
         run: ls -la apk/*.apk 2>/dev/null || echo "No APK found"
