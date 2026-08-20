@@ -297,7 +297,22 @@ async function sendAdminBroadcast() {
     if (!res.ok) throw new Error(data.error || 'Error enviando la notificación');
 
     const summary = document.getElementById('push-summary');
-    if (summary) summary.textContent = `✅ Push enviado correctamente a ${data.sent || 0} de ${data.total || 0} dispositivos activos.`;
+    if (summary) {
+      // Desglose real (antes solo se mostraba "sent de total" sin decir
+      // por qué fallaba nada). Ahora se ve cuánto es web vs Android, y el
+      // motivo exacto de cada fallo (útil para detectar suscripciones
+      // muertas por rotación de VAPID, tokens FCM inválidos, etc).
+      const webPart     = `Web: ${data.sentWeb ?? 0}/${data.webTotal ?? 0}`;
+      const androidPart = `Android: ${data.sentAndroid ?? 0}/${data.androidTotal ?? 0}`;
+      let html = `✅ Push enviado: ${data.sent || 0} de ${data.total || 0} dispositivos (${webPart} · ${androidPart}).`;
+      if (Array.isArray(data.failures) && data.failures.length) {
+        html += '<br><span style="opacity:.75">Fallos:</span><ul style="margin:4px 0 0 18px;padding:0;font-size:.85em;opacity:.85">' +
+          data.failures.map(f =>
+            `<li>[${f.kind}] code ${f.code ?? '?'} — ${(f.message || '').toString().slice(0, 120)}</li>`
+          ).join('') + '</ul>';
+      }
+      summary.innerHTML = html;
+    }
     toast(`📲 Push enviado · ${data.sent || 0} dispositivos`);
     document.getElementById('push-title').value = '';
     document.getElementById('push-body').value = '';
