@@ -16,10 +16,13 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(System.getenv("KEYSTORE_PATH") ?: "${projectDir}/release.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+            def ksPath = project.hasProperty('KEYSTORE_PATH') ? project.property('KEYSTORE_PATH') : 'release.jks'
+            def ksPass = project.hasProperty('KEYSTORE_PASSWORD') ? project.property('KEYSTORE_PASSWORD') : ''
+            def keyPass = project.hasProperty('KEY_PASSWORD') ? project.property('KEY_PASSWORD') : ''
+            storeFile file(ksPath)
+            storePassword ksPass
             keyAlias "codehub"
-            keyPassword System.getenv("KEY_PASSWORD") ?: ""
+            keyPassword keyPass
         }
     }
 

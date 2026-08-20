@@ -55,11 +55,11 @@ jobs:
 
       - name: Build Release APK
         working-directory: apk/android
-        run: gradle assembleRelease --stacktrace
-        env:
-          KEYSTORE_PATH: ${{ github.workspace }}/apk/android/app/release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          gradle assembleRelease --stacktrace \
+            -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
+            -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
 
       - name: Get version
         id: version
