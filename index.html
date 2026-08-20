@@ -2617,14 +2617,28 @@ function urlBase64ToUint8ArrayIdx(base64String) {
 }
 
 async function initIndexPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (Notification.permission === 'denied') return;
-  // En app APK, los permisos ya se piden desde Java — no mostrar banner web
-  var isStandaloneAPK = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if (!('serviceWorker' in navigator)) return;
+  // En APK nativo, el push ya se gestiona desde Java — solo registrar en backend
+  if (isNativeAPK) {
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      if ('PushManager' in window) {
+        var sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8ArrayIdx(VAPID_PUBLIC_INDEX) });
+        }
+        localStorage.setItem('ch_push_endpoint', sub.endpoint);
+        chPushRegister(sub);
+      }
+    } catch(e) {}
+    return;
+  }
+  if ('PushManager' in window && Notification.permission === 'denied') return;
   var dismissed = parseInt(localStorage.getItem('ch_notif_dismissed') || '0');
   var ONE_DAY = 86400000;
-  if (Notification.permission !== 'granted' && Date.now() - dismissed > ONE_DAY) {
-    if (!isStandaloneAPK) showIndexNotifBanner();
+  if (!isNativeAPK && Notification.permission !== 'granted' && Date.now() - dismissed > ONE_DAY) {
+    showIndexNotifBanner();
     return;
   }
   if (Notification.permission === 'granted') {
@@ -2861,7 +2875,14 @@ function chShowAppPerms() {
   var list = document.getElementById('ch-perms-list');
   if (!list) return;
 
+  // En app APK nativa, todos los recursos están gestionados por Java
+  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var ap = window.__apkPermissions || {};
+
   var items = [];
+  if (isNativeAPK) {
+    items.push({ icon: '🔔', name: 'Notificaciones push', desc: 'Gestionadas por la app — recibes alertas en tiempo real', badge: 'otorgado', state: 'ok' });
+  } else {
   var pushState, pushBadge;
   if (!('Notification' in window)) {
     pushState = 'bad'; pushBadge = 'no soportado';
@@ -2872,6 +2893,7 @@ function chShowAppPerms() {
     else { pushState = 'warn'; pushBadge = 'pendiente'; }
   }
   items.push({ icon: '🔔', name: 'Notificaciones push', desc: pushState === 'ok' ? 'Recibes apps nuevas, clima y novedades al instante' : (pushState === 'warn' ? 'Pendiente — se pedirá al abrir' : 'Bloqueado — actívalas en ajustes del navegador'), badge: pushBadge, state: pushState });
+  }
 
   // Internet / conexión (estado real)
   var online = navigator.onLine;
@@ -2900,6 +2922,12 @@ function chShowAppPerms() {
 }
 
 function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
+  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+  if (isNativeAPK) {
+    items.push({ icon: '🔄', name: 'Sincronización automática', desc: 'Activa — la app sincroniza datos en segundo plano', badge: 'activo', state: 'ok' });
+    items.push({ icon: '📅', name: 'Sincronización periódica', desc: 'Revisa novedades cada ~30 min con la app en segundo plano', badge: 'cada 30 min', state: 'ok' });
+  } else {
   var syncSupport = typeof ServiceWorkerRegistration !== 'undefined' && 'sync' in ServiceWorkerRegistration;
   var syncIcon = syncSupport ? (bgSyncOk ? '🔄' : '⏸') : '🚫';
   items.push({
@@ -2916,6 +2944,7 @@ function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
     badge: periodicOk ? 'cada 30 min' : 'no soportado',
     state: periodicOk ? 'ok' : 'warn',
   });
+  }
   items.push({
     icon: '💾',
     name: 'Almacenamiento persistente',
@@ -2926,6 +2955,7 @@ function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
 
   // Ubicación (para clima en tiempo real)
   var hasLoc = parseFloat(localStorage.getItem('ch_user_lat'));
+  if (isNativeAPK) hasLoc = true;
   var locState = hasLoc ? 'ok' : 'warn';
   items.push({
     icon: '📍',
@@ -2936,12 +2966,13 @@ function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
   });
 
   // Modo offline (Service Worker)
+  var swOkAPK = isNativeAPK ? true : swOk;
   items.push({
     icon: '📴',
     name: 'Modo offline',
-    desc: swOk ? 'Carga rápida y acceso sin conexión a la interfaz' : 'Navegador sin Service Worker',
-    badge: swOk ? 'activo' : 'no soportado',
-    state: swOk ? 'ok' : 'warn',
+    desc: swOkAPK ? 'Carga rápida y acceso sin conexión a la interfaz' : 'Navegador sin Service Worker',
+    badge: swOkAPK ? 'activo' : 'no soportado',
+    state: swOkAPK ? 'ok' : 'warn',
   });
 
   list.innerHTML = items.map(function(it) {
@@ -5412,6 +5443,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showPWA() {
     if (!isPublicInstallPage()) return;
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
     if (pwaInstallEl) pwaInstallEl.style.display = 'block';
   }
   function hidePWA() {
@@ -5427,6 +5459,7 @@ document.addEventListener('DOMContentLoaded', () => {
   //   las recomendaciones y la sincronización en tiempo real. No se
   //   muestra dos veces en la misma sesión para no molestar.
   function shouldShowInstallPrompt() {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
     const installed = localStorage.getItem('pwa_installed');
     if (installed) return false;
     if (sessionStorage.getItem('pwa_prompted_session')) return false;
