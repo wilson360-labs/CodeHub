@@ -1,7 +1,7 @@
 # ═══════════════════════════════════════════════════════════════
-# CodeHub APK Builder — GitHub Actions
-# Compila automáticamente el APK de Android al hacer push a main
-# El APK se sube como release asset para descarga directa
+# CodeHub APK Builder — GitHub Actions (Docker)
+# Compila el APK usando el contenedor oficial de Bubblewrap
+# que incluye JDK, Android SDK y licencias pre-aceptadas
 # ═══════════════════════════════════════════════════════════════
 name: Build CodeHub APK
 
@@ -26,55 +26,12 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
+    container:
+      image: ghcr.io/googlechromelabs/bubblewrap:latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup Android SDK + Accept Licenses
-        uses: android-actions/setup-android@v3
-
-      - name: Cache Android SDK
-        uses: actions/cache@v4
-        with:
-          path: /usr/local/lib/android/sdk
-          key: android-sdk-${{ runner.os }}
-          restore-keys: android-sdk-${{ runner.os }}
-
-      - name: Cache Bubblewrap
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm/_npx
-          key: bubblewrap-${{ runner.os }}
-          restore-keys: bubblewrap-${{ runner.os }}
-
-      - name: Accept all SDK licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-
-      - name: Pre-download Android SDK components for Bubblewrap
-        run: |
-          yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
-          mkdir -p ~/.android
-          echo "### User Agreement for Android Software Development Kit" > ~/.android/repositories.cfg
-          echo "### Terms and Conditions accepted" >> ~/.android/repositories.cfg
 
       - name: Generate icon from Cloudinary
         run: |
@@ -100,22 +57,21 @@ jobs:
           sed -i "s/CHANGE_ME/${{ secrets.KEYSTORE_PASSWORD }}/g" twa-manifest.json
           cat twa-manifest.json
 
-      - name: Build APK with Bubblewrap
+      - name: Build APK
         run: |
-          echo "Y" | bubblewrap build \
+          cd apk
+          bubblewrap build \
             --manifest=. \
             --skipPwaValidation
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        working-directory: apk
 
       - name: Get version
         id: version
         run: |
           VERSION=$(grep -oP "const VERSION = '\\K[^']+" sw.js)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Version: $VERSION"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -133,29 +89,21 @@ jobs:
             ## CodeHub APK — App Nativa Android
 
             **Versión:** ${{ steps.version.outputs.version }}
-            **Compilado automáticamente** desde el código fuente.
 
             ### Instalación
             1. Descarga el APK
             2. Abre el archivo en tu dispositivo Android
             3. Acepta la instalación de fuentes desconocidas
-            4. ¡Listo! CodeHub se instala como app nativa
+            4. ¡Listo!
 
             ### Características
-            - ✅ Notificaciones push en tiempo real
-            - ✅ Modo offline completo
+            - ✅ Notificaciones push
+            - ✅ Modo offline
             - ✅ Sincronización automática
-            - ✅ Geolocation para clima
-            - ✅ Permisos gestionados por la app
+            - ✅ Geolocation
             - ✅ Sin dependencia de Chrome
           files: apk/app-release-signed.apk
           make_latest: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update download URL in README
-        run: |
-          APK_URL="https://github.com/${{ github.repository }}/releases/download/apk-${{ steps.version.outputs.version }}/app-release-signed.apk"
-          echo "📱 APK download URL: $APK_URL"
-          echo "$APK_URL" > apk/LATEST_APK_URL.txt
