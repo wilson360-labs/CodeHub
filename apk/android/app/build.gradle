@@ -52,5 +52,20 @@ dependencies {
     // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde
     // versiones recientes del BOM — sin esto, NoClassDefFoundError al
     // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
-    implementation 'androidx.datastore:datastore-preferences:1.1.1'
+    implementation 'androidx.datastore:datastore-preferences:1.0.0'
+}
+
+// La librería androidx.datastore migró a Kotlin Multiplatform en versiones
+// recientes (variantes -core/-android por separado); en ese esquema Gradle
+// a veces resuelve una variante que NO trae PreferenceDataStoreDelegateKt,
+// causando NoClassDefFoundError aunque la dependencia esté declarada arriba
+// (bug conocido y aún abierto en varios issues de firebase-android-sdk).
+// Forzamos la versión 1.0.0 (clásica, un solo .aar de Android, sin
+// ambigüedad de variantes KMP) en TODO el árbol de dependencias, incluida
+// cualquier versión distinta que firebase-installations pida por su cuenta.
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.datastore:datastore-preferences:1.0.0'
+        force 'androidx.datastore:datastore-core:1.0.0'
+    }
 }
