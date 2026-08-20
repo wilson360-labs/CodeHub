@@ -137,22 +137,6 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    // Llamado desde permissions-setup.js DESPUÉS de que el splash terminó
-    // y el usuario vio el diálogo de CodeHub explicando para qué sirve
-    // cada permiso (notificaciones, ubicación, cámara, micrófono).
-    // Dispara los diálogos nativos de Android en secuencia.
-    @JavascriptInterface
-    public void requestRuntimePermissions() {
-        if (!(activity instanceof MainActivity)) return;
-        final MainActivity main = (MainActivity) activity;
-        activity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                main.requestAllPermissions();
-            }
-        });
-    }
-
     // ── ANUNCIO RECOMPENSADO (AdMob) ────────────────────────────
     // ca-app-pub-3780093322926832/4285173985
     @JavascriptInterface

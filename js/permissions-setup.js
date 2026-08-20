@@ -16,12 +16,6 @@ const PermissionsSetup = (() => {
   // Estado interno de CodeHub (sin consultar al navegador)
   const _internalState = {};
 
-  /* ── ¿Corremos dentro de la APK nativa? ── */
-  function _isNativeApp() {
-    return !!(window.__apkNative && window.CodeHubNative &&
-      typeof window.CodeHubNative.requestRuntimePermissions === 'function');
-  }
-
   /* ── Definiciones de permisos ── */
   const PERM_DEFS = [
     {
@@ -30,10 +24,6 @@ const PermissionsSetup = (() => {
       icon: '🔔',
       desc: 'Alertas de clima, novedades y actualizaciones en tiempo real',
       nativeCheck: async () => {
-        if (_isNativeApp()) {
-          const ap = window.__apkPermissions || {};
-          return ap.notifications ? 'granted' : 'prompt';
-        }
         if (!('Notification' in window)) return 'unsupported';
         return Notification.permission;
       },
@@ -51,10 +41,6 @@ const PermissionsSetup = (() => {
       icon: '📍',
       desc: 'Clima local y contenido personalizado',
       nativeCheck: async () => {
-        if (_isNativeApp()) {
-          const ap = window.__apkPermissions || {};
-          return ap.location ? 'granted' : 'prompt';
-        }
         if (!('geolocation' in navigator)) return 'unsupported';
         // Intentar obtener ubicación silenciosamente para verificar
         return new Promise(resolve => {
@@ -80,10 +66,6 @@ const PermissionsSetup = (() => {
       icon: '🎤',
       desc: 'Comandos de voz con EMI (asistente IA)',
       nativeCheck: async () => {
-        if (_isNativeApp()) {
-          const ap = window.__apkPermissions || {};
-          return ap.microphone ? 'granted' : 'prompt';
-        }
         if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
         // Verificar si ya tenemos permiso accediendo al micrófono
         return 'prompt'; // Por defecto asumimos pendiente
@@ -271,45 +253,15 @@ const PermissionsSetup = (() => {
       }
     }
 
-    // Espera a que Android resuelva los diálogos nativos (o hasta 8s de
-    // margen) tras CodeHubNative.requestRuntimePermissions().
-    function _waitForNativePermsResult() {
-      return new Promise(resolve => {
-        let done = false;
-        const finish = () => { if (done) return; done = true; window.__onApkPermsUpdated = null; resolve(); };
-        window.__onApkPermsUpdated = finish;
-        setTimeout(finish, 8000);
-      });
-    }
-
     async function _requestAll() {
       if (processing) return;
       processing = true;
       const btn = document.getElementById('perms-enable-all');
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Solicitando...'; }
 
-      if (_isNativeApp()) {
-        // En la APK, un solo llamado nativo dispara los diálogos del
-        // sistema operativo en secuencia (notificaciones, ubicación,
-        // cámara, micrófono). El usuario ya vio el porqué en esta tarjeta.
-        const waitResult = _waitForNativePermsResult();
-        try { window.CodeHubNative.requestRuntimePermissions(); } catch {}
-        await waitResult;
-        for (const perm of PERM_DEFS) {
-          const statusEl = document.getElementById(`perms-status-${perm.id}`);
-          const result = await perm.nativeCheck();
-          _setInternalState(perm.id, result);
-          if (statusEl) {
-            if (result === 'granted') { statusEl.textContent = '✅ Activado'; statusEl.className = 'perms-item-status granted'; }
-            else if (result === 'unsupported') { statusEl.textContent = '⚠️ No disponible'; statusEl.className = 'perms-item-status unsupported'; }
-            else { statusEl.textContent = '⚠️ Pendiente'; statusEl.className = 'perms-item-status pending'; }
-          }
-        }
-      } else {
-        for (const perm of PERM_DEFS) {
-          await _requestPermSequentially(perm);
-          await new Promise(r => setTimeout(r, 400));
-        }
+      for (const perm of PERM_DEFS) {
+        await _requestPermSequentially(perm);
+        await new Promise(r => setTimeout(r, 400));
       }
 
       _markSetupDone();

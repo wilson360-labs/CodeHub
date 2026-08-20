@@ -245,6 +245,7 @@ function togPomo(){
   }
 }
 function rstPomo(){clearInterval(pIv);pRun=false;pLeft=pTot;updPomo();$('pbtn').innerHTML='<i class="fas fa-play"></i> Iniciar';$('plbl').textContent=PL[pMode]}
+if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
 
 // ──────────────────────────────────
 //  11. PALETA
