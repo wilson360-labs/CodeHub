@@ -33,6 +33,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Ensure apk directory exists
+        run: mkdir -p apk
+
       - name: Generate icon from Cloudinary
         run: |
           curl -sL "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" -o apk/icon-512.png
