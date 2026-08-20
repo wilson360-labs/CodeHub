@@ -34,12 +34,10 @@ public class InstallReceiver extends BroadcastReceiver {
 
         int statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
         int uriIdx   = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
-        int mimeIdx  = cursor.getColumnIndex(DownloadManager.COLUMN_MIME_TYPE);
         if (statusIdx < 0 || uriIdx < 0) { cursor.close(); return; }
 
         int status = cursor.getInt(statusIdx);
         String uriString = cursor.getString(uriIdx);
-        String mime = cursor.getString(mimeIdx);
         cursor.close();
 
         if (status != DownloadManager.STATUS_SUCCESSFUL) return;

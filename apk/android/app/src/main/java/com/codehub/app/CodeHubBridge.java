@@ -20,6 +20,7 @@ import android.webkit.WebView;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
