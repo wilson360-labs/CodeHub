@@ -2623,8 +2623,23 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 
 // PUSH EN INDEX
-var VAPID_PUBLIC_INDEX = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
+// La clave VAPID YA NO se hardcodea aquí: se pide al backend en
+// /api/push/vapid-public-key para que siempre coincida con la clave
+// privada que usa webpush.sendNotification() en el servidor. Si estas
+// dos claves no coinciden, el usuario se suscribe "bien" pero nunca
+// recibe ningún push (falla en silencio, sin error visible).
+var VAPID_PUBLIC_INDEX = null;
 var BACKEND_INDEX = 'https://codehub-98s6.onrender.com';
+
+async function chGetVapidKey() {
+  if (VAPID_PUBLIC_INDEX) return VAPID_PUBLIC_INDEX;
+  try {
+    var r = await fetch(BACKEND_INDEX + '/api/push/vapid-public-key');
+    var d = await r.json();
+    if (d && d.ok && d.key) { VAPID_PUBLIC_INDEX = d.key; return VAPID_PUBLIC_INDEX; }
+  } catch (e) {}
+  return null;
+}
 
 function urlBase64ToUint8ArrayIdx(base64String) {
   var padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -2648,11 +2663,27 @@ async function initIndexPush() {
   if (Notification.permission === 'granted') {
     try {
       var reg = await navigator.serviceWorker.ready;
+      var vapidKey = await chGetVapidKey();
+      if (!vapidKey) return; // sin clave del backend, no suscribir con una desactualizada
       var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        // Suscripción vieja: si se creó con una clave VAPID distinta a la
+        // que el backend usa ahora, el push nunca llegará. Se detecta
+        // comparando applicationServerKey y, si no coincide, se renueva.
+        var currentKeyBytes = urlBase64ToUint8ArrayIdx(vapidKey);
+        var subKeyBytes = sub.options && sub.options.applicationServerKey
+          ? new Uint8Array(sub.options.applicationServerKey) : null;
+        var sameKey = subKeyBytes && subKeyBytes.length === currentKeyBytes.length &&
+          subKeyBytes.every(function (b, i) { return b === currentKeyBytes[i]; });
+        if (!sameKey) {
+          try { await sub.unsubscribe(); } catch (e) {}
+          sub = null;
+        }
+      }
       if (!sub) {
         sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8ArrayIdx(VAPID_PUBLIC_INDEX),
+          applicationServerKey: urlBase64ToUint8ArrayIdx(vapidKey),
         });
       }
       localStorage.setItem('ch_push_endpoint', sub.endpoint);

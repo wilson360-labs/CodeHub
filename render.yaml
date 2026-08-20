@@ -34,3 +34,20 @@ services:
         sync: false
       - key: RENDER_EXTERNAL_URL
         sync: false
+      # ── Notificaciones en tiempo real (web + Android) ──────────
+      # Sin estas 4, el sistema de push sigue "andando" pero con
+      # huecos: usa la clave VAPID de ejemplo (insegura) y/o el
+      # push nativo Android (FCM) queda deshabilitado.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      # JSON completo de la cuenta de servicio de Firebase (una sola
+      # línea). Sin esto, la APK Android NO recibe push del servidor.
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      # Mismo valor que el "Secret" configurado en GitHub → Settings →
+      # Webhooks, para que las notificaciones de nuevas versiones
+      # lleguen al instante en vez de esperar el polling cada 6h.
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false

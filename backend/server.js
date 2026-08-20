@@ -183,6 +183,14 @@ app.use('/api/admin', express.json({ limit: '5mb' }));
 // /api/crash-report — stack traces + log de crash acumulado (app Android)
 // pueden superar el límite chico global; mismo patrón de arriba.
 app.use('/api/crash-report', express.json({ limit: '200kb' }));
+// /api/webhook — necesita el body crudo (Buffer) además del JSON parseado,
+// para poder validar la firma HMAC-SHA256 que manda GitHub en el header
+// X-Hub-Signature-256. El `verify` callback guarda esos bytes en
+// req.rawBody antes de que Express los descarte tras parsear el JSON.
+app.use('/api/webhook', express.json({
+  limit: '200kb',
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
@@ -1426,6 +1434,10 @@ app.get('/api/health', (_, res) => res.json({
   mongo:     dbConnected ? 'connected' : 'disconnected',
   redis:     redis       ? 'connected' : 'memory',
   ws:        wsClients.size + ' clients',
+  push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'ok (VAPID de ejemplo — configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
+  push_android: fcmEnabled ? 'ok (FCM habilitado)' : 'missing (configura FIREBASE_SERVICE_ACCOUNT)',
+  render_keepalive: process.env.RENDER_EXTERNAL_URL ? 'ok' : 'missing (configura RENDER_EXTERNAL_URL para que Render no duerma el servicio)',
+  github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantáneas de nuevas versiones)',
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
   cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
   huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
@@ -3456,6 +3468,18 @@ async function sendPush(rec, payload) {
   }
 }
 
+// Clave pública VAPID que el frontend debe usar al suscribirse.
+// Antes estaba hardcodeada en index.html (con el mismo valor de fallback
+// que aquí abajo); si en Render se configuraban VAPID_PUBLIC_KEY/PRIVATE_KEY
+// propios, el backend firmaba con la clave nueva pero el navegador seguía
+// suscribiéndose con la clave vieja hardcodeada → desajuste de claves →
+// el push fallaba en silencio (la suscripción se guardaba, pero
+// webpush.sendNotification nunca llegaba). Este endpoint es la única
+// fuente de verdad: el frontend la consulta en vez de tenerla fija.
+app.get('/api/push/vapid-public-key', (_req, res) => {
+  res.json({ ok: true, key: VAPID_PUBLIC_KEY });
+});
+
 app.post('/api/push/subscribe', async (req, res) => {
   try {
     const { subscription, location, prefs } = req.body || {};
@@ -3990,6 +4014,82 @@ app.get('/api/admin/apps/check-updates', requireAdmin, async (req, res) => {
     const out = await autoCheckAppUpdates();
     res.json({ ok: true, ...out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── WEBHOOK DE GITHUB — releases en tiempo real ─────────────────
+// autoCheckAppUpdates() (arriba) revisa cada 6h por polling — funciona,
+// pero no es "tiempo real": si publicas un release, los suscriptores no
+// se enteran hasta el siguiente ciclo del monitor. Este webhook hace que
+// GitHub avise al instante en cuanto se publica un release, y aquí mismo
+// se dispara el push a todos los suscriptores sin esperar al polling.
+//
+// Configuración necesaria (una vez por repo que quieras notificar al
+// instante, además de GITHUB_WEBHOOK_SECRET en las env vars de Render):
+//   GitHub repo → Settings → Webhooks → Add webhook
+//     Payload URL: https://<tu-backend>/api/webhook/github-release
+//     Content type: application/json
+//     Secret: el mismo valor que GITHUB_WEBHOOK_SECRET
+//     Evento: "Let me select individual events" → Releases
+function verifyGithubSignature(req) {
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!secret) return false; // sin secreto configurado, no se acepta el webhook
+  const sig = req.get('x-hub-signature-256') || '';
+  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(req.rawBody || '').digest('hex');
+  try {
+    return sig.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  } catch (e) { return false; }
+}
+
+app.post('/api/webhook/github-release', async (req, res) => {
+  try {
+    if (!verifyGithubSignature(req)) return res.status(401).json({ ok: false, error: 'Firma inválida o GITHUB_WEBHOOK_SECRET no configurado' });
+
+    const event = req.get('x-github-event');
+    if (event === 'ping') return res.json({ ok: true, pong: true });
+    if (event !== 'release') return res.json({ ok: true, ignored: event });
+
+    const payload = req.body || {};
+    if (payload.action !== 'published') return res.json({ ok: true, ignored: payload.action });
+
+    const ownerRepo = payload.repository && payload.repository.full_name;
+    const release = payload.release;
+    if (!ownerRepo || !release) return res.status(400).json({ ok: false, error: 'Payload incompleto' });
+
+    const app_ = await App.findOne({ source_repo: ownerRepo });
+    if (!app_) return res.json({ ok: true, matched: false, reason: 'Ninguna app del catálogo usa ese source_repo' });
+
+    const nuevaVersion = release.tag_name || release.name || null;
+    if (!nuevaVersion || nuevaVersion === app_.version) return res.json({ ok: true, matched: true, skipped: 'misma versión' });
+
+    const apkUrl = pickApkAsset(release);
+    const update = {
+      version: nuevaVersion,
+      changelog: truncate(release.body),
+      tag: '🔄 Actualizada',
+      updatedAt: new Date(),
+    };
+    if (apkUrl) update.enlace = apkUrl;
+
+    await App.updateOne({ appId: app_.appId }, { $set: update });
+    await cacheDel('apps:all');
+    broadcastAppsChanged();
+
+    const r = await broadcastPush({
+      title: '🔄 ' + app_.nombre + ' se actualizó',
+      body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
+      type: 'app_update',
+      appId: app_.appId,
+      version: nuevaVersion,
+      url: '/opensource.html',
+    });
+
+    console.log('⚡ Webhook release instantáneo: ' + app_.nombre + ' → ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
+    res.json({ ok: true, matched: true, updated: true, sent: r.sent || 0 });
+  } catch (e) {
+    console.error('webhook/github-release error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ── ARRANCAR ──────────────────────────────────────────────────
