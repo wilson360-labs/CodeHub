@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Release APK
         working-directory: apk/android
-        run: gradle assembleRelease --stacktrace --info 2>&1 | tail -100
+        run: gradle assembleRelease --stacktrace
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/apk/android/app/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -70,9 +70,13 @@ jobs:
       - name: Find APK
         id: find-apk
         run: |
-          APK=$(find apk/android -name "*.apk" -path "*/release/*" | head -1)
+          echo "=== All APK files ==="
+          find apk/android -name "*.apk" -type f
+          APK=$(find apk/android -name "*.apk" -type f | head -1)
           if [ -z "$APK" ]; then
-            APK=$(find apk/android -name "*.apk" | head -1)
+            echo "No APK found! Listing build outputs:"
+            find apk/android -path "*/build/outputs/*" -type f
+            exit 1
           fi
           echo "path=$APK" >> $GITHUB_OUTPUT
           echo "Found APK: $APK"
