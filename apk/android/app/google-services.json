@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "759051125264",
+    "project_id": "codehub-8829d",
+    "storage_bucket": "codehub-8829d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759051125264:android:b27a64d117f378f27f0095",
+        "android_client_info": {
+          "package_name": "com.codehub.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrEcerl6bAyZ5MB86tU1BVK4RBbxtsJyw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
