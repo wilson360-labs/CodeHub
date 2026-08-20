@@ -1,14 +1,10 @@
-# ═══════════════════════════════════════════════════════════════
-# CodeHub APK Builder — GitHub Actions
-# Compila el APK usando Docker solo para el paso de build
-# ═══════════════════════════════════════════════════════════════
 name: Build CodeHub APK
 
 on:
   push:
     branches: [main]
     paths:
-      - 'apk/**'
+      - 'apk/android/**'
       - 'manifest.json'
       - 'sw.js'
       - 'index.html'
@@ -30,41 +26,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate icon from Cloudinary
-        run: |
-          curl -sL "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" -o apk/icon-512.png
-          curl -sL "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png" -o apk/icon-maskable-512.png
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.5'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Generate release keystore
         run: |
-          keytool -genkeypair \
-            -v \
-            -keystore apk/codehub-release-key.jks \
+          keytool -genkeypair -v \
+            -keystore apk/android/app/release.jks \
             -alias codehub \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
+            -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
             -keypass "${{ secrets.KEY_PASSWORD }}" \
             -dname "CN=Wilson.E, OU=CodeHub, O=CodeHub, L=Guatemala, ST=Guatemala, C=GT"
 
-      - name: Update TWA manifest with secrets
+      - name: Build Release APK
+        working-directory: apk/android
         run: |
-          sed -i "s/CHANGE_ME/${{ secrets.KEYSTORE_PASSWORD }}/g" apk/twa-manifest.json
-          cat apk/twa-manifest.json
-
-      - name: Build APK with Bubblewrap Docker
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            -w /workspace/apk \
-            -e BUBBLEWRAP_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
-            -e BUBBLEWRAP_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}" \
-            ghcr.io/googlechromelabs/bubblewrap:latest \
-            build --manifest=. --skipPwaValidation
-
-      - name: List output
-        run: ls -la apk/*.apk 2>/dev/null || echo "No APK found"
+          gradle assembleRelease \
+            -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
+            -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/apk/android/app/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Get version
         id: version
@@ -72,11 +71,21 @@ jobs:
           VERSION=$(grep -oP "const VERSION = '\\K[^']+" sw.js)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload APK artifact
+      - name: Find APK
+        id: find-apk
+        run: |
+          APK=$(find apk/android -name "*.apk" -path "*/release/*" | head -1)
+          if [ -z "$APK" ]; then
+            APK=$(find apk/android -name "*.apk" | head -1)
+          fi
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK"
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: codehub-apk-${{ steps.version.outputs.version }}
-          path: apk/app-release-signed.apk
+          path: ${{ steps.find-apk.outputs.path }}
           retention-days: 30
 
       - name: Create Release
@@ -92,7 +101,7 @@ jobs:
             2. Abre en tu Android
             3. Acepta fuentes desconocidas
             4. ¡Listo!
-          files: apk/app-release-signed.apk
+          files: ${{ steps.find-apk.outputs.path }}
           make_latest: true
           generate_release_notes: true
         env:

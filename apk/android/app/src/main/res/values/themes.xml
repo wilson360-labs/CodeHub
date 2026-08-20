@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CodeHub" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#2f80ed</item>
+        <item name="android:colorPrimaryDark">#080810</item>
+        <item name="android:colorAccent">#2f80ed</item>
+        <item name="android:windowBackground">#080810</item>
+        <item name="android:statusBarColor">#080810</item>
+        <item name="android:navigationBarColor">#080810</item>
+    </style>
+</resources>

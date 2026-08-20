@@ -1,5 +1,8 @@
 *.jks
 *.keystore
-app-release-signed.apk
-app-release-unaligned.apk
-```
+*.apk
+/build
+/.gradle
+/local.properties
+/app/build
+/app/release
