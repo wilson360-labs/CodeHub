@@ -1,8 +1,12 @@
 package com.codehub.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
@@ -25,10 +29,12 @@ public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://wilson360-labs.vercel.app";
     private static final int FILE_CHOOSER_REQUEST = 100;
+    private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
-    private boolean isFullscreen = false;
+    private GeolocationPermissions.Callback geoCallback;
+    private String geoOrigin;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -45,9 +51,49 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         setContentView(webView);
 
+        createNotificationChannel();
         setupWebView();
         setupStatusBar();
+        requestPermissionsInOrder();
+
         webView.loadUrl(APP_URL);
+    }
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                "codehub_default",
+                "CodeHub",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("Notificaciones de CodeHub");
+            channel.enableVibration(true);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+            }
+        }
+    }
+
+    private void requestPermissionsInOrder() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            String[] perms = {
+                Manifest.permission.POST_NOTIFICATIONS,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            };
+            requestPermissions(perms, PERMISSION_REQUEST_CODE);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] perms = {
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            };
+            requestPermissions(perms, PERMISSION_REQUEST_CODE);
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -86,11 +132,6 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {}
                 return true;
             }
-
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-            }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -106,7 +147,23 @@ public class MainActivity extends Activity {
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                callback.invoke(origin, true, false);
+                geoCallback = callback;
+                geoOrigin = origin;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        callback.invoke(origin, true, false);
+                        geoCallback = null;
+                    } else {
+                        requestPermissions(
+                            new String[]{
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION
+                            }, PERMISSION_REQUEST_CODE
+                        );
+                    }
+                } else {
+                    callback.invoke(origin, true, false);
+                }
             }
 
             @Override
@@ -124,11 +181,6 @@ public class MainActivity extends Activity {
                 }
                 return true;
             }
-
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                super.onProgressChanged(view, newProgress);
-            }
         });
 
         webView.setOnKeyListener(new View.OnKeyListener() {
@@ -141,6 +193,22 @@ public class MainActivity extends Activity {
                 return false;
             }
         });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE && geoCallback != null) {
+            boolean granted = false;
+            for (int result : grantResults) {
+                if (result == PackageManager.PERMISSION_GRANTED) {
+                    granted = true;
+                    break;
+                }
+            }
+            geoCallback.invoke(geoOrigin, granted, false);
+            geoCallback = null;
+        }
     }
 
     private void setupStatusBar() {
@@ -161,42 +229,34 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == FILE_CHOOSER_REQUEST) {
-            if (fileUploadCallback != null) {
-                Uri[] results = null;
-                if (resultCode == Activity.RESULT_OK && data != null) {
-                    String dataString = data.getDataString();
-                    if (dataString != null) {
-                        results = new Uri[]{Uri.parse(dataString)};
-                    }
+        if (requestCode == FILE_CHOOSER_REQUEST && fileUploadCallback != null) {
+            Uri[] results = null;
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) {
+                    results = new Uri[]{Uri.parse(dataString)};
                 }
-                fileUploadCallback.onReceiveValue(results);
-                fileUploadCallback = null;
             }
+            fileUploadCallback.onReceiveValue(results);
+            fileUploadCallback = null;
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null) {
-            webView.onResume();
-        }
+        if (webView != null) webView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (webView != null) {
-            webView.onPause();
-        }
+        if (webView != null) webView.onPause();
     }
 
     @Override
     protected void onDestroy() {
-        if (webView != null) {
-            webView.destroy();
-        }
+        if (webView != null) webView.destroy();
         super.onDestroy();
     }
 }

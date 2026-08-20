@@ -56,7 +56,7 @@ jobs:
       - name: Build Release APK
         working-directory: apk/android
         run: |
-          gradle assembleRelease --stacktrace \
+          gradle assembleRelease \
             -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
             -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
             -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
@@ -70,16 +70,14 @@ jobs:
       - name: Find APK
         id: find-apk
         run: |
-          echo "=== All APK files ==="
-          find apk/android -name "*.apk" -type f
           APK=$(find apk/android -name "*.apk" -type f | head -1)
           if [ -z "$APK" ]; then
-            echo "No APK found! Listing build outputs:"
+            echo "No APK found!"
             find apk/android -path "*/build/outputs/*" -type f
             exit 1
           fi
-          echo "path=$APK" >> $GITHUB_OUTPUT
-          echo "Found APK: $APK"
+          cp "$APK" apk/android/app-release-signed.apk
+          echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

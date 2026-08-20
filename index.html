@@ -2619,10 +2619,12 @@ function urlBase64ToUint8ArrayIdx(base64String) {
 async function initIndexPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   if (Notification.permission === 'denied') return;
+  // En app APK, los permisos ya se piden desde Java — no mostrar banner web
+  var isStandaloneAPK = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   var dismissed = parseInt(localStorage.getItem('ch_notif_dismissed') || '0');
   var ONE_DAY = 86400000;
   if (Notification.permission !== 'granted' && Date.now() - dismissed > ONE_DAY) {
-    showIndexNotifBanner();
+    if (!isStandaloneAPK) showIndexNotifBanner();
     return;
   }
   if (Notification.permission === 'granted') {
@@ -2733,7 +2735,9 @@ function chToggleWeatherAlerts(on) {
       if (typeof toast === 'function') toast('Alertas de clima activadas 🔔', 'weather', 3000);
     });
   } else {
-    showIndexNotifBanner();
+    if (!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+      showIndexNotifBanner();
+    }
   }
 }
 
@@ -5467,6 +5471,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // sincronización y el push automáticamente al abrir.
   const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
   if (isStandalone) {
+    // Ocultar sección de instalación APK (ya estamos en la app)
+    const apkBtn = document.getElementById('hero-install-apk');
+    const apkInfo = document.getElementById('hero-apk-info');
+    if (apkBtn) apkBtn.style.display = 'none';
+    if (apkInfo) apkInfo.style.display = 'none';
+    const pwaBanner = document.getElementById('pwa-install-banner');
+    if (pwaBanner) pwaBanner.style.display = 'none';
+    const pwaFloat = document.getElementById('pwa-install-float');
+    if (pwaFloat) pwaFloat.style.display = 'none';
+
     setTimeout(enableSyncPermissions, 2500);
     // Primera apertura con app instalada: mostrar el panel de permisos
     // (internet, sincronización, almacenamiento, etc.) una sola vez.
