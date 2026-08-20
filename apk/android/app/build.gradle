@@ -49,4 +49,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation platform('com.google.firebase:firebase-bom:34.18.0')
     implementation 'com.google.firebase:firebase-messaging'
+    // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde
+    // versiones recientes del BOM — sin esto, NoClassDefFoundError al
+    // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
+    implementation 'androidx.datastore:datastore-preferences:1.1.1'
 }
