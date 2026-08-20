@@ -34,20 +34,21 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+
 public class MainActivity extends Activity implements LocationListener {
 
     private static final String APP_URL = "https://wilson360-labs.vercel.app";
     private static final String CHANNEL_DEFAULT = "codehub_default";
     private static final int FILE_CHOOSER_REQUEST   = 100;
     private static final int PERMISSION_REQUEST_CODE = 200;
-    private static final int NOTIF_PERMISSION_CODE   = 300;
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
     private LocationManager locationManager;
-
-    // Double-back exit
     private boolean backPressedOnce = false;
     private final Handler backHandler = new Handler(Looper.getMainLooper());
 
@@ -59,15 +60,27 @@ public class MainActivity extends Activity implements LocationListener {
         webView = new WebView(this);
         setContentView(webView);
 
-        setupStatusBar();
-        createNotificationChannels();
-        requestAllPermissions();
-        setupWebView();
-        registerFCMToken();
-        checkInternetAndLoad();
+        try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
+        try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
+        try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
+        try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
+        try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
+        try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
-        // Handle intent from notification tap
         handleIntent(getIntent());
+    }
+
+    private void crashLog(String tag, Throwable t) {
+        String msg = tag + ": " + t.getClass().getSimpleName() + " — " + t.getMessage();
+        android.util.Log.e("CodeHub", msg, t);
+        try {
+            File f = new File(getFilesDir(), "crash.log");
+            PrintWriter pw = new PrintWriter(new FileWriter(f, true));
+            pw.println("[" + tag + "] " + System.currentTimeMillis());
+            t.printStackTrace(pw);
+            pw.println("---");
+            pw.close();
+        } catch (Exception ignored) {}
     }
 
     // ── STATUS BAR ──────────────────────────────────────────────
@@ -183,22 +196,26 @@ public class MainActivity extends Activity implements LocationListener {
 
     // ── FCM TOKEN ──────────────────────────────────────────────
     private void registerFCMToken() {
-        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
-            .addOnCompleteListener(new com.google.android.gms.tasks.OnCompleteListener<String>() {
-                @Override
-                public void onComplete(com.google.android.gms.tasks.Task<String> task) {
-                    if (!task.isSuccessful() || task.getResult() == null) return;
-                    final String token = task.getResult();
-                    getSharedPreferences("codehub", MODE_PRIVATE).edit()
-                        .putString("fcm_token", token).apply();
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            FcmHelper.registerToken(getApplicationContext(), token);
-                        }
-                    }).start();
-                }
-            });
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(new com.google.android.gms.tasks.OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(com.google.android.gms.tasks.Task<String> task) {
+                        try {
+                            if (!task.isSuccessful() || task.getResult() == null) return;
+                            final String token = task.getResult();
+                            getSharedPreferences("codehub", MODE_PRIVATE).edit()
+                                .putString("fcm_token", token).apply();
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    FcmHelper.registerToken(getApplicationContext(), token);
+                                }
+                            }).start();
+                        } catch (Exception ignored) {}
+                    }
+                });
+        } catch (Throwable ignored) {}
     }
 
     // ── LOCATION ────────────────────────────────────────────────
@@ -227,13 +244,11 @@ public class MainActivity extends Activity implements LocationListener {
     private void saveLocation(Location loc) {
         final double lat = loc.getLatitude();
         final double lon = loc.getLongitude();
-        // Save for worker polling
         SharedPreferences prefs = getSharedPreferences("codehub", MODE_PRIVATE);
         prefs.edit()
             .putLong("lat_bits", Double.doubleToRawLongBits(lat))
             .putLong("lon_bits", Double.doubleToRawLongBits(lon))
             .apply();
-        // Inject into WebView
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -272,7 +287,6 @@ public class MainActivity extends Activity implements LocationListener {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        // JavaScript bridge for native features
         webView.addJavascriptInterface(new CodeHubBridge(this, webView), "CodeHubNative");
 
         webView.setWebViewClient(new WebViewClient() {
