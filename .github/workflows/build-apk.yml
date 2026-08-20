@@ -26,6 +26,10 @@ jobs:
     name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      JAVA_HOME: /usr/lib/jvm/temurin-17-jdk-amd64
 
     steps:
       - name: Checkout code
@@ -41,12 +45,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK + Accept Licenses
         uses: android-actions/setup-android@v3
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk
+          key: android-sdk-${{ runner.os }}
+          restore-keys: android-sdk-${{ runner.os }}
+
+      - name: Cache Bubblewrap
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm/_npx
+          key: bubblewrap-${{ runner.os }}
+          restore-keys: bubblewrap-${{ runner.os }}
+
+      - name: Accept all SDK licenses
+        run: yes | sdkmanager --licenses || true
 
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
+
+      - name: Pre-download Android SDK components for Bubblewrap
+        run: |
+          yes | sdkmanager "build-tools;34.0.0" "platforms;android-34" || true
+          mkdir -p ~/.android
+          echo "### User Agreement for Android Software Development Kit" > ~/.android/repositories.cfg
+          echo "### Terms and Conditions accepted" >> ~/.android/repositories.cfg
 
       - name: Generate icon from Cloudinary
         run: |
@@ -74,7 +103,7 @@ jobs:
 
       - name: Build APK with Bubblewrap
         run: |
-          yes "" | bubblewrap build \
+          echo "Y" | bubblewrap build \
             --manifest=. \
             --skipPwaValidation
         env:
