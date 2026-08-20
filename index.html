@@ -728,6 +728,27 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <a href="/cv" class="hero-btn hero-btn-ghost" style="border-color:rgba(0,230,118,.3);color:#00e676">
                             <i class="fas fa-file-lines"></i> <span data-i18n="heroCta4">Mi CV</span>
                         </a>
+                        <a href="#" class="hero-btn hero-btn-apk" id="hero-install-apk" onclick="installCodeHubAPK(event)">
+                            <i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>
+                        </a>
+                    </div>
+                    <div class="hero-apk-info" id="hero-apk-info">
+                        <div class="apk-info-row">
+                            <span class="apk-info-icon">📱</span>
+                            <span class="apk-info-text">App nativa Android — sin Chrome, sin navegador, sin restricciones</span>
+                        </div>
+                        <div class="apk-info-row">
+                            <span class="apk-info-icon">🔔</span>
+                            <span class="apk-info-text">Notificaciones push en tiempo real + modo offline</span>
+                        </div>
+                        <div class="apk-info-row">
+                            <span class="apk-info-icon">⚡</span>
+                            <span class="apk-info-text">Rendimiento nativo — se ejecuta como una app compilada</span>
+                        </div>
+                        <div class="apk-info-row">
+                            <span class="apk-info-icon">🛡️</span>
+                            <span class="apk-info-text">Permisos sin restricciones — cámara, ubicación, micrófono</span>
+                        </div>
                     </div>
                     <div class="hero-note">
                         <span><i class="fas fa-circle-check"></i> <span data-i18n="heroNote1">Branding visual más limpio y profesional</span></span>
@@ -5542,6 +5563,139 @@ document.addEventListener('DOMContentLoaded', () => {
     hidePWA();
     localStorage.setItem('pwa_dismissed', Date.now());
   }
+
+  // ── INSTALAR APK ──────────────────────────────────────────
+  const APK_BASE = 'https://github.com/wilson360-labs/CodeHub/releases/latest/download/app-release-signed.apk';
+
+  async function installCodeHubAPK(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById('hero-install-apk');
+    if (!btn) return;
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Buscando APK...</span>';
+    btn.style.pointerEvents = 'none';
+
+    try {
+      // Buscar la última release con APK
+      const resp = await fetch('https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest');
+      if (resp.ok) {
+        const release = await resp.json();
+        const apkAsset = release.assets.find(a => a.name === 'app-release-signed.apk');
+        if (apkAsset) {
+          btn.innerHTML = '<i class="fas fa-download"></i> <span>Descargando APK...</span>';
+          // Descargar el APK
+          window.location.href = apkAsset.browser_download_url;
+          btn.innerHTML = '<i class="fas fa-check"></i> <span>¡Descarga iniciada!</span>';
+          btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+          if (typeof toast === 'function') toast('📱 APK descargado — abre el archivo para instalar', 'success', 5000);
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
+            btn.style.pointerEvents = '';
+            btn.style.background = '';
+          }, 4000);
+          return;
+        }
+      }
+      // Si no hay APK compilado aún, ofrecer guía
+      btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
+      btn.style.pointerEvents = '';
+      showAPKGuide();
+    } catch (err) {
+      btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
+      btn.style.pointerEvents = '';
+      showAPKGuide();
+    }
+  }
+
+  function showAPKGuide() {
+    const existing = document.getElementById('apk-guide-overlay');
+    if (existing) { existing.classList.add('active'); return; }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'apk-guide-overlay';
+    overlay.className = 'perms-overlay';
+    overlay.innerHTML = `
+      <div class="perms-card">
+        <div class="perms-card-glow"></div>
+        <div class="perms-card-header">
+          <div class="perms-card-icon">📱</div>
+          <h2>Instalar CodeHub</h2>
+          <p>App nativa Android — sin Chrome, sin navegador, sin restricciones</p>
+        </div>
+        <div class="apk-guide-benefits">
+          <div class="apk-guide-benefit">
+            <span class="apk-benefit-icon">🔔</span>
+            <div>
+              <div class="apk-benefit-title">Notificaciones push</div>
+              <div class="apk-benefit-desc">Alertas en tiempo real sin depender del navegador</div>
+            </div>
+          </div>
+          <div class="apk-guide-benefit">
+            <span class="apk-benefit-icon">📡</span>
+            <div>
+              <div class="apk-benefit-title">Modo offline completo</div>
+              <div class="apk-benefit-desc">Funciona sin conexión — datos cacheados localmente</div>
+            </div>
+          </div>
+          <div class="apk-guide-benefit">
+            <span class="apk-benefit-icon">⚡</span>
+            <div>
+              <div class="apk-benefit-title">Rendimiento nativo</div>
+              <div class="apk-benefit-desc">Se ejecuta como app compilada, no como sitio web</div>
+            </div>
+          </div>
+          <div class="apk-guide-benefit">
+            <span class="apk-benefit-icon">🛡️</span>
+            <div>
+              <div class="apk-benefit-title">Permisos sin restricciones</div>
+              <div class="apk-benefit-desc">Cámara, ubicación, micrófono — todo gestionado por la app</div>
+            </div>
+          </div>
+        </div>
+        <div class="apk-guide-steps">
+          <div class="apk-step">
+            <span class="apk-step-num">1</span>
+            <span>Toca <strong>Descargar APK</strong></span>
+          </div>
+          <div class="apk-step">
+            <span class="apk-step-num">2</span>
+            <span>Abre el archivo descargado</span>
+          </div>
+          <div class="apk-step">
+            <span class="apk-step-num">3</span>
+            <span>Acepta instalar desde fuentes desconocidas</span>
+          </div>
+          <div class="apk-step">
+            <span class="apk-step-num">4</span>
+            <span>¡CodeHub se instala como app nativa!</span>
+          </div>
+        </div>
+        <div class="perms-card-actions">
+          <a href="${APK_BASE}" class="perms-btn perms-btn-primary" id="apk-download-btn" style="text-decoration:none;text-align:center">
+            <i class="fas fa-download"></i> Descargar APK
+          </a>
+          <button class="perms-btn perms-btn-secondary" onclick="document.getElementById('apk-guide-overlay').classList.remove('active');setTimeout(()=>document.getElementById('apk-guide-overlay')?.remove(),400)">
+            Cerrar
+          </button>
+        </div>
+        <div class="perms-card-footer">
+          APK compilado automáticamente desde el código fuente — wilson360-labs.vercel.app
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('active'));
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 400);
+      }
+    });
+  }
+
+  window.installCodeHubAPK = installCodeHubAPK;
+  window.showAPKGuide = showAPKGuide;
 
   // ── Service Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€───
   if ('serviceWorker' in navigator) {
