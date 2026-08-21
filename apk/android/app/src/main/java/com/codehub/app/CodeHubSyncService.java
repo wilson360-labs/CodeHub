@@ -151,14 +151,17 @@ public class CodeHubSyncService extends Service implements LocationListener {
             builder = new Notification.Builder(this);
         }
 
-        return builder
-            .setSmallIcon(R.drawable.ic_launcher_real)
+        builder.setSmallIcon(R.drawable.ic_launcher_real)
             .setContentTitle("CodeHub activo")
             .setContentText("Sincronizando en segundo plano")
             .setContentIntent(pi)
-            .setOngoing(true)
-            .setSilent(true)
-            .build();
+            .setOngoing(true);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setSilent(true);
+        }
+
+        return builder.build();
     }
 
     // ── SYNC ───────────────────────────────────────────────────
