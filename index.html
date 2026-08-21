@@ -3370,28 +3370,6 @@ async function sendEmail(e) {
 </script>
 
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI COPILOT">
-  <!-- Boot scan overlay — se muestra solo al abrir -->
-  <div id="ai-boot-overlay" style="
-    position:absolute;inset:0;z-index:10;pointer-events:none;
-    display:none;flex-direction:column;justify-content:center;align-items:center;
-    background:rgba(5,5,18,.92);border-radius:var(--radius-xl, 22px);overflow:hidden;
-  ">
-    <div id="ai-boot-scanline" style="
-      position:absolute;top:0;left:0;right:0;height:2px;
-      background:linear-gradient(90deg,transparent,#00E5FF,#7C4DFF,#00E5FF,transparent);
-      box-shadow:0 0 18px rgba(0,229,255,.9);
-    "></div>
-    <div id="ai-boot-text" style="
-      font-family:'JetBrains Mono',monospace;font-size:.7rem;
-      color:#00E5FF;text-align:left;width:80%;
-      text-shadow:0 0 8px rgba(0,229,255,.8);
-    "></div>
-    <div id="ai-boot-icon" style="
-      position:absolute;bottom:22%;font-size:2rem;
-      opacity:0;transform:scale(.5);
-      transition:all .3s cubic-bezier(.2,.9,.2,1.4);
-    ">✦</div>
-  </div>
 
   <!-- Header -->
   <div class="ai-head">
@@ -3776,89 +3754,18 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
   function toggle() { setOpen(!isOpen); }
 
-  /* ── Tech Boot Sequence ── */
-  var _bootLines = [
-    '> CODEHUB_AI v2.6 — initializing...',
-    '> loading neural context... OK',
-    '> connecting to AI engine... OK',
-    '> ready.'
-  ];
-  var _booting = false;
-  var _bootedOnce = false;
-  try { _bootedOnce = sessionStorage.getItem('ch_ai_booted') === '1'; } catch (e) {}
-
   function runBoot(cb) {
-    // Solo la primera vez que se abre el panel en esta sesión: después
-    // se omite la animación de arranque para que abra al instante.
-    if (_bootedOnce) { cb && cb(); return; }
-    try { sessionStorage.setItem('ch_ai_booted', '1'); } catch (e) {}
-    _bootedOnce = true;
-
-    var overlay  = document.getElementById('ai-boot-overlay');
-    var scanline = document.getElementById('ai-boot-scanline');
-    var bootText = document.getElementById('ai-boot-text');
-    var bootIcon = document.getElementById('ai-boot-icon');
-    if (!overlay) { cb && cb(); return; }
-
-    _booting = true;
-    bootText.textContent = '';
-    bootIcon.style.opacity = '0';
-    bootIcon.style.transform = 'scale(.5)';
-    overlay.style.display = 'flex';
-
-    /* Animar scanline de arriba a abajo */
-    var startTime = null;
-    var scanDuration = 480;
-    function animScan(ts) {
-      if (!startTime) startTime = ts;
-      var p = Math.min((ts - startTime) / scanDuration, 1);
-      var pct = p * 100;
-      scanline.style.top = pct + '%';
-      scanline.style.opacity = p < 0.85 ? '1' : String(1 - (p - 0.85) / 0.15);
-      if (p < 1) requestAnimationFrame(animScan);
-    }
-    requestAnimationFrame(animScan);
-
-    /* Imprimir líneas de terminal una a una */
-    var lineDelay = 0;
-    _bootLines.forEach(function(line, i) {
-      lineDelay += i === 0 ? 80 : 95;
-      setTimeout(function() {
-        bootText.textContent += (bootText.textContent ? '\n' : '') + line;
-      }, lineDelay);
-      /* Typing de cada char */
-      var charDelay = lineDelay;
-      var chars = line.split('');
-      bootText.textContent; // referencia
-    });
-
-    /* Mostrar ícono central */
-    setTimeout(function() {
-      bootIcon.style.opacity = '1';
-      bootIcon.style.transform = 'scale(1)';
-      bootIcon.style.textShadow = '0 0 24px #7C4DFF, 0 0 48px rgba(124,77,255,.5)';
-    }, lineDelay + 80);
-
-    /* Ocultar overlay y mostrar panel real */
-    var totalDuration = lineDelay + 280;
-    setTimeout(function() {
-      overlay.style.transition = 'opacity .28s ease';
-      overlay.style.opacity = '0';
-      setTimeout(function() {
-        overlay.style.display = 'none';
-        overlay.style.opacity = '1';
-        overlay.style.transition = '';
-        _booting = false;
-        cb && cb();
-      }, 280);
-    }, totalDuration);
+    // Animación de "boot" eliminada — el panel ahora abre al instante,
+    // sin overlay de terminal ni delay artificial.
+    cb && cb();
   }
+
 
   function setOpen(v) {
     isOpen = v;
     const backdrop = document.getElementById('ai-backdrop');
     if (v) {
-      panel.classList.add('open', 'boot-flash');
+      panel.classList.add('open');
       fab.classList.add('hidden');
       const notif = fab.querySelector('.ai-notif');
       if (notif) notif.style.display = 'none';
@@ -3877,7 +3784,6 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
          El botón flotante "¿Necesitas ayuda?" se oculta mientras el
          panel está abierto (ver css/site-tour.css → body.ai-panel-open) */
       document.body.classList.add('ai-panel-open');
-      setTimeout(function(){ panel.classList.remove('boot-flash'); }, 900);
       runBoot(function() {
         setTimeout(function() { if (input) input.focus(); }, 80);
         const wt = document.getElementById('ai-welcome-time');
