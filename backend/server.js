@@ -19,6 +19,7 @@ const cors      = require('cors');
 const mongoose  = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const helmet    = require('helmet');
+const compression = require('compression');
 const multer    = require('multer');
 const Busboy    = require('busboy');   // dep transitiva de multer — parseo multipart sin buffer
 const crypto    = require('crypto');
@@ -34,36 +35,38 @@ const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
   : null;
 
-// Helper: registrar evento en Supabase
+// Helper: registrar evento en Supabase (fire-and-forget — no bloquea la petición)
 async function trackEvent(type, page = null, metadata = {}) {
   if (!supabase) return;
-  try {
-    const today = new Date().toISOString().slice(0, 10);
-    // Insertar evento individual
-    await supabase.from('events').insert({ type, page, metadata });
-    // Actualizar stats diarias
-    const col = { visit: 'visits', download: 'downloads', chat: 'chat_msgs', tool: 'tool_uses', contact: 'contacts' }[type];
-    if (col) {
-      const { data } = await supabase.from('daily_stats').select('id,' + col).eq('date', today).single();
-      if (data) {
-        await supabase.from('daily_stats').update({ [col]: (data[col] || 0) + 1, updated_at: new Date() }).eq('date', today);
-      } else {
-        await supabase.from('daily_stats').insert({ date: today, [col]: 1 });
+  setImmediate(async () => {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      // Insertar evento individual
+      await supabase.from('events').insert({ type, page, metadata });
+      // Actualizar stats diarias
+      const col = { visit: 'visits', download: 'downloads', chat: 'chat_msgs', tool: 'tool_uses', contact: 'contacts' }[type];
+      if (col) {
+        const { data } = await supabase.from('daily_stats').select('id,' + col).eq('date', today).single();
+        if (data) {
+          await supabase.from('daily_stats').update({ [col]: (data[col] || 0) + 1, updated_at: new Date() }).eq('date', today);
+        } else {
+          await supabase.from('daily_stats').insert({ date: today, [col]: 1 });
+        }
       }
-    }
-    // Stats por herramienta
-    if (type === 'tool' && metadata.tool_name) {
-      const { data: t } = await supabase.from('tool_stats').select('id,uses').eq('tool_name', metadata.tool_name).single();
-      if (t) await supabase.from('tool_stats').update({ uses: t.uses + 1, last_used: new Date() }).eq('tool_name', metadata.tool_name);
-      else await supabase.from('tool_stats').insert({ tool_name: metadata.tool_name, uses: 1 });
-    }
-    // Stats por descarga
-    if (type === 'download' && metadata.app_name) {
-      const { data: d } = await supabase.from('download_stats').select('id,downloads').eq('app_name', metadata.app_name).single();
-      if (d) await supabase.from('download_stats').update({ downloads: d.downloads + 1, last_download: new Date() }).eq('app_name', metadata.app_name);
-      else await supabase.from('download_stats').insert({ app_name: metadata.app_name, downloads: 1 });
-    }
-  } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
+      // Stats por herramienta
+      if (type === 'tool' && metadata.tool_name) {
+        const { data: t } = await supabase.from('tool_stats').select('id,uses').eq('tool_name', metadata.tool_name).single();
+        if (t) await supabase.from('tool_stats').update({ uses: t.uses + 1, last_used: new Date() }).eq('tool_name', metadata.tool_name);
+        else await supabase.from('tool_stats').insert({ tool_name: metadata.tool_name, uses: 1 });
+      }
+      // Stats por descarga
+      if (type === 'download' && metadata.app_name) {
+        const { data: d } = await supabase.from('download_stats').select('id,downloads').eq('app_name', metadata.app_name).single();
+        if (d) await supabase.from('download_stats').update({ downloads: d.downloads + 1, last_download: new Date() }).eq('app_name', metadata.app_name);
+        else await supabase.from('download_stats').insert({ app_name: metadata.app_name, downloads: 1 });
+      }
+    } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
+  });
 }
 
 // ── SKILLS — catálogo de capacidades de IA (skills/…) ──────────
@@ -146,6 +149,7 @@ const PORT   = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
 
 // ── CORS ──────────────────────────────────────────────────────
 const allowedOrigins = [
@@ -1466,7 +1470,9 @@ app.get('/api/stats/live', (_, res) => {
 
 
 // ── POST /api/visit — Registrar visita con IPQuery ───────────
-app.post('/api/visit', async (req, res) => {
+// Responde 201 de inmediato; el enriquecimiento geo-IP y el guardado
+// se hacen en segundo plano para no bloquear la petición hasta 12s.
+app.post('/api/visit', (req, res) => {
   try {
     // Vercel/Render: IP real del cliente
     const rawIp =
@@ -1479,78 +1485,85 @@ app.post('/api/visit', async (req, res) => {
     const finalIp = rawIp.replace(/^::ffff:/, '').trim();
     const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost|^$)/i.test(finalIp);
 
-    let geo = {};
-    if (!isLocal && finalIp !== 'unknown') {
-      // Primario: ip-api.com (gratuito, sin key, muy fiable)
-      try {
-        const fields = 'status,country,countryCode,regionName,city,isp,org,proxy,hosting';
-        const r = await fetch(
-          `http://ip-api.com/json/${encodeURIComponent(finalIp)}?fields=${fields}`,
-          { signal: AbortSignal.timeout(6000) }
-        );
-        if (r.ok) {
-          const d = await r.json();
-          if (d.status === 'success') {
-            geo = d;
-            console.log(`ip-api [${finalIp}]:`, d.country, d.city);
-          }
-        }
-      } catch (e) { console.warn('ip-api error:', e.message); }
+    // Capturamos lo necesario del request antes de ir a background
+    const page = String(req.body?.page || '/').slice(0, 200);
+    const ua   = (req.headers['user-agent'] || '').slice(0, 300);
 
-      // Fallback: ipwho.is (HTTPS, sin key)
-      if (!geo.country) {
+    res.status(201).json({ ok: true, ip: finalIp });
+
+    // ── Background: geo-IP + guardado en Supabase ──
+    (async () => {
+      let geo = {};
+      if (!isLocal && finalIp !== 'unknown') {
+        // Primario: ip-api.com (gratuito, sin key, muy fiable)
         try {
-          const r2 = await fetch(
-            `https://ipwho.is/${encodeURIComponent(finalIp)}`,
+          const fields = 'status,country,countryCode,regionName,city,isp,org,proxy,hosting';
+          const r = await fetch(
+            `http://ip-api.com/json/${encodeURIComponent(finalIp)}?fields=${fields}`,
             { signal: AbortSignal.timeout(6000) }
           );
-          if (r2.ok) {
-            const d2 = await r2.json();
-            if (d2.success) {
-              geo = {
-                country:     d2.country,
-                countryCode: d2.country_code,
-                regionName:  d2.region,
-                city:        d2.city,
-                isp:         d2.connection?.isp  || null,
-                org:         d2.connection?.org  || null,
-                proxy:       false,
-                hosting:     false,
-              };
-              console.log(`ipwho.is [${finalIp}]:`, d2.country, d2.city);
+          if (r.ok) {
+            const d = await r.json();
+            if (d.status === 'success') {
+              geo = d;
+              console.log(`ip-api [${finalIp}]:`, d.country, d.city);
             }
           }
-        } catch (e2) { console.warn('ipwho.is error:', e2.message); }
+        } catch (e) { console.warn('ip-api error:', e.message); }
+
+        // Fallback: ipwho.is (HTTPS, sin key)
+        if (!geo.country) {
+          try {
+            const r2 = await fetch(
+              `https://ipwho.is/${encodeURIComponent(finalIp)}`,
+              { signal: AbortSignal.timeout(6000) }
+            );
+            if (r2.ok) {
+              const d2 = await r2.json();
+              if (d2.success) {
+                geo = {
+                  country:     d2.country,
+                  countryCode: d2.country_code,
+                  regionName:  d2.region,
+                  city:        d2.city,
+                  isp:         d2.connection?.isp  || null,
+                  org:         d2.connection?.org  || null,
+                  proxy:       false,
+                  hosting:     false,
+                };
+                console.log(`ipwho.is [${finalIp}]:`, d2.country, d2.city);
+              }
+            }
+          } catch (e2) { console.warn('ipwho.is error:', e2.message); }
+        }
       }
-    }
 
-    const record = {
-      ip:           finalIp,
-      country:      geo?.country      || null,
-      country_code: geo?.countryCode  || null,
-      city:         geo?.city         || null,
-      region:       geo?.regionName   || null,
-      isp:          geo?.isp          || null,
-      org:          geo?.org          || null,
-      is_vpn:       geo?.proxy        || false,
-      is_proxy:     geo?.proxy        || false,
-      is_bot:       geo?.hosting      || false,
-      risk_score:   geo?.proxy ? 60 : (geo?.hosting ? 30 : 0),
-      page:         String(req.body?.page || '/').slice(0, 200),
-      ua:           (req.headers['user-agent'] || '').slice(0, 300),
-      visited_at:   new Date().toISOString(),
-    };
+      const record = {
+        ip:           finalIp,
+        country:      geo?.country      || null,
+        country_code: geo?.countryCode  || null,
+        city:         geo?.city         || null,
+        region:       geo?.regionName   || null,
+        isp:          geo?.isp          || null,
+        org:          geo?.org          || null,
+        is_vpn:       geo?.proxy        || false,
+        is_proxy:     geo?.proxy        || false,
+        is_bot:       geo?.hosting      || false,
+        risk_score:   geo?.proxy ? 60 : (geo?.hosting ? 30 : 0),
+        page,
+        ua,
+        visited_at:   new Date().toISOString(),
+      };
 
-    // Guardar en Supabase y registrar visita en paralelo
-    const [_saved] = await Promise.allSettled([
-      supabase ? supabase.from('visitor_logs').insert(record) : Promise.resolve(),
-    ]);
-    if (_saved?.status === 'rejected') console.warn('visitor_logs insert error:', _saved.reason?.message);
-    trackVisit();
-    res.json({ ok: true, ip: finalIp });
+      try {
+        if (supabase) await supabase.from('visitor_logs').insert(record);
+      } catch (e3) { console.warn('visitor_logs insert error:', e3.message); }
+
+      trackVisit();
+    })().catch(e => console.warn('visit background error:', e.message));
   } catch (e) {
     console.warn('visit error:', e.message);
-    res.json({ ok: false });
+    try { res.status(201).json({ ok: false }); } catch (_) {}
   }
 });
 
@@ -3312,7 +3325,8 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
   const { q } = req.query;
   if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
 
-  const SERP_KEY = process.env.SERPAPI_KEY || 'ee57e47c06b28164f49977cc56a421483001b0e058f6826d36c085579d92cab2';
+  const SERP_KEY = process.env.SERPAPI_KEY;
+  if (!SERP_KEY) return res.status(503).json({ error: 'Búsqueda de imágenes no disponible.' });
 
   try {
     const url = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=6&api_key=${SERP_KEY}`;
@@ -3332,6 +3346,50 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
   } catch (err) {
     console.error('image-search error:', err.message);
     res.status(500).json({ error: 'No se pudieron obtener imágenes.' });
+  }
+});
+
+// ── GET /api/search/google — Proxy Google Custom Search (DeepSearch) ──
+app.get('/api/search/google', chatLimiter, async (req, res) => {
+  const { q } = req.query;
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
+  
+  const SERP_KEY = process.env.SERPAPI_KEY;
+  if (!SERP_KEY) return res.status(503).json({ error: 'Búsqueda web no disponible.' });
+  
+  try {
+    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=8&api_key=${SERP_KEY}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) throw new Error('SerpAPI ' + response.status);
+    const data = await response.json();
+    res.json({ items: (data.organic_results || []).slice(0, 8).map(r => ({ title: r.title, snippet: r.snippet, link: r.link })) });
+  } catch (err) {
+    console.error('search/google error:', err.message);
+    res.status(500).json({ error: 'Error en búsqueda Google.' });
+  }
+});
+
+// ── GET /api/search/tavily — Búsqueda Tavily (DeepSearch) ───────────
+app.get('/api/search/tavily', chatLimiter, async (req, res) => {
+  const { q } = req.query;
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
+  
+  const TAVILY_KEY = process.env.TAVILY_API_KEY;
+  if (!TAVILY_KEY) return res.status(503).json({ error: 'Búsqueda Tavily no disponible.' });
+  
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: TAVILY_KEY, query: q, max_results: 8, include_answer: true }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!response.ok) throw new Error('Tavily ' + response.status);
+    const data = await response.json();
+    res.json({ results: (data.results || []).slice(0, 8), answer: data.answer || null });
+  } catch (err) {
+    console.error('search/tavily error:', err.message);
+    res.status(500).json({ error: 'Error en búsqueda Tavily.' });
   }
 });
 
@@ -3496,7 +3554,7 @@ app.get('/api/push/vapid-public-key', (_req, res) => {
   res.json({ ok: true, key: VAPID_PUBLIC_KEY });
 });
 
-app.post('/api/push/subscribe', async (req, res) => {
+app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
   try {
     const { subscription, location, prefs } = req.body || {};
     const sub = subscription || {};
@@ -3523,14 +3581,14 @@ app.post('/api/push/subscribe', async (req, res) => {
   }
 });
 
-app.post('/api/push/unsubscribe', async (req, res) => {
+app.post('/api/push/unsubscribe', chatLimiter, async (req, res) => {
   const { endpoint } = req.body || {};
   if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
   await pushDelete(endpoint);
   res.json({ ok: true });
 });
 
-app.post('/api/push/settings', async (req, res) => {
+app.post('/api/push/settings', chatLimiter, async (req, res) => {
   try {
     const { endpoint, location, prefs } = req.body || {};
     if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
@@ -3550,7 +3608,7 @@ app.post('/api/push/settings', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post('/api/push/notify', async (req, res) => {
+app.post('/api/push/notify', chatLimiter, async (req, res) => {
   try {
     const { endpoint, title, body, url } = req.body || {};
     if (!endpoint || !title) return res.status(400).json({ ok: false, error: 'Falta endpoint o title' });

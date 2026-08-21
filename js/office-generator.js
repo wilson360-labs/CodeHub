@@ -1,13 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
    office-generator.js — Generación de documentos Office/PDF
-   Requiere: docx, XLSX, PptxGenJS, jsPDF (cargados con defer)
+   Requiere: _loadDocLib() (definida en index.html) para cargar
+   docx, XLSX, PptxGenJS y jsPDF bajo demanda.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 
 const OfficeGen = (() => {
-  function _safe() {
-    return typeof docx !== 'undefined' && typeof XLSX !== 'undefined' &&
-           typeof PptxGenJS !== 'undefined' && typeof window.jspdf !== 'undefined';
+  function _load(name) {
+    if (window._loadDocLib) return window._loadDocLib(name);
+    return Promise.reject(new Error('_loadDocLib no disponible'));
   }
 
   function _download(blob, name) {
@@ -32,7 +33,9 @@ const OfficeGen = (() => {
 
   /* ── DOCX ── */
   async function downloadDOCX(title, content) {
-    if (!_safe()) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
+    try {
+      await _load('docx');
+    } catch (e) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
     const { Document: DocxDoc, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
     const lines = _textToLines(content);
     const docTitle = _extractTitle(content);
@@ -68,8 +71,10 @@ const OfficeGen = (() => {
   }
 
   /* ── XLSX ── */
-  function downloadXLSX(title, content) {
-    if (!_safe()) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
+  async function downloadXLSX(title, content) {
+    try {
+      await _load('xlsx');
+    } catch (e) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
     const docTitle = _extractTitle(content);
     const lines = _textToLines(content);
     const rows = [];
@@ -96,8 +101,10 @@ const OfficeGen = (() => {
   }
 
   /* ── PPTX ── */
-  function downloadPPTX(title, content) {
-    if (!_safe()) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
+  async function downloadPPTX(title, content) {
+    try {
+      await _load('pptxgen');
+    } catch (e) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
     const pres = new PptxGenJS();
     const docTitle = _extractTitle(content);
     pres.layout = 'LAYOUT_WIDE';
@@ -140,8 +147,10 @@ const OfficeGen = (() => {
   }
 
   /* ── PDF ── */
-  function downloadPDF(title, content) {
-    if (!_safe()) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
+  async function downloadPDF(title, content) {
+    try {
+      await _load('jspdf');
+    } catch (e) { if (typeof toast === 'function') toast('⏳ Librerías Office cargando, intenta en 2 segundos', 'info'); return; }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const docTitle = _extractTitle(content);

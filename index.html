@@ -87,7 +87,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E — Desarrollador Full Stack en Guatemala. Portfolio con herramientas web, apps Android y proyectos de código abierto.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -214,12 +214,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <!-- PWA Install Prompt -->
 
     <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-    <!-- Office document generation libraries -->
-    <script src="https://unpkg.com/docx/dist/index.umd.js" defer></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <!-- Doc libs lazy-loaded via _loadDocLib() — no se descargan hasta que se necesiten -->
 </head>
 <body>
 <script>
@@ -1961,17 +1956,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         function takeScreenshot() {
             toggleExperimentalMenu();
             var target = document.querySelector('main') || document.body;
-            if (typeof html2canvas !== 'function') {
-                if (typeof toast === 'function') toast('📸 Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac)', 'info', 4000);
-                return;
-            }
             if (typeof toast === 'function') toast('📸 Capturando el sitio…', 'info', 2200);
-            html2canvas(target, {
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#0a0a0a',
-                logging: false
+            var capture = window._loadDocLib
+                ? window._loadDocLib('html2canvas')
+                : Promise.reject(new Error('_loadDocLib no disponible'));
+            capture.then(function(html2canvas) {
+                return html2canvas(target, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#0a0a0a',
+                    logging: false
+                });
             }).then(function(canvas) {
                 var link = document.createElement('a');
                 link.download = 'CodeHub_Web_' + new Date().toISOString().slice(0, 10) + '.png';
@@ -1980,7 +1976,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 if (typeof toast === 'function') toast('✅ Screenshot descargado', 'success', 3200);
             }).catch(function(err) {
                 console.error(err);
-                if (typeof toast === 'function') toast('❌ No se pudo capturar', 'error', 3200);
+                if (typeof toast === 'function') toast('📸 Usa Win+Shift+S (Windows) o Cmd+Shift+4 (Mac)', 'info', 4000);
             });
         }
 
@@ -3653,8 +3649,8 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         head.innerHTML = `🔍 Resultados para <span>"${cleanQuery}"</span>`;
         grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:.5rem;';
         grid.innerHTML = data.images.slice(0, 6).map(img => `
-          <div class="ai-sr-img" onclick="window.open('${img.link}','_blank')" title="${img.title}">
-            <img src="${img.thumbnail}" alt="${img.title}" loading="lazy"
+          <div class="ai-sr-img" onclick="window.open(this.dataset.link,'_blank')" title="${img.title.replace(/"/g, '&quot;')}" data-link="${img.link.replace(/"/g, '&quot;')}">
+            <img src="${img.thumbnail}" alt="${img.title.replace(/"/g, '&quot;')}" loading="lazy"
               onerror="this.parentElement.style.background='rgba(124,77,255,.15)';this.remove()">
             <div class="ai-sr-img-label">${img.source || cleanQuery}</div>
           </div>`).join('');
@@ -3843,7 +3839,15 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   };
 
   // ID de sesión único por visita (no identifica al usuario, solo la sesión)
-  const SESSION_ID = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const SESSION_ID = (function() {
+    try {
+      const saved = localStorage.getItem('ch_session_id');
+      if (saved && saved.startsWith('sess_') && Date.now() - parseInt(saved.split('_').pop(), 36) < 86400000) return saved;
+    } catch(e) {}
+    const id = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { localStorage.setItem('ch_session_id', id); } catch(e) {}
+    return id;
+  })();
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // ── ACCIONES RÁPIDAS ──────────────────────────────────────────────
@@ -4062,7 +4066,6 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
 
     history.push({ role: 'user', content: effectiveText });
     if (history.length > 10) history = history.slice(-10);
-    persistChat();
     persistChat();
 
     try {
@@ -4379,13 +4382,38 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   }
 
   function formatAIReply(text) {
+    // Sanitize HTML first to prevent XSS
+    var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     // Convertir markdown básico a HTML
-    return text
-      .replace(/```([\s\S]*?)```/g, '<code>$1</code>')
+    return safe
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br>');
   }
+
+  // Lazy-load document generation libraries on demand (~1.5 MB saved on initial load)
+  const _docLibCache = {};
+  function _loadDocLib(name) {
+    if (_docLibCache[name]) return _docLibCache[name];
+    const urls = {
+      html2canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+      docx: 'https://unpkg.com/docx/dist/index.umd.js',
+      xlsx: 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+      pptxgen: 'https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js',
+      jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+    };
+    _docLibCache[name] = new Promise((resolve, reject) => {
+      if (window[name] || (name === 'html2canvas' && window.html2canvas)) { resolve(window[name] || window.html2canvas); return; }
+      const s = document.createElement('script');
+      s.src = urls[name]; s.crossOrigin = 'anonymous';
+      s.onload = () => resolve(window[name] || window[name === 'html2canvas' ? 'html2canvas' : name]);
+      s.onerror = () => reject(new Error('Failed to load ' + name));
+      document.head.appendChild(s);
+    });
+    return _docLibCache[name];
+  }
+  window._loadDocLib = _loadDocLib;
 
   // Respuestas offline inteligentes basadas en palabras clave
   function getFallback(q) {
