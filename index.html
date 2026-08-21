@@ -2649,7 +2649,7 @@ function urlBase64ToUint8ArrayIdx(base64String) {
 }
 
 async function initIndexPush() {
-  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var isNativeAPK = (typeof CodeHubNative !== 'undefined') || window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   // En APK nativo, FCM ya está registrado desde Java — no intentar Web Push
   if (isNativeAPK) return;
   if (!('serviceWorker' in navigator)) return;
@@ -2829,7 +2829,7 @@ function enableSyncPermissions() {
   if (!('serviceWorker' in navigator)) return;
   if (localStorage.getItem('ch_sync_perms') === '1') return;
 
-  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var isNativeAPK = (typeof CodeHubNative !== 'undefined') || window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
   if (isNativeAPK) {
     // In native APK, notifications are managed by Java — skip web request
@@ -2931,7 +2931,7 @@ function chShowAppPerms() {
   if (!list) return;
 
   // En app APK nativa, todos los recursos están gestionados por Java
-  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var isNativeAPK = (typeof CodeHubNative !== 'undefined') || window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   var ap = window.__apkPermissions || {};
 
   var items = [];
@@ -2977,7 +2977,7 @@ function chShowAppPerms() {
 }
 
 function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
-  var isNativeAPK = window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  var isNativeAPK = (typeof CodeHubNative !== 'undefined') || window.__apkNative || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
   if (isNativeAPK) {
     items.push({ icon: '🔄', name: 'Sincronización automática', desc: 'Activa — la app sincroniza datos en segundo plano', badge: 'activo', state: 'ok' });
@@ -3047,6 +3047,7 @@ function chRenderAppPerms(list, items, bgSyncOk, periodicOk, swOk) {
   var shownKey = 'ch_app_perms_shown';
   if (!localStorage.getItem(shownKey)) {
     var installed = localStorage.getItem('pwa_installed') ||
+      (typeof CodeHubNative !== 'undefined') || window.__apkNative ||
       (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     if (installed) {
       localStorage.setItem(shownKey, '1');
@@ -5419,16 +5420,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return !path.includes('/admin') && !path.includes('admin-hub');
   }
 
+  function isNativeApp() {
+    // typeof CodeHubNative !== 'undefined' es la señal fiable: ese puente
+    // JS se registra ANTES de que la WebView cargue la página (ver
+    // MainActivity.setupWebView(), llamado antes de loadUrl), así que
+    // ya existe incluso en el primer script que corre al parsear la
+    // página. window.__apkNative, en cambio, se inyecta en onPageFinished
+    // — es decir, DESPUÉS de que estos mismos scripts ya se ejecutaron —
+    // por eso solo, no alcanzaba a evitar el banner de "instalar" en el
+    // APK nativo la primera vez que abría cada página.
+    return (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  }
+
   function showPWA() {
     if (!isPublicInstallPage()) return;
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
+    if (isNativeApp()) return;
     if (pwaInstallEl) pwaInstallEl.style.display = 'block';
   }
   function hidePWA() {
     if (pwaInstallEl) pwaInstallEl.style.display = 'none';
   }
   function pwaEligible() {
-    return !!_deferredPrompt || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    return !!_deferredPrompt || isNativeApp();
   }
 
   // ¿Es momento de mostrar el banner de instalación?
@@ -5437,7 +5451,7 @@ document.addEventListener('DOMContentLoaded', () => {
   //   las recomendaciones y la sincronización en tiempo real. No se
   //   muestra dos veces en la misma sesión para no molestar.
   function shouldShowInstallPrompt() {
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return false;
+    if (isNativeApp()) return false;
     const installed = localStorage.getItem('pwa_installed');
     if (installed) return false;
     if (sessionStorage.getItem('pwa_prompted_session')) return false;
@@ -5446,7 +5460,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateInstallButtonVisibility() {
     if (!installAppBtn) return;
-    if (!isPublicInstallPage()) {
+    if (!isPublicInstallPage() || isNativeApp()) {
       installAppBtn.style.display = 'none';
       return;
     }
@@ -5478,10 +5492,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(enableSyncPermissions, 1500);
   });
 
-  // Si la app YA estaba instalada (modo standalone), activar la
+  // Si la app YA estaba instalada (modo standalone del navegador, o el
+  // APK nativo de CodeHub vía window.__apkNative), activar la
   // sincronización y el push automáticamente al abrir.
-  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  const isStandalone = isNativeApp();
   if (isStandalone) {
+    // Recordar que ya está instalada para que ningún otro chequeo
+    // (incluso si más adelante __apkNative tardara en inyectarse) vuelva
+    // a ofrecer la instalación.
+    localStorage.setItem('pwa_installed', '1');
     // Ocultar sección de instalación APK (ya estamos en la app)
     const apkBtn = document.getElementById('hero-install-apk');
     const apkInfo = document.getElementById('hero-apk-info');
