@@ -68,6 +68,10 @@ public class MainActivity extends Activity implements LocationListener {
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
+        // Iniciar Foreground Service — mantiene la app viva en 2do plano
+        // con WakeLock + sync periódico cada 15 min.
+        try { CodeHubSyncService.startIfNotRunning(this); } catch (Throwable t) { crashLog("syncService", t); }
+
         handleIntent(getIntent());
     }
 

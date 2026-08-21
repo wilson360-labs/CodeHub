@@ -23,6 +23,8 @@ public class CodeHubApp extends Application {
         CrashReporter.flushPendingLog(this);
         // Inicializa el SDK de AdMob (una sola vez, en segundo plano).
         MobileAds.initialize(this, initializationStatus -> {});
+        // Lanzar Foreground Service lo antes posible para WakeLock + sync
+        CodeHubSyncService.startIfNotRunning(this);
     }
 
     private static final class CrashHandler implements Thread.UncaughtExceptionHandler {

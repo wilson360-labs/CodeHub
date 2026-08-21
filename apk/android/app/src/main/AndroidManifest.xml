@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Necesario para detectar qué apps del catálogo Open Source están
          instaladas y sus versiones. Google Play permite esto en apps
          "tienda de aplicaciones" (declaración de uso obligatoria en
@@ -64,6 +66,18 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <service
+            android:name=".CodeHubSyncService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false">
+        </service>
+
+        <receiver
+            android:name=".SyncAlarmReceiver"
+            android:exported="false">
+        </receiver>
 
         <receiver
             android:name=".BootReceiver"

@@ -35,6 +35,9 @@ public class BootReceiver extends BroadcastReceiver {
                     }
                 });
             } catch (Exception ignored) {}
+
+            // Iniciar Foreground Service inmediatamente después del boot
+            CodeHubSyncService.startIfNotRunning(context);
         }
     }
 }
