@@ -3788,7 +3788,7 @@ async function broadcastPush({ title, body = '', url = '/', type = 'announcement
     if (failures.length > 20) console.warn(`   … y ${failures.length - 20} fallos más`);
   }
 
-  return { sent, total, sentWeb, sentAndroid, webTotal: webSubs.length, androidTotal: fcmTotal, failures: failures.slice(0, 20) };
+  return { sent, total, sentWeb, sentAndroid, webTotal: webSubs.length, androidTotal: fcmTotal, fcmEnabled, failures: failures.slice(0, 20) };
 }
 
 app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
