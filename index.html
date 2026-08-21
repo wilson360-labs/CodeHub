@@ -5772,9 +5772,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // El contenido (html/css/js de la página) ya no depende de esto:
       // se sirve "network-first" (ver sw.js), así que se actualiza solo
       // en cada carga de página sin esperar a este chequeo.
-      setInterval(() => reg.update(), 60 * 1000);
+      // .catch() es obligatorio aquí: en móvil, un hiccup de red momentáneo
+      // (cambio de wifi a datos, señal débil) hace que reg.update() falle
+      // — eso es normal y no debe reportarse como crash de la app.
+      setInterval(() => reg.update().catch(() => {}), 60 * 1000);
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') reg.update();
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
       });
 
       // Nuevo SW en espera → aplicar automáticamente (sin esperar clic manual)
