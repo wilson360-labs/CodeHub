@@ -331,6 +331,7 @@ const App = mongoose.model('App', new mongoose.Schema({
   ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
   tutorial_url:       { type: String, default: null },
   source_repo:        { type: String, default: null }, // "owner/repo" — habilita el monitor automático de actualizaciones vía GitHub Releases
+  packageName:        { type: String, default: null }, // applicationId Android real (ej. "org.schabi.newpipe") — habilita detección de apps instaladas + auto-instalación (ver backend/scripts/resolve-package-names.js)
   updatedAt:          { type: Date, default: Date.now },
   createdAt:          { type: Date, default: Date.now },
 }));
@@ -1597,6 +1598,7 @@ app.get('/api/apps', async (_, res) => {
       plugin_enlace:a.plugin_enlace || null,
       tutorial_url: a.tutorial_url || null,
       source_repo:  a.source_repo || null,
+      packageName:  a.packageName || null,
       updatedAt:    a.updatedAt,
     }));
     const result = { apps: mapped, total: mapped.length };
@@ -2047,10 +2049,10 @@ app.get('/api/admin/apps', requireAdmin, async (_, res) => {
 app.post('/api/admin/apps', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
-    const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo } = req.body;
+    const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo, packageName } = req.body;
     if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
     if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null });
+    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null, packageName: packageName || null });
     await cacheDel('apps:all');
     broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     broadcastAppsChanged();
@@ -2077,7 +2079,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
     const update = {};
-    ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo']
+    ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo','packageName']
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
     if (update.imagen) update.imagen = normalizeImagePath(update.imagen);
 
@@ -2500,10 +2502,13 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
         // Idem para `source_repo` — solo se pisa si el seed lo trae,
         // para no desactivar el monitor de una app ya vinculada.
         if (a.source_repo) set.source_repo = a.source_repo;
+        // packageName resuelto por resolve-package-names.js — solo se pisa
+        // si el seed trae uno, para no borrar uno ya resuelto a mano.
+        if (a.packageName) set.packageName = a.packageName;
         await App.updateOne({ appId: id }, { $set: set });
         updated++;
       } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null });
+        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null, packageName: a.packageName||null });
         created++;
       }
     }
@@ -3461,10 +3466,16 @@ async function sendPush(rec, payload) {
     );
     return { ok: true };
   } catch (e) {
-    if (e.statusCode === 404 || e.statusCode === 410) {
-      await pushDelete(rec.endpoint); // suscripción expirada — limpiar
+    // 404/410 = suscripción expirada. 401/403 = clave VAPID no coincide
+    // con la que se usó al suscribirse (rotación de VAPID_PUBLIC/PRIVATE_KEY
+    // o subs creadas antes de fijar esas env vars). En ambos casos la sub
+    // es inservible: se borra para que el cliente se re-suscriba solo la
+    // próxima vez que visite el sitio (ver chequeo de applicationServerKey
+    // en initIndexPush, index.html).
+    if ([401, 403, 404, 410].includes(e.statusCode)) {
+      await pushDelete(rec.endpoint);
     }
-    return { ok: false, code: e.statusCode, message: e.message };
+    return { ok: false, code: e.statusCode, message: e.body || e.message };
   }
 }
 
@@ -3646,6 +3657,11 @@ async function sendFCM(token, payload) {
       notification: { title: payload.title, body: payload.body },
       data: { type: payload.type || 'general', url: payload.url || '/' },
       android: {
+        // priority: 'high' — despierta el dispositivo incluso en Doze
+        // profundo. Sin esto Android puede demorar la entrega hasta
+        // la próxima ventana de mantenimiento si la app no se usa hace
+        // tiempo, dando la falsa impresión de que "no está despierta".
+        priority: 'high',
         notification: {
           channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
           icon: 'ic_launcher_real',

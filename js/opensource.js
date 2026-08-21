@@ -182,7 +182,7 @@ function buildOSCard(app) {
     : `<a class="dl-btn dl-primary" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
 
   return `
-  <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}">
+  <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}" data-package="${app.packageName || ''}">
     <div class="app-thumb">
       <img src="${img}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
       ${badge ? `<span class="app-badge badge-upd">${badge}</span>` : ''}
@@ -248,6 +248,7 @@ async function loadOpenSourceCatalog() {
     const apps = Array.isArray(data) ? data : (data.apps || []);
 
     const osApps = apps.filter(a => !!a.source_repo);
+    window.__osCatalog = osApps; // usado por DeviceApps para el escaneo de instaladas
 
     if (heroCount) heroCount.textContent = `${osApps.length} apps`;
 
@@ -461,3 +462,190 @@ document.addEventListener('os:catalog-loaded', () => MyApps.updateUI());
 
 // ── Check periódico de actualizaciones (cada 5 min) ──
 setInterval(() => { MyApps.updateUI(); }, 5 * 60 * 1000);
+
+/* ═══════════════════════════════════════════════════════════════
+   DeviceApps — Detección real de apps instaladas (solo dentro del
+   APK, vía window.CodeHubNative — ver CodeHubBridge.java) +
+   actualización automática con Shizuku si está disponible.
+
+   En web (navegador normal) esta sección no existe: no hay forma de
+   listar apps instaladas de un dispositivo desde JS de página web,
+   eso solo lo puede hacer código nativo Android con permiso de
+   visibilidad de paquetes. Por eso "Mis apps" (favoritos manuales,
+   arriba) sigue siendo el mecanismo en web.
+   ═══════════════════════════════════════════════════════════════ */
+const DeviceApps = (() => {
+  const isNative = () => !!(window.CodeHubNative && window.CodeHubNative.getInstalledVersions);
+
+  // Genera un nombre de callback único en window para cada llamada al
+  // bridge nativo (que solo puede invocar funciones globales por nombre,
+  // vía webView.loadUrl("javascript:nombre(...)")) y se autolimpia.
+  function _withCallback(prefix, fn) {
+    const name = `__os_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    window[name] = (...args) => { try { fn(...args); } finally { delete window[name]; } };
+    return name;
+  }
+
+  async function _shizukuStatus() {
+    if (!isNative() || !window.CodeHubNative.isShizukuAvailable) {
+      return { available: false, granted: false };
+    }
+    let available = false, granted = false;
+    try { available = !!window.CodeHubNative.isShizukuAvailable(); } catch (e) {}
+    try { granted = available && !!window.CodeHubNative.hasShizukuPermission(); } catch (e) {}
+    return { available, granted };
+  }
+
+  function _requestShizukuPermission() {
+    return new Promise(resolve => {
+      const cb = _withCallback('shizuku_perm', granted => resolve(!!granted));
+      try { window.CodeHubNative.requestShizukuPermission(cb); }
+      catch (e) { delete window[cb]; resolve(false); }
+    });
+  }
+
+  function _installApp(app, dlUrl, preferSilent) {
+    return new Promise(resolve => {
+      const cb = _withCallback('install', (status, message) => resolve({ status, message }));
+      try { window.CodeHubNative.downloadAndInstallApk(dlUrl, app.appId, !!preferSilent, cb); }
+      catch (e) { delete window[cb]; resolve({ status: 'error', message: e.message || 'error' }); }
+    });
+  }
+
+  async function _renderShizukuBanner() {
+    const banner = document.getElementById('device-apps-shizuku-banner');
+    if (!banner) return;
+    const { available, granted } = await _shizukuStatus();
+
+    if (!available) {
+      banner.style.display = 'none';
+      return;
+    }
+    banner.style.display = 'flex';
+    if (granted) {
+      banner.className = 'device-shizuku-banner ok';
+      banner.innerHTML = `<i class="fas fa-bolt"></i> Instalación automática activa (Shizuku) — las actualizaciones se instalan sin confirmación.`;
+    } else {
+      banner.className = 'device-shizuku-banner pending';
+      banner.innerHTML = `<i class="fas fa-bolt"></i> Shizuku detectado. <button id="device-shizuku-activate">Activar instalación automática</button>`;
+      const btn = document.getElementById('device-shizuku-activate');
+      if (btn) btn.onclick = async () => {
+        btn.disabled = true; btn.textContent = 'Esperando confirmación...';
+        const granted2 = await _requestShizukuPermission();
+        if (typeof toast === 'function') {
+          toast(granted2 ? '⚡ Instalación automática activada' : '❌ Permiso denegado', granted2 ? 'success' : 'error', 2500);
+        }
+        _renderShizukuBanner();
+        if (granted2) _updateUI();
+      };
+    }
+  }
+
+  async function _updateUI() {
+    const section = document.getElementById('device-apps-section');
+    const tocLink = document.getElementById('device-apps-toc-link');
+    const grid = document.getElementById('device-apps-grid');
+    if (!section || !grid) return;
+
+    if (!isNative()) { section.style.display = 'none'; if (tocLink) tocLink.style.display = 'none'; return; }
+
+    const catalog = (window.__osCatalog || []).filter(a => !!a.packageName);
+    if (catalog.length === 0) { section.style.display = 'none'; if (tocLink) tocLink.style.display = 'none'; return; }
+
+    let installedMap = {};
+    try {
+      const pkgs = catalog.map(a => a.packageName);
+      const raw = window.CodeHubNative.getInstalledVersions(JSON.stringify(pkgs));
+      installedMap = JSON.parse(raw || '{}');
+    } catch (e) { console.warn('DeviceApps: fallo detectando instaladas', e); }
+
+    const installedApps = catalog
+      .map(a => ({ ...a, installedVersion: installedMap[a.packageName] }))
+      .filter(a => a.installedVersion !== null && a.installedVersion !== undefined);
+
+    if (installedApps.length === 0) {
+      section.style.display = 'none';
+      if (tocLink) tocLink.style.display = 'none';
+      return;
+    }
+
+    section.style.display = '';
+    if (tocLink) tocLink.style.display = '';
+    await _renderShizukuBanner();
+
+    // Reusa /api/app-updates comparando contra la versión REAL instalada
+    // en el dispositivo (más precisa que la que guarda el catálogo).
+    let updates = {};
+    try {
+      const res = await fetch(`${BACKEND}/api/app-updates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apps: installedApps.map(a => ({ appId: a.appId, version: a.installedVersion, source_repo: a.source_repo })) })
+      });
+      if (res.ok) { (await res.json()).forEach(u => { updates[u.appId] = u; }); }
+    } catch (e) { console.warn('DeviceApps: fallo chequeando updates', e); }
+
+    const { granted: shizukuReady } = await _shizukuStatus();
+
+    grid.innerHTML = installedApps.map(app => {
+      const u = updates[app.appId];
+      const hasUpdate = u && u.hasUpdate;
+      const latestVersion = u?.latestVersion || '';
+      const dlUrl = u?.downloadUrl || (app.source_repo ? `https://github.com/${app.source_repo}/releases/latest` : '#');
+      const isApk = /\.apk(\?|$)/i.test(dlUrl || '');
+
+      return `
+      <div class="app-card device-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
+        <div class="app-thumb">
+          <img src="${app.imagen}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          <span class="app-badge badge-installed">📲 Instalada</span>
+          ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
+        </div>
+        <div class="app-body">
+          <div class="app-name">${app.nombre}</div>
+          ${hasUpdate
+            ? `<div class="my-app-version-diff"><span class="my-app-old">v${app.installedVersion || '?'}</span> → <span class="my-app-new">${latestVersion}</span></div>`
+            : `<div class="my-app-version">v${app.installedVersion || 'desconocida'} — actualizada</div>`
+          }
+          <div class="app-actions" id="device-actions-${app.appId}">
+            ${hasUpdate && isApk
+              ? `<button class="dl-btn dl-primary device-update-btn" data-appid="${app.appId}" data-url="${dlUrl}" data-silent="${shizukuReady}">
+                   <i class="fas fa-arrow-up"></i> ${shizukuReady ? 'Actualizar automáticamente' : 'Actualizar'}
+                 </button>`
+              : hasUpdate
+                ? `<a class="dl-btn dl-primary" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Ver actualización</a>`
+                : `<span class="dl-btn dl-check"><i class="fas fa-check"></i> Al día</span>`
+            }
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.device-update-btn').forEach(btn => {
+      btn.onclick = async () => {
+        const appId = btn.dataset.appid;
+        const url = btn.dataset.url;
+        const silent = btn.dataset.silent === 'true';
+        const app = installedApps.find(a => a.appId === appId);
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${silent ? 'Instalando...' : 'Descargando...'}`;
+        const result = await _installApp(app, url, silent);
+        if (result.status === 'installed') {
+          if (typeof toast === 'function') toast(`✅ ${app.nombre} actualizada`, 'success', 2500);
+          setTimeout(_updateUI, 1500);
+        } else if (result.status === 'prompted') {
+          btn.innerHTML = `<i class="fas fa-check"></i> Confirmá la instalación`;
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fas fa-arrow-up"></i> Reintentar`;
+          if (typeof toast === 'function') toast(`❌ No se pudo actualizar ${app.nombre}: ${result.message || ''}`, 'error', 3500);
+        }
+      };
+    });
+  }
+
+  return { updateUI: _updateUI, isNative };
+})();
+
+document.addEventListener('os:catalog-loaded', () => DeviceApps.updateUI());
+setInterval(() => { DeviceApps.updateUI(); }, 5 * 60 * 1000);

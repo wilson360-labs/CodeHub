@@ -5,6 +5,8 @@ import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -24,6 +26,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -209,5 +214,126 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void reportJsError(String message, String source, String line, String col, String stack) {
         CrashReporter.reportJs(activity.getApplicationContext(), message, source, line, col, stack);
+    }
+
+    // ── DETECCIÓN DE APPS INSTALADAS (catálogo Open Source) ──────
+    // Requiere QUERY_ALL_PACKAGES en el manifest (declarado — CodeHub
+    // es una "tienda de apps", uso permitido por Play Console).
+
+    /**
+     * Recibe un JSON array de packageNames (ej. ["org.schabi.newpipe", ...])
+     * y devuelve un JSON object { packageName: versionName|null }.
+     * null = no instalada. Se hace en batch para evitar N round-trips
+     * JS↔Java, que son lentos en WebView.
+     */
+    @JavascriptInterface
+    public String getInstalledVersions(String packageNamesJson) {
+        JSONObject result = new JSONObject();
+        try {
+            JSONArray pkgs = new JSONArray(packageNamesJson);
+            PackageManager pm = activity.getPackageManager();
+            for (int i = 0; i < pkgs.length(); i++) {
+                String pkg = pkgs.optString(i, null);
+                if (pkg == null || pkg.isEmpty()) continue;
+                try {
+                    PackageInfo info = pm.getPackageInfo(pkg, 0);
+                    result.put(pkg, info.versionName != null ? info.versionName : "");
+                } catch (PackageManager.NameNotFoundException e) {
+                    result.put(pkg, JSONObject.NULL);
+                }
+            }
+        } catch (Exception ignored) {}
+        return result.toString();
+    }
+
+    @JavascriptInterface
+    public boolean isPackageInstalled(String packageName) {
+        try {
+            activity.getPackageManager().getPackageInfo(packageName, 0);
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
+    // ── SHIZUKU — instalación silenciosa (opcional) ──────────────
+
+    @JavascriptInterface
+    public boolean isShizukuAvailable() {
+        return ShizukuInstaller.isBinderAlive();
+    }
+
+    @JavascriptInterface
+    public boolean hasShizukuPermission() {
+        return ShizukuInstaller.hasPermission();
+    }
+
+    /** callbackName(granted: boolean) — se llama tras la respuesta del usuario al diálogo de Shizuku. */
+    @JavascriptInterface
+    public void requestShizukuPermission(final String callbackName) {
+        activity.runOnUiThread(() -> ShizukuInstaller.requestPermission(granted ->
+            webView.post(() -> webView.loadUrl("javascript:try{if(window." + callbackName + ")window." +
+                callbackName + "(" + granted + ");}catch(e){}"))
+        ));
+    }
+
+    /**
+     * Descarga el APK de una app Open Source y la instala.
+     * Si Shizuku está listo (preferSilent=true), instala sin diálogo.
+     * Si no, cae al flujo normal (Intent.ACTION_VIEW, pide confirmación).
+     * callbackName(status: 'installed'|'prompted'|'error', message: string)
+     */
+    @JavascriptInterface
+    public void downloadAndInstallApk(final String apkUrl, final String appId, final boolean preferSilent, final String callbackName) {
+        new Thread(() -> {
+            File dest = null;
+            try {
+                dest = new File(activity.getExternalFilesDir(null), "os_" + appId + ".apk");
+                downloadToFile(apkUrl, dest);
+
+                boolean useSilent = preferSilent && ShizukuInstaller.isReady();
+                if (useSilent) {
+                    ShizukuInstaller.installSilently(dest.getAbsolutePath());
+                    notifyInstallResult(callbackName, "installed", "");
+                } else {
+                    final File apkFile = dest;
+                    activity.runOnUiThread(() -> installViaSystemDialog(apkFile));
+                    notifyInstallResult(callbackName, "prompted", "");
+                }
+            } catch (Exception e) {
+                notifyInstallResult(callbackName, "error", e.getMessage() != null ? e.getMessage() : "error desconocido");
+            }
+        }).start();
+    }
+
+    private void downloadToFile(String url, File dest) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        conn.setInstanceFollowRedirects(true);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(30000);
+        conn.connect();
+        if (conn.getResponseCode() != 200 && conn.getResponseCode() != 302) {
+            throw new Exception("HTTP " + conn.getResponseCode() + " descargando APK");
+        }
+        try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+        }
+        conn.disconnect();
+    }
+
+    private void installViaSystemDialog(File apkFile) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
+            activity, activity.getPackageName() + ".fileprovider", apkFile);
+        intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
+        activity.startActivity(intent);
+    }
+
+    private void notifyInstallResult(String callbackName, String status, String message) {
+        String safeMsg = message.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ");
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + callbackName + ")window." + callbackName +
+            "('" + status + "','" + safeMsg + "');}catch(e){}"));
     }
 }
