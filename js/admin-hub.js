@@ -305,6 +305,20 @@ async function sendAdminBroadcast() {
       const webPart     = `Web: ${data.sentWeb ?? 0}/${data.webTotal ?? 0}`;
       const androidPart = `Android: ${data.sentAndroid ?? 0}/${data.androidTotal ?? 0}`;
       let html = `✅ Push enviado: ${data.sent || 0} de ${data.total || 0} dispositivos (${webPart} · ${androidPart}).`;
+      // Android 0/0 puede significar dos cosas muy distintas: (a) FCM está
+      // deshabilitado en el backend (falta FIREBASE_SERVICE_ACCOUNT en las
+      // variables de entorno de Render — ningún dispositivo se intenta
+      // siquiera), o (b) FCM sí está activo pero ningún token de Android
+      // llegó a guardarse (fallo de red en la app o tabla fcm_tokens vacía).
+      // Sin esta distinción, "0/0" no dice si hay que revisar el servidor
+      // o el cliente.
+      if ((data.androidTotal ?? 0) === 0) {
+        if (data.fcmEnabled === false) {
+          html += '<br><span style="color:#ffb74d">⚠️ FCM está deshabilitado en el servidor — falta la variable de entorno <code>FIREBASE_SERVICE_ACCOUNT</code> en Render. Ningún push a Android se está ni intentando.</span>';
+        } else {
+          html += '<br><span style="color:#ffb74d">⚠️ FCM está habilitado pero no hay ningún token de Android registrado (tabla vacía). Abre la app en un dispositivo Android y revisa los logs del backend al iniciar sesión — debería llamarse a /api/push/fcm-subscribe.</span>';
+        }
+      }
       if (Array.isArray(data.failures) && data.failures.length) {
         html += '<br><span style="opacity:.75">Fallos:</span><ul style="margin:4px 0 0 18px;padding:0;font-size:.85em;opacity:.85">' +
           data.failures.map(f =>
