@@ -4,6 +4,7 @@ import android.content.pm.PackageManager;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 
 import rikka.shizuku.Shizuku;
 
@@ -90,7 +91,7 @@ public class ShizukuInstaller {
     public static boolean installSilently(String apkPath) throws Exception {
         if (!isReady()) throw new IllegalStateException("Shizuku no disponible o sin permiso");
         String safePath = apkPath.replace("\"", "\\\"");
-        Process p = Shizuku.newProcess(new String[]{"sh", "-c", "pm install -r \"" + safePath + "\""}, null, null);
+        Process p = newProcessReflective(new String[]{"sh", "-c", "pm install -r \"" + safePath + "\""}, null, null);
 
         StringBuilder out = new StringBuilder();
         try (BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
@@ -108,5 +109,18 @@ public class ShizukuInstaller {
             throw new Exception(output.isEmpty() ? ("pm install exit=" + code) : output);
         }
         return true;
+    }
+
+    /**
+     * Shizuku.newProcess(String[], String[], String) pasó de público a privado
+     * en shizuku-api 13.1.x (sigue existiendo, solo cambió la visibilidad), así
+     * que ya no se puede llamar directo o falla la compilación en release según
+     * la versión que resuelva Gradle. Se invoca por reflexión como puente hasta
+     * migrar a UserService + IPackageInstaller.
+     */
+    private static Process newProcessReflective(String[] cmd, String[] env, String dir) throws Exception {
+        Method m = Shizuku.class.getDeclaredMethod("newProcess", String[].class, String[].class, String.class);
+        m.setAccessible(true);
+        return (Process) m.invoke(null, cmd, env, dir);
     }
 }
