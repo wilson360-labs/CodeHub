@@ -3611,16 +3611,26 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     { placeholder: 'Ayudame con una automatizacion en Python...', hint: 'Codigo, logica y siguientes pasos claros' }
   ];
 
-  const SEARCH_TRIGGERS = [
-    'busca', 'buscar', 'muestra', 'imagen', 'imágenes', 'foto', 'fotos',
-    'fondo', 'fondos', 'icono', 'iconos', 'diseño', 'diseños', 'logo',
-    'wallpaper', 'ilustración', 'screenshot', 'ejemplo visual', 'cómo se ve',
-    'muéstrame', 'ver ejemplos', 'referencia visual'
+  // Antes bastaba con que el texto contuviera un sustantivo como "imagen" para
+  // disparar la búsqueda — por eso preguntas de seguimiento tipo "¿y la imagen
+  // que te pedí generar?" activaban una búsqueda en Google en vez de tratarse
+  // como pregunta normal. Ahora se exige un verbo de búsqueda explícito Y un
+  // sustantivo visual, para no confundirse con menciones casuales de "imagen".
+  const SEARCH_VERBS = [
+    'busca', 'buscar', 'muestra', 'muéstrame', 'ver ejemplos',
+    'referencia visual', 'cómo se ve'
+  ];
+  const SEARCH_NOUNS = [
+    'imagen', 'imágenes', 'foto', 'fotos', 'fondo', 'fondos', 'icono',
+    'iconos', 'diseño', 'diseños', 'logo', 'wallpaper', 'ilustración',
+    'screenshot', 'ejemplo visual'
   ];
 
   function isSearchQuery(text) {
     const t = text.toLowerCase();
-    return SEARCH_TRIGGERS.some(trigger => t.includes(trigger));
+    const hasVerb = SEARCH_VERBS.some(v => t.includes(v));
+    const hasNoun = SEARCH_NOUNS.some(n => t.includes(n));
+    return hasVerb && hasNoun;
   }
 
   function addSearchResults(query) {
@@ -4092,9 +4102,16 @@ setAiStatus('Generando imagen…', 'busy');
     if (!attachment || attachment.type !== 'pdf') window.removeAiAttachment();
 
     // ── Detectar si es generación de imagen (no aplica si hay adjunto) ──
+    // Antes esto solo guardaba el mensaje y dejaba que el chat normal
+    // "confirmara" con texto sin generar nada real. Ahora sí llama a
+    // generateImage() y corta el flujo aquí (no debe caer al fetch de /api/chat).
     if (!attachment && isImageGenRequest(effectiveText)) {
       history.push({ role: 'user', content: effectiveText });
       persistChat();
+      loading = true; sendBtn.disabled = true;
+      await generateImage(effectiveText);
+      loading = false; sendBtn.disabled = false;
+      return;
     }
 
     const shouldSearch = !attachment && isSearchQuery(effectiveText);
