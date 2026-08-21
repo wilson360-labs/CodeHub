@@ -161,10 +161,6 @@
       "destination": "/pages/servicios.html"
     },
     {
-      "source": "/downloader",
-      "destination": "/pages/downloader.html"
-    },
-    {
       "source": "/cv",
       "destination": "/pages/cv.html"
     },
@@ -247,11 +243,6 @@
       "permanent": true
     },
     {
-      "source": "/downloader.html",
-      "destination": "/downloader",
-      "permanent": true
-    },
-    {
       "source": "/cv.html",
       "destination": "/cv",
       "permanent": true
@@ -299,11 +290,6 @@
     {
       "source": "/pages/servicios",
       "destination": "/servicios",
-      "permanent": true
-    },
-    {
-      "source": "/pages/downloader",
-      "destination": "/downloader",
       "permanent": true
     },
     {

@@ -28,7 +28,6 @@ const PRECACHE = [
   '/index.html',
   '/tools',
   '/opensource',
-  '/downloader',
   '/servicios',
   '/css/opensource.css',
   '/css/components.css',

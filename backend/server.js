@@ -215,6 +215,8 @@ const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders
 // App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
 // crash reales) sin abrir la puerta a flood del endpoint público.
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
+// Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
+const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
 
@@ -2520,7 +2522,7 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
 
 
 // ── POST /api/generate-image — Generador IA con 4 proveedores ─
-app.post('/api/generate-image', chatLimiter, async (req, res) => {
+app.post('/api/generate-image', imageLimiter, async (req, res) => {
   const { prompt, width = 512, height = 512, provider = 'auto', skill_id = null, preset_id = null } = req.body;
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 2) {
     return res.status(400).json({ error: 'Prompt requerido' });
@@ -2576,7 +2578,10 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
   }
 
   // ── 2. Gemini — Imagen 3 Fast ─────────────────────────────
-  if (process.env.GEMINI_API_KEY && (provider === 'auto' || provider === 'gemini')) {
+  // NOTA: Solo funciona con proyecto allowlistado. Deshabilitado en auto
+  // para no sumar 5s+ de timeout muerto a cada request. Se puede invocar
+  // explícitamente con provider='gemini'.
+  if (process.env.GEMINI_API_KEY && provider === 'gemini') {
     try {
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-fast-generate-001:predict?key=${process.env.GEMINI_API_KEY}`,
@@ -2640,7 +2645,7 @@ app.post('/api/generate-image', chatLimiter, async (req, res) => {
     try {
       const seed = Math.floor(Math.random() * 99999);
       const polUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&seed=${seed}&model=flux&nologo=true`;
-      const r = await fetch(polUrl, { signal: AbortSignal.timeout(25000) });
+      const r = await fetch(polUrl, { signal: AbortSignal.timeout(15000) });
       if (r.ok) {
         const buf = await r.arrayBuffer();
         const b64 = Buffer.from(buf).toString('base64');

@@ -511,7 +511,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="side-group-label">Páginas</div>
             <a class="side-link" href="/tools" onclick="closeMobileNav()"><i class="fas fa-wrench"></i> Herramientas</a>
             <a class="side-link" href="/opensource" onclick="closeMobileNav()"><i class="fas fa-globe"></i> Open Source</a>
-            <a class="side-link" href="/downloader" onclick="closeMobileNav()"><i class="fas fa-download"></i> Descargar Videos</a>
             <a class="side-link" href="/cv" onclick="closeMobileNav()"><i class="fas fa-file-lines"></i> Mi CV</a>
         </div>
 
@@ -3878,10 +3877,12 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   };
 
   // ── DETECCIÓN DE GENERACIÓN DE IMAGEN ────────────────────────────
+  // Solo detecta órdenes EXPLÍCITAS de crear/generar imagen.
+  // No detecta preguntas sobre imágenes (ej: "¿qué es una imagen de fondo?")
   const IMAGE_GEN_TRIGGERS = [
-    /^🎨/, /\b(genera|crea|diseña|dibuja|haz)\b.{0,40}\b(imagen|foto|ilustración|logo|banner|avatar|icono|portada|thumbnail|arte|dibujo)\b/i,
-    /\b(imagen|ilustración|logo|banner)\b.{0,30}\b(de|sobre|con|para)\b/i,
-    /\bgenera una imagen\b/i, /\bcrea un(a)? imagen\b/i
+    /^🎨/,
+    /\b(genera|crea|diseña|dibuja|haz|make|generate|create)\b.{0,30}\b(imagen|foto|ilustraci[oó]n|logo|banner|avatar|icono|portada|thumbnail|arte|dibujo|image|picture|drawing)\b/i,
+    /\b(imagen|foto|ilustraci[oó]n|imagen|picture|image)\b.{0,25}\b(de|sobre|con|para|of|with|for)\b.{3,}/i
   ];
   function isImageGenRequest(text) {
     return IMAGE_GEN_TRIGGERS.some(r => r.test(text));
@@ -3891,21 +3892,30 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   const IMG_GEN_URL = BACKEND_URL + '/api/generate-image';
 
   async function generateImage(prompt) {
-    const cleanPrompt = prompt
-      .replace(/^🎨\s*/, '')
-      .replace(/\b(genera|crea|diseña|dibuja|haz)\b.{0,10}\b(imagen|foto|ilustración|logo|banner|avatar)\b\s*(de|sobre|con|para|un|una)?\s*/i, '')
-      .trim() || prompt;
+    // Extraer solo el sujeto descriptivo quitando verbos y palabras vacías
+    let cleanPrompt = prompt
+      .replace(/^🎨\s*/i, '')
+      .replace(/\b(genera|crea|diseña|dibuja|haz|make|generate|create)\b\s*/gi, '')
+      .replace(/\b(una?|el|la|los|las|un|del|por|favor)\b\s*/gi, '')
+      .replace(/\b(imagen|foto|ilustraci[oó]n|logo|banner|avatar|image|picture|drawing)\b\s*(de|sobre|con|para|of|with|for)?\s*/gi, '')
+      .trim();
+    // Si quedó muy corto o vacío, usar el prompt original
+    if (cleanPrompt.length < 3) cleanPrompt = prompt.replace(/^🎨\s*/i, '').trim();
 
     const typingEl = addMsg('typing', '▌');
-setAiStatus('Generando imagen…', 'busy');
+    setAiStatus('Generando imagen…', 'busy');
     loading = true; sendBtn.disabled = true;
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 40000);
       const res = await fetch(IMG_GEN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID, width: 512, height: 512 })
+        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID, width: 512, height: 512 }),
+        signal: controller.signal
       });
+      clearTimeout(timeout);
 
       typingEl.remove();
 
@@ -3948,7 +3958,11 @@ setAiStatus('Generando imagen…', 'busy');
 
     } catch(e) {
       typingEl?.remove?.();
-      addMsg('ai', '⚠️ El servicio de imágenes tuvo un problema. Intenta de nuevo en un momento.');
+      if (e.name === 'AbortError') {
+        addMsg('ai', '⏳ La generación tardó demasiado. Intenta con una descripción más corta o más específica.');
+      } else {
+        addMsg('ai', '⚠️ El servicio de imágenes tuvo un problema. Intenta de nuevo en un momento.');
+      }
       console.error('[EMI imagen]', e.message);
     } finally {
       loading = false;
@@ -6514,10 +6528,6 @@ function setAIMood(btn) {
   <a href="/opensource" id="mnb-apps">
     <span class="mnb-icon">📱</span>
     <span>Apps</span>
-  </a>
-  <a href="/downloader" id="mnb-dl">
-    <span class="mnb-icon">⬇️</span>
-    <span data-i18n="mnbDl">Descargar</span>
   </a>
   <a href="/servicios" id="mnb-sv">
     <span class="mnb-icon">🚀</span>

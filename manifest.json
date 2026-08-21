@@ -83,18 +83,6 @@
       ]
     },
     {
-      "name": "Descargar Videos",
-      "short_name": "Downloader",
-      "description": "Descarga videos de redes sociales",
-      "url": "/downloader",
-      "icons": [
-        {
-          "src": "https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
       "name": "Juegos",
       "short_name": "Games",
       "description": "Snake, Tetris, Buscaminas, Memoria y más",
