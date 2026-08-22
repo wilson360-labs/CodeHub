@@ -46,15 +46,27 @@
 
   function loadSession() {
     try {
-      var raw = sessionStorage.getItem(SESSION_KEY);
+      // Check localStorage first (persistent "remember me"), then sessionStorage
+      var raw = localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY);
       session = raw ? JSON.parse(raw) : null;
     } catch (e) { session = null; }
+    scheduleRefresh();
   }
-  function saveSession(s) {
+  function saveSession(s, remember) {
     session = s;
     try {
-      if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
-      else sessionStorage.removeItem(SESSION_KEY);
+      if (s) {
+        if (remember) {
+          localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+          sessionStorage.removeItem(SESSION_KEY);
+        } else {
+          sessionStorage.setItem(SESSION_KEY, JSON.stringify(s));
+          localStorage.removeItem(SESSION_KEY);
+        }
+      } else {
+        sessionStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(SESSION_KEY);
+      }
     } catch (e) {}
     emit();
   }
@@ -146,6 +158,32 @@
         return body;
       });
     });
+  }
+
+  // ── Auto-refresh de sesión ────────────────────────────────────
+  var _refreshTimer = null;
+  function scheduleRefresh() {
+    if (_refreshTimer) clearTimeout(_refreshTimer);
+    if (!session || !session.token) return;
+    // Supabase tokens expire in ~1 hour. Refresh at 50 min.
+    _refreshTimer = setTimeout(function() {
+      if (!session || !session.token) return;
+      // Try to refresh using the stored refresh_token
+      if (session.refresh_token) {
+        fetch(BACKEND + '/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: session.refresh_token })
+        }).then(function(r) { return r.json(); }).then(function(data) {
+          if (data.session) {
+            session.token = data.session.access_token;
+            session.refresh_token = data.session.refresh_token;
+            saveSession(session);
+            scheduleRefresh();
+          }
+        }).catch(function() {});
+      }
+    }, 50 * 60 * 1000); // 50 minutes
   }
 
   // ── Modal ────────────────────────────────────────────────────────
@@ -281,7 +319,9 @@
     if (!ts) { setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return; }
     setStatus('Verificando…');
     _api('/api/auth/login', { email: email, password: pass, turnstileToken: ts }).then(function (r) {
-      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
+      var remember = !!(document.getElementById('auth-remember-me') && document.getElementById('auth-remember-me').checked);
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token, refresh_token: r.session && r.session.refresh_token }, remember);
+      scheduleRefresh();
       closeLogin();
       setStatus('');
       resetTurnstile();
@@ -307,7 +347,8 @@
         resetTurnstile();
         return;
       }
-      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token });
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.email.split('@')[0] }, token: r.session && r.session.access_token, refresh_token: r.session && r.session.refresh_token }, true);
+      scheduleRefresh();
       closeLogin();
       setStatus('');
       resetTurnstile();
@@ -341,7 +382,8 @@
     if (!token) return;
     setStatus('Recuperando tu sesión…');
     _api('/api/auth/google/session', { token: token }).then(function (r) {
-      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token, provider: 'google' });
+      saveSession({ id: r.user.id, user: { email: r.user.email, name: r.user.name || r.user.email.split('@')[0] }, token: r.session && r.session.access_token, refresh_token: r.session && r.session.refresh_token, provider: 'google' }, true);
+      scheduleRefresh();
       openLogin('login');
       if (typeof toast === 'function') toast('✔ ¡Sesión iniciada con Google, ' + (r.user.name || '') + '!', 'success');
     }).catch(function (e) {

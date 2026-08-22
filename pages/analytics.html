@@ -523,7 +523,7 @@ function doLogin() {
   const key = document.getElementById('login-key').value.trim();
   if (!key) { showErr('Ingresa la admin key'); return; }
   ADMIN_KEY = key;
-  localStorage.setItem(ADMIN_KEY_LS, key);
+  // Key stays in memory only — never persisted to localStorage
   initDash();
 }
 
@@ -534,7 +534,7 @@ function showErr(msg) {
 }
 
 function logout() {
-  localStorage.removeItem(ADMIN_KEY_LS);
+  ADMIN_KEY = '';
   if (ws) ws.close();
   location.reload();
 }
@@ -553,14 +553,9 @@ function initDash() {
   setInterval(loadHealth, 60000);
 }
 
-/* Auto-login si ya tiene key guardada */
+/* NO auto-login from localStorage — admin key stays in memory only */
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem(ADMIN_KEY_LS);
-  if (saved) {
-    ADMIN_KEY = saved;
-    document.getElementById('login-key').value = saved;
-    initDash();
-  }
+  // Key is memory-only for this session. Re-enter if page reloads.
 });
 
 /* ── LIVE STATS ──────────────────────── */

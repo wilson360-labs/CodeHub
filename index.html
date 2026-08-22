@@ -654,6 +654,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <input class="auth-input" type="password" id="auth-login-pass" autocomplete="current-password" placeholder="••••••••">
                             <button type="button" class="auth-eye" aria-label="Mostrar contraseña" data-toggle-pass="auth-login-pass"><i class="fas fa-eye"></i></button>
                         </div>
+                        <label class="auth-remember">
+                            <input type="checkbox" id="auth-remember-me">
+                            <span data-i18n-auth="authRemember">Recordar sesión</span>
+                        </label>
                         <button class="auth-btn auth-btn-primary auth-btn-block" id="auth-login-submit" type="button">
                             <i class="fas fa-right-to-bracket"></i> <span data-i18n-auth="authLogin">Iniciar sesión</span>
                         </button>
@@ -3424,13 +3428,13 @@ async function sendEmail(e) {
       <button class="ai-quick-btn" onclick="setQuickPrompt('genera')" title="Generar imagen con IA" id="ai-img-btn">
         <i class="fas fa-image"></i><span>Imagen</span>
       </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('debug')" title="Debug de código">
+      <button class="ai-quick-btn" onclick="setQuickPrompt('debug')" title="Debug de código" id="ai-debug-btn">
         <i class="fas fa-bug"></i><span>Debug</span>
       </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('readme')" title="Generar README">
+      <button class="ai-quick-btn" onclick="setQuickPrompt('readme')" title="Generar README" id="ai-readme-btn">
         <i class="fab fa-github"></i><span>README</span>
       </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('review')" title="Code Review">
+      <button class="ai-quick-btn" onclick="setQuickPrompt('review')" title="Code Review" id="ai-review-btn">
         <i class="fas fa-code"></i><span>Review</span>
       </button>
     </div>
@@ -3874,10 +3878,11 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     // Mover cursor al final
     input.selectionStart = input.selectionEnd = txt.length;
     updateCharCount();
-    // Resaltar botón activo brevemente
+    // Resaltar el botón clickeado brevemente
     document.querySelectorAll('.ai-quick-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('ai-img-btn');
-    if (type === 'genera' && btn) { btn.classList.add('active'); setTimeout(() => btn.classList.remove('active'), 600); }
+    const typeToId = { genera: 'ai-img-btn', debug: 'ai-debug-btn', readme: 'ai-readme-btn', review: 'ai-review-btn' };
+    const btn = document.getElementById(typeToId[type]);
+    if (btn) { btn.classList.add('active'); setTimeout(() => btn.classList.remove('active'), 600); }
   };
 
   // ── DETECCIÓN DE GENERACIÓN DE IMAGEN ────────────────────────────
@@ -3989,15 +3994,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     }
     sessionStorage.setItem('ch_chat_count', chatCount + 1);
 
-    // Cuota diaria de EMI: invitado 10 msgs/día, registrado sin límite
-    if (window.CodeHubAuth) {
-      const limit = CodeHubAuth.checkLimit('emi_daily');
-      if (!limit.allowed) {
-        addMsg('ai', '⚠️ Alcanzaste el límite diario de <strong>EMI</strong> (10 mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para continuar sin límites.');
-        return;
-      }
-      CodeHubAuth.consumeLimit('emi_daily');
-    }
+    // Server-side EMI limit — no longer client-side only
 
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
@@ -4086,9 +4083,14 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
           body.skill_id = 'pdf-ia';
         }
       }
+      const _authHeaders = { 'Content-Type': 'application/json' };
+      if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
+        const _ses = CodeHubAuth.getSession();
+        if (_ses && _ses.token) _authHeaders['Authorization'] = 'Bearer ' + _ses.token;
+      }
       const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: _authHeaders,
         signal: _currentAbort.signal,
         body: JSON.stringify(body)
       });
@@ -4097,6 +4099,14 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
+          const _msg = data.used >= 30
+            ? '⚠️ Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
+            : '⚠️ Límite diario alcanzado (' + data.limit + ' mensajes). Espera mañana o inicia sesión.';
+          typingEl.remove();
+          addMsg('ai', _msg);
+          return;
+        }
         throw new Error(data.error || 'HTTP ' + res.status);
       }
 
@@ -4106,6 +4116,13 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
       const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
 
       if (cleanReply.replace(/<[^>]*>/g,'').trim()) {
+        // Show remaining EMI usage
+        if (data.emi) {
+          const _remaining = data.emi.limit - data.emi.used;
+          if (_remaining <= 3 && _remaining > 0) {
+            addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
+          }
+        }
         const msgWrap = addMsg('ai', cleanReply);
         // ── Agregar resultados de búsqueda profunda ──
         if (deepSearchResults && deepSearchResults.items.length > 0) {
@@ -5231,6 +5248,7 @@ const i18n = {
         authOr: 'o continúa con',
         authGoogle: 'Continuar con Google',
         authLogout: 'Cerrar sesión',
+        authRemember: 'Recordar sesión',
         authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de EMI y guardas tus chats.',
     },
     en: {
@@ -5335,6 +5353,7 @@ const i18n = {
         authOr: 'or continue with',
         authGoogle: 'Continue with Google',
         authLogout: 'Log out',
+        authRemember: 'Remember me',
         authNote: 'Your data is stored encrypted and protected. By signing up you unlock all EMI features and save your chats.',
     }
 };

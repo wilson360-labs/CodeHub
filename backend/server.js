@@ -221,6 +221,27 @@ const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 // Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
 const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
+
+// ── Contador diario de EMI por usuario/dispositivo ───────────
+// Key: 'u:<user_id>' o 'd:<ip>'. Value: { date, count }.
+const _emiUsage = new Map();
+const EMI_DAILY_LIMIT_GUEST = 10;
+const EMI_DAILY_LIMIT_REGISTERED = 50;
+
+function getEmiUsage(key) {
+  const entry = _emiUsage.get(key);
+  const today = new Date().toISOString().slice(0, 10);
+  if (!entry || entry.date !== today) { _emiUsage.set(key, { date: today, count: 0 }); return 0; }
+  return entry.count;
+}
+
+function incrEmiUsage(key) {
+  const today = new Date().toISOString().slice(0, 10);
+  const entry = _emiUsage.get(key);
+  if (!entry || entry.date !== today) { _emiUsage.set(key, { date: today, count: 1 }); return 1; }
+  entry.count++;
+  return entry.count;
+}
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
 
@@ -428,6 +449,22 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ── AUTH USUARIO (opcional) ────────────────────────────────────
+// Valida el token Supabase si se envía, pero NO bloquea invitados.
+// Attach req.authUser = { id, email } si el token es válido.
+async function requireAuth(req, res, next) {
+  if (!supabase) { req.authUser = null; return next(); }
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) { req.authUser = null; return next(); }
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) { req.authUser = null; return next(); }
+    req.authUser = { id: data.user.id, email: data.user.email };
+  } catch { req.authUser = null; }
+  next();
+}
+
 // ── AUTH USUARIOS (Supabase Auth) ────────────────────────────────
 // Frontend (js/auth.js) usa estos endpoints para login/registro de
 // usuarios normales (NO admin). Supabase Auth maneja contraseñas y
@@ -497,6 +534,18 @@ app.post('/api/auth/logout', async (req, res) => {
   const token = String(req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || String(req.body?.token || '');
   if (token && supabase) await supabase.auth.admin.signOut(token);
   res.json({ ok: true });
+});
+
+// POST /api/auth/refresh — renovar access_token usando refresh_token
+app.post('/api/auth/refresh', async (req, res) => {
+  const { refresh_token } = req.body || {};
+  if (!refresh_token) return res.status(400).json({ error: 'refresh_token requerido' });
+  if (!supabase) return res.status(503).json({ error: 'Auth no disponible' });
+  try {
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+    if (error || !data?.session) return res.status(401).json({ error: 'Sesión expirada. Inicia sesión de nuevo.' });
+    res.json({ session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token, expires_at: data.session.expires_at } });
+  } catch (e) { res.status(500).json({ error: 'Error renovando sesión' }); }
 });
 
 // ── GOOGLE OAUTH — login con credenciales de Google ──────────────
@@ -1330,7 +1379,10 @@ async function callAI(msgs) {
 }
 
 async function validateTurnstile(token) {
-  if (!process.env.TURNSTILE_SECRET) return true;
+  if (!process.env.TURNSTILE_SECRET) {
+    console.warn('⚠️ TURNSTILE_SECRET no configurado — rechazando request (fail-closed)');
+    return false;
+  }
   if (!token) return false;
   try {
     const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -1338,7 +1390,7 @@ async function validateTurnstile(token) {
       body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET, response: token }),
     });
     return (await r.json()).success === true;
-  } catch { return true; }
+  } catch { return false; }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1849,11 +1901,19 @@ app.get('/api/skills/:id', (req, res) => {
 });
 
 // Chat IA
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', requireAuth, async (req, res) => {
   const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
+
+  // ── Límite diario server-side ─────────────────────────────────
+  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
+  const emiUsed = getEmiUsage(emiKey);
+  if (emiUsed >= emiLimit) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  }
 
   // ── Imagen / PDF escaneado adjunto: valida formato/tamaño antes de gastar una llamada ──
   // "image" es una imagen suelta (data URL). "images" es un array de páginas
@@ -1924,7 +1984,8 @@ app.post('/api/chat', async (req, res) => {
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
     tgAlert('chat', () => `💬 <b>Chat con EMI</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
-    res.json({ reply, usage: { input, output, total: input + output }, model });
+    const emiNow = incrEmiUsage(emiKey);
+    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
   } catch (err) {
     tgAlert('chatfail', () =>
       `⚠️ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,

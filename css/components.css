@@ -3211,6 +3211,22 @@
             color: rgba(232,232,240,.4);
             text-align: center;
         }
+        .auth-remember {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            margin: .3rem 0 .6rem;
+            font-size: .78rem;
+            color: rgba(232,232,240,.6);
+            cursor: pointer;
+            user-select: none;
+        }
+        .auth-remember input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            accent-color: #7c4dff;
+            cursor: pointer;
+        }
         .auth-btn {
             font-family: 'Syne', sans-serif;
             font-size: .85rem;
@@ -5342,6 +5358,7 @@ header nav { display: none !important; }
 [data-theme="light"] .auth-google { color: #0f172a; background: rgba(15,23,42,.04); border-color: rgba(15,23,42,.12); }
 [data-theme="light"] .auth-google:hover { background: rgba(15,23,42,.08); border-color: rgba(15,23,42,.2); }
 [data-theme="light"] .auth-note { color: rgba(15,23,42,.5); }
+[data-theme="light"] .auth-remember { color: rgba(15,23,42,.6); }
 
 /* ── Chat AI: panel claro ── */
 [data-theme="light"] {
