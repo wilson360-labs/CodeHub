@@ -5706,41 +5706,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── INSTALAR APK ──────────────────────────────────────────
-  const APK_BASE = 'https://github.com/wilson360-labs/CodeHub/releases/latest/download/app-release-signed.apk';
+  const APK_URL = 'https://firebasestorage.googleapis.com/v0/b/codehub-8829d.firebasestorage.app/o/releases%2Fapp-release-signed.apk?alt=media';
 
   async function installCodeHubAPK(e) {
     if (e) e.preventDefault();
     const btn = document.getElementById('hero-install-apk');
     if (!btn) return;
 
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Buscando APK...</span>';
+    btn.innerHTML = '<i class="fas fa-download"></i> <span>Descargando APK...</span>';
     btn.style.pointerEvents = 'none';
 
     try {
-      // Buscar la última release con APK
-      const resp = await fetch('https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest');
-      if (resp.ok) {
-        const release = await resp.json();
-        const apkAsset = release.assets.find(a => a.name === 'app-release-signed.apk');
-        if (apkAsset) {
-          btn.innerHTML = '<i class="fas fa-download"></i> <span>Descargando APK...</span>';
-          // Descargar el APK
-          window.location.href = apkAsset.browser_download_url;
-          btn.innerHTML = '<i class="fas fa-check"></i> <span>¡Descarga iniciada!</span>';
-          btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-          if (typeof toast === 'function') toast('📱 APK descargado — abre el archivo para instalar', 'success', 5000);
-          setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
-            btn.style.pointerEvents = '';
-            btn.style.background = '';
-          }, 4000);
-          return;
-        }
-      }
-      // Si no hay APK compilado aún, ofrecer guía
-      btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
-      btn.style.pointerEvents = '';
-      showAPKGuide();
+      window.location.href = APK_URL;
+      btn.innerHTML = '<i class="fas fa-check"></i> <span>¡Descarga iniciada!</span>';
+      btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+      if (typeof toast === 'function') toast('📱 APK descargado — abre el archivo para instalar', 'success', 5000);
+      setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
+        btn.style.pointerEvents = '';
+        btn.style.background = '';
+      }, 4000);
     } catch (err) {
       btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
       btn.style.pointerEvents = '';
