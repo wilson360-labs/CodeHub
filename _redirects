@@ -1,0 +1,48 @@
+# ── Rewrites (clean URLs) ──────────────────────────────────
+/privacy                    /privacy.html
+/terms                      /terms.html
+/tools                      /pages/tools.html
+/opensource                 /pages/opensource.html
+/servicios                  /pages/servicios.html
+/cv                         /pages/cv.html
+/admin-hub                  /pages/admin-hub.html
+/codehub-ultra              /pages/codehub-ultra.html
+/analytics                  /pages/analytics.html
+/snake                      /games/snake.html
+/tetris                     /games/tetris.html
+/flexbox-labs               /pages/flexbox-labs.html
+/mines                      /games/mines.html
+/memory                     /games/memory.html
+/rps                        /games/rps.html
+
+# ── Redirects 301 (old URLs → clean URLs) ──────────────────
+/tools.html                 /tools                       301
+/novedades.html             /opensource                  301
+/pages/novedades.html       /opensource                  301
+/pages/novedades            /opensource                  301
+/open-source.html           /opensource                  301
+/open-source                /opensource                  301
+/opensource.html            /opensource                  301
+/servicios.html             /servicios                   301
+/cv.html                    /cv                          301
+/admin-hub.html             /admin-hub                   301
+/codehub-ultra.html         /codehub-ultra               301
+/analytics.html             /analytics                   301
+/snake.html                 /snake                       301
+/tetris.html                /tetris                      301
+/pages/tools                /tools                       301
+/pages/opensource           /opensource                  301
+/pages/open-source          /opensource                  301
+/pages/servicios            /servicios                   301
+/pages/cv                   /cv                          301
+/pages/admin-hub            /admin-hub                   301
+/pages/codehub-ultra        /codehub-ultra               301
+/pages/analytics            /analytics                   301
+/games/snake                /snake                       301
+/games/tetris               /tetris                      301
+/games/mines                /mines                       301
+/games/memory               /memory                      301
+/games/rps                  /rps                         301
+/games/mines.html           /mines                       301
+/games/memory.html          /memory                      301
+/games/rps.html             /rps                         301
