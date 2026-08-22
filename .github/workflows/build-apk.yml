@@ -79,27 +79,20 @@ jobs:
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
-      - name: Upload APK to 0x0.st
-        id: upload
+      - name: Upload APK to Supabase Storage
+        if: env.SUPABASE_URL != ''
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
-          APK_URL=$(curl -s -F "file=@apk/android/app-release-signed.apk" https://0x0.st)
-          echo "url=$APK_URL" >> $GITHUB_OUTPUT
-          echo "✅ APK uploaded: $APK_URL"
-
-      - name: Update download URL in repo
-        run: |
-          cat > apk-download.json << EOF
-          {
-            "url": "${{ steps.upload.outputs.url }}",
-            "version": "${{ steps.version.outputs.version }}",
-            "uploaded_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apk-download.json
-          git diff --cached --quiet || git commit -m "chore: update APK download URL (v${{ steps.version.outputs.version }})"
-          git push
+          curl -s -X POST \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            -H "x-upsert: true" \
+            "${SUPABASE_URL}/storage/v1/object/CodeHub/app-release-signed.apk" \
+            --data-binary @apk/android/app-release-signed.apk
+          echo "✅ APK uploaded to Supabase Storage"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -109,10 +102,6 @@ jobs:
           body: |
             ## CodeHub APK — App Nativa Android
             **Versión:** ${{ steps.version.outputs.version }}
-
-            ### Descarga
-            👉 **[Descargar APK](${{ steps.upload.outputs.url }})** (sin cuenta)
-
             ### Instalación
             1. Descarga el APK
             2. Abre en tu Android
