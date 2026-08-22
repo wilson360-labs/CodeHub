@@ -5706,7 +5706,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── INSTALAR APK ──────────────────────────────────────────
-  const APK_URL = 'https://firebasestorage.googleapis.com/v0/b/codehub-8829d.firebasestorage.app/o/releases%2Fapp-release-signed.apk?alt=media';
+  async function getAPKUrl() {
+    try {
+      const r = await fetch('/apk-download.json?' + Date.now());
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d.url || null;
+    } catch { return null; }
+  }
 
   async function installCodeHubAPK(e) {
     if (e) e.preventDefault();
@@ -5717,7 +5724,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.style.pointerEvents = 'none';
 
     try {
-      window.location.href = APK_URL;
+      const url = await getAPKUrl();
+      if (!url) { showAPKGuide(); btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>'; btn.style.pointerEvents = ''; return; }
+      window.location.href = url;
       btn.innerHTML = '<i class="fas fa-check"></i> <span>¡Descarga iniciada!</span>';
       btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
       if (typeof toast === 'function') toast('📱 APK descargado — abre el archivo para instalar', 'success', 5000);

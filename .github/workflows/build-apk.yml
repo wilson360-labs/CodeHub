@@ -59,7 +59,7 @@ jobs:
           gradle assembleRelease \
             -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
             -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
-            -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+            -P_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
 
       - name: Get version
         id: version
@@ -79,28 +79,27 @@ jobs:
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
-      - name: Auth Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          token_format: access_token
-
-      - name: Upload APK to Firebase Storage
-        if: steps.auth.outcome == 'success'
+      - name: Upload APK to 0x0.st
+        id: upload
         run: |
-          ACCESS_TOKEN="${{ steps.auth.outputs.access_token }}"
-          BUCKET="codehub-8829d.firebasestorage.app"
-          FILE="apk/android/app-release-signed.apk"
-          REMOTE="releases/app-release-signed.apk"
+          APK_URL=$(curl -s -F "file=@apk/android/app-release-signed.apk" https://0x0.st)
+          echo "url=$APK_URL" >> $GITHUB_OUTPUT
+          echo "✅ APK uploaded: $APK_URL"
 
-          curl -s -X PUT \
-            -H "Content-Type: application/vnd.android.package-archive" \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "https://storage.googleapis.com/upload/storage/v1/b/${BUCKET}/o?uploadType=media&name=${REMOTE}" \
-            --data-binary @${FILE}
-
-          echo "✅ APK uploaded to Firebase Storage"
+      - name: Update download URL in repo
+        run: |
+          cat > apk-download.json << EOF
+          {
+            "url": "${{ steps.upload.outputs.url }}",
+            "version": "${{ steps.version.outputs.version }}",
+            "uploaded_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apk-download.json
+          git diff --cached --quiet || git commit -m "chore: update APK download URL (v${{ steps.version.outputs.version }})"
+          git push
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -112,7 +111,7 @@ jobs:
             **Versión:** ${{ steps.version.outputs.version }}
 
             ### Descarga
-            👉 **[Descargar APK](https://firebasestorage.googleapis.com/v0/b/codehub-8829d.firebasestorage.app/o/releases%2Fapp-release-signed.apk?alt=media)** (sin cuenta)
+            👉 **[Descargar APK](${{ steps.upload.outputs.url }})** (sin cuenta)
 
             ### Instalación
             1. Descarga el APK
