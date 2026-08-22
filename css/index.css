@@ -309,6 +309,22 @@
             --radius-pill: 999px;
             --radius-full: 50%;
 
+            /* ── Botones unificados (design tokens) ── */
+            --btn-font: 'Space Grotesk', system-ui, sans-serif;
+            --btn-radius: var(--radius-sm);
+            --btn-radius-pill: var(--radius-pill);
+            --btn-padding: .55rem 1.1rem;
+            --btn-padding-sm: .35rem .75rem;
+            --btn-padding-lg: .7rem 1.4rem;
+            --btn-transition: all .2s ease;
+            --btn-primary-bg: linear-gradient(135deg, var(--primary), var(--accent));
+            --btn-primary-shadow: 0 4px 14px rgba(47,128,237,.35);
+            --btn-ghost-bg: rgba(255,255,255,.06);
+            --btn-ghost-border: rgba(255,255,255,.12);
+            --btn-ghost-hover-bg: rgba(255,255,255,.12);
+            --btn-disabled-opacity: .45;
+            --btn-icon-size: 34px;
+
             /* ── Escala tipográfica (design tokens) ── */
             --fs-2xs: 0.68rem;
             --fs-xs: 0.75rem;
@@ -2302,31 +2318,35 @@
 
         /* Botón config en header */
         #cfg-btn {
-            background: rgba(255,255,255,.06);
-            border: 1px solid rgba(255,255,255,.1);
+            background: var(--btn-ghost-bg);
+            border: 1px solid var(--btn-ghost-border);
             color: rgba(232,232,240,.6);
-            width: 34px; height: 34px;
-            border-radius: var(--radius-sm, 10px);
+            width: var(--btn-icon-size); height: var(--btn-icon-size);
+            border-radius: var(--btn-radius);
             cursor: pointer;
             font-size: .85rem;
-            transition: all .2s;
+            transition: var(--btn-transition);
             display: flex; align-items: center; justify-content: center;
         }
-        #cfg-btn:hover { border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }
+        @media (hover: hover) {
+            #cfg-btn:hover { border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }
+        }
         #lang-toggle {
-            background: rgba(255,255,255,.06);
-            border: 1px solid rgba(255,255,255,.1);
+            background: var(--btn-ghost-bg);
+            border: 1px solid var(--btn-ghost-border);
             color: rgba(232,232,240,.6);
-            width: 34px; height: 34px;
-            border-radius: var(--radius-sm, 10px);
+            width: var(--btn-icon-size); height: var(--btn-icon-size);
+            border-radius: var(--btn-radius);
             cursor: pointer;
             font-size: .68rem;
             font-weight: 700;
-            transition: all .2s;
+            transition: var(--btn-transition);
             display: flex; align-items: center; justify-content: center;
             gap: .18rem;
         }
-        #lang-toggle:hover { border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }
+        @media (hover: hover) {
+            #lang-toggle:hover { border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }
+        }
         #lang-toggle .lang-toggle-text { font-family: 'JetBrains Mono', monospace; }
         .header-dl-btn {
             display: flex; align-items: center; justify-content: center;

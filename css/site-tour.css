@@ -86,25 +86,31 @@
 
 .st-nav { display: flex; gap: .4rem; }
 .st-btn {
-  border: none; cursor: pointer; font-family: inherit;
-  font-size: .74rem; font-weight: 700; border-radius: var(--radius-sm, 10px);
+  border: none; cursor: pointer; font-family: var(--btn-font, inherit);
+  font-size: .74rem; font-weight: 700; border-radius: var(--btn-radius, var(--radius-sm, 10px));
   padding: .4rem .7rem; display: inline-flex; align-items: center; gap: .3rem;
-  transition: transform .15s ease, opacity .15s ease, background .15s ease;
+  transition: var(--btn-transition, all .2s ease);
 }
-.st-btn:active { transform: scale(.95); }
+.st-btn:active { transform: scale(.97); }
 .st-btn-prev { background: #eef1fb; color: var(--st-text-soft); }
-.st-btn-prev:disabled { opacity: .4; cursor: default; }
-.st-btn-prev:not(:disabled):hover { background: #e2e7fa; }
+.st-btn-prev:disabled { opacity: var(--btn-disabled-opacity, .45); cursor: not-allowed; transform: none; }
+@media (hover: hover) {
+  .st-btn-prev:not(:disabled):hover { background: #e2e7fa; }
+}
 .st-btn-next {
   background: linear-gradient(135deg, var(--st-accent), var(--st-accent-dark));
   color: #fff;
 }
-.st-btn-next:hover { filter: brightness(1.06); }
+@media (hover: hover) {
+  .st-btn-next:hover { filter: brightness(1.06); transform: translateY(-1px); }
+}
 .st-btn-skip {
   background: transparent; color: #9aa2bf; font-weight: 600;
   padding: .4rem .3rem;
 }
-.st-btn-skip:hover { color: var(--st-text-soft); }
+@media (hover: hover) {
+  .st-btn-skip:hover { color: var(--st-text-soft); }
+}
 
 /* Botón flotante "¿Necesitas ayuda?" — relanza el tour */
 .st-help-btn {

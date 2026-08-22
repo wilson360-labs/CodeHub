@@ -18,8 +18,7 @@
  * varias veces al día.
  *
  * Pensado para ejecutarse vía GitHub Actions con un cron (ver
- * .github/workflows/check-app-updates.yml), igual que el autoposter
- * de blog existente.
+ * .github/workflows/check-app-updates.yml).
  */
 
 'use strict';

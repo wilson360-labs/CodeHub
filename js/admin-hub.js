@@ -444,7 +444,6 @@ const GH_WORKFLOWS = [
   { file: 'seed-foss-catalog.yml',      name: '🌱 Seed catálogo FOSS',      desc: 'Upsert de las apps de foss-catalog-seed.json en MongoDB + check de versiones.' },
   { file: 'check-app-updates.yml',      name: '🔄 Monitor de actualizaciones', desc: 'Revisa GitHub Releases del catálogo y actualiza versiones/APKs.' },
   { file: 'dedupe-catalog.yml',         name: '🧹 Limpiar duplicados',      desc: 'Elimina apps duplicadas (dry-run por defecto).' },
-  { file: 'autoposter-workflow.yml',    name: '🤖 AutoPoster Blogger',      desc: 'Publica el siguiente post del blog en cola.' },
   { file: 'enrich-app-logos.yml',       name: '🖼️ Aplicar logos FOSS',      desc: 'Universal: para cualquier app open source (nueva o existente) sin logo oficial (portada opengraph o vacío), busca el logo real y lo sube a img/. No toca logos locales ni URLs puestas a mano.' },
   { file: 'build-apk.yml',             name: '📱 Compilar APK Android',    desc: 'Compila el APK nativo de CodeHub con Bubblewrap/TWA. Genera release con el APK para descarga directa.' },
 ];

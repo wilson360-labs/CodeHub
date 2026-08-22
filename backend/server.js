@@ -1060,9 +1060,7 @@ QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-2
 Aplicaciones de código abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y más) — sin versiones modificadas.
 
 **Otros en CodeHub:**
-- Descargador de videos de redes sociales
 - Juegos: Snake y Tetris (Canvas API)
-- Blog de desarrollo web (codehub-labs.blogspot.com)
 - Servicios freelance detallados en /servicios
 - EMI COPILOT — asistente IA integrada (¡soy yo!)
 
@@ -3172,13 +3170,12 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
 // ── ADMIN: WORKFLOWS DE GITHUB (Automatización) ──────────────
 // Permite que el panel admin (admin-hub) dispare los workflows de
 // mantenimiento del repositorio (seed del catálogo FOSS, monitor de
-// actualizaciones, dedupe, autoposter) sin salir de la UI.
+// actualizaciones, dedupe) sin salir de la UI.
 // Requiere GITHUB_TOKEN con permiso `workflow` en Render.
 const GITHUB_WORKFLOWS = [
   'seed-foss-catalog.yml',
   'check-app-updates.yml',
   'dedupe-catalog.yml',
-  'autoposter-workflow.yml',
   'enrich-app-logos.yml',
   'build-apk.yml',
 ];

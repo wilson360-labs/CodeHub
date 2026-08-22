@@ -933,6 +933,125 @@
             outline: 2px solid var(--accent-color);
         }
 
+        /* ═══ BOTONES UNIFICADOS ════════════════════════════════════
+           Sistema de botones consistente para todo CodeHub.
+           Uso: .ch-btn .ch-btn-primary / .ch-btn-ghost / .ch-btn-danger / .ch-btn-icon / .ch-btn-pill
+           ════════════════════════════════════════════════════════════ */
+        .ch-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
+            padding: var(--btn-padding);
+            border-radius: var(--btn-radius);
+            font-family: var(--btn-font);
+            font-size: .83rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: var(--btn-transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .ch-btn:active { transform: scale(.97); }
+        .ch-btn:disabled, .ch-btn[disabled] { opacity: var(--btn-disabled-opacity); cursor: not-allowed; transform: none; pointer-events: none; }
+        .ch-btn i { font-size: .85em; }
+
+        /* Primary — gradiente azul */
+        .ch-btn-primary {
+            background: var(--btn-primary-bg);
+            color: #fff;
+            box-shadow: var(--btn-primary-shadow);
+        }
+        @media (hover: hover) {
+            .ch-btn-primary:hover { box-shadow: 0 6px 20px rgba(47,128,237,.5); transform: translateY(-1px); }
+        }
+
+        /* Ghost — borde sutil transparente */
+        .ch-btn-ghost {
+            background: var(--btn-ghost-bg);
+            color: rgba(232,232,240,.7);
+            border: 1px solid var(--btn-ghost-border);
+        }
+        @media (hover: hover) {
+            .ch-btn-ghost:hover { background: var(--btn-ghost-hover-bg); color: #fff; border-color: rgba(255,255,255,.25); }
+        }
+
+        /* Danger — rojo */
+        .ch-btn-danger {
+            background: rgba(239,68,68,.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,.25);
+        }
+        @media (hover: hover) {
+            .ch-btn-danger:hover { background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.45); color: #fca5a5; }
+        }
+
+        /* Icon — cuadrado 34px */
+        .ch-btn-icon {
+            width: var(--btn-icon-size);
+            height: var(--btn-icon-size);
+            padding: 0;
+            border-radius: var(--btn-radius);
+            background: var(--btn-ghost-bg);
+            border: 1px solid var(--btn-ghost-border);
+            color: rgba(232,232,240,.6);
+        }
+        @media (hover: hover) {
+            .ch-btn-icon:hover { border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }
+        }
+
+        /* Pill — borderRadius 999px */
+        .ch-btn-pill {
+            border-radius: var(--btn-radius-pill);
+            padding: var(--btn-padding-sm) .85rem;
+            font-size: .75rem;
+        }
+
+        /* Small */
+        .ch-btn-sm {
+            padding: var(--btn-padding-sm);
+            font-size: .75rem;
+        }
+
+        /* Large */
+        .ch-btn-lg {
+            padding: var(--btn-padding-lg);
+            font-size: .9rem;
+        }
+
+        /* Block — full width */
+        .ch-btn-block { width: 100%; }
+
+        /* ── Light theme overrides ── */
+        [data-theme="light"] .ch-btn-ghost {
+            background: rgba(15,23,42,.04);
+            border-color: rgba(15,23,42,.12);
+            color: rgba(15,23,42,.65);
+        }
+        [data-theme="light"] .ch-btn-ghost:hover {
+            background: rgba(15,23,42,.08);
+            border-color: rgba(15,23,42,.2);
+            color: #0f172a;
+        }
+        [data-theme="light"] .ch-btn-icon {
+            background: rgba(15,23,42,.04);
+            border-color: rgba(15,23,42,.12);
+            color: rgba(15,23,42,.6);
+        }
+        [data-theme="light"] .ch-btn-icon:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(47,128,237,.06);
+        }
+        [data-theme="light"] .ch-btn-danger {
+            background: rgba(239,68,68,.08);
+            color: #dc2626;
+            border-color: rgba(239,68,68,.2);
+        }
+
 
         header::before {
             content: '';
@@ -1456,14 +1575,16 @@
 .ai-circle-btn{
   display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:.4rem;
   background:linear-gradient(135deg, rgba(255,255,255,.045), rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);cursor:pointer;
-  transition:transform .2s cubic-bezier(.2,.9,.2,1);
+  transition:var(--btn-transition);
   padding:.42rem .52rem;border-radius:var(--radius-md, 14px);
   flex-shrink:0;
   min-width:0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
 }
-.ai-circle-btn:hover{transform:translateY(-2px);border-color:rgba(124,77,255,.24);background:linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.028));}
-.ai-circle-btn:active{transform:scale(.93);}
+@media (hover: hover) {
+  .ai-circle-btn:hover{transform:translateY(-1px);border-color:rgba(124,77,255,.24);background:linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.028));}
+}
+.ai-circle-btn:active{transform:scale(.97);}
 .ai-circle-icon{
   width:26px;height:26px;border-radius:var(--radius-md, 12px);
   display:flex;align-items:center;justify-content:center;
@@ -1614,15 +1735,18 @@
   padding:.32rem .72rem;border-radius:var(--radius-xl, 22px);
   border:1px solid var(--ai-border2);
   background:var(--ai-s2);
-  color:var(--ai-muted);font-size:.68rem;font-family:'Space Grotesk',system-ui,sans-serif;
+  color:var(--ai-muted);font-size:.68rem;font-family:var(--btn-font);
   cursor:pointer;white-space:nowrap;flex-shrink:0;
-  transition:all .15s ease;
+  transition:var(--btn-transition);
 }
-.ai-quick-btn:hover,.ai-quick-btn.active{
-  border-color:var(--ai-accent);
-  background:rgba(124,77,255,.14);
-  color:#fff;
+@media (hover: hover) {
+  .ai-quick-btn:hover,.ai-quick-btn.active{
+    border-color:var(--ai-accent);
+    background:rgba(124,77,255,.14);
+    color:#fff;
+  }
 }
+.ai-quick-btn:active{transform:scale(.96);}
 .ai-quick-btn i{font-size:.7rem;}
 /* Botón imagen — mismo estilo neutral que el resto */
 #ai-img-btn{border-color:var(--ai-border2);background:var(--ai-s2);color:var(--ai-muted);}
@@ -2399,15 +2523,17 @@
             display: inline-flex;
             align-items: center;
             gap: .4rem;
-            padding: .6rem 1.15rem;
-            border-radius: var(--radius-sm, 10px);
+            padding: var(--btn-padding);
+            border-radius: var(--btn-radius);
+            font-family: var(--btn-font);
             font-size: .83rem;
             font-weight: 700;
             text-decoration: none;
             border: none;
             cursor: pointer;
-            transition: all .2s ease;
+            transition: var(--btn-transition);
         }
+        .hero-btn:active { transform: scale(.97); }
         .hero-btn-ghost {
             background: rgba(255,255,255,.05);
             color: rgba(232,232,240,.65);
@@ -3228,22 +3354,30 @@
             cursor: pointer;
         }
         .auth-btn {
-            font-family: 'Syne', sans-serif;
+            font-family: var(--btn-font);
             font-size: .85rem;
             font-weight: 700;
             border: none;
-            border-radius: var(--radius-sm, 10px);
+            border-radius: var(--btn-radius);
             cursor: pointer;
-            transition: all .2s;
+            transition: var(--btn-transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .45rem;
         }
+        .auth-btn:active { transform: scale(.97); }
         .auth-btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: var(--btn-primary-bg);
             color: #fff;
             padding: .68rem 1rem;
+            box-shadow: var(--btn-primary-shadow);
         }
-        .auth-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(47,128,237,.35); }
-        .auth-btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
-        .auth-btn-block { width: 100%; display: flex; align-items: center; justify-content: center; gap: .45rem; }
+        @media (hover: hover) {
+            .auth-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(47,128,237,.5); }
+        }
+        .auth-btn-primary:disabled { opacity: var(--btn-disabled-opacity); cursor: not-allowed; transform: none; box-shadow: none; }
+        .auth-btn-block { width: 100%; }
         .auth-divider {
             display: flex;
             align-items: center;
@@ -3264,18 +3398,20 @@
             align-items: center;
             justify-content: center;
             gap: .55rem;
-            background: rgba(255,255,255,.06);
-            border: 1px solid rgba(255,255,255,.12);
+            background: var(--btn-ghost-bg);
+            border: 1px solid var(--btn-ghost-border);
             color: #fff;
             padding: .62rem;
-            border-radius: var(--radius-sm, 10px);
-            font-family: 'Syne', sans-serif;
+            border-radius: var(--btn-radius);
+            font-family: var(--btn-font);
             font-size: .84rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all .18s;
+            transition: var(--btn-transition);
         }
-        .auth-google:hover { border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.1); }
+        @media (hover: hover) {
+            .auth-google:hover { border-color: rgba(255,255,255,.25); background: var(--btn-ghost-hover-bg); }
+        }
         .auth-google i { font-size: 1rem; }
         .auth-note {
             font-size: .72rem;
@@ -4561,9 +4697,41 @@
             transform: translateY(-2px);
         }
 
-        button:hover {
-            transform: translateY(-5px) scale(1.05);
-            box-shadow: 0 15px 40px rgba(47, 128, 237, 0.5);
+        @media (hover: hover) {
+            button:hover:not(.ch-btn):not(.ai-quick-btn):not(.ai-circle-btn):not(.ai-mood-btn):not(.ai-sug-btn):not(.auth-tab):not(.auth-close):not(.auth-eye):not(.auth-google):not([class*="ch-btn"]) {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 24px rgba(47, 128, 237, 0.3);
+            }
+        }
+
+        /* ══ Botones faltantes (admin-hub, updater) ══ */
+        .blog-btn-danger {
+            background: rgba(239,68,68,.15);
+            color: #f87171;
+            border: 1px solid rgba(239,68,68,.25);
+            border-radius: var(--btn-radius);
+            padding: var(--btn-padding-sm);
+            font-family: var(--btn-font);
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--btn-transition);
+        }
+        @media (hover: hover) {
+            .blog-btn-danger:hover { background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.45); }
+        }
+        .updater-close-btn {
+            background: var(--btn-ghost-bg);
+            border: 1px solid var(--btn-ghost-border);
+            color: rgba(232,232,240,.5);
+            border-radius: var(--btn-radius);
+            padding: .25rem .5rem;
+            font-size: .72rem;
+            cursor: pointer;
+            transition: var(--btn-transition);
+        }
+        @media (hover: hover) {
+            .updater-close-btn:hover { color: #fff; border-color: rgba(255,255,255,.25); }
         }
 
         #floating-menu {

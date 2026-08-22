@@ -21,12 +21,11 @@
 
 ---
 
-## 🗑️ Blog estático — ELIMINADO (Agosto 2026)
+## 🗑️ Blog estático y autoposter — ELIMINADOS (Agosto 2026)
 
-`pages/blog.html`, `blog/`, `js/admin-blog-static.js` y el tab "Blog" de admin-hub
-fueron removidos por completo. La sección frontal de blog fue reemplazada por
-`#news-section` en `index.html`, que consume el feed JSONP de Blogger
-(`codehub-labs.blogspot.com`). No reintroducir sin autorización.
+`pages/blog.html`, `blog/`, `js/admin-blog-static.js`, `autoposter/` y
+`autoposter-workflow.yml` fueron removidos. La sección frontal fue reemplazada
+por `#news-section` en `index.html` (feed RSS de BBC Mundo).
 
 ---
 

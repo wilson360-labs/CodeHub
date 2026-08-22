@@ -8,7 +8,6 @@
 
 **CodeHub** es un portfolio personal + plataforma de herramientas web, operado por Wilson Enríquez (Guatemala 🇬🇹).  
 Dominio en producción: `https://wilson360-labs.vercel.app`  
-Blog externo: `https://codehub-labs.blogspot.com`  
 Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y **Render/Railway** (backend Node.js).
 
 ---
@@ -357,7 +356,6 @@ La página más grande del proyecto (~5260 líneas). Contiene todo en un solo ar
 
 **Constantes importantes en index.html:**
 ```javascript
-const BLOGGER_URL = 'https://codehub-labs.blogspot.com';
 // AdSense publisher: ca-pub-3780093322926832
 // GA4: G-205F26ETCC
 // GTM: GTM-PFVCPFJJ
@@ -475,16 +473,14 @@ Ruta pública: `/terms`
 
 ---
 
-## 8. Blog — Solo feed Blogger (Noticias)
+## 8. Noticias (sección #news-section)
 
-**Blogger externo:** ID `4932034987684289893` · `https://codehub-labs.blogspot.com`
-- Feed JSONP: `https://codehub-labs.blogspot.com/feeds/posts/default?alt=json-in-script&max-results=6&callback=_bloggerCallback`
-- Se usa en `index.html` → sección `#news-section` (JSONP `_bloggerCallback`).
+Feed RSS de BBC Mundo renderizado en `index.html`. Originalmente consumía Blogger RSS.
+Clases CSS usan el prefijo `.blogger-*` por convención heredada.
 
-> 🗑️ **Blog estático ELIMINADO (Agosto 2026):** `pages/blog.html`, `blog/`,
-> `js/admin-blog-static.js` y el tab "Blog" de admin-hub fueron removidos por
-> completo. La sección frontal fue reemplazada por `#news-section` (feed de Blogger).
-> `autoposter/` sigue disponible para generar posts para ese feed.
+> 🗑️ **Blog estático y autoposter ELIMINADOS (Agosto 2026):** `pages/blog.html`, `blog/`,
+> `js/admin-blog-static.js`, `autoposter/` y `autoposter-workflow.yml` fueron removidos.
+> La sección frontal fue reemplazada por `#news-section` (feed RSS de BBC Mundo).
 
 ---
 
@@ -520,7 +516,6 @@ Ruta pública: `/terms`
 | beforeunload molesto removido | ✅ Removido | index.html |
 | Contenido no apto (apps premium) | ✅ Removido | pages/novedades.html eliminado |
 | Modalidad de anuncios | ✅ Auto ads | Sin unidades manuales; solo script en <head> |
-| Blog con artículos reales | ⏳ Pendiente publicar | codehub-labs.blogspot.com |
 | Solicitar revisión en AdSense | ⏳ Pendiente | Panel AdSense |
 
 **Publisher ID:** `ca-pub-3780093322926832`
