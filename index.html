@@ -5706,14 +5706,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── INSTALAR APK ──────────────────────────────────────────
+  const BACKEND_URL = 'https://codehub-98s6.onrender.com';
+
   async function getAPKUrl() {
+    try {
+      const res = await fetch(BACKEND_URL + '/api/download/app-release-signed.apk', { method: 'GET', redirect: 'follow' });
+      if (res.redirected && res.url && !res.url.includes('/api/')) return res.url;
+      if (res.ok && res.url && !res.url.includes('/api/')) return res.url;
+    } catch {}
     try {
       const r = await fetch('/apk-download.json?' + Date.now());
       if (r.ok) { const d = await r.json(); if (d.url) return d.url; }
-    } catch {}
-    try {
-      const res = await fetch('/api/download/app-release-signed.apk', { method: 'HEAD', redirect: 'follow' });
-      if (res.ok && res.url && !res.url.includes('/api/')) return res.url;
     } catch {}
     return null;
   }
