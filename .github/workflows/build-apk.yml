@@ -80,7 +80,7 @@ jobs:
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
       - name: Auth Google Cloud
-        if: secrets.FIREBASE_SERVICE_ACCOUNT != ''
+        id: auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -88,9 +88,11 @@ jobs:
       - name: Upload APK to Firebase Storage
         if: steps.auth.outcome == 'success'
         run: |
-          gcloud storage cp apk/android/app-release-signed.apk \
-            gs://codehub-8829d.firebasestorage.app/releases/app-release-signed.apk \
-            --project=codehub-8829d
+          npm install -g firebase-tools
+          firebase storage:upload apk/android/app-release-signed.apk \
+            releases/app-release-signed.apk \
+            --project=codehub-8829d \
+            --token "${{ steps.auth.outputs.access_token }}"
           echo "✅ APK uploaded to Firebase Storage"
 
       - name: Create Release
