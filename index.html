@@ -4072,89 +4072,178 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         message: effectiveText + deepSearchContext,
         sessionId: SESSION_ID
       };
-      // Adjunto: imagen suelta → "image"; PDF con texto → "pdfText";
-      // PDF escaneado → "images" (páginas renderizadas para Gemini Vision).
       if (attachment) {
         if (attachment.type === 'image') body.image = attachment.base64;
         else if (attachment.scanned) body.images = attachment.images;
-        else {
-          body.pdfText = attachment.pdfText;
-          // Activa la skill PDF IA en el backend: inyecta su guía en el prompt
-          // para que EMI use SOLO el documento como contexto.
-          body.skill_id = 'pdf-ia';
-        }
+        else { body.pdfText = attachment.pdfText; body.skill_id = 'pdf-ia'; }
       }
       const _authHeaders = { 'Content-Type': 'application/json' };
       if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
         const _ses = CodeHubAuth.getSession();
         if (_ses && _ses.token) _authHeaders['Authorization'] = 'Bearer ' + _ses.token;
       }
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: _authHeaders,
-        signal: _currentAbort.signal,
-        body: JSON.stringify(body)
-      });
-      _currentAbort = null;
 
-      const data = await res.json();
+      const useStream = !attachment;
+      const apiEndpoint = useStream ? (BACKEND_URL + '/api/chat/stream') : API_URL;
 
-      if (!res.ok) {
-        if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
-          const _msg = data.used >= 30
-            ? '⚠️ Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
-            : '⚠️ Límite diario alcanzado (' + data.limit + ' mensajes). Espera mañana o inicia sesión.';
-          typingEl.remove();
-          addMsg('ai', _msg);
-          return;
+      if (useStream) {
+        // ── SSE Streaming ──
+        const res = await fetch(apiEndpoint, {
+          method: 'POST', headers: _authHeaders,
+          signal: _currentAbort.signal, body: JSON.stringify(body)
+        });
+        _currentAbort = null;
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
+            typingEl.remove();
+            addMsg('ai', data.used >= 30
+              ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
+              : 'Límite diario alcanzado (' + data.limit + ' mensajes). Espera mañana o inicia sesión.');
+            return;
+          }
+          throw new Error(data.error || 'HTTP ' + res.status);
         }
-        throw new Error(data.error || 'HTTP ' + res.status);
-      }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let streamBuf = '';
+        let streamReply = '';
+        let streamChunk = '';
+        let firstChunk = true;
+        let streamDone = false;
+        let streamData = {};
+        const codeHintSSE = /```|`[^`]+`|\*\*|^- |^\d+\. /;
 
-      typingEl.remove();
-      const replyText = data.reply || '¡Respuesta recibida!';
-      const searchMatch = replyText.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
-      const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
-
-      if (cleanReply.replace(/<[^>]*>/g,'').trim()) {
-        // Show remaining EMI usage
-        if (data.emi) {
-          const _remaining = data.emi.limit - data.emi.used;
-          if (_remaining <= 3 && _remaining > 0) {
-            addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
+        while (!streamDone) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          streamBuf += decoder.decode(value, { stream: true });
+          const lines = streamBuf.split('\n');
+          streamBuf = lines.pop() || '';
+          for (const line of lines) {
+            if (line.startsWith('event: done')) { streamDone = true; continue; }
+            if (line.startsWith('event: error')) { /* next data line has error */ continue; }
+            if (line.startsWith('event: chunk')) continue;
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              if (parsed.error) throw new Error(parsed.error);
+              if (parsed.text) {
+                streamChunk += parsed.text;
+                streamReply += parsed.text;
+                if (firstChunk) {
+                  firstChunk = false;
+                  typingEl.remove();
+                  const cleanInit = formatAIReply(streamChunk);
+                  window._lastStreamWrap = addMsg('ai', cleanInit + '<span class="ai-cursor-blink">▌</span>');
+                } else {
+                  const msgContent = window._lastStreamWrap.querySelector('.ai-msg-content');
+                  if (msgContent) {
+                    if (codeHintSSE.test(streamChunk)) {
+                      msgContent.innerHTML = formatAIReply(streamChunk) + '<span class="ai-cursor-blink">▌</span>';
+                    } else {
+                      msgContent.innerHTML += streamChunk.includes('\n')
+                        ? formatAIReply(streamChunk.slice(streamChunk.lastIndexOf('\n') + 1)) + '<span class="ai-cursor-blink">▌</span>'
+                        : '';
+                      if (!msgContent.innerHTML.includes('ai-cursor-blink')) {
+                        msgContent.innerHTML = formatAIReply(streamReply) + '<span class="ai-cursor-blink">▌</span>';
+                      }
+                    }
+                  }
+                }
+                scrollMsgs();
+              }
+              if (parsed.usage || parsed.emi) streamData = parsed;
+            } catch {}
           }
         }
-        const msgWrap = addMsg('ai', cleanReply);
-        // ── Agregar resultados de búsqueda profunda ──
-        if (deepSearchResults && deepSearchResults.items.length > 0) {
-          const searchHtml = DeepSearch.formatResults(deepSearchResults);
-          if (searchHtml) {
-            const searchEl = document.createElement('div');
-            searchEl.className = 'deep-search-wrap';
-            searchEl.innerHTML = searchHtml;
-            msgWrap.querySelector('.ai-msg-content').appendChild(searchEl);
-          }
-        }
-        // ── Agregar botones de descarga Office ──
-        if (typeof OfficeGen !== 'undefined') {
-          const plainText = cleanReply.replace(/<[^>]+>/g, '');
-          if (plainText.length > 80) {
-            const dlBar = OfficeGen.createDownloadBar(_extractTitleFromReply(plainText), plainText);
-            msgWrap.querySelector('.ai-msg-content').appendChild(dlBar);
-          }
-        }
-      }
-      if (searchMatch || shouldSearch) {
-        const query = searchMatch ? searchMatch[1].trim() : effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
-        setTimeout(() => addSearchResults(query), 200);
-      }
 
-      history.push({ role: 'assistant', content: replyText });
-      persistChat();
+        typingEl.remove();
+        if (window._lastStreamWrap) {
+          const mc = window._lastStreamWrap.querySelector('.ai-msg-content');
+          if (mc) mc.innerHTML = formatAIReply(streamReply);
+          // Deep search results
+          if (deepSearchResults && deepSearchResults.items.length > 0) {
+            const searchHtml = DeepSearch.formatResults(deepSearchResults);
+            if (searchHtml) {
+              const searchEl = document.createElement('div');
+              searchEl.className = 'deep-search-wrap';
+              searchEl.innerHTML = searchHtml;
+              mc.appendChild(searchEl);
+            }
+          }
+          // Office export
+          if (typeof OfficeGen !== 'undefined' && streamReply.length > 80) {
+            const dlBar = OfficeGen.createDownloadBar(_extractTitleFromReply(streamReply), streamReply);
+            mc.appendChild(dlBar);
+          }
+          window._lastStreamWrap = null;
+        }
+
+        if (streamData.emi) {
+          const _remaining = streamData.emi.limit - streamData.emi.used;
+          if (_remaining <= 3 && _remaining > 0) addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
+        }
+        history.push({ role: 'assistant', content: streamReply });
+        persistChat();
+
+      } else {
+        // ── Non-streaming (attachments / vision) ──
+        const res = await fetch(apiEndpoint, {
+          method: 'POST', headers: _authHeaders,
+          signal: _currentAbort.signal, body: JSON.stringify(body)
+        });
+        _currentAbort = null;
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
+            typingEl.remove();
+            addMsg('ai', data.used >= 30
+              ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
+              : 'Límite diario alcanzado (' + data.limit + ' mensajes). Espera mañana o inicia sesión.');
+            return;
+          }
+          throw new Error(data.error || 'HTTP ' + res.status);
+        }
+        typingEl.remove();
+        const replyText = data.reply || '¡Respuesta recibida!';
+        const searchMatch = replyText.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
+        const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
+        if (cleanReply.replace(/<[^>]*>/g,'').trim()) {
+          if (data.emi) {
+            const _remaining = data.emi.limit - data.emi.used;
+            if (_remaining <= 3 && _remaining > 0) addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
+          }
+          const msgWrap = addMsg('ai', cleanReply);
+          if (deepSearchResults && deepSearchResults.items.length > 0) {
+            const searchHtml = DeepSearch.formatResults(deepSearchResults);
+            if (searchHtml) {
+              const searchEl = document.createElement('div');
+              searchEl.className = 'deep-search-wrap';
+              searchEl.innerHTML = searchHtml;
+              msgWrap.querySelector('.ai-msg-content').appendChild(searchEl);
+            }
+          }
+          if (typeof OfficeGen !== 'undefined') {
+            const plainText = cleanReply.replace(/<[^>]+>/g, '');
+            if (plainText.length > 80) {
+              const dlBar = OfficeGen.createDownloadBar(_extractTitleFromReply(plainText), plainText);
+              msgWrap.querySelector('.ai-msg-content').appendChild(dlBar);
+            }
+          }
+        }
+        if (searchMatch || shouldSearch) {
+          const query = searchMatch ? searchMatch[1].trim() : effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+          setTimeout(() => addSearchResults(query), 200);
+        }
+        history.push({ role: 'assistant', content: replyText });
+        persistChat();
+      }
 
     } catch (err) {
       typingEl.remove();
       _currentAbort = null;
+      window._lastStreamWrap = null;
       if (err.name === 'AbortError') {
         addMsg('ai', '⏹️ Generación detenida.');
         return;
@@ -4233,6 +4322,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
           <button class="ai-msg-react-btn" data-r="up" onclick="reactMsg(this,'up')" title="Buena respuesta" aria-label="Buena respuesta">👍</button>
           <button class="ai-msg-react-btn" data-r="down" onclick="reactMsg(this,'down')" title="Mala respuesta" aria-label="Mala respuesta">👎</button>
         </div>` : ''}
+        ${!isUser ? `<button class="ai-msg-retry" onclick="retryLastMsg(this)" title="Regenerar respuesta" aria-label="Regenerar respuesta"><i class="fas fa-redo" style="font-size:.6rem"></i> Regenerar</button>` : ''}
         <span class="ai-msg-time">${time}</span>
       </div>`;
     msgs.appendChild(wrap);
@@ -4353,6 +4443,22 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     chip.style.display = 'flex';
   }
 
+  // ── Retry / Regenerar última respuesta ──
+  window.retryLastMsg = function(btn) {
+    if (loading) return;
+    const msgWrap = btn.closest('.ai-msg-wrap');
+    if (msgWrap) msgWrap.remove();
+    // Find the last user message in history and resend it
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === 'user') {
+        input.value = history[i].content;
+        history.splice(i, 1);
+        sendAI();
+        return;
+      }
+    }
+  };
+
   window.copyMsg = function(btn) {
     const msgEl = btn.closest('.ai-msg');
     const text = msgEl.innerText.replace('⎘', '').trim();
@@ -4402,12 +4508,44 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   function formatAIReply(text) {
     // Sanitize HTML first to prevent XSS
     var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Convertir markdown básico a HTML
-    return safe
-      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
+    // Fenced code blocks with language
+    safe = safe.replace(/```(\w*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+      var cls = lang ? ' class="language-' + lang + '"' : '';
+      return '<pre class="ai-code-block"><button class="ai-code-copy" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent).then(function(){this.textContent=\'Copiado!\';var b=this;setTimeout(function(){b.textContent=\'Copiar\';},1500)}.bind(this))" title="Copiar código">Copiar</button><code' + cls + '>' + code.trim() + '</code></pre>';
+    });
+    // Inline code
+    safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    safe = safe.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Strikethrough
+    safe = safe.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    // Headings (###, ##, #)
+    safe = safe.replace(/^### (.+)$/gm, '<h4 class="ai-md-h">$1</h4>');
+    safe = safe.replace(/^## (.+)$/gm, '<h3 class="ai-md-h">$1</h3>');
+    safe = safe.replace(/^# (.+)$/gm, '<h2 class="ai-md-h">$1</h2>');
+    // Unordered lists
+    safe = safe.replace(/^[\-\*] (.+)$/gm, '<li>$1</li>');
+    safe = safe.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="ai-md-list">$1</ul>');
+    // Ordered lists
+    safe = safe.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+    // Markdown links [text](url)
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-md-link">$1</a>');
+    // Bare URLs
+    safe = safe.replace(/(^|[^"=])(https?:\/\/[^\s<]+)/g, function(m, pre, url) {
+      if (pre.includes('href=')) return m;
+      return pre + '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="ai-md-link">' + url + '</a>';
+    });
+    // Horizontal rule
+    safe = safe.replace(/^---+$/gm, '<hr class="ai-md-hr">');
+    // Newlines (but not inside pre blocks)
+    var parts = safe.split(/(<pre[\s\S]*?<\/pre>)/g);
+    safe = parts.map(function(p, i) {
+      if (i % 2 === 1) return p;
+      return p.replace(/\n/g, '<br>');
+    }).join('');
+    return safe;
   }
 
   // Lazy-load document generation libraries on demand (~1.5 MB saved on initial load)

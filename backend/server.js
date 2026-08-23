@@ -4303,3 +4303,232 @@ function startRenderKeepalive() {
   console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
 }
 startRenderKeepalive();
+
+// ── Streaming SSE (Server-Sent Events) ─────────────────────────────────────
+// Endpoint alternativo a /api/chat que devuelve la respuesta token por token.
+// Soporta Groq, Cerebras, HuggingFace, OpenRouter, Mistral, Kimi (OpenAI-compat)
+// y Claude (Anthropic SSE). Cohere y Gemini Vision caen a non-streaming.
+app.post('/api/chat/stream', requireAuth, async (req, res) => {
+  const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
+  if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
+  if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
+  if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
+
+  // ── Imagen/PDF escaneado: fallback a non-streaming (solo Gemini Vision) ──
+  const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
+  if (imgList && imgList.length) {
+    req.url = '/api/chat';
+    return app.handle(req, res);
+  }
+
+  // ── Límite diario server-side ──
+  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
+  const emiUsed = getEmiUsage(emiKey);
+  if (emiUsed >= emiLimit) {
+    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  }
+
+  // ── Recuperar historial ──
+  let sessionHistory = [];
+  if (dbConnected && sessionId !== 'anon') {
+    try {
+      const pastMsgs = await ChatMessage.find({ sessionId }).sort({ createdAt: -1 }).limit(10).lean();
+      sessionHistory = pastMsgs.reverse().map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 800) }));
+    } catch (e) { console.warn('Error recuperando historial:', e.message); }
+  }
+  sessionHistory.push({ role: 'user', content: message.trim() });
+  if (typeof pdfText === 'string' && pdfText.trim()) {
+    sessionHistory.splice(sessionHistory.length - 1, 0, {
+      role: 'user',
+      content: '[Documento adjunto — lee este contenido y responde usando SOLO este documento como referencia, en español]:\n' + pdfText.slice(0, 40000)
+    });
+  }
+
+  let system = SYSTEM;
+  if (skill_id) {
+    const skill = loadSkillJson(String(skill_id));
+    if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
+  }
+  const msgs = [{ role: 'system', content: system }, ...sessionHistory];
+
+  // ── Setup SSE headers ──
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  const upstreamAbort = new AbortController();
+  req.on('close', () => upstreamAbort.abort());
+
+  let replied = false;
+  let fullReply = '';
+  let usage = { input: 0, output: 0 };
+  let modelName = '';
+
+  function sendSSE(evt, data) {
+    if (res.destroyed) return;
+    res.write('event: ' + evt + '\ndata: ' + JSON.stringify(data) + '\n\n');
+  }
+
+  async function tryStream(name, endpoint, headers, body) {
+    const r = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: upstreamAbort.signal });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      const err = new Error(e.error?.message || name + ' ' + r.status);
+      err.status = r.status;
+      throw err;
+    }
+    return r;
+  }
+
+  async function consumeOpenAIStream(resp, onChunk) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') return;
+        try {
+          const d = JSON.parse(payload);
+          const delta = d.choices?.[0]?.delta?.content;
+          if (delta) onChunk(delta);
+          if (d.usage) { usage.input = d.usage.prompt_tokens || 0; usage.output = d.usage.completion_tokens || 0; }
+        } catch {}
+      }
+    }
+  }
+
+  async function consumeClaudeStream(resp, onChunk) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() || '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.type === 'content_block_delta' && d.delta?.text) onChunk(d.delta.text);
+          if (d.type === 'message_delta' && d.usage) usage.output = d.usage.output_tokens || 0;
+          if (d.type === 'message_start' && d.message?.usage) usage.input = d.message.usage.input_tokens || 0;
+        } catch {}
+      }
+    }
+  }
+
+  try {
+    const order = classifyRoute(msgs);
+
+    // ── Claude streaming ──
+    if (!replied && order[0] === 'Claude' && process.env.ANTHROPIC_API_KEY) {
+      try {
+        const sysMsg = msgs.find(m => m.role === 'system');
+        const chatMsgs = msgs.filter(m => m.role !== 'system');
+        const body = {
+          model: 'claude-sonnet-4-5', max_tokens: 1024, temperature: 0.65,
+          system: sysMsg?.content || '',
+          messages: chatMsgs.map(m => ({ role: m.role, content: m.content })),
+          stream: true
+        };
+        const r = await tryStream('Claude', 'https://api.anthropic.com/v1/messages', {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        }, body);
+        modelName = 'anthropic/claude-sonnet';
+        replied = true;
+        await consumeClaudeStream(r, (chunk) => { fullReply += chunk; sendSSE('chunk', { text: chunk }); });
+      } catch (e) {
+        console.warn('Claude streaming fallo, intentando siguiente...');
+      }
+    }
+
+    // ── OpenAI-compatible streaming providers ──
+    if (!replied) {
+      const oaiProviders = [
+        { name: 'Kimi', endpoint: 'https://api.moonshot.ai/v1/chat/completions', key: process.env.KIMI_API_KEY, model: 'kimi-k2-0905-preview', label: 'moonshot/kimi-k2' },
+        { name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile', label: 'groq/llama-3.3-70b' },
+        { name: 'Cerebras', endpoint: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: 'llama-3.3-70b', label: 'cerebras/llama-3.3-70b' },
+        { name: 'HuggingFace', endpoint: 'https://router.huggingface.co/v1/chat/completions', key: process.env.HUGGINGFACE_API_KEY, model: 'meta-llama/Llama-3.3-70B-Instruct:novita', label: 'huggingface/llama-3.3-70b' },
+        { name: 'Mistral', endpoint: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-small-latest', label: 'mistral/mistral-small' },
+      ];
+      if (process.env.OPENROUTER_API_KEY) {
+        for (const m of OR_FREE_MODELS) {
+          oaiProviders.push({
+            name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+            key: process.env.OPENROUTER_API_KEY, model: m,
+            label: 'openrouter/' + m.split('/').pop().replace(':free', ''),
+            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'EMI COPILOT' }
+          });
+        }
+      }
+      const ordered = order.filter(n => n !== 'Claude' && n !== 'Gemini' && n !== 'Cohere');
+      const sorted = [...ordered.map(n => oaiProviders.find(p => p.name === n)), ...oaiProviders.filter(p => !ordered.includes(p.name))].filter(Boolean);
+
+      for (const prov of sorted) {
+        if (!prov.key || upstreamAbort.signal.aborted) continue;
+        try {
+          const body = { model: prov.model, max_tokens: 800, temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
+          const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + prov.key, ...prov.extraHeaders };
+          const r = await tryStream(prov.name, prov.endpoint, headers, body);
+          modelName = prov.label;
+          replied = true;
+          await consumeOpenAIStream(r, (chunk) => { fullReply += chunk; sendSSE('chunk', { text: chunk }); });
+          console.log('Streaming via ' + prov.name + ' (' + prov.model + ')');
+          break;
+        } catch (e) {
+          if (e.status === 401 || e.status === 429) { console.warn(prov.name + ': ' + e.status); continue; }
+          console.warn(prov.name + ' streaming fallo: ' + e.message);
+        }
+      }
+    }
+
+    // ── Gemini / Cohere fallback: non-streaming ──
+    if (!replied) {
+      try {
+        const result = await callAI(msgs);
+        fullReply = result.reply;
+        usage = { input: result.input, output: result.output };
+        modelName = result.model;
+        replied = true;
+        sendSSE('chunk', { text: fullReply });
+      } catch (e) {
+        sendSSE('error', { error: 'Todos los proveedores de IA fallaron.' });
+        res.end();
+        return;
+      }
+    }
+
+    // ── Finalizar: persistir, side effects, done ──
+    if (dbConnected) ChatMessage.insertMany([
+      { sessionId, role: 'user', content: message.trim(), tokens: usage.input, model: modelName },
+      { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
+    ]).catch(() => {});
+
+    const emiNow = incrEmiUsage(emiKey);
+    broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
+    trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
+    tgAlert('chat', () => 'Chat con EMI (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
+
+    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
+    res.end();
+
+  } catch (err) {
+    console.error('Stream endpoint error:', err.message);
+    sendSSE('error', { error: 'Error interno.' });
+    res.end();
+  }
+});
