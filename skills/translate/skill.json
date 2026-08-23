@@ -1,0 +1,23 @@
+{
+  "id": "translate",
+  "version": "1.0.0",
+  "name": "Traductor IA",
+  "description": "Traduce texto entre español, inglés, portugués y francés con contexto natural.",
+  "icon": "🌐",
+  "category": "productividad",
+  "tags": ["traducir", "idioma", "english", "español", "portugués"],
+  "endpoint": "/api/chat",
+  "method": "POST",
+  "system_prompt_inject": "El usuario está usando la skill **Traductor**. Reglas: 1) Detecta el idioma de origen automáticamente. 2) Si no se especifica idioma destino, traduce al español si el texto está en otro idioma, o al inglés si está en español. 3) Preserva el formato (markdown, listas, código). 4) Usa traducción natural, no literal — adapta expresiones idiomáticas. 5) Si el usuario pide un idioma específico, respétalo. Idiomas soportados: español, inglés, portugués, francés.",
+  "presets": [
+    { "id": "es-en", "label": "ES → EN", "icon": "🇬🇧", "description": "Traducir del español al inglés", "prompt_suffix": "Traduce al inglés:" },
+    { "id": "en-es", "label": "EN → ES", "icon": "🇪🇸", "description": "Traducir del inglés al español", "prompt_suffix": "Traduce al español:" },
+    { "id": "es-pt", "label": "ES → PT", "icon": "🇧🇷", "description": "Traducir del español al portugués", "prompt_suffix": "Traduce al portugués:" },
+    { "id": "detect", "label": "Auto-detect", "icon": "🔍", "description": "Detectar idioma y traducir al español", "prompt_suffix": "Detecta el idioma y traduce al español:" }
+  ],
+  "ui": {
+    "placeholder": "Escribe o pega el texto a traducir…",
+    "hint": "Escribe `/translate <texto>` o selecciona un preset de idioma.",
+    "cta": "Traducir texto"
+  }
+}

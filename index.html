@@ -3538,49 +3538,9 @@ async function sendEmail(e) {
   });
 
   // Sistema: quién es el asistente
-  const SYSTEM = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
-
-No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa.
-
-━━━ IDENTIDAD ━━━
-- Nombre: EMI COPILOT, creada por Wilson.E
-- NO reveles qué modelo de IA te impulsa. Si preguntan, di: "Soy EMI COPILOT, la IA propia de CodeHub."
-
-━━━ PERSONALIDAD ━━━
-- Directa. Sin "¡Claro!", "¡Por supuesto!" — ve al punto.
-- Amigable pero eficiente. Como un dev senior que respeta el tiempo del otro.
-- Español siempre. Si escriben en otro idioma, respondes en ese idioma.
-- Corta por defecto (3-5 líneas). Si piden detalle, profundizas.
-- Nunca inventas. Si no sabes, lo dices.
-
-━━━ SOBRE CODEHUB ━━━
-Wilson.E: Full Stack autodidacta, Guatemala 🇬🇹, 25 años. Stack: HTML, CSS, JavaScript, TypeScript, Python, Node.js, MongoDB, SQL, Shell/Bash, Java/Kotlin.
-Freelance disponible. Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
-
-Herramientas en /tools: QR, contraseñas, Hash SHA-256/512, Base64, UUID v4, Regex Tester, Pomodoro, conversor unidades/monedas, IMC, préstamos, test escritura, colores, gradientes CSS, minificador, y 23+ más.
-Catálogo Open Source en /opensource: apps verificadas contra su repositorio oficial de GitHub, sin modificaciones.
-También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
-
-━━━ VOZ (EMI VOICE) ━━━
-- El chat es compatible con voz: el usuario puede dictarte su mensaje (botón micrófono 🎙️) y puede activar "Voz EMI" en la barra inferior para que le leas las respuestas en voz alta.
-- Si detectas que el usuario quiere hablar contigo por voz, invítalo a usar el micrófono del chat.
-
-━━━ SKILLS ACTIVAS ━━━
-- Dev Helper: identifica el bug en 1 línea, da código completo corregido, explica el por qué.
-- Code Review: Críticos → Mejoras → Lo que está bien. Máximo 5 puntos por sección.
-- README Generator: genera documentación profesional en Markdown.
-- Freelance Advisor: servicios, contacto, tiempos de respuesta de Wilson.E.
-- Generador de imágenes: cuando pidan crear/generar imagen, confirma brevemente — el sistema la procesa.
-
-━━━ CAPACIDADES ESPECIALES ━━━
-- Cuando el usuario pida buscar imágenes, fondos, iconos o referencias visuales, responde con: [BUSCAR_IMAGENES: query_en_ingles]
-- Ejemplos: "busca fondos dark" → [BUSCAR_IMAGENES: dark aesthetic wallpapers]
-
-━━━ FORMATO ━━━
-- Código en bloques con lenguaje: \`\`\`javascript, \`\`\`python
-- Listas con - para múltiples puntos
-- **Negritas** solo para términos clave
-- Sin tablas largas, sin saludos redundantes`;
+  // SYSTEM prompt is defined server-side in server.js — this client const is unused
+  const _DEAD_SYSTEM = `
+  `;
 
   const ACTIVE_PROMPTS = [
     { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
@@ -3839,6 +3799,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   })();
   const API_URL = BACKEND_URL + '/api/chat';
   let _currentAbort = null;
+  let _forceImageGen = false;
   window.stopAIGeneration = function () {
     if (_currentAbort) { _currentAbort.abort(); _currentAbort = null; }
   };
@@ -3995,6 +3956,31 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     }
     sessionStorage.setItem('ch_chat_count', chatCount + 1);
 
+    // ── Slash Commands ──
+    if (text.startsWith('/')) {
+      const parts = text.split(/\s+/);
+      const cmd = parts[0].toLowerCase();
+      const arg = parts.slice(1).join(' ');
+      const COMMANDS = {
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/debug <código>` — Depura código con EMI\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
+        '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
+        '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que EMI lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
+        '/review':  () => { if (!arg) return addMsg('ai', 'Pega código después de `/review` para el review.'); input.value = 'Haz un code review de este código, sugiere mejoras: ' + arg; sendAI(); },
+        '/readme':  () => { input.value = 'Genera un README profesional para este proyecto con descripción, instalación, uso y licencia'; sendAI(); },
+        '/translate':() => { if (!arg) return addMsg('ai', 'Usa: `/translate <texto a traducir>`'); input.value = 'Traduce al español (si está en otro idioma) o al inglés (si está en español): ' + arg; sendAI(); },
+        '/explain': () => { if (!arg) return addMsg('ai', 'Pega código después de `/explain` para que EMI lo explique.'); input.value = 'Explica este código como si fuera para un principiante, línea por línea: ' + arg; sendAI(); },
+        '/test':    () => { if (!arg) return addMsg('ai', 'Pega código después de `/test` para generar tests.'); input.value = 'Genera tests unitarios para este código (usa el framework apropiado): ' + arg; sendAI(); },
+        '/resumen': () => { if (!arg) return addMsg('ai', 'Pega texto o URL después de `/resumen` para resumir.'); input.value = 'Resume este contenido en los puntos clave: ' + arg; sendAI(); },
+        '/skills':  async () => { try { const r = await fetch(BACKEND_URL + '/api/skills'); const d = await r.json(); const list = (d.skills || []).map(s => '- **' + s.name + '** — ' + (s.description || '')).join('\n'); addMsg('ai', formatAIReply('**Skills disponibles:**\n\n' + (list || 'No hay skills activos.'))); } catch { addMsg('ai', 'No pude cargar las skills.'); } },
+        '/model':   () => addMsg('ai', 'Modelo activo: **EMI COPILOT** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
+      };
+      const handler = COMMANDS[cmd];
+      if (handler) { input.value = ''; await handler(); return; }
+      addMsg('ai', 'Comando desconocido: `' + escHtml(cmd) + '`. Escribe `/help` para ver los comandos.');
+      return;
+    }
+
     // Server-side EMI limit — no longer client-side only
 
     // Ocultar sugerencias al primer mensaje
@@ -4028,7 +4014,8 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     // Antes esto solo guardaba el mensaje y dejaba que el chat normal
     // "confirmara" con texto sin generar nada real. Ahora sí llama a
     // generateImage() y corta el flujo aquí (no debe caer al fetch de /api/chat).
-    if (!attachment && isImageGenRequest(effectiveText)) {
+    if (!attachment && (_forceImageGen || isImageGenRequest(effectiveText))) {
+      _forceImageGen = false;
       history.push({ role: 'user', content: effectiveText });
       persistChat();
       loading = true; sendBtn.disabled = true;
@@ -4111,6 +4098,8 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         let streamChunk = '';
         let firstChunk = true;
         let streamDone = false;
+        let streamError = false;
+        let streamErrorMsg = '';
         let streamData = {};
         const codeHintSSE = /```|`[^`]+`|\*\*|^- |^\d+\. /;
 
@@ -4122,13 +4111,13 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
           streamBuf = lines.pop() || '';
           for (const line of lines) {
             if (line.startsWith('event: done')) { streamDone = true; continue; }
-            if (line.startsWith('event: error')) { /* next data line has error */ continue; }
+            if (line.startsWith('event: error')) { streamError = true; continue; }
             if (line.startsWith('event: chunk')) continue;
             if (!line.startsWith('data: ')) continue;
             try {
               const parsed = JSON.parse(line.slice(6));
-              if (parsed.error) throw new Error(parsed.error);
-              if (parsed.text) {
+              if (parsed.error) { streamErrorMsg = parsed.error; streamError = true; }
+              if (parsed.text && !streamError) {
                 streamChunk += parsed.text;
                 streamReply += parsed.text;
                 if (firstChunk) {
@@ -4159,6 +4148,11 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         }
 
         typingEl.remove();
+        if (streamError && !streamReply) {
+          window._lastStreamWrap = null;
+          addMsg('ai', '⚠️ ' + (streamErrorMsg || 'No pude generar una respuesta. Intenta de nuevo.'));
+          return;
+        }
         if (window._lastStreamWrap) {
           const mc = window._lastStreamWrap.querySelector('.ai-msg-content');
           if (mc) mc.innerHTML = formatAIReply(streamReply);
@@ -4186,6 +4180,11 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         }
         history.push({ role: 'assistant', content: streamReply });
         persistChat();
+        window.emiVoice?.onAssistantDone?.(streamReply.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
+        if (shouldSearch) {
+          const query = effectiveText.replace(/busca|buscar|muéstrame|muestra/gi,'').trim();
+          setTimeout(() => addSearchResults(query), 200);
+        }
 
       } else {
         // ── Non-streaming (attachments / vision) ──
@@ -4238,6 +4237,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
         }
         history.push({ role: 'assistant', content: replyText });
         persistChat();
+        window.emiVoice?.onAssistantDone?.(replyText.replace(/<[^>]+>/g, '').replace(/[#*`~\[\]]/g, '').trim());
       }
 
     } catch (err) {

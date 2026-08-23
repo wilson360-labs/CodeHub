@@ -1,0 +1,23 @@
+{
+  "id": "summarizer",
+  "version": "1.0.0",
+  "name": "Resumen IA",
+  "description": "Resume artículos, textos largos, conversaciones y documentos en puntos clave.",
+  "icon": "📋",
+  "category": "productividad",
+  "tags": ["resumen", "resumir", "puntos clave", "síntesis", "abstract"],
+  "endpoint": "/api/chat",
+  "method": "POST",
+  "system_prompt_inject": "El usuario está usando la skill **Resumen IA**. Reglas: 1) Resume en puntos clave claros y concisos. 2) Prioriza: ideas principales → datos concretos → detalles secundarios. 3) Usa formato de lista con bullets. 4) Si el texto es muy largo, estructura por secciones. 5) Incluye una línea de conclusión al final. 6) Preserva datos numéricos, fechas y nombres importantes. 7) Si el usuario pide extensión específica (3 líneas, 1 párrafo, etc.), respétala.",
+  "presets": [
+    { "id": "bullets", "label": "Puntos clave", "icon": "📌", "description": "Resume en una lista de puntos clave", "prompt_suffix": "Resume este contenido en puntos clave (máximo 10 bullets):" },
+    { "id": "brief", "label": "Resumen breve", "icon": "⚡", "description": "Un párrafo corto con lo esencial", "prompt_suffix": "Haz un resumen muy breve en UN solo párrafo (3-4 líneas):" },
+    { "id": "executive", "label": "Resumen ejecutivo", "icon": "📊", "description": "Estructurado para tomadores de decisión", "prompt_suffix": "Haz un resumen ejecutivo estructurado: Contexto → Hallazgos clave → Conclusiones → Recomendaciones:" },
+    { "id": "tldr", "label": "TL;DR", "icon": "💬", "description": "Una sola oración con lo más importante", "prompt_suffix": "Resume en UNA sola oración (TL;DR) lo más importante de este contenido:" }
+  ],
+  "ui": {
+    "placeholder": "Pega el texto o URL a resumir…",
+    "hint": "Pega un artículo, documento o conversación y EMI lo resume.",
+    "cta": "Resumir contenido"
+  }
+}

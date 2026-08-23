@@ -60,14 +60,12 @@
     micRipple.className = 'emi-mic-ripple';
     micBtn.appendChild(micRipple);
 
-    /* Mostrar tooltip si no hay soporte */
+    /* Mostrar tooltip si no hay soporte STT */
     if (!HAS_RECOGNITION) {
       micBtn.title = 'Tu navegador no soporta voz. Prueba un navegador moderno.';
       micBtn.classList.add('emi-mic-unsupported');
-      micBtn.onclick = () => showVoiceToast('⚠️ Tu navegador no soporta reconocimiento de voz. Usa un navegador moderno.', 'warn');
-      return;
-    }
-
+      micBtn.onclick = () => showVoiceToast('Tu navegador no soporta reconocimiento de voz. Usa un navegador moderno.', 'warn');
+    } else {
     /* Configurar SpeechRecognition */
     state.recognition = new SR();
     const rec = state.recognition;
@@ -123,8 +121,9 @@
     rec.onend = () => {
       stopListening();
     };
+    } // end HAS_RECOGNITION else
 
-    /* ── Botón de auto-speak ── */
+    /* ── Botón de auto-speak (siempre, incluso sin STT) ── */
     injectAutoSpeakToggle();
 
     /* ── Exponer en window para uso externo ── */
@@ -316,6 +315,9 @@
     setLang(lang) {
       state.lang = lang;
       if (state.recognition) state.recognition.lang = lang;
+    },
+    onAssistantDone(text) {
+      if (state.autoSpeak && text) speak(text);
     },
   };
 

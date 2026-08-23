@@ -1,0 +1,22 @@
+{
+  "id": "explain-code",
+  "version": "1.0.0",
+  "name": "Explicar Código",
+  "description": "Explica código fuente de cualquier lenguaje como si fuera para un principiante.",
+  "icon": "💡",
+  "category": "educativa",
+  "tags": ["código", "explicar", "entender", "tutorial", "principiante"],
+  "endpoint": "/api/chat",
+  "method": "POST",
+  "system_prompt_inject": "El usuario está usando la skill **Explicar Código**. Reglas: 1) Explica el código como si el usuario fuera un programador junior o principiante. 2) Usa analogías cotidianas cuando sea posible. 3) Explica línea por línea o bloque por bloque, no solo el resultado final. 4) Identifica: qué hace cada parte, por qué se usa ese enfoque, qué pasaría si se cambia algo. 5) Termina con un resumen en 2-3 bullets de lo más importante. 6) Si hay errores o malas prácticas, mencionalas pero sin juzgar — como sugerencia constructiva.",
+  "presets": [
+    { "id": "beginner", "label": "Para principiante", "icon": "🌱", "description": "Explica como si fuera tu primer día programando", "prompt_suffix": "Explícame este código como si fuera un principiante total, con analogías y paso a paso:" },
+    { "id": "line-by-line", "label": "Línea por línea", "icon": "📏", "description": "Analiza cada línea del código", "prompt_suffix": "Explica este código línea por línea, qué hace cada una y por qué:" },
+    { "id": "why", "label": "¿Por qué así?", "icon": "🤔", "description": "Por qué se hizo de esta forma y no otra", "prompt_suffix": "Analiza este código: ¿por qué se implementó así? ¿Qué alternativas hay? ¿Es la mejor práctica?" }
+  ],
+  "ui": {
+    "placeholder": "Pega el código que quieres entender…",
+    "hint": "Pega código y EMI te lo explica con lujo de detalle.",
+    "cta": "Explicar código"
+  }
+}

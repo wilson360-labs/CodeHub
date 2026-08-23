@@ -1,0 +1,22 @@
+{
+  "id": "test-writer",
+  "version": "1.0.0",
+  "name": "Generador de Tests",
+  "description": "Genera tests unitarios automatizados para código fuente en cualquier framework.",
+  "icon": "🧪",
+  "category": "educativa",
+  "tags": ["tests", "unitarios", "jest", "pytest", "vitest", "automatizar"],
+  "endpoint": "/api/chat",
+  "method": "POST",
+  "system_prompt_inject": "El usuario está usando la skill **Generador de Tests**. Reglas: 1) Detecta el lenguaje de programación y framework automáticamente. 2) Genera tests unitarios completos con casos happy-path, edge-cases y casos de error. 3) Usa el framework apropiado: Jest/Vitest para JS/TS, pytest para Python, JUnit para Java, etc. 4) Incluye describe/bloque, beforeEach si es necesario, y assertions claras. 5) Si el código tiene dependencias externas, sugiere mocking. 6) Termina con instrucciones para ejecutar los tests.",
+  "presets": [
+    { "id": "unit", "label": "Tests unitarios", "icon": "🔬", "description": "Genera tests unitarios completos", "prompt_suffix": "Genera tests unitarios completos para este código, incluyendo casos edge:" },
+    { "id": "edge", "label": "Edge cases", "icon": "⚡", "description": "Enfócate en casos extremos y de error", "prompt_suffix": "Genera tests enfocados en edge cases, valores null, vacíos, límites y errores:" },
+    { "id": "integration", "label": "Tests integración", "icon": "🔗", "description": "Tests que prueban flujo completo", "prompt_suffix": "Genera tests de integración que prueben el flujo completo de este código:" }
+  ],
+  "ui": {
+    "placeholder": "Pega el código para generar tests…",
+    "hint": "Pega una función/clase y EMI genera los tests.",
+    "cta": "Generar tests"
+  }
+}

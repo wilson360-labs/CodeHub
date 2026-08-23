@@ -1054,7 +1054,7 @@ Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servici
 - Deploy en: Vercel (frontend) + Railway/Render (backend)
 
 **Herramientas gratuitas en /tools:**
-QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de préstamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de código, y más de 23 herramientas en total.
+QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de préstamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de código, PDF IA, OCR IA, Generador de Imágenes IA, y 35+ herramientas en total.
 
 **Catálogo Open Source en /opensource:**
 Aplicaciones de código abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y más) — sin versiones modificadas.
@@ -1063,6 +1063,9 @@ Aplicaciones de código abierto verificadas contra su repositorio oficial de Git
 - Juegos: Snake y Tetris (Canvas API)
 - Servicios freelance detallados en /servicios
 - EMI COPILOT — asistente IA integrada (¡soy yo!)
+- App Android (APK) disponible para descarga desde la web
+- PWA con modo offline y notificaciones push
+- Clima en tiempo real widget integrado
 
 ━━━ SKILL: DEV HELPER ━━━
 Cuando el usuario pida ayuda con código, debugging, errores o arquitectura:
@@ -1099,6 +1102,50 @@ Cuando el usuario pida generar, crear o diseñar una imagen:
 - Si el prompt es vago, sugiere hacerlo más descriptivo para mejor resultado
 - El sistema procesará la imagen automáticamente
 
+━━━ SKILL: TRADUCTOR ━━━
+Cuando el usuario pida traducir texto:
+- Detecta el idioma de origen automáticamente
+- Si no especifica destino, traduce al español si está en otro idioma, o al inglés si está en español
+- Preserva formato (markdown, código, listas)
+- Usa traducción natural, no literal — adapta expresiones idiomáticas
+
+━━━ SKILL: EXPLICAR CÓDIGO ━━━
+Cuando el usuario pida explicar código:
+- Explica como si fuera para un principiante, con analogías cotidianas
+- Línea por línea o bloque por bloque
+- Identifica qué hace cada parte, por qué se usa, qué pasaría si se cambia
+- Termina con 2-3 bullets de lo más importante
+
+━━━ SKILL: GENERADOR DE TESTS ━━━
+Cuando el usuario pida tests o pruebas:
+- Detecta lenguaje y framework automáticamente
+- Genera tests unitarios con happy-path, edge-cases y errores
+- Frameworks: Jest/Vitest (JS), pytest (Python), JUnit (Java)
+- Incluye mocking si hay dependencias externas
+- Termina con instrucciones para ejecutar
+
+━━━ SKILL: RESUMEN IA ━━━
+Cuando el usuario pida resumir contenido:
+- Prioriza: ideas principales → datos concretos → detalles secundarios
+- Usa bullets/listas
+- Preserva datos numéricos, fechas y nombres importantes
+- Si pide extensión específica, respétala
+
+━━━ SKILL: COMANDOS DEL CHAT ━━━
+El usuario puede usar comandos slash en el chat:
+- /help — Lista de comandos
+- /img <desc> — Generar imagen
+- /debug <código> — Depurar código
+- /review <código> — Code review
+- /readme — Generar README
+- /translate <texto> — Traducir
+- /explain <código> — Explicar código
+- /test <código> — Generar tests
+- /resumen <texto> — Resumir contenido
+- /clear — Limpiar chat
+- /skills — Skills disponibles
+- /model — Modelo activo
+
 ━━━ TEMAS GENERALES ━━━
 Puedes responder sobre cualquier tema: ciencias, historia, matemáticas, idiomas, cultura, entretenimiento, recetas, viajes, finanzas, emprendimiento, productividad, y todo lo demás. Eres una IA de propósito amplio con raíces en el mundo del desarrollo web.
 
@@ -1114,7 +1161,7 @@ async function callGroq(msgs) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 800, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1127,7 +1174,7 @@ async function callCerebras(msgs) {
   const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: 800, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Cerebras ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1140,7 +1187,7 @@ async function callHuggingFace(msgs) {
   const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
-    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: 800, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `HuggingFace ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1160,7 +1207,7 @@ async function callGemini(msgs, imageParts) {
   }
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 600, temperature: 0.7 } }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 1500, temperature: 0.7 } }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1205,7 +1252,7 @@ async function callOpenRouterModel(msgs, model) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 800,
+      max_tokens: 1500,
       temperature: 0.65,
       messages: msgs,
     }),
@@ -1252,7 +1299,7 @@ async function callMistral(msgs) {
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}` },
-    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 800, temperature: 0.65, messages: mistralMsgs }),
+    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 1500, temperature: 0.65, messages: mistralMsgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Mistral ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1270,7 +1317,7 @@ async function callCohere(msgs) {
   const res = await fetch('https://api.cohere.com/v1/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.COHERE_API_KEY}` },
-    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: 800, temperature: 0.65 }),
+    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: 1500, temperature: 0.65 }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.message || `Cohere ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1290,7 +1337,7 @@ async function callClaude(msgs) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 1024,
+      max_tokens: 1500,
       temperature: 0.65,
       system: systemMsg?.content || '',
       messages: chatMsgs.map(m => ({ role: m.role, content: m.content }))
@@ -1311,7 +1358,7 @@ async function callKimi(msgs) {
   const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
-    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: 800, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1883,7 +1930,6 @@ app.get('/api/skills', (req, res) => {
           examples: detail.examples,
           sizes: detail.sizes,
           providers: detail.providers_priority,
-          system_prompt_inject: detail.system_prompt_inject,
         } : s;
       });
     res.json({ skills: enriched, total: enriched.length });
@@ -4438,7 +4484,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
         const sysMsg = msgs.find(m => m.role === 'system');
         const chatMsgs = msgs.filter(m => m.role !== 'system');
         const body = {
-          model: 'claude-sonnet-4-5', max_tokens: 1024, temperature: 0.65,
+          model: 'claude-sonnet-4-5', max_tokens: 1500, temperature: 0.65,
           system: sysMsg?.content || '',
           messages: chatMsgs.map(m => ({ role: m.role, content: m.content })),
           stream: true
@@ -4481,7 +4527,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       for (const prov of sorted) {
         if (!prov.key || upstreamAbort.signal.aborted) continue;
         try {
-          const body = { model: prov.model, max_tokens: 800, temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
+          const body = { model: prov.model, max_tokens: 1500, temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
           const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + prov.key, ...prov.extraHeaders };
           const r = await tryStream(prov.name, prov.endpoint, headers, body);
           modelName = prov.label;
