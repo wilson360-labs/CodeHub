@@ -3720,6 +3720,7 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   }
 
   const resetChat = () => {
+    msgs.querySelectorAll('.ai-typing').forEach(function(t){ if(t._phraseTimer) clearInterval(t._phraseTimer); });
     msgs.innerHTML = '';
     history = [];
     try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch (e) {}
@@ -4008,10 +4009,10 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
     if (attachment) {
       if (attachment.type === 'pdf') {
         userBubbleHtml = `<div class="ai-attach-msg-pdf-wrap"><i class="fas fa-file-pdf"></i> <span>${escHtml(attachment.name)}</span> · ${attachment.pages} pág${attachment.pages === 1 ? '' : 's'}</div>` +
-          (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+          (text ? `<div style="margin-top:.4rem">${escHtml(text)}</div>` : '');
       } else {
         userBubbleHtml = `<div class="ai-attach-msg-img-wrap"><img src="${attachment.base64}" class="ai-attach-msg-img" alt="Imagen adjunta"></div>` +
-          (text ? `<div style="margin-top:.4rem">${text}</div>` : '');
+          (text ? `<div style="margin-top:.4rem">${escHtml(text)}</div>` : '');
       }
     }
     addMsg('user', userBubbleHtml);
@@ -4435,20 +4436,20 @@ También: descargador de videos, juegos (Snake, Tetris), servicios freelance.
   // Respuestas offline inteligentes basadas en palabras clave
   function getFallback(q) {
     const ql = q.toLowerCase();
-    if (ql.includes('qr'))       return 'El <strong>Generador de QR</strong> está en <code>tools.html</code>. Soporta 3 tamaños y 4 colores. Se puede descargar como PNG. 🔳';
-    if (ql.includes('contraseña') || ql.includes('password')) return 'El <strong>Generador de Contraseñas</strong> usa <code>crypto.getRandomValues()</code> para máxima seguridad. Soporta hasta 64 caracteres con mayúsculas, números y símbolos. 🔐';
-    if (ql.includes('uuid'))     return '<strong>UUID v4</strong> es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Tools → Generador de UUID. 🎲';
-    if (ql.includes('base64'))   return '<strong>Base64</strong> codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. 💻';
-    if (ql.includes('hash'))     return 'Los <strong>hashes</strong> son funciones de una sola vía. <code>SHA-256</code> genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
-    if (ql.includes('python'))   return '<strong>Tip Python:</strong> usa <code>enumerate()</code> en lugar de <code>range(len())</code> para iterar con índice. Más pythonico y legible. 🐍';
-    if (ql.includes('pomodoro')) return 'La técnica <strong>Pomodoro</strong> divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
-    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene <strong>23+ herramientas</strong>: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
-    if (ql.includes('app') || ql.includes('android')) return 'CodeHub tiene un <strong>catálogo de apps Open Source</strong> verificadas contra su repositorio oficial en GitHub. Todo en <code>opensource.html</code>. 📱';
-    if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos <strong>Snake</strong> y <strong>Tetris</strong> están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
-    if (ql.includes('contact') || ql.includes('wilson')) return '<strong>Wilson.E</strong> es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
+    if (ql.includes('qr'))       return 'El **Generador de QR** está en `tools.html`. Soporta 3 tamaños y 4 colores. Se puede descargar como PNG. 🔳';
+    if (ql.includes('contraseña') || ql.includes('password')) return 'El **Generador de Contraseñas** usa `crypto.getRandomValues()` para máxima seguridad. Soporta hasta 64 caracteres con mayúsculas, números y símbolos. 🔐';
+    if (ql.includes('uuid'))     return '**UUID v4** es un identificador único universal de 128 bits. Tiene ~5.3×10³⁶ combinaciones posibles. Lo encuentras en Tools → Generador de UUID. 🎲';
+    if (ql.includes('base64'))   return '**Base64** codifica datos binarios en texto ASCII. Se usa en emails, URLs y tokens. En Tools puedes codificar y decodificar al instante. 💻';
+    if (ql.includes('hash'))     return 'Los **hashes** son funciones de una sola vía. `SHA-256` genera 256 bits, ideal para verificar integridad. Pruébalo en Tools → Generador de Hash. 🔒';
+    if (ql.includes('python'))   return '**Tip Python:** usa `enumerate()` en lugar de `range(len())` para iterar con índice. Más pythonico y legible. 🐍';
+    if (ql.includes('pomodoro')) return 'La técnica **Pomodoro** divide el trabajo en bloques de 25 min con 5 min de descanso. Está en Tools con notificaciones del navegador. 🍅';
+    if (ql.includes('herramienta') || ql.includes('tool')) return 'CodeHub tiene **23+ herramientas**: QR, contraseñas, hash SHA-256/512, Base64, Regex tester, UUID, Pomodoro, convertidor de unidades, monedas, IMC, préstamos, velocidad de internet y más. 🛠️';
+    if (ql.includes('app') || ql.includes('android')) return 'CodeHub tiene un **catálogo de apps Open Source** verificadas contra su repositorio oficial en GitHub. Todo en `opensource.html`. 📱';
+    if (ql.includes('juego') || ql.includes('snake') || ql.includes('tetris')) return 'Los juegos **Snake** y **Tetris** están implementados con Canvas API. Puedes jugarlos desde la sección de Proyectos. 🎮';
+    if (ql.includes('contact') || ql.includes('wilson')) return '**Wilson.E** es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
     if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
       return '[BUSCAR_IMAGENES: ' + q.replace(/busca|buscar|imágenes|imagen|muéstrame|muestra|fondo|fondos|icono|iconos/gi,'').trim() + ']';
-    return 'Entendido. Soy <strong>EMI COPILOT</strong> de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
+    return 'Entendido. Soy **EMI COPILOT** de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
   }
 
   window.aiSugg = function(btn) {
@@ -6168,11 +6169,18 @@ function setAIMood(btn) {
 // ══ SPLASH SCREEN JS ══════════════════════════════════════════════
 (function(){
     var splash  = document.getElementById('ch-splash');
+    if (!splash) return;
+
+    /* ── Solo mostrar una vez por sesión ── */
+    if (sessionStorage.getItem('ch_splash_done')) {
+        splash.style.display = 'none';
+        return;
+    }
+
     var bar     = document.getElementById('ch-bar');
     var pct     = document.getElementById('ch-pct');
     var status  = document.getElementById('ch-status');
     var canvas  = document.getElementById('ch-splash-canvas');
-    if (!splash) return;
 
     /* ── Estado de carga ── */
     var logoReady   = false;
@@ -6183,6 +6191,7 @@ function setAIMood(btn) {
     /* ── Cerrar splash ── */
     function closeSplash(){
         animRunning = false;
+        sessionStorage.setItem('ch_splash_done', '1');
         splash.classList.add('ch-splash--out');
         setTimeout(function(){ splash.style.display = 'none'; }, 850);
     }
@@ -6557,6 +6566,8 @@ function setAIMood(btn) {
 <script type="module" src="js/morphicons-init.js?v=20260816a"></script>
 <script src="js/device-detect.js?v=20260724a"></script>
 <script src="js/thinking-orb.js?v=20260724a"></script>
+<script src="js/deep-search.js?v=20260822a"></script>
+<script src="js/office-generator.js?v=20260822a"></script>
 <script src="js/ux-animations.js?v=20260811a"></script>
 <script src="js/auth.js?v=20260808j"></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>

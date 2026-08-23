@@ -232,10 +232,10 @@
       for (const mut of mutations) {
         for (const node of mut.addedNodes) {
           if (node.nodeType !== 1) continue;
-          /* Mensaje de la IA: tiene clase .ai-msg-wrap.ai pero NO .user */
-          const wrap = node.classList?.contains('ai-msg-wrap') && node.classList?.contains('ai') && !node.classList?.contains('user')
+          /* Mensaje de la IA: tiene clase .ai-msg-wrap.ai pero NO .user ni .ai-typing */
+          const wrap = node.classList?.contains('ai-msg-wrap') && node.classList?.contains('ai') && !node.classList?.contains('user') && !node.classList?.contains('ai-typing')
             ? node
-            : node.querySelector?.('.ai-msg-wrap.ai:not(.user)');
+            : node.querySelector?.('.ai-msg-wrap.ai:not(.user):not(.ai-typing)');
           if (wrap) {
             const msgEl = wrap.querySelector('.ai-msg');
             if (msgEl) {
