@@ -8,6 +8,8 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
 
 import java.io.File;
 
@@ -44,10 +46,31 @@ public class InstallReceiver extends BroadcastReceiver {
         if (uriString == null) return;
 
         Uri fileUri = Uri.parse(uriString);
-        if (fileUri.getScheme() != null && fileUri.getScheme().equals("file")) {
+
+        // file:// scheme — direct path
+        if ("file".equals(fileUri.getScheme())) {
             installApk(context, new File(fileUri.getPath()));
-        } else {
-            // Content URI — convert to file path
+            return;
+        }
+
+        // content:// scheme (API 29+ scoped storage) — copy to app-private dir
+        try {
+            ParcelFileDescriptor pfd = context.getContentResolver().openFileDescriptor(fileUri, "r");
+            if (pfd == null) return;
+
+            File tmpApk = new File(context.getFilesDir(), "CodeHub-update.apk");
+            java.io.InputStream in = new java.io.FileInputStream(pfd.getFileDescriptor());
+            java.io.OutputStream out = new java.io.FileOutputStream(tmpApk);
+            byte[] buf = new byte[4096];
+            int read;
+            while ((read = in.read(buf)) > 0) { out.write(buf, 0, read); }
+            out.close();
+            in.close();
+            pfd.close();
+
+            installApk(context, tmpApk);
+        } catch (Exception e) {
+            // Fallback: try the old path
             File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File apk = new File(downloads, "CodeHub-update.apk");
             if (apk.exists()) {

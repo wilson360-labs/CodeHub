@@ -295,6 +295,29 @@ public class MainActivity extends Activity implements LocationListener {
 
         webView.addJavascriptInterface(new CodeHubBridge(this, webView), "CodeHubNative");
 
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (url == null || url.isEmpty()) return;
+            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            if (dm == null) return;
+            try {
+                DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
+                req.setMimeType(mimeType);
+                String fileName = "download";
+                if (contentDisposition != null) {
+                    int idx = contentDisposition.indexOf("filename=");
+                    if (idx > -1) fileName = contentDisposition.substring(idx + 9).replace("\"", "").trim();
+                }
+                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                req.setTitle(fileName);
+                req.setDescription("Descargando desde CodeHub");
+                dm.enqueue(req);
+                runOnUiThread(() -> Toast.makeText(this, "Descargando " + fileName, Toast.LENGTH_SHORT).show());
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Error al descargar: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -374,7 +397,7 @@ public class MainActivity extends Activity implements LocationListener {
             "window.__apkOnline=" + online + ";" +
             "window.__apkVersion='" + versionName + "';" +
             "window.__apkFCMToken='" + fcmToken + "';" +
-            "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,storage:true,offline:true};" +
+            "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,offline:true};" +
             "try{localStorage.setItem('pwa_installed','1');}catch(e){}" +
             // Reporta errores JS no atrapados y promesas rechazadas sin catch
             // al bridge nativo, que los reenvía a /api/crash-report (Telegram).

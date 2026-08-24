@@ -1514,7 +1514,7 @@
   opacity:0;pointer-events:none;
   transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .22s;
 }
-#ai-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all;animation:panelIn .3s cubic-bezier(.2,.9,.2,1) both;}
+#ai-panel.open{transform:scale(1) translateY(0);opacity:1;pointer-events:all;display:flex !important;animation:panelIn .3s cubic-bezier(.2,.9,.2,1) both;}
 @keyframes panelIn{
   0%  {transform:scale(.96) translateY(10px);opacity:0;}
   100%{transform:scale(1) translateY(0);opacity:1;}
