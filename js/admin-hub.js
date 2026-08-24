@@ -6,6 +6,8 @@
 const BACKEND = 'https://codehub-98s6.onrender.com';
 // ⚠️ La contraseña se valida contra el BACKEND (variable ADMIN_KEY en Render)
 let ADMIN_KEY = '';
+let ADMIN_SESSION = '';
+let _turnstileWidgetId = null;
 
 // ── VALIDADOR DE LINKS DE IMAGEN ──────────────────────────────
 // Mismo criterio de aceptación que usa Orion Store para sus
@@ -206,6 +208,29 @@ function previewLink(input, spanId) {
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
+function _adminHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  if (ADMIN_SESSION) h['x-admin-session'] = ADMIN_SESSION;
+  else if (ADMIN_KEY) h['x-admin-key'] = ADMIN_KEY;
+  return h;
+}
+
+function _renderTurnstile() {
+  const el = document.getElementById('ts-admin');
+  if (!el || typeof window.turnstile === 'undefined') {
+    if (el && !el.querySelector('iframe')) setTimeout(_renderTurnstile, 500);
+    return;
+  }
+  if (_turnstileWidgetId !== null) return;
+  try {
+    _turnstileWidgetId = window.turnstile.render(el, {
+      sitekey: '0x4AAAAAAClKd5T1R81GltW_',
+      theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+      size: 'normal',
+    });
+  } catch (e) { console.warn('Turnstile render failed:', e); }
+}
+
 async function checkLogin() {
   const pwd = document.getElementById('pwd-input').value.trim();
   if (!pwd) return;
@@ -219,14 +244,27 @@ async function checkLogin() {
   const btn = document.querySelector('.login-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
   try {
-    const res = await fetch(`${BACKEND}/api/admin/apps`, { headers: { 'x-admin-key': pwd } });
-    if (res.ok) {
+    const res = await fetch(`${BACKEND}/api/admin/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd, turnstileToken: tsToken }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
       ADMIN_KEY = pwd;
+      ADMIN_SESSION = data.sessionToken || '';
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-wrap').style.display = 'flex';
       document.getElementById('admin-wrap').style.flexDirection = 'column';
-      const data = await res.json();
-      initAdmin(data.apps);
+      const appsRes = await fetch(`${BACKEND}/api/admin/apps`, { headers: _adminHeaders() });
+      if (appsRes.ok) {
+        const appsData = await appsRes.json();
+        initAdmin(appsData.apps);
+      }
+    } else if (res.status === 429) {
+      document.getElementById('login-err').textContent = '🚫 ' + (data.error || 'Demasiados intentos. Espera 15 minutos.');
+    } else if (res.status === 403 && data.error?.includes('anti-bots')) {
+      document.getElementById('login-err').textContent = '⚠️ Verificación de seguridad fallida. Recarga la página.';
     } else {
       document.getElementById('login-err').textContent = '❌ Contraseña incorrecta';
       document.getElementById('pwd-input').value = '';
@@ -238,14 +276,20 @@ async function checkLogin() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pwd-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') checkLogin(); });
+  _renderTurnstile();
 });
 
 function logout() {
   ADMIN_KEY = '';
+  ADMIN_SESSION = '';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('admin-wrap').style.display = 'none';
   document.getElementById('pwd-input').value = '';
   document.getElementById('login-err').textContent = '';
+  if (_turnstileWidgetId !== null && typeof window.turnstile !== 'undefined') {
+    try { window.turnstile.reset(_turnstileWidgetId); } catch (e) {}
+    _turnstileWidgetId = null;
+  }
 }
 
 // ── TABS ──────────────────────────────────────────────────────
@@ -290,7 +334,7 @@ async function sendAdminBroadcast() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/push/broadcast`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ title, body, url, type })
     });
     const data = await res.json().catch(() => ({}));
@@ -365,7 +409,7 @@ async function publishRelease() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/releases`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ title, body, version, url, type }),
     });
     const data = await res.json().catch(() => ({}));
@@ -392,7 +436,7 @@ async function loadReleasesList() {
   if (!box) return;
   try {
     const res = await fetch(`${BACKEND}/api/admin/releases`, {
-      headers: { 'x-admin-key': ADMIN_KEY },
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
     });
     const data = await res.json().catch(() => ({}));
     const list = data.releases || [];
@@ -422,7 +466,7 @@ async function deleteRelease(id) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/releases/${id}`, {
       method: 'DELETE',
-      headers: { 'x-admin-key': ADMIN_KEY },
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
     });
     if (!res.ok) throw new Error((await res.json()).error);
     toast('🗑️ Release eliminado');
@@ -468,7 +512,7 @@ async function loadGhAutomation() {
 async function loadGhRuns() {
   const runsEl = document.getElementById('gh-runs-list');
   try {
-    const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
     if (!res.ok) { runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${(await res.json()).error || 'Error cargando runs'}</div>`; return; }
     const { runs } = await res.json();
     const rows = GH_WORKFLOWS.map(w => {
@@ -497,7 +541,7 @@ async function dispatchWorkflow(file, btn) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ workflow: file }),
     });
     const data = await res.json().catch(() => ({}));
@@ -519,7 +563,7 @@ async function loadGhSecrets() {
   const el = document.getElementById('gh-secrets-list');
   if (!el) return;
   try {
-    const res = await fetch(`${BACKEND}/api/admin/github/secrets`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    const res = await fetch(`${BACKEND}/api/admin/github/secrets`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
     if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
     const { secrets } = await res.json();
     if (!secrets.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin secrets configurados</div>'; return; }
@@ -547,7 +591,7 @@ async function saveGhSecret() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/secrets`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ name, value }),
     });
     const data = await res.json();
@@ -567,7 +611,7 @@ async function deleteGhSecret(name) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/secrets/${encodeURIComponent(name)}`, {
       method: 'DELETE',
-      headers: { 'x-admin-key': ADMIN_KEY },
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
     });
     const data = await res.json();
     if (res.ok) {
@@ -583,7 +627,7 @@ async function loadGhVariables() {
   const el = document.getElementById('gh-variables-list');
   if (!el) return;
   try {
-    const res = await fetch(`${BACKEND}/api/admin/github/variables`, { headers: { 'x-admin-key': ADMIN_KEY } });
+    const res = await fetch(`${BACKEND}/api/admin/github/variables`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
     if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
     const { variables } = await res.json();
     if (!variables.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin variables configuradas</div>'; return; }
@@ -611,7 +655,7 @@ async function saveGhVariable() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/variables`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ name, value }),
     });
     const data = await res.json();
@@ -631,7 +675,7 @@ async function deleteGhVariable(name) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/variables/${encodeURIComponent(name)}`, {
       method: 'DELETE',
-      headers: { 'x-admin-key': ADMIN_KEY },
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
     });
     const data = await res.json();
     if (res.ok) {
@@ -697,7 +741,7 @@ function toggleDuplicateFilter() {
 
 async function deleteAppSilent(appId) {
   const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
-    method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+    method: 'DELETE', headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY }
   });
   if (!res.ok) throw new Error((await res.json()).error || `HTTP ${res.status}`);
 }
@@ -937,7 +981,7 @@ async function extractIcon(appId) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ sourceUrl, filename: appId }),
     });
     const d = await res.json();
@@ -995,7 +1039,7 @@ async function saveRow(appId) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
@@ -1045,7 +1089,7 @@ async function sendAppUpdatePush(app, body) {
     // /api/push/notify requiere un endpoint único y no sirve aquí).
     const res = await fetch(BACKEND + '/api/admin/push/broadcast', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body:    JSON.stringify(payload),
     });
 
@@ -1105,7 +1149,7 @@ function uploadAPK(appId, slot, input) {
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', `${BACKEND}/api/admin/apps/${appId}/upload`);
-  xhr.setRequestHeader('x-admin-key', ADMIN_KEY);
+  xhr.setRequestHeader(ADMIN_SESSION ? 'x-admin-session' : 'x-admin-key', ADMIN_SESSION || ADMIN_KEY);
 
   xhr.upload.addEventListener('progress', (e) => {
     if (!e.lengthComputable) return;
@@ -1156,7 +1200,7 @@ async function deleteAPKFile(appId, slot = 'main', nombre = '') {
   if (!confirm(`¿Eliminar el APK de "${nombre}" de Telegram/Storage?\nLa app se mantiene en la tienda — solo se borra el archivo.\nTras esto puedes subir la nueva versión.`)) return;
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}/apk?slot=${slot}`, {
-      method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+      method: 'DELETE', headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY }
     });
     const d = await res.json();
     if (!res.ok) throw new Error(d.error);
@@ -1172,7 +1216,7 @@ async function deleteApp(appId, nombre) {
   if (!confirm(`¿Eliminar "${nombre}" de la tienda? No se puede deshacer.`)) return;
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
-      method: 'DELETE', headers: { 'x-admin-key': ADMIN_KEY }
+      method: 'DELETE', headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY }
     });
     if (!res.ok) throw new Error((await res.json()).error);
     appsData = appsData.filter(a => a.appId !== appId);
@@ -1190,7 +1234,7 @@ async function refreshApps() {
 
   // 1. Apps
   tasks.push(
-    fetch(`${BACKEND}/api/admin/apps`, { headers: { 'x-admin-key': ADMIN_KEY } })
+    fetch(`${BACKEND}/api/admin/apps`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) { appsData = d.apps; renderApps(); } })
       .catch(() => {})
@@ -1474,7 +1518,7 @@ async function extractIconNew() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ sourceUrl, filename: appIdVal }),
     });
     const d = await res.json();
@@ -1515,7 +1559,7 @@ async function createApp() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
@@ -1543,7 +1587,7 @@ async function safeJson(res) {
 async function postAdminSeed(apps, isRetry) {
   const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
     body: JSON.stringify({ apps }),
   });
   const data = await safeJson(seedRes);
@@ -1616,7 +1660,7 @@ async function markRequest(id, status) {
   try {
     await fetch(`${BACKEND}/api/requests/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ status }),
     });
     toast(status === 'done' ? '✅ Marcada como agregada' : '🗑️ Rechazada');
@@ -1838,7 +1882,7 @@ async function runDbScript() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/db/run`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
       body: JSON.stringify({ target: dbTarget, content }),
     });
     const data = await res.json();
@@ -1869,7 +1913,7 @@ async function loadVisitors() {
   body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;font-family:var(--mono);color:var(--muted)"><i class="fas fa-spinner fa-spin" style="margin-right:.5rem"></i>Cargando visitantes desde Supabase...</td></tr>';
   try {
     const res  = await fetch(`${BACKEND}/api/admin/visitors?limit=500`, {
-      headers: { 'x-admin-key': ADMIN_KEY }
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY }
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || 'Error del servidor');
@@ -2071,7 +2115,7 @@ function handleBulkFiles(files) {
         fd.append('apk', file); fd.append('slot', slot);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `${BACKEND}/api/admin/apps/${appId}/upload`);
-        xhr.setRequestHeader('x-admin-key', ADMIN_KEY);
+        xhr.setRequestHeader(ADMIN_SESSION ? 'x-admin-session' : 'x-admin-key', ADMIN_SESSION || ADMIN_KEY);
         xhr.upload.addEventListener('progress', (e) => {
           if (!e.lengthComputable) return;
           const pct = Math.round(e.loaded / e.total * 100);
@@ -2118,7 +2162,7 @@ function toast(m) {
   // Guardar estado de runs para detectar cambios
   async function snapshotRuns() {
     try {
-      const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-key': ADMIN_KEY } });
+      const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
       if (!res.ok) return;
       const { runs } = await res.json();
       const snapshot = {};

@@ -151,6 +151,27 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 
+// ── SECURITY: Anti-bot & hardening ───────────────────────────
+// Block known scanner/bot User-Agents targeting admin endpoints
+const _BOT_UA_RE = /python-urllib|python-requests|go-http-client|java\/|curl\/|wget\/|scrapy|nikto|sqlmap|nmap|masscan|zgrab|gobuster|dirbuster|hydra|medusa|wfuzz|ffuf|nuclei|httpx|censys|shodan|zoomye/i;
+app.use('/api/admin', (req, res, next) => {
+  const ua = (req.headers['user-agent'] || '').slice(0, 200);
+  if (ua && _BOT_UA_RE.test(ua)) {
+    const ip = clientIp(req);
+    tgAlert('botprobe', () => `🤖 <b>BOT DETECTADO en /api/admin</b>\nIP: <code>${ip}</code>\nUA: ${ua.slice(0, 70)}`, { windowMs: 30000 });
+    return res.status(403).json({ error: 'Acceso no autorizado' });
+  }
+  next();
+});
+// Honeypot: hidden endpoint that real users never hit — bots do
+app.all('/api/admin/secret-panel', (req, res) => {
+  const ip = clientIp(req);
+  const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
+  tgAlert('honeypot', () => `🍯 <b>HONEYPOT TRIGGERED</b>\nIP: <code>${ip}</code>\nUA: ${ua}`, { windowMs: 60000 });
+  if (!_adminBans.has(ip)) _adminBans.set(ip, { expiresAt: Date.now() + ADMIN_BAN_DURATION_MS });
+  return res.status(404).json({ error: 'Not found' });
+});
+
 // ── CORS ──────────────────────────────────────────────────────
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -166,7 +187,7 @@ const corsOptions = {
     cb(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'Accept', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'x-admin-session', 'Accept', 'Authorization'],
   exposedHeaders: ['Content-Length', 'X-Cache'],
   credentials: true,
   preflightContinue: false,
@@ -216,11 +237,85 @@ const uploadSecurityFile = multer({
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
+// Auth admin: máximo 5 intentos por 15 min por IP (Turnstile + key check)
+const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos de autenticación. Espera 15 minutos.', code: 'ADMIN_AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
 // App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
 // crash reales) sin abrir la puerta a flood del endpoint público.
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 // Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
 const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
+
+// ── ADMIN BAN SYSTEM (anti brute-force) ───────────────────────
+// Map<ip, { expiresAt, attempts, firstAttemptAt }>
+const _adminBans  = new Map();
+const _adminFails = new Map();
+const ADMIN_FAIL_THRESHOLD  = 5;   // fallos antes de ban
+const ADMIN_BAN_DURATION_MS = 30 * 60 * 1000; // 30 minutos
+
+function _cleanExpiredBans() {
+  const now = Date.now();
+  for (const [ip, info] of _adminBans) {
+    if (info.expiresAt <= now) _adminBans.delete(ip);
+  }
+  for (const [ip, info] of _adminFails) {
+    if (info.windowEnd <= now) _adminFails.delete(ip);
+  }
+}
+setInterval(_cleanExpiredBans, 60_000);
+
+function _isIPBanned(ip) {
+  _cleanExpiredBans();
+  const ban = _adminBans.get(ip);
+  if (!ban) return false;
+  if (ban.expiresAt <= Date.now()) { _adminBans.delete(ip); return false; }
+  return true;
+}
+
+function _recordAdminFail(ip, ua) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  let entry = _adminFails.get(ip);
+  if (!entry || entry.windowEnd <= now) {
+    entry = { count: 1, windowEnd: now + windowMs, firstAttemptAt: now };
+    _adminFails.set(ip, entry);
+    return 1;
+  }
+  entry.count++;
+  if (entry.count >= ADMIN_FAIL_THRESHOLD && !_adminBans.has(ip)) {
+    _adminBans.set(ip, { expiresAt: now + ADMIN_BAN_DURATION_MS });
+    tgAlert('adminban', () => {
+      return `🚫 <b>BAN ADMIN — IP Bloqueada</b>\nIP: <code>${ip}</code>\nIntentos: ${entry.count} fallos en 15 min\nBloqueada por 30 min\nUA: ${(ua || '').slice(0, 70).replace(/[<>]/g, '')}`;
+    }, { windowMs: 60000 });
+    console.warn(`🚫 ADMIN BAN: IP ${ip} banned for ${ADMIN_BAN_DURATION_MS / 60000}min after ${entry.count} failed attempts`);
+  }
+  return entry.count;
+}
+
+// ── SESSION TOKEN (HMAC-SHA256) ────────────────────────────────
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_KEY || crypto.randomBytes(32).toString('hex');
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
+
+function _signSession(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'S' })).toString('base64url');
+  const body   = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig    = crypto.createHmac('sha256', SESSION_SECRET).update(header + '.' + body).digest('base64url');
+  return header + '.' + body + '.' + sig;
+}
+
+function _verifySession(token) {
+  try {
+    const [header, body, sig] = token.split('.');
+    if (!header || !body || !sig) return null;
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(header + '.' + body).digest('base64url');
+    const sigBuf = Buffer.from(sig);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length) return null;
+    if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (!payload.exp || payload.exp <= Date.now()) return null;
+    return payload;
+  } catch { return null; }
+}
 
 // ── Contador diario de EMI por usuario/dispositivo ───────────
 // Key: 'u:<user_id>' o 'd:<ip>'. Value: { date, count }.
@@ -425,21 +520,91 @@ async function connectDB() {
   } catch (err) { console.error('❌ MongoDB error:', err.message); return false; }
 }
 
-// ── AUTH ADMIN ────────────────────────────────────────────────
-function requireAdmin(req, res, next) {
-  const key      = req.headers['x-admin-key']  || req.body?.adminKey;
-  const user     = req.headers['x-admin-user'] || req.body?.adminUser || null;
-  const validKey  = process.env.ADMIN_KEY;
-  const validUser = process.env.ADMIN_USER;   // opcional — si no está, solo valida la key
+// ── ADMIN AUTH ENDPOINT ─────────────────────────────────────
+// POST /api/admin/auth — valida key + Turnstile → devuelve session token HMAC (30 min)
+app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
+  const ip = clientIp(req);
+  const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
+
+  // 1) Anti ban check
+  if (_isIPBanned(ip)) {
+    return res.status(429).json({ error: 'IP temporalmente bloqueada por intentos fallidos. Intenta en 30 minutos.' });
+  }
+
+  // 2) Rate limit warnings on specific IP threshold
+  const failCount = (_adminFails.get(ip) || {}).count || 0;
+
+  const { password, turnstileToken } = req.body || {};
+  const validKey = process.env.ADMIN_KEY;
 
   if (!validKey) {
     console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
     return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
   }
-  if (key !== validKey) {
+
+  // 3) Validate Turnstile (fail-closed)
+  const tsToken = String(turnstileToken || '');
+  if (!await validateTurnstile(tsToken)) {
+    _recordAdminFail(ip, ua);
     tgAlert('adminfail', () => {
-      const ip = clientIp(req);
-      const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
+      return `🤖 <b>TURNSTILE FALLO ADMIN</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
+    }, { windowMs: 15000 });
+    return res.status(403).json({ error: 'Verificación anti-bots fallida' });
+  }
+
+  // 4) Validate key
+  if (password !== validKey) {
+    _recordAdminFail(ip, ua);
+    tgAlert('adminfail', () => {
+      return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(password || '').slice(0, 6)}…\nUA: ${ua}`;
+    }, { windowMs: 15000 });
+    return res.status(403).json({ error: 'Credenciales incorrectas' });
+  }
+
+  // 5) Success — clear fail counter, issue session token
+  _adminFails.delete(ip);
+  const now = Date.now();
+  const token = _signSession({ admin: true, iat: now, exp: now + SESSION_TTL_MS });
+
+  tgAlert('adminlogin', () => {
+    return `✅ <b>ADMIN LOGIN EXITOSO</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
+  }, { windowMs: 60000 });
+
+  res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
+});
+
+// ── AUTH ADMIN ────────────────────────────────────────────────
+function requireAdmin(req, res, next) {
+  const ip       = clientIp(req);
+  const validKey = process.env.ADMIN_KEY;
+
+  // 1) Anti brute-force: verificar si la IP está baneada
+  if (_isIPBanned(ip)) {
+    return res.status(429).json({ error: 'IP temporalmente bloqueada por intentos fallidos. Intenta en 30 minutos.' });
+  }
+
+  if (!validKey) {
+    console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
+    return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
+  }
+
+  // 2) Aceptar session token HMAC (post-auth)
+  const sessionToken = req.headers['x-admin-session'];
+  if (sessionToken) {
+    const payload = _verifySession(sessionToken);
+    if (payload && payload.admin === true) return next();
+    return res.status(401).json({ error: 'Sesión expirada o inválida' });
+  }
+
+  // 3) Fallback: key directa (legacy, con ban tracking)
+  const key  = req.headers['x-admin-key'] || req.body?.adminKey;
+  const user = req.headers['x-admin-user'] || req.body?.adminUser || null;
+  const validUser = process.env.ADMIN_USER;
+
+  if (key !== validKey) {
+    const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
+    _recordAdminFail(ip, ua);
+    tgAlert('adminfail', () => {
       return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(key || '').slice(0, 6)}…\nUA: ${ua}`;
     }, { windowMs: 15000 });
     return res.status(403).json({ error: 'Credenciales incorrectas' });
