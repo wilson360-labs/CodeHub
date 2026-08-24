@@ -18,7 +18,7 @@
 
 (function () {
   const CHECK_URL      = '/index.html';
-  const CHECK_EVERY_MS = 8000; // 8s: rápido, y un HEAD casi no pesa
+  const CHECK_EVERY_MS = 60000; // 60s: suficiente para detectar deploys, sin abusar de red
 
   let knownTag = null;
   let checking = false;
@@ -65,6 +65,8 @@
 
   async function checkForRealUpdate() {
     if (checking) return;
+    if (document.visibilityState === 'visible') { /* ok */ }
+    else return;
     checking = true;
     const tag = await fetchTag();
     checking = false;

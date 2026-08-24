@@ -163,7 +163,7 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('CORS bloqueado: ' + origin));
+    cb(null, false);
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'Accept', 'Authorization'],
@@ -3845,7 +3845,7 @@ async function sendFCM(token, payload) {
   }
 }
 
-app.post('/api/push/fcm-subscribe', async (req, res) => {
+app.post('/api/push/fcm-subscribe', chatLimiter, async (req, res) => {
   try {
     const { token, lat, lon, appName, appVersion, platform, userAgent } = req.body || {};
     if (!token) return res.status(400).json({ ok: false, error: 'Falta token FCM' });
@@ -3854,7 +3854,7 @@ app.post('/api/push/fcm-subscribe', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post('/api/push/fcm-location', async (req, res) => {
+app.post('/api/push/fcm-location', chatLimiter, async (req, res) => {
   try {
     const { token, lat, lon } = req.body || {};
     if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
@@ -4025,7 +4025,10 @@ app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
 app.get('/api/releases', async (req, res) => {
   if (!dbConnected) return res.json({ ok: true, releases: [] });
   try {
+    const cached = await cacheGet('releases:latest');
+    if (cached) { res.set('X-Cache', 'HIT'); return res.json({ ok: true, releases: cached }); }
     const releases = await Release.find({}).sort({ createdAt: -1 }).limit(20).lean();
+    await cacheSet('releases:latest', releases, 60);
     res.json({ ok: true, releases });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

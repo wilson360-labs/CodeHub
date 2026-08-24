@@ -162,6 +162,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="dns-prefetch" href="https://i.ibb.co">
     <link rel="dns-prefetch" href="https://i.postimg.cc">
     <link rel="dns-prefetch" href="https://codehub-98s6.onrender.com">
+    <link rel="dns-prefetch" href="https://res.cloudinary.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://cdn.sheetjs.com">
+    <link rel="dns-prefetch" href="https://api.open-meteo.com">
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
 
     <!-- Splash: definir callback ANTES de que el img pueda cargar -->
     <script>
@@ -4550,6 +4556,7 @@ async function sendEmail(e) {
 
   // Lazy-load document generation libraries on demand (~1.5 MB saved on initial load)
   const _docLibCache = {};
+  const _DOC_GLOBALS = { docx:'docx', xlsx:'XLSX', pptxgen:'PptxGenJS', jspdf:'jspdf', html2canvas:'html2canvas' };
   function _loadDocLib(name) {
     if (_docLibCache[name]) return _docLibCache[name];
     const urls = {
@@ -4560,10 +4567,11 @@ async function sendEmail(e) {
       jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
     };
     _docLibCache[name] = new Promise((resolve, reject) => {
-      if (window[name] || (name === 'html2canvas' && window.html2canvas)) { resolve(window[name] || window.html2canvas); return; }
+      const globalName = _DOC_GLOBALS[name] || name;
+      if (window[globalName]) { resolve(window[globalName]); return; }
       const s = document.createElement('script');
       s.src = urls[name]; s.crossOrigin = 'anonymous';
-      s.onload = () => resolve(window[name] || window[name === 'html2canvas' ? 'html2canvas' : name]);
+      s.onload = () => { const g = window[globalName]; g ? resolve(g) : reject(new Error(name + ' no se inicializó')); };
       s.onerror = () => reject(new Error('Failed to load ' + name));
       document.head.appendChild(s);
     });
@@ -6698,16 +6706,16 @@ function setAIMood(btn) {
 
 
 <!-- Anime.js + UX Animations -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
-<script src="js/site-tour.js?v=20260809a"></script>
-<script src="js/theme-switcher.js?v=20260724a"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js" defer></script>
+<script src="js/site-tour.js?v=20260809a" defer></script>
+<script src="js/theme-switcher.js?v=20260724a" defer></script>
 <script type="module" src="js/morphicons-init.js?v=20260816a"></script>
-<script src="js/device-detect.js?v=20260724a"></script>
-<script src="js/thinking-orb.js?v=20260724a"></script>
-<script src="js/deep-search.js?v=20260822a"></script>
-<script src="js/office-generator.js?v=20260822a"></script>
-<script src="js/ux-animations.js?v=20260811a"></script>
-<script src="js/auth.js?v=20260808j"></script>
+<script src="js/device-detect.js?v=20260724a" defer></script>
+<script src="js/thinking-orb.js?v=20260724a" defer></script>
+<script src="js/deep-search.js?v=20260822a" defer></script>
+<script src="js/office-generator.js?v=20260822a" defer></script>
+<script src="js/ux-animations.js?v=20260811a" defer></script>
+<script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

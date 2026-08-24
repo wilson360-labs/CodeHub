@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION   = 'codehub-v6.30';
+const VERSION   = 'codehub-v6.31';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -29,6 +29,7 @@ const PRECACHE = [
   '/tools',
   '/opensource',
   '/servicios',
+  '/css/index.css',
   '/css/opensource.css',
   '/css/components.css',
   '/css/index-responsive.css',
@@ -277,6 +278,8 @@ self.addEventListener('push', e => {
     options.tag = 'codehub-general';
   }
 
+  if (Notification.permission !== 'granted') return;
+
   e.waitUntil(self.registration.showNotification(title || 'CodeHub', options));
 
   // Reenviar a las páginas abiertas para que el Centro de
@@ -306,9 +309,9 @@ self.addEventListener('notificationclick', e => {
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
       const existing = clients.find(c => c.url.includes(self.location.origin));
-      if (existing) { existing.focus(); existing.navigate(targetUrl); return; }
-      return self.clients.openWindow(targetUrl);
-    })
+      if (existing) { existing.focus(); existing.navigate(targetUrl).catch(() => {}); return; }
+      return self.clients.openWindow(targetUrl).catch(() => {});
+    }).catch(() => {})
   );
 });
 

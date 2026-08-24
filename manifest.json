@@ -120,7 +120,6 @@
     "microphone",
     "clipboard-read",
     "persistent-storage",
-    "background-sync",
     "background-sync"
   ],
   "share_target": {
