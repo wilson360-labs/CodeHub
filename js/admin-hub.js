@@ -1527,20 +1527,7 @@ async function createApp() {
 
 // ── SEED ──────────────────────────────────────────────────────
 async function seedFromJSON() {
-  if (!confirm('Importar apps base a MongoDB. ¿Continuar?')) return;
-  try {
-    const res = await fetch('apps_data.json');
-    const mapped = await res.json();
-    const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': ADMIN_KEY },
-      body: JSON.stringify({ apps: mapped }),
-    });
-    if (!seedRes.ok) throw new Error((await seedRes.json()).error);
-    const d = await seedRes.json();
-    toast(`✅ Seed: ${d.created} creadas, ${d.updated} actualizadas`);
-    await refreshApps();
-  } catch (e) { toast('❌ Error en seed: ' + e.message); }
+  toast('ℹ️ apps_data.json fue eliminado por políticas de contenido. Usa el panel de admin para agregar apps manualmente.');
 }
 
 // Parsea una Response como JSON de forma segura — si el body no es JSON

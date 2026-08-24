@@ -43,8 +43,8 @@ const swaggerSpec = {
       App: {
         type: 'object',
         properties: {
-          appId:        { type: 'string', example: 'spotify' },
-          nombre:       { type: 'string', example: 'Spotify Premium' },
+          appId:        { type: 'string', example: 'whatsapp' },
+          nombre:       { type: 'string', example: 'WhatsApp' },
           descripcion:  { type: 'string' },
           version:      { type: 'string', example: '8.9.12' },
           tag:          { type: 'string', example: '🆕' },
