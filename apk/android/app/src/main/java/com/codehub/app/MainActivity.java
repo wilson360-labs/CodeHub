@@ -309,12 +309,13 @@ public class MainActivity extends Activity implements LocationListener {
                     int idx = contentDisposition.indexOf("filename=");
                     if (idx > -1) fileName = contentDisposition.substring(idx + 9).replace("\"", "").trim();
                 }
-                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                final String safeFileName = fileName;
+                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFileName);
                 req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                req.setTitle(fileName);
+                req.setTitle(safeFileName);
                 req.setDescription("Descargando desde CodeHub");
                 dm.enqueue(req);
-                runOnUiThread(() -> Toast.makeText(this, "Descargando " + fileName, Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "Descargando " + safeFileName, Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "Error al descargar: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
