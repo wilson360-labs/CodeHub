@@ -318,22 +318,44 @@ function _verifySession(token) {
 }
 
 // ── Contador diario de EMI por usuario/dispositivo ───────────
-// Key: 'u:<user_id>' o 'd:<ip>'. Value: { date, count }.
-const _emiUsage = new Map();
+// F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
 const EMI_DAILY_LIMIT_GUEST = 10;
 const EMI_DAILY_LIMIT_REGISTERED = 50;
 
-function getEmiUsage(key) {
-  const entry = _emiUsage.get(key);
+const EmiUsage = mongoose.model('EmiUsage', new mongoose.Schema({
+  key:     { type: String, required: true, index: true },
+  date:    { type: String, required: true },
+  count:   { type: Number, default: 0 },
+}, { timestamps: false }));
+EmiUsage.schema.index({ key: 1, date: 1 }, { unique: true });
+
+const _emiFallback = new Map(); // fallback when DB is down
+
+async function getEmiUsage(key) {
   const today = new Date().toISOString().slice(0, 10);
-  if (!entry || entry.date !== today) { _emiUsage.set(key, { date: today, count: 0 }); return 0; }
+  if (dbConnected) {
+    try {
+      const doc = await EmiUsage.findOne({ key, date: today }).lean();
+      return doc ? doc.count : 0;
+    } catch (e) { /* fall through to memory */ }
+  }
+  const entry = _emiFallback.get(key);
+  if (!entry || entry.date !== today) return 0;
   return entry.count;
 }
 
-function incrEmiUsage(key) {
+async function incrEmiUsage(key) {
   const today = new Date().toISOString().slice(0, 10);
-  const entry = _emiUsage.get(key);
-  if (!entry || entry.date !== today) { _emiUsage.set(key, { date: today, count: 1 }); return 1; }
+  if (dbConnected) {
+    try {
+      const doc = await EmiUsage.findOneAndUpdate(
+        { key, date: today }, { $inc: { count: 1 } }, { upsert: true, new: true }
+      ).lean();
+      return doc.count;
+    } catch (e) { /* fall through to memory */ }
+  }
+  const entry = _emiFallback.get(key);
+  if (!entry || entry.date !== today) { _emiFallback.set(key, { date: today, count: 1 }); return 1; }
   entry.count++;
   return entry.count;
 }
@@ -1189,7 +1211,21 @@ async function deleteFromArchive(fileName, appId = '') {
 }
 
 // ── IA ────────────────────────────────────────────────────────
-const SYSTEM = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
+// ── SYSTEM prompts: base (corta) + completa ─────────────────────
+// La base se usa para consultas generales (~600 tokens vs ~2000 de la completa).
+// La completa solo se inyecta cuando el query es sobre CodeHub/servicios.
+const SYSTEM_BASE = `Eres EMI COPILOT — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
+No reveles qué modelo o APIs usas. Di: "Soy EMI COPILOT, una IA propia de CodeHub."
+
+PERSONALIDAD: Directa, sin relleno. En español (o en el idioma del usuario). Corta por defecto (3-5 líneas). Emojis máx 1 por respuesta. No inventes: di que no sabes y sugiere cómo buscar.
+
+COMANDOS: /help /img /debug /review /readme /translate /explain /test /resumen /clear /skills /model
+
+FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en términos clave. Código en bloques con lenguaje. Sin tablas largas. Sin saludos redundantes.
+
+SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explícito, consejos médicos/legales/financieros como profesional. Enfócate en educación defensiva.`;
+
+const SYSTEM_FULL = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
 No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
 
@@ -1331,11 +1367,54 @@ Puedes responder sobre cualquier tema: ciencias, historia, matemáticas, idiomas
 - Sin tablas largas — prefiere listas
 - Sin saludos redundantes al inicio de cada respuesta`;
 
-async function callGroq(msgs) {
+// ── F1.1: Query classification → dynamic SYSTEM prompt ───────
+// Detecta si el query necesita el SYSTEM completo (CodeHub/servicios)
+// o si con la base es suficiente (~600 tokens vs ~2000).
+const CODEHUB_HINTS = /\b(codehub|wilson\.?e|wilson360|herramientas|tools|opensource|open.?source|servicios|freelance|guatemala|apk|android|emi copilot|emi\s|\/tools|\/servicios|\/opensource|\/cv)\b/i;
+function classifySystem(msg) {
+  if (CODEHUB_HINTS.test(msg)) return SYSTEM_FULL;
+  return SYSTEM_BASE;
+}
+
+// ── F1.3: Adaptive max_tokens ──────────────────────────────
+// Asigna output tokens según el tipo de query.
+function adaptiveMaxTokens(msg) {
+  if (CODE_HINTS.test(msg)) return 2500;
+  if (CREATIVE_HINTS.test(msg)) return 1500;
+  if (/^(resum|summary|resume|summariz)/i.test(msg)) return 1200;
+  if (msg.length < 30) return 500;
+  return 1000;
+}
+
+// ── F1.2+F1.4: Smart history truncation + budget guard ─────
+// Approx tokens = chars / 4 (Spanish/English mix). Returns trimmed msgs array.
+function buildSmartMessages(system, history, maxInputTokens) {
+  const BUDGET = maxInputTokens || 10000;
+  const sysChars = system.length;
+  let budgetLeft = BUDGET * 4 - sysChars; // chars remaining after system
+  const msgs = [{ role: 'system', content: system }];
+  // Always include current user message (last in history)
+  const current = history[history.length - 1];
+  if (current) {
+    budgetLeft -= current.content.length;
+    msgs.push(current);
+  }
+  // Add history from newest to oldest (excluding last = current)
+  const past = history.slice(0, -1).reverse();
+  for (const m of past) {
+    const cost = m.content.length;
+    if (budgetLeft - cost < 500) break; // leave margin
+    budgetLeft -= cost;
+    msgs.splice(1, 0, m); // insert after system, before current
+  }
+  return msgs;
+}
+
+async function callGroq(msgs, maxTokens) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1343,12 +1422,12 @@ async function callGroq(msgs) {
 }
 
 // ── Cerebras (WSE — inferencia ultra rápida, endpoint compatible OpenAI) ──
-async function callCerebras(msgs) {
+async function callCerebras(msgs, maxTokens) {
   if (!process.env.CEREBRAS_API_KEY) throw new Error('Sin CEREBRAS_API_KEY');
   const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Cerebras ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1356,19 +1435,19 @@ async function callCerebras(msgs) {
 }
 
 // ── Hugging Face (router unificado, compatible OpenAI) ────────────────────
-async function callHuggingFace(msgs) {
+async function callHuggingFace(msgs, maxTokens) {
   if (!process.env.HUGGINGFACE_API_KEY) throw new Error('Sin HUGGINGFACE_API_KEY');
   const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
-    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `HuggingFace ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'huggingface/llama-3.3-70b' };
 }
 
-async function callGemini(msgs, imageParts) {
+async function callGemini(msgs, maxTokens, imageParts) {
   const sysMsg = msgs.find(m => m.role === 'system');
   const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
   // Imágenes adjuntas (imagen simple, o varias páginas de un PDF escaneado): se
@@ -1381,7 +1460,7 @@ async function callGemini(msgs, imageParts) {
   }
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM }] }, contents, generationConfig: { maxOutputTokens: 1500, temperature: 0.7 } }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM_BASE }] }, contents, generationConfig: { maxOutputTokens: maxTokens || 1500, temperature: 0.7 } }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1415,7 +1494,7 @@ const OR_FREE_MODELS = [
   'openrouter/free',                               // Auto-router — elige el mejor disponible
 ];
 
-async function callOpenRouterModel(msgs, model) {
+async function callOpenRouterModel(msgs, model, maxTokens) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -1426,7 +1505,7 @@ async function callOpenRouterModel(msgs, model) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1500,
+      max_tokens: maxTokens || 1500,
       temperature: 0.65,
       messages: msgs,
     }),
@@ -1448,12 +1527,12 @@ async function callOpenRouterModel(msgs, model) {
   };
 }
 
-async function callOpenRouter(msgs) {
+async function callOpenRouter(msgs, maxTokens) {
   if (!process.env.OPENROUTER_API_KEY) throw new Error('Sin OPENROUTER_API_KEY');
   // Intenta cada modelo gratuito en orden
   for (const model of OR_FREE_MODELS) {
     try {
-      const result = await callOpenRouterModel(msgs, model);
+      const result = await callOpenRouterModel(msgs, model, maxTokens);
       console.log(`✅ OpenRouter respondió con: ${model}`);
       return result;
     } catch (e) {
@@ -1464,7 +1543,7 @@ async function callOpenRouter(msgs) {
   throw new Error('Todos los modelos de OpenRouter fallaron');
 }
 
-async function callMistral(msgs) {
+async function callMistral(msgs, maxTokens) {
   if (!process.env.MISTRAL_API_KEY) throw new Error('Sin MISTRAL_API_KEY');
   const mistralMsgs = msgs.map(m => ({
     role: m.role === 'system' ? 'system' : m.role,
@@ -1473,25 +1552,27 @@ async function callMistral(msgs) {
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}` },
-    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: 1500, temperature: 0.65, messages: mistralMsgs }),
+    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: maxTokens || 1500, temperature: 0.65, messages: mistralMsgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Mistral ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'mistral/mistral-small' };
 }
 
-async function callCohere(msgs) {
+async function callCohere(msgs, maxTokens) {
   if (!process.env.COHERE_API_KEY) throw new Error('Sin COHERE_API_KEY');
   const system = msgs.find(m => m.role === 'system')?.content || '';
-  const chatHistory = msgs.filter(m => m.role !== 'system').slice(0, -1).map(m => ({
+  // F3.8: Send last 4 turns (not just 1) to preserve conversation context
+  const nonSystem = msgs.filter(m => m.role !== 'system');
+  const chatHistory = nonSystem.slice(0, -1).slice(-8).map(m => ({  // last 8 messages (4 turns)
     role: m.role === 'assistant' ? 'CHATBOT' : 'USER',
     message: m.content,
   }));
-  const lastMsg = msgs.filter(m => m.role !== 'system').slice(-1)[0]?.content || '';
+  const lastMsg = nonSystem[nonSystem.length - 1]?.content || '';
   const res = await fetch('https://api.cohere.com/v1/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.COHERE_API_KEY}` },
-    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: 1500, temperature: 0.65 }),
+    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: maxTokens || 1500, temperature: 0.65 }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.message || `Cohere ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1499,7 +1580,7 @@ async function callCohere(msgs) {
 }
 
 // ── Anthropic Claude ─────────────────────────────────────────────────────
-async function callClaude(msgs) {
+async function callClaude(msgs, maxTokens) {
   const systemMsg = msgs.find(m => m.role === 'system');
   const chatMsgs  = msgs.filter(m => m.role !== 'system');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1511,7 +1592,7 @@ async function callClaude(msgs) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 1500,
+      max_tokens: maxTokens || 1500,
       temperature: 0.65,
       system: systemMsg?.content || '',
       messages: chatMsgs.map(m => ({ role: m.role, content: m.content }))
@@ -1527,12 +1608,12 @@ async function callClaude(msgs) {
 }
 
 // ── Kimi / Moonshot AI (endpoint compatible OpenAI) ───────────────────────
-async function callKimi(msgs) {
+async function callKimi(msgs, maxTokens) {
   if (!process.env.KIMI_API_KEY) throw new Error('Sin KIMI_API_KEY');
   const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
-    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1565,17 +1646,18 @@ function classifyRoute(msgs) {
   return order;
 }
 
-async function callAI(msgs) {
+async function callAI(msgs, maxTokens) {
+  const mt = maxTokens || 1500;
   const providerMap = {
-    Claude:      { fn: () => callClaude(msgs),      key: process.env.ANTHROPIC_API_KEY },
-    Kimi:        { fn: () => callKimi(msgs),        key: process.env.KIMI_API_KEY },
-    Groq:        { fn: () => callGroq(msgs),        key: process.env.GROQ_API_KEY },
-    Cerebras:    { fn: () => callCerebras(msgs),    key: process.env.CEREBRAS_API_KEY },
-    HuggingFace: { fn: () => callHuggingFace(msgs), key: process.env.HUGGINGFACE_API_KEY },
-    OpenRouter:  { fn: () => callOpenRouter(msgs),  key: process.env.OPENROUTER_API_KEY },
-    Gemini:      { fn: () => callGemini(msgs),      key: process.env.GEMINI_API_KEY },
-    Mistral:     { fn: () => callMistral(msgs),     key: process.env.MISTRAL_API_KEY },
-    Cohere:      { fn: () => callCohere(msgs),      key: process.env.COHERE_API_KEY },
+    Claude:      { fn: () => callClaude(msgs, mt),      key: process.env.ANTHROPIC_API_KEY },
+    Kimi:        { fn: () => callKimi(msgs, mt),        key: process.env.KIMI_API_KEY },
+    Groq:        { fn: () => callGroq(msgs, mt),        key: process.env.GROQ_API_KEY },
+    Cerebras:    { fn: () => callCerebras(msgs, mt),    key: process.env.CEREBRAS_API_KEY },
+    HuggingFace: { fn: () => callHuggingFace(msgs, mt), key: process.env.HUGGINGFACE_API_KEY },
+    OpenRouter:  { fn: () => callOpenRouter(msgs, mt),  key: process.env.OPENROUTER_API_KEY },
+    Gemini:      { fn: () => callGemini(msgs, mt),      key: process.env.GEMINI_API_KEY },
+    Mistral:     { fn: () => callMistral(msgs, mt),     key: process.env.MISTRAL_API_KEY },
+    Cohere:      { fn: () => callCohere(msgs, mt),      key: process.env.COHERE_API_KEY },
   };
 
   const order = classifyRoute(msgs);
@@ -2128,7 +2210,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   // ── Límite diario server-side ─────────────────────────────────
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
-  const emiUsed = getEmiUsage(emiKey);
+  const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
     return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
   }
@@ -2178,23 +2260,24 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       content: '[Documento adjunto — resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en español]:\n' + pdfText.slice(0, 40000)
     });
   }
-  let system = SYSTEM;
-  // Skill activa: inyecta su guía (system_prompt_inject) para que EMI delegue
-  // en procesamiento local / use el contexto correcto sin gastar tokens de más.
+  // F1.1: SYSTEM dinámico — base para queries generales, completa para CodeHub
+  let system = classifySystem(message);
+  // Skill activa: inyecta su guía (system_prompt_inject)
   if (skill_id) {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) {
       system = skill.system_prompt_inject + '\n\n' + system;
     }
   }
-  const msgs = [{ role: 'system', content: system }, ...sessionHistory];
+  // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
+  const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
   try {
     // Con imagen/PDF escaneado: va directo a Gemini (único proveedor con visión
     // en esta cadena). Sin imagen: sigue el fallback normal Claude→Groq→...→Cohere.
     const { reply, input, output, model } = imageParts
-      ? await callGemini(msgs, imageParts)
-      : await callAI(msgs);
+      ? await callGemini(msgs, adaptiveMaxTokens(message), imageParts)
+      : await callAI(msgs, adaptiveMaxTokens(message));
     if (dbConnected) ChatMessage.insertMany([
       { sessionId, role: 'user',      content: message.trim() + (imageParts ? ' [imagen adjunta]' : '') + (pdfText ? ' [PDF adjunto]' : ''), tokens: input,  model },
       { sessionId, role: 'assistant', content: reply,          tokens: output, model },
@@ -2202,7 +2285,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
     tgAlert('chat', () => `💬 <b>Chat con EMI</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
-    const emiNow = incrEmiUsage(emiKey);
+    const emiNow = await incrEmiUsage(emiKey);
     res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
   } catch (err) {
     tgAlert('chatfail', () =>
@@ -2814,6 +2897,29 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
 
 
 // ── POST /api/generate-image — Generador IA con 4 proveedores ─
+// F2.6: Cache de imágenes por prompt hash (TTL 1 hora)
+const _imgCache = new Map();
+const IMG_CACHE_TTL = 3600000; // 1 hour
+function imgCacheKey(p, w, h) {
+  let h1 = 0; const s = p.toLowerCase().trim().replace(/\s+/g, ' ');
+  for (let i = 0; i < s.length; i++) { h1 = ((h1 << 5) - h1 + s.charCodeAt(i)) | 0; }
+  return h1 + ':' + w + 'x' + h;
+}
+function imgCacheGet(key) {
+  const e = _imgCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.ts > IMG_CACHE_TTL) { _imgCache.delete(key); return null; }
+  return e.data;
+}
+function imgCacheSet(key, data) {
+  if (_imgCache.size > 200) { const first = _imgCache.keys().next().value; _imgCache.delete(first); }
+  _imgCache.set(key, { data, ts: Date.now() });
+}
+function sendAndCache(res, data, cacheKey) {
+  if (data && (data.image || data.url)) imgCacheSet(cacheKey, data);
+  return res.json(data);
+}
+
 app.post('/api/generate-image', imageLimiter, async (req, res) => {
   const { prompt, width = 512, height = 512, provider = 'auto', skill_id = null, preset_id = null } = req.body;
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 2) {
@@ -2838,6 +2944,14 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     }
   }
 
+  // F2.6: Check image cache before hitting providers
+  const cacheKey = imgCacheKey(p, w, h);
+  const cached = imgCacheGet(cacheKey);
+  if (cached) {
+    console.log('🖼️ Image cache hit');
+    return res.json({ ...cached, cached: true });
+  }
+
   // ── 1. Together AI — FLUX.1 Schnell ───────────────────────
   if (process.env.TOGETHER_API_KEY && (provider === 'auto' || provider === 'together')) {
     try {
@@ -2860,8 +2974,8 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
         const d = await r.json();
         const b64 = d.data?.[0]?.b64_json;
         const url = d.data?.[0]?.url;
-        if (b64) return res.json({ ok: true, provider: 'together', model: 'FLUX.1-schnell', image: `data:image/png;base64,${b64}` });
-        if (url) return res.json({ ok: true, provider: 'together', model: 'FLUX.1-schnell', url });
+        if (b64) return sendAndCache(res, { ok: true, provider: 'together', model: 'FLUX.1-schnell', image: `data:image/png;base64,${b64}` }, cacheKey);
+        if (url) return sendAndCache(res, { ok: true, provider: 'together', model: 'FLUX.1-schnell', url }, cacheKey);
       } else {
         const e = await r.json().catch(() => ({}));
         errors.push(`Together: ${e.error?.message || r.status}`);
@@ -2889,7 +3003,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
       if (r.ok) {
         const d = await r.json();
         const b64 = d.predictions?.[0]?.bytesBase64Encoded;
-        if (b64) return res.json({ ok: true, provider: 'gemini', model: 'Imagen 3 Fast', image: `data:image/png;base64,${b64}` });
+        if (b64) return sendAndCache(res, { ok: true, provider: 'gemini', model: 'Imagen 3 Fast', image: `data:image/png;base64,${b64}` }, cacheKey);
       } else {
         const e = await r.json().catch(() => ({}));
         errors.push(`Gemini: ${e.error?.message || r.status}`);
@@ -2923,8 +3037,8 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
           d.data?.images?.[0]?.base64 ||
           d.data?.image_base64?.[0];
         const url = d.data?.image_urls?.[0];
-        if (b64) return res.json({ ok: true, provider: 'minimax', model: 'image-01', image: `data:image/png;base64,${b64}` });
-        if (url) return res.json({ ok: true, provider: 'minimax', model: 'image-01', url });
+        if (b64) return sendAndCache(res, { ok: true, provider: 'minimax', model: 'image-01', image: `data:image/png;base64,${b64}` }, cacheKey);
+        if (url) return sendAndCache(res, { ok: true, provider: 'minimax', model: 'image-01', url }, cacheKey);
         errors.push('MiniMax: respuesta sin imagen');
       } else {
         const e = await r.json().catch(() => ({}));
@@ -2941,7 +3055,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
       if (r.ok) {
         const buf = await r.arrayBuffer();
         const b64 = Buffer.from(buf).toString('base64');
-        return res.json({ ok: true, provider: 'pollinations', model: 'Flux', image: `data:image/jpeg;base64,${b64}` });
+        return sendAndCache(res, { ok: true, provider: 'pollinations', model: 'Flux', image: `data:image/jpeg;base64,${b64}` }, cacheKey);
       } else {
         errors.push(`Pollinations: ${r.status}`);
       }
@@ -2956,7 +3070,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     if (r2.ok) {
       const buf = await r2.arrayBuffer();
       const b64 = Buffer.from(buf).toString('base64');
-      return res.json({ ok: true, provider: 'pollinations-turbo', model: 'Turbo', image: `data:image/jpeg;base64,${b64}` });
+      return sendAndCache(res, { ok: true, provider: 'pollinations-turbo', model: 'Turbo', image: `data:image/jpeg;base64,${b64}` }, cacheKey);
     }
     errors.push(`Pollinations Turbo: ${r2.status}`);
   } catch (e) { errors.push(`Pollinations Turbo: ${e.message}`); }
@@ -4584,7 +4698,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   // ── Límite diario server-side ──
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
-  const emiUsed = getEmiUsage(emiKey);
+  const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
     return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
   }
@@ -4605,12 +4719,15 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     });
   }
 
-  let system = SYSTEM;
+  // F1.1: SYSTEM dinámico — base para queries generales, completa para CodeHub
+  let system = classifySystem(message);
+  // Skill activa: inyecta su guía
   if (skill_id) {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
   }
-  const msgs = [{ role: 'system', content: system }, ...sessionHistory];
+  // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
+  const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
   // ── Setup SSE headers ──
   res.setHeader('Content-Type', 'text/event-stream');
@@ -4698,7 +4815,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
         const sysMsg = msgs.find(m => m.role === 'system');
         const chatMsgs = msgs.filter(m => m.role !== 'system');
         const body = {
-          model: 'claude-sonnet-4-5', max_tokens: 1500, temperature: 0.65,
+          model: 'claude-sonnet-4-5', max_tokens: adaptiveMaxTokens(message), temperature: 0.65,
           system: sysMsg?.content || '',
           messages: chatMsgs.map(m => ({ role: m.role, content: m.content })),
           stream: true
@@ -4741,7 +4858,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       for (const prov of sorted) {
         if (!prov.key || upstreamAbort.signal.aborted) continue;
         try {
-          const body = { model: prov.model, max_tokens: 1500, temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
+          const body = { model: prov.model, max_tokens: adaptiveMaxTokens(message), temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
           const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + prov.key, ...prov.extraHeaders };
           const r = await tryStream(prov.name, prov.endpoint, headers, body);
           modelName = prov.label;
@@ -4778,7 +4895,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
     ]).catch(() => {});
 
-    const emiNow = incrEmiUsage(emiKey);
+    const emiNow = await incrEmiUsage(emiKey);
     broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
     trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
     tgAlert('chat', () => 'Chat con EMI (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
