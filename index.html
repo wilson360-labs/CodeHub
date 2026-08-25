@@ -4391,6 +4391,91 @@ async function sendEmail(e) {
     return _pdfjsPromise;
   }
 
+  /* ── PDF local pre-summarization ──────────────────────────────
+     Reduces extracted text 50-70% before sending to LLM.
+     100% client-side, no network calls. */
+  function compressPdfText(raw) {
+    if (!raw || raw.length < 2000) return raw;
+    /* 1. Normalize whitespace */
+    var clean = raw.replace(/\r\n/g, '\n').replace(/\t/g, ' ')
+      .replace(/ {3,}/g, '  ').replace(/\n{3,}/g, '\n\n');
+    /* 2. Split into paragraphs */
+    var paragraphs = clean.split(/\n\n+/).filter(function (p) { return p.trim().length > 0; });
+    /* 3. Extract sentences from each paragraph */
+    var allSentences = [];
+    var sentenceRegex = /[^.!?\n]{15,}[.!?](?:\s|$)/g;
+    paragraphs.forEach(function (para, pIdx) {
+      var isHeader = /^[\s]*[A-ZÁÉÍÓÚÜ\s]{3,}$/.test(para) ||
+        /^[\s]*\d+[\.\)]\s/.test(para) ||
+        /^[\s]*[\-\*•]\s/.test(para) ||
+        para.length < 80;
+      var matches = para.match(sentenceRegex) || [para.trim()];
+      matches.forEach(function (s, sIdx) {
+        var t = s.trim();
+        if (t.length < 12) return;
+        allSentences.push({
+          text: t,
+          pIdx: pIdx,
+          sIdx: sIdx,
+          paraLen: para.length,
+          isHeader: isHeader,
+          isFirst: sIdx === 0,
+          isLast: sIdx === matches.length - 1
+        });
+      });
+    });
+    if (allSentences.length <= 8) return raw;
+    /* 4. Build word frequency map (TF) */
+    var wordFreq = {};
+    var stopWords = { de:1, la:1, el:1, en:1, y:1, a:1, los:1, del:1, las:1, un:1, por:1, con:1, no:1, se:1, al:1, lo:1, es:1, una:1, su:1, para:1, mas:1, o:1, que:1, this:1, the:1, and:1, of:1, to:1, in:1, is:1, it:1, that:1, for:1, on:1, are:1, with:1, as:1, was:1, at:1, be:1, an:1, or:1, from:1, by:1, not:1, but:1, what:1, all:1, were:1, when:1, we:1, there:1, can:1, been:1, has:1, had:1, do:1, if:1, its:1, they:1, this:1, would:1, will:1, about:1, than:1, them:1, other:1, which:1, their:1, into:1, more:1, also:1, each:1, made:1, may:1, many:1, these:1, two:1, any:1, should:1, such:1, after:1, our:1, how:1, these:1, way:1, between:1, through:1, most:1, then:1, where:1, very:1, just:1, over:1, some:1, only:1, like:1, used:1, pero:1, como:1, entre:1, hasta:1, sobre:1, puede:1, todos:1, hacer:1, ser:1, tiene:1, esta:1, este:1, otro:1, otra:1, otros:1, otras:1, cada:1, donde:1, cuando:1, porque:1, aunque:1, desde:1, antes:1, despues:1, sino:1, segun:1, durante:1, mediante:1, hacia:1, segun:1, segun:1, ya:1, solo:1, tan:1, ni:1, e:1, si:1, los:1, las:1, uno:1, dos:1, tres:1, cuatro:1, cinco:1 };
+    allSentences.forEach(function (s) {
+      var words = s.text.toLowerCase().replace(/[^a-záéíóúüñ0-9\s]/g, ' ').split(/\s+/);
+      words.forEach(function (w) {
+        if (w.length < 3 || stopWords[w]) return;
+        wordFreq[w] = (wordFreq[w] || 0) + 1;
+      });
+    });
+    /* 5. Score each sentence */
+    allSentences.forEach(function (s) {
+      var words = s.text.toLowerCase().replace(/[^a-záéíóúüñ0-9\s]/g, ' ').split(/\s+/);
+      var contentWords = words.filter(function (w) { return w.length >= 3 && !stopWords[w]; });
+      var tfScore = contentWords.reduce(function (sum, w) { return sum + (wordFreq[w] || 0); }, 0) / (contentWords.length || 1);
+      var posRatio = s.pIdx / Math.max(paragraphs.length - 1, 1);
+      var posScore = 0;
+      if (posRatio < 0.15) posScore = 3;
+      else if (posRatio < 0.3) posScore = 2;
+      else if (posRatio > 0.85) posScore = 2.5;
+      else if (posRatio > 0.7) posScore = 1.5;
+      else posScore = 0.5;
+      if (s.isHeader) posScore += 2;
+      if (s.isFirst) posScore += 1.5;
+      if (s.isLast) posScore += 0.5;
+      var numCount = (s.text.match(/\d[\d.,:\/\-]*/g) || []).length;
+      var numScore = Math.min(numCount * 0.4, 2);
+      var lenScore = s.text.length > 100 ? 0.5 : s.text.length > 60 ? 0.3 : 0;
+      s.score = tfScore * 0.4 + posScore * 0.3 + numScore * 0.2 + lenScore * 0.1;
+    });
+    /* 6. Select top ~35% sentences, preserving document order */
+    var target = Math.max(6, Math.ceil(allSentences.length * 0.35));
+    var ranked = allSentences.slice().sort(function (a, b) { return b.score - a.score; });
+    var selected = ranked.slice(0, target).sort(function (a, b) {
+      return a.pIdx !== b.pIdx ? a.pIdx - b.pIdx : a.sIdx - b.sIdx;
+    });
+    /* 7. Always include first and last paragraphs */
+    var firstP = allSentences.filter(function (s) { return s.pIdx === 0; });
+    var lastP = allSentences.filter(function (s) { return s.pIdx === paragraphs.length - 1; });
+    var selectedSet = {};
+    selected.forEach(function (s) { selectedSet[s.pIdx + ':' + s.sIdx] = 1; });
+    firstP.forEach(function (s) { if (!selectedSet[s.pIdx + ':' + s.sIdx]) { selected.push(s); selectedSet[s.pIdx + ':' + s.sIdx] = 1; } });
+    lastP.forEach(function (s) { if (!selectedSet[s.pIdx + ':' + s.sIdx]) { selected.push(s); selectedSet[s.pIdx + ':' + s.sIdx] = 1; } });
+    selected.sort(function (a, b) { return a.pIdx !== b.pIdx ? a.pIdx - b.pIdx : a.sIdx - b.sIdx; });
+    /* 8. Rebuild compressed text */
+    var result = selected.map(function (s) { return s.text; }).join(' ');
+    /* 9. Safety: if compression lost too much, return original */
+    if (result.length < raw.length * 0.15) return raw;
+    return result;
+  }
+
   window.handleAiAttach = function (file) {
     if (!file) return;
     if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
@@ -4424,9 +4509,12 @@ async function sendEmail(e) {
       }
       text = text.trim();
       if (text.length >= 50) {
-        _pendingAttachment = { type: 'pdf', name: file.name, pages: doc.numPages, pdfText: text.slice(0, 40000) };
+        var fullText = text.slice(0, 40000);
+        var compressed = compressPdfText(fullText);
+        var ratio = Math.round((1 - compressed.length / fullText.length) * 100);
+        _pendingAttachment = { type: 'pdf', name: file.name, pages: doc.numPages, pdfText: compressed, pdfFull: fullText };
         updateAiAttachmentChip();
-        toast('PDF leído (' + doc.numPages + ' pág). Pregúntame sobre él.', 'success');
+        toast('PDF leído (' + doc.numPages + ' pág). ' + (ratio > 10 ? 'Comprimido ' + ratio + '% · ' : '') + compressed.length + ' chars.', 'success');
       } else {
         // PDF escaneado sin texto: renderiza las primeras páginas como imagen
         // para que Gemini Vision lo lea.
@@ -4459,9 +4547,14 @@ async function sendEmail(e) {
     const a = _pendingAttachment;
     let meta = 'imagen';
     if (a.type === 'pdf') {
-      meta = a.scanned
-        ? 'escaneado · IA lo lee como imagen'
-        : a.pages + ' pág · texto extraído';
+      if (a.scanned) {
+        meta = 'escaneado · IA lo lee como imagen';
+      } else {
+        var chars = a.pdfText.length;
+        var full = a.pdfFull ? a.pdfFull.length : chars;
+        var pct = full > chars ? Math.round((1 - chars / full) * 100) : 0;
+        meta = a.pages + ' pág · ' + (pct > 10 ? 'comprimido ' + pct + '% · ' : '') + chars + ' chars';
+      }
     }
     chip.innerHTML = '<i class="fas ' + (a.type === 'pdf' ? 'fa-file-pdf' : 'fa-file-image') + '"></i>' +
       '<span title="' + escHtml(a.name) + '">' + escHtml(a.name) + '</span>' +

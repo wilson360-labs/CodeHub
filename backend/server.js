@@ -2170,12 +2170,12 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   }
 
   sessionHistory.push({ role: 'user', content: message.trim() });
-  // PDF adjunto: el texto extraído se inyecta como contexto antes de la pregunta
+  // PDF adjunto: el texto comprimido se inyecta como contexto antes de la pregunta
   // del usuario (aplica a cualquier proveedor de texto, no solo Gemini).
   if (typeof pdfText === 'string' && pdfText.trim()) {
     sessionHistory.splice(sessionHistory.length - 1, 0, {
       role: 'user',
-      content: '[Documento adjunto — lee este contenido y responde usando SOLO este documento como referencia, en español]:\n' + pdfText.slice(0, 40000)
+      content: '[Documento adjunto — resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en español]:\n' + pdfText.slice(0, 40000)
     });
   }
   let system = SYSTEM;
@@ -4601,7 +4601,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   if (typeof pdfText === 'string' && pdfText.trim()) {
     sessionHistory.splice(sessionHistory.length - 1, 0, {
       role: 'user',
-      content: '[Documento adjunto — lee este contenido y responde usando SOLO este documento como referencia, en español]:\n' + pdfText.slice(0, 40000)
+      content: '[Documento adjunto — resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en español]:\n' + pdfText.slice(0, 40000)
     });
   }
 
