@@ -17,8 +17,18 @@
       });
     })();
   </script>
-  <!-- Google AdSense — Auto Ads -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+  <!-- Google AdSense — Auto Ads (no se carga en WebView/APK) -->
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
+      s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
+      document.head.appendChild(s);
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
@@ -69,6 +79,7 @@
 
 <div class="os-intro">
   <p>La descarga de cada app enlaza directamente a su página oficial de <strong>GitHub Releases</strong> — el mismo repositorio que puedes revisar antes de instalar. Si una app te sirve, considera darle una estrella o aportar al proyecto: la mantienen desarrolladores independientes, no una empresa.</p>
+  <p>CodeHub no aloja APKs ni “mods”. Si un enlace no coincide con el repositorio que ves en GitHub, no lo instales. La categoría de VPN incluye clientes de código abierto; no vendemos VPN ni prometemos anonimato. Una guía más larga está en <a href="/guias#android-foss">Guías: cómo elegir apps FOSS</a>.</p>
 </div>
 
 <button class="we-trigger" id="we-trigger" type="button" aria-haspopup="dialog" aria-controls="we-drawer" aria-expanded="false">
@@ -212,7 +223,9 @@
 </div>
 
 <footer>
-  <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.</p>
+  <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.
+    <span style="display:block;margin-top:.55rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/guias">Guías</a></span>
+  </p>
 </footer>
 
 <button id="to-top-btn" class="to-top-btn" aria-label="Subir arriba" type="button">

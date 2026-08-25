@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
+      s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
+      document.head.appendChild(s);
+    })();
+  </script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guías de CodeHub — Herramientas, FOSS y freelance en Guatemala</title>
+  <meta name="description" content="Guías escritas por Wilson.E: cómo usar las herramientas web de CodeHub, elegir apps Android de código abierto, practicar CSS Flexbox y cotizar un sitio freelance en Guatemala.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/guias">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2f80ed;
+      --accent: #38bdf8;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --border: rgba(47,128,237,.18);
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.55);
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+    img, svg { max-width: 100%; }
+    nav.top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,5,16,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      padding: .75rem 2rem;
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    nav.top-nav a { color: var(--text); text-decoration: none; font-size: .85rem; }
+    nav.top-nav a:first-child { color: var(--primary); font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+    .sep { color: var(--border); }
+    .hero {
+      padding: 3.5rem 1.5rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-eyebrow { font-family: var(--mono); font-size: .75rem; color: var(--primary); margin-bottom: .75rem; letter-spacing: .08em; }
+    .hero h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); font-weight: 700; margin-bottom: .75rem; }
+    .hero h1 span { color: var(--primary); }
+    .hero p { max-width: 640px; margin: 0 auto; color: var(--text-secondary); }
+    .page-wrap { max-width: 760px; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; min-width: 0; }
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .toc a { color: var(--text-secondary); text-decoration: none; }
+    .toc a:hover { color: var(--primary); }
+    .toc li { margin-bottom: .35rem; }
+    article { margin-bottom: 3.2rem; min-width: 0; }
+    article h2 {
+      font-size: 1.35rem;
+      border-left: 3px solid var(--primary);
+      padding-left: 1rem;
+      margin-bottom: 1rem;
+    }
+    article h3 { font-size: 1.05rem; margin: 1.4rem 0 .6rem; color: var(--accent); }
+    article p { color: var(--text-secondary); margin-bottom: 1rem; }
+    article p strong { color: var(--text); }
+    article ul, article ol { padding-left: 1.3rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    article li { margin-bottom: .4rem; }
+    article a { color: var(--primary); }
+    .meta { font-family: var(--mono); font-size: .72rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 480px) {
+      nav.top-nav { padding: .75rem 1rem; }
+      .page-wrap { padding: 1.75rem 1rem 4rem; }
+    }
+  </style>
+</head>
+<body>
+<nav class="top-nav">
+  <a href="/">CodeHub</a>
+  <span class="sep">/</span>
+  <a href="/guias">Guías</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">// notas de Wilson.E</div>
+  <h1>Guías de <span>CodeHub</span></h1>
+  <p>Textos propios sobre las herramientas del sitio, apps de código abierto y cómo cotizo trabajo freelance desde Guatemala. No son copias de documentación de terceros.</p>
+</div>
+
+<div class="page-wrap">
+  <div class="toc">
+    <ol>
+      <li><a href="#herramientas-locales">Qué corre en tu navegador y qué no</a></li>
+      <li><a href="#passwords">Contraseñas que sí resisten un dump filtrado</a></li>
+      <li><a href="#android-foss">Cómo elijo apps Android de GitHub Releases</a></li>
+      <li><a href="#flexbox">Flexbox: un eje, no un grid</a></li>
+      <li><a href="#freelance-gt">Qué pido cuando cotizo un sitio en Guatemala</a></li>
+    </ol>
+  </div>
+
+  <article id="herramientas-locales">
+    <p class="meta">Actualizado: 25 ago 2026 · /tools</p>
+    <h2>Qué corre en tu navegador y qué no</h2>
+    <p>La página de herramientas de CodeHub mezcla dos tipos de utilidades. Conviene saber cuál es cuál antes de pegar un secreto.</p>
+    <p><strong>Locales:</strong> generador y verificador de contraseñas, QR, Base64, UUID, hashes SHA, JSON formatter, regex tester, pomodoro, conversor de unidades. El cálculo ocurre en JavaScript de la pestaña. Si cierras la pestaña, el dato se va con ella, salvo que lo hayas copiado tú.</p>
+    <p><strong>Con red:</strong> clima, IP lookup, DNS lookup, traductor, generador de imágenes y el chat EMI. Esas llamadas salen a APIs públicas o a nuestro backend. No pongas tokens de clientes, cookies de sesión ni documentos privados en esos campos.</p>
+    <p>No ofrezco “privacidad absoluta”: el navegador sigue siendo un entorno que puede tener extensiones. Para un secreto de producción uso un gestor de contraseñas, no un generador web, aunque el mío sea local. La herramienta sirve para un draft rápido o para enseñar cómo se ve una cadena aleatoria de 20 caracteres.</p>
+    <p>Si una utilidad pide permisos del sistema (ubicación para el clima), es el navegador quien pregunta. CodeHub no instala un servicio oculto. Detalle de cookies y terceros: <a href="/privacy">Política de privacidad</a>.</p>
+  </article>
+
+  <article id="passwords">
+    <p class="meta">Seguridad práctica · sin jerga de marketing</p>
+    <h2>Contraseñas que sí resisten un dump filtrado</h2>
+    <p>La longitud gana a los “símbolos raros” si el atacante tiene un hash y puede probar combinaciones. Doce caracteres aleatorios de un alfabeto amplio suelen ser suficientes para una cuenta personal; dieciséis o más para correo y bancos. Reutilizar la misma clave entre sitios es peor que usar una clave “fea” de 8 caracteres: un leak en un foro te abre el correo.</p>
+    <h3>Qué hago yo</h3>
+    <ol>
+      <li>Genero la clave en el <a href="/tools">generador de CodeHub</a> o en el del gestor.</li>
+      <li>La copio una vez y la guardo en el gestor. No la dejo en un chat ni en una captura.</li>
+      <li>Activo 2FA donde el servicio lo permita (app, no SMS si hay otra opción).</li>
+    </ol>
+    <p>El “verificador de fuerza” del sitio estima entropía a ojo: mayúsculas, números, longitud. No detecta si escribiste tu fecha de nacimiento. Úsalo como recordatorio visual, no como auditoría.</p>
+    <p>Nunca pegas una contraseña real en el chat de EMI ni en el traductor. Esos textos pueden pasar por un proveedor de IA.</p>
+  </article>
+
+  <article id="android-foss">
+    <p class="meta">Catálogo /opensource · criterio editorial</p>
+    <h2>Cómo elijo apps Android de GitHub Releases</h2>
+    <p>El catálogo de CodeHub no es una tienda. Cada ficha apunta al repositorio que yo pude abrir y contrastar: nombre del paquete, actividad reciente, licencia y que el APK salga de Releases del mismo org/user, no de un mega.nz anónimo.</p>
+    <p>Instalar fuera de Play implica aceptar el riesgo: no hay revisión de Google Play Protect como en la tienda. Por eso filtro mods, “premium cracked” y APKs reempaquetados. Si el README y el Release no coinciden, no listo la app.</p>
+    <h3>Lista corta antes de instalar</h3>
+    <ul>
+      <li>El dominio de descarga es github.com/…/releases, no un acortador.</li>
+      <li>La firma o el checksum, si el proyecto los publica, coinciden.</li>
+      <li>Los permisos del manifiesto tienen sentido (una linterna no necesita contactos).</li>
+      <li>Hay issues y commits recientes, o al menos una nota de que el proyecto está en mantenimiento mínimo.</li>
+    </ul>
+    <p>Las VPN de la lista son clientes de código abierto. No vendo túneles ni prometo que “te vuelves invisible”. Una VPN mal configurada o un servidor de un tercero sigue viendo tu tráfico. Si necesitas una VPN comercial con jurisdicción clara, eso es otra compra; CodeHub no la intermedia.</p>
+    <p>Windows Enhance, en el mismo sitio, es un recuento de herramientas de recuperación con enlaces. Tampoco alojamos ejecutables de Windows.</p>
+  </article>
+
+  <article id="flexbox">
+    <p class="meta">CSS · /flexbox-labs</p>
+    <h2>Flexbox: un eje, no un grid</h2>
+    <p>Flexbox alinea hijos en una fila o una columna. El gap, el wrap y el justify-content resuelven barras, chips y centrados. Cuando el diseño es una tabla de celdas (galería, dashboard de 12 columnas), CSS Grid ahorra anidaciones.</p>
+    <p>En CodeHub incrusto Flexbox Labs (MIT, prazzon) para que puedas mover sliders y ver el CSS generado. Ese playground no lo escribí yo: si el iframe falla, usa el enlace “abrir en pestaña nueva”. Lo que sí es mío es cuándo lo recomiendo: primero flex en el header y el menú; grid en el listado de tarjetas.</p>
+    <p>Un error típico es poner <code>width: 100%</code> en un hijo flex sin <code>min-width: 0</code>. El texto largo o un <code>pre</code> entonces empuja el layout. En este sitio lo documentamos en las reglas de responsividad: los hijos de flex/grid que contienen código llevan min-width 0.</p>
+  </article>
+
+  <article id="freelance-gt">
+    <p class="meta">Servicios · Guatemala</p>
+    <h2>Qué pido cuando cotizo un sitio en Guatemala</h2>
+    <p>Trabajo freelance desde Ciudad de Guatemala, remoto o presencial según el proyecto. Un mensaje útil no es “¿cuánto cuesta una página?”. Necesito alcance:</p>
+    <ul>
+      <li>¿Es una landing, una tienda, un panel o un portfolio?</li>
+      <li>¿Hay marca, textos y fotos, o hay que producirlos?</li>
+      <li>¿Quién hospeda y quién pone el dominio?</li>
+      <li>¿Hace falta pago en línea, WhatsApp, o solo formulario?</li>
+      <li>¿Hay fecha de evento o de campaña?</li>
+    </ul>
+    <p>Con eso armo un rango. El precio cambia si el contenido llega a destiempo o si hay que integrar un ERP. No entrego “plantillas infinitas”: entrego un sitio que puedas editar, con HTTPS y un canal de soporte acotado (ajustes menores post-entrega, no rediseño eterno).</p>
+    <p>Contacto: formulario en la home, <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a> o WhatsApp. Detalle de paquetes en <a href="/servicios">Servicios</a>.</p>
+  </article>
+</div>
+
+<footer>
+  <span>&copy; 2026 Wilson.E · CodeHub</span>
+  &nbsp;·&nbsp;
+  <a href="/privacy">Privacidad</a>
+  &nbsp;·&nbsp;
+  <a href="/terms">Términos</a>
+  &nbsp;·&nbsp;
+  <a href="/">Inicio</a>
+</footer>
+<script src="../js/consent-banner.js?v=20260810a" defer></script>
+<script src="../js/connection-alert.js?v=20260810a" defer></script>
+</body>
+</html>

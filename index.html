@@ -44,9 +44,18 @@
         });
       })();
     </script>
-    <!-- Google AdSense — Auto Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832"
-     crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+    <!-- Google AdSense — Auto Ads (no se carga en WebView/APK) -->
+    <script>
+      (function () {
+        if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+        var s = document.createElement('script');
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
+        s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
+        document.head.appendChild(s);
+      })();
+    </script>
     <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
 <script>
@@ -521,6 +530,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="side-group">
             <div class="side-group-label">Páginas</div>
             <a class="side-link" href="/tools" onclick="closeMobileNav()"><i class="fas fa-wrench"></i> Herramientas</a>
+            <a class="side-link" href="/guias" onclick="closeMobileNav()"><i class="fas fa-book"></i> Guías</a>
             <a class="side-link" href="/opensource" onclick="closeMobileNav()"><i class="fas fa-globe"></i> Open Source</a>
             <a class="side-link" href="/cv" onclick="closeMobileNav()"><i class="fas fa-file-lines"></i> Mi CV</a>
         </div>
@@ -1374,6 +1384,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div class="footer-bottom">
                 <span>&copy; 2024–2026 <strong>Wilson.E</strong> · <span data-i18n="footerRights">Todos los derechos reservados</span></span>
                 <span style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
+                    <a href="/guias" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'">Guías</a>
                     <a href="/privacy" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'" data-i18n="footerPrivacy">Política de Privacidad</a>
                     <a href="/terms" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'" data-i18n="footerTerms">Términos de Uso</a>
                 </span>

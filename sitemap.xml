@@ -6,70 +6,63 @@
 
   <url>
     <loc>https://wilson360-labs.vercel.app/</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/tools</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://wilson360-labs.vercel.app/guias</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/opensource</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.85</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/servicios</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/cv</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
 
   <url>
-    <loc>https://wilson360-labs.vercel.app/codehub-ultra</loc>
-    <lastmod>2026-08-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.65</priority>
-  </url>
-
-  <url>
-    <loc>https://wilson360-labs.vercel.app/analytics</loc>
-    <lastmod>2026-08-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-
-  <url>
     <loc>https://wilson360-labs.vercel.app/flexbox-labs</loc>
-    <lastmod>2026-08-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.55</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/privacy</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <url>
     <loc>https://wilson360-labs.vercel.app/terms</loc>
-    <lastmod>2026-08-16</lastmod>
+    <lastmod>2026-08-25</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

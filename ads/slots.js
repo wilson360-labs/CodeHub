@@ -2,19 +2,15 @@
  * CodeHub — Configuración de Google AdSense
  * Publisher: ca-pub-3780093322926832
  *
- * ⚠️ MODALIDAD: AUTO ADS (desde Agosto 2026)
- * Google decide automáticamente dónde colocar los anuncios. Solo se carga
- * el script `adsbygoogle.js` en el <head> de cada página; NO se usan
- * unidades manuales <ins> ni data-ad-slot.
+ * MODALIDAD: AUTO ADS
+ * El script adsbygoogle.js se carga solo en páginas con contenido de editor
+ * y nunca dentro de la APK WebView (ver gate CodeHubNative / __apkNative).
  *
- * Páginas con el script: index.html, pages/tools.html, pages/opensource.html,
- * privacy.html, terms.html.
+ * Con Auto Ads: index, tools, guias, opensource, servicios, cv.
+ * Sin Auto Ads: privacy, terms, juegos, flexbox-labs (iframe de terceros),
+ * admin, analytics, codehub-ultra.
  *
- * Para activar Auto ads desde el panel de AdSense:
- *   AdSense → Anuncios → Configuración de anuncios → Anuncios automáticos → activar.
- *
- * (Este archivo se mantiene como referencia del publisher id; ya no hace
- *  falta rellenar slot IDs porque no se usan unidades manuales.)
+ * AdSense → Anuncios → Configuración de anuncios → Anuncios automáticos.
  */
 
 const AD_SLOTS = {
@@ -23,5 +19,4 @@ const AD_SLOTS = {
   units: {},
 };
 
-// Para uso en Node.js
 if (typeof module !== 'undefined') module.exports = AD_SLOTS;

@@ -150,6 +150,10 @@
   "source": "/terms", "destination": "/terms.html"
 },
     {
+      "source": "/guias",
+      "destination": "/pages/guias.html"
+    },
+    {
       "source": "/tools",
       "destination": "/pages/tools.html"
     },
@@ -206,6 +210,16 @@
     {
       "source": "/tools.html",
       "destination": "/tools",
+      "permanent": true
+    },
+    {
+      "source": "/guias.html",
+      "destination": "/guias",
+      "permanent": true
+    },
+    {
+      "source": "/pages/guias",
+      "destination": "/guias",
       "permanent": true
     },
     {

@@ -17,8 +17,18 @@
       });
     })();
   </script>
-  <!-- Google AdSense — Auto Ads -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+  <!-- Google AdSense — Auto Ads (no se carga en WebView/APK) -->
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
+      s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
+      document.head.appendChild(s);
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
@@ -498,8 +508,8 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <footer>
-  <a href="/">&lt;Wilson.E/&gt;</a> · Desarrollo Web Profesional · Guatemala
-  <span style="margin-left:.6rem;font-size:.78rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a></span>
+    <a href="/">&lt;Wilson.E/&gt;</a> · Desarrollo Web Profesional · Guatemala
+  <span style="margin-left:.6rem;font-size:.78rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/guias">Guías</a></span>
 </footer>
 
 <script>

@@ -17,8 +17,18 @@
       });
     })();
   </script>
-  <!-- Google AdSense — Auto Ads -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832" crossorigin="anonymous" data-ad-client="ca-pub-3780093322926832"></script>
+  <!-- Google AdSense — Auto Ads (no se carga en WebView/APK) -->
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
+      s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
+      document.head.appendChild(s);
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
@@ -397,8 +407,15 @@ footer a{color:var(--p);text-decoration:none}
 <section class="hero">
 <div class="hero-tag"><span class="hero-dot"></span> 32 herramientas · 100% en tu navegador · Sin registro</div>
   <h1>Herramientas que<br>realmente sirven</h1>
-  <p>Sin APIs de pago ni servidores. Todo funciona aquí mismo, ahora mismo.</p>
+  <p>Sin APIs de pago ni servidores de pago. Las herramientas de texto, hash, QR y contraseñas se ejecutan en tu navegador: el dato no viaja a CodeHub. Abajo hay una guía corta de uso responsable; el detalle está en <a href="/guias" style="color:var(--a)">Guías</a>.</p>
 </section>
+
+<article class="tools-guide" style="position:relative;z-index:1;max-width:860px;margin:0 auto 2.2rem;padding:0 1.5rem;color:var(--muted);font-size:.88rem;line-height:1.75">
+  <h2 style="color:var(--text);font-size:1.15rem;margin-bottom:.7rem">Cómo usar estas herramientas (y qué no hacer)</h2>
+  <p style="margin-bottom:.85rem">CodeHub concentra utilidades que suelo necesitar al desarrollar o al ayudar a un cliente: generar una contraseña, firmar un texto, leer un QR, formatear JSON o ver qué IP me asignó la red. No sustituyen un gestor de secretos profesional ni un laboratorio de ciberseguridad. Si vas a usar un hash o una contraseña en un sistema real, verifica el resultado y guarda los secretos fuera del navegador.</p>
+  <p style="margin-bottom:.85rem">Las herramientas de red (IP, DNS, clima) sí consultan APIs públicas desde tu sesión. No pegas tokens, contraseñas ni datos de clientes en esos campos. El verificador de fuerza de contraseña y el generador no envían el valor a nuestro backend: el cálculo es local. El chat IA y algunas funciones de imagen sí usan proveedores externos; ahí aplica la <a href="/privacy" style="color:var(--a)">política de privacidad</a>.</p>
+  <p>Si echas de menos una utilidad, escríbeme desde el <a href="/#open-to-work" style="color:var(--a)">formulario de contacto</a>. Priorizo herramientas que se puedan explicar en una página y usarse sin cuenta.</p>
+</article>
 
 <div class="fbar">
   <div class="sw">
@@ -1248,8 +1265,8 @@ footer a{color:var(--p);text-decoration:none}
 </div><!-- /grid -->
 
 <footer>
-  <a href="/">&lt;Wilson.E/&gt;</a> · 38 herramientas · Ningún dato sale de tu navegador
-  <span style="margin-left:.6rem;font-size:.78rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a></span>
+  <a href="/">&lt;Wilson.E/&gt;</a> · Herramientas web · Guatemala
+  <span style="margin-left:.6rem;font-size:.78rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/guias">Guías</a></span>
 </footer>
 
 <script>
