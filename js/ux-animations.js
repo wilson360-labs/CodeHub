@@ -360,6 +360,11 @@
   // (applyLang reemplaza innerHTML) se re-dividen los títulos y se
   // muestra al instante si ya habían sido revelados.
   function splitIntoWords(h2) {
+    /* Si ya fue dividido previamente, extraer solo el texto limpio
+       para evitar anidar <span> rotos (p.ej. al re-dividir tras applyLang). */
+    if (h2.classList.contains('tw-split')) {
+      h2.textContent = h2.textContent;
+    }
     var parts = h2.innerHTML.split(/(<br\s*\/?>)/i);
     var html = parts.map(function (p) {
       if (/^<br/i.test(p)) return p;

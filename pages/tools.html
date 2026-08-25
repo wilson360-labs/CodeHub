@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
@@ -33,9 +33,9 @@
   <!-- End Google Tag Manager -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https: https://codehub-98s6.onrender.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com;">
-<title>27 Herramientas Web Gratis — CodeHub by Wilson.E</title>
-<meta name="description" content="27 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https://dns-lookup.com https://ip-api.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://codehub-98s6.onrender.com;">
+<title>38 Herramientas Web Gratis — CodeHub by Wilson.E</title>
+<meta name="description" content="38 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, IP lookup, DNS lookup, JSON formatter, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/tools">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://wilson360-labs.vercel.app/tools">
@@ -259,6 +259,17 @@ footer a{color:var(--p);text-decoration:none}
 /* ── CARD BODY PADDING (.cp) — para cards nuevas sin .cb ── */
 .cp{padding:.9rem 1.3rem 1.3rem;display:flex;flex-direction:column;gap:.7rem}
 
+/* ── ACORDEÓN — cards colapsadas por defecto ── */
+.ch{cursor:pointer;user-select:none;position:relative;padding-bottom:.9rem}
+.ch .chevron{font-size:.55rem;color:var(--muted);margin-left:auto;transition:transform .3s ease;flex-shrink:0}
+.card-open .ch .chevron{transform:rotate(180deg)}
+.cb,.cp{display:none!important;overflow:hidden;opacity:0}
+.card-open .cb,.card-open .cp{display:flex!important;opacity:1;max-height:2000px}
+.card-open .cb{padding:1.1rem 1.3rem 1.3rem!important}
+.card-open .cp{padding:.9rem 1.3rem 1.3rem!important}
+.card:hover{transform:none!important;box-shadow:none!important}
+.card-open:hover{transform:translateY(-4px)!important;box-shadow:0 20px 55px rgba(0,0,0,.5),0 0 0 1px rgba(47,128,237,.1)!important}
+
 /* ── NEWS TAB ── */
 .news-tab{font-size:.75rem;padding:.38rem .7rem}
 
@@ -398,6 +409,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="chip on" onclick="filterTag('all',this)">Todas</button>
     <button class="chip" onclick="filterTag('seg',this)">🔐 Seguridad</button>
     <button class="chip" onclick="filterTag('util',this)">⚙️ Utilidad</button>
+    <button class="chip" onclick="filterTag('net',this)">🌐 Network</button>
     <button class="chip" onclick="filterTag('conv',this)">🔄 Conversor</button>
     <button class="chip" onclick="filterTag('dis',this)">🎨 Diseño</button>
     <button class="chip" onclick="filterTag('dev',this)">💻 Dev</button>
@@ -409,7 +421,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 1 · CONTRASEÑAS -->
 <div class="card" data-tags="seg">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-key"></i></div>
-    <div><h2>Generador de Contraseñas</h2><div class="ct">seguridad</div></div></div>
+    <div><h2>Generador de Contraseñas</h2><div class="ct">seguridad</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="rr"><span class="lbl">Longitud</span>
       <input type="range" id="pl" min="6" max="64" value="16" oninput="document.getElementById('plv').textContent=this.value">
@@ -431,7 +443,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 2 · FUERZA CONTRASEÑA -->
 <div class="card" data-tags="seg">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-shield-halved"></i></div>
-    <div><h2>Verificador de Fuerza</h2><div class="ct">seguridad</div></div></div>
+    <div><h2>Verificador de Fuerza</h2><div class="ct">seguridad</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="password" id="cpw" placeholder="Escribe tu contraseña…" oninput="chkStr()">
     <div class="sbar-w"><div class="sbar" id="csb" style="width:0%"></div></div>
@@ -442,7 +454,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 3 · QR -->
 <div class="card" data-tags="util dev">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-qrcode"></i></div>
-    <div><h2>Generador de QR</h2><div class="ct">utilidad · dev</div></div></div>
+    <div><h2>Generador de QR</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="text" id="qt" placeholder="URL, texto, link…">
     <div class="ir">
@@ -458,7 +470,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 4 · IP -->
 <div class="card" data-tags="util">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-location-dot"></i></div>
-    <div><h2>Mi IP y Ubicación</h2><div class="ct">utilidad</div></div></div>
+    <div><h2>Mi IP y Ubicación</h2><div class="ct">utilidad</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <button class="btn bp" onclick="getIP()"><i class="fas fa-satellite-dish"></i> Obtener Info</button>
     <div class="rb" id="ipr"></div>
@@ -468,7 +480,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 5 · DISPOSITIVO -->
 <div class="card" data-tags="util dev">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-microchip"></i></div>
-    <div><h2>Info del Dispositivo</h2><div class="ct">utilidad · dev</div></div></div>
+    <div><h2>Info del Dispositivo</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <button class="btn bp" onclick="devInfo()"><i class="fas fa-circle-info"></i> Analizar</button>
     <div class="rb" id="dvr"></div>
@@ -478,7 +490,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 6 · CONVERTIDOR UNIDADES -->
 <div class="card" data-tags="conv util">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-right-left"></i></div>
-    <div><h2>Convertidor de Unidades</h2><div class="ct">conversor</div></div></div>
+    <div><h2>Convertidor de Unidades</h2><div class="ct">conversor</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="tabs">
       <button class="tab on" onclick="setUT('length',this)">Longitud</button>
@@ -499,7 +511,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 7 · MONEDAS -->
 <div class="card" data-tags="conv util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-dollar-sign"></i></div>
-    <div><h2>Conversor de Monedas</h2><div class="ct">conversor</div></div></div>
+    <div><h2>Conversor de Monedas</h2><div class="ct">conversor</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="number" id="ca" placeholder="Monto" value="100">
     <div class="ir">
@@ -527,7 +539,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 8 · IMC -->
 <div class="card" data-tags="util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-weight-scale"></i></div>
-    <div><h2>Calculadora de IMC</h2><div class="ct">utilidad · salud</div></div></div>
+    <div><h2>Calculadora de IMC</h2><div class="ct">utilidad · salud</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="ir">
       <input class="ti" type="number" id="bw" placeholder="Peso (kg)">
@@ -549,7 +561,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 9 · PRÉSTAMOS -->
 <div class="card" data-tags="util conv">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-hand-holding-dollar"></i></div>
-    <div><h2>Calculadora de Préstamo</h2><div class="ct">utilidad · finanzas</div></div></div>
+    <div><h2>Calculadora de Préstamo</h2><div class="ct">utilidad · finanzas</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="number" id="la" placeholder="Monto del préstamo">
     <div class="ir">
@@ -564,7 +576,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 10 · POMODORO -->
 <div class="card" data-tags="util">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-clock"></i></div>
-    <div><h2>Temporizador Pomodoro</h2><div class="ct">utilidad · productividad</div></div></div>
+    <div><h2>Temporizador Pomodoro</h2><div class="ct">utilidad · productividad</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="tabs">
       <button class="tab on" onclick="setPomo('work',this)">🍅 25 min</button>
@@ -584,7 +596,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 11 · PALETA COLORES -->
 <div class="card" data-tags="dis dev">
   <div class="ch"><div class="ci ci-pk"><i class="fas fa-palette"></i></div>
-    <div><h2>Paleta de Colores</h2><div class="ct">diseño · dev</div></div></div>
+    <div><h2>Paleta de Colores</h2><div class="ct">diseño · dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div style="display:flex;align-items:center;gap:.75rem">
       <input type="color" id="cpk" value="#2f80ed" oninput="updColor()">
@@ -601,7 +613,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 12 · MEMES -->
 <div class="card" data-tags="dis util">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-face-laugh"></i></div>
-    <div><h2>Generador de Memes</h2><div class="ct">diseño</div></div></div>
+    <div><h2>Generador de Memes</h2><div class="ct">diseño</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="file" id="mi" accept="image/*" onchange="prevMeme()">
     <input class="ti" type="text" id="mt" placeholder="Texto superior" oninput="rdMeme()">
@@ -614,7 +626,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 13 · COMPRESOR -->
 <div class="card" data-tags="util dis">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-compress"></i></div>
-    <div><h2>Compresor de Imágenes</h2><div class="ct">utilidad · diseño</div></div></div>
+    <div><h2>Compresor de Imágenes</h2><div class="ct">utilidad · diseño</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="file" id="coi" accept="image/*">
     <div class="rr">
@@ -630,7 +642,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 14 · VELOCIDAD -->
 <div class="card" data-tags="util dev">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-gauge-high"></i></div>
-    <div><h2>Test de Velocidad</h2><div class="ct">utilidad · dev</div></div></div>
+    <div><h2>Test de Velocidad</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="spd" id="spd" style="display:none">
       <div class="sm"><div class="sv" id="sdl">—</div><div class="su">Mbps</div><div class="sl"><i class="fas fa-arrow-down"></i> Descarga</div></div>
@@ -645,7 +657,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 15 · HASH -->
 <div class="card" data-tags="seg dev">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-fingerprint"></i></div>
-    <div><h2>Generador de Hash</h2><div class="ct">seguridad · dev</div></div></div>
+    <div><h2>Generador de Hash</h2><div class="ct">seguridad · dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <textarea class="ti" id="hi" placeholder="Texto a hashear…" rows="3"></textarea>
     <select class="ts" id="ha"><option value="SHA-256">SHA-256</option><option value="SHA-512">SHA-512</option><option value="SHA-1">SHA-1</option></select>
@@ -659,7 +671,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 16 · BASE64 -->
 <div class="card" data-tags="dev">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-code"></i></div>
-    <div><h2>Base64 Encode / Decode</h2><div class="ct">dev</div></div></div>
+    <div><h2>Base64 Encode / Decode</h2><div class="ct">dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <textarea class="ti" id="b6i" placeholder="Texto o Base64…" rows="3"></textarea>
     <div class="ir">
@@ -675,7 +687,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 17 · REGEX -->
 <div class="card" data-tags="dev">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-terminal"></i></div>
-    <div><h2>Regex Tester</h2><div class="ct">dev</div></div></div>
+    <div><h2>Regex Tester</h2><div class="ct">dev</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="ir" style="align-items:center">
       <span style="font-family:var(--mono);color:var(--muted);padding:.5rem .3rem">/</span>
@@ -691,7 +703,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 18 · UUID -->
 <div class="card" data-tags="dev util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-id-card"></i></div>
-    <div><h2>Generador de UUID</h2><div class="ct">dev · utilidad</div></div></div>
+    <div><h2>Generador de UUID</h2><div class="ct">dev · utilidad</div></div><span class="chevron">▼</span></div>
   <div class="cb">
     <div class="rr">
       <span class="lbl">Cantidad</span>
@@ -719,7 +731,8 @@ footer a{color:var(--p);text-decoration:none}
       <div class="ct">util · seguridad · dev</div>
     </div>
     <div style="margin-left:auto;font-family:var(--mono);font-size:.65rem;color:var(--muted);text-align:right;line-height:1.6">Corre en tu<br>navegador</div>
-  </div>
+    
+  <span class="chevron">▼</span></div>
   <div class="cb">
     <div id="net-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;display:none">
       <div class="net-metric" id="nm-ip"><div class="nm-icon" style="background:rgba(34,197,94,.12);color:var(--blue)"><i class="fas fa-location-dot"></i></div><div class="nm-label">IP Local</div><div class="nm-val" id="nmv-ip">—</div></div>
@@ -754,7 +767,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 24 · CLIMA EN TIEMPO REAL -->
 <div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-cloud-sun"></i><span>Clima en Tiempo Real</span></div>
+  <div class="ch"><i class="fas fa-cloud-sun"></i><span>Clima en Tiempo Real</span><span class="chevron">▼</span></div>
   <div class="cd">Consulta el clima actual de cualquier ciudad del mundo.</div>
   <div class="cp">
   <div style="display:flex;gap:.5rem">
@@ -767,7 +780,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 25 · GENERADOR DE IMÁGENES CON IA -->
 <div class="card" data-tags="dis util">
-  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span></div>
+  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span><span class="chevron">▼</span></div>
   <div class="cd">Describe una imagen y la IA la genera gratis al instante. Modo educativo con presets para clases y materiales didácticos.</div>
   <div class="cp">
 
@@ -878,7 +891,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 26 · LINK CHECKER PROTECTOR -->
 <div class="card" data-tags="seg util">
-  <div class="ch"><i class="fas fa-shield-halved"></i><span>Link Checker de Seguridad</span></div>
+  <div class="ch"><i class="fas fa-shield-halved"></i><span>Link Checker de Seguridad</span><span class="chevron">▼</span></div>
   <div class="cd">Analiza links sospechosos, reputacion, spam y posibles senales de malware con VirusTotal.</div>
   <div class="cp">
   <input class="ti" type="url" id="link-check-url" placeholder="https://ejemplo.com/archivo o link sospechoso" onkeydown="if(event.key==='Enter')analyzeLinkSafety()">
@@ -917,7 +930,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 27 · HORÓSCOPO DEL DÍA -->
 <div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span></div>
+  <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span><span class="chevron">▼</span></div>
   <div class="cd">Consulta tu horóscopo diario según tu signo zodiacal.</div>
   <div class="cp">
   <div id="zodiac-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem;margin-bottom:.7rem"></div>
@@ -932,7 +945,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 19 · TRADUCTOR -->
 <div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span></div>
+  <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span><span class="chevron">▼</span></div>
   <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
   <div class="cp">
   <select class="ts" id="tr-from">
@@ -970,7 +983,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 20 · CALCULADORA CIENTÍFICA -->
 <div class="card" data-tags="util">
-  <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span></div>
+  <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span><span class="chevron">▼</span></div>
   <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
   <div class="cp">
   <input class="ti" id="calc-display" type="text" placeholder="0" readonly style="font-size:1.3rem;text-align:right;letter-spacing:.05em;cursor:default;margin-bottom:.4rem">
@@ -980,7 +993,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 21 · GENERADOR DE LOREM IPSUM -->
 <div class="card" data-tags="seg dev util">
-  <div class="ch"><i class="fas fa-mobile-screen-button"></i><span>APK Verifier</span></div>
+  <div class="ch"><i class="fas fa-mobile-screen-button"></i><span>APK Verifier</span><span class="chevron">▼</span></div>
   <div class="cd">Revisa APKs antes de instalar: hash, tamano, extension, riesgo y origen recomendado.</div>
   <div class="cp">
   <input class="ti" type="file" id="apk-file" accept=".apk,application/vnd.android.package-archive">
@@ -990,7 +1003,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <div class="card" data-tags="seg util">
-  <div class="ch"><i class="fas fa-user-shield"></i><span>Scam Detector</span></div>
+  <div class="ch"><i class="fas fa-user-shield"></i><span>Scam Detector</span><span class="chevron">▼</span></div>
   <div class="cd">Analiza mensajes sospechosos y detecta senales de estafa, phishing y urgencia falsa.</div>
   <div class="cp">
   <textarea class="ti" id="scam-input" rows="5" placeholder="Pega aqui un mensaje sospechoso de WhatsApp, Telegram, correo o redes..."></textarea>
@@ -1000,7 +1013,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <div class="card" data-tags="dis util dev">
-  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Prompt Studio</span></div>
+  <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Prompt Studio</span><span class="chevron">▼</span></div>
   <div class="cd">Mejora prompts para imagen, branding, UI o contenido con variantes mas pro.</div>
   <div class="cp">
   <textarea class="ti" id="ps-input" rows="4" placeholder="Ej: una landing premium para una app de productividad con estilo futurista"></textarea>
@@ -1024,7 +1037,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <div class="card" data-tags="dev dis util">
-  <div class="ch"><i class="fas fa-window-maximize"></i><span>Generador de Landing Pages</span></div>
+  <div class="ch"><i class="fas fa-window-maximize"></i><span>Generador de Landing Pages</span><span class="chevron">▼</span></div>
   <div class="cd">Crea una estructura de landing con hero, beneficios, prueba social y CTA en segundos.</div>
   <div class="cp">
   <input class="ti" id="lg-business" type="text" placeholder="Producto o negocio">
@@ -1044,7 +1057,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <div class="card" data-tags="dev dis">
-  <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span></div>
+  <div class="ch"><i class="fas fa-align-left"></i><span>Lorem Ipsum</span><span class="chevron">▼</span></div>
   <div class="cd">Genera texto de relleno para diseños y prototipos.</div>
   <div class="cp">
   <div style="display:flex;gap:.5rem;align-items:center">
@@ -1064,7 +1077,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 22 · CONTADOR DE TEXTO -->
 <div class="card" data-tags="util dev">
-  <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span></div>
+  <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span><span class="chevron">▼</span></div>
   <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
   <div class="cp">
   <textarea class="ti" id="wc-input" rows="5" placeholder="Pega o escribe tu texto aquí…" oninput="countText()"></textarea>
@@ -1074,7 +1087,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 23 · CONVERSOR DE COLORES -->
 <div class="card" data-tags="dis dev">
-  <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span></div>
+  <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span><span class="chevron">▼</span></div>
   <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
   <div class="cp">
   <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem">
@@ -1090,7 +1103,8 @@ footer a{color:var(--p);text-decoration:none}
   <div class="ch">
     <div class="ci ci-or"><i class="fas fa-link-slash"></i></div>
     <div><h2>Resolver de Links</h2><div class="ct">Bypass acortadores · 5 métodos</div></div>
-  </div>
+  
+  <span class="chevron">▼</span></div>
   <div class="cb">
     <input class="ti" type="url" id="rv-input"
       placeholder="https://bit.ly/… · https://tinyurl.com/… · https://softurl.in/…"
@@ -1126,7 +1140,7 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 34 · CAPTURA DE PANTALLA + OCR (PDNob) -->
 <div class="card" data-tags="util dis">
-  <div class="ch"><i class="fas fa-camera"></i><span>Captura de Pantalla + OCR</span></div>
+  <div class="ch"><i class="fas fa-camera"></i><span>Captura de Pantalla + OCR</span><span class="chevron">▼</span></div>
   <div class="cd">Captura un area de tu pantalla, guardala como PNG o extrae el texto con OCR para editar PDFs escaneados e imagenes. Todo en tu navegador.</div>
   <div class="cp">
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
@@ -1172,17 +1186,69 @@ footer a{color:var(--p);text-decoration:none}
 
 <!-- 35 · PDF IA (skill) -->
 <div class="card" data-tags="util ai">
-  <div class="ch"><i class="fas fa-file-pdf"></i><span>PDF IA — Chat con tu documento</span></div>
+  <div class="ch"><i class="fas fa-file-pdf"></i><span>PDF IA — Chat con tu documento</span><span class="chevron">▼</span></div>
   <div class="cd">Sube un PDF y chatea con EMI: resúmenes, datos de facturas, respuestas usando solo tu documento. La extracción del texto es 100% local (pdf.js) — solo la respuesta usa IA.</div>
   <div class="cp" id="skill-pdf-ia-root">
     <div style="font-size:.72rem;color:var(--muted);font-family:var(--mono)">Cargando skill…</div>
   </div>
 </div>
 
+<!-- 36 · IP LOOKUP — Reverse + ASN + Geolocation -->
+<div class="card" data-tags="seg util net">
+  <div class="ch">
+    <div class="ci ci-or"><i class="fas fa-magnifying-glass-location"></i></div>
+    <div><h2>IP Lookup</h2><div class="ct">seguridad · network</div></div>
+  
+  <span class="chevron">▼</span></div>
+  <div class="cb">
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Consulta cualquier IP: geolocalización, ISP, ASN, proxy/VPN, hosting. Datos dual-source.</p>
+    <input class="ti" type="text" id="ipl-input" placeholder="Ej: 8.8.8.8 o 52.188.198.99 (deja vacío = tu IP)" onkeydown="if(event.key==='Enter')ipLookup()">
+    <button class="btn bp" onclick="ipLookup()" id="ipl-btn"><i class="fas fa-magnifying-glass"></i> Buscar IP</button>
+    <div id="ipl-out" class="rb" style="display:none"></div>
+    <div style="font-size:.65rem;color:var(--muted);font-family:var(--mono);margin-top:.3rem">Fuentes: ip-api.com + ipapi.co · Sin API key</div>
+  </div>
+</div>
+
+<!-- 37 · DNS LOOKUP -->
+<div class="card" data-tags="dev seg net">
+  <div class="ch">
+    <div class="ci ci-pu"><i class="fas fa-server"></i></div>
+    <div><h2>DNS Lookup</h2><div class="ct">dev · network</div></div>
+  
+  <span class="chevron">▼</span></div>
+  <div class="cb">
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Consulta registros DNS de cualquier dominio: A, AAAA, MX, TXT, NS, CNAME, SOA.</p>
+    <input class="ti" type="text" id="dsl-input" placeholder="Ej: google.com, codehub-98s6.onrender.com" onkeydown="if(event.key==='Enter')dnsLookup()">
+    <button class="btn bp" onclick="dnsLookup()" id="dsl-btn"><i class="fas fa-server"></i> Consultar DNS</button>
+    <div id="dsl-out" class="rb" style="display:none"></div>
+    <div style="font-size:.65rem;color:var(--muted);font-family:var(--mono);margin-top:.3rem">Fuente: dns-lookup.com · Sin API key</div>
+  </div>
+</div>
+
+<!-- 38 · JSON FORMATTER -->
+<div class="card" data-tags="dev util">
+  <div class="ch">
+    <div class="ci ci-bl"><i class="fas fa-code"></i></div>
+    <div><h2>JSON Formatter</h2><div class="ct">dev · utilidad</div></div>
+  
+  <span class="chevron">▼</span></div>
+  <div class="cb">
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:.2rem">Parsea, formatea y minifica JSON con resaltado de sintaxis. Errores con línea exacta.</p>
+    <textarea class="ti" id="jf-input" rows="6" placeholder='{"nombre": "CodeHub", "version": "3.0", "herramientas": [1,2,3]}' style="font-family:var(--mono);font-size:.78rem"></textarea>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <button class="btn bp" onclick="formatJSON()" id="jf-btn"><i class="fas fa-wand-magic-sparkles"></i> Formatear</button>
+      <button class="btn bg" onclick="minifyJSON()"><i class="fas fa-compress"></i> Minificar</button>
+      <button class="btn bg" onclick="validateJSON()"><i class="fas fa-check-circle"></i> Validar</button>
+      <button class="btn bg" onclick="copyJSON()"><i class="fas fa-copy"></i> Copiar</button>
+    </div>
+    <div id="jf-out" class="rb" style="display:none;max-height:300px;overflow-y:auto;white-space:pre-wrap;font-family:var(--mono);font-size:.78rem;line-height:1.5"></div>
+  </div>
+</div>
+
 </div><!-- /grid -->
 
 <footer>
-  <a href="/">&lt;Wilson.E/&gt;</a> · 35 herramientas · Ningún dato sale de tu navegador
+  <a href="/">&lt;Wilson.E/&gt;</a> · 38 herramientas · Ningún dato sale de tu navegador
   <span style="margin-left:.6rem;font-size:.78rem"><a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a></span>
 </footer>
 
@@ -1194,6 +1260,22 @@ const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2100)}
 function cp(id){const t=$(id)?.textContent?.trim();if(!t)return;navigator.clipboard.writeText(t).then(()=>toast('✓ Copiado'))}
 function show(id,html,cls=''){const e=$(id);e.innerHTML=html;e.className='rb on'+(cls?' '+cls:'')}
+
+// ──────────────────────────────────
+//  ACORDEÓN — toggle card bodies
+// ──────────────────────────────────
+let _openCard=null;
+document.querySelectorAll('.card').forEach(card=>{
+  const ch=card.querySelector('.ch');
+  if(!ch)return;
+  ch.addEventListener('click',e=>{
+    if(e.target.closest('input,button,select,textarea,a'))return;
+    if(_openCard&&_openCard!==card)_openCard.classList.remove('card-open');
+    card.classList.toggle('card-open');
+    _openCard=card.classList.contains('card-open')?card:null;
+    if(_openCard){setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),100)}
+  });
+});
 
 window.addEventListener('scroll',()=>{
   const s=document.documentElement.scrollTop,h=document.documentElement.scrollHeight-window.innerHeight;

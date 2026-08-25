@@ -1308,3 +1308,243 @@ async function rvResolve(force) {
     '</span>';
   rvHide();
 }
+
+/* ──────────────────────────────────────────────────────────
+   36 · IP LOOKUP — Reverse + ASN + Geolocation (dual-source)
+   ────────────────────────────────────────────────────────── */
+async function ipLookup(){
+  var ip = $('ipl-input').value.trim();
+  var out = $('ipl-out');
+  var btn = $('ipl-btn');
+  var isSingle = (window.matchMedia&&window.matchMedia('(max-width:860px)').matches);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  out.style.display = 'block';
+  out.className = 'rb';
+  out.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.5rem 0"><i class="fas fa-spinner fa-spin"></i> Consultando fuentes…</div>';
+
+  var ipParam = ip ? encodeURIComponent(ip) : '';
+  var url1 = 'https://ip-api.com/json/' + (ipParam || '') + '?fields=status,message,country,regionName,city,isp,org,as,asname,reverse,mobile,proxy,hosting,query,lat,lon,timezone,offset,currency,continentCode,countryCode,regionCode,cityCode';
+  var url2 = 'https://ipapi.co/' + (ipParam ? ipParam + '/' : '') + 'json/';
+
+  var d1 = null, d2 = null;
+
+  try {
+    var r1 = await fetch(url1);
+    if (r1.ok) d1 = await r1.json();
+  } catch(e){}
+
+  try {
+    var r2 = await fetch(url2);
+    if (r2.ok) d2 = await r2.json();
+  } catch(e){}
+
+  if ((!d1 || d1.status==='fail') && (!d2 || d2.error)) {
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ No se pudo resolver la IP</b><br><span style="font-size:.78rem;color:var(--muted)">Verifica que la IP sea válida o intenta más tarde.</span>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Buscar IP';
+    return;
+  }
+
+  var data = d1 && d1.status !== 'fail' ? d1 : null;
+  var alt  = d2 && !d2.error ? d2 : null;
+
+  var q   = (data && data.query) || (alt && alt.ip) || ip || '—';
+  var country   = (data && data.country)     || (alt && alt.country_name) || '—';
+  var region    = (data && data.regionName)  || (alt && alt.region)  || '—';
+  var city      = (data && data.city)        || (alt && alt.city)    || '—';
+  var isp       = (data && data.isp)         || (alt && alt.org)     || '—';
+  var asn       = (data && data.as)          || (alt && alt.asn)     || '—';
+  var asname    = (data && data.asname)      || (alt && alt.asn_org) || '—';
+  var tz        = (data && data.timezone)    || (alt && alt.timezone) || '—';
+  var lat       = (data && data.lat)         || (alt && alt.latitude)  || '—';
+  var lon       = (data && data.lon)         || (alt && alt.longitude) || '—';
+  var reverse   = (data && data.reverse)     || '—';
+  var mobile    = data ? data.mobile : null;
+  var proxy     = data ? data.proxy  : null;
+  var hosting   = data ? data.hosting: null;
+  var currency  = (alt && alt.currency) || '—';
+  var continent = (data && data.continentCode) || (alt && alt.continent_code) || '—';
+  var cc        = (data && data.countryCode)   || (alt && alt.country_code) || '—';
+
+  var badge = function(v){ return v === true ? '<span style="color:#ff6b6b;font-weight:700">Sí ⚠️</span>' : v === false ? '<span style="color:#4caf50">No ✓</span>' : '<span style="color:var(--muted)">—</span>'; };
+
+  var html = '<div style="font-weight:700;margin-bottom:.4rem;font-size:.85rem">🔍 Resultado IP: ' + esc(q) + '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.2rem .8rem;font-size:.78rem;line-height:1.7">';
+  html += '<div><span style="color:var(--muted)">País:</span> <b>' + esc(country) + '</b> (' + esc(cc) + ')</div>';
+  html += '<div><span style="color:var(--muted)">Región:</span> ' + esc(region) + '</div>';
+  html += '<div><span style="color:var(--muted)">Ciudad:</span> ' + esc(city) + '</div>';
+  html += '<div><span style="color:var(--muted)">ISP:</span> ' + esc(isp) + '</div>';
+  html += '<div><span style="color:var(--muted)">ASN:</span> ' + esc(asn) + '</div>';
+  html += '<div><span style="color:var(--muted)">AS Name:</span> ' + esc(asname) + '</div>';
+  html += '<div><span style="color:var(--muted)">Timezone:</span> ' + esc(tz) + '</div>';
+  html += '<div><span style="color:var(--muted)">Coordenadas:</span> ' + lat + ', ' + lon + '</div>';
+  html += '<div><span style="color:var(--muted)">Continente:</span> ' + esc(continent) + '</div>';
+  html += '<div><span style="color:var(--muted)">Moneda:</span> ' + esc(currency) + '</div>';
+  html += '<div><span style="color:var(--muted)">Reverse DNS:</span> ' + esc(reverse) + '</div>';
+  html += '</div>';
+  html += '<div style="margin-top:.4rem;padding-top:.3rem;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;font-size:.78rem">';
+  html += '<div><span style="color:var(--muted)">Móvil:</span> ' + badge(mobile) + '</div>';
+  html += '<div><span style="color:var(--muted)">Proxy/VPN:</span> ' + badge(proxy) + '</div>';
+  html += '<div><span style="color:var(--muted)">Hosting:</span> ' + badge(hosting) + '</div>';
+  html += '</div>';
+
+  var sources = [];
+  if (data) sources.push('ip-api.com');
+  if (alt) sources.push('ipapi.co');
+  html += '<div style="font-size:.65rem;color:var(--muted);margin-top:.3rem;font-family:var(--mono)">Fuentes: ' + sources.join(' + ') + '</div>';
+
+  out.className = 'rb on';
+  out.innerHTML = html;
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Buscar IP';
+}
+
+/* ──────────────────────────────────────────────────────────
+   37 · DNS LOOKUP — A, AAAA, MX, TXT, NS, CNAME, SOA
+   ────────────────────────────────────────────────────────── */
+async function dnsLookup(){
+  var domain = $('dsl-input').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  var out = $('dsl-out');
+  var btn = $('dsl-btn');
+
+  if(!domain){ toast('Ingresa un dominio'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  out.style.display = 'block';
+  out.className = 'rb';
+  out.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.5rem 0"><i class="fas fa-spinner fa-spin"></i> Consultando registros DNS…</div>';
+
+  var types = ['A','AAAA','MX','TXT','NS','CNAME','SOA'];
+  var allResults = {};
+  var hasAny = false;
+
+  for(var i = 0; i < types.length; i++){
+    var t = types[i];
+    try {
+      var r = await fetch('https://dns-lookup.com/api/dns/' + t + '/' + encodeURIComponent(domain), {
+        headers: { 'Accept': 'application/json' }
+      });
+      if(r.ok){
+        var j = await r.json();
+        if(j && j.records && j.records.length > 0){
+          allResults[t] = j.records;
+          hasAny = true;
+        }
+      }
+    } catch(e){}
+  }
+
+  if(!hasAny){
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ No se encontraron registros DNS</b><br><span style="font-size:.78rem;color:var(--muted)">Dominio inexistente o sin registros públicos.</span>';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-server"></i> Consultar DNS';
+    return;
+  }
+
+  var typeColors = { A:'#4caf50', AAAA:'#2196f3', MX:'#ff9800', TXT:'#9c27b0', NS:'#00bcd4', CNAME:'#e91e63', SOA:'#607d8b' };
+  var html = '<div style="font-weight:700;margin-bottom:.4rem;font-size:.85rem">🌐 DNS: ' + esc(domain) + '</div>';
+
+  types.forEach(function(t){
+    if(!allResults[t]) return;
+    var recs = allResults[t];
+    html += '<div style="margin-bottom:.4rem">';
+    html += '<div style="font-size:.72rem;font-weight:700;color:' + (typeColors[t]||'var(--p)') + ';margin-bottom:.15rem;font-family:var(--mono)">' + t + ' (' + recs.length + ')</div>';
+    recs.forEach(function(r){
+      var val = r.data || r.value || r.exchange || r.nameserver || JSON.stringify(r);
+      html += '<div style="font-size:.75rem;font-family:var(--mono);color:var(--fg);padding:.1rem 0;border-bottom:1px solid var(--border);word-break:break-all">' + esc(String(val)) + '</div>';
+    });
+    html += '</div>';
+  });
+
+  html += '<div style="font-size:.65rem;color:var(--muted);margin-top:.3rem;font-family:var(--mono)">Fuente: dns-lookup.com · ' + Object.keys(allResults).length + ' tipos de registro</div>';
+
+  out.className = 'rb on';
+  out.innerHTML = html;
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-server"></i> Consultar DNS';
+}
+
+/* ──────────────────────────────────────────────────────────
+   38 · JSON FORMATTER — parse, format, minify, validate
+   ────────────────────────────────────────────────────────── */
+function formatJSON(){
+  var raw = $('jf-input').value.trim();
+  var out = $('jf-out');
+  if(!raw){ toast('Pega JSON primero'); return; }
+  try {
+    var parsed = JSON.parse(raw);
+    var formatted = JSON.stringify(parsed, null, 2);
+    out.style.display = 'block';
+    out.className = 'rb on';
+    out.innerHTML = highlightJSON(formatted);
+  } catch(e){
+    var lineMatch = e.message.match(/position\s+(\d+)/i);
+    var hint = '';
+    if(lineMatch){
+      var pos = parseInt(lineMatch[1]);
+      var lines = raw.substring(0, pos).split('\n');
+      hint = ' — línea ' + lines.length + ', col ' + lines[lines.length-1].length;
+    }
+    out.style.display = 'block';
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ JSON inválido</b><br><span style="font-size:.78rem;color:var(--muted)">' + esc(e.message) + hint + '</span>';
+  }
+}
+
+function minifyJSON(){
+  var raw = $('jf-input').value.trim();
+  var out = $('jf-out');
+  if(!raw){ toast('Pega JSON primero'); return; }
+  try {
+    var min = JSON.stringify(JSON.parse(raw));
+    $('jf-input').value = min;
+    out.style.display = 'block';
+    out.className = 'rb on';
+    out.innerHTML = '<span style="color:#4caf50;font-weight:700">✓ Minificado</span> — ' + min.length + ' caracteres';
+  } catch(e){
+    out.style.display = 'block';
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ ' + esc(e.message) + '</b>';
+  }
+}
+
+function validateJSON(){
+  var raw = $('jf-input').value.trim();
+  var out = $('jf-out');
+  if(!raw){ toast('Pega JSON primero'); return; }
+  try {
+    var parsed = JSON.parse(raw);
+    var keys = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : 0;
+    var isArr = Array.isArray(parsed);
+    out.style.display = 'block';
+    out.className = 'rb on';
+    out.innerHTML = '<b style="color:#4caf50">✓ JSON válido</b><br><span style="font-size:.78rem;color:var(--muted)">Tipo: ' + (isArr ? 'Array' : typeof parsed) + (keys ? ' · ' + keys + ' clave(s)' : '') + ' · ' + raw.length + ' chars</span>';
+  } catch(e){
+    out.style.display = 'block';
+    out.className = 'rb on err';
+    out.innerHTML = '<b style="color:#ff6b6b">⚠️ JSON inválido</b><br><span style="font-size:.78rem;color:var(--muted)">' + esc(e.message) + '</span>';
+  }
+}
+
+function copyJSON(){
+  var out = $('jf-out');
+  if(!out.innerHTML){ toast('Nada que copiar'); return; }
+  var text = out.textContent || out.innerText;
+  navigator.clipboard.writeText(text).then(function(){ toast('Copiado ✓'); }).catch(function(){ toast('Error al copiar'); });
+}
+
+function highlightJSON(s){
+  s = esc(s);
+  s = s.replace(/"([^"\\]*(\\.[^"\\]*)*)"\s*:/g, '<span style="color:#e91e63">"$1"</span>:');
+  s = s.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, '<span style="color:#4caf50">"$1"</span>');
+  s = s.replace(/\b(-?\d+\.?\d*([eE][+-]?\d+)?)\b/g, '<span style="color:#2196f3">$1</span>');
+  s = s.replace(/\b(true|false|null)\b/g, '<span style="color:#ff9800">$1</span>');
+  return s;
+}
+
+function esc(h){ return String(h).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

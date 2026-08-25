@@ -4253,7 +4253,10 @@ async function weatherPushPass() {
   let subs;
   try { subs = await pushList(); } catch (e) { return { sent: 0 }; }
   const enabled = subs.filter(s => s.alerts && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
-  if (!enabled.length) return { sent: 0 };
+  if (!enabled.length) {
+    // Incluso sin suscriptores web, intentar enviar a FCM (Android)
+    if (!fcmEnabled) return { sent: 0 };
+  }
 
   // Agrupar por coordenadas redondeadas para no repetir llamadas a Open-Meteo
   const groups = new Map();
@@ -4261,6 +4264,30 @@ async function weatherPushPass() {
     const key = (+s.lat).toFixed(1) + ',' + (+s.lon).toFixed(1);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(s);
+  }
+
+  // También agrupar tokens FCM por coordenadas
+  const fcmGroups = new Map();
+  if (fcmEnabled) {
+    try {
+      const fcmTokens = await fcmListTokens();
+      for (const t of fcmTokens) {
+        if (Number.isFinite(+t.lat) && Number.isFinite(+t.lon)) {
+          const key = (+t.lat).toFixed(1) + ',' + (+t.lon).toFixed(1);
+          if (!fcmGroups.has(key)) fcmGroups.set(key, []);
+          fcmGroups.get(key).push(t);
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Merge all coordinate groups
+  for (const [key, tokens] of fcmGroups) {
+    if (!groups.has(key)) groups.set(key, []);
+    // Mark FCM tokens so we know which send method to use
+    for (const t of tokens) {
+      groups.get(key).push({ ...t, _isFCM: true });
+    }
   }
 
   let sent = 0;
@@ -4271,24 +4298,34 @@ async function weatherPushPass() {
     const alert = detectAlert(current);
     for (const s of group) {
       if (alert) {
-        // Solo avisar cuando la condición es nueva (cambió el clima)
         if (s.last_alert_condition !== alert.cond) {
-          const r = await sendPush(s, {
-            title: 'CodeHub Clima',
-            body:  s.city ? alert.body + ' · ' + s.city : alert.body,
-            type:  'weather',
-            icon:  '/splash/codehub.png',
-            url:   '/#weather-section',
-          });
+          let r;
+          if (s._isFCM) {
+            // Enviar a Android vía FCM
+            r = await sendFCM(s.token, {
+              title: 'CodeHub Clima',
+              body: alert.body,
+              type: 'weather',
+              url: '/#weather-section',
+            });
+          } else {
+            // Enviar a navegador vía Web Push
+            r = await sendPush(s, {
+              title: 'CodeHub Clima',
+              body:  s.city ? alert.body + ' · ' + s.city : alert.body,
+              type:  'weather',
+              icon:  '/splash/codehub.png',
+              url:   '/#weather-section',
+            });
+          }
           if (r.ok) {
             s.last_alert_condition = alert.cond;
             s.last_alert_at = new Date().toISOString();
-            await pushSave(s);
+            if (!s._isFCM) await pushSave(s);
             sent++;
           }
         }
-      } else if (s.last_alert_condition) {
-        // Condición superada — resetear para poder volver a avisar
+      } else if (s.last_alert_condition && !s._isFCM) {
         s.last_alert_condition = null;
         s.last_alert_at = null;
         await pushSave(s);
