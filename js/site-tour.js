@@ -17,9 +17,7 @@
 
   function SiteTour(tourId, steps, opts) {
     this.tourId = tourId;
-    this.steps = (steps || []).filter(function (s) {
-      return !!document.querySelector(s.selector);
-    });
+    this.steps = steps || [];
     this.opts = opts || {};
     this.index = 0;
     this.layer = null;
@@ -28,6 +26,10 @@
     this.highlighted = null;
     this._onResize = this._place.bind(this);
     this._onKey = this._onKeyDown.bind(this);
+    this._touchStartX = 0;
+    this._touchStartY = 0;
+    this._onTouchStart = this._handleTouchStart.bind(this);
+    this._onTouchEnd = this._handleTouchEnd.bind(this);
   }
 
   SiteTour.prototype._storeKey = function () {
@@ -81,7 +83,10 @@
     var step = this.steps[this.index];
     if (!step) { this.close(true); return; }
     var target = document.querySelector(step.selector);
-    if (!target) { this.next(); return; }
+    if (!target) {
+      if (step.optional) { this.next(); return; }
+      this.close(true); return;
+    }
 
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
 

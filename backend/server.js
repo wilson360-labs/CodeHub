@@ -4309,6 +4309,27 @@ app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ── CHANGELOG — última versión para el diálogo de actualización ──
+const fs = require('fs');
+const path = require('path');
+let _changelog = null;
+function loadChangelog() {
+  if (_changelog) return _changelog;
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, '..', 'changelog.json'), 'utf8');
+    _changelog = JSON.parse(raw);
+  } catch (e) { _changelog = []; }
+  return _changelog;
+}
+
+app.get('/api/changelog', (req, res) => {
+  const cl = loadChangelog();
+  if (!cl.length) return res.json({ ok: true, entries: [] });
+  const since = req.query.since || '';
+  const entries = since ? cl.filter(e => e.version > since) : cl.slice(0, 3);
+  res.json({ ok: true, entries });
+});
+
 // Lista pública de releases (campana de notificaciones / página)
 app.get('/api/releases', async (req, res) => {
   if (!dbConnected) return res.json({ ok: true, releases: [] });

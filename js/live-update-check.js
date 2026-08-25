@@ -7,9 +7,8 @@
 // haces push a GitHub y Vercel termina de desplegar).
 //
 // Apenas detecta que ese valor cambió respecto al que tenía la
-// pestaña abierta, aplica la actualización de inmediato:
-// recarga la página (el sw.js ya sirve todo "network-first", así
-// que después del reload todo queda al día automáticamente).
+// pestaña abierta, muestra el diálogo de actualización con el
+// changelog (en vez de recargar silenciosamente).
 //
 // Chequeo liviano (HEAD, sin descargar la página completa) cada
 // pocos segundos + siempre que la pestaña vuelve a estar visible,
@@ -18,7 +17,7 @@
 
 (function () {
   const CHECK_URL      = '/index.html';
-  const CHECK_EVERY_MS = 60000; // 60s: suficiente para detectar deploys, sin abusar de red
+  const CHECK_EVERY_MS = 60000;
 
   let knownTag = null;
   let checking = false;
@@ -29,7 +28,7 @@
       if (!res.ok) return null;
       return res.headers.get('etag') || res.headers.get('last-modified') || null;
     } catch (e) {
-      return null; // sin red / offline: no hacemos nada, se reintenta luego
+      return null;
     }
   }
 
@@ -40,46 +39,48 @@
     return tag === 'TEXTAREA' || (tag === 'INPUT' && el.value && el.value.length > 0);
   }
 
-  function applyUpdateNow() {
-    // Refresca también la caché del service worker antes de recargar.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistration().then(reg => reg && reg.update());
-    }
-    location.reload();
-  }
-
-  function scheduleUpdate() {
-    // Si el usuario está escribiendo algo (ej. en el chat de EMI COPILOT
-    // o el formulario de contacto), no le tiramos el trabajo a la mitad:
-    // esperamos a que termine (blur) o, como tope, 20s.
+  function showUpdateNotification() {
+    // Si el usuario está escribiendo, esperar a que termine
     if (isUserTyping()) {
       const el = document.activeElement;
       let done = false;
-      const finish = () => { if (!done) { done = true; applyUpdateNow(); } };
+      const finish = () => { if (!done) { done = true; doShow(); } };
       el.addEventListener('blur', finish, { once: true });
       setTimeout(finish, 20000);
       return;
     }
-    applyUpdateNow();
+    doShow();
+  }
+
+  function doShow() {
+    // Usar el nuevo diálogo con changelog si está disponible
+    if (typeof window.chCheckAndUpdate === 'function') {
+      window.chCheckAndUpdate(true);
+    } else {
+      // Fallback: recarga silenciosa si el diálogo aún no cargó
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => reg && reg.update());
+      }
+      location.reload();
+    }
   }
 
   async function checkForRealUpdate() {
     if (checking) return;
-    if (document.visibilityState === 'visible') { /* ok */ }
-    else return;
+    if (document.visibilityState !== 'visible') return;
     checking = true;
     const tag = await fetchTag();
     checking = false;
     if (!tag) return;
 
     if (knownTag === null) {
-      knownTag = tag; // primera lectura: solo establece la línea base
+      knownTag = tag;
       return;
     }
     if (tag !== knownTag) {
       knownTag = tag;
-      console.log('%c🔄 Nueva versión detectada en el servidor — actualizando…', 'color:#00e5ff;font-weight:bold');
-      scheduleUpdate();
+      console.log('%c🔄 Nueva versión detectada en el servidor — mostrando actualización…', 'color:#00e5ff;font-weight:bold');
+      showUpdateNotification();
     }
   }
 
@@ -89,6 +90,5 @@
   });
   window.addEventListener('online', checkForRealUpdate);
 
-  // Línea base al cargar la página.
   checkForRealUpdate();
 })();

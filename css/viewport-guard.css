@@ -418,3 +418,22 @@ section, main, .container, .wrap, .inner, .section-wrap {
   from { width: 0; opacity: 0; }
   to { width: 20px; opacity: 1; }
 }
+
+/* ── Diálogo de actualización ── */
+@keyframes ch-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+#ch-update-overlay {
+  animation: ch-fade-in .25s ease;
+}
+#ch-update-dialog {
+  animation: ch-slide-up .3s cubic-bezier(.22,1,.36,1);
+}
+@keyframes ch-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ch-update-overlay, #ch-update-dialog { animation: none; }
+}

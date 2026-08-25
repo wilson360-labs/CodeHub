@@ -1,0 +1,80 @@
+[
+  {
+    "version": "v6.35",
+    "date": "2026-08-25",
+    "type": "feature",
+    "title": "Optimización EMI COPILOT + Caché de imágenes",
+    "changes": [
+      "SYSTEM prompt dinámico: versión corta para queries generales, completa solo para CodeHub",
+      "Historial inteligente: budget de 10k tokens, descarta mensajes antiguos",
+      "max_tokens adaptativo: código 2500, creativo 1500, corto 500",
+      "Caché de imágenes por prompt hash (TTL 1 hora, máx 200 entradas)",
+      "EMI usage persistido en MongoDB (sobrevive reinicios)",
+      "Cohere: ahora envía últimos 4 turnos en vez de solo 1"
+    ]
+  },
+  {
+    "version": "v6.34",
+    "date": "2026-08-24",
+    "type": "feature",
+    "title": "PDF pre-summarization + Guías editoriales",
+    "changes": [
+      "Pre-compresión local de PDFs antes de enviar a IA (reduce 50-70% tokens)",
+      "Página /guias con guías editoriales (Android FOSS, Herramientas, Flexbox)",
+      "AdSense: solo se muestra en páginas de contenido, no en herramientas",
+      "Gate anti-WebView para anuncios",
+      "Service Worker v6.34"
+    ]
+  },
+  {
+    "version": "v6.33",
+    "date": "2026-08-23",
+    "type": "feature",
+    "title": "Herramientas 36-38 + Accordion + FCM Weather",
+    "changes": [
+      "3 nuevas herramientas: IP Lookup, DNS Lookup, JSON Formatter",
+      "UI de acordeón para las 38 herramientas (expandir/colapsar)",
+      "Alertas climáticas ahora envían push vía FCM (Android)",
+      "Fix: splash screen solo una vez por sesión",
+      "Fix: tw-word double-wrap en cambio de idioma"
+    ]
+  },
+  {
+    "version": "v6.32",
+    "date": "2026-08-22",
+    "type": "fix",
+    "title": "Anti brute-force + Cumplimiento AdSense",
+    "changes": [
+      "Panel admin: protegido contra fuerza bruta (Turnstile + tokens de sesión)",
+      "Sistema de ban por intentos fallidos + honeypot + detección de bots",
+      "AdSense: eliminados APKs piratería/mods, políticas limpias",
+      "APK: permisos de storage + descargas en WebView"
+    ]
+  },
+  {
+    "version": "v6.30",
+    "date": "2026-08-20",
+    "type": "feature",
+    "title": "AI Panel Phase 2 — Skills, Voz y Comandos",
+    "changes": [
+      "4 nuevas skills: Image Gen, PDF IA, OCR IA, Translate",
+      "Comandos slash: /help, /img, /debug, /review, /readme, /translate",
+      "Sistema de voz mejorado con Web Speech API",
+      "SYSTEM prompt actualizado con contexto completo de CodeHub",
+      "File generator: generador de archivos multi-formato"
+    ]
+  },
+  {
+    "version": "v6.29",
+    "date": "2026-08-19",
+    "type": "feature",
+    "title": "AI Panel Phase 1 — Streaming y Markdown",
+    "changes": [
+      "Streaming SSE en tiempo real para respuestas de IA",
+      "Renderizado de Markdown: negritas, listas, código, tablas",
+      "Bloques de código con copy-to-clipboard",
+      "Botón de reintento en respuestas fallidas",
+      "Splash: solo se muestra una vez por sesión"
+    ]
+  }
+]

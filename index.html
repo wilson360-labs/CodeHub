@@ -260,12 +260,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   document.addEventListener('DOMContentLoaded', updateSafeArea);
 })();
 </script>
-<!-- ── Banner de actualización (aparece solo cuando hay SW nuevo) ── -->
-<div id="sw-update-banner" style="display:none;position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a2e;border:1px solid rgba(47,128,237,.45);border-radius:var(--radius-md, 14px);padding:.75rem 1.1rem;align-items:center;gap:.85rem;box-shadow:0 8px 32px rgba(0,0,0,.55);font-family:var(--mono,monospace);font-size:.78rem;color:#e8e8f0;max-width:420px;width:calc(100% - 2rem)">
-  <span style="font-size:1.1rem">🔄</span>
-  <span style="flex:1;line-height:1.35">Nueva versión disponible.<br><span style="color:rgba(232,232,240,.55);font-size:.7rem">Recarga para aplicar los cambios.</span></span>
-  <button aria-label="Actualizar aplicación" onclick="updatePWA()" style="background:rgba(47,128,237,.18);border:1px solid rgba(47,128,237,.5);border-radius:var(--radius-sm, 10px);color:#22c55e;padding:.38rem .8rem;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s" onmouseover="this.style.background='rgba(47,128,237,.3)'" onmouseout="this.style.background='rgba(47,128,237,.18)'">Actualizar</button>
-  <button aria-label="Cerrar notificación" onclick="dismissUpdateBanner()" style="background:none;border:none;color:rgba(232,232,240,.4);font-size:1.1rem;cursor:pointer;padding:0 .2rem;line-height:1" title="Cerrar">×</button>
+<!-- ── Diálogo de actualización (reemplaza el banner anterior) ── -->
+<div id="ch-update-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem">
+  <div id="ch-update-dialog" style="background:var(--card,#1a1a2e);border:1px solid rgba(47,128,237,.3);border-radius:var(--radius-lg,18px);max-width:420px;width:100%;padding:1.5rem;box-shadow:0 24px 64px rgba(0,0,0,.55);font-family:inherit;color:var(--text,#e0e0f0);position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e,#3b6dff,#a855f7)"></div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+      <div style="width:40px;height:40px;border-radius:12px;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🚀</div>
+      <div>
+        <div style="font-weight:800;font-size:1rem" id="ch-update-title">Actualización de CodeHub</div>
+        <div style="font-size:.72rem;color:var(--muted,#888);font-family:var(--mono,monospace)" id="ch-update-version"></div>
+      </div>
+    </div>
+    <div id="ch-update-body" style="font-size:.84rem;line-height:1.6;color:var(--text-soft,#aaa);margin-bottom:1.2rem;max-height:280px;overflow-y:auto"></div>
+    <div style="display:flex;gap:.5rem">
+      <button id="ch-update-apply" onclick="chApplyUpdate()" style="flex:1;padding:.6rem 1rem;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:var(--radius-sm,10px);font-weight:700;font-size:.82rem;cursor:pointer;transition:filter .15s">Actualizar ahora</button>
+      <button onclick="chDismissUpdate()" style="padding:.6rem 1rem;background:rgba(255,255,255,.06);color:var(--muted,#888);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm,10px);font-size:.82rem;cursor:pointer">Más tarde</button>
+    </div>
+    <div style="text-align:center;margin-top:.6rem;font-size:.65rem;color:var(--muted,#666)">Se aplicará la próxima vez que recargues la página</div>
+  </div>
 </div>
 
     <!-- Google Tag Manager (noscript) -->
@@ -6098,32 +6110,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.installCodeHubAPK = installCodeHubAPK;
   window.showAPKGuide = showAPKGuide;
 
-  // ── Service Worker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€───
+  // ── Service Worker ────────────────────────────────────────
   if ('serviceWorker' in navigator) {
     let refreshing = false;
-    // Flag: solo recargar si el usuario inició la actualización manualmente
     let userTriggeredUpdate = false;
 
     navigator.serviceWorker.register('/sw.js').then(reg => {
       console.log('✅ SW registrado v4.3');
 
-      // Antes cada 5 min; ahora cada 60s + al volver a la pestaña, para
-      // detectar más rápido cualquier cambio real del sw.js mismo.
-      // El contenido (html/css/js de la página) ya no depende de esto:
-      // se sirve "network-first" (ver sw.js), así que se actualiza solo
-      // en cada carga de página sin esperar a este chequeo.
-      // .catch() es obligatorio aquí: en móvil, un hiccup de red momentáneo
-      // (cambio de wifi a datos, señal débil) hace que reg.update() falle
-      // — eso es normal y no debe reportarse como crash de la app.
       setInterval(() => reg.update().catch(() => {}), 60 * 1000);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') reg.update().catch(() => {});
       });
 
-      // Nuevo SW en espera → aplicar automáticamente (sin esperar clic manual)
       function onSWWaiting() {
-        const banner = document.getElementById('sw-update-banner');
-        if (banner) banner.style.display = 'flex';
         userTriggeredUpdate = true;
         refreshing = false;
         reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
@@ -6142,35 +6142,96 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }).catch(e => console.warn('SW error:', e));
 
-    // BUGFIX: Solo recargar si el usuario aceptó la actualización explícitamente.
-    // Sin este guard, el primer 'controllerchange' (activación inicial del SW)
-    // disparaba location.reload() causando el bootloop intermitente.
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (userTriggeredUpdate && !refreshing) { refreshing = true; location.reload(); }
     });
   }
 
-  function updatePWA() {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg?.waiting) {
-        userTriggeredUpdate = true;
-        // Dejar refreshing=false: el handler de 'controllerchange' es quien
-        // hace location.reload() al tomar control el SW nuevo. Si aquí se
-        // pone true, ese handler se bloquea y la web nunca recarga.
-        refreshing = false;
-        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        // Fallback: si el controllerchange no llega (p.ej. SW lento), recargar igual.
-        setTimeout(() => { if (!refreshing) location.reload(); }, 2500);
-      } else {
-        location.reload();
-      }
-    });
+  // ── Diálogo de actualización con changelog ────────────────
+  const CH_VERSION_KEY = 'ch_current_version';
+  const CH_SKIP_KEY = 'ch_update_skip_';
+  let _chLatestVersion = null;
+
+  async function chFetchLatest() {
+    try {
+      const r = await fetch('/api/changelog', { cache: 'no-store' });
+      const d = await r.json();
+      if (d.ok && d.entries && d.entries.length) return d.entries[0];
+    } catch (e) {}
+    return null;
   }
 
-  function dismissUpdateBanner() {
-    const banner = document.getElementById('sw-update-banner');
-    if (banner) banner.style.display = 'none';
+  async function chCheckAndUpdate(force) {
+    var entry = await chFetchLatest();
+    if (!entry || !entry.version) return;
+    _chLatestVersion = entry.version;
+    var seen = localStorage.getItem(CH_VERSION_KEY);
+    var skip = localStorage.getItem(CH_SKIP_KEY + entry.version);
+    if (!force && skip) return;
+    if (!force && seen === entry.version) return;
+    chShowDialog(entry);
   }
+
+  function chShowDialog(entry) {
+    var overlay = document.getElementById('ch-update-overlay');
+    var title = document.getElementById('ch-update-title');
+    var ver = document.getElementById('ch-update-version');
+    var body = document.getElementById('ch-update-body');
+    if (!overlay) return;
+
+    var typeIcons = { feature: '✨', fix: '🔧', maintenance: '🛠️', release: '🚀' };
+    var typeLabels = { feature: 'Novedad', fix: 'Corrección', maintenance: 'Mantenimiento', release: 'Versión' };
+    var icon = typeIcons[entry.type] || '🚀';
+    var label = typeLabels[entry.type] || 'Actualización';
+
+    title.textContent = icon + ' ' + entry.title;
+    ver.textContent = entry.version + ' · ' + (entry.date || '') + ' · ' + label;
+
+    var html = '';
+    if (entry.changes && entry.changes.length) {
+      html = '<ul style="margin:0;padding-left:1.2rem;list-style:none">';
+      entry.changes.forEach(function(c) {
+        html += '<li style="position:relative;padding-left:.5rem;margin-bottom:.45rem"><span style="position:absolute;left:-.2rem;color:#22c55e">›</span> ' + c + '</li>';
+      });
+      html += '</ul>';
+    } else if (entry.body) {
+      html = '<p style="margin:0">' + entry.body + '</p>';
+    }
+    body.innerHTML = html;
+
+    overlay.style.display = 'flex';
+  }
+
+  function chApplyUpdate() {
+    localStorage.setItem(CH_VERSION_KEY, _chLatestVersion || '');
+    chDismissUpdate();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(function(reg) {
+        if (reg && reg.waiting) {
+          userTriggeredUpdate = true;
+          refreshing = false;
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          setTimeout(function() { if (!refreshing) location.reload(); }, 2500);
+        } else {
+          location.reload();
+        }
+      });
+    } else {
+      location.reload();
+    }
+  }
+
+  function chDismissUpdate() {
+    var overlay = document.getElementById('ch-update-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (_chLatestVersion) localStorage.setItem(CH_SKIP_KEY + _chLatestVersion, '1');
+  }
+
+  window.chApplyUpdate = chApplyUpdate;
+  window.chDismissUpdate = chDismissUpdate;
+  window.chCheckAndUpdate = chCheckAndUpdate;
+
+  setTimeout(function() { chCheckAndUpdate(false); }, 3000);
   </script>
   <script src="/js/live-update-check.js"></script>
 
