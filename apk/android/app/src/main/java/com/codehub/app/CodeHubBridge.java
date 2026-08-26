@@ -204,16 +204,16 @@ public class CodeHubBridge {
                 } catch (SecurityException ignored) {}
 
                 // Timeout 10s → si no llegó GPS, usar last known
-                final Location[] fallback = { null };
                 new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                     try {
-                        Location last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                        if (last == null) last = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                        if (last != null) {
-                            saveLocation(last.getLatitude(), last.getLongitude());
+                        Location found = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        if (found == null) found = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                        if (found != null) {
+                            final Location loc = found;
+                            saveLocation(loc.getLatitude(), loc.getLongitude());
                             activity.runOnUiThread(() -> webView.loadUrl(
                                 "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                                "(" + last.getLatitude() + "," + last.getLongitude() + "," + last.getAccuracy() + ");}catch(e){}"));
+                                "(" + loc.getLatitude() + "," + loc.getLongitude() + "," + loc.getAccuracy() + ");}catch(e){}"));
                         } else {
                             callbackNull(callbackName);
                         }
