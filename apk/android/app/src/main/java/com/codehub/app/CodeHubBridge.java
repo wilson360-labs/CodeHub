@@ -209,11 +209,11 @@ public class CodeHubBridge {
                         Location found = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                         if (found == null) found = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                         if (found != null) {
-                            final Location loc = found;
-                            saveLocation(loc.getLatitude(), loc.getLongitude());
+                            final Location fl = found;
+                            saveLocation(fl.getLatitude(), fl.getLongitude());
                             activity.runOnUiThread(() -> webView.loadUrl(
                                 "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                                "(" + loc.getLatitude() + "," + loc.getLongitude() + "," + loc.getAccuracy() + ");}catch(e){}"));
+                                "(" + fl.getLatitude() + "," + fl.getLongitude() + "," + fl.getAccuracy() + ");}catch(e){}"));
                         } else {
                             callbackNull(callbackName);
                         }
