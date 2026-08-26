@@ -56,8 +56,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous">
-<link rel="stylesheet" href="../css/skills-image-gen.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="../css/site-tour.css">
 <script src="https://js.puter.com/v2/"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js"></script>
@@ -3108,7 +3108,6 @@ async function rvResolve(force) {
 })();
 </script>
 <script src="../js/thinking-orb.js"></script>
-<script src="../js/skills-image-gen.js"></script>
 <script src="../js/skills-pdf-ia.js"></script>
 <script>
 /* ═══ CAPTURA DE PANTALLA + OCR (estilo PDNob) ═══ */
@@ -3369,5 +3368,65 @@ async function rvResolve(force) {
 </script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
+<script src="../js/site-tour.js?v=20260825a"></script>
+<script>
+(function() {
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      startTour('tools', [
+        {
+          selector: '.fbar .sw input',
+          icon: 'fa-solid fa-magnifying-glass',
+          title: 'Busca herramienta',
+          text: 'Escribe el nombre de la herramienta que necesitas: QR, hash, contraseña, JSON, clima… se filtra en tiempo real.'
+        },
+        {
+          selector: '.fbar .chips',
+          icon: 'fa-solid fa-filter',
+          title: 'Filtrar por categoría',
+          text: 'Usa las chips para ver solo Seguridad, Utilidad, Network, Conversores, Diseño o Dev.'
+        },
+        {
+          selector: '.card[data-tags="seg"] .ch',
+          icon: 'fa-solid fa-key',
+          title: 'Generador de contraseñas',
+          text: 'Genera contraseñas seguras con longitud y caracteres personalizables. El cálculo es 100% local — nada sale de tu navegador.'
+        },
+        {
+          selector: '#img-panel-libre',
+          icon: 'fa-solid fa-wand-magic-sparkles',
+          title: 'Generador de imágenes IA',
+          text: 'Modo libre: escribe un prompt y rota entre DALL-E, FLUX, Imagen 3 y Pollinations. También hay modo educativo con presets de diagramas y mapas.',
+          optional: true
+        },
+        {
+          selector: '.card[data-tags="util ai"] .ch',
+          icon: 'fa-solid fa-file-pdf',
+          title: 'PDF IA — Chat con tu documento',
+          text: 'Sube un PDF y chatea con EMI: resúmenes, datos de facturas, respuestas usando solo tu documento. Extracción 100% local.',
+          optional: true
+        },
+        {
+          selector: '.card[data-tags="seg util net"] .ch',
+          icon: 'fa-solid fa-magnifying-glass-location',
+          title: 'IP Lookup',
+          text: 'Consulta cualquier IP: geolocalización, ISP, ASN, proxy/VPN, hosting. Datos dual-source sin API key.'
+        },
+        {
+          selector: '#grid .card:last-child .ch',
+          icon: 'fa-solid fa-code',
+          title: 'JSON Formatter',
+          text: 'Parsea, formatea, minifica y valida JSON con resaltado de sintaxis. Errores con línea exacta.',
+          optional: true
+        }
+      ], {
+        delay: 0,
+        waitForInteraction: true,
+        helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía de herramientas' }
+      });
+    }, 1200);
+  });
+})();
+</script>
 </body>
 </html>

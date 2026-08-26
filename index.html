@@ -1738,6 +1738,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             setTimeout(() => {
                 startTour('index', [
                     {
+                        selector: '#ai-fab',
+                        icon: 'fa-solid fa-robot',
+                        title: 'EMI COPILOT — tu IA',
+                        text: 'Asistente de IA integrado. Chatea, genera imágenes, analiza PDFs, traduce y más. Di "hola" para empezar.',
+                        optional: true
+                    },
+                    {
                         selector: '#cfg-btn',
                         icon: 'fa-solid fa-gear',
                         title: 'Configuración',
@@ -1750,6 +1757,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         text: 'Toca aquí para abrir minijuegos, chat con IA y otras herramientas ocultas del sitio.'
                     },
                     {
+                        selector: '#notif-btn',
+                        icon: 'fa-solid fa-bell',
+                        title: 'Notificaciones',
+                        text: 'Centro de notificaciones: alertas climáticas, actualizaciones de la app y avisos del sistema. Toca la campana para ver todo.',
+                        optional: true
+                    },
+                    {
+                        selector: '.skills-tabs',
+                        icon: 'fa-solid fa-layer-group',
+                        title: 'Tabs de Skills',
+                        text: 'Solo ves "Core"? Toca "✨ 2025" para ver las tecnologías más recientes, o "Tools" para frameworks y herramientas.',
+                        optional: true
+                    },
+                    {
                         selector: '#wx-loc-btn',
                         icon: 'fa-solid fa-location-crosshairs',
                         title: 'Clima en tiempo real',
@@ -1758,20 +1779,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     {
                         selector: '#hub-dock a[href="/tools"]',
                         icon: 'fa-solid fa-screwdriver-wrench',
-                        title: 'Herramientas',
-                        text: 'Suite DevTools: QR, contraseñas, hash SHA-256/512, Base64, UUID v4, regex tester, pomodoro, conversores, IMC, préstamos y más de 23 utilidades gratuitas.'
+                        title: '38 Herramientas',
+                        text: 'Suite completa: QR, contraseñas, hash, Base64, UUID, regex, pomodoro, conversores, image-gen IA, PDF IA, IP Lookup, JSON y más.'
                     },
                     {
                         selector: '#hub-dock a[href="/opensource"]',
                         icon: 'fa-solid fa-code-branch',
                         title: 'Catálogo Open Source',
-                        text: 'Apps 100% código abierto, verificadas contra su repositorio oficial en GitHub. Sin mods ni versiones modificadas.'
-                    },
-                    {
-                        selector: '#hub-dock a[href="/opensource"]',
-                        icon: 'fa-brands fa-windows',
-                        title: 'Windows Enhance',
-                        text: 'Dentro del catálogo Open Source ya existe el área de recuperación y optimización de Windows: USB de arranque con Rufus/Ventoy, comandos de reparación, y las mejores herramientas con sus guías de uso.'
+                        text: 'Apps 100% código abierto, verificadas contra GitHub. Incluye Windows Enhance para recuperación y optimización.'
+                    }
                     }
                 ], {
                     delay: 0,

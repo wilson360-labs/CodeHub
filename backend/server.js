@@ -4310,8 +4310,6 @@ app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
 });
 
 // ── CHANGELOG — última versión para el diálogo de actualización ──
-const fs = require('fs');
-const path = require('path');
 let _changelog = null;
 function loadChangelog() {
   if (_changelog) return _changelog;
