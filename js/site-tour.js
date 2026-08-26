@@ -50,6 +50,8 @@
     this.index = 0;
     this._ensureLayer();
     document.addEventListener('keydown', this._onKey);
+    document.addEventListener('touchstart', this._onTouchStart, { passive: true });
+    document.addEventListener('touchend', this._onTouchEnd, { passive: true });
     this._renderStep();
   };
 
@@ -66,6 +68,19 @@
     if (e.key === 'Escape') this.close();
     if (e.key === 'ArrowRight') this.next();
     if (e.key === 'ArrowLeft') this.prev();
+  };
+
+  SiteTour.prototype._handleTouchStart = function (e) {
+    this._touchStartX = e.touches[0].clientX;
+    this._touchStartY = e.touches[0].clientY;
+  };
+
+  SiteTour.prototype._handleTouchEnd = function (e) {
+    var dx = e.changedTouches[0].clientX - this._touchStartX;
+    var dy = e.changedTouches[0].clientY - this._touchStartY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) this.next(); else this.prev();
+    }
   };
 
   SiteTour.prototype._clearHighlight = function () {
@@ -244,6 +259,8 @@
     if (this.layer) { this.layer.remove(); this.layer = null; }
     window.removeEventListener('resize', this._onResize);
     document.removeEventListener('keydown', this._onKey);
+    document.removeEventListener('touchstart', this._onTouchStart);
+    document.removeEventListener('touchend', this._onTouchEnd);
     if (markSeen) this.markSeen();
   };
 

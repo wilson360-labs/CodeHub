@@ -29,7 +29,12 @@
   }
 
   function saveLog(log) {
-    try { localStorage.setItem(KEY, JSON.stringify(log.slice(0, MAX))); } catch (e) {}
+    try {
+      // Auto-prune notifications older than 7 days
+      var cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      log = log.filter(function (n) { return (n.ts || 0) > cutoff; });
+      localStorage.setItem(KEY, JSON.stringify(log.slice(0, MAX)));
+    } catch (e) {}
   }
 
   function timeAgo(ts) {
@@ -370,6 +375,10 @@
       setTimeout(loadFromSW, 1500);
       // CodeHub Releases recientes publicados desde el admin-hub.
       setTimeout(loadReleases, 2500);
+      // Poll releases periodically for real-time feel (every 60s)
+      setInterval(loadReleases, 60000);
+      // Also re-render badge periodically in case SW pushed while panel was closed
+      setInterval(function () { render(); updateBadge(); }, 30000);
     });
     wireSW();
   }

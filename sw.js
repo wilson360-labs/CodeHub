@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.35';
+const VERSION = 'codehub-v6.36';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -173,6 +173,9 @@ function pushToNotifStore(payload) {
       icon: payload.icon || '/splash/codehub.png',
       ts: Date.now(),
     });
+    // Prune entries older than 7 days
+    var cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    list = list.filter(n => (n.ts || 0) > cutoff);
     return writeNotifStore(list);
   }).catch(() => {});
 }

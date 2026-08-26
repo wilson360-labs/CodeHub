@@ -5855,7 +5855,32 @@ document.addEventListener('DOMContentLoaded', () => {
   window.appInstallShow = appInstallShow;
   window.appInstallDismiss = appInstallDismiss;
   window.appInstallAction = appInstallAction;
-  setTimeout(appInstallShow, 4000);
+
+  // Hide hero APK button + install overlay when running as native app
+  // Re-check on DOMContentLoaded + after 1s because __apkNative may be
+  // injected by evaluateJavascript slightly after inline scripts run.
+  function _hideInstallIfNative() {
+    var ua = (navigator.userAgent || '').toLowerCase();
+    var isNative = (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      ua.indexOf('codehub') !== -1;
+    if (!isNative) return;
+    var apkBtn = document.getElementById('hero-install-apk');
+    var apkInfo = document.getElementById('hero-apk-info');
+    var appOverlay = document.getElementById('app-install-overlay');
+    if (apkBtn) apkBtn.style.display = 'none';
+    if (apkInfo) apkInfo.style.display = 'none';
+    if (appOverlay) { appOverlay.classList.remove('active'); appOverlay.style.display = 'none'; }
+    clearTimeout(_installOverlayTimer);
+  }
+  var _installOverlayTimer;
+  _hideInstallIfNative();
+  document.addEventListener('DOMContentLoaded', _hideInstallIfNative);
+  setTimeout(_hideInstallIfNative, 1000);
+  setTimeout(_hideInstallIfNative, 3000);
+  if (!_isStandalone) {
+    _installOverlayTimer = setTimeout(appInstallShow, 4000);
+  }
 
   function showAPKGuide() {
     const existing = document.getElementById('apk-guide-overlay');
