@@ -2847,7 +2847,14 @@ function chToggleWeatherAlerts(on) {
 
 /* Detectar ubicación (GPS → IP) y guardarla para las alertas de clima */
 function chAutoDetectAndSave() {
-  if (navigator.geolocation) {
+  // En APK nativa, usar ubicación del sistema (mucho más precisa)
+  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+    window._chAutoLocCb = function(lat, lon) {
+      if (lat != null && lon != null) chSavePushLocation(lat, lon, 'Tu ubicación', '');
+      else detectWeatherByIP();
+    };
+    CodeHubNative.getLastLocation('_chAutoLocCb');
+  } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(pos) {
       chSavePushLocation(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación', '');
     }, function() { detectWeatherByIP(); }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
@@ -3153,12 +3160,18 @@ function showIndexNotifBanner() {
       if (typeof chNotifLog === 'function') chNotifLog('🔔 Notificaciones activadas', 'Recibirás alertas de apps, clima y novedades en tu dispositivo', 'system', '/');
       if (typeof toast === 'function') toast('🔔 Notificaciones activadas ✓', 'success', 2800);
       // Solicitar ubicación para clima en tiempo real
-      if (navigator.geolocation) {
+      function _saveGeoWeather(lat, lon) {
+        localStorage.setItem('ch_user_lat', lat);
+        localStorage.setItem('ch_user_lon', lon);
+        chNotifWeatherCheck(lat, lon);
+        chSavePushLocation(lat, lon, 'Tu ubicación', '');
+      }
+      if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+        window._chNotifGeoCb = function(lat, lon) { if (lat != null) _saveGeoWeather(lat, lon); };
+        CodeHubNative.getLastLocation('_chNotifGeoCb');
+      } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
-          localStorage.setItem('ch_user_lat', pos.coords.latitude);
-          localStorage.setItem('ch_user_lon', pos.coords.longitude);
-          chNotifWeatherCheck(pos.coords.latitude, pos.coords.longitude);
-          chSavePushLocation(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación', '');
+          _saveGeoWeather(pos.coords.latitude, pos.coords.longitude);
         }, function(){});
       }
     } else {
@@ -5019,6 +5032,35 @@ async function detectWeatherByIP() {
 function requestGeoLocation() {
   const btn = document.getElementById('wx-loc-btn');
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…'; btn.disabled = true; }
+
+  // En APK nativa, usar ubicación del sistema (FusedLocationProvider)
+  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+    window._chGeoLocCb = async function(lat, lon, accuracy) {
+      if (lat == null || lon == null) {
+        await detectWeatherByIP();
+        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; }
+        return;
+      }
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=10`);
+        const d = await r.json();
+        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
+        const area = d.address?.state_district || d.address?.county || d.address?.state || '';
+        const country = d.address?.country || '';
+        const label = (area && area !== city) ? `${city}, ${area}, ${country} 📍` : `${city}, ${country} 📍`;
+        await fetchWeatherByCoords(lat, lon, label);
+        chSavePushLocation(lat, lon, city, country);
+        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#22c55e'; }
+      } catch(e) {
+        await fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
+        chSavePushLocation(lat, lon, 'Tu ubicación', '');
+        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#22c55e'; }
+      }
+      if (btn) btn.disabled = false;
+    };
+    CodeHubNative.getLastLocation('_chGeoLocCb');
+    return;
+  }
 
   if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
 
