@@ -2784,6 +2784,14 @@ async function chSavePushLocation(lat, lon, city, country) {
   if (typeof CodeHubNative !== 'undefined' && Number.isFinite(+lat) && Number.isFinite(+lon)) {
     try { CodeHubNative.saveLocation(+lat, +lon); } catch(e) {}
   }
+  // Save location to SW cache so background sync can read it
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    try {
+      caches.open('codehub-notifs-v1').then(function(c) {
+        c.put('/ch-user-loc', new Response(JSON.stringify({lat: +lat, lon: +lon, city: city || ''}), {headers: {'Content-Type': 'application/json'}}));
+      });
+    } catch(e) {}
+  }
   var endpoint = localStorage.getItem('ch_push_endpoint');
   if (!endpoint || !('serviceWorker' in navigator) || Notification.permission !== 'granted') return;
   try {
@@ -2847,13 +2855,13 @@ function chToggleWeatherAlerts(on) {
 
 /* Detectar ubicación (GPS → IP) y guardarla para las alertas de clima */
 function chAutoDetectAndSave() {
-  // En APK nativa, usar ubicación del sistema (mucho más precisa)
-  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+  // En APK nativa, pedir permiso + ubicación del sistema
+  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
     window._chAutoLocCb = function(lat, lon) {
       if (lat != null && lon != null) chSavePushLocation(lat, lon, 'Tu ubicación', '');
       else detectWeatherByIP();
     };
-    CodeHubNative.getLastLocation('_chAutoLocCb');
+    CodeHubNative.requestLocationPermission('_chAutoLocCb');
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(pos) {
       chSavePushLocation(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación', '');
@@ -3166,9 +3174,9 @@ function showIndexNotifBanner() {
         chNotifWeatherCheck(lat, lon);
         chSavePushLocation(lat, lon, 'Tu ubicación', '');
       }
-      if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+      if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
         window._chNotifGeoCb = function(lat, lon) { if (lat != null) _saveGeoWeather(lat, lon); };
-        CodeHubNative.getLastLocation('_chNotifGeoCb');
+        CodeHubNative.requestLocationPermission('_chNotifGeoCb');
       } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
           _saveGeoWeather(pos.coords.latitude, pos.coords.longitude);
@@ -5033,8 +5041,8 @@ function requestGeoLocation() {
   const btn = document.getElementById('wx-loc-btn');
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…'; btn.disabled = true; }
 
-  // En APK nativa, usar ubicación del sistema (FusedLocationProvider)
-  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.getLastLocation) {
+  // En APK nativa, pedir permiso + ubicación del sistema (FusedLocationProvider)
+  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
     window._chGeoLocCb = async function(lat, lon, accuracy) {
       if (lat == null || lon == null) {
         await detectWeatherByIP();
@@ -5058,7 +5066,7 @@ function requestGeoLocation() {
       }
       if (btn) btn.disabled = false;
     };
-    CodeHubNative.getLastLocation('_chGeoLocCb');
+    CodeHubNative.requestLocationPermission('_chGeoLocCb');
     return;
   }
 

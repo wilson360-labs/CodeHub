@@ -48,6 +48,7 @@ public class MainActivity extends Activity implements LocationListener {
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
+    private CodeHubBridge bridge;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
     private LocationManager locationManager;
@@ -172,6 +173,20 @@ public class MainActivity extends Activity implements LocationListener {
             if (locGranted) startLocationUpdates();
             injectNativeFlags(webView);
         }
+        // Location permission from CodeHubBridge.requestLocationPermission()
+        if (requestCode == 400) {
+            boolean granted = false;
+            for (int i = 0; i < permissions.length; i++) {
+                if ((permissions[i].equals(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                     permissions[i].equals(Manifest.permission.ACCESS_COARSE_LOCATION)) &&
+                    grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                    granted = true;
+                }
+            }
+            try {
+                if (bridge != null) bridge.onLocationPermissionResult(granted);
+            } catch (Exception ignored) {}
+        }
     }
 
     // ── INTERNET CHECK ──────────────────────────────────────────
@@ -295,7 +310,8 @@ public class MainActivity extends Activity implements LocationListener {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        webView.addJavascriptInterface(new CodeHubBridge(this, webView), "CodeHubNative");
+        bridge = new CodeHubBridge(this, webView);
+        webView.addJavascriptInterface(bridge, "CodeHubNative");
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             if (url == null || url.isEmpty()) return;

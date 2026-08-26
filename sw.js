@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.37';
+const VERSION = 'codehub-v6.38';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -428,8 +428,18 @@ function syncWeatherSave(state) {
 }
 
 // Chequeo de clima (misma lógica de alertas que el backend)
+// Lee la ubicación guardada por el usuario en vez de usar coords hardcodeadas
 function syncCheckWeather() {
-  return fetch('https://api.open-meteo.com/v1/forecast?latitude=14.63&longitude=-90.51&current=temperature_2m,weather_code,wind_speed_10m,precipitation&timezone=auto')
+  // First, try to read user's saved location from cache
+  return caches.open(NOTIF_CACHE).then(c => c.match('/ch-user-loc')).then(r => {
+    if (!r) return null;
+    return r.json().catch(() => null);
+  }).then(loc => {
+    const lat = (loc && loc.lat) || null;
+    const lon = (loc && loc.lon) || null;
+    const city = (loc && loc.city) || '';
+    if (!lat || !lon) return; // No location saved — skip weather check
+    return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,weather_code,wind_speed_10m,precipitation&timezone=auto')
     .then(r => r.ok ? r.json() : null)
     .then(d => {
       if (!d || !d.current) return;
@@ -445,7 +455,7 @@ function syncCheckWeather() {
       return syncWeatherLast().then(prev => {
         if (prev && prev.cond === cond && Date.now() - (prev.ts || 0) < 2 * 60 * 60 * 1000) return;
         self.registration.showNotification('CodeHub Clima', {
-          body: msg + ' · Ciudad de Guatemala',
+          body: msg + ' · ' + (city || 'tu zona'),
           icon: '/splash/codehub.png',
           badge: '/splash/codehub.png',
           tag: 'codehub-weather',
@@ -455,8 +465,8 @@ function syncCheckWeather() {
         pushToNotifStore({ title: 'CodeHub Clima', body: msg, type: 'weather', url: '/#weather-section', icon: '/splash/codehub.png' });
         return syncWeatherSave({ cond, ts: Date.now() });
       });
-    })
-    .catch(() => {});
+    }).catch(() => {});
+  }).catch(() => {});
 }
 
 self.addEventListener('sync', e => {

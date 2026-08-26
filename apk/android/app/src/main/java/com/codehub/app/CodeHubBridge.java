@@ -126,22 +126,65 @@ public class CodeHubBridge {
             .apply();
     }
 
+    // ── LOCATION (permission + GPS) ────────────────────────────
+    private static final int LOC_PERMISSION_REQUEST = 400;
+    private String pendingLocCallback = null;
+
     /**
-     * getLastLocation(callbackName) — obtiene la última ubicación conocida
-     * usando LocationManager (misma API que usa FusedLocationProvider por
-     * debajo). Mucho más preciso que navigator.geolocation en WebView.
-     * Callback: callbackName(lat, lon, accuracy) o callbackName(null)
+     * Called from MainActivity.onRequestPermissionsResult when request
+     * code == LOC_PERMISSION_REQUEST.
+     */
+    public void onLocationPermissionResult(boolean granted) {
+        String cb = pendingLocCallback;
+        pendingLocCallback = null;
+        if (cb == null) return;
+        if (granted) {
+            // Permission granted — now get the actual location
+            doGetLocation(cb);
+        } else {
+            callbackNull(cb);
+        }
+    }
+
+    /**
+     * requestLocationPermission(callbackName) — Checks if location
+     * permission is granted. If yes, gets location immediately. If no,
+     * requests it from the user, then gets location after grant.
+     * Callback: callbackName(lat, lon, accuracy) or callbackName(null)
      */
     @JavascriptInterface
-    public void getLastLocation(final String callbackName) {
+    public void requestLocationPermission(final String callbackName) {
+        boolean hasFine   = activity.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean hasCoarse = activity.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+
+        if (hasFine || hasCoarse) {
+            doGetLocation(callbackName);
+            return;
+        }
+
+        // Need to request permission from user
+        pendingLocCallback = callbackName;
+        activity.runOnUiThread(() -> {
+            activity.requestPermissions(new String[]{
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
+            }, LOC_PERMISSION_REQUEST);
+        });
+    }
+
+    /**
+     * doGetLocation(callbackName) — Gets best known location, or
+     * requests a fresh GPS fix if no cached location exists.
+     */
+    private void doGetLocation(final String callbackName) {
         new Thread(() -> {
             try {
                 LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
                 if (lm == null) { callbackNull(callbackName); return; }
 
-                // Intentar providers en orden de precisión
-                String[] providers = { LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER };
+                // Try all providers for best cached location
                 Location best = null;
+                String[] providers = { LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER };
                 for (String p : providers) {
                     try {
                         Location loc = lm.getLastKnownLocation(p);
@@ -152,46 +195,25 @@ public class CodeHubBridge {
                 }
 
                 if (best != null) {
-                    double lat = best.getLatitude();
-                    double lon = best.getLongitude();
-                    float acc = best.getAccuracy();
-                    // Guardar para uso futuro
+                    // Found a cached location — return it
+                    final double lat = best.getLatitude();
+                    final double lon = best.getLongitude();
+                    final float acc = best.getAccuracy();
                     saveLocation(lat, lon);
                     activity.runOnUiThread(() -> webView.loadUrl(
                         "javascript:try{if(window." + callbackName + ")window." + callbackName +
                         "(" + lat + "," + lon + "," + acc + ");}catch(e){}"));
-                } else {
-                    callbackNull(callbackName);
-                }
-            } catch (Exception e) {
-                callbackNull(callbackName);
-            }
-        }).start();
-    }
-
-    /**
-     * requestFreshLocation(callbackName) — pide una ubicación fresca con
-     * alta precisión (GPS). Timeout 10s. Más lento pero más preciso que
-     * getLastLocation.
-     */
-    @JavascriptInterface
-    public void requestFreshLocation(final String callbackName) {
-        new Thread(() -> {
-            try {
-                LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-                if (lm == null) { callbackNull(callbackName); return; }
-
-                // Verificar permisos
-                if (activity.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    callbackNull(callbackName);
                     return;
                 }
 
-                // Intentar GPS primero (más preciso), luego network
-                Location loc = null;
+                // No cached location — request a fresh GPS fix with timeout
+                final boolean[] responded = { false };
+
                 try {
                     lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, new LocationListener() {
                         @Override public void onLocationChanged(Location l) {
+                            if (responded[0]) return;
+                            responded[0] = true;
                             saveLocation(l.getLatitude(), l.getLongitude());
                             activity.runOnUiThread(() -> webView.loadUrl(
                                 "javascript:try{if(window." + callbackName + ")window." + callbackName +
@@ -199,17 +221,29 @@ public class CodeHubBridge {
                         }
                         @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
                         @Override public void onProviderEnabled(String p) {}
-                        @Override public void onProviderDisabled(String p) {}
+                        @Override public void onProviderDisabled(String p) {
+                            if (!responded[0]) {
+                                responded[0] = true;
+                                // GPS disabled — try network provider
+                                try {
+                                    lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, this, android.os.Looper.getMainLooper());
+                                } catch (Exception ex) {
+                                    callbackNull(callbackName);
+                                }
+                            }
+                        }
                     }, android.os.Looper.getMainLooper());
-                } catch (SecurityException ignored) {}
+                } catch (SecurityException ignored) { callbackNull(callbackName); return; }
 
-                // Timeout 10s → si no llegó GPS, usar last known
+                // Timeout 12s — if no GPS fix, fallback to anything available
                 new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (responded[0]) return;
+                    responded[0] = true;
                     try {
-                        Location found = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                        if (found == null) found = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                        if (found != null) {
-                            final Location fl = found;
+                        Location fallback = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                        if (fallback == null) fallback = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                        if (fallback != null) {
+                            final Location fl = fallback;
                             saveLocation(fl.getLatitude(), fl.getLongitude());
                             activity.runOnUiThread(() -> webView.loadUrl(
                                 "javascript:try{if(window." + callbackName + ")window." + callbackName +
@@ -220,7 +254,7 @@ public class CodeHubBridge {
                     } catch (Exception ex) {
                         callbackNull(callbackName);
                     }
-                }, 10000);
+                }, 12000);
             } catch (Exception e) {
                 callbackNull(callbackName);
             }
