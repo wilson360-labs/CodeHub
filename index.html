@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <!-- Polyfill de window.Notification — el WebView de la app nativa
@@ -235,8 +235,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       }
       code, pre, .mono { font-family: 'Courier New', monospace; }
     </style>
-
-  <!-- PWA Install Prompt -->
 
     <!-- CLS Fix — reservar espacio para imágenes y evitar saltos de layout -->
     <!-- Doc libs lazy-loaded via _loadDocLib() — no se descargan hasta que se necesiten -->
@@ -5717,285 +5715,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </script>
 
-  <!-- PWA Install Prompt -->
-  <button id="install-app-btn" type="button" aria-label="Instalar CodeHub" onclick="installPWA()" style="display:none; position:fixed; right:1rem; top:5.25rem; z-index:9998; border:1px solid rgba(96,165,250,.55); background:linear-gradient(135deg, rgba(47,128,237,.96), rgba(56,189,248,.85)); color:#fff; border-radius:999px; padding:.7rem 1rem; font-weight:800; font-size:.74rem; letter-spacing:.04em; box-shadow:0 12px 28px rgba(47,128,237,.35); cursor:pointer;">
-    <i class="fas fa-download"></i> Instalar app
-  </button>
-
-  <div id="pwa-install" role="dialog" aria-live="polite" aria-label="Instalar CodeHub">
-    <div class="pwa-card">
-      <div class="pwa-top">
-        <div class="pwa-icon"><img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:32px;height:32px;object-fit:contain;border-radius:var(--radius-sm, 10px);display:block;margin:auto;"></div>
-        <div class="pwa-text">
-          <div class="pwa-title" id="pwa-title">Instalar CodeHub</div>
-          <div class="pwa-sub" id="pwa-sub">Descarga e instala la app en tu dispositivo</div>
+  <!-- APK + iOS Install Guide (reemplaza el diálogo PWA anterior) -->
+  <div id="app-install-overlay" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem">
+    <div id="app-install-dialog" style="background:var(--card,#1a1a2e);border:1px solid rgba(124,77,255,.3);border-radius:var(--radius-lg,18px);max-width:400px;width:100%;padding:1.5rem;box-shadow:0 24px 64px rgba(0,0,0,.55);font-family:inherit;color:var(--text,#e0e0f0);position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c4dff,#3b6dff,#22c55e)"></div>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem">
+        <img loading="lazy" src="splash/codehub.png" alt="CodeHub" style="width:44px;height:44px;object-fit:contain;border-radius:12px;background:linear-gradient(135deg,#7c4dff,#2f80ed);padding:4px">
+        <div>
+          <div style="font-weight:800;font-size:1rem" id="app-install-title">Instalar CodeHub</div>
+          <div style="font-size:.72rem;color:var(--muted,#888);font-family:var(--mono,monospace)" id="app-install-sub"></div>
         </div>
-        <button class="pwa-close" onclick="dismissPWA()" aria-label="Cerrar" title="Cerrar">×</button>
       </div>
-      <div class="pwa-feats" id="pwa-feats">
-        <div class="pwa-feat"><i class="fas fa-bolt"></i><span class="pwa-feat-highlight">Rendimiento nativo</span> — se ejecuta como una app compilada</div>
-        <div class="pwa-feat"><i class="fas fa-wifi-slash"></i><span>Funciona <span class="pwa-feat-highlight">sin internet</span> — modo offline completo</span></div>
-        <div class="pwa-feat"><i class="fas fa-bell"></i><span>Notificaciones en <span class="pwa-feat-highlight">tiempo real</span></span></div>
-        <div class="pwa-feat"><i class="fas fa-sync-alt"></i><span>Sincronización <span class="pwa-feat-highlight">automática</span> en segundo plano</span></div>
-        <div class="pwa-feat"><i class="fas fa-shield-halved"></i><span>Permisos <span class="pwa-feat-highlight">gestionados por la app</span> — sin dependencias</span></div>
-        <div class="pwa-feat"><i class="fas fa-mobile-alt"></i><span>Compatible con <span class="pwa-feat-highlight">Android e iOS</span></span></div>
+      <!-- Features -->
+      <div style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:1rem" id="app-install-feats">
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-soft,#aaa)"><span style="color:#38bdf8;width:18px;text-align:center">⚡</span> Rendimiento nativo — app compilada</div>
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-soft,#aaa)"><span style="color:#38bdf8;width:18px;text-align:center">📡</span> Funciona sin internet — offline</div>
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-soft,#aaa)"><span style="color:#38bdf8;width:18px;text-align:center">🔔</span> Notificaciones push en tiempo real</div>
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--text-soft,#aaa)"><span style="color:#38bdf8;width:18px;text-align:center">🛡️</span> Permisos sin restricciones del navegador</div>
       </div>
-      <div class="pwa-guide" id="pwa-guide" style="display:none">
-        <div class="pwa-guide-title">Cómo instalar</div>
-        <div class="pwa-guide-step" data-device="android"><span class="pwa-guide-device">Android:</span> toca el menú <strong>⋮</strong> → <strong>Instalar aplicación</strong>.</div>
-        <div class="pwa-guide-step" data-device="ios"><span class="pwa-guide-device">iPhone / iPad:</span> toca <strong>Compartir</strong> → <strong>Añadir a pantalla de inicio</strong>.</div>
-        <div class="pwa-guide-step" data-device="desktop"><span class="pwa-guide-device">PC / Mac:</span> usa el botón <strong>Instalar</strong> de la barra del navegador.</div>
+      <!-- Android steps (shown on Android) -->
+      <div id="app-steps-android" style="display:none;margin-bottom:1rem;padding:.7rem;border:1px dashed rgba(124,77,255,.25);border-radius:10px;background:rgba(124,77,255,.04)">
+        <div style="font-size:.68rem;font-weight:700;color:#b4a0ff;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Cómo instalar en Android</div>
+        <div style="font-size:.72rem;color:var(--text-soft,#aaa);line-height:1.6">
+          <div style="margin-bottom:.3rem"><span style="color:#b4a0ff;font-weight:700">1.</span> Toca <strong style="color:#fff">Descargar APK</strong></div>
+          <div style="margin-bottom:.3rem"><span style="color:#b4a0ff;font-weight:700">2.</span> Abre el archivo descargado</div>
+          <div style="margin-bottom:.3rem"><span style="color:#b4a0ff;font-weight:700">3.</span> Acepta instalar si pide permiso</div>
+          <div><span style="color:#b4a0ff;font-weight:700">4.</span> ¡Listo! CodeHub aparece en tu pantalla</div>
+        </div>
       </div>
-      <div class="pwa-btns">
-        <button class="pwa-btn-yes" onclick="installPWA()" id="pwa-btn-install">
-          <i class="fas fa-download"></i> Instalar app
-        </button>
-        <button class="pwa-btn-how" onclick="togglePWAGuide()" id="pwa-btn-how">¿Cómo instalar?</button>
-        <button class="pwa-btn-no" onclick="dismissPWA()" id="pwa-btn-no">Ahora no</button>
+      <!-- iOS steps (shown on iPhone/iPad) -->
+      <div id="app-steps-ios" style="display:none;margin-bottom:1rem;padding:.7rem;border:1px dashed rgba(56,189,248,.25);border-radius:10px;background:rgba(56,189,248,.04)">
+        <div style="font-size:.68rem;font-weight:700;color:#38bdf8;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Agregar a pantalla de inicio (iOS)</div>
+        <div style="font-size:.72rem;color:var(--text-soft,#aaa);line-height:1.6">
+          <div style="margin-bottom:.3rem"><span style="color:#38bdf8;font-weight:700">1.</span> Abre CodeHub en <strong style="color:#fff">Safari</strong></div>
+          <div style="margin-bottom:.3rem"><span style="color:#38bdf8;font-weight:700">2.</span> Toca el botón <strong style="color:#fff">Compartir</strong> □</div>
+          <div style="margin-bottom:.3rem"><span style="color:#38bdf8;font-weight:700">3.</span> Selecciona <strong style="color:#fff">"Añadir a pantalla de inicio"</strong></div>
+          <div><span style="color:#38bdf8;font-weight:700">4.</span> ¡Listo! CodeHub aparece como app en tu Home</div>
+        </div>
+      </div>
+      <!-- Desktop hint -->
+      <div id="app-steps-desktop" style="display:none;margin-bottom:1rem;padding:.7rem;border:1px dashed rgba(47,128,237,.25);border-radius:10px;background:rgba(47,128,237,.04)">
+        <div style="font-size:.68rem;font-weight:700;color:#60a5fa;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em">Instalar en tu móvil</div>
+        <div style="font-size:.72rem;color:var(--text-soft,#aaa);line-height:1.6">
+          Abre esta página en el navegador de tu <strong style="color:#fff">celular Android</strong> y toca "Descargar APK".<br>
+          En <strong style="color:#fff">iPhone</strong>: abre en Safari → Compartir → Añadir a pantalla de inicio.
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display:flex;gap:.5rem">
+        <button id="app-install-btn" onclick="appInstallAction()" style="flex:1;padding:.65rem 1rem;background:linear-gradient(135deg,#7c4dff,#2f80ed);color:#fff;border:none;border-radius:var(--radius-sm,10px);font-weight:700;font-size:.82rem;cursor:pointer;transition:filter .15s">Descargar APK</button>
+        <button onclick="appInstallDismiss()" style="padding:.65rem 1rem;background:rgba(255,255,255,.06);color:var(--muted,#888);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm,10px);font-size:.82rem;cursor:pointer">Ahora no</button>
       </div>
     </div>
   </div>
 
-  <!-- PWA Update Banner -->
-
 
   <script>
-  // ── PWA Install â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€─
-  let _deferredPrompt = null;
-  const pwaInstallEl = document.getElementById('pwa-install');
-  const installAppBtn = document.getElementById('install-app-btn');
-
-  function isPublicInstallPage() {
-    const path = (window.location.pathname || '').toLowerCase();
-    return !path.includes('/admin') && !path.includes('admin-hub');
-  }
-
-  function isNativeApp() {
-    // typeof CodeHubNative !== 'undefined' es la señal fiable: ese puente
-    // JS se registra ANTES de que la WebView cargue la página (ver
-    // MainActivity.setupWebView(), llamado antes de loadUrl), así que
-    // ya existe incluso en el primer script que corre al parsear la
-    // página. window.__apkNative, en cambio, se inyecta en onPageFinished
-    // — es decir, DESPUÉS de que estos mismos scripts ya se ejecutaron —
-    // por eso solo, no alcanzaba a evitar el banner de "instalar" en el
-    // APK nativo la primera vez que abría cada página.
-    return (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
-      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-  }
-
-  function showPWA() {
-    if (!isPublicInstallPage()) return;
-    if (isNativeApp()) return;
-    if (pwaInstallEl) pwaInstallEl.style.display = 'block';
-  }
-  function hidePWA() {
-    if (pwaInstallEl) pwaInstallEl.style.display = 'none';
-  }
-  function pwaEligible() {
-    return !!_deferredPrompt || isNativeApp();
-  }
-
-  // ¿Es momento de mostrar el banner de instalación?
-  // - Nunca si ya está instalada.
-  // - Cada visita nueva (nueva sesión) se ofrece instalar, siempre con
-  //   las recomendaciones y la sincronización en tiempo real. No se
-  //   muestra dos veces en la misma sesión para no molestar.
-  function shouldShowInstallPrompt() {
-    if (isNativeApp()) return false;
-    const installed = localStorage.getItem('pwa_installed');
-    if (installed) return false;
-    if (sessionStorage.getItem('pwa_prompted_session')) return false;
-    return true;
-  }
-
-  function updateInstallButtonVisibility() {
-    if (!installAppBtn) return;
-    if (!isPublicInstallPage() || isNativeApp()) {
-      installAppBtn.style.display = 'none';
-      return;
-    }
-    const installed = localStorage.getItem('pwa_installed');
-    // Siempre visible mientras no esté instalada: en iOS/Android el clic
-    // abre la guía o el prompt nativo del navegador.
-    installAppBtn.style.display = installed ? 'none' : 'inline-flex';
-  }
-
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    _deferredPrompt = e;
-    updateInstallButtonVisibility();
-    // La web siempre ofrece instalar al abrir: si no está instalada y
-    // aún no se pidió en esta sesión, mostramos el banner.
-    if (shouldShowInstallPrompt()) {
-      sessionStorage.setItem('pwa_prompted_session', '1');
-      setTimeout(showPWA, 2500);
-    }
-  });
-
-  window.addEventListener('appinstalled', () => {
-    localStorage.setItem('pwa_installed', '1');
-    hidePWA();
-    if (installAppBtn) installAppBtn.style.display = 'none';
-    _deferredPrompt = null;
-    // App instalada → solicitar permisos de internet/sincronización y
-    // activar las notificaciones en tiempo real (push + background sync).
-    setTimeout(enableSyncPermissions, 1500);
-  });
-
-  // Si la app YA estaba instalada (modo standalone del navegador, o el
-  // APK nativo de CodeHub vía window.__apkNative), activar la
-  // sincronización y el push automáticamente al abrir.
-  const isStandalone = isNativeApp();
-  if (isStandalone) {
-    // Recordar que ya está instalada para que ningún otro chequeo
-    // (incluso si más adelante __apkNative tardara en inyectarse) vuelva
-    // a ofrecer la instalación.
-    localStorage.setItem('pwa_installed', '1');
-    // Ocultar sección de instalación APK (ya estamos en la app)
-    const apkBtn = document.getElementById('hero-install-apk');
-    const apkInfo = document.getElementById('hero-apk-info');
-    if (apkBtn) apkBtn.style.display = 'none';
-    if (apkInfo) apkInfo.style.display = 'none';
-    const pwaBanner = document.getElementById('pwa-install-banner');
-    if (pwaBanner) pwaBanner.style.display = 'none';
-    const pwaFloat = document.getElementById('pwa-install-float');
-    if (pwaFloat) pwaFloat.style.display = 'none';
-
-    setTimeout(enableSyncPermissions, 2500);
-    // Primera apertura con app instalada: mostrar el panel de permisos
-    // (internet, sincronización, almacenamiento, etc.) una sola vez.
-    if (!localStorage.getItem('ch_app_perms_shown')) {
-      setTimeout(function() {
-        var overlay = document.getElementById('ch-app-perms-overlay');
-        if (overlay) overlay.classList.add('show');
-        chShowAppPerms();
-      }, 5000);
-    }
-
-    // ── APK AUTO-UPDATE CHECK ────────────────────────────────
-    if (typeof CodeHubNative !== 'undefined') {
-      setTimeout(function() {
-        try {
-          var localVer = window.__apkVersion || '1.0.0';
-          var resp = CodeHubNative.checkForUpdate();
-          if (!resp) return;
-          var data = JSON.parse(resp);
-          var remoteTag = (data.tag || '').replace(/^v/i, '');
-          if (!remoteTag || remoteTag === localVer) return;
-          if (localStorage.getItem('ch_update_skip_' + remoteTag)) return;
-          var body = data.body || 'Nueva versión disponible.';
-          var sizeMB = data.apk_size ? (data.apk_size / 1048576).toFixed(1) : '?';
-          var html = '<div style="padding:18px;font-family:system-ui,sans-serif;color:#e0e0e0;background:#0a0a14;max-width:380px;margin:0 auto">' +
-            '<div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#00ff88">🔄 Actualización disponible</div>' +
-            '<div style="margin-bottom:6px"><b>' + localTag(localVer) + '</b> → <b style="color:#00ff88">' + localTag(remoteTag) + '</b></div>' +
-            '<div style="font-size:13px;color:#aaa;margin-bottom:10px;white-space:pre-wrap">' + escHtml(body) + '</div>' +
-            '<div style="font-size:12px;color:#888;margin-bottom:12px">Tamaño: ' + sizeMB + ' MB</div>' +
-            '<div style="display:flex;gap:8px">' +
-              '<button onclick="CodeHubNative.downloadUpdate(\'' + (data.apk_url || '') + '\');this.textContent=\'Descargando...\';this.disabled=true" ' +
-              'style="flex:1;padding:10px;background:#00ff88;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer">Descargar e instalar</button>' +
-              '<button onclick="localStorage.setItem(\'ch_update_skip_' + remoteTag + '\',\'1\');this.closest(\'[id]\').remove()" ' +
-              'style="padding:10px 14px;background:#222;color:#aaa;border:1px solid #333;border-radius:8px;cursor:pointer">Ahora no</button>' +
-            '</div></div>';
-          var d = document.createElement('div');
-          d.id = 'ch-apk-update';
-          d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center';
-          d.innerHTML = html;
-          document.body.appendChild(d);
-        } catch(e) {}
-      }, 6000);
-    }
-  }
-
-  function localTag(v) { return 'v' + (v || '?'); }
-  function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-  if (!isPublicInstallPage()) {
-    hidePWA();
-    if (installAppBtn) installAppBtn.style.display = 'none';
-  } else {
-    // Botón flotante de instalación siempre visible mientras no esté instalada.
-    updateInstallButtonVisibility();
-    if (!localStorage.getItem('pwa_installed') && shouldShowInstallPrompt()) {
-      // Sin beforeinstallprompt (iOS, o el navegador no lo dispara):
-      // la web igual solicita la instalación al abrir, con la guía.
-      sessionStorage.setItem('pwa_prompted_session', '1');
-      setTimeout(showPWA, 4000);
-    }
-  }
-
-  // Alterna la guía de instalación por dispositivo
-  function togglePWAGuide() {
-    const guide = document.getElementById('pwa-guide');
-    const how = document.getElementById('pwa-btn-how');
-    if (!guide) return;
-    const isOpen = guide.style.display !== 'none';
-    guide.style.display = isOpen ? 'none' : 'block';
-    if (how) how.textContent = isOpen ? '❔ ¿Cómo instalar?' : '▲ Ocultar guía';
-    // Resaltar el paso según el dispositivo
-    if (!isOpen) {
-      const ua = (navigator.userAgent || '').toLowerCase();
-      const isIOS = /iphone|ipad|ipod/.test(ua);
-      const isAndroid = /android/.test(ua);
-      document.querySelectorAll('.pwa-guide-step').forEach(s => {
-        const dev = s.getAttribute('data-device');
-        s.style.display = 'block';
-        s.style.opacity = '1';
-        if ((isIOS && dev === 'ios') || (isAndroid && dev === 'android') || (!isIOS && !isAndroid && dev === 'desktop')) {
-          s.style.fontWeight = '700';
-          s.style.background = 'rgba(47,128,237,.12)';
-        }
-      });
-    }
-  }
-
-  function installPWA() {
-    if (!_deferredPrompt) {
-      // Sin prompt nativo: mostrar guía de instalación
-      togglePWAGuide();
-      return;
-    }
-
-    // Mostrar estado de instalación como app compilada
-    const installBtn = document.getElementById('pwa-btn-install');
-    if (installBtn) {
-      installBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Instalando...';
-      installBtn.disabled = true;
-    }
-
-    _deferredPrompt.prompt();
-    _deferredPrompt.userChoice.then(r => {
-      if (r.outcome === 'accepted') {
-        localStorage.setItem('pwa_installed', '1');
-        localStorage.setItem('pwa_installed_at', Date.now());
-        // Mostrar confirmación de instalación exitosa
-        if (installBtn) {
-          installBtn.innerHTML = '<i class="fas fa-check"></i> ¡App instalada!';
-          installBtn.className = 'pwa-btn-installed';
-        }
-        setTimeout(() => {
-          hidePWA();
-          if (installAppBtn) installAppBtn.style.display = 'none';
-          // Mostrar toast de bienvenida
-          if (typeof toast === 'function') {
-            toast('CodeHub instalado — abre desde tu pantalla de inicio', 'success', 4000);
-          }
-        }, 1500);
-      } else {
-        localStorage.setItem('pwa_dismissed', Date.now());
-        hidePWA();
-      }
-      _deferredPrompt = null;
-      updateInstallButtonVisibility();
-    });
-  }
-
-  function dismissPWA() {
-    hidePWA();
-    localStorage.setItem('pwa_dismissed', Date.now());
-  }
-
-  // ── INSTALAR APK ──────────────────────────────────────────
+  // ── APK + iOS Install ──────────────────────────────────────
   const BACKEND_URL = 'https://codehub-98s6.onrender.com';
+  const _ua = (navigator.userAgent || '').toLowerCase();
+  const _isIOS = /iphone|ipad|ipod/.test(_ua);
+  const _isAndroid = /android/.test(_ua);
+  const _isMobile = _isIOS || _isAndroid;
+  const _isStandalone = (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); });
 
   async function getAPKUrl() {
     try {
@@ -6005,127 +5790,94 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch {}
     try {
       const r = await fetch('/apk-download.json?' + Date.now());
-      if (r.ok) { const d = await r.json(); if (d.url) return d.url; }
+      if (r.ok) { const d = await r.json(); if (d.url && d.url.startsWith('http')) return d.url; }
     } catch {}
     return null;
   }
 
-  async function installCodeHubAPK(e) {
-    if (e) e.preventDefault();
-    const btn = document.getElementById('hero-install-apk');
-    if (!btn) return;
+  function isPublicInstallPage() {
+    const path = (window.location.pathname || '').toLowerCase();
+    return !path.includes('/admin');
+  }
+  function isNativeApp() { return _isStandalone; }
 
-    btn.innerHTML = '<i class="fas fa-download"></i> <span>Descargando APK...</span>';
-    btn.style.pointerEvents = 'none';
+  function appInstallShow() {
+    if (_isStandalone) return;
+    if (localStorage.getItem('ch_install_dismissed') === '1') return;
+    const overlay = document.getElementById('app-install-overlay');
+    if (!overlay) return;
+    document.getElementById('app-steps-android').style.display = _isAndroid ? 'block' : 'none';
+    document.getElementById('app-steps-ios').style.display = _isIOS ? 'block' : 'none';
+    document.getElementById('app-steps-desktop').style.display = _isMobile ? 'none' : 'block';
+    const btn = document.getElementById('app-install-btn');
+    if (_isIOS) {
+      document.getElementById('app-install-title').textContent = '\uD83D\uDCF1 CodeHub en tu Home';
+      document.getElementById('app-install-sub').textContent = 'Gu\u00EDa para iPhone / iPad';
+      btn.textContent = 'Entendido';
+      btn.style.background = 'linear-gradient(135deg,#38bdf8,#2f80ed)';
+    } else if (_isAndroid) {
+      document.getElementById('app-install-title').textContent = '\uD83D\uDCF1 Instalar CodeHub';
+      document.getElementById('app-install-sub').textContent = 'App nativa Android \u2014 APK firmado';
+      btn.textContent = 'Descargar APK';
+    } else {
+      document.getElementById('app-install-title').textContent = '\uD83D\uDCF1 Instalar CodeHub';
+      document.getElementById('app-install-sub').textContent = 'Abre esta p\u00E1gina en tu celular';
+      btn.textContent = 'Copiar link';
+    }
+    overlay.style.display = 'flex';
+  }
 
+  function appInstallDismiss() {
+    const overlay = document.getElementById('app-install-overlay');
+    if (overlay) overlay.style.display = 'none';
+    localStorage.setItem('ch_install_dismissed', '1');
+  }
+
+  async function appInstallAction() {
+    const btn = document.getElementById('app-install-btn');
+    if (_isIOS) { appInstallDismiss(); return; }
+    if (!_isMobile) {
+      try { await navigator.clipboard.writeText(window.location.href); if (typeof toast === 'function') toast('\uD83D\uDCCB Link copiado \u2014 \u00E1brelo en tu celular'); } catch {}
+      appInstallDismiss();
+      return;
+    }
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Descargando...';
+    btn.disabled = true;
     try {
       const url = await getAPKUrl();
-      if (!url) { showAPKGuide(); btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>'; btn.style.pointerEvents = ''; return; }
-      window.location.href = url;
-      btn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-      if (typeof toast === 'function') toast('📱 APK descargado — abre el archivo para instalar', 'success', 5000);
-      setTimeout(() => {
-        btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
-        btn.style.pointerEvents = '';
-        btn.style.background = '';
-      }, 4000);
-    } catch (err) {
-      btn.innerHTML = '<i class="fas fa-mobile-screen-button"></i> <span>Instalar CodeHub en tu móvil</span>';
-      btn.style.pointerEvents = '';
-      showAPKGuide();
-    }
+      if (url) {
+        window.location.href = url;
+        if (typeof toast === 'function') toast('\uD83D\uDCF1 APK descargado \u2014 abre el archivo para instalar', 'success', 5000);
+      } else { showAPKGuide(); }
+    } catch (e) { showAPKGuide(); }
+    setTimeout(() => { btn.textContent = _isAndroid ? 'Descargar APK' : 'Entendido'; btn.disabled = false; btn.style.background = ''; }, 3000);
   }
+
+  window.appInstallShow = appInstallShow;
+  window.appInstallDismiss = appInstallDismiss;
+  window.appInstallAction = appInstallAction;
+  setTimeout(appInstallShow, 4000);
 
   function showAPKGuide() {
     const existing = document.getElementById('apk-guide-overlay');
     if (existing) { existing.classList.add('active'); return; }
-
     const overlay = document.createElement('div');
     overlay.id = 'apk-guide-overlay';
     overlay.className = 'perms-overlay';
-    overlay.innerHTML = `
-      <div class="perms-card">
-        <div class="perms-card-glow"></div>
-        <div class="perms-card-header">
-          <div class="perms-card-icon">📱</div>
-          <h2>Instalar CodeHub</h2>
-          <p>App nativa Android — sin Chrome, sin navegador, sin restricciones</p>
-        </div>
-        <div class="apk-guide-benefits">
-          <div class="apk-guide-benefit">
-            <span class="apk-benefit-icon">🔔</span>
-            <div>
-              <div class="apk-benefit-title">Notificaciones push</div>
-              <div class="apk-benefit-desc">Alertas en tiempo real sin depender del navegador</div>
-            </div>
-          </div>
-          <div class="apk-guide-benefit">
-            <span class="apk-benefit-icon">📡</span>
-            <div>
-              <div class="apk-benefit-title">Modo offline completo</div>
-              <div class="apk-benefit-desc">Funciona sin conexión — datos cacheados localmente</div>
-            </div>
-          </div>
-          <div class="apk-guide-benefit">
-            <span class="apk-benefit-icon">⚡</span>
-            <div>
-              <div class="apk-benefit-title">Rendimiento nativo</div>
-              <div class="apk-benefit-desc">Se ejecuta como app compilada, no como sitio web</div>
-            </div>
-          </div>
-          <div class="apk-guide-benefit">
-            <span class="apk-benefit-icon">🛡️</span>
-            <div>
-              <div class="apk-benefit-title">Permisos sin restricciones</div>
-              <div class="apk-benefit-desc">Cámara, ubicación, micrófono — todo gestionado por la app</div>
-            </div>
-          </div>
-        </div>
-        <div class="apk-guide-steps">
-          <div class="apk-step">
-            <span class="apk-step-num">1</span>
-            <span>Toca <strong>Descargar APK</strong></span>
-          </div>
-          <div class="apk-step">
-            <span class="apk-step-num">2</span>
-            <span>Abre el archivo descargado</span>
-          </div>
-          <div class="apk-step">
-            <span class="apk-step-num">3</span>
-            <span>Acepta instalar desde fuentes desconocidas</span>
-          </div>
-          <div class="apk-step">
-            <span class="apk-step-num">4</span>
-            <span>¡CodeHub se instala como app nativa!</span>
-          </div>
-        </div>
-        <div class="perms-card-actions">
-          <a href="${APK_BASE}" class="perms-btn perms-btn-primary" id="apk-download-btn" style="text-decoration:none;text-align:center">
-            <i class="fas fa-download"></i> Descargar APK
-          </a>
-          <button class="perms-btn perms-btn-secondary" onclick="document.getElementById('apk-guide-overlay').classList.remove('active');setTimeout(()=>document.getElementById('apk-guide-overlay')?.remove(),400)">
-            Cerrar
-          </button>
-        </div>
-        <div class="perms-card-footer">
-          APK compilado automáticamente desde el código fuente — wilson360-labs.vercel.app
-        </div>
-      </div>`;
-
+    overlay.innerHTML = '<div class="perms-card"><div class="perms-card-glow"></div><div class="perms-card-header"><div class="perms-card-icon">\uD83D\uDCF1</div><h2>Instalar CodeHub</h2><p>App nativa Android \u2014 sin navegador, sin restricciones</p></div><div class="apk-guide-steps"><div class="apk-step"><span class="apk-step-num">1</span><span>Toca <strong>Descargar APK</strong></span></div><div class="apk-step"><span class="apk-step-num">2</span><span>Abre el archivo descargado</span></div><div class="apk-step"><span class="apk-step-num">3</span><span>Acepta instalar desde fuentes desconocidas</span></div><div class="apk-step"><span class="apk-step-num">4</span><span>\u00A1CodeHub se instala como app nativa!</span></div></div><div class="perms-card-actions"><button class="perms-btn perms-btn-primary" onclick="appInstallAction()"><i class="fas fa-download"></i> Descargar APK</button><button class="perms-btn perms-btn-secondary" onclick="this.closest(\'.perms-overlay\')?.classList.remove(\'active\');setTimeout(()=>this.closest(\'.perms-overlay\')?.remove(),400)">Cerrar</button></div></div>';
     document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('active'));
-
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) {
-        overlay.classList.remove('active');
-        setTimeout(() => overlay.remove(), 400);
-      }
-    });
+    overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.classList.remove('active'); setTimeout(() => overlay.remove(), 400); } });
   }
+
+  function installCodeHubAPK(e) { if (e) e.preventDefault(); if (_isIOS) { appInstallShow(); return; } appInstallAction(); }
+  function hidePWA() {}
+  function showPWA() { appInstallShow(); }
+  function installPWA() { appInstallAction(); }
+  function dismissPWA() { appInstallDismiss(); }
 
   window.installCodeHubAPK = installCodeHubAPK;
   window.showAPKGuide = showAPKGuide;
-
   // ── Service Worker ────────────────────────────────────────
   if ('serviceWorker' in navigator) {
     let refreshing = false;

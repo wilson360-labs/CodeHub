@@ -3960,51 +3960,6 @@
         }
 
 
-/* ════════════════════════════════════════════════════════
-   PWA INSTALL PROMPT
-════════════════════════════════════════════════════════ */
-
-#pwa-install{position:fixed;bottom:80px;right:1.5rem;left:1.5rem;z-index:9998;display:none;animation:slideUp .4s ease;pointer-events:none}
-  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  @media(min-width:560px){ #pwa-install{left:auto;width:330px} }
-  .pwa-card{pointer-events:auto;background:rgba(15,15,26,.98);border:1px solid rgba(47,128,237,.35);border-radius:var(--radius-lg, 18px);padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.7rem;box-shadow:0 16px 48px rgba(0,0,0,.6);max-width:330px;backdrop-filter:blur(20px)}
-  .pwa-top{display:flex;align-items:center;gap:.75rem;min-width:0}
-  .pwa-icon{width:44px;height:44px;border-radius:var(--radius-md, 14px);background:linear-gradient(135deg,#2f80ed,#22c55e);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
-  .pwa-text{flex:1;min-width:0}
-  .pwa-title{font-size:.82rem;font-weight:700;color:#fff;margin-bottom:.2rem}
-  .pwa-sub{font-size:.68rem;color:rgba(232,232,240,.45);font-family:'JetBrains Mono',monospace;line-height:1.45}
-  .pwa-close{flex-shrink:0;width:26px;height:26px;border:none;border-radius:50%;background:rgba(255,255,255,.08);color:rgba(232,232,240,.6);font-size:1rem;line-height:1;cursor:pointer;transition:background .15s,color .15s}
-  .pwa-close:hover{background:rgba(255,255,255,.16);color:#fff}
-  .pwa-feats{display:flex;flex-direction:column;gap:.35rem;min-width:0}
-  .pwa-feat{display:flex;align-items:center;gap:.55rem;font-size:.68rem;color:rgba(232,232,240,.75);font-family:'JetBrains Mono',monospace;line-height:1.35}
-  .pwa-feat i{width:20px;flex-shrink:0;text-align:center;color:#38bdf8;font-size:.75rem}
-  .pwa-feat-highlight{font-weight:700;color:#fff}
-  .pwa-feat span{min-width:0}
-  .pwa-guide{display:flex;flex-direction:column;gap:.4rem;padding:.6rem .7rem;border:1px dashed rgba(47,128,237,.35);border-radius:var(--radius-sm, 10px);background:rgba(47,128,237,.06)}
-  .pwa-guide-title{font-size:.68rem;font-weight:800;color:#38bdf8;letter-spacing:.04em;text-transform:uppercase}
-  .pwa-guide-step{font-size:.66rem;color:rgba(232,232,240,.75);font-family:'JetBrains Mono',monospace;line-height:1.5}
-  .pwa-guide-step strong{color:#fff}
-.pwa-guide-device{font-weight:700;color:rgba(232,232,240,.9)}
-  .pwa-btns{display:flex;flex-direction:column;gap:.4rem;flex-shrink:0}
-  .pwa-btn-yes{padding:.45rem .8rem;background:linear-gradient(135deg,#2f80ed,#22c55e);color:#fff;border:none;border-radius:var(--radius-sm, 10px);font-size:.78rem;font-weight:700;cursor:pointer;transition:transform .15s, box-shadow .15s;white-space:nowrap}
-  .pwa-btn-yes:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(47,128,237,.45)}
-  .pwa-btn-how{padding:.3rem .8rem;background:rgba(47,128,237,.1);color:#38bdf8;border:none;border-radius:var(--radius-sm, 10px);font-size:.68rem;font-weight:600;cursor:pointer}
-  .pwa-btn-how:hover{background:rgba(47,128,237,.2)}
-  .pwa-btn-no{padding:.3rem .8rem;background:transparent;color:rgba(232,232,240,.4);border:none;font-size:.7rem;cursor:pointer}
-  .pwa-btn-no:hover{color:rgba(232,232,240,.7)}
-  [data-theme="light"] .pwa-card{background:rgba(255,255,255,.99);border-color:rgba(47,128,237,.4);box-shadow:0 16px 48px rgba(15,23,42,.2)}
-  [data-theme="light"] .pwa-title{color:#0c0c0c}
-  [data-theme="light"] .pwa-sub{color:#475569}
-  [data-theme="light"] .pwa-feat{color:#334155}
-  [data-theme="light"] .pwa-feat-highlight{color:#0c0c0c}
-  [data-theme="light"] .pwa-feat i{color:#2f80ed}
-[data-theme="light"] .pwa-guide-step{color:#334155}
-[data-theme="light"] .pwa-guide-step strong{color:#0c0c0c}
-[data-theme="light"] .pwa-guide-device{color:#1e293b}
-  [data-theme="light"] .pwa-close{background:rgba(15,23,42,.08);color:#475569}
-  [data-theme="light"] .pwa-close:hover{background:rgba(15,23,42,.15);color:#0c0c0c}
-  [data-theme="light"] .pwa-btn-no{color:#64748b}
-  [data-theme="light"] .pwa-btn-no:hover{color:#0c0c0c}
 
   .upd-dot{width:8px;height:8px;border-radius:var(--radius-full, 50%);background:#00e676;flex-shrink:0;animation:pulse-g 2s infinite}
   @keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)}}
