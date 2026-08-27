@@ -313,6 +313,7 @@ function switchTab(id, btn) {
     loadGhAutomation();
     setTimeout(() => { loadGhSecrets(); loadGhVariables(); }, 300);
   }
+  if (id === 'config') loadAdminConfig();
 }
 
 async function sendAdminBroadcast() {
@@ -2216,4 +2217,84 @@ function toast(m) {
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
   });
+
+  // ── REMOTE CONFIG PANEL ────────────────────────────────────
+  var _cfgData = null;
+
+  function loadAdminConfig() {
+    var status = document.getElementById('cfg-status');
+    if (status) status.textContent = 'Cargando...';
+    fetch(backend + '/api/admin/config', {
+      headers: { 'X-Admin-Session': ADMIN_SESSION }
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.ok && d.config) {
+        _cfgData = d.config;
+        var editor = document.getElementById('cfg-editor');
+        if (editor) editor.value = JSON.stringify(d.config, null, 2);
+        var verEl = document.getElementById('cfg-version');
+        var updEl = document.getElementById('cfg-updated');
+        if (verEl) verEl.textContent = d.config.version || '—';
+        if (updEl) updEl.textContent = d.config.updated ? new Date(d.config.updated).toLocaleString('es-GT') : '—';
+        if (status) status.textContent = 'Cargado';
+      } else {
+        if (status) status.textContent = 'Error: ' + (d.error || 'unknown');
+      }
+    }).catch(function(e) {
+      if (status) status.textContent = 'Error: ' + e.message;
+    });
+  }
+
+  function saveAdminConfig() {
+    var editor = document.getElementById('cfg-editor');
+    var status = document.getElementById('cfg-status');
+    if (!editor || !editor.value.trim()) return;
+    var parsed;
+    try { parsed = JSON.parse(editor.value); } catch (e) {
+      if (status) status.textContent = 'JSON inválido: ' + e.message;
+      return;
+    }
+    if (status) status.textContent = 'Guardando...';
+    fetch(backend + '/api/admin/config', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Session': ADMIN_SESSION
+      },
+      body: JSON.stringify({ config: parsed })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.ok) {
+        if (status) status.textContent = 'Guardado (v' + d.version + ')';
+        loadAdminConfig();
+        toast('Config actualizada v' + d.version);
+      } else {
+        if (status) status.textContent = 'Error: ' + (d.error || 'unknown');
+      }
+    }).catch(function(e) {
+      if (status) status.textContent = 'Error: ' + e.message;
+    });
+  }
+
+  function resetAdminConfig() {
+    if (!confirm('¿Restaurar la config por defecto? Se perderán todos los cambios.')) return;
+    var status = document.getElementById('cfg-status');
+    if (status) status.textContent = 'Restaurando...';
+    fetch(backend + '/api/admin/config', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Session': ADMIN_SESSION
+      },
+      body: JSON.stringify({ config: {} })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.ok) {
+        if (status) status.textContent = 'Restaurado';
+        loadAdminConfig();
+        toast('Config restaurada a defaults');
+      } else {
+        if (status) status.textContent = 'Error: ' + (d.error || 'unknown');
+      }
+    }).catch(function(e) {
+      if (status) status.textContent = 'Error: ' + e.message;
+    });
+  }
 })();

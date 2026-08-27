@@ -47,6 +47,8 @@
   SiteTour.prototype.start = function (force) {
     if (!this.steps.length) return;
     if (!force && this.hasBeenSeen()) return;
+    // Respect remote config: skip if tour disabled
+    if (typeof RC !== 'undefined' && !RC.feature('tourEnabled')) return;
     this.index = 0;
     this._ensureLayer();
     document.addEventListener('keydown', this._onKey);

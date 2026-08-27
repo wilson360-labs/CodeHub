@@ -319,14 +319,108 @@ function _verifySession(token) {
 
 // ── Contador diario de EMI por usuario/dispositivo ───────────
 // F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
-const EMI_DAILY_LIMIT_GUEST = 10;
-const EMI_DAILY_LIMIT_REGISTERED = 50;
+// Limits are now configurable via /api/admin/config
+const EMI_DAILY_LIMIT_GUEST_FALLBACK = 10;
+const EMI_DAILY_LIMIT_REGISTERED_FALLBACK = 50;
+
+async function getEmiLimit(isRegistered) {
+  try {
+    const cfg = await getAppConfig();
+    return isRegistered
+      ? (cfg.limits.emiDailyRegistered || EMI_DAILY_LIMIT_REGISTERED_FALLBACK)
+      : (cfg.limits.emiDailyGuest || EMI_DAILY_LIMIT_GUEST_FALLBACK);
+  } catch (e) {
+    return isRegistered ? EMI_DAILY_LIMIT_REGISTERED_FALLBACK : EMI_DAILY_LIMIT_GUEST_FALLBACK;
+  }
+}
 
 const EmiUsage = mongoose.model('EmiUsage', new mongoose.Schema({
   key:     { type: String, required: true, index: true },
   date:    { type: String, required: true },
   count:   { type: Number, default: 0 },
 }, { timestamps: false }));
+
+// ── Remote Config — single-doc collection for frontend config ──
+const AppConfig = mongoose.model('AppConfig', new mongoose.Schema({
+  key:     { type: String, default: 'main', unique: true },
+  config:  { type: mongoose.Schema.Types.Mixed, default: {} },
+  version: { type: Number, default: 1 },
+  updated: { type: Date, default: Date.now },
+}, { timestamps: true }));
+
+const DEFAULT_CONFIG = {
+  version: 1,
+  features: {
+    chatEnabled: true,
+    imageGenEnabled: true,
+    weatherEnabled: true,
+    weatherAutoRefresh: true,
+    weatherRefreshMin: 5,
+    tourEnabled: true,
+    newsEnabled: true,
+    searchEnabled: true,
+    pushEnabled: true,
+    contactEnabled: true,
+    skillsEnabled: true,
+    resolverEnabled: true,
+    crashReportEnabled: true,
+    updateDialogEnabled: true,
+    heroInstallBtn: true,
+    consentBanner: true,
+    easterEgg: false,
+  },
+  limits: {
+    emiDailyGuest: 10,
+    emiDailyRegistered: 50,
+    chatRateLimit: 50,
+    imageRateLimit: 20,
+    imageCacheTTL: 3600,
+    imageCacheMax: 200,
+    notifDedupWindow: 300000,
+    tourCooldown: 86400000,
+    sessionTTL: 1800000,
+  },
+  ui: {
+    heroTitle: 'CodeHub',
+    heroSubtitle: 'Tu centro de desarrollo IA',
+    consentText: 'Usamos cookies para mejorar tu experiencia.',
+    weatherCityFallback: 'Ciudad de Guatemala',
+    updateDialogTitle: 'Nueva versión disponible',
+    updateDialogBody: 'Hay una nueva versión de CodeHub disponible.',
+  },
+  ai: {
+    systemPrompt: null,
+    maxTokensDefault: 2500,
+    temperature: 0.65,
+    providerPriority: null,
+  },
+  maintenance: {
+    enabled: false,
+    message: 'CodeHub está en mantenimiento. Vuelve pronto.',
+  },
+};
+
+let _appConfigCache = null;
+let _appConfigCacheTs = 0;
+const CONFIG_CACHE_TTL = 60000; // 1 minute in-memory cache
+
+async function getAppConfig() {
+  const now = Date.now();
+  if (_appConfigCache && (now - _appConfigCacheTs) < CONFIG_CACHE_TTL) return _appConfigCache;
+  if (dbConnected) {
+    try {
+      const doc = await AppConfig.findOne({ key: 'main' }).lean();
+      if (doc && doc.config) {
+        _appConfigCache = { ...DEFAULT_CONFIG, ...doc.config, version: doc.version || 1 };
+        _appConfigCacheTs = now;
+        return _appConfigCache;
+      }
+    } catch (e) { /* fall through */ }
+  }
+  _appConfigCache = { ...DEFAULT_CONFIG };
+  _appConfigCacheTs = now;
+  return _appConfigCache;
+}
 EmiUsage.schema.index({ key: 1, date: 1 }, { unique: true });
 
 const _emiFallback = new Map(); // fallback when DB is down
@@ -2209,7 +2303,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 
   // ── Límite diario server-side ─────────────────────────────────
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
+  const emiLimit = await getEmiLimit(!!req.authUser);
   const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
     return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
@@ -3712,6 +3806,57 @@ app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) =
 // Búsqueda de imágenes
 // ─────────────────────────────────────────────────────────────
 
+// ── ADMIN CONFIG — GET/PATCH remote config ─────────────────
+app.get('/api/admin/config', requireAdmin, async (req, res) => {
+  try {
+    const cfg = await getAppConfig();
+    res.json({ ok: true, config: cfg });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/api/admin/config', requireAdmin, async (req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+    const { config: updates } = req.body;
+    if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'config object required' });
+
+    const current = await getAppConfig();
+    const merged = deepMerge(current, updates);
+    merged.version = (current.version || 0) + 1;
+
+    await AppConfig.findOneAndUpdate(
+      { key: 'main' },
+      { config: merged, version: merged.version, updated: new Date() },
+      { upsert: true }
+    );
+
+    // Invalidate cache
+    _appConfigCache = null;
+    _appConfigCacheTs = 0;
+
+    tgAlert('config', () =>
+      `⚙️ <b>Config actualizada</b> v${merged.version}\nIP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, version: merged.version });
+  } catch (e) {
+    console.error('PATCH /api/admin/config error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+function deepMerge(target, source) {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] && typeof target[key] === 'object') {
+      result[key] = deepMerge(target[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
+
 // ── GET /api/image-search — Buscar imágenes via SerpAPI ───────
 app.get('/api/image-search', chatLimiter, async (req, res) => {
   const { q } = req.query;
@@ -4328,6 +4473,20 @@ app.get('/api/changelog', (req, res) => {
   res.json({ ok: true, entries });
 });
 
+// ── REMOTE CONFIG — public endpoint (frontend reads this) ─────
+app.get('/api/config', async (req, res) => {
+  try {
+    const cfg = await getAppConfig();
+    const clientVersion = parseInt(req.query.v) || 0;
+    const needsUpdate = clientVersion < cfg.version;
+    res.set('Cache-Control', 'public, max-age=30');
+    res.set('X-Config-Version', String(cfg.version));
+    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null } });
+  } catch (e) {
+    res.json({ ok: true, config: DEFAULT_CONFIG });
+  }
+});
+
 // Lista pública de releases (campana de notificaciones / página)
 app.get('/api/releases', async (req, res) => {
   if (!dbConnected) return res.json({ ok: true, releases: [] });
@@ -4716,7 +4875,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
 
   // ── Límite diario server-side ──
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = req.authUser ? EMI_DAILY_LIMIT_REGISTERED : EMI_DAILY_LIMIT_GUEST;
+  const emiLimit = await getEmiLimit(!!req.authUser);
   const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
     return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });

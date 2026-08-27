@@ -463,6 +463,7 @@
     <button class="admin-tab" onclick="switchTab('push',this)"><i class="fas fa-bell"></i> <span>Push</span></button>
     <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
     <button class="admin-tab" onclick="switchTab('github',this)"><i class="fas fa-brands fa-github"></i> <span>GitHub</span></button>
+    <button class="admin-tab" onclick="switchTab('config',this)"><i class="fas fa-gear"></i> <span>Config</span></button>
   </nav>
 
   <!-- CONTENT -->
@@ -789,6 +790,45 @@
     </div>
 
   </div><!-- /content-wrap -->
+
+  <!-- TAB: CONFIG (Remote Config) -->
+  <div class="tab-panel" id="tab-config">
+    <div class="section-title"><i class="fas fa-gear"></i> Remote Config</div>
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:1rem;line-height:1.65">
+        Configuración remota de CodeHub. Los cambios se aplican inmediatamente a todos los dispositivos sin rebuild del APK.
+        Edita el JSON y presiona <b style="color:var(--text)">Guardar</b>.
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.8rem;align-items:center;flex-wrap:wrap">
+        <span style="font-size:.72rem;color:var(--muted)">Versión: <b id="cfg-version">—</b></span>
+        <span style="font-size:.72rem;color:var(--muted)">Actualizado: <b id="cfg-updated">—</b></span>
+        <button class="blog-btn-primary" onclick="loadAdminConfig()" style="margin-left:auto;font-size:.72rem">
+          <i class="fas fa-sync"></i> Recargar
+        </button>
+      </div>
+      <textarea id="cfg-editor" style="width:100%;min-height:400px;padding:.8rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-family:var(--mono);font-size:.72rem;resize:vertical;line-height:1.5" spellcheck="false" placeholder="Cargando config..."></textarea>
+      <div style="display:flex;gap:.5rem;margin-top:.8rem;flex-wrap:wrap">
+        <button class="blog-btn-primary" onclick="saveAdminConfig()">
+          <i class="fas fa-save"></i> Guardar Config
+        </button>
+        <button onclick="resetAdminConfig()" style="padding:.4rem .8rem;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:.72rem">
+          <i class="fas fa-undo"></i> Restaurar Defaults
+        </button>
+        <span id="cfg-status" style="font-size:.72rem;color:var(--muted);align-self:center"></span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:.76rem;color:var(--muted);line-height:1.65">
+        <b style="color:var(--text)">Estructura del config:</b><br>
+        <code style="font-size:.7rem">features</code> — Toggle de features (chat, weather, tour, etc.)<br>
+        <code style="font-size:.7rem">limits</code> — Límites (EMI diario, rate limits, cache TTL)<br>
+        <code style="font-size:.7rem">ui</code> — Textos de UI (hero, consent, weather city)<br>
+        <code style="font-size:.7rem">ai</code> — Config de IA (prompt, temperature, providers)<br>
+        <code style="font-size:.7rem">maintenance</code> — Modo mantenimiento (enabled + message)
+      </div>
+    </div>
+  </div>
+
 </div><!-- /admin-wrap -->
 <!-- VISITOR JSON MODAL -->
 <div id="vt-json-overlay">
@@ -816,6 +856,7 @@
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <script src="../js/admin-hub.js"></script>
+<script src="../js/remote-config.js?v=20260826b"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
 <footer>

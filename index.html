@@ -1406,9 +1406,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
+    <script src="js/remote-config.js?v=20260826b"></script>
     <script src="js/updater.js?v=20260724a"></script>
     <script>
         console.log('Script started');
+        // ========== REMOTE CONFIG: MAINTENANCE MODE ==========
+        RC.ready().then(function(cfg) {
+          if (cfg.maintenance && cfg.maintenance.enabled) {
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;text-align:center;padding:2rem;background:#0a0a1a;color:#e2e8f0;"><div><h1 style="font-size:2rem;margin-bottom:1rem;">⚙️ Mantenimiento</h1><p style="opacity:.7;">' + (cfg.maintenance.message || 'Vuelve pronto.') + '</p></div></div>';
+          }
+        });
         // ========== FUNCIONES BÁSICAS ==========
         
         // Typing Effect
@@ -4933,7 +4940,19 @@ const OWM_KEY = 'OWM_API_KEY_PLACEHOLDER';
 // ── Weather auto-refresh ──────────────────────────────
 var _wxLastCoords = null;
 var _wxRefreshTimer = null;
-var _wxAutoRefreshInterval = 5 * 60 * 1000; // 5 minutes
+var _wxAutoRefreshInterval = 5 * 60 * 1000; // 5 minutes (default, overridden by RC)
+
+// Apply RC weather config on load
+RC.ready().then(function(cfg) {
+  if (cfg.features && !cfg.features.weatherEnabled) {
+    var wxEl = document.getElementById('weather-section');
+    if (wxEl) wxEl.style.display = 'none';
+    return;
+  }
+  if (cfg.limits && cfg.limits.weatherRefreshMin) {
+    _wxAutoRefreshInterval = cfg.limits.weatherRefreshMin * 60 * 1000;
+  }
+});
 
 function _wxStartAutoRefresh() {
   if (_wxRefreshTimer) clearInterval(_wxRefreshTimer);
@@ -5954,6 +5973,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   var _installOverlayTimer;
   _hideInstallIfNative();
+  // Respect RC: hide hero install button if disabled
+  RC.ready().then(function() {
+    if (!RC.feature('heroInstallBtn')) {
+      var btn = document.getElementById('hero-install-apk');
+      var info = document.getElementById('hero-apk-info');
+      if (btn) btn.style.display = 'none';
+      if (info) info.style.display = 'none';
+    }
+  });
   document.addEventListener('DOMContentLoaded', _hideInstallIfNative);
   setTimeout(_hideInstallIfNative, 1000);
   setTimeout(_hideInstallIfNative, 3000);

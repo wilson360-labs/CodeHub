@@ -122,7 +122,9 @@
 
   /* ---- Mostrar solo si aún no hay decisión ---- */
   var pref = getPref();
-  if (pref !== PREF_ACCEPTED && pref !== PREF_DECLINED) {
+  // Respect RC: skip if consentBanner disabled
+  var rcConsentEnabled = (typeof RC === 'undefined') || RC.feature('consentBanner');
+  if (rcConsentEnabled && pref !== PREF_ACCEPTED && pref !== PREF_DECLINED) {
     setTimeout(function () { bar.classList.add('show'); }, 900);
   }
 
