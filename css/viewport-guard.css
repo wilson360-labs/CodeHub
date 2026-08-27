@@ -430,3 +430,22 @@ section, main, .container, .wrap, .inner, .section-wrap {
 @media (prefers-reduced-motion: reduce) {
   #ch-update-overlay, #ch-update-dialog { animation: none; }
 }
+
+/* ── Weather live indicator ─────────────────────────── */
+.wx-live-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: wx-pulse 2s ease-in-out infinite;
+}
+@keyframes wx-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+  50% { opacity: .6; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-live-dot { animation: none; }
+}
+[data-theme="light"] .wx-live-dot { background: #16a34a; }

@@ -1226,7 +1226,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </div>
                         <div class="wx-stat">
                             <i class="fas fa-eye"></i>
-                            <span id="wx-updated">—</span>
+                            <span id="wx-updated">—</span> <span class="wx-live-dot"></span>
                             <small>Actualizado</small>
                         </div>
                     </div>
@@ -4930,8 +4930,25 @@ document.addEventListener('contextmenu', (e) => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
 const OWM_KEY = 'OWM_API_KEY_PLACEHOLDER';
 
+// ── Weather auto-refresh ──────────────────────────────
+var _wxLastCoords = null;
+var _wxRefreshTimer = null;
+var _wxAutoRefreshInterval = 5 * 60 * 1000; // 5 minutes
+
+function _wxStartAutoRefresh() {
+  if (_wxRefreshTimer) clearInterval(_wxRefreshTimer);
+  _wxRefreshTimer = setInterval(function() {
+    if (_wxLastCoords) {
+      fetchWeatherByCoords(_wxLastCoords.lat, _wxLastCoords.lon, _wxLastCoords.city);
+    }
+  }, _wxAutoRefreshInterval);
+}
+
 async function fetchWeatherByCoords(lat, lon, cityName) {
   try {
+    // Store for auto-refresh
+    _wxLastCoords = { lat: lat, lon: lon, city: cityName };
+    _wxStartAutoRefresh();
     let data, city;
 
     if (OWM_KEY !== 'OWM_API_KEY_PLACEHOLDER') {
@@ -4962,7 +4979,19 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       );
       const d = await res.json();
       const c = d.current;
-      const WX = {0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',45:'🌫️ Niebla',51:'🌦️ Llovizna',61:'🌧️ Lluvia',80:'🌦️ Chubascos',95:'⛈️ Tormenta'};
+      const WX = {
+        0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',
+        45:'🌫️ Niebla',48:'🌫️ Niebla con escarcha',
+        51:'🌦️ Llovizna ligera',53:'🌦️ Llovizna',55:'🌧️ Llovizna intensa',
+        56:'🌧️ Llovizna helada',57:'🌧️ Llovizna helada intensa',
+        61:'🌧️ Lluvia ligera',63:'🌧️ Lluvia',65:'🌧️ Lluvia intensa',
+        66:'🌧️ Lluvia helada',67:'🌧️ Lluvia helada intensa',
+        71:'🌨️ Nieve ligera',73:'🌨️ Nieve',75:'❄️ Nieve intensa',
+        77:'❄️ Granizo',
+        80:'🌦️ Chubascos ligeros',81:'🌦️ Chubascos',82:'⛈️ Chubascos intensos',
+        85:'🌨️ Chubascos de nieve',86:'❄️ Chubascos de nieve intensos',
+        95:'⛈️ Tormenta eléctrica',96:'⛈️ Tormenta con granizo',99:'⛈️ Tormenta con granizo intenso'
+      };
 
       document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
       document.getElementById('wx-desc').textContent   = WX[c.weather_code] || '🌡️ Variable';

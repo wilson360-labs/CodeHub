@@ -141,17 +141,26 @@
   //    o LOCAL_PUSH), solo se registra en el panel para no
   //    duplicar la notificación del sistema.
   function add(title, body, type, url, icon, skipNative) {
+    // Dedup: skip if same title+body exists within last 5 minutes
+    var log = getLog();
+    var now = Date.now();
+    var key = String(title || '') + '|' + String(body || '');
+    for (var i = 0; i < Math.min(log.length, 20); i++) {
+      var existing = log[i];
+      if ((existing.title || '') + '|' + (existing.body || '') === key && (now - (existing.ts || 0)) < 5 * 60 * 1000) {
+        return existing;
+      }
+    }
     var item = {
-      id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      id: now + '-' + Math.random().toString(36).slice(2, 7),
       title: String(title || 'CodeHub'),
       body: String(body || ''),
       type: type || 'general',
       url: url || '',
       icon: icon || '',
-      ts: Date.now(),
+      ts: now,
       read: false,
     };
-    var log = getLog();
     log.unshift(item);
     saveLog(log);
     render();

@@ -173,8 +173,9 @@ public class CodeHubBridge {
     }
 
     /**
-     * doGetLocation(callbackName) — Gets best known location, or
-     * requests a fresh GPS fix if no cached location exists.
+     * doGetLocation(callbackName) — Registers GPS + Network providers
+     * simultaneously, returns whichever fires first. Falls back to
+     * cached location. 15s hard timeout.
      */
     private void doGetLocation(final String callbackName) {
         new Thread(() -> {
@@ -182,7 +183,7 @@ public class CodeHubBridge {
                 LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
                 if (lm == null) { callbackNull(callbackName); return; }
 
-                // Try all providers for best cached location
+                // Step 1: Check best cached location first
                 Location best = null;
                 String[] providers = { LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER };
                 for (String p : providers) {
@@ -194,8 +195,8 @@ public class CodeHubBridge {
                     } catch (SecurityException ignored) {}
                 }
 
-                if (best != null) {
-                    // Found a cached location — return it
+                // If we have a cached location with accuracy < 100m, use it immediately
+                if (best != null && best.getAccuracy() < 100) {
                     final double lat = best.getLatitude();
                     final double lon = best.getLongitude();
                     final float acc = best.getAccuracy();
@@ -206,59 +207,87 @@ public class CodeHubBridge {
                     return;
                 }
 
-                // No cached location — request a fresh GPS fix with timeout
+                // Step 2: Request fresh updates from both providers simultaneously
                 final boolean[] responded = { false };
+                final Location[] bestResult = { best };
+                android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
 
-                try {
-                    lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, new LocationListener() {
-                        @Override public void onLocationChanged(Location l) {
-                            if (responded[0]) return;
+                LocationListener listener = new LocationListener() {
+                    @Override public void onLocationChanged(Location l) {
+                        if (responded[0]) return;
+                        // Keep the best accuracy so far
+                        if (bestResult[0] == null || l.getAccuracy() < bestResult[0].getAccuracy()) {
+                            bestResult[0] = l;
+                        }
+                        // If accuracy is good enough (< 50m) or both providers tried, return
+                        if (l.getAccuracy() < 50) {
                             responded[0] = true;
-                            saveLocation(l.getLatitude(), l.getLongitude());
-                            activity.runOnUiThread(() -> webView.loadUrl(
-                                "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                                "(" + l.getLatitude() + "," + l.getLongitude() + "," + l.getAccuracy() + ");}catch(e){}"));
+                            removeUpdates(lm, this);
+                            returnLocation(callbackName, l);
                         }
-                        @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
-                        @Override public void onProviderEnabled(String p) {}
-                        @Override public void onProviderDisabled(String p) {
-                            if (!responded[0]) {
-                                responded[0] = true;
-                                // GPS disabled — try network provider
-                                try {
-                                    lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, this, android.os.Looper.getMainLooper());
-                                } catch (Exception ex) {
-                                    callbackNull(callbackName);
-                                }
-                            }
-                        }
-                    }, android.os.Looper.getMainLooper());
-                } catch (SecurityException ignored) { callbackNull(callbackName); return; }
+                    }
+                    @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
+                    @Override public void onProviderEnabled(String p) {}
+                    @Override public void onProviderDisabled(String p) {}
+                };
 
-                // Timeout 12s — if no GPS fix, fallback to anything available
-                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    if (responded[0]) return;
-                    responded[0] = true;
-                    try {
-                        Location fallback = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                        if (fallback == null) fallback = lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-                        if (fallback != null) {
-                            final Location fl = fallback;
-                            saveLocation(fl.getLatitude(), fl.getLongitude());
-                            activity.runOnUiThread(() -> webView.loadUrl(
-                                "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                                "(" + fl.getLatitude() + "," + fl.getLongitude() + "," + fl.getAccuracy() + ");}catch(e){}"));
-                        } else {
-                            callbackNull(callbackName);
-                        }
-                    } catch (Exception ex) {
+                // Register both GPS and Network simultaneously
+                boolean gpsEnabled = false;
+                boolean netEnabled = false;
+                try { gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER); } catch (Exception ignored) {}
+                try { netEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER); } catch (Exception ignored) {}
+
+                if (!gpsEnabled && !netEnabled) {
+                    // No providers available — use cached if any
+                    if (best != null) {
+                        final Location fb = best;
+                        saveLocation(fb.getLatitude(), fb.getLongitude());
+                        activity.runOnUiThread(() -> webView.loadUrl(
+                            "javascript:try{if(window." + callbackName + ")window." + callbackName +
+                            "(" + fb.getLatitude() + "," + fb.getLongitude() + "," + fb.getAccuracy() + ");}catch(e){}"));
+                    } else {
                         callbackNull(callbackName);
                     }
-                }, 12000);
+                    return;
+                }
+
+                if (gpsEnabled) {
+                    try { lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, listener, android.os.Looper.getMainLooper()); } catch (SecurityException ignored) {}
+                }
+                if (netEnabled) {
+                    try { lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, listener, android.os.Looper.getMainLooper()); } catch (SecurityException ignored) {}
+                }
+
+                // Step 3: 15s timeout — return best available
+                mainHandler.postDelayed(() -> {
+                    if (responded[0]) return;
+                    responded[0] = true;
+                    removeUpdates(lm, listener);
+                    if (bestResult[0] != null) {
+                        returnLocation(callbackName, bestResult[0]);
+                    } else {
+                        callbackNull(callbackName);
+                    }
+                }, 15000);
+
             } catch (Exception e) {
                 callbackNull(callbackName);
             }
         }).start();
+    }
+
+    private void removeUpdates(LocationManager lm, LocationListener listener) {
+        try { lm.removeUpdates(listener); } catch (Exception ignored) {}
+    }
+
+    private void returnLocation(String callbackName, Location loc) {
+        saveLocation(loc.getLatitude(), loc.getLongitude());
+        final double lat = loc.getLatitude();
+        final double lon = loc.getLongitude();
+        final float acc = loc.getAccuracy();
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + callbackName + ")window." + callbackName +
+            "(" + lat + "," + lon + "," + acc + ");}catch(e){}"));
     }
 
     private void callbackNull(String callbackName) {
