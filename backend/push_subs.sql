@@ -16,6 +16,8 @@ create table if not exists public.push_subs (
   alerts boolean default true,
   last_alert_condition text,
   last_alert_at timestamptz,
+  last_brief_at timestamptz,
+  weather_interval integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

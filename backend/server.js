@@ -3905,11 +3905,23 @@ create table if not exists public.push_subs (
   alerts boolean default true,
   last_alert_condition text,
   last_alert_at timestamptz,
+  last_brief_at timestamptz,
+  weather_interval integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 create index if not exists push_subs_alerts_idx on public.push_subs (alerts);
 `;
+
+// Migrar: agregar columnas si no existen
+async function migratePushTable() {
+  if (!supabase) return;
+  try {
+    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_brief_at timestamptz;' });
+    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists weather_interval integer default 0;' });
+  } catch (e) { console.warn('⚠️  Push migrate:', e.message); }
+}
+migratePushTable();
 
 let pushStore = new Map(); // fallback en memoria si Supabase no está disponible
 
@@ -3939,6 +3951,8 @@ function pushRowToSub(row) {
     lat: row.lat, lon: row.lon, city: row.city, country: row.country,
     timezone: row.timezone, user_agent: row.user_agent,
     alerts: row.alerts, last_alert_condition: row.last_alert_condition, last_alert_at: row.last_alert_at,
+    last_brief_at: row.last_brief_at || null,
+    weather_interval: row.weather_interval != null ? normalizeWeatherInterval(row.weather_interval) : 0,
   };
 }
 
@@ -3968,6 +3982,8 @@ async function pushSave(rec) {
         alerts:         rec.alerts !== false,
         last_alert_condition: rec.last_alert_condition || null,
         last_alert_at:  rec.last_alert_at || null,
+        last_brief_at: rec.last_brief_at || null,
+        weather_interval: rec.weather_interval != null ? normalizeWeatherInterval(rec.weather_interval) : 0,
         updated_at:     new Date(),
       }, { onConflict: 'endpoint' });
       if (!error) return true;
@@ -4040,6 +4056,7 @@ app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
       timezone:   (loc.timezone || '').slice(0, 60) || null,
       user_agent: (req.get('user-agent') || '').slice(0, 200),
       alerts:     prefs ? prefs.alerts !== false : true,
+      weather_interval: prefs && prefs.interval ? normalizeWeatherInterval(prefs.interval) : 0,
     };
     await pushSave(rec);
     res.json({ ok: true });
@@ -4071,6 +4088,7 @@ app.post('/api/push/settings', chatLimiter, async (req, res) => {
       if (location.timezone) rec.timezone = String(location.timezone).slice(0, 60);
     }
     if (prefs && typeof prefs.alerts === 'boolean') rec.alerts = prefs.alerts;
+    if (prefs && prefs.interval !== undefined) rec.weather_interval = normalizeWeatherInterval(prefs.interval);
     await pushSave(rec);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -4431,45 +4449,200 @@ app.get('/api/releases', async (req, res) => {
 });
 
 // ── CLIMA → PUSH (alertas y recomendaciones) ─────────────────
-const WX_ALERTS = [
-  { cond: 'storm', test: c => c.weather_code >= 95 || (c.precipitation > 8 && c.wind_speed_10m > 35),
-    msg: c => '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas y desconecta aparatos' },
-  { cond: 'rain',  test: c => (c.weather_code >= 61 && c.weather_code <= 67) || Number(c.precipitation_probability || 0) >= 70,
-    msg: c => '🌧️ Probabilidad alta de lluvia (' + Math.round(Number(c.precipitation_probability || 0)) + '%) — lleva paraguas y revisa el pronóstico antes de salir' },
-  { cond: 'wind',  test: c => c.wind_speed_10m > 50,
-    msg: c => '💨 Viento fuerte (' + Math.round(c.wind_speed_10m) + ' km/h) — precaución al manejar' },
-  { cond: 'radiation', test: c => Number(c.uv_index || 0) >= 7,
-    msg: c => '☀️ Radiación alta (' + Number(c.uv_index || 0).toFixed(1) + ') — usa bloqueador y evita el sol fuerte al mediodía' },
-  { cond: 'heat',  test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
-    msg: c => '🌡️ Calor extremo (' + Math.round(c.temperature_2m) + '°C, sensación ' + Math.round(c.apparent_temperature) + '°C) — hidrátate y evita el sol de 11 a 15h' },
-  { cond: 'cold',  test: c => c.temperature_2m < 0,
-    msg: c => '🥶 Frío intenso (' + Math.round(c.temperature_2m) + '°C) — abrígate bien' },
-];
+
+// Intervalo de resumen climático del usuario (en minutos).
+// Valores aceptados: 30, 60, 180, 360 o 0 = solo alertas bajo demanda.
+function normalizeWeatherInterval(v) {
+  const n = Number(v);
+  if ([30, 60, 180, 360].includes(n)) return n;
+  return 0; // solo alertas
+}
 
 async function fetchWeatherFor(lat, lon) {
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation' +
-    '&hourly=temperature_2m,precipitation_probability,uv_index' +
-    '&forecast_days=2&wind_speed_unit=kmh&timezone=auto';
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation,is_day' +
+    '&hourly=temperature_2m,precipitation_probability,uv_index,weather_code,wind_speed_10m' +
+    '&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+    '&forecast_days=3&wind_speed_unit=kmh&timezone=auto';
   const r = await fetch(url);
   if (!r.ok) throw new Error('open-meteo ' + r.status);
   const data = await r.json();
   const hourly = data.hourly || {};
-  const rainProb = (hourly.precipitation_probability || []).map(v => Number(v || 0));
-  const uvIndex = (hourly.uv_index || []).map(v => Number(v || 0));
+  const daily = data.daily || {};
   const current = data.current || {};
+  const now = new Date();
+
+  // ── Serie horaria completa para el resumen del día ──
+  const times = hourly.time || [];
+  const rainProbArr = (hourly.precipitation_probability || []).map(v => Number(v || 0));
+  const weatherCodeArr = hourly.weather_code || [];
+  const tempArr = (hourly.temperature_2m || []).map(v => Number(v || 0));
+  const windArr = (hourly.wind_speed_10m || []).map(v => Number(v || 0));
+  const uvArr = (hourly.uv_index || []).map(v => Number(v || 0));
+
+  // Tomar solo las horas desde ahora hasta las 2:00 del día siguiente
+  // (cubren: ahora, resto del día, y la madrugada/noche venidera).
+  const horizon = [];
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i] + 'Z');
+    const until = new Date(now.getTime());
+    until.setDate(until.getDate() + 1);
+    until.setHours(2, 0, 0, 0);
+    if (t <= now) continue;
+    if (t > until) break;
+    horizon.push({
+      time: times[i],
+      h: t.getHours(),
+      temp: tempArr[i],
+      wcode: weatherCodeArr[i] != null ? weatherCodeArr[i] : current.weather_code,
+      rain: rainProbArr[i] != null ? rainProbArr[i] : 0,
+      wind: windArr[i] != null ? windArr[i] : 0,
+      uv: uvArr[i] != null ? uvArr[i] : 0,
+    });
+  }
+
+  // ── Slots del día (mañana / tarde / noche) con la media de cada uno ──
+  const slot = { morning: [], afternoon: [], evening: [], night: [] };
+  for (const h of horizon) {
+    if (h.h >= 5 && h.h < 12) slot.morning.push(h);
+    else if (h.h >= 12 && h.h < 18) slot.afternoon.push(h);
+    else if (h.h >= 18 && h.h < 23) slot.evening.push(h);
+    else slot.night.push(h);
+  }
+  function slotSummary(list) {
+    if (!list.length) return null;
+    const maxRain = Math.max(...list.map(x => x.rain));
+    const maxW = Math.max(...list.map(x => x.wcode));
+    const maxWind = Math.max(...list.map(x => x.wind));
+    return {
+      tMax: Math.max(...list.map(x => x.temp)),
+      tMin: Math.min(...list.map(x => x.temp)),
+      maxRainPct: maxRain,
+      wcode: maxW,
+      windMax: maxWind,
+    };
+  }
+  const slots = {
+    morning: slotSummary(slot.morning),
+    afternoon: slotSummary(slot.afternoon),
+    evening: slotSummary(slot.evening),
+    night: slotSummary(slot.night),
+  };
+
+  // Solar: sunrise/sunset de hoy y shadow (día siguiente) para "día/noche"
+  const sunriseStr = (daily.sunrise || [])[0];
+  const sunsetStr = (daily.sunset || [])[0];
+  const isDay = Number(current.is_day) === 1;
+
+  const rainProbCurrent = (() => {
+    const idx = times.findIndex(t => new Date(t + 'Z').getTime() >= now.getTime());
+    if (idx >= 0 && rainProbArr[idx] != null) return rainProbArr[idx];
+    return rainProbArr.length ? Math.max(...rainProbArr) : (Number(current.precipitation || 0) > 0 ? 70 : 0);
+  })();
+
   return {
     ...current,
-    precipitation_probability: rainProb.length ? Math.max(...rainProb) : (Number(current.precipitation || 0) > 0 ? 70 : 0),
-    uv_index: uvIndex.length ? Math.max(...uvIndex) : 0,
+    is_day: isDay,
+    sunrise: sunriseStr || null,
+    sunset: sunsetStr || null,
+    precipitation_probability: rainProbCurrent,
+    uv_current: Number(current.uv_index || uvArr.find ? (uvArr.filter((_, i) => new Date(times[i] + 'Z').getTime() >= now.getTime())[0] || 0) : 0),
+    uv_index: uvArr.length ? Math.max(...uvArr) : 0,
+    slots,
+    horizon,
   };
 }
 
+// ── Descripción legible de un weather_code ──
+function wxLabel(code, isDay) {
+  const map = {
+    0: isDay ? '☀️ despejado' : '🌙 despejado (noche)',
+    1: isDay ? '🌤️ mayormente despejado' : '🌙 claro (noche)',
+    2: '⛅ parcialmente nublado',
+    3: '☁️ nublado',
+    45: '🌫️ niebla', 48: '🌫️ niebla helada',
+    51: '🌦️ llovizna', 53: '🌦️ llovizna', 55: '🌦️ llovizna',
+    56: '🌧️ llovizna helada', 57: '🌧️ llovizna helada',
+    61: '🌧️ lluvia ligera', 63: '🌧️ lluvia', 65: '🌧️ lluvia fuerte',
+    66: '🌧️ lluvia helada', 67: '🌧️ lluvia helada',
+    71: '🌨️ nieve ligera', 73: '🌨️ nieve', 75: '❄️ nieve fuerte',
+    77: '❄️ granizo',
+    80: '🌦️ chubascos', 81: '🌦️ chubascos', 82: '⛈️ chubascos intensos',
+    85: '🌨️ chubascos de nieve', 86: '❄️ chubascos de nieve',
+    95: '⛈️ tormenta eléctrica', 96: '⛈️ tormenta con granizo', 99: '⛈️ tormenta violenta',
+  };
+  return map[code] || '🌡️ variable';
+}
+
+function hourlyLabel(h) {
+  const hh = String(h.h).padStart(2, '0');
+  const am = h.h < 5 ? 'madrugada' : h.h < 12 ? 'mañana' : h.h < 18 ? 'tarde' : 'noche';
+  const rain = h.rain >= 50 ? `, ${h.rain}% lluvia` : '';
+  return `${hh}:00 · ${Math.round(h.temp)}°C · ${wxLabel(h.wcode, h.h >= 6 && h.h < 18)}${rain}`;
+}
+
+// ── Notificaciones inteligentes del clima ────────────────────
+const WX_ALERTS = [
+  { cond: 'storm', test: c => c.weather_code >= 95 || (c.precipitation > 8 && c.wind_speed_10m > 35),
+    msg: c => '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas, desconecta aparatos y no te refugies bajo árboles' },
+  { cond: 'rain',  test: c => (c.weather_code >= 61 && c.weather_code <= 67) || Number(c.precipitation_probability || 0) >= 70,
+    msg: c => '🌧️ Probabilidad alta de lluvia (' + Math.round(Number(c.precipitation_probability || 0)) + '%) — lleva paraguas y revisa el pronóstico por horas antes de salir' },
+  { cond: 'wind',  test: c => c.wind_speed_10m > 50,
+    msg: c => '💨 Viento fuerte (' + Math.round(c.wind_speed_10m) + ' km/h) — precaución al manejar y asegura objetos sueltos' },
+  { cond: 'radiation', test: c => c.is_day && Number(c.uv_index || 0) >= 7,
+    msg: c => '☀️ Radiación UV alta (' + Number(c.uv_index || 0).toFixed(1) + ') — usa bloqueador SPF 50+ y evita el sol de 11 a 15h' },
+  { cond: 'heat',  test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
+    msg: c => '🌡️ Calor (' + Math.round(c.temperature_2m) + '°C, sensación ' + Math.round(c.apparent_temperature) + '°C) — hidrátate y evita el sol de 11 a 15h' },
+  { cond: 'cold',  test: c => c.temperature_2m < 0,
+    msg: c => '🥶 Frío (' + Math.round(c.temperature_2m) + '°C) — abrígate bien' },
+];
+
 function detectAlert(current) {
+  // Solo radiación UV de día; el resto aplica siempre.
   for (const a of WX_ALERTS) {
     try { if (a.test(current)) return { cond: a.cond, body: a.msg(current) }; } catch (e) {}
   }
   return null;
+}
+
+// ── Resumen diario inteligente del clima ────────────────────
+function dailyBriefing(current) {
+  const slots = current.slots;
+  const nowH = new Date().getHours();
+  const parts = [];
+
+  // Momento actual + día/noche
+  const period = nowH < 6 ? 'madrugada' : nowH < 12 ? 'mañana' : nowH < 18 ? 'tarde' : 'noche';
+  const dayPart = current.is_day ? 'de día' : 'de noche';
+  parts.push(`Ahora (${period}, ${dayPart}): ${Math.round(current.temperature_2m)}°C · ${wxLabel(current.weather_code, current.is_day)}`);
+
+  // Pronóstico por slot del resto del día
+  const order = [['morning', 'Mañana'], ['afternoon', 'Mediodía / tarde'], ['evening', 'Atardecer / noche'], ['night', 'Madrugada']];
+  for (const [key, label] of order) {
+    const s = slots[key];
+    if (!s) continue;
+    const isFuture = (key === 'morning' && nowH < 5) || (key === 'afternoon' && nowH < 12) ||
+                     (key === 'evening' && nowH < 18) || (key === 'night');
+    if (!isFuture) continue;
+    let line = `• ${label}: ${Math.round(s.tMax)}°/${Math.round(s.tMin)}° · ${wxLabel(s.wcode, key !== 'night')}`;
+    if (s.maxRainPct >= 50) line += ` · ${Math.round(s.maxRainPct)}% lluvia`;
+    if (s.windMax > 40) line += ` · viento ${Math.round(s.windMax)} km/h`;
+    parts.push(line);
+  }
+
+  // Detalle horario resumido (próximas 4-6 horas)
+  if (current.horizon && current.horizon.length) {
+    const nextHours = current.horizon.slice(0, Math.min(6, current.horizon.length));
+    const timelines = nextHours.map(hourlyLabel).join('\n');
+    parts.push('Próximas horas:\n' + timelines);
+  }
+
+  // Amanecer / atardecer
+  if (current.sunrise && current.sunset) {
+    parts.push(`🌅 Amanecer ${String(new Date(current.sunrise + 'Z').getHours()).padStart(2, '0')}:00 · 🌇 Atardecer ${String(new Date(current.sunset + 'Z').getHours()).padStart(2, '0')}:00`);
+  }
+
+  return parts.join('\n');
 }
 
 async function weatherPushPass() {
@@ -4519,26 +4692,44 @@ async function weatherPushPass() {
     let current;
     try { current = await fetchWeatherFor(parts[0], parts[1]); } catch (e) { continue; }
     const alert = detectAlert(current);
+
     for (const s of group) {
+      // 1) Resumen/update por intervalos — respeta weather_interval del usuario
+      //    (30/60/180/360 min). Si interval = 0 → solo alertas, sin briefing.
+      let shouldBrief = false;
+      const iv = normalizeWeatherInterval(s.weather_interval);
+      if (iv > 0) {
+        const last = s.last_brief_at ? new Date(s.last_brief_at).getTime() : 0;
+        const due = (Date.now() - last) >= iv * 60 * 1000;
+        if (due) {
+          if (s._isFCM) {
+            // Android: no molestar de madrugada (0-6h) salvo alertas críticas
+            const h = new Date().getHours();
+            shouldBrief = h >= 6 || last === 0;
+          } else {
+            shouldBrief = true;
+          }
+        }
+      }
+      // 2) Alerta inteligente si hay condición (storm/rain/…)
       if (alert) {
         if (s.last_alert_condition !== alert.cond) {
           let r;
+          const bodyExtra = alert.body;
           if (s._isFCM) {
-            // Enviar a Android vía FCM
             r = await sendFCM(s.token, {
-              title: 'CodeHub Clima',
-              body: alert.body,
+              title: 'CodeHub Clima · ' + (s.city || 'Tu zona'),
+              body: bodyExtra,
               type: 'weather',
               url: '/#weather-section',
             });
           } else {
-            // Enviar a navegador vía Web Push
             r = await sendPush(s, {
-              title: 'CodeHub Clima',
-              body:  s.city ? alert.body + ' · ' + s.city : alert.body,
-              type:  'weather',
-              icon:  '/splash/codehub.png',
-              url:   '/#weather-section',
+              title: 'CodeHub Clima · ' + (s.city || 'Tu zona'),
+              body: s.city ? bodyExtra + ' · ' + s.city : bodyExtra,
+              type: 'weather',
+              icon: '/splash/codehub.png',
+              url: '/#weather-section',
             });
           }
           if (r.ok) {
@@ -4548,7 +4739,35 @@ async function weatherPushPass() {
             sent++;
           }
         }
-      } else if (s.last_alert_condition && !s._isFCM) {
+      }
+      // 3) Realizar el briefing (si toca) — independiente de alerta
+      if (shouldBrief && !alert) {
+        let r;
+        const brief = dailyBriefing(current);
+        if (s._isFCM) {
+          r = await sendFCM(s.token, {
+            title: '🌤️ Tu clima hoy · ' + (s.city || 'Tu zona'),
+            body: brief,
+            type: 'weather_brief',
+            url: '/#weather-section',
+          });
+        } else {
+          r = await sendPush(s, {
+            title: '🌤️ Tu clima hoy · ' + (s.city || 'Tu zona'),
+            body: (s.city ? brief + '\n📍 ' + s.city : brief),
+            type: 'weather_brief',
+            icon: '/splash/codehub.png',
+            url: '/#weather-section',
+          });
+        }
+        if (r.ok) {
+          s.last_brief_at = new Date().toISOString();
+          if (!s._isFCM) await pushSave(s);
+          sent++;
+        }
+      }
+      // 4) Limpiar estado de alerta cuando la condición vuelve a la normalidad
+      if (!alert && s.last_alert_condition && !s._isFCM) {
         s.last_alert_condition = null;
         s.last_alert_at = null;
         await pushSave(s);
@@ -4559,6 +4778,160 @@ async function weatherPushPass() {
 }
 
 app.get('/api/push/weather/check', async (req, res) => {
+  try {
+    const out = await weatherPushPass();
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── ACTIVIDAD SÍSMICA (terremotos) ───────────────────────────
+// Nota honesta: NO existe una API pública de "alerta temprana" de
+// Google (usada en Android vía Play Services, limitada a un puñado de
+// regiones). Aquí usamos la API abierta de USGS (global) para detectar
+// sismos RELEVANTES recientes cerca del usuario y avisar post-evento
+// con magnitud, distancia y consejos de seguridad. En regiones donde
+// Google EEWS no llega (la mayoría de LatAm, incluida Guatemala) esto
+// sigue dando valor real: enterarse de un sismo cercano + cómo actuar.
+
+const USGS_FEED = 'https://earthquake.usgs.gov/earthquake/feed/v1.0/summary/all_day.geojson';
+
+// Umbrales configurables por magnitud (pueden editarse en admin config)
+function seismicThreshold() {
+  return 4.5; // bajo este nivel no se molesta al usuario
+}
+function seismicRadiusKm() {
+  return 300; // distancia máx. para considerar "cercano"
+}
+
+async function fetchRecentEarthquakes() {
+  const r = await fetch(USGS_FEED, { headers: { 'User-Agent': 'CodeHub-Seismic' } });
+  if (!r.ok) throw new Error('USGS ' + r.status);
+  const data = await r.json();
+  return data.features || [];
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function describeMagnitude(mag, distKm) {
+  const emoji = mag >= 6.0 ? '🔥' : mag >= 5.0 ? '⚠️' : '📳';
+  const near = distKm < 50 ? ' muy cerca' : distKm < 150 ? ' cercano' : ' en tu región';
+  return `${emoji} Sismo M${mag.toFixed(1)}${near} (${Math.round(distKm)} km)`;
+}
+
+function earthquakeSafetyTips(mag) {
+  return mag >= 6.0
+    ? 'Protege tu cabeza, aléjate de ventanas/objetos que caigan y, si puedes, refúgiate bajo un mueble firme. Sigue las indicaciones de Protección Civil.'
+    : 'Esté preparado: revisa que no haya grietas nuevas y asegura objetos que puedan caer en un sismo mayor.';
+}
+
+// Una sola pasada de verificación sísmica. Devuelve { earthquakes: N }
+async function seismicPushPass() {
+  let subs;
+  try { subs = await pushList(); } catch (e) { return { earthquakes: 0 }; }
+  const enabled = subs.filter(s => s.alerts && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+
+  // También tokens FCM
+  const fcmTokens = [];
+  if (fcmEnabled) {
+    try { fcmTokens.push(...await fcmListTokens()); } catch (e) {}
+  }
+  const targets = [
+    ...enabled.map(s => ({ ...s, _isFCM: false })),
+    ...fcmTokens.filter(t => Number.isFinite(+t.lat) && Number.isFinite(+t.lon)).map(t => ({ ...t, _isFCM: true })),
+  ];
+  if (!targets.length) return { earthquakes: 0 };
+
+  let quakes;
+  try { quakes = await fetchRecentEarthquakes(); } catch (e) { return { earthquakes: 0 }; }
+  const threshold = seismicThreshold();
+  const radius = seismicRadiusKm();
+  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo últimos 3h
+
+  let sent = 0;
+  const lastKey = {};
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const t of targets) {
+    const subKey = t.endpoint || t.token || ('fcm:' + (t.token || ''));
+    const relevant = quakes.filter(q => {
+      const geo = q.geometry && q.geometry.coordinates;
+      if (!geo) return false;
+      const mag = q.properties && q.properties.mag;
+      const time = q.properties && q.properties.time;
+      if (typeof mag !== 'number' || !time || time < cutoff) return false;
+      if (mag < threshold) return false;
+      const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
+      return dist <= radius;
+    });
+    // Ordenar por tiempo: el más reciente primero
+    relevant.sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0));
+    const latest = relevant[0];
+    if (!latest) continue;
+
+    const mag = latest.properties.mag;
+    const place = (latest.properties.place || '').replace(/,.*$/, '').trim();
+    const dist = haversineKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]);
+    const key = latest.properties.id;
+    const prev = lastKey[subKey] || (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null);
+    const cacheKey = 'EQ:' + key;
+
+    // No repetir si ya se avisó de este mismo sismo
+    if (prev === cacheKey) continue;
+
+    const body =
+      describeMagnitude(mag, dist) +
+      (place ? ' · ' + place : '') +
+      '\n' + earthquakeSafetyTips(mag);
+
+    let r;
+    if (t._isFCM) {
+      r = await sendFCM(t.token, {
+        title: '🌋 Actividad sísmica',
+        body: body + '\n📍 ' + (t.city || 'Tu zona'),
+        type: 'seismic',
+        url: '/#weather-section',
+      });
+    } else {
+      r = await sendPush(t, {
+        title: '🌋 Actividad sísmica',
+        body: body,
+        type: 'seismic',
+        icon: '/splash/codehub.png',
+        url: '/#weather-section',
+      });
+    }
+    if (r.ok) {
+      lastKey[subKey] = cacheKey;
+      if (!t._isFCM) { t.last_alert_condition = cacheKey; t.last_alert_at = new Date().toISOString(); await pushSave(t); }
+      sent++;
+    }
+    void today;
+  }
+  return { earthquakes: sent };
+}
+
+// Scheduler sísmico — cada 10 min
+setInterval(() => {
+  seismicPushPass()
+    .then(o => { if (o.earthquakes) console.log('🌋 Push sísmico enviado:', o.earthquakes); })
+    .catch(e => console.warn('⚠️  Push sísmico error:', e.message));
+}, 10 * 60 * 1000);
+
+app.get('/api/push/seismic/check', async (req, res) => {
+  try {
+    const out = await seismicPushPass();
+    res.json({ ok: true, ...out });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+
   try {
     const out = await weatherPushPass();
     res.json({ ok: true, ...out });

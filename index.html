@@ -1186,6 +1186,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span class="wx-switch"><span class="wx-switch-knob"></span></span>
             </div>
 
+            <!-- Selector de frecuencia de notificaciones -->
+            <div class="wx-interval" id="wx-interval-box" style="display:none">
+                <div class="wx-interval-label"><i class="fas fa-clock"></i> <span>Recibir resumen cada</span></div>
+                <div class="wx-interval-options">
+                    <button class="wx-int-btn" data-min="30" onclick="chSetWeatherInterval(30,this)">30 min</button>
+                    <button class="wx-int-btn" data-min="60" onclick="chSetWeatherInterval(60,this)">1 h</button>
+                    <button class="wx-int-btn" data-min="180" onclick="chSetWeatherInterval(180,this)">3 h</button>
+                    <button class="wx-int-btn" data-min="360" onclick="chSetWeatherInterval(360,this)">6 h</button>
+                    <button class="wx-int-btn" data-min="0" onclick="chSetWeatherInterval(0,this)">Solo alertas</button>
+                </div>
+                <div class="wx-interval-hint">Los resúmenes te muestran cómo cambia el clima por horas. Las alertas (tormenta, lluvia, calor) siempre llegan de inmediato.</div>
+            </div>
+
+            <!-- Mapa para elegir ciudad -->
+            <div class="wx-map-box" id="wx-map-box">
+                <div class="wx-map-head">
+                    <span><i class="fas fa-map-location-dot"></i> Elige tu ciudad en el mapa</span>
+                    <button class="wx-map-collapse" id="wx-map-collapse" onclick="chToggleMap()" aria-label="Ocultar mapa"><i class="fas fa-chevron-up"></i></button>
+                </div>
+                <div class="wx-map-search">
+                    <input type="text" id="wx-map-search-input" class="wx-input" placeholder="Buscar ciudad… (ej. Ciudad de Guatemala)" onkeydown="if(event.key==='Enter')chMapSearch()">
+                    <button class="wx-search-btn" onclick="chMapSearch()"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
+                <div id="wx-minimap" class="wx-minimap"><div class="wx-map-loading"><i class="fas fa-spinner fa-spin"></i> Cargando mapa…</div></div>
+                <div class="wx-map-foot">
+                    <span id="wx-map-city">Mueve el marcador ✦ y toca una ubicación, o usa el buscador</span>
+                    <button class="wx-map-select-btn" id="wx-map-select" onclick="chApplyMapCity()"><i class="fas fa-check"></i> Guardar esta ciudad</button>
+                </div>
+            </div>
+
             <!-- Estado de carga -->
             <div id="wx-loading" class="wx-loading">
                 <div class="skeleton-wrap" style="width:100%">
@@ -2871,13 +2901,57 @@ function chToggleWeatherAlerts(on) {
         }).catch(function(){});
       }
       fetch(BACKEND_INDEX + '/api/push/weather/check').catch(function(){});
+      chSyncIntervalUI();
       if (typeof toast === 'function') toast('Alertas de clima activadas 🔔', 'weather', 3000);
     });
-  } else {
+    } else {
     if (!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
       showIndexNotifBanner();
     }
   }
+}
+
+/* Intervalo de resumen climático (30/60/180/360 min o 0 = solo alertas).
+   Se persiste en localStorage y se sincroniza con el backend push,
+   que respeta este intervalo para enviar los resúmenes periódicos. */
+function chSetWeatherInterval(min, btn) {
+  min = [30, 60, 180, 360].indexOf(+min) >= 0 ? +min : 0;
+  localStorage.setItem('ch_weather_interval', min);
+
+  // Marcar el botón activo
+  document.querySelectorAll('.wx-int-btn').forEach(function (b) {
+    b.classList.toggle('active', (+b.getAttribute('data-min')) === min);
+  });
+
+  // Sincronizar con backend
+  var endpoint = localStorage.getItem('ch_push_endpoint');
+  if (endpoint) {
+    fetch((window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/push/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: endpoint, prefs: { interval: min } }),
+    }).catch(function () {});
+  }
+  if (typeof toast === 'function') {
+    var lbl = min === 0 ? 'Solo recibirás alertas importantes' : 'Resumen de clima cada ' + (min < 60 ? min + ' min' : (min / 60) + ' h');
+    toast(lbl, 'weather', 2600);
+  }
+}
+
+/* Muestra/oculta el selector de intervalo según el estado del toggle. */
+function chSyncIntervalUI() {
+  var box = document.getElementById('wx-interval-box');
+  if (!box) return;
+  var on = localStorage.getItem('ch_weather_alerts') === '1';
+  if (!on) { box.style.display = 'none'; return; }
+  box.style.display = '';
+
+  // Restaurar la selección guardada
+  var saved = parseInt(localStorage.getItem('ch_weather_interval') || '60', 10);
+  if ([30, 60, 180, 360].indexOf(saved) < 0) saved = 60;
+  document.querySelectorAll('.wx-int-btn').forEach(function (b) {
+    b.classList.toggle('active', (+b.getAttribute('data-min')) === saved);
+  });
 }
 
 /* Reverse-geocode (Nominatim) + pinta el widget de clima + guarda la
@@ -2975,6 +3049,7 @@ function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alert
     toggle.classList.toggle('on', chWeatherAlertsOn());
     if (window.CodeHubMorphTo) CodeHubMorphTo(toggle, chWeatherAlertsOn() ? 'bell' : 'bellOff');
   }
+  chSyncIntervalUI();
 }
 
 /* ══════════════════════════════════════════════════
@@ -6866,6 +6941,7 @@ function setAIMood(btn) {
 <script src="js/ux-animations.js?v=20260811a" defer></script>
 <script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
+<script src="js/weather-map.js?v=20260827a" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

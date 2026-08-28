@@ -449,3 +449,92 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .wx-live-dot { animation: none; }
 }
 [data-theme="light"] .wx-live-dot { background: #16a34a; }
+
+/* ── Minimapa del clima (Leaflet) ─────────────────────── */
+.wx-map-box { display: block; }
+.wx-map-box.closed { display: none; }
+.wx-map-box .wx-map-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; margin-bottom: .6rem;
+  font-size: .82rem; font-weight: 700; color: var(--text, currentColor);
+}
+.wx-map-box .wx-map-head i { color: #22c55e; margin-right: .3rem; }
+.wx-map-collapse {
+  background: transparent; border: none; color: var(--muted, #888);
+  font-size: .85rem; cursor: pointer; padding: .2rem .4rem;
+}
+.wx-map-search { display: flex; gap: .4rem; margin-bottom: .6rem; }
+.wx-map-search .wx-input {
+  flex: 1; min-width: 0; padding: .55rem .8rem;
+  border-radius: 10px; border: 1px solid rgba(128,128,128,.25);
+  background: var(--card, #fff); color: inherit; font-size: .85rem;
+}
+.wx-map-search .wx-search-btn {
+  border: none; width: 40px; border-radius: 10px;
+  background: linear-gradient(135deg,#2f80ed,#22c55e); color: #fff; cursor: pointer;
+}
+.wx-minimap {
+  width: 100%; height: 260px; border-radius: 14px;
+  overflow: hidden; position: relative;
+  border: 1px solid rgba(128,128,128,.25); z-index: 1;
+}
+.wx-map-loading {
+  position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; gap: .5rem; font-size: .8rem; color: var(--muted, #888);
+}
+.wx-map-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .6rem; margin-top: .6rem; font-size: .75rem; color: var(--muted, #888);
+  text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
+}
+.wx-map-select-btn {
+  flex-shrink: 0; padding: .5rem .8rem; border: none; border-radius: 10px;
+  background: linear-gradient(135deg,#22c55e,#16a34a); color: #fff;
+  font-weight: 700; font-size: .75rem; cursor: pointer; white-space: nowrap;
+}
+.wx-map-marker svg { filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.wx-minimap.leaflet-container { font: inherit; }
+.wx-minimap .leaflet-control-attribution { font-size: 9px !important; }
+
+/* Prevent Leaflet interaction overflow on mobile */
+@media (max-width: 640px) {
+  .wx-minimap { height: 220px; }
+}
+@media (max-width: 380px) {
+  .wx-minimap { height: 190px; }
+}
+
+/* ── Selector de frecuencia de notificaciones ────────── */
+.wx-interval {
+  margin-top: .7rem; padding: .7rem .8rem;
+  border: 1px solid rgba(128,128,128,.25); border-radius: 14px;
+  background: rgba(128,128,128,.06);
+}
+.wx-interval-label {
+  display: flex; align-items: center; gap: .4rem;
+  font-size: .8rem; font-weight: 700; margin-bottom: .6rem;
+  color: var(--text, currentColor);
+}
+.wx-interval-label i { color: #22c55e; }
+.wx-interval-options {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.wx-int-btn {
+  border: 1px solid rgba(128,128,128,.3); background: transparent;
+  color: var(--text, currentColor); padding: .45rem .7rem;
+  border-radius: 999px; font-size: .75rem; cursor: pointer;
+  transition: all .15s;
+}
+.wx-int-btn.active {
+  background: linear-gradient(135deg,#2f80ed,#22c55e);
+  color: #fff; border-color: transparent; font-weight: 700;
+}
+.wx-interval-hint {
+  margin-top: .55rem; font-size: .7rem; color: var(--muted, #888);
+  line-height: 1.4;
+}
+@media (max-width: 380px) {
+  .wx-int-btn { flex: 1 1 40%; text-align: center; }
+  .wx-map-foot { flex-direction: column; align-items: stretch; white-space: normal; }
+  .wx-map-select-btn { width: 100%; }
+}
