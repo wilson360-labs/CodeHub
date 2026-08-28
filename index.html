@@ -3654,6 +3654,9 @@ async function sendEmail(e) {
       </div>
     </div>
     <div class="ai-head-actions">
+      <button class="ai-head-btn ai-menu-trigger" id="ai-menu-btn" onclick="emiMenu.openFn()" title="Menú de funciones" aria-label="Abrir menú de funciones" aria-haspopup="true">
+        <i class="fas fa-bars"></i>
+      </button>
       <button class="ai-head-btn" id="ai-export-btn" onclick="exportEmiChat()" title="Exportar chat" aria-label="Exportar conversación">
         <i class="fas fa-download"></i>
       </button>
@@ -3663,61 +3666,8 @@ async function sendEmail(e) {
     </div>
   </div>
 
-  <!-- Cuerpo: sidebar + zona de chat -->
+  <!-- Cuerpo (solo chat + input) -->
   <div class="ai-body">
-
-    <!-- Sidebar de funciones -->
-    <nav class="ai-sidebar" aria-label="Funciones de EMI">
-      <div class="ai-side-actions">
-        <button class="ai-side-btn" data-act="new" onclick="aiSideAction('new', this)" title="Nueva conversación" aria-label="Nueva conversación">
-          <i class="fas fa-plus"></i>
-          <span class="ai-side-tip">Nuevo chat</span>
-        </button>
-        <button class="ai-side-btn" data-act="usage" onclick="aiSideAction('usage', this)" title="Estadísticas de uso" aria-label="Estadísticas de uso">
-          <i class="fas fa-chart-simple"></i>
-          <span class="ai-side-tip">Uso</span>
-        </button>
-        <button class="ai-side-btn" data-act="modes" onclick="aiSideAction('modes', this)" title="Modos de EMI" aria-label="Menú de modos">
-          <i class="fas fa-sliders"></i>
-          <span class="ai-side-tip">Modos</span>
-        </button>
-        <button class="ai-side-btn" data-act="attach" onclick="aiSideAction('attach', this)" title="Adjuntar imagen o PDF" aria-label="Adjuntar archivo">
-          <i class="fas fa-paperclip"></i>
-          <span class="ai-side-tip">Adjuntar</span>
-        </button>
-        <button class="ai-side-btn" data-act="prompts" onclick="aiSideAction('prompts', this)" title="Acciones rápidas" aria-label="Acciones rápidas">
-          <i class="fas fa-bolt"></i>
-          <span class="ai-side-tip">Rápidas</span>
-        </button>
-        <button class="ai-side-btn" data-act="settings" onclick="aiSideAction('settings', this)" title="Ajustes del panel" aria-label="Ajustes">
-          <i class="fas fa-gear"></i>
-          <span class="ai-side-tip">Ajustes</span>
-        </button>
-        <button class="ai-side-btn" data-act="export" onclick="aiSideAction('export', this)" title="Exportar conversación" aria-label="Exportar chat">
-          <i class="fas fa-download"></i>
-          <span class="ai-side-tip">Exportar</span>
-        </button>
-      </div>
-      <div class="ai-side-footer">
-        <button class="ai-side-btn" data-act="fullscreen" onclick="aiSideAction('fullscreen', this)" title="Pantalla completa" aria-label="Pantalla completa">
-          <i class="fas fa-expand"></i>
-          <span class="ai-side-tip">Pantalla</span>
-        </button>
-      </div>
-    </nav>
-    <div id="ai-side-flyout" class="ai-side-flyout" hidden></div>
-
-    <!-- Zona principal (modes, chat, input) -->
-    <div class="ai-main">
-
-    <!-- Mode bar -->
-    <div class="ai-modes-bar" id="ai-modes-bar">
-      <button class="ai-mode-chip active" data-mode="auto" onclick="setEmiMode('auto',this)" title="Asistente general">⚡ Auto</button>
-      <button class="ai-mode-chip" data-mode="dev" onclick="setEmiMode('dev',this)" title="Programación & Debug">💻 Dev</button>
-      <button class="ai-mode-chip" data-mode="img" onclick="setEmiMode('img',this)" title="Imagen IA">🎨 Imagen</button>
-      <button class="ai-mode-chip" data-mode="doc" onclick="setEmiMode('doc',this)" title="PDF & Documentos">📄 Docs</button>
-      <button class="ai-mode-chip" data-mode="translate" onclick="setEmiMode('translate',this)" title="Traductor Pro">🌐 Traducir</button>
-    </div>
 
   <!-- Messages -->
   <div id="ai-msgs">
@@ -3740,21 +3690,6 @@ async function sendEmail(e) {
 
   <!-- Input -->
   <div class="ai-input-wrap">
-    <!-- Acciones rápidas -->
-    <div class="ai-quick-actions">
-      <button class="ai-quick-btn" onclick="setQuickPrompt('genera')" title="Generar imagen con IA" id="ai-img-btn">
-        <i class="fas fa-image"></i><span>Imagen</span>
-      </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('debug')" title="Debug de código" id="ai-debug-btn">
-        <i class="fas fa-bug"></i><span>Debug</span>
-      </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('readme')" title="Generar README" id="ai-readme-btn">
-        <i class="fab fa-github"></i><span>README</span>
-      </button>
-      <button class="ai-quick-btn" onclick="setQuickPrompt('review')" title="Code Review" id="ai-review-btn">
-        <i class="fas fa-code"></i><span>Review</span>
-      </button>
-    </div>
     <!-- Shell principal -->
     <div class="ai-attach-slot" id="ai-attach-chip" style="display:none"></div>
     <div class="ai-input-shell">
@@ -3781,21 +3716,21 @@ async function sendEmail(e) {
     </div>
   </div>
 
-  <!-- Barra de acciones inferior -->
-  <div class="ai-bottom-bar">
-    <button class="ai-circle-btn ai-circle-clear" id="ai-clear-btn" title="Restablecer chat" aria-label="Limpiar conversación">
-      <div class="ai-circle-icon"><i class="fas fa-rotate-left"></i></div>
-      <span class="ai-circle-label" data-subtitle="Nueva conversación">Restablecer</span>
-    </button>
-    <button class="ai-circle-btn ai-circle-close" id="ai-close-btn" title="Cerrar chat" aria-label="Cerrar chat">
-      <div class="ai-circle-icon"><i class="fas fa-times"></i></div>
-      <span class="ai-circle-label" data-subtitle="Ocultar panel">Cerrar</span>
-    </button>
-  </div>
-
-    </div><!-- /.ai-main -->
-
   </div><!-- /.ai-body -->
+</div>
+
+<!-- Menú deslizante de funciones de EMI -->
+<div id="emi-drawer" class="emi-drawer" aria-hidden="true">
+  <div class="emi-drawer-scrim" onclick="emiMenu.close()"></div>
+  <aside class="emi-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de EMI COPILOT">
+    <div class="emi-drawer-head">
+      <div class="emi-drawer-title">☰ EMI COPILOT <span class="emi-drawer-status"><i class="fas fa-circle online-dot"></i> En línea</span></div>
+      <button class="emi-drawer-close" onclick="emiMenu.close()" aria-label="Cerrar menú">✕</button>
+    </div>
+    <div class="emi-drawer-body" id="emi-drawer-body">
+      <!-- rellenado por JS (emiMenu.render) -->
+    </div>
+  </aside>
 </div>
 
 <script>
@@ -3971,7 +3906,7 @@ async function sendEmail(e) {
   }
 
   fab.addEventListener('click', toggle);
-  closeB.addEventListener('click', () => setOpen(false));
+  if (closeB) closeB.addEventListener('click', () => setOpen(false));
   const clearB = document.getElementById('ai-clear-btn');
   function persistChat() {
     try {
@@ -4009,6 +3944,8 @@ async function sendEmail(e) {
     if (sugs) sugs.style.display = 'flex';
   };
   if (clearB) clearB.addEventListener('click', resetChat);
+  window.resetEmiChat = resetChat;
+  window.closeEmiChat = function () { setOpen(false); };
   restoreChat();
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen) setOpen(false); });
   // Mobile: swipe down to close — solo desde el header/handle, nunca
@@ -5107,61 +5044,108 @@ window.setEmiMode = function (mode, btn) {
   }
 };
 
-/* ── EMI: sidebar de funciones ─────────────────────────────── */
-window.aiSideFlyoutOpen = false;
+/* ── EMI: menú deslizante de funciones (drawer) ─────────────── */
+window.emiMenu = {
+  open: false,
 
-window.aiSideFlyout = function (html) {
-  var f = document.getElementById('ai-side-flyout');
-  if (!f) return;
-  if (html === null || html === undefined) {
-    f.hidden = true; window.aiSideFlyoutOpen = false; return;
-  }
-  f.innerHTML = html;
-  f.hidden = false;
-  window.aiSideFlyoutOpen = true;
-};
+  get: function (id) { return document.getElementById(id); },
 
-window.aiSideAction = function (action) {
-  if (action === 'new') {
-    var clearBtn = document.getElementById('ai-clear-btn');
-    if (clearBtn) { clearBtn.click(); window.aiSideFlyout(null); }
+  openFn: function () {
+    var d = this.get('emi-drawer');
+    if (!d) return;
+    d.setAttribute('aria-hidden', 'false');
+    d.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+    this.open = true;
+    this.render();
+  },
+
+  close: function () {
+    var d = this.get('emi-drawer');
+    if (!d) return;
+    d.setAttribute('aria-hidden', 'true');
+    d.classList.remove('is-open');
+    document.body.style.overflow = '';
+    this.open = false;
+  },
+
+  toggle: function () {
+    this.open ? this.close() : this.openFn();
+  },
+
+  /* Acciones directas */
+  newChat: function () {
+    this.close();
+    if (typeof window.resetEmiChat === 'function') window.resetEmiChat();
     if (typeof toast === 'function') toast('Nueva conversación iniciada 🗒', 'success', 2000);
-    return;
-  }
-  if (action === 'attach') {
-    var attach = document.getElementById('ai-attach-input');
-    if (attach) attach.click();
-    window.aiSideFlyout(null);
-    return;
-  }
-  if (action === 'export') {
-    window.aiSideFlyout(null);
+  },
+  clearChat: function () {
+    this.close();
+    if (typeof window.resetEmiChat === 'function') window.resetEmiChat();
+    if (typeof toast === 'function') toast('Conversación eliminada 🗑', 'info', 2000);
+  },
+  attach: function () {
+    var a = this.get('ai-attach-input');
+    if (a) a.click();
+    this.close();
+  },
+  exportFn: function () {
+    this.close();
     if (typeof window.exportEmiChat === 'function') window.exportEmiChat();
-    return;
-  }
-  if (action === 'fullscreen') {
-    window.aiSideFlyout(null);
+  },
+  fullscreen: function () {
+    this.close();
     if (typeof window.toggleEmiFullscreen === 'function') window.toggleEmiFullscreen();
-    return;
-  }
-  if (action === 'usage') {
+  },
+  closePanel: function () {
+    this.close();
+    if (typeof window.closeEmiChat === 'function') window.closeEmiChat();
+  },
+  quick: function (key) {
+    this.close();
+    if (typeof setQuickPrompt === 'function') setQuickPrompt(key);
+  },
+  setMode: function (mode) {
+    setEmiMode(mode, null);
+    this.render();
+    if (typeof toast === 'function') toast('EMI: modo ' + (mode === 'auto' ? 'Auto' : mode), 'info', 1400);
+  },
+
+  /* Sección de contenido */
+  section: function (t) {
+    return '<div class="emi-sec">' + t + '</div>';
+  },
+  item: function (icon, label, onclick, extra) {
+    return '<button class="emi-item' + (extra || '') + '" onclick="' + onclick + '"><i class="' + icon + '"></i><span>' + label + '</span></button>';
+  },
+
+  _usageHtml: function () {
     var used = parseInt(sessionStorage.getItem('ch_chat_count') || '0', 10);
     var limit = 30;
     if (window.RC && typeof window.RC.limit === 'function') {
       try { var l = window.RC.limit(); if (l) limit = l; } catch (e) {}
     }
     var pct = Math.min(100, Math.round((used / limit) * 100));
-    var label = used >= limit ? 'Límite alcanzado · espera a mañana o inicia sesión' : (limit - used) + ' disponibles hoy';
-    var h = aiFlyoutHeader('📊 Estadísticas de uso', 'usage');
-    h += '<div class="ai-flyout-stat"><span>Mensajes usados</span><b>' + used + ' / ' + limit + '</b></div>';
-    h += '<div class="ai-flyout-bar"><span style="width:' + pct + '%"></span></div>';
-    h += '<div class="ai-flyout-hint">' + label + '. El límite se renueva cada día.</div>';
-    h += '<div class="ai-flyout-sep"></div>';
-    h += '<button class="ai-flyout-item" onclick="aiSideAction(\'new\')"><i class="fas fa-rotate-left"></i>Reiniciar sesión</button>';
-    window.aiSideFlyout(h);
-    return;
-  }
-  if (action === 'modes') {
+    var rest = Math.max(0, limit - used);
+    var state = used >= limit
+      ? '<span style="color:#ff5c5c">Límite alcanzado hoy</span>'
+      : '<span style="color:#3ecf8e">' + rest + ' disponibles hoy</span>';
+    return '<div class="emi-usage">'
+      + '<div class="emi-usage-top"><span>Mensajes usados</span><b>' + used + ' / ' + limit + '</b></div>'
+      + '<div class="emi-usage-bar"><span style="width:' + pct + '%"></span></div>'
+      + '<div class="emi-usage-hint">' + state + ' · El límite se renueva cada día.</div>'
+      + '</div>';
+  },
+
+  render: function () {
+    var body = this.get('emi-drawer-body');
+    if (!body) return;
+    var them = localStorage.getItem('theme') || 'dark';
+    var font = localStorage.getItem('cfg_font') || 'md';
+    var anim = localStorage.getItem('cfg_anim') !== '0';
+    var neural = localStorage.getItem('cfg_neural') === '1';
+    var mode = window._emiMode || 'auto';
+
     var modes = [
       ['auto', '⚡', 'Asistente general'],
       ['dev', '💻', 'Programación & Debug'],
@@ -5169,80 +5153,88 @@ window.aiSideAction = function (action) {
       ['doc', '📄', 'PDF & Documentos'],
       ['translate', '🌐', 'Traductor Pro']
     ];
-    var h = aiFlyoutHeader('🎯 Menú de modos', 'modes');
-    for (var i = 0; i < modes.length; i++) {
-      var m = modes[i];
-      var active = window._emiMode === m[0];
-      h += '<button class="ai-flyout-item' + (active ? ' is-active' : '') + '" onclick="setEmiMode(\'' + m[0] + '\',this);aiSideFlyout(null)">'
-        + '<i>' + m[1] + '</i>' + m[2] + (active ? ' <span style="margin-left:auto;color:#7C4DFF">✓</span>' : '') + '</button>';
-    }
-    window.aiSideFlyout(h);
-    return;
-  }
-  if (action === 'prompts') {
-    var q = [
-      ['genera', '🖼', 'Generar imagen'],
-      ['debug', '🐞', 'Depurar código'],
-      ['readme', '📘', 'Generar README'],
-      ['review', '✨', 'Code Review'],
-      ['plan', '🗺', 'Plan de proyecto'],
-      ['explain', '🔍', 'Explicar concepto']
+    var modesHtml = modes.map(function (m) {
+      var on = mode === m[0];
+      return '<button class="emi-mode' + (on ? ' is-active' : '') + '" onclick="emiMenu.setMode(\'' + m[0] + '\')">'
+        + '<span class="emi-mode-ico">' + m[1] + '</span>'
+        + '<span class="emi-mode-lbl">' + m[2] + '</span>'
+        + (on ? '<span class="emi-mode-check">✓</span>' : '') + '</button>';
+    }).join('');
+
+    var quick = [
+      ['genera', 'fas fa-image', 'Generar imagen'],
+      ['debug', 'fas fa-bug', 'Depurar código'],
+      ['readme', 'fab fa-github', 'Generar README'],
+      ['review', 'fas fa-code', 'Code Review'],
+      ['plan', 'fas fa-map', 'Plan de proyecto'],
+      ['explain', 'fas fa-lightbulb', 'Explicar concepto']
     ];
-    var h = aiFlyoutHeader('⚡ Acciones rápidas', 'prompts');
-    for (var j = 0; j < q.length; j++) {
-      h += '<button class="ai-flyout-item" onclick="setQuickPrompt(\'' + q[j][0] + '\');aiSideFlyout(null)"><i>' + q[j][1] + '</i>' + q[j][2] + '</button>';
-    }
-    window.aiSideFlyout(h);
-    return;
-  }
-  if (action === 'settings') {
-    var theme = localStorage.getItem('theme') || 'dark';
-    var font = localStorage.getItem('cfg_font') || 'md';
-    var anim = localStorage.getItem('cfg_anim') !== '0';
-    var neural = localStorage.getItem('cfg_neural') === '1';
-    var h = aiFlyoutHeader('⚙️ Ajustes del panel', 'settings');
-    h += '<div class="ai-flyout-hint" style="margin-top:.2rem">Tema</div>';
-    h += '<div class="ai-flyout-inline">';
-    h += flyoutPill('theme', 'dark', '🌙', theme === 'dark');
-    h += flyoutPill('theme', 'light', '☀️', theme === 'light');
-    h += flyoutPill('theme', 'system', '🖥', theme === 'system');
+    var quickHtml = quick.map(function (q) {
+      return this.item(q[1], q[2], "emiMenu.quick('" + q[0] + "')");
+    }.bind(this)).join('');
+
+    var h = '';
+
+    // Conversación
+    h += this.section('Conversación');
+    h += this._usageHtml();
+    h += this.item('fas fa-plus', 'Nuevo chat', "emiMenu.newChat()");
+    h += this.item('fas fa-download', 'Exportar conversación', "emiMenu.exportFn()");
+    h += this.item('fas fa-trash', 'Borrar todo', "emiMenu.clearChat()", ' danger');
+
+    // Modos
+    h += this.section('Modos de EMI');
+    h += modesHtml;
+
+    // Información
+    h += this.section('Información');
+    h += this.item('fas fa-paperclip', 'Adjuntar imagen o PDF', "emiMenu.attach()");
+
+    // Acciones rápidas
+    h += this.section('Acciones rápidas');
+    h += quickHtml;
+
+    // Ajustes
+    h += this.section('Ajustes');
+    h += '<div class="emi-opt-row">';
+    h += this._pill('theme', 'dark', '🌙', them === 'dark');
+    h += this._pill('theme', 'light', '☀️', them === 'light');
+    h += this._pill('theme', 'system', '🖥 Auto', them === 'system');
     h += '</div>';
-    h += '<div class="ai-flyout-hint">Tamaño de letra</div>';
-    h += '<div class="ai-flyout-inline">';
-    h += flyoutPill('font', 'sm', 'SM', font === 'sm');
-    h += flyoutPill('font', 'md', 'MD', font === 'md');
-    h += flyoutPill('font', 'lg', 'LG', font === 'lg');
+    h += '<div class="emi-opt-hint">Tema</div>';
+    h += '<div class="emi-opt-row">';
+    h += this._pill('font', 'sm', 'SM', font === 'sm');
+    h += this._pill('font', 'md', 'MD', font === 'md');
+    h += this._pill('font', 'lg', 'LG', font === 'lg');
     h += '</div>';
-    h += '<div class="ai-flyout-sep"></div>';
-    h += flyoutCheck('anim', '💫 Animaciones / sonido', anim);
-    h += flyoutCheck('neural', '🧠 Fondo neural', neural);
-    h += '<div class="ai-flyout-sep"></div>';
-    h += '<button class="ai-flyout-item" onclick="resetCfg();aiSideFlyout(null)"><i class="fas fa-rotate-left"></i>Restablecer ajustes</button>';
-    window.aiSideFlyout(h);
-    return;
+    h += '<div class="emi-opt-hint">Tamaño de letra</div>';
+    h += '<div class="emi-check"><span>💫 Animaciones / sonido</span><input type="checkbox" '
+      + (anim ? 'checked' : '') + ' onchange="toggleAnim(this)"></div>';
+    h += '<div class="emi-check"><span>🧠 Fondo neural</span><input type="checkbox" '
+      + (neural ? 'checked' : '') + ' onchange="toggleNeural(this)"></div>';
+
+    // General
+    h += this.section('General');
+    h += this.item('fas fa-expand', 'Pantalla completa', "emiMenu.fullscreen()");
+    h += this.item('fas fa-times', 'Cerrar panel de chat', "emiMenu.closePanel()");
+
+    body.innerHTML = h;
+  },
+
+  _pill: function (key, val, label, active) {
+    return '<button class="emi-pill' + (active ? ' is-active' : '') + '" onclick="setCfg(\'' + key + '\',\'' + val + '\',this)">' + label + '</button>';
   }
-  window.aiSideFlyout(null);
 };
 
-function aiFlyoutHeader(title, id) {
-  return '<div class="ai-flyout-head">' + title
-    + '<button class="ai-flyout-close" onclick="aiSideFlyout(null)" aria-label="Cerrar">✕</button></div>';
-}
-function flyoutPill(key, val, label, active) {
-  return '<button class="ai-flyout-pill' + (active ? ' is-active' : '') + '" onclick="setCfg(\'' + key + '\',\'' + val + '\',this)">' + label + '</button>';
-}
-function flyoutCheck(key, label, checked) {
-  return '<div class="ai-flyout-check"><span>' + label + '</span>'
-    + '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggle' + (key === 'anim' ? 'Anim' : 'Neural') + '(this)"></div>';
-}
-
-document.addEventListener('click', function (e) {
-  if (!window.aiSideFlyoutOpen) return;
-  if (e.target.closest('.ai-side-flyout') || e.target.closest('.ai-side-btn')) return;
-  var f = document.getElementById('ai-side-flyout');
-  if (f) f.hidden = true;
-  window.aiSideFlyoutOpen = false;
+// Cerrar el drawer con Escape
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && window.emiMenu && window.emiMenu.open) window.emiMenu.close();
 });
+
+// Aviso del FAB (mantener compatibilidad con posibles referencias)
+window.aiSideFlyout = function () {};
+window.aiSideAction = function () {};
+
 
 
 // ═══ SKILLS TABS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•══
