@@ -1200,19 +1200,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
 
             <!-- Mapa para elegir ciudad -->
-            <div class="wx-map-box" id="wx-map-box">
-                <div class="wx-map-head">
-                    <span><i class="fas fa-map-location-dot"></i> Elige tu ciudad en el mapa</span>
-                    <button class="wx-map-collapse" id="wx-map-collapse" onclick="chToggleMap()" aria-label="Ocultar mapa"><i class="fas fa-chevron-up"></i></button>
-                </div>
-                <div class="wx-map-search">
-                    <input type="text" id="wx-map-search-input" class="wx-input" placeholder="Buscar ciudad… (ej. Ciudad de Guatemala)" onkeydown="if(event.key==='Enter')chMapSearch()">
-                    <button class="wx-search-btn" onclick="chMapSearch()"><i class="fas fa-magnifying-glass"></i></button>
-                </div>
-                <div id="wx-minimap" class="wx-minimap"><div class="wx-map-loading"><i class="fas fa-spinner fa-spin"></i> Cargando mapa…</div></div>
-                <div class="wx-map-foot">
-                    <span id="wx-map-city">Mueve el marcador ✦ y toca una ubicación, o usa el buscador</span>
-                    <button class="wx-map-select-btn" id="wx-map-select" onclick="chApplyMapCity()"><i class="fas fa-check"></i> Guardar esta ciudad</button>
+            <div class="wx-map-box closed" id="wx-map-box">
+                <button class="wx-map-togglebtn" id="wx-map-toggle" onclick="chToggleMap()">
+                    <i class="fas fa-map-location-dot"></i> <span>Elegir mi ciudad en el mapa</span>
+                    <i class="fas fa-chevron-down wx-map-caret" id="wx-map-caret"></i>
+                </button>
+                <div class="wx-map-inner">
+                    <div class="wx-map-search">
+                        <input type="text" id="wx-map-search-input" class="wx-input" placeholder="🔍 Buscar ciudad… (ej. Ciudad de Guatemala)" onkeydown="if(event.key==='Enter')chMapSearch()">
+                        <button class="wx-search-btn" onclick="chMapSearch()" aria-label="Buscar"><i class="fas fa-magnifying-glass"></i></button>
+                    </div>
+                    <div id="wx-minimap" class="wx-minimap"><div class="wx-map-loading"><div class="wx-spinner-map"></div> Cargando mapa…</div></div>
+                    <div class="wx-map-foot">
+                        <span id="wx-map-city">Mueve el marcador ✦ y toca una ubicación, o usa el buscador</span>
+                        <button class="wx-map-select-btn" id="wx-map-select" onclick="chApplyMapCity()"><i class="fas fa-check"></i> Guardar</button>
+                    </div>
                 </div>
             </div>
 
@@ -1233,10 +1235,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <div id="wx-result" style="display:none">
                 <div class="wx-card">
                     <div class="wx-main">
-                        <div class="wx-city" id="wx-city">—</div>
-                        <div class="wx-desc" id="wx-desc">—</div>
-                        <div class="wx-temp" id="wx-temp">—°</div>
-                        <div class="wx-feels" id="wx-feels">Sensación: —°C</div>
+                        <div class="wx-big" id="wx-emoji-big">🌡️</div>
+                        <div class="wx-hdr">
+                            <div class="wx-city" id="wx-city">—</div>
+                            <div class="wx-feels" id="wx-feels">Sensación: —°C</div>
+                        </div>
+                        <div class="wx-temp-row">
+                            <div class="wx-temp" id="wx-temp">—°</div>
+                            <div class="wx-desc" id="wx-desc">—</div>
+                        </div>
                     </div>
                     <div class="wx-grid">
                         <div class="wx-stat">
@@ -1255,7 +1262,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <small>Precipitación</small>
                         </div>
                         <div class="wx-stat">
-                            <i class="fas fa-eye"></i>
+                            <i class="fas fa-clock"></i>
                             <span id="wx-updated">—</span> <span class="wx-live-dot"></span>
                             <small>Actualizado</small>
                         </div>
@@ -1263,8 +1270,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
                 <!-- Barra de búsqueda manual -->
                 <div class="wx-search">
-                    <input type="text" id="wx-search-input" class="wx-input" placeholder="Buscar otra ciudad…" onkeydown="if(event.key==='Enter')searchWeatherCity()">
-                    <button class="wx-search-btn" onclick="searchWeatherCity()"><i class="fas fa-search"></i></button>
+                    <input type="text" id="wx-search-input" class="wx-input" placeholder="🔍 Buscar otra ciudad…" onkeydown="if(event.key==='Enter')searchWeatherCity()">
+                    <button class="wx-search-btn" onclick="searchWeatherCity()" aria-label="Buscar"><i class="fas fa-search"></i></button>
                 </div>
             </div>
 
@@ -5150,9 +5157,10 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       city = cityName || `${data.name}, ${data.sys.country}`;
 
       document.getElementById('wx-city').textContent   = city;
-      document.getElementById('wx-desc').textContent   = `${icon} ${capitalize(data.weather[0].description)}`;
+      document.getElementById('wx-desc').textContent   = capitalize(data.weather[0].description);
+      document.getElementById('wx-emoji-big').textContent = icon;
       document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}°`;
-      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C`;
+      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C · Máx ${Math.round(data.main.temp_max)}° / Mín ${Math.round(data.main.temp_min)}°`;
       document.getElementById('wx-hum').textContent    = `${data.main.humidity}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(data.wind.speed * 3.6)} km/h`;
       document.getElementById('wx-precip').textContent = data.rain?.['1h'] ? `${data.rain['1h']} mm` : '0 mm';
@@ -5161,7 +5169,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
     } else {
       // ── Fallback: Open-Meteo (sin key) ──
       const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&wind_speed_unit=kmh&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&daily=temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timezone=auto`
       );
       const d = await res.json();
       const c = d.current;
@@ -5178,11 +5186,19 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
         85:'🌨️ Chubascos de nieve',86:'❄️ Chubascos de nieve intensos',
         95:'⛈️ Tormenta eléctrica',96:'⛈️ Tormenta con granizo',99:'⛈️ Tormenta con granizo intenso'
       };
-
+      const WX_ICON = {
+        0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',56:'🌧️',57:'🌧️',
+        61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'❄️',
+        80:'🌦️',81:'🌦️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'
+      };
+      const dMax = d.daily?.temperature_2m_max?.[0];
+      const dMin = d.daily?.temperature_2m_min?.[0];
       document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
-      document.getElementById('wx-desc').textContent   = WX[c.weather_code] || '🌡️ Variable';
+      document.getElementById('wx-desc').textContent   = WX[c.weather_code] || 'Variable';
+      document.getElementById('wx-emoji-big').textContent = WX_ICON[c.weather_code] || '🌡️';
       document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
-      document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(c.apparent_temperature)}°C`;
+      const extrema = (dMax != null && dMin != null) ? ` · ↑ ${Math.round(dMax)}° ↓ ${Math.round(dMin)}°` : '';
+      document.getElementById('wx-feels').textContent  = `Sensación: ${Math.round(c.apparent_temperature)}°C${extrema}`;
       document.getElementById('wx-hum').textContent    = `${c.relative_humidity_2m}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(c.wind_speed_10m)} km/h`;
       document.getElementById('wx-precip').textContent = `${c.precipitation} mm`;

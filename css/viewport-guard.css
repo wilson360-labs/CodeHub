@@ -451,36 +451,48 @@ section, main, .container, .wrap, .inner, .section-wrap {
 [data-theme="light"] .wx-live-dot { background: #16a34a; }
 
 /* ── Minimapa del clima (Leaflet) ─────────────────────── */
-.wx-map-box { display: block; }
-.wx-map-box.closed { display: none; }
-.wx-map-box .wx-map-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: .5rem; margin-bottom: .6rem;
-  font-size: .82rem; font-weight: 700; color: var(--text, currentColor);
+.wx-map-box { display: block; margin-top: .5rem; }
+.wx-map-togglebtn {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  width: 100%; padding: .8rem 1rem; border-radius: 14px; cursor: pointer;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.28);
+  color: #22c55e; font-weight: 700; font-size: .82rem; font-family: var(--font);
+  transition: all .18s;
 }
-.wx-map-box .wx-map-head i { color: #22c55e; margin-right: .3rem; }
-.wx-map-collapse {
-  background: transparent; border: none; color: var(--muted, #888);
-  font-size: .85rem; cursor: pointer; padding: .2rem .4rem;
-}
+.wx-map-togglebtn:hover { background: rgba(34,197,94,.18); }
+.wx-map-togglebtn > span { text-align: left; }
+.wx-map-togglebtn .wx-map-caret { font-size: .75rem; opacity: .8; transition: transform .2s; }
+.wx-map-inner { margin-top: .7rem; }
+.wx-map-box.closed .wx-map-inner { display: none; }
 .wx-map-search { display: flex; gap: .4rem; margin-bottom: .6rem; }
 .wx-map-search .wx-input {
-  flex: 1; min-width: 0; padding: .55rem .8rem;
+  flex: 1; min-width: 0; padding: .6rem .85rem;
   border-radius: 10px; border: 1px solid rgba(128,128,128,.25);
   background: var(--card, #fff); color: inherit; font-size: .85rem;
 }
 .wx-map-search .wx-search-btn {
-  border: none; width: 40px; border-radius: 10px;
+  border: none; width: 44px; min-width: 44px; border-radius: 10px;
   background: linear-gradient(135deg,#2f80ed,#22c55e); color: #fff; cursor: pointer;
 }
 .wx-minimap {
   width: 100%; height: 260px; border-radius: 14px;
   overflow: hidden; position: relative;
   border: 1px solid rgba(128,128,128,.25); z-index: 1;
+  background: #a6cad4; /* color de respaldo tipo agua/cielo OSM */
 }
 .wx-map-loading {
   position: absolute; inset: 0; display: flex; align-items: center;
-  justify-content: center; gap: .5rem; font-size: .8rem; color: var(--muted, #888);
+  justify-content: center; gap: .5rem; font-size: .8rem; color: var(--muted, #666);
+  flex-direction: column;
+}
+.wx-spinner-map {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid rgba(34,197,94,.2); border-top-color: #22c55e;
+  animation: spin .8s linear infinite;
+}
+.wx-map-fail {
+  padding: 1.4rem; text-align: center; font-size: .8rem;
+  color: #b45309; line-height: 1.5;
 }
 .wx-map-foot {
   display: flex; align-items: center; justify-content: space-between;
@@ -488,20 +500,45 @@ section, main, .container, .wrap, .inner, .section-wrap {
   text-overflow: ellipsis; overflow: hidden; white-space: nowrap;
 }
 .wx-map-select-btn {
-  flex-shrink: 0; padding: .5rem .8rem; border: none; border-radius: 10px;
+  flex-shrink: 0; padding: .55rem .9rem; border: none; border-radius: 10px;
   background: linear-gradient(135deg,#22c55e,#16a34a); color: #fff;
   font-weight: 700; font-size: .75rem; cursor: pointer; white-space: nowrap;
 }
+.wx-map-select-btn:active { transform: scale(.96); }
 .wx-map-marker svg { filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .wx-minimap.leaflet-container { font: inherit; }
-.wx-minimap .leaflet-control-attribution { font-size: 9px !important; }
+.wx-minimap .leaflet-control-attribution { font-size: 9px !important; background: rgba(255,255,255,.7) !important; }
+.wx-minimap .leaflet-bar a { color: #333 !important; }
 
-/* Prevent Leaflet interaction overflow on mobile */
 @media (max-width: 640px) {
   .wx-minimap { height: 220px; }
 }
 @media (max-width: 380px) {
   .wx-minimap { height: 190px; }
+  .wx-map-foot { flex-direction: column; align-items: stretch; white-space: normal; }
+  .wx-map-select-btn { width: 100%; }
+}
+
+/* ── Panel de clima mejorado ─────────────────────────── */
+.wx-card {
+  position: relative; overflow: hidden;
+  background: linear-gradient(160deg, rgba(13,13,26,.96), rgba(17,24,39,.92));
+}
+.wx-main { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+.wx-big {
+  font-size: 3.4rem; line-height: 1; flex-shrink: 0;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.35));
+}
+.wx-hdr { flex: 1; min-width: 0; }
+.wx-temp-row { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; }
+.wx-temp { margin-top: .2rem; }
+.wx-desc { font-size: 1rem; font-weight: 600; margin: 0 0 .25rem; padding-bottom: .35rem; }
+.wx-feels { margin-top: .1rem; }
+.wx-stat i { font-size: 1.05rem; }
+
+@media (max-width: 380px) {
+  .wx-main { flex-direction: column; align-items: flex-start; gap: .4rem; }
+  .wx-big { font-size: 3rem; }
 }
 
 /* ── Selector de frecuencia de notificaciones ────────── */
