@@ -60,7 +60,7 @@
       release:      '<i class="fas fa-rocket"></i>',
       feature:      '<i class="fas fa-lightbulb"></i>',
       fix:          '<i class="fas fa-wrench"></i>',
-      maintenance:  '<i class="fas fa-plug-circle-bolt"></i>',
+      maintenance:  '<i class="fas fa-plug"></i>',
     };
     return icons[type] || '<i class="fas fa-bell"></i>';
   }

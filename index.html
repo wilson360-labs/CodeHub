@@ -202,17 +202,44 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
 
-    <!-- Font Awesome — diferido, no bloquea render -->
-    <link id="fa-preload" rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous"></noscript>
+    <!-- Font Awesome — carga robusta con CDN primario + respaldo -->
+    <link rel="stylesheet" id="fa-css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script>
-      /* Fallback: algunos navegadores/webviews móviles (WhatsApp, Instagram, Facebook)
-         no disparan onload en <link rel="preload">, dejando los íconos (y sus colores)
-         sin cargar. Forzamos el swap a stylesheet si no ocurrió tras 1.5s. */
-      setTimeout(function () {
-        var l = document.getElementById('fa-preload');
-        if (l && l.rel !== 'stylesheet') l.rel = 'stylesheet';
-      }, 1500);
+      /* Detección de fallo de Font Awesome: si tras un tiempo los íconos no
+         aplican la fuente de glifos, recargamos desde un CDN alternativo.
+         Esto cubre webviews/redes donde el CDN primario queda bloqueado. */
+      (function () {
+        function faLoaded() {
+          try {
+            var t = document.createElement('i');
+            t.className = 'fas fa-bars';
+            t.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+            document.body.appendChild(t);
+            var ok = getComputedStyle(t).fontFamily.indexOf('Font Awesome') !== -1;
+            t.remove();
+            return ok;
+          } catch (e) { return false; }
+        }
+        var swapped = false;
+        function swapCss(href) {
+          if (swapped) return;
+          swapped = true;
+          var l = document.getElementById('fa-css');
+          if (l) l.href = href;
+        }
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            if (!faLoaded()) {
+              swapCss('https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css');
+              setTimeout(function () {
+                if (!faLoaded()) {
+                  swapCss('https://use.fontawesome.com/releases/v6.7.2/css/all.css');
+                }
+              }, 2500);
+            }
+          }, 600);
+        });
+      })();
     </script>
 
     <!-- Estilos principales -->
@@ -350,7 +377,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
 
         <div class="menu-item" onclick="activateScreenShake()">
-            <i class="fas fa-wave-square"></i>
+            <i class="fas fa-arrows-spin"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Screen Shake</div>
                 <div class="menu-item-desc">Vibración de pantalla extrema</div>
@@ -528,7 +555,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="side-group">
             <div class="side-group-label">Navegación</div>
             <a class="side-link" href="#mi-pueblo" onclick="closeMobileNav()"><i class="fas fa-user"></i> Sobre mí</a>
-            <a class="side-link" href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-simple"></i> Estadísticas</a>
+            <a class="side-link" href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-line"></i> Estadísticas</a>
             <a class="side-link" href="#skills" onclick="closeMobileNav()"><i class="fas fa-code"></i> Habilidades</a>
             <a class="side-link" href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
             <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
