@@ -43,15 +43,25 @@ jobs:
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Generate release keystore
+      - name: Prepare Release Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORD }}
         run: |
-          keytool -genkeypair -v \
-            -keystore apk/android/app/release.jks \
-            -alias codehub \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -keypass "${{ secrets.KEY_PASSWORD }}" \
-            -dname "CN=Wilson.E, OU=CodeHub, O=CodeHub, L=Guatemala, ST=Guatemala, C=GT"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "🔑 Decodificando keystore persistente desde secrets..."
+            echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks
+          else
+            echo "⚠️ RELEASE_KEYSTORE_BASE64 no configurado, generando keystore temporal..."
+            keytool -genkeypair -v \
+              -keystore apk/android/app/release.jks \
+              -alias codehub \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "${KEYSTORE_PASS:-codehubpass123}" \
+              -keypass "${KEY_PASS:-codehubpass123}" \
+              -dname "CN=Wilson.E, OU=CodeHub, O=CodeHub, L=Guatemala, ST=Guatemala, C=GT"
+          fi
 
       - name: Build Release APK
         working-directory: apk/android

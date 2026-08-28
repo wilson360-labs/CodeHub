@@ -24,15 +24,23 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ProgressBar;
+import android.content.res.ColorStateList;
+import android.graphics.Bitmap;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.gms.location.CurrentLocationRequest;
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -52,6 +60,8 @@ public class MainActivity extends Activity {
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
+    private SwipeRefreshLayout swipeRefreshLayout;
+    private ProgressBar progressBar;
     private CodeHubBridge bridge;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
@@ -65,7 +75,39 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         webView = new WebView(this);
-        setContentView(webView);
+
+        swipeRefreshLayout = new SwipeRefreshLayout(this);
+        swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF38EF7D);
+        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF141424);
+        swipeRefreshLayout.addView(webView, new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        swipeRefreshLayout.setOnRefreshListener(() -> {
+            if (webView != null) webView.reload();
+        });
+
+        swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
+            return webView != null && webView.getScrollY() > 0;
+        });
+
+        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar.setMax(100);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            progressBar.setProgressTintList(ColorStateList.valueOf(0xFF6366F1));
+        }
+        int barHeight = (int) (3 * getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams pbParams = new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, Math.max(barHeight, 6));
+        progressBar.setLayoutParams(pbParams);
+        progressBar.setVisibility(View.GONE);
+
+        FrameLayout rootLayout = new FrameLayout(this);
+        rootLayout.setBackgroundColor(0xFF080810);
+        rootLayout.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        rootLayout.addView(progressBar);
+
+        setContentView(rootLayout);
 
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
@@ -360,13 +402,59 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                if (progressBar != null) {
+                    progressBar.setProgress(15);
+                    progressBar.setVisibility(View.VISIBLE);
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
                 injectNativeFlags(view);
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+                if (request != null && request.isForMainFrame()) {
+                    showOfflineFallback(view);
+                }
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                if (progressBar != null) progressBar.setVisibility(View.GONE);
+                if (failingUrl != null && (failingUrl.startsWith("http://") || failingUrl.startsWith("https://"))) {
+                    showOfflineFallback(view);
+                }
             }
         });
 
         webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                super.onProgressChanged(view, newProgress);
+                if (progressBar != null) {
+                    progressBar.setProgress(newProgress);
+                    if (newProgress >= 100) {
+                        progressBar.setVisibility(View.GONE);
+                        if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                    } else {
+                        progressBar.setVisibility(View.VISIBLE);
+                    }
+                }
+            }
+
             @Override
             public void onPermissionRequest(final android.webkit.PermissionRequest request) {
                 runOnUiThread(new Runnable() {
@@ -511,5 +599,30 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (webView != null) webView.destroy();
         super.onDestroy();
+    }
+
+    // ── OFFLINE FALLBACK ─────────────────────────────────────────
+    private void showOfflineFallback(WebView view) {
+        if (view == null) return;
+        String offlineHtml = "<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>" +
+            "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>" +
+            "<title>Sin conexión — CodeHub</title>" +
+            "<style>" +
+            "* { box-sizing: border-box; margin: 0; padding: 0; }" +
+            "body { background: #080810; color: #f0f0f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; text-align: center; }" +
+            ".card { background: #12121e; border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 2.2rem 1.8rem; max-width: 360px; width: 100%; box-shadow: 0 16px 40px rgba(0,0,0,0.6); }" +
+            ".icon { font-size: 3.2rem; margin-bottom: 1rem; }" +
+            "h1 { font-size: 1.35rem; font-weight: 700; margin-bottom: 0.6rem; color: #fff; }" +
+            "p { font-size: 0.88rem; color: #9a9ab2; line-height: 1.55; margin-bottom: 1.6rem; }" +
+            "button { width: 100%; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border: none; padding: 0.85rem 1.4rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,0.4); }" +
+            "button:active { transform: scale(0.98); opacity: 0.9; }" +
+            "</style></head>" +
+            "<body><div class='card'>" +
+            "<div class='icon'>📡</div>" +
+            "<h1>Sin conexión a internet</h1>" +
+            "<p>No se pudo cargar CodeHub. Comprueba tu conexión Wi-Fi o datos móviles e inténtalo de nuevo.</p>" +
+            "<button onclick=\"location.href='" + APP_URL + "'\">🔄 Reintentar conexión</button>" +
+            "</div></body></html>";
+        view.loadDataWithBaseURL(APP_URL, offlineHtml, "text/html", "UTF-8", null);
     }
 }

@@ -455,4 +455,95 @@ public class CodeHubBridge {
             "javascript:try{if(window." + callbackName + ")window." + callbackName +
             "('" + status + "','" + safeMsg + "');}catch(e){}"));
     }
+
+    // ── COMPARTIR NATIVO ─────────────────────────────────────────
+    @JavascriptInterface
+    public void shareText(final String title, final String text, final String url) {
+        activity.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("text/plain");
+                StringBuilder sb = new StringBuilder();
+                if (text != null && !text.isEmpty()) sb.append(text);
+                if (url != null && !url.isEmpty()) {
+                    if (sb.length() > 0) sb.append("\n");
+                    sb.append(url);
+                }
+                String content = sb.toString().trim();
+                if (title != null && !title.isEmpty()) {
+                    intent.putExtra(Intent.EXTRA_SUBJECT, title);
+                    intent.putExtra(Intent.EXTRA_TITLE, title);
+                }
+                intent.putExtra(Intent.EXTRA_TEXT, content);
+                activity.startActivity(Intent.createChooser(intent, title != null && !title.isEmpty() ? title : "Compartir con"));
+            } catch (Exception ignored) {}
+        });
+    }
+
+    // ── VIBRACIÓN HÁPTICA ────────────────────────────────────────
+    @JavascriptInterface
+    public void vibrate(long ms) {
+        try {
+            long duration = ms > 0 ? Math.min(ms, 1000) : 40;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                android.os.VibratorManager vm = (android.os.VibratorManager) activity.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                if (vm != null) {
+                    vm.getDefaultVibrator().vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                }
+            } else {
+                @SuppressWarnings("deprecation")
+                android.os.Vibrator v = (android.os.Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        v.vibrate(duration);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    // ── PORTAPAPELES NATIVO ──────────────────────────────────────
+    @JavascriptInterface
+    public void copyToClipboard(final String text) {
+        if (text == null) return;
+        activity.runOnUiThread(() -> {
+            try {
+                android.content.ClipboardManager cb = (android.content.ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cb != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("CodeHub", text);
+                    cb.setPrimaryClip(clip);
+                    android.widget.Toast.makeText(activity, "Copiado al portapapeles", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    // ── LIMPIEZA DE CACHÉ ────────────────────────────────────────
+    @JavascriptInterface
+    public void clearAppCache() {
+        activity.runOnUiThread(() -> {
+            try {
+                if (webView != null) {
+                    webView.clearCache(true);
+                    webView.clearFormData();
+                    webView.clearHistory();
+                }
+                android.webkit.WebStorage.getInstance().deleteAllData();
+                android.widget.Toast.makeText(activity, "Caché de la app limpiada", android.widget.Toast.LENGTH_SHORT).show();
+            } catch (Exception ignored) {}
+        });
+    }
+
+    // ── MODO OSCURO DEL SISTEMA ─────────────────────────────────
+    @JavascriptInterface
+    public boolean isSystemDarkMode() {
+        try {
+            int nightModeFlags = activity.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+            return nightModeFlags == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }
