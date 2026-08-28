@@ -35,7 +35,7 @@ Portfolio de **Wilson.E**, desarrollador web full stack de Guatemala. Incluye:
 | Storage APKs | Backblaze B2 |
 | IA | Groq (LLaMA 3.3 70B) + Gemini fallback |
 | Deploy Frontend | Vercel (auto-deploy) |
-| Deploy Backend | Railway |
+| Deploy Backend | Render |
 | PWA | Service Worker v3.0 |
 | Bot | Python + Telegram API |
 | CI/CD | GitHub Actions |
@@ -68,7 +68,7 @@ CodeHub/
 └── backend/
     ├── server.js       # API REST
     ├── package.json
-    └── railway.json
+    └── render.yaml
 ```
 
 ## ⚡ Variables de Entorno (GitHub Secrets)

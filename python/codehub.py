@@ -170,7 +170,6 @@ def cmd_setup():
     }
     optional = {
         "vercel": "npm install -g vercel",
-        "railway":"npm install -g @railway/cli",
     }
     all_ok = True
     for tool, install in tools.items():
@@ -338,16 +337,9 @@ def cmd_deploy():
     else:
         info("Vercel CLI no instalado — el push a main triggerea auto-deploy en Vercel")
 
-    # Railway (si está instalado)
-    step("Deploy Backend → Railway")
-    if check_tool("railway"):
-        code, out = run(["railway", "up", "--detach"], cwd=BACKEND, capture=True)
-        if code == 0:
-            ok("Railway deploy iniciado")
-        else:
-            warn("Railway CLI falló — verifica en railway.app")
-    else:
-        info("Railway CLI no instalado — Railway auto-deploya desde GitHub")
+    # Render (auto-deploy vía GitHub push)
+    step("Deploy Backend → Render")
+    info("El push a main activa auto-deploy en Render")
 
     # Esperar y verificar
     step("Verificando deploy (esperando 30s...)")
@@ -371,7 +363,7 @@ def cmd_health():
     results = {}
 
     # Backend API
-    step("Backend Railway")
+    step("Backend Render")
     checks = [
         ("/api/health",    "Health endpoint"),
         ("/api/apps",      "Apps públicas"),
@@ -837,7 +829,7 @@ def main():
         print(f"  {c('Comandos:', 'bold')}")
         descs = {
             "setup":  "Configuración inicial completa",
-            "deploy": "Deploy automático a Vercel + Railway",
+            "deploy": "Deploy automático a Vercel + Render",
             "health": "Verificar que todo funciona",
             "backup": "Backup de MongoDB",
             "update": "Actualizar versiones de apps",

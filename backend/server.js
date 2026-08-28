@@ -2,10 +2,10 @@
  * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
- * ✅ Redis      — caché (opcional, Railway Redis addon)
+ * ✅ Redis      — caché (opcional)
  * ✅ Eventos:   visitas, descargas, ratings, contacto, chat IA, nueva app
  *
- * Variables Railway:
+ * Variables de Entorno (Render):
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
  *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
@@ -1291,7 +1291,7 @@ Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servici
 - Stack: HTML, CSS, JavaScript ES2025, Python, Node.js, MongoDB, APIs de IA
 - Disponible para proyectos freelance con respuesta en menos de 24h
 - Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
-- Deploy en: Vercel (frontend) + Railway/Render (backend)
+- Deploy en: Vercel (frontend) + Render (backend)
 
 **Herramientas gratuitas en /tools:**
 QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de préstamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de código, PDF IA, OCR IA, Generador de Imágenes IA, y 35+ herramientas en total.

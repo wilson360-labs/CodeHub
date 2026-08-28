@@ -8,7 +8,7 @@
 
 **CodeHub** es un portfolio personal + plataforma de herramientas web, operado por Wilson Enríquez (Guatemala 🇬🇹).  
 Dominio en producción: `https://wilson360-labs.vercel.app`  
-Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y **Render/Railway** (backend Node.js).
+Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y **Render** (backend Node.js).
 
 ---
 
@@ -20,7 +20,7 @@ Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y *
 | Backend | Node.js + Express.js → `backend/server.js` |
 | Base de datos | MongoDB Atlas (mongoose) + Supabase (eventos/stats) |
 | Hosting frontend | Vercel (rama main = auto-deploy) |
-| Hosting backend | Render (`https://codehub-98s6.onrender.com`) / Railway |
+| Hosting backend | Render (`https://codehub-98s6.onrender.com`) |
 | IA chatbot | Groq (Llama), Google Gemini, Anthropic Claude, OpenRouter |
 | Formulario contacto | EmailJS |
 | Anti-bot | Cloudflare Turnstile |
@@ -48,7 +48,7 @@ CodeHub-main/
 ├── sitemap.xml                 ← Sitemap para SEO
 ├── ads.txt                     ← Archivo autorización AdSense
 ├── vercel.json                 ← ⚠️ CRÍTICO — Rutas, rewrites, redirects, headers
-├── railway.json                ← Config despliegue Railway (frontend legacy)
+├── render.yaml                 ← Config despliegue Render (Blueprint)
 ├── package.json                ← Dependencias frontend
 ├── googlef6ae0fd15fc626ec.html ← Verificación Google Search Console
 ├── apps_data.json              ← Seed inicial de apps (respaldo)
@@ -119,7 +119,7 @@ CodeHub-main/
 │   ├── skills-routes.js        ← Rutas de skills IA
 │   ├── package.json
 │   ├── render.yaml             ← Config Render
-│   ├── railway.json            ← Config Railway
+│   ├── RENDER-DEPLOY.md        ← Guía de despliegue en Render
 │   └── modules/
 │       └── universal-resolver/ ← Módulo resolver de links
 │
@@ -255,7 +255,7 @@ SUPABASE_URL=...           # URL de Supabase
 SUPABASE_KEY=...           # Service role key de Supabase
 FRONTEND_URL=https://wilson360-labs.vercel.app
 RATE_LIMIT_MAX=...         # Máx req por minuto (default 20)
-REDIS_URL=...              # Opcional — Railway Redis addon
+REDIS_URL=...              # Opcional — Redis caché addon (Upstash / Redis Cloud)
 VAPID_PUBLIC_KEY=...       # Web Push notificaciones
 VAPID_PRIVATE_KEY=...
 TELEGRAM_BOT_TOKEN=...     # Bot Telegram (storage APKs + alertas)

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <!-- Polyfill de window.Notification — el WebView de la app nativa
@@ -1107,7 +1107,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div class="tool-badge"><img src="https://cdn.simpleicons.org/express/000000" width="16" height="16" alt="Express.js" loading="lazy" style="vertical-align:middle;margin-right:6px"> Express.js</div>
                 <div class="tool-badge"><img src="https://cdn.simpleicons.org/cloudflare/F38020" width="16" height="16" alt="Cloudflare" loading="lazy" style="vertical-align:middle;margin-right:6px"> Cloudflare</div>
                 <div class="tool-badge"><img src="https://cdn.simpleicons.org/androidstudio/3DDC84" width="16" height="16" alt="Android Studio" loading="lazy" style="vertical-align:middle;margin-right:6px"> Android IDE</div>
-                <div class="tool-badge"><img src="https://cdn.simpleicons.org/railway/0B0D0E" width="16" height="16" alt="Railway" loading="lazy" style="vertical-align:middle;margin-right:6px"> Railway</div>
+                <div class="tool-badge"><img src="https://cdn.simpleicons.org/render/46E3B7" width="16" height="16" alt="Render" loading="lazy" style="vertical-align:middle;margin-right:6px"> Render</div>
             </div>
         </section>
 
@@ -4048,7 +4048,7 @@ async function sendEmail(e) {
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:3001';
     }
-    // Producción → Railway
+    // Producción → Render
     return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
@@ -6319,7 +6319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lazyImages.forEach(img => imgObserver.observe(img));
   }
 
-  // Preconectar al backend Railway cuando el usuario hace scroll (no al cargar)
+  // Preconectar al backend Render cuando el usuario hace scroll (no al cargar)
   let backendPreconnected = false;
   window.addEventListener('scroll', function() {
     if (!backendPreconnected) {
