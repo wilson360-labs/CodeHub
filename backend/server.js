@@ -4806,6 +4806,41 @@ app.post('/api/webhook/github-release', async (req, res) => {
   }
 });
 
+// ── PROCESO: capturar errores no controlados ────────────────────
+// Sin esto, un throw async sin catch (p. ej. en un handler de WS o un
+// setTimeout) tumba el proceso entero en Render sin dejar rastro claro
+// de la causa. Se loguea + se avisa por Telegram, pero NO se hace
+// process.exit() salvo que el error sea realmente fatal para el event
+// loop — dejar el proceso vivo es preferible a un crash-loop.
+process.on('unhandledRejection', (reason, promise) => {
+  const msg = reason instanceof Error ? reason.stack || reason.message : String(reason);
+  console.error('⚠️ unhandledRejection:', msg);
+  tgAlert('unhandled_rejection', () => '🔴 unhandledRejection:\n' + String(msg).slice(0, 500), { windowMs: 30000 });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('🔴 uncaughtException:', err.stack || err.message);
+  tgAlert('uncaught_exception', () => '🔴 uncaughtException:\n' + String(err.stack || err.message).slice(0, 500), { windowMs: 30000 });
+  // No se llama process.exit(): en Express, un throw síncrono dentro de
+  // un route handler normal ya es capturado por Express mismo; esto
+  // cubre solo callbacks/timers fuera de ese ciclo. Mantener el
+  // proceso vivo evita reinicios en cascada que tumbarían WebSockets
+  // y sesiones activas por un error aislado.
+});
+
+// ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
+app.use((req, res) => {
+  res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
+});
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('🔴 Error middleware:', err.stack || err.message);
+  tgAlert('express_error', () => '🔴 Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
+  if (res.headersSent) return;
+  res.status(err.status || 500).json({ ok: false, error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
+});
+
 // ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {
   await initRedis();

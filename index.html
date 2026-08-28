@@ -1409,7 +1409,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <script src="js/remote-config.js?v=20260826b"></script>
     <script src="js/updater.js?v=20260724a"></script>
     <script>
-        console.log('Script started');
+        // Gate de debug: activa con localStorage.setItem('ch_debug','1')
+        // para ver logs de diagnóstico sin ensuciar la consola en producción.
+        window.chDebug = function() { try { return !!localStorage.getItem('ch_debug'); } catch(e) { return false; } };
+        if (chDebug()) console.log('Script started');
         // ========== REMOTE CONFIG: MAINTENANCE MODE ==========
         RC.ready().then(function(cfg) {
           if (cfg.maintenance && cfg.maintenance.enabled) {
@@ -1750,10 +1753,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         optional: true
                     },
                     {
-                        selector: '#cfg-btn',
+                        selector: '#side-cfg-btn',
                         icon: 'fa-solid fa-gear',
                         title: 'Configuración',
-                        text: 'Personaliza el sitio: activa o desactiva animaciones, el fondo de red neuronal y otras preferencias, sin afectar tu experiencia.'
+                        text: 'Personaliza el sitio: activa o desactiva animaciones, el fondo de red neuronal y otras preferencias, sin afectar tu experiencia.',
+                        optional: true,
+                        before: function () { var n = document.getElementById('side-nav'); if (n && !n.classList.contains('open')) toggleMobileNav(); },
+                        after: function () { var n = document.getElementById('side-nav'); if (n && n.classList.contains('open')) toggleMobileNav(); }
                     },
                     {
                         selector: '.menu-toggle-btn',
@@ -2346,7 +2352,7 @@ DISPONIBILIDAD:
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(() => {
-                console.log('👀 Usuario inactivo. ¿Todo bien?');
+                if (chDebug()) console.log('👀 Usuario inactivo. ¿Todo bien?');
             }, 60000); // 1 minuto
         }
 
@@ -2373,7 +2379,7 @@ DISPONIBILIDAD:
         // Performance monitoring
         window.addEventListener('load', () => {
             const perfData = performance.getEntriesByType('navigation')[0];
-            console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
+            if (chDebug()) console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
         });
 
         // Efecto parallax suave
@@ -6084,7 +6090,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userTriggeredUpdate = false;
 
     navigator.serviceWorker.register('/sw.js').then(reg => {
-      console.log('✅ SW registrado v4.3');
+      if (chDebug()) console.log('✅ SW registrado v4.3');
 
       setInterval(() => reg.update().catch(() => {}), 60 * 1000);
       document.addEventListener('visibilitychange', () => {

@@ -99,8 +99,26 @@
   SiteTour.prototype._renderStep = function () {
     var step = this.steps[this.index];
     if (!step) { this.close(true); return; }
+    // Hook opcional: abre paneles/menús cerrados antes de buscar el target
+    // (p. ej. el menú hamburguesa, para que su botón interno sea visible).
+    if (typeof step.before === 'function') { try { step.before(); } catch (e) {} }
     var target = document.querySelector(step.selector);
-    if (!target) {
+    // Un selector puede existir en el DOM pero estar oculto (display:none
+    // por CSS responsive, un rediseño que movió el control a otro menú,
+    // etc.) — querySelector no distingue eso, así que lo comprobamos
+    // aparte con getComputedStyle + tamaño real (offsetParent NO sirve
+    // aquí: también es null en elementos position:fixed que sí están
+    // visibles, como el FAB de EMI, así que daría falsos negativos).
+    // Sin esto, el tour resalta/apunta a un elemento invisible (bug
+    // real: el paso "Configuración" apuntaba a #cfg-btn, oculto
+    // permanentemente tras mover los controles al menú hamburguesa).
+    var visible = false;
+    if (target) {
+      var cs = getComputedStyle(target);
+      var rect = target.getBoundingClientRect();
+      visible = cs.display !== 'none' && cs.visibility !== 'hidden' && (rect.width > 0 || rect.height > 0);
+    }
+    if (!visible) {
       if (step.optional) { this.next(); return; }
       this.close(true); return;
     }
@@ -243,18 +261,24 @@
   };
 
   SiteTour.prototype.next = function () {
+    var prevStep = this.steps[this.index];
+    if (typeof prevStep?.after === 'function') { try { prevStep.after(); } catch (e) {} }
     if (this.index >= this.steps.length - 1) { this.close(true); return; }
     this.index++;
     this._renderStep();
   };
 
   SiteTour.prototype.prev = function () {
+    var prevStep = this.steps[this.index];
+    if (typeof prevStep?.after === 'function') { try { prevStep.after(); } catch (e) {} }
     if (this.index <= 0) return;
     this.index--;
     this._renderStep();
   };
 
   SiteTour.prototype.close = function (markSeen) {
+    var curStep = this.steps[this.index];
+    if (typeof curStep?.after === 'function') { try { curStep.after(); } catch (e) {} }
     this._clearHighlight();
     if (this.card) { this.card.remove(); this.card = null; }
     if (this.connector) { this.connector.remove(); this.connector = null; }
