@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js",
     "lint": "eslint server.js --max-warnings 20",
     "lint:fix": "eslint server.js --fix",
     "format": "prettier --write server.js"

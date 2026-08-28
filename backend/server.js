@@ -95,53 +95,7 @@ function loadSkillJson(id) {
 // Respeta strings entre comillas simples/dobles y bloques con
 // dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
 // plpgsql) para no cortar un ';' que esté dentro de esos bloques.
-function splitSqlStatements(sql) {
-  const statements = [];
-  let cur = '';
-  let i = 0;
-  const n = sql.length;
-  let inSingle = false, inDouble = false, dollarTag = null, inLineComment = false;
-  while (i < n) {
-    const ch = sql[i];
-    if (inLineComment) {
-      cur += ch;
-      if (ch === '\n') inLineComment = false;
-      i++; continue;
-    }
-    if (dollarTag) {
-      cur += ch;
-      if (sql.startsWith(dollarTag, i)) {
-        cur += dollarTag.slice(1);
-        i += dollarTag.length;
-        dollarTag = null;
-        continue;
-      }
-      i++; continue;
-    }
-    if (inSingle) {
-      cur += ch;
-      if (ch === "'" && sql[i + 1] === "'") { cur += "'"; i += 2; continue; }
-      if (ch === "'") inSingle = false;
-      i++; continue;
-    }
-    if (inDouble) {
-      cur += ch;
-      if (ch === '"') inDouble = false;
-      i++; continue;
-    }
-    if (ch === '-' && sql[i + 1] === '-') { inLineComment = true; cur += ch; i++; continue; }
-    if (ch === "'") { inSingle = true; cur += ch; i++; continue; }
-    if (ch === '"') { inDouble = true; cur += ch; i++; continue; }
-    if (ch === '$') {
-      const m = sql.slice(i).match(/^\$[a-zA-Z_]*\$/);
-      if (m) { dollarTag = m[0]; cur += dollarTag; i += dollarTag.length; continue; }
-    }
-    if (ch === ';') { statements.push(cur); cur = ''; i++; continue; }
-    cur += ch; i++;
-  }
-  if (cur.trim()) statements.push(cur);
-  return statements.map(s => s.trim()).filter(Boolean);
-}
+const { splitSqlStatements, clientIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
 
 const app    = express();
 const server = http.createServer(app);
@@ -1010,15 +964,6 @@ function tgAlert(type, text, opts = {}) {
   }, windowMs);
 }
 
-function clientIp(req) {
-  return String(
-    req.headers['x-real-ip'] ||
-    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    req.socket?.remoteAddress ||
-    req.ip || '?'
-  ).replace(/^::ffff:/, '').trim();
-}
-
 // Handler de express-rate-limit: avisa al admin cuando alguien excede
 // el límite (posible abuso/bot) sin bloquear la respuesta HTTP.
 function rateLimitHandler(req, res, _next, options) {
@@ -1561,21 +1506,7 @@ async function callGemini(msgs, maxTokens, imageParts) {
   return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: parts.length ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
 }
 
-// Convierte un data URL ("data:image/png;base64,AAAA...") en { mimeType, data }
-// listo para mandarle a Gemini. Devuelve null si el formato no es válido o el
-// tipo de imagen no está permitido.
-const ALLOWED_IMAGE_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
-function parseImageDataUrl(dataUrl) {
-  if (typeof dataUrl !== 'string') return null;
-  const m = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
-  if (!m) return null;
-  const mimeType = m[1].toLowerCase();
-  if (!ALLOWED_IMAGE_MIME.has(mimeType)) return null;
-  // ~4MB de imagen en base64 pesa ~5.5MB de texto; ponemos un techo razonable
-  if (m[2].length > 6_000_000) return null;
-  return { mimeType, data: m[2] };
-}
-
+// parseImageDataUrl y ALLOWED_IMAGE_MIME ahora viven en ./utils.js (importado arriba)
 
 // Modelos gratuitos de OpenRouter en orden de preferencia
 const OR_FREE_MODELS = [
@@ -4664,11 +4595,7 @@ function pickApkAsset(release) {
   return apk ? apk.browser_download_url : null;
 }
 
-function truncate(text, max = 400) {
-  if (!text) return '';
-  const clean = String(text).replace(/\r\n/g, '\n').trim();
-  return clean.length > max ? clean.slice(0, max).trim() + '…' : clean;
-}
+// truncate ahora vive en ./utils.js (importado arriba)
 
 async function autoCheckAppUpdates() {
   if (!dbConnected) return { ok: false, reason: 'no-db', updated: 0, sent: 0 };
