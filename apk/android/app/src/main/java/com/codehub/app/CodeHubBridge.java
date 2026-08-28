@@ -8,8 +8,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -21,6 +19,11 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -173,111 +176,58 @@ public class CodeHubBridge {
     }
 
     /**
-     * doGetLocation(callbackName) — Registers GPS + Network providers
-     * simultaneously, returns whichever fires first. Falls back to
-     * cached location. 15s hard timeout.
+     * doGetLocation(callbackName) — Uses Google Play Services'
+     * FusedLocationProviderClient, which fuses GPS + WiFi + cell signals
+     * via Google's positioning backend. This is materially more accurate
+     * than reading raw LocationManager.NETWORK_PROVIDER fixes directly
+     * (that provider's self-reported accuracy is frequently optimistic
+     * and can be off by kilometers — the previous cause of "wrong city"
+     * reports on the APK). Falls back to getLastLocation() if a fresh
+     * fix can't be obtained in time.
      */
     private void doGetLocation(final String callbackName) {
-        new Thread(() -> {
-            try {
-                LocationManager lm = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-                if (lm == null) { callbackNull(callbackName); return; }
+        try {
+            FusedLocationProviderClient fused = LocationServices.getFusedLocationProviderClient(activity);
+            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(0) // exigir un fix fresco, no uno viejo cacheado por el SO
+                    .build();
+            CancellationTokenSource cts = new CancellationTokenSource();
 
-                // Step 1: Check best cached location first
-                Location best = null;
-                String[] providers = { LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER };
-                for (String p : providers) {
-                    try {
-                        Location loc = lm.getLastKnownLocation(p);
-                        if (loc != null && (best == null || loc.getAccuracy() < best.getAccuracy())) {
-                            best = loc;
-                        }
-                    } catch (SecurityException ignored) {}
-                }
-
-                // If we have a cached location with accuracy < 100m, use it immediately
-                if (best != null && best.getAccuracy() < 100) {
-                    final double lat = best.getLatitude();
-                    final double lon = best.getLongitude();
-                    final float acc = best.getAccuracy();
-                    saveLocation(lat, lon);
-                    activity.runOnUiThread(() -> webView.loadUrl(
-                        "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                        "(" + lat + "," + lon + "," + acc + ");}catch(e){}"));
-                    return;
-                }
-
-                // Step 2: Request fresh updates from both providers simultaneously
-                final boolean[] responded = { false };
-                final Location[] bestResult = { best };
-                android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-
-                LocationListener listener = new LocationListener() {
-                    @Override public void onLocationChanged(Location l) {
-                        if (responded[0]) return;
-                        // Keep the best accuracy so far
-                        if (bestResult[0] == null || l.getAccuracy() < bestResult[0].getAccuracy()) {
-                            bestResult[0] = l;
-                        }
-                        // If accuracy is good enough (< 50m) or both providers tried, return
-                        if (l.getAccuracy() < 50) {
-                            responded[0] = true;
-                            removeUpdates(lm, this);
-                            returnLocation(callbackName, l);
-                        }
-                    }
-                    @Override public void onStatusChanged(String p, int s, android.os.Bundle b) {}
-                    @Override public void onProviderEnabled(String p) {}
-                    @Override public void onProviderDisabled(String p) {}
-                };
-
-                // Register both GPS and Network simultaneously
-                boolean gpsEnabled = false;
-                boolean netEnabled = false;
-                try { gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER); } catch (Exception ignored) {}
-                try { netEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER); } catch (Exception ignored) {}
-
-                if (!gpsEnabled && !netEnabled) {
-                    // No providers available — use cached if any
-                    if (best != null) {
-                        final Location fb = best;
-                        saveLocation(fb.getLatitude(), fb.getLongitude());
-                        activity.runOnUiThread(() -> webView.loadUrl(
-                            "javascript:try{if(window." + callbackName + ")window." + callbackName +
-                            "(" + fb.getLatitude() + "," + fb.getLongitude() + "," + fb.getAccuracy() + ");}catch(e){}"));
+            fused.getCurrentLocation(request, cts.getToken())
+                .addOnSuccessListener(activity, loc -> {
+                    if (loc != null) {
+                        returnLocation(callbackName, loc);
                     } else {
-                        callbackNull(callbackName);
+                        // Sin fix fresco disponible (p. ej. GPS apagado) — usar el último conocido
+                        fused.getLastLocation()
+                            .addOnSuccessListener(activity, last -> {
+                                if (last != null) returnLocation(callbackName, last);
+                                else callbackNull(callbackName);
+                            })
+                            .addOnFailureListener(activity, e -> callbackNull(callbackName));
                     }
-                    return;
-                }
+                })
+                .addOnFailureListener(activity, e -> {
+                    // getCurrentLocation falló (permisos, Play Services, etc.) — intentar el último conocido
+                    fused.getLastLocation()
+                        .addOnSuccessListener(activity, last -> {
+                            if (last != null) returnLocation(callbackName, last);
+                            else callbackNull(callbackName);
+                        })
+                        .addOnFailureListener(activity, e2 -> callbackNull(callbackName));
+                });
 
-                if (gpsEnabled) {
-                    try { lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, listener, android.os.Looper.getMainLooper()); } catch (SecurityException ignored) {}
-                }
-                if (netEnabled) {
-                    try { lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, listener, android.os.Looper.getMainLooper()); } catch (SecurityException ignored) {}
-                }
+            // 15s hard timeout — si Fused nunca responde, no dejar el JS colgado
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                cts.cancel();
+            }, 15000);
 
-                // Step 3: 15s timeout — return best available
-                mainHandler.postDelayed(() -> {
-                    if (responded[0]) return;
-                    responded[0] = true;
-                    removeUpdates(lm, listener);
-                    if (bestResult[0] != null) {
-                        returnLocation(callbackName, bestResult[0]);
-                    } else {
-                        callbackNull(callbackName);
-                    }
-                }, 15000);
-
-            } catch (Exception e) {
-                callbackNull(callbackName);
-            }
-        }).start();
-    }
-
-    private void removeUpdates(LocationManager lm, LocationListener listener) {
-        try { lm.removeUpdates(listener); } catch (Exception ignored) {}
+        } catch (SecurityException se) {
+            callbackNull(callbackName);
+        } catch (Exception e) {
+            callbackNull(callbackName);
+        }
     }
 
     private void returnLocation(String callbackName, Location loc) {

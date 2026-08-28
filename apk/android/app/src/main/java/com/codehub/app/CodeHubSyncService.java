@@ -10,13 +10,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
+
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 import org.json.JSONObject;
 
@@ -33,7 +37,7 @@ import java.nio.charset.StandardCharsets;
  * - Cada ~15 min re-sincroniza token FCM + ubicación con el backend.
  * - Al recibir FCM push, el servicio ya está vivo para procesarlo más rápido.
  */
-public class CodeHubSyncService extends Service implements LocationListener {
+public class CodeHubSyncService extends Service {
 
     private static final String CHANNEL_SYNC = "codehub_sync";
     private static final int NOTIF_ID = 9999;
@@ -41,7 +45,7 @@ public class CodeHubSyncService extends Service implements LocationListener {
     private static final long ALARM_INTERVAL_MS = 15 * 60 * 1000;
 
     private PowerManager.WakeLock wakeLock;
-    private LocationManager locationManager;
+    private FusedLocationProviderClient fusedLocation;
     private boolean isRunning = false;
 
     // ── SINGLETON START ────────────────────────────────────────
@@ -235,59 +239,57 @@ public class CodeHubSyncService extends Service implements LocationListener {
     }
 
     // ── LOCATION ───────────────────────────────────────────────
+    // Usa FusedLocationProviderClient (GPS + WiFi + red vía Google) en
+    // lugar de LocationManager crudo — evita que este servicio en
+    // segundo plano sobreescriba con un fix de NETWORK_PROVIDER
+    // impreciso una coordenada GPS buena que ya tenía la app.
+    private FusedLocationProviderClient getFused() {
+        if (fusedLocation == null) fusedLocation = LocationServices.getFusedLocationProviderClient(this);
+        return fusedLocation;
+    }
+
+    private boolean hasLocationPermission() {
+        boolean fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        boolean coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        return fine || coarse;
+    }
+
     private void startLocationUpdates() {
         try {
-            locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            if (locationManager == null) return;
+            if (!hasLocationPermission()) return;
 
-            boolean fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            boolean coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            if (!fine && !coarse) return;
+            // Última ubicación conocida por Fused mientras llega el fix fresco
+            getFused().getLastLocation()
+                .addOnSuccessListener(loc -> { if (loc != null) saveLocation(loc); })
+                .addOnFailureListener(e -> {});
 
-            String provider = fine ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER;
-            locationManager.requestSingleUpdate(provider, this, Looper.getMainLooper());
-
-            // También intentar última ubicación conocida
-            Location last = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (last == null) last = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            if (last != null) saveLocation(last);
+            refreshLocation();
         } catch (Exception ignored) {}
     }
 
     private void refreshLocation() {
         try {
-            if (locationManager == null) {
-                locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            }
-            if (locationManager == null) return;
-
-            boolean fine = checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            boolean coarse = checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            if (!fine && !coarse) return;
-
-            String provider = fine ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER;
-            locationManager.requestSingleUpdate(provider, this, Looper.getMainLooper());
+            if (!hasLocationPermission()) return;
+            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(0)
+                    .build();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            getFused().getCurrentLocation(request, cts.getToken())
+                .addOnSuccessListener(loc -> { if (loc != null) saveLocation(loc); })
+                .addOnFailureListener(e -> {});
+            // No dejar la petición colgada si Play Services nunca responde
+            new android.os.Handler(Looper.getMainLooper()).postDelayed(cts::cancel, 20000);
         } catch (Exception ignored) {}
     }
 
     private void stopLocationUpdates() {
-        try {
-            if (locationManager != null) locationManager.removeUpdates(this);
-        } catch (Exception ignored) {}
+        // FusedLocationProviderClient.getCurrentLocation() es de una sola
+        // vez (no requiere removeUpdates); el CancellationTokenSource de
+        // cada llamada se cancela solo por su propio timeout.
     }
-
-    @Override
-    public void onLocationChanged(Location loc) {
-        if (loc != null) saveLocation(loc);
-    }
-
-    @Override public void onStatusChanged(String p, int s, android.os.Bundle e) {}
-    @Override public void onProviderEnabled(String p) {}
-    @Override public void onProviderDisabled(String p) {}
 
     private void saveLocation(Location loc) {
         try {

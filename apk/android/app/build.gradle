@@ -55,6 +55,7 @@ dependencies {
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
     // AdMob — anuncio recompensado (ca-app-pub-3780093322926832/4285173985)
     implementation 'com.google.android.gms:play-services-ads:23.6.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
     // Shizuku — detección de servicio/permiso + instalación silenciosa de
     // APKs (apps Open Source) sin el diálogo nativo, cuando el usuario
     // tiene Shizuku activo (ADB inalámbrico o root). Ver ShizukuInstaller.java.

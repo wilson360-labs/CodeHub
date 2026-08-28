@@ -12,8 +12,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -36,11 +34,17 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-public class MainActivity extends Activity implements LocationListener {
+public class MainActivity extends Activity {
 
     private static final String APP_URL = "https://wilson360-labs.vercel.app";
     private static final String CHANNEL_DEFAULT = "codehub_default";
@@ -51,7 +55,7 @@ public class MainActivity extends Activity implements LocationListener {
     private CodeHubBridge bridge;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
-    private LocationManager locationManager;
+    private FusedLocationProviderClient fusedLocation;
     private boolean backPressedOnce = false;
     private final Handler backHandler = new Handler(Looper.getMainLooper());
 
@@ -242,27 +246,33 @@ public class MainActivity extends Activity implements LocationListener {
     }
 
     // ── LOCATION ────────────────────────────────────────────────
+    // FusedLocationProviderClient (GPS + WiFi + red vía Google) en vez
+    // de LocationManager crudo — misma fuente de precisión que usa
+    // CodeHubBridge, para que no compitan entre sí con fixes distintos.
+    private FusedLocationProviderClient getFused() {
+        if (fusedLocation == null) fusedLocation = LocationServices.getFusedLocationProviderClient(this);
+        return fusedLocation;
+    }
+
     @SuppressLint("MissingPermission")
     private void startLocationUpdates() {
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        if (locationManager == null) return;
         boolean fine   = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         boolean coarse = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         if (!fine && !coarse) return;
         try {
-            Location last = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            if (last == null) last = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            if (last != null) saveLocation(last);
-            String provider = fine ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER;
-            locationManager.requestSingleUpdate(provider, this, Looper.getMainLooper());
+            getFused().getLastLocation()
+                .addOnSuccessListener(this, loc -> { if (loc != null) saveLocation(loc); });
+
+            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(0)
+                    .build();
+            CancellationTokenSource cts = new CancellationTokenSource();
+            getFused().getCurrentLocation(request, cts.getToken())
+                .addOnSuccessListener(this, loc -> { if (loc != null) saveLocation(loc); });
+            new Handler(Looper.getMainLooper()).postDelayed(cts::cancel, 15000);
         } catch (Exception ignored) {}
     }
-
-    @Override
-    public void onLocationChanged(Location loc) { if (loc != null) saveLocation(loc); }
-    @Override public void onStatusChanged(String p, int s, Bundle e) {}
-    @Override public void onProviderEnabled(String p) {}
-    @Override public void onProviderDisabled(String p) {}
 
     private void saveLocation(Location loc) {
         final double lat = loc.getLatitude();

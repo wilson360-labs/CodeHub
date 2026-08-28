@@ -2677,6 +2677,7 @@ window.addEventListener('DOMContentLoaded', function() {
   chLogActivity('🏠 CodeHub visitado');
   chUpdateBadge();
   chInitWeatherToggle();
+  chInitAutoWeather();
   setTimeout(initIndexPush, 5000);
 });
 
@@ -2781,12 +2782,25 @@ function chWeatherAlertsOn() {
   return localStorage.getItem('ch_weather_alerts') !== '0';
 }
 
-/* Guardar ciudad/área del usuario para las notificaciones del clima */
-async function chSavePushLocation(lat, lon, city, country) {
+/* La ubicación se considera "fresca" un tiempo distinto según su fuente:
+   GPS/nativa es confiable más tiempo; IP (aproximada) se revalida seguido. */
+function chLocationIsFresh(maxAgeMs) {
+  var ts = parseInt(localStorage.getItem('ch_user_loc_ts') || '0', 10);
+  if (!ts) return false;
+  var src = localStorage.getItem('ch_user_loc_src') || '';
+  var limit = maxAgeMs != null ? maxAgeMs : (src === 'ip' ? 15 * 60 * 1000 : 30 * 60 * 1000);
+  return (Date.now() - ts) < limit;
+}
+
+/* Guardar ciudad/área del usuario para las notificaciones del clima.
+   source: 'gps' (navegador/GPS nativo, exacta) | 'ip' (aproximada) | 'search' (elegida manualmente) */
+async function chSavePushLocation(lat, lon, city, country, source) {
   if (Number.isFinite(+lat)) localStorage.setItem('ch_user_lat', lat);
   if (Number.isFinite(+lon)) localStorage.setItem('ch_user_lon', lon);
   if (city) localStorage.setItem('ch_user_city', city);
   if (country) localStorage.setItem('ch_user_country', country);
+  localStorage.setItem('ch_user_loc_ts', String(Date.now()));
+  if (source) localStorage.setItem('ch_user_loc_src', source);
   // Sync to native bridge for background worker polling
   if (typeof CodeHubNative !== 'undefined' && Number.isFinite(+lat) && Number.isFinite(+lon)) {
     try { CodeHubNative.saveLocation(+lat, +lon); } catch(e) {}
@@ -2860,22 +2874,94 @@ function chToggleWeatherAlerts(on) {
   }
 }
 
-/* Detectar ubicación (GPS → IP) y guardarla para las alertas de clima */
-function chAutoDetectAndSave() {
-  // En APK nativa, pedir permiso + ubicación del sistema
+/* Reverse-geocode (Nominatim) + pinta el widget de clima + guarda la
+   ubicación real (GPS) para las alertas push. source: 'gps' | 'ip' */
+async function chResolveAndShowWeather(lat, lon, source) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=10`);
+    const d = await r.json();
+    const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
+    const area = d.address?.state_district || d.address?.county || d.address?.state || '';
+    const country = d.address?.country || '';
+    const suffix = source === 'ip' ? ' (aprox.) 📶' : ' 📍';
+    const label = (area && area !== city) ? `${city}, ${area}, ${country}${suffix}` : `${city}, ${country}${suffix}`;
+    await fetchWeatherByCoords(lat, lon, label);
+    chSavePushLocation(lat, lon, city, country, source);
+  } catch(e) {
+    const label = source === 'ip' ? 'Tu ubicación (aprox.) 📶' : 'Tu ubicación 📍';
+    await fetchWeatherByCoords(lat, lon, label);
+    chSavePushLocation(lat, lon, 'Tu ubicación', '', source);
+  }
+}
+
+/* Detectar ubicación REAL (GPS nativo/navegador → IP solo como último
+   recurso) y guardarla para las alertas de clima. Si updateWidget es
+   true, además pinta el resultado en la sección de clima visible, para
+   que la detección "automática" y las alertas push usen siempre la
+   MISMA coordenada — nunca una desincronizada de la otra. */
+function chAutoDetectAndSave(updateWidget) {
+  function onOk(lat, lon) {
+    if (updateWidget) chResolveAndShowWeather(lat, lon, 'gps');
+    else chSavePushLocation(lat, lon, 'Tu ubicación', '', 'gps');
+  }
+  function onFail() { detectWeatherByIP(updateWidget); }
+
+  // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, alta precisión)
   if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
     window._chAutoLocCb = function(lat, lon) {
-      if (lat != null && lon != null) chSavePushLocation(lat, lon, 'Tu ubicación', '');
-      else detectWeatherByIP();
+      if (lat != null && lon != null) onOk(lat, lon);
+      else onFail();
     };
     CodeHubNative.requestLocationPermission('_chAutoLocCb');
   } else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function(pos) {
-      chSavePushLocation(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación', '');
-    }, function() { detectWeatherByIP(); }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      onOk(pos.coords.latitude, pos.coords.longitude);
+    }, onFail, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
   } else {
-    detectWeatherByIP();
+    onFail();
   }
+}
+
+/* Se auto-ejecuta cuando la sección de clima entra en pantalla (y en
+   revisitas si la ubicación guardada ya no está fresca), sin esperar
+   a que el usuario toque el botón. Esto es lo que hace la detección
+   realmente "automática" en vez de quedarse solo en el skeleton. */
+function chInitAutoWeather() {
+  var el = document.getElementById('weather-section');
+  if (!el) return;
+  var ran = false;
+  function run() {
+    if (ran) return;
+    ran = true;
+    if (chLocationIsFresh()) {
+      var lat = parseFloat(localStorage.getItem('ch_user_lat'));
+      var lon = parseFloat(localStorage.getItem('ch_user_lon'));
+      var city = localStorage.getItem('ch_user_city') || 'Tu ubicación';
+      var country = localStorage.getItem('ch_user_country') || '';
+      var src = localStorage.getItem('ch_user_loc_src');
+      var suffix = src === 'ip' ? ' (aprox.) 📶' : ' 📍';
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        fetchWeatherByCoords(lat, lon, (country ? `${city}, ${country}` : city) + suffix);
+        return;
+      }
+    }
+    chAutoDetectAndSave(true);
+  }
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { run(); io.disconnect(); } });
+    }, { threshold: 0.1 });
+    io.observe(el);
+  } else {
+    run();
+  }
+  // Revalidar si el usuario vuelve a la pestaña/app y la ubicación ya
+  // no está fresca (p. ej. se movió de ciudad, o la caché era de IP).
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && ran && !chLocationIsFresh()) {
+      chAutoDetectAndSave(true);
+    }
+  });
 }
 
 function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alerts-toggle');
@@ -3174,12 +3260,12 @@ function showIndexNotifBanner() {
       chLogActivity('🔔 Notificaciones activadas en CodeHub');
       if (typeof chNotifLog === 'function') chNotifLog('🔔 Notificaciones activadas', 'Recibirás alertas de apps, clima y novedades en tu dispositivo', 'system', '/');
       if (typeof toast === 'function') toast('🔔 Notificaciones activadas ✓', 'success', 2800);
-      // Solicitar ubicación para clima en tiempo real
+      // Solicitar ubicación real (GPS) para clima en tiempo real y
+      // alertas push — usa el mismo detector que la sección de clima,
+      // así ambos quedan sincronizados con la misma coordenada.
       function _saveGeoWeather(lat, lon) {
-        localStorage.setItem('ch_user_lat', lat);
-        localStorage.setItem('ch_user_lon', lon);
+        chSavePushLocation(lat, lon, 'Tu ubicación', '', 'gps');
         chNotifWeatherCheck(lat, lon);
-        chSavePushLocation(lat, lon, 'Tu ubicación', '');
       }
       if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
         window._chNotifGeoCb = function(lat, lon) { if (lat != null) _saveGeoWeather(lat, lon); };
@@ -5051,7 +5137,12 @@ function getOWMIcon(id, icon) {
 
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-async function detectWeatherByIP() {
+async function detectWeatherByIP(updateWidget) {
+  if (updateWidget === undefined) updateWidget = true;
+  // ÚLTIMO RECURSO: la geolocalización por IP solo puede aproximar la
+  // zona (normalmente el nodo de tu ISP), no tu ubicación real — por
+  // eso siempre se marca como "aprox." en la UI. La ubicación exacta
+  // requiere el permiso de GPS del dispositivo/navegador.
   // Cadenas de detección con fallback: ipapi.co → ipwho.is → ip-api.com
   var attempts = [
     async function() { // Prioridad 1: ipapi.co (datos completos)
@@ -5076,43 +5167,36 @@ async function detectWeatherByIP() {
       if (loc && loc.lat) {
         var flag = loc.cc === 'GT' ? ' 🇬🇹' : '';
         var area = loc.region && loc.region !== loc.city ? ', ' + loc.region : '';
-        await fetchWeatherByCoords(loc.lat, loc.lon, loc.city + area + ', ' + loc.country + flag);
-        chSavePushLocation(loc.lat, loc.lon, loc.city, loc.country);
+        if (updateWidget) {
+          await fetchWeatherByCoords(loc.lat, loc.lon, loc.city + area + ', ' + loc.country + ' (aprox.) 📶' + flag);
+        }
+        chSavePushLocation(loc.lat, loc.lon, loc.city, loc.country, 'ip');
         return;
       }
     } catch(e) {}
   }
-  showWeatherError('No se pudo detectar tu ubicación. Escribe tu ciudad abajo.');
+  if (updateWidget) showWeatherError('No se pudo detectar tu ubicación. Escribe tu ciudad abajo o toca "Usar mi ubicación" para GPS.');
 }
 
 function requestGeoLocation() {
   const btn = document.getElementById('wx-loc-btn');
   if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Detectando…'; btn.disabled = true; }
 
-  // En APK nativa, pedir permiso + ubicación del sistema (FusedLocationProvider)
+  function done(ok) {
+    if (!btn) return;
+    btn.innerHTML = ok
+      ? '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'
+      : '<i class="fas fa-location-dot"></i> Usar mi ubicación';
+    if (ok) btn.style.color = '#22c55e';
+    btn.disabled = false;
+  }
+
+  // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, ~alta precisión)
   if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
-    window._chGeoLocCb = async function(lat, lon, accuracy) {
-      if (lat == null || lon == null) {
-        await detectWeatherByIP();
-        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; }
-        return;
-      }
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=10`);
-        const d = await r.json();
-        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
-        const area = d.address?.state_district || d.address?.county || d.address?.state || '';
-        const country = d.address?.country || '';
-        const label = (area && area !== city) ? `${city}, ${area}, ${country} 📍` : `${city}, ${country} 📍`;
-        await fetchWeatherByCoords(lat, lon, label);
-        chSavePushLocation(lat, lon, city, country);
-        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#22c55e'; }
-      } catch(e) {
-        await fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
-        chSavePushLocation(lat, lon, 'Tu ubicación', '');
-        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#22c55e'; }
-      }
-      if (btn) btn.disabled = false;
+    window._chGeoLocCb = async function(lat, lon) {
+      if (lat == null || lon == null) { await detectWeatherByIP(true); done(false); return; }
+      await chResolveAndShowWeather(lat, lon, 'gps');
+      done(true);
     };
     CodeHubNative.requestLocationPermission('_chGeoLocCb');
     return;
@@ -5122,25 +5206,10 @@ function requestGeoLocation() {
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
-      try {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        // Geocodificación inversa con Nominatim (OpenStreetMap, gratis)
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es&zoom=10`);
-        const d = await r.json();
-        const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || 'Tu ubicación';
-        const area = d.address?.state_district || d.address?.county || d.address?.state || '';
-        const country = d.address?.country || '';
-        const label = (area && area !== city) ? `${city}, ${area}, ${country} 📍` : `${city}, ${country} 📍`;
-        await fetchWeatherByCoords(lat, lon, label);
-        chSavePushLocation(lat, lon, city, country);
-        if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Ubicación exacta ✅'; btn.style.color='#22c55e'; }
-      } catch(e) {
-        await fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación 📍');
-        chSavePushLocation(pos.coords.latitude, pos.coords.longitude, 'Tu ubicación', '');
-      }
-      if (btn) btn.disabled = false;
+      await chResolveAndShowWeather(pos.coords.latitude, pos.coords.longitude, 'gps');
+      done(true);
     },
-    () => { detectWeatherByIP(); if (btn) { btn.innerHTML = '<i class="fas fa-location-dot"></i> Usar mi ubicación'; btn.disabled = false; } },
+    async () => { await detectWeatherByIP(true); done(false); },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
@@ -5163,14 +5232,14 @@ async function searchWeatherByName(name) {
       const d = await r.json();
       if (!d.length) { showWeatherError(`Ciudad "${name}" no encontrada.`); return; }
       await fetchWeatherByCoords(d[0].lat, d[0].lon, `${d[0].local_names?.es || d[0].name}, ${d[0].country}`);
-      chSavePushLocation(d[0].lat, d[0].lon, d[0].local_names?.es || d[0].name, d[0].country);
+      chSavePushLocation(d[0].lat, d[0].lon, d[0].local_names?.es || d[0].name, d[0].country, 'search');
     } else {
       const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=1&language=es`);
       const d = await r.json();
       if (!d.results?.length) { showWeatherError(`Ciudad "${name}" no encontrada.`); return; }
       const g = d.results[0];
       await fetchWeatherByCoords(g.latitude, g.longitude, `${g.name}, ${g.country}`);
-      chSavePushLocation(g.latitude, g.longitude, g.name, g.country);
+      chSavePushLocation(g.latitude, g.longitude, g.name, g.country, 'search');
     }
   } catch(e) { showWeatherError('Error al buscar la ciudad.'); }
 }
