@@ -153,7 +153,7 @@ function setupBackToTopButton() {
   toggleVisibility();
 }
 
-function buildOSCard(app) {
+function buildOSCard(app, ratingInfo) {
   const img     = getOptimizedImageUrl(app.imagen || '', 192, 192);
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
   const desc    = app.descripcion || '';
@@ -164,6 +164,8 @@ function buildOSCard(app) {
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
   const isFav   = MyApps.has(app.appId);
+  const avg     = ratingInfo?.avg || 0;
+  const count   = ratingInfo?.count || 0;
 
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
@@ -181,6 +183,10 @@ function buildOSCard(app) {
     ? `<a class="dl-btn dl-primary" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
     : `<a class="dl-btn dl-primary" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
 
+  const starsHtml = [1,2,3,4,5].map(n =>
+    `<i class="fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}" data-star="${n}" onclick="OSRatings.submit('${app.appId}', ${n}, '${(app.nombre || '').replace(/'/g, "\\'")}')"></i>`
+  ).join('');
+
   return `
   <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}" data-package="${app.packageName || ''}">
     <div class="app-thumb">
@@ -195,6 +201,10 @@ function buildOSCard(app) {
     <div class="app-body">
       <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
       <div class="app-name">${app.nombre}</div>
+      <div class="os-rating" data-rating-for="${app.appId}" title="${count} voto${count === 1 ? '' : 's'}">
+        <span class="os-rating-stars">${starsHtml}</span>
+        <span class="os-rating-meta">${avg > 0 ? avg.toFixed(1) : '—'} <span class="os-rating-count">(${count})</span></span>
+      </div>
       <div class="app-desc">${desc}</div>
       ${echoRaw}
       <div class="app-actions">
@@ -205,6 +215,46 @@ function buildOSCard(app) {
     </div>
   </div>`;
 }
+
+// ── RATINGS — enviar voto real + reflejar resultado al instante ────
+const OSRatings = (() => {
+  const voted = JSON.parse(localStorage.getItem('ch_os_voted') || '{}');
+  function saveVoted() { try { localStorage.setItem('ch_os_voted', JSON.stringify(voted)); } catch {} }
+
+  async function submit(appId, stars, appName) {
+    if (voted[appId]) return; // ya votó desde este dispositivo
+    try {
+      const res = await fetch(`${BACKEND}/api/ratings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appId, appName, stars })
+      });
+      const d = await res.json();
+      if (res.ok) {
+        voted[appId] = stars; saveVoted();
+        updateCard(appId, d.avg, d.count);
+      } else if (d.avg != null) {
+        // Ya había votado desde este IP en otra sesión — igual reflejar el estado real
+        voted[appId] = true; saveVoted();
+        updateCard(appId, d.avg, d.count);
+      }
+    } catch (e) { console.warn('rating error:', e.message); }
+  }
+
+  function updateCard(appId, avg, count) {
+    document.querySelectorAll(`[data-rating-for="${appId}"]`).forEach(el => {
+      el.title = `${count} voto${count === 1 ? '' : 's'}`;
+      el.querySelectorAll('.fa-star').forEach(star => {
+        const n = parseInt(star.dataset.star, 10);
+        star.className = `fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}`;
+      });
+      const meta = el.querySelector('.os-rating-meta');
+      if (meta) meta.innerHTML = `${avg > 0 ? avg.toFixed(1) : '—'} <span class="os-rating-count">(${count})</span>`;
+    });
+  }
+
+  return { submit, updateCard };
+})();
 
 function ensureCategorySection(categoria) {
   const known = OS_CATEGORIES.find(c => c.categoria === categoria);
@@ -240,9 +290,14 @@ function ensureCategorySection(categoria) {
 async function loadOpenSourceCatalog() {
   const heroCount = document.getElementById('os-hero-count');
   try {
-    const res = await fetch(`${BACKEND}/api/apps`);
+    const [res, ratingsRes] = await Promise.all([
+      fetch(`${BACKEND}/api/apps`),
+      fetch(`${BACKEND}/api/ratings`).catch(() => null),
+    ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
+    const ratingsData = ratingsRes && ratingsRes.ok ? await ratingsRes.json().catch(() => ({})) : {};
+    window.__osRatings = ratingsData.ratings || {};
     // El backend devuelve { apps: [...], total }; se acepta también
     // un array plano por compatibilidad.
     const apps = Array.isArray(data) ? data : (data.apps || []);
@@ -263,7 +318,7 @@ async function loadOpenSourceCatalog() {
       if (!grid) return;
       const list = byCategory[categoria] || [];
       grid.innerHTML = list.length
-        ? list.map(buildOSCard).join('')
+        ? list.map(a => buildOSCard(a, window.__osRatings[a.appId])).join('')
         : `<div style="grid-column:1/-1;text-align:center;padding:1.2rem;color:var(--muted,#8a8a9a);font-size:.82rem">Aún no hay apps en esta categoría.</div>`;
     });
 
@@ -272,7 +327,7 @@ async function loadOpenSourceCatalog() {
       if (OS_CATEGORIES.some(c => c.categoria === cat)) return;
       const id = ensureCategorySection(cat);
       const grid = document.getElementById(`grid-${id}`);
-      if (grid) grid.innerHTML = byCategory[cat].map(buildOSCard).join('');
+      if (grid) grid.innerHTML = byCategory[cat].map(a => buildOSCard(a, window.__osRatings[a.appId])).join('');
     });
   } catch (e) {
     console.error('Error cargando catálogo Open Source:', e);
@@ -312,6 +367,9 @@ function connectOSWebSocket() {
           if (msg.os !== _lastOsCount) { _lastOsCount = msg.os; loadOpenSourceCatalog(); }
         } else if (msg.type === 'new_app') {
           loadOpenSourceCatalog();
+        } else if (msg.type === 'new_rating' && msg.appId) {
+          if (window.__osRatings) window.__osRatings[msg.appId] = { avg: msg.avg, count: msg.count };
+          OSRatings.updateCard(msg.appId, msg.avg, msg.count);
         }
       } catch {}
     };

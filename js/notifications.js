@@ -364,6 +364,34 @@
     });
   }
 
+  // ── WebSocket en vivo — releases y apps nuevas sin esperar el poll ──
+  // Antes la campana solo se refrescaba con loadReleases() cada 60s;
+  // con esto el aviso llega apenas el backend lo emite (mismo canal
+  // /ws que ya usa opensource.js), y el poll queda solo como respaldo
+  // por si el socket se cae.
+  var _notifWs = null, _notifWsTimer = null;
+  function connectNotifWS() {
+    try {
+      var backend = (typeof window.BACKEND !== 'undefined' && window.BACKEND)
+        || (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : '')
+        || 'https://codehub-98s6.onrender.com';
+      var wsUrl = (backend.indexOf('https://') === 0 ? 'wss://' : 'ws://') + backend.replace(/^https?:\/\//, '') + '/ws';
+      _notifWs = new WebSocket(wsUrl);
+      _notifWs.onmessage = function (e) {
+        try {
+          var msg = JSON.parse(e.data);
+          if (msg.type === 'codehub_release') {
+            add('🚀 CodeHub ' + (msg.version || ''), msg.title || 'Nueva actualización disponible', 'release', msg.url || '/', '/splash/codehub.png');
+          } else if (msg.type === 'new_app') {
+            add('🆕 ' + (msg.nombre || 'Nueva app'), 'Ya está disponible en el catálogo Open Source', 'app_update', '/opensource', '/splash/codehub.png');
+          }
+        } catch (e) {}
+      };
+      _notifWs.onclose = function () { _notifWsTimer = setTimeout(connectNotifWS, 15000); };
+      _notifWs.onerror = function () { try { _notifWs.close(); } catch (e) {} };
+    } catch (e) {}
+  }
+
   // ── Init ─────────────────────────────────────────────
   function init() {
     // Escuchar clics en items y botón limpiar
@@ -384,8 +412,10 @@
       setTimeout(loadFromSW, 1500);
       // CodeHub Releases recientes publicados desde el admin-hub.
       setTimeout(loadReleases, 2500);
-      // Poll releases periodically for real-time feel (every 60s)
-      setInterval(loadReleases, 60000);
+      // WS en vivo para releases/apps nuevas (instantáneo).
+      connectNotifWS();
+      // Respaldo por si el WS se cae: poll cada 5 min en vez de 60s.
+      setInterval(loadReleases, 5 * 60 * 1000);
       // Also re-render badge periodically in case SW pushed while panel was closed
       setInterval(function () { render(); updateBadge(); }, 30000);
     });
