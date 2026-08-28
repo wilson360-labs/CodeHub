@@ -4931,13 +4931,6 @@ app.get('/api/push/seismic/check', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-
-  try {
-    const out = await weatherPushPass();
-    res.json({ ok: true, ...out });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
 // Scheduler — revisa cada 30 min; solo envía push cuando cambia la condición
 setInterval(() => {
   weatherPushPass()

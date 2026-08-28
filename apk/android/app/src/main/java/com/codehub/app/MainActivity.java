@@ -286,9 +286,10 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 if (webView == null) return;
-                webView.loadUrl("javascript:(function(){" +
+                webView.loadUrl("javascript:(function(){try{" +
                     "localStorage.setItem('ch_user_lat','" + lat + "');" +
                     "localStorage.setItem('ch_user_lon','" + lon + "');" +
+                    "}catch(e){}" +
                     "try{if(typeof chSavePushLocation==='function')chSavePushLocation(" + lat + "," + lon + ",'GPS','');}catch(e){}" +
                     "try{if(typeof chNotifWeatherCheck==='function')chNotifWeatherCheck(" + lat + "," + lon + ");}catch(e){}" +
                     "})()");

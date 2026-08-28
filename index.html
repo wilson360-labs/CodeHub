@@ -3862,7 +3862,7 @@ async function sendEmail(e) {
         grid.innerHTML = data.images.slice(0, 6).map(img => `
           <div class="ai-sr-img" onclick="window.open(this.dataset.link,'_blank')" title="${img.title.replace(/"/g, '&quot;')}" data-link="${img.link.replace(/"/g, '&quot;')}">
             <img src="${img.thumbnail}" alt="${img.title.replace(/"/g, '&quot;')}" loading="lazy"
-              onerror="this.parentElement.style.background='rgba(124,77,255,.15)';this.remove()">
+              onerror="if(this.parentElement)this.parentElement.style.background='rgba(124,77,255,.15)';this.remove()">
             <div class="ai-sr-img-label">${img.source || cleanQuery}</div>
           </div>`).join('');
 
@@ -4160,7 +4160,7 @@ async function sendEmail(e) {
               onclick="openAiImgLightbox('${uid}')"
               title="Toca para ver en grande"
               loading="lazy"
-              onerror="this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
+              onerror="if(this.parentElement)this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
             <div class="ai-gen-img-footer">
               <i class="fas fa-wand-magic-sparkles"></i>
               Creada por EMI COPILOT ·
@@ -5462,7 +5462,7 @@ function renderRealNews(items, fetchedAt, sourceLabel) {
     <a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer" class="blogger-card">
       <div class="blogger-card-thumb">
         ${n.image
-          ? `<img src="${esc(n.image)}" alt="${esc(n.title)}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<i class=&quot;fas fa-earth-americas&quot;></i>'">`
+          ? `<img src="${esc(n.image)}" alt="${esc(n.title)}" loading="lazy" onerror="this.remove();if(this.parentElement)this.parentElement.innerHTML='<i class=&quot;fas fa-earth-americas&quot;></i>'">`
           : `<i class="fas fa-earth-americas"></i>`}
       </div>
       <div class="blogger-card-body">
