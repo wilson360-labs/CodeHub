@@ -3562,10 +3562,10 @@ async function sendEmail(e) {
         document.getElementById('contact-form').reset();
         document.getElementById('char-count').textContent = '0';
         if (typeof toast === 'function') toast('Mensaje enviado — te respondo en menos de 24h', 'success', 3600);
-    } catch (err) {
+    } catch (e) {
         feedback.textContent = '❌ Error al enviar. Intenta por WhatsApp o email directo.';
         feedback.className = 'form-feedback error';
-        console.error('EmailJS error:', err);
+        console.error('EmailJS error:', e);
         if (typeof toast === 'function') toast('No se pudo enviar. Prueba por WhatsApp o email', 'error', 3600);
     } finally {
         btn.disabled = false;
@@ -3653,7 +3653,23 @@ async function sendEmail(e) {
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
       </div>
     </div>
+    <div class="ai-head-actions">
+      <button class="ai-head-btn" id="ai-export-btn" onclick="exportEmiChat()" title="Exportar chat" aria-label="Exportar conversación">
+        <i class="fas fa-download"></i>
+      </button>
+      <button class="ai-head-btn" id="ai-fullscreen-btn" onclick="toggleEmiFullscreen()" title="Pantalla completa" aria-label="Expandir panel">
+        <i class="fas fa-expand"></i>
+      </button>
+    </div>
+  </div>
 
+  <!-- Mode bar -->
+  <div class="ai-modes-bar" id="ai-modes-bar">
+    <button class="ai-mode-chip active" data-mode="auto" onclick="setEmiMode('auto',this)" title="Asistente general">⚡ Auto</button>
+    <button class="ai-mode-chip" data-mode="dev" onclick="setEmiMode('dev',this)" title="Programación & Debug">💻 Dev</button>
+    <button class="ai-mode-chip" data-mode="img" onclick="setEmiMode('img',this)" title="Imagen IA">🎨 Imagen</button>
+    <button class="ai-mode-chip" data-mode="doc" onclick="setEmiMode('doc',this)" title="PDF & Documentos">📄 Docs</button>
+    <button class="ai-mode-chip" data-mode="translate" onclick="setEmiMode('translate',this)" title="Traductor Pro">🌐 Traducir</button>
   </div>
 
   <!-- Messages -->
@@ -4309,8 +4325,10 @@ async function sendEmail(e) {
 
     try {
       _currentAbort = new AbortController();
+      var _modePrefix = (typeof window._emiMode === 'string' && window._emiMode !== 'auto' && window.EMI_MODE_PROMPTS)
+        ? (window.EMI_MODE_PROMPTS[window._emiMode] || '') : '';
       const body = {
-        message: effectiveText + deepSearchContext,
+        message: _modePrefix + effectiveText + deepSearchContext,
         sessionId: SESSION_ID
       };
       if (attachment) {
@@ -4886,8 +4904,8 @@ async function sendEmail(e) {
     });
     // Horizontal rule
     safe = safe.replace(/^---+$/gm, '<hr class="ai-md-hr">');
-    // Newlines (but not inside pre blocks)
-    var parts = safe.split(/(<pre[\s\S]*?<\/pre>)/g);
+    // Newlines (but not inside pre/code-box blocks)
+    var parts = safe.split(/(<div class="ai-code-box">[\s\S]*?<\/div>|<pre[\s\S]*?<\/pre>)/g);
     safe = parts.map(function(p, i) {
       if (i % 2 === 1) return p;
       return p.replace(/\n/g, '<br>');
@@ -4955,6 +4973,88 @@ async function sendEmail(e) {
     if (!isOpen) fab.querySelector('.ai-notif').style.display = 'block';
   }, 8000);
 })();
+
+/* ── EMI COPILOT: modos, exportar y pantalla completa ─────────────
+   Nota: definidas como funciones GLOBALES (fuera del IIFE) porque los
+   botones del panel las invocan desde atributos onclick. */
+window._emiMode = 'auto';
+window.EMI_MODE_PROMPTS = {
+  dev: '[MODO DEVELOPER] Actúa como ingeniero de software senior. '
+     + 'Da código correcto, explica con claridad y señala posibles bugs.\n\n',
+  img: '[MODO IMAGEN] El usuario puede pedirte generar o buscar imágenes. '
+     + 'Guíale para crear imágenes IA o buscar referencias visuales.\n\n',
+  doc: '[MODO DOCUMENTOS] Ayuda a leer, resumir y trabajar con PDFs y documentos. '
+     + 'Explica documentos e identifica secciones clave.\n\n',
+  translate: '[MODO TRADUCTOR] Traduce con precisión entre idiomas, '
+     + 'preservando el tono y aclarando matices.\n\n'
+};
+
+/* Exporta la conversación del panel EMI a un archivo de texto .md */
+window.exportEmiChat = function () {
+  try {
+    var box = document.getElementById('ai-msgs');
+    if (!box) return;
+    var wraps = box.querySelectorAll('.ai-msg-wrap');
+    if (!wraps.length) {
+      if (typeof toast === 'function') toast('Aún no hay mensajes para exportar', 'info', 2600);
+      return;
+    }
+    var lines = [];
+    lines.push('# Conversación con EMI COPILOT');
+    lines.push('_Generado el ' + new Date().toLocaleString('es-GT') + '_');
+    lines.push('');
+    wraps.forEach(function (w) {
+      var role = w.classList.contains('user') ? '**Tú**' : '**EMI**';
+      var contentEl = w.querySelector('.ai-msg') || w.querySelector('.ai-msg-content');
+      var text = contentEl ? contentEl.innerText.replace(/\s+\n/g, '\n').trim() : '';
+      if (!text) return;
+      lines.push('### ' + role);
+      lines.push('');
+      lines.push(text);
+      lines.push('');
+    });
+    var blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'emi-chat-' + new Date().toISOString().slice(0, 10) + '.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    if (typeof toast === 'function') toast('Conversación exportada 📄', 'success', 2800);
+  } catch (e) {
+    console.warn('exportEmiChat error:', e);
+  }
+};
+
+/* Alterna el panel a pantalla completa (ancho completo + alto). */
+window.toggleEmiFullscreen = function () {
+  var panel = document.getElementById('ai-panel');
+  if (!panel) return;
+  var on = panel.classList.toggle('ai-fullscreen');
+  var btn = document.getElementById('ai-fullscreen-btn');
+  if (btn) btn.innerHTML = on ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+  // Ajustar el área de mensajes al nuevo tamaño
+  var msgs = document.getElementById('ai-msgs');
+  if (msgs) msgs.style.maxHeight = 'none';
+};
+
+/* Cambia el modo activo de EMI (auto/dev/img/doc/translate). */
+window.setEmiMode = function (mode, btn) {
+  window._emiMode = mode;
+  document.querySelectorAll('.ai-mode-chip').forEach(function (c) {
+    c.classList.toggle('active', c.getAttribute('data-mode') === mode);
+  });
+  if (typeof toast === 'function') {
+    var label = mode === 'auto' ? '⚡ Modo Auto' : 'Modo ' + mode.charAt(0).toUpperCase() + mode.slice(1);
+    toast('EMI: ' + label, 'info', 1800);
+  }
+  if (mode !== 'auto' && mode !== 'img') {
+    var input = document.getElementById('ai-input');
+    if (input) input.focus();
+  }
+};
 
 // ═══ SKILLS TABS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•══
 function switchSkillTab(tab, btn) {
