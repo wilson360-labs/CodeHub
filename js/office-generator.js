@@ -145,7 +145,7 @@ const OfficeGen = (() => {
 
       const slideTitle = pres.addSlide();
       slideTitle.addText(title || docTitle, { x: 0.8, y: 1.5, w: 8.4, h: 1.5, fontSize: 32, bold: true, color: '2f80ed', align: 'center' });
-      slideTitle.addText('Generado por EMI COPILOT — CodeHub', { x: 0.8, y: 3.2, w: 8.4, h: 0.6, fontSize: 12, color: '999999', align: 'center' });
+      slideTitle.addText('Generado por WIL.E COPILOT — CodeHub', { x: 0.8, y: 3.2, w: 8.4, h: 0.6, fontSize: 12, color: '999999', align: 'center' });
 
       for (let i = 0; i < Math.min(chunks.length, 15); i++) {
         const slide = pres.addSlide();
@@ -191,7 +191,7 @@ const OfficeGen = (() => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(120, 120, 120);
-      doc.text('Generado por EMI COPILOT — CodeHub', margin, y);
+      doc.text('Generado por WIL.E COPILOT — CodeHub', margin, y);
       y += 10;
 
       doc.setDrawColor(47, 128, 237);

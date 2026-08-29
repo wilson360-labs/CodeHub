@@ -203,11 +203,11 @@
 
     utt.onstart = () => {
       state.speaking = true;
-      if (micBtn) micBtn.title = 'EMI está hablando… (clic para interrumpir)';
+      if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
     };
     utt.onend = utt.onerror = () => {
       state.speaking = false;
-      if (micBtn) micBtn.title = 'Hablar con EMI (voz a texto)';
+      if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)';
     };
 
     SS.speak(utt);
@@ -258,17 +258,17 @@
     const btn = document.createElement('button');
     btn.className   = 'ai-circle-btn';
     btn.id          = 'emi-speak-toggle';
-    btn.title       = 'EMI te responde en voz alta';
+    btn.title       = 'WIL.E te responde en voz alta';
     btn.setAttribute('aria-label', 'Toggle respuesta por voz');
     btn.innerHTML   = `
       <div class="ai-circle-icon"><i class="fas fa-volume-${state.autoSpeak ? 'high' : 'xmark'}"></i></div>
-      <span class="ai-circle-label" data-subtitle="Respuesta por voz">Voz EMI</span>
+      <span class="ai-circle-label" data-subtitle="Respuesta por voz">Voz WIL.E</span>
     `;
     btn.onclick = () => {
       state.autoSpeak = !state.autoSpeak;
       localStorage.setItem('emi_auto_speak', JSON.stringify(state.autoSpeak));
       btn.querySelector('i').className = `fas fa-volume-${state.autoSpeak ? 'high' : 'xmark'}`;
-      showVoiceToast(state.autoSpeak ? '🔊 EMI responderá en voz alta' : '🔇 Voz de EMI desactivada', 'info');
+      showVoiceToast(state.autoSpeak ? '🔊 WIL.E responderá en voz alta' : '🔇 Voz de WIL.E desactivada', 'info');
     };
     /* Insertar como primer elemento */
     bottomBar.insertBefore(btn, bottomBar.firstChild);

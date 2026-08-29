@@ -64,7 +64,7 @@ const PermissionsSetup = (() => {
       id: 'microphone',
       name: 'Micrófono',
       icon: '🎤',
-      desc: 'Comandos de voz con EMI (asistente IA)',
+      desc: 'Comandos de voz con WIL.E (asistente IA)',
       nativeCheck: async () => {
         if (!navigator.mediaDevices?.getUserMedia) return 'unsupported';
         // Verificar si ya tenemos permiso accediendo al micrófono

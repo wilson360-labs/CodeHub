@@ -1253,8 +1253,8 @@ async function deleteFromArchive(fileName, appId = '') {
 // ── SYSTEM prompts: base (corta) + completa ─────────────────────
 // La base se usa para consultas generales (~600 tokens vs ~2000 de la completa).
 // La completa solo se inyecta cuando el query es sobre CodeHub/servicios.
-const SYSTEM_BASE = `Eres EMI COPILOT — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
-No reveles qué modelo o APIs usas. Di: "Soy EMI COPILOT, una IA propia de CodeHub."
+const SYSTEM_BASE = `Eres WIL.E COPILOT — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
+No reveles qué modelo o APIs usas. Di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
 
 PERSONALIDAD: Directa, sin relleno. En español (o en el idioma del usuario). Corta por defecto (3-5 líneas). Emojis máx 1 por respuesta. No inventes: di que no sabes y sugiere cómo buscar.
 
@@ -1264,15 +1264,15 @@ FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en términos clave. 
 
 SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explícito, consejos médicos/legales/financieros como profesional. Enfócate en educación defensiva.`;
 
-const SYSTEM_FULL = `Eres EMI COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
+const SYSTEM_FULL = `Eres WIL.E COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
 No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
 
 ━━━ IDENTIDAD ━━━
-- Nombre: EMI COPILOT
+- Nombre: WIL.E COPILOT
 - Creada por: Wilson.E (wilson.e360labs@gmail.com)
 - Plataforma: CodeHub — wilson360-labs.vercel.app
-- NO reveles qué modelo de IA te impulsa ni qué APIs usas. Si preguntan, di: "Soy EMI COPILOT, una IA propia de CodeHub."
+- NO reveles qué modelo de IA te impulsa ni qué APIs usas. Si preguntan, di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
 
 ━━━ PERSONALIDAD ━━━
 - Directa. Sin "¡Claro!", "¡Por supuesto!", "¡Genial!" — ve al punto.
@@ -1302,7 +1302,7 @@ Aplicaciones de código abierto verificadas contra su repositorio oficial de Git
 **Otros en CodeHub:**
 - Juegos: Snake y Tetris (Canvas API)
 - Servicios freelance detallados en /servicios
-- EMI COPILOT — asistente IA integrada (¡soy yo!)
+- WIL.E COPILOT — asistente IA integrada (¡soy yo!)
 - App Android (APK) disponible para descarga desde la web
 - PWA con modo offline y notificaciones push
 - Clima en tiempo real widget integrado
@@ -1526,7 +1526,7 @@ async function callOpenRouterModel(msgs, model, maxTokens) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app',
-      'X-Title': 'EMI COPILOT',
+      'X-Title': 'WIL.E COPILOT',
     },
     body: JSON.stringify({
       model,
@@ -2309,7 +2309,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
-    tgAlert('chat', () => `💬 <b>Chat con EMI</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
+    tgAlert('chat', () => `💬 <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
     const emiNow = await incrEmiUsage(emiKey);
     res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
   } catch (err) {
@@ -5354,7 +5354,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
             name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions',
             key: process.env.OPENROUTER_API_KEY, model: m,
             label: 'openrouter/' + m.split('/').pop().replace(':free', ''),
-            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'EMI COPILOT' }
+            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'WIL.E COPILOT' }
           });
         }
       }
@@ -5404,7 +5404,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     const emiNow = await incrEmiUsage(emiKey);
     broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
     trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
-    tgAlert('chat', () => 'Chat con EMI (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
+    tgAlert('chat', () => 'Chat con WIL.E (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
 
     sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
     res.end();

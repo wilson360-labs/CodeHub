@@ -751,7 +751,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <button class="auth-btn auth-google" type="button">
                         <i class="fab fa-google"></i> <span data-i18n-auth="authGoogle">Continuar con Google</span>
                     </button>
-                    <p class="auth-note" data-i18n-auth="authNote">Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de EMI y guardas tus chats.</p>
+                    <p class="auth-note" data-i18n-auth="authNote">Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de WIL.E y guardas tus chats.</p>
                 </div>
             </div>
         </div>
@@ -1812,7 +1812,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     {
                         selector: '#ai-fab',
                         icon: 'fa-solid fa-robot',
-                        title: 'EMI COPILOT — tu IA',
+                        title: 'WIL.E COPILOT — tu IA',
                         text: 'Asistente de IA integrado. Chatea, genera imágenes, analiza PDFs, traduce y más. Di "hola" para empezar.',
                         optional: true
                     },
@@ -3604,7 +3604,7 @@ async function sendEmail(e) {
 
 
 <!-- ═══ ASISTENTE IA FLOTANTE ═══ -->
-<button id="ai-fab" aria-label="Abrir EMI COPILOT" title="Habla con EMI COPILOT">
+<button id="ai-fab" aria-label="Abrir WIL.E COPILOT" title="Habla con WIL.E COPILOT">
   <span class="ai-fab-icon">
     <svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <line x1="11" y1="1" x2="11" y2="4" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round"/>
@@ -3619,7 +3619,7 @@ async function sendEmail(e) {
     </svg>
   </span>
   <span class="ai-fab-text">
-    <span class="ai-fab-label">EMI COPILOT</span>
+    <span class="ai-fab-label">WIL.E COPILOT</span>
     <span class="ai-fab-sub">Pregúntame algo</span>
   </span>
   <span class="ai-notif"></span>
@@ -3630,7 +3630,7 @@ async function sendEmail(e) {
 
 <div id="ai-img-lightbox" onclick="if(event.target===this)closeAiImgLightbox()">
   <button id="ai-img-lightbox-close" onclick="closeAiImgLightbox()" aria-label="Cerrar imagen"></button>
-  <img id="ai-img-lightbox-img" src="" alt="Imagen generada por EMI COPILOT (vista ampliada)">
+  <img id="ai-img-lightbox-img" src="" alt="Imagen generada por WIL.E COPILOT (vista ampliada)">
 </div>
 <script>
   function openAiImgLightbox(uid) {
@@ -3650,7 +3650,7 @@ async function sendEmail(e) {
   });
 </script>
 
-<div id="ai-panel" role="dialog" aria-modal="true" aria-label="EMI COPILOT" style="display:none">
+<div id="ai-panel" role="dialog" aria-modal="true" aria-label="WIL.E COPILOT" style="display:none">
 
   <!-- Header -->
   <div class="ai-head">
@@ -3674,7 +3674,7 @@ async function sendEmail(e) {
       </svg>
     </div>
     <div class="ai-head-info">
-      <div class="ai-head-title">EMI COPILOT</div>
+      <div class="ai-head-title">WIL.E COPILOT</div>
       <div class="ai-head-sub">
         <span class="online-dot"></span>
         <span id="ai-status" class="ai-status-text">Online · Listo para ayudarte</span>
@@ -3700,14 +3700,14 @@ async function sendEmail(e) {
   <div id="ai-msgs">
     <div class="ai-disclaimer" id="ai-disclaimer" style="display:none;">
       <i class="fas fa-circle-info"></i>
-      <span>EMI puede cometer errores. Verifica la información importante.</span>
+      <span>WIL.E puede cometer errores. Verifica la información importante.</span>
       <button onclick="dismissAiDisclaimer()" aria-label="Cerrar aviso"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="ai-msg-wrap ai ai-welcome">
       <div class="ai-msg-avatar">✦</div>
       <div class="ai-msg-content">
         <div class="ai-msg">
-          ¡Hola! 👋 Soy <strong>EMI COPILOT</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
+          ¡Hola! 👋 Soy <strong>WIL.E COPILOT</strong>, asistente de <strong>Wilson.E</strong>. Puedo ayudarte con código, buscar información con imágenes o responder sobre CodeHub. ¿Qué necesitas?
           <button class="ai-msg-copy" onclick="copyMsg(this)" title="Copiar">⎘</button>
         </div>
         <span class="ai-msg-time" id="ai-welcome-time"></span>
@@ -3729,7 +3729,7 @@ async function sendEmail(e) {
         <button id="emi-attach-btn" type="button" aria-label="Adjuntar imagen o PDF" title="Adjuntar imagen o PDF" onclick="document.getElementById('ai-attach-input').click()">
           <i class="fas fa-paperclip"></i>
         </button>
-        <button id="emi-mic-btn" type="button" aria-label="Hablar con EMI" title="Hablar con EMI (voz a texto)" onclick="emiVoice.toggle()">
+        <button id="emi-mic-btn" type="button" aria-label="Hablar con WIL.E" title="Hablar con WIL.E (voz a texto)" onclick="emiVoice.toggle()">
           <i class="fas fa-microphone"></i>
         </button>
         <button id="ai-send-btn" onclick="sendAI()" aria-label="Enviar mensaje">
@@ -3737,8 +3737,12 @@ async function sendEmail(e) {
         </button>
       </div>
       <div class="ai-input-footer">
-        <span class="ai-input-hint-inline" id="ai-input-hint">⬡ EMI COPILOT · CodeHub</span>
-        <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
+        <span class="ai-input-hint-inline" id="ai-input-hint">⬡ WIL.E COPILOT · CodeHub</span>
+        <div class="ai-input-actions">
+          <button type="button" class="ai-action-btn" onclick="if(typeof window.resetEmiChat==='function')window.resetEmiChat()" aria-label="Restablecer chat" title="Restablecer chat">↺</button>
+          <button type="button" class="ai-action-btn" onclick="if(typeof window.closeEmiChat==='function')window.closeEmiChat()" aria-label="Cerrar chat" title="Cerrar chat">✕</button>
+          <span class="ai-char-count" id="ai-char-count">0 / 1000</span>
+        </div>
       </div>
     </div>
   </div>
@@ -3749,9 +3753,9 @@ async function sendEmail(e) {
 <!-- Menú deslizante de funciones de EMI -->
 <div id="emi-drawer" class="emi-drawer" aria-hidden="true">
   <div class="emi-drawer-scrim" onclick="emiMenu.close()"></div>
-  <aside class="emi-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de EMI COPILOT">
+  <aside class="emi-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de WIL.E COPILOT">
     <div class="emi-drawer-head">
-      <div class="emi-drawer-title">☰ EMI COPILOT <span class="emi-drawer-status"><i class="fas fa-circle online-dot"></i> En línea</span></div>
+      <div class="emi-drawer-title">☰ WIL.E COPILOT <span class="emi-drawer-status"><i class="fas fa-circle online-dot"></i> En línea</span></div>
       <button class="emi-drawer-close" onclick="emiMenu.close()" aria-label="Cerrar menú">✕</button>
     </div>
     <div class="emi-drawer-body" id="emi-drawer-body">
@@ -4181,7 +4185,7 @@ async function sendEmail(e) {
 
       // El backend puede devolver base64 en data.image o URL en data.url
       const imgSrc = data.image || data.url || data.image_url || data.data?.[0]?.url || null;
-      history.push({ role: 'assistant', content: 'Generé una imagen con EMI COPILOT.' });
+      history.push({ role: 'assistant', content: 'Generé una imagen con WIL.E COPILOT.' });
       persistChat();
 
       if (imgSrc) {
@@ -4192,7 +4196,7 @@ async function sendEmail(e) {
         addMsg('ai', `
           <div class="ai-gen-img-wrap">
             <img src="${imgSrc}"
-              alt="Imagen generada por EMI COPILOT"
+              alt="Imagen generada por WIL.E COPILOT"
               class="ai-gen-img"
               id="${uid}"
               onclick="openAiImgLightbox('${uid}')"
@@ -4201,8 +4205,8 @@ async function sendEmail(e) {
               onerror="if(this.parentElement)this.parentElement.innerHTML='<span style=\'color:rgba(255,120,100,.8)\'>⚠️ No se pudo mostrar la imagen</span>'">
             <div class="ai-gen-img-footer">
               <i class="fas fa-wand-magic-sparkles"></i>
-              Creada por EMI COPILOT ·
-              <a href="${downloadHref}" download="emi-imagen.png" target="_blank"
+              Creada por WIL.E COPILOT ·
+              <a href="${downloadHref}" download="wil-imagen.png" target="_blank"
                 style="color:#a0a0ff;text-decoration:none;">
                 Descargar
               </a>
@@ -4247,18 +4251,18 @@ async function sendEmail(e) {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/debug <código>` — Depura código con EMI\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
-        '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que EMI lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
+        '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
         '/review':  () => { if (!arg) return addMsg('ai', 'Pega código después de `/review` para el review.'); input.value = 'Haz un code review de este código, sugiere mejoras: ' + arg; sendAI(); },
         '/readme':  () => { input.value = 'Genera un README profesional para este proyecto con descripción, instalación, uso y licencia'; sendAI(); },
         '/translate':() => { if (!arg) return addMsg('ai', 'Usa: `/translate <texto a traducir>`'); input.value = 'Traduce al español (si está en otro idioma) o al inglés (si está en español): ' + arg; sendAI(); },
-        '/explain': () => { if (!arg) return addMsg('ai', 'Pega código después de `/explain` para que EMI lo explique.'); input.value = 'Explica este código como si fuera para un principiante, línea por línea: ' + arg; sendAI(); },
+        '/explain': () => { if (!arg) return addMsg('ai', 'Pega código después de `/explain` para que WIL.E lo explique.'); input.value = 'Explica este código como si fuera para un principiante, línea por línea: ' + arg; sendAI(); },
         '/test':    () => { if (!arg) return addMsg('ai', 'Pega código después de `/test` para generar tests.'); input.value = 'Genera tests unitarios para este código (usa el framework apropiado): ' + arg; sendAI(); },
         '/resumen': () => { if (!arg) return addMsg('ai', 'Pega texto o URL después de `/resumen` para resumir.'); input.value = 'Resume este contenido en los puntos clave: ' + arg; sendAI(); },
         '/skills':  async () => { try { const r = await fetch(BACKEND_URL + '/api/skills'); const d = await r.json(); const list = (d.skills || []).map(s => '- **' + s.name + '** — ' + (s.description || '')).join('\n'); addMsg('ai', formatAIReply('**Skills disponibles:**\n\n' + (list || 'No hay skills activos.'))); } catch { addMsg('ai', 'No pude cargar las skills.'); } },
-        '/model':   () => addMsg('ai', 'Modelo activo: **EMI COPILOT** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
+        '/model':   () => addMsg('ai', 'Modelo activo: **WIL.E COPILOT** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
       };
       const handler = COMMANDS[cmd];
       if (handler) { input.value = ''; await handler(); return; }
@@ -4566,7 +4570,7 @@ async function sendEmail(e) {
         <div class="ai-msg-avatar">✦</div>
         <div class="ai-msg-content">
           <div class="ai-msg ai-typing-msg">
-            <canvas class="ai-orb" width="26" height="26" aria-label="EMI está pensando"></canvas>
+            <canvas class="ai-orb" width="26" height="26" aria-label="WIL.E está pensando"></canvas>
             <span class="ai-typing-phrase">Pensando…</span>
             <button class="ai-typing-stop" onclick="stopAIGeneration()" title="Detener" aria-label="Detener generación">
               <i class="fas fa-stop"></i>
@@ -4882,7 +4886,7 @@ async function sendEmail(e) {
     const m = text.match(/^[\s]*[#!]+\s*(.+)/);
     if (m) return m[1].trim().substring(0, 60);
     const first = text.split('\n').find(l => l.trim());
-    return first ? first.trim().substring(0, 60) : 'Respuesta EMI';
+    return first ? first.trim().substring(0, 60) : 'Respuesta WIL.E';
   }
 
   function formatAIReply(text) {
@@ -4969,7 +4973,7 @@ async function sendEmail(e) {
     if (ql.includes('contact') || ql.includes('wilson')) return '**Wilson.E** es desarrollador guatemalteco disponible para freelance. Contacto: WhatsApp +502 4146 8185 o via el formulario de contacto. 💬';
     if (ql.includes('busca') || ql.includes('buscar') || ql.includes('imagen') || ql.includes('fondo') || ql.includes('icono'))
       return '[BUSCAR_IMAGENES: ' + q.replace(/busca|buscar|imágenes|imagen|muéstrame|muestra|fondo|fondos|icono|iconos/gi,'').trim() + ']';
-    return 'Entendido. Soy **EMI COPILOT** de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
+    return 'Entendido. Soy **WIL.E COPILOT** de CodeHub. Puedo ayudarte con código, herramientas o buscar imágenes. ¿Qué necesitas? 🤖';
   }
 
   window.aiSugg = function(btn) {
@@ -5015,11 +5019,11 @@ window.exportEmiChat = function () {
       return;
     }
     var lines = [];
-    lines.push('# Conversación con EMI COPILOT');
+    lines.push('# Conversación con WIL.E COPILOT');
     lines.push('_Generado el ' + new Date().toLocaleString('es-GT') + '_');
     lines.push('');
     wraps.forEach(function (w) {
-      var role = w.classList.contains('user') ? '**Tú**' : '**EMI**';
+      var role = w.classList.contains('user') ? '**Tú**' : '**WIL.E**';
       var contentEl = w.querySelector('.ai-msg') || w.querySelector('.ai-msg-content');
       var text = contentEl ? contentEl.innerText.replace(/\s+\n/g, '\n').trim() : '';
       if (!text) return;
@@ -5032,7 +5036,7 @@ window.exportEmiChat = function () {
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'emi-chat-' + new Date().toISOString().slice(0, 10) + '.md';
+    a.download = 'wil-chat-' + new Date().toISOString().slice(0, 10) + '.md';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -5063,7 +5067,7 @@ window.setEmiMode = function (mode, btn) {
   });
   if (typeof toast === 'function') {
     var label = mode === 'auto' ? '⚡ Modo Auto' : 'Modo ' + mode.charAt(0).toUpperCase() + mode.slice(1);
-    toast('EMI: ' + label, 'info', 1800);
+    toast('WIL.E: ' + label, 'info', 1800);
   }
   if (mode !== 'auto' && mode !== 'img') {
     var input = document.getElementById('ai-input');
@@ -5135,7 +5139,7 @@ window.emiMenu = {
   setMode: function (mode) {
     setEmiMode(mode, null);
     this.render();
-    if (typeof toast === 'function') toast('EMI: modo ' + (mode === 'auto' ? 'Auto' : mode), 'info', 1400);
+    if (typeof toast === 'function') toast('WIL.E: modo ' + (mode === 'auto' ? 'Auto' : mode), 'info', 1400);
   },
 
   /* Sección de contenido */
@@ -5210,7 +5214,7 @@ window.emiMenu = {
     h += this.item('fas fa-trash', 'Borrar todo', "emiMenu.clearChat()", ' danger');
 
     // Modos
-    h += this.section('Modos de EMI');
+    h += this.section('Modos de WIL.E');
     h += modesHtml;
 
     // Información
@@ -6107,7 +6111,7 @@ const i18n = {
         authGoogle: 'Continuar con Google',
         authLogout: 'Cerrar sesión',
         authRemember: 'Recordar sesión',
-        authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de EMI y guardas tus chats.',
+        authNote: 'Tus datos se guardan cifrados y protegidos. Al registrarte desbloqueas todas las funciones de WIL.E y guardas tus chats.',
     },
     en: {
         available: 'Available',
@@ -6212,7 +6216,7 @@ const i18n = {
         authGoogle: 'Continue with Google',
         authLogout: 'Log out',
         authRemember: 'Remember me',
-        authNote: 'Your data is stored encrypted and protected. By signing up you unlock all EMI features and save your chats.',
+        authNote: 'Your data is stored encrypted and protected. By signing up you unlock all WIL.E features and save your chats.',
     }
 };
 

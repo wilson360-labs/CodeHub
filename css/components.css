@@ -1918,6 +1918,13 @@
 .ai-char-count{font-size:.59rem;font-family:'JetBrains Mono',monospace;color:rgba(180,180,220,.35);transition:color .2s;}
 .ai-char-count.warn{color:rgba(255,171,0,.7);}
 .ai-char-count.over{color:rgba(255,82,82,.8);}
+.ai-input-actions{display:flex;align-items:center;gap:.35rem;}
+.ai-action-btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border-radius:8px;font-size:.85rem;line-height:1;
+  color:rgba(180,160,255,.55);transition:color .2s,background .2s,transform .1s;
+  -webkit-tap-highlight-color:transparent;}
+.ai-action-btn:hover{color:#fff;background:rgba(180,160,255,.14);}
+.ai-action-btn:active{transform:scale(.92);}
 /* Imagen generada en el chat */
 .ai-gen-img-wrap{margin:.3rem 0;}
 .ai-gen-img{
