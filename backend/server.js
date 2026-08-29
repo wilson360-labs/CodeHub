@@ -274,8 +274,8 @@ function _verifySession(token) {
 // ── Contador diario de EMI por usuario/dispositivo ───────────
 // F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
 // Limits are now configurable via /api/admin/config
-const EMI_DAILY_LIMIT_GUEST_FALLBACK = 10;
-const EMI_DAILY_LIMIT_REGISTERED_FALLBACK = 50;
+const EMI_DAILY_LIMIT_GUEST_FALLBACK = 15;
+const EMI_DAILY_LIMIT_REGISTERED_FALLBACK = 20;
 
 async function getEmiLimit(isRegistered) {
   try {
@@ -324,8 +324,8 @@ const DEFAULT_CONFIG = {
     easterEgg: false,
   },
   limits: {
-    emiDailyGuest: 10,
-    emiDailyRegistered: 50,
+    emiDailyGuest: 15,
+    emiDailyRegistered: 20,
     chatRateLimit: 50,
     imageRateLimit: 20,
     imageCacheTTL: 3600,
@@ -3174,6 +3174,60 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
 });
 
 // ── Helper: guardar log de escaneo en Supabase ───────────────
+// POST /api/enhance-image - Autoenhance.ai (mejorar calidad de imagen)
+app.post('/api/enhance-image', requireAuth, async (req, res) => {
+  const { image } = req.body || {};
+  if (!image || typeof image !== 'string') {
+    return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
+  }
+  const parsed = parseImageDataUrl(image);
+  if (!parsed) {
+    return res.status(400).json({ ok: false, error: 'Imagen invalida o demasiado pesada (max ~4MB, png/jpeg/webp/gif).' });
+  }
+  const key = process.env.AUTOENHANCE_API_KEY;
+  if (!key) {
+    return res.status(503).json({ ok: false, error: 'AUTOENHANCE_API_KEY no configurada.' });
+  }
+  try {
+    const extMap = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+    const ext = extMap[parsed.mimeType] || 'png';
+    const buf = Buffer.from(parsed.data, 'base64');
+    const boundary = '----WilE' + Date.now() + 'x';
+    const body = Buffer.concat([
+      Buffer.from('--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="image"; filename="input.' + ext + '"\r\n' +
+        'Content-Type: ' + parsed.mimeType + '\r\n\r\n'),
+      buf,
+      Buffer.from('\r\n--' + boundary + '--\r\n'),
+    ]);
+    const resp = await fetch('https://api.autoenhance.ai/v1/enhance', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': key,
+        'Authorization': 'Bearer ' + key,
+        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+      },
+      body,
+      signal: AbortSignal.timeout(60000),
+    });
+    const ct = resp.headers.get('content-type') || '';
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      console.warn('Autoenhance error:', resp.status, errText.slice(0, 200));
+      return res.status(resp.status).json({ ok: false, error: 'Autoenhance fallo (' + resp.status + ').' });
+    }
+    if (ct.includes('application/json')) {
+      const j = await resp.json();
+      return res.json({ ok: true, ...j });
+    }
+    const out = Buffer.from(await resp.arrayBuffer());
+    res.json({ ok: true, image: 'data:' + (ct.split(';')[0] || 'image/png') + ';base64,' + out.toString('base64') });
+  } catch (e) {
+    console.warn('Enhance error:', e.message);
+    res.status(500).json({ ok: false, error: 'Error mejorando la imagen.' });
+  }
+});
+
 async function saveScanLog({ type, target, verdict, riskScore, provider, metadata = {} }) {
   if (!supabase) return;
   try {

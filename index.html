@@ -4151,6 +4151,40 @@ async function sendEmail(e) {
   // Endpoint de generación de imágenes (confidencial — pasa por backend)
   const IMG_GEN_URL = BACKEND_URL + '/api/generate-image';
 
+  // Mejora la imagen adjunta (modo profesional) vía Autoenhance.ai en el backend.
+  async function enhanceImage() {
+    if (!attachment || attachment.type !== 'image') {
+      return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/enhance-img`.');
+    }
+    setAiStatus('Mejorando imagen en modo profesional…', 'busy');
+    loading = true; if (sendBtn) sendBtn.disabled = true;
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
+        const _ses = CodeHubAuth.getSession();
+        if (_ses && _ses.token) headers['Authorization'] = 'Bearer ' + _ses.token;
+      }
+      const r = await fetch(BACKEND_URL + '/api/enhance-image', {
+        method: 'POST', headers, body: JSON.stringify({ image: attachment.base64 })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const msg = (d && d.error) ? d.error : ('Error HTTP ' + r.status);
+        return addMsg('ai', 'No se pudo mejorar la imagen: ' + msg);
+      }
+      const resultUrl = d.image || (d.url) || (d.output_url) || (d.result && d.result.url);
+      if (!resultUrl) return addMsg('ai', 'El servicio devolvió una respuesta inesperada.');
+      const finalSrc = resultUrl.startsWith('data:') ? resultUrl : resultUrl;
+      addMsg('ai', formatAIReply('**Imagen mejorada (modo profesional)** — calidad y detalle aumentados:'));
+      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + finalSrc + '" alt="Imagen mejorada por WIL.E" style="max-width:100%;border-radius:10px;"></div>');
+    } catch (e) {
+      addMsg('ai', 'Error al mejorar la imagen. Intenta de nuevo.');
+    } finally {
+      loading = false; if (sendBtn) sendBtn.disabled = false;
+      setAiStatus('Listo', 'idle');
+    }
+  }
+
   async function generateImage(prompt) {
     // Extraer solo el sujeto descriptivo quitando verbos y palabras vacías
     let cleanPrompt = prompt
@@ -4268,6 +4302,11 @@ async function sendEmail(e) {
         '/resumen': () => { if (!arg) return addMsg('ai', 'Pega texto o URL después de `/resumen` para resumir.'); input.value = 'Resume este contenido en los puntos clave: ' + arg; sendAI(); },
         '/skills':  async () => { try { const r = await fetch(BACKEND_URL + '/api/skills'); const d = await r.json(); const list = (d.skills || []).map(s => '- **' + s.name + '** — ' + (s.description || '')).join('\n'); addMsg('ai', formatAIReply('**Skills disponibles:**\n\n' + (list || 'No hay skills activos.'))); } catch { addMsg('ai', 'No pude cargar las skills.'); } },
         '/model':   () => addMsg('ai', 'Modelo activo: **WIL.E COPILOT** (multi-proveedor: Claude, Groq, Cerebras, Gemini, Mistral, OpenRouter, Kimi)'),
+        '/enhance-img': () => {
+          if (!attachment || attachment.type !== 'image') return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/enhance-img` para mejorar su calidad (modo profesional).');
+          if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'El comando `/enhance-img` requiere <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
+          enhanceImage();
+        },
       };
       const handler = COMMANDS[cmd];
       if (handler) { input.value = ''; await handler(); return; }
@@ -5157,7 +5196,7 @@ window.emiMenu = {
 
   _usageHtml: function () {
     var used = parseInt(sessionStorage.getItem('ch_chat_count') || '0', 10);
-    var limit = 30;
+    var limit = 20;
     if (window.RC && typeof window.RC.limit === 'function') {
       try { var l = window.RC.limit(); if (l) limit = l; } catch (e) {}
     }
