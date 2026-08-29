@@ -5557,3 +5557,14 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     res.end();
   }
 });
+
+
+
+// WIL.E health extendido - reporta llaves criticas presentes (sin exponer valores)
+app.get('/api/health/keys', (req, res) => res.json({
+  autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
+  groq:        !!(process.env.GROQ_API_KEY),
+  gemini:      !!(process.env.GEMINI_API_KEY),
+  claude:      !!(process.env.ANTHROPIC_API_KEY),
+  cohere:      !!(process.env.COHERE_API_KEY),
+}));
