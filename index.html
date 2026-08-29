@@ -4192,6 +4192,7 @@ async function sendEmail(e) {
         const uid = 'img_' + Date.now();
         const isBase64 = imgSrc.startsWith('data:');
         const downloadHref = isBase64 ? imgSrc : imgSrc;
+        const imgPrompt = (data.refined_prompt || cleanPrompt || 'Imagen generada por WIL.E COPILOT');
 
         addMsg('ai', `
           <div class="ai-gen-img-wrap">
@@ -4211,6 +4212,10 @@ async function sendEmail(e) {
                 Descargar
               </a>
             </div>
+            <details class="ai-gen-img-prompt">
+              <summary>✨ Prompt optimizado por IA</summary>
+              <span>${escHtml(imgPrompt)}</span>
+            </details>
           </div>`);
       } else {
         addMsg('ai', '⚠️ No pude generar la imagen esta vez. Intenta con una descripción más detallada.');

@@ -558,6 +558,11 @@ const Release = mongoose.model('Release', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }));
 
+// ── WIL.E INTELLIGENCE CORE ─────────────────────────────────
+// Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
+const { buildContext, augmentSystem } = require('./wil-e/core');
+const { remember } = require('./wil-e/memory');
+
 let dbConnected = false;
 
 // ── MONGODB — LISTENERS DE RECONEXIÓN ──────────────────────────
@@ -1339,7 +1344,8 @@ Cuando alguien pregunte por contratar a Wilson.E o por servicios:
 Cuando el usuario pida generar, crear o diseñar una imagen:
 - Confirma que lo vas a generar con entusiasmo breve
 - No menciones qué tecnología usas para generarla
-- Si el prompt es vago, sugiere hacerlo más descriptivo para mejor resultado
+- Una IA optimiza automáticamente el prompt para lograr un resultado profesional y adaptado a lo que pidió
+- Si el prompt es vago, sugiere añadir estilo, iluminación o tema para mejor resultado
 - El sistema procesará la imagen automáticamente
 
 ━━━ SKILL: TRADUCTOR ━━━
@@ -1726,6 +1732,14 @@ async function validateTurnstile(token) {
 // ── Universal Resolver — Desencriptación heurística de links ──
 const universalResolverRouter = require('./modules/universal-resolver');
 app.use('/api/resolver', universalResolverRouter);
+
+// ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
+// Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
+const wilERoutes = require('./wil-e/routes')({
+  authPayload: (req) => req.authUser,
+  isAdminReq: (req) => !!(req.authUser && req.authUser.email === (process.env.ADMIN_EMAIL || '')) || !!(req.headers['x-admin-key']),
+});
+app.use('/api/wil-e', wilERoutes);
 
 // ════════════════════════════════════════════════════════════════
 //  RUTAS
@@ -2294,6 +2308,20 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       system = skill.system_prompt_inject + '\n\n' + system;
     }
   }
+  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
+  if (dbConnected) {
+    try {
+      const ctx = await buildContext({
+        userId: req.authUser ? req.authUser.id : 'anon',
+        ownerId: 'admin',
+        message,
+        topK: 3,
+      });
+      if (ctx) system = augmentSystem(system, ctx);
+    } catch (e) {
+      console.warn('Wil.E contexto error:', e.message);
+    }
+  }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
@@ -2312,6 +2340,10 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     tgAlert('chat', () => `💬 <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
     const emiNow = await incrEmiUsage(emiKey);
     res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
+    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
+    if (dbConnected && req.authUser) {
+      remember({ userId: req.authUser.id, text: message }).catch(() => {});
+    }
   } catch (err) {
     tgAlert('chatfail', () =>
       `⚠️ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
@@ -2941,8 +2973,38 @@ function imgCacheSet(key, data) {
   _imgCache.set(key, { data, ts: Date.now() });
 }
 function sendAndCache(res, data, cacheKey) {
-  if (data && (data.image || data.url)) imgCacheSet(cacheKey, data);
+  if (data && (data.image || data.url)) {
+    if (res.locals && res.locals.refinedPrompt) data.refined_prompt = res.locals.refinedPrompt;
+    imgCacheSet(cacheKey, data);
+  }
   return res.json(data);
+}
+
+// ── Refinador de prompt de imagen (dos etapas) ─────────────────────
+// El prompt crudo del usuario pasa primero por una IA de chat que lo
+// convierte en un prompt de difusión profesional, detallado y adaptado
+// a lo que pidió. Así el generador recibe una instrucción consistente
+// y de alta calidad (evita que cada proveedor "invente" su propia imagen).
+async function refineImagePrompt(rawPrompt, w, h) {
+  const aspect = w > h ? 'horizontales (16:9) de gran angular' : w < h ? 'verticales (9:16) aptas para móvil' : 'cuadradas (1:1)';
+  const sysMsg = 'Eres un experto director de arte de IA. Analizas la intención del usuario y reescribes su petición como un PROMPT DE DIFUSIÓN PROFESIONAL en inglés, detallado y listo para meter en un generador de imágenes (FLUX / Imagen / MiniMax).\n'
+    + 'Reglas:\n'
+    + '- Conserva SIEMPRE el sujeto, estilo o tema que pidió el usuario (persona, objeto, escena, logo, anime, fotorealista...).\n'
+    + '- Añade detalles de calidad: iluminación (luz dorada, neblina, estudio, etc.), composición, ángulo de cámara, resolución, textura y ambiente.\n'
+    + '- Elige el estilo visual correcto (fotorealista, render 3D, dibujo, acuarela, ciberpunk, minimalista, etc.) según lo pedido.\n'
+    + '- Respeta si pide proporciones/formatos específicos; si no, usa una orientación general ' + aspect + '.\n'
+    + '- Devuelve SOLO el prompt refinado en una línea, en inglés, sin comillas, sin explicaciones, sin saludos.';
+  try {
+    const { reply } = await callAI([
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: 'Petición del usuario: ' + String(rawPrompt).slice(0, 400) }
+    ], 450);
+    const refined = String(reply || '').trim().replace(/^["']+|["']+$/g, '').replace(/\s+/g, ' ');
+    if (refined.length >= 4) return refined;
+  } catch (e) {
+    console.warn('⚠️ refineImagePrompt falló, usando prompt original:', e.message);
+  }
+  return String(rawPrompt).trim();
 }
 
 app.post('/api/generate-image', imageLimiter, async (req, res) => {
@@ -2968,6 +3030,13 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
       }
     }
   }
+
+  // ── Dos etapas: otra IA refina el prompt antes de generarlo ──
+  // Refinamiento de prompt por defecto (puede desactivarse con refine:false)
+  if (req.body.refine !== false) {
+    p = await refineImagePrompt(p, w, h);
+  }
+  res.locals.refinedPrompt = p;
 
   // F2.6: Check image cache before hitting providers
   const cacheKey = imgCacheKey(p, w, h);
@@ -5232,6 +5301,20 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
   }
+  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
+  if (dbConnected) {
+    try {
+      const ctx = await buildContext({
+        userId: req.authUser ? req.authUser.id : 'anon',
+        ownerId: 'admin',
+        message,
+        topK: 3,
+      });
+      if (ctx) system = augmentSystem(system, ctx);
+    } catch (e) {
+      console.warn('Wil.E contexto error:', e.message);
+    }
+  }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
@@ -5405,6 +5488,11 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
     trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
     tgAlert('chat', () => 'Chat con WIL.E (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
+
+    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
+    if (dbConnected && req.authUser) {
+      remember({ userId: req.authUser.id, text: message }).catch(() => {});
+    }
 
     sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
     res.end();
