@@ -5246,6 +5246,13 @@ process.on('uncaughtException', (err) => {
 
 // ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
 app.use((req, res) => {
+  if (req.path === '/api/health/keys') return res.json({
+    autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
+    groq:        !!(process.env.GROQ_API_KEY),
+    gemini:      !!(process.env.GEMINI_API_KEY),
+    claude:      !!(process.env.ANTHROPIC_API_KEY),
+    cohere:      !!(process.env.COHERE_API_KEY),
+  });
   res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
 });
 
@@ -5560,11 +5567,4 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
 
 
 
-// WIL.E health extendido - reporta llaves criticas presentes (sin exponer valores)
-app.get('/api/health/keys', (req, res) => res.json({
-  autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
-  groq:        !!(process.env.GROQ_API_KEY),
-  gemini:      !!(process.env.GEMINI_API_KEY),
-  claude:      !!(process.env.ANTHROPIC_API_KEY),
-  cohere:      !!(process.env.COHERE_API_KEY),
-}));
+
