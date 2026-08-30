@@ -4324,7 +4324,7 @@ async function sendEmail(e) {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
         '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
@@ -4344,6 +4344,58 @@ async function sendEmail(e) {
           const fmt = valid.includes(_fmt) ? _fmt : 'webp';
           if (!valid.includes(_fmt)) addMsg('ai', 'Usa el formato por defecto (WebP). Formatos disponibles: `/enhance-img png|jpg|webp`.');
           enhanceImage(fmt);
+        },
+        '/entrenar': async () => {
+          if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'Para entrenar a Wil.E con tu memoria personal necesitas <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
+          let contenido = arg.trim();
+          let titulo = '';
+          if (!contenido) return addMsg('ai', 'Usa: `/entrenar <texto a recordar>` o `/entrenar url <https://ejemplo.com>` para que Wil.E recuerde algo.\n\nEjemplos:\n- `/entrenar Mi plaza favorita es la Central`\n- `/entrenar url https://en.wikipedia.org/wiki/JavaScript`');
+          if (/^url\s+/i.test(contenido)) {
+            titulo = 'URL';
+            const u = contenido.replace(/^url\s+/i, '').trim();
+            if (!/^https?:\/\//i.test(u)) return addMsg('ai', 'La URL debe empezar con `http://` o `https://`.');
+            // Wil.E procesará la URL en el chat para extraer su contenido
+            addMsg('ai', 'Voy a leer el contenido de esa URL y lo guardaré en tu memoria. Un momento…');
+            const sess = window.CodeHubAuth && CodeHubAuth.getSession();
+            const headers = { 'Content-Type': 'application/json' };
+            if (sess && sess.token) headers['Authorization'] = 'Bearer ' + sess.token;
+            try {
+              const rr = await fetch(BACKEND_URL + '/api/chat', {
+                method: 'POST', headers,
+                body: JSON.stringify({ message: 'Resume este contenido de la URL en máximo 40 palabras y responde SOLO con ese resumen (sin texto extra): ' + u, session_id: SESSION_ID })
+              });
+              const dd = await rr.json();
+              let resText = (dd && (dd.reply || dd.message || dd.response)) || '';
+              resText = String(resText).replace(/<[^>]+>/g, '').trim();
+              if (!resText || resText.length < 10) return addMsg('ai', 'No pude extraer el contenido de esa URL. Intenta con `/entrenar <texto>` directo.');
+              // Guardar el resumen en memoria personal
+              const rr2 = await fetch(BACKEND_URL + '/api/wil-e/memory/note', {
+                method: 'POST', headers,
+                body: JSON.stringify({ text: 'Sobre lo que me pediste recordar (fuente URL):\n' + resText, title: u })
+              });
+              const d2 = await rr2.json().catch(() => ({}));
+              if (d2 && d2.ok) addMsg('ai', '✅ Listo. Wil.E aprendió y recordará el contenido de: `' + escHtml(typeof u === 'string' ? u.slice(0, 60) : u) + '`');
+              else addMsg('ai', '⚠️ No pude guardar el contenido en tu memoria: ' + ((d2 && d2.error) || 'error'));
+            } catch (e) {
+              addMsg('ai', 'Error al procesar la URL. Intenta de nuevo.');
+            }
+            return;
+          }
+          titulo = contenido.slice(0, 40);
+          const s = window.CodeHubAuth && CodeHubAuth.getSession();
+          const h = { 'Content-Type': 'application/json' };
+          if (s && s.token) h['Authorization'] = 'Bearer ' + s.token;
+          try {
+            const rr = await fetch(BACKEND_URL + '/api/wil-e/memory/note', {
+              method: 'POST', headers: h,
+              body: JSON.stringify({ text: contenido, title: titulo })
+            });
+            const d = await rr.json().catch(() => ({}));
+            if (d && d.ok) addMsg('ai', '✅ Entrenado. Wil.E guardó esto en tu memoria y lo usará en el futuro: "`' + escHtml(contenido.slice(0, 80)) + '`"');
+            else addMsg('ai', '⚠️ No se pudo entrenar: ' + ((d && d.error) || 'error ' + rr.status));
+          } catch (e) {
+            addMsg('ai', 'Error al entrenar a Wil.E. Intenta de nuevo.');
+          }
         },
       };
       const handler = COMMANDS[cmd];

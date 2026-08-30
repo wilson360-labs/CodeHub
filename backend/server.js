@@ -2322,6 +2322,16 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       console.warn('Wil.E contexto error:', e.message);
     }
   }
+  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  try {
+    const live = await liveWebContext(message);
+    if (live) system = system + '\n\n' + live;
+  } catch (e) { /* silencioso */ }
+  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
+  try {
+    const tool = computeTool(message);
+    if (tool) system = system + '\n\n' + tool;
+  } catch (e) { /* silencioso */ }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
@@ -3027,6 +3037,120 @@ async function describeImage(rawPrompt, refinedPrompt) {
     console.warn('⚠️ describeImage falló:', e.message);
   }
   return '¡Listo! Generé una imagen basada en tu petición: ' + String(rawPrompt).slice(0, 80).trim() + '.';
+}
+
+// ── Búsqueda web en vivo ─────────────────────────────────────────────
+// Si la consulta parece pedir información actual/noticias, busca en la web
+// (DuckDuckGo Instant Answer + Wikipedia, gratuitos y sin clave) y devuelve
+// un contexto breve para que WIL.E responda con datos reales y recientes.
+// Devuelve string vacío si no aplica o falla.
+async function liveWebContext(message) {
+  const q = String(message || '').trim();
+  if (!q || q.length < 6) return '';
+  const low = q.toLowerCase();
+  const signalWords = ['última', 'último', 'noticia', 'hoy', '2024', '2025', '2026', 'cuál es la hora', 'mejor', 'más reciente', 'actualidad', 'resultado', 'presidente', 'guerra', 'elecciones', 'clima', 'efeméride', 'lanzamiento', 'noticias', 'recién', 'acaba'];
+  const curiosity = /(qué (es|pasó|hubo|ganó|dijo)|quién (es|ganó)|cuándo|cómo está|latest|today|news|who won|what happened)/i;
+  const wantsLive = signalWords.some(w => low.includes(w)) || curiosity.test(low);
+  if (!wantsLive) return '';
+
+  const out = [];
+  // 1) DuckDuckGo Instant Answer (abstract + descripción)
+  try {
+    const ctrl = AbortSignal.timeout(5000);
+    const r = await fetch('https://api.duckduckgo.com/?q=' + encodeURIComponent(q) + '&format=json&no_html=1&skip_disambig=1', { signal: ctrl });
+    if (r.ok) {
+      const d = await r.json();
+      const abstract = (d && (d.AbstractText || d.Answer)) || '';
+      if (abstract) out.push('DuckDuckGo: ' + String(abstract).slice(0, 400));
+      const defs = (d && d.RelatedTopics) || [];
+      for (const t of defs.slice(0, 3)) {
+        const txt = t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
+        if (txt) out.push('DuckDuckGo: ' + String(txt).slice(0, 250));
+      }
+    }
+  } catch (e) { /* ignorar */ }
+
+  // 2) Wikipedia (summary)
+  try {
+    const ctrl = AbortSignal.timeout(5000);
+    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q.replace(/[¿?¡!.,;:]/g, ' ').trim().split(' ').slice(0, 5).join('_')), { signal: ctrl, headers: { 'Accept': 'application/json' } });
+    if (r.ok) {
+      const d = await r.json();
+      const extract = (d && d.extract) || '';
+      if (extract) out.push('Wikipedia: ' + String(extract).slice(0, 500));
+    }
+  } catch (e) { /* ignorar */ }
+
+  if (!out.length) return '';
+  return 'REFERENCIA WEB EN VIVO (consulta "' + q.slice(0, 80) + '") — usa esto solo si responde a lo preguntado; si no hay relación, ignóralo:\n' + out.join('\n').slice(0, 2500);
+}
+
+// ── Herramienta de cómputo (agent) ──────────────────────────────────
+// Resuelve de forma programática (sin LLM) tareas computables: operaciones
+// de 2 operandos, fecha/hora actual, días transcurridos y conversiones de
+// unidades/divisas simples. Devuelve string vacío si no aplica.
+function computeTool(message) {
+  const q = String(message || '').trim();
+  if (!q) return '';
+  const low = q.toLowerCase();
+
+  // Fecha / hora / día actual
+  if (/(qué día es hoy|fecha de hoy|día de hoy|hoy es qué|qué fecha|hora actual|qué hora es)\b/i.test(low)) {
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return 'HERRAMIENTA (fecha/hora): hoy es ' + fecha + ' y son las ' + hora + ' (hora local del servidor). Usa este dato si la pregunta pide la fecha/hora actual.';
+  }
+
+  // Cálculo aritmético simple: a op b
+  const ops = [
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\+|\+|más|mas)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a + b, sym: '+' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:-|menos)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a - b, sym: '-' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\*|x|por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a * b, sym: '×' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\/|dividido entre|dividido por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a / b, sym: '÷' },
+  ];
+  for (const o of ops) {
+    const m = low.match(o.re);
+    if (m) {
+      const a = parseFloat(m[1].replace(',', '.'));
+      const b = parseFloat(m[2].replace(',', '.'));
+      if (!isNaN(a) && !isNaN(b) && b !== 0) {
+        const r = Math.round(o.fn(a, b) * 100000) / 100000;
+        return 'HERRAMIENTA (cálculo): ' + a + ' ' + o.sym + ' ' + b + ' = ' + r + '. Responde usando este resultado exacto.';
+      }
+    }
+  }
+
+  // Porcentaje: cuánto es X% de Y
+  const pc = low.match(/(\d+(?:[.,]\d+)?)\s*%\s*de\s*(\d+(?:[.,]\d+)?)/);
+  if (pc) {
+    const p = parseFloat(pc[1].replace(',', '.'));
+    const base = parseFloat(pc[2].replace(',', '.'));
+    if (!isNaN(p) && !isNaN(base)) {
+      const r = Math.round((p / 100) * base * 100) / 100;
+      return 'HERRAMIENTA (porcentaje): el ' + p + '% de ' + base + ' = ' + r + '. Usa este resultado exacto en tu respuesta.';
+    }
+  }
+
+  // Conversión de unidades (km/mi, kg/lb, C/F, USD↔GTQ si hay tasa fija aproximada)
+  const convs = [
+    { re: /(\d+(?:[.,]\d+)?)\s*km\s*(?:a|to)?\s*mi/i, fn: (x) => x * 0.621371, label: 'kilómetros a millas' },
+    { re: /(\d+(?:[.,]\d+)?)\s*mi\s*(?:a|to)?\s*km/i, fn: (x) => x * 1.60934, label: 'millas a kilómetros' },
+    { re: /(\d+(?:[.,]\d+)?)\s*kg\s*(?:a|to)?\s*lb/i, fn: (x) => x * 2.20462, label: 'kilogramos a libras' },
+    { re: /(\d+(?:[.,]\d+)?)\s*lb\s*(?:a|to)?\s*kg/i, fn: (x) => x * 0.453592, label: 'libras a kilogramos' },
+  ];
+  for (const c of convs) {
+    const m = low.match(c.re);
+    if (m) {
+      const x = parseFloat(m[1].replace(',', '.'));
+      if (!isNaN(x)) {
+        const r = Math.round(c.fn(x) * 100) / 100;
+        return 'HERRAMIENTA (conversión): ' + x + ' ' + c.label + ' ≈ ' + r + '. Usa este valor en tu respuesta.';
+      }
+    }
+  }
+
+  return '';
 }
 
 app.post('/api/generate-image', imageLimiter, async (req, res) => {
@@ -5398,6 +5522,16 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       console.warn('Wil.E contexto error:', e.message);
     }
   }
+  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  try {
+    const live = await liveWebContext(message);
+    if (live) system = system + '\n\n' + live;
+  } catch (e) { /* silencioso */ }
+  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
+  try {
+    const tool = computeTool(message);
+    if (tool) system = system + '\n\n' + tool;
+  } catch (e) { /* silencioso */ }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 

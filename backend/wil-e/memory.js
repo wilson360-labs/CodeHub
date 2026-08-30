@@ -65,6 +65,28 @@ async function remember({ userId, scope = 'user', text }) {
   return saved;
 }
 
+// Guarda una nota de texto libre en la memoria del usuario (para /entrenar).
+// A diferencia de remember(), NO hace upsert: permite guardar varias notas y
+// Wil.E las recuerda como referencia/contexto cifrado.
+async function rememberNote({ userId, scope = 'user', text, title = '' }) {
+  if (!userId || !text) return 0;
+  const clean = String(text).replace(/\s+/g, ' ').trim();
+  if (clean.length < 4) return 0;
+  try {
+    await AIMemory.create({
+      userId, scope, kind: 'note', key: 'nota_' + Date.now(),
+      content: encrypt(clean.slice(0, 4000)),
+      source: 'entrenar',
+      tags: ['nota'],
+      meta: { title: String(title).slice(0, 120) || undefined },
+    });
+    return 1;
+  } catch (e) {
+    console.warn('rememberNote error:', e.message);
+    return 0;
+  }
+}
+
 // Recupera la memoria relevante de un usuario como texto legible.
 async function recall({ userId, scope = 'user', limit = 8 }) {
   if (!userId) return '';
@@ -75,7 +97,12 @@ async function recall({ userId, scope = 'user', limit = 8 }) {
     if (mems.length === 0) return '';
     const lines = mems.map((m) => {
       const d = m.content ? decryptSafe(m.content) : '';
-      return d ? `- ${m.key.replace(/_/g, ' ')}: ${d}` : null;
+      if (!d) return null;
+      if (m.kind === 'note') {
+        const t = (m.meta && m.meta.title) ? (' 📝 nota "' + m.meta.title + '": ') : ' 📝 nota: ';
+        return t + d;
+      }
+      return `- ${m.key.replace(/_/g, ' ')}: ${d}`;
     }).filter(Boolean);
     return lines.length ? lines.join('\n') : '';
   } catch (_) {
@@ -89,4 +116,4 @@ function decryptSafe(boxed) {
   return d === null ? boxed : d;
 }
 
-module.exports = { remember, recall, extractFacts };
+module.exports = { remember, rememberNote, recall, extractFacts };

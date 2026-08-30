@@ -14,6 +14,7 @@ const AIMemorySchema = new mongoose.Schema({
   source:   { type: String, default: 'chat' },      // cómo se aprendió
   confidence: { type: Number, default: 1, min: 0, max: 1 },
   tags:     [String],
+  meta:     { type: mongoose.Schema.Types.Mixed, default: {} },
   updatedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
 });

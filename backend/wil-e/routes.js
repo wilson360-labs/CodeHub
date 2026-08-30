@@ -7,6 +7,7 @@
 const express = require('express');
 const { retrieve, ingest, clear } = require('./knowledge');
 const { recall } = require('./memory');
+const { rememberNote } = require('./memory');
 const { AIMemory } = require('./models');
 
 module.exports = function (opts) {
@@ -94,6 +95,26 @@ module.exports = function (opts) {
       res.json({ ok: true, userId });
     } catch (e) {
       res.status(500).json({ error: 'memory delete error', detail: String(e.message) });
+    }
+  });
+
+  // ── Nota de memoria (entrenar a Wil.E con texto libre) ─────────
+  // Guarda texto en la memoria privada del usuario autenticado. Sin permiso
+  // admin: solo afecta su propio userId (no el KB global).
+  router.post('/memory/note', async (req, res) => {
+    try {
+      const { text, title } = req.body || {};
+      const p = authPayload ? authPayload(req) : null;
+      const userId = (p && p.id) || req.authUser?.id;
+      if (!userId) return res.status(401).json({ error: 'Autenticación requerida' });
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ error: 'Falta text' });
+      }
+      const n = await rememberNote({ userId, text: text.trim(), title: title || '' });
+      if (n <= 0) return res.status(400).json({ error: 'No se pudo guardar la nota (texto muy corto o error).' });
+      res.json({ ok: true, userId, saved: n });
+    } catch (e) {
+      res.status(500).json({ error: 'note error', detail: String(e.message) });
     }
   });
 
