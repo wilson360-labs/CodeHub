@@ -2338,6 +2338,14 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
   } catch (e) { /* silencioso */ }
+  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
+  try {
+    const dt = detectTool(message);
+    if (dt) {
+      const out = await executeTool(dt.name, dt.arg);
+      if (out) system = system + '\n\n' + out;
+    }
+  } catch (e) { /* silencioso */ }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
@@ -3157,6 +3165,64 @@ function computeTool(message) {
   }
 
   return '';
+}
+
+// ── Function-calling (agente) ────────────────────────────────────────
+// Dispatcher de herramientas de Wil.E. Detecta la intención del mensaje y
+// ejecuta la herramienta adecuada (búsqueda web, cómputo, leer URL), luego
+// inyecta el resultado estructurado como contexto para que el LLM responda
+// con datos reales. Devuelve string vacío si no corresponde ninguna.
+function detectTool(message) {
+  const q = String(message || '').trim();
+  const low = q.toLowerCase();
+  const tool = { name: null, arg: null };
+  if (/^(busca|buscar|investiga|search|googlea|webs?earch|averigua)\.?\s+(.+)/i.test(q)) {
+    const m = q.match(/^(?:busca|buscar|investiga|search|googlea|averigua)\.?\s+(.+)/i);
+    tool.name = 'web_search'; tool.arg = m[1].trim();
+  } else if (/(cuánto es|calcula|cuánto da|resuelve)\s+([0-9].*)/i.test(low)) {
+    const m = low.match(/(?:cuánto es|calcula|cuánto da|resuelve)\s+([0-9].*)/i);
+    tool.name = 'compute'; tool.arg = m[1].trim();
+  } else if (/https?:\/\/\S+/i.test(q)) {
+    const m = q.match(/(https?:\/\/[^\s]+)/i);
+    tool.name = 'fetch_url'; tool.arg = m[1];
+  }
+  return tool.name ? tool : null;
+}
+
+async function executeTool(name, arg) {
+  try {
+    if (name === 'web_search') {
+      const ctx = await liveWebContext('buscar ' + arg);
+      return ctx ? 'Resultado búsqueda: ' + ctx : null;
+    }
+    if (name === 'compute') {
+      return computeTool('calcula ' + arg);
+    }
+    if (name === 'fetch_url') {
+      const text = await fetchUrlText(arg);
+      if (text) return 'Contenido de la URL (' + arg + '):\n' + text.slice(0, 1500);
+      return null;
+    }
+  } catch (e) { return null; }
+  return null;
+}
+
+// Extrae texto de una web (HTML→texto plano) para leer URLs.
+async function fetchUrlText(url) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 CodeHub' } });
+    if (!r.ok) return '';
+    const html = await r.text();
+    const clean = html
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return clean.slice(0, 2500);
+  } catch (e) { return ''; }
 }
 
 app.post('/api/generate-image', imageLimiter, async (req, res) => {
@@ -5597,6 +5663,14 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   try {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
+  } catch (e) { /* silencioso */ }
+  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
+  try {
+    const dt = detectTool(message);
+    if (dt) {
+      const out = await executeTool(dt.name, dt.arg);
+      if (out) system = system + '\n\n' + out;
+    }
   } catch (e) { /* silencioso */ }
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
