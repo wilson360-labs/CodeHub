@@ -1453,7 +1453,7 @@ html.is-mobile .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display
   html.is-mobile .blogger-card-thumb { width: 96px; height: 96px !important; flex-shrink: 0; }
 }
 
-/* ── Panel EMI COPILOT: tamaño inteligente basado en el viewport real ──
+/* ── Panel WIL.E COPILOT: tamaño inteligente basado en el viewport real ──
    Usa --app-height/--app-width (calculadas en JS con visualViewport,
    se actualizan al aparecer el teclado, rotar o mostrarse/ocultarse la
    barra de direcciones) en vez de un tamaño fijo que se distorsiona

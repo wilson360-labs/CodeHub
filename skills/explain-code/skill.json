@@ -16,7 +16,7 @@
   ],
   "ui": {
     "placeholder": "Pega el código que quieres entender…",
-    "hint": "Pega código y EMI te lo explica con lujo de detalle.",
+    "hint": "Pega código y WIL.E te lo explica con lujo de detalle.",
     "cta": "Explicar código"
   }
 }

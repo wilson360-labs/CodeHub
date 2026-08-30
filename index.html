@@ -3750,7 +3750,7 @@ async function sendEmail(e) {
   </div><!-- /.ai-body -->
 </div>
 
-<!-- Menú deslizante de funciones de EMI -->
+<!-- Menú deslizante de funciones de WIL.E -->
 <div id="emi-drawer" class="emi-drawer" aria-hidden="true">
   <div class="emi-drawer-scrim" onclick="emiMenu.close()"></div>
   <aside class="emi-drawer-panel" role="dialog" aria-modal="true" aria-label="Funciones de WIL.E COPILOT">
@@ -4484,7 +4484,7 @@ async function sendEmail(e) {
       return;
     }
 
-    // Server-side EMI limit — no longer client-side only
+    // Server-side WIL.E limit — no longer client-side only
 
     // Ocultar sugerencias al primer mensaje
     if (sugs) sugs.style.display = 'none';
@@ -5245,7 +5245,7 @@ async function sendEmail(e) {
   }, 8000);
 })();
 
-/* ── EMI COPILOT: modos, exportar y pantalla completa ─────────────
+/* ── WIL.E COPILOT: modos, exportar y pantalla completa ─────────────
    Nota: definidas como funciones GLOBALES (fuera del IIFE) porque los
    botones del panel las invocan desde atributos onclick. */
 window._emiMode = 'auto';
@@ -5311,7 +5311,7 @@ window.toggleEmiFullscreen = function () {
   if (msgs) msgs.style.maxHeight = 'none';
 };
 
-/* Cambia el modo activo de EMI (auto/dev/img/doc/translate). */
+/* Cambia el modo activo de WIL.E (auto/dev/img/doc/translate). */
 window.setEmiMode = function (mode, btn) {
   window._emiMode = mode;
   document.querySelectorAll('.ai-mode-chip').forEach(function (c) {

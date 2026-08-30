@@ -17,7 +17,7 @@
     {
       "id": "pdf-ia",
       "name": "PDF IA — Chat con tu documento",
-      "description": "Sube un PDF y chatea con EMI sobre su contenido. La extracción del texto es 100% local (pdf.js): solo la respuesta usa IA.",
+      "description": "Sube un PDF y chatea con WIL.E sobre su contenido. La extracción del texto es 100% local (pdf.js): solo la respuesta usa IA.",
       "icon": "📄",
       "category": "productividad",
       "folder": "skills/pdf-ia",

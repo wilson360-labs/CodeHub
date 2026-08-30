@@ -2,7 +2,7 @@
   "id": "pdf-ia",
   "version": "1.0.0",
   "name": "PDF IA — Chat con tu documento",
-  "description": "Sube un PDF y chatea con EMI sobre su contenido. La extracción del texto ocurre 100% en el navegador con pdf.js (0 tokens de IA); solo la respuesta usa el modelo.",
+  "description": "Sube un PDF y chatea con WIL.E sobre su contenido. La extracción del texto ocurre 100% en el navegador con pdf.js (0 tokens de IA); solo la respuesta usa el modelo.",
   "icon": "📄",
   "category": "productividad",
   "folder": "skills/pdf-ia",
@@ -18,7 +18,7 @@
     "render-paginas-escaneadas (primera páginas como imagen → Gemini Vision)"
   ],
 
-  "system_prompt_inject": "El usuario está usando la skill **PDF IA** (Chat con tu documento). La extracción y compresión del texto se hizo 100% en su navegador con pdf.js + algoritmo de resumen local, sin gastar tokens de IA. El contexto que recibes es un resumen comprimido (~35% del texto original) seleccionado por relevancia. Reglas: 1) Responde SOLO usando el contenido del documento adjunto que recibes como contexto; no inventes datos. 2) Si la información que te piden no está en el resumen comprimido, indica que esa sección específica puede haber sido omitida por la compresión y sugiere reformular la pregunta. 3) Para respuestas completas, usa todos los datos del contexto proporcionado. 4) Presets sugeridos: resumen de puntos clave, extracción de datos (fechas, precios, nombres, números de factura/contrato), responder preguntas sobre el documento, explicar conceptos en lenguaje sencillo, comparar secciones. 5) Si el PDF es escaneado, EMI lo lee como imagen (Gemini Vision): describe lo que ves con precisión.",
+  "system_prompt_inject": "El usuario está usando la skill **PDF IA** (Chat con tu documento). La extracción y compresión del texto se hizo 100% en su navegador con pdf.js + algoritmo de resumen local, sin gastar tokens de IA. El contexto que recibes es un resumen comprimido (~35% del texto original) seleccionado por relevancia. Reglas: 1) Responde SOLO usando el contenido del documento adjunto que recibes como contexto; no inventes datos. 2) Si la información que te piden no está en el resumen comprimido, indica que esa sección específica puede haber sido omitida por la compresión y sugiere reformular la pregunta. 3) Para respuestas completas, usa todos los datos del contexto proporcionado. 4) Presets sugeridos: resumen de puntos clave, extracción de datos (fechas, precios, nombres, números de factura/contrato), responder preguntas sobre el documento, explicar conceptos en lenguaje sencillo, comparar secciones. 5) Si el PDF es escaneado, WIL.E lo lee como imagen (Gemini Vision): describe lo que ves con precisión.",
 
   "presets": [
     {

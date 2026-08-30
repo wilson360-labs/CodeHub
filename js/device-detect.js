@@ -5,7 +5,7 @@
 //  DPI raros, etc). Marca <html> con clases que el resto del CSS/JS
 //  puede usar como fuente de verdad, y expone variables --app-height /
 //  --app-width calculadas con visualViewport para que paneles como el
-//  de EMI COPILOT se dimensionen de forma inteligente sin distorsión.
+//  de WIL.E COPILOT se dimensionen de forma inteligente sin distorsión.
 // ═══════════════════════════════════════════════════════════════
 (function () {
   'use strict';

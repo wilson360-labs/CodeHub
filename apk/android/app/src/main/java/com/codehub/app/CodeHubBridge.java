@@ -15,8 +15,19 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.Manifest;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.android.gms.location.CurrentLocationRequest;
@@ -44,6 +55,135 @@ public class CodeHubBridge {
     public CodeHubBridge(Activity activity, WebView webView) {
         this.activity = activity;
         this.webView  = webView;
+    }
+
+    // ── VOZ NATIVA (TTS + STT) ───────────────────────────────────
+    private TextToSpeech tts;
+    private SpeechRecognizer sr;
+    private String sttCallback = "";
+
+    private void ensureTts() {
+        if (tts != null) return;
+        tts = new TextToSpeech(activity, status -> {
+            if (status != TextToSpeech.SUCCESS || tts == null) {
+                if (tts != null) tts.setLanguage(Locale.getDefault());
+            }
+        });
+        if (tts != null) {
+            int setLang = tts.setLanguage(new Locale("spa", "GT"));
+            if (setLang == TextToSpeech.LANG_MISSING_DATA || setLang == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts.setLanguage(Locale.getDefault());
+            }
+            tts.setSpeechRate(0.95f);
+            tts.setPitch(0.75f);
+        }
+    }
+
+    // WIL.E hable en voz alta (TTS nativo de Android) en español.
+    @JavascriptInterface
+    public void ttsSpeak(final String text) {
+        activity.runOnUiThread(() -> {
+            try {
+                if (text == null || text.trim().isEmpty()) return;
+                ensureTts();
+                if (tts == null) return;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "wile-utt");
+                } else {
+                    @SuppressWarnings("deprecation")
+                    HashMap<String, String> params = new HashMap<>();
+                    params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "wile-utt");
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, params);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    @JavascriptInterface
+    public void ttsStop() {
+        activity.runOnUiThread(() -> {
+            try { if (tts != null) tts.stop(); } catch (Exception ignored) {}
+        });
+    }
+
+    @JavascriptInterface
+    public boolean ttsIsAvailable() {
+        try {
+            android.content.pm.PackageManager pm = activity.getPackageManager();
+            return pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TTS);
+        } catch (Exception e) { return false; }
+    }
+
+    // Dicta lo que diga el usuario (STT nativo de Android) y lo envía al JS.
+    @JavascriptInterface
+    public void sttStart(final String callbackName) {
+        activity.runOnUiThread(() -> {
+            try {
+                sttCallback = callbackName == null ? "" : callbackName;
+                int granted = activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO);
+                if (granted != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    notifySttError("Permiso de micrófono requerido para dictar.");
+                    return;
+                }
+                if (sr != null) { sr.destroy(); }
+                sr = SpeechRecognizer.createSpeechRecognizer(activity);
+                if (sr == null) { notifySttError("Reconocimiento de voz no disponible."); return; }
+                sr.setRecognitionListener(new RecognitionListener() {
+                    public void onReadyForSpeech(android.os.Bundle b) { notifySttEvent("ready"); }
+                    public void onBeginningOfSpeech() {}
+                    public void onRmsChanged(float v) {}
+                    public void onBufferReceived(byte[] b) {}
+                    public void onEndOfSpeech() {}
+                    public void onError(int error) { notifySttError("error_nativo_" + error); }
+                    public void onResults(android.os.Bundle results) {
+                        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                        if (matches != null && !matches.isEmpty()) {
+                            notifySttResult(matches.get(0));
+                        } else {
+                            notifySttError("No se escuchó nada.");
+                        }
+                    }
+                    public void onPartialResults(android.os.Bundle partial) {}
+                    public void onEvent(int e, android.os.Bundle b) {}
+                });
+                Intent in = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-GT");
+                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "es");
+                in.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                in.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                sr.startListening(in);
+            } catch (Exception ex) {
+                notifySttError("Error iniciando reconocimiento.");
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void sttStop() {
+        activity.runOnUiThread(() -> {
+            try { if (sr != null) { sr.stopListening(); sr.destroy(); sr = null; } } catch (Exception ignored) {}
+        });
+    }
+
+    private void notifySttEvent(String type) {
+        if (webView == null) return;
+        String js = "javascript:(function(){ var cb=window." + sttCallback + "; if(cb&&cb.onStart)cb.onStart('" + type + "'); })()";
+        activity.runOnUiThread(() -> { try { webView.loadUrl(js); } catch (Exception ignored) {} });
+    }
+
+    private void notifySttResult(String transcript) {
+        if (webView == null) return;
+        String safe = transcript.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"").replace("\n", " ");
+        String js = "javascript:(function(){ var cb=window." + sttCallback + "; if(cb){ cb.onResult && cb.onResult('" + safe + "'); } })()";
+        activity.runOnUiThread(() -> { try { webView.loadUrl(js); } catch (Exception ignored) {} });
+    }
+
+    private void notifySttError(String msg) {
+        if (webView == null) return;
+        String safe = msg.replace("\\", "\\\\").replace("'", "\\'").replace("\"", "\\\"");
+        String js = "javascript:(function(){ var cb=window." + sttCallback + "; if(cb){ cb.onError && cb.onError('" + safe + "'); } })()";
+        activity.runOnUiThread(() -> { try { webView.loadUrl(js); } catch (Exception ignored) {} });
     }
 
     @JavascriptInterface

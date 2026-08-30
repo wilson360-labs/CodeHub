@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   EMI VOICE — Web Speech API Module
+   WIL.E VOICE — Web Speech API Module
    CodeHub by Wilson.E
    
    INTEGRACIÓN:
@@ -12,7 +12,7 @@
    BOTÓN A INSERTAR en index.html — dentro de .ai-input-row,
    entre el <textarea> y el <button id="ai-send-btn">:
    
-   <button id="emi-mic-btn" type="button" aria-label="Hablar con EMI" title="Hablar con EMI (voz a texto)" onclick="emiVoice.toggle()">
+    <button id="emi-mic-btn" type="button" aria-label="Hablar con WIL.E" title="Hablar con WIL.E (voz a texto)" onclick="emiVoice.toggle()">
      <i class="fas fa-microphone"></i>
    </button>
    
@@ -30,6 +30,10 @@
   const SS = window.speechSynthesis;
   const HAS_RECOGNITION = !!SR;
   const HAS_SYNTHESIS   = !!SS;
+  // APK nativo: si el puente expone STT/TTS, se usa por encima del Web Speech
+  // porque en WebView Android el reconocimiento de voz del navegador no existe.
+  const HAS_NATIVE_STT = !!(window.CodeHubNative && typeof window.CodeHubNative.sttStart === 'function');
+  const HAS_NATIVE_TTS = !!(window.CodeHubNative && typeof window.CodeHubNative.ttsSpeak === 'function');
 
   /* ── Estado global del módulo ── */
   const state = {
@@ -61,12 +65,12 @@
     micRipple.className = 'emi-mic-ripple';
     micBtn.appendChild(micRipple);
 
-    /* Mostrar tooltip si no hay soporte STT */
-    if (!HAS_RECOGNITION) {
+    /* Mostrar tooltip si no hay soporte STT web ni nativo */
+    if (!HAS_RECOGNITION && !HAS_NATIVE_STT) {
       micBtn.title = 'Tu navegador no soporta voz. Prueba un navegador moderno.';
       micBtn.classList.add('emi-mic-unsupported');
       micBtn.onclick = () => showVoiceToast('Tu navegador no soporta reconocimiento de voz. Usa un navegador moderno.', 'warn');
-    } else {
+    } else if (HAS_RECOGNITION) {
     /* Configurar SpeechRecognition */
     state.recognition = new SR();
     const rec = state.recognition;
@@ -130,7 +134,7 @@
     /* ── Exponer en window para uso externo ── */
     window.emiVoice = publicAPI;
 
-    /* ── Hook: interceptar respuestas de EMI para auto-speak ── */
+    /* ── Hook: interceptar respuestas de WIL.E para auto-speak ── */
     hookEmiResponses();
 
     /* Sincronizar idioma cuando cambia */
@@ -144,9 +148,24 @@
      CONTROL DE ESCUCHA
   ════════════════════════════════════════════ */
   function startListening() {
-    if (!HAS_RECOGNITION || state.listening) return;
+    if (state.listening) return;
     /* Parar síntesis si estaba hablando */
     if (state.speaking) stopSpeaking();
+    /* APK nativo: STT por puente Java (fiable en WebView) */
+    if (HAS_NATIVE_STT) {
+      state.listening = true;
+      if (micBtn) micBtn.classList.add('emi-mic-active');
+      if (statusEl) statusEl.textContent = '🎙️ Escuchando…';
+      if (inputEl)  inputEl.placeholder  = 'Habla ahora…';
+      window._sttCb = {
+        onStart: () => {},
+        onResult: (txt) => { finishNativeStt(); if (inputEl) inputEl.value = (inputEl.value.trim() ? inputEl.value.trim() + ' ' : '') + txt; },
+        onError: (msg) => { finishNativeStt(); showVoiceToast(String(msg).replace(/error_nativo_(\d+)/, ''), 'error'); }
+      };
+      try { CodeHubNative.sttStart('_sttCb'); } catch (e) { finishNativeStt(); showVoiceToast('Error al iniciar micrófono.', 'error'); }
+      return;
+    }
+    if (!HAS_RECOGNITION) return;
     try {
       state.recognition.lang = state.lang;
       state.recognition.start();
@@ -155,7 +174,16 @@
     }
   }
 
+  function finishNativeStt() {
+    state.listening = false;
+    if (micBtn) micBtn.classList.remove('emi-mic-active');
+    if (statusEl) statusEl.textContent = 'Online · Listo para ayudarte';
+    if (inputEl)  inputEl.placeholder  = 'Pregúntame algo, genera una imagen, depura código…';
+    if (HAS_NATIVE_STT) { try { CodeHubNative.sttStop(); } catch (e) {} }
+  }
+
   function stopListening() {
+    if (HAS_NATIVE_STT) { finishNativeStt(); return; }
     state.listening = false;
     if (micBtn) micBtn.classList.remove('emi-mic-active');
     if (statusEl) statusEl.textContent = 'Online · Listo para ayudarte';
@@ -164,14 +192,14 @@
 
   function toggle() {
     if (state.listening) {
-      state.recognition.stop();
+      stopListening();
     } else {
       startListening();
     }
   }
 
   /* ════════════════════════════════════════════
-     SÍNTESIS DE VOZ (EMI habla)
+     SÍNTESIS DE VOZ (WIL.E habla)
   ════════════════════════════════════════════ */
   // Intenta TTS premium (ElevenLabs) vía backend; si no hay key, cae en la
   // voz del navegador de forma transparente (speechSynthesis).
@@ -257,6 +285,19 @@
   }
 
   function fallbackSpeak(clean) {
+    /* APK nativo: TTS de Android en español, fiable incluso sin Internet */
+    if (HAS_NATIVE_TTS) {
+      try {
+        state.speaking = true;
+        if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
+        CodeHubNative.ttsSpeak(clean);
+        setTimeout(() => {
+          state.speaking = false;
+          if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)';
+        }, 8000);
+        return;
+      } catch (e) { state.speaking = false; }
+    }
     if (!HAS_SYNTHESIS) return;
     const utt = new SpeechSynthesisUtterance(clean);
     utt.lang  = state.lang;
@@ -286,13 +327,14 @@
   }
 
   function stopSpeaking() {
+    if (HAS_NATIVE_TTS) { try { CodeHubNative.ttsStop(); } catch (e) {} }
     if (HAS_SYNTHESIS) SS.cancel();
     state.speaking = false;
     if (window.ttsAudio) { try { window.ttsAudio.pause(); } catch (e) {} }
   }
 
   /* ════════════════════════════════════════════
-     HOOK: capturar respuestas de EMI para auto-speak
+     HOOK: capturar respuestas de WIL.E para auto-speak
   ════════════════════════════════════════════ */
   function hookEmiResponses() {
     /* Observar mutaciones en #ai-msgs para detectar nuevos mensajes de la IA */

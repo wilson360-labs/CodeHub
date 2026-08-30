@@ -16,7 +16,7 @@
   ],
   "ui": {
     "placeholder": "Pega el código para generar tests…",
-    "hint": "Pega una función/clase y EMI genera los tests.",
+    "hint": "Pega una función/clase y WIL.E genera los tests.",
     "cta": "Generar tests"
   }
 }

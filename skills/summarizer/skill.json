@@ -17,7 +17,7 @@
   ],
   "ui": {
     "placeholder": "Pega el texto o URL a resumir…",
-    "hint": "Pega un artículo, documento o conversación y EMI lo resume.",
+    "hint": "Pega un artículo, documento o conversación y WIL.E lo resume.",
     "cta": "Resumir contenido"
   }
 }
