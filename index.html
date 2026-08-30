@@ -4152,10 +4152,11 @@ async function sendEmail(e) {
   const IMG_GEN_URL = BACKEND_URL + '/api/generate-image';
 
   // Mejora la imagen adjunta (modo profesional) vía Autoenhance.ai en el backend.
-  async function enhanceImage() {
+  async function enhanceImage(fmt) {
     if (!attachment || attachment.type !== 'image') {
       return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/enhance-img`.');
     }
+    const format = (typeof fmt === 'string' && fmt) ? fmt.toLowerCase() : 'webp';
     setAiStatus('Mejorando imagen en modo profesional…', 'busy');
     loading = true; if (sendBtn) sendBtn.disabled = true;
     try {
@@ -4165,18 +4166,44 @@ async function sendEmail(e) {
         if (_ses && _ses.token) headers['Authorization'] = 'Bearer ' + _ses.token;
       }
       const r = await fetch(BACKEND_URL + '/api/enhance-image', {
-        method: 'POST', headers, body: JSON.stringify({ image: attachment.base64 })
+        method: 'POST', headers, body: JSON.stringify({ image: attachment.base64, format })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) {
         const msg = (d && d.error) ? d.error : ('Error HTTP ' + r.status);
         return addMsg('ai', 'No se pudo mejorar la imagen: ' + msg);
       }
-      const resultUrl = d.image || (d.url) || (d.output_url) || (d.result && d.result.url);
+      let resultUrl = d.image || (d.url) || (d.output_url) || (d.result && d.result.url);
       if (!resultUrl) return addMsg('ai', 'El servicio devolvió una respuesta inesperada.');
-      const finalSrc = resultUrl.startsWith('data:') ? resultUrl : resultUrl;
-      addMsg('ai', formatAIReply('**Imagen mejorada (modo profesional)** — calidad y detalle aumentados:'));
-      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + finalSrc + '" alt="Imagen mejorada por WIL.E" style="max-width:100%;border-radius:10px;"></div>');
+      const mimeTarget = (format === 'png') ? 'image/png' : (format === 'jpg' || format === 'jpeg') ? 'image/jpeg' : 'image/webp';
+      const ext = (format === 'png') ? 'png' : (format === 'jpg' || format === 'jpeg') ? 'jpg' : 'webp';
+      // Convertir al formato pedido con canvas (nativo, sin dependencias)
+      if (!resultUrl.startsWith('data:' + mimeTarget)) {
+        try {
+          const conv = await new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              try {
+                const cv = document.createElement('canvas');
+                cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+                cv.getContext('2d').drawImage(img, 0, 0);
+                const u = cv.toDataURL(mimeTarget, 0.92);
+                if (u && u.startsWith('data:' + mimeTarget)) resolve(u); else resolve(resultUrl);
+              } catch (e) { resolve(resultUrl); }
+            };
+            img.onerror = () => resolve(resultUrl);
+            img.src = resultUrl;
+          });
+          resultUrl = conv;
+        } catch (e) { /* mantener original */ }
+      }
+      const finalSrc = resultUrl;
+      addMsg('ai', formatAIReply('**Imagen mejorada (modo profesional)** — calidad y detalle aumentados, formato `' + ext.toUpperCase() + '`:'));
+      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + finalSrc + '" alt="Imagen mejorada por WIL.E" style="max-width:100%;border-radius:10px;">' +
+        '<div style="margin-top:.5rem"><a href="' + finalSrc + '" download="wil-enhance.' + ext + '" target="_blank" style="color:#a0a0ff;text-decoration:none;"><i class="fas fa-download"></i> Descargar (' + ext.toUpperCase() + ')</a></div></div>');
+      // Wil.E cuenta lo que hizo en voz en español
+      try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak('Listo, mejoré tu imagen en modo profesional.'); } catch (e) {}
     } catch (e) {
       addMsg('ai', 'Error al mejorar la imagen. Intenta de nuevo.');
     } finally {
@@ -4227,6 +4254,13 @@ async function sendEmail(e) {
         const isBase64 = imgSrc.startsWith('data:');
         const downloadHref = isBase64 ? imgSrc : imgSrc;
         const imgPrompt = (data.refined_prompt || cleanPrompt || 'Imagen generada por WIL.E COPILOT');
+
+        // WIL.E describe lo que generó (texto) y lo lee en voz alta en español
+        const desc = (data.description || '').trim();
+        if (desc) {
+          addMsg('ai', formatAIReply(escHtml(desc)));
+          try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak(desc); } catch (e) {}
+        }
 
         addMsg('ai', `
           <div class="ai-gen-img-wrap">
@@ -4290,7 +4324,7 @@ async function sendEmail(e) {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
         '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
@@ -4305,7 +4339,11 @@ async function sendEmail(e) {
         '/enhance-img': () => {
           if (!attachment || attachment.type !== 'image') return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/enhance-img` para mejorar su calidad (modo profesional).');
           if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) return addMsg('ai', 'El comando `/enhance-img` requiere <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
-          enhanceImage();
+          const _fmt = String(arg || '').trim().toLowerCase();
+          const valid = ['png', 'jpg', 'jpeg', 'webp'];
+          const fmt = valid.includes(_fmt) ? _fmt : 'webp';
+          if (!valid.includes(_fmt)) addMsg('ai', 'Usa el formato por defecto (WebP). Formatos disponibles: `/enhance-img png|jpg|webp`.');
+          enhanceImage(fmt);
         },
       };
       const handler = COMMANDS[cmd];

@@ -193,12 +193,13 @@
     utt.rate  = 1.05;
     utt.pitch = 1.1;
 
-    /* Elegir voz en español si disponible */
+    /* Elegir voz en español si disponible (prioridad latinoamérica/es) */
     const voices = SS.getVoices();
     const langCode = state.lang.split('-')[0];
-    const preferred = voices.find(v =>
-      v.lang.startsWith(langCode) && (v.name.includes('Google') || v.name.includes('Microsoft') || v.localService)
-    ) || voices.find(v => v.lang.startsWith(langCode));
+    const preferred =
+      voices.find(v => v.lang.indexOf('es-41') === 0 && (v.name.includes('Google') || v.name.includes('Microsoft') || v.localService)) ||
+      voices.find(v => v.lang.indexOf('es') === 0 && (v.name.includes('Google') || v.name.includes('Microsoft') || v.localService)) ||
+      voices.find(v => v.lang.indexOf('es') === 0);
     if (preferred) utt.voice = preferred;
 
     utt.onstart = () => {

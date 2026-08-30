@@ -2975,6 +2975,7 @@ function imgCacheSet(key, data) {
 function sendAndCache(res, data, cacheKey) {
   if (data && (data.image || data.url)) {
     if (res.locals && res.locals.refinedPrompt) data.refined_prompt = res.locals.refinedPrompt;
+    if (res.locals && res.locals.description) data.description = res.locals.description;
     imgCacheSet(cacheKey, data);
   }
   return res.json(data);
@@ -3005,6 +3006,27 @@ async function refineImagePrompt(rawPrompt, w, h) {
     console.warn('⚠️ refineImagePrompt falló, usando prompt original:', e.message);
   }
   return String(rawPrompt).trim();
+}
+
+// ── Descriptor de imagen ─────────────────────────────────────────────
+// Genera una descripción natural en español de la imagen creada, para que
+// WIL.E se la "cuente" al usuario (texto + voz) de forma cálida y corta.
+async function describeImage(rawPrompt, refinedPrompt) {
+  const sysMsg = 'Eres WIL.E COPILOT, el asistente de CodeHub. El usuario te pidió generar una imagen y acaba de crearse.\n'
+    + 'Escribe UN párrafo breve (máx. 40 palabras) en ESPAÑOL, cálido y entusiasta, describiendo QUÉ se creó basándote en esta petición.\n'
+    + 'Empieza con algo como "¡Listo! Generé..." o "Aquí tienes tu imagen de...". Describe el sujeto, el estilo y la sensación general.\n'
+    + 'NO menciones que eres una IA ni cómo se generó. Solo describe la imagen creada para el usuario.';
+  try {
+    const { reply } = await callAI([
+      { role: 'system', content: sysMsg },
+      { role: 'user', content: 'Petición original: ' + String(rawPrompt).slice(0, 300) + '\n| Prompt refinado: ' + String(refinedPrompt || rawPrompt).slice(0, 300) }
+    ], 180);
+    const desc = String(reply || '').trim().replace(/\s+/g, ' ');
+    if (desc.length >= 8) return desc;
+  } catch (e) {
+    console.warn('⚠️ describeImage falló:', e.message);
+  }
+  return '¡Listo! Generé una imagen basada en tu petición: ' + String(rawPrompt).slice(0, 80).trim() + '.';
 }
 
 app.post('/api/generate-image', imageLimiter, async (req, res) => {
