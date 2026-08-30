@@ -4212,6 +4212,48 @@ async function sendEmail(e) {
     }
   }
 
+  // Edita la imagen adjunta con IA (borrar/reemplazar objetos, cambiar fondos, etc.)
+  async function editImage(instruccion) {
+    if (!attachment || attachment.type !== 'image') {
+      return addMsg('ai', 'Adjunta una imagen primero y luego escribe `/edit-img <instrucción>`.');
+    }
+    if (!instruccion) {
+      return addMsg('ai', 'Usa: `/edit-img <instrucción>`. Ejemplos:\n- `/edit-img quita el fondo`\n- `/edit-img cambia la camiseta a rojo`\n- `/edit-img borra el objeto de la esquina`');
+    }
+    if (!(window.CodeHubAuth && CodeHubAuth.isLogged())) {
+      return addMsg('ai', 'El comando `/edit-img` requiere <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'login\')">iniciar sesión</button>.');
+    }
+    setAiStatus('Editando imagen con IA…', 'busy');
+    loading = true; if (sendBtn) sendBtn.disabled = true;
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
+        const _ses = CodeHubAuth.getSession();
+        if (_ses && _ses.token) headers['Authorization'] = 'Bearer ' + _ses.token;
+      }
+      const r = await fetch(BACKEND_URL + '/api/edit-image', {
+        method: 'POST', headers, body: JSON.stringify({ image: attachment.base64, prompt: instruccion })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const msg = (d && d.error) ? d.error : ('Error HTTP ' + r.status);
+        return addMsg('ai', 'No se pudo editar la imagen: ' + msg);
+      }
+      if (d.note) return addMsg('ai', '⚠️ ' + escHtml(d.note));
+      if (!d.image) return addMsg('ai', 'El servicio no devolvió la imagen editada.');
+      addMsg('ai', formatAIReply('**Imagen editada con IA** — ' + escHtml(instruccion.slice(0, 90)) + ':'));
+      addMsg('ai', '<div class="ai-enhanced-img-wrap"><img src="' + d.image + '" alt="Imagen editada por WIL.E" style="max-width:100%;border-radius:10px;">' +
+        '<div style="margin-top:.5rem"><button class="ai-inline-cta" onclick="var a=document.createElement(\'a\');a.href=window.__lastEdited; a.download=\'wil-edit.png\'; document.body.appendChild(a);a.click();a.remove();">Descargar</button> <button class="ai-inline-cta" onclick="attachment={ base64: window.__lastEdited, type:\'image\'}; addMsg(\'ai\',\'Nueva imagen cargada como adjunto. Puedes editarla o mejorarla.\');">Usar como adjunto</button></div></div>');
+      window.__lastEdited = d.image;
+      try { if (window.emiVoice && typeof window.emiVoice.speak === 'function') window.emiVoice.speak('Listo, edité tu imagen con inteligencia artificial.'); } catch (e) {}
+    } catch (e) {
+      addMsg('ai', 'Error al editar la imagen. Intenta de nuevo.');
+    } finally {
+      loading = false; if (sendBtn) sendBtn.disabled = false;
+      setAiStatus('Listo', 'idle');
+    }
+  }
+
   async function generateImage(prompt) {
     // Extraer solo el sujeto descriptivo quitando verbos y palabras vacías
     let cleanPrompt = prompt
@@ -4324,7 +4366,7 @@ async function sendEmail(e) {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/edit-img <instrucción>` — Edita la imagen adjunta con IA\n- `/jarvis on` — Activa la voz estilo Jarvis de Wil.E\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
         '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
@@ -4395,6 +4437,20 @@ async function sendEmail(e) {
             else addMsg('ai', '⚠️ No se pudo entrenar: ' + ((d && d.error) || 'error ' + rr.status));
           } catch (e) {
             addMsg('ai', 'Error al entrenar a Wil.E. Intenta de nuevo.');
+          }
+        },
+        '/edit-img': () => {
+          editImage(arg);
+        },
+        '/jarvis': () => {
+          const on = String(arg || '').trim().toLowerCase() === 'on';
+          if (!on) return addMsg('ai', 'Usa `/jarvis on` para activar la voz estilo Jarvis (más grave y pausada) cuando Wil.E habla.');
+          if (window.emiVoice && typeof window.emiVoice.setJarvis === 'function') {
+            window.emiVoice.setJarvis(true);
+            addMsg('ai', '🎙️ Modo Jarvis activado. Wil.E ahora habla con voz más grave y pausada. Usa `/jarvis` sin on para más info.');
+            try { window.emiVoice.speak('Listo, modo Jarvis activado. Soy Wil E, a tu servicio.'); } catch (e) {}
+          } else {
+            addMsg('ai', 'El módulo de voz no está listo todavía. Recarga la página.');
           }
         },
       };

@@ -1741,6 +1741,12 @@ const wilERoutes = require('./wil-e/routes')({
 });
 app.use('/api/wil-e', wilERoutes);
 
+// ── WIL.E VOZ — TTS neural premium (Jarvis) ────────────────────────
+// /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
+// cuando ELEVENLABS_API_KEY está configurada; si no, el frontend usa fallback.
+const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser });
+app.use('/api/tts', ttsRoutes);
+
 // ════════════════════════════════════════════════════════════════
 //  RUTAS
 // ════════════════════════════════════════════════════════════════
@@ -3371,6 +3377,66 @@ app.post('/api/enhance-image', requireAuth, async (req, res) => {
   } catch (e) {
     console.warn('Enhance error:', e.message);
     res.status(500).json({ ok: false, error: 'Error mejorando la imagen.' });
+  }
+});
+
+// ── POST /api/edit-image — Edición de imagen con IA (Gemini) ────────
+// Acepta una imagen (data URL) y una instrucción ("quita el fondo", "cambia
+// la camiseta a rojo", "borra el perro", etc.) y devuelve la imagen editada.
+app.post('/api/edit-image', requireAuth, async (req, res) => {
+  const { image, prompt } = req.body || {};
+  if (!image || typeof image !== 'string') {
+    return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
+  }
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return res.status(400).json({ ok: false, error: 'Falta la instrucción de edición.' });
+  }
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY no configurada. La edición de imagen requiere Gemini.' });
+  }
+  const parsed = parseImageDataUrl(image);
+  if (!parsed) {
+    return res.status(400).json({ ok: false, error: 'Imagen invalida o demasiado pesada (max ~4MB).' });
+  }
+  const inst = prompt.trim().slice(0, 500);
+  const mineData = Buffer.from(parsed.data, 'base64').toString('base64');
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: parsed.mimeType || 'image/png', data: mineData } },
+              { text: 'Edita esta imagen según la instrucción: "' + inst + '". Devuelve SOLO la imagen editada (sin texto).' },
+            ],
+          }],
+          generationConfig: { temperature: 0.4 },
+        }),
+        signal: AbortSignal.timeout(45000),
+      }
+    );
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      console.warn('Edit-image Gemini error:', r.status, (e.error && e.error.message) || '');
+      return res.status(r.status).json({ ok: false, error: 'Edición falló (' + r.status + ').' });
+    }
+    const d = await r.json();
+    const parts = d.candidates?.[0]?.content?.parts || [];
+    const imgPart = parts.find((p) => p && p.inlineData && p.inlineData.data) || parts.find((p) => p && p.inline_data && p.inline_data.data);
+    if (!imgPart) {
+      const txt = parts.map((p) => p.text || '').join(' ').trim();
+      if (txt) return res.json({ ok: true, image: null, note: txt.slice(0, 300) });
+      return res.status(502).json({ ok: false, error: 'Gemini no devolvió una imagen editada.' });
+    }
+    const b64 = imgPart.inlineData ? imgPart.inlineData.data : imgPart.inline_data.data;
+    const mime = (imgPart.inlineData ? imgPart.inlineData.mimeType : imgPart.inline_data.mime_type) || 'image/png';
+    res.json({ ok: true, image: 'data:' + mime + ';base64,' + b64, provider: 'gemini-edit' });
+  } catch (e) {
+    console.warn('Edit-image error:', e.message);
+    res.status(500).json({ ok: false, error: 'Error editando la imagen.' });
   }
 });
 

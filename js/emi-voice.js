@@ -40,6 +40,7 @@
     speakQueue   : [],
     lang         : localStorage.getItem('ch_lang') === 'en' ? 'en-US' : 'es-GT',
     autoSpeak    : JSON.parse(localStorage.getItem('emi_auto_speak') ?? 'false'),
+    jarvis       : localStorage.getItem('emi_jarvis_voice') === '1',
   };
 
   /* ── Referencias DOM (se resuelven al init) ── */
@@ -172,10 +173,60 @@
   /* ════════════════════════════════════════════
      SÍNTESIS DE VOZ (EMI habla)
   ════════════════════════════════════════════ */
+  // Intenta TTS premium (ElevenLabs) vía backend; si no hay key, cae en la
+  // voz del navegador de forma transparente (speechSynthesis).
+  let ttsAvailable = null; // null = sin comprobar, true/false tras info
+  async function refreshTtsInfo() {
+    try {
+      const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch(base + '/api/tts/info', { signal: ctrl.signal });
+      clearTimeout(to);
+      const d = await r.json().catch(() => ({}));
+      ttsAvailable = !!(d && d.available);
+    } catch (e) {
+      ttsAvailable = false;
+    }
+  }
+
+  async function ttsSpeak(text) {
+    try {
+      const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 30000);
+      const r = await fetch(base + '/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 550), voice: state.lang.indexOf('en') === 0 ? 'pNInz6obpgDQGcFmaJgB' : (state.jarvis ? 'TxGEqnHWrfWFTfGW9XjX' : 'N2lD1ixsuvnrwL7fM2Yv') }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+      if (!r.ok) return false;
+      const d = await r.json().catch(() => ({}));
+      if (!d || !d.audio) return false;
+      const audio = new Audio();
+      // para el botón de interrumpir
+      audio.src = d.audio;
+      state.speaking = true;
+      if (micBtn) micBtn.title = 'WIL.E está hablando… (clic para interrumpir)';
+      const done = new Promise((res) => {
+        audio.onended = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)'; res(true); };
+        audio.onerror = () => { state.speaking = false; if (micBtn) micBtn.title = 'Hablar con WIL.E (voz a texto)'; res(false); };
+      });
+      audio.play();
+      await done;
+      return true;
+    } catch (e) {
+      state.speaking = false;
+      return false;
+    }
+  }
+
   function speak(text) {
-    if (!HAS_SYNTHESIS || !text) return;
+    if (!text) return;
     /* Limpiar markdown/HTML básico del texto */
-    const clean = text
+    const clean = String(text)
       .replace(/<[^>]+>/g, '')           // quitar HTML
       .replace(/```[\s\S]*?```/g, 'bloque de código') // code blocks
       .replace(/`([^`]+)`/g, '$1')       // inline code
@@ -186,12 +237,31 @@
       .trim();
 
     if (!clean) return;
-
     stopSpeaking();
+
+    // 1) Intentar voz premium (Jarvis) si hay TTS disponible
+    if (ttsAvailable) {
+      ttsSpeak(clean).then((ok) => { if (!ok) fallbackSpeak(clean); });
+      return;
+    }
+    // 2) Comprobar disponibilidad TTS una vez (asíncrono) y usarla si está
+    if (ttsAvailable === null) {
+      refreshTtsInfo().then(() => {
+        if (ttsAvailable) { ttsSpeak(clean); return; }
+        fallbackSpeak(clean);
+      });
+      return;
+    }
+    // 3) Fallback: voz del navegador en español
+    fallbackSpeak(clean);
+  }
+
+  function fallbackSpeak(clean) {
+    if (!HAS_SYNTHESIS) return;
     const utt = new SpeechSynthesisUtterance(clean);
     utt.lang  = state.lang;
-    utt.rate  = 1.05;
-    utt.pitch = 1.1;
+    utt.rate  = state.jarvis ? 0.92 : 1.05;
+    utt.pitch = state.jarvis ? 0.6 : 1.1;
 
     /* Elegir voz en español si disponible (prioridad latinoamérica/es) */
     const voices = SS.getVoices();
@@ -199,6 +269,7 @@
     const preferred =
       voices.find(v => v.lang.indexOf('es-41') === 0 && (v.name.includes('Google') || v.name.includes('Microsoft') || v.localService)) ||
       voices.find(v => v.lang.indexOf('es') === 0 && (v.name.includes('Google') || v.name.includes('Microsoft') || v.localService)) ||
+      (state.jarvis && voices.find(v => /pablo|andres|jorge|hugo|javier|diego|raul|gonzalo/i.test(v.name))) ||
       voices.find(v => v.lang.indexOf('es') === 0);
     if (preferred) utt.voice = preferred;
 
@@ -217,6 +288,7 @@
   function stopSpeaking() {
     if (HAS_SYNTHESIS) SS.cancel();
     state.speaking = false;
+    if (window.ttsAudio) { try { window.ttsAudio.pause(); } catch (e) {} }
   }
 
   /* ════════════════════════════════════════════
@@ -313,6 +385,11 @@
     get isListening() { return state.listening; },
     get isSpeaking()  { return state.speaking; },
     get autoSpeak()   { return state.autoSpeak; },
+    get jarvis()      { return state.jarvis; },
+    setJarvis(on) {
+      state.jarvis = !!on;
+      try { localStorage.setItem('emi_jarvis_voice', state.jarvis ? '1' : '0'); } catch (e) {}
+    },
     setLang(lang) {
       state.lang = lang;
       if (state.recognition) state.recognition.lang = lang;
