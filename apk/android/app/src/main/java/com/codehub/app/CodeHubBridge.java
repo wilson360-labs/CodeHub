@@ -109,9 +109,13 @@ public class CodeHubBridge {
     @JavascriptInterface
     public boolean ttsIsAvailable() {
         try {
-            android.content.pm.PackageManager pm = activity.getPackageManager();
-            return pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TTS);
-        } catch (Exception e) { return false; }
+            Intent intent = new Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE);
+            return !activity.getPackageManager()
+                    .queryIntentServices(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                    .isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // Dicta lo que diga el usuario (STT nativo de Android) y lo envía al JS.
