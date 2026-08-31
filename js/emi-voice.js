@@ -218,15 +218,51 @@
     }
   }
 
+  // Traduce un texto a inglés (para el modo JARVIS) usando la IA, con fallback al original.
+  async function toEnglish(text) {
+    try {
+      if (/^[\x00-\x7F]+$/.test(text)) return text; // ya es ASCII/inglés
+      const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 20000);
+      const r = await fetch(base + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'You are a translator. Return ONLY the English translation of the user message. No explanations, no quotes, no markdown.' },
+            { role: 'user', content: text.slice(0, 500) }
+          ]
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(to);
+      if (!r.ok) return text;
+      const d = await r.json().catch(() => ({}));
+      const out = (d && (d.reply || d.message || d.content)) ? String(d.reply || d.message || d.content).trim() : '';
+      if (!out || out.length > 700) return text;
+      return out;
+    } catch (e) {
+      return text;
+    }
+  }
+
   async function ttsSpeak(text) {
     try {
       const base = (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND) ? window._CH_BACKEND : 'https://codehub-98s6.onrender.com';
+      // Modo JARVIS: voz británica "Josh" + texto en inglés (fiel a la película).
+      let speakText = text.slice(0, 550);
+      let voiceId = state.lang.indexOf('en') === 0 ? 'pNInz6obpgDQGcFmaJgB' : 'cgSgspJ2msm6clMCkdW9'; // EN→?, ES→Antoni (multilingüe)
+      if (state.jarvis) {
+        voiceId = 'onwK4e9ZLuTAKqWW03F9'; // Josh — hombre británico, estilo JARVIS
+        speakText = await toEnglish(speakText);
+      }
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 30000);
       const r = await fetch(base + '/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.slice(0, 550), voice: state.lang.indexOf('en') === 0 ? 'pNInz6obpgDQGcFmaJgB' : (state.jarvis ? 'TxGEqnHWrfWFTfGW9XjX' : 'N2lD1ixsuvnrwL7fM2Yv') }),
+        body: JSON.stringify({ text: speakText, voice: voiceId }),
         signal: ctrl.signal,
       });
       clearTimeout(to);

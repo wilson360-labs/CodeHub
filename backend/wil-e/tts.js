@@ -9,8 +9,8 @@ module.exports = function (opts) {
   const { authPayload } = opts || {};
 
   const key = process.env.ELEVENLABS_API_KEY || '';
-  const VOICE_SPANISH = process.env.ELEVENLABS_VOICE_ES || 'N2lD1ixsuvnrwL7fM2Yv'; // voz "Ellie" es-ES (la más cercana a un asistente claro)
-  const VOICE_DEEP = process.env.ELEVENLABS_VOICE_JARVIS || 'TxGEqnHWrfWFTfGW9XjX'; // voz grave masculina es
+  const VOICE_SPANISH = process.env.ELEVENLABS_VOICE_ES || 'cgSgspJ2msm6clMCkdW9'; // voz "Antoni" (multilingüe) — lee español con el modelo multilingual
+  const VOICE_DEEP = process.env.ELEVENLABS_VOICE_JARVIS || 'onwK4e9ZLuTAKqWW03F9'; // voz JARVIS: "Josh" (hombre británico formal) — estilo JARVIS de Iron Man
 
   // GET /api/tts/info — estado de disponibilidad de la voz premium
   router.get('/info', (req, res) => {
@@ -26,6 +26,10 @@ module.exports = function (opts) {
     if (t.length > 600) return res.status(400).json({ ok: false, error: 'Texto muy largo (máx 600 caracteres)' });
 
     const voiceId = String(voice || VOICE_SPANISH);
+    // Estilo JARVIS (voz grave británica "Josh"): tono sereno, seco y medido.
+    const settings = voiceId === VOICE_DEEP
+      ? { stability: 0.85, similarity_boost: 0.8, style: 0.12, use_speaker_boost: true }
+      : { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true };
     try {
       const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
         method: 'POST',
@@ -36,7 +40,7 @@ module.exports = function (opts) {
         body: JSON.stringify({
           text: t,
           model_id: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
-          voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true },
+          voice_settings: settings,
         }),
         signal: AbortSignal.timeout(15000),
       });

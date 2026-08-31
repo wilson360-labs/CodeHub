@@ -4444,11 +4444,15 @@ async function sendEmail(e) {
         },
         '/jarvis': () => {
           const on = String(arg || '').trim().toLowerCase() === 'on';
-          if (!on) return addMsg('ai', 'Usa `/jarvis on` para activar la voz estilo Jarvis (más grave y pausada) cuando Wil.E habla.');
+          if (!on) return addMsg('ai', 'Usa `/jarvis on` para activar la voz estilo Jarvis (voz británica premium, en inglés) cuando Wil.E habla. `/jarvis off` la desactiva.');
           if (window.emiVoice && typeof window.emiVoice.setJarvis === 'function') {
-            window.emiVoice.setJarvis(true);
-            addMsg('ai', '🎙️ Modo Jarvis activado. Wil.E ahora habla con voz más grave y pausada. Usa `/jarvis` sin on para más info.');
-            try { window.emiVoice.speak('Listo, modo Jarvis activado. Soy Wil E, a tu servicio.'); } catch (e) {}
+            window.emiVoice.setJarvis(on);
+            if (on) {
+              addMsg('ai', '🎙️ Modo Jarvis activado. Wil.E habla con voz británica premium estilo JARVIS y en inglés. Usa `/jarvis off` para volver a la voz normal.');
+            } else {
+              addMsg('ai', '🔇 Modo Jarvis desactivado. Wil.E vuelve a tu voz normal.');
+            }
+            try { window.emiVoice.speak(on ? 'Greetings, sir. Jarvis protocol activated. All systems online.' : 'Modo de voz normal restaurado. ¿En qué te ayudo?'); } catch (e) {}
           } else {
             addMsg('ai', 'El módulo de voz no está listo todavía. Recarga la página.');
           }
