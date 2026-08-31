@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.48';
+const VERSION = 'codehub-v6.49';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -36,6 +36,11 @@ const PRECACHE = [
   '/css/index-responsive.css',
   '/css/site-tour.css',
   '/css/viewport-guard.css',
+  '/css/fontawesome/all.min.css',
+  '/css/fontawesome/webfonts/fa-brands-400.woff2',
+  '/css/fontawesome/webfonts/fa-regular-400.woff2',
+  '/css/fontawesome/webfonts/fa-solid-900.woff2',
+  '/css/fontawesome/webfonts/fa-v4compatibility.woff2',
   '/manifest.json',
   '/offline.html',
   '/js/script.js',

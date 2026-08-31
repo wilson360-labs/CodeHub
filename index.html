@@ -202,12 +202,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"></noscript>
 
-    <!-- Font Awesome — carga robusta con CDN primario + respaldo -->
-    <link rel="stylesheet" id="fa-css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <!-- Font Awesome — self-host local (sin depender de CDN externo ni de la CSP) -->
+    <link rel="stylesheet" id="fa-css" href="css/fontawesome/all.min.css?v=20260831a">
     <script>
-      /* Detección de fallo de Font Awesome: si tras un tiempo los íconos no
-         aplican la fuente de glifos, recargamos desde un CDN alternativo.
-         Esto cubre webviews/redes donde el CDN primario queda bloqueado. */
+      /* Detección de fallo de Font Awesome: local primero; si por cualquier
+         motivo la fuente local no aplica, cae a cdnjs como respaldo remoto
+         (ya permitido por la CSP). */
       (function () {
         function faLoaded() {
           try {
@@ -230,12 +230,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         window.addEventListener('load', function () {
           setTimeout(function () {
             if (!faLoaded()) {
-              swapCss('https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css');
-              setTimeout(function () {
-                if (!faLoaded()) {
-                  swapCss('https://use.fontawesome.com/releases/v6.7.2/css/all.css');
-                }
-              }, 2500);
+              swapCss('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
             }
           }, 600);
         });
