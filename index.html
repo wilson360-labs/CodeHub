@@ -4768,6 +4768,24 @@ async function sendEmail(e) {
         setTimeout(() => addSearchResults(q), 200);
       }
       console.warn('Chat error:', err.message);
+      // Reporta la falla al mismo canal de Telegram que ya usa la app
+      // Android (crash-report), para enterarnos apenas alguien real
+      // pega contra un endpoint roto — no solo cuando alguien manda
+      // captura de pantalla. tgAlert dedupe por 'tag' evita spam si
+      // muchos usuarios pegan contra la misma ruta caída.
+      try {
+        fetch(BACKEND_URL + '/api/crash-report', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+          body: JSON.stringify({
+            tag: 'chat-fallback',
+            exceptionClass: 'ChatFetchError',
+            message: String(err.message || err).slice(0, 300),
+            platform: 'web',
+            appVersion: (typeof _isStandalone !== 'undefined' && _isStandalone) ? 'app' : 'web',
+            timestamp: Date.now(),
+          })
+        }).catch(() => {});
+      } catch (_) {}
     } finally {
       loading = false;
       sendBtn.disabled = false;

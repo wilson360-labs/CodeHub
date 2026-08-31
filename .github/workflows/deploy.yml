@@ -57,9 +57,61 @@ jobs:
     steps:
       - name: Esperar deploy (90s)
         run: sleep 90
-      - name: Verificar backend
+
+      - name: Verificar rutas criticas
+        id: routes
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://codehub-98s6.onrender.com/api/health --max-time 30)
-          echo "HTTP: $STATUS"
-          [ "$STATUS" = "200" ] && echo "Backend OK" || echo "Status $STATUS"
+          BASE="https://codehub-98s6.onrender.com"
+          FAILS=""
+
+          check() {
+            local path="$1" method="$2" expect="$3" body="${4:-}"
+            local status
+            if [ "$method" = "POST" ]; then
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+                -X POST -H "Content-Type: application/json" -d "$body" "$BASE$path")
+            else
+              status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$BASE$path")
+            fi
+            echo "$method $path -> $status (esperado: $expect)"
+            # $expect es una lista de codigos validos separados por '|'
+            if ! echo "$status" | grep -qE "^($expect)$"; then
+              FAILS="$FAILS\n- $method $path devolvio $status (esperado $expect)"
+            fi
+          }
+
+          # 200 = ruta viva. Para POST con body invalido, 400 tambien
+          # confirma que la ruta existe (paso la validacion de Express
+          # antes de fallar por falta de "message") sin gastar tokens
+          # de LLM. 404 en cualquiera de estas = ruta rota/mal ordenada.
+          check "/api/health"        GET  "200"
+          check "/api/chat"          POST "400|401" "{}"
+          check "/api/chat/stream"   POST "400|401" "{}"
+          check "/api/apps"          GET  "200"
+          check "/api/releases"      GET  "200"
+
+          if [ -n "$FAILS" ]; then
+            echo -e "RUTAS ROTAS:$FAILS"
+            echo "fails<<EOF" >> "$GITHUB_OUTPUT"
+            echo -e "$FAILS" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "Todas las rutas criticas responden OK"
+
+      - name: Avisar por Telegram si algo se rompio
+        if: failure()
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          MSG="🔴 *CodeHub — Deploy con rutas rotas*
+          Commit: \`${{ github.sha }}\`
+          ${{ steps.routes.outputs.fails }}
+
+          Revisa el orden de rutas en server.js (una ruta despues del 404 catch-all queda inalcanzable)."
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d parse_mode="Markdown" \
+            --data-urlencode text="$MSG" || true
+

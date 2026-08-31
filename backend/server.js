@@ -4673,9 +4673,10 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
     const key   = `crash:${fatal ? 'fatal' : 'caught'}:${tag || ''}:${exceptionClass || ''}`;
     const icon  = fatal ? '💥' : '⚠️';
     const kind  = fatal ? 'CRASH FATAL' : 'Excepción capturada';
+    const origin = platform === 'web' ? 'Web' : 'App Android';
 
     tgAlert(key, () =>
-      `${icon} <b>${kind} — App Android</b>\n` +
+      `${icon} <b>${kind} — ${origin}</b>\n` +
       (tag ? `Módulo: <code>${escHtml(tag)}</code>\n` : '') +
       `Clase: <code>${escHtml(exceptionClass || '?')}</code>\n` +
       `Mensaje: ${escHtml(message || '(sin mensaje)')}\n` +
@@ -5800,6 +5801,18 @@ app.use((req, res) => {
     claude:      !!(process.env.ANTHROPIC_API_KEY),
     cohere:      !!(process.env.COHERE_API_KEY),
   });
+  // Un 404 en /api/* casi siempre es señal de un bug real (ruta mal
+  // ordenada, typo, endpoint borrado sin actualizar el frontend) — a
+  // diferencia de 404s fuera de /api/ que suelen ser bots escaneando
+  // rutas al azar. tgAlert ya deduplica por path dentro de una ventana
+  // de tiempo, así que un bot insistente no hace spam en Telegram.
+  if (req.path.startsWith('/api/')) {
+    const ip = clientIp(req);
+    tgAlert('404:' + req.path, n =>
+      `🕳️ <b>404 en ruta interna</b>\n<code>${req.method} ${escHtml(req.path)}</code>\nIP: <code>${ip}</code>\nOcurrencias: ${n}\n\n` +
+      `Si esta ruta la usa el frontend/app, revisa el orden de definición en server.js — una ruta declarada después de este catch-all queda inalcanzable.`,
+      { windowMs: 30000 });
+  }
   res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
 });
 
