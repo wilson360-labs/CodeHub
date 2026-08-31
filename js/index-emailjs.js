@@ -12,7 +12,7 @@ const EMAILJS_SERVICE_ID  = 'service_gnm5lec';   // Paso 2
 const EMAILJS_TEMPLATE_ID = 'template_o2pks0d';  // Paso 3
 
 (function() {
-    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY') {
+    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY' && typeof emailjs !== 'undefined') {
         emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     }
 })();

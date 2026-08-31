@@ -3445,8 +3445,8 @@ async function chNotifWeatherCheck(lat, lon) {
 
 <script src="js/script.js?v=20260724a"></script>
 
-<!-- EmailJS SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- EmailJS SDK — self-host local (sin depender del CDN en el APK/WebView) -->
+<script src="js/emailjs.min.js?v=20260831"></script>
   <!-- Cloudflare Turnstile -->
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
@@ -3460,7 +3460,7 @@ const EMAILJS_SERVICE_ID  = 'service_gnm5lec';   // Paso 2
 const EMAILJS_TEMPLATE_ID = 'template_o2pks0d';  // Paso 3
 
 (function() {
-    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY') {
+    if (EMAILJS_PUBLIC_KEY !== 'TU_PUBLIC_KEY' && typeof emailjs !== 'undefined') {
         emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     }
 })();
