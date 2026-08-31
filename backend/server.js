@@ -5522,76 +5522,6 @@ process.on('uncaughtException', (err) => {
   // y sesiones activas por un error aislado.
 });
 
-// ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
-app.use((req, res) => {
-  if (req.path === '/api/health/keys') return res.json({
-    autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
-    groq:        !!(process.env.GROQ_API_KEY),
-    gemini:      !!(process.env.GEMINI_API_KEY),
-    claude:      !!(process.env.ANTHROPIC_API_KEY),
-    cohere:      !!(process.env.COHERE_API_KEY),
-  });
-  res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
-});
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  console.error('🔴 Error middleware:', err.stack || err.message);
-  tgAlert('express_error', () => '🔴 Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
-  if (res.headersSent) return;
-  res.status(err.status || 500).json({ ok: false, error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
-});
-
-// ── ARRANCAR ──────────────────────────────────────────────────
-(async () => {
-  await initRedis();
-  dbConnected = await connectDB();
-  if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
-  await ensurePushTable();
-  await ensureFCMTable();
-
-  server.listen(PORT, () => {
-    console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
-    console.log(`   MongoDB:    ${dbConnected ? '✅' : '⚠️  sin conexión'}`);
-    console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
-    console.log(`   WebSockets: ✅ /ws`);
-    console.log(`   FCM:        ${fcmEnabled ? '✅ push nativo Android' : '⚠️  solo web-push'}`);
-    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? '✅' : '⚠️  sin configurar'}`);
-    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? '✅ (' + OR_FREE_MODELS.length + ' modelos gratis)' : '⚠️  sin configurar'));
-    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
-    console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
-    console.log(`   Push Clima: ✅ VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
-    console.log(`   Monitor Releases: ✅ auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
-  });
-})();
-
-// ── RENDER KEEPALIVE — se agrega después del server.listen ────
-// Render free tier apaga el servicio tras ~15 min de inactividad.
-// Self-ping cada 10 min mantiene el proceso vivo sin servicio externo.
-// Requiere: RENDER_EXTERNAL_URL en las variables de entorno de Render.
-
-function startRenderKeepalive() {
-  const SELF_URL = process.env.RENDER_EXTERNAL_URL || null;
-  if (!SELF_URL) {
-    console.log('   Keepalive:  ⚠️  agrega RENDER_EXTERNAL_URL en Render > Environment');
-    return;
-  }
-  const target = SELF_URL.replace(/\/$/, '') + '/api/health';
-  const lib = target.startsWith('https') ? require('https') : require('http');
-  setInterval(() => {
-    lib.get(target, (res) => {
-      console.log('🔔 Render keepalive ping →', res.statusCode);
-    }).on('error', (e) => console.warn('⚠️  Keepalive error:', e.message));
-  }, 10 * 60 * 1000);
-  console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
-}
-startRenderKeepalive();
-
 // ── Streaming SSE (Server-Sent Events) ─────────────────────────────────────
 // Endpoint alternativo a /api/chat que devuelve la respuesta token por token.
 // Soporta Groq, Cerebras, HuggingFace, OpenRouter, Mistral, Kimi (OpenAI-compat)
@@ -5861,6 +5791,73 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   }
 });
 
+// ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
+app.use((req, res) => {
+  if (req.path === '/api/health/keys') return res.json({
+    autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
+    groq:        !!(process.env.GROQ_API_KEY),
+    gemini:      !!(process.env.GEMINI_API_KEY),
+    claude:      !!(process.env.ANTHROPIC_API_KEY),
+    cohere:      !!(process.env.COHERE_API_KEY),
+  });
+  res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
+});
 
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('🔴 Error middleware:', err.stack || err.message);
+  tgAlert('express_error', () => '🔴 Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
+  if (res.headersSent) return;
+  res.status(err.status || 500).json({ ok: false, error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
+});
 
+// ── ARRANCAR ──────────────────────────────────────────────────
+(async () => {
+  await initRedis();
+  dbConnected = await connectDB();
+  if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
+  await ensurePushTable();
+  await ensureFCMTable();
+
+  server.listen(PORT, () => {
+    console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
+    console.log(`   MongoDB:    ${dbConnected ? '✅' : '⚠️  sin conexión'}`);
+    console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
+    console.log(`   WebSockets: ✅ /ws`);
+    console.log(`   FCM:        ${fcmEnabled ? '✅ push nativo Android' : '⚠️  solo web-push'}`);
+    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? '✅' : '⚠️  sin configurar'}`);
+    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? '✅ (' + OR_FREE_MODELS.length + ' modelos gratis)' : '⚠️  sin configurar'));
+    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
+    console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Push Clima: ✅ VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
+    console.log(`   Monitor Releases: ✅ auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
+  });
+})();
+
+// ── RENDER KEEPALIVE — se agrega después del server.listen ────
+// Render free tier apaga el servicio tras ~15 min de inactividad.
+// Self-ping cada 10 min mantiene el proceso vivo sin servicio externo.
+// Requiere: RENDER_EXTERNAL_URL en las variables de entorno de Render.
+
+function startRenderKeepalive() {
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL || null;
+  if (!SELF_URL) {
+    console.log('   Keepalive:  ⚠️  agrega RENDER_EXTERNAL_URL en Render > Environment');
+    return;
+  }
+  const target = SELF_URL.replace(/\/$/, '') + '/api/health';
+  const lib = target.startsWith('https') ? require('https') : require('http');
+  setInterval(() => {
+    lib.get(target, (res) => {
+      console.log('🔔 Render keepalive ping →', res.statusCode);
+    }).on('error', (e) => console.warn('⚠️  Keepalive error:', e.message));
+  }, 10 * 60 * 1000);
+  console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
+}
+startRenderKeepalive();
 
