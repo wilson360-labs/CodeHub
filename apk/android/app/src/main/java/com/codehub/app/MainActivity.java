@@ -117,6 +117,10 @@ public class MainActivity extends Activity {
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
+        // Chequeo de actualización de la app — habla directo con GitHub
+        // Releases, independiente del sitio web y del backend.
+        try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("appUpdate", t); }
+
         // Iniciar Foreground Service — mantiene la app viva en 2do plano
         // con WakeLock + sync periódico cada 15 min.
         try { CodeHubSyncService.startIfNotRunning(this); } catch (Throwable t) { crashLog("syncService", t); }

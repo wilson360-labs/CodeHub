@@ -36,14 +36,25 @@ public class InstallReceiver extends BroadcastReceiver {
 
         int statusIdx = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
         int uriIdx   = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
+        int titleIdx = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE);
         if (statusIdx < 0 || uriIdx < 0) { cursor.close(); return; }
 
         int status = cursor.getInt(statusIdx);
         String uriString = cursor.getString(uriIdx);
+        String title = titleIdx >= 0 ? cursor.getString(titleIdx) : null;
         cursor.close();
 
         if (status != DownloadManager.STATUS_SUCCESSFUL) return;
         if (uriString == null) return;
+
+        // ACTION_DOWNLOAD_COMPLETE es un broadcast del sistema: se dispara
+        // para CUALQUIER descarga hecha con DownloadManager en el device
+        // (incluidas las de Chrome u otras apps), no solo las nuestras.
+        // Filtramos por extensión .apk / título "CodeHub" para no intentar
+        // "instalar" un PDF o una foto que el usuario bajó del navegador.
+        boolean looksLikeApk = uriString.toLowerCase().endsWith(".apk")
+            || (title != null && title.toLowerCase().contains("codehub"));
+        if (!looksLikeApk) return;
 
         Uri fileUri = Uri.parse(uriString);
 
