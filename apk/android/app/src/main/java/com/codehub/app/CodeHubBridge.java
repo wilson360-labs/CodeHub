@@ -109,8 +109,10 @@ public class CodeHubBridge {
     @JavascriptInterface
     public boolean ttsIsAvailable() {
         try {
+            android.content.Intent checkIntent = new android.content.Intent();
+            checkIntent.setAction(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA);
             android.content.pm.PackageManager pm = activity.getPackageManager();
-            return pm.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TTS);
+            return !pm.queryIntentActivities(checkIntent, 0).isEmpty();
         } catch (Exception e) { return false; }
     }
 
