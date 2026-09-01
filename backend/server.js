@@ -1,16 +1,16 @@
 /**
- * CodeHub Backend v3.1 â€” Wilson.E 2026
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * âœ… WebSockets â€” notificaciones en tiempo real
- * âœ… Redis      â€” cachÃ© (opcional)
- * âœ… Eventos:   visitas, descargas, ratings, contacto, chat IA, nueva app
+ * CodeHub Backend v3.1 — Wilson.E 2026
+ * ─────────────────────────────────────────────────────────────
+ * ✅ WebSockets — notificaciones en tiempo real
+ * ✅ Redis      — caché (opcional)
+ * ✅ Eventos:   visitas, descargas, ratings, contacto, chat IA, nueva app
  *
  * Variables de Entorno (Render):
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
  *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
  *   TOGETHER_API_KEY, OPENROUTER_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY
- *   KIMI_API_KEY (Moonshot AI â€” https://platform.moonshot.ai)
+ *   KIMI_API_KEY (Moonshot AI — https://platform.moonshot.ai)
  */
 
 require('dotenv').config();
@@ -21,7 +21,7 @@ const rateLimit = require('express-rate-limit');
 const helmet    = require('helmet');
 const compression = require('compression');
 const multer    = require('multer');
-const Busboy    = require('busboy');   // dep transitiva de multer â€” parseo multipart sin buffer
+const Busboy    = require('busboy');   // dep transitiva de multer — parseo multipart sin buffer
 const crypto    = require('crypto');
 const http      = require('http');
 const fs        = require('fs');
@@ -29,13 +29,13 @@ const path      = require('path');
 const { WebSocketServer } = require('ws');
 const swaggerSpec        = require('./swagger');
 
-// â”€â”€ SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SUPABASE ──────────────────────────────────────────────────
 const { createClient } = require('@supabase/supabase-js');
 const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.trim())
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
   : null;
 
-// Helper: registrar evento en Supabase (fire-and-forget â€” no bloquea la peticiÃ³n)
+// Helper: registrar evento en Supabase (fire-and-forget — no bloquea la petición)
 async function trackEvent(type, page = null, metadata = {}) {
   if (!supabase) return;
   setImmediate(async () => {
@@ -69,7 +69,7 @@ async function trackEvent(type, page = null, metadata = {}) {
   });
 }
 
-// â”€â”€ SKILLS â€” catÃ¡logo de capacidades de IA (skills/â€¦) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SKILLS — catálogo de capacidades de IA (skills/…) ──────────
 // Cada skill es un folder con skill.json. Se sirven por GET /api/skills
 // y su system_prompt_inject se inyecta en /api/chat cuando el usuario
 // manda skill_id (p.ej. 'pdf-ia' al adjuntar un PDF).
@@ -91,10 +91,10 @@ function loadSkillJson(id) {
   }
 }
 
-// â”€â”€ DB RUNNER â€” divide un script .sql en sentencias individuales â”€â”€
+// ── DB RUNNER — divide un script .sql en sentencias individuales ──
 // Respeta strings entre comillas simples/dobles y bloques con
-// dollar-quoting ($$ ... $$ o $tag$ ... $tag$, tÃ­pico de funciones
-// plpgsql) para no cortar un ';' que estÃ© dentro de esos bloques.
+// dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
+// plpgsql) para no cortar un ';' que esté dentro de esos bloques.
 const { splitSqlStatements, clientIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
 
 const app    = express();
@@ -105,28 +105,28 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 
-// â”€â”€ SECURITY: Anti-bot & hardening â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SECURITY: Anti-bot & hardening ───────────────────────────
 // Block known scanner/bot User-Agents targeting admin endpoints
 const _BOT_UA_RE = /python-urllib|python-requests|go-http-client|java\/|curl\/|wget\/|scrapy|nikto|sqlmap|nmap|masscan|zgrab|gobuster|dirbuster|hydra|medusa|wfuzz|ffuf|nuclei|httpx|censys|shodan|zoomye/i;
 app.use('/api/admin', (req, res, next) => {
   const ua = (req.headers['user-agent'] || '').slice(0, 200);
   if (ua && _BOT_UA_RE.test(ua)) {
     const ip = clientIp(req);
-    tgAlert('botprobe', () => `ðŸ¤– <b>BOT DETECTADO en /api/admin</b>\nIP: <code>${ip}</code>\nUA: ${ua.slice(0, 70)}`, { windowMs: 30000 });
+    tgAlert('botprobe', () => `🤖 <b>BOT DETECTADO en /api/admin</b>\nIP: <code>${ip}</code>\nUA: ${ua.slice(0, 70)}`, { windowMs: 30000 });
     return res.status(403).json({ error: 'Acceso no autorizado' });
   }
   next();
 });
-// Honeypot: hidden endpoint that real users never hit â€” bots do
+// Honeypot: hidden endpoint that real users never hit — bots do
 app.all('/api/admin/secret-panel', (req, res) => {
   const ip = clientIp(req);
   const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
-  tgAlert('honeypot', () => `ðŸ¯ <b>HONEYPOT TRIGGERED</b>\nIP: <code>${ip}</code>\nUA: ${ua}`, { windowMs: 60000 });
+  tgAlert('honeypot', () => `🍯 <b>HONEYPOT TRIGGERED</b>\nIP: <code>${ip}</code>\nUA: ${ua}`, { windowMs: 60000 });
   if (!_adminBans.has(ip)) _adminBans.set(ip, { expiresAt: Date.now() + ADMIN_BAN_DURATION_MS });
   return res.status(404).json({ error: 'Not found' });
 });
 
-// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CORS ──────────────────────────────────────────────────────
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000', 'http://localhost:5500',
@@ -149,20 +149,20 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-// /api/chat necesita un lÃ­mite mÃ¡s alto que el resto (las imÃ¡genes van en
-// base64 dentro del JSON). Se registra ANTES del lÃ­mite global de 10kb;
+// /api/chat necesita un límite más alto que el resto (las imágenes van en
+// base64 dentro del JSON). Se registra ANTES del límite global de 10kb;
 // como ya deja el body parseado, el parser global de abajo lo detecta y
-// no vuelve a leer el stream, asÃ­ el resto de rutas conserva el lÃ­mite chico.
+// no vuelve a leer el stream, así el resto de rutas conserva el límite chico.
 app.use('/api/chat', express.json({ limit: '6mb' }));
-// /api/admin â€” algunas rutas mandan payloads mÃ¡s grandes que el lÃ­mite
-// global de 10kb: el seed masivo del catÃ¡logo (ej. las 48 apps Open
-// Source, ~23kb) o extract-icon con imÃ¡genes en base64. Mismo patrÃ³n
-// que /api/chat arriba: se registra antes del lÃ­mite global.
+// /api/admin — algunas rutas mandan payloads más grandes que el límite
+// global de 10kb: el seed masivo del catálogo (ej. las 48 apps Open
+// Source, ~23kb) o extract-icon con imágenes en base64. Mismo patrón
+// que /api/chat arriba: se registra antes del límite global.
 app.use('/api/admin', express.json({ limit: '5mb' }));
-// /api/crash-report â€” stack traces + log de crash acumulado (app Android)
-// pueden superar el lÃ­mite chico global; mismo patrÃ³n de arriba.
+// /api/crash-report — stack traces + log de crash acumulado (app Android)
+// pueden superar el límite chico global; mismo patrón de arriba.
 app.use('/api/crash-report', express.json({ limit: '200kb' }));
-// /api/webhook â€” necesita el body crudo (Buffer) ademÃ¡s del JSON parseado,
+// /api/webhook — necesita el body crudo (Buffer) además del JSON parseado,
 // para poder validar la firma HMAC-SHA256 que manda GitHub en el header
 // X-Hub-Signature-256. El `verify` callback guarda esos bytes en
 // req.rawBody antes de que Express los descarte tras parsear el JSON.
@@ -172,11 +172,11 @@ app.use('/api/webhook', express.json({
 }));
 app.use(express.json({ limit: '10kb' }));
 
-// Multer APKs â€” Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene lÃ­mite de 50 MB.
-// El lÃ­mite aquÃ­ (2 GB) es solo protecciÃ³n del servidor en trÃ¡nsito, no un lÃ­mite de Telegram.
+// Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
+// El límite aquí (2 GB) es solo protección del servidor en tránsito, no un límite de Telegram.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB â€” solo para rutas que NO son /upload (security scan, etc.)
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB — solo para rutas que NO son /upload (security scan, etc.)
   fileFilter: (_, f, cb) => {
     if (f.mimetype === 'application/vnd.android.package-archive' || f.originalname.endsWith('.apk'))
       cb(null, true);
@@ -191,15 +191,15 @@ const uploadSecurityFile = multer({
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
-// Auth admin: mÃ¡ximo 5 intentos por 15 min por IP (Turnstile + key check)
-const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos de autenticaciÃ³n. Espera 15 minutos.', code: 'ADMIN_AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
+// Auth admin: máximo 5 intentos por 15 min por IP (Turnstile + key check)
+const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos de autenticación. Espera 15 minutos.', code: 'ADMIN_AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
 // App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
-// crash reales) sin abrir la puerta a flood del endpoint pÃºblico.
+// crash reales) sin abrir la puerta a flood del endpoint público.
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
-// ImÃ¡genes: lÃ­mite separado para que generar imÃ¡genes no agote el cupo del chat.
-const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'LÃ­mite de generaciÃ³n de imÃ¡genes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
+// Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
+const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
 
-// â”€â”€ ADMIN BAN SYSTEM (anti brute-force) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN BAN SYSTEM (anti brute-force) ───────────────────────
 // Map<ip, { expiresAt, attempts, firstAttemptAt }>
 const _adminBans  = new Map();
 const _adminFails = new Map();
@@ -238,14 +238,14 @@ function _recordAdminFail(ip, ua) {
   if (entry.count >= ADMIN_FAIL_THRESHOLD && !_adminBans.has(ip)) {
     _adminBans.set(ip, { expiresAt: now + ADMIN_BAN_DURATION_MS });
     tgAlert('adminban', () => {
-      return `ðŸš« <b>BAN ADMIN â€” IP Bloqueada</b>\nIP: <code>${ip}</code>\nIntentos: ${entry.count} fallos en 15 min\nBloqueada por 30 min\nUA: ${(ua || '').slice(0, 70).replace(/[<>]/g, '')}`;
+      return `🚫 <b>BAN ADMIN — IP Bloqueada</b>\nIP: <code>${ip}</code>\nIntentos: ${entry.count} fallos en 15 min\nBloqueada por 30 min\nUA: ${(ua || '').slice(0, 70).replace(/[<>]/g, '')}`;
     }, { windowMs: 60000 });
-    console.warn(`ðŸš« ADMIN BAN: IP ${ip} banned for ${ADMIN_BAN_DURATION_MS / 60000}min after ${entry.count} failed attempts`);
+    console.warn(`🚫 ADMIN BAN: IP ${ip} banned for ${ADMIN_BAN_DURATION_MS / 60000}min after ${entry.count} failed attempts`);
   }
   return entry.count;
 }
 
-// â”€â”€ SESSION TOKEN (HMAC-SHA256) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SESSION TOKEN (HMAC-SHA256) ────────────────────────────────
 const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_KEY || crypto.randomBytes(32).toString('hex');
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
 
@@ -271,7 +271,7 @@ function _verifySession(token) {
   } catch { return null; }
 }
 
-// â”€â”€ Contador diario de EMI por usuario/dispositivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Contador diario de EMI por usuario/dispositivo ───────────
 // F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
 // Limits are now configurable via /api/admin/config
 const EMI_DAILY_LIMIT_GUEST_FALLBACK = 15;
@@ -294,7 +294,7 @@ const EmiUsage = mongoose.model('EmiUsage', new mongoose.Schema({
   count:   { type: Number, default: 0 },
 }, { timestamps: false }));
 
-// â”€â”€ Remote Config â€” single-doc collection for frontend config â”€â”€
+// ── Remote Config — single-doc collection for frontend config ──
 const AppConfig = mongoose.model('AppConfig', new mongoose.Schema({
   key:     { type: String, default: 'main', unique: true },
   config:  { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -339,8 +339,8 @@ const DEFAULT_CONFIG = {
     heroSubtitle: 'Tu centro de desarrollo IA',
     consentText: 'Usamos cookies para mejorar tu experiencia.',
     weatherCityFallback: 'Ciudad de Guatemala',
-    updateDialogTitle: 'Nueva versiÃ³n disponible',
-    updateDialogBody: 'Hay una nueva versiÃ³n de CodeHub disponible.',
+    updateDialogTitle: 'Nueva versión disponible',
+    updateDialogBody: 'Hay una nueva versión de CodeHub disponible.',
     googleMapsKey: process.env.GOOGLE_MAPS || '',
   },
   ai: {
@@ -351,7 +351,7 @@ const DEFAULT_CONFIG = {
   },
   maintenance: {
     enabled: false,
-    message: 'CodeHub estÃ¡ en mantenimiento. Vuelve pronto.',
+    message: 'CodeHub está en mantenimiento. Vuelve pronto.',
   },
 };
 
@@ -411,17 +411,17 @@ async function incrEmiUsage(key) {
 app.use('/api/chat',  chatLimiter);
 app.use('/api/admin', adminLimiter);
 
-// â”€â”€ REDIS (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── REDIS (opcional) ──────────────────────────────────────────
 let redis = null;
 async function initRedis() {
-  if (!process.env.REDIS_URL) { console.log('âš ï¸  Sin REDIS_URL â€” usando cachÃ© en memoria'); return; }
+  if (!process.env.REDIS_URL) { console.log('⚠️  Sin REDIS_URL — usando caché en memoria'); return; }
   try {
     const { createClient } = require('redis');
     redis = createClient({ url: process.env.REDIS_URL });
     redis.on('error', e => console.warn('Redis error:', e.message));
     await redis.connect();
-    console.log('âœ… Redis conectado');
-  } catch (e) { console.warn('âš ï¸  Redis fallÃ³, usando memoria:', e.message); redis = null; }
+    console.log('✅ Redis conectado');
+  } catch (e) { console.warn('⚠️  Redis falló, usando memoria:', e.message); redis = null; }
 }
 
 const _mem = new Map();
@@ -436,7 +436,7 @@ async function cacheSet(k, v, ttl = 60) {
 }
 async function cacheDel(k) { if (redis) await redis.del(k); _mem.delete(k); }
 
-// â”€â”€ WEBSOCKETS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WEBSOCKETS ────────────────────────────────────────────────
 const wss = new WebSocketServer({ server, path: '/ws' });
 const wsClients = new Set();
 
@@ -445,7 +445,7 @@ wss.on('connection', (ws, req) => {
   if (origin && !allowedOrigins.includes(origin)) { ws.close(1008, 'Origin no permitido'); return; }
   ws.isAlive = true;
   wsClients.add(ws);
-  console.log(`ðŸ”Œ WS conectado â€” ${wsClients.size} clientes`);
+  console.log(`🔌 WS conectado — ${wsClients.size} clientes`);
   ws.send(JSON.stringify({ type: 'connected', clients: wsClients.size, ts: Date.now() }));
   ws.on('pong', () => { ws.isAlive = true; });
   ws.on('close', () => { wsClients.delete(ws); });
@@ -465,9 +465,9 @@ function broadcast(type, data = {}) {
   wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
 }
 
-// Avisa a los clientes conectados (ej. la pÃ¡gina de Open Source) que el
-// catÃ¡logo cambiÃ³ â€” total y total de apps open source para actualizar el
-// contador en tiempo real sin depender del TTL de la cachÃ© de /api/apps.
+// Avisa a los clientes conectados (ej. la página de Open Source) que el
+// catálogo cambió — total y total de apps open source para actualizar el
+// contador en tiempo real sin depender del TTL de la caché de /api/apps.
 async function broadcastAppsChanged() {
   if (!dbConnected) return;
   try {
@@ -489,7 +489,7 @@ function trackVisit() {
   trackEvent('visit');
 }
 
-// â”€â”€ MONGODB SCHEMAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MONGODB SCHEMAS ───────────────────────────────────────────
 const ChatMessage = mongoose.model('ChatMessage', new mongoose.Schema({
   sessionId: { type: String, required: true, index: true },
   role:      { type: String, enum: ['user','assistant'], required: true },
@@ -504,7 +504,7 @@ const App = mongoose.model('App', new mongoose.Schema({
   nombre:             { type: String, required: true },
   descripcion:        { type: String, default: '' },
   version:            { type: String, default: '' },
-  tag:                { type: String, default: 'ðŸ†•' },
+  tag:                { type: String, default: '🆕' },
   changelog:          { type: String, default: '' },
   imagen:             { type: String, default: '' },
   categoria:          { type: String, default: '' },
@@ -523,8 +523,8 @@ const App = mongoose.model('App', new mongoose.Schema({
   ia_identifier:      { type: String, default: null },  // Item ID de Archive.org
   ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
   tutorial_url:       { type: String, default: null },
-  source_repo:        { type: String, default: null }, // "owner/repo" â€” habilita el monitor automÃ¡tico de actualizaciones vÃ­a GitHub Releases
-  packageName:        { type: String, default: null }, // applicationId Android real (ej. "org.schabi.newpipe") â€” habilita detecciÃ³n de apps instaladas + auto-instalaciÃ³n (ver backend/scripts/resolve-package-names.js)
+  source_repo:        { type: String, default: null }, // "owner/repo" — habilita el monitor automático de actualizaciones vía GitHub Releases
+  packageName:        { type: String, default: null }, // applicationId Android real (ej. "org.schabi.newpipe") — habilita detección de apps instaladas + auto-instalación (ver backend/scripts/resolve-package-names.js)
   updatedAt:          { type: Date, default: Date.now },
   createdAt:          { type: Date, default: Date.now },
 }));
@@ -547,9 +547,9 @@ const AppRequest = mongoose.model('AppRequest', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }));
 
-// CodeHub Releases â€” novedades del proyecto (nuevas funciones/versiones
+// CodeHub Releases — novedades del proyecto (nuevas funciones/versiones
 // integradas). Se publican desde el admin-hub y caen en la campana de
-// notificaciones. NO estÃ¡n vinculadas al historial de git.
+// notificaciones. NO están vinculadas al historial de git.
 const Release = mongoose.model('Release', new mongoose.Schema({
   title:     { type: String, required: true },
   body:      { type: String, default: '' },
@@ -559,45 +559,45 @@ const Release = mongoose.model('Release', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }));
 
-// â”€â”€ WIL.E INTELLIGENCE CORE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WIL.E INTELLIGENCE CORE ─────────────────────────────────
 // Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
 const { buildContext, augmentSystem } = require('./wil-e/core');
 const { remember } = require('./wil-e/memory');
 
 let dbConnected = false;
 
-// â”€â”€ MONGODB â€” LISTENERS DE RECONEXIÃ“N â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Mantienen dbConnected sincronizado con el estado REAL de la conexiÃ³n.
-// Sin esto, si Atlas cierra la conexiÃ³n por inactividad o hay un corte
+// ── MONGODB — LISTENERS DE RECONEXIÓN ──────────────────────────
+// Mantienen dbConnected sincronizado con el estado REAL de la conexión.
+// Sin esto, si Atlas cierra la conexión por inactividad o hay un corte
 // de red temporal, dbConnected se queda "true" para siempre (se asignaba
 // una sola vez al arrancar) y las rutas dejan de devolver el fallback 503.
 mongoose.connection.on('connected', () => {
   dbConnected = true;
-  console.log('âœ… MongoDB Atlas conectado');
+  console.log('✅ MongoDB Atlas conectado');
 });
 mongoose.connection.on('disconnected', () => {
   dbConnected = false;
-  console.warn('âš ï¸  MongoDB desconectado â€” reintentando en segundo plano...');
+  console.warn('⚠️  MongoDB desconectado — reintentando en segundo plano...');
 });
 mongoose.connection.on('reconnected', () => {
   dbConnected = true;
-  console.log('âœ… MongoDB Atlas reconectado');
+  console.log('✅ MongoDB Atlas reconectado');
 });
 mongoose.connection.on('error', (err) => {
   dbConnected = false;
-  console.error('âŒ MongoDB error:', err.message);
+  console.error('❌ MongoDB error:', err.message);
 });
 
 async function connectDB() {
-  if (!process.env.MONGODB_URI) { console.warn('âš ï¸  MONGODB_URI no configurado'); return false; }
+  if (!process.env.MONGODB_URI) { console.warn('⚠️  MONGODB_URI no configurado'); return false; }
   try {
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
     return true; // 'connected' listener ya deja el log y actualiza dbConnected
-  } catch (err) { console.error('âŒ MongoDB error:', err.message); return false; }
+  } catch (err) { console.error('❌ MongoDB error:', err.message); return false; }
 }
 
-// â”€â”€ ADMIN AUTH ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// POST /api/admin/auth â€” valida key + Turnstile â†’ devuelve session token HMAC (30 min)
+// ── ADMIN AUTH ENDPOINT ─────────────────────────────────────
+// POST /api/admin/auth — valida key + Turnstile → devuelve session token HMAC (30 min)
 app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
   const ip = clientIp(req);
   const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
@@ -614,8 +614,8 @@ app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
   const validKey = process.env.ADMIN_KEY;
 
   if (!validKey) {
-    console.error('âš ï¸  ADMIN_KEY no configurada en variables de entorno de Render');
-    return res.status(503).json({ error: 'Servidor no configurado â€” falta ADMIN_KEY en Render' });
+    console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
+    return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
   }
 
   // 3) Validate Turnstile (fail-closed)
@@ -623,45 +623,45 @@ app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
   if (!await validateTurnstile(tsToken)) {
     _recordAdminFail(ip, ua);
     tgAlert('adminfail', () => {
-      return `ðŸ¤– <b>TURNSTILE FALLO ADMIN</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
+      return `🤖 <b>TURNSTILE FALLO ADMIN</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
     }, { windowMs: 15000 });
-    return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
+    return res.status(403).json({ error: 'Verificación anti-bots fallida' });
   }
 
   // 4) Validate key
   if (password !== validKey) {
     _recordAdminFail(ip, ua);
     tgAlert('adminfail', () => {
-      return `ðŸ” <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(password || '').slice(0, 6)}â€¦\nUA: ${ua}`;
+      return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(password || '').slice(0, 6)}…\nUA: ${ua}`;
     }, { windowMs: 15000 });
     return res.status(403).json({ error: 'Credenciales incorrectas' });
   }
 
-  // 5) Success â€” clear fail counter, issue session token
+  // 5) Success — clear fail counter, issue session token
   _adminFails.delete(ip);
   const now = Date.now();
   const token = _signSession({ admin: true, iat: now, exp: now + SESSION_TTL_MS });
 
   tgAlert('adminlogin', () => {
-    return `âœ… <b>ADMIN LOGIN EXITOSO</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
+    return `✅ <b>ADMIN LOGIN EXITOSO</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
   }, { windowMs: 60000 });
 
   res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
 });
 
-// â”€â”€ AUTH ADMIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── AUTH ADMIN ────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
   const ip       = clientIp(req);
   const validKey = process.env.ADMIN_KEY;
 
-  // 1) Anti brute-force: verificar si la IP estÃ¡ baneada
+  // 1) Anti brute-force: verificar si la IP está baneada
   if (_isIPBanned(ip)) {
     return res.status(429).json({ error: 'IP temporalmente bloqueada por intentos fallidos. Intenta en 30 minutos.' });
   }
 
   if (!validKey) {
-    console.error('âš ï¸  ADMIN_KEY no configurada en variables de entorno de Render');
-    return res.status(503).json({ error: 'Servidor no configurado â€” falta ADMIN_KEY en Render' });
+    console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
+    return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
   }
 
   // 2) Aceptar session token HMAC (post-auth)
@@ -669,7 +669,7 @@ function requireAdmin(req, res, next) {
   if (sessionToken) {
     const payload = _verifySession(sessionToken);
     if (payload && payload.admin === true) return next();
-    return res.status(401).json({ error: 'SesiÃ³n expirada o invÃ¡lida' });
+    return res.status(401).json({ error: 'Sesión expirada o inválida' });
   }
 
   // 3) Fallback: key directa (legacy, con ban tracking)
@@ -681,18 +681,18 @@ function requireAdmin(req, res, next) {
     const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
     _recordAdminFail(ip, ua);
     tgAlert('adminfail', () => {
-      return `ðŸ” <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(key || '').slice(0, 6)}â€¦\nUA: ${ua}`;
+      return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(key || '').slice(0, 6)}…\nUA: ${ua}`;
     }, { windowMs: 15000 });
     return res.status(403).json({ error: 'Credenciales incorrectas' });
   }
-  // Si ADMIN_USER estÃ¡ configurado en Render, tambiÃ©n lo validamos
+  // Si ADMIN_USER está configurado en Render, también lo validamos
   if (validUser && user && user !== validUser) return res.status(403).json({ error: 'Credenciales incorrectas' });
   next();
 }
 
-// â”€â”€ AUTH USUARIO (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Valida el token Supabase si se envÃ­a, pero NO bloquea invitados.
-// Attach req.authUser = { id, email } si el token es vÃ¡lido.
+// ── AUTH USUARIO (opcional) ────────────────────────────────────
+// Valida el token Supabase si se envía, pero NO bloquea invitados.
+// Attach req.authUser = { id, email } si el token es válido.
 async function requireAuth(req, res, next) {
   if (!supabase) { req.authUser = null; return next(); }
   const auth = req.headers.authorization || '';
@@ -706,29 +706,29 @@ async function requireAuth(req, res, next) {
   next();
 }
 
-// â”€â”€ AUTH USUARIOS (Supabase Auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── AUTH USUARIOS (Supabase Auth) ────────────────────────────────
 // Frontend (js/auth.js) usa estos endpoints para login/registro de
-// usuarios normales (NO admin). Supabase Auth maneja contraseÃ±as y
-// sesiones; aquÃ­ solo validamos y devolvemos la sesiÃ³n al cliente.
+// usuarios normales (NO admin). Supabase Auth maneja contraseñas y
+// sesiones; aquí solo validamos y devolvemos la sesión al cliente.
 // Requiere SUPABASE_URL y SUPABASE_KEY (service role) en Render.
 const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos. Espera un poco.', code: 'AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
 app.use('/api/auth', authLimiter);
 
-// POST /api/auth/register â€” crear cuenta con email + contraseÃ±a
+// POST /api/auth/register — crear cuenta con email + contraseña
 app.post('/api/auth/register', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
-  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email invÃ¡lido' });
-  if (password.length < 8) return res.status(400).json({ error: 'La contraseÃ±a debe tener al menos 8 caracteres' });
+  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
+  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
+  if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
 
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) {
     // 422 = user_already_exists o email ocupado
     if (error.status === 422 || /already|exists|registered/i.test(error.message)) {
-      return res.status(409).json({ error: 'Ese correo ya estÃ¡ registrado' });
+      return res.status(409).json({ error: 'Ese correo ya está registrado' });
     }
     return res.status(400).json({ error: error.message });
   }
@@ -744,24 +744,24 @@ app.post('/api/auth/register', async (req, res) => {
   });
 });
 
-// POST /api/auth/login â€” iniciar sesiÃ³n con email + contraseÃ±a
+// POST /api/auth/login — iniciar sesión con email + contraseña
 app.post('/api/auth/login', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
-  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
-  if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseÃ±a' });
+  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'Verificación anti-bots fallida' });
+  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
+  if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseña' });
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     if (error.status === 400 || /invalid login|invalid credentials/i.test(error.message)) {
-      return res.status(401).json({ error: 'Email o contraseÃ±a incorrectos' });
+      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }
     return res.status(400).json({ error: error.message });
   }
   const user = data.user;
-  if (!user) return res.status(500).json({ error: 'No se pudo iniciar sesiÃ³n' });
+  if (!user) return res.status(500).json({ error: 'No se pudo iniciar sesión' });
 
   res.status(200).json({
     ok: true,
@@ -770,40 +770,40 @@ app.post('/api/auth/login', async (req, res) => {
   });
 });
 
-// POST /api/auth/logout â€” revocar la sesiÃ³n del token (opcional)
+// POST /api/auth/logout — revocar la sesión del token (opcional)
 app.post('/api/auth/logout', async (req, res) => {
   const token = String(req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || String(req.body?.token || '');
   if (token && supabase) await supabase.auth.admin.signOut(token);
   res.json({ ok: true });
 });
 
-// POST /api/auth/refresh â€” renovar access_token usando refresh_token
+// POST /api/auth/refresh — renovar access_token usando refresh_token
 app.post('/api/auth/refresh', async (req, res) => {
   const { refresh_token } = req.body || {};
   if (!refresh_token) return res.status(400).json({ error: 'refresh_token requerido' });
   if (!supabase) return res.status(503).json({ error: 'Auth no disponible' });
   try {
     const { data, error } = await supabase.auth.refreshSession({ refresh_token });
-    if (error || !data?.session) return res.status(401).json({ error: 'SesiÃ³n expirada. Inicia sesiÃ³n de nuevo.' });
+    if (error || !data?.session) return res.status(401).json({ error: 'Sesión expirada. Inicia sesión de nuevo.' });
     res.json({ session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token, expires_at: data.session.expires_at } });
-  } catch (e) { res.status(500).json({ error: 'Error renovando sesiÃ³n' }); }
+  } catch (e) { res.status(500).json({ error: 'Error renovando sesión' }); }
 });
 
-// â”€â”€ GOOGLE OAUTH â€” login con credenciales de Google â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Flujo redirect con callback en el backend (PKCE gestionado aquÃ­):
-//   1) POST /api/auth/google          â†’ guarda el code_verifier en una cookie
-//      httpOnly y devuelve la URL de authorize (Google vÃ­a Supabase).
-//      IMPORTANTE: NO se pasa un state propio â€” Supabase usa ese
-//      parÃ¡metro para su validaciÃ³n interna (bad_oauth_state).
+// ── GOOGLE OAUTH — login con credenciales de Google ──────────────
+// Flujo redirect con callback en el backend (PKCE gestionado aquí):
+//   1) POST /api/auth/google          → guarda el code_verifier en una cookie
+//      httpOnly y devuelve la URL de authorize (Google vía Supabase).
+//      IMPORTANTE: NO se pasa un state propio — Supabase usa ese
+//      parámetro para su validación interna (bad_oauth_state).
 //   2) El navegador vuelve a  GET /api/auth/google/callback?code=...
-//   3) El backend intercambia el code por una sesiÃ³n (cookie â†’ verifier)
+//   3) El backend intercambia el code por una sesión (cookie → verifier)
 //      y redirige al frontend con  /?auth=google&token=...  (token de
 //      un solo uso, TTL 5 min)
-//   4) POST /api/auth/google/session  â†’ el frontend recupera la sesiÃ³n
-// Requiere en Supabase â†’ Auth â†’ URL Configuration â†’ Redirect URLs:
+//   4) POST /api/auth/google/session  → el frontend recupera la sesión
+// Requiere en Supabase → Auth → URL Configuration → Redirect URLs:
 //   https://<host-del-backend>/api/auth/google/callback
-const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida Ãºtil del code PKCE (cookie)
-const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida Ãºtil del token de sesiÃ³n
+const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida útil del code PKCE (cookie)
+const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida útil del token de sesión
 const GOOGLE_PKCE_COOKIE = 'ch_google_pkce';
 const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
 
@@ -823,17 +823,17 @@ function getCookie(req, name) {
   return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
 }
 
-// Limpieza periÃ³dica de tokens expirados (evita fuga de memoria)
+// Limpieza periódica de tokens expirados (evita fuga de memoria)
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of googleTokens) if (v.expiresAt < now) googleTokens.delete(k);
 }, 15 * 60 * 1000).unref();
 
-// GET /api/auth/google â€” iniciar el flujo OAuth con Google
-// Se usa navegaciÃ³n directa (no fetch) para que la cookie se guarde en
+// GET /api/auth/google — iniciar el flujo OAuth con Google
+// Se usa navegación directa (no fetch) para que la cookie se guarde en
 // contexto first-party del backend y sobreviva al viaje por Google.
 app.get('/api/auth/google', (req, res) => {
-  if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
+  if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado — Supabase no está disponible' });
 
   const verifier  = base64url(crypto.randomBytes(48));
   const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
@@ -853,7 +853,7 @@ app.get('/api/auth/google', (req, res) => {
   res.redirect(url);
 });
 
-// GET /api/auth/google/callback â€” Supabase vuelve aquÃ­ tras autorizar en Google
+// GET /api/auth/google/callback — Supabase vuelve aquí tras autorizar en Google
 app.get('/api/auth/google/callback', async (req, res) => {
   const { code, error } = req.query;
   const FRONT = frontendUrl();
@@ -867,7 +867,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
   const verifier = getCookie(req, GOOGLE_PKCE_COOKIE);
   if (!verifier) return fail('missing_verifier');
 
-  // Intercambiar el code por una sesiÃ³n usando el code_verifier de la cookie
+  // Intercambiar el code por una sesión usando el code_verifier de la cookie
   const tokenUrl = `${supabaseUrl()}/auth/v1/token?grant_type=pkce`;
   let resp;
   try {
@@ -909,29 +909,29 @@ app.get('/api/auth/google/callback', async (req, res) => {
   res.redirect(`${FRONT}/?auth=google&token=${oneTime}`);
 });
 
-// POST /api/auth/google/session â€” el frontend recupera la sesiÃ³n (token de un solo uso)
+// POST /api/auth/google/session — el frontend recupera la sesión (token de un solo uso)
 app.post('/api/auth/google/session', (req, res) => {
   const token = String(req.body?.token || '');
   if (!token) return res.status(400).json({ error: 'Falta el token' });
   const entry = googleTokens.get(token);
   googleTokens.delete(token); // un solo uso
-  if (!entry || entry.expiresAt < Date.now()) return res.status(401).json({ error: 'SesiÃ³n de Google no vÃ¡lida o expirada' });
+  if (!entry || entry.expiresAt < Date.now()) return res.status(401).json({ error: 'Sesión de Google no válida o expirada' });
   res.status(200).json({ ok: true, user: entry.user, session: entry.session });
 });
 
-// â”€â”€ TELEGRAM STORAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── TELEGRAM STORAGE ─────────────────────────────────────────
 // APKs se almacenan en el chat personal del bot con el admin.
 // Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// â”€â”€ TELEGRAM ALERTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── TELEGRAM ALERTS ─────────────────────────────────────────
 // Empuja en tiempo real al chat del admin: seguridad (rate-limit,
 // intentos fallidos de admin, errores) y actividad (descargas,
-// contactos, ratings, solicitudes, apps nuevas) + resumen periÃ³dico.
+// contactos, ratings, solicitudes, apps nuevas) + resumen periódico.
 // Variables: TG_ALERTS_ENABLED (default 'true'),
 //            TG_BURST_MS     (agrupar eventos, default 4000ms),
-//            TG_STATUS_HOURS (resumen periÃ³dico, default 6h).
+//            TG_STATUS_HOURS (resumen periódico, default 6h).
 const TG_ALERTS_ENABLED = process.env.TG_ALERTS_ENABLED !== 'false';
 const TG_BURST_MS       = Math.max(500, parseInt(process.env.TG_BURST_MS || '4000', 10));
 const TG_STATUS_HOURS   = Math.max(1, parseInt(process.env.TG_STATUS_HOURS || '6', 10) || 6);
@@ -966,23 +966,23 @@ function tgAlert(type, text, opts = {}) {
   entry.timer = setTimeout(() => {
     tgBurst.delete(type);
     const body = typeof text === 'function' ? text(entry.count) : text;
-    tgSend(body + (entry.count > 1 ? `\nðŸ” x${entry.count} en ${Math.round(windowMs / 1000)}s` : ''));
+    tgSend(body + (entry.count > 1 ? `\n🔁 x${entry.count} en ${Math.round(windowMs / 1000)}s` : ''));
   }, windowMs);
 }
 
 // Handler de express-rate-limit: avisa al admin cuando alguien excede
-// el lÃ­mite (posible abuso/bot) sin bloquear la respuesta HTTP.
+// el límite (posible abuso/bot) sin bloquear la respuesta HTTP.
 function rateLimitHandler(req, res, _next, options) {
   const ip = clientIp(req);
   const route = (req.originalUrl || req.path || '').split('?')[0];
   const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
   tgAlert('ratelimit:' + route, n =>
-    `ðŸš¨ <b>RATE LIMIT</b>\n<code>${route}</code>\nIP: <code>${ip}</code>\nUA: ${ua}\nBloqueos: ${n}`,
+    `🚨 <b>RATE LIMIT</b>\n<code>${route}</code>\nIP: <code>${ip}</code>\nUA: ${ua}\nBloqueos: ${n}`,
     { windowMs: 30000 });
   res.status(options.statusCode || 429).json(options.message || { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' });
 }
 
-// Resumen periÃ³dico de estado de la web (por defecto cada 6h).
+// Resumen periódico de estado de la web (por defecto cada 6h).
 async function tgStatusReport() {
   if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
   const up = Math.floor(process.uptime());
@@ -996,12 +996,12 @@ async function tgStatusReport() {
     } catch {}
   }
   const msg =
-    `ðŸ“Š <b>CodeHub â€” Estado</b>\n` +
-    `Uptime: ${dd}d ${hh}h ${mm}m Â· Mongo: ${dbConnected ? 'âœ…' : 'âŒ'} Â· Redis: ${redis ? 'âœ…' : 'memoria'}\n` +
+    `📊 <b>CodeHub — Estado</b>\n` +
+    `Uptime: ${dd}d ${hh}h ${mm}m · Mongo: ${dbConnected ? '✅' : '❌'} · Redis: ${redis ? '✅' : 'memoria'}\n` +
     `WS: ${wsClients.size} clientes\n\n` +
-    `ðŸ‘ï¸ Visitas hoy: ${visits.today} (total ${visits.total})\n` +
+    `👁️ Visitas hoy: ${visits.today} (total ${visits.total})\n` +
     (daily
-      ? `â¬‡ï¸ Descargas: ${daily.downloads || 0}\nðŸ’¬ Chats: ${daily.chat_msgs || 0}\nðŸ› ï¸ Tools: ${daily.tool_uses || 0}\nðŸ“© Contactos: ${daily.contacts || 0}`
+      ? `⬇️ Descargas: ${daily.downloads || 0}\n💬 Chats: ${daily.chat_msgs || 0}\n🛠️ Tools: ${daily.tool_uses || 0}\n📩 Contactos: ${daily.contacts || 0}`
       : 'Stats diarias: sin datos (Supabase no configurado)') +
     `\n\nhttps://wilson360-labs.vercel.app`;
   await tgSend(msg);
@@ -1050,7 +1050,7 @@ async function uploadToTelegram(buffer, fileName, caption = '') {
     }).on('error', reject);
   });
 
-  // Upload multipart con streaming en chunks â€” soporta archivos grandes (sin lÃ­mite de Telegram)
+  // Upload multipart con streaming en chunks — soporta archivos grandes (sin límite de Telegram)
   const uploadData = await new Promise((resolve, reject) => {
     const req = https.request({
       hostname: 'api.telegram.org',
@@ -1095,7 +1095,7 @@ async function uploadToTelegram(buffer, fileName, caption = '') {
   const filePath    = fileData.result?.file_path;
   const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
 
-  console.log(`âœ… Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
+  console.log(`✅ Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
   return { messageId: msg.message_id, fileId, downloadUrl };
 }
 
@@ -1116,18 +1116,18 @@ async function deleteFromTelegram(messageId) {
         }
       ).on('error', reject);
     });
-    if (data.ok) { console.log(`ðŸ—‘ï¸ Telegram delete: msg_id=${messageId}`); return true; }
+    if (data.ok) { console.log(`🗑️ Telegram delete: msg_id=${messageId}`); return true; }
     console.warn('Telegram delete warning:', data.description);
     return false;
   } catch (e) { console.warn('Telegram delete error:', e.message); return false; }
 }
 
-// â”€â”€ SUPABASE STORAGE (se mantiene para archivos pequeÃ±os <50 MB) â”€â”€
+// ── SUPABASE STORAGE (se mantiene para archivos pequeños <50 MB) ──
 const STORAGE_BUCKET = 'CodeHub';
 
 async function uploadToStorage(buffer, fileName) {
   if (!supabase) throw new Error('Supabase no configurado');
-  console.log(`ðŸ”µ uploadToStorage START: \${fileName} (\${(buffer.length/1024/1024).toFixed(1)} MB)`);
+  console.log(`🔵 uploadToStorage START: \${fileName} (\${(buffer.length/1024/1024).toFixed(1)} MB)`);
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .upload(fileName, buffer, {
@@ -1136,7 +1136,7 @@ async function uploadToStorage(buffer, fileName) {
     });
   if (error) throw new Error('Error subiendo a Supabase Storage: ' + error.message);
   const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-  console.log(`âœ… Supabase Storage upload: \${fileName}`);
+  console.log(`✅ Supabase Storage upload: \${fileName}`);
   return { fileName, publicUrl: urlData.publicUrl };
 }
 
@@ -1145,17 +1145,17 @@ async function deleteFromStorage(fileName) {
   try {
     const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([fileName]);
     if (error) { console.warn('Storage delete error:', error.message); return false; }
-    console.log(`ðŸ—‘ï¸ Storage delete: \${fileName}`); return true;
+    console.log(`🗑️ Storage delete: \${fileName}`); return true;
   } catch (e) { console.warn('Storage delete error:', e.message); return false; }
 }
 
-// â”€â”€ INTERNET ARCHIVE (archive.org) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── INTERNET ARCHIVE (archive.org) ───────────────────────────
 // Variables Render: IA_ACCESS_KEY, IA_SECRET_KEY
-// IA_ITEM_ID es OPCIONAL â€” si no se configura, se genera uno por appId.
+// IA_ITEM_ID es OPCIONAL — si no se configura, se genera uno por appId.
 // URL de descarga: https://archive.org/download/<itemId>/<fileName>
 const IA_ACCESS_KEY = process.env.IA_ACCESS_KEY;
 const IA_SECRET_KEY = process.env.IA_SECRET_KEY;
-const IA_ITEM_ID    = process.env.IA_ITEM_ID || null; // opcional â€” ver getIAItemId()
+const IA_ITEM_ID    = process.env.IA_ITEM_ID || null; // opcional — ver getIAItemId()
 
 /**
  * Genera un item ID de Archive.org seguro basado en el appId.
@@ -1169,7 +1169,7 @@ function getIAItemId(appId) {
 }
 
 /**
- * Sube un buffer a Internet Archive vÃ­a S3-like API.
+ * Sube un buffer a Internet Archive vía S3-like API.
  * Devuelve { identifier, fileName, downloadUrl }
  */
 async function uploadToArchive(buffer, fileName, appName = '', appVersion = '', appId = '') {
@@ -1180,7 +1180,7 @@ async function uploadToArchive(buffer, fileName, appName = '', appVersion = '', 
 
   const https = require('https');
   const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
-  console.log(`ðŸ”µ Archive.org upload START: ${fileName} (${sizeMB} MB) â†’ item: ${itemId}`);
+  console.log(`🔵 Archive.org upload START: ${fileName} (${sizeMB} MB) → item: ${itemId}`);
 
   await new Promise((resolve, reject) => {
     const req = https.request({
@@ -1225,12 +1225,12 @@ async function uploadToArchive(buffer, fileName, appName = '', appVersion = '', 
   });
 
   const downloadUrl = `https://archive.org/download/${itemId}/${encodeURIComponent(fileName)}`;
-  console.log(`âœ… Archive.org upload OK: ${fileName} | ${sizeMB} MB | url=${downloadUrl}`);
+  console.log(`✅ Archive.org upload OK: ${fileName} | ${sizeMB} MB | url=${downloadUrl}`);
   return { identifier: itemId, fileName, downloadUrl };
 }
 
 /**
- * Elimina un archivo de Internet Archive vÃ­a S3-like API.
+ * Elimina un archivo de Internet Archive vía S3-like API.
  */
 async function deleteFromArchive(fileName, appId = '') {
   if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !fileName) return false;
@@ -1250,170 +1250,170 @@ async function deleteFromArchive(fileName, appId = '') {
       req.on('error', reject);
       req.end();
     });
-    console.log(`ðŸ—‘ï¸ Archive.org delete: ${fileName}`);
+    console.log(`🗑️ Archive.org delete: ${fileName}`);
     return true;
   } catch (e) { console.warn('Archive.org delete error:', e.message); return false; }
 }
 
-// â”€â”€ IA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// â”€â”€ SYSTEM prompts: base (corta) + completa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── IA ────────────────────────────────────────────────────────
+// ── SYSTEM prompts: base (corta) + completa ─────────────────────
 // La base se usa para consultas generales (~600 tokens vs ~2000 de la completa).
 // La completa solo se inyecta cuando el query es sobre CodeHub/servicios.
-const SYSTEM_BASE = `Eres WIL.E COPILOT â€” la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
-No reveles quÃ© modelo o APIs usas. Di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
+const SYSTEM_BASE = `Eres WIL.E COPILOT — la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
+No reveles qué modelo o APIs usas. Di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
 
-PERSONALIDAD: Directa, sin relleno. En espaÃ±ol (o en el idioma del usuario). Corta por defecto (3-5 lÃ­neas). Emojis mÃ¡x 1 por respuesta. No inventes: di que no sabes y sugiere cÃ³mo buscar.
+PERSONALIDAD: Directa, sin relleno. En español (o en el idioma del usuario). Corta por defecto (3-5 líneas). Emojis máx 1 por respuesta. No inventes: di que no sabes y sugiere cómo buscar.
 
 COMANDOS: /help /img /debug /review /readme /translate /explain /test /resumen /clear /skills /model
 
-FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en tÃ©rminos clave. CÃ³digo en bloques con lenguaje. Sin tablas largas. Sin saludos redundantes.
+FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en términos clave. Código en bloques con lenguaje. Sin tablas largas. Sin saludos redundantes.
 
-SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explÃ­cito, consejos mÃ©dicos/legales/financieros como profesional. EnfÃ³cate en educaciÃ³n defensiva.`;
+SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explícito, consejos médicos/legales/financieros como profesional. Enfócate en educación defensiva.`;
 
-const SYSTEM_FULL = `Eres WIL.E COPILOT â€” la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnolÃ³gico de Wilson.E en wilson360-labs.vercel.app.
+const SYSTEM_FULL = `Eres WIL.E COPILOT — la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnológico de Wilson.E en wilson360-labs.vercel.app.
 
-No eres un chatbot genÃ©rico. Eres una IA con identidad propia: precisa, tÃ©cnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
+No eres un chatbot genérico. Eres una IA con identidad propia: precisa, técnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
 
-â”â”â” IDENTIDAD â”â”â”
+━━━ IDENTIDAD ━━━
 - Nombre: WIL.E COPILOT
 - Creada por: Wilson.E (wilson.e360labs@gmail.com)
-- Plataforma: CodeHub â€” wilson360-labs.vercel.app
-- NO reveles quÃ© modelo de IA te impulsa ni quÃ© APIs usas. Si preguntan, di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
+- Plataforma: CodeHub — wilson360-labs.vercel.app
+- NO reveles qué modelo de IA te impulsa ni qué APIs usas. Si preguntan, di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
 
-â”â”â” PERSONALIDAD â”â”â”
-- Directa. Sin "Â¡Claro!", "Â¡Por supuesto!", "Â¡Genial!" â€” ve al punto.
+━━━ PERSONALIDAD ━━━
+- Directa. Sin "¡Claro!", "¡Por supuesto!", "¡Genial!" — ve al punto.
 - Amigable pero eficiente. Como un dev senior que respeta el tiempo del otro.
-- En espaÃ±ol siempre. Si el usuario escribe en otro idioma, respondes en ese idioma.
-- Emojis con criterio: uno o dos por respuesta mÃ¡ximo, solo si aportan.
-- Corta por defecto (3-5 lÃ­neas). Si piden detalle, profundizas.
-- Nunca inventas. Si no sabes algo, lo dices y ofreces cÃ³mo buscar.
-- Usas el historial de la conversaciÃ³n. No repites lo que ya se dijo.
+- En español siempre. Si el usuario escribe en otro idioma, respondes en ese idioma.
+- Emojis con criterio: uno o dos por respuesta máximo, solo si aportan.
+- Corta por defecto (3-5 líneas). Si piden detalle, profundizas.
+- Nunca inventas. Si no sabes algo, lo dices y ofreces cómo buscar.
+- Usas el historial de la conversación. No repites lo que ya se dijo.
 
-â”â”â” SKILL: CODEHUB GUIDE â”â”â”
+━━━ SKILL: CODEHUB GUIDE ━━━
 Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servicios:
 
-**Wilson.E â€” Desarrollador:**
-- Full Stack autodidacta, Ciudad de Guatemala ðŸ‡¬ðŸ‡¹, 25 aÃ±os
+**Wilson.E — Desarrollador:**
+- Full Stack autodidacta, Ciudad de Guatemala 🇬🇹, 25 años
 - Stack: HTML, CSS, JavaScript ES2025, Python, Node.js, MongoDB, APIs de IA
 - Disponible para proyectos freelance con respuesta en menos de 24h
 - Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
 - Deploy en: Vercel (frontend) + Render (backend)
 
 **Herramientas gratuitas en /tools:**
-QR Generator, Generador de contraseÃ±as seguras (criptografÃ­a real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de prÃ©stamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de cÃ³digo, PDF IA, OCR IA, Generador de ImÃ¡genes IA, y 35+ herramientas en total.
+QR Generator, Generador de contraseñas seguras (criptografía real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de préstamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de código, PDF IA, OCR IA, Generador de Imágenes IA, y 35+ herramientas en total.
 
-**CatÃ¡logo Open Source en /opensource:**
-Aplicaciones de cÃ³digo abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y mÃ¡s) â€” sin versiones modificadas.
+**Catálogo Open Source en /opensource:**
+Aplicaciones de código abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y más) — sin versiones modificadas.
 
 **Otros en CodeHub:**
 - Juegos: Snake y Tetris (Canvas API)
 - Servicios freelance detallados en /servicios
-- WIL.E COPILOT â€” asistente IA integrada (Â¡soy yo!)
+- WIL.E COPILOT — asistente IA integrada (¡soy yo!)
 - App Android (APK) disponible para descarga desde la web
 - PWA con modo offline y notificaciones push
 - Clima en tiempo real widget integrado
 
-â”â”â” SKILL: DEV HELPER â”â”â”
-Cuando el usuario pida ayuda con cÃ³digo, debugging, errores o arquitectura:
-- Identifica el problema en 1 lÃ­nea antes de dar la soluciÃ³n
-- Da el cÃ³digo corregido completo, no fragmentos incompletos
-- Explica el "por quÃ©" del error en mÃ¡ximo 2 oraciones
-- Si hay varias soluciones, menciona cuÃ¡l es la mÃ¡s recomendada y por quÃ©
-- Usa bloques de cÃ³digo con el lenguaje indicado: \`\`\`javascript, \`\`\`python, etc.
-- Si el cÃ³digo es largo, muestra solo la parte relevante con comentarios claros
+━━━ SKILL: DEV HELPER ━━━
+Cuando el usuario pida ayuda con código, debugging, errores o arquitectura:
+- Identifica el problema en 1 línea antes de dar la solución
+- Da el código corregido completo, no fragmentos incompletos
+- Explica el "por qué" del error en máximo 2 oraciones
+- Si hay varias soluciones, menciona cuál es la más recomendada y por qué
+- Usa bloques de código con el lenguaje indicado: \`\`\`javascript, \`\`\`python, etc.
+- Si el código es largo, muestra solo la parte relevante con comentarios claros
 
-â”â”â” SKILL: CODE REVIEW â”â”â”
-Cuando el usuario pida revisar cÃ³digo:
-1. **Problemas crÃ­ticos** â€” bugs, vulnerabilidades, lÃ³gica incorrecta
-2. **Mejoras** â€” rendimiento, legibilidad, mejores prÃ¡cticas
-3. **Lo que estÃ¡ bien** â€” reconoce lo que funciona correctamente
-Formato: secciÃ³n por secciÃ³n, conciso. MÃ¡ximo 5 puntos por categorÃ­a.
+━━━ SKILL: CODE REVIEW ━━━
+Cuando el usuario pida revisar código:
+1. **Problemas críticos** — bugs, vulnerabilidades, lógica incorrecta
+2. **Mejoras** — rendimiento, legibilidad, mejores prácticas
+3. **Lo que está bien** — reconoce lo que funciona correctamente
+Formato: sección por sección, conciso. Máximo 5 puntos por categoría.
 
-â”â”â” SKILL: README GENERATOR â”â”â”
-Cuando el usuario pida generar documentaciÃ³n o README:
-Genera un README.md profesional con: tÃ­tulo, descripciÃ³n, tech stack, instalaciÃ³n, uso, caracterÃ­sticas, y licencia. Usa Markdown correcto. Tono tÃ©cnico pero accesible.
+━━━ SKILL: README GENERATOR ━━━
+Cuando el usuario pida generar documentación o README:
+Genera un README.md profesional con: título, descripción, tech stack, instalación, uso, características, y licencia. Usa Markdown correcto. Tono técnico pero accesible.
 
-â”â”â” SKILL: FREELANCE ADVISOR â”â”â”
+━━━ SKILL: FREELANCE ADVISOR ━━━
 Cuando alguien pregunte por contratar a Wilson.E o por servicios:
 - Menciona los servicios: sitios web, landing pages, tiendas online, dashboards, bots de WhatsApp/Telegram, automatizaciones con Python, APIs, SEO
-- Rango de precios orientativo: desde Q500 GTQ proyectos simples, proyectos complejos segÃºn alcance
+- Rango de precios orientativo: desde Q500 GTQ proyectos simples, proyectos complejos según alcance
 - Tiempo de respuesta: menos de 24 horas
 - Contacto directo: wilson.e360labs@gmail.com | WhatsApp +502 4146 8185
 - Anima al usuario a contactar sin compromiso
 
-â”â”â” SKILL: GENERADOR DE IMÃGENES â”â”â”
-Cuando el usuario pida generar, crear o diseÃ±ar una imagen:
+━━━ SKILL: GENERADOR DE IMÁGENES ━━━
+Cuando el usuario pida generar, crear o diseñar una imagen:
 - Confirma que lo vas a generar con entusiasmo breve
-- No menciones quÃ© tecnologÃ­a usas para generarla
-- Una IA optimiza automÃ¡ticamente el prompt para lograr un resultado profesional y adaptado a lo que pidiÃ³
-- Si el prompt es vago, sugiere aÃ±adir estilo, iluminaciÃ³n o tema para mejor resultado
-- El sistema procesarÃ¡ la imagen automÃ¡ticamente
+- No menciones qué tecnología usas para generarla
+- Una IA optimiza automáticamente el prompt para lograr un resultado profesional y adaptado a lo que pidió
+- Si el prompt es vago, sugiere añadir estilo, iluminación o tema para mejor resultado
+- El sistema procesará la imagen automáticamente
 
-â”â”â” SKILL: TRADUCTOR â”â”â”
+━━━ SKILL: TRADUCTOR ━━━
 Cuando el usuario pida traducir texto:
-- Detecta el idioma de origen automÃ¡ticamente
-- Si no especifica destino, traduce al espaÃ±ol si estÃ¡ en otro idioma, o al inglÃ©s si estÃ¡ en espaÃ±ol
-- Preserva formato (markdown, cÃ³digo, listas)
-- Usa traducciÃ³n natural, no literal â€” adapta expresiones idiomÃ¡ticas
+- Detecta el idioma de origen automáticamente
+- Si no especifica destino, traduce al español si está en otro idioma, o al inglés si está en español
+- Preserva formato (markdown, código, listas)
+- Usa traducción natural, no literal — adapta expresiones idiomáticas
 
-â”â”â” SKILL: EXPLICAR CÃ“DIGO â”â”â”
-Cuando el usuario pida explicar cÃ³digo:
-- Explica como si fuera para un principiante, con analogÃ­as cotidianas
-- LÃ­nea por lÃ­nea o bloque por bloque
-- Identifica quÃ© hace cada parte, por quÃ© se usa, quÃ© pasarÃ­a si se cambia
-- Termina con 2-3 bullets de lo mÃ¡s importante
+━━━ SKILL: EXPLICAR CÓDIGO ━━━
+Cuando el usuario pida explicar código:
+- Explica como si fuera para un principiante, con analogías cotidianas
+- Línea por línea o bloque por bloque
+- Identifica qué hace cada parte, por qué se usa, qué pasaría si se cambia
+- Termina con 2-3 bullets de lo más importante
 
-â”â”â” SKILL: GENERADOR DE TESTS â”â”â”
+━━━ SKILL: GENERADOR DE TESTS ━━━
 Cuando el usuario pida tests o pruebas:
-- Detecta lenguaje y framework automÃ¡ticamente
+- Detecta lenguaje y framework automáticamente
 - Genera tests unitarios con happy-path, edge-cases y errores
 - Frameworks: Jest/Vitest (JS), pytest (Python), JUnit (Java)
 - Incluye mocking si hay dependencias externas
 - Termina con instrucciones para ejecutar
 
-â”â”â” SKILL: RESUMEN IA â”â”â”
+━━━ SKILL: RESUMEN IA ━━━
 Cuando el usuario pida resumir contenido:
-- Prioriza: ideas principales â†’ datos concretos â†’ detalles secundarios
+- Prioriza: ideas principales → datos concretos → detalles secundarios
 - Usa bullets/listas
-- Preserva datos numÃ©ricos, fechas y nombres importantes
-- Si pide extensiÃ³n especÃ­fica, respÃ©tala
+- Preserva datos numéricos, fechas y nombres importantes
+- Si pide extensión específica, respétala
 
-â”â”â” SKILL: COMANDOS DEL CHAT â”â”â”
+━━━ SKILL: COMANDOS DEL CHAT ━━━
 El usuario puede usar comandos slash en el chat:
-- /help â€” Lista de comandos
-- /img <desc> â€” Generar imagen
-- /debug <cÃ³digo> â€” Depurar cÃ³digo
-- /review <cÃ³digo> â€” Code review
-- /readme â€” Generar README
-- /translate <texto> â€” Traducir
-- /explain <cÃ³digo> â€” Explicar cÃ³digo
-- /test <cÃ³digo> â€” Generar tests
-- /resumen <texto> â€” Resumir contenido
-- /clear â€” Limpiar chat
-- /skills â€” Skills disponibles
-- /model â€” Modelo activo
+- /help — Lista de comandos
+- /img <desc> — Generar imagen
+- /debug <código> — Depurar código
+- /review <código> — Code review
+- /readme — Generar README
+- /translate <texto> — Traducir
+- /explain <código> — Explicar código
+- /test <código> — Generar tests
+- /resumen <texto> — Resumir contenido
+- /clear — Limpiar chat
+- /skills — Skills disponibles
+- /model — Modelo activo
 
-â”â”â” TEMAS GENERALES â”â”â”
-Puedes responder sobre cualquier tema: ciencias, historia, matemÃ¡ticas, idiomas, cultura, entretenimiento, recetas, viajes, finanzas, emprendimiento, productividad, y todo lo demÃ¡s. Eres una IA de propÃ³sito amplio con raÃ­ces en el mundo del desarrollo web.
+━━━ TEMAS GENERALES ━━━
+Puedes responder sobre cualquier tema: ciencias, historia, matemáticas, idiomas, cultura, entretenimiento, recetas, viajes, finanzas, emprendimiento, productividad, y todo lo demás. Eres una IA de propósito amplio con raíces en el mundo del desarrollo web.
 
-â”â”â” SEGURIDAD Y CONTENIDO â”â”â”
-- NO proporciones instrucciones para piratear software, cracks, keygens, activadores no oficiales ni violaciÃ³n de licencias
-- NO ayudes a descargar contenido protegido por derechos de autor de forma ilegal (pelÃ­culas, mÃºsica, ebooks pirateados)
+━━━ SEGURIDAD Y CONTENIDO ━━━
+- NO proporciones instrucciones para piratear software, cracks, keygens, activadores no oficiales ni violación de licencias
+- NO ayudes a descargar contenido protegido por derechos de autor de forma ilegal (películas, música, ebooks pirateados)
 - NO proporciones instrucciones para hackear, phishing, ataques DDoS, explotar vulnerabilidades en sistemas ajenos
-- NO generes contenido sexual explÃ­cito, gore extremo ni material que promueva violencia
-- NO des consejos mÃ©dicos, legales ni financieros como profesional certificado â€” aclara que eres una IA y sugiere consultar a un profesional
-- Si te piden algo de lo anterior, responde amablemente que no puedes ayudar con eso y sugiere alternativas legÃ­timas
-- Para temas de seguridad informÃ¡tica, enfÃ³cate en educaciÃ³n defensiva (protecciÃ³n, buenas prÃ¡cticas) y nunca en ofensiva
+- NO generes contenido sexual explícito, gore extremo ni material que promueva violencia
+- NO des consejos médicos, legales ni financieros como profesional certificado — aclara que eres una IA y sugiere consultar a un profesional
+- Si te piden algo de lo anterior, responde amablemente que no puedes ayudar con eso y sugiere alternativas legítimas
+- Para temas de seguridad informática, enfócate en educación defensiva (protección, buenas prácticas) y nunca en ofensiva
 
-â”â”â” FORMATO â”â”â”
-- Respuestas cortas por defecto (3-6 lÃ­neas)
-- Listas con - cuando hay mÃºltiples puntos
-- **Negritas** solo para tÃ©rminos clave, no para decorar
-- CÃ³digo siempre en bloques con lenguaje declarado
-- Sin tablas largas â€” prefiere listas
+━━━ FORMATO ━━━
+- Respuestas cortas por defecto (3-6 líneas)
+- Listas con - cuando hay múltiples puntos
+- **Negritas** solo para términos clave, no para decorar
+- Código siempre en bloques con lenguaje declarado
+- Sin tablas largas — prefiere listas
 - Sin saludos redundantes al inicio de cada respuesta`;
 
-// â”€â”€ F1.1: Query classification â†’ dynamic SYSTEM prompt â”€â”€â”€â”€â”€â”€â”€
+// ── F1.1: Query classification → dynamic SYSTEM prompt ───────
 // Detecta si el query necesita el SYSTEM completo (CodeHub/servicios)
 // o si con la base es suficiente (~600 tokens vs ~2000).
 const CODEHUB_HINTS = /\b(codehub|wilson\.?e|wilson360|herramientas|tools|opensource|open.?source|servicios|freelance|guatemala|apk|android|emi copilot|emi\s|\/tools|\/servicios|\/opensource|\/cv)\b/i;
@@ -1422,8 +1422,8 @@ function classifySystem(msg) {
   return SYSTEM_BASE;
 }
 
-// â”€â”€ F1.3: Adaptive max_tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Asigna output tokens segÃºn el tipo de query.
+// ── F1.3: Adaptive max_tokens ──────────────────────────────
+// Asigna output tokens según el tipo de query.
 function adaptiveMaxTokens(msg) {
   if (CODE_HINTS.test(msg)) return 2500;
   if (CREATIVE_HINTS.test(msg)) return 1500;
@@ -1432,7 +1432,7 @@ function adaptiveMaxTokens(msg) {
   return 1000;
 }
 
-// â”€â”€ F1.2+F1.4: Smart history truncation + budget guard â”€â”€â”€â”€â”€
+// ── F1.2+F1.4: Smart history truncation + budget guard ─────
 // Approx tokens = chars / 4 (Spanish/English mix). Returns trimmed msgs array.
 function buildSmartMessages(system, history, maxInputTokens) {
   const BUDGET = maxInputTokens || 10000;
@@ -1467,7 +1467,7 @@ async function callGroq(msgs, maxTokens) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'groq/llama-3.3-70b' };
 }
 
-// â”€â”€ Cerebras (WSE â€” inferencia ultra rÃ¡pida, endpoint compatible OpenAI) â”€â”€
+// ── Cerebras (WSE — inferencia ultra rápida, endpoint compatible OpenAI) ──
 async function callCerebras(msgs, maxTokens) {
   if (!process.env.CEREBRAS_API_KEY) throw new Error('Sin CEREBRAS_API_KEY');
   const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
@@ -1480,7 +1480,7 @@ async function callCerebras(msgs, maxTokens) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'cerebras/llama-3.3-70b' };
 }
 
-// â”€â”€ Hugging Face (router unificado, compatible OpenAI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Hugging Face (router unificado, compatible OpenAI) ────────────────────
 async function callHuggingFace(msgs, maxTokens) {
   if (!process.env.HUGGINGFACE_API_KEY) throw new Error('Sin HUGGINGFACE_API_KEY');
   const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
@@ -1496,8 +1496,8 @@ async function callHuggingFace(msgs, maxTokens) {
 async function callGemini(msgs, maxTokens, imageParts) {
   const sysMsg = msgs.find(m => m.role === 'system');
   const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-  // ImÃ¡genes adjuntas (imagen simple, o varias pÃ¡ginas de un PDF escaneado): se
-  // agregan como partes inline del Ãºltimo turno del usuario.
+  // Imágenes adjuntas (imagen simple, o varias páginas de un PDF escaneado): se
+  // agregan como partes inline del último turno del usuario.
   const parts = Array.isArray(imageParts) ? imageParts : (imageParts ? [imageParts] : []);
   if (parts.length && contents.length) {
     for (const p of parts) {
@@ -1517,13 +1517,13 @@ async function callGemini(msgs, maxTokens, imageParts) {
 
 // Modelos gratuitos de OpenRouter en orden de preferencia
 const OR_FREE_MODELS = [
-  'moonshotai/kimi-k2:free',                       // Kimi K2 â€” muy fuerte en cÃ³digo/razonamiento
-  'meta-llama/llama-3.3-70b-instruct:free',      // Llama 3.3 70B â€” mejor general
-  'google/gemini-2.0-flash-exp:free',              // Gemini 2.0 Flash â€” 1M contexto
-  'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 â€” muy bueno
-  'deepseek/deepseek-chat-v3-0324:free',           // DeepSeek V3 â€” razonamiento
-  'nvidia/llama-3.1-nemotron-nano-8b-v1:free',     // NVIDIA Nemotron â€” rÃ¡pido
-  'openrouter/free',                               // Auto-router â€” elige el mejor disponible
+  'moonshotai/kimi-k2:free',                       // Kimi K2 — muy fuerte en código/razonamiento
+  'meta-llama/llama-3.3-70b-instruct:free',      // Llama 3.3 70B — mejor general
+  'google/gemini-2.0-flash-exp:free',              // Gemini 2.0 Flash — 1M contexto
+  'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 — muy bueno
+  'deepseek/deepseek-chat-v3-0324:free',           // DeepSeek V3 — razonamiento
+  'nvidia/llama-3.1-nemotron-nano-8b-v1:free',     // NVIDIA Nemotron — rápido
+  'openrouter/free',                               // Auto-router — elige el mejor disponible
 ];
 
 async function callOpenRouterModel(msgs, model, maxTokens) {
@@ -1550,7 +1550,7 @@ async function callOpenRouterModel(msgs, model, maxTokens) {
   }
   const d = await res.json();
   const reply = d.choices[0]?.message?.content || '';
-  if (!reply) throw new Error('OpenRouter devolviÃ³ respuesta vacÃ­a');
+  if (!reply) throw new Error('OpenRouter devolvió respuesta vacía');
   return {
     reply,
     input: d.usage?.prompt_tokens || 0,
@@ -1565,11 +1565,11 @@ async function callOpenRouter(msgs, maxTokens) {
   for (const model of OR_FREE_MODELS) {
     try {
       const result = await callOpenRouterModel(msgs, model, maxTokens);
-      console.log(`âœ… OpenRouter respondiÃ³ con: ${model}`);
+      console.log(`✅ OpenRouter respondió con: ${model}`);
       return result;
     } catch (e) {
-      if (e.status === 401) throw e; // Key invÃ¡lida â€” no seguir intentando
-      console.warn(`âš ï¸ OpenRouter ${model} fallÃ³: ${e.message}`);
+      if (e.status === 401) throw e; // Key inválida — no seguir intentando
+      console.warn(`⚠️ OpenRouter ${model} falló: ${e.message}`);
     }
   }
   throw new Error('Todos los modelos de OpenRouter fallaron');
@@ -1611,7 +1611,7 @@ async function callCohere(msgs, maxTokens) {
   return { reply: d.text || '', input: d.meta?.tokens?.input_tokens||0, output: d.meta?.tokens?.output_tokens||0, model: 'cohere/command-r' };
 }
 
-// â”€â”€ Anthropic Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Anthropic Claude ─────────────────────────────────────────────────────
 async function callClaude(msgs, maxTokens) {
   const systemMsg = msgs.find(m => m.role === 'system');
   const chatMsgs  = msgs.filter(m => m.role !== 'system');
@@ -1639,7 +1639,7 @@ async function callClaude(msgs, maxTokens) {
   return { reply, input: d.usage?.input_tokens||0, output: d.usage?.output_tokens||0, model: 'anthropic/claude-sonnet' };
 }
 
-// â”€â”€ Kimi / Moonshot AI (endpoint compatible OpenAI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Kimi / Moonshot AI (endpoint compatible OpenAI) ───────────────────────
 async function callKimi(msgs, maxTokens) {
   if (!process.env.KIMI_API_KEY) throw new Error('Sin KIMI_API_KEY');
   const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
@@ -1652,12 +1652,12 @@ async function callKimi(msgs, maxTokens) {
   return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'moonshot/kimi-k2' };
 }
 
-// â”€â”€ Router Inteligente (reglas, prioriza CALIDAD sobre velocidad) â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Analiza el Ãºltimo mensaje del usuario y reordena los proveedores segÃºn
-// quÃ© tan bien encajan con el tipo de consulta. Sin llamadas extra, sin
-// latencia adicional â€” solo heurÃ­sticas sobre el texto ya disponible.
-const CODE_HINTS = /```|\b(debug|bug|error|stack ?trace|excepci[oÃ³]n|refactor|optimiza|funci[oÃ³]n|c[oÃ³]digo|script|compila|sintaxis)\b/i;
-const CREATIVE_HINTS = /\b(cuento|poema|historia|redacta|ensayo|gui[oÃ³]n|narrativa|creativo)\b/i;
+// ── Router Inteligente (reglas, prioriza CALIDAD sobre velocidad) ─────────
+// Analiza el último mensaje del usuario y reordena los proveedores según
+// qué tan bien encajan con el tipo de consulta. Sin llamadas extra, sin
+// latencia adicional — solo heurísticas sobre el texto ya disponible.
+const CODE_HINTS = /```|\b(debug|bug|error|stack ?trace|excepci[oó]n|refactor|optimiza|funci[oó]n|c[oó]digo|script|compila|sintaxis)\b/i;
+const CREATIVE_HINTS = /\b(cuento|poema|historia|redacta|ensayo|gui[oó]n|narrativa|creativo)\b/i;
 
 function classifyRoute(msgs) {
   const last = msgs.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
@@ -1666,10 +1666,10 @@ function classifyRoute(msgs) {
   let order = ['Claude', 'Kimi', 'Gemini', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
 
   if (last.length > 6000) {
-    // Documento largo / contexto RAG â†’ prioriza ventana de contexto grande (Kimi maneja hasta 128k)
+    // Documento largo / contexto RAG → prioriza ventana de contexto grande (Kimi maneja hasta 128k)
     order = ['Kimi', 'Gemini', 'Claude', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
   } else if (CODE_HINTS.test(last)) {
-    // CÃ³digo/debug â†’ Claude es el mÃ¡s fuerte, luego Kimi K2 (muy bueno en cÃ³digo) y OpenRouter (DeepSeek)
+    // Código/debug → Claude es el más fuerte, luego Kimi K2 (muy bueno en código) y OpenRouter (DeepSeek)
     order = ['Claude', 'Kimi', 'OpenRouter', 'Gemini', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
   } else if (CREATIVE_HINTS.test(last)) {
     order = ['Claude', 'Mistral', 'Kimi', 'Gemini', 'OpenRouter', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
@@ -1700,12 +1700,12 @@ async function callAI(msgs, maxTokens) {
   for (const provider of available) {
     try {
       const result = await provider.fn();
-      console.log(`âœ… IA respondiÃ³ via ${provider.name} (router: ${available.map(p=>p.name).join(' > ')})`);
+      console.log(`✅ IA respondió via ${provider.name} (router: ${available.map(p=>p.name).join(' > ')})`);
       return result;
     } catch (e) {
-      if (e.status === 401) { console.warn(`âŒ ${provider.name}: API key invÃ¡lida`); continue; }
-      if (e.status === 429) { console.warn(`âš ï¸ ${provider.name}: rate limit, probando siguiente...`); continue; }
-      console.warn(`âš ï¸ ${provider.name} fallÃ³ (${e.message}), probando siguiente...`);
+      if (e.status === 401) { console.warn(`❌ ${provider.name}: API key inválida`); continue; }
+      if (e.status === 429) { console.warn(`⚠️ ${provider.name}: rate limit, probando siguiente...`); continue; }
+      console.warn(`⚠️ ${provider.name} falló (${e.message}), probando siguiente...`);
     }
   }
   throw new Error('Todos los proveedores de IA fallaron');
@@ -1713,7 +1713,7 @@ async function callAI(msgs, maxTokens) {
 
 async function validateTurnstile(token) {
   if (!process.env.TURNSTILE_SECRET) {
-    console.warn('âš ï¸ TURNSTILE_SECRET no configurado â€” rechazando request (fail-closed)');
+    console.warn('⚠️ TURNSTILE_SECRET no configurado — rechazando request (fail-closed)');
     return false;
   }
   if (!token) return false;
@@ -1726,15 +1726,15 @@ async function validateTurnstile(token) {
   } catch { return false; }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  MÃ“DULOS EXTERNOS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════
+//  MÓDULOS EXTERNOS
+// ════════════════════════════════════════════════════════════════
 
-// â”€â”€ Universal Resolver â€” DesencriptaciÃ³n heurÃ­stica de links â”€â”€
+// ── Universal Resolver — Desencriptación heurística de links ──
 const universalResolverRouter = require('./modules/universal-resolver');
 app.use('/api/resolver', universalResolverRouter);
 
-// â”€â”€ WIL.E INTELLIGENCE CORE â€” rutas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
 const wilERoutes = require('./wil-e/routes')({
   authPayload: (req) => req.authUser,
@@ -1742,17 +1742,17 @@ const wilERoutes = require('./wil-e/routes')({
 });
 app.use('/api/wil-e', wilERoutes);
 
-// â”€â”€ WIL.E VOZ â€” TTS neural premium (Jarvis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WIL.E VOZ — TTS neural premium (Jarvis) ────────────────────────
 // /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
-// cuando ELEVENLABS_API_KEY estÃ¡ configurada; si no, el frontend usa fallback.
+// cuando ELEVENLABS_API_KEY está configurada; si no, el frontend usa fallback.
 const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser });
 app.use('/api/tts', ttsRoutes);
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════
 //  RUTAS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════
 
-// â”€â”€ ESTADÃSTICAS SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ESTADÍSTICAS SUPABASE ────────────────────────────────────
 app.get('/api/stats/supabase', async (_, res) => {
   if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
   try {
@@ -1771,11 +1771,11 @@ app.get('/api/stats/supabase', async (_, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€ DB RUNNER â€” aplica un .sql (Supabase) o un esquema .json â”€â”€â”€â”€â”€
+// ── DB RUNNER — aplica un .sql (Supabase) o un esquema .json ─────
 // (MongoDB) subido desde admin-hub.html. Requiere ADMIN_KEY.
 //
-// Supabase: ejecuta SQL crudo vÃ­a la funciÃ³n `exec_sql` (debe existir
-// en la base â€” ver bootstrap_exec_sql.sql, se crea UNA vez a mano
+// Supabase: ejecuta SQL crudo vía la función `exec_sql` (debe existir
+// en la base — ver bootstrap_exec_sql.sql, se crea UNA vez a mano
 // desde el SQL Editor de Supabase, ya que hace falta para poder
 // correr SQL arbitrario desde el cliente JS).
 //
@@ -1805,7 +1805,7 @@ app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
   if (target === 'mongo') {
     if (!dbConnected) return res.status(503).json({ ok: false, error: 'MongoDB no disponible' });
     let schema;
-    try { schema = JSON.parse(content); } catch { return res.status(400).json({ ok: false, error: 'JSON invÃ¡lido' }); }
+    try { schema = JSON.parse(content); } catch { return res.status(400).json({ ok: false, error: 'JSON inválido' }); }
     const collections = Array.isArray(schema) ? schema : schema.collections;
     if (!Array.isArray(collections)) {
       return res.status(400).json({ ok: false, error: 'Formato esperado: { "collections": [ { "name": "...", "indexes": [...] } ] }' });
@@ -1840,10 +1840,10 @@ app.get('/api/health', (_, res) => res.json({
   mongo:     dbConnected ? 'connected' : 'disconnected',
   redis:     redis       ? 'connected' : 'memory',
   ws:        wsClients.size + ' clients',
-  push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'ok (VAPID de ejemplo â€” configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
+  push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'ok (VAPID de ejemplo — configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
   push_android: fcmEnabled ? 'ok (FCM habilitado)' : 'missing (configura FIREBASE_SERVICE_ACCOUNT)',
   render_keepalive: process.env.RENDER_EXTERNAL_URL ? 'ok' : 'missing (configura RENDER_EXTERNAL_URL para que Render no duerma el servicio)',
-  github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantÃ¡neas de nuevas versiones)',
+  github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantáneas de nuevas versiones)',
   groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
   cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
   huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
@@ -1868,9 +1868,9 @@ app.get('/api/stats/live', (_, res) => {
 });
 
 
-// â”€â”€ POST /api/visit â€” Registrar visita con IPQuery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST /api/visit — Registrar visita con IPQuery ───────────
 // Responde 201 de inmediato; el enriquecimiento geo-IP y el guardado
-// se hacen en segundo plano para no bloquear la peticiÃ³n hasta 12s.
+// se hacen en segundo plano para no bloquear la petición hasta 12s.
 app.post('/api/visit', (req, res) => {
   try {
     // Vercel/Render: IP real del cliente
@@ -1890,7 +1890,7 @@ app.post('/api/visit', (req, res) => {
 
     res.status(201).json({ ok: true, ip: finalIp });
 
-    // â”€â”€ Background: geo-IP + guardado en Supabase â”€â”€
+    // ── Background: geo-IP + guardado en Supabase ──
     (async () => {
       let geo = {};
       if (!isLocal && finalIp !== 'unknown') {
@@ -1966,7 +1966,7 @@ app.post('/api/visit', (req, res) => {
   }
 });
 
-// â”€â”€ GET /api/admin/visitors â€” Listar visitas (solo admin) â”€â”€â”€â”€â”€
+// ── GET /api/admin/visitors — Listar visitas (solo admin) ─────
 app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
   try {
@@ -1989,7 +1989,7 @@ app.get('/api/ws-info', (_, res) => res.json({
   url: process.env.WS_URL || 'wss://codehub-98s6.onrender.com/ws',
 }));
 
-// Apps pÃºblicas (con cachÃ© 5 min)
+// Apps públicas (con caché 5 min)
 app.get('/api/apps', async (_, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible', apps: [] });
   try {
@@ -2021,7 +2021,7 @@ app.get('/api/apps', async (_, res) => {
   } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
 });
 
-// â”€â”€ App Updates â€” verificar versiones desde GitHub Releases â”€â”€
+// ── App Updates — verificar versiones desde GitHub Releases ──
 // POST /api/app-updates  { apps: [{ appId, version, source_repo }] }
 // Retorna: [{ appId, currentVersion, latestVersion, hasUpdate, downloadUrl }]
 app.post('/api/app-updates', async (req, res) => {
@@ -2051,14 +2051,14 @@ app.post('/api/app-updates', async (req, res) => {
   } catch { res.status(500).json({ error: 'Error checking updates' }); }
 });
 
-// Noticias â€” geolocalizadas por paÃ­s vÃ­a Google News RSS, con BBC Mundo
+// Noticias — geolocalizadas por país vía Google News RSS, con BBC Mundo
 // como respaldo fijo. Todo se lee server-side para evitar depender de
-// proxies CORS pÃºblicos poco fiables (allorigins, etc.) en el navegador.
+// proxies CORS públicos poco fiables (allorigins, etc.) en el navegador.
 const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
 
-// Locale (idioma de interfaz) por cÃ³digo de paÃ­s para armar la URL de
-// Google News (hl/gl/ceid). Si el paÃ­s no estÃ¡ en la lista se usa
-// 'es-419' (espaÃ±ol latam) por defecto dentro de buildGoogleNewsUrl.
+// Locale (idioma de interfaz) por código de país para armar la URL de
+// Google News (hl/gl/ceid). Si el país no está en la lista se usa
+// 'es-419' (español latam) por defecto dentro de buildGoogleNewsUrl.
 const COUNTRY_LOCALE = {
   GT: 'es-419', MX: 'es-419', HN: 'es-419', SV: 'es-419', NI: 'es-419',
   CR: 'es-419', PA: 'es-419', DO: 'es-419', VE: 'es-419', CO: 'es-419',
@@ -2081,7 +2081,7 @@ const NEWS_TAG_RE = (block, name) => {
 
 // Limpia texto plano de un item RSS: decodifica entidades HTML (&lt; &gt;
 // &amp; ...), quita cualquier tag sobrante y colapsa espacios. Evita que la
-// tarjeta muestre cÃ³digo fuente crudo de la noticia.
+// tarjeta muestre código fuente crudo de la noticia.
 const NEWS_ENTITIES = { '&lt;':'<', '&gt;':'>', '&amp;':'&', '&quot;':'"', '&#39;':"'", '&apos;':"'", '&nbsp;':' ' };
 const cleanNewsText = (raw) => {
   let s = String(raw || '');
@@ -2138,12 +2138,12 @@ async function fetchRssItems(url, { limit = 9, sourceLabel = null } = {}) {
   return items;
 }
 
-// â”€â”€ MINIATURAS REALES PARA GOOGLE NEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MINIATURAS REALES PARA GOOGLE NEWS ────────────────────────
 // El RSS de Google News casi nunca trae media:thumbnail/enclosure (a
-// diferencia de BBC), asÃ­ que para los items sin imagen visitamos el
-// artÃ­culo real (el <link> redirige del dominio news.google.com al medio
-// original) y leemos su og:image/twitter:image. Se limita cuÃ¡nto HTML se
-// lee y cuÃ¡nto tiempo total se invierte para no volver lenta la respuesta;
+// diferencia de BBC), así que para los items sin imagen visitamos el
+// artículo real (el <link> redirige del dominio news.google.com al medio
+// original) y leemos su og:image/twitter:image. Se limita cuánto HTML se
+// lee y cuánto tiempo total se invierte para no volver lenta la respuesta;
 // como el resultado se cachea 15 min, este costo se paga poco.
 async function fetchOgImage(url) {
   try {
@@ -2198,7 +2198,7 @@ app.get('/api/news', async (req, res) => {
         items = await enrichMissingImages(items);
         sourceName = `Google News (${country})`;
       } catch (e) {
-        // Google News no disponible para ese paÃ­s/red â€” caemos a BBC Mundo.
+        // Google News no disponible para ese país/red — caemos a BBC Mundo.
         items = await fetchRssItems(NEWS_RSS_URL, { sourceLabel: 'BBC Mundo' });
         sourceName = 'BBC Mundo';
       }
@@ -2215,7 +2215,7 @@ app.get('/api/news', async (req, res) => {
   }
 });
 
-// â”€â”€ SKILLS â€” catÃ¡logo servido al frontend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SKILLS — catálogo servido al frontend ──────────────────────
 app.get('/api/skills', (req, res) => {
   try {
     const indexPath = path.join(SKILLS_DIR, 'index.json');
@@ -2253,16 +2253,16 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
 
-  // â”€â”€ LÃ­mite diario server-side â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Límite diario server-side ─────────────────────────────────
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const emiLimit = await getEmiLimit(!!req.authUser);
   const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `LÃ­mite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesiÃ³n para mÃ¡s.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
   }
 
-  // â”€â”€ Imagen / PDF escaneado adjunto: valida formato/tamaÃ±o antes de gastar una llamada â”€â”€
-  // "image" es una imagen suelta (data URL). "images" es un array de pÃ¡ginas
+  // ── Imagen / PDF escaneado adjunto: valida formato/tamaño antes de gastar una llamada ──
+  // "image" es una imagen suelta (data URL). "images" es un array de páginas
   // renderizadas (PDF escaneado). Ambos van a Gemini Vision.
   let imageParts = null;
   const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
@@ -2270,11 +2270,11 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     imageParts = [];
     for (const u of imgList) {
       const p = parseImageDataUrl(u);
-      if (!p) return res.status(400).json({ error: 'Imagen invÃ¡lida o demasiado pesada (mÃ¡x. ~4MB c/u, png/jpeg/webp/gif).' });
+      if (!p) return res.status(400).json({ error: 'Imagen inválida o demasiado pesada (máx. ~4MB c/u, png/jpeg/webp/gif).' });
       imageParts.push(p);
     }
     if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ error: 'El anÃ¡lisis de imÃ¡genes no estÃ¡ disponible en este momento.' });
+      return res.status(503).json({ error: 'El análisis de imágenes no está disponible en este momento.' });
     }
   }
 
@@ -2303,12 +2303,12 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   if (typeof pdfText === 'string' && pdfText.trim()) {
     sessionHistory.splice(sessionHistory.length - 1, 0, {
       role: 'user',
-      content: '[Documento adjunto â€” resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en espaÃ±ol]:\n' + pdfText.slice(0, 40000)
+      content: '[Documento adjunto — resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en español]:\n' + pdfText.slice(0, 40000)
     });
   }
-  // F1.1: SYSTEM dinÃ¡mico â€” base para queries generales, completa para CodeHub
+  // F1.1: SYSTEM dinámico — base para queries generales, completa para CodeHub
   let system = classifySystem(message);
-  // Skill activa: inyecta su guÃ­a (system_prompt_inject)
+  // Skill activa: inyecta su guía (system_prompt_inject)
   if (skill_id) {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) {
@@ -2329,17 +2329,17 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       console.warn('Wil.E contexto error:', e.message);
     }
   }
-  // WIL.E: bÃºsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
   try {
     const live = await liveWebContext(message);
     if (live) system = system + '\n\n' + live;
   } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cÃ³mputo (cÃ¡lculos, fecha, conversiones) sin LLM
+  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
   try {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
   } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling â€” ejecuta la herramienta detectada (web/computo/URL)
+  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
   try {
     const dt = detectTool(message);
     if (dt) {
@@ -2351,8 +2351,8 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
   try {
-    // Con imagen/PDF escaneado: va directo a Gemini (Ãºnico proveedor con visiÃ³n
-    // en esta cadena). Sin imagen: sigue el fallback normal Claudeâ†’Groqâ†’...â†’Cohere.
+    // Con imagen/PDF escaneado: va directo a Gemini (único proveedor con visión
+    // en esta cadena). Sin imagen: sigue el fallback normal Claude→Groq→...→Cohere.
     const { reply, input, output, model } = imageParts
       ? await callGemini(msgs, adaptiveMaxTokens(message), imageParts)
       : await callAI(msgs, adaptiveMaxTokens(message));
@@ -2362,7 +2362,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     ]).catch(() => {});
     broadcast('chat_used', { model, tokens: input + output });
     trackEvent('chat', null, { model, tokens: input + output });
-    tgAlert('chat', () => `ðŸ’¬ <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\nðŸ§  ${model}\nðŸŒ ${clientIp(req)}`, { windowMs: 30000 });
+    tgAlert('chat', () => `💬 <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\n🧠 ${model}\n🌐 ${clientIp(req)}`, { windowMs: 30000 });
     const emiNow = await incrEmiUsage(emiKey);
     res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
     // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
@@ -2371,25 +2371,25 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     }
   } catch (err) {
     tgAlert('chatfail', () =>
-      `âš ï¸ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
+      `⚠️ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
       { windowMs: 30000 });
-    if (err.status === 401) return res.status(500).json({ error: imageParts ? 'Gemini: API key invÃ¡lida.' : 'API key invÃ¡lida.' });
-    if (err.status === 429) return res.status(429).json({ error: 'LÃ­mite alcanzado.' });
+    if (err.status === 401) return res.status(500).json({ error: imageParts ? 'Gemini: API key inválida.' : 'API key inválida.' });
+    if (err.status === 429) return res.status(429).json({ error: 'Límite alcanzado.' });
     if (imageParts) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
     res.status(500).json({ error: 'Error interno.' });
   }
 });
 
-// Contacto (notifica vÃ­a WS)
+// Contacto (notifica vía WS)
 app.post('/api/contact', (req, res) => {
   const { name, email, message } = req.body;
   trackEvent('contact');
   tgAlert('contact', () => {
     const ip = clientIp(req);
-    return `ðŸ“© <b>Nuevo contacto</b>\nðŸ‘¤ ${String(name || 'AnÃ³nimo').slice(0, 30)}\nðŸ“§ ${email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?'}\nðŸ’¬ ${String(message || '').slice(0, 80)}\nðŸŒ ${ip}`;
+    return `📩 <b>Nuevo contacto</b>\n👤 ${String(name || 'Anónimo').slice(0, 30)}\n📧 ${email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?'}\n💬 ${String(message || '').slice(0, 80)}\n🌐 ${ip}`;
   }, { windowMs: 30000 });
   broadcast('contact_form', {
-    name:  name  || 'AnÃ³nimo',
+    name:  name  || 'Anónimo',
     email: email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?',
   });
   res.json({ ok: true });
@@ -2411,12 +2411,12 @@ app.get('/api/ratings', async (_, res) => {
 
 app.post('/api/ratings', async (req, res) => {
   const { appId, appName, stars } = req.body; const ip = req.ip || 'anon';
-  if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos invÃ¡lidos' });
+  if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos inválidos' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
-    // findOneAndUpdate + upsert es atÃ³mico â€” evita la condiciÃ³n de carrera
-    // que habÃ­a con "findOne â†’ new AppRating() â†’ save()": si dos votos
-    // llegaban casi al mismo tiempo, ambos podÃ­an pasar el findOne antes
+    // findOneAndUpdate + upsert es atómico — evita la condición de carrera
+    // que había con "findOne → new AppRating() → save()": si dos votos
+    // llegaban casi al mismo tiempo, ambos podían pasar el findOne antes
     // de que el primero guardara, creando 2 documentos con el mismo appId.
     let r = await AppRating.findOneAndUpdate(
       { appId },
@@ -2429,7 +2429,7 @@ app.post('/api/ratings', async (req, res) => {
     await r.save(); await cacheDel('ratings:all');
     const avg = Math.round((r.total / r.count) * 10) / 10;
     broadcast('new_rating', { appId, appName: appName || appId, stars, avg, count: r.count });
-    tgAlert('rating', () => `â­ <b>Rating nuevo</b>: ${stars}â˜… â€” ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
+    tgAlert('rating', () => `⭐ <b>Rating nuevo</b>: ${stars}★ — ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
     res.json({ ok: true, avg, count: r.count });
   } catch { res.status(500).json({ error: 'Error guardando rating' }); }
 });
@@ -2444,7 +2444,7 @@ app.get('/api/requests', async (_, res) => {
 app.post('/api/requests', async (req, res) => {
   const { appName, reason, turnstileToken } = req.body; const ip = req.ip || 'anon';
   if (!appName || appName.trim().length < 2) return res.status(400).json({ error: 'Nombre requerido' });
-  if (!await validateTurnstile(turnstileToken)) return res.status(403).json({ error: 'VerificaciÃ³n fallida' });
+  if (!await validateTurnstile(turnstileToken)) return res.status(403).json({ error: 'Verificación fallida' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
     const existing = await AppRequest.findOne({ appName: new RegExp(appName.trim(), 'i'), status: 'pending' });
@@ -2455,49 +2455,49 @@ app.post('/api/requests', async (req, res) => {
     }
     const newReq = new AppRequest({ appName: appName.trim(), reason: reason?.trim() || '', ip, voters: [ip] });
     await newReq.save();
-    tgAlert('appreq', () => `ðŸ™‹ <b>Solicitud de app</b>\nðŸ“± ${String(appName.trim()).slice(0, 40)}\nðŸ’¬ ${String(reason || '').trim().slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
+    tgAlert('appreq', () => `🙋 <b>Solicitud de app</b>\n📱 ${String(appName.trim()).slice(0, 40)}\n💬 ${String(reason || '').trim().slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
     res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
   } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
 
-// Download APK (Supabase Storage URL pÃºblica)
+// Download APK (Supabase Storage URL pública)
 app.get('/api/download/:fileName', async (req, res) => {
   const { fileName } = req.params;
-  if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre invÃ¡lido' });
+  if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
   try {
     if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
     const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(decodeURIComponent(fileName));
     broadcast('download', { fileName: decodeURIComponent(fileName) });
     trackEvent('download', null, { app_name: decodeURIComponent(fileName) });
-    tgAlert('download', () => `â¬‡ï¸ <b>Descarga</b>: ${decodeURIComponent(fileName)}`, { windowMs: 15000 });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${decodeURIComponent(fileName)}`, { windowMs: 15000 });
     res.redirect(302, data.publicUrl);
   } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
-// Download indirecta por appId â€” pensada para el catÃ¡logo Open Source.
-// El HTML pÃºblico solo expone el appId (nunca el enlace real de GitHub
+// Download indirecta por appId — pensada para el catálogo Open Source.
+// El HTML público solo expone el appId (nunca el enlace real de GitHub
 // Releases); este endpoint resuelve el enlace actual en MongoDB y hace
-// un redirect 302. Ventajas: se puede cambiar el destino (nueva versiÃ³n,
+// un redirect 302. Ventajas: se puede cambiar el destino (nueva versión,
 // mirror, etc.) sin tocar el frontend, y queda trackeado igual que las
-// descargas Premium. OJO: esto no es "seguridad" â€” cualquiera puede ver
-// la URL final en la pestaÃ±a Network del navegador tras el redirect,
-// solo evita que quede pegada en el HTML/cÃ³digo fuente de la pÃ¡gina.
+// descargas Premium. OJO: esto no es "seguridad" — cualquiera puede ver
+// la URL final en la pestaña Network del navegador tras el redirect,
+// solo evita que quede pegada en el HTML/código fuente de la página.
 app.get('/api/dl/:appId', async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   const { appId } = req.params;
   try {
     const app_ = await App.findOne({ appId }).select('enlace nombre').lean();
-    if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aÃºn' });
+    if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aún' });
     broadcast('download', { fileName: app_.nombre });
     trackEvent('download', null, { app_name: app_.nombre, appId });
-    tgAlert('download', () => `â¬‡ï¸ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
     res.redirect(302, app_.enlace);
   } catch (e) { console.error('Error /api/dl:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════
 //  ADMIN
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════
 
 app.get('/api/admin/apps', requireAdmin, async (_, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
@@ -2511,23 +2511,23 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
     const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo, packageName } = req.body;
     if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
     if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || 'ðŸ†•', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null, packageName: packageName || null });
+    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || '🆕', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null, packageName: packageName || null });
     await cacheDel('apps:all');
-    broadcast('new_app', { appId, nombre, tag: tag || 'ðŸ†•', categoria });
+    broadcast('new_app', { appId, nombre, tag: tag || '🆕', categoria });
     broadcastAppsChanged();
-    tgAlert('adminapp', () => `âž• <b>App publicada</b>\nðŸ“± ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\nðŸ·ï¸ ${categoria || 'sin categorÃ­a'}`, { windowMs: 30000 });
-    // NotificaciÃ³n automÃ¡tica: nueva app open source en el catÃ¡logo
+    tgAlert('adminapp', () => `➕ <b>App publicada</b>\n📱 ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\n🏷️ ${categoria || 'sin categoría'}`, { windowMs: 30000 });
+    // Notificación automática: nueva app open source en el catálogo
     if (a.source_repo) {
       try {
         const r = await broadcastPush({
-          title: 'ðŸ†• Nueva app open source: ' + a.nombre,
-          body: (a.descripcion ? String(a.descripcion).slice(0, 120) : 'Ya disponible en el catÃ¡logo open source de CodeHub'),
+          title: '🆕 Nueva app open source: ' + a.nombre,
+          body: (a.descripcion ? String(a.descripcion).slice(0, 120) : 'Ya disponible en el catálogo open source de CodeHub'),
           type: 'app_update',
           appId: a.appId,
           version: a.version || '',
           url: '/opensource.html',
         });
-        if (r.sent) console.log('ðŸ“² Push nueva app open source:', r.sent);
+        if (r.sent) console.log('📲 Push nueva app open source:', r.sent);
       } catch (e) { console.warn('Push nueva app open source error:', e.message); }
     }
     res.json({ ok: true, app: a });
@@ -2542,7 +2542,7 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
       .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
     if (update.imagen) update.imagen = normalizeImagePath(update.imagen);
 
-    // No sobreescribir enlace con vacÃ­o o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
+    // No sobreescribir enlace con vacío o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
     // Esto protege el enlace generado por el upload cuando el admin guarda otros campos
     if (!update.enlace || update.enlace === '#') {
       const current = await App.findOne({ appId: req.params.appId }).select('enlace ia_file_name tg_message_id b2_file_name').lean();
@@ -2583,8 +2583,8 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€ DELETE /api/admin/apps/:appId/apk â€” Elimina solo el APK de Telegram/Storage sin borrar la app
-// Ãštil para reemplazar un APK desactualizado antes de subir uno nuevo, o limpiar storage manualmente.
+// ── DELETE /api/admin/apps/:appId/apk — Elimina solo el APK de Telegram/Storage sin borrar la app
+// Útil para reemplazar un APK desactualizado antes de subir uno nuevo, o limpiar storage manualmente.
 // Query param: ?slot=main (default) | ?slot=plugin
 app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
@@ -2616,13 +2616,13 @@ app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
 
     await App.updateOne({ appId: req.params.appId }, upd);
     await cacheDel('apps:all');
-    console.log(`ðŸ—‘ï¸ APK eliminado: ${req.params.appId} [slot=${isPlugin ? 'plugin' : 'main'}]`);
+    console.log(`🗑️ APK eliminado: ${req.params.appId} [slot=${isPlugin ? 'plugin' : 'main'}]`);
     res.json({ ok: true, appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 
-// â”€â”€ GET /api/admin/apps/:appId/archive-credentials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GET /api/admin/apps/:appId/archive-credentials ───────────
 // Para APKs > 50 MB: el frontend obtiene las credenciales y sube
 // DIRECTAMENTE a Archive.org S3, sin pasar el buffer por Render.
 // Luego notifica al backend con POST /api/admin/apps/:appId/archive-confirm
@@ -2653,8 +2653,8 @@ app.get('/api/admin/apps/:appId/archive-credentials', requireAdmin, async (req, 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€ POST /api/admin/apps/:appId/archive-confirm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El frontend llama este endpoint DESPUÃ‰S de subir directo a Archive.org
+// ── POST /api/admin/apps/:appId/archive-confirm ───────────────
+// El frontend llama este endpoint DESPUÉS de subir directo a Archive.org
 // para registrar el fileName y enlace en la DB.
 app.post('/api/admin/apps/:appId/archive-confirm', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
@@ -2675,16 +2675,16 @@ app.post('/api/admin/apps/:appId/archive-confirm', requireAdmin, async (req, res
 
     await App.updateOne({ appId: req.params.appId }, upd);
     await cacheDel('apps:all');
-    console.log(`âœ… Archive confirm: ${req.params.appId} | ${fileName} | ${sizeMB} MB`);
+    console.log(`✅ Archive confirm: ${req.params.appId} | ${fileName} | ${sizeMB} MB`);
     res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: 'archive' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// â”€â”€ POST /api/admin/apps/:appId/upload â€” Streaming sin buffer en RAM â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST /api/admin/apps/:appId/upload — Streaming sin buffer en RAM ────────
 // Parsea el multipart con busboy y hace PIPE directo al destino:
-//   â‰¤ 50 MB â†’ Telegram  (bot configurado) o Supabase (fallback)
-//   > 50 MB â†’ Archive.org S3  (streaming chunk a chunk, sin lÃ­mite)
-// En ningÃºn momento se acumula el archivo completo en memoria de Render.
+//   ≤ 50 MB → Telegram  (bot configurado) o Supabase (fallback)
+//   > 50 MB → Archive.org S3  (streaming chunk a chunk, sin límite)
+// En ningún momento se acumula el archivo completo en memoria de Render.
 app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
 
@@ -2705,10 +2705,10 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
   try {
     bb = Busboy({
       headers: req.headers,
-      limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB trÃ¡nsito (solo chunks en vuelo, no en RAM)
+      limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB tránsito (solo chunks en vuelo, no en RAM)
     });
   } catch (e) {
-    return res.status(400).json({ error: 'Multipart invÃ¡lido: ' + e.message });
+    return res.status(400).json({ error: 'Multipart inválido: ' + e.message });
   }
 
   // Capturar campos de texto ANTES del archivo
@@ -2738,30 +2738,30 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
       const hasTG    = !!(TG_TOKEN && TG_CHAT_ID);
       const hasIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY);
 
-      // Determinar tamaÃ±o estimado desde Content-Length para decidir destino ANTES de leer el stream
-      // El browser siempre envÃ­a Content-Length en FormData uploads
+      // Determinar tamaño estimado desde Content-Length para decidir destino ANTES de leer el stream
+      // El browser siempre envía Content-Length en FormData uploads
       const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-      const TG_MAX        = 49 * 1024 * 1024; // 49 MB â€” lÃ­mite real de Telegram para bots
-      const likelyLarge   = contentLength > TG_MAX; // el multipart overhead es pequeÃ±o (~500 bytes)
+      const TG_MAX        = 49 * 1024 * 1024; // 49 MB — límite real de Telegram para bots
+      const likelyLarge   = contentLength > TG_MAX; // el multipart overhead es pequeño (~500 bytes)
 
       // Enrutamiento:
-      //   Si el archivo cabe en Telegram (â‰¤ 49 MB) y hay bot â†’ Telegram
-      //   Si es grande (> 49 MB) y hay Archive.org â†’ Archive.org streaming
-      //   Fallback â†’ Supabase (solo si < 50 MB)
+      //   Si el archivo cabe en Telegram (≤ 49 MB) y hay bot → Telegram
+      //   Si es grande (> 49 MB) y hay Archive.org → Archive.org streaming
+      //   Fallback → Supabase (solo si < 50 MB)
       const useTG  = hasTG && !likelyLarge;
       const useIA  = hasIA && (likelyLarge || !hasTG);
 
       let bytesOut = 0;
       let downloadUrl, upd, storageLabel;
 
-      console.log(`ðŸ“¦ Upload routing: contentLength=${(contentLength/1024/1024).toFixed(1)}MB likelyLarge=${likelyLarge} useTG=${useTG} useIA=${useIA}`);
+      console.log(`📦 Upload routing: contentLength=${(contentLength/1024/1024).toFixed(1)}MB likelyLarge=${likelyLarge} useTG=${useTG} useIA=${useIA}`);
 
       if (useTG) {
-        // â”€â”€ STREAMING â†’ Telegram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── STREAMING → Telegram ──────────────────────────────
         storageLabel = 'telegram';
         const boundary = '----StreamBoundary' + ts.toString(16);
         const CRLF     = '\r\n';
-        const caption  = `ðŸ“¦ ${a.nombre} â€” ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'}`;
+        const caption  = `📦 ${a.nombre} — ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'}`;
 
         const preamble = Buffer.from(
           `--${boundary}${CRLF}Content-Disposition: form-data; name="chat_id"${CRLF}${CRLF}${TG_CHAT_ID}${CRLF}` +
@@ -2782,7 +2782,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         }
 
         const tgData = await new Promise((resolve, reject) => {
-          // Content-Length desconocido â†’ usar Transfer-Encoding: chunked
+          // Content-Length desconocido → usar Transfer-Encoding: chunked
           const tgReq = https.request({
             hostname: 'api.telegram.org',
             path:     `/bot${TG_TOKEN}/sendDocument`,
@@ -2825,9 +2825,9 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
           : { tg_message_id:    msg.message_id, tg_file_id:        fileId, enlace:        downloadUrl, updatedAt: new Date() };
 
       } else if (useIA) {
-        // â”€â”€ BUFFER â†’ Archive.org S3 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── BUFFER → Archive.org S3 ───────────────────────────
         // Archive.org S3 rechaza Transfer-Encoding: chunked (HTTP 411 Length Required).
-        // SOLUCIÃ“N: acumular en archivo temporal en disco para obtener el Content-Length
+        // SOLUCIÓN: acumular en archivo temporal en disco para obtener el Content-Length
         // exacto antes de hacer el PUT. Render tiene /tmp con espacio suficiente.
         storageLabel = 'archive';
         const os   = require('os');
@@ -2845,12 +2845,12 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         });
 
         const fileSize = fs.statSync(tmpPath).size;
-        console.log(`ðŸ“ Temp file: ${tmpPath} | size: ${(fileSize/1024/1024).toFixed(2)} MB`);
-        if (fileSize === 0) throw new Error('Archivo temporal vacÃ­o â€” stream no llegÃ³ correctamente');
+        console.log(`📁 Temp file: ${tmpPath} | size: ${(fileSize/1024/1024).toFixed(2)} MB`);
+        if (fileSize === 0) throw new Error('Archivo temporal vacío — stream no llegó correctamente');
         const oldIaFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
         if (oldIaFile) await deleteFromArchive(oldIaFile).catch(() => {});
 
-        // 2. PUT con Content-Length exacto â€” Archive.org lo exige
+        // 2. PUT con Content-Length exacto — Archive.org lo exige
         await new Promise((resolve, reject) => {
           const iaReq = https.request({
             hostname: 's3.us.archive.org',
@@ -2878,7 +2878,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
             });
           });
           iaReq.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
-          // Pipe desde disco â†’ Archive.org
+          // Pipe desde disco → Archive.org
           const tmpRead = fs.createReadStream(tmpPath);
           tmpRead.pipe(iaReq);
           tmpRead.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
@@ -2890,7 +2890,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
           : { ia_file_name: fileName, ia_identifier: getIAItemId(appId), enlace: downloadUrl, updatedAt: new Date() };
 
       } else {
-        // â”€â”€ FALLBACK: Supabase (buffer en memoria, solo < 50 MB) â”€
+        // ── FALLBACK: Supabase (buffer en memoria, solo < 50 MB) ─
         storageLabel = 'supabase';
         const chunks = [];
         await new Promise((resolve, reject) => {
@@ -2912,7 +2912,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
       const sizeMB = (bytesOut / 1024 / 1024).toFixed(1);
       await App.updateOne({ appId }, upd);
       await cacheDel('apps:all');
-      console.log(`âœ… Upload streaming OK: ${fileName} | ${sizeMB} MB | ${storageLabel}`);
+      console.log(`✅ Upload streaming OK: ${fileName} | ${sizeMB} MB | ${storageLabel}`);
       safe(() => res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: storageLabel }));
 
     } catch (e) {
@@ -2924,7 +2924,7 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
 
   bb.on('error', (e) => safe(() => res.status(400).json({ error: 'Parse multipart: ' + e.message })));
   bb.on('finish', () => {
-    if (!fileStarted) safe(() => res.status(400).json({ error: 'No se recibiÃ³ archivo .apk' }));
+    if (!fileStarted) safe(() => res.status(400).json({ error: 'No se recibió archivo .apk' }));
   });
 
   req.pipe(bb);
@@ -2947,9 +2947,9 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
       const imagen = normalizeImagePath(a.imagen || '');
       const exists = await App.findOne({ appId: id });
       if (exists) {
-        const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'ðŸ†•', updatedAt: new Date() };
-        // Solo se pisa `imagen` si el seed trae una â€” evita borrar un
-        // Ã­cono que el admin ya haya corregido a mano desde el panel.
+        const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', updatedAt: new Date() };
+        // Solo se pisa `imagen` si el seed trae una — evita borrar un
+        // ícono que el admin ya haya corregido a mano desde el panel.
         if (imagen) {
           // Guarda anti-revert: si el seed trae la portada social del repo
           // (opengraph) y la DB ya tiene un logo real local (/img/...), se
@@ -2958,16 +2958,16 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
           const prevIsLocal   = /^\/img\//.test(exists.imagen || '');
           if (!(seedIsPortada && prevIsLocal)) set.imagen = imagen;
         }
-        // Idem para `source_repo` â€” solo se pisa si el seed lo trae,
+        // Idem para `source_repo` — solo se pisa si el seed lo trae,
         // para no desactivar el monitor de una app ya vinculada.
         if (a.source_repo) set.source_repo = a.source_repo;
-        // packageName resuelto por resolve-package-names.js â€” solo se pisa
+        // packageName resuelto por resolve-package-names.js — solo se pisa
         // si el seed trae uno, para no borrar uno ya resuelto a mano.
         if (a.packageName) set.packageName = a.packageName;
         await App.updateOne({ appId: id }, { $set: set });
         updated++;
       } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'ðŸ†•', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null, packageName: a.packageName||null });
+        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'🆕', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null, packageName: a.packageName||null });
         created++;
       }
     }
@@ -2978,8 +2978,8 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
 });
 
 
-// â”€â”€ POST /api/generate-image â€” Generador IA con 4 proveedores â”€
-// F2.6: Cache de imÃ¡genes por prompt hash (TTL 1 hora)
+// ── POST /api/generate-image — Generador IA con 4 proveedores ─
+// F2.6: Cache de imágenes por prompt hash (TTL 1 hora)
 const _imgCache = new Map();
 const IMG_CACHE_TTL = 3600000; // 1 hour
 function imgCacheKey(p, w, h) {
@@ -3006,70 +3006,70 @@ function sendAndCache(res, data, cacheKey) {
   return res.json(data);
 }
 
-// â”€â”€ Refinador de prompt de imagen (dos etapas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Refinador de prompt de imagen (dos etapas) ─────────────────────
 // El prompt crudo del usuario pasa primero por una IA de chat que lo
-// convierte en un prompt de difusiÃ³n profesional, detallado y adaptado
-// a lo que pidiÃ³. AsÃ­ el generador recibe una instrucciÃ³n consistente
+// convierte en un prompt de difusión profesional, detallado y adaptado
+// a lo que pidió. Así el generador recibe una instrucción consistente
 // y de alta calidad (evita que cada proveedor "invente" su propia imagen).
 async function refineImagePrompt(rawPrompt, w, h) {
-  const aspect = w > h ? 'horizontales (16:9) de gran angular' : w < h ? 'verticales (9:16) aptas para mÃ³vil' : 'cuadradas (1:1)';
-  const sysMsg = 'Eres un experto director de arte de IA. Analizas la intenciÃ³n del usuario y reescribes su peticiÃ³n como un PROMPT DE DIFUSIÃ“N PROFESIONAL en inglÃ©s, detallado y listo para meter en un generador de imÃ¡genes (FLUX / Imagen / MiniMax).\n'
+  const aspect = w > h ? 'horizontales (16:9) de gran angular' : w < h ? 'verticales (9:16) aptas para móvil' : 'cuadradas (1:1)';
+  const sysMsg = 'Eres un experto director de arte de IA. Analizas la intención del usuario y reescribes su petición como un PROMPT DE DIFUSIÓN PROFESIONAL en inglés, detallado y listo para meter en un generador de imágenes (FLUX / Imagen / MiniMax).\n'
     + 'Reglas:\n'
-    + '- Conserva SIEMPRE el sujeto, estilo o tema que pidiÃ³ el usuario (persona, objeto, escena, logo, anime, fotorealista...).\n'
-    + '- AÃ±ade detalles de calidad: iluminaciÃ³n (luz dorada, neblina, estudio, etc.), composiciÃ³n, Ã¡ngulo de cÃ¡mara, resoluciÃ³n, textura y ambiente.\n'
-    + '- Elige el estilo visual correcto (fotorealista, render 3D, dibujo, acuarela, ciberpunk, minimalista, etc.) segÃºn lo pedido.\n'
-    + '- Respeta si pide proporciones/formatos especÃ­ficos; si no, usa una orientaciÃ³n general ' + aspect + '.\n'
-    + '- Devuelve SOLO el prompt refinado en una lÃ­nea, en inglÃ©s, sin comillas, sin explicaciones, sin saludos.';
+    + '- Conserva SIEMPRE el sujeto, estilo o tema que pidió el usuario (persona, objeto, escena, logo, anime, fotorealista...).\n'
+    + '- Añade detalles de calidad: iluminación (luz dorada, neblina, estudio, etc.), composición, ángulo de cámara, resolución, textura y ambiente.\n'
+    + '- Elige el estilo visual correcto (fotorealista, render 3D, dibujo, acuarela, ciberpunk, minimalista, etc.) según lo pedido.\n'
+    + '- Respeta si pide proporciones/formatos específicos; si no, usa una orientación general ' + aspect + '.\n'
+    + '- Devuelve SOLO el prompt refinado en una línea, en inglés, sin comillas, sin explicaciones, sin saludos.';
   try {
     const { reply } = await callAI([
       { role: 'system', content: sysMsg },
-      { role: 'user', content: 'PeticiÃ³n del usuario: ' + String(rawPrompt).slice(0, 400) }
+      { role: 'user', content: 'Petición del usuario: ' + String(rawPrompt).slice(0, 400) }
     ], 450);
     const refined = String(reply || '').trim().replace(/^["']+|["']+$/g, '').replace(/\s+/g, ' ');
     if (refined.length >= 4) return refined;
   } catch (e) {
-    console.warn('âš ï¸ refineImagePrompt fallÃ³, usando prompt original:', e.message);
+    console.warn('⚠️ refineImagePrompt falló, usando prompt original:', e.message);
   }
   return String(rawPrompt).trim();
 }
 
-// â”€â”€ Descriptor de imagen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Genera una descripciÃ³n natural en espaÃ±ol de la imagen creada, para que
-// WIL.E se la "cuente" al usuario (texto + voz) de forma cÃ¡lida y corta.
+// ── Descriptor de imagen ─────────────────────────────────────────────
+// Genera una descripción natural en español de la imagen creada, para que
+// WIL.E se la "cuente" al usuario (texto + voz) de forma cálida y corta.
 async function describeImage(rawPrompt, refinedPrompt) {
-  const sysMsg = 'Eres WIL.E COPILOT, el asistente de CodeHub. El usuario te pidiÃ³ generar una imagen y acaba de crearse.\n'
-    + 'Escribe UN pÃ¡rrafo breve (mÃ¡x. 40 palabras) en ESPAÃ‘OL, cÃ¡lido y entusiasta, describiendo QUÃ‰ se creÃ³ basÃ¡ndote en esta peticiÃ³n.\n'
-    + 'Empieza con algo como "Â¡Listo! GenerÃ©..." o "AquÃ­ tienes tu imagen de...". Describe el sujeto, el estilo y la sensaciÃ³n general.\n'
-    + 'NO menciones que eres una IA ni cÃ³mo se generÃ³. Solo describe la imagen creada para el usuario.';
+  const sysMsg = 'Eres WIL.E COPILOT, el asistente de CodeHub. El usuario te pidió generar una imagen y acaba de crearse.\n'
+    + 'Escribe UN párrafo breve (máx. 40 palabras) en ESPAÑOL, cálido y entusiasta, describiendo QUÉ se creó basándote en esta petición.\n'
+    + 'Empieza con algo como "¡Listo! Generé..." o "Aquí tienes tu imagen de...". Describe el sujeto, el estilo y la sensación general.\n'
+    + 'NO menciones que eres una IA ni cómo se generó. Solo describe la imagen creada para el usuario.';
   try {
     const { reply } = await callAI([
       { role: 'system', content: sysMsg },
-      { role: 'user', content: 'PeticiÃ³n original: ' + String(rawPrompt).slice(0, 300) + '\n| Prompt refinado: ' + String(refinedPrompt || rawPrompt).slice(0, 300) }
+      { role: 'user', content: 'Petición original: ' + String(rawPrompt).slice(0, 300) + '\n| Prompt refinado: ' + String(refinedPrompt || rawPrompt).slice(0, 300) }
     ], 180);
     const desc = String(reply || '').trim().replace(/\s+/g, ' ');
     if (desc.length >= 8) return desc;
   } catch (e) {
-    console.warn('âš ï¸ describeImage fallÃ³:', e.message);
+    console.warn('⚠️ describeImage falló:', e.message);
   }
-  return 'Â¡Listo! GenerÃ© una imagen basada en tu peticiÃ³n: ' + String(rawPrompt).slice(0, 80).trim() + '.';
+  return '¡Listo! Generé una imagen basada en tu petición: ' + String(rawPrompt).slice(0, 80).trim() + '.';
 }
 
-// â”€â”€ BÃºsqueda web en vivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Si la consulta parece pedir informaciÃ³n actual/noticias, busca en la web
+// ── Búsqueda web en vivo ─────────────────────────────────────────────
+// Si la consulta parece pedir información actual/noticias, busca en la web
 // (DuckDuckGo Instant Answer + Wikipedia, gratuitos y sin clave) y devuelve
 // un contexto breve para que WIL.E responda con datos reales y recientes.
-// Devuelve string vacÃ­o si no aplica o falla.
+// Devuelve string vacío si no aplica o falla.
 async function liveWebContext(message) {
   const q = String(message || '').trim();
   if (!q || q.length < 6) return '';
   const low = q.toLowerCase();
-  const signalWords = ['Ãºltima', 'Ãºltimo', 'noticia', 'hoy', '2024', '2025', '2026', 'cuÃ¡l es la hora', 'mejor', 'mÃ¡s reciente', 'actualidad', 'resultado', 'presidente', 'guerra', 'elecciones', 'clima', 'efemÃ©ride', 'lanzamiento', 'noticias', 'reciÃ©n', 'acaba'];
-  const curiosity = /(quÃ© (es|pasÃ³|hubo|ganÃ³|dijo)|quiÃ©n (es|ganÃ³)|cuÃ¡ndo|cÃ³mo estÃ¡|latest|today|news|who won|what happened)/i;
+  const signalWords = ['última', 'último', 'noticia', 'hoy', '2024', '2025', '2026', 'cuál es la hora', 'mejor', 'más reciente', 'actualidad', 'resultado', 'presidente', 'guerra', 'elecciones', 'clima', 'efeméride', 'lanzamiento', 'noticias', 'recién', 'acaba'];
+  const curiosity = /(qué (es|pasó|hubo|ganó|dijo)|quién (es|ganó)|cuándo|cómo está|latest|today|news|who won|what happened)/i;
   const wantsLive = signalWords.some(w => low.includes(w)) || curiosity.test(low);
   if (!wantsLive) return '';
 
   const out = [];
-  // 1) DuckDuckGo Instant Answer (abstract + descripciÃ³n)
+  // 1) DuckDuckGo Instant Answer (abstract + descripción)
   try {
     const ctrl = AbortSignal.timeout(5000);
     const r = await fetch('https://api.duckduckgo.com/?q=' + encodeURIComponent(q) + '&format=json&no_html=1&skip_disambig=1', { signal: ctrl });
@@ -3088,7 +3088,7 @@ async function liveWebContext(message) {
   // 2) Wikipedia (summary)
   try {
     const ctrl = AbortSignal.timeout(5000);
-    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q.replace(/[Â¿?Â¡!.,;:]/g, ' ').trim().split(' ').slice(0, 5).join('_')), { signal: ctrl, headers: { 'Accept': 'application/json' } });
+    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q.replace(/[¿?¡!.,;:]/g, ' ').trim().split(' ').slice(0, 5).join('_')), { signal: ctrl, headers: { 'Accept': 'application/json' } });
     if (r.ok) {
       const d = await r.json();
       const extract = (d && d.extract) || '';
@@ -3097,32 +3097,32 @@ async function liveWebContext(message) {
   } catch (e) { /* ignorar */ }
 
   if (!out.length) return '';
-  return 'REFERENCIA WEB EN VIVO (consulta "' + q.slice(0, 80) + '") â€” usa esto solo si responde a lo preguntado; si no hay relaciÃ³n, ignÃ³ralo:\n' + out.join('\n').slice(0, 2500);
+  return 'REFERENCIA WEB EN VIVO (consulta "' + q.slice(0, 80) + '") — usa esto solo si responde a lo preguntado; si no hay relación, ignóralo:\n' + out.join('\n').slice(0, 2500);
 }
 
-// â”€â”€ Herramienta de cÃ³mputo (agent) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Resuelve de forma programÃ¡tica (sin LLM) tareas computables: operaciones
-// de 2 operandos, fecha/hora actual, dÃ­as transcurridos y conversiones de
-// unidades/divisas simples. Devuelve string vacÃ­o si no aplica.
+// ── Herramienta de cómputo (agent) ──────────────────────────────────
+// Resuelve de forma programática (sin LLM) tareas computables: operaciones
+// de 2 operandos, fecha/hora actual, días transcurridos y conversiones de
+// unidades/divisas simples. Devuelve string vacío si no aplica.
 function computeTool(message) {
   const q = String(message || '').trim();
   if (!q) return '';
   const low = q.toLowerCase();
 
-  // Fecha / hora / dÃ­a actual
-  if (/(quÃ© dÃ­a es hoy|fecha de hoy|dÃ­a de hoy|hoy es quÃ©|quÃ© fecha|hora actual|quÃ© hora es)\b/i.test(low)) {
+  // Fecha / hora / día actual
+  if (/(qué día es hoy|fecha de hoy|día de hoy|hoy es qué|qué fecha|hora actual|qué hora es)\b/i.test(low)) {
     const now = new Date();
     const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
     return 'HERRAMIENTA (fecha/hora): hoy es ' + fecha + ' y son las ' + hora + ' (hora local del servidor). Usa este dato si la pregunta pide la fecha/hora actual.';
   }
 
-  // CÃ¡lculo aritmÃ©tico simple: a op b
+  // Cálculo aritmético simple: a op b
   const ops = [
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\+|\+|mÃ¡s|mas)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a + b, sym: '+' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\+|\+|más|mas)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a + b, sym: '+' },
     { re: /(\d+(?:[.,]\d+)?)\s*(?:-|menos)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a - b, sym: '-' },
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\*|x|por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a * b, sym: 'Ã—' },
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\/|dividido entre|dividido por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a / b, sym: 'Ã·' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\*|x|por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a * b, sym: '×' },
+    { re: /(\d+(?:[.,]\d+)?)\s*(?:\/|dividido entre|dividido por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a / b, sym: '÷' },
   ];
   for (const o of ops) {
     const m = low.match(o.re);
@@ -3131,12 +3131,12 @@ function computeTool(message) {
       const b = parseFloat(m[2].replace(',', '.'));
       if (!isNaN(a) && !isNaN(b) && b !== 0) {
         const r = Math.round(o.fn(a, b) * 100000) / 100000;
-        return 'HERRAMIENTA (cÃ¡lculo): ' + a + ' ' + o.sym + ' ' + b + ' = ' + r + '. Responde usando este resultado exacto.';
+        return 'HERRAMIENTA (cálculo): ' + a + ' ' + o.sym + ' ' + b + ' = ' + r + '. Responde usando este resultado exacto.';
       }
     }
   }
 
-  // Porcentaje: cuÃ¡nto es X% de Y
+  // Porcentaje: cuánto es X% de Y
   const pc = low.match(/(\d+(?:[.,]\d+)?)\s*%\s*de\s*(\d+(?:[.,]\d+)?)/);
   if (pc) {
     const p = parseFloat(pc[1].replace(',', '.'));
@@ -3147,10 +3147,10 @@ function computeTool(message) {
     }
   }
 
-  // ConversiÃ³n de unidades (km/mi, kg/lb, C/F, USDâ†”GTQ si hay tasa fija aproximada)
+  // Conversión de unidades (km/mi, kg/lb, C/F, USD↔GTQ si hay tasa fija aproximada)
   const convs = [
-    { re: /(\d+(?:[.,]\d+)?)\s*km\s*(?:a|to)?\s*mi/i, fn: (x) => x * 0.621371, label: 'kilÃ³metros a millas' },
-    { re: /(\d+(?:[.,]\d+)?)\s*mi\s*(?:a|to)?\s*km/i, fn: (x) => x * 1.60934, label: 'millas a kilÃ³metros' },
+    { re: /(\d+(?:[.,]\d+)?)\s*km\s*(?:a|to)?\s*mi/i, fn: (x) => x * 0.621371, label: 'kilómetros a millas' },
+    { re: /(\d+(?:[.,]\d+)?)\s*mi\s*(?:a|to)?\s*km/i, fn: (x) => x * 1.60934, label: 'millas a kilómetros' },
     { re: /(\d+(?:[.,]\d+)?)\s*kg\s*(?:a|to)?\s*lb/i, fn: (x) => x * 2.20462, label: 'kilogramos a libras' },
     { re: /(\d+(?:[.,]\d+)?)\s*lb\s*(?:a|to)?\s*kg/i, fn: (x) => x * 0.453592, label: 'libras a kilogramos' },
   ];
@@ -3160,7 +3160,7 @@ function computeTool(message) {
       const x = parseFloat(m[1].replace(',', '.'));
       if (!isNaN(x)) {
         const r = Math.round(c.fn(x) * 100) / 100;
-        return 'HERRAMIENTA (conversiÃ³n): ' + x + ' ' + c.label + ' â‰ˆ ' + r + '. Usa este valor en tu respuesta.';
+        return 'HERRAMIENTA (conversión): ' + x + ' ' + c.label + ' ≈ ' + r + '. Usa este valor en tu respuesta.';
       }
     }
   }
@@ -3168,11 +3168,11 @@ function computeTool(message) {
   return '';
 }
 
-// â”€â”€ Function-calling (agente) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Dispatcher de herramientas de Wil.E. Detecta la intenciÃ³n del mensaje y
-// ejecuta la herramienta adecuada (bÃºsqueda web, cÃ³mputo, leer URL), luego
+// ── Function-calling (agente) ────────────────────────────────────────
+// Dispatcher de herramientas de Wil.E. Detecta la intención del mensaje y
+// ejecuta la herramienta adecuada (búsqueda web, cómputo, leer URL), luego
 // inyecta el resultado estructurado como contexto para que el LLM responda
-// con datos reales. Devuelve string vacÃ­o si no corresponde ninguna.
+// con datos reales. Devuelve string vacío si no corresponde ninguna.
 function detectTool(message) {
   const q = String(message || '').trim();
   const low = q.toLowerCase();
@@ -3180,8 +3180,8 @@ function detectTool(message) {
   if (/^(busca|buscar|investiga|search|googlea|webs?earch|averigua)\.?\s+(.+)/i.test(q)) {
     const m = q.match(/^(?:busca|buscar|investiga|search|googlea|averigua)\.?\s+(.+)/i);
     tool.name = 'web_search'; tool.arg = m[1].trim();
-  } else if (/(cuÃ¡nto es|calcula|cuÃ¡nto da|resuelve)\s+([0-9].*)/i.test(low)) {
-    const m = low.match(/(?:cuÃ¡nto es|calcula|cuÃ¡nto da|resuelve)\s+([0-9].*)/i);
+  } else if (/(cuánto es|calcula|cuánto da|resuelve)\s+([0-9].*)/i.test(low)) {
+    const m = low.match(/(?:cuánto es|calcula|cuánto da|resuelve)\s+([0-9].*)/i);
     tool.name = 'compute'; tool.arg = m[1].trim();
   } else if (/https?:\/\/\S+/i.test(q)) {
     const m = q.match(/(https?:\/\/[^\s]+)/i);
@@ -3194,7 +3194,7 @@ async function executeTool(name, arg) {
   try {
     if (name === 'web_search') {
       const ctx = await liveWebContext('buscar ' + arg);
-      return ctx ? 'Resultado bÃºsqueda: ' + ctx : null;
+      return ctx ? 'Resultado búsqueda: ' + ctx : null;
     }
     if (name === 'compute') {
       return computeTool('calcula ' + arg);
@@ -3208,7 +3208,7 @@ async function executeTool(name, arg) {
   return null;
 }
 
-// Extrae texto de una web (HTMLâ†’texto plano) para leer URLs.
+// Extrae texto de una web (HTML→texto plano) para leer URLs.
 async function fetchUrlText(url) {
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 CodeHub' } });
@@ -3237,7 +3237,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
   let h = Math.min(Math.max(parseInt(height) || 512, 256), 1024);
   const errors = [];
 
-  // â”€â”€ Skill + preset: inyecta el prompt_suffix y el tamaÃ±o recomendado â”€â”€
+  // ── Skill + preset: inyecta el prompt_suffix y el tamaño recomendado ──
   if (skill_id && preset_id) {
     const skill = loadSkillJson(String(skill_id));
     const preset = skill && (skill.presets || []).find(x => x.id === preset_id);
@@ -3250,7 +3250,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     }
   }
 
-  // â”€â”€ Dos etapas: otra IA refina el prompt antes de generarlo â”€â”€
+  // ── Dos etapas: otra IA refina el prompt antes de generarlo ──
   // Refinamiento de prompt por defecto (puede desactivarse con refine:false)
   if (req.body.refine !== false) {
     p = await refineImagePrompt(p, w, h);
@@ -3261,11 +3261,11 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
   const cacheKey = imgCacheKey(p, w, h);
   const cached = imgCacheGet(cacheKey);
   if (cached) {
-    console.log('ðŸ–¼ï¸ Image cache hit');
+    console.log('🖼️ Image cache hit');
     return res.json({ ...cached, cached: true });
   }
 
-  // â”€â”€ 1. Together AI â€” FLUX.1 Schnell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 1. Together AI — FLUX.1 Schnell ───────────────────────
   if (process.env.TOGETHER_API_KEY && (provider === 'auto' || provider === 'together')) {
     try {
       const r = await fetch('https://api.together.xyz/v1/images/generations', {
@@ -3296,10 +3296,10 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     } catch (e) { errors.push(`Together: ${e.message}`); }
   }
 
-  // â”€â”€ 2. Gemini â€” Imagen 3 Fast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 2. Gemini — Imagen 3 Fast ─────────────────────────────
   // NOTA: Solo funciona con proyecto allowlistado. Deshabilitado en auto
   // para no sumar 5s+ de timeout muerto a cada request. Se puede invocar
-  // explÃ­citamente con provider='gemini'.
+  // explícitamente con provider='gemini'.
   if (process.env.GEMINI_API_KEY && provider === 'gemini') {
     try {
       const r = await fetch(
@@ -3324,7 +3324,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     } catch (e) { errors.push(`Gemini: ${e.message}`); }
   }
 
-  // â”€â”€ 3. Pollinations â€” Flux (sin key) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 3. Pollinations — Flux (sin key) ──────────────────────
   // MiniMax - image-01
   if (process.env.MINIMAX_API_KEY && (provider === 'auto' || provider === 'minimax')) {
     try {
@@ -3375,7 +3375,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
     } catch (e) { errors.push(`Pollinations: ${e.message}`); }
   }
 
-  // â”€â”€ 4. Pollinations Turbo (fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── 4. Pollinations Turbo (fallback) ──────────────────────
   try {
     const seed2 = Math.floor(Math.random() * 99999);
     const url2  = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=512&height=512&seed=${seed2}&model=turbo&nologo=true`;
@@ -3392,7 +3392,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
   res.status(503).json({ ok: false, error: 'Todos los proveedores fallaron', details: errors });
 });
 
-// â”€â”€ Helper: guardar log de escaneo en Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helper: guardar log de escaneo en Supabase ───────────────
 // POST /api/enhance-image - Autoenhance.ai (mejorar calidad de imagen)
 app.post('/api/enhance-image', requireAuth, async (req, res) => {
   const { image } = req.body || {};
@@ -3447,8 +3447,8 @@ app.post('/api/enhance-image', requireAuth, async (req, res) => {
   }
 });
 
-// â”€â”€ POST /api/edit-image â€” EdiciÃ³n de imagen con IA (Gemini) â”€â”€â”€â”€â”€â”€â”€â”€
-// Acepta una imagen (data URL) y una instrucciÃ³n ("quita el fondo", "cambia
+// ── POST /api/edit-image — Edición de imagen con IA (Gemini) ────────
+// Acepta una imagen (data URL) y una instrucción ("quita el fondo", "cambia
 // la camiseta a rojo", "borra el perro", etc.) y devuelve la imagen editada.
 app.post('/api/edit-image', requireAuth, async (req, res) => {
   const { image, prompt } = req.body || {};
@@ -3456,10 +3456,10 @@ app.post('/api/edit-image', requireAuth, async (req, res) => {
     return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
   }
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-    return res.status(400).json({ ok: false, error: 'Falta la instrucciÃ³n de ediciÃ³n.' });
+    return res.status(400).json({ ok: false, error: 'Falta la instrucción de edición.' });
   }
   if (!process.env.GEMINI_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY no configurada. La ediciÃ³n de imagen requiere Gemini.' });
+    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY no configurada. La edición de imagen requiere Gemini.' });
   }
   const parsed = parseImageDataUrl(image);
   if (!parsed) {
@@ -3477,7 +3477,7 @@ app.post('/api/edit-image', requireAuth, async (req, res) => {
           contents: [{
             parts: [
               { inline_data: { mime_type: parsed.mimeType || 'image/png', data: mineData } },
-              { text: 'Edita esta imagen segÃºn la instrucciÃ³n: "' + inst + '". Devuelve SOLO la imagen editada (sin texto).' },
+              { text: 'Edita esta imagen según la instrucción: "' + inst + '". Devuelve SOLO la imagen editada (sin texto).' },
             ],
           }],
           generationConfig: { temperature: 0.4 },
@@ -3488,7 +3488,7 @@ app.post('/api/edit-image', requireAuth, async (req, res) => {
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
       console.warn('Edit-image Gemini error:', r.status, (e.error && e.error.message) || '');
-      return res.status(r.status).json({ ok: false, error: 'EdiciÃ³n fallÃ³ (' + r.status + ').' });
+      return res.status(r.status).json({ ok: false, error: 'Edición falló (' + r.status + ').' });
     }
     const d = await r.json();
     const parts = d.candidates?.[0]?.content?.parts || [];
@@ -3496,7 +3496,7 @@ app.post('/api/edit-image', requireAuth, async (req, res) => {
     if (!imgPart) {
       const txt = parts.map((p) => p.text || '').join(' ').trim();
       if (txt) return res.json({ ok: true, image: null, note: txt.slice(0, 300) });
-      return res.status(502).json({ ok: false, error: 'Gemini no devolviÃ³ una imagen editada.' });
+      return res.status(502).json({ ok: false, error: 'Gemini no devolvió una imagen editada.' });
     }
     const b64 = imgPart.inlineData ? imgPart.inlineData.data : imgPart.inline_data.data;
     const mime = (imgPart.inlineData ? imgPart.inlineData.mimeType : imgPart.inline_data.mime_type) || 'image/png';
@@ -3520,11 +3520,11 @@ async function saveScanLog({ type, target, verdict, riskScore, provider, metadat
       scanned_at: new Date().toISOString(),
     });
   } catch (e) {
-    console.warn('âš ï¸  scan_logs insert error:', e.message);
+    console.warn('⚠️  scan_logs insert error:', e.message);
   }
 }
 
-// â”€â”€ POST /api/check-link â€” VirusTotal URL checker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST /api/check-link — VirusTotal URL checker ────────────
 app.post('/api/check-link', chatLimiter, async (req, res) => {
   const rawUrl = String(req.body?.url || '').trim();
   if (!rawUrl) return res.status(400).json({ ok: false, error: 'URL requerida' });
@@ -3631,7 +3631,7 @@ app.post('/api/check-link', chatLimiter, async (req, res) => {
   }
 });
 
-// â”€â”€ POST /api/check-file â€” VirusTotal file checker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── POST /api/check-file — VirusTotal file checker ───────────
 app.post('/api/check-file', chatLimiter, (req, res) => {
   uploadSecurityFile.single('file')(req, res, async (err) => {
     if (err) {
@@ -3737,7 +3737,7 @@ app.post('/api/check-file', chatLimiter, (req, res) => {
 });
 
 
-// â”€â”€ GET /api/docs â€” Swagger UI inline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GET /api/docs — Swagger UI inline ────────────────────────
 app.get('/api/docs', (_, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="es">
@@ -3770,10 +3770,10 @@ app.get('/api/docs', (_, res) => {
 </html>`);
 });
 
-// â”€â”€ GET /api/docs.json â€” spec en JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GET /api/docs.json — spec en JSON ─────────────────────────
 app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
 
-// â”€â”€ BLOG ESTÃTICO â€” GitHub API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BLOG ESTÁTICO — GitHub API ────────────────────────────────
 // Requiere: GITHUB_TOKEN en env vars con permisos repo:contents
 // npm install @octokit/rest  (ya en package.json)
 
@@ -3782,12 +3782,12 @@ try {
   const { Octokit } = require('@octokit/rest');
   if (process.env.GITHUB_TOKEN) {
     octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-    console.log('   Blog GitHub: âœ… Octokit listo');
+    console.log('   Blog GitHub: ✅ Octokit listo');
   } else {
-    console.log('   Blog GitHub: âš ï¸  falta GITHUB_TOKEN en env vars');
+    console.log('   Blog GitHub: ⚠️  falta GITHUB_TOKEN en env vars');
   }
 } catch(e) {
-  console.warn('   Blog GitHub: âš ï¸  @octokit/rest no instalado â€”', e.message);
+  console.warn('   Blog GitHub: ⚠️  @octokit/rest no instalado —', e.message);
 }
 
 const GITHUB_OWNER  = process.env.GITHUB_OWNER  || 'wilson360-labs';
@@ -3811,16 +3811,16 @@ async function ghUpdateFile(filePath, content, message) {
   });
 }
 
-// â”€â”€ EXTRACCIÃ“N DE ÃCONOS DESDE URL "UNIVERSAL" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── EXTRACCIÓN DE ÍCONOS DESDE URL "UNIVERSAL" ──────────────────
 // El admin pega el link que ya tiene a mano (repo de GitHub, ficha de
 // F-Droid, ficha de Play Store, o directamente la imagen) y esto baja
-// el Ã­cono REAL de la app (no el banner social del repo) y lo sube a
-// img/ en GitHub vÃ­a Octokit, reutilizando ghUpdateFile(). No inventa
-// ni asume: si no encuentra el Ã­cono, devuelve un error explicando quÃ©
-// probÃ³, para que el admin pegue el link directo como alternativa.
+// el ícono REAL de la app (no el banner social del repo) y lo sube a
+// img/ en GitHub vía Octokit, reutilizando ghUpdateFile(). No inventa
+// ni asume: si no encuentra el ícono, devuelve un error explicando qué
+// probó, para que el admin pegue el link directo como alternativa.
 // Igual que normalizeImagePath() en admin-hub.js: si es una ruta local
 // (no http/https, no data:/blob:) sin "/" inicial, se la agrega, para
-// que siempre resuelva desde la raÃ­z sin importar quÃ© pÃ¡gina la pinte.
+// que siempre resuelva desde la raíz sin importar qué página la pinte.
 function normalizeImagePath(val) {
   if (!val) return val;
   const v = String(val).trim();
@@ -3836,8 +3836,8 @@ function iconExtFromUrl(url) {
 }
 
 // Busca fastlane/metadata/android/en-US/images/icon.png (o variantes de
-// ruta/rama comunes) en un repo pÃºblico de GitHub, sin necesitar token
-// propio (la API de contenidos de GitHub es pÃºblica para repos pÃºblicos).
+// ruta/rama comunes) en un repo público de GitHub, sin necesitar token
+// propio (la API de contenidos de GitHub es pública para repos públicos).
 async function fetchGithubFastlaneIcon(owner, repo) {
   const branches = ['main', 'master', 'dev'];
   const paths = [
@@ -3850,20 +3850,20 @@ async function fetchGithubFastlaneIcon(owner, repo) {
         const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
         const r = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.raw' } });
         if (r.ok) return { buffer: Buffer.from(await r.arrayBuffer()), ext: '.png' };
-      } catch { /* probar siguiente combinaciÃ³n */ }
+      } catch { /* probar siguiente combinación */ }
     }
   }
   return null;
 }
 
-// Extrae la URL de og:image de una pÃ¡gina (F-Droid, Play Store, etc.)
+// Extrae la URL de og:image de una página (F-Droid, Play Store, etc.)
 async function fetchOgImageUrl(pageUrl) {
   const r = await fetch(pageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (CodeHub-IconBot)' } });
   if (!r.ok) throw new Error(`No se pudo abrir ${pageUrl} (HTTP ${r.status})`);
   const html = await r.text();
   const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
          || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-  if (!m) throw new Error('No encontrÃ© una imagen (og:image) en esa pÃ¡gina');
+  if (!m) throw new Error('No encontré una imagen (og:image) en esa página');
   return m[1];
 }
 
@@ -3879,29 +3879,29 @@ async function extractIconFromUniversalUrl(sourceUrl) {
     return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(clean) };
   }
 
-  // 2) Repo de GitHub â†’ Ã­cono real en fastlane/ (no el banner social)
+  // 2) Repo de GitHub → ícono real en fastlane/ (no el banner social)
   const ghMatch = clean.match(/github\.com\/([^\/]+)\/([^\/?#]+)/i);
   if (ghMatch) {
     const owner = ghMatch[1];
     const repo  = ghMatch[2].replace(/\.git$/, '');
     const found = await fetchGithubFastlaneIcon(owner, repo);
     if (found) return found;
-    throw new Error(`No encontrÃ© fastlane/metadata/.../icon.png en ${owner}/${repo}. ProbÃ¡ pegando el link directo del Ã­cono (ej. raw.githubusercontent.com/.../icon.png).`);
+    throw new Error(`No encontré fastlane/metadata/.../icon.png en ${owner}/${repo}. Probá pegando el link directo del ícono (ej. raw.githubusercontent.com/.../icon.png).`);
   }
 
-  // 3) F-Droid, Play Store, o cualquier pÃ¡gina con og:image
+  // 3) F-Droid, Play Store, o cualquier página con og:image
   if (lower.includes('f-droid.org') || lower.includes('play.google.com') || lower.includes('apps.apple.com')) {
     const imgUrl = await fetchOgImageUrl(clean);
     const r = await fetch(imgUrl);
-    if (!r.ok) throw new Error(`No se pudo descargar el Ã­cono (HTTP ${r.status})`);
+    if (!r.ok) throw new Error(`No se pudo descargar el ícono (HTTP ${r.status})`);
     return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(imgUrl) };
   }
 
-  throw new Error('URL no reconocida. UsÃ¡ un link directo a la imagen, un repo de GitHub, o la ficha de F-Droid/Play Store.');
+  throw new Error('URL no reconocida. Usá un link directo a la imagen, un repo de GitHub, o la ficha de F-Droid/Play Store.');
 }
 
-// POST /api/admin/extract-icon â€” body: { sourceUrl, filename }
-// Extrae el Ã­cono real desde la URL universal y lo sube a img/{filename}
+// POST /api/admin/extract-icon — body: { sourceUrl, filename }
+// Extrae el ícono real desde la URL universal y lo sube a img/{filename}
 // en el repo de GitHub. No toca la base de datos: el admin sigue usando
 // "Guardar" (fila existente) o "Crear App" (app nueva) para persistir el
 // campo imagen, igual que con cualquier otro campo del panel.
@@ -3909,16 +3909,16 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
   try {
     const { sourceUrl, filename } = req.body;
     if (!sourceUrl) return res.status(400).json({ error: 'Falta sourceUrl' });
-    if (!filename)  return res.status(400).json({ error: 'Falta filename (usÃ¡ el appId)' });
+    if (!filename)  return res.status(400).json({ error: 'Falta filename (usá el appId)' });
 
     const { buffer, ext } = await extractIconFromUniversalUrl(sourceUrl);
-    if (buffer.length > 4 * 1024 * 1024) throw new Error('La imagen pesa mÃ¡s de 4MB');
+    if (buffer.length > 4 * 1024 * 1024) throw new Error('La imagen pesa más de 4MB');
 
     const safeName = String(filename).trim().replace(/[^a-zA-Z0-9._-]/g, '') + ext;
-    if (!safeName || safeName === ext) throw new Error('filename invÃ¡lido');
+    if (!safeName || safeName === ext) throw new Error('filename inválido');
     const repoPath = 'img/' + safeName;
 
-    await ghUpdateFile(repoPath, buffer, `img: extraer Ã­cono (${safeName})`);
+    await ghUpdateFile(repoPath, buffer, `img: extraer ícono (${safeName})`);
     await cacheDel('apps:all');
 
     res.json({ ok: true, imagen: '/' + repoPath, filename: safeName });
@@ -3928,9 +3928,9 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
   }
 });
 
-// â”€â”€ ADMIN: WORKFLOWS DE GITHUB (AutomatizaciÃ³n) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN: WORKFLOWS DE GITHUB (Automatización) ──────────────
 // Permite que el panel admin (admin-hub) dispare los workflows de
-// mantenimiento del repositorio (seed del catÃ¡logo FOSS, monitor de
+// mantenimiento del repositorio (seed del catálogo FOSS, monitor de
 // actualizaciones, dedupe) sin salir de la UI.
 // Requiere GITHUB_TOKEN con permiso `workflow` en Render.
 const GITHUB_WORKFLOWS = [
@@ -3941,7 +3941,7 @@ const GITHUB_WORKFLOWS = [
   'build-apk.yml',
 ];
 
-// POST /api/admin/github/dispatch â€” body: { workflow, inputs }
+// POST /api/admin/github/dispatch — body: { workflow, inputs }
 app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
   try {
     const { workflow, inputs = {} } = req.body || {};
@@ -3959,17 +3959,17 @@ app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
       inputs,
     });
     tgAlert('ghdispatch', () =>
-      `ðŸš€ <b>Workflow disparado</b>\n<code>${workflow}</code>\nRef: <code>${GITHUB_BRANCH}</code>\nIP: <code>${clientIp(req)}</code>`);
+      `🚀 <b>Workflow disparado</b>\n<code>${workflow}</code>\nRef: <code>${GITHUB_BRANCH}</code>\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, workflow, ref: GITHUB_BRANCH, run_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${workflow}` });
   } catch (e) {
     const code = e?.status || 500;
-    const hint = code === 403 ? ' â€” Â¿GITHUB_TOKEN tiene permiso workflow?' : '';
+    const hint = code === 403 ? ' — ¿GITHUB_TOKEN tiene permiso workflow?' : '';
     console.error('POST /api/admin/github/dispatch error:', e.message);
     res.status(code).json({ error: (e.message || 'Error disparando workflow') + hint });
   }
 });
 
-// GET /api/admin/github/runs â€” estado del Ãºltimo run de cada workflow
+// GET /api/admin/github/runs — estado del último run de cada workflow
 app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render' });
@@ -3994,11 +3994,11 @@ app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
   }
 });
 
-// â”€â”€ GITHUB SECRETS & VARIABLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// GestiÃ³n completa de secrets y variables del repositorio desde admin-hub.
+// ── GITHUB SECRETS & VARIABLES ────────────────────────────────
+// Gestión completa de secrets y variables del repositorio desde admin-hub.
 // Solo el administrador tiene acceso (requireAdmin).
 
-// GET /api/admin/github/secrets â€” listar secrets del repositorio
+// GET /api/admin/github/secrets — listar secrets del repositorio
 app.get('/api/admin/github/secrets', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4012,7 +4012,7 @@ app.get('/api/admin/github/secrets', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/admin/github/secrets â€” crear/actualizar un secret
+// POST /api/admin/github/secrets — crear/actualizar un secret
 app.post('/api/admin/github/secrets', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4053,7 +4053,7 @@ app.post('/api/admin/github/secrets', requireAdmin, async (req, res) => {
     }
 
     tgAlert('ghsecret', () =>
-      `ðŸ” <b>Secret actualizado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+      `🔐 <b>Secret actualizado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, name });
   } catch (e) {
     console.error('POST /api/admin/github/secrets error:', e.message);
@@ -4061,7 +4061,7 @@ app.post('/api/admin/github/secrets', requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/admin/github/secrets/:name â€” eliminar un secret
+// DELETE /api/admin/github/secrets/:name — eliminar un secret
 app.delete('/api/admin/github/secrets/:name', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4070,7 +4070,7 @@ app.delete('/api/admin/github/secrets/:name', requireAdmin, async (req, res) => 
       owner: GITHUB_OWNER, repo: GITHUB_REPO, secret_name: name,
     });
     tgAlert('ghsecret_del', () =>
-      `ðŸ—‘ï¸ <b>Secret eliminado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+      `🗑️ <b>Secret eliminado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, name });
   } catch (e) {
     console.error('DELETE /api/admin/github/secrets error:', e.message);
@@ -4078,7 +4078,7 @@ app.delete('/api/admin/github/secrets/:name', requireAdmin, async (req, res) => 
   }
 });
 
-// GET /api/admin/github/variables â€” listar variables del repositorio
+// GET /api/admin/github/variables — listar variables del repositorio
 app.get('/api/admin/github/variables', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4092,7 +4092,7 @@ app.get('/api/admin/github/variables', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/admin/github/variables â€” crear/actualizar una variable
+// POST /api/admin/github/variables — crear/actualizar una variable
 app.post('/api/admin/github/variables', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4110,7 +4110,7 @@ app.post('/api/admin/github/variables', requireAdmin, async (req, res) => {
       } else { throw createErr; }
     }
     tgAlert('ghvar', () =>
-      `âš™ï¸ <b>Variable actualizada</b>\n<code>${name}</code>=<code>${value.slice(0,20)}${value.length>20?'â€¦':''}</code>\nIP: <code>${clientIp(req)}</code>`);
+      `⚙️ <b>Variable actualizada</b>\n<code>${name}</code>=<code>${value.slice(0,20)}${value.length>20?'…':''}</code>\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, name, value });
   } catch (e) {
     console.error('POST /api/admin/github/variables error:', e.message);
@@ -4118,7 +4118,7 @@ app.post('/api/admin/github/variables', requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/admin/github/variables/:name â€” eliminar una variable
+// DELETE /api/admin/github/variables/:name — eliminar una variable
 app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
@@ -4127,7 +4127,7 @@ app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) =
       owner: GITHUB_OWNER, repo: GITHUB_REPO, name,
     });
     tgAlert('ghvar_del', () =>
-      `ðŸ—‘ï¸ <b>Variable eliminada</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
+      `🗑️ <b>Variable eliminada</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, name });
   } catch (e) {
     console.error('DELETE /api/admin/github/variables error:', e.message);
@@ -4135,11 +4135,11 @@ app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) =
   }
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// BÃºsqueda de imÃ¡genes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────
+// Búsqueda de imágenes
+// ─────────────────────────────────────────────────────────────
 
-// â”€â”€ ADMIN CONFIG â€” GET/PATCH remote config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ADMIN CONFIG — GET/PATCH remote config ─────────────────
 app.get('/api/admin/config', requireAdmin, async (req, res) => {
   try {
     const cfg = await getAppConfig();
@@ -4170,7 +4170,7 @@ app.patch('/api/admin/config', requireAdmin, async (req, res) => {
     _appConfigCacheTs = 0;
 
     tgAlert('config', () =>
-      `âš™ï¸ <b>Config actualizada</b> v${merged.version}\nIP: <code>${clientIp(req)}</code>`);
+      `⚙️ <b>Config actualizada</b> v${merged.version}\nIP: <code>${clientIp(req)}</code>`);
     res.json({ ok: true, version: merged.version });
   } catch (e) {
     console.error('PATCH /api/admin/config error:', e.message);
@@ -4190,13 +4190,13 @@ function deepMerge(target, source) {
   return result;
 }
 
-// â”€â”€ GET /api/image-search â€” Buscar imÃ¡genes via SerpAPI â”€â”€â”€â”€â”€â”€â”€
+// ── GET /api/image-search — Buscar imágenes via SerpAPI ───────
 app.get('/api/image-search', chatLimiter, async (req, res) => {
   const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
 
   const SERP_KEY = process.env.SERPAPI_KEY;
-  if (!SERP_KEY) return res.status(503).json({ error: 'BÃºsqueda de imÃ¡genes no disponible.' });
+  if (!SERP_KEY) return res.status(503).json({ error: 'Búsqueda de imágenes no disponible.' });
 
   try {
     const url = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=6&api_key=${SERP_KEY}`;
@@ -4215,17 +4215,17 @@ app.get('/api/image-search', chatLimiter, async (req, res) => {
     res.json({ images, query: q });
   } catch (err) {
     console.error('image-search error:', err.message);
-    res.status(500).json({ error: 'No se pudieron obtener imÃ¡genes.' });
+    res.status(500).json({ error: 'No se pudieron obtener imágenes.' });
   }
 });
 
-// â”€â”€ GET /api/search/google â€” Proxy Google Custom Search (DeepSearch) â”€â”€
+// ── GET /api/search/google — Proxy Google Custom Search (DeepSearch) ──
 app.get('/api/search/google', chatLimiter, async (req, res) => {
   const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
   
   const SERP_KEY = process.env.SERPAPI_KEY;
-  if (!SERP_KEY) return res.status(503).json({ error: 'BÃºsqueda web no disponible.' });
+  if (!SERP_KEY) return res.status(503).json({ error: 'Búsqueda web no disponible.' });
   
   try {
     const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=8&api_key=${SERP_KEY}`;
@@ -4235,17 +4235,17 @@ app.get('/api/search/google', chatLimiter, async (req, res) => {
     res.json({ items: (data.organic_results || []).slice(0, 8).map(r => ({ title: r.title, snippet: r.snippet, link: r.link })) });
   } catch (err) {
     console.error('search/google error:', err.message);
-    res.status(500).json({ error: 'Error en bÃºsqueda Google.' });
+    res.status(500).json({ error: 'Error en búsqueda Google.' });
   }
 });
 
-// â”€â”€ GET /api/search/tavily â€” BÃºsqueda Tavily (DeepSearch) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GET /api/search/tavily — Búsqueda Tavily (DeepSearch) ───────────
 app.get('/api/search/tavily', chatLimiter, async (req, res) => {
   const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
+  if (!q || !q.trim()) return res.status(400).json({ error: 'Parámetro q requerido.' });
   
   const TAVILY_KEY = process.env.TAVILY_API_KEY;
-  if (!TAVILY_KEY) return res.status(503).json({ error: 'BÃºsqueda Tavily no disponible.' });
+  if (!TAVILY_KEY) return res.status(503).json({ error: 'Búsqueda Tavily no disponible.' });
   
   try {
     const response = await fetch('https://api.tavily.com/search', {
@@ -4259,21 +4259,21 @@ app.get('/api/search/tavily', chatLimiter, async (req, res) => {
     res.json({ results: (data.results || []).slice(0, 8), answer: data.answer || null });
   } catch (err) {
     console.error('search/tavily error:', err.message);
-    res.status(500).json({ error: 'Error en bÃºsqueda Tavily.' });
+    res.status(500).json({ error: 'Error en búsqueda Tavily.' });
   }
 });
 
-// â”€â”€ PUSH NOTIFICATIONS (Web Push / VAPID) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El frontend se suscribe con su ubicaciÃ³n y el servidor avisa por
-// push SOLO cuando cambia la condiciÃ³n del clima (sin spam).
+// ── PUSH NOTIFICATIONS (Web Push / VAPID) ─────────────────────
+// El frontend se suscribe con su ubicación y el servidor avisa por
+// push SOLO cuando cambia la condición del clima (sin spam).
 const webpush = require('web-push');
 
 const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKsg-I';
 webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
-// â”€â”€ FIREBASE CLOUD MESSAGING (FCM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Push instantÃ¡neo para la app Android nativa.
+// ── FIREBASE CLOUD MESSAGING (FCM) ───────────────────────────
+// Push instantáneo para la app Android nativa.
 let admin = null;
 let fcmEnabled = false;
 try {
@@ -4284,12 +4284,12 @@ try {
   if (serviceAccount) {
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
     fcmEnabled = true;
-    console.log('âœ… FCM: Firebase Cloud Messaging habilitado');
+    console.log('✅ FCM: Firebase Cloud Messaging habilitado');
   } else {
-    console.warn('âš ï¸  FCM: FIREBASE_SERVICE_ACCOUNT no configurado â€” push web-push Ãºnicamente');
+    console.warn('⚠️  FCM: FIREBASE_SERVICE_ACCOUNT no configurado — push web-push únicamente');
   }
 } catch (e) {
-  console.warn('âš ï¸  FCM: firebase-admin no disponible:', e.message);
+  console.warn('⚠️  FCM: firebase-admin no disponible:', e.message);
 }
 
 const PUSH_SQL = `
@@ -4323,11 +4323,11 @@ async function migratePushTable() {
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_brief_at timestamptz;' });
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists weather_interval integer default 0;' });
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_weather_snapshot text;' });
-  } catch (e) { console.warn('âš ï¸  Push migrate:', e.message); }
+  } catch (e) { console.warn('⚠️  Push migrate:', e.message); }
 }
 migratePushTable();
 
-let pushStore = new Map(); // fallback en memoria si Supabase no estÃ¡ disponible
+let pushStore = new Map(); // fallback en memoria si Supabase no está disponible
 
 async function ensurePushTable() {
   if (!supabase) return false;
@@ -4336,14 +4336,14 @@ async function ensurePushTable() {
     for (const stmt of statements) {
       const { error } = await supabase.rpc('exec_sql', { query: stmt });
       if (error) {
-        console.warn('âš ï¸  Push: no se pudo crear tabla push_subs (' + error.message + ') â€” creala a mano con backend/push_subs.sql');
+        console.warn('⚠️  Push: no se pudo crear tabla push_subs (' + error.message + ') — creala a mano con backend/push_subs.sql');
         return false;
       }
     }
-    console.log('âœ… Push: tabla push_subs lista');
+    console.log('✅ Push: tabla push_subs lista');
     return true;
   } catch (e) {
-    console.warn('âš ï¸  Push: error asegurando tabla:', e.message);
+    console.warn('⚠️  Push: error asegurando tabla:', e.message);
     return false;
   }
 }
@@ -4419,11 +4419,11 @@ async function sendPush(rec, payload) {
     );
     return { ok: true };
   } catch (e) {
-    // 404/410 = suscripciÃ³n expirada. 401/403 = clave VAPID no coincide
-    // con la que se usÃ³ al suscribirse (rotaciÃ³n de VAPID_PUBLIC/PRIVATE_KEY
+    // 404/410 = suscripción expirada. 401/403 = clave VAPID no coincide
+    // con la que se usó al suscribirse (rotación de VAPID_PUBLIC/PRIVATE_KEY
     // o subs creadas antes de fijar esas env vars). En ambos casos la sub
     // es inservible: se borra para que el cliente se re-suscriba solo la
-    // prÃ³xima vez que visite el sitio (ver chequeo de applicationServerKey
+    // próxima vez que visite el sitio (ver chequeo de applicationServerKey
     // en initIndexPush, index.html).
     if ([401, 403, 404, 410].includes(e.statusCode)) {
       await pushDelete(rec.endpoint);
@@ -4432,13 +4432,13 @@ async function sendPush(rec, payload) {
   }
 }
 
-// Clave pÃºblica VAPID que el frontend debe usar al suscribirse.
+// Clave pública VAPID que el frontend debe usar al suscribirse.
 // Antes estaba hardcodeada en index.html (con el mismo valor de fallback
-// que aquÃ­ abajo); si en Render se configuraban VAPID_PUBLIC_KEY/PRIVATE_KEY
-// propios, el backend firmaba con la clave nueva pero el navegador seguÃ­a
-// suscribiÃ©ndose con la clave vieja hardcodeada â†’ desajuste de claves â†’
-// el push fallaba en silencio (la suscripciÃ³n se guardaba, pero
-// webpush.sendNotification nunca llegaba). Este endpoint es la Ãºnica
+// que aquí abajo); si en Render se configuraban VAPID_PUBLIC_KEY/PRIVATE_KEY
+// propios, el backend firmaba con la clave nueva pero el navegador seguía
+// suscribiéndose con la clave vieja hardcodeada → desajuste de claves →
+// el push fallaba en silencio (la suscripción se guardaba, pero
+// webpush.sendNotification nunca llegaba). Este endpoint es la única
 // fuente de verdad: el frontend la consulta en vez de tenerla fija.
 app.get('/api/push/vapid-public-key', (_req, res) => {
   res.json({ ok: true, key: VAPID_PUBLIC_KEY });
@@ -4449,7 +4449,7 @@ app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
     const { subscription, location, prefs } = req.body || {};
     const sub = subscription || {};
     if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
-      return res.status(400).json({ ok: false, error: 'SuscripciÃ³n invÃ¡lida' });
+      return res.status(400).json({ ok: false, error: 'Suscripción inválida' });
     }
     const loc = location || {};
     const rec = {
@@ -4485,7 +4485,7 @@ app.post('/api/push/settings', chatLimiter, async (req, res) => {
     if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
     const list = await pushList();
     let rec = list.find(r => r.endpoint === endpoint);
-    if (!rec) return res.status(404).json({ ok: false, error: 'SuscripciÃ³n no encontrada' });
+    if (!rec) return res.status(404).json({ ok: false, error: 'Suscripción no encontrada' });
     if (location) {
       if (Number.isFinite(+location.lat)) rec.lat = +location.lat;
       if (Number.isFinite(+location.lon)) rec.lon = +location.lon;
@@ -4506,13 +4506,13 @@ app.post('/api/push/notify', chatLimiter, async (req, res) => {
     if (!endpoint || !title) return res.status(400).json({ ok: false, error: 'Falta endpoint o title' });
     const list = await pushList();
     const rec = list.find(r => r.endpoint === endpoint);
-    if (!rec) return res.status(404).json({ ok: false, error: 'SuscripciÃ³n no encontrada' });
+    if (!rec) return res.status(404).json({ ok: false, error: 'Suscripción no encontrada' });
     const r = await sendPush(rec, { title, body: body || '', type: 'general', icon: '/splash/codehub.png', url: url || '/' });
     res.json(r);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// â”€â”€ FCM TOKEN MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FCM TOKEN MANAGEMENT ─────────────────────────────────────
 let fcmTokens = new Map(); // fallback en memoria
 
 const FCM_SQL = `
@@ -4539,14 +4539,14 @@ async function ensureFCMTable() {
     for (const stmt of statements) {
       const { error } = await supabase.rpc('exec_sql', { query: stmt });
       if (error) {
-        console.warn('âš ï¸  FCM: no se pudo crear tabla fcm_tokens â€” ' + error.message);
+        console.warn('⚠️  FCM: no se pudo crear tabla fcm_tokens — ' + error.message);
         return false;
       }
     }
-    console.log('âœ… FCM: tabla fcm_tokens lista');
+    console.log('✅ FCM: tabla fcm_tokens lista');
     return true;
   } catch (e) {
-    console.warn('âš ï¸  FCM: error asegurando tabla:', e.message);
+    console.warn('⚠️  FCM: error asegurando tabla:', e.message);
     return false;
   }
 }
@@ -4603,7 +4603,7 @@ async function fcmDeleteToken(token) {
   fcmTokens.delete(token);
 }
 
-// Enviar vÃ­a FCM a un token especÃ­fico
+// Enviar vía FCM a un token específico
 async function sendFCM(token, payload) {
   if (!fcmEnabled || !admin) return { ok: false, reason: 'fcm_disabled' };
   try {
@@ -4612,10 +4612,10 @@ async function sendFCM(token, payload) {
       notification: { title: payload.title, body: payload.body },
       data: { type: payload.type || 'general', url: payload.url || '/' },
       android: {
-        // priority: 'high' â€” despierta el dispositivo incluso en Doze
+        // priority: 'high' — despierta el dispositivo incluso en Doze
         // profundo. Sin esto Android puede demorar la entrega hasta
-        // la prÃ³xima ventana de mantenimiento si la app no se usa hace
-        // tiempo, dando la falsa impresiÃ³n de que "no estÃ¡ despierta".
+        // la próxima ventana de mantenimiento si la app no se usa hace
+        // tiempo, dando la falsa impresión de que "no está despierta".
         priority: 'high',
         notification: {
           channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
@@ -4651,8 +4651,8 @@ app.post('/api/push/fcm-location', chatLimiter, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// â”€â”€ CRASH REPORTING (app Android) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// La app nativa (WebView wrapper) reporta acÃ¡ tanto crashes fatales
+// ── CRASH REPORTING (app Android) ────────────────────────────
+// La app nativa (WebView wrapper) reporta acá tanto crashes fatales
 // (Thread.UncaughtExceptionHandler) como excepciones atrapadas y
 // errores de JS del sitio dentro del WebView (window.onerror /
 // unhandledrejection). Reenviamos al chat de Telegram del admin
@@ -4670,23 +4670,23 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
     } = req.body || {};
 
     if (!exceptionClass && !stackTrace && !message) {
-      return res.status(400).json({ ok: false, error: 'Reporte vacÃ­o' });
+      return res.status(400).json({ ok: false, error: 'Reporte vacío' });
     }
 
     const when  = timestamp ? new Date(Number(timestamp) || timestamp) : new Date();
-    const trace = String(stackTrace || '').slice(0, 3200); // margen para el lÃ­mite de 4096 de Telegram
+    const trace = String(stackTrace || '').slice(0, 3200); // margen para el límite de 4096 de Telegram
     const key   = `crash:${fatal ? 'fatal' : 'caught'}:${tag || ''}:${exceptionClass || ''}`;
-    const icon  = fatal ? 'ðŸ’¥' : 'âš ï¸';
-    const kind  = fatal ? 'CRASH FATAL' : 'ExcepciÃ³n capturada';
+    const icon  = fatal ? '💥' : '⚠️';
+    const kind  = fatal ? 'CRASH FATAL' : 'Excepción capturada';
     const origin = platform === 'web' ? 'Web' : 'App Android';
 
     tgAlert(key, () =>
-      `${icon} <b>${kind} â€” ${origin}</b>\n` +
-      (tag ? `MÃ³dulo: <code>${escHtml(tag)}</code>\n` : '') +
+      `${icon} <b>${kind} — ${origin}</b>\n` +
+      (tag ? `Módulo: <code>${escHtml(tag)}</code>\n` : '') +
       `Clase: <code>${escHtml(exceptionClass || '?')}</code>\n` +
       `Mensaje: ${escHtml(message || '(sin mensaje)')}\n` +
-      `Dispositivo: ${escHtml(deviceModel || '?')} Â· Android ${escHtml(androidVersion || '?')}\n` +
-      `VersiÃ³n app: ${escHtml(appVersion || '?')} Â· Plataforma: ${escHtml(platform || 'android')}\n` +
+      `Dispositivo: ${escHtml(deviceModel || '?')} · Android ${escHtml(androidVersion || '?')}\n` +
+      `Versión app: ${escHtml(appVersion || '?')} · Plataforma: ${escHtml(platform || 'android')}\n` +
       `Hora: ${when.toISOString()}\n\n` +
       (trace ? `<pre>${escHtml(trace)}</pre>` : ''),
       { windowMs: 10000 });
@@ -4695,16 +4695,16 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// EnvÃ­a un push a todos los suscriptores (broadcast reutilizable por
-// los flujos automÃ¡ticos: nueva app, app actualizada, CodeHub Release).
-// EnvÃ­a vÃ­a Web Push (VAPID) + FCM (app nativa).
+// Envía un push a todos los suscriptores (broadcast reutilizable por
+// los flujos automáticos: nueva app, app actualizada, CodeHub Release).
+// Envía vía Web Push (VAPID) + FCM (app nativa).
 async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
   const t = String(title).trim().slice(0, 80);
   const b = String(body || '').trim().slice(0, 180);
   let sentWeb = 0, sentAndroid = 0;
   const failures = [];
 
-  // 1) Web Push (VAPID) â€” suscriptores del navegador
+  // 1) Web Push (VAPID) — suscriptores del navegador
   const webSubs = await pushList();
   for (const sub of webSubs) {
     const result = await sendPush(sub, { title: t, body: b, type, appId, version, icon: '/splash/codehub.png', url });
@@ -4715,7 +4715,7 @@ async function broadcastPush({ title, body = '', url = '/', type = 'announcement
     }
   }
 
-  // 2) FCM â€” app Android nativa
+  // 2) FCM — app Android nativa
   let fcmTotal = 0;
   if (fcmEnabled) {
     const fcmSubs = await fcmListTokens();
@@ -4734,14 +4734,14 @@ async function broadcastPush({ title, body = '', url = '/', type = 'announcement
   const total = webSubs.length + fcmTotal;
 
   // Log detallado: sin esto, un "0 de 12" en el admin-hub no dice NADA de
-  // por quÃ© fallÃ³. Con esto, en Render â†’ Logs se ve el motivo exacto de
-  // cada fallo (clave VAPID desactualizada, token FCM invÃ¡lido, etc.)
+  // por qué falló. Con esto, en Render → Logs se ve el motivo exacto de
+  // cada fallo (clave VAPID desactualizada, token FCM inválido, etc.)
   if (sent < total) {
-    console.warn(`âš ï¸  broadcastPush: ${sent}/${total} entregados (web ${sentWeb}/${webSubs.length}, android ${sentAndroid}/${fcmTotal})`);
+    console.warn(`⚠️  broadcastPush: ${sent}/${total} entregados (web ${sentWeb}/${webSubs.length}, android ${sentAndroid}/${fcmTotal})`);
     failures.slice(0, 20).forEach(f => {
-      console.warn(`   âœ— [${f.kind}] ${f.kind === 'web' ? 'endpoint â€¦' + f.endpoint : 'token â€¦' + f.token} â€” code ${f.code || '?'}: ${f.message || '(sin detalle)'}`);
+      console.warn(`   ✗ [${f.kind}] ${f.kind === 'web' ? 'endpoint …' + f.endpoint : 'token …' + f.token} — code ${f.code || '?'}: ${f.message || '(sin detalle)'}`);
     });
-    if (failures.length > 20) console.warn(`   â€¦ y ${failures.length - 20} fallos mÃ¡s`);
+    if (failures.length > 20) console.warn(`   … y ${failures.length - 20} fallos más`);
   }
 
   return { sent, total, sentWeb, sentAndroid, webTotal: webSubs.length, androidTotal: fcmTotal, fcmEnabled, failures: failures.slice(0, 20) };
@@ -4751,7 +4751,7 @@ app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
   try {
     const { title, body, url, type, appId, version } = req.body || {};
     if (!title || !String(title).trim()) {
-      return res.status(400).json({ ok: false, error: 'Falta el tÃ­tulo de la notificaciÃ³n' });
+      return res.status(400).json({ ok: false, error: 'Falta el título de la notificación' });
     }
     const r = await broadcastPush({ title, body, url, type, appId, version });
     res.json({ ok: true, ...r });
@@ -4761,15 +4761,15 @@ app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
   }
 });
 
-// â”€â”€ CODEHUB RELEASES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CODEHUB RELEASES ────────────────────────────────────────────
 // Novedades del proyecto publicadas desde el admin-hub. Al publicar se
-// guardan en MongoDB, se avisa por WebSocket y se envÃ­a push a todos.
+// guardan en MongoDB, se avisa por WebSocket y se envía push a todos.
 
 app.post('/api/admin/releases', requireAdmin, async (req, res) => {
   try {
     const { title, body, version, url, type } = req.body || {};
     if (!title || !String(title).trim()) {
-      return res.status(400).json({ ok: false, error: 'Falta el tÃ­tulo del release' });
+      return res.status(400).json({ ok: false, error: 'Falta el título del release' });
     }
     const rel = await Release.create({
       title: String(title).trim().slice(0, 80),
@@ -4779,10 +4779,10 @@ app.post('/api/admin/releases', requireAdmin, async (req, res) => {
       type: type || 'release',
     });
     broadcast('codehub_release', { id: String(rel._id), title: rel.title, version: rel.version });
-    tgAlert('release', () => `ðŸš€ <b>CodeHub Release</b>\n${String(rel.title).slice(0, 50)}${rel.version ? ' Â· ' + rel.version : ''}`, { windowMs: 15000 });
+    tgAlert('release', () => `🚀 <b>CodeHub Release</b>\n${String(rel.title).slice(0, 50)}${rel.version ? ' · ' + rel.version : ''}`, { windowMs: 15000 });
     const push = await broadcastPush({
-      title: rel.version ? 'ðŸš€ CodeHub ' + rel.version : 'ðŸš€ CodeHub Release',
-      body: rel.title + (rel.body ? ' â€” ' + String(rel.body).slice(0, 120) : ''),
+      title: rel.version ? '🚀 CodeHub ' + rel.version : '🚀 CodeHub Release',
+      body: rel.title + (rel.body ? ' — ' + String(rel.body).slice(0, 120) : ''),
       type: 'release',
       version: rel.version || '',
       url: rel.url || '/',
@@ -4810,7 +4810,7 @@ app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// â”€â”€ CHANGELOG â€” Ãºltima versiÃ³n para el diÃ¡logo de actualizaciÃ³n â”€â”€
+// ── CHANGELOG — última versión para el diálogo de actualización ──
 let _changelog = null;
 function loadChangelog() {
   if (_changelog) return _changelog;
@@ -4829,7 +4829,7 @@ app.get('/api/changelog', (req, res) => {
   res.json({ ok: true, entries });
 });
 
-// â”€â”€ REMOTE CONFIG â€” public endpoint (frontend reads this) â”€â”€â”€â”€â”€
+// ── REMOTE CONFIG — public endpoint (frontend reads this) ─────
 app.get('/api/config', async (req, res) => {
   try {
     const cfg = await getAppConfig();
@@ -4844,7 +4844,7 @@ app.get('/api/config', async (req, res) => {
   }
 });
 
-// Lista pÃºblica de releases (campana de notificaciones / pÃ¡gina)
+// Lista pública de releases (campana de notificaciones / página)
 app.get('/api/releases', async (req, res) => {
   if (!dbConnected) return res.json({ ok: true, releases: [] });
   try {
@@ -4856,7 +4856,7 @@ app.get('/api/releases', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ── CLIMA → PUSH (módulo separado — backend/clima) ────────────
+// ── CLIMA → PUSH (módulo separado → backend/clima) ─────────────────
 // La lógica inteligente de clima (fetch, alertas por CÓMO cambia:
 // radiación UV por hora, probabilidad de lluvia, temperatura, viento)
 // vive ahora en backend/clima/. Aquí sólo se inyectan las dependencias
@@ -4868,17 +4868,17 @@ const climaEngine = require('./clima')({
 // para que sigan funcionando las llamadas previas en pushRowToSub/pushSave.
 function normalizeWeatherInterval(v) { return climaEngine.normalizeWeatherInterval(v); }
 app.get('/api/push/weather/check', climaEngine.weatherEndpoint);
-// Scheduler climático — cada 30 min; solo envía push cuando cambia la condición
+// Scheduler climático → cada 30 min; solo envía push cuando cambia la condición
 climaEngine.startScheduler(30 * 60 * 1000);
 
-// â”€â”€ ACTIVIDAD SÃSMICA (terremotos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Nota honesta: NO existe una API pÃºblica de "alerta temprana" de
-// Google (usada en Android vÃ­a Play Services, limitada a un puÃ±ado de
-// regiones). AquÃ­ usamos la API abierta de USGS (global) para detectar
+// ── ACTIVIDAD SÍSMICA (terremotos) ───────────────────────────
+// Nota honesta: NO existe una API pública de "alerta temprana" de
+// Google (usada en Android vía Play Services, limitada a un puñado de
+// regiones). Aquí usamos la API abierta de USGS (global) para detectar
 // sismos RELEVANTES recientes cerca del usuario y avisar post-evento
 // con magnitud, distancia y consejos de seguridad. En regiones donde
-// Google EEWS no llega (la mayorÃ­a de LatAm, incluida Guatemala) esto
-// sigue dando valor real: enterarse de un sismo cercano + cÃ³mo actuar.
+// Google EEWS no llega (la mayoría de LatAm, incluida Guatemala) esto
+// sigue dando valor real: enterarse de un sismo cercano + cómo actuar.
 
 const USGS_FEED = 'https://earthquake.usgs.gov/earthquake/feed/v1.0/summary/all_day.geojson';
 
@@ -4887,7 +4887,7 @@ function seismicThreshold() {
   return 4.5; // bajo este nivel no se molesta al usuario
 }
 function seismicRadiusKm() {
-  return 300; // distancia mÃ¡x. para considerar "cercano"
+  return 300; // distancia máx. para considerar "cercano"
 }
 
 async function fetchRecentEarthquakes() {
@@ -4907,24 +4907,24 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function describeMagnitude(mag, distKm) {
-  const emoji = mag >= 6.0 ? 'ðŸ”¥' : mag >= 5.0 ? 'âš ï¸' : 'ðŸ“³';
-  const near = distKm < 50 ? ' muy cerca' : distKm < 150 ? ' cercano' : ' en tu regiÃ³n';
+  const emoji = mag >= 6.0 ? '🔥' : mag >= 5.0 ? '⚠️' : '📳';
+  const near = distKm < 50 ? ' muy cerca' : distKm < 150 ? ' cercano' : ' en tu región';
   return `${emoji} Sismo M${mag.toFixed(1)}${near} (${Math.round(distKm)} km)`;
 }
 
 function earthquakeSafetyTips(mag) {
   return mag >= 6.0
-    ? 'Protege tu cabeza, alÃ©jate de ventanas/objetos que caigan y, si puedes, refÃºgiate bajo un mueble firme. Sigue las indicaciones de ProtecciÃ³n Civil.'
-    : 'EstÃ© preparado: revisa que no haya grietas nuevas y asegura objetos que puedan caer en un sismo mayor.';
+    ? 'Protege tu cabeza, aléjate de ventanas/objetos que caigan y, si puedes, refúgiate bajo un mueble firme. Sigue las indicaciones de Protección Civil.'
+    : 'Esté preparado: revisa que no haya grietas nuevas y asegura objetos que puedan caer en un sismo mayor.';
 }
 
-// Una sola pasada de verificaciÃ³n sÃ­smica. Devuelve { earthquakes: N }
+// Una sola pasada de verificación sísmica. Devuelve { earthquakes: N }
 async function seismicPushPass() {
   let subs;
   try { subs = await pushList(); } catch (e) { return { earthquakes: 0 }; }
   const enabled = subs.filter(s => s.alerts && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
 
-  // TambiÃ©n tokens FCM
+  // También tokens FCM
   const fcmTokens = [];
   if (fcmEnabled) {
     try { fcmTokens.push(...await fcmListTokens()); } catch (e) {}
@@ -4939,7 +4939,7 @@ async function seismicPushPass() {
   try { quakes = await fetchRecentEarthquakes(); } catch (e) { return { earthquakes: 0 }; }
   const threshold = seismicThreshold();
   const radius = seismicRadiusKm();
-  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo Ãºltimos 3h
+  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo últimos 3h
 
   let sent = 0;
   const lastKey = {};
@@ -4957,7 +4957,7 @@ async function seismicPushPass() {
       const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
       return dist <= radius;
     });
-    // Ordenar por tiempo: el mÃ¡s reciente primero
+    // Ordenar por tiempo: el más reciente primero
     relevant.sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0));
     const latest = relevant[0];
     if (!latest) continue;
@@ -4969,25 +4969,25 @@ async function seismicPushPass() {
     const prev = lastKey[subKey] || (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null);
     const cacheKey = 'EQ:' + key;
 
-    // No repetir si ya se avisÃ³ de este mismo sismo
+    // No repetir si ya se avisó de este mismo sismo
     if (prev === cacheKey) continue;
 
     const body =
       describeMagnitude(mag, dist) +
-      (place ? ' Â· ' + place : '') +
+      (place ? ' · ' + place : '') +
       '\n' + earthquakeSafetyTips(mag);
 
     let r;
     if (t._isFCM) {
       r = await sendFCM(t.token, {
-        title: 'ðŸŒ‹ Actividad sÃ­smica',
-        body: body + '\nðŸ“ ' + (t.city || 'Tu zona'),
+        title: '🌋 Actividad sísmica',
+        body: body + '\n📍 ' + (t.city || 'Tu zona'),
         type: 'seismic',
         url: '/#weather-section',
       });
     } else {
       r = await sendPush(t, {
-        title: 'ðŸŒ‹ Actividad sÃ­smica',
+        title: '🌋 Actividad sísmica',
         body: body,
         type: 'seismic',
         icon: '/splash/codehub.png',
@@ -5004,11 +5004,11 @@ async function seismicPushPass() {
   return { earthquakes: sent };
 }
 
-// Scheduler sÃ­smico â€” cada 10 min
+// Scheduler sísmico — cada 10 min
 setInterval(() => {
   seismicPushPass()
-    .then(o => { if (o.earthquakes) console.log('ðŸŒ‹ Push sÃ­smico enviado:', o.earthquakes); })
-    .catch(e => console.warn('âš ï¸  Push sÃ­smico error:', e.message));
+    .then(o => { if (o.earthquakes) console.log('🌋 Push sísmico enviado:', o.earthquakes); })
+    .catch(e => console.warn('⚠️  Push sísmico error:', e.message));
 }, 10 * 60 * 1000);
 
 app.get('/api/push/seismic/check', async (req, res) => {
@@ -5018,14 +5018,14 @@ app.get('/api/push/seismic/check', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// Scheduler climÃ¡tico â€” manejado por backend/clima (el motor inyecta sus
+// Scheduler climático — manejado por backend/clima (el motor inyecta sus
 // dependencias y arranca su propio setInterval de 30 min en server.js bajo
-// el nombre del mÃ³dulo). Ver la inicializaciÃ³n en el bloque de clima.
+// el nombre del módulo). Ver la inicialización en el bloque de clima.
 
-// â”€â”€ MONITOR AUTOMÃTICO DE RELEASES (apps open source) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Revisa periÃ³dicamente las apps con `source_repo` vÃ­a la API pÃºblica
-// de GitHub; si hay una versiÃ³n nueva publicada actualiza el documento
-// en MongoDB y envÃ­a push a todos los suscriptores ("app se actualizÃ³").
+// ── MONITOR AUTOMÁTICO DE RELEASES (apps open source) ──────────
+// Revisa periódicamente las apps con `source_repo` vía la API pública
+// de GitHub; si hay una versión nueva publicada actualiza el documento
+// en MongoDB y envía push a todos los suscriptores ("app se actualizó").
 const AUTO_UPDATE_MS = Math.max(30 * 60 * 1000, Number(process.env.AUTO_UPDATE_MS) || 6 * 60 * 60 * 1000);
 const GITHUB_MONITOR_TOKEN = process.env.GITHUB_TOKEN || null;
 
@@ -5064,7 +5064,7 @@ async function autoCheckAppUpdates() {
       const update = {
         version: nuevaVersion,
         changelog: truncate(release.body),
-        tag: 'ðŸ”„ Actualizada',
+        tag: '🔄 Actualizada',
         updatedAt: new Date(),
       };
       if (apkUrl) update.enlace = apkUrl;
@@ -5075,28 +5075,28 @@ async function autoCheckAppUpdates() {
       updated++;
 
       const r = await broadcastPush({
-        title: 'ðŸ”„ ' + app.nombre + ' se actualizÃ³',
-        body: truncate(release.body, 120) || 'Nueva versiÃ³n ' + nuevaVersion + ' disponible',
+        title: '🔄 ' + app.nombre + ' se actualizó',
+        body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
         type: 'app_update',
         appId: app.appId,
         version: nuevaVersion,
         url: '/opensource.html',
       });
       sent += r.sent || 0;
-      console.log('â¬†ï¸  Auto: ' + app.nombre + ' â†’ ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
+      console.log('⬆️  Auto: ' + app.nombre + ' → ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
     } catch (e) {
-      console.warn('âš ï¸  Auto update ' + app.appId + ':', e.message);
+      console.warn('⚠️  Auto update ' + app.appId + ':', e.message);
     }
     await new Promise(r => setTimeout(r, 500));
   }
   return { ok: true, checked: apps.length, updated, sent };
 }
 
-// Scheduler del monitor â€” cada 6h por defecto (configurable con AUTO_UPDATE_MS)
+// Scheduler del monitor — cada 6h por defecto (configurable con AUTO_UPDATE_MS)
 setInterval(() => {
   autoCheckAppUpdates()
-    .then(o => { if (o.updated) console.log('ðŸ¤– Monitor releases: ' + o.updated + ' actualizada(s)'); })
-    .catch(e => console.warn('âš ï¸  Monitor releases error:', e.message));
+    .then(o => { if (o.updated) console.log('🤖 Monitor releases: ' + o.updated + ' actualizada(s)'); })
+    .catch(e => console.warn('⚠️  Monitor releases error:', e.message));
 }, AUTO_UPDATE_MS);
 
 // Endpoint para disparar el monitor manualmente (admin-hub / cron externo)
@@ -5107,20 +5107,20 @@ app.get('/api/admin/apps/check-updates', requireAdmin, async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// â”€â”€ WEBHOOK DE GITHUB â€” releases en tiempo real â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// autoCheckAppUpdates() (arriba) revisa cada 6h por polling â€” funciona,
+// ── WEBHOOK DE GITHUB — releases en tiempo real ─────────────────
+// autoCheckAppUpdates() (arriba) revisa cada 6h por polling — funciona,
 // pero no es "tiempo real": si publicas un release, los suscriptores no
 // se enteran hasta el siguiente ciclo del monitor. Este webhook hace que
-// GitHub avise al instante en cuanto se publica un release, y aquÃ­ mismo
+// GitHub avise al instante en cuanto se publica un release, y aquí mismo
 // se dispara el push a todos los suscriptores sin esperar al polling.
 //
-// ConfiguraciÃ³n necesaria (una vez por repo que quieras notificar al
-// instante, ademÃ¡s de GITHUB_WEBHOOK_SECRET en las env vars de Render):
-//   GitHub repo â†’ Settings â†’ Webhooks â†’ Add webhook
+// Configuración necesaria (una vez por repo que quieras notificar al
+// instante, además de GITHUB_WEBHOOK_SECRET en las env vars de Render):
+//   GitHub repo → Settings → Webhooks → Add webhook
 //     Payload URL: https://<tu-backend>/api/webhook/github-release
 //     Content type: application/json
 //     Secret: el mismo valor que GITHUB_WEBHOOK_SECRET
-//     Evento: "Let me select individual events" â†’ Releases
+//     Evento: "Let me select individual events" → Releases
 function verifyGithubSignature(req) {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
   if (!secret) return false; // sin secreto configurado, no se acepta el webhook
@@ -5134,7 +5134,7 @@ function verifyGithubSignature(req) {
 
 app.post('/api/webhook/github-release', async (req, res) => {
   try {
-    if (!verifyGithubSignature(req)) return res.status(401).json({ ok: false, error: 'Firma invÃ¡lida o GITHUB_WEBHOOK_SECRET no configurado' });
+    if (!verifyGithubSignature(req)) return res.status(401).json({ ok: false, error: 'Firma inválida o GITHUB_WEBHOOK_SECRET no configurado' });
 
     const event = req.get('x-github-event');
     if (event === 'ping') return res.json({ ok: true, pong: true });
@@ -5148,16 +5148,16 @@ app.post('/api/webhook/github-release', async (req, res) => {
     if (!ownerRepo || !release) return res.status(400).json({ ok: false, error: 'Payload incompleto' });
 
     const app_ = await App.findOne({ source_repo: ownerRepo });
-    if (!app_) return res.json({ ok: true, matched: false, reason: 'Ninguna app del catÃ¡logo usa ese source_repo' });
+    if (!app_) return res.json({ ok: true, matched: false, reason: 'Ninguna app del catálogo usa ese source_repo' });
 
     const nuevaVersion = release.tag_name || release.name || null;
-    if (!nuevaVersion || nuevaVersion === app_.version) return res.json({ ok: true, matched: true, skipped: 'misma versiÃ³n' });
+    if (!nuevaVersion || nuevaVersion === app_.version) return res.json({ ok: true, matched: true, skipped: 'misma versión' });
 
     const apkUrl = pickApkAsset(release);
     const update = {
       version: nuevaVersion,
       changelog: truncate(release.body),
-      tag: 'ðŸ”„ Actualizada',
+      tag: '🔄 Actualizada',
       updatedAt: new Date(),
     };
     if (apkUrl) update.enlace = apkUrl;
@@ -5167,15 +5167,15 @@ app.post('/api/webhook/github-release', async (req, res) => {
     broadcastAppsChanged();
 
     const r = await broadcastPush({
-      title: 'ðŸ”„ ' + app_.nombre + ' se actualizÃ³',
-      body: truncate(release.body, 120) || 'Nueva versiÃ³n ' + nuevaVersion + ' disponible',
+      title: '🔄 ' + app_.nombre + ' se actualizó',
+      body: truncate(release.body, 120) || 'Nueva versión ' + nuevaVersion + ' disponible',
       type: 'app_update',
       appId: app_.appId,
       version: nuevaVersion,
       url: '/opensource.html',
     });
 
-    console.log('âš¡ Webhook release instantÃ¡neo: ' + app_.nombre + ' â†’ ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
+    console.log('⚡ Webhook release instantáneo: ' + app_.nombre + ' → ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
     res.json({ ok: true, matched: true, updated: true, sent: r.sent || 0 });
   } catch (e) {
     console.error('webhook/github-release error:', e.message);
@@ -5183,29 +5183,29 @@ app.post('/api/webhook/github-release', async (req, res) => {
   }
 });
 
-// â”€â”€ PROCESO: capturar errores no controlados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PROCESO: capturar errores no controlados ────────────────────
 // Sin esto, un throw async sin catch (p. ej. en un handler de WS o un
 // setTimeout) tumba el proceso entero en Render sin dejar rastro claro
 // de la causa. Se loguea + se avisa por Telegram, pero NO se hace
 // process.exit() salvo que el error sea realmente fatal para el event
-// loop â€” dejar el proceso vivo es preferible a un crash-loop.
+// loop — dejar el proceso vivo es preferible a un crash-loop.
 process.on('unhandledRejection', (reason, promise) => {
   const msg = reason instanceof Error ? reason.stack || reason.message : String(reason);
-  console.error('âš ï¸ unhandledRejection:', msg);
-  tgAlert('unhandled_rejection', () => 'ðŸ”´ unhandledRejection:\n' + String(msg).slice(0, 500), { windowMs: 30000 });
+  console.error('⚠️ unhandledRejection:', msg);
+  tgAlert('unhandled_rejection', () => '🔴 unhandledRejection:\n' + String(msg).slice(0, 500), { windowMs: 30000 });
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('ðŸ”´ uncaughtException:', err.stack || err.message);
-  tgAlert('uncaught_exception', () => 'ðŸ”´ uncaughtException:\n' + String(err.stack || err.message).slice(0, 500), { windowMs: 30000 });
-  // No se llama process.exit(): en Express, un throw sÃ­ncrono dentro de
+  console.error('🔴 uncaughtException:', err.stack || err.message);
+  tgAlert('uncaught_exception', () => '🔴 uncaughtException:\n' + String(err.stack || err.message).slice(0, 500), { windowMs: 30000 });
+  // No se llama process.exit(): en Express, un throw síncrono dentro de
   // un route handler normal ya es capturado por Express mismo; esto
   // cubre solo callbacks/timers fuera de ese ciclo. Mantener el
-  // proceso vivo evita reinicios en cascada que tumbarÃ­an WebSockets
+  // proceso vivo evita reinicios en cascada que tumbarían WebSockets
   // y sesiones activas por un error aislado.
 });
 
-// â”€â”€ Streaming SSE (Server-Sent Events) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Streaming SSE (Server-Sent Events) ─────────────────────────────────────
 // Endpoint alternativo a /api/chat que devuelve la respuesta token por token.
 // Soporta Groq, Cerebras, HuggingFace, OpenRouter, Mistral, Kimi (OpenAI-compat)
 // y Claude (Anthropic SSE). Cohere y Gemini Vision caen a non-streaming.
@@ -5215,22 +5215,22 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
   if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
 
-  // â”€â”€ Imagen/PDF escaneado: fallback a non-streaming (solo Gemini Vision) â”€â”€
+  // ── Imagen/PDF escaneado: fallback a non-streaming (solo Gemini Vision) ──
   const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
   if (imgList && imgList.length) {
     req.url = '/api/chat';
     return app.handle(req, res);
   }
 
-  // â”€â”€ LÃ­mite diario server-side â”€â”€
+  // ── Límite diario server-side ──
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
   const emiLimit = await getEmiLimit(!!req.authUser);
   const emiUsed = await getEmiUsage(emiKey);
   if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `LÃ­mite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesiÃ³n para mÃ¡s.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+    return res.status(429).json({ error: `Límite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesión para más.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
   }
 
-  // â”€â”€ Recuperar historial â”€â”€
+  // ── Recuperar historial ──
   let sessionHistory = [];
   if (dbConnected && sessionId !== 'anon') {
     try {
@@ -5242,13 +5242,13 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   if (typeof pdfText === 'string' && pdfText.trim()) {
     sessionHistory.splice(sessionHistory.length - 1, 0, {
       role: 'user',
-      content: '[Documento adjunto â€” resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en espaÃ±ol]:\n' + pdfText.slice(0, 40000)
+      content: '[Documento adjunto — resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en español]:\n' + pdfText.slice(0, 40000)
     });
   }
 
-  // F1.1: SYSTEM dinÃ¡mico â€” base para queries generales, completa para CodeHub
+  // F1.1: SYSTEM dinámico — base para queries generales, completa para CodeHub
   let system = classifySystem(message);
-  // Skill activa: inyecta su guÃ­a
+  // Skill activa: inyecta su guía
   if (skill_id) {
     const skill = loadSkillJson(String(skill_id));
     if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
@@ -5267,17 +5267,17 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       console.warn('Wil.E contexto error:', e.message);
     }
   }
-  // WIL.E: bÃºsqueda web en vivo (datos actuales) cuando la consulta lo pide
+  // WIL.E: búsqueda web en vivo (datos actuales) cuando la consulta lo pide
   try {
     const live = await liveWebContext(message);
     if (live) system = system + '\n\n' + live;
   } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cÃ³mputo (cÃ¡lculos, fecha, conversiones) sin LLM
+  // WIL.E: herramienta de cómputo (cálculos, fecha, conversiones) sin LLM
   try {
     const tool = computeTool(message);
     if (tool) system = system + '\n\n' + tool;
   } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling â€” ejecuta la herramienta detectada (web/computo/URL)
+  // WIL.E: function-calling — ejecuta la herramienta detectada (web/computo/URL)
   try {
     const dt = detectTool(message);
     if (dt) {
@@ -5288,7 +5288,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
   const msgs = buildSmartMessages(system, sessionHistory, 10000);
 
-  // â”€â”€ Setup SSE headers â”€â”€
+  // ── Setup SSE headers ──
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
@@ -5368,7 +5368,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   try {
     const order = classifyRoute(msgs);
 
-    // â”€â”€ Claude streaming â”€â”€
+    // ── Claude streaming ──
     if (!replied && order[0] === 'Claude' && process.env.ANTHROPIC_API_KEY) {
       try {
         const sysMsg = msgs.find(m => m.role === 'system');
@@ -5392,7 +5392,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       }
     }
 
-    // â”€â”€ OpenAI-compatible streaming providers â”€â”€
+    // ── OpenAI-compatible streaming providers ──
     if (!replied) {
       const oaiProviders = [
         { name: 'Kimi', endpoint: 'https://api.moonshot.ai/v1/chat/completions', key: process.env.KIMI_API_KEY, model: 'kimi-k2-0905-preview', label: 'moonshot/kimi-k2' },
@@ -5432,7 +5432,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       }
     }
 
-    // â”€â”€ Gemini / Cohere fallback: non-streaming â”€â”€
+    // ── Gemini / Cohere fallback: non-streaming ──
     if (!replied) {
       try {
         const result = await callAI(msgs);
@@ -5448,7 +5448,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
       }
     }
 
-    // â”€â”€ Finalizar: persistir, side effects, done â”€â”€
+    // ── Finalizar: persistir, side effects, done ──
     if (dbConnected) ChatMessage.insertMany([
       { sessionId, role: 'user', content: message.trim(), tokens: usage.input, model: modelName },
       { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
@@ -5474,7 +5474,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   }
 });
 
-// â”€â”€ 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) â”€â”€
+// ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
 app.use((req, res) => {
   if (req.path === '/api/health/keys') return res.json({
     autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
@@ -5483,16 +5483,16 @@ app.use((req, res) => {
     claude:      !!(process.env.ANTHROPIC_API_KEY),
     cohere:      !!(process.env.COHERE_API_KEY),
   });
-  // Un 404 en /api/* casi siempre es seÃ±al de un bug real (ruta mal
-  // ordenada, typo, endpoint borrado sin actualizar el frontend) â€” a
+  // Un 404 en /api/* casi siempre es señal de un bug real (ruta mal
+  // ordenada, typo, endpoint borrado sin actualizar el frontend) — a
   // diferencia de 404s fuera de /api/ que suelen ser bots escaneando
   // rutas al azar. tgAlert ya deduplica por path dentro de una ventana
-  // de tiempo, asÃ­ que un bot insistente no hace spam en Telegram.
+  // de tiempo, así que un bot insistente no hace spam en Telegram.
   if (req.path.startsWith('/api/')) {
     const ip = clientIp(req);
     tgAlert('404:' + req.path, n =>
-      `ðŸ•³ï¸ <b>404 en ruta interna</b>\n<code>${req.method} ${escHtml(req.path)}</code>\nIP: <code>${ip}</code>\nOcurrencias: ${n}\n\n` +
-      `Si esta ruta la usa el frontend/app, revisa el orden de definiciÃ³n en server.js â€” una ruta declarada despuÃ©s de este catch-all queda inalcanzable.`,
+      `🕳️ <b>404 en ruta interna</b>\n<code>${req.method} ${escHtml(req.path)}</code>\nIP: <code>${ip}</code>\nOcurrencias: ${n}\n\n` +
+      `Si esta ruta la usa el frontend/app, revisa el orden de definición en server.js — una ruta declarada después de este catch-all queda inalcanzable.`,
       { windowMs: 30000 });
   }
   res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
@@ -5500,41 +5500,41 @@ app.use((req, res) => {
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  console.error('ðŸ”´ Error middleware:', err.stack || err.message);
-  tgAlert('express_error', () => 'ðŸ”´ Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
+  console.error('🔴 Error middleware:', err.stack || err.message);
+  tgAlert('express_error', () => '🔴 Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
   if (res.headersSent) return;
   res.status(err.status || 500).json({ ok: false, error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
 });
 
-// â”€â”€ ARRANCAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ARRANCAR ──────────────────────────────────────────────────
 (async () => {
   await initRedis();
   dbConnected = await connectDB();
-  if (supabase) console.log('âœ… Supabase Storage listo â€” bucket:', STORAGE_BUCKET);
+  if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
   await ensurePushTable();
   await ensureFCMTable();
 
   server.listen(PORT, () => {
-    console.log(`ðŸš€ CodeHub Backend v3.0 en puerto ${PORT}`);
-    console.log(`   MongoDB:    ${dbConnected ? 'âœ…' : 'âš ï¸  sin conexiÃ³n'}`);
-    console.log(`   Redis:      ${redis       ? 'âœ…' : 'âš ï¸  usando memoria'}`);
-    console.log(`   WebSockets: âœ… /ws`);
-    console.log(`   FCM:        ${fcmEnabled ? 'âœ… push nativo Android' : 'âš ï¸  solo web-push'}`);
-    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? 'âœ… (' + OR_FREE_MODELS.length + ' modelos gratis)' : 'âš ï¸  sin configurar'));
-    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Storage:    ${supabase ? 'âœ… Supabase' : 'âŒ falta SUPABASE_URL/KEY'}`);
-    console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Push Clima: âœ… VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
-    console.log(`   Monitor Releases: âœ… auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
+    console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
+    console.log(`   MongoDB:    ${dbConnected ? '✅' : '⚠️  sin conexión'}`);
+    console.log(`   Redis:      ${redis       ? '✅' : '⚠️  usando memoria'}`);
+    console.log(`   WebSockets: ✅ /ws`);
+    console.log(`   FCM:        ${fcmEnabled ? '✅ push nativo Android' : '⚠️  solo web-push'}`);
+    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? '✅' : '⚠️  sin configurar'}`);
+    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? '✅ (' + OR_FREE_MODELS.length + ' modelos gratis)' : '⚠️  sin configurar'));
+    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
+    console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
+    console.log(`   Push Clima: ✅ VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
+    console.log(`   Monitor Releases: ✅ auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
   });
 })();
 
-// â”€â”€ RENDER KEEPALIVE â€” se agrega despuÃ©s del server.listen â”€â”€â”€â”€
+// ── RENDER KEEPALIVE — se agrega después del server.listen ────
 // Render free tier apaga el servicio tras ~15 min de inactividad.
 // Self-ping cada 10 min mantiene el proceso vivo sin servicio externo.
 // Requiere: RENDER_EXTERNAL_URL en las variables de entorno de Render.
@@ -5542,17 +5542,17 @@ app.use((err, req, res, next) => {
 function startRenderKeepalive() {
   const SELF_URL = process.env.RENDER_EXTERNAL_URL || null;
   if (!SELF_URL) {
-    console.log('   Keepalive:  âš ï¸  agrega RENDER_EXTERNAL_URL en Render > Environment');
+    console.log('   Keepalive:  ⚠️  agrega RENDER_EXTERNAL_URL en Render > Environment');
     return;
   }
   const target = SELF_URL.replace(/\/$/, '') + '/api/health';
   const lib = target.startsWith('https') ? require('https') : require('http');
   setInterval(() => {
     lib.get(target, (res) => {
-      console.log('ðŸ”” Render keepalive ping â†’', res.statusCode);
-    }).on('error', (e) => console.warn('âš ï¸  Keepalive error:', e.message));
+      console.log('🔔 Render keepalive ping →', res.statusCode);
+    }).on('error', (e) => console.warn('⚠️  Keepalive error:', e.message));
   }, 10 * 60 * 1000);
-  console.log('   Keepalive:  âœ… self-ping activo â†’ ' + target + ' (cada 10 min)');
+  console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
 }
 startRenderKeepalive();
 
