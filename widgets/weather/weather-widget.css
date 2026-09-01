@@ -1,0 +1,193 @@
+/* ═══════════════════════════════════════════════════════════
+   CodeHub Widget — Clima (estilo Samsung/Windows Weather)
+   Pastilla flotante abajo-izquierda:
+   - Colapsada: icono + temperatura + ciudad.
+   - Expandida: temp grande, condición, sensación, franja de
+     pronóstico por horas (próximas 24 h) y recomendación inteligente.
+   Sin dependencias externas: usa Open-Meteo (ya permitido por CSP).
+   ── Reglas de responsividad (AGENTS.md): SOLO breakpoints canónicos
+      380 / 480 / 640 / 720 / 768 px. Ventana mínima soportada 380px.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --chw-surface: rgba(15, 23, 42, .92);
+  --chw-border: rgba(148, 163, 184, .25);
+  --chw-text: #f1f5f9;
+  --chw-text-dim: rgba(241, 245, 249, .72);
+  --chw-accent: #38bdf8;
+  --chw-accent-2: #22c55e;
+  --chw-glow: rgba(56, 189, 248, .28);
+  --chw-radius: 18px;
+  --chw-radius-pill: 999px;
+}
+
+.chw-widget {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 4200;
+  font-family: var(--font, system-ui, -apple-system, sans-serif);
+  max-width: calc(100vw - 32px);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Pastilla colapsada ─────────────────────────────── */
+.chw-pill {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .45rem .8rem;
+  border-radius: var(--chw-radius-pill);
+  background: var(--chw-surface);
+  border: 1px solid var(--chw-border);
+  color: var(--chw-text);
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, .35);
+  outline: none;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+  max-width: calc(100vw - 32px);
+}
+.chw-pill:hover { border-color: var(--chw-accent); box-shadow: 0 10px 28px rgba(2, 6, 23, .45); }
+.chw-pill:active { transform: scale(.96); }
+.chw-pill i.chw-caret { font-size: .6rem; margin-left: .1rem; opacity: .7; transition: transform .25s ease; }
+.chw-widget[data-open="1"] .chw-pill i.chw-caret { transform: rotate(180deg); }
+
+.chw-pill-icon { font-size: 1.05rem; line-height: 1; }
+.chw-pill-temp { font-size: 1rem; line-height: 1; }
+.chw-pill-city {
+  font-weight: 600;
+  opacity: .8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 118px;
+}
+.chw-pill-change { font-weight: 700; }
+
+/* ── Panel expandido ────────────────────────────────── */
+.chw-panel {
+  display: none;
+  width: 312px;
+  max-width: calc(100vw - 32px);
+  margin-bottom: .6rem;
+  border-radius: var(--chw-radius);
+  background: var(--chw-surface);
+  border: 1px solid var(--chw-border);
+  color: var(--chw-text);
+  box-shadow: 0 18px 48px rgba(2, 6, 23, .5);
+  overflow: hidden;
+  animation: chwPop .22s ease;
+}
+.chw-widget[data-open="1"] .chw-panel { display: block; }
+
+@keyframes chwPop {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.chw-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: .9rem 1rem .55rem;
+}
+.chw-now-temp {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+.chw-now-sub { margin-top: .35rem; font-size: .78rem; color: var(--chw-text-dim); }
+.chw-now-right { text-align: right; }
+.chw-now-icon { font-size: 2.1rem; line-height: 1; }
+.chw-now-city { margin-top: .3rem; font-size: .72rem; color: var(--chw-text-dim); white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Recomendación inteligente */
+.chw-tip {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin: .2rem .9rem .7rem;
+  padding: .55rem .7rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, .16), rgba(99, 102, 241, .16));
+  border: 1px solid rgba(56, 189, 248, .28);
+  font-size: .75rem;
+  line-height: 1.4;
+}
+.chw-tip i { font-size: 1.05rem; }
+
+/* Franja horaria 3×8 */
+.chw-strip {
+  display: flex;
+  gap: .4rem;
+  overflow-x: auto;
+  padding: 0 .9rem .9rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, .4) transparent;
+}
+.chw-strip::-webkit-scrollbar { height: 5px; }
+.chw-strip::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, .4); border-radius: 99px; }
+.chw-hour {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding: .45rem .5rem;
+  min-width: 52px;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, .08);
+  font-size: .7rem;
+}
+.chw-hour.is-now { background: rgba(56, 189, 248, .16); border: 1px solid rgba(56, 189, 248, .35); }
+.chw-hour-time { color: var(--chw-text-dim); white-space: nowrap; }
+.chw-hour-icon { font-size: 1.05rem; }
+.chw-hour-rain { color: #7dd3fc; font-size: .62rem; }
+.chw-hour-temp { font-weight: 700; }
+
+/* Estado vacío (sin ubicación) */
+.chw-hint {
+  margin: .2rem .9rem .9rem;
+  font-size: .72rem;
+  color: var(--chw-text-dim);
+  line-height: 1.45;
+}
+.chw-hint b { color: var(--chw-accent); }
+.chw-widget[data-ready="0"] .chw-pill-temp { display: none; }
+
+/* ── Tema claro (prefers-color-scheme) ──────────────── */
+@media (prefers-color-scheme: light) {
+  :root {
+    --chw-surface: rgba(255, 255, 255, .94);
+    --chw-border: rgba(100, 116, 139, .28);
+    --chw-text: #0f172a;
+    --chw-text-dim: rgba(51, 65, 85, .78);
+  }
+}
+
+/* ── Responsividad (solo breakpoints canónicos) ─────── */
+@media (max-width: 380px) {
+  .chw-widget { left: 10px; bottom: 10px; }
+  .chw-pill { padding: .38rem .62rem; font-size: .74rem; }
+  .chw-pill-city { max-width: 86px; }
+  .chw-panel { width: 272px; }
+  .chw-now-temp { font-size: 2.1rem; }
+}
+
+@media (max-width: 480px) {
+  .chw-widget { left: 12px; bottom: 12px; }
+}
+
+@media (max-width: 640px) {
+  .chw-widget { left: 14px; bottom: 14px; max-width: calc(100vw - 28px); }
+}
+
+/* Red de seguridad anti-desbordes: nunca excede la ventana */
+@media (max-width: 768px) {
+  .chw-panel { max-width: calc(100vw - 28px); }
+  .chw-pill  { max-width: calc(100vw - 28px); }
+}

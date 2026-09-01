@@ -361,6 +361,9 @@
     }
     syncPushLocation(lat, lon, city);
 
+    // Refrescar el widget de clima flotante (widgets/)
+    if (window.chWidget && window.chWidget.refresh) { try { window.chWidget.refresh(); } catch (e) {} }
+
     closeMap();
     if (typeof toast === 'function') toast('Ciudad guardada: ' + city, 'weather', 3000);
   }
