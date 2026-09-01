@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.50';
+const VERSION = 'codehub-v6.51';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones

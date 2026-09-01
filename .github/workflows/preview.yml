@@ -13,7 +13,7 @@ jobs:
   preview:
     name: Preview deploy
     runs-on: ubuntu-latest
-    if: contains(github.ref, 'pull')
+    if: contains(github.ref, 'pull') && secrets.VERCEL_TOKEN != ''
     steps:
       - name: Crear deployment de preview en Vercel
         id: deploy

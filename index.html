@@ -106,7 +106,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://maps.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E — Desarrollador Full Stack en Guatemala. Portfolio con herramientas web, apps Android y proyectos de código abierto.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -240,9 +240,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <!-- Estilos principales -->
     <link rel="stylesheet" href="css/index.css?v=20260808f">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260809d">
+    <link rel="stylesheet" href="css/components.css?v=20260810a">
     <!-- Media queries responsive -->
-    <link rel="stylesheet" href="css/index-responsive.css?v=20260808d">
+    <link rel="stylesheet" href="css/index-responsive.css?v=20260809a">
     <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
@@ -1196,9 +1196,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <div class="wx-eyebrow">// detectado automáticamente</div>
                     <h2 style="margin-bottom:0">Clima en tu Ciudad</h2>
                 </div>
-                <button class="wx-location-btn" id="wx-loc-btn" onclick="requestGeoLocation()" title="Usar mi ubicación exacta">
-                    <i class="fas fa-location-dot"></i> Usar mi ubicación
-                </button>
+                <div class="wx-header-actions">
+                    <button class="wx-location-btn" id="wx-loc-btn" onclick="requestGeoLocation()" title="Usar mi ubicación exacta">
+                        <i class="fas fa-location-dot"></i> Usar mi ubicación
+                    </button>
+                    <button class="wx-widget-btn" id="wx-widget-btn" onclick="chAddWidgetToHome()" title="Añade CodeHub con el widget del clima a tu pantalla de inicio">
+                        <i class="fas fa-house"></i> Insertar widget a inicio
+                    </button>
+                </div>
             </div>
 
             <!-- Toggle elegante: alertas de clima por push -->
@@ -1465,7 +1470,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-    <script src="js/remote-config.js?v=20260826b"></script>
+    <script src="js/remote-config.js?v=20260826c"></script>
     <script src="js/updater.js?v=20260724a"></script>
     <script>
         // Gate de debug: activa con localStorage.setItem('ch_debug','1')
@@ -6624,7 +6629,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const _isStandalone = (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
-  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); });
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    window.__deferredPrompt = e;
+  });
+  window.addEventListener('appinstalled', () => { window.__deferredPrompt = null; });
 
   async function getAPKUrl() {
     try {
@@ -6700,6 +6709,35 @@ document.addEventListener('DOMContentLoaded', () => {
   window.appInstallShow = appInstallShow;
   window.appInstallDismiss = appInstallDismiss;
   window.appInstallAction = appInstallAction;
+
+  function chAddWidgetToHome() {
+    // 1) APK nativo: crear el widget de clima real si el puente lo expone.
+    if (window.CodeHubNative && typeof CodeHubNative.addWidget === 'function') {
+      try {
+        CodeHubNative.addWidget('weather');
+        if (typeof toast === 'function') toast('\uD83C\uDFE0 Widget de clima agregado a tu inicio', 'success', 4000);
+        return;
+      } catch (e) {}
+    }
+    // 2) PWA: prompt de instalación oficial del navegador.
+    if (window.__deferredPrompt) {
+      const p = window.__deferredPrompt;
+      p.prompt();
+      p.userChoice.then(function (choice) {
+        if (choice.outcome === 'accepted' && typeof toast === 'function') {
+          toast('\uD83C\uDFE0 CodeHub a\u00F1adido a tu pantalla de inicio', 'success', 4000);
+        }
+        window.__deferredPrompt = null;
+      }).catch(function () { window.__deferredPrompt = null; });
+      return;
+    }
+    // 3) Fallback: guía de instalación existente (APK / iOS / link).
+    if (typeof appInstallShow === 'function') { appInstallShow(); return; }
+    if (typeof toast === 'function') {
+      toast('Abre el men\u00FA del navegador \u25BE \u2192 \u00ABA\u00F1adir a pantalla de inicio\u00BB', 'info', 4000);
+    }
+  }
+  window.chAddWidgetToHome = chAddWidgetToHome;
 
   // Hide hero APK button + install overlay when running as native app
   // Re-check on DOMContentLoaded + after 1s because __apkNative may be
@@ -7538,7 +7576,7 @@ function setAIMood(btn) {
 <script src="js/ux-animations.js?v=20260811a" defer></script>
 <script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
-<script src="js/weather-map.js?v=20260827a" defer></script>
+<script src="js/weather-map.js?v=20260827b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

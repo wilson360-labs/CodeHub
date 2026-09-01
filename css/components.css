@@ -3530,6 +3530,22 @@
             cursor: pointer; transition: all .2s; font-family: var(--font);
         }
         .wx-location-btn:hover { background: rgba(34,197,94,.2); }
+        .wx-header-actions {
+            display: flex; align-items: center; gap: .5rem;
+            flex-wrap: wrap;
+        }
+        .wx-widget-btn {
+            display: flex; align-items: center; gap: .4rem;
+            padding: .4rem .9rem; border-radius: var(--radius-sm, 10px);
+            background: linear-gradient(135deg, rgba(56,189,248,.14), rgba(99,102,241,.14));
+            border: 1px solid rgba(56,189,248,.35);
+            color: #38bdf8; font-size: .78rem; font-weight: 700;
+            cursor: pointer; transition: all .2s; font-family: var(--font);
+        }
+        .wx-widget-btn:hover {
+            background: linear-gradient(135deg, rgba(56,189,248,.25), rgba(99,102,241,.25));
+            box-shadow: 0 4px 14px rgba(56,189,248,.2);
+        }
         .wx-alerts-toggle {
             display: flex; align-items: center; gap: .7rem;
             margin-bottom: 1.5rem; padding: .7rem 1rem;

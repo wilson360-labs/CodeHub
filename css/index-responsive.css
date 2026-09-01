@@ -990,7 +990,9 @@
   /* ── CLIMA ── */
   #weather-section { padding: 2rem 1rem; }
   .wx-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+  .wx-header-actions { width: 100%; }
   .wx-location-btn { min-height: 44px; font-size: 0.78rem; padding: 0.5rem 1rem; }
+  .wx-widget-btn { min-height: 44px; font-size: 0.78rem; padding: 0.5rem 1rem; flex: 1; justify-content: center; }
   .wx-card { padding: 1rem; border-radius: var(--radius-lg, 18px); }
   .wx-city { font-size: 1.1rem; }
   .wx-temp { font-size: 3rem; }
