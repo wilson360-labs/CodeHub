@@ -270,13 +270,18 @@
     refresh();
   }
 
-  // ── Init respeta RC ──
+  // ── Init ──
+  // Se construye de inmediato (robusto ante latencia de RC); si la feature
+  // está desactivada en config remota, se oculta.
   function init() {
-    if (typeof RC === 'undefined' || !RC.ready) { build(); return; }
-    RC.ready().then(function () {
-      if (RC.feature('weatherEnabled') === false) return;
-      build();
-    });
+    build();
+    if (typeof RC !== 'undefined' && RC.ready) {
+      RC.ready().then(function () {
+        if (RC.feature('weatherEnabled') === false && _root) {
+          _root.style.display = 'none';
+        }
+      });
+    }
   }
 
   window.chWidget = {
