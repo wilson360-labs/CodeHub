@@ -1,0 +1,82 @@
+name: Vercel Preview
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  preview:
+    name: Preview deploy
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'pull')
+    steps:
+      - name: Crear deployment de preview en Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          REF: ${{ github.head_ref }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Crear deployment de preview apuntando al ref de la PR (gitSource github)
+          DEPLOY=$(curl -s -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"code-hub\",\"project\":\"code-hub\",\"gitSource\":{\"type\":\"github\",\"repoId\":856671518,\"ref\":\"${REF}\",\"sha\":\"${SHA}\"},\"outputDirectory\":\".\"}")
+
+          ID=$(printf '%s' "$DEPLOY" | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))")
+          URL=$(printf '%s' "$DEPLOY" | python3 -c "import sys,json;print(json.load(sys.stdin).get('url',''))")
+
+          if [ -z "$ID" ]; then
+            echo "ERROR creando deployment: $(printf '%s' "$DEPLOY" | head -c 500)"
+            exit 1
+          fi
+
+          echo "Deployment creado: id=$ID url=$URL"
+
+          # Esperar a que termine de hacer build (hasta 180s)
+          for i in $(seq 1 36); do
+            sleep 5
+            STATE=$(curl -s "https://api.vercel.com/v13/deployments/${ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | python3 -c "import sys,json;print(json.load(sys.stdin).get('readyState',''))")
+            echo "  estado: ${STATE}"
+            if [ "$STATE" = "READY" ]; then
+              echo "ready=true" >> "$GITHUB_OUTPUT"
+              echo "url=${URL}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
+              echo "Deployment fallo (${STATE})"
+              echo "ready=false" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          done
+
+          echo "Tiempo agotado esperando el build"
+          echo "ready=false" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      - name: Comentar URL de preview en la PR
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = "${{ steps.deploy.outputs.url }}";
+            if (!url) { console.log("Sin URL, omitiendo comentario"); return; }
+            const body = `🚀 **Preview desplegado**
+
+            URL: https://${url}
+
+            Este preview se genera automáticamente con el commit \`${context.sha.slice(0,7)}\`.`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
