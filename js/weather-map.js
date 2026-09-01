@@ -23,8 +23,11 @@
   var _googleMap = null;
   var _geocoder = null;
 
-  var LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-  var LEAFLET_JS  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  // Leaflet autohospedado (offline/APK sin depender de CDN). Fallback CDN
+  // solo si el archivo local no existe (p.ej. deploy sin el asset).
+  var LEAFLET_CSS = 'js/vendor/leaflet/leaflet.css';
+  var LEAFLET_JS  = 'js/vendor/leaflet/leaflet.js';
+  var LEAFLET_CSS_B = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
   var LEAFLET_JS_B = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
 
   window.chMapSearch = chMapSearch;
@@ -66,17 +69,26 @@
         link.setAttribute('data-wx-leaflet-css', '1');
         document.head.appendChild(link);
         link.addEventListener('load', function () { try { if (window.L) _map && _map.invalidateSize(); } catch (e) {} });
+        // Fallback CSS: si el local 404, cargar CDN (p.ej. deploy sin el asset)
+        link.addEventListener('error', function () {
+          var link2 = document.createElement('link');
+          link2.rel = 'stylesheet';
+          link2.href = LEAFLET_CSS_B;
+          link2.setAttribute('data-wx-leaflet-css', '1');
+          document.head.appendChild(link2);
+        });
       }
       if (!document.querySelector('script[data-wx-leaflet-js]')) {
         var done = false;
         function onOk() { if (!done) { done = true; resolve(L); } }
         function onErr() {
           if (done) return;
-          // Intento 1 falló → probar CDN alternativo (jsdelivr)
-          if (!window.L && s.src === LEAFLET_JS) {
+          // Intento 1 falló → probar CDN alternativo
+          if (!window.L && s.src !== LEAFLET_JS_B) {
             s.remove();
             var s2 = document.createElement('script');
             s2.src = LEAFLET_JS_B;
+            s2.setAttribute('data-wx-leaflet-js', '1');
             s2.onload = onOk;
             s2.onerror = function () { done = true; reject(new Error('leaflet load failed')); };
             document.head.appendChild(s2);
