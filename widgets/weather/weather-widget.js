@@ -3,7 +3,9 @@
    - Open-Meteo (CSP ya lo permite) + ubicación desde ch_user_*.
    - Caché propia en localStorage (ch_widget_weather, ~10 min).
    - Recomendaciones inteligentes: lluvia/UV/frío/calor/viento/tormenta.
-   - API pública: window.chWidget = { refresh, toggle }.
+   - Botón "refresh" en el panel: fuerza un fetch nuevo (ignora caché) y
+     muestra "Actualizado hace…" en tiempo real.
+   - API pública: window.chWidget = { refresh, refreshNow, toggle }.
    ═══════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -35,8 +37,26 @@
   var _root = null;
   var _open = false;
   var _timer = null;
+  var _updTimer = null;
+  var _lastUpdateTs = null;
 
   function q(sel) { return _root ? _root.querySelector(sel) : null; }
+
+  /* ── Etiqueta "Actualizado hace…" (tiempo real) ────── */
+  function setUpdatedText(ts) {
+    var el = q('.chw-updated-text');
+    if (!el) return;
+    if (!ts) { el.textContent = 'Sin datos aún'; return; }
+    var s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 8) el.textContent = 'Actualizado justo ahora';
+    else if (s < 60) el.textContent = 'Actualizado hace ' + s + 's';
+    else if (s < 3600) el.textContent = 'Actualizado hace ' + Math.round(s / 60) + ' min';
+    else el.textContent = 'Actualizado hace ' + Math.round(s / 3600) + ' h';
+  }
+  function startUpdatedTicker() {
+    if (_updTimer) clearInterval(_updTimer);
+    _updTimer = setInterval(function () { setUpdatedText(_lastUpdateTs); }, 5000);
+  }
 
   function readLocation() {
     if (typeof chReadLocation === 'function') return chReadLocation();
@@ -142,6 +162,9 @@
       label(code) + ' · Sensación ' + (feels != null ? Math.round(feels) : '--') + '°C';
     if (q('.chw-now-city')) q('.chw-now-city').textContent = city || 'Mi ubicación';
 
+    _lastUpdateTs = (data && data.ts) || Date.now();
+    setUpdatedText(_lastUpdateTs);
+
     if (q('.chw-tip')) {
       q('.chw-tip').innerHTML = '<i>' + tip.icon + '</i><span>' + tip.text + '</span>';
     }
@@ -169,7 +192,39 @@
     if (q('.chw-now-sub')) q('.chw-now-sub').textContent = 'Configura tu ubicación';
     if (q('.chw-tip')) q('.chw-tip').innerHTML = '<i>📍</i><span>Toca <b>“Elegir mi ciudad en el mapa”</b> para activar el widget del clima.</span>';
     if (q('.chw-strip')) q('.chw-strip').innerHTML = '';
+    _lastUpdateTs = null;
+    setUpdatedText(null);
     _root.setAttribute('data-ready', '0');
+  }
+
+  /* ── Refresco forzado (ignora caché) para clima en tiempo real ── */
+  function forceRefresh() {
+    var btn = q('.chw-refresh-btn');
+    if (btn) btn.classList.add('spinning');
+    try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+
+    var loc = readLocation();
+    if (!loc.lat || !loc.lon || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lon)) {
+      renderEmpty();
+      if (btn) btn.classList.remove('spinning');
+      return;
+    }
+
+    fetchWeather(loc.lat, loc.lon).then(function (d) {
+      var data = {
+        current: d.current || {},
+        hourly: d.hourly || {},
+        uvNow: (d.current && d.current.uv_index) != null ? d.current.uv_index : ((d.hourly && d.hourly.uv_index && d.hourly.uv_index[0]) || 0),
+        ts: Date.now(),
+      };
+      saveCache(data);
+      render(data, loc.city);
+      _root.setAttribute('data-ready', '1');
+      if (btn) btn.classList.remove('spinning');
+    }, function () {
+      if (btn) btn.classList.remove('spinning');
+      if (typeof toast === 'function') toast('⚠️ No se pudo actualizar el clima ahora mismo', 'error', 3000);
+    });
   }
 
   function refresh() {
@@ -241,8 +296,12 @@
           '<div>' +
             '<div class="chw-now-temp">--</div>' +
             '<div class="chw-now-sub">Cargando…</div>' +
+            '<div class="chw-updated"><span class="chw-live-dot"></span><span class="chw-updated-text">Cargando…</span></div>' +
           '</div>' +
           '<div class="chw-now-right">' +
+            '<button type="button" class="chw-refresh-btn" aria-label="Actualizar clima ahora" title="Actualizar clima ahora">' +
+              '<i class="fas fa-rotate"></i>' +
+            '</button>' +
             '<div class="chw-now-icon">🌡️</div>' +
             '<div class="chw-now-city">CodeHub</div>' +
           '</div>' +
@@ -251,6 +310,10 @@
         '<div class="chw-strip"></div>' +
       '</div>';
     _root.querySelector('.chw-pill').addEventListener('click', function () { toggle(); });
+    _root.querySelector('.chw-refresh-btn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      forceRefresh();
+    });
 
     var noLoc = !readLocation().lat;
     _root.addEventListener('click', function (e) {
@@ -267,6 +330,7 @@
       if (document.visibilityState === 'visible') refresh();
     });
     _timer = setInterval(refresh, TTL);
+    startUpdatedTicker();
     refresh();
   }
 
@@ -286,6 +350,7 @@
 
   window.chWidget = {
     refresh: refresh,
+    refreshNow: forceRefresh,
     toggle: toggle,
     get ready() { return !!_root; },
   };

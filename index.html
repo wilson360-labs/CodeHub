@@ -1202,7 +1202,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <button class="wx-location-btn" id="wx-loc-btn" onclick="requestGeoLocation()" title="Usar mi ubicación exacta">
                         <i class="fas fa-location-dot"></i> Usar mi ubicación
                     </button>
-                    <button class="wx-widget-btn" id="wx-widget-btn" onclick="chAddWidgetToHome(event)" title="Añade CodeHub con el widget del clima a tu pantalla de inicio">
+                    <button class="wx-widget-btn" id="wx-widget-btn" onclick="chAddWidgetToHome(event)" title="Crea el widget de clima de CodeHub en tu pantalla de inicio" style="display:none">
                         <i class="fas fa-house"></i> Insertar widget a inicio
                     </button>
                 </div>
@@ -6633,6 +6633,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const _isStandalone = (typeof CodeHubNative !== 'undefined') || !!window.__apkNative ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
+  // "Insertar widget a inicio" solo tiene sentido dentro de la app móvil
+  // (nativa APK o PWA instalada) — ahí sí se puede crear el widget real
+  // del clima en el home. En web de escritorio/navegador no aplica.
+  (function chWidgetBtnVisibility() {
+    var btn = document.getElementById('wx-widget-btn');
+    if (btn) btn.style.display = (_isMobile && _isStandalone) ? 'flex' : 'none';
+  })();
+
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     window.__deferredPrompt = e;
@@ -6716,30 +6724,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function chAddWidgetToHome(ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
+    // Este botón solo se muestra dentro de la app móvil (nativa o PWA
+    // instalada) — ver chWidgetBtnVisibility(). Si por algún motivo se
+    // dispara fuera de ese contexto, no hacemos nada silenciosamente raro.
+    if (!_isMobile || !_isStandalone) return;
+
     // 1) APK nativo: crear el widget de clima real si el puente lo expone.
     if (window.CodeHubNative && typeof CodeHubNative.addWidget === 'function') {
       try {
         CodeHubNative.addWidget('weather');
         if (typeof toast === 'function') toast('\uD83C\uDFE0 Widget de clima agregado a tu inicio', 'success', 4000);
         return;
-      } catch (e) {}
+      } catch (e) {
+        if (typeof toast === 'function') toast('\u26A0\uFE0F No se pudo crear el widget \u2014 intenta de nuevo', 'error', 4000);
+        return;
+      }
     }
-    // 2) PWA: prompt de instalación oficial del navegador.
-    if (window.__deferredPrompt) {
-      const p = window.__deferredPrompt;
-      window.__deferredPrompt = null; // valido una sola vez
-      p.prompt();
-      p.userChoice.then(function (choice) {
-        if (choice.outcome === 'accepted' && typeof toast === 'function') {
-          toast('\uD83C\uDFE0 CodeHub a\u00F1adido a tu pantalla de inicio', 'success', 4000);
-        } else {
-          appInstallShow(true); // el usuario rechazó el prompt → mostrar la guía
-        }
-      }).catch(function () { appInstallShow(true); });
-      return;
+    // 2) PWA instalada pero sin puente nativo: no existe mecanismo de
+    //    widget de pantalla de inicio real en este contexto todavía.
+    if (typeof toast === 'function') {
+      toast('\uD83C\uDFE0 El widget de clima estar\u00E1 disponible pronto en esta versi\u00F3n de la app', 'info', 4000);
     }
-    // 3) Fallback: guía de instalación existente (APK / iOS / link).
-    appInstallShow(true);
   }
   window.chAddWidgetToHome = chAddWidgetToHome;
 

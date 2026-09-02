@@ -101,9 +101,43 @@
   letter-spacing: -.02em;
 }
 .chw-now-sub { margin-top: .35rem; font-size: .78rem; color: var(--chw-text-dim); }
-.chw-now-right { text-align: right; }
+.chw-now-right { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; text-align: right; }
 .chw-now-icon { font-size: 2.1rem; line-height: 1; }
-.chw-now-city { margin-top: .3rem; font-size: .72rem; color: var(--chw-text-dim); white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.chw-now-city { font-size: .72rem; color: var(--chw-text-dim); white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Botón "refresh" — clima en tiempo real bajo demanda */
+.chw-refresh-btn {
+  width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+  border-radius: var(--chw-radius-pill);
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(148, 163, 184, .12);
+  border: 1px solid var(--chw-border);
+  color: var(--chw-text-dim);
+  cursor: pointer;
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+}
+.chw-refresh-btn:hover { background: rgba(56, 189, 248, .18); color: var(--chw-accent); border-color: rgba(56, 189, 248, .4); }
+.chw-refresh-btn:active { transform: scale(.9); }
+.chw-refresh-btn i { font-size: .68rem; display: block; }
+.chw-refresh-btn.spinning { pointer-events: none; color: var(--chw-accent); border-color: rgba(56, 189, 248, .4); }
+.chw-refresh-btn.spinning i { animation: chwSpin .8s linear infinite; }
+@keyframes chwSpin { to { transform: rotate(360deg); } }
+
+/* "Actualizado hace…" — deja claro que el dato es en tiempo real */
+.chw-updated {
+  display: flex; align-items: center; gap: .35rem;
+  margin-top: .3rem; font-size: .62rem;
+  color: var(--chw-text-dim); opacity: .85;
+}
+.chw-live-dot {
+  width: 5px; height: 5px; border-radius: var(--chw-radius-full, 50%);
+  background: var(--chw-accent-2); flex-shrink: 0;
+  animation: chwLivePulse 2s ease-in-out infinite;
+}
+@keyframes chwLivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); }
+  50%      { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
 
 /* Recomendación inteligente */
 .chw-tip {
@@ -184,6 +218,15 @@
 
 @media (max-width: 640px) {
   .chw-widget { left: 14px; bottom: 14px; max-width: calc(100vw - 28px); }
+}
+
+/* ── Fix: en 380–720px la pastilla flotante chocaba con el botón
+   "EXPERIMENTAL" (menu-toggle-btn) y con #hub-dock / el botón de
+   ayuda del tour, todos anclados cerca del borde inferior izquierdo.
+   La subimos por encima de esa zona, igual que .st-help-btn hace con
+   #hub-dock (ver site-tour.css). ─────────────────────────────────── */
+@media (max-width: 720px) {
+  .chw-widget { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Red de seguridad anti-desbordes: nunca excede la ventana */
