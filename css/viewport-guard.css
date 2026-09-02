@@ -480,6 +480,11 @@ section, main, .container, .wrap, .inner, .section-wrap {
   border: 1px solid rgba(128,128,128,.25); z-index: 1;
   background: #a6cad4; /* color de respaldo tipo agua/cielo OSM */
 }
+/* En móvil: el contenedor del mapa debe capturar el gesto táctil (pan/zoom)
+   y NO dejar que se haga scroll de toda la página al arrastrar. Leaflet ya
+   aplica `touch-action: none` internamente; refuerza aquí por si el CSS
+   externo u otro estilo lo sobreescribe en el móvil/WebView. */
+.wx-minimap { touch-action: none; }
 .wx-map-loading {
   position: absolute; inset: 0; display: flex; align-items: center;
   justify-content: center; gap: .5rem; font-size: .8rem; color: var(--muted, #666);
