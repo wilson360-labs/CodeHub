@@ -117,9 +117,9 @@ public class MainActivity extends Activity {
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
-        // Chequeo de actualización de la app — habla directo con GitHub
-        // Releases, independiente del sitio web y del backend.
-        try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("appUpdate", t); }
+        // (Chequeo de actualización vía GitHub Releases deshabilitado: el
+        // repo es privado, la API pública no lo sirve y el diálogo de "release
+        // notes" no debía exponer el repo. La app se actualiza vía backend.)
 
         // Iniciar Foreground Service — mantiene la app viva en 2do plano
         // con WakeLock + sync periódico cada 15 min.

@@ -131,6 +131,17 @@
       if (isGoogleMode()) buildGoogleMap(el, lat, lon);
       else buildLeafletMap(el, lat, lon);
 
+      // Recalcular tamaño una vez construido (crítico en móvil/WebView:
+      // Leaflet mide el contenedor al inicar y puede quedar en 0 si el
+      // layout aún no está estable, dejando el mapa "vacío").
+      if (isGoogleMode() && _googleMap) {
+        setTimeout(function () {
+          try { window.google.maps.event.trigger(_googleMap, 'resize'); } catch (e) {}
+        }, 60);
+      } else if (_map) {
+        setTimeout(function () { try { _map.invalidateSize(); } catch (e) {} }, 60);
+      }
+
       // Re-centrar en la ubicación guardada si la hay
       var saved = readSavedLoc();
       if (saved && !initialLat) {
@@ -196,10 +207,27 @@
   function buildLeafletMap(el, lat, lon) {
     _map = L.map('wx-minimap', { scrollWheelZoom: false, zoomControl: false }).setView([lat, lon], 11);
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+    var savedStyle = localStorage.getItem('ch_map_style') || 'streets';
+    var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-    }).addTo(_map);
+    });
+    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
+    });
+    (savedStyle === 'satellite' ? satellite : streets).addTo(_map);
+
+    // Selector de estilo de mapa (capas)
+    var layerControl = L.control.layers(
+      { 'Calles': streets, 'Satélite': satellite },
+      null,
+      { position: 'topleft', collapsed: false }
+    ).addTo(_map);
+    _map.on('baselayerchange', function (e) {
+      localStorage.setItem('ch_map_style', e.name === 'Satélite' ? 'satellite' : 'streets');
+    });
 
     var icon = L.divIcon({
       className: 'wx-map-marker',

@@ -204,48 +204,10 @@ public class CodeHubBridge {
 
     @JavascriptInterface
     public String checkForUpdate() {
-        try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(
-                "https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest"
-            ).openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-            conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-            if (conn.getResponseCode() != 200) return null;
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-            br.close();
-            conn.disconnect();
-
-            JSONObject release = new JSONObject(sb.toString());
-            String tagName = release.optString("tag_name", "");
-            String body    = release.optString("body", "");
-            String htmlUrl = release.optString("html_url", "");
-
-            JSONObject result = new JSONObject();
-            result.put("tag", tagName);
-            result.put("body", body);
-            result.put("html_url", htmlUrl);
-
-            JSONArray assets = release.optJSONArray("assets");
-            if (assets != null) {
-                for (int i = 0; i < assets.length(); i++) {
-                    JSONObject asset = assets.getJSONObject(i);
-                    String name = asset.optString("name", "");
-                    if (name.endsWith(".apk")) {
-                        result.put("apk_url", asset.optString("browser_download_url", ""));
-                        result.put("apk_size", asset.optLong("size", 0));
-                        break;
-                    }
-                }
-            }
-
-            return result.toString();
-        } catch (Exception e) { return null; }
+        // Deshabilitado: el repo es privado, la API pública de GitHub no
+        // sirve sus releases y no debe exponerse el repo. La actualización
+        // se maneja vía backend (/api/changelog + descarga del APK).
+        return null;
     }
 
     @JavascriptInterface
