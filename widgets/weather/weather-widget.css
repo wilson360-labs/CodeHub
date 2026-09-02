@@ -1,9 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
    CodeHub Widget — Clima (estilo Samsung/Windows Weather)
-   Pastilla flotante abajo-izquierda:
+   Pastilla flotante arriba-izquierda, pegada al navbar:
    - Colapsada: icono + temperatura + ciudad.
    - Expandida: temp grande, condición, sensación, franja de
      pronóstico por horas (próximas 24 h) y recomendación inteligente.
+     El panel se despliega HACIA ABAJO de la pastilla (no hacia
+     arriba), para no taparse a sí mismo con el navbar y para no
+     invadir zonas del contenido más de lo necesario.
    Sin dependencias externas: usa Open-Meteo (ya permitido por CSP).
    ── Reglas de responsividad (AGENTS.md): SOLO breakpoints canónicos
       380 / 480 / 640 / 720 / 768 px. Ventana mínima soportada 380px.
@@ -19,12 +22,16 @@
   --chw-glow: rgba(56, 189, 248, .28);
   --chw-radius: 18px;
   --chw-radius-pill: 999px;
+  /* Distancia del borde superior — js/weather-widget.js la recalcula
+     con la altura real del <header> (no es sticky, pero así el
+     widget queda justo debajo de donde vive el navbar). */
+  --chw-top-offset: 78px;
 }
 
 .chw-widget {
   position: fixed;
   left: 16px;
-  bottom: 16px;
+  top: calc(var(--chw-top-offset, 78px) + env(safe-area-inset-top, 0px));
   z-index: 4200;
   font-family: var(--font, system-ui, -apple-system, sans-serif);
   max-width: calc(100vw - 32px);
@@ -67,24 +74,27 @@
 }
 .chw-pill-change { font-weight: 700; }
 
-/* ── Panel expandido ────────────────────────────────── */
+/* ── Panel expandido — cuelga DEBAJO de la pastilla ─── */
 .chw-panel {
   display: none;
   width: 312px;
   max-width: calc(100vw - 32px);
-  margin-bottom: .6rem;
+  margin-top: .6rem;
   border-radius: var(--chw-radius);
   background: var(--chw-surface);
   border: 1px solid var(--chw-border);
   color: var(--chw-text);
   box-shadow: 0 18px 48px rgba(2, 6, 23, .5);
   overflow: hidden;
+  max-height: calc(100vh - var(--chw-top-offset, 78px) - 32px);
+  max-height: calc(100dvh - var(--chw-top-offset, 78px) - 32px);
+  overflow-y: auto;
   animation: chwPop .22s ease;
 }
 .chw-widget[data-open="1"] .chw-panel { display: block; }
 
 @keyframes chwPop {
-  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  from { opacity: 0; transform: translateY(-8px) scale(.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -205,7 +215,7 @@
 
 /* ── Responsividad (solo breakpoints canónicos) ─────── */
 @media (max-width: 380px) {
-  .chw-widget { left: 10px; bottom: 10px; }
+  .chw-widget { left: 10px; }
   .chw-pill { padding: .38rem .62rem; font-size: .74rem; }
   .chw-pill-city { max-width: 86px; }
   .chw-panel { width: 272px; }
@@ -213,20 +223,11 @@
 }
 
 @media (max-width: 480px) {
-  .chw-widget { left: 12px; bottom: 12px; }
+  .chw-widget { left: 12px; }
 }
 
 @media (max-width: 640px) {
-  .chw-widget { left: 14px; bottom: 14px; max-width: calc(100vw - 28px); }
-}
-
-/* ── Fix: en 380–720px la pastilla flotante chocaba con el botón
-   "EXPERIMENTAL" (menu-toggle-btn) y con #hub-dock / el botón de
-   ayuda del tour, todos anclados cerca del borde inferior izquierdo.
-   La subimos por encima de esa zona, igual que .st-help-btn hace con
-   #hub-dock (ver site-tour.css). ─────────────────────────────────── */
-@media (max-width: 720px) {
-  .chw-widget { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .chw-widget { left: 14px; max-width: calc(100vw - 28px); }
 }
 
 /* Red de seguridad anti-desbordes: nunca excede la ventana */

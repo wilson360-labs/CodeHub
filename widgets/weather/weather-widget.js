@@ -1,5 +1,8 @@
 /* ═══════════════════════════════════════════════════════════
    CodeHub Widget — Clima (pastilla flotante expandible)
+   - Anclada arriba-izquierda, pegada al navbar (no abajo — evita
+     taparse con el dock/botones flotantes del borde inferior).
+     El offset superior se recalcula con la altura real de <header>.
    - Open-Meteo (CSP ya lo permite) + ubicación desde ch_user_*.
    - Caché propia en localStorage (ch_widget_weather, ~10 min).
    - Recomendaciones inteligentes: lluvia/UV/frío/calor/viento/tormenta.
@@ -56,6 +59,16 @@
   function startUpdatedTicker() {
     if (_updTimer) clearInterval(_updTimer);
     _updTimer = setInterval(function () { setUpdatedText(_lastUpdateTs); }, 5000);
+  }
+
+  /* ── Offset superior — pega la pastilla justo debajo del navbar,
+     usando la altura real del <header> (no es sticky, pero sirve
+     como referencia consistente en cualquier ancho/dispositivo). ── */
+  function updateTopOffset() {
+    var header = document.querySelector('header');
+    var h = header ? Math.round(header.getBoundingClientRect().height) : 64;
+    if (!h || h < 20) h = 64; // header aún no midió bien (fuente cargando, etc.)
+    document.documentElement.style.setProperty('--chw-top-offset', (h + 14) + 'px');
   }
 
   function readLocation() {
@@ -321,6 +334,21 @@
     });
 
     document.body.appendChild(_root);
+
+    // Offset superior: medir de inmediato + reintentar poco después
+    // (fuentes/typing effect pueden cambiar la altura del header al
+    // cargar) + recalcular en resize/orientación.
+    updateTopOffset();
+    setTimeout(updateTopOffset, 400);
+    setTimeout(updateTopOffset, 1500);
+    var _offsetResizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(_offsetResizeTimer);
+      _offsetResizeTimer = setTimeout(updateTopOffset, 150);
+    });
+    window.addEventListener('orientationchange', function () {
+      setTimeout(updateTopOffset, 300);
+    });
 
     // Eventos externos
     window.addEventListener('storage', function (e) {
