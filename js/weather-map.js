@@ -20,6 +20,7 @@
   var _googleKey = null;
   var _googleFailed = false;
   var _maptilerKey = null;
+  var _cartoKey = null;
   var _leafletCssReady = false; // true solo cuando leaflet.css terminó de cargar
   var _resizeObs = null;
 
@@ -37,11 +38,19 @@
   window.chToggleMap = chToggleMap;
   window.chApplyMapCity = chApplyMapCity;
 
-  // ── Keys desde RC (backend /api/config: env GOOGLE_MAPS / MAPTILER_KEY) ──
+  // ── Keys desde RC (backend /api/config: env GOOGLE_MAPS / MAPTILER_KEY / CARTO_KEY) ──
+  // BUG CORREGIDO: antes _googleKey/_maptilerKey se poblaban de forma
+  // asíncrona en RC.ready().then() y initMap() podía ejecutarse (y decidir
+  // el motor) ANTES de que esa promesa resolviera → _googleKey aún null →
+  // se caía directo a Leaflet sin intentar Google (y sin MapTiler).
+  // Ahora guardamos la promesa y en initMap() esperamos a que resuelva
+  // antes de elegir el motor y construir las capas.
+  var _rcReady = (window.RC && window.RC.ready) ? window.RC.ready() : Promise.resolve();
   if (window.RC && window.RC.ready) {
-    window.RC.ready().then(function () {
+    _rcReady.then(function () {
       _googleKey = (window.RC.ui('googleMapsKey', '') || '').trim();
       _maptilerKey = (window.RC.ui('maptilerKey', '') || '').trim();
+      _cartoKey = (window.RC.ui('cartoKey', '') || '').trim();
     });
   }
 
@@ -166,13 +175,16 @@
   function initMap(initialLat, initialLon) {
     if (_map || _loading) return;
     _loading = true;
-    var boot = Promise.resolve();
-    if (!_googleFailed && _googleKey) {
-      boot = ensureGoogle().then(function () { _engine = 'google'; })
-        .catch(function () { _googleFailed = true; _engine = null; return ensureLeaflet().then(function () { _engine = 'leaflet'; }); });
-    } else {
-      boot = ensureLeaflet().then(function () { _engine = 'leaflet'; });
-    }
+    var boot = _rcReady.then(function () {
+      // _googleKey / _maptilerKey / _cartoKey ya están poblados aquí porque
+      // esperamos a que RC.ready() resolvera. Antes este chequeo corría
+      // con _googleKey aún null → se saltaba Google y caía a Leaflet.
+      if (!_googleFailed && _googleKey) {
+        return ensureGoogle().then(function () { _engine = 'google'; })
+          .catch(function () { _googleFailed = true; _engine = null; return ensureLeaflet().then(function () { _engine = 'leaflet'; }); });
+      }
+      return ensureLeaflet().then(function () { _engine = 'leaflet'; });
+    });
     boot.then(function () {
       _loading = false;
       var el = document.getElementById('wx-minimap');
@@ -294,7 +306,7 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>',
       });
     }
-    var streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    var streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' + (_cartoKey ? '?api_key=' + encodeURIComponent(_cartoKey) : ''), {
       maxZoom: 20, subdomains: 'abcd', detectRetina: true,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     });

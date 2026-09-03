@@ -343,6 +343,7 @@ const DEFAULT_CONFIG = {
     updateDialogBody: 'Hay una nueva versión de CodeHub disponible.',
     googleMapsKey: process.env.GOOGLE_MAPS || '',
     maptilerKey: process.env.MAPTILER_KEY || '',
+    cartoKey: process.env.CARTO_KEY || '',
   },
   ai: {
     systemPrompt: null,
