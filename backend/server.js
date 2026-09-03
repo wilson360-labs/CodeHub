@@ -342,6 +342,7 @@ const DEFAULT_CONFIG = {
     updateDialogTitle: 'Nueva versión disponible',
     updateDialogBody: 'Hay una nueva versión de CodeHub disponible.',
     googleMapsKey: process.env.GOOGLE_MAPS || '',
+    maptilerKey: process.env.MAPTILER_KEY || '',
   },
   ai: {
     systemPrompt: null,
@@ -4837,12 +4838,15 @@ app.get('/api/changelog', (req, res) => {
 app.get('/api/config', async (req, res) => {
   try {
     const cfg = await getAppConfig();
-    cfg.ui = Object.assign({}, cfg.ui || {}, { googleMapsKey: process.env.GOOGLE_MAPS || '' });
+    cfg.ui = Object.assign({}, cfg.ui || {}, {
+      googleMapsKey: process.env.GOOGLE_MAPS || '',
+      maptilerKey: process.env.MAPTILER_KEY || '',
+    });
     const clientVersion = parseInt(req.query.v) || 0;
     const needsUpdate = clientVersion < cfg.version;
     res.set('Cache-Control', 'public, max-age=30');
     res.set('X-Config-Version', String(cfg.version));
-    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey } });
+    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey } });
   } catch (e) {
     res.json({ ok: true, config: DEFAULT_CONFIG });
   }

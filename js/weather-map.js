@@ -19,6 +19,7 @@
   var _loading = false;
   var _googleKey = null;
   var _googleFailed = false;
+  var _maptilerKey = null;
   var _leafletCssReady = false; // true solo cuando leaflet.css terminó de cargar
   var _resizeObs = null;
 
@@ -36,10 +37,11 @@
   window.chToggleMap = chToggleMap;
   window.chApplyMapCity = chApplyMapCity;
 
-  // ── Key de Google Maps desde RC (backend /api/config, env GOOGLE_MAPS) ──
+  // ── Keys desde RC (backend /api/config: env GOOGLE_MAPS / MAPTILER_KEY) ──
   if (window.RC && window.RC.ready) {
     window.RC.ready().then(function () {
       _googleKey = (window.RC.ui('googleMapsKey', '') || '').trim();
+      _maptilerKey = (window.RC.ui('maptilerKey', '') || '').trim();
     });
   }
 
@@ -282,10 +284,21 @@
     // de apps y de IPs compartidas de operadoras móviles (CGNAT), que es
     // justo el patrón "en PC carga, en el móvil queda en blanco". CARTO
     // ofrece el mismo estilo tipo calles con CDN pensado para apps.
+    // Capa "Calles": si hay key de MapTiler Cloud, uso su estilo streets-v2
+    // (mucho más nítido y vivo, con los mismos tiles OSM), y el fallback
+    // es CARTO voyager. Si no hay key, la base es directamente CARTO.
+    var maptilerLayer = null;
+    if (_maptilerKey) {
+      maptilerLayer = L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=' + encodeURIComponent(_maptilerKey), {
+        maxZoom: 20, detectRetina: true,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>',
+      });
+    }
     var streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 20, subdomains: 'abcd', detectRetina: true,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     });
+    var activeStreets = maptilerLayer || streets;
     // Respaldo si CARTO llegara a fallar: Esri World Street Map (mismo
     // proveedor/CDN que ya usamos para satélite, historial confiable).
     var streetsFallback = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -305,7 +318,7 @@
       maxZoom: 19, subdomains: 'abc',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     });
-    (savedStyle === 'satellite' ? satellite : streets).addTo(_map);
+    (savedStyle === 'satellite' ? satellite : activeStreets).addTo(_map);
 
     // BUG CORREGIDO: antes solo la capa "Calles" tenía vigilancia de
     // errores con respaldo — "Satélite" no tenía NINGÚN fallback ni
@@ -337,7 +350,11 @@
         }
       });
     }
-    // Calles: CARTO → Esri Street → OSM → aviso
+    // Calles: [MapTiler →] CARTO → Esri Street → OSM → aviso
+    // Si hay key de MapTiler, esa es la base y CARTO pasa a ser su respaldo.
+    if (maptilerLayer) {
+      chainTileFallback(maptilerLayer, streets, 'MapTiler Calles');
+    }
     chainTileFallback(streets, streetsFallback, 'CARTO Calles');
     chainTileFallback(streetsFallback, streetsFallback2, 'Esri Calles');
     chainTileFallback(streetsFallback2, null, 'OSM Calles');
@@ -380,7 +397,7 @@
     var isNarrow = (window.matchMedia && window.matchMedia('(max-width: 730px)').matches) ||
       (window.innerWidth && window.innerWidth <= 730);
     var layerControl = L.control.layers(
-      { 'Calles': streets, 'Satélite': satellite },
+      { 'Calles': activeStreets, 'Satélite': satellite },
       null,
       { position: 'topleft', collapsed: isNarrow }
     ).addTo(_map);

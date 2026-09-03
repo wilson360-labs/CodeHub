@@ -112,7 +112,7 @@
       var body = await res.json();
       if (body.ok && body.config) {
         var serverVersion = body.config.version || 0;
-        var hasKey = !!(body.config.ui && body.config.ui.googleMapsKey);
+        var hasKey = !!(body.config.ui && (body.config.ui.googleMapsKey || body.config.ui.maptilerKey));
         if (hasKey || serverVersion > clientVersion || !stored) {
           _config = deepMerge(DEFAULTS, body.config);
           _version = _config.version || 1;
