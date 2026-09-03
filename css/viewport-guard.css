@@ -499,6 +499,23 @@ section, main, .container, .wrap, .inner, .section-wrap {
   padding: 1.4rem; text-align: center; font-size: .8rem;
   color: #b45309; line-height: 1.5;
 }
+/* Aviso cuando TODAS las capas de teselas fallaron (calles y
+   satélite): se superpone al mapa (que puede seguir ahí, arrastrable,
+   solo sin imágenes) en vez de reemplazar el contenedor entero, para
+   poder reintentar sin perder el zoom/posición elegidos. */
+.wx-map-fail-overlay {
+  position: absolute; inset: 0; z-index: 650;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 14, 20, .82);
+  color: #fde68a;
+}
+.wx-map-retry-btn {
+  display: block; margin: .7rem auto 0; padding: .5rem 1.1rem;
+  border: none; border-radius: 10px; cursor: pointer;
+  background: linear-gradient(135deg,#22c55e,#16a34a); color: #fff;
+  font-weight: 700; font-size: .78rem;
+}
+.wx-map-retry-btn:active { transform: scale(.96); }
 .wx-map-foot {
   display: flex; align-items: center; justify-content: space-between;
   gap: .6rem; margin-top: .6rem; font-size: .75rem; color: var(--muted, #888);
@@ -530,16 +547,34 @@ section, main, .container, .wrap, .inner, .section-wrap {
   width: 32px !important; height: 32px !important;
 }
 
-@media (max-width: 720px) {
+/* Continuidad de breakpoints en todo el rango móvil canónico
+   (380–730px): antes solo existían reglas en 720 y 380px, dejando un
+   salto brusco de tamaño en 420/480/550/640 donde el mapa/controles
+   podían quedar desproporcionados según el ancho exacto del teléfono. */
+@media (max-width: 730px) {
   .wx-minimap { height: 220px; }
+  .wx-map-retry-btn { font-size: .74rem; padding: .45rem 1rem; }
+}
+@media (max-width: 640px) {
+  .wx-minimap { height: 212px; }
+}
+@media (max-width: 550px) {
+  .wx-minimap { height: 204px; }
+  .wx-map-fail-overlay { font-size: .78rem; padding: 0 1rem; }
 }
 @media (max-width: 480px) {
+  .wx-minimap { height: 196px; }
   .wx-minimap .leaflet-control-layers-expanded { max-width: 104px; font-size: 11px; padding: 5px 8px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 420px) {
   .wx-minimap { height: 190px; }
   .wx-map-foot { flex-direction: column; align-items: stretch; white-space: normal; }
   .wx-map-select-btn { width: 100%; }
+}
+@media (max-width: 380px) {
+  .wx-minimap { height: 176px; }
+  .wx-map-fail-overlay { font-size: .72rem; }
+  .wx-map-retry-btn { font-size: .7rem; padding: .4rem .85rem; }
 }
 
 /* ── Panel de clima mejorado ─────────────────────────── */

@@ -296,30 +296,83 @@
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
     });
+    // Último recurso si CARTO Y Esri Calles fallan ambos: OSM estándar
+    // con sus 3 subdominios habituales (a/b/c). Distinto proveedor/CDN
+    // que los dos anteriores, así que si el bloqueo es específico de
+    // CARTO/ArcGIS (y no de la red del usuario en general) esta capa
+    // sí suele responder.
+    var streetsFallback2 = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, subdomains: 'abc',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    });
     (savedStyle === 'satellite' ? satellite : streets).addTo(_map);
 
-    // Si el proveedor activo falla en cargar varias teselas seguidas
-    // (bloqueo/caída/sin cobertura), se cambia solo a un respaldo en
-    // vez de dejar el mapa en blanco silenciosamente.
-    (function watchTileErrors(layer, fallback, label) {
+    // BUG CORREGIDO: antes solo la capa "Calles" tenía vigilancia de
+    // errores con respaldo — "Satélite" no tenía NINGÚN fallback ni
+    // aviso: si Esri World_Imagery fallaba en la red del usuario, el
+    // mapa quedaba en blanco para siempre sin que hubiera forma de
+    // saber por qué ni de reintentar. Ahora AMBAS capas base tienen
+    // vigilancia + respaldo, y si el respaldo también falla se
+    // muestra un aviso visible con botón "Reintentar" en vez de dejar
+    // el recuadro gris silenciosamente.
+    function watchTileErrors(layer, fallback, label, isFinalFallback) {
       var errCount = 0, swapped = false;
       layer.on('tileerror', function () {
         errCount++;
-        if (!swapped && errCount >= 4 && _map.hasLayer(layer)) {
-          swapped = true;
-          _map.removeLayer(layer);
+        if (swapped || errCount < 4 || !_map || !_map.hasLayer(layer)) return;
+        swapped = true;
+        _map.removeLayer(layer);
+        if (fallback) {
           fallback.addTo(_map);
-          try { console.warn('[wx-map] ' + label + ' falló, usando respaldo Esri.'); } catch (e) {}
+          try { console.warn('[wx-map] ' + label + ' falló, usando respaldo.'); } catch (e) {}
+        } else {
+          showTileFailure();
         }
       });
-    })(streets, streetsFallback, 'CARTO Calles');
+      // Si el respaldo TAMBIÉN falla, no hay más a quién recurrir.
+      if (isFinalFallback && fallback) {
+        var fbErr = 0, fbSwapped = false;
+        fallback.on('tileerror', function () {
+          fbErr++;
+          if (fbSwapped || fbErr < 4 || !_map || !_map.hasLayer(fallback)) return;
+          fbSwapped = true;
+          showTileFailure();
+        });
+      }
+    }
+    watchTileErrors(streets, streetsFallback, 'CARTO Calles', false);
+    watchTileErrors(streetsFallback, streetsFallback2, 'Esri Calles', true);
+    watchTileErrors(satellite, null, 'Esri Satélite', false);
+
+    // Aviso visible cuando TODOS los proveedores de teselas fallaron
+    // (bloqueo total de red hacia esos dominios, sin cobertura, etc.)
+    // con botón para reintentar sin tener que cerrar y reabrir el mapa.
+    function showTileFailure() {
+      var el = document.getElementById('wx-minimap');
+      if (!el || el.querySelector('.wx-map-fail')) return;
+      var msg = document.createElement('div');
+      msg.className = 'wx-map-fail wx-map-fail-overlay';
+      msg.innerHTML = 'No se pudieron cargar las capas del mapa (calles/satélite).<br>' +
+        'Puede ser tu conexión móvil bloqueando esos servidores.<br>' +
+        '<button type="button" class="wx-map-retry-btn">Reintentar</button>';
+      el.appendChild(msg);
+      msg.querySelector('.wx-map-retry-btn').addEventListener('click', function () {
+        msg.remove();
+        var lat = _map.getCenter().lat, lon = _map.getCenter().lng;
+        _map.remove();
+        _map = null;
+        _marker = null;
+        _engine = null;
+        initMap(lat, lon);
+      });
+    }
 
     // Selector de estilo de mapa (capas). En todo el rango móvil
-    // (380–720px) arranca colapsado (solo ícono) para no taparse gran
+    // (380–730px) arranca colapsado (solo ícono) para no taparse gran
     // parte del mapa; en escritorio, donde sobra espacio, arranca
     // expandido.
-    var isNarrow = (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) ||
-      (window.innerWidth && window.innerWidth <= 720);
+    var isNarrow = (window.matchMedia && window.matchMedia('(max-width: 730px)').matches) ||
+      (window.innerWidth && window.innerWidth <= 730);
     var layerControl = L.control.layers(
       { 'Calles': streets, 'Satélite': satellite },
       null,
