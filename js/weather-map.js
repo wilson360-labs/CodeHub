@@ -19,6 +19,8 @@
   var _loading = false;
   var _googleKey = null;
   var _googleFailed = false;
+  var _leafletCssReady = false; // true solo cuando leaflet.css terminó de cargar
+  var _resizeObs = null;
 
   var _googleMap = null;
   var _geocoder = null;
@@ -61,28 +63,72 @@
 
   function ensureLeaflet() {
     return new Promise(function (resolve, reject) {
-      if (window.L) return resolve(L);
-      if (!document.querySelector('link[data-wx-leaflet-css]')) {
+      if (window.L && _leafletCssReady) return resolve(L);
+
+      var cssDone = _leafletCssReady;
+      var jsDone = !!window.L;
+      var failed = false;
+
+      function maybeResolve() {
+        if (failed) return;
+        if (cssDone && jsDone && window.L) resolve(L);
+      }
+      function fail(err) {
+        if (failed) return;
+        failed = true;
+        reject(err || new Error('leaflet load failed'));
+      }
+
+      // ── CSS ──
+      // BUG CORREGIDO: antes esta promesa se resolvía en cuanto cargaba
+      // el <script> de Leaflet, sin esperar a que terminara de cargar
+      // el <link> del CSS. En redes rápidas (PC/wifi) ambos llegan casi
+      // a la vez y no se nota, pero en datos móviles el JS suele llegar
+      // antes que el CSS: L.map() se construye SIN las reglas de
+      // Leaflet (posicionamiento absoluto de los "panes", tiles, etc.)
+      // y el mapa queda invisible o mal posicionado — "solo en PC se ve
+      // el mapa". Ahora se espera a que ambos (CSS y JS) terminen.
+      if (_leafletCssReady) {
+        cssDone = true;
+      } else if (!document.querySelector('link[data-wx-leaflet-css]')) {
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = LEAFLET_CSS;
         link.setAttribute('data-wx-leaflet-css', '1');
         document.head.appendChild(link);
-        link.addEventListener('load', function () { try { if (window.L) _map && _map.invalidateSize(); } catch (e) {} });
-        // Fallback CSS: si el local 404, cargar CDN (p.ej. deploy sin el asset)
+        link.addEventListener('load', function () {
+          _leafletCssReady = true; cssDone = true; maybeResolve();
+          try { if (window.L && _map) _map.invalidateSize(); } catch (e) {}
+        });
         link.addEventListener('error', function () {
+          // Fallback CSS: si el local 404, cargar CDN (deploy sin el asset)
           var link2 = document.createElement('link');
           link2.rel = 'stylesheet';
           link2.href = LEAFLET_CSS_B;
           link2.setAttribute('data-wx-leaflet-css', '1');
+          link2.addEventListener('load', function () {
+            _leafletCssReady = true; cssDone = true; maybeResolve();
+            try { if (window.L && _map) _map.invalidateSize(); } catch (e) {}
+          });
+          link2.addEventListener('error', function () { fail(new Error('leaflet css load failed')); });
           document.head.appendChild(link2);
         });
+      } else {
+        // El <link> ya existe en el DOM (otra llamada lo insertó) pero
+        // puede no haber terminado de cargar todavía: no asumir listo.
+        var existingLink = document.querySelector('link[data-wx-leaflet-css]');
+        if (existingLink.sheet) { cssDone = true; }
+        else existingLink.addEventListener('load', function () { cssDone = true; maybeResolve(); });
       }
-      if (!document.querySelector('script[data-wx-leaflet-js]')) {
-        var done = false;
-        function onOk() { if (!done) { done = true; resolve(L); } }
+
+      // ── JS ──
+      if (window.L) {
+        jsDone = true;
+      } else if (!document.querySelector('script[data-wx-leaflet-js]')) {
+        var jsSettled = false;
+        function onOk() { if (!jsSettled) { jsSettled = true; jsDone = true; maybeResolve(); } }
         function onErr() {
-          if (done) return;
+          if (jsSettled) return;
           // Intento 1 falló → probar CDN alternativo
           if (!window.L && s.src !== LEAFLET_JS_B) {
             s.remove();
@@ -90,11 +136,11 @@
             s2.src = LEAFLET_JS_B;
             s2.setAttribute('data-wx-leaflet-js', '1');
             s2.onload = onOk;
-            s2.onerror = function () { done = true; reject(new Error('leaflet load failed')); };
+            s2.onerror = function () { jsSettled = true; fail(new Error('leaflet load failed')); };
             document.head.appendChild(s2);
             return;
           }
-          done = true; reject(new Error('leaflet load failed'));
+          jsSettled = true; fail(new Error('leaflet load failed'));
         }
         var s = document.createElement('script');
         s.src = LEAFLET_JS;
@@ -103,13 +149,17 @@
         s.onerror = onErr;
         document.head.appendChild(s);
         setTimeout(function () {
-          if (!done && !window.L) { done = true; reject(new Error('leaflet timeout')); }
+          if (!jsSettled && !window.L) { jsSettled = true; fail(new Error('leaflet timeout')); }
         }, 15000);
       } else {
-        resolve(L);
+        var existingScript = document.querySelector('script[data-wx-leaflet-js]');
+        existingScript.addEventListener('load', function () { jsDone = true; maybeResolve(); });
       }
+
+      maybeResolve();
     });
   }
+
 
   function initMap(initialLat, initialLon) {
     if (_map || _loading) return;
@@ -139,7 +189,24 @@
           try { window.google.maps.event.trigger(_googleMap, 'resize'); } catch (e) {}
         }, 60);
       } else if (_map) {
+        // Doble invalidateSize de respaldo (por si ResizeObserver no
+        // está disponible en el WebView) + ResizeObserver real: se
+        // dispara cada vez que el contenedor cambia de tamaño de verdad
+        // (fin de animación del panel, rotación de pantalla, teclado
+        // que se abre/cierra, etc.) en vez de adivinar un tiempo fijo,
+        // que en redes/dispositivos móviles lentos puede no ser
+        // suficiente y dejar el mapa con tiles a medio cargar.
         setTimeout(function () { try { _map.invalidateSize(); } catch (e) {} }, 60);
+        setTimeout(function () { try { _map.invalidateSize(); } catch (e) {} }, 350);
+        if (window.ResizeObserver) {
+          try {
+            if (_resizeObs) _resizeObs.disconnect();
+            _resizeObs = new ResizeObserver(function () {
+              try { _map && _map.invalidateSize(); } catch (e) {}
+            });
+            _resizeObs.observe(el);
+          } catch (e) {}
+        }
       }
 
       // Re-centrar en la ubicación guardada si la hay
@@ -209,9 +276,21 @@
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
 
     var savedStyle = localStorage.getItem('ch_map_style') || 'streets';
-    var streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // "Calles": CARTO Voyager en vez de tile.openstreetmap.org directo.
+    // Los tile servers crudos de OSM están pensados para uso ligero en
+    // navegador de escritorio; su política de uso bloquea/limita tráfico
+    // de apps y de IPs compartidas de operadoras móviles (CGNAT), que es
+    // justo el patrón "en PC carga, en el móvil queda en blanco". CARTO
+    // ofrece el mismo estilo tipo calles con CDN pensado para apps.
+    var streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20, subdomains: 'abcd', detectRetina: true,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    });
+    // Respaldo si CARTO llegara a fallar: Esri World Street Map (mismo
+    // proveedor/CDN que ya usamos para satélite, historial confiable).
+    var streetsFallback = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
     });
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
@@ -219,11 +298,32 @@
     });
     (savedStyle === 'satellite' ? satellite : streets).addTo(_map);
 
-    // Selector de estilo de mapa (capas)
+    // Si el proveedor activo falla en cargar varias teselas seguidas
+    // (bloqueo/caída/sin cobertura), se cambia solo a un respaldo en
+    // vez de dejar el mapa en blanco silenciosamente.
+    (function watchTileErrors(layer, fallback, label) {
+      var errCount = 0, swapped = false;
+      layer.on('tileerror', function () {
+        errCount++;
+        if (!swapped && errCount >= 4 && _map.hasLayer(layer)) {
+          swapped = true;
+          _map.removeLayer(layer);
+          fallback.addTo(_map);
+          try { console.warn('[wx-map] ' + label + ' falló, usando respaldo Esri.'); } catch (e) {}
+        }
+      });
+    })(streets, streetsFallback, 'CARTO Calles');
+
+    // Selector de estilo de mapa (capas). En todo el rango móvil
+    // (380–720px) arranca colapsado (solo ícono) para no taparse gran
+    // parte del mapa; en escritorio, donde sobra espacio, arranca
+    // expandido.
+    var isNarrow = (window.matchMedia && window.matchMedia('(max-width: 720px)').matches) ||
+      (window.innerWidth && window.innerWidth <= 720);
     var layerControl = L.control.layers(
       { 'Calles': streets, 'Satélite': satellite },
       null,
-      { position: 'topleft', collapsed: false }
+      { position: 'topleft', collapsed: isNarrow }
     ).addTo(_map);
     _map.on('baselayerchange', function (e) {
       localStorage.setItem('ch_map_style', e.name === 'Satélite' ? 'satellite' : 'streets');
@@ -256,7 +356,10 @@
     if (caret) caret.className = 'fas fa-chevron-up wx-map-caret';
     initMap(null, null);
     if (_googleMap) setTimeout(function () { google.maps.event.trigger(_googleMap, 'resize'); }, 60);
-    if (_map) setTimeout(function () { _map.invalidateSize(); }, 60);
+    if (_map) {
+      setTimeout(function () { _map.invalidateSize(); }, 60);
+      setTimeout(function () { _map.invalidateSize(); }, 350);
+    }
   }
 
   function closeMap() {

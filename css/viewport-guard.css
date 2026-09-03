@@ -515,8 +515,26 @@ section, main, .container, .wrap, .inner, .section-wrap {
 .wx-minimap .leaflet-control-attribution { font-size: 9px !important; background: rgba(255,255,255,.7) !important; }
 .wx-minimap .leaflet-bar a { color: #333 !important; }
 
-@media (max-width: 640px) {
+/* Selector de capas (Calles/Satélite): en escritorio queda expandido,
+   pero en móvil un panel fijo de ~150px de ancho puede tapar la mitad
+   del mapa (312px de ancho típico). Se compacta para que no invada el
+   mapa; weather-map.js además lo inicia colapsado (ícono de capas) en
+   pantallas angostas. */
+.wx-minimap .leaflet-control-layers {
+  font-size: 12px; background: rgba(255,255,255,.92);
+}
+.wx-minimap .leaflet-control-layers-expanded {
+  padding: 6px 10px; max-width: 128px; line-height: 1.5;
+}
+.wx-minimap .leaflet-control-layers-toggle {
+  width: 32px !important; height: 32px !important;
+}
+
+@media (max-width: 720px) {
   .wx-minimap { height: 220px; }
+}
+@media (max-width: 480px) {
+  .wx-minimap .leaflet-control-layers-expanded { max-width: 104px; font-size: 11px; padding: 5px 8px; }
 }
 @media (max-width: 380px) {
   .wx-minimap { height: 190px; }
@@ -535,15 +553,41 @@ section, main, .container, .wrap, .inner, .section-wrap {
   filter: drop-shadow(0 3px 8px rgba(0,0,0,.35));
 }
 .wx-hdr { flex: 1; min-width: 0; }
+/* Evita que Chrome móvil "infle" el texto (font boosting) cuando esta
+   columna queda muy angosta entre el ícono y la temperatura, y evita
+   que el nombre de la ciudad se parta en una palabra por línea. */
+.wx-city {
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+  overflow-wrap: break-word; word-break: normal; hyphens: auto;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wx-feels { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .wx-temp-row { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; }
-.wx-temp { margin-top: .2rem; }
+.wx-temp { margin-top: .2rem; flex-shrink: 0; }
 .wx-desc { font-size: 1rem; font-weight: 600; margin: 0 0 .25rem; padding-bottom: .35rem; }
 .wx-feels { margin-top: .1rem; }
 .wx-stat i { font-size: 1.05rem; }
 
+/* Breakpoint canónico (720): cubre todo el rango móvil 380–720px. En
+   la mayoría de móviles en vertical (360–430px reales) Y en teléfonos
+   grandes/landscape (hasta 720px) el layout en fila (ícono + ciudad +
+   temperatura) deja la columna de la ciudad casi sin espacio, forzando
+   el "font boosting" de Chrome que se ve en el reporte. Se apila en
+   columna en todo ese rango. */
+@media (max-width: 720px) {
+  .wx-main { flex-direction: column; align-items: flex-start; gap: .5rem; }
+  .wx-big { font-size: 2.6rem; }
+  .wx-city { -webkit-line-clamp: 2; max-width: 100%; }
+  .wx-temp-row { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .wx-big { font-size: 2.45rem; }
+}
+
 @media (max-width: 380px) {
-  .wx-main { flex-direction: column; align-items: flex-start; gap: .4rem; }
-  .wx-big { font-size: 3rem; }
+  .wx-big { font-size: 2.3rem; }
 }
 
 /* ── Selector de frecuencia de notificaciones ────────── */
