@@ -223,7 +223,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         context, city, temp, wcode, feels, humidity, wind, fc1, fc2, fc3, now);
                     for (int id : ids) mgr.updateAppWidget(id, views);
                 } catch (Exception ignored) {
-                finally {
+                } finally {
                     // Quitar el spinner una vez terminada la actualización.
                     showLoading(context, false);
                 }
