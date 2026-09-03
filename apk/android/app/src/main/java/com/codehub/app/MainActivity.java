@@ -363,6 +363,16 @@ public class MainActivity extends Activity {
         s.setSupportMultipleWindows(false);
         s.setJavaScriptCanOpenWindowsAutomatically(true);
         s.setGeolocationEnabled(true);
+        // Permitir TODOS los recursos externos (tiles de mapa, APIs de clima,
+        // anuncios/rastreadores). Chrome Safe Browsing bloquea por defecto
+        // hosts que considera "maliciosos" o de rastreo, lo que en CodeHub
+        // hacía que no cargasen tiles de mapa/capas ni algunas APIs.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            s.setSafeBrowsingEnabled(false);
+        }
+        s.setBlockNetworkImage(false);
+        s.setBlockNetworkLoads(false);
+        s.setLoadsImagesAutomatically(true);
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
