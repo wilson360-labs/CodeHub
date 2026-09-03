@@ -1,68 +1,236 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  Widget de clima de CodeHub — rediseño ampliado.
+  FrameLayout raíz: capa de fondo (ImageView con gradiente dinámico por
+  clima vía setImageViewBitmap) + contenido vertical con header (ciudad +
+  hora), temperatura grande con condición y sensación térmica, stats
+  (humedad / viento), mini-forecast 3 días y barra inferior con botón
+  refrescar (con animación de carga) + "actualizado".
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_background"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:padding="12dp">
+    android:layout_height="match_parent">
 
-    <!-- Emoji/ícono grande de condición (fondo/lluvia/etc) -->
-    <TextView
-        android:id="@+id/widget_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="10dp"
-        android:text="🌤️"
-        android:textSize="30sp" />
+    <ImageView
+        android:id="@+id/widget_bg_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
 
     <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp">
 
-        <TextView
-            android:id="@+id/widget_city"
-            android:layout_width="wrap_content"
+        <!-- ── Header: ciudad + hora de última actualización ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="CodeHub"
-            android:textColor="#22C55E"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
 
-        <TextView
-            android:id="@+id/widget_temp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="--°"
-            android:textColor="#FFFFFF"
-            android:textSize="24sp"
-            android:textStyle="bold" />
+            <TextView
+                android:id="@+id/widget_city"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="CodeHub"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textAllCaps="true"
+                android:letterSpacing="0.06"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-        <TextView
-            android:id="@+id/widget_condition"
-            android:layout_width="wrap_content"
+            <TextView
+                android:id="@+id/widget_updated"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#E6FFFFFF"
+                android:textSize="10sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <!-- ── Fila principal: icono + temp + condición ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Cargando…"
-            android:textColor="#CBD5E1"
-            android:textSize="11sp"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
+
+            <TextView
+                android:id="@+id/widget_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:text="🌤️"
+                android:textSize="32sp" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/widget_temp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--°"
+                    android:textColor="#FFFFFF"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:includeFontPadding="false" />
+
+                <TextView
+                    android:id="@+id/widget_condition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Cargando…"
+                    android:textColor="#F2FFFFFF"
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/widget_feels"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="10sp"
+                    android:maxLines="1" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ── Stats: humedad / viento ── -->
+        <LinearLayout
+            android:id="@+id/widget_stats_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/widget_humidity"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="💧 --%"
+                android:textColor="#E6FFFFFF"
+                android:textSize="11sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_wind"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="💨 -- km/h"
+                android:textColor="#E6FFFFFF"
+                android:textSize="11sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <!-- ── Separador sutil ── -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:background="#40FFFFFF" />
+
+        <!-- ── Mini-forecast 3 días ── -->
+        <LinearLayout
+            android:id="@+id/widget_forecast_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_forecast_d1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="--"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:maxLines="3" />
+
+            <TextView
+                android:id="@+id/widget_forecast_d2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="--"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:maxLines="3" />
+
+            <TextView
+                android:id="@+id/widget_forecast_d3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="--"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:gravity="center"
+                android:maxLines="3" />
+        </LinearLayout>
+
+        <!-- ── Barra inferior: botón refrescar (animado) + actualizado ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="2dp">
+
+            <ProgressBar
+                android:id="@+id/widget_refresh_progress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:indeterminate="true"
+                android:indeterminateTint="#22D361"
+                android:visibility="invisible" />
+
+            <ImageButton
+                android:id="@+id/widget_refresh"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="-14dp"
+                android:background="@android:color/transparent"
+                android:src="@android:drawable/ic_popup_sync"
+                android:contentDescription="@string/widget_weather_description"
+                android:scaleType="fitCenter"
+                android:tint="#22D361"
+                android:visibility="visible" />
+
+            <TextView
+                android:id="@+id/widget_updated2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text=""
+                android:textColor="#D9FFFFFF"
+                android:textSize="10sp"
+                android:layout_marginStart="8dp"
+                android:maxLines="1"
+                android:gravity="end" />
+        </LinearLayout>
 
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/widget_refresh"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_popup_sync"
-        android:contentDescription="@string/widget_weather_description"
-        android:scaleType="fitCenter"
-        android:tint="#22C55E" />
-
-</LinearLayout>
+</FrameLayout>

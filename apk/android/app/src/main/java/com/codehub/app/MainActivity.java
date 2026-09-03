@@ -438,6 +438,21 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, errorCode, description, failingUrl);
                 if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
+                // BUG CORREGIDO: este overload se dispara para CADA request
+                // de subrecurso que falla (tiles de mapa, JS, imágenes…), no
+                // solo para la página principal. Antes, si un tile del mapa
+                // fallaba (p.ej. MapTiler 403 o tile bloqueado por red), la
+                // app mostraba la pantalla "Sin conexión" y DESTRUÍA todo el
+                // contenido WebView — por eso las capas del mapa "no se
+                // veían". Ahora solo actuamos si el fallo es del frame
+                // principal; los errores de subrecursos se ignoran.
+                if (failingUrl != null
+                        && !failingUrl.equals(view.getUrl())
+                        && !failingUrl.equals(view.getOriginalUrl())
+                        && !failingUrl.equals("about:blank")
+                        && !failingUrl.startsWith("data:")) {
+                    return; // error de subrecurso → no tocar la interfaz
+                }
                 if (failingUrl != null && (failingUrl.startsWith("http://") || failingUrl.startsWith("https://"))) {
                     showOfflineFallback(view);
                 }
