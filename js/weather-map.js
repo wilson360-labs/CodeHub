@@ -315,13 +315,20 @@
     // vigilancia + respaldo, y si el respaldo también falla se
     // muestra un aviso visible con botón "Reintentar" en vez de dejar
     // el recuadro gris silenciosamente.
-    function watchTileErrors(layer, fallback, label, isFinalFallback) {
+    // Cadena de respaldo para cada capa base. Cada nivel vigila errores de
+    // teselas y si el proveedor falla (>=4 errores) pasa al siguiente.
+    // El ÚLTIMO nivel siempre termina en OSM estándar (con sus 3
+    // subdominios a/b/c): es el proveedor más tolerante con redes móviles/
+    // compartidas, así que es el recurso final REAL antes de rendirse y
+    // mostrar el aviso. Antes el OSM quedaba huérfano (definido pero nunca
+    // añadido) y el aviso salía antes de probar el último recurso.
+    function chainTileFallback(layer, fallback, label) {
       var errCount = 0, swapped = false;
       layer.on('tileerror', function () {
         errCount++;
         if (swapped || errCount < 4 || !_map || !_map.hasLayer(layer)) return;
         swapped = true;
-        _map.removeLayer(layer);
+        try { _map.removeLayer(layer); } catch (e) {}
         if (fallback) {
           fallback.addTo(_map);
           try { console.warn('[wx-map] ' + label + ' falló, usando respaldo.'); } catch (e) {}
@@ -329,20 +336,19 @@
           showTileFailure();
         }
       });
-      // Si el respaldo TAMBIÉN falla, no hay más a quién recurrir.
-      if (isFinalFallback && fallback) {
-        var fbErr = 0, fbSwapped = false;
-        fallback.on('tileerror', function () {
-          fbErr++;
-          if (fbSwapped || fbErr < 4 || !_map || !_map.hasLayer(fallback)) return;
-          fbSwapped = true;
-          showTileFailure();
-        });
-      }
     }
-    watchTileErrors(streets, streetsFallback, 'CARTO Calles', false);
-    watchTileErrors(streetsFallback, streetsFallback2, 'Esri Calles', true);
-    watchTileErrors(satellite, null, 'Esri Satélite', false);
+    // Calles: CARTO → Esri Street → OSM → aviso
+    chainTileFallback(streets, streetsFallback, 'CARTO Calles');
+    chainTileFallback(streetsFallback, streetsFallback2, 'Esri Calles');
+    chainTileFallback(streetsFallback2, null, 'OSM Calles');
+    // Satélite: Esri Imagery → OSM → aviso (OSM como último recurso aunque
+    // no sea satélite, mejor que un recuadro gris sin nada).
+    var satelliteFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, subdomains: 'abc',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    });
+    chainTileFallback(satellite, satelliteFallback, 'Esri Satélite');
+    chainTileFallback(satelliteFallback, null, 'OSM Satélite');
 
     // Aviso visible cuando TODOS los proveedores de teselas fallaron
     // (bloqueo total de red hacia esos dominios, sin cobertura, etc.)

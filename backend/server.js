@@ -4667,6 +4667,7 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
     const {
       fatal, tag, exceptionClass, message, stackTrace,
       appVersion, platform, deviceModel, androidVersion, timestamp,
+      activity, section, url,
     } = req.body || {};
 
     if (!exceptionClass && !stackTrace && !message) {
@@ -4685,8 +4686,11 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
       (tag ? `Módulo: <code>${escHtml(tag)}</code>\n` : '') +
       `Clase: <code>${escHtml(exceptionClass || '?')}</code>\n` +
       `Mensaje: ${escHtml(message || '(sin mensaje)')}\n` +
+      (section ? `Sección: <code>${escHtml(section)}</code>\n` : '') +
+      (url ? `URL: <code>${escHtml(String(url).slice(0, 200))}</code>\n` : '') +
       `Dispositivo: ${escHtml(deviceModel || '?')} · Android ${escHtml(androidVersion || '?')}\n` +
       `Versión app: ${escHtml(appVersion || '?')} · Plataforma: ${escHtml(platform || 'android')}\n` +
+      (activity ? `Actividad: ${escHtml(String(activity).slice(0, 300))}\n` : '') +
       `Hora: ${when.toISOString()}\n\n` +
       (trace ? `<pre>${escHtml(trace)}</pre>` : ''),
       { windowMs: 10000 });
