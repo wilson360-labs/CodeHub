@@ -127,6 +127,12 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             prefs.getFloat("widget_feels", Float.NaN),
             prefs.getInt("widget_humidity", -1),
             prefs.getFloat("widget_wind", Float.NaN),
+            prefs.getFloat("widget_gust", Float.NaN),
+            prefs.getFloat("widget_pressure", Float.NaN),
+            prefs.getInt("widget_rain", -1),
+            prefs.getFloat("widget_uv", Float.NaN),
+            prefs.getString("widget_sunrise", ""),
+            prefs.getString("widget_sunset", ""),
             prefs.getString("widget_fc1", ""),
             prefs.getString("widget_fc2", ""),
             prefs.getString("widget_fc3", ""),
@@ -164,8 +170,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
                     URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat +
                         "&longitude=" + lon +
-                        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
-                        "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+                        "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure" +
+                        "&hourly=precipitation_probability,uv_index" +
+                        "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset" +
                         "&forecast_days=3&timezone=auto");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     conn.setConnectTimeout(10000);
@@ -187,12 +194,55 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     float feels = (float) current.optDouble("apparent_temperature", Double.NaN);
                     int humidity = current.optInt("relative_humidity_2m", -1);
                     float wind  = (float) current.optDouble("wind_speed_10m", Double.NaN);
+                    float gust  = (float) current.optDouble("wind_gusts_10m", Double.NaN);
+                    float pressure = (float) current.optDouble("surface_pressure", Double.NaN);
                     int wcode = current.optInt("weather_code", -1);
                     String city = prefs.getString("widget_city", "");
 
+                    // Lluvia (%) y UV — Open-Meteo solo los da por hora, no en
+                    // "current" (mismo criterio que backend/clima/fetch.js): se
+                    // toma el valor de la primera hora >= ahora en vez del
+                    // máximo del día, para que suba/baje como el clima real.
+                    int rainProb = -1;
+                    float uv = Float.NaN;
+                    JSONObject hourly = json.optJSONObject("hourly");
+                    if (hourly != null) {
+                        JSONArray hTimes = hourly.optJSONArray("time");
+                        JSONArray hRain = hourly.optJSONArray("precipitation_probability");
+                        JSONArray hUv = hourly.optJSONArray("uv_index");
+                        if (hTimes != null) {
+                            long now = System.currentTimeMillis();
+                            int idx = -1;
+                            SimpleDateFormat isoFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
+                            isoFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                            for (int i = 0; i < hTimes.length(); i++) {
+                                try {
+                                    Date t = isoFmt.parse(hTimes.optString(i, "") );
+                                    if (t != null && t.getTime() >= now) { idx = i; break; }
+                                } catch (Exception ignored) {}
+                            }
+                            if (idx < 0) idx = hTimes.length() - 1;
+                            if (idx >= 0) {
+                                if (hRain != null) rainProb = hRain.optInt(idx, -1);
+                                if (hUv != null) uv = (float) hUv.optDouble(idx, Double.NaN);
+                            }
+                        }
+                    }
+
+                    // Amanecer/atardecer — ya vienen en hora local de la
+                    // ubicación consultada (timezone=auto), así que se toma
+                    // directo el trozo "HH:mm" del ISO sin convertir zona.
+                    String sunrise = "", sunset = "";
+                    JSONObject daily = json.optJSONObject("daily");
+                    if (daily != null) {
+                        JSONArray dSunrise = daily.optJSONArray("sunrise");
+                        JSONArray dSunset = daily.optJSONArray("sunset");
+                        sunrise = isoTime(dSunrise != null ? dSunrise.optString(0, "") : "");
+                        sunset  = isoTime(dSunset != null ? dSunset.optString(0, "") : "");
+                    }
+
                     // Mini-forecast 3 días (Moon/Mar/Mie… / emoji / 19° / 26°).
                     String fc1 = "", fc2 = "", fc3 = "";
-                    JSONObject daily = json.optJSONObject("daily");
                     if (daily != null) {
                         JSONArray dTempMax = daily.optJSONArray("temperature_2m_max");
                         JSONArray dTempMin = daily.optJSONArray("temperature_2m_min");
@@ -204,23 +254,30 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         }
                     }
 
-                    long now = System.currentTimeMillis();
+                    long now2 = System.currentTimeMillis();
                     prefs.edit()
                         .putFloat("widget_temp", temp)
                         .putInt("widget_wcode", wcode)
                         .putFloat("widget_feels", feels)
                         .putInt("widget_humidity", humidity)
                         .putFloat("widget_wind", wind)
+                        .putFloat("widget_gust", gust)
+                        .putFloat("widget_pressure", pressure)
+                        .putInt("widget_rain", rainProb)
+                        .putFloat("widget_uv", uv)
+                        .putString("widget_sunrise", sunrise)
+                        .putString("widget_sunset", sunset)
                         .putString("widget_fc1", fc1)
                         .putString("widget_fc2", fc2)
                         .putString("widget_fc3", fc3)
-                        .putLong("widget_updated_at", now)
+                        .putLong("widget_updated_at", now2)
                         .apply();
 
                     AppWidgetManager mgr = AppWidgetManager.getInstance(context);
                     int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
                     RemoteViews views = new WeatherWidgetProvider().buildViews(
-                        context, city, temp, wcode, feels, humidity, wind, fc1, fc2, fc3, now);
+                        context, city, temp, wcode, feels, humidity, wind, gust, pressure,
+                        rainProb, uv, sunrise, sunset, fc1, fc2, fc3, now2);
                     for (int id : ids) mgr.updateAppWidget(id, views);
                 } catch (Exception ignored) {
                 } finally {
@@ -229,6 +286,15 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 }
             }
         }).start();
+    }
+
+    // Extrae "HH:mm" de un timestamp ISO de Open-Meteo (p.ej.
+    // "2026-09-03T06:02"). Ya viene en hora local de la ubicación
+    // consultada (timezone=auto), así que es un simple recorte de
+    // texto — no hay que convertir zona horaria.
+    private static String isoTime(String iso) {
+        if (iso == null || iso.length() < 16) return "";
+        return iso.substring(11, 16);
     }
 
     private static String forecastCell(Context context, JSONArray max, JSONArray min, JSONArray code, int idx) {
@@ -247,7 +313,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private RemoteViews buildViews(Context context, String city, float temp, int wcode,
-                                   float feels, int humidity, float wind,
+                                   float feels, int humidity, float wind, float gust, float pressure,
+                                   int rainProb, float uv, String sunrise, String sunset,
                                    String fc1, String fc2, String fc3, long updatedAt) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
 
@@ -263,9 +330,20 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_feels, " ");
         }
 
-        // Humedad y viento.
+        // Fila 1 de stats: humedad / viento / lluvia.
         views.setTextViewText(R.id.widget_humidity, humidity >= 0 ? "💧 " + humidity + "%" : "💧 --%");
         views.setTextViewText(R.id.widget_wind, !Float.isNaN(wind) ? "💨 " + Math.round(wind) + " km/h" : "💨 -- km/h");
+        views.setTextViewText(R.id.widget_rain, rainProb >= 0 ? "🌧️ " + rainProb + "%" : "🌧️ --%");
+
+        // Fila 2 de stats: ráfagas / presión / UV.
+        views.setTextViewText(R.id.widget_gust, !Float.isNaN(gust) ? "🌬️ " + Math.round(gust) + " km/h" : "🌬️ -- km/h");
+        views.setTextViewText(R.id.widget_pressure, !Float.isNaN(pressure) ? "📊 " + Math.round(pressure) + " hPa" : "📊 -- hPa");
+        views.setTextViewText(R.id.widget_uv, !Float.isNaN(uv) ? "☀️ UV " + Math.round(uv) : "☀️ UV --");
+
+        // Amanecer / atardecer.
+        boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
+        views.setTextViewText(R.id.widget_sun, hasSun ? "🌅 " + sunrise + "   🌇 " + sunset : "");
+        views.setViewVisibility(R.id.widget_sun, hasSun ? View.VISIBLE : View.GONE);
 
         // Mini-forecast 3 días.
         views.setTextViewText(R.id.widget_forecast_d1, fc1 == null || fc1.isEmpty() ? "—" : fc1);

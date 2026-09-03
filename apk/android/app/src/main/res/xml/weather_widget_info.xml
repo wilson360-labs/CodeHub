@@ -7,16 +7,17 @@
     además nos apoyamos en WeatherWidgetAlarmReceiver (AlarmManager,
     igual que CodeHubSyncService) para refrescar con más precisión
     cuando la app está en uso.
-  - minWidth/minHeight ~ 4x2 celdas: suficiente para ciudad + temp +
-    condición sin recortarse en launchers con grilla angosta.
+  - minWidth/minHeight ~ 4x3 celdas: se amplió (antes 4x2) para el
+    segundo renglón de stats (ráfagas/presión/UV) y la línea de
+    amanecer/atardecer agregados al layout.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
-    android:minHeight="150dp"
+    android:minHeight="180dp"
     android:targetCellWidth="4"
-    android:targetCellHeight="3"
+    android:targetCellHeight="4"
     android:minResizeWidth="110dp"
-    android:minResizeHeight="120dp"
+    android:minResizeHeight="140dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_weather"
     android:previewLayout="@layout/widget_weather"

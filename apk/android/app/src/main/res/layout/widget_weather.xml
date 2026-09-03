@@ -110,7 +110,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- ── Stats: humedad / viento ── -->
+        <!-- ── Stats: humedad / viento / lluvia · ráfagas / presión / UV ── -->
         <LinearLayout
             android:id="@+id/widget_stats_row"
             android:layout_width="match_parent"
@@ -137,7 +137,68 @@
                 android:textColor="#E6FFFFFF"
                 android:textSize="11sp"
                 android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_rain"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌧️ --%"
+                android:textColor="#E6FFFFFF"
+                android:textSize="11sp"
+                android:maxLines="1" />
         </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/widget_stats_row2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:id="@+id/widget_gust"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🌬️ -- km/h"
+                android:textColor="#CCFFFFFF"
+                android:textSize="10sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_pressure"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="📊 -- hPa"
+                android:textColor="#CCFFFFFF"
+                android:textSize="10sp"
+                android:maxLines="1" />
+
+            <TextView
+                android:id="@+id/widget_uv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="☀️ UV --"
+                android:textColor="#CCFFFFFF"
+                android:textSize="10sp"
+                android:maxLines="1" />
+        </LinearLayout>
+
+        <!-- ── Amanecer / atardecer ── -->
+        <TextView
+            android:id="@+id/widget_sun"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text=""
+            android:textColor="#B3FFFFFF"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:visibility="gone" />
 
         <!-- ── Separador sutil ── -->
         <View
