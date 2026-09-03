@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp">
+
+    <!-- Emoji/ícono grande de condición (fondo/lluvia/etc) -->
+    <TextView
+        android:id="@+id/widget_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:text="🌤️"
+        android:textSize="30sp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_city"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CodeHub"
+            android:textColor="#22C55E"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--°"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_condition"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cargando…"
+            android:textColor="#CBD5E1"
+            android:textSize="11sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/widget_refresh"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:background="@android:color/transparent"
+        android:src="@android:drawable/ic_popup_sync"
+        android:contentDescription="@string/widget_weather_description"
+        android:scaleType="fitCenter"
+        android:tint="#22C55E" />
+
+</LinearLayout>

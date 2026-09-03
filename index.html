@@ -6733,7 +6733,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.CodeHubNative && typeof CodeHubNative.addWidget === 'function') {
       try {
         CodeHubNative.addWidget('weather');
-        if (typeof toast === 'function') toast('\uD83C\uDFE0 Widget de clima agregado a tu inicio', 'success', 4000);
+        // requestPinAppWidget solo ABRE el diálogo nativo de Android;
+        // la confirmación real la da el usuario ahí, no aquí.
+        if (typeof toast === 'function') toast('\uD83D\uDCCC Confirma en el di\u00E1logo para agregarlo a tu inicio', 'info', 4500);
         return;
       } catch (e) {
         if (typeof toast === 'function') toast('\u26A0\uFE0F No se pudo crear el widget \u2014 intenta de nuevo', 'error', 4000);
@@ -7585,7 +7587,7 @@ function setAIMood(btn) {
 <script src="js/ux-animations.js?v=20260811a" defer></script>
 <script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
-<script src="js/weather-map.js?v=20260902c" defer></script>
+<script src="js/weather-map.js?v=20260902d" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

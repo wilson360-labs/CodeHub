@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget del clima de CodeHub (pantalla de inicio).
+
+  - updatePeriodMillis: el sistema nunca lo dispara más seguido de 30
+    min aunque se ponga menos (mínimo impuesto por Android), así que
+    además nos apoyamos en WeatherWidgetAlarmReceiver (AlarmManager,
+    igual que CodeHubSyncService) para refrescar con más precisión
+    cuando la app está en uso.
+  - minWidth/minHeight ~ 4x2 celdas: suficiente para ciudad + temp +
+    condición sin recortarse en launchers con grilla angosta.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="90dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="90dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_weather"
+    android:previewLayout="@layout/widget_weather"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_weather_description">
+</appwidget-provider>

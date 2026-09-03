@@ -231,6 +231,60 @@ public class CodeHubBridge {
             .putLong("lat_bits", Double.doubleToRawLongBits(lat))
             .putLong("lon_bits", Double.doubleToRawLongBits(lon))
             .apply();
+        WeatherWidgetProvider.requestRefresh(activity);
+    }
+
+    /**
+     * Sobrecarga con ciudad — BUG CORREGIDO: weather-map.js llamaba a
+     * CodeHubNative.saveLocation(lat, lon, city, city) con 4 argumentos,
+     * pero solo existía la versión de 2 parámetros. El puente JS de
+     * Android exige una coincidencia exacta de firma por reflexión, así
+     * que esa llamada nunca encontraba método y el nombre de ciudad
+     * jamás se guardaba nativamente (quedaba silenciada por el
+     * try/catch del lado JS). Ahora sí hay una sobrecarga de 3
+     * argumentos, y el widget de clima usa este nombre de ciudad tal
+     * cual lo eligió el usuario en el mapa, sin volver a geocodificar.
+     */
+    @JavascriptInterface
+    public void saveLocation(double lat, double lon, String city) {
+        SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+        prefs.edit()
+            .putLong("lat_bits", Double.doubleToRawLongBits(lat))
+            .putLong("lon_bits", Double.doubleToRawLongBits(lon))
+            .putString("widget_city", city == null ? "" : city)
+            .apply();
+        WeatherWidgetProvider.requestRefresh(activity);
+    }
+
+    /**
+     * addWidget(type) — crea el widget de clima en la pantalla de
+     * inicio. En Android 8+ (API 26) usa AppWidgetManager.requestPinAppWidget,
+     * que muestra el diálogo nativo del sistema para anclarlo sin salir
+     * de la app. En versiones anteriores esa API no existe: se avisa al
+     * usuario por JS para que lo agregue manualmente (mantener
+     * presionado en el inicio → Widgets → CodeHub), como en cualquier
+     * launcher Android.
+     */
+    @JavascriptInterface
+    public void addWidget(String type) {
+        try {
+            android.appwidget.AppWidgetManager mgr =
+                (android.appwidget.AppWidgetManager) activity.getSystemService(Context.APPWIDGET_SERVICE);
+            android.content.ComponentName provider =
+                new android.content.ComponentName(activity, WeatherWidgetProvider.class);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && mgr != null && mgr.isRequestPinAppWidgetSupported()) {
+                mgr.requestPinAppWidget(provider, null, null);
+            } else {
+                activity.runOnUiThread(() -> { try { webView.loadUrl(
+                    "javascript:(function(){if(typeof toast==='function')toast('📌 Mantén presionado en tu pantalla de inicio → Widgets → CodeHub','info',6000);})();"
+                ); } catch (Exception ignored) {} });
+            }
+        } catch (Exception e) {
+            activity.runOnUiThread(() -> { try { webView.loadUrl(
+                "javascript:(function(){if(typeof toast==='function')toast('⚠️ No se pudo abrir el diálogo de widgets','error',4000);})();"
+            ); } catch (Exception ignored) {} });
+        }
     }
 
     // ── LOCATION (permission + GPS) ────────────────────────────

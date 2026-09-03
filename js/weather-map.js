@@ -567,7 +567,7 @@
   function syncPushLocation(lat, lon, city) {
     var loc = { lat: lat, lon: lon, city: city };
     if (window.CodeHubNative && CodeHubNative.saveLocation) {
-      try { CodeHubNative.saveLocation(lat, lon, city, city); } catch (e) {}
+      try { CodeHubNative.saveLocation(lat, lon, city); } catch (e) {}
     }
     var endpoint = localStorage.getItem('ch_push_endpoint');
     var alertsOn = localStorage.getItem('ch_weather_alerts') === '1';

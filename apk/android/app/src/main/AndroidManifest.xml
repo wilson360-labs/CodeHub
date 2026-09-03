@@ -77,6 +77,19 @@
             android:exported="false">
         </receiver>
 
+        <!-- Widget de clima en pantalla de inicio -->
+        <receiver
+            android:name=".WeatherWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.codehub.app.WIDGET_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info" />
+        </receiver>
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

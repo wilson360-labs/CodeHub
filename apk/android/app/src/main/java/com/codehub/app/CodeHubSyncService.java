@@ -300,6 +300,7 @@ public class CodeHubSyncService extends Service {
                 .putLong("lat_bits", Double.doubleToRawLongBits(lat))
                 .putLong("lon_bits", Double.doubleToRawLongBits(lon))
                 .apply();
+            WeatherWidgetProvider.requestRefresh(this);
             // Enviar al backend
             String token = prefs.getString("fcm_token", "");
             if (!token.isEmpty()) {
