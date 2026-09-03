@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.63';
+const VERSION = 'codehub-v6.64';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -193,10 +193,40 @@ function pushToNotifStore(payload) {
   }).catch(() => {});
 }
 
+// Dominios de teselas de mapa (Leaflet: CARTO, Esri/ArcGIS, OSM, MapTiler).
+// BUG CORREGIDO: el SW interceptaba TODAS las peticiones cross-origin
+// (imágenes incluidas) y las volvía a pedir con su propio fetch() interno.
+// Ese fetch() hecho DESDE el Service Worker se evalúa contra la directiva
+// "connect-src" del CSP (no "img-src", aunque el recurso final sea una
+// imagen) — un matiz de Chromium/WebView bien documentado. Como el CSP
+// solo listaba estos dominios en "img-src" (con comodín https:) y no en
+// "connect-src", el proxy interno del SW los bloqueaba en cuanto el SW
+// estaba activo — reproducible en móvil/APK (donde el SW se registra de
+// forma más consistente) y NO en desktop en la primera carga (SW aún sin
+// controlar la página). Esto explicaba que las 4 capas de respaldo
+// (MapTiler/CARTO/Esri/OSM) fallaran TODAS a la vez en móvil.
+// Fix real: estas peticiones de teselas ni se interceptan — se dejan
+// pasar directo al navegador (sin proxy del SW), que las resuelve con su
+// mecanismo nativo de imagen/caché HTTP. Así no dependen de connect-src
+// ni de la lógica interna del SW. connect-src también se amplió como
+// refuerzo (ver index.html / vercel.json) para cualquier fetch()
+// explícito futuro sobre estos mismos dominios.
+const MAP_TILE_HOSTS = [
+  'basemaps.cartocdn.com',
+  'arcgisonline.com',
+  'tile.openstreetmap.org',
+  'api.maptiler.com',
+];
+
 // ── FETCH ─────────────────────────────────────────────
 self.addEventListener('fetch', e => {
   const { request } = e;
   const url = new URL(request.url);
+
+  // Teselas de mapa: no interceptar, dejar pasar tal cual (ver nota arriba).
+  if (MAP_TILE_HOSTS.some(h => url.hostname === h || url.hostname.endsWith('.' + h))) {
+    return;
+  }
 
   if (url.hostname.includes("onrender.com")) {
     e.respondWith(fetch(request.clone()).catch(() =>
@@ -214,7 +244,15 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(request.clone()).catch(() => new Response('', { status: 503 })));
     return;
   }
-  if (!url.hostname.includes('wilson360-labs') && !url.hostname.includes('localhost') &&
+  // BUG CORREGIDO: este catch-all (peticiones cross-origin sin extensión
+  // conocida) atrapaba de paso las teselas de Esri/ArcGIS (sin sufijo
+  // .png en la URL) y las reenviaba con fetch() del SW — mismo problema
+  // de connect-src explicado arriba. Ya no aplica: MAP_TILE_HOSTS se
+  // filtra antes de llegar aquí. Se excluyen además por tipo (destination
+  // 'image') como refuerzo, por si algún proveedor de teselas futuro no
+  // está en la lista.
+  if (request.destination !== 'image' &&
+      !url.hostname.includes('wilson360-labs') && !url.hostname.includes('localhost') &&
       url.protocol === 'https:' && !url.pathname.match(/\.(html|css|js|png|jpg|svg|webp|ico|json|woff2?)$/)) {
     e.respondWith(fetch(request).catch(() => new Response('', { status: 503 })));
     return;

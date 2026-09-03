@@ -106,7 +106,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com; media-src 'self' https: blob:; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.sheetjs.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://challenges.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com; media-src 'self' https: blob:; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://api.allorigins.win https://pastebin.com https://codehub-98s6.onrender.com https://api.mymemory.translated.net https://api.ipify.org https://ipapi.co https://ip-api.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://emailjs.com https://api.emailjs.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://*.basemaps.cartocdn.com https://*.arcgisonline.com https://*.tile.openstreetmap.org https://api.maptiler.com https:;">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E — Desarrollador Full Stack en Guatemala. Portfolio con herramientas web, apps Android y proyectos de código abierto.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -1289,6 +1289,16 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <i class="fas fa-umbrella"></i>
                             <span id="wx-precip">— mm</span>
                             <small>Precipitación</small>
+                        </div>
+                        <div class="wx-stat">
+                            <i class="fas fa-wind"></i>
+                            <span id="wx-gust">— km/h</span>
+                            <small>Ráfagas</small>
+                        </div>
+                        <div class="wx-stat">
+                            <i class="fas fa-gauge-high"></i>
+                            <span id="wx-pressure">— hPa</span>
+                            <small>Presión</small>
                         </div>
                         <div class="wx-stat">
                             <i class="fas fa-clock"></i>
@@ -5755,12 +5765,14 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       document.getElementById('wx-hum').textContent    = `${data.main.humidity}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(data.wind.speed * 3.6)} km/h`;
       document.getElementById('wx-precip').textContent = data.rain?.['1h'] ? `${data.rain['1h']} mm` : '0 mm';
+      document.getElementById('wx-gust').textContent   = data.wind.gust ? `${Math.round(data.wind.gust * 3.6)} km/h` : '—';
+      document.getElementById('wx-pressure').textContent = data.main.pressure ? `${data.main.pressure} hPa` : '—';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
 
     } else {
       // ── Fallback: Open-Meteo (sin key) ──
       const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation&daily=temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timezone=auto`
       );
       const d = await res.json();
       const c = d.current;
@@ -5793,6 +5805,8 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       document.getElementById('wx-hum').textContent    = `${c.relative_humidity_2m}%`;
       document.getElementById('wx-wind').textContent   = `${Math.round(c.wind_speed_10m)} km/h`;
       document.getElementById('wx-precip').textContent = `${c.precipitation} mm`;
+      document.getElementById('wx-gust').textContent   = c.wind_gusts_10m != null ? `${Math.round(c.wind_gusts_10m)} km/h` : '—';
+      document.getElementById('wx-pressure').textContent = c.surface_pressure != null ? `${Math.round(c.surface_pressure)} hPa` : '—';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
     }
 

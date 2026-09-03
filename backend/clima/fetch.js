@@ -9,7 +9,7 @@
 // cambios a lo largo del día (estilo Samsung Weather / Windows Weather).
 async function fetchWeatherFor(lat, lon) {
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation,is_day' +
+    '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation,is_day' +
     '&hourly=temperature_2m,precipitation_probability,uv_index,weather_code,wind_speed_10m' +
     '&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
     '&forecast_days=3&wind_speed_unit=kmh&timezone=auto';
