@@ -287,42 +287,40 @@
     _map = L.map('wx-minimap', { scrollWheelZoom: false, zoomControl: false }).setView([lat, lon], 11);
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
 
-    // Único estilo: Satélite con nombres (Esri World Imagery). Es el
-    // equivalente a "hybrid" de Google Maps. Cadena de respaldo ante
-    // fallos de teselas; respaldo final = OSM (mejor que recuadro gris).
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
-    });
-    // Capa de ETIQUETAS (nombres de países, ciudades y lugares) superpuesta
-    // sobre el satélite. La imagen satelital pura NO trae nombres; esta
-    // capa de referencia de Esri los dibuja encima (modo "hybrid").
-    var labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
-    });
-    // Último recurso: OSM estándar con sus 3 subdominios habituales (a/b/c).
-    // Distinto proveedor/CDN que ArcGIS, así que si el bloqueo es específico
-    // de Esri (y no de la red del usuario en general) esta capa sí responde.
-    var satelliteFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, subdomains: 'abc',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-    });
-    // Tiles híbridos públicos de Google (lyrs=y = SATÉLITE + NOMBRES de
-    // lugares/calles integrados, sin key). Nivel de respaldo medio: cubre
-    // redes donde Esri y OSM están bloqueados pero Google no (la app y
-    // Brave son justo el caso). Único host fijo mt1 para máxima simplicidad.
+    // Único estilo: Satélite con NOMBRES de lugares (equivalente a
+    // "hybrid" de Google Maps). PRIMARIO = Google Hybrid (lyrs=y): sus
+    // tiles traen el satélite y los nombres de ciudades/pueblos aldeas
+    // ya integrados — no depende de una capa de etiquetas aparte que
+    // pueda fallar o quedar vacía. Cadena ante fallos:
+    //   Google Hybrid → Esri Imagery + etiquetas Esri → OSM → aviso.
     var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
       maxZoom: 20,
       attribution: '&copy; <a href="https://www.google.com/intl/es_ALL/help/terms_maps.html">Google</a>',
     });
-    satellite.addTo(_map);
-    labels.addTo(_map);
+    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
+    });
+    // Capa de ETIQUETAS (nombres de países, ciudades y lugares) que va
+    // encima del satélite de Esri (la imagen satelital pura no trae
+    // nombres; esta capa de referencia los dibuja — modo "hybrid").
+    var labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
+    });
+    // Último recurso: OSM estándar con sus 3 subdominios (a/b/c).
+    // Distinto proveedor/CDN que ArcGIS y Google, para el caso extremo
+    // en que ambos estén bloqueados.
+    var satelliteFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, subdomains: 'abc',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    });
+    googleHybrid.addTo(_map);
 
     // BUG CORREGIDO: la capa base tiene vigilancia de errores con respaldo,
     // y si todos los respaldos también fallan se muestra un aviso visible con
     // botón "Reintentar" en vez de dejar el recuadro gris silenciosamente.
-    // Cadena: Esri Imagery (+labels) → Google Hybrid → OSM → aviso.
+    // Cadena: Google Hybrid → Esri (+labels) → OSM → aviso.
     function monitorLayer(layer, next) {
       var errCount = 0;
       layer.on('tileerror', function () {
@@ -333,16 +331,21 @@
         else showTileFailure();
       });
     }
-    monitorLayer(satellite, function () {
-      // Esri cayó: quitar sus labels (ya no pinta nadie encima de él)
-      // y subir el híbrido de Google (trae sus propios nombres).
-      try { _map.removeLayer(labels); } catch (e) {}
-      googleHybrid.addTo(_map);
-      try { console.warn('[wx-map] Esri Satélite falló, usando Google Hybrid.'); } catch (e) {}
-    });
     monitorLayer(googleHybrid, function () {
+      // Google cayó: montar Esri satélite + su capa de etiquetas.
+      satellite.addTo(_map);
+      labels.addTo(_map);
+      try { console.warn('[wx-map] Google Hybrid falló, usando Esri + etiquetas.'); } catch (e) {}
+    });
+    monitorLayer(satellite, function () {
+      // Si Esri tampoco responde, se quitan sus etiquetas (ya no hay
+      // nada debajo que etiquetar) y se sube OSM (trae sus nombres).
+      try {
+        if (_map.hasLayer(satellite)) _map.removeLayer(satellite);
+        if (_map.hasLayer(labels)) _map.removeLayer(labels);
+      } catch (e) {}
       satelliteFallback.addTo(_map);
-      try { console.warn('[wx-map] Google Hybrid falló, usando OSM.'); } catch (e) {}
+      try { console.warn('[wx-map] Esri falló, usando OSM.'); } catch (e) {}
     });
     monitorLayer(satelliteFallback, null);
 
