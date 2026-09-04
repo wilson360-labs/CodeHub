@@ -43,7 +43,6 @@
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textAllCaps="true"
-                android:letterSpacing="0.06"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
@@ -86,8 +85,7 @@
                     android:text="--°"
                     android:textColor="#FFFFFF"
                     android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:includeFontPadding="false" />
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/widget_condition"
@@ -217,7 +215,7 @@
             android:layout_height="1dp"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="6dp"
-            android:background="#40FFFFFF" />
+            android:background="@drawable/widget_divider" />
 
         <!-- ── Mini-forecast 3 días ── -->
         <LinearLayout
@@ -274,8 +272,6 @@
                 style="?android:attr/progressBarStyleSmall"
                 android:layout_width="14dp"
                 android:layout_height="14dp"
-                android:indeterminate="true"
-                android:indeterminateTint="#22D361"
                 android:visibility="invisible" />
 
             <ImageButton
@@ -283,11 +279,9 @@
                 android:layout_width="28dp"
                 android:layout_height="28dp"
                 android:layout_marginStart="-14dp"
-                android:background="@android:color/transparent"
                 android:src="@android:drawable/ic_popup_sync"
                 android:contentDescription="@string/widget_weather_description"
                 android:scaleType="fitCenter"
-                android:tint="#22D361"
                 android:visibility="visible" />
 
             <TextView

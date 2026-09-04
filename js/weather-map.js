@@ -250,6 +250,7 @@
     _googleMap = new gm.Map(el, {
       center: { lat: lat, lng: lon },
       zoom: 11,
+      mapTypeId: 'hybrid', // Satélite con nombres de lugares (único estilo)
       disableDefaultUI: false,
       zoomControl: true,
       mapTypeControl: false,
@@ -257,9 +258,6 @@
       fullscreenControl: false,
       gestureHandling: 'greedy',
     });
-    _googleMap.set('styles', [
-      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-    ]);
 
     var pin = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="34" height="34">' +
@@ -289,64 +287,27 @@
     _map = L.map('wx-minimap', { scrollWheelZoom: false, zoomControl: false }).setView([lat, lon], 11);
     L.control.zoom({ position: 'bottomright' }).addTo(_map);
 
-    var savedStyle = localStorage.getItem('ch_map_style') || 'streets';
-    // "Calles": CARTO Voyager en vez de tile.openstreetmap.org directo.
-    // Los tile servers crudos de OSM están pensados para uso ligero en
-    // navegador de escritorio; su política de uso bloquea/limita tráfico
-    // de apps y de IPs compartidas de operadoras móviles (CGNAT), que es
-    // justo el patrón "en PC carga, en el móvil queda en blanco". CARTO
-    // ofrece el mismo estilo tipo calles con CDN pensado para apps.
-    // Capa "Calles": si hay key de MapTiler Cloud, uso su estilo streets-v2
-    // (mucho más nítido y vivo, con los mismos tiles OSM), y el fallback
-    // es CARTO voyager. Si no hay key, la base es directamente CARTO.
-    var maptilerLayer = null;
-    if (_maptilerKey) {
-      maptilerLayer = L.tileLayer('https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=' + encodeURIComponent(_maptilerKey), {
-        maxZoom: 20, detectRetina: true,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>',
-      });
-    }
-    var streets = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png' + (_cartoKey ? '?api_key=' + encodeURIComponent(_cartoKey) : ''), {
-      maxZoom: 20, subdomains: 'abcd', detectRetina: true,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    });
-    var activeStreets = maptilerLayer || streets;
-    // Respaldo si CARTO llegara a fallar: Esri World Street Map (mismo
-    // proveedor/CDN que ya usamos para satélite, historial confiable).
-    var streetsFallback = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
-    });
+    // Único estilo: Satélite con nombres (Esri World Imagery). Es el
+    // equivalente a "hybrid" de Google Maps. Cadena de respaldo ante
+    // fallos de teselas; respaldo final = OSM (mejor que recuadro gris).
     var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
     });
-    // Último recurso si CARTO Y Esri Calles fallan ambos: OSM estándar
-    // con sus 3 subdominios habituales (a/b/c). Distinto proveedor/CDN
-    // que los dos anteriores, así que si el bloqueo es específico de
-    // CARTO/ArcGIS (y no de la red del usuario en general) esta capa
-    // sí suele responder.
-    var streetsFallback2 = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Último recurso: OSM estándar con sus 3 subdominios habituales (a/b/c).
+    // Distinto proveedor/CDN que ArcGIS, así que si el bloqueo es específico
+    // de Esri (y no de la red del usuario en general) esta capa sí responde.
+    var satelliteFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, subdomains: 'abc',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     });
-    (savedStyle === 'satellite' ? satellite : activeStreets).addTo(_map);
+    satellite.addTo(_map);
 
-    // BUG CORREGIDO: antes solo la capa "Calles" tenía vigilancia de
-    // errores con respaldo — "Satélite" no tenía NINGÚN fallback ni
-    // aviso: si Esri World_Imagery fallaba en la red del usuario, el
-    // mapa quedaba en blanco para siempre sin que hubiera forma de
-    // saber por qué ni de reintentar. Ahora AMBAS capas base tienen
-    // vigilancia + respaldo, y si el respaldo también falla se
-    // muestra un aviso visible con botón "Reintentar" en vez de dejar
-    // el recuadro gris silenciosamente.
-    // Cadena de respaldo para cada capa base. Cada nivel vigila errores de
+    // BUG CORREGIDO: la capa base tiene vigilancia de errores con respaldo,
+    // y si el respaldo también falla se muestra un aviso visible con botón
+    // "Reintentar" en vez de dejar el recuadro gris silenciosamente.
+    // Cadena: Esri Imagery → OSM → aviso. Cada nivel vigila errores de
     // teselas y si el proveedor falla (>=4 errores) pasa al siguiente.
-    // El ÚLTIMO nivel siempre termina en OSM estándar (con sus 3
-    // subdominios a/b/c): es el proveedor más tolerante con redes móviles/
-    // compartidas, así que es el recurso final REAL antes de rendirse y
-    // mostrar el aviso. Antes el OSM quedaba huérfano (definido pero nunca
-    // añadido) y el aviso salía antes de probar el último recurso.
     function chainTileFallback(layer, fallback, label) {
       var errCount = 0, swapped = false;
       layer.on('tileerror', function () {
@@ -362,20 +323,6 @@
         }
       });
     }
-    // Calles: [MapTiler →] CARTO → Esri Street → OSM → aviso
-    // Si hay key de MapTiler, esa es la base y CARTO pasa a ser su respaldo.
-    if (maptilerLayer) {
-      chainTileFallback(maptilerLayer, streets, 'MapTiler Calles');
-    }
-    chainTileFallback(streets, streetsFallback, 'CARTO Calles');
-    chainTileFallback(streetsFallback, streetsFallback2, 'Esri Calles');
-    chainTileFallback(streetsFallback2, null, 'OSM Calles');
-    // Satélite: Esri Imagery → OSM → aviso (OSM como último recurso aunque
-    // no sea satélite, mejor que un recuadro gris sin nada).
-    var satelliteFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, subdomains: 'abc',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-    });
     chainTileFallback(satellite, satelliteFallback, 'Esri Satélite');
     chainTileFallback(satelliteFallback, null, 'OSM Satélite');
 
@@ -387,7 +334,7 @@
       if (!el || el.querySelector('.wx-map-fail')) return;
       var msg = document.createElement('div');
       msg.className = 'wx-map-fail wx-map-fail-overlay';
-      msg.innerHTML = 'No se pudieron cargar las capas del mapa (calles/satélite).<br>' +
+      msg.innerHTML = 'No se pudieron cargar las capas del mapa (satélite).<br>' +
         'Puede ser tu conexión móvil bloqueando esos servidores.<br>' +
         '<button type="button" class="wx-map-retry-btn">Reintentar</button>';
       el.appendChild(msg);
@@ -401,21 +348,6 @@
         initMap(lat, lon);
       });
     }
-
-    // Selector de estilo de mapa (capas). En todo el rango móvil
-    // (380–730px) arranca colapsado (solo ícono) para no taparse gran
-    // parte del mapa; en escritorio, donde sobra espacio, arranca
-    // expandido.
-    var isNarrow = (window.matchMedia && window.matchMedia('(max-width: 730px)').matches) ||
-      (window.innerWidth && window.innerWidth <= 730);
-    var layerControl = L.control.layers(
-      { 'Calles': activeStreets, 'Satélite': satellite },
-      null,
-      { position: 'topleft', collapsed: isNarrow }
-    ).addTo(_map);
-    _map.on('baselayerchange', function (e) {
-      localStorage.setItem('ch_map_style', e.name === 'Satélite' ? 'satellite' : 'streets');
-    });
 
     var icon = L.divIcon({
       className: 'wx-map-marker',
