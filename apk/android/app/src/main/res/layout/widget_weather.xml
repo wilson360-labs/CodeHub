@@ -201,7 +201,18 @@
             android:visibility="gone" />
 
         <!-- ── Separador sutil ── -->
-        <View
+        <!-- BUG CORREGIDO: un <View> suelto (android.view.View) NO está
+             en la lista de clases que RemoteViews puede inflar en el
+             proceso del launcher (solo soporta FrameLayout, LinearLayout,
+             RelativeLayout, GridLayout, TextView, ImageView, ImageButton,
+             ProgressBar y unos pocos más). Con un <View> ahí, el inflado
+             completo del preview fallaba en el proceso del launcher (no
+             en el de CodeHub) y Samsung/One UI mostraba su propio error
+             genérico "No se pudo agregar el widget" en vez del preview.
+             Se reemplaza por el truco estándar para dividers en widgets:
+             un LinearLayout vacío con altura fija y color de fondo — se
+             ve idéntico y sí está en la lista soportada. -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginTop="6dp"
