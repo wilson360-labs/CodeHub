@@ -401,13 +401,12 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_forecast_d2, fc2 == null || fc2.isEmpty() ? "—" : fc2);
         views.setTextViewText(R.id.widget_forecast_d3, fc3 == null || fc3.isEmpty() ? "—" : fc3);
 
-        // Hora de última actualización.
-        if (updatedAt > 0) {
-            String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(updatedAt));
-            views.setTextViewText(R.id.widget_updated2, "Actualizado " + time);
-        } else {
-            views.setTextViewText(R.id.widget_updated2, "");
-        }
+        // Cronómetro EN VIVO del widget: "Actualizado hace mm:ss" desde
+        // la última actualización. La cuenta la anima el Chronometer del
+        // propio sistema (ticks cada segundo), sin alarmas de CodeHub.
+        views.setChronometer(R.id.widget_updated2,
+            SystemClock.elapsedRealtime() - Math.max(0, System.currentTimeMillis() - updatedAt),
+            "Actualizado hace %s", updatedAt > 0);
         // Reloj del widget: hora local ACTUAL (la mantiene al minuto el
         // tick de AlarmManager — paintClockOnly). El header es el reloj,
         // el footer es cuándo se actualizó el clima.
@@ -430,6 +429,19 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         // que internamente muestra el spinner (animación de carga) y lo
         // oculta al terminar.
         views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent(context));
+
+        // Emoji ANIMADO: el AdapterViewFlipper (wx_anim_emoji) rota entre
+        // los frames que construye WeatherWidgetAnimService (flip del
+        // sistema). widget_icon actúa como "empty view": si el launcher no
+        // puede enlazar el servicio, se queda el emoji estático y el
+        // widget sigue funcionando normal (nada se rompe).
+        try {
+            Intent animIntent = new Intent(context, WeatherWidgetAnimService.class);
+            animIntent.setData(android.net.Uri.parse(
+                "widget://weather/" + getClass().getSimpleName() + "/" + System.currentTimeMillis()));
+            views.setRemoteAdapter(R.id.wx_anim_emoji, animIntent);
+            views.setEmptyView(R.id.wx_anim_emoji, R.id.widget_icon);
+        } catch (Exception ignored) {}
 
         return views;
     }

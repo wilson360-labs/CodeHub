@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Frame individual del emoji animado del widget (weather de CodeHub).
+  Lo infla WeatherWidgetAnimService (RemoteViewsService) para cada frame
+  del AdapterViewFlipper. Solo FrameLayout + TextView: clases que
+  RemoteViews puede inflar en el proceso del launcher.
+  Fondos transparentes y mismo tamaño que el icono estático (widget_icon)
+  para que el flip alterne sin saltos de layout.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="44dp"
+    android:layout_height="44dp"
+    android:background="@android:color/transparent">
+
+    <TextView
+        android:id="@+id/widget_emoji_frame_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:textSize="32sp"
+        android:text="🌤️"
+        android:background="@android:color/transparent" />
+</FrameLayout>

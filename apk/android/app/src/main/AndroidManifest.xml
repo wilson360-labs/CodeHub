@@ -90,6 +90,14 @@
                 android:resource="@xml/weather_widget_info" />
         </receiver>
 
+        <!-- Servicio del emoji animado del widget (AdapterViewFlipper).
+             Obligatorio: permission BIND_REMOTEVIEWS para que el launcher
+             enlace la factory de frames. -->
+        <service
+            android:name=".WeatherWidgetAnimService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <receiver
             android:name=".BootReceiver"
             android:exported="true">

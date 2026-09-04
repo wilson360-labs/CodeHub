@@ -64,13 +64,33 @@
             android:gravity="center_vertical"
             android:layout_marginBottom="2dp">
 
-            <TextView
-                android:id="@+id/widget_icon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="12dp"
-                android:text="🌤️"
-                android:textSize="32sp" />
+            <FrameLayout
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginEnd="12dp">
+
+                <TextView
+                    android:id="@+id/widget_icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="🌤️"
+                    android:textSize="32sp" />
+
+                <!-- Emoji ANIMADO: AdapterViewFlipper alimentado por
+                     WeatherWidgetAnimService (RemoteViewsService). El
+                     sistema hace flip entre los frames del emoji sin usar
+                     CPU de CodeHub. Mientras no hay frames, el TextView
+                     widget_icon (empty view) muestra el emoji estático,
+                     así el widget NUNCA queda sin icono. -->
+                <AdapterViewFlipper
+                    android:id="@+id/wx_anim_emoji"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:autoStart="true"
+                    android:flipInterval="1800" />
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -259,6 +279,44 @@
                 android:maxLines="3" />
         </LinearLayout>
 
+        <!-- ── Barras de energía animadas ("shimmer"), una por día del
+             forecast. ProgressBar indeterminate horizontal: la animación
+             la dibuja el propio sistema en el proceso del launcher, sin
+             coste de batería extra. Puro detalle de diseño "pro". ── -->
+        <LinearLayout
+            android:id="@+id/widget_energy_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="3dp">
+
+            <ProgressBar
+                android:layout_width="0dp"
+                android:layout_height="2dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:indeterminate="true"
+                android:indeterminateTint="#B3FFFFFF" />
+
+            <ProgressBar
+                android:layout_width="0dp"
+                android:layout_height="2dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="3dp"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:indeterminate="true"
+                android:indeterminateTint="#80FFFFFF" />
+
+            <ProgressBar
+                android:layout_width="0dp"
+                android:layout_height="2dp"
+                android:layout_weight="1"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:indeterminate="true"
+                android:indeterminateTint="#4DFFFFFF" />
+        </LinearLayout>
+
         <!-- ── Barra inferior: botón refrescar (animado) CENTRADO + actualizado ── -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -294,7 +352,11 @@
                     android:visibility="visible" />
             </FrameLayout>
 
-            <TextView
+            <!-- Cronómetro EN VIVO: "Actualizado hace mm:ss" contando desde
+                 el último refresh (Chronometer lo anima el propio sistema,
+                 ticks cada segundo, sin alarmas de CodeHub). Hereda de
+                 TextView, así que un setTextViewText externo tampoco rompe. -->
+            <Chronometer
                 android:id="@+id/widget_updated2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
