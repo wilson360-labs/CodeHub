@@ -464,7 +464,34 @@ section, main, .container, .wrap, .inner, .section-wrap {
 .wx-map-togglebtn .wx-map-caret { font-size: .75rem; opacity: .8; transition: transform .2s; }
 .wx-map-inner { margin-top: .7rem; }
 .wx-map-box.closed .wx-map-inner { display: none; }
-.wx-map-search { display: flex; gap: .4rem; margin-bottom: .6rem; }
+.wx-map-search { display: flex; gap: .4rem; margin-bottom: .6rem; position: relative; }
+/* Dropdown de sugerencias de lugares (autocomplete). Reemplaza al
+   <datalist> nativo, que en tema oscuro se veía blanco-sobre-blanco
+   (no es estilable). Usa variables del theme (--card/--text) para que
+   funcione en claro y oscuro, y z-index alto para quedar sobre el mapa. */
+.wx-map-suggest-list {
+  position: absolute; z-index: 1200; top: 100%; left: 0; right: 0;
+  margin-top: 4px; overflow: hidden; text-align: left;
+  background: var(--card, #fff); color: var(--text, #111);
+  border: 1px solid rgba(128,128,128,.35); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.28);
+}
+.wx-map-suggest-list .wx-sug-item {
+  display: flex; align-items: center; gap: .5rem; width: 100%;
+  padding: .65rem .85rem; min-height: 44px; font-size: .85rem;
+  text-align: left; background: transparent; border: none;
+  color: inherit; cursor: pointer; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.wx-map-suggest-list .wx-sug-item:hover,
+.wx-map-suggest-list .wx-sug-item:focus-visible,
+.wx-map-suggest-list .wx-sug-item.active { background: rgba(34,197,94,.16); }
+.wx-map-suggest-list .wx-sug-empty {
+  padding: .7rem .85rem; font-size: .8rem; opacity: .7; text-align: center;
+}
+@media (max-width: 480px) {
+  .wx-map-suggest-list .wx-sug-item { font-size: .9rem; }
+}
 .wx-map-search .wx-input {
   flex: 1; min-width: 0; padding: .6rem .85rem;
   border-radius: 10px; border: 1px solid rgba(128,128,128,.25);

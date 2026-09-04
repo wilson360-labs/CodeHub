@@ -478,37 +478,110 @@
 
   // Sugerencias en vivo para el buscador del mapa (autocomplete).
   // Usa Open-Meteo Geocoding (mismo proveedor que el clima, ya permitido
-  // por CSP) con debounce de 300ms. Rellena un <datalist> nativo que
-  // no requiere dependencias y funciona en WebView de la app.
+  // por CSP) con debounce de 300ms. Renderiza un dropdown personalizado
+  // (#wx-map-suggest-list) estilizado con el theme — a diferencia del
+  // <datalist> nativo, que en tema oscuro se veía blanco sobre blanco.
   var _mapSuggestTimer = null;
+  var _mapSuggestions = [];
+  var _mapSugActive = -1;
+
+  function _escHtml(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+  function hideMapSuggest() {
+    var box = document.getElementById('wx-map-suggest-list');
+    if (box) { box.hidden = true; box.innerHTML = ''; }
+    _mapSuggestions = [];
+    _mapSugActive = -1;
+  }
+
   function chMapSuggest(q) {
     if (_mapSuggestTimer) clearTimeout(_mapSuggestTimer);
-    var dl = document.getElementById('wx-map-suggestions');
-    if (!dl) return;
+    var box = document.getElementById('wx-map-suggest-list');
+    if (!box) return;
     q = (q || '').trim();
-    if (q.length < 2) { dl.innerHTML = ''; return; }
+    if (q.length < 2) { hideMapSuggest(); return; }
+    _mapSugActive = -1;
     _mapSuggestTimer = setTimeout(function () {
       fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
         '&count=6&language=es&format=json')
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          if (!dl) return;
+          if (!box) return;
           var items = (data && data.results) || [];
-          if (!items.length) { dl.innerHTML = ''; return; }
+          if (!items.length) {
+            box.innerHTML = '<div class="wx-sug-empty">Sin resultados para «' + _escHtml(q) + '»</div>';
+            box.hidden = false;
+            return;
+          }
+          _mapSuggestions = [];
           var html = '';
           for (var i = 0; i < items.length; i++) {
             var it = items[i];
+            _mapSuggestions[i] = { lat: it.latitude, lon: it.longitude, name: it.name || '' };
             var name = it.name || '';
             var country = it.country || '';
             var admin = it.admin1 || '';
             var label = name + (admin && admin !== name ? ' (' + admin + ')' : '') +
               (country ? ', ' + country : '');
-            html += '<option value="' + label.replace(/"/g, '&quot;') + '"></option>';
+            html += '<button type="button" class="wx-sug-item" data-idx="' + i + '">' +
+              '<span>📍</span> ' + _escHtml(label) + '</button>';
           }
-          dl.innerHTML = html;
+          box.innerHTML = html;
+          box.hidden = false;
         })
-        .catch(function () { if (dl) dl.innerHTML = ''; });
+        .catch(function () { hideMapSuggest(); });
     }, 300);
+  }
+
+  // Navegación por teclado en el input: ↑/↓ recorren las sugerencias,
+  // Enter selecciona la activa (o busca si no hay ninguna activa),
+  // Escape cierra el dropdown.
+  function chMapSuggestKey(ev) {
+    var box = document.getElementById('wx-map-suggest-list');
+    var items = box && !box.hidden ? box.querySelectorAll('.wx-sug-item') : [];
+    if (!items.length) {
+      if (ev.key === 'Enter') chMapSearch();
+      return;
+    }
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      _mapSugActive = (_mapSugActive + 1) % items.length;
+    } else if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      _mapSugActive = (_mapSugActive - 1 + items.length) % items.length;
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      if (_mapSugActive >= 0) { applyMapSuggestion(_mapSugActive); return; }
+      chMapSearch();
+      return;
+    } else if (ev.key === 'Escape') {
+      hideMapSuggest();
+      return;
+    } else { return; }
+    for (var i = 0; i < items.length; i++) items[i].classList.toggle('active', i === _mapSugActive);
+    if (items[_mapSugActive]) items[_mapSugActive].scrollIntoView({ block: 'nearest' });
+  }
+
+  // Aplica una sugerencia al mapa (ambos motores Google/Leaflet):
+  // centra, mueve el marcador y resuelve el nombre de la ciudad.
+  function applyMapSuggestion(idx) {
+    var it = _mapSuggestions[idx];
+    hideMapSuggest();
+    if (!it) return;
+    var input = document.getElementById('wx-map-search-input');
+    if (input) input.value = it.name;
+    if (!_map && !_loading) initMap(null, null);
+    if (isGoogleMode() && _googleMap && _marker) {
+      _googleMap.setCenter({ lat: it.lat, lng: it.lon });
+      _googleMap.setZoom(12);
+      _marker.setPosition({ lat: it.lat, lng: it.lon });
+    } else if (_map) {
+      _map.setView([it.lat, it.lon], 12);
+      if (_marker) _marker.setLatLng([it.lat, it.lon]);
+    }
+    _selected = { lat: it.lat, lon: it.lon, city: it.name };
+    updateCityLabel(it.name);
+    reverseGeocode(it.lat, it.lon);
   }
 
   function chMapSearch() {
@@ -602,4 +675,19 @@
       }).catch(function () {});
     }
   }
+
+  // Delegación de clicks/TOQUE para el dropdown de sugerencias:
+  // tocar una sugerencia la aplica al mapa; tocar fuera del input lo cierra.
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var item = t && t.closest ? t.closest('.wx-sug-item') : null;
+    if (item) {
+      e.preventDefault();
+      applyMapSuggestion(parseInt(item.getAttribute('data-idx') || '0', 10));
+      return;
+    }
+    if (t && t.id === 'wx-map-search-input') return;
+    if (t && t.closest && t.closest('.wx-map-suggest-list')) return;
+    hideMapSuggest();
+  });
 })();
