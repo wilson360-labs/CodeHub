@@ -308,31 +308,43 @@
       maxZoom: 19, subdomains: 'abc',
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     });
+    // Tiles híbridos públicos de Google (lyrs=y = SATÉLITE + NOMBRES de
+    // lugares/calles integrados, sin key). Nivel de respaldo medio: cubre
+    // redes donde Esri y OSM están bloqueados pero Google no (la app y
+    // Brave son justo el caso). Único host fijo mt1 para máxima simplicidad.
+    var googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; <a href="https://www.google.com/intl/es_ALL/help/terms_maps.html">Google</a>',
+    });
     satellite.addTo(_map);
     labels.addTo(_map);
 
     // BUG CORREGIDO: la capa base tiene vigilancia de errores con respaldo,
-    // y si el respaldo también falla se muestra un aviso visible con botón
-    // "Reintentar" en vez de dejar el recuadro gris silenciosamente.
-    // Cadena: Esri Imagery → OSM → aviso. Cada nivel vigila errores de
-    // teselas y si el proveedor falla (>=4 errores) pasa al siguiente.
-    function chainTileFallback(layer, fallback, label) {
-      var errCount = 0, swapped = false;
+    // y si todos los respaldos también fallan se muestra un aviso visible con
+    // botón "Reintentar" en vez de dejar el recuadro gris silenciosamente.
+    // Cadena: Esri Imagery (+labels) → Google Hybrid → OSM → aviso.
+    function monitorLayer(layer, next) {
+      var errCount = 0;
       layer.on('tileerror', function () {
         errCount++;
-        if (swapped || errCount < 4 || !_map || !_map.hasLayer(layer)) return;
-        swapped = true;
+        if (errCount < 4 || !_map || !_map.hasLayer(layer)) return;
         try { _map.removeLayer(layer); } catch (e) {}
-        if (fallback) {
-          fallback.addTo(_map);
-          try { console.warn('[wx-map] ' + label + ' falló, usando respaldo.'); } catch (e) {}
-        } else {
-          showTileFailure();
-        }
+        if (next) next();
+        else showTileFailure();
       });
     }
-    chainTileFallback(satellite, satelliteFallback, 'Esri Satélite');
-    chainTileFallback(satelliteFallback, null, 'OSM Satélite');
+    monitorLayer(satellite, function () {
+      // Esri cayó: quitar sus labels (ya no pinta nadie encima de él)
+      // y subir el híbrido de Google (trae sus propios nombres).
+      try { _map.removeLayer(labels); } catch (e) {}
+      googleHybrid.addTo(_map);
+      try { console.warn('[wx-map] Esri Satélite falló, usando Google Hybrid.'); } catch (e) {}
+    });
+    monitorLayer(googleHybrid, function () {
+      satelliteFallback.addTo(_map);
+      try { console.warn('[wx-map] Google Hybrid falló, usando OSM.'); } catch (e) {}
+    });
+    monitorLayer(satelliteFallback, null);
 
     // Aviso visible cuando TODOS los proveedores de teselas fallaron
     // (bloqueo total de red hacia esos dominios, sin cobertura, etc.)
