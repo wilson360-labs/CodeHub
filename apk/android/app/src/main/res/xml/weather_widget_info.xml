@@ -10,6 +10,18 @@
   - minWidth/minHeight ~ 4x3 celdas: se amplió (antes 4x2) para el
     segundo renglón de stats (ráfagas/presión/UV) y la línea de
     amanecer/atardecer agregados al layout.
+  - previewImage + previewLayout: BUG CORREGIDO. Solo estaba declarado
+    previewLayout (vista previa "en vivo" con el layout real), pero ese
+    atributo recién existe desde Android 12 (API 31). Como minSdk del
+    proyecto es 24 y no había NINGÚN previewImage (el atributo clásico,
+    soportado desde siempre), en Android 7–11 — y en varios launchers
+    OEM que tampoco respetan previewLayout aunque el OS sea 12+ — el
+    selector de widgets del sistema no tenía nada que mostrar y el
+    propio launcher fallaba al intentar anclarlo ("no se pudo cargar").
+    Se agrega previewImage apuntando al gradiente de widget_background
+    (ya existía en el proyecto pero no se usaba en ningún lado) como
+    vista previa universal; previewLayout se mantiene para el preview
+    "en vivo" real en Android 12+.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="180dp"
@@ -20,6 +32,7 @@
     android:minResizeHeight="140dp"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_weather"
+    android:previewImage="@drawable/widget_background"
     android:previewLayout="@layout/widget_weather"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"

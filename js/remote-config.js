@@ -112,7 +112,17 @@
       var body = await res.json();
       if (body.ok && body.config) {
         var serverVersion = body.config.version || 0;
-        var hasKey = !!(body.config.ui && (body.config.ui.googleMapsKey || body.config.ui.maptilerKey));
+        // BUG CORREGIDO: este localStorage cachea 1h (loadFromStorage) y
+        // "hasKey" es el atajo para aceptar la respuesta fresca del
+        // servidor aunque el admin no haya subido "version" (setear una
+        // API key en Render no lo hace). Antes solo miraba googleMapsKey
+        // y maptilerKey — si el único cambio era CARTO_KEY, "hasKey"
+        // daba false, "serverVersion > clientVersion" también, y el
+        // código se quedaba con el _config viejo de localStorage (sin
+        // cartoKey) aunque el fetch a /api/config ya hubiera traído la
+        // key nueva. Resultado: la marca de agua de CARTO pidiendo key
+        // seguía saliendo aunque CARTO_KEY ya estuviera puesta en Render.
+        var hasKey = !!(body.config.ui && (body.config.ui.googleMapsKey || body.config.ui.maptilerKey || body.config.ui.cartoKey));
         if (hasKey || serverVersion > clientVersion || !stored) {
           _config = deepMerge(DEFAULTS, body.config);
           _version = _config.version || 1;

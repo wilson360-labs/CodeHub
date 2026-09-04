@@ -369,6 +369,26 @@ async function getAppConfig() {
       const doc = await AppConfig.findOne({ key: 'main' }).lean();
       if (doc && doc.config) {
         _appConfigCache = { ...DEFAULT_CONFIG, ...doc.config, version: doc.version || 1 };
+        // BUG CORREGIDO: el spread de arriba es superficial (shallow) —
+        // si el documento guardado en Mongo trae su propio "ui" (queda
+        // grabado ahí cada vez que se hace PATCH /api/admin/config,
+        // porque ese endpoint guarda una foto completa de TODO el config
+        // vigente en ese momento, "ui" incluido), ese "ui" completo
+        // REEMPLAZA por completo al de DEFAULT_CONFIG — googleMapsKey,
+        // maptilerKey y cartoKey incluidos. Como esos 3 campos salen de
+        // variables de entorno (process.env.*), quedaban congelados con
+        // el valor que tenían la ÚLTIMA vez que se guardó el config en
+        // Mongo, aunque después se agregara o cambiara la key en Render.
+        // Esto explicaba exactamente el síntoma: CARTO_KEY puesta en
+        // Render, pero el mapa seguía pidiendo key — el valor "fresco"
+        // del env nunca llegaba a pisar el snapshot viejo de la DB.
+        // Fix: estas 3 keys de mapas SIEMPRE se toman del env vivo,
+        // nunca del snapshot de Mongo (el admin nunca las edita a mano
+        // desde ahí de todos modos).
+        _appConfigCache.ui = { ...DEFAULT_CONFIG.ui, ...(doc.config.ui || {}) };
+        _appConfigCache.ui.googleMapsKey = process.env.GOOGLE_MAPS || '';
+        _appConfigCache.ui.maptilerKey = process.env.MAPTILER_KEY || '';
+        _appConfigCache.ui.cartoKey = process.env.CARTO_KEY || '';
         _appConfigCacheTs = now;
         return _appConfigCache;
       }
