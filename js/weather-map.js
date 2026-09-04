@@ -37,6 +37,10 @@
   window.chMapSearch = chMapSearch;
   window.chToggleMap = chToggleMap;
   window.chApplyMapCity = chApplyMapCity;
+  window.chMapSuggest = chMapSuggest;
+  window.chMapSuggestKey = chMapSuggestKey;
+  window.hideMapSuggest = hideMapSuggest;
+  window.applyMapSuggestion = applyMapSuggestion;
 
   // ── Keys desde RC (backend /api/config: env GOOGLE_MAPS / MAPTILER_KEY / CARTO_KEY) ──
   // BUG CORREGIDO: antes _googleKey/_maptilerKey se poblaban de forma
@@ -611,24 +615,23 @@
       });
       return;
     }
-    fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) +
-      '&format=json&limit=5&accept-language=es&addressdetails=1')
+    fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
+      '&count=5&language=es&format=json')
       .then(function (r) { return r.json(); })
-      .then(function (results) {
-        if (!results || !results.length) {
+      .then(function (data) {
+        var items = (data && data.results) || [];
+        if (!items || !items.length) {
           var lbl = document.getElementById('wx-map-city');
           if (lbl) lbl.textContent = 'No se encontró «' + q + '». Intenta con otro nombre.';
           return;
         }
-        var first = results[0];
-        var lat = parseFloat(first.lat);
-        var lon = parseFloat(first.lon);
-        var city = first.address && (first.address.city || first.address.town || first.address.village || first.address.state_district || first.address.state) || q;
-        if (_map) _map.setView([lat, lon], 12);
-        if (_marker) _marker.setLatLng([lat, lon]);
-        _selected = { lat: lat, lon: lon, city: city };
-        updateCityLabel(city);
-        input.blur();
+        // Aplicar el primer resultado igual que una sugerencia del dropdown
+        // (centra + marcador + reverso del nombre). Open-Meteo Geocoding es
+        // el mismo proveedor que el autocomplete: funciona aunque OSM/
+        // Nominatim esté bloqueado por la red/app.
+        var it = items[0];
+        _mapSuggestions = [{ lat: it.latitude, lon: it.longitude, name: it.name || q }];
+        applyMapSuggestion(0);
       })
       .catch(function () {
         var lbl = document.getElementById('wx-map-city');
