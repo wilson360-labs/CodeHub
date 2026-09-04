@@ -1236,7 +1236,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </button>
                 <div class="wx-map-inner">
                     <div class="wx-map-search">
-                        <input type="text" id="wx-map-search-input" class="wx-input" placeholder="🔍 Buscar ciudad… (ej. Ciudad de Guatemala)" onkeydown="if(event.key==='Enter')chMapSearch()">
+                        <input type="text" id="wx-map-search-input" class="wx-input" list="wx-map-suggestions" autocomplete="off" placeholder="🔍 Buscar ciudad… (ej. Ciudad de Guatemala)" onkeydown="if(event.key==='Enter')chMapSearch()" oninput="chMapSuggest(this.value)">
+                        <datalist id="wx-map-suggestions"></datalist>
                         <button class="wx-search-btn" onclick="chMapSearch()" aria-label="Buscar"><i class="fas fa-magnifying-glass"></i></button>
                     </div>
                     <div id="wx-minimap" class="wx-minimap"><div class="wx-map-loading"><div class="wx-spinner-map"></div> Cargando mapa…</div></div>

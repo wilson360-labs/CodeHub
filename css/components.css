@@ -4008,8 +4008,14 @@
    CLS FIXES + COMPONENTES ADICIONALES (About, Stats, Skills)
 ════════════════════════════════════════════════════════ */
 
-/* Reservar espacio para imágenes antes de cargar */
-      img { content-visibility: auto; }
+/* Reservar espacio para imágenes antes de cargar.
+   content-visibility: auto SIN contain-intrinsic-size hace que el
+   navegador calcule una altura de 0 para las imágenes fuera del viewport;
+   en WebView Android (app) y algunos navegadores móviles eso deja las
+   imágenes sin renderizar aunque ya estén cargadas. Se agrega
+   contain-intrinsic-size para reservar un mínimo real y se mantiene el
+   recorte solo como optimización de render, no de carga. */
+      img { content-visibility: auto; contain-intrinsic-size: auto 200px; }
       .ap-app-icon img { width: 48px; height: 48px; object-fit: contain; }
 
       /* Estabilizar fuentes — evitar FOUT que causa CLS */

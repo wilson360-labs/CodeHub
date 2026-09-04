@@ -259,42 +259,51 @@
                 android:maxLines="3" />
         </LinearLayout>
 
-        <!-- ── Barra inferior: botón refrescar (animado) + actualizado ── -->
+        <!-- ── Barra inferior: botón refrescar (animado) CENTRADO + actualizado ── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginTop="2dp">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:clipToPadding="false"
+            android:layout_marginTop="4dp">
 
-            <ProgressBar
-                android:id="@+id/widget_refresh_progress"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:visibility="invisible" />
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center">
 
-            <ImageButton
-                android:id="@+id/widget_refresh"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_marginStart="-14dp"
-                android:src="@android:drawable/ic_popup_sync"
-                android:contentDescription="@string/widget_weather_description"
-                android:scaleType="fitCenter"
-                android:visibility="visible" />
+                <ProgressBar
+                    android:id="@+id/widget_refresh_progress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_gravity="center"
+                    android:visibility="invisible" />
+
+                <ImageButton
+                    android:id="@+id/widget_refresh"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_popup_sync"
+                    android:contentDescription="@string/widget_weather_description"
+                    android:scaleType="fitCenter"
+                    android:tint="@android:color/white"
+                    android:visibility="visible" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/widget_updated2"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:text=""
                 android:textColor="#D9FFFFFF"
                 android:textSize="10sp"
-                android:layout_marginStart="8dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
-                android:gravity="end" />
+                android:gravity="center" />
         </LinearLayout>
 
     </LinearLayout>

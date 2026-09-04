@@ -294,6 +294,13 @@
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
     });
+    // Capa de ETIQUETAS (nombres de países, ciudades y lugares) superpuesta
+    // sobre el satélite. La imagen satelital pura NO trae nombres; esta
+    // capa de referencia de Esri los dibuja encima (modo "hybrid").
+    var labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Reference_Overlay/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.esri.com">Esri</a>',
+    });
     // Último recurso: OSM estándar con sus 3 subdominios habituales (a/b/c).
     // Distinto proveedor/CDN que ArcGIS, así que si el bloqueo es específico
     // de Esri (y no de la red del usuario en general) esta capa sí responde.
@@ -302,6 +309,7 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     });
     satellite.addTo(_map);
+    labels.addTo(_map);
 
     // BUG CORREGIDO: la capa base tiene vigilancia de errores con respaldo,
     // y si el respaldo también falla se muestra un aviso visible con botón
@@ -456,11 +464,45 @@
     if (el) el.textContent = city;
   }
 
+  // Sugerencias en vivo para el buscador del mapa (autocomplete).
+  // Usa Open-Meteo Geocoding (mismo proveedor que el clima, ya permitido
+  // por CSP) con debounce de 300ms. Rellena un <datalist> nativo que
+  // no requiere dependencias y funciona en WebView de la app.
+  var _mapSuggestTimer = null;
+  function chMapSuggest(q) {
+    if (_mapSuggestTimer) clearTimeout(_mapSuggestTimer);
+    var dl = document.getElementById('wx-map-suggestions');
+    if (!dl) return;
+    q = (q || '').trim();
+    if (q.length < 2) { dl.innerHTML = ''; return; }
+    _mapSuggestTimer = setTimeout(function () {
+      fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q) +
+        '&count=6&language=es&format=json')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!dl) return;
+          var items = (data && data.results) || [];
+          if (!items.length) { dl.innerHTML = ''; return; }
+          var html = '';
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var name = it.name || '';
+            var country = it.country || '';
+            var admin = it.admin1 || '';
+            var label = name + (admin && admin !== name ? ' (' + admin + ')' : '') +
+              (country ? ', ' + country : '');
+            html += '<option value="' + label.replace(/"/g, '&quot;') + '"></option>';
+          }
+          dl.innerHTML = html;
+        })
+        .catch(function () { if (dl) dl.innerHTML = ''; });
+    }, 300);
+  }
+
   function chMapSearch() {
     var input = document.getElementById('wx-map-search-input');
     if (!input) return;
-    var q = input.value.trim();
-    if (!q) return;
+    var q = input.value.trim();    if (!q) return;
     if (!_map && !_loading) initMap(null, null);
     if (isGoogleMode() && _geocoder) {
       _geocoder.geocode({ address: q }, function (results, status) {

@@ -361,9 +361,9 @@ public class CodeHubBridge {
                         fused.getLastLocation()
                             .addOnSuccessListener(activity, last -> {
                                 if (last != null) returnLocation(callbackName, last);
-                                else callbackNull(callbackName);
+                                else fallbackNetworkLocation(callbackName);
                             })
-                            .addOnFailureListener(activity, e -> callbackNull(callbackName));
+                            .addOnFailureListener(activity, e -> fallbackNetworkLocation(callbackName));
                     }
                 })
                 .addOnFailureListener(activity, e -> {
@@ -371,9 +371,9 @@ public class CodeHubBridge {
                     fused.getLastLocation()
                         .addOnSuccessListener(activity, last -> {
                             if (last != null) returnLocation(callbackName, last);
-                            else callbackNull(callbackName);
+                            else fallbackNetworkLocation(callbackName);
                         })
-                        .addOnFailureListener(activity, e2 -> callbackNull(callbackName));
+                        .addOnFailureListener(activity, e2 -> fallbackNetworkLocation(callbackName));
                 });
 
             // 15s hard timeout — si Fused nunca responde, no dejar el JS colgado
@@ -382,7 +382,47 @@ public class CodeHubBridge {
             }, 15000);
 
         } catch (SecurityException se) {
-            callbackNull(callbackName);
+            fallbackNetworkLocation(callbackName);
+        } catch (Exception e) {
+            fallbackNetworkLocation(callbackName);
+        }
+    }
+
+    /**
+     * fallbackNetworkLocation(callbackName) — Último recurso cuando Play
+     * Services / FusedLocation no devuelve ningún fix (GPS apagado, sin
+     * último conocido, Play Services viejo/ausente). Lee directamente el
+     * último fix de red del LocationManager (NETWORK_PROVIDER): usa WiFi
+     * y torres de telefonía, así que prácticamente SIEMPRE hay un dato
+     * incluso con el GPS desactivado. Precisión aproximada (~1-3 km) pero
+     * mucho mejor que lanzar "no se detectó ubicación".
+     */
+    private void fallbackNetworkLocation(final String callbackName) {
+        try {
+            android.location.LocationManager lm =
+                (android.location.LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
+            if (lm == null) { callbackNull(callbackName); return; }
+
+            android.location.Location net = null;
+            try {
+                net = lm.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER);
+            } catch (SecurityException ignored) {}
+
+            if (net == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                try {
+                    java.util.List<String> providers = lm.getAllProviders();
+                    if (providers != null) {
+                        for (String p : providers) {
+                            if (android.location.LocationManager.NETWORK_PROVIDER.equals(p)) continue;
+                            try { net = lm.getLastKnownLocation(p); } catch (SecurityException ignored) {}
+                            if (net != null) break;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (net != null) returnLocation(callbackName, net);
+            else callbackNull(callbackName);
         } catch (Exception e) {
             callbackNull(callbackName);
         }
