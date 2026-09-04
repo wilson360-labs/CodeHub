@@ -495,8 +495,10 @@ section, main, .container, .wrap, .inner, .section-wrap {
 .wx-map-search .wx-input {
   flex: 1; min-width: 0; padding: .6rem .85rem;
   border-radius: 10px; border: 1px solid rgba(128,128,128,.25);
-  background: var(--card, #fff); color: inherit; font-size: .85rem;
+  background: var(--card, #fff); color: var(--text, #111);
+  caret-color: var(--text, #111); font-size: .85rem;
 }
+.wx-map-search .wx-input::placeholder { color: var(--muted, #888); }
 .wx-map-search .wx-search-btn {
   border: none; width: 44px; min-width: 44px; border-radius: 10px;
   background: linear-gradient(135deg,#2f80ed,#22c55e); color: #fff; cursor: pointer;
