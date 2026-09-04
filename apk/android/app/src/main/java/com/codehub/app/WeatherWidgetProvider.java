@@ -46,7 +46,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     private static final String PREFS = "codehub";
     private static final String ACTION_REFRESH = "com.codehub.app.WIDGET_REFRESH";
+    private static final String ACTION_CLOCK_TICK = "com.codehub.app.WIDGET_CLOCK_TICK";
     private static final long ALARM_INTERVAL_MS = 30 * 60 * 1000; // 30 min
+    private static final long CLOCK_TICK_MS = 60 * 1000; // reloj en vivo, cada minuto
 
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] appWidgetIds) {
@@ -54,6 +56,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             paintFromCache(context, mgr, id);
         }
         scheduleAlarm(context);
+        scheduleClockTick(context);
         refreshAllInBackground(context);
     }
 
@@ -63,12 +66,16 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         String action = intent == null ? "" : intent.getAction();
         if (ACTION_REFRESH.equals(action)) {
             refreshAllInBackground(context);
+        } else if (ACTION_CLOCK_TICK.equals(action)) {
+            // Reloj en vivo: solo repinta la hora, sin tocar los datos del clima.
+            paintClockOnly(context);
         }
     }
 
     @Override
     public void onEnabled(Context context) {
         scheduleAlarm(context);
+        scheduleClockTick(context);
     }
 
     @Override
@@ -77,6 +84,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
             if (am != null) {
                 am.cancel(refreshPendingIntent(context));
+                am.cancel(clockTickPendingIntent(context));
             }
         } catch (Exception ignored) {}
     }
@@ -115,6 +123,49 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         int flags = PendingIntent.FLAG_UPDATE_CURRENT |
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
         return PendingIntent.getBroadcast(context, 1, intent, flags);
+    }
+
+    // Reloj en vivo: alarm cada 60s (RTC, hora real del dispositivo) que
+    // solo repinta los labels de hora para que "corra" sin esperar al
+    // refresh del clima (que es cada 30 min).
+    private static void scheduleClockTick(Context context) {
+        try {
+            AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            if (am == null) return;
+            long triggerAt = System.currentTimeMillis() + CLOCK_TICK_MS;
+            PendingIntent pi = clockTickPendingIntent(context);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC, triggerAt, pi);
+            } else {
+                am.setRepeating(AlarmManager.RTC, triggerAt, CLOCK_TICK_MS, pi);
+            }
+            // Con setAndAllowWhileIdle solo se dispara una vez; se reprograma
+            // en cada tick para seguir corriendo (más amable con batería que
+            // setRepeating + menos preciso).
+        } catch (Exception ignored) {}
+    }
+
+    private static PendingIntent clockTickPendingIntent(Context context) {
+        Intent intent = new Intent(context, WeatherWidgetProvider.class);
+        intent.setAction(ACTION_CLOCK_TICK);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT |
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
+        return PendingIntent.getBroadcast(context, 2, intent, flags);
+    }
+
+    private static void paintClockOnly(Context context) {
+        try {
+            String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
+            if (hasAnyWidget(context)) {
+                AppWidgetManager mgr = AppWidgetManager.getInstance(context);
+                int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
+                RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
+                views.setTextViewText(R.id.widget_updated, time);
+                for (int id : ids) mgr.partiallyUpdateAppWidget(id, views);
+                // Reprogramar para el siguiente minuto.
+                scheduleClockTick(context);
+            }
+        } catch (Exception ignored) {}
     }
 
     // ── Pintado instantáneo con la última copia guardada ──
@@ -353,12 +404,15 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         // Hora de última actualización.
         if (updatedAt > 0) {
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(updatedAt));
-            views.setTextViewText(R.id.widget_updated, time);
             views.setTextViewText(R.id.widget_updated2, "Actualizado " + time);
         } else {
-            views.setTextViewText(R.id.widget_updated, "");
             views.setTextViewText(R.id.widget_updated2, "");
         }
+        // Reloj del widget: hora local ACTUAL (la mantiene al minuto el
+        // tick de AlarmManager — paintClockOnly). El header es el reloj,
+        // el footer es cuándo se actualizó el clima.
+        views.setTextViewText(R.id.widget_updated,
+            new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis())));
 
         // Fondo con gradiente dinámico según clima + momento del día.
         views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(wcode));
