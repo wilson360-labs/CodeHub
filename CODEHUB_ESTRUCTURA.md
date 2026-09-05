@@ -1,12 +1,12 @@
 # CODEHUB — Documento Estructural
 > **Para uso de IA asistente.** Lee este archivo ANTES de modificar cualquier archivo del proyecto.  
-> Última actualización: Agosto 2026 · Autor: Wilson Enríquez · wilson.e360labs@gmail.com
+> Última actualización: Agosto 2026 · Autor: Wilson.E · wilson.e360labs@gmail.com
 
 ---
 
 ## 1. Resumen del proyecto
 
-**CodeHub** es un portfolio personal + plataforma de herramientas web, operado por Wilson Enríquez (Guatemala 🇬🇹).  
+**CodeHub** es un portfolio personal + plataforma de herramientas web, operado por Wilson.E (Guatemala 🇬🇹).  
 Dominio en producción: `https://wilson360-labs.vercel.app`  
 Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y **Render** (backend Node.js).
 
@@ -596,7 +596,7 @@ Sitemap: https://wilson360-labs.vercel.app/sitemap.xml
 ## 13. Contacto y servicios
 
 - **Email:** wilson.e360labs@gmail.com
-- **WhatsApp:** +502 4146 8185
+- **WhatsApp:** +502 3513 1808
 - **LinkedIn / GitHub:** wilson.e360labs
 - **Servicios:** Desarrollo web, landing pages, tiendas online, bots IA, automatización Python
 

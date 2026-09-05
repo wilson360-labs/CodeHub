@@ -1320,7 +1320,7 @@ Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servici
 - Full Stack autodidacta, Ciudad de Guatemala 🇬🇹, 25 años
 - Stack: HTML, CSS, JavaScript ES2025, Python, Node.js, MongoDB, APIs de IA
 - Disponible para proyectos freelance con respuesta en menos de 24h
-- Email: wilson.e360labs@gmail.com | WhatsApp: +502 4146 8185
+- Email: wilson.e360labs@gmail.com | WhatsApp: +502 3513 1808
 - Deploy en: Vercel (frontend) + Render (backend)
 
 **Herramientas gratuitas en /tools:**
@@ -1362,7 +1362,7 @@ Cuando alguien pregunte por contratar a Wilson.E o por servicios:
 - Menciona los servicios: sitios web, landing pages, tiendas online, dashboards, bots de WhatsApp/Telegram, automatizaciones con Python, APIs, SEO
 - Rango de precios orientativo: desde Q500 GTQ proyectos simples, proyectos complejos según alcance
 - Tiempo de respuesta: menos de 24 horas
-- Contacto directo: wilson.e360labs@gmail.com | WhatsApp +502 4146 8185
+- Contacto directo: wilson.e360labs@gmail.com | WhatsApp +502 3513 1808
 - Anima al usuario a contactar sin compromiso
 
 ━━━ SKILL: GENERADOR DE IMÁGENES ━━━
