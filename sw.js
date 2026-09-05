@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.75';
+const VERSION = 'codehub-v6.76';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -35,6 +35,7 @@ const PRECACHE = [
   '/css/components.css',
   '/css/index-responsive.css',
   '/css/site-tour.css',
+  '/css/sys-tools.css',
   '/css/viewport-guard.css',
   '/css/fontawesome/all.min.css',
   '/css/fontawesome/webfonts/fa-brands-400.woff2',
@@ -72,6 +73,8 @@ const PRECACHE = [
   '/js/weather-map.js',
   '/js/ch-geo.js',
   '/js/sismos.js',
+  '/js/sys-metrics.js',
+  '/js/security-scan.js',
   '/js/vendor/leaflet/leaflet.css',
   '/js/vendor/leaflet/leaflet.js',
   '/widgets/weather/weather-widget.css',

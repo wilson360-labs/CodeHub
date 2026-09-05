@@ -25,7 +25,9 @@ const Busboy    = require('busboy');   // dep transitiva de multer — parseo mu
 const crypto    = require('crypto');
 const http      = require('http');
 const fs        = require('fs');
+const os        = require('os');
 const path      = require('path');
+const dns       = require('dns');
 const { WebSocketServer } = require('ws');
 const swaggerSpec        = require('./swagger');
 
@@ -5537,6 +5539,278 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     console.error('Stream endpoint error:', err.message);
     sendSSE('error', { error: 'Error interno.' });
     res.end();
+  }
+});
+
+// ── ▌SISTEMA "PRO": métricas en vivo + auditoría de seguridad ──────────
+// Panel Bento de la home. El cliente (web/APK) consulta /api/metrics cada
+// 5 s y pausa el polling con document.visibilityState / IntersectionObserver
+// para no gastar batería. /api/security/scan audita cabeceras de cualquier
+// sitio público con guardas anti-SSRF y timeout.
+
+const metricsLimiter = rateLimit({
+  windowMs: 15 * 1000, max: 240, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Demasiadas lecturas de métricas.', code: 'METRICS_RATE_LIMIT' },
+  handler: rateLimitHandler,
+});
+
+const scanLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 6, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Demasiadas auditorías. Espera un momento.', code: 'SCAN_RATE_LIMIT' },
+  handler: rateLimitHandler,
+});
+
+// Acumulador de % CPU "vivo": compara process.cpuUsage() entre peticiones.
+const _cpu = { usage: null, at: 0 };
+
+app.get('/api/metrics', metricsLimiter, (req, res) => {
+  const t0 = process.hrtime.bigint();
+  const now = Date.now();
+
+  const rssMb = process.memoryUsage().rss / 1048576;
+  const totMb = Math.max(1, os.totalmem() / 1048576);
+  const ram = Math.min(100, Math.round((rssMb / totMb) * 1000) / 10);
+
+  let cpu = 0;
+  const u = process.cpuUsage();
+  if (_cpu.usage) {
+    const du = (u.user - _cpu.usage.user) + (u.system - _cpu.usage.system);
+    const dt = Math.max(1, now - _cpu.at);
+    cpu = Math.min(100, Math.max(0, Math.round((du / dt / 10) * 10) / 10));
+  }
+  _cpu.usage = u;
+  _cpu.at = now;
+
+  const latency = Math.max(1, Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10);
+
+  res.json({
+    ok: true,
+    status: 'online',
+    latency,
+    cpu,
+    ram,
+    uptime: Math.round(process.uptime()),
+    ts: Date.now(),
+  });
+});
+
+// ── Auditoría de seguridad (anti-clickjacking, HSTS, CSP, SSRF-guard) ──
+function _isPrivateIPv4(ip) {
+  const p = (ip || '').split('.').map(Number);
+  if (p.length !== 4) return false;
+  return p[0] === 0 || p[0] === 10 || p[0] === 127 ||
+    (p[0] === 100 && p[1] >= 64 && p[1] <= 127) ||
+    (p[0] === 169 && p[1] === 254) ||
+    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
+    (p[0] === 192 && p[1] === 0 && (p[2] === 0 || p[2] === 2)) ||
+    (p[0] === 192 && p[1] === 168) ||
+    (p[0] === 198 && (p[1] === 18 || p[1] === 19)) ||
+    (p[0] === 198 && p[1] === 51 && p[2] === 100) ||
+    (p[0] === 203 && p[1] === 0 && p[2] === 113) ||
+    p[0] >= 224;
+}
+
+function _isPrivateIP(ip) {
+  const lower = String(ip).toLowerCase();
+  const v4 = lower.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) return _isPrivateIPv4(v4[1]);
+  if (lower === '::' || lower === '::1') return true;
+  if (lower.includes(':')) {
+    const h0 = parseInt((lower.split(':')[0] || '0').replace(/[^0-9a-f]/g, '') || '0', 16);
+    if ((h0 & 0xfe00) === 0xfc00) return true;  // ULA fc00::/7
+    if ((h0 & 0xffc0) === 0xfe80) return true;  // link-local fe80::/10
+    if (h0 === 0xff) return true;               // multicast ff00::/8
+  }
+  return false;
+}
+
+async function _assertPublicHost(host) {
+  const withTimeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error('El dominio no resuelve (timeout)')), 5000));
+  const lookup = dns.promises.lookup(host, { all: true }).then((addrs) => {
+    if (!addrs || !addrs.length) throw new Error('El dominio no resuelve');
+    const bad = addrs.find((a) => _isPrivateIP(a.address));
+    if (bad) throw new Error('Acceso a red interna bloqueado (' + bad.address + ')');
+    return addrs;
+  });
+  await Promise.race([lookup, withTimeout]);
+}
+
+function _probeURL(rawURL, maxRedirects = 5, timeoutMs = 9000) {
+  return new Promise((resolve, reject) => {
+    const seen = new Set([rawURL]);
+
+    const doProbe = (u, hops) => {
+      let parsed;
+      try { parsed = new URL(u); } catch (e) { return reject(new Error('URL inválida')); }
+      const mod = parsed.protocol === 'http:' ? require('http') : require('https');
+      const started = Date.now();
+      const req = mod.request(parsed, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (CodeHub Security Audit; +https://wilson360-labs.vercel.app)',
+          Accept: '*/*',
+          'Accept-Encoding': 'identity',
+        },
+        timeout: timeoutMs,
+      }, (res) => {
+        const loc = res.headers.location ? new URL(res.headers.location, parsed).toString() : null;
+        if (res.statusCode >= 300 && res.statusCode < 400 && loc && hops > 0) {
+          res.resume();
+          if (seen.has(loc)) return reject(new Error('Bucle de redirecciones'));
+          seen.add(loc);
+          return doProbe(loc, hops - 1);
+        }
+        resolve({
+          url: u,
+          status: res.statusCode || 0,
+          headers: res.headers || {},
+          finalScheme: parsed.protocol,
+          latency: Date.now() - started,
+        });
+        res.resume();
+      });
+      const timer = setTimeout(() => req.destroy(new Error('timeout')), timeoutMs);
+      req.on('timeout', () => req.destroy(new Error('timeout')));
+      req.on('error', (e) => { clearTimeout(timer); reject(e); });
+      req.on('close', () => clearTimeout(timer));
+      req.end();
+    };
+
+    doProbe(rawURL, maxRedirects);
+  });
+}
+
+function _audit(report) {
+  const H = report.headers || {};
+  const lh = {};
+  Object.keys(H).forEach((k) => { lh[k.toLowerCase()] = H[k]; });
+  const get = (n) => (Array.isArray(lh[n]) ? lh[n].join(', ') : lh[n]) || '';
+
+  const checks = [];
+  const vulns = [];
+  const add = (name, pass, score, part) => ({ name, pass, score, part });
+
+  const https = report.finalScheme === 'https:';
+
+  checks.push(add('Conexión cifrada (HTTPS)', https, 25, 'network'));
+  if (!https) vulns.push({ severity: 'CRITICO', title: 'Conexión sin cifrar (HTTP)', detail: 'Los datos viajan en texto plano y pueden ser interceptados.', hint: 'Activa un certificado TLS y redirige todo el tráfico a HTTPS.' });
+
+  const hsts = get('strict-transport-security');
+  const hstsOk = https && /max-age=\d+/.test(hsts);
+  checks.push(add('Strict-Transport-Security (HSTS)', hstsOk, hstsOk ? 15 : 0, 'security'));
+  if (https && !hstsOk) vulns.push({
+    severity: hsts ? 'ALTO' : 'MEDIO',
+    title: hsts ? 'HSTS mal configurado' : 'Falta HSTS',
+    detail: hsts ? ('Presente pero sin max-age válido: ' + hsts) : 'No se envía Strict-Transport-Security.',
+    hint: 'Envía Strict-Transport-Security: max-age=31536000; includeSubDomains.',
+  });
+
+  const csp = get('content-security-policy');
+  const cspOk = !!csp;
+  checks.push(add('Content-Security-Policy (CSP)', cspOk, cspOk ? 15 : 0, 'security'));
+  if (!cspOk) vulns.push({
+    severity: 'MEDIO', title: 'Falta Content-Security-Policy',
+    detail: 'Sin CSP, un XSS puede cargar scripts externos sin límite.',
+    hint: "Define una CSP restrictiva (por ejemplo default-src 'self').",
+  });
+  else if (/unsafe-inline|unsafe-eval/.test(csp)) vulns.push({
+    severity: 'MEDIO', title: 'CSP con unsafe-inline/unsafe-eval',
+    detail: 'Reduce el beneficio de la CSP permitiendo ejecución/técnicas inseguras.',
+    hint: "Elimina 'unsafe-inline'/'unsafe-eval' o usa nonces/hashes.",
+  });
+
+  const nosniff = get('x-content-type-options');
+  const nosniffOk = /nosniff/i.test(nosniff);
+  checks.push(add('X-Content-Type-Options: nosniff', nosniffOk, nosniffOk ? 10 : 0, 'security'));
+  if (!nosniffOk) vulns.push({
+    severity: 'MEDIO', title: 'Sniffing de MIME habilitado',
+    detail: 'El navegador puede inferir mal el tipo de un recurso y ejecutar contenido no esperado.',
+    hint: 'Envía X-Content-Type-Options: nosniff.',
+  });
+
+  const xfo = get('x-frame-options');
+  const xfoOk = /deny|sameorigin/i.test(xfo);
+  checks.push(add('X-Frame-Options (anti-clickjacking)', xfoOk, xfoOk ? 10 : 0, 'security'));
+  if (!xfoOk) vulns.push({
+    severity: 'ALTO', title: 'Clickjacking posible',
+    detail: 'Sin protección de framing, tu web puede incrustarse en un iframe malicioso.',
+    hint: "Envía X-Frame-Options: SAMEORIGIN o frame-ancestors 'self' en la CSP.",
+  });
+
+  const rp = get('referrer-policy');
+  const rpOk = !!rp;
+  checks.push(add('Referrer-Policy', rpOk, rpOk ? 10 : 0, 'privacy'));
+  if (!rpOk) vulns.push({
+    severity: 'BAJO', title: 'Falta Referrer-Policy',
+    detail: 'Puedes filtrar la URL completa (con tokens) a dominios externos.',
+    hint: 'Envía Referrer-Policy: strict-origin-when-cross-origin.',
+  });
+
+  const pp = get('permissions-policy');
+  const ppOk = !!pp;
+  checks.push(add('Permissions-Policy', ppOk, ppOk ? 10 : 0, 'privacy'));
+  if (!ppOk) vulns.push({
+    severity: 'BAJO', title: 'Falta Permissions-Policy',
+    detail: 'El contenido propio puede pedir cámara, micrófono o geolocalización sin restricción.',
+    hint: 'Envía Permissions-Policy limitando los permisos sensibles.',
+  });
+
+  const sc = lh['set-cookie'];
+  const setCookies = Array.isArray(sc) ? sc : (sc ? [sc] : []);
+  const insecureCookies = https && setCookies.some((c) => !/;\s*secure/i.test(c));
+  checks.push(add('Cookies con flag Secure', !insecureCookies, insecureCookies ? 0 : 5, 'privacy'));
+  if (insecureCookies) vulns.push({
+    severity: 'MEDIO', title: 'Cookies sin flag Secure',
+    detail: 'Las cookies pueden viajar por HTTP y ser robadas en tránsito.',
+    hint: 'Marca Secure y SameSite en todas tus cookies.',
+  });
+
+  const score = checks.reduce((s, c) => s + c.score, 0);
+  const rank = ['CRITICO', 'ALTO', 'MEDIO', 'BAJO'];
+  vulns.sort((a, b) => rank.indexOf(a.severity) - rank.indexOf(b.severity));
+
+  return {
+    score,
+    risk: score >= 80 ? 'EXCELENTE' : score >= 50 ? 'MODERADO' : 'PELIGROSO',
+    checks,
+    vulnerabilities_found: vulns,
+  };
+}
+
+app.get('/api/security/scan', scanLimiter, async (req, res) => {
+  try {
+    let raw = String(req.query.url || '').trim();
+    if (!raw) return res.status(400).json({ ok: false, error: 'Falta el parámetro ?url=...' });
+    if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
+
+    let parsed;
+    try { parsed = new URL(raw); } catch (e) { return res.status(422).json({ ok: false, error: 'URL inválida.' }); }
+    if (!/^https?:$/.test(parsed.protocol)) return res.status(422).json({ ok: false, error: 'Solo se auditan URLs http/https.' });
+
+    try { await _assertPublicHost(parsed.hostname); }
+    catch (e) { return res.status(422).json({ ok: false, error: e.message }); }
+
+    const final = await _probeURL(parsed.toString());
+    const audit = _audit(final);
+
+    res.json({
+      ok: true,
+      url: parsed.toString(),
+      finalUrl: final.url,
+      status: final.status,
+      latency: final.latency,
+      ...audit,
+      scannedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    const timeout = err && /timeout/i.test(String(err.message));
+    res.status(502).json({
+      ok: false,
+      error: timeout
+        ? 'No se pudo alcanzar el sitio (timeout). Prueba con otra URL.'
+        : (err && err.message) || 'No se pudo completar la auditoría.',
+    });
   }
 });
 

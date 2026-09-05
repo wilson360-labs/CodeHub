@@ -248,6 +248,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
+    <link rel="stylesheet" href="css/sys-tools.css?v=20260905b">
     <link rel="stylesheet" href="css/viewport-guard.css?v=20260905a">
 
 
@@ -559,6 +560,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
             <a class="side-link" href="#sismos-section" onclick="closeMobileNav()"><i class="fas fa-house-crack"></i> Sismos</a>
             <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
+<a class="side-link" href="#security-section" onclick="closeMobileNav()"><i class="fas fa-shield-halved"></i> Operaciones</a>
             <a class="side-link" href="#open-to-work" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
         </div>
 
@@ -1417,6 +1419,84 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
                     <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
                 </div>
+            </div>
+        </section>
+
+        <!-- ── OPERACIONES: métricas en vivo + auditoría de seguridad ── -->
+        <section id="security-section">
+            <h2>🛡️ Centro de Operaciones</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Estado del servidor en vivo y auditoría de seguridad de cualquier sitio público.</p>
+            <div class="sys-bento">
+
+                <!-- Métricas del servidor (polling 5s + pausa por visibilidad) -->
+                <div class="sys-card sys-card-status">
+                    <div class="sys-card-head">
+                        <i class="fas fa-server sys-ico"></i>
+                        <div class="sys-head-t">
+                            <h3>Servidor CodeHub</h3>
+                            <span class="sys-muted">API en vivo · Render</span>
+                        </div>
+                        <span class="sys-pill" id="metric-status">…</span>
+                    </div>
+                    <div class="sys-rows">
+                        <div class="sys-row sys-row-lat">
+                            <span class="sys-name"><i class="fas fa-stopwatch"></i> Latencia</span>
+                            <b id="metric-latency">—</b>
+                        </div>
+                        <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-microchip"></i> CPU</span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-cpu"></div></div>
+                            <b id="metric-cpu">0%</b>
+                        </div>
+                        <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-memory"></i> RAM</span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-ram"></div></div>
+                            <b id="metric-ram">0%</b>
+                        </div>
+                    </div>
+                    <div class="sys-foot">
+                        <span class="sys-dot-blink"></span> Se actualiza cada 5&nbsp;s · se pausa al minimizar la app para ahorrar batería
+                    </div>
+                </div>
+
+                <!-- Auditoría de seguridad -->
+                <div class="sys-card sys-card-scan">
+                    <div class="sys-card-head">
+                        <i class="fas fa-shield-halved sys-ico"></i>
+                        <div class="sys-head-t">
+                            <h3>Auditoría de Seguridad</h3>
+                            <span class="sys-muted">Análisis de cabeceras en vivo</span>
+                        </div>
+                    </div>
+                    <div class="sys-scan-bar">
+                        <i class="fas fa-link sys-scan-ico"></i>
+                        <input class="sys-input" id="sec-url" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="ej. https://tusitio.com">
+                        <button class="sys-btn" id="sec-scan-btn" type="button"><i class="fas fa-magnifying-glass"></i> Auditar Sitio</button>
+                    </div>
+                    <div class="sys-scan-hint">Solo dominios públicos · checa HTTPS, HSTS, CSP, clickjacking y cookies</div>
+
+                    <div class="sys-loading" id="sec-loading" hidden>
+                        <span class="sys-spinner"></span> Analizando cabeceras <b>…</b>
+                    </div>
+
+                    <div class="sys-error" id="sec-error" hidden></div>
+
+                    <div class="sys-report" id="sec-report" hidden>
+                        <div class="sys-score-wrap">
+                            <div class="sys-badge" id="sec-badge"><b id="sec-score">0</b><span>/100</span></div>
+                            <div class="sys-info">
+                                <div class="sys-risk" id="sec-risk">—</div>
+                                <div class="sys-muted sys-site" id="sec-site">—</div>
+                            </div>
+                        </div>
+                        <div class="sys-vulns">
+                            <h4>Vulnerabilidades detectadas</h4>
+                            <ul id="sec-vulns"></ul>
+                            <p class="sys-clean" id="sec-clean" hidden><i class="fas fa-shield-heart"></i> No se detectaron vulnerabilidades</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -7687,6 +7767,8 @@ function setAIMood(btn) {
 <script src="js/weather-map.js?v=20260904sf" defer></script>
 <script src="js/ch-geo.js?v=20260905a" defer></script>
 <script src="js/sismos.js?v=20260905a" defer></script>
+<script src="js/sys-metrics.js?v=20260905b" defer></script>
+<script src="js/security-scan.js?v=20260905b" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

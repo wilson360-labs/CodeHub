@@ -1,0 +1,344 @@
+/* ════════════════════════════════════════════════════════════════════
+   sys-tools.css — Centro de Operaciones (métricas + auditoría)
+   CodeHub by Wilson.E · Capa de estilo entre components/site-tour
+   y viewport-guard (que sigue siendo la última red de seguridad).
+   UI dark "clean", nativa, acelerada por hardware:
+   - Barras con transform:scaleX (GPU, sin reflow) → 60fps en WebView.
+   - Spinner con transform:rotate.
+   ════════════════════════════════════════════════════════════════════ */
+
+.sys-bento {
+  --sys-card: #121624;
+  --sys-card-2: #171c2e;
+  --sys-line: rgba(148, 163, 184, .16);
+  --sys-ink: #e8ecf7;
+  --sys-muted: rgba(232, 236, 247, .46);
+  --sys-blue: #38bdf8;
+  --sys-green: #22c55e;
+  --sys-amber: #facc15;
+  --sys-red: #ef4444;
+  --sys-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 1.1rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: .2rem 1rem 1rem;
+}
+
+/* ── Tarjeta base ── */
+.sys-card {
+  position: relative;
+  background: linear-gradient(160deg, var(--sys-card) 0%, var(--sys-card-2) 100%);
+  border: 1px solid var(--sys-line);
+  border-radius: 20px;
+  padding: 1.25rem 1.3rem;
+  box-shadow: 0 22px 55px rgba(0, 0, 0, .35);
+  min-width: 0;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+.sys-card-status { order: 1; }
+.sys-card-scan { order: 2; }
+
+.sys-card-head {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: 1.05rem;
+  min-width: 0;
+}
+.sys-ico {
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  display: grid; place-items: center;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: var(--sys-blue);
+  background: rgba(56, 189, 248, .1);
+  border: 1px solid rgba(56, 189, 248, .22);
+}
+.sys-head-t { min-width: 0; }
+.sys-head-t h3 { font-size: .98rem; font-weight: 700; margin: 0 0 2px; color: var(--sys-ink); letter-spacing: -.01em; }
+.sys-muted { color: var(--sys-muted); font-size: .74rem; line-height: 1.45; }
+
+/* ── Píldora de estado ── */
+.sys-pill {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: var(--sys-mono);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--sys-green);
+  background: rgba(34, 197, 94, .1);
+  border: 1px solid rgba(34, 197, 94, .28);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.sys-pill-off {
+  color: var(--sys-red);
+  background: rgba(239, 68, 68, .12);
+  border-color: rgba(239, 68, 68, .35);
+}
+
+/* ── Filas de métricas ── */
+.sys-rows { display: flex; flex-direction: column; gap: .8rem; }
+.sys-row { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.sys-name {
+  flex: 1;
+  display: flex; align-items: center; gap: .45rem;
+  color: var(--sys-muted);
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sys-row-lat b {
+  font-family: var(--sys-mono);
+  font-size: .86rem;
+  color: var(--sys-blue);
+  font-weight: 700;
+}
+.sys-row-gauge b {
+  font-family: var(--sys-mono);
+  font-size: .78rem;
+  color: var(--sys-ink);
+  font-weight: 700;
+  min-width: 42px;
+  text-align: right;
+}
+
+/* Barra: la animación la hace la GPU (transform: scaleX) → sin reflow
+   en el hilo del WebView, animación a 60fps incluso en móvil gama baja. */
+.sys-bar {
+  flex: 1;
+  min-width: 0;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .14);
+  overflow: hidden;
+}
+.sys-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  background: linear-gradient(90deg, var(--sys-blue), var(--sys-green));
+  transition: transform .6s cubic-bezier(.22, 1, .36, 1);
+}
+.sys-fill.sys-fill-warn { background: linear-gradient(90deg, #facc15, #f97316); }
+.sys-fill.sys-fill-crit { background: linear-gradient(90deg, #f97316, var(--sys-red)); }
+
+.sys-foot {
+  margin-top: 1.05rem;
+  padding-top: .85rem;
+  border-top: 1px dashed var(--sys-line);
+  display: flex; align-items: center; gap: .5rem;
+  color: var(--sys-muted);
+  font-size: .68rem;
+  line-height: 1.5;
+}
+.sys-dot-blink {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--sys-green);
+  animation: sysblink 2.2s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes sysblink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+/* ── Scanner ── */
+.sys-scan-bar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+}
+.sys-scan-ico { color: var(--sys-muted); font-size: .82rem; flex: 0 0 auto; }
+.sys-input {
+  flex: 1;
+  min-width: 0;
+  padding: .62rem .85rem;
+  background: rgba(8, 11, 20, .55);
+  border: 1px solid var(--sys-line);
+  border-radius: 12px;
+  color: var(--sys-ink);
+  font-family: var(--sys-mono);
+  font-size: .72rem;
+  outline: none;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.sys-input::placeholder { color: rgba(232, 236, 247, .32); }
+.sys-input:focus {
+  border-color: rgba(56, 189, 248, .55);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, .12);
+}
+.sys-btn {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .62rem 1.05rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2f80ed, #22c55e);
+  color: #fff;
+  font-family: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(47, 128, 237, .32);
+  transition: transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+  will-change: transform;
+}
+.sys-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(47, 128, 237, .42); }
+.sys-btn:active { transform: translateY(0); }
+.sys-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.sys-scan-hint { margin-top: .55rem; color: var(--sys-muted); font-size: .68rem; line-height: 1.5; }
+
+/* ── Loading ── */
+.sys-loading {
+  margin-top: .9rem;
+  padding: .75rem .9rem;
+  display: flex; align-items: center; gap: .6rem;
+  color: var(--sys-blue);
+  font-size: .8rem;
+  font-weight: 600;
+  background: rgba(56, 189, 248, .06);
+  border: 1px dashed rgba(56, 189, 248, .3);
+  border-radius: 12px;
+}
+.sys-spinner {
+  flex: 0 0 auto;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(56, 189, 248, .22);
+  border-top-color: var(--sys-blue);
+  border-radius: 50%;
+  animation: sysspin .8s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+@keyframes sysspin { to { transform: rotate(360deg); } }
+
+.sys-error {
+  margin-top: .9rem;
+  padding: .7rem .9rem;
+  color: #ffdce0;
+  font-size: .76rem;
+  line-height: 1.5;
+  background: rgba(239, 68, 68, .1);
+  border: 1px solid rgba(239, 68, 68, .3);
+  border-radius: 12px;
+}
+
+/* ── Reporte ── */
+.sys-report {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--sys-line);
+}
+.sys-report .sys-score-wrap {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.sys-badge {
+  flex: 0 0 auto;
+  min-width: 118px;
+  padding: .85rem 1rem;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid var(--sys-line);
+  transition: background .35s ease, border-color .35s ease;
+}
+.sys-badge b {
+  display: block;
+  font-family: var(--sys-mono);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1;
+}
+.sys-badge span { font-family: var(--sys-mono); font-size: .72rem; color: var(--sys-muted); }
+.sys-badge.sys-ok     { background: rgba(34, 197, 94, .1);  border-color: rgba(34, 197, 94, .35); } .sys-badge.sys-ok b     { color: var(--sys-green); }
+.sys-badge.sys-warn   { background: rgba(250, 204, 21, .09); border-color: rgba(250, 204, 21, .4); } .sys-badge.sys-warn b   { color: var(--sys-amber); }
+.sys-badge.sys-danger { background: rgba(239, 68, 68, .1);  border-color: rgba(239, 68, 68, .4); } .sys-badge.sys-danger b { color: var(--sys-red); }
+
+.sys-info { min-width: 0; }
+.sys-risk {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.sys-report.sys-ok .sys-risk     { color: var(--sys-green); }
+.sys-report.sys-warn .sys-risk   { color: var(--sys-amber); }
+.sys-report.sys-danger .sys-risk { color: var(--sys-red); }
+.sys-site {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* ── Vulnerabilidades ── */
+.sys-vulns { margin-top: 1rem; }
+.sys-vulns h4 {
+  margin: 0 0 .55rem;
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--sys-muted);
+}
+.sys-vulns ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.sys-vuln {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  padding: .68rem .8rem;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, .06);
+  border: 1px solid var(--sys-line);
+  min-width: 0;
+}
+.sys-vuln > div { min-width: 0; }
+.sys-vuln b { display: block; font-size: .8rem; color: var(--sys-ink); margin-bottom: 2px; }
+.sys-vuln span { display: block; font-size: .7rem; color: var(--sys-muted); line-height: 1.55; }
+.sys-sev {
+  flex: 0 0 auto;
+  font-family: var(--sys-mono);
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+.sys-sev-CRITICO { color: #fff; background: rgba(239, 68, 68, .9); }
+.sys-sev-ALTO   { color: #fff; background: rgba(249, 115, 22, .85); }
+.sys-sev-MEDIO  { color: #1c1917; background: var(--sys-amber); }
+.sys-sev-BAJO   { color: #fff; background: rgba(56, 189, 248, .7); }
+.sys-clean {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .4rem 0 0;
+  color: var(--sys-green);
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+/* ── Responsive (breakpoints canónicos de CodeHub) ── */
+@media (max-width: 860px) {
+  .sys-bento { grid-template-columns: 1fr; padding: .2rem .5rem 1rem; }
+  .sys-card-status { order: 2; }
+  .sys-card-scan { order: 1; }
+}
+@media (max-width: 480px) {
+  .sys-card { padding: 1rem; border-radius: 16px; }
+  .sys-badge { min-width: 104px; }
+  .sys-badge b { font-size: 1.7rem; }
+  .sys-scan-bar { flex-wrap: wrap; }
+  .sys-scan-ico { display: none; }
+  .sys-btn { width: 100%; justify-content: center; }
+}
