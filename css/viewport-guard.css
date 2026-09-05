@@ -948,6 +948,45 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .sismos-mag-options { width: 100%; justify-content: space-between; }
 }
 
+/* ── Alertas de sismos por push (toggle + umbral de magnitud) ── */
+.sismos-alerts {
+  margin: 0 0 .8rem; padding: .7rem .8rem;
+  background: var(--card-bg, rgba(255,255,255,.05));
+  border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+}
+.sismos-alerts-row {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .7rem;
+}
+.sismos-alerts-row .wx-alerts-toggle {
+  flex: 1 1 220px; margin: 0;
+}
+.sismos-alert-mag {
+  display: flex; align-items: center; gap: .35rem;
+}
+.sismos-alert-mag-label {
+  font-size: .72rem; color: var(--muted, #888);
+  display: inline-flex; align-items: center; gap: .35rem;
+}
+.sismos-alert-mag-btn {
+  padding: .4rem .7rem; min-height: 38px; font-size: .78rem;
+  background: var(--card-bg, rgba(255,255,255,.05));
+  border: 1px solid rgba(255,255,255,.12); border-radius: 10px;
+  cursor: pointer; color: var(--text, #eee); white-space: nowrap;
+}
+.sismos-alert-mag-btn.active, .sismos-alert-mag-btn:hover {
+  background: rgba(255,69,0,.16); border-color: rgba(255,110,40,.6); color: #ff8a5c;
+}
+.sismos-alerts-hint {
+  margin-top: .45rem; font-size: .72rem; color: var(--muted, #888);
+  line-height: 1.45; min-width: 0;
+}
+@media (max-width: 480px) {
+  .sismos-alerts-row { flex-direction: column; align-items: stretch; gap: .5rem; }
+  .sismos-alert-mag { justify-content: flex-start; flex-wrap: wrap; }
+  .sismos-alert-mag-btn { flex: 1 1 auto; }
+  .sismos-alert-mag-label { width: 100%; }
+}
+
 /* ═══════════════════════════════════════════════════════════
    MOTOR GEO UNIFICADO — CHGeo
    Panel de Sol (amanecer/atardecer) con cielo animado por fases,
@@ -1089,6 +1128,25 @@ section, main, .container, .wrap, .inner, .section-wrap {
   white-space: nowrap;
 }
 
+/* ── Fase lunar (mes sinódico calculado en el motor CHGeo) ── */
+.wx-moon {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  margin: .5rem auto 0; padding: .42rem .85rem;
+  background: var(--card-bg, rgba(255,255,255,.05));
+  border: 1px solid rgba(255,255,255,.1); border-radius: 999px;
+  width: max-content; max-width: 100%;
+}
+.wx-moon > i { color: #93c5fd; font-size: .95rem; }
+#wx-moon-name {
+  font-size: .82rem; font-weight: 600; color: var(--text, #eee);
+  white-space: nowrap;
+}
+.wx-moon-illum {
+  font-size: .72rem; color: var(--muted, #888);
+  font-family: var(--mono, "SFMono-Regular", Consolas, monospace);
+  white-space: nowrap;
+}
+
 /* ── Reflejo día/noche en la sección de sismos (mismo motor) ── */
 .sismos-map[data-sky="night"] { box-shadow: inset 0 0 60px rgba(5,10,30,.6); }
 .sismos-map[data-sky="dusk"],
@@ -1107,5 +1165,9 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .wx-sun-times { flex-wrap: wrap; }
   .wx-sun-dur { width: 100%; text-align: center; padding-top: .25rem; }
   .geo-dock-btn { font-size: .76rem; padding: .45rem .5rem; }
+}
+@media (max-width: 380px) {
+  .wx-moon { width: 100%; }
+  .wx-moon-illum { white-space: normal; text-align: center; }
 }
 

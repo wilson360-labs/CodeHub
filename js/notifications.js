@@ -61,6 +61,7 @@
       feature:      '<i class="fas fa-lightbulb"></i>',
       fix:          '<i class="fas fa-wrench"></i>',
       maintenance:  '<i class="fas fa-plug"></i>',
+      seismic:      '<i class="fas fa-house-crack"></i>',
     };
     return icons[type] || '<i class="fas fa-bell"></i>';
   }
@@ -77,6 +78,7 @@
       feature:      'rgba(34,197,94,.16)',
       fix:          'rgba(59,130,246,.16)',
       maintenance:  'rgba(234,179,8,.16)',
+      seismic:      'rgba(234,88,12,.16)',
     };
     return colors[type] || 'rgba(47,128,237,.12)';
   }

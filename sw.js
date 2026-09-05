@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.77';
+const VERSION = 'codehub-v6.78';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -338,6 +338,15 @@ self.addEventListener('push', e => {
       { action: 'dismiss', title: 'Cerrar' },
     ];
     options.data.url = url || '/';
+  } else if (type === 'seismic') {
+    options.tag      = 'codehub-seismic';
+    options.renotify = true;
+    options.vibrate  = [120, 60, 120, 60, 240];
+    options.actions  = [
+      { action: 'open_map', title: '🗺 Ver en el mapa' },
+      { action: 'dismiss',  title: 'Cerrar' },
+    ];
+    options.data.url = url || '/#sismos-section';
   } else {
     options.tag = 'codehub-general';
   }
@@ -368,7 +377,7 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
-  const targetUrl = e.notification.data?.url || '/opensource';
+  const targetUrl = e.action === 'open_map' ? '/#sismos-section' : (e.notification.data?.url || '/opensource');
 
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {

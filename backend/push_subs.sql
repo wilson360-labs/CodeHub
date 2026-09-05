@@ -14,6 +14,8 @@ create table if not exists public.push_subs (
   timezone text,
   user_agent text,
   alerts boolean default true,
+  seismic_alerts boolean default true,
+  seismic_mag numeric default 4.5,
   last_alert_condition text,
   last_alert_at timestamptz,
   last_brief_at timestamptz,

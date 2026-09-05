@@ -348,6 +348,51 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         return iso.substring(11, 16);
     }
 
+    // ── Día/noche REAL: usa las horas de salida/puesta del sol de la
+    //    ubicación (SS "HH:mm"). Sin datos → estimación por hora (6–19h).
+    private static boolean isDaylightNow(String sunrise, String sunset) {
+        int rise = parseHM(sunrise), set = parseHM(sunset);
+        if (rise < 0 || set < 0) {
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            return hour >= 6 && hour < 19;
+        }
+        int now = minutesNow();
+        return rise <= set && now >= rise && now < set
+            || rise > set && (now >= rise || now < set);
+    }
+
+    private static int minutesNow() {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        return c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
+    }
+
+    private static int parseHM(String s) {
+        if (s == null || s.length() < 5) return -1;
+        try {
+            return Integer.parseInt(s.substring(0, 2)) * 60 + Integer.parseInt(s.substring(3, 5));
+        } catch (Exception e) { return -1; }
+    }
+
+    // ── Fase lunar: mes sinódico (29.53058867 días) desde una Luna nueva
+    //    de referencia (2000-01-06 18:14 UTC). Devuelve [emoji, nombre, %].
+    private static final double SYNODIC_MS = 29.53058867 * 86400000.0;
+
+    private static String[] moonPhaseInfo() {
+        java.util.Calendar ref = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+        ref.set(2000, java.util.Calendar.JANUARY, 6, 18, 14, 0);
+        ref.set(java.util.Calendar.MILLISECOND, 0);
+        double cycles = ((System.currentTimeMillis() - ref.getTimeInMillis()) / SYNODIC_MS) % 1.0;
+        if (cycles < 0) cycles += 1.0;
+        int illum = (int) Math.round((1 - Math.cos(2 * Math.PI * cycles)) / 2 * 100);
+        int idx = (int) Math.round(cycles * 8) % 8;
+        String[] icons = {"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"};
+        String[] names = {
+            "Luna nueva", "Creciente", "Cuarto creciente", "Gibosa creciente",
+            "Luna llena", "Gibosa menguante", "Cuarto menguante", "Menguante"
+        };
+        return new String[]{icons[idx], names[idx], illum + "%"};
+    }
+
     private static String forecastCell(Context context, JSONArray max, JSONArray min, JSONArray code, int idx) {
         try {
             StringBuilder sb = new StringBuilder();
@@ -391,10 +436,22 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_pressure, !Float.isNaN(pressure) ? "📊 " + Math.round(pressure) + " hPa" : "📊 -- hPa");
         views.setTextViewText(R.id.widget_uv, !Float.isNaN(uv) ? "☀️ UV " + Math.round(uv) : "☀️ UV --");
 
-        // Amanecer / atardecer.
+        // Amanecer / atardecer + estado día/noche REAL (por salida/puesta,
+        // no por hora fija) y fase lunar del mes sinódico.
         boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
-        views.setTextViewText(R.id.widget_sun, hasSun ? "🌅 " + sunrise + "   🌇 " + sunset : "");
-        views.setViewVisibility(R.id.widget_sun, hasSun ? View.VISIBLE : View.GONE);
+        boolean night = !isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null);
+        if (hasSun) {
+            views.setTextViewText(R.id.widget_sun,
+                (night ? "🌙  " : "☀️  ") + sunrise + "   " + sunset + "   ·   " + (night ? "Noche" : "Día"));
+        } else {
+            views.setTextViewText(R.id.widget_sun, night ? "🌙  Noche" : "☀️  Día");
+        }
+        views.setViewVisibility(R.id.widget_sun, View.VISIBLE);
+
+        // Fase lunar: emoji + nombre + % iluminada (siempre presente).
+        String[] moon = moonPhaseInfo();
+        views.setTextViewText(R.id.widget_moon, moon[0] + " " + moon[1] + " · " + moon[2] + " iluminada");
+        views.setViewVisibility(R.id.widget_moon, View.VISIBLE);
 
         // Mini-forecast 3 días.
         views.setTextViewText(R.id.widget_forecast_d1, fc1 == null || fc1.isEmpty() ? "—" : fc1);
@@ -413,8 +470,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_updated,
             new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis())));
 
-        // Fondo con gradiente dinámico según clima + momento del día.
-        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(wcode));
+        // Fondo con gradiente dinámico según clima + momento del día
+        // (la paleta noche se decide por las horas reales de salida/puesta).
+        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(wcode, night));
 
         // Tocar el widget abre la app en la sección de clima.
         Intent openIntent = new Intent(context, MainActivity.class);
@@ -448,14 +506,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
 
     // ── Fondo con gradiente según la condición meteorológica y el
     //    momento del día (día/noche cambia la paleta). ──
-    private static Bitmap backgroundBitmap(int wcode) {
+    private static Bitmap backgroundBitmap(int wcode, boolean night) {
         int w = 2, h = 2;
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         try {
-            java.util.Calendar cal = java.util.Calendar.getInstance();
-            int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
-            boolean night = hour < 6 || hour >= 19;
-
             int[] colors = palette(wcode, night);
             GradientDrawable grad = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR, colors);

@@ -4329,6 +4329,8 @@ create table if not exists public.push_subs (
   timezone text,
   user_agent text,
   alerts boolean default true,
+  seismic_alerts boolean default true,
+  seismic_mag numeric default 4.5,
   last_alert_condition text,
   last_alert_at timestamptz,
   last_brief_at timestamptz,
@@ -4347,6 +4349,8 @@ async function migratePushTable() {
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_brief_at timestamptz;' });
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists weather_interval integer default 0;' });
     await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_weather_snapshot text;' });
+    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists seismic_alerts boolean default true;' });
+    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists seismic_mag numeric default 4.5;' });
   } catch (e) { console.warn('⚠️  Push migrate:', e.message); }
 }
 migratePushTable();
@@ -4378,7 +4382,7 @@ function pushRowToSub(row) {
     keys: { p256dh: row.keys_p256dh, auth: row.keys_auth },
     lat: row.lat, lon: row.lon, city: row.city, country: row.country,
     timezone: row.timezone, user_agent: row.user_agent,
-    alerts: row.alerts, last_alert_condition: row.last_alert_condition, last_alert_at: row.last_alert_at,
+    alerts: row.alerts, seismic_alerts: row.seismic_alerts !== false, seismic_mag: row.seismic_mag != null ? +row.seismic_mag : null, last_alert_condition: row.last_alert_condition, last_alert_at: row.last_alert_at,
     last_brief_at: row.last_brief_at || null,
     weather_interval: row.weather_interval != null ? normalizeWeatherInterval(row.weather_interval) : 0,
     last_weather_snapshot: row.last_weather_snapshot || null,
@@ -4409,6 +4413,8 @@ async function pushSave(rec) {
         timezone:       rec.timezone || null,
         user_agent:     rec.user_agent || null,
         alerts:         rec.alerts !== false,
+        seismic_alerts: rec.seismic_alerts !== false,
+        seismic_mag:    rec.seismic_mag != null ? +rec.seismic_mag : 4.5,
         last_alert_condition: rec.last_alert_condition || null,
         last_alert_at:  rec.last_alert_at || null,
         last_brief_at: rec.last_brief_at || null,
@@ -4486,6 +4492,8 @@ app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
       timezone:   (loc.timezone || '').slice(0, 60) || null,
       user_agent: (req.get('user-agent') || '').slice(0, 200),
       alerts:     prefs ? prefs.alerts !== false : true,
+      seismic_alerts: prefs ? prefs.seismic_enabled !== false : true,
+      seismic_mag: prefs && Number.isFinite(+prefs.seismic_mag) ? (+prefs.seismic_mag) : 4.5,
       weather_interval: prefs && prefs.interval ? normalizeWeatherInterval(prefs.interval) : 0,
     };
     await pushSave(rec);
@@ -4518,6 +4526,8 @@ app.post('/api/push/settings', chatLimiter, async (req, res) => {
       if (location.timezone) rec.timezone = String(location.timezone).slice(0, 60);
     }
     if (prefs && typeof prefs.alerts === 'boolean') rec.alerts = prefs.alerts;
+    if (prefs && typeof prefs.seismic_enabled === 'boolean') rec.seismic_alerts = prefs.seismic_enabled;
+    if (prefs && Number.isFinite(+prefs.seismic_mag)) rec.seismic_mag = +prefs.seismic_mag;
     if (prefs && prefs.interval !== undefined) rec.weather_interval = normalizeWeatherInterval(prefs.interval);
     await pushSave(rec);
     res.json({ ok: true });
@@ -4953,7 +4963,7 @@ function earthquakeSafetyTips(mag) {
 async function seismicPushPass() {
   let subs;
   try { subs = await pushList(); } catch (e) { return { earthquakes: 0 }; }
-  const enabled = subs.filter(s => s.alerts && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
+  const enabled = subs.filter(s => s.alerts && s.seismic_alerts !== false && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
 
   // También tokens FCM
   const fcmTokens = [];
@@ -4978,13 +4988,14 @@ async function seismicPushPass() {
 
   for (const t of targets) {
     const subKey = t.endpoint || t.token || ('fcm:' + (t.token || ''));
+    const tThr = Number.isFinite(+t.seismic_mag) ? +t.seismic_mag : threshold;
     const relevant = quakes.filter(q => {
       const geo = q.geometry && q.geometry.coordinates;
       if (!geo) return false;
       const mag = q.properties && q.properties.mag;
       const time = q.properties && q.properties.time;
       if (typeof mag !== 'number' || !time || time < cutoff) return false;
-      if (mag < threshold) return false;
+      if (mag < tThr) return false;
       const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
       return dist <= radius;
     });

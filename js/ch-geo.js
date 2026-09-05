@@ -165,6 +165,7 @@
       moon.style.setProperty('--moon-x', (100 - x).toFixed(2) + '%');
       moon.style.setProperty('--moon-y', y.toFixed(2) + '%');
     }
+    renderMoon();
   }
 
   /* Renderiza el panel de Sol (amarran los datos de clima al motor). */
@@ -191,11 +192,42 @@
       durEl.textContent = (Math.floor(mins / 60)) + 'h ' + (mins % 60) + 'm de luz';
     }
     updateSunPos();
+    renderMoon();
   }
 
   function startPosTicker() {
     if (_posTimer) clearInterval(_posTimer);
     _posTimer = setInterval(updateSunPos, 30000);
+  }
+
+  /* ── Fase lunar: mes sinódico + iluminación + nombre ─────── */
+  var SYNODIC_MS = 29.53058867 * 86400000;              // mes sinódico promedio
+  var NEW_MOON_EPOCH = Date.UTC(2000, 0, 6, 18, 14);    // Luna nueva de referencia
+
+  function moonPhase(date) {
+    var t = date ? date.getTime() : Date.now();
+    var cycles = ((t - NEW_MOON_EPOCH) / SYNODIC_MS) % 1;
+    if (cycles < 0) cycles += 1;
+    var ageDays = cycles * 29.53058867;
+    var illum = Math.round((1 - Math.cos(2 * Math.PI * cycles)) / 2 * 100);
+    var idx = Math.round(cycles * 8) % 8;
+    var names = [
+      'Luna nueva', 'Creciente', 'Cuarto creciente', 'Gibosa creciente',
+      'Luna llena', 'Gibosa menguante', 'Cuarto menguante', 'Menguante',
+    ];
+    return { phase: idx, name: names[idx], age: Math.floor(ageDays), illum: illum };
+  }
+
+  function renderMoon() {
+    var el = document.getElementById('wx-moon');
+    if (!el) return;
+    var m = moonPhase(new Date());
+    var nameEl = document.getElementById('wx-moon-name');
+    var illumEl = document.getElementById('wx-moon-illum');
+    if (nameEl) nameEl.textContent = m.name;
+    if (illumEl) illumEl.textContent = m.illum + '% iluminada';
+    el.setAttribute('data-phase', m.phase);
+    el.style.setProperty('--moon-illum', m.illum.toFixed(0) + '%');
   }
 
   /* ── Geo dock: navegación común Clima ⇄ Sismos ───────────── */
@@ -282,6 +314,7 @@
     renderSun: renderSun,
     phaseFor: phaseFor,
     sunProgress: sunProgress,
+    moonPhase: moonPhase,
     applySky: applySky,
     goToGeo: goToGeo,
     ready: ready,

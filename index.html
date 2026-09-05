@@ -1307,6 +1307,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                                 <small>Puesta</small>
                             </span>
                         </div>
+                        <!-- Fase lunar: sinódica, calculada en el motor CHGeo -->
+                        <div class="wx-moon" id="wx-moon">
+                            <i class="fas fa-moon"></i>
+                            <span id="wx-moon-name">—</span>
+                            <span class="wx-moon-illum" id="wx-moon-illum">··% iluminada</span>
+                        </div>
                     </div>
                     <div class="wx-grid">
                         <div class="wx-stat">
@@ -1385,6 +1391,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <button type="button" class="sismos-mag-btn" data-mag="5" onclick="chSismosSetMag(5,this)">M5+</button>
                     <button type="button" class="sismos-mag-btn" data-mag="6" onclick="chSismosSetMag(6,this)">M6+</button>
                 </div>
+            </div>
+
+            <!-- Alertas de sismos por push (umbral + toggle propios) -->
+            <div class="sismos-alerts" id="sismos-alerts-box">
+                <div class="sismos-alerts-row">
+                    <div class="wx-alerts-toggle" id="sismos-alerts-toggle" onclick="chToggleSeismicAlerts(!this.classList.contains('on'))" title="Recibe una notificación cuando un sismo relevante ocurra cerca de ti">
+                        <span class="wx-alerts-icon"><i class="fas fa-bell" data-fa-wx-icon></i></span>
+                        <span class="wx-alerts-text">Alertas de sismos en mi dispositivo</span>
+                        <span class="wx-switch"><span class="wx-switch-knob"></span></span>
+                    </div>
+                    <div class="sismos-alert-mag" id="sismos-alert-mag-box">
+                        <span class="sismos-alert-mag-label"><i class="fas fa-gauge-high"></i> Magnitud</span>
+                        <button type="button" class="sismos-alert-mag-btn" data-mag="4" onclick="chSetSeismicMag(4,this)">M4+</button>
+                        <button type="button" class="sismos-alert-mag-btn" data-mag="5" onclick="chSetSeismicMag(5,this)">M5+</button>
+                        <button type="button" class="sismos-alert-mag-btn" data-mag="6" onclick="chSetSeismicMag(6,this)">M6+</button>
+                    </div>
+                </div>
+                <div class="sismos-alerts-hint">Requiere ubicación y permiso de notificaciones. Avisamos sismos ≥ el umbral en un radio de 300 km con consejos de seguridad.</div>
             </div>
 
             <div class="sismos-summary" id="sismos-summary">
@@ -3007,7 +3031,11 @@ async function chPushRegister(sub) {
       body: JSON.stringify({
         subscription: sub.toJSON(),
         location: chReadLocation(),
-        prefs: { alerts: chWeatherAlertsOn() },
+        prefs: {
+          alerts: chWeatherAlertsOn(),
+          seismic_enabled: chSeismicAlertsOn(),
+          seismic_mag: chSeismicMag(),
+        },
       }),
     }).catch(function(){});
   } catch(e) {}
@@ -3027,6 +3055,87 @@ function chReadLocation() {
 
 function chWeatherAlertsOn() {
   return localStorage.getItem('ch_weather_alerts') !== '0';
+}
+
+/* Alertas de sismos: preferencias independientes del clima */
+function chSeismicAlertsOn() {
+  return localStorage.getItem('ch_notif_sismos') !== '0';
+}
+
+function chSeismicMag() {
+  var m = parseInt(localStorage.getItem('ch_notif_sismos_mag') || '4', 10);
+  return [4, 5, 6].indexOf(m) >= 0 ? m : 4;
+}
+
+/* Sincroniza las prefs sísmicas con el backend push */
+function chSeismicPushSettings() {
+  var endpoint = localStorage.getItem('ch_push_endpoint');
+  if (!endpoint || !('serviceWorker' in navigator)) return;
+  return fetch((window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/push/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: endpoint,
+      prefs: { seismic_enabled: chSeismicAlertsOn(), seismic_mag: chSeismicMag() },
+      location: chReadLocation(),
+    }),
+  }).catch(function(){});
+}
+
+/* Encender/apagar alertas de sismos (push al dispositivo) */
+function chToggleSeismicAlerts(on) {
+  localStorage.setItem('ch_notif_sismos', on ? '1' : '0');
+  var toggle = document.getElementById('sismos-alerts-toggle');
+  if (toggle) toggle.classList.toggle('on', on);
+  if (!on) {
+    chSeismicPushSettings();
+    if (typeof toast === 'function') toast('Alertas de sismos desactivadas', 'info', 2600);
+    return;
+  }
+  if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+    initIndexPush().then(function() {
+      var ep = localStorage.getItem('ch_push_endpoint');
+      if (!parseFloat(localStorage.getItem('ch_user_lat'))) {
+        if (typeof chAutoDetectAndSave === 'function') chAutoDetectAndSave();
+      }
+      if (ep) {
+        fetch((window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/push/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            endpoint: ep,
+            prefs: { seismic_enabled: true, seismic_mag: chSeismicMag() },
+            location: chReadLocation(),
+          }),
+        }).catch(function(){});
+      }
+      fetch((window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/push/seismic/check').catch(function(){});
+      if (typeof toast === 'function') toast('Alertas de sismos activadas 📳', 'seismic', 3000);
+    });
+  } else if (!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) {
+    if (typeof showIndexNotifBanner === 'function') showIndexNotifBanner();
+  }
+}
+
+/* Umbral de magnitud para las alertas de sismos (M4+/M5+/M6+) */
+function chSetSeismicMag(m, btn) {
+  m = [4, 5, 6].indexOf(+m) >= 0 ? +m : 4;
+  localStorage.setItem('ch_notif_sismos_mag', m);
+  document.querySelectorAll('.sismos-alert-mag-btn').forEach(function (b) {
+    b.classList.toggle('active', (+b.getAttribute('data-mag')) === m);
+  });
+  chSeismicPushSettings();
+  if (typeof toast === 'function') toast('Te avisará de sismos M' + m + '+ cerca de ti', 'seismic', 2400);
+}
+
+/* Reflejar el estado guardado del toggle/umbral sísmico en la UI */
+function chSyncSeismicAlertUI() {
+  var toggle = document.getElementById('sismos-alerts-toggle');
+  if (toggle) toggle.classList.toggle('on', chSeismicAlertsOn());
+  var mag = chSeismicMag();
+  document.querySelectorAll('.sismos-alert-mag-btn').forEach(function (b) {
+    b.classList.toggle('active', (+b.getAttribute('data-mag')) === mag);
+  });
 }
 
 /* La ubicación se considera "fresca" un tiempo distinto según su fuente:
@@ -3263,6 +3372,7 @@ function chInitWeatherToggle() {  var toggle = document.getElementById('wx-alert
     if (window.CodeHubMorphTo) CodeHubMorphTo(toggle, chWeatherAlertsOn() ? 'bell' : 'bellOff');
   }
   chSyncIntervalUI();
+  if (typeof chSyncSeismicAlertUI === 'function') chSyncSeismicAlertUI();
 }
 
 /* ══════════════════════════════════════════════════
