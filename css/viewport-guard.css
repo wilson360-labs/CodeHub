@@ -926,7 +926,10 @@ section, main, .container, .wrap, .inner, .section-wrap {
 }
 .sismos-legend {
   display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .7rem;
-  font-size: .72rem; color: var(--muted, #888);
+  font-size: .72rem; color: #fff;
+  background: rgba(10,14,20,.62); border: 1px solid rgba(255,255,255,.18);
+  padding: .4rem .7rem; border-radius: 10px;
+  backdrop-filter: blur(3px);
 }
 .sismos-legend span { display: inline-flex; align-items: center; gap: .35rem; }
 .sismos-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }

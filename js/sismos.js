@@ -1,10 +1,11 @@
 /* ============================================================
    CodeHub — Sección "Sismos / Terremotos"
-   Mapa oscuro estilo centros meteorológicos (basemaps Carto dark)
-   + lista de eventos del día desde el backend (/api/sismos, proxy
-   de USGS). Archivo independiente: no toca weather-map ni otras
-   secciones. Leaflet se reutiliza de js/vendor/leaflet con el mismo
-   patrón de carga (local primero, CDN de respaldo).
+   Basemap satélite estilo "Weather Channel" (Esri World_Imagery
+   + capa de topónimos World_Boundaries_and_Places) + lista de
+   eventos del día desde el backend (/api/sismos, proxy de USGS).
+   Archivo independiente: no toca weather-map ni otras secciones.
+   Leaflet se reutiliza de js/vendor/leaflet con el mismo patrón de
+   carga (local primero, CDN de respaldo).
    ============================================================ */
 (function () {
   'use strict';
@@ -111,26 +112,38 @@
 
     _map = L.map('sismos-map', { scrollWheelZoom: false, zoomControl: true }).setView([lat, lon], _center ? 7 : 6);
 
-    // Basemap oscuro estilo centros meteorológicos (Carto dark, ya en CSP).
-    var carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd', maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    // Basemap "estilo Weather Channel": satélite Esri + capa de topónimos.
+    // Ambos dominios ya están permitidos en el CSP de vercel.json
+    // (https://*.arcgisonline.com).
+    var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
     });
-    carto.addTo(_map);
+    var labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; Esri &mdash; &copy; OpenStreetMap contributors',
+    });
+    sat.addTo(_map);
+    labels.addTo(_map);
 
-    // Respaldo si el host del usuario bloquea Carto: OSM dark-ish (gráfila).
-    carto.on('tileerror', function () {
-      if (_map && !_map._cartoFallbackDone) {
-        _map._cartoFallbackDone = true;
+    // Respaldo si la red del usuario bloquea Esri: bajar a OSM.
+    var badTiles = 0;
+    function onTileError() {
+      badTiles++;
+      if (badTiles > 8 && _map && !_map._esriFallbackDone) {
+        _map._esriFallbackDone = true;
         try {
-          carto.remove();
+          sat.remove();
+          labels.remove();
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             subdomains: 'abc', maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
           }).addTo(_map);
         } catch (e) {}
       }
-    });
+    }
+    sat.on('tileerror', onTileError);
+    labels.on('tileerror', onTileError);
 
     // Leyenda de magnitud.
     var legend = L.control({ position: 'bottomleft' });
