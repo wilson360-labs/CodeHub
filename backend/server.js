@@ -5012,7 +5012,7 @@ async function seismicPushPass() {
         title: '🌋 Actividad sísmica',
         body: body + '\n📍 ' + (t.city || 'Tu zona'),
         type: 'seismic',
-        url: '/#weather-section',
+        url: '/#sismos-section',
       });
     } else {
       r = await sendPush(t, {
@@ -5020,7 +5020,7 @@ async function seismicPushPass() {
         body: body,
         type: 'seismic',
         icon: '/splash/codehub.png',
-        url: '/#weather-section',
+        url: '/#sismos-section',
       });
     }
     if (r.ok) {
@@ -5045,6 +5045,43 @@ app.get('/api/push/seismic/check', async (req, res) => {
     const out = await seismicPushPass();
     res.json({ ok: true, ...out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Endpoint PÚBLICO de sismos para la sección "Sismos" del frontend.
+// Hace de PROXY hacia USGS (sin tocar CSP del navegador) y devuelve una
+// lista limpia y filtrable:
+//   GET /api/sismos?minMag=4&limit=80
+// Devuelve los sismos del día en todo el mundo con magnitud >= minMag.
+app.get('/api/sismos', async (req, res) => {
+  try {
+    const features = await fetchRecentEarthquakes();
+    const minMag = parseFloat(req.query.minMag);
+    const validMag = Number.isFinite(minMag) ? minMag : 0;
+    let limit = parseInt(req.query.limit, 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = 80;
+    limit = Math.min(limit, 200);
+
+    const quakes = features
+      .filter(f => f.properties && f.geometry && isFinite(f.properties.mag) && f.properties.mag >= validMag)
+      .sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0))
+      .slice(0, limit)
+      .map(f => ({
+        id: f.properties.id,
+        mag: f.properties.mag,
+        place: f.properties.place || '',
+        lat: f.geometry.coordinates[1],
+        lon: f.geometry.coordinates[0],
+        depth: f.geometry.coordinates[2],
+        time: f.properties.time,
+        url: f.properties.url || '',
+        updated: f.properties.updated,
+      }));
+
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({ ok: true, count: quakes.length, quakes });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // Scheduler climático — manejado por backend/clima (el motor inyecta sus

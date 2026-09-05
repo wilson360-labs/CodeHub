@@ -248,7 +248,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-    <link rel="stylesheet" href="css/viewport-guard.css?v=20260904e">
+    <link rel="stylesheet" href="css/viewport-guard.css?v=20260904f">
 
 
 
@@ -557,6 +557,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a class="side-link" href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
             <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
             <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
+            <a class="side-link" href="#sismos-section" onclick="closeMobileNav()"><i class="fas fa-house-crack"></i> Sismos</a>
             <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
             <a class="side-link" href="#open-to-work" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
         </div>
@@ -1323,6 +1324,49 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <input type="text" id="wx-manual-input" class="wx-input" placeholder="Escribe tu ciudad manualmente…" onkeydown="if(event.key==='Enter')searchWeatherManual()">
                     <button class="wx-search-btn" onclick="searchWeatherManual()"><i class="fas fa-search"></i></button>
                 </div>
+            </div>
+        </section>
+
+        <!-- ── SISMOS / TERREMOTOS ── -->
+        <section id="sismos-section">
+            <div class="wx-header">
+                <div>
+                    <div class="wx-eyebrow">// actividad sísmica en tiempo real</div>
+                    <h2 style="margin-bottom:0">Sismos y Terremotos</h2>
+                </div>
+                <div class="wx-header-actions">
+                    <button class="wx-location-btn" id="sismos-loc-btn" onclick="chSismosUseMyLocation()" title="Centrar en la actividad cerca de ti">
+                        <i class="fas fa-location-dot"></i> Mi zona
+                    </button>
+                    <button class="wx-location-btn" id="sismos-refresh" onclick="chSismosReload()" title="Actualizar lista de sismos" style="background:rgba(34,197,94,.14)">
+                        <i class="fas fa-rotate"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtro de magnitud mínima -->
+            <div class="sismos-toolbar">
+                <span class="sismos-filter-label"><i class="fas fa-filter"></i> Magnitud mínima</span>
+                <div class="sismos-mag-options" id="sismos-mag-options">
+                    <button type="button" class="sismos-mag-btn" data-mag="0" onclick="chSismosSetMag(0,this)">Todas</button>
+                    <button type="button" class="sismos-mag-btn active" data-mag="4" onclick="chSismosSetMag(4,this)">M4+</button>
+                    <button type="button" class="sismos-mag-btn" data-mag="5" onclick="chSismosSetMag(5,this)">M5+</button>
+                    <button type="button" class="sismos-mag-btn" data-mag="6" onclick="chSismosSetMag(6,this)">M6+</button>
+                </div>
+            </div>
+
+            <div class="sismos-summary" id="sismos-summary">
+                <span id="sismos-count-chip">Cargando sismos…</span>
+            </div>
+
+            <!-- Mapa oscuro estilo centros meteorológicos -->
+            <div id="sismos-map" class="sismos-map">
+                <div class="wx-map-loading"><div class="wx-spinner-map"></div> Cargando mapa sísmico…</div>
+            </div>
+
+            <!-- Lista de eventos -->
+            <div id="sismos-list" class="sismos-list">
+                <div class="sismos-none">Consultando actividad sísmica…</div>
             </div>
         </section>
 
@@ -7604,6 +7648,7 @@ function setAIMood(btn) {
 <script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 <script src="js/weather-map.js?v=20260904sf" defer></script>
+<script src="js/sismos.js?v=20260904a" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
