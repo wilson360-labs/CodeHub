@@ -1348,3 +1348,13 @@ footer a:hover { text-decoration: underline; }
 .device-shizuku-banner button:hover { background: rgba(251,191,36,.3); }
 .device-shizuku-banner button:disabled { opacity: .6; cursor: default; }
 
+/* ── Navegación por anclas: compensar el header sticky + scroll suave ── */
+.os-category,
+#my-apps-section,
+#device-apps-section {
+  scroll-margin-top: 80px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+

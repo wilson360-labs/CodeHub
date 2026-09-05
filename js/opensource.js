@@ -12,6 +12,13 @@
 
 const BACKEND = 'https://codehub-98s6.onrender.com';
 
+// ── ESCAPADO PARA HTML/ATRIBUTOS ────────────────────────────
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ── OPTIMIZADOR DE IMÁGENES (proxy wsrv.nl) ───────────────────
 function getOptimizedImageUrl(url, width, height) {
   if (!url) return '';
@@ -118,6 +125,12 @@ function closeHowToDialog(appId) {
   if (modal) modal.classList.remove('active');
 }
 
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.how-to-modal.active').forEach(m => m.classList.remove('active'));
+  }
+});
+
 function copyEchoExtensionUrl() {
   const extensionUrl = 'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json';
   navigator.clipboard.writeText(extensionUrl).then(() => {
@@ -170,37 +183,37 @@ function buildOSCard(app, ratingInfo) {
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
       <span>Extensiones</span>
-      <button class="os-echo-copy-btn" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
+      <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
     </div>` : '';
 
   const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly', 'os-shizuku'];
   const howToBtn = advancedApps.includes(app.appId) ? `
-    <button class="how-to-btn" onclick="openHowToDialog('${app.appId}')">
+    <button class="how-to-btn" data-haptic="game" onclick="openHowToDialog('${esc(app.appId)}')">
       <i class="fas fa-book"></i> ¿Cómo usar?
     </button>` : '';
 
   const dlBtn = dlUrl
-    ? `<a class="dl-btn dl-primary" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
-    : `<a class="dl-btn dl-primary" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
+    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
+    : `<a class="dl-btn dl-primary" data-haptic="tab" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
 
   const starsHtml = [1,2,3,4,5].map(n =>
-    `<i class="fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}" data-star="${n}" onclick="OSRatings.submit('${app.appId}', ${n}, '${(app.nombre || '').replace(/'/g, "\\'")}')"></i>`
+    `<i class="fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}" data-star="${n}" onclick="OSRatings.submit('${esc(app.appId)}', ${n}, '${esc(app.nombre)}')"></i>`
   ).join('');
 
   return `
   <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}" data-package="${app.packageName || ''}">
     <div class="app-thumb">
-      <img src="${img}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
+      <img src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
       ${badge ? `<span class="app-badge badge-upd">${badge}</span>` : ''}
       <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
       ${version ? `<span class="app-version-tag">${version}</span>` : ''}
-      <button class="os-fav-btn ${isFav ? 'active' : ''}" onclick="MyApps.toggle('${app.appId}')" title="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}" aria-label="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}">
-        <i class="fas ${isFav ? 'fa-heart' : 'fa-heart'}"></i>
+      <button class="os-fav-btn ${isFav ? 'active' : ''}" data-haptic="tab" onclick="MyApps.toggle('${esc(app.appId)}')" title="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}" aria-label="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}">
+        <i class="fas fa-heart"></i>
       </button>
     </div>
     <div class="app-body">
-      <div class="app-cat-tag">${emoji} ${app.categoria || ''}</div>
-      <div class="app-name">${app.nombre}</div>
+      <div class="app-cat-tag">${emoji} ${esc(app.categoria)}</div>
+      <div class="app-name">${esc(app.nombre)}</div>
       <div class="os-rating" data-rating-for="${app.appId}" title="${count} voto${count === 1 ? '' : 's'}">
         <span class="os-rating-stars">${starsHtml}</span>
         <span class="os-rating-meta">${avg > 0 ? avg.toFixed(1) : '—'} <span class="os-rating-count">(${count})</span></span>
@@ -352,6 +365,19 @@ let _ws = null;
 let _wsTimer = null;
 let _lastOsCount = null;
 
+// Pausa el polling cuando la pestaña/WebView no está visible (batería),
+// y retoma al volver. Devuelve una API { stop, start }.
+function pausableInterval(fn, ms) {
+  let t = null;
+  const stop = () => { if (t) { clearInterval(t); t = null; } };
+  const start = () => { if (!t) { t = setInterval(fn, ms); } };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { stop(); } else { start(); }
+  });
+  start();
+  return { stop, start };
+}
+
 function connectOSWebSocket() {
   try {
     if (_ws) { try { _ws.close(); } catch {} }
@@ -373,14 +399,16 @@ function connectOSWebSocket() {
         }
       } catch {}
     };
-    _ws.onclose = () => { _wsTimer = setTimeout(connectOSWebSocket, 10000); };
+    _ws.onclose = () => {
+      if (!document.hidden) _wsTimer = setTimeout(connectOSWebSocket, 10000);
+    };
     _ws.onerror = () => { try { _ws.close(); } catch {} };
   } catch {}
 }
 
 loadOpenSourceCatalog();
 connectOSWebSocket();
-setInterval(() => {
+pausableInterval(() => {
   if (!_ws || _ws.readyState !== 1) {
     const heroCount = document.getElementById('os-hero-count');
     if (heroCount) fetch(`${BACKEND}/api/apps`)
@@ -395,6 +423,14 @@ setInterval(() => {
       .catch(() => {});
   }
 }, 5 * 60 * 1000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  if (_wsTimer) { clearTimeout(_wsTimer); _wsTimer = null; }
+  if (!_ws || _ws.readyState > 1) connectOSWebSocket();
+  MyApps.updateUI();
+  DeviceApps.updateUI();
+});
 
 /* ═══════════════════════════════════════════════════════════════
    MyApps — Guardar apps favoritas + verificar actualizaciones
@@ -489,21 +525,21 @@ const MyApps = (() => {
       return `
       <div class="app-card my-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
         <div class="app-thumb">
-          <img src="${app.imagen}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          <img src="${app.imagen}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
           ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
         </div>
         <div class="app-body">
-          <div class="app-name">${app.nombre}</div>
+          <div class="app-name">${esc(app.nombre)}</div>
           ${hasUpdate
-            ? `<div class="my-app-version-diff"><span class="my-app-old">v${app.version || '?'}</span> → <span class="my-app-new">${latestVersion}</span></div>`
-            : `<div class="my-app-version">v${app.version || 'desconocida'}</div>`
+            ? `<div class="my-app-version-diff"><span class="my-app-old">v${esc(app.version) || '?'}</span> → <span class="my-app-new">${esc(latestVersion)}</span></div>`
+            : `<div class="my-app-version">v${esc(app.version) || 'desconocida'}</div>`
           }
           <div class="app-actions">
             ${hasUpdate
-              ? `<a class="dl-btn dl-primary my-app-update-btn" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Actualizar ahora</a>`
-              : `<a class="dl-btn dl-primary" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-check"></i> Última versión</a>`
+              ? `<a class="dl-btn dl-primary my-app-update-btn" data-haptic="game" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Actualizar ahora</a>`
+              : `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-check"></i> Última versión</a>`
             }
-            <button class="os-fav-btn active" onclick="MyApps.toggle('${app.appId}')" title="Quitar de Mis apps">
+            <button class="os-fav-btn active" data-haptic="tab" onclick="MyApps.toggle('${esc(app.appId)}')" title="Quitar de Mis apps">
               <i class="fas fa-heart"></i>
             </button>
           </div>
@@ -518,8 +554,8 @@ const MyApps = (() => {
 // Render initial My Apps state after catalog loads
 document.addEventListener('os:catalog-loaded', () => MyApps.updateUI());
 
-// ── Check periódico de actualizaciones (cada 5 min) ──
-setInterval(() => { MyApps.updateUI(); }, 5 * 60 * 1000);
+// ── Check periódico de actualizaciones (cada 5 min, pausa si invisible) ──
+pausableInterval(() => { MyApps.updateUI(); }, 5 * 60 * 1000);
 
 /* ═══════════════════════════════════════════════════════════════
    DeviceApps — Detección real de apps instaladas (solo dentro del
@@ -655,23 +691,23 @@ const DeviceApps = (() => {
       return `
       <div class="app-card device-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
         <div class="app-thumb">
-          <img src="${app.imagen}" alt="${app.nombre}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          <img src="${app.imagen}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
           <span class="app-badge badge-installed">📲 Instalada</span>
           ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
         </div>
         <div class="app-body">
-          <div class="app-name">${app.nombre}</div>
+          <div class="app-name">${esc(app.nombre)}</div>
           ${hasUpdate
-            ? `<div class="my-app-version-diff"><span class="my-app-old">v${app.installedVersion || '?'}</span> → <span class="my-app-new">${latestVersion}</span></div>`
-            : `<div class="my-app-version">v${app.installedVersion || 'desconocida'} — actualizada</div>`
+            ? `<div class="my-app-version-diff"><span class="my-app-old">v${esc(app.installedVersion) || '?'}</span> → <span class="my-app-new">${esc(latestVersion)}</span></div>`
+            : `<div class="my-app-version">v${esc(app.installedVersion) || 'desconocida'} — actualizada</div>`
           }
-          <div class="app-actions" id="device-actions-${app.appId}">
+          <div class="app-actions" id="device-actions-${esc(app.appId)}">
             ${hasUpdate && isApk
-              ? `<button class="dl-btn dl-primary device-update-btn" data-appid="${app.appId}" data-url="${dlUrl}" data-silent="${shizukuReady}">
+              ? `<button class="dl-btn dl-primary device-update-btn" data-haptic="game" data-appid="${esc(app.appId)}" data-url="${esc(dlUrl)}" data-silent="${shizukuReady}">
                    <i class="fas fa-arrow-up"></i> ${shizukuReady ? 'Actualizar automáticamente' : 'Actualizar'}
                  </button>`
               : hasUpdate
-                ? `<a class="dl-btn dl-primary" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Ver actualización</a>`
+                ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Ver actualización</a>`
                 : `<span class="dl-btn dl-check"><i class="fas fa-check"></i> Al día</span>`
             }
           </div>
@@ -706,4 +742,11 @@ const DeviceApps = (() => {
 })();
 
 document.addEventListener('os:catalog-loaded', () => DeviceApps.updateUI());
-setInterval(() => { DeviceApps.updateUI(); }, 5 * 60 * 1000);
+pausableInterval(() => { DeviceApps.updateUI(); }, 5 * 60 * 1000);
+
+// ── HÁPTICA EN ELEMENTOS ESTÁTICOS (el resto vive en las plantillas) ──
+(function wireStaticHaptics() {
+  document.querySelectorAll('.back-link, .logo-link, .os-toc a, .to-top-btn, .we-trigger').forEach(el => {
+    if (!el.hasAttribute('data-haptic')) el.setAttribute('data-haptic', el.classList.contains('we-trigger') ? 'game' : 'tab');
+  });
+})();
