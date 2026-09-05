@@ -528,10 +528,17 @@
             var name = it.name || '';
             var country = it.country || '';
             var admin = it.admin1 || '';
-            var label = name + (admin && admin !== name ? ' (' + admin + ')' : '') +
-              (country ? ', ' + country : '');
+            // Detalle secundario: "departamento/estado, país" (si el admin
+            // repite el nombre no se muestra, queda limpio).
+            var sub = (admin && admin !== name ? admin : '');
+            if (sub && country) sub += ', ' + country;
+            else if (!sub && country) sub = country;
             html += '<button type="button" class="wx-sug-item" data-idx="' + i + '">' +
-              '<span>📍</span> ' + _escHtml(label) + '</button>';
+              '<span class="wx-sug-emoji">📍</span>' +
+              '<span class="wx-sug-text">' +
+              '<span class="wx-sug-name">' + _escHtml(name) + '</span>' +
+              (sub ? '<span class="wx-sug-sub">' + _escHtml(sub) + '</span>' : '') +
+              '</span></button>';
           }
           box.innerHTML = html;
           box.hidden = false;
