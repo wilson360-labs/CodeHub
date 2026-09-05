@@ -248,7 +248,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-    <link rel="stylesheet" href="css/viewport-guard.css?v=20260904g">
+    <link rel="stylesheet" href="css/viewport-guard.css?v=20260905a">
 
 
 
@@ -1274,6 +1274,35 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <div class="wx-temp-row">
                             <div class="wx-temp" id="wx-temp">—°</div>
                             <div class="wx-desc" id="wx-desc">—</div>
+                        </div>
+                    </div>
+                    <!-- Sol — arco día/noche animado (motor CHGeo) -->
+                    <div class="wx-sun" id="wx-sun" hidden>
+                        <div class="wx-sun-sky" data-sky="night">
+                            <i class="wx-star" style="left:12%;top:22%;--d:.4s"></i>
+                            <i class="wx-star" style="left:30%;top:12%;--d:1.6s"></i>
+                            <i class="wx-star" style="left:55%;top:20%;--d:2.8s"></i>
+                            <i class="wx-star" style="left:76%;top:10%;--d:.9s"></i>
+                            <i class="wx-star" style="left:90%;top:28%;--d:2.1s"></i>
+                            <i class="wx-star" style="left:44%;top:34%;--d:3.4s"></i>
+                            <div class="wx-sun-arc">
+                                <div class="wx-sun-disc"></div>
+                                <div class="wx-moon-disc"></div>
+                                <div class="wx-cloud"><span></span></div>
+                            </div>
+                        </div>
+                        <div class="wx-sun-times">
+                            <span class="wx-sun-time">
+                                <i class="fas fa-sunrise"></i>
+                                <b id="wx-sunrise-t">--:--</b>
+                                <small>Salida</small>
+                            </span>
+                            <span class="wx-sun-dur" id="wx-sun-dur">12h 12m de luz</span>
+                            <span class="wx-sun-time">
+                                <i class="fas fa-sunset"></i>
+                                <b id="wx-sunset-t">--:--</b>
+                                <small>Puesta</small>
+                            </span>
                         </div>
                     </div>
                     <div class="wx-grid">
@@ -5813,11 +5842,14 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       document.getElementById('wx-gust').textContent   = data.wind.gust ? `${Math.round(data.wind.gust * 3.6)} km/h` : '—';
       document.getElementById('wx-pressure').textContent = data.main.pressure ? `${data.main.pressure} hPa` : '—';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
+      if (window.CHGeo && data.sys && data.sys.sunrise && data.sys.sunset) {
+        CHGeo.renderSun(data.sys.sunrise * 1000, data.sys.sunset * 1000);
+      }
 
     } else {
       // ── Fallback: Open-Meteo (sin key) ──
       const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation&daily=temperature_2m_max,temperature_2m_min&wind_speed_unit=kmh&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&wind_speed_unit=kmh&timezone=auto`
       );
       const d = await res.json();
       const c = d.current;
@@ -5853,6 +5885,11 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       document.getElementById('wx-gust').textContent   = c.wind_gusts_10m != null ? `${Math.round(c.wind_gusts_10m)} km/h` : '—';
       document.getElementById('wx-pressure').textContent = c.surface_pressure != null ? `${Math.round(c.surface_pressure)} hPa` : '—';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
+      if (window.CHGeo && d.daily && d.daily.sunrise && d.daily.sunset) {
+        CHGeo.renderSun(new Date(d.daily.sunrise[0]).getTime(), new Date(d.daily.sunset[0]).getTime());
+      } else if (window.CHGeo) {
+        CHGeo.renderSun(null, null);
+      }
     }
 
     document.getElementById('wx-loading').style.display = 'none';
@@ -7648,7 +7685,8 @@ function setAIMood(btn) {
 <script src="js/auth.js?v=20260808j" defer></script>
 <script src="js/emi-voice.js?v=20260724a" defer></script>
 <script src="js/weather-map.js?v=20260904sf" defer></script>
-<script src="js/sismos.js?v=20260904b" defer></script>
+<script src="js/ch-geo.js?v=20260905a" defer></script>
+<script src="js/sismos.js?v=20260905a" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

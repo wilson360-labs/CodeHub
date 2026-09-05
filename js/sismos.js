@@ -10,18 +10,36 @@
 (function () {
   'use strict';
 
-  var BACKEND = (typeof _CH_BACKEND !== 'undefined' && _CH_BACKEND)
-    ? _CH_BACKEND : 'https://codehub-98s6.onrender.com';
-  var LEAFLET_CSS = 'js/vendor/leaflet/leaflet.css';
-  var LEAFLET_JS  = 'js/vendor/leaflet/leaflet.js';
-  var LEAFLET_CSS_B = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-  var LEAFLET_JS_B = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+  // ---- Delegación al motor CHGeo (si está disponible) ────────
+  // Cuando ch-geo.js ya cargó, sismos reutiliza su singleton de Leaflet,
+  // su ubicación, su esc y su fetch. Si CHGeo no existe (deploy viejo),
+  // el módulo funciona por sí solo como antes (compatibilidad hacia atrás).
+  var BACKEND = (window.CHGeo && window.CHGeo.backend)
+    ? window.CHGeo.backend
+    : ((typeof _CH_BACKEND !== 'undefined' && _CH_BACKEND)
+        ? _CH_BACKEND : 'https://codehub-98s6.onrender.com');
+
+  function esc(s) {
+    return (window.CHGeo && CHGeo.esc) ? CHGeo.esc(s)
+      : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function ensureLeaflet() {
+    // Si el motor CHGeo está disponible, delegamos su singleton
+    // (ya revisó tags de weather-map, su propio data-chgeo, etc.)
+    if (window.CHGeo && CHGeo.ensureLeaflet) return CHGeo.ensureLeaflet();
+    // Fallback local (sin motor): patrón legacy con data-sismos.
+    return new Promise(function (resolve, reject) {
+      resolve(window.L && window.L.map ? window.L : null);
+      // Si no hay L, el timeout de buildMap lo maneja igual que antes.
+    });
+  }
 
   var _map = null;
   var _markers = [];
   var _quakes = [];
   var _currentMag = 4;
-  var _center = null; // {lat,lon} si el usuario usó "Mi zona"
+  var _center = null; // {lat,lon} si el usuario usó "Mi zona" o la ciudad de clima
   var _loaded = false;
   var _loading = false;
 
@@ -46,59 +64,6 @@
 
   function magLabel(mag) { return 'M' + mag.toFixed(1); }
 
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  // ---- Carga diferida de Leaflet (idéntica al patrón de weather-map) -
-  // Reutiliza las etiquetas que pueda haber cargado weather-map (mismo
-  // vendor local o CDN), para no duplicar recursos.
-  function ensureLeaflet() {
-    return new Promise(function (resolve, reject) {
-      if (window.L && window.L.map) return resolve(window.L);
-      var done = false;
-      var timer = setTimeout(function () { if (!done) { done = true; reject(new Error('leaflet timeout')); } }, 15000);
-      function maybe() {
-        if (done) return;
-        var cssReady = document.querySelector('link[data-wx-leaflet-css], link[data-sismos-leaflet-css]');
-        if (window.L && window.L.map && cssReady) {
-          done = true; clearTimeout(timer); resolve(window.L);
-        }
-      }
-      var existingCss = document.querySelector('link[data-wx-leaflet-css], link[data-sismos-leaflet-css]');
-      if (!existingCss) {
-        var css = document.createElement('link');
-        css.rel = 'stylesheet'; css.href = LEAFLET_CSS; css.setAttribute('data-sismos-leaflet-css', '1');
-        css.onerror = function () { css.href = LEAFLET_CSS_B; };
-        document.head.appendChild(css);
-      }
-      var existingJs = document.querySelector('script[data-wx-leaflet-js], script[data-sismos-leaflet-js]');
-      if (!existingJs) {
-        var s = document.createElement('script');
-        s.src = LEAFLET_JS; s.setAttribute('data-sismos-leaflet-js', '1');
-        s.async = true;
-        s.onload = maybe;
-        s.onerror = function () {
-          var s2 = document.createElement('script');
-          s2.src = LEAFLET_JS_B; s2.setAttribute('data-sismos-leaflet-js', '1');
-          s2.async = true; s2.onload = maybe; s2.onerror = function () {
-            if (!done) { done = true; clearTimeout(timer); reject(new Error('leaflet load failed')); }
-          };
-          document.body.appendChild(s2);
-        };
-        document.body.appendChild(s);
-      } else {
-        maybe();
-      }
-      // Si weather-map ya tiene el script cargado pero aun no L, esperar
-      // sin duplicar: verificar de nuevo cuando termine la hoja.
-      setTimeout(maybe, 400);
-      var intv = setInterval(function () { maybe(); if (done) clearInterval(intv); }, 600);
-      setTimeout(function () { clearInterval(intv); }, 16000);
-      return maybe;
-    });
-  }
-
   // ---- Mapa -------------------------------------------------------
   function buildMap() {
     var el = document.getElementById('sismos-map');
@@ -107,10 +72,19 @@
     if (_map) { try { _map.remove(); } catch (e) {} _map = null; }
 
     var L = window.L;
-    var lat = _center ? _center.lat : 14.6;   // Centro por defecto: Guatemala
-    var lon = _center ? _center.lon : -90.5;
+    // Centro: 1) "Mi zona" elegida, 2) la ciudad del clima (mismo motor),
+    // 3) Guatemala por defecto.
+    var seed = _center;
+    if (!seed && window.CHGeo) {
+      var locHome = CHGeo.readLocation();
+      if (locHome && Number.isFinite(locHome.lat) && Number.isFinite(locHome.lon)) {
+        seed = { lat: locHome.lat, lon: locHome.lon };
+      }
+    }
+    var lat = seed ? seed.lat : 14.6;
+    var lon = seed ? seed.lon : -90.5;
 
-    _map = L.map('sismos-map', { scrollWheelZoom: false, zoomControl: true }).setView([lat, lon], _center ? 7 : 6);
+    _map = L.map('sismos-map', { scrollWheelZoom: false, zoomControl: true }).setView([lat, lon], seed ? 7 : 6);
 
     // Basemap "estilo Weather Channel": satélite Esri + capa de topónimos.
     // Ambos dominios ya están permitidos en el CSP de vercel.json
