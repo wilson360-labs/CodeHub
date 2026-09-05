@@ -248,8 +248,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-    <link rel="stylesheet" href="css/sys-tools.css?v=20260905b">
-    <link rel="stylesheet" href="css/viewport-guard.css?v=20260905a">
+<link rel="stylesheet" href="css/sys-tools.css?v=20260905b">
+<link rel="stylesheet" href="css/native-feel.css?v=20260905c">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20260905a">
 
 
 
@@ -358,7 +359,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <span>Explora las funciones una por una</span>
         </div>
 
-        <div class="menu-item" onclick="activateMatrixMode()">
+        <div class="menu-item" data-haptic="warn" onclick="activateMatrixMode()">
             <i class="fas fa-code"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Matrix Mode</div>
@@ -366,7 +367,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </div>
 
-        <div class="menu-item" onclick="activateParticleExplosion()">
+        <div class="menu-item" data-haptic="game" onclick="activateParticleExplosion()">
             <i class="fas fa-fire"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Explosión de Partículas</div>
@@ -374,7 +375,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </div>
 
-        <div class="menu-item" onclick="activateScreenShake()">
+        <div class="menu-item" data-haptic="warn" onclick="activateScreenShake()">
             <i class="fas fa-arrows-spin"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Screen Shake</div>
@@ -382,7 +383,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </div>
 
-        <div class="menu-item" onclick="activateGlitchEffect()">
+        <div class="menu-item" data-haptic="game" onclick="activateGlitchEffect()">
             <i class="fas fa-tv"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Glitch Effect</div>
@@ -406,7 +407,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </div>
 
-        <div class="menu-item" onclick="activateCodeRain()">
+        <div class="menu-item" data-haptic="game" onclick="activateCodeRain()">
             <i class="fas fa-cloud-rain"></i>
             <div class="menu-item-content">
                 <div class="menu-item-title">Lluvia de Código</div>
@@ -2042,6 +2043,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         function activateMatrixMode() {
             const matrixCanvas = document.createElement('canvas');
             matrixCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;pointer-events:none;';
+            matrixCanvas.className = 'ch-fx'; // capa GPU 60fps (native-feel.css)
             document.body.appendChild(matrixCanvas);
             
             const ctx = matrixCanvas.getContext('2d');
@@ -2071,10 +2073,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 }
             }
             
-            const interval = setInterval(drawMatrix, 35);
-            
+            /* rAF en vez de setInterval: solo se pinta cuando hay frame nuevo
+               y se pausa solo si la app queda oculta (batería WebView) */
+            let rafId = 0;
+            const matrixLoop = () => {
+                if (!document.hidden) drawMatrix(); // fondo → 0 CPU
+                rafId = requestAnimationFrame(matrixLoop);
+            };
+            rafId = requestAnimationFrame(matrixLoop);
+
             setTimeout(() => {
-                clearInterval(interval);
+                cancelAnimationFrame(rafId);
                 matrixCanvas.remove();
             }, 10000);
             
@@ -2087,6 +2096,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             for (let i = 0; i < 100; i++) {
                 setTimeout(() => {
                     const particle = document.createElement('div');
+                    particle.className = 'ch-fx'; // capa GPU 60fps (native-feel.css)
                     particle.style.cssText = `
                         position: fixed;
                         top: 50%;
@@ -7756,6 +7766,7 @@ function setAIMood(btn) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js" defer></script>
 <script src="js/site-tour.js?v=20260826a" defer></script>
 <script src="js/theme-switcher.js?v=20260724a" defer></script>
+<script src="js/haptics.js?v=20260905c" defer></script>
 <script type="module" src="js/morphicons-init.js?v=20260816a"></script>
 <script src="js/device-detect.js?v=20260724a" defer></script>
 <script src="js/thinking-orb.js?v=20260724a" defer></script>
@@ -7769,10 +7780,11 @@ function setAIMood(btn) {
 <script src="js/sismos.js?v=20260905a" defer></script>
 <script src="js/sys-metrics.js?v=20260905b" defer></script>
 <script src="js/security-scan.js?v=20260905b" defer></script>
+<script src="js/view-transitions.js?v=20260905c" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
-<nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">
+<nav id="mobile-nav-bar" aria-label="Navegación móvil">
   <a href="/" class="active" id="mnb-home">
     <span class="mnb-icon">🏠</span>
     <span data-i18n="mnbHome">Inicio</span>

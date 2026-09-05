@@ -25,23 +25,25 @@
   <title>Snake Game — CodeHub</title>
   <link rel="canonical" href="https://wilson360-labs.vercel.app/snake">
   <link rel="stylesheet" href="../css/snake.css">
+  <link rel="stylesheet" href="../css/native-feel.css?v=20260905c">
 </head>
 <body>
 	<div id="game-container">
 		<canvas id="gc" class="game-canvas" width="400" height="400"></canvas>
 	</div>
 	<div class="keys">
-	  <a class="up arr" onclick="Snake.action('up')">
+	  <a class="up arr" data-haptic="game" onclick="Snake.action('up')">
 	    <i class="chevron up"></i></a>
 	  <br />
-	  <a class="left arr" onclick="Snake.action('left')">
+	  <a class="left arr" data-haptic="game" onclick="Snake.action('left')">
 	    <i class="chevron left"></i></a>
-	  <a class="down arr" onclick="Snake.action('down')">
+	  <a class="down arr" data-haptic="game" onclick="Snake.action('down')">
 	    <i class="chevron down"></i></a>
-	  <a class="right arr" onclick="Snake.action('right')">
+	  <a class="right arr" data-haptic="game" onclick="Snake.action('right')">
 	    <i class="chevron right"></i></a>
 	</div>
 	<script type="text/javascript" src="snake.js"></script>
+	<script src="../js/haptics.js?v=20260905c" defer></script>
 	<script src="../js/consent-banner.js?v=20260810a" defer></script>
 	<script src="../js/connection-alert.js?v=20260810a" defer></script>
 	<footer style="text-align:center;padding:1rem;font-size:.75rem;opacity:.75">

@@ -229,9 +229,14 @@
       a.addEventListener('click', function () {
         bar.querySelectorAll('a').forEach(function(x){ x.classList.remove('active'); });
         a.classList.add('active');
-        anime({ targets: a.querySelector('.mnb-icon'), scale: [1,1.4,1],
-          duration: 400, easing: 'easeOutBack' });
-        if (navigator.vibrate) navigator.vibrate(42);
+        var icon = a.querySelector('.mnb-icon');
+        if (icon) {
+          anime({ targets: icon, scale: [1,1.4,1],
+            duration: 400, easing: 'easeOutBack' });
+        }
+        // Háptico centralizado (guardas de batería + patrones nativos)
+        if (window.Haptics) window.Haptics.tab();
+        else if (navigator.vibrate) navigator.vibrate(42);
       });
     });
 

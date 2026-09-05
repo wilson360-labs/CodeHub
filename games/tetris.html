@@ -24,6 +24,7 @@
     <title>Tetris — CodeHub</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="canonical" href="https://wilson360-labs.vercel.app/tetris">
+    <link rel="stylesheet" href="../css/native-feel.css?v=20260905c">
     <style>
         * {
             margin: 0;
@@ -746,14 +747,17 @@
             switch(e.code) {
                 case 'ArrowLeft':
                     e.preventDefault();
+                    if (window.Haptics) Haptics.game();
                     if (currentPiece) currentPiece.move(-1, 0);
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
+                    if (window.Haptics) Haptics.game();
                     if (currentPiece) currentPiece.move(1, 0);
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
+                    if (window.Haptics) Haptics.game();
                     if (currentPiece) {
                         if (!currentPiece.move(0, 1)) {
                             placePiece();
@@ -764,10 +768,12 @@
                     break;
                 case 'Space':
                     e.preventDefault();
+                    if (window.Haptics) Haptics.game();
                     if (currentPiece) currentPiece.rotate();
                     break;
                 case 'KeyP':
                     e.preventDefault();
+                    if (window.Haptics) Haptics.tab();
                     togglePause();
                     break;
             }
@@ -790,6 +796,7 @@
         restartGame();
         requestAnimationFrame(gameLoop);
     </script>
+<script src="../js/haptics.js?v=20260905c" defer></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
 <footer style="text-align:center;padding:1rem;font-size:.75rem;opacity:.75">

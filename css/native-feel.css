@@ -1,0 +1,91 @@
+/* ════════════════════════════════════════════════════════════════════
+   native-feel.css — UX nativa WebView/PWA (2026)
+   CodeHub by Wilson.E
+   1) Scroll + toque nativo: sin rebote elástico blanco, sin retardo de
+      300ms en el clic, highlight táctil transparente.
+   2) Capas GPU a 60fps para los fondos de partículas/Matrix: se anima
+      SOLO transform/opacity + contain → cero repintados del documento.
+   3) View Transitions API: slide lateral tipo "tabs de Android", con
+      soporte para navegación entre páginas (MPA) vía @view-transition.
+   Cargar SIEMPRE antes de viewport-guard.css (última capa de la cadena).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 1) Scroll + toque nativo ─────────────────────────────────────── */
+
+/* Mata el rebote elástico blanco del WebView en el scroll del documento */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* El tap del nav/gamepad ya no deja rastro visual (solo el nuestro) */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Mata el retardo de 300ms en clics móviles SIN matar el zoom
+   accesible (mejor que user-scalable=no). WebView moderno lo respeta. */
+button, a, input, select, textarea, label, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Zonas de juego/efectos: el gesto no arranca el scroll de la página */
+canvas.game-canvas, .ch-fx {
+  touch-action: none;
+}
+
+/* Juegos: nada de callout de selección/long-press en el canvas */
+canvas.game-canvas, .arr, .control-btn {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── 2) Capas aceleradas por hardware (Matrix / partículas) ──────────
+   La capa vive en el compositor (translateZ(0)), su contenido no
+   afecta el layout del documento (contain) y solo se tocan
+   transform/opacity → el pintor no vuelve a recopilarse → 60fps. */
+.ch-fx {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  contain: layout paint style;
+}
+
+/* ── 3) View Transitions: slide lateral tipo app nativa ───────────── */
+
+/* Activa MPA View Transitions (Chrome/WebView 126+): la navegación
+   entre páginas del hub (Tools/Apps/Servicios) ya no "salta": hace
+   transición nativa del navegador. Sin efecto -> mismo comportamiento. */
+@view-transition { navigation: auto; }
+
+::view-transition-group(root) { animation-duration: .34s; }
+
+html[data-vt="fwd"]::view-transition-old(root) {
+  animation: vtOutLeft .32s cubic-bezier(.42, 0, .2, 1) both;
+}
+html[data-vt="fwd"]::view-transition-new(root) {
+  animation: vtInLeft  .32s cubic-bezier(.42, 0, .2, 1) both;
+}
+html[data-vt="back"]::view-transition-old(root) {
+  animation: vtOutRight .32s cubic-bezier(.42, 0, .2, 1) both;
+}
+html[data-vt="back"]::view-transition-new(root) {
+  animation: vtInRight  .32s cubic-bezier(.42, 0, .2, 1) both;
+}
+
+@keyframes vtOutLeft  { to { transform: translate3d(-22%, 0, 0); opacity: .35; } }
+@keyframes vtInLeft   { from { transform: translate3d(100%, 0, 0); } }
+@keyframes vtOutRight { to { transform: translate3d(22%, 0, 0);    opacity: .35; } }
+@keyframes vtInRight  { from { transform: translate3d(-100%, 0, 0); } }
+
+/* A11y: usuarios con "less motion" → nada de slide, ida y vuelta limpio */
+@media (prefers-reduced-motion: reduce) {
+  html[data-vt]::view-transition-old(root),
+  html[data-vt]::view-transition-new(root),
+  ::view-transition-group(root) { animation: none !important; }
+}
+
+/* ── Polaco del tab activo del menú inferior (píldora sutil) ──────── */
+@media (max-width: 640px) {
+  #mobile-nav-bar a.active {
+    background: rgba(47, 128, 237, .12);
+  }
+}
