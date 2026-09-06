@@ -312,6 +312,8 @@ function switchTab(id, btn) {
   if (id === 'github') {
     loadGhAutomation();
     setTimeout(() => { loadGhSecrets(); loadGhVariables(); }, 300);
+    const firstSub = document.querySelector('.gh-subnav .gh-sub');
+    if (firstSub) ghSub('overview', firstSub);
   }
   if (id === 'config') loadAdminConfig();
 }
@@ -516,13 +518,15 @@ async function loadGhRuns() {
     const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
     if (!res.ok) { runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${(await res.json()).error || 'Error cargando runs'}</div>`; return; }
     const { runs } = await res.json();
-    const rows = GH_WORKFLOWS.map(w => {
-      const r = runs[w.file];
-      if (!r) return `<div style="font-size:.72rem;padding:.35rem 0"><b style="color:var(--text)">${w.name}:</b> <span style="color:var(--muted)">sin ejecuciones todavía</span></div>`;
+    const files = Object.keys(runs || {}).sort();
+    const rows = files.map(f => {
+      const w = GH_WORKFLOWS.find(x => x.file === f);
+      const r = runs[f];
+      if (!r) return `<div style="font-size:.72rem;padding:.35rem 0"><b style="color:var(--text)">${w ? w.name : f}:</b> <span style="color:var(--muted)">sin ejecuciones todavía</span></div>`;
       const icon = r.conclusion === 'success' ? '✅' : (r.conclusion ? '❌' : (r.status === 'completed' ? '⚠️' : '⏳'));
       const when = new Date(r.created_at).toLocaleString();
       return `<div style="font-size:.72rem;padding:.35rem 0;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <b style="color:var(--text)">${w.name}:</b>
+        <b style="color:var(--text)">${w ? w.name : f}:</b>
         <span>${icon} ${r.status}${r.conclusion ? ' / ' + r.conclusion : ''}</span>
         <span style="color:var(--muted)">${when}</span>
         <a href="${r.html_url}" target="_blank" rel="noopener" style="color:var(--a)">ver run ↗</a>
@@ -688,7 +692,571 @@ async function deleteGhVariable(name) {
   } catch (e) { toast(`❌ Error: ${e.message}`, 'error'); }
 }
 
-// ── DETECCIÓN DE DUPLICADOS ─────────────────────────────────────
+// ══════════════════════════════════════════════════════════════
+// GITHUB — CONTROL TOTAL DEL REPOSITORIO
+// Panel "Control total del repositorio" dentro del tab GitHub.
+// Todas las operaciones pasan por /api/admin/github/* (backend con
+// GITHUB_TOKEN) y escriben de verdad en wilson360-labs/CodeHub.
+// ══════════════════════════════════════════════════════════════
+let _ghBranch = 'main';
+let _ghPath = '';
+let _ghEdit = null;   // { path, sha, content } del archivo en edición
+let _ghPRState = 'open';
+let _ghIssState = 'open';
+
+async function ghApi(path, opts) {
+  const res = await fetch(BACKEND + path, Object.assign({
+    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+  }, opts || {}));
+  let data = {};
+  try { data = await res.json(); } catch (e) { data = {}; }
+  if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+}
+
+function ghSub(id, btn) {
+  document.querySelectorAll('.gh-subnav .gh-sub').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.gh-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('gh-panel-' + id);
+  if (!panel) return;
+  panel.classList.add('active');
+  if (id === 'overview')   loadGhOverview();
+  if (id === 'commits')    loadGhCommits();
+  if (id === 'files')      loadGhFiles('');
+  if (id === 'branches')   loadGhBranches();
+  if (id === 'prs')        loadGhPulls();
+  if (id === 'releases')   loadGhReleases();
+  if (id === 'issues')     loadGhIssues();
+  if (id === 'workflows')  loadGhWorkflows();
+  if (id === 'extra')      loadGhExtra();
+}
+
+// ── Visión general ───────────────────────────────────────────
+async function loadGhOverview() {
+  const el = document.getElementById('gh-panel-overview');
+  if (!el) return;
+  el.innerHTML = '<div class="gh-empty">Cargando visión general…</div>';
+  try {
+    const [repo, tok] = await Promise.all([
+      ghApi('/api/admin/github/repo'),
+      ghApi('/api/admin/github/token-check'),
+    ]);
+    const r = repo.repo;
+    const scopes = (tok.scopes && tok.scopes.length)
+      ? tok.scopes.map(s => `<span class="gh-state-ok">${escapeHtml(s)}</span>`).join(' ')
+      : '<span class="gh-state-bad">sin scopes reportados</span>';
+    el.innerHTML = `
+      <div class="card" style="margin-bottom:.8rem">
+        <div class="gh-head">
+          <a href="${r.html_url}" target="_blank" rel="noopener" style="font-weight:700;color:var(--a);font-size:.85rem"><i class="fab fa-github"></i> ${escapeHtml(r.full_name)}</a>
+          <span class="gh-state-ok">${r.private ? '🔒 privado' : '🌐 público'}</span>
+          ${r.archived ? '<span class="gh-state-bad">ARCHIVED</span>' : ''}
+        </div>
+        ${r.description ? `<div style="font-size:.75rem;color:var(--muted);margin-bottom:.6rem">${escapeHtml(r.description)}</div>` : ''}
+        <div>
+          <div class="gh-kv"><b>Token</b><span class="gh-mono">@${escapeHtml(tok.login || '?')}</span></div>
+          <div class="gh-kv"><b>Scopes del token</b><span style="text-align:right">${scopes}</span></div>
+          <div class="gh-kv"><b>Rama default</b><span class="gh-mono">${escapeHtml(r.default_branch)}</span></div>
+          <div class="gh-kv"><b>Estrellas</b><span>${r.stargazers_count}</span></div>
+          <div class="gh-kv"><b>Forks</b><span>${r.forks_count}</span></div>
+          <div class="gh-kv"><b>Watchers</b><span>${r.watchers_count}</span></div>
+          <div class="gh-kv"><b>PRs abiertos</b><span>${r.open_pulls_count}</span></div>
+          <div class="gh-kv"><b>Issues abiertos</b><span>${r.open_issues_count}</span></div>
+          <div class="gh-kv"><b>Lenguaje</b><span>${escapeHtml(r.language || '—')}</span></div>
+          <div class="gh-kv"><b>Tamaño</b><span>${r.size_kb} KB</span></div>
+          <div class="gh-kv"><b>Licencia</b><span>${escapeHtml(r.license || '—')}</span></div>
+          <div class="gh-kv"><b>Último push</b><span>${fmtDate(r.pushed_at)}</span></div>
+          <div class="gh-kv"><b>Creado</b><span>${fmtDate(r.created_at)}</span></div>
+        </div>
+      </div>
+      <div class="gh-row"><span style="font-size:.75rem"><i class="fas fa-fire"></i> Token activo del repositorio.</span>
+        <button class="gh-btn" onclick="loadGhOverview()"><i class="fas fa-rotate"></i> Refrescar</button></div>`;
+  } catch (e) {
+    el.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ── Ramas ────────────────────────────────────────────────────
+async function loadGhBranches() {
+  const el = document.getElementById('gh-panel-branches');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem">
+      <input id="gh-new-branch" class="gh-input" style="flex:1;min-width:140px" placeholder="nombre-rama-nueva">
+      <input id="gh-branch-from" class="gh-input" style="flex:1;min-width:110px" placeholder="desde (rama o SHA)" value="main">
+      <button class="gh-btn gh-btn-ok" onclick="createGhBranch()"><i class="fas fa-plus"></i> Crear rama</button>
+    </div>
+    <div id="gh-branch-list"><div class="gh-empty">Cargando…</div></div>`;
+  try {
+    const { branches } = await ghApi('/api/admin/github/branches');
+    const list = document.getElementById('gh-branch-list');
+    list.innerHTML = branches.map(b => `
+      <div class="gh-row">
+        <span style="font-weight:600;font-size:.76rem"><i class="fas fa-code-branch"></i> ${escapeHtml(b.name)}</span>
+        <span class="gh-mono">${b.sha ? b.sha.slice(0, 7) : ''}</span>
+        <span style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="gh-btn" onclick="_ghBranch='${b.name}';toast('Rama activa: ' + _ghBranch)"><i class="fas fa-arrow-right"></i> Usar</button>
+          ${b.name !== 'main' ? `<button class="gh-btn gh-btn-danger" onclick="deleteGhBranch('${b.name}')"><i class="fas fa-trash"></i></button>` : ''}
+        </span>
+      </div>`).join('') || '<div class="gh-empty">Sin ramas</div>';
+  } catch (e) {
+    const list = document.getElementById('gh-branch-list');
+    if (list) list.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function createGhBranch() {
+  const name = document.getElementById('gh-new-branch').value.trim();
+  const from = document.getElementById('gh-branch-from').value.trim() || 'main';
+  if (!name) { toast('⚠️ Escribe un nombre de rama'); return; }
+  try {
+    await ghApi('/api/admin/github/branches', { method: 'POST', body: JSON.stringify({ name, from }) });
+    toast(`🌿 Rama "${name}" creada desde ${from}`);
+    loadGhBranches();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function deleteGhBranch(name) {
+  if (!confirm(`¿Borrar la rama "${name}"? No se puede deshacer.`)) return;
+  try {
+    await ghApi('/api/admin/github/branches/' + encodeURIComponent(name), { method: 'DELETE' });
+    toast(`🗑️ Rama "${name}" eliminada`);
+    loadGhBranches();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+// ── Commits ──────────────────────────────────────────────────
+async function loadGhCommits() {
+  const el = document.getElementById('gh-panel-commits');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="gh-head">
+      <span class="gh-mono">rama</span>
+      <input id="gh-commit-branch" class="gh-input" style="width:150px" value="${_ghBranch}" onchange="_ghBranch=this.value.trim()||'main'">
+      <button class="gh-btn" onclick="loadGhCommits()"><i class="fas fa-rotate"></i> Cargar</button>
+    </div>
+    <div id="gh-commit-list"><div class="gh-empty">Cargando…</div></div>
+    <div id="gh-commit-detail" style="margin-top:.7rem"></div>`;
+  try {
+    const { commits } = await ghApi('/api/admin/github/commits?branch=' + encodeURIComponent(_ghBranch) + '&per_page=25');
+    const list = document.getElementById('gh-commit-list');
+    list.innerHTML = commits.map(c => `
+      <div class="gh-row" style="cursor:pointer" onclick="loadGhCommitDetail('${c.sha}')">
+        <span style="font-weight:600;font-size:.76rem;flex:1;min-width:0">${escapeHtml(c.message)}</span>
+        <span class="gh-mono">${c.short}</span>
+        <span style="font-size:.68rem;color:var(--muted)">${fmtDate(c.date)} · ${escapeHtml(c.login || c.author)}</span>
+      </div>`).join('') || '<div class="gh-empty">Sin commits</div>';
+  } catch (e) {
+    const list = document.getElementById('gh-commit-list');
+    if (list) list.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function loadGhCommitDetail(sha) {
+  const el = document.getElementById('gh-commit-detail');
+  if (!el) return;
+  el.innerHTML = '<div class="gh-empty">Cargando detalle…</div>';
+  try {
+    const { commit } = await ghApi('/api/admin/github/commits/' + sha);
+    const files = (commit.files || []).map(f => `
+      <div style="margin-bottom:.75rem">
+        <div style="font-size:.72rem;font-weight:600;color:var(--text)">${escapeHtml(f.filename)}
+          <span style="color:var(--muted)">${escapeHtml(f.status)} · +${f.additions}/-${f.deletions}</span></div>
+        ${f.patch ? `<pre class="gh-code">${escapeHtml(f.patch)}</pre>` : ''}
+      </div>`).join('');
+    el.innerHTML = `
+      <div class="gh-kv"><b>${escapeHtml(commit.message.split('\n')[0])}</b><span class="gh-mono">${sha.slice(0, 7)}</span></div>
+      <div class="gh-kv"><b>Autor</b><span>${escapeHtml(commit.author || '')} · ${fmtDate(commit.date)}</span></div>
+      <div style="font-size:.72rem;color:var(--muted);margin:.3rem 0">${commit.total_files} archivos · +${commit.stats.additions}/-${commit.stats.deletions}</div>
+      <button class="gh-btn" onclick="loadGhCommits()" style="margin-bottom:.6rem"><i class="fas fa-arrow-left"></i> Volver</button>
+      ${files}`;
+  } catch (e) { el.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`; }
+}
+
+// ── Archivos (navegador + editor + commits directos) ────────
+async function loadGhFiles(path) {
+  if (typeof path === 'string') _ghPath = path;
+  _ghEdit = null;
+  const el = document.getElementById('gh-panel-files');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="gh-head">
+      <button class="gh-btn" onclick="showGhNewFile()"><i class="fas fa-file-circle-plus"></i> Nuevo archivo</button>
+      <span class="gh-mono" style="margin-left:auto">${_ghBranch}</span>
+    </div>
+    <div class="gh-crumbs" id="gh-crumbs"></div>
+    <div id="gh-file-list" style="margin-top:.5rem"><div class="gh-empty">Cargando…</div></div>
+    <div id="gh-file-editor" style="margin-top:.8rem"></div>`;
+  try {
+    const data = await ghApi('/api/admin/github/contents?path=' + encodeURIComponent(_ghPath) + '&branch=' + encodeURIComponent(_ghBranch));
+    const parts = _ghPath ? _ghPath.split('/') : [];
+    let acc = '';
+    let crumbs = `<button onclick="loadGhFiles('')" ${parts.length ? '' : 'style="color:var(--text);font-weight:700"'}>📁 /</button>`;
+    parts.forEach((p, i) => {
+      acc = acc ? acc + '/' + p : p;
+      if (i < parts.length - 1) crumbs += `<span>/</span><button onclick="loadGhFiles('${acc.replace(/'/g, "\\'")}')">${escapeHtml(p)}</button>`;
+      else crumbs += `<span>/</span><span style="color:var(--text)">${escapeHtml(p)}</span>`;
+    });
+    const crumbsEl = document.getElementById('gh-crumbs');
+    if (crumbsEl) crumbsEl.innerHTML = crumbs;
+    const list = document.getElementById('gh-file-list');
+    if (data.kind === 'dir') {
+      const dirs = (data.entries || []).filter(e => e.type === 'dir');
+      const files = (data.entries || []).filter(e => e.type === 'file');
+      const row = e => e.type === 'dir'
+        ? `<div class="gh-row" style="cursor:pointer" onclick="loadGhFiles('${e.path.replace(/'/g, "\\'")}')"><span style="font-weight:600;font-size:.76rem"><i class="fas fa-folder"></i> ${escapeHtml(e.name)}</span><span class="gh-mono">/</span></div>`
+        : `<div class="gh-row" style="cursor:pointer" onclick="loadGhFiles('${e.path.replace(/'/g, "\\'")}')"><span style="font-size:.76rem"><i class="fas fa-file-lines"></i> ${escapeHtml(e.name)}</span><span class="gh-mono">${e.size} B</span></div>`;
+      list.innerHTML = [...dirs, ...files].map(row).join('') || '<div class="gh-empty">Carpeta vacía</div>';
+      const ed = document.getElementById('gh-file-editor');
+      if (ed) ed.innerHTML = '';
+    } else {
+      openGhFileEditor(data.path, data.sha, data.content, data.size);
+    }
+  } catch (e) {
+    const list = document.getElementById('gh-file-list');
+    if (list) list.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openGhFileEditor(path, sha, content, size) {
+  const ed = document.getElementById('gh-file-editor');
+  if (!ed) return;
+  ed.innerHTML = `
+    <div class="gh-kv"><b>${escapeHtml(path)}</b><span class="gh-mono">${size} B · sha ${sha ? sha.slice(0, 7) : 'nuevo'}</span></div>
+    <textarea id="gh-file-text" class="gh-input" style="width:100%;min-height:280px;margin:.5rem 0;font-size:.7rem" spellcheck="false"></textarea>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <input id="gh-file-msg" class="gh-input" style="flex:2;min-width:160px" placeholder="Mensaje del commit (obligatorio)">
+    </div>
+    <div class="gh-file-actions">
+      <button class="gh-btn gh-btn-ok" onclick="saveGhEditedFile()"><i class="fas fa-floppy-disk"></i> Guardar y commitear</button>
+      <button class="gh-btn gh-btn-danger" onclick="deleteGhEditedFile()"><i class="fas fa-trash"></i> Eliminar</button>
+      <button class="gh-btn" onclick="loadGhFilesBack()"><i class="fas fa-arrow-left"></i> Volver</button>
+    </div>`;
+  document.getElementById('gh-file-text').value = content || '';
+  _ghEdit = { path, sha, content: content || '' };
+}
+
+function showGhNewFile() {
+  const el = document.getElementById('gh-file-editor');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="gh-row" style="align-items:baseline">
+      <span class="gh-mono">ruta</span>
+      <input id="gh-new-path" class="gh-input" style="flex:1;min-width:120px" placeholder="ej: js/admin-health-check.js">
+    </div>
+    <textarea id="gh-file-text" class="gh-input" style="width:100%;min-height:240px;margin:.5rem 0;font-size:.7rem" spellcheck="false"></textarea>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <input id="gh-file-msg" class="gh-input" style="flex:2;min-width:160px" placeholder="Mensaje del commit (obligatorio)">
+      <button class="gh-btn gh-btn-ok" onclick="createGhNewFile()"><i class="fas fa-floppy-disk"></i> Crear y commitear</button>
+      <button class="gh-btn" onclick="loadGhFilesBack()"><i class="fas fa-xmark"></i> Cancelar</button>
+    </div>`;
+  _ghEdit = null;
+}
+
+async function saveGhEditedFile() {
+  if (!_ghEdit) return;
+  const ta = document.getElementById('gh-file-text');
+  const msg = document.getElementById('gh-file-msg');
+  if (!ta || !msg) return;
+  const content = ta.value;
+  const message = (msg.value || '').trim();
+  if (!message) { toast('⚠️ Escribe un mensaje de commit'); return; }
+  if (content === _ghEdit.content && _ghEdit.sha) { toast('ℹ️ Sin cambios que guardar'); return; }
+  try {
+    await ghApi('/api/admin/github/contents', {
+      method: 'PUT',
+      body: JSON.stringify({ path: _ghEdit.path, content, message, branch: _ghBranch }),
+    });
+    toast('✅ Archivo guardado y commiteado en ' + _ghBranch);
+    loadGhFilesBack();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function deleteGhEditedFile() {
+  if (!_ghEdit || !_ghEdit.sha) { toast('ℹ️ Archivo aún sin guardar: usa Cancelar'); return; }
+  if (!confirm('¿Eliminar ' + _ghEdit.path + ' y commitear la eliminación?')) return;
+  try {
+    await ghApi('/api/admin/github/contents', {
+      method: 'DELETE',
+      body: JSON.stringify({ path: _ghEdit.path, message: 'Eliminado desde admin-hub', branch: _ghBranch }),
+    });
+    toast('🗑️ Archivo eliminado');
+    loadGhFilesBack();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function createGhNewFile() {
+  const path = (document.getElementById('gh-new-path')?.value || '').trim();
+  const ta = document.getElementById('gh-file-text');
+  const msg = document.getElementById('gh-file-msg');
+  if (!ta || !msg) return;
+  const message = (msg.value || '').trim();
+  if (!path || !message) { toast('⚠️ Ruta y mensaje de commit son obligatorios'); return; }
+  try {
+    await ghApi('/api/admin/github/contents', { method: 'PUT', body: JSON.stringify({ path, content: ta.value, message, branch: _ghBranch }) });
+    toast('✅ Archivo creado en ' + _ghBranch);
+    loadGhFiles('');
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+function loadGhFilesBack() {
+  const up = _ghPath.split('/').slice(0, -1).join('/');
+  _ghEdit = null;
+  loadGhFiles(up);
+}
+
+// ── Pull Requests ────────────────────────────────────────────
+async function loadGhPulls() {
+  const el = document.getElementById('gh-panel-prs');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="gh-head">
+      ${['open', 'closed', 'all'].map(s => `<button class="gh-btn ${_ghPRState === s ? 'gh-btn-ok' : ''}" onclick="_ghPRState='${s}';loadGhPulls()">${s}</button>`).join('')}
+      <button class="gh-btn" style="margin-left:auto" onclick="ghPRForm()"><i class="fas fa-plus"></i> Nuevo PR</button>
+    </div>
+    <div id="gh-pr-create"></div>
+    <div id="gh-pr-list" style="margin-top:.5rem"><div class="gh-empty">Cargando…</div></div>`;
+  try {
+    const { pulls } = await ghApi('/api/admin/github/pulls?state=' + _ghPRState);
+    const list = document.getElementById('gh-pr-list');
+    list.innerHTML = pulls.map(p => `
+      <div class="gh-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.76rem">#${p.number} ${escapeHtml(p.title)}</div>
+          <div class="gh-mono">${escapeHtml(p.base)} ⇐ ${escapeHtml(p.head)} · ${escapeHtml(p.login || '')} · ${fmtDate(p.created_at)}</div>
+        </div>
+        <span style="display:flex;gap:.4rem;flex-wrap:wrap">
+          ${p.state === 'open'
+            ? `<button class="gh-btn gh-btn-ok" onclick="ghMergePR(${p.number})"><i class="fas fa-code-merge"></i> Merge</button>
+               <button class="gh-btn gh-btn-danger" onclick="ghPRState(${p.number},'close')"><i class="fas fa-xmark"></i></button>`
+            : `<button class="gh-btn" onclick="ghPRState(${p.number},'reopen')"><i class="fas fa-rotate-left"></i> Reabrir</button>`}
+        </span>
+      </div>`).join('') || '<div class="gh-empty">Sin PRs ' + _ghPRState + '</div>';
+  } catch (e) {
+    const list = document.getElementById('gh-pr-list');
+    if (list) list.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function ghPRForm() {
+  const el = document.getElementById('gh-pr-create');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:9px;padding:.7rem;margin-bottom:.7rem">
+      <input id="gh-pr-title" class="gh-input" style="width:100%;margin-bottom:.4rem" placeholder="Título del PR">
+      <input id="gh-pr-head" class="gh-input" style="width:100%;margin-bottom:.4rem" placeholder="head (rama origen) — obligatorio">
+      <input id="gh-pr-base" class="gh-input" style="width:100%;margin-bottom:.4rem" placeholder="base (rama destino)" value="main">
+      <textarea id="gh-pr-body" class="gh-input" style="width:100%;min-height:70px" placeholder="Descripción"></textarea>
+      <div class="gh-file-actions">
+        <button class="gh-btn gh-btn-ok" onclick="createGhPR()"><i class="fas fa-code-branch"></i> Crear PR</button>
+        <button class="gh-btn" onclick="document.getElementById('gh-pr-create').innerHTML=''"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>`;
+}
+
+async function createGhPR() {
+  const title = document.getElementById('gh-pr-title').value.trim();
+  const head = document.getElementById('gh-pr-head').value.trim();
+  const base = document.getElementById('gh-pr-base').value.trim() || 'main';
+  const body = document.getElementById('gh-pr-body').value.trim();
+  if (!title || !head) { toast('⚠️ Título y head son obligatorios'); return; }
+  try {
+    const r = await ghApi('/api/admin/github/pulls', { method: 'POST', body: JSON.stringify({ title, body, head, base }) });
+    toast(`🔀 PR #${r.number} creado`);
+    document.getElementById('gh-pr-create').innerHTML = '';
+    loadGhPulls();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function ghMergePR(num) {
+  if (!confirm(`¿Mergear el PR #${num} (squash)?`)) return;
+  try {
+    await ghApi('/api/admin/github/pulls/' + num, { method: 'PATCH', body: JSON.stringify({ action: 'merge' }) });
+    toast(`✅ PR #${num} mergeado`);
+    loadGhPulls();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function ghPRState(num, action) {
+  try {
+    await ghApi('/api/admin/github/pulls/' + num, { method: 'PATCH', body: JSON.stringify({ action }) });
+    toast(`PR #${num} ${action === 'close' ? 'cerrado' : 'reabierto'}`);
+    loadGhPulls();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+// ── Releases ─────────────────────────────────────────────────
+async function loadGhReleases() {
+  const el = document.getElementById('gh-panel-releases');
+  if (!el) return;
+  el.innerHTML = '<div class="gh-empty">Cargando…</div>';
+  try {
+    const { releases } = await ghApi('/api/admin/github/releases');
+    el.innerHTML = (releases || []).map(r => `
+      <div class="gh-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.76rem">${escapeHtml(r.name || r.tag_name)} ${r.prerelease ? '<span class="gh-state-bad">pre</span>' : ''}${r.draft ? '<span class="gh-state-bad">draft</span>' : ''}</div>
+          <div class="gh-mono">${escapeHtml(r.tag_name)} · ${fmtDate(r.published_at)}</div>
+        </div>
+        <a class="gh-btn" href="${r.html_url}" target="_blank" rel="noopener">ver ↗</a>
+      </div>`).join('') || '<div class="gh-empty">Sin releases</div>';
+  } catch (e) {
+    el.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ── Issues ───────────────────────────────────────────────────
+async function loadGhIssues() {
+  const el = document.getElementById('gh-panel-issues');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="gh-head">
+      ${['open', 'closed', 'all'].map(s => `<button class="gh-btn ${_ghIssState === s ? 'gh-btn-ok' : ''}" onclick="_ghIssState='${s}';loadGhIssues()">${s}</button>`).join('')}
+      <button class="gh-btn" style="margin-left:auto" onclick="ghIssueForm()"><i class="fas fa-plus"></i> Nuevo issue</button>
+    </div>
+    <div id="gh-issue-create"></div>
+    <div id="gh-issue-list" style="margin-top:.5rem"><div class="gh-empty">Cargando…</div></div>`;
+  try {
+    const { issues } = await ghApi('/api/admin/github/issues?state=' + _ghIssState);
+    const list = document.getElementById('gh-issue-list');
+    list.innerHTML = (issues || []).map(i => `
+      <div class="gh-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.76rem">${i.pull_request ? '<i class="fas fa-code-branch"></i>' : '<i class="fas fa-exclamation-circle"></i>'} #${i.number} ${escapeHtml(i.title)}</div>
+          <div class="gh-mono">${(i.labels || []).map(escapeHtml).join(' · ')}${i.login ? ' · ' + escapeHtml(i.login) : ''} · ${fmtDate(i.created_at)}</div>
+        </div>
+        <button class="gh-btn ${i.state === 'open' ? 'gh-btn-danger' : ''}" onclick="ghIssueState(${i.number},'${i.state === 'open' ? 'close' : 'reopen'}')">
+          <i class="fas fa-${i.state === 'open' ? 'xmark' : 'rotate-left'}"></i> ${i.state === 'open' ? 'Cerrar' : 'Reabrir'}
+        </button>
+      </div>`).join('') || '<div class="gh-empty">Sin issues ' + _ghIssState + '</div>';
+  } catch (e) {
+    const list = document.getElementById('gh-issue-list');
+    if (list) list.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function ghIssueForm() {
+  const el = document.getElementById('gh-issue-create');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:9px;padding:.7rem;margin-bottom:.7rem">
+      <input id="gh-iss-title" class="gh-input" style="width:100%;margin-bottom:.4rem" placeholder="Título del issue">
+      <textarea id="gh-iss-body" class="gh-input" style="width:100%;min-height:70px" placeholder="Descripción"></textarea>
+      <div class="gh-file-actions">
+        <button class="gh-btn gh-btn-ok" onclick="createGhIssue()"><i class="fas fa-exclamation-circle"></i> Crear issue</button>
+        <button class="gh-btn" onclick="document.getElementById('gh-issue-create').innerHTML=''"><i class="fas fa-xmark"></i></button>
+      </div>
+    </div>`;
+}
+
+async function createGhIssue() {
+  const title = document.getElementById('gh-iss-title').value.trim();
+  const body = document.getElementById('gh-iss-body').value.trim();
+  if (!title) { toast('⚠️ Título obligatorio'); return; }
+  try {
+    const r = await ghApi('/api/admin/github/issues', { method: 'POST', body: JSON.stringify({ title, body }) });
+    toast(`🐞 Issue #${r.number} creado`);
+    document.getElementById('gh-issue-create').innerHTML = '';
+    loadGhIssues();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function ghIssueState(num, action) {
+  try {
+    await ghApi('/api/admin/github/issues/' + num, { method: 'PATCH', body: JSON.stringify({ action }) });
+    loadGhIssues();
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+// ── Workflows (todos) ────────────────────────────────────────
+async function loadGhWorkflows() {
+  const el = document.getElementById('gh-panel-workflows');
+  if (!el) return;
+  el.innerHTML = '<div class="gh-empty">Cargando workflows…</div>';
+  try {
+    const { workflows } = await ghApi('/api/admin/github/workflows');
+    if (!workflows.length) { el.innerHTML = '<div class="gh-empty">No hay workflows en el repo</div>'; return; }
+    el.innerHTML = workflows.map((w, i) => `
+      <div class="gh-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.76rem"><i class="fas fa-gear"></i> ${escapeHtml(w.name)}</div>
+          <div class="gh-mono">${escapeHtml(w.path)}</div>
+        </div>
+        <span style="display:flex;gap:.4rem;flex-wrap:wrap">
+          <button class="gh-btn" onclick="loadGhWorkflowRuns('${w.path}',${i})"><i class="fas fa-clock-rotate-left"></i> Runs</button>
+          <button class="gh-btn gh-btn-ok" onclick="dispatchGhWorkflow('${w.path}')"><i class="fas fa-play"></i> Run</button>
+        </span>
+      </div>
+      <div id="gh-wf-runs-${i}" style="margin:0 0 .9rem 1rem"></div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function dispatchGhWorkflow(file) {
+  if (!confirm(`¿Disparar ${file} en la rama ${_ghBranch}?`)) return;
+  try {
+    await ghApi('/api/admin/github/dispatch', { method: 'POST', body: JSON.stringify({ workflow: file }) });
+    toast('🚀 Workflow disparado en ' + _ghBranch);
+  } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function loadGhWorkflowRuns(file, i) {
+  const box = document.getElementById('gh-wf-runs-' + i);
+  if (!box) return;
+  box.innerHTML = '<div class="gh-empty">Cargando runs…</div>';
+  try {
+    const { runs } = await ghApi('/api/admin/github/workflows/' + encodeURIComponent(file) + '/runs?per_page=8');
+    box.innerHTML = (runs || []).map(r => `
+      <div class="gh-row" style="margin-bottom:.3rem">
+        <span style="font-size:.72rem;flex:1;min-width:0">${r.conclusion === 'success' ? '✅' : (r.conclusion ? '❌' : '⏳')} ${escapeHtml(r.display_title || file)} <span class="gh-mono">#${r.id}</span></span>
+        <span class="gh-mono">${r.status} · ${fmtDate(r.created_at)}</span>
+        <button class="gh-btn" onclick="loadGhRunLogs(${r.id})"><i class="fas fa-terminal"></i> Logs</button>
+      </div>
+      <div id="gh-run-log-${r.id}" style="margin:0 0 .4rem 1rem"></div>`).join('') || '<div class="gh-empty">Sin runs</div>';
+  } catch (e) { box.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`; }
+}
+
+async function loadGhRunLogs(runId) {
+  const box = document.getElementById('gh-run-log-' + runId);
+  if (!box) return;
+  box.innerHTML = '<div class="gh-empty">Descargando logs…</div>';
+  try {
+    const d = await ghApi('/api/admin/github/actions/runs/' + runId + '/logs');
+    box.innerHTML = `<pre class="gh-code">${escapeHtml(d.text)}</pre>`;
+  } catch (e) { box.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`; }
+}
+
+// ── Webhooks + Colaboradores ─────────────────────────────────
+async function loadGhExtra() {
+  const el = document.getElementById('gh-panel-extra');
+  if (!el) return;
+  el.innerHTML = '<div class="gh-empty">Cargando…</div>';
+  try {
+    const [wh, col] = await Promise.all([
+      ghApi('/api/admin/github/webhooks').catch(() => ({ webhooks: [] })),
+      ghApi('/api/admin/github/collaborators').catch(() => ({ collaborators: [] })),
+    ]);
+    el.innerHTML = `
+      <div class="section-title"><i class="fas fa-plug"></i> Webhooks del repositorio</div>
+      <div style="margin-bottom:1rem">
+        ${(wh.webhooks || []).map(w => `
+          <div class="gh-row">
+            <span class="gh-mono" style="flex:1;min-width:0">${escapeHtml(w.url || '')}</span>
+            <span style="font-size:.68rem;color:var(--muted)">${escapeHtml((w.events || []).join(', ') || 'push')}</span>
+            <span class="${w.active ? 'gh-state-ok' : 'gh-state-bad'}">${w.active ? 'activo' : 'inactivo'}</span>
+          </div>`).join('') || '<div class="gh-empty">Sin webhooks configurados</div>'}
+      </div>
+      <div class="section-title"><i class="fas fa-users"></i> Colaboradores</div>
+      ${(col.collaborators || []).map(c => `
+        <div class="gh-row">
+          <span style="font-size:.76rem"><b style="color:var(--text)">${escapeHtml(c.login)}</b> <span class="gh-mono">${escapeHtml(c.permission || c.role_name || '')}</span></span>
+          <a class="gh-btn" href="${c.html_url}" target="_blank" rel="noopener">↗</a>
+        </div>`).join('') || '<div class="gh-empty">Sin colaboradores</div>'}`;
+  } catch (e) {
+    el.innerHTML = `<div class="gh-empty"><span class="gh-state-bad">❌</span> ${escapeHtml(e.message)}</div>`;
+  }
+}
 // Se ejecuta en el cliente sobre `appsData` (ya cargado), así que
 // no depende de un match exacto en MongoDB — normaliza (trim,
 // minúsculas, sin ".git" ni "/" final) antes de comparar, por eso

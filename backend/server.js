@@ -3957,23 +3957,28 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
 // mantenimiento del repositorio (seed del catálogo FOSS, monitor de
 // actualizaciones, dedupe) sin salir de la UI.
 // Requiere GITHUB_TOKEN con permiso `workflow` en Render.
-const GITHUB_WORKFLOWS = [
-  'seed-foss-catalog.yml',
-  'check-app-updates.yml',
-  'dedupe-catalog.yml',
-  'enrich-app-logos.yml',
-  'build-apk.yml',
-];
+// Control total: se permite disparar CUALQUIER workflow existente en
+// la rama default (se valida contra GitHub en lugar de una allowlist).
+// GET /api/admin/github/workflows expone la lista real para el panel.
+async function ghWorkflowExists(file) {
+  try {
+    await octokit.rest.actions.getWorkflow({ owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file });
+    return true;
+  } catch { return false; }
+}
 
 // POST /api/admin/github/dispatch — body: { workflow, inputs }
 app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
   try {
     const { workflow, inputs = {} } = req.body || {};
-    if (!workflow || !GITHUB_WORKFLOWS.includes(workflow)) {
-      return res.status(400).json({ error: 'Workflow no permitido', allowed: GITHUB_WORKFLOWS });
+    if (!workflow) {
+      return res.status(400).json({ error: 'Falta el workflow', allowedHint: 'Usa GET /api/admin/github/workflows' });
     }
     if (!octokit) {
       return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render (se requiere con permiso workflow)' });
+    }
+    if (!(await ghWorkflowExists(workflow))) {
+      return res.status(404).json({ error: 'Workflow no existe en la rama ' + GITHUB_BRANCH });
     }
     await octokit.rest.actions.createWorkflowDispatch({
       owner: GITHUB_OWNER,
@@ -3998,18 +4003,20 @@ app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
   try {
     if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render' });
     const out = {};
-    for (const wf of GITHUB_WORKFLOWS) {
+    const { data: wfs } = await octokit.rest.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+    for (const wf of wfs.workflows) {
+      const file = wf.path.split('/').pop();
       try {
         const { data } = await octokit.rest.actions.listWorkflowRuns({
-          owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: wf, per_page: 1,
+          owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file, per_page: 1,
         });
         const run = data.workflow_runs?.[0] || null;
-        out[wf] = run ? {
+        out[file] = run ? {
           status: run.status, conclusion: run.conclusion,
           created_at: run.created_at, html_url: run.html_url,
-          display_title: run.display_title,
+          display_title: run.display_title, run_id: run.id,
         } : null;
-      } catch { out[wf] = null; }
+      } catch { out[file] = null; }
     }
     res.json({ ok: true, runs: out });
   } catch (e) {
@@ -4155,6 +4162,432 @@ app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) =
     res.json({ ok: true, name });
   } catch (e) {
     console.error('DELETE /api/admin/github/variables error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ADMIN: CONTROL TOTAL DEL REPOSITORIO (GitHub) ──────────────
+// Centro de control de CodeHub: ramas, commits, archivos, PRs,
+// workflows, releases, issues, webhooks y colaboradores del repo.
+// Todas las rutas exigen requireAdmin y usan el GITHUB_TOKEN de Render.
+function ghGuard() {
+  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
+  return octokit.rest;
+}
+
+// GET /api/admin/github/token-check — identidad y scopes del token
+app.get('/api/admin/github/token-check', requireAdmin, async (req, res) => {
+  try {
+    ghGuard();
+    const { data, headers } = await octokit.rest.users.getAuthenticated();
+    res.json({
+      ok: true,
+      login: data.login, name: data.name, avatar_url: data.avatar_url,
+      scopes: (headers['x-oauth-scopes'] || '').split(/,\s*/).filter(Boolean),
+    });
+  } catch (e) {
+    console.error('token-check error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/repo — metadata del repositorio + conteos
+app.get('/api/admin/github/repo', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.get({ owner: GITHUB_OWNER, repo: GITHUB_REPO });
+    let openPulls = null, openIssues = data.open_issues_count || 0;
+    try {
+      const prs = await gh.pulls.list({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state: 'open', per_page: 1 });
+      openPulls = prs.data.length;
+    } catch {}
+    res.json({
+      ok: true,
+      repo: {
+        full_name: data.full_name, default_branch: data.default_branch,
+        html_url: data.html_url, description: data.description,
+        stargazers_count: data.stargazers_count, forks_count: data.forks_count,
+        watchers_count: data.watchers_count, open_issues_count: openIssues,
+        open_pulls_count: openPulls, size_kb: data.size, language: data.language,
+        private: data.private, archived: data.archived,
+        license: data.license && data.license.spdx_id, created_at: data.created_at,
+        pushed_at: data.pushed_at, updated_at: data.updated_at,
+      },
+    });
+  } catch (e) {
+    console.error('GET github/repo error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/branches — listar ramas
+app.get('/api/admin/github/branches', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.listBranches({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+    res.json({ ok: true, branches: data.map(b => ({ name: b.name, protected: b.protected, sha: b.commit && b.commit.sha })) });
+  } catch (e) {
+    console.error('GET github/branches error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/github/branches — crear rama { name, from }
+// from = SHA completo (40 hex) o nombre de una rama existente.
+app.post('/api/admin/github/branches', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { name, from } = req.body || {};
+    if (!name || !/^[a-zA-Z0-9_./-]+$/.test(name)) return res.status(400).json({ error: 'Nombre de rama no válido' });
+    let sha = from;
+    if (!sha || !/^[0-9a-f]{40}$/i.test(sha)) {
+      const ref = from || 'main';
+      const { data } = await gh.git.getRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'heads/' + ref });
+      sha = data.object.sha;
+    }
+    await gh.git.createRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'refs/heads/' + name, sha });
+    tgAlert('ghbranch', () => `🌿 <b>Rama creada</b> <code>${name}</code> ⇐ <code>${(from || 'main').slice(0,12)}</code> · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name, sha });
+  } catch (e) {
+    console.error('POST github/branches error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/github/branches/:name — eliminar rama
+app.delete('/api/admin/github/branches/:name', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { name } = req.params;
+    if (!name || name === 'main') return res.status(400).json({ error: 'No se puede borrar la rama main' });
+    await gh.git.deleteRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'heads/' + name });
+    tgAlert('ghbranch_del', () => `🗑️ <b>Rama eliminada</b> <code>${name}</code> · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, name });
+  } catch (e) {
+    console.error('DELETE github/branches error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/commits — historial (branch, path, per_page)
+app.get('/api/admin/github/commits', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const branch = req.query.branch || GITHUB_BRANCH;
+    const per_page = Math.min(parseInt(req.query.per_page, 10) || 25, 100);
+    const params = { owner: GITHUB_OWNER, repo: GITHUB_REPO, sha: branch, per_page };
+    if (req.query.path) params.path = req.query.path;
+    const { data } = await gh.repos.listCommits(params);
+    res.json({
+      ok: true,
+      commits: data.map(c => ({
+        sha: c.sha, short: c.sha.slice(0, 7),
+        message: (c.commit.message || '').split('\n')[0],
+        author: (c.commit.author && c.commit.author.name) || '',
+        login: (c.author && c.author.login) || '',
+        avatar: (c.author && c.author.avatar_url) || '',
+        date: c.commit.author && c.commit.author.date,
+        html_url: c.html_url,
+      })),
+    });
+  } catch (e) {
+    console.error('GET github/commits error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/commits/:sha — detalle del commit (archivos + diff)
+app.get('/api/admin/github/commits/:sha', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.getCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: req.params.sha });
+    res.json({
+      ok: true,
+      commit: {
+        sha: data.sha, message: data.commit.message,
+        author: data.commit.author && data.commit.author.name,
+        date: data.commit.author && data.commit.author.date,
+        stats: data.stats, total_files: (data.files || []).length,
+        files: (data.files || []).map(f => ({
+          filename: f.filename, status: f.status,
+          additions: f.additions, deletions: f.deletions, changes: f.changes,
+          patch: f.patch || '', raw_url: f.raw_url,
+        })),
+      },
+    });
+  } catch (e) {
+    console.error('GET github/commits/:sha error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/contents — listar carpeta o leer archivo (path + branch)
+app.get('/api/admin/github/contents', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const path = req.query.path || '';
+    const branch = req.query.branch || GITHUB_BRANCH;
+    const { data, headers } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref: branch });
+    if (Array.isArray(data)) {
+      res.json({ ok: true, kind: 'dir', branch, path, entries: data.map(it => ({
+        name: it.name, path: it.path, type: it.type, size: it.size,
+      })) });
+    } else {
+      let text = '';
+      if (data.type === 'file' && data.encoding === 'base64') {
+        text = Buffer.from(data.content, 'base64').toString('utf8');
+      } else if (data.type === 'file') {
+        text = String(data.content || '');
+      }
+      res.json({ ok: true, kind: 'file', branch, path: data.path, name: data.name, size: data.size, sha: data.sha, type: data.type, content: text, html_url: data.html_url, total_lines: text.split('\n').length });
+    }
+  } catch (e) {
+    console.error('GET github/contents error:', e.message);
+    res.status(e.status || 500).json({ error: e.message, status: e.status || 500 });
+  }
+});
+
+// PUT /api/admin/github/contents — crear/actualizar archivo (commit directo)
+app.put('/api/admin/github/contents', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { path, content, message, branch } = req.body || {};
+    if (!path) return res.status(400).json({ error: 'Falta path' });
+    if (typeof content !== 'string') return res.status(400).json({ error: 'Falta content (texto)' });
+    if (!message) return res.status(400).json({ error: 'Falta message del commit' });
+    const ref = branch || GITHUB_BRANCH;
+    let sha;
+    try {
+      const { data } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref });
+      sha = data.sha;
+    } catch { /* archivo nuevo */ }
+    const r = await gh.repos.createOrUpdateFileContents({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, path,
+      message, content: Buffer.from(content, 'utf8').toString('base64'),
+      branch: ref, ...(sha ? { sha } : {}),
+    });
+    tgAlert('ghfile', () => `📝 <b>Archivo${sha ? ' actualizado' : ' creado'}</b>\n<code>${path}</code>\n<code>${message.slice(0, 60)}</code>\nRama: <code>${ref}</code> · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, path, branch: ref, commit: r.data && r.data.commit && r.data.commit.sha, html_url: r.data && r.data.content && r.data.content.html_url });
+  } catch (e) {
+    console.error('PUT github/contents error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// DELETE /api/admin/github/contents — eliminar archivo { path, message, branch }
+app.delete('/api/admin/github/contents', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { path, message, branch } = req.body || {};
+    if (!path) return res.status(400).json({ error: 'Falta path' });
+    const ref = branch || GITHUB_BRANCH;
+    let sha;
+    try {
+      const { data } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref });
+      sha = data.sha;
+    } catch { return res.status(404).json({ error: 'Archivo no encontrado en ' + ref }); }
+    await gh.repos.deleteFile({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, path,
+      message: message || 'Eliminado desde admin-hub', sha, branch: ref,
+    });
+    tgAlert('ghfile_del', () => `🗑️ <b>Archivo eliminado</b> <code>${path}</code> · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, path, branch: ref });
+  } catch (e) {
+    console.error('DELETE github/contents error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/workflows — todos los workflows (sin allowlist)
+app.get('/api/admin/github/workflows', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+    res.json({ ok: true, workflows: data.workflows.map(w => ({ id: w.id, name: w.name, path: w.path.split('/').pop(), state: w.state, html_url: w.html_url })) });
+  } catch (e) {
+    console.error('GET github/workflows error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/workflows/:file/runs — últimos runs de un workflow
+app.get('/api/admin/github/workflows/:file/runs', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const per_page = Math.min(parseInt(req.query.per_page, 10) || 10, 50);
+    const { data } = await gh.actions.listWorkflowRuns({
+      owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: req.params.file, per_page,
+    });
+    res.json({ ok: true, runs: data.workflow_runs.map(r => ({
+      id: r.id, status: r.status, conclusion: r.conclusion,
+      display_title: r.display_title, event: r.event,
+      created_at: r.created_at, updated_at: r.updated_at, html_url: r.html_url,
+    })) });
+  } catch (e) {
+    console.error('GET workflows/:file/runs error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/actions/runs/:id/logs — logs de un run (texto, truncado)
+app.get('/api/admin/github/actions/runs/:id/logs', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const r = await gh.actions.downloadWorkflowRunLogs({ owner: GITHUB_OWNER, repo: GITHUB_REPO, run_id: +req.params.id });
+    const buf = Buffer.isBuffer(r.data) ? r.data : Buffer.from(r.data || '');
+    let text = buf.toString('utf8');
+    const truncated = text.length > 60000;
+    if (truncated) text = '…[log truncado, solo las últimas líneas]…\n' + text.slice(-60000);
+    res.json({ ok: true, run_id: +req.params.id, truncated, size: buf.length, lines: text.split('\n').length, text });
+  } catch (e) {
+    console.error('GET run logs error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/pulls — listar PRs (?state=open|closed|all)
+app.get('/api/admin/github/pulls', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const state = req.query.state || 'open';
+    const { data } = await gh.pulls.list({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state, per_page: 50 });
+    res.json({ ok: true, pulls: data.map(p => ({
+      number: p.number, title: p.title, state: p.state, created_at: p.created_at,
+      login: p.user && p.user.login, avatar: p.user && p.user.avatar_url,
+      head: p.head && p.head.ref, base: p.base && p.base.ref, html_url: p.html_url,
+    })) });
+  } catch (e) {
+    console.error('GET github/pulls error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/github/pulls — crear PR { title, body, head, base }
+app.post('/api/admin/github/pulls', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { title, body, head, base } = req.body || {};
+    if (!title || !head) return res.status(400).json({ error: 'Faltan title o head' });
+    const { data } = await gh.pulls.create({ owner: GITHUB_OWNER, repo: GITHUB_REPO, title, body: body || '', head, base: base || GITHUB_BRANCH });
+    tgAlert('ghpr', () => `🔀 <b>PR creado</b> #${data.number} <code>${title.slice(0, 50)}</code> · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, number: data.number, html_url: data.html_url, title: data.title });
+  } catch (e) {
+    console.error('POST github/pulls error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// PATCH /api/admin/github/pulls/:number — body { action: merge|close|reopen }
+app.patch('/api/admin/github/pulls/:number', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const number = +req.params.number;
+    const { action } = req.body || {};
+    if (action === 'merge') {
+      try {
+        await gh.pulls.merge({ owner: GITHUB_OWNER, repo: GITHUB_REPO, pull_number: number, merge_method: 'squash' });
+      } catch (e) {
+        if (e.status === 405) return res.status(400).json({ error: 'El PR no se puede mergear: cabeza no mergeable o conflicto' });
+        throw e;
+      }
+      tgAlert('ghpr_merge', () => `✅ <b>PR #${number} mergeado</b> · IP: <code>${clientIp(req)}</code>`);
+      return res.json({ ok: true, number, action: 'merged' });
+    }
+    const state = action === 'close' ? 'closed' : 'open';
+    const { data } = await gh.pulls.update({ owner: GITHUB_OWNER, repo: GITHUB_REPO, pull_number: number, state });
+    tgAlert('ghpr_update', () => `🔃 <b>PR #${number}</b> → ${state} · IP: <code>${clientIp(req)}</code>`);
+    res.json({ ok: true, number, action: state });
+  } catch (e) {
+    console.error('PATCH github/pulls/:number error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/releases — listar releases
+app.get('/api/admin/github/releases', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.listReleases({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 30 });
+    res.json({ ok: true, releases: data.map(r => ({
+      tag_name: r.tag_name, name: r.name, draft: r.draft, prerelease: r.prerelease,
+      published_at: r.published_at, html_url: r.html_url, url: r.url,
+    })) });
+  } catch (e) {
+    console.error('GET github/releases error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET/POST/PATCH /api/admin/github/issues — control de issues
+app.get('/api/admin/github/issues', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const state = req.query.state || 'open';
+    const { data } = await gh.issues.listForRepo({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state, per_page: 50 });
+    res.json({ ok: true, issues: data.map(i => ({
+      number: i.number, title: i.title, state: i.state, created_at: i.created_at,
+      login: i.user && i.user.login, avatar: i.user && i.user.avatar_url,
+      labels: (i.labels || []).map(l => l.name), html_url: i.html_url, pull_request: !!i.pull_request,
+    })) });
+  } catch (e) {
+    console.error('GET github/issues error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/github/issues', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { title, body } = req.body || {};
+    if (!title) return res.status(400).json({ error: 'Falta title' });
+    const { data } = await gh.issues.create({ owner: GITHUB_OWNER, repo: GITHUB_REPO, title, body: body || '' });
+    res.json({ ok: true, number: data.number, html_url: data.html_url });
+  } catch (e) {
+    console.error('POST github/issues error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.patch('/api/admin/github/issues/:number', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const number = +req.params.number;
+    const { action } = req.body || {};
+    const state = action === 'reopen' ? 'open' : 'closed';
+    await gh.issues.update({ owner: GITHUB_OWNER, repo: GITHUB_REPO, issue_number: number, state });
+    res.json({ ok: true, number, action: state });
+  } catch (e) {
+    console.error('PATCH github/issues/:number error:', e.message);
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/webhooks — listar webhooks del repo
+app.get('/api/admin/github/webhooks', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.listWebhooks({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+    res.json({ ok: true, webhooks: data.map(w => ({
+      id: w.id, url: w.config && w.config.url, events: w.events, active: w.active, created_at: w.created_at,
+    })) });
+  } catch (e) {
+    console.error('GET github/webhooks error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/admin/github/collaborators — colaboradores del repo
+app.get('/api/admin/github/collaborators', requireAdmin, async (req, res) => {
+  try {
+    const gh = ghGuard();
+    const { data } = await gh.repos.listCollaborators({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+    res.json({ ok: true, collaborators: data.map(c => ({
+      login: c.login, avatar: c.avatar_url, html_url: c.html_url,
+      permission: (c.permissions && Object.keys(c.permissions).filter(k => c.permissions[k])).join(', ') || c.permissions,
+      role_name: c.role_name,
+    })) });
+  } catch (e) {
+    console.error('GET github/collaborators error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
