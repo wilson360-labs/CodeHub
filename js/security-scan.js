@@ -12,9 +12,8 @@
    ════════════════════════════════════════════════════════════════════ */
 (() => {
   'use strict';
-  if (!window._CH_BACKEND) return;
 
-  const API_BASE = window._CH_BACKEND;
+  const API_BASE = (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : 'https://codehub-98s6.onrender.com');
   const SCAN_TIMEOUT_MS = 20000;
   const SEV_LABELS = { CRITICO: 'CRÍTICO', ALTO: 'ALTO', MEDIO: 'MEDIO', BAJO: 'BAJO' };
 

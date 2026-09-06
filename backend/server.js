@@ -4921,7 +4921,7 @@ climaEngine.startScheduler(30 * 60 * 1000);
 // Google EEWS no llega (la mayoría de LatAm, incluida Guatemala) esto
 // sigue dando valor real: enterarse de un sismo cercano + cómo actuar.
 
-const USGS_FEED = 'https://earthquake.usgs.gov/earthquake/feed/v1.0/summary/all_day.geojson';
+const USGS_FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 
 // Umbrales configurables por magnitud (pueden editarse en admin config)
 function seismicThreshold() {

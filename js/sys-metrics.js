@@ -11,9 +11,8 @@
    ════════════════════════════════════════════════════════════════════ */
 (() => {
   'use strict';
-  if (!window._CH_BACKEND) return;
 
-  const API = window._CH_BACKEND + '/api/metrics';
+  const API = (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : 'https://codehub-98s6.onrender.com') + '/api/metrics';
   const EVERY_MS = 5000;
   const FETCH_TIMEOUT_MS = 4500;
 
