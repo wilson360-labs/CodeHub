@@ -322,15 +322,18 @@
         '<div class="chw-tip"><i>ℹ️</i><span>Cargando clima…</span></div>' +
         '<div class="chw-strip"></div>' +
       '</div>';
-    _root.querySelector('.chw-pill').addEventListener('click', function () { toggle(); });
+    var noLoc = !readLocation().lat;
+    _root.querySelector('.chw-pill').addEventListener('click', function (e) {
+      if (noLoc) { e.stopPropagation(); openGuia(); return; }
+      toggle();
+    });
     _root.querySelector('.chw-refresh-btn').addEventListener('click', function (e) {
       e.stopPropagation();
       forceRefresh();
     });
 
-    var noLoc = !readLocation().lat;
     _root.addEventListener('click', function (e) {
-      if (noLoc && (e.target.closest('.chw-pill') || e.target.closest('.chw-panel'))) openGuia();
+      if (noLoc && e.target.closest('.chw-panel')) openGuia();
     });
 
     document.body.appendChild(_root);
