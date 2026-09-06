@@ -1853,8 +1853,10 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             for (let i = 0; i < NODE_COUNT; i++) nodes.push(new Node());
         }
 
-        function animate() {
-            if (!nnVisible || nnManualOff || !nnInViewport) { requestAnimationFrame(animate); return; }
+        let nnRaf = null;
+        function nnLoop() {
+            nnRaf = null;
+            if (!(nnVisible && !nnManualOff && nnInViewport)) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < nodes.length; i++) {
@@ -1879,12 +1881,21 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 }
             }
 
-            requestAnimationFrame(animate);
+            nnRaf = requestAnimationFrame(nnLoop);
+        }
+        function nnSync() {
+            if (nnVisible && !nnManualOff && nnInViewport) {
+                if (!nnRaf) nnRaf = requestAnimationFrame(nnLoop);
+            } else if (nnRaf) {
+                cancelAnimationFrame(nnRaf);
+                nnRaf = null;
+            }
         }
 
         // Pausa cuando el tab está en segundo plano
         document.addEventListener('visibilitychange', () => {
             nnVisible = document.visibilityState === 'visible';
+            nnSync();
         });
 
         // Pausa el cómputo real cuando el canvas sale del viewport (scroll)
@@ -1892,12 +1903,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         if ('IntersectionObserver' in window) {
             new IntersectionObserver(entries => {
                 nnInViewport = entries[0].isIntersecting;
+                nnSync();
             }, { threshold: 0 }).observe(canvas);
         }
 
         // Pausa el cómputo real cuando el usuario la apaga manualmente (no solo opacity)
         let nnManualOff = (localStorage.getItem('cfg_neural') !== '1');
-        window.setNeuralManualOff = (off) => { nnManualOff = !!off; };
+        window.setNeuralManualOff = (off) => { nnManualOff = !!off; nnSync(); };
 
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
@@ -1914,7 +1926,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         // Antes se ocultaba con prefers-reduced-motion; por decisión del
         // dueño del sitio, esta animación ahora siempre se muestra.
         init();
-        animate();
+        nnSync();
 
         // Cursor Particles — throttled, máx 12 en DOM simultáneo
         let _cpPool = [];
@@ -7717,6 +7729,7 @@ function setAIMood(btn) {
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(entries => {
       heroInView = entries[0].isIntersecting;
+      heroSync();
     }, { threshold: 0 }).observe(hero);
   }
 
@@ -7778,26 +7791,58 @@ function setAIMood(btn) {
 
   /* ── 4. ANIMATION LOOP ──────────────────────────────────── */
   let heroManualOff = (localStorage.getItem('cfg_neural') !== '1');
-  window.setHeroManualOff = (off) => { heroManualOff = !!off; if (off) { ctx.clearRect(0, 0, W, H); } };
+  window.setHeroManualOff = (off) => {
+    heroManualOff = !!off;
+    if (off) ctx.clearRect(0, 0, W, H);
+    heroSync();
+  };
   let heroLoopActive = true;
   document.addEventListener('visibilitychange', () => {
     heroLoopActive = document.visibilityState === 'visible';
+    heroSync();
   });
-  function loop() {
-    if (heroLoopActive && !heroManualOff) drawParticles();
-    requestAnimationFrame(loop);
+  let heroRaf = null;
+  function heroLoop() {
+    heroRaf = null;
+    if (!(heroLoopActive && !heroManualOff && heroInView)) return;
+    drawParticles();
+    heroRaf = requestAnimationFrame(heroLoop);
+  }
+  function heroSync() {
+    if (heroLoopActive && !heroManualOff && heroInView) {
+      if (!heroRaf) heroRaf = requestAnimationFrame(heroLoop);
+    } else if (heroRaf) {
+      cancelAnimationFrame(heroRaf);
+      heroRaf = null;
+    }
   }
 
   /* ── 5. INIT ── (antes se ocultaba con prefers-reduced-motion; ahora
      siempre se muestra, por decisión del dueño del sitio) ────────── */
   resize();
   initParticles();
-  loop();
+  heroSync();
   let _heroResizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(_heroResizeTimer);
     _heroResizeTimer = setTimeout(() => { resize(); initParticles(); }, 200);
   }, { passive: true });
+})();
+</script>
+
+<script>
+// Pausa animaciones CSS infinitas de secciones fuera del viewport (batería).
+// Añade .vp-off (animation-play-state: paused) cuando la sección no intersecta.
+(function () {
+  if (!('IntersectionObserver' in window)) return;
+  var els = document.querySelectorAll('#weather-section, #sismos-section, #mi-pueblo, #news-section, #skills, #services, #open-to-work');
+  if (!els.length) return;
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      e.target.classList.toggle('vp-off', !e.isIntersecting);
+    });
+  }, { threshold: 0 });
+  Array.prototype.forEach.call(els, function (el) { io.observe(el); });
 })();
 </script>
 

@@ -1171,3 +1171,10 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .wx-moon-illum { white-space: normal; text-align: center; }
 }
 
+/* Pausa animaciones CSS de secciones fuera del viewport. La clase .vp-off
+   la gestiona un IntersectionObserver en index.html (batería/rendimiento). */
+.vp-off,
+.vp-off * {
+  animation-play-state: paused !important;
+}
+
