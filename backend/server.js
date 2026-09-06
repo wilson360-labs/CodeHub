@@ -4959,6 +4959,40 @@ function earthquakeSafetyTips(mag) {
     : 'Esté preparado: revisa que no haya grietas nuevas y asegura objetos que puedan caer en un sismo mayor.';
 }
 
+// Extrae el país desde el texto de USGS ("12 km S of Acajutla, El Salvador").
+// El último segmento separado por comas es típicamente el país; las frases
+// regionales (ridges, cuencas oceánicas, "region") se descartan.
+function countryFromUSGSPlace(place) {
+  if (!place) return '';
+  const parts = String(place).split(',').map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  const last = parts[parts.length - 1];
+  if (/region|ridge|rise|plateau|trench|basin|ocean|mid-atlantic|off the (coast|shore)|northern|southern|eastern|western|central\b/i.test(last)) return '';
+  return last;
+}
+
+function normCountry(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+}
+
+// Coincidencia "inteligente" de países: ignora acentos/cajas y resuelve
+// los nombres duplicados más comunes ESP ⇄ EN frente a USGS.
+function sameCountry(a, b) {
+  const na = normCountry(a), nb = normCountry(b);
+  if (!na || !nb || na === 'tu ubicacion' || nb === 'tu ubicacion') return false;
+  if (na === nb) return true;
+  const aliases = {
+    'estados unidos': 'united states',
+    'usa': 'united states',
+    'ee uu': 'united states',
+    'eeuu': 'united states',
+    'republica dominicana': 'dominican republic',
+    'el salvador': 'elsalvador',
+  };
+  return (aliases[na] || na) === (aliases[nb] || nb);
+}
+
 // Una sola pasada de verificación sísmica. Devuelve { earthquakes: N }
 async function seismicPushPass() {
   let subs;
@@ -4997,7 +5031,14 @@ async function seismicPushPass() {
       if (typeof mag !== 'number' || !time || time < cutoff) return false;
       if (mag < tThr) return false;
       const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
-      return dist <= radius;
+      if (dist <= radius) return true; // cerca del usuario (radio)
+      // Alertas inteligentes: también cuenta cualquier sismo dentro de
+      // tu país, basado en la ubicación precisa guardada del dispositivo.
+      if (t.country) {
+        const qc = countryFromUSGSPlace(q.properties.place);
+        if (qc && sameCountry(t.country, qc)) return true;
+      }
+      return false;
     });
     // Ordenar por tiempo: el más reciente primero
     relevant.sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0));
@@ -5005,8 +5046,15 @@ async function seismicPushPass() {
     if (!latest) continue;
 
     const mag = latest.properties.mag;
-    const place = (latest.properties.place || '').replace(/,.*$/, '').trim();
+    const placeRaw = latest.properties.place || '';
+    const place = placeRaw.replace(/,.*$/, '').trim();
     const dist = haversineKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]);
+    const qc = countryFromUSGSPlace(placeRaw);
+    const inCountry = qc ? sameCountry(t.country, qc) : false;
+    // Mensaje adaptado al motivo: cerca (radio) o dentro de tu país.
+    const locDesc = dist <= radius
+      ? describeMagnitude(mag, dist)
+      : '🌋 Sismo M' + mag.toFixed(1) + ' en tu país' + (inCountry && qc ? ' (' + qc + ')' : '');
     const key = latest.properties.id;
     const prev = lastKey[subKey] || (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null);
     const cacheKey = 'EQ:' + key;
@@ -5015,7 +5063,7 @@ async function seismicPushPass() {
     if (prev === cacheKey) continue;
 
     const body =
-      describeMagnitude(mag, dist) +
+      locDesc +
       (place ? ' · ' + place : '') +
       '\n' + earthquakeSafetyTips(mag);
 
@@ -5082,6 +5130,7 @@ app.get('/api/sismos', async (req, res) => {
         id: f.properties.id,
         mag: f.properties.mag,
         place: f.properties.place || '',
+        country: countryFromUSGSPlace(f.properties.place || ''),
         lat: f.geometry.coordinates[1],
         lon: f.geometry.coordinates[0],
         depth: f.geometry.coordinates[2],

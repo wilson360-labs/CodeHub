@@ -39,11 +39,26 @@
   var _markers = [];
   var _quakes = [];
   var _currentMag = 4;
+  var _placeFilter = ''; // país seleccionado en "lugares con sismos detectados" ('' = todos)
   var _center = null; // {lat,lon} si el usuario usó "Mi zona" o la ciudad de clima
   var _loaded = false;
   var _loading = false;
 
   // ---- Utilidades -------------------------------------------------
+  // De "12 km S of Acajutla, El Salvador" → "El Salvador" (mismo criterio del backend).
+  function placeCountry(place) {
+    if (!place) return '';
+    var parts = String(place).split(',').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!parts.length) return '';
+    var last = parts[parts.length - 1];
+    if (/region|ridge|rise|plateau|trench|basin|ocean|mid-atlantic|off the (coast|shore)|northern|southern|eastern|western|central\b/i.test(last)) return '';
+    return last;
+  }
+
+  function normCountry(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  }
   function nowAge(ts) {
     if (!ts) return '';
     var mins = Math.floor((Date.now() - ts) / 60000);
@@ -63,6 +78,64 @@
   }
 
   function magLabel(mag) { return 'M' + mag.toFixed(1); }
+
+  function matchesPlace(q) {
+    if (!_placeFilter) return true;
+    return normCountry(placeCountry(q.place)) === normCountry(_placeFilter);
+  }
+
+  // ---- "Lugares con sismos detectados" ----------------------------
+  // Agrupa los eventos del filtro actual por país, pinta chips y expone
+  // los toggles públicos usados por el HTML inline.
+  function currentPlaces() {
+    var map = {};
+    _quakes.filter(function (q) { return q.mag >= _currentMag; }).forEach(function (q) {
+      var c = placeCountry(q.place);
+      if (!c) { c = 'Otras zonas'; }
+      map[c] = (map[c] || 0) + 1;
+    });
+    var out = Object.keys(map).map(function (c) { return { country: c, count: map[c] }; });
+    out.sort(function (a, b) { return b.count - a.count; });
+    return out;
+  }
+
+  function renderPlaces() {
+    var body = document.getElementById('sismos-places-body');
+    var chips = document.getElementById('sismos-places-chips');
+    var count = document.getElementById('sismos-places-count');
+    if (!chips || !body) return;
+    var places = currentPlaces();
+    if (count) count.textContent = places.length ? places.length + ' lugares' : '—';
+    var active = _placeFilter;
+    var html = '<button type="button" class="sismos-place-chip' + (active ? '' : ' active') + '" onclick="chSetSismosPlace(\'\', this)"><i class="fas fa-globe"></i> Todos <b>' + _quakes.filter(function (q) { return q.mag >= _currentMag; }).length + '</b></button>';
+    places.forEach(function (p) {
+      var isActive = active && normCountry(p.country) === normCountry(active);
+      html += '<button type="button" class="sismos-place-chip' + (isActive ? ' active' : '') + '" onclick="chSetSismosPlace(this.dataset.c, this)" data-c="' + esc(p.country) + '"><i class="fas fa-earth-americas"></i> ' + esc(p.country) + ' <b>' + p.count + '</b></button>';
+    });
+    chips.innerHTML = html;
+  }
+
+  window.chToggleSismosPlaces = function () {
+    var box = document.getElementById('sismos-places');
+    var head = document.getElementById('sismos-places-header');
+    if (!box) return;
+    var open = box.classList.toggle('open');
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  window.chSetSismosPlace = function (country, btn) {
+    var box = document.getElementById('sismos-places');
+    if (box) box.classList.remove('open');
+    var c = btn ? btn.getAttribute('data-c') : country;
+    _placeFilter = c || '';
+    var all = document.querySelectorAll('.sismos-place-chip');
+    for (var i = 0; i < all.length; i++) {
+      all[i].classList.toggle('active', all[i] === btn);
+    }
+    updateSummary();
+    renderList();
+    if (_map) plotQuakes();
+  };
 
   // ---- Mapa -------------------------------------------------------
   function buildMap() {
@@ -152,7 +225,7 @@
     var L = window.L;
     _markers.forEach(function (m) { try { _map.removeLayer(m); } catch (e) {} });
     _markers = [];
-    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag; });
+    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag && matchesPlace(q); });
     filtered.forEach(function (q) {
       var r = Math.max(7, 4 + q.mag * 2.4);
       var circle = L.circleMarker([q.lat, q.lon], {
@@ -172,9 +245,9 @@
   function renderList() {
     var list = document.getElementById('sismos-list');
     if (!list) return;
-    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag; });
+    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag && matchesPlace(q); });
     if (!filtered.length) {
-      list.innerHTML = '<div class="sismos-none">Sin sismos ≥ M' + _currentMag + ' en las últimas 24 h.</div>';
+      list.innerHTML = '<div class="sismos-none">' + (_placeFilter ? 'Sin sismos ≥ M' + _currentMag + ' en ' + esc(_placeFilter) + ' en las últimas 24 h.' : 'Sin sismos ≥ M' + _currentMag + ' en las últimas 24 h.') + '</div>';
       return;
     }
     list.innerHTML = filtered.map(function (q) {
@@ -188,25 +261,29 @@
         '</div></div>';
     }).join('') +
       '<div class="sismos-none" style="padding:.6rem">Toca un sismo para centrar el mapa' +
-      (filtered.length > 1 ? ' · muestra de ' + filtered.length + ' eventos con magnitud ≥ ' + _currentMag : '') + '</div>';
+      (filtered.length > 1 ? ' · muestra de ' + filtered.length + ' eventos con magnitud ≥ ' + _currentMag + (_placeFilter ? ' en ' + _placeFilter : '') : '') + '</div>';
   }
 
   function updateSummary() {
     var chip = document.getElementById('sismos-count-chip');
     if (!chip) return;
-    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag; });
-    chip.textContent = '🌋 ' + filtered.length + ' sismos ≥ M' + _currentMag + ' hoy (fuente: USGS)';
+    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag && matchesPlace(q); });
+    var base = '🌋 ' + filtered.length + ' sismos ≥ M' + _currentMag + ' hoy (fuente: USGS)';
+    if (_placeFilter) base = '🌋 ' + filtered.length + ' sismos en ' + _placeFilter + ' (fuente: USGS)';
+    chip.textContent = base;
   }
 
   // ---- Carga de datos ---------------------------------------------
   function loadSismos(force) {
     if (_loading) return;
-    if (_loaded && !force) { renderList(); updateSummary(); return; }
+    if (_loaded && !force) { renderList(); updateSummary(); renderPlaces(); return; }
     _loading = true;
     var chip = document.getElementById('sismos-count-chip');
     if (chip) chip.textContent = 'Consultando actividad sísmica…';
     var list = document.getElementById('sismos-list');
     if (list) list.innerHTML = '<div class="sismos-none">Consultando actividad sísmica…</div>';
+    var chips = document.getElementById('sismos-places-chips');
+    if (chips) chips.innerHTML = '<span class="sismos-places-empty">Consultando lugares…</span>';
 
     fetch(BACKEND + '/api/sismos?minMag=0&limit=120')
       .then(function (r) { return r.json(); })
@@ -215,6 +292,7 @@
         _loaded = true;
         updateSummary();
         renderList();
+        renderPlaces();
         if (_map) plotQuakes();
       })
       .catch(function () {
@@ -233,6 +311,7 @@
     for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i] === btn);
     updateSummary();
     renderList();
+    renderPlaces();
     if (_map) plotQuakes();
   };
 

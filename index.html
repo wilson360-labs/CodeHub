@@ -1405,11 +1405,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <button type="button" class="sismos-alert-mag-btn" data-mag="6" onclick="chSetSeismicMag(6,this)">M6+</button>
                     </div>
                 </div>
-                <div class="sismos-alerts-hint">Requiere ubicación y permiso de notificaciones. Avisamos sismos ≥ el umbral en un radio de 300 km con consejos de seguridad.</div>
+                <div class="sismos-alerts-hint">Alertas inteligentes por país: usa tu ubicación precisa para avisarte sismos ≥ el umbral en tu país (o dentro de un radio de 300 km), con consejos de seguridad.</div>
             </div>
 
             <div class="sismos-summary" id="sismos-summary">
                 <span id="sismos-count-chip">Cargando sismos…</span>
+            </div>
+
+            <!-- Lugares con sismos detectados (expansible por país) -->
+            <div class="sismos-places" id="sismos-places">
+                <button type="button" class="sismos-places-header" id="sismos-places-header" onclick="chToggleSismosPlaces()" aria-expanded="false" aria-controls="sismos-places-body">
+                    <span class="sismos-places-title"><i class="fas fa-earth-americas"></i> Lugares con sismos detectados</span>
+                    <span class="sismos-places-count" id="sismos-places-count">…</span>
+                    <i class="fas fa-chevron-down sismos-places-chev" id="sismos-places-chev"></i>
+                </button>
+                <div class="sismos-places-body" id="sismos-places-body">
+                    <div class="sismos-places-chips" id="sismos-places-chips"></div>
+                    <div class="sismos-places-note">Toca un país para filtrar la lista y el mapa de la actividad sísmica.</div>
+                </div>
             </div>
 
             <!-- Mapa satélite + topónimos (estilo Weather Channel) -->
