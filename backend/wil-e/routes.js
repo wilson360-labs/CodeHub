@@ -82,7 +82,17 @@ module.exports = function (opts) {
     try {
       const userId = resolveOwner(req);
       const mem = await recall({ userId, limit: 20 });
-      res.json({ userId, memory: mem, count: mem ? mem.split('\n').length : 0 });
+      const mems = await AIMemory.find({ userId }).sort({ updatedAt: -1 }).limit(30);
+      const facts = mems.map((m) => ({
+        id: String(m._id),
+        key: m.key,
+        kind: m.kind,
+        value: m.decrypted() || '',
+        source: m.source,
+        tags: m.tags || [],
+        updatedAt: m.updatedAt,
+      }));
+      res.json({ userId, memory: mem, count: facts.length, facts });
     } catch (e) {
       res.status(500).json({ error: 'memory error', detail: String(e.message) });
     }
@@ -93,6 +103,17 @@ module.exports = function (opts) {
       const userId = resolveOwner(req);
       await AIMemory.deleteMany({ userId });
       res.json({ ok: true, userId });
+    } catch (e) {
+      res.status(500).json({ error: 'memory delete error', detail: String(e.message) });
+    }
+  });
+
+  // ── Borrar UN recuerdo concreto (por clave semántica) ─────────
+  router.delete('/memory/:key', async (req, res) => {
+    try {
+      const userId = resolveOwner(req);
+      const r = await AIMemory.deleteMany({ userId, key: req.params.key });
+      res.json({ ok: true, userId, deleted: r.deletedCount || 0 });
     } catch (e) {
       res.status(500).json({ error: 'memory delete error', detail: String(e.message) });
     }

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-07T00:00:00Z",
+  "updatedAt": "2026-09-07T00:00:00Z",
   "items": [
     {
       "id": 1,
@@ -8,7 +8,7 @@
       "desc": { "es": "Conversaciones con contexto persistente y respuestas más precisas sobre tus proyectos.", "en": "Conversations with persistent context and more accurate answers about your projects." },
       "status": { "es": "En desarrollo", "en": "In development" },
       "statusClass": "wip",
-      "progress": 65
+      "progress": 80
     },
     {
       "id": 2,

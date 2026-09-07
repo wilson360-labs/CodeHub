@@ -4418,6 +4418,10 @@ async function sendEmail(e) {
     try { localStorage.setItem('ch_session_id', id); } catch(e) {}
     return id;
   })();
+  // Flag de auto-aprendizaje de Wil.E (privacidad). Enviado en cada petición de chat.
+  window.chMemFlag = function () {
+    try { return localStorage.getItem('ch_wil_mem') !== 'off'; } catch (e) { return true; }
+  };
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   // ── ACCIONES RÁPIDAS ──────────────────────────────────────────────
@@ -4777,24 +4781,25 @@ async function sendEmail(e) {
           const _s = window.CodeHubAuth && CodeHubAuth.getSession();
           const h = { 'Content-Type': 'application/json' };
           if (_s && _s.token) h['Authorization'] = 'Bearer ' + _s.token;
-          let memText = '';
-          try {
-            const rr = await fetch(BACKEND_URL + '/api/wil-e/memory', { headers: h });
-            const d = await rr.json().catch(() => ({}));
-            memText = (d && d.memory) ? String(d.memory) : '';
-          } catch (e) {}
-          const escapes = (str) => escHtml(String(str));
-          const rows = memText ? memText.split('\n').map((l) => (l.trim() ? '<li style="margin:.25rem 0;font-size:.8rem;opacity:.92">' + escapes(l) + '</li>' : '')).join('') : '<li style="color:var(--muted)">Aún no has entrenado a Wil.E. Escribe algo en el cuadro de abajo ⬇️</li>';
+          const autoOn = window.chMemFlag ? window.chMemFlag() : true;
           addMsg('ai', '<div style="border:1px solid var(--border,rgba(160,160,255,.25));border-radius:12px;padding:.9rem;max-width:100%;min-width:0">' +
-            '<b style="color:var(--accent,#a0a0ff)">🧠 Tu memoria con Wil.E</b>' +
-            '<ul style="margin:.5rem 0;padding-left:1.2rem">' + rows + '</ul>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><b style="color:var(--accent,#a0a0ff)">🧠 Tu memoria con Wil.E</b> ' +
+            '<button class="ai-inline-cta" id="wilMemToggle" onclick="wilMemToggle()" title="Pausar o reanudar el auto-aprendizaje">' + (autoOn ? '📵 Pausar aprendizaje' : '🧠 Activar aprendizaje') + '</button></div>' +
+            '<ul id="wilMemList" style="margin:.5rem 0;padding-left:1.2rem"><li style="color:var(--muted)">Cargando…</li></ul>' +
             '<div style="margin-top:.6rem">' +
             '<input id="memoTitle" placeholder="Título (opcional)" style="width:100%;padding:.45rem;border-radius:8px;border:1px solid var(--border);background:rgba(120,120,160,.12);color:inherit;margin-bottom:.4rem;font-size:.8rem">' +
             '<textarea id="memoText" placeholder="Escribe lo que Wil.E debe recordar, o una URL https://..." style="width:100%;padding:.45rem;border-radius:8px;border:1px solid var(--border);background:rgba(120,120,160,.12);color:inherit;min-height:64px;font-size:.8rem" ></textarea>' +
             '<button class="ai-inline-cta" onclick="wilETrainSave()">💾 Guardar en memoria</button> ' +
             '<button class="ai-inline-cta" onclick="wilETrainClear()">🗑️ Borrar memoria</button>' +
             '</div></div>');
-          window.__trainFetch = { url: BACKEND_URL + '/api/wil-e/memory/note', headers: JSON.stringify(h), clearUrl: BACKEND_URL + '/api/wil-e/memory' };
+          window.__trainFetch = {
+            url: BACKEND_URL + '/api/wil-e/memory/note',
+            memUrl: BACKEND_URL + '/api/wil-e/memory',
+            delUrl: BACKEND_URL + '/api/wil-e/memory/',
+            clearUrl: BACKEND_URL + '/api/wil-e/memory',
+            headers: JSON.stringify(h)
+          };
+          wilMemLoadList();
         },
       };
       const handler = COMMANDS[cmd];
@@ -4881,7 +4886,8 @@ async function sendEmail(e) {
         ? (window.EMI_MODE_PROMPTS[window._emiMode] || '') : '';
       const body = {
         message: _modePrefix + effectiveText + deepSearchContext,
-        sessionId: SESSION_ID
+        sessionId: SESSION_ID,
+        memory: window.chMemFlag ? window.chMemFlag() : true
       };
       if (attachment) {
         if (attachment.type === 'image') body.image = attachment.base64;
@@ -5220,6 +5226,51 @@ async function sendEmail(e) {
     } catch (e) {
       addMsg('ai', 'Error al borrar la memoria.');
     }
+  };
+
+  // ── MEMORIA DE WIL.E — LISTA RECARGABLE / BORRAR UN RECUERDO / TOGGLE ──
+  window.wilMemLoadList = async function () {
+    const ul = document.getElementById('wilMemList');
+    const cfg = window.__trainFetch || {};
+    let h = {};
+    try { h = cfg.headers ? JSON.parse(cfg.headers) : {}; } catch (e) {}
+    if (!ul) return;
+    ul.innerHTML = '<li style="color:var(--muted)">Cargando…</li>';
+    try {
+      const r = await fetch(cfg.memUrl || (BACKEND_URL + '/api/wil-e/memory'), { headers: h });
+      const d = await r.json().catch(() => ({}));
+      const facts = (d && Array.isArray(d.facts)) ? d.facts : [];
+      ul.innerHTML = facts.length ? facts.map((f) =>
+        '<li style="margin:.4rem 0;font-size:.8rem;opacity:.94;display:flex;gap:.4rem;align-items:flex-start;list-style:none">' +
+        '<span style="flex:1;min-width:0"><span style="color:var(--accent,#a0a0ff);font-weight:600">' + escHtml(String(f.key).replace(/_/g, ' ')) + ':</span> ' + escHtml(String(f.value)) + '</span>' +
+        '<button class="ai-inline-cta" onclick="wilETrainDeleteKey(\'' + encodeURIComponent(String(f.key)) + '\')" title="Borrar este recuerdo" aria-label="Borrar recuerdo">🗑️</button></li>'
+      ).join('') : '<li style="color:var(--muted)">Aún no has entrenado a Wil.E. Escribe algo en el cuadro de abajo ⬇️</li>';
+    } catch (e) {
+      ul.innerHTML = '<li style="color:var(--muted)">No se pudo cargar la memoria.</li>';
+    }
+  };
+  window.wilETrainDeleteKey = async function (keyEnc) {
+    const cfg = window.__trainFetch || {};
+    let h = {};
+    try { h = cfg.headers ? JSON.parse(cfg.headers) : {}; } catch (e) {}
+    const key = decodeURIComponent(String(keyEnc || ''));
+    if (!key || !confirm('¿Olvidar este recuerdo de Wil.E?')) return;
+    try {
+      const r = await fetch((cfg.delUrl || (BACKEND_URL + '/api/wil-e/memory/')) + encodeURIComponent(key), { method: 'DELETE', headers: h });
+      const d = await r.json().catch(() => ({}));
+      if (d && d.ok) wilMemLoadList();
+      else addMsg('ai', '⚠️ No se pudo borrar el recuerdo.');
+    } catch (e) {
+      addMsg('ai', 'Error al borrar el recuerdo.');
+    }
+  };
+  window.wilMemToggle = function () {
+    const on = window.chMemFlag ? window.chMemFlag() : true;
+    try { localStorage.setItem('ch_wil_mem', on ? 'off' : 'on'); } catch (e) {}
+    const btn = document.getElementById('wilMemToggle');
+    if (btn) btn.innerHTML = on ? '🧠 Activar aprendizaje' : '📵 Pausar aprendizaje';
+    if (on) addMsg('ai', '⏸️ Aprendizaje automático pausado. Wil.E dejará de aprender hechos de tus mensajes (puedes seguir usando `/entrenar` manualmente).');
+    else addMsg('ai', '🧠 Aprendizaje automático activado. Wil.E recordará hechos y preferencias de tus mensajes.');
   };
 
   // ── ADJUNTAR IMAGEN O PDF (Chat con tu PDF) ─────────────────────

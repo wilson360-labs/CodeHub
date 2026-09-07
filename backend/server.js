@@ -587,8 +587,23 @@ const Release = mongoose.model('Release', new mongoose.Schema({
 // Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
 const { buildContext, augmentSystem } = require('./wil-e/core');
 const { remember } = require('./wil-e/memory');
+const { AIMemory } = require('./wil-e/models');
 
 let dbConnected = false;
+
+// Resuelve el "dueño" de la memoria de Wil.E por petición:
+//  • Usuarios logueados  → su propio id (memoria persistente individual)
+//  • Invitados con sesión → 'sess:<sessionId>' (memoria aislada 24h, sin
+//    mezclar hechos entre visitantes que antes compartían 'anon')
+//  • Sin sesión válida    → null (sin memoria: recall devuelve '')
+const memUserOf = (req, sessionId) => {
+  if (req.authUser && req.authUser.id) return req.authUser.id;
+  const s = String(sessionId || '');
+  if (/^sess_[a-z0-9]{6,}$/i.test(s)) return 'sess:' + s;
+  return null;
+};
+// Flag del cliente para pausar/reanudar el auto-aprendizaje (privacy).
+const memEnabledOf = (req) => !!(req.body && req.body.memory !== false);
 
 // ── MONGODB — LISTENERS DE RECONEXIÓN ──────────────────────────
 // Mantienen dbConnected sincronizado con el estado REAL de la conexión.
@@ -2343,7 +2358,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   if (dbConnected) {
     try {
       const ctx = await buildContext({
-        userId: req.authUser ? req.authUser.id : 'anon',
+        userId: memUserOf(req, sessionId) || 'none',
         ownerId: 'admin',
         message,
         topK: 3,
@@ -2390,8 +2405,16 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     const emiNow = await incrEmiUsage(emiKey);
     res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
     // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
-    if (dbConnected && req.authUser) {
-      remember({ userId: req.authUser.id, text: message }).catch(() => {});
+    const memU = memUserOf(req, sessionId);
+    if (dbConnected && memU && memEnabledOf(req)) {
+      if (memU.startsWith('sess:')) {
+        // Memoria de sesión acotada para invitados (anti-spam): máx 20 hechos.
+        AIMemory.countDocuments({ userId: memU }).then((cnt) => {
+          if (cnt < 20) remember({ userId: memU, text: message }).catch(() => {});
+        }).catch(() => {});
+      } else {
+        remember({ userId: memU, text: message }).catch(() => {});
+      }
     }
   } catch (err) {
     tgAlert('chatfail', () =>
@@ -5818,7 +5841,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   if (dbConnected) {
     try {
       const ctx = await buildContext({
-        userId: req.authUser ? req.authUser.id : 'anon',
+        userId: memUserOf(req, sessionId) || 'none',
         ownerId: 'admin',
         message,
         topK: 3,
@@ -6021,8 +6044,15 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     tgAlert('chat', () => 'Chat con WIL.E (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
 
     // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
-    if (dbConnected && req.authUser) {
-      remember({ userId: req.authUser.id, text: message }).catch(() => {});
+    const memU = memUserOf(req, sessionId);
+    if (dbConnected && memU && memEnabledOf(req)) {
+      if (memU.startsWith('sess:')) {
+        AIMemory.countDocuments({ userId: memU }).then((cnt) => {
+          if (cnt < 20) remember({ userId: memU, text: message }).catch(() => {});
+        }).catch(() => {});
+      } else {
+        remember({ userId: memU, text: message }).catch(() => {});
+      }
     }
 
     sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
