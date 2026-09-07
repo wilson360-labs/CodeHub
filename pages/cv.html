@@ -193,7 +193,8 @@
     /* Skills */
     .cv-skills-grid { display: flex; flex-direction: column; gap: .6rem; }
     .cv-skill-row { display: flex; flex-direction: column; gap: .2rem; }
-    .cv-skill-label { font-size: .72rem; font-family: var(--mono); color: var(--text); display: flex; justify-content: space-between; }
+    .cv-skill-label { font-size: .72rem; font-family: var(--mono); color: var(--text); display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+    .cv-skill-label .cv-skill-name { color: var(--text); font-size: .72rem; font-family: var(--mono); display: inline-flex; align-items: center; gap: .4rem; min-width: 0; }
     .cv-skill-label span { color: var(--muted); font-size: .65rem; }
     .cv-skill-bar { height: 4px; background: rgba(255,255,255,.06); border-radius: 4px; overflow: hidden; }
     .cv-skill-fill { height: 100%; border-radius: 4px; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
@@ -414,17 +415,17 @@ document.getElementById('cv-date').textContent =
 
 // ── SKILLS BARS ──────────────────────────────────────────
 const skills = [
-  { name: 'HTML / CSS',        pct: 90, color: '#2f80ed' },
-  { name: 'JavaScript',        pct: 78, color: '#38bdf8' },
-  { name: 'Node.js / Express', pct: 72, color: '#00e676' },
-  { name: 'Python',            pct: 65, color: '#00e5ff' },
-  { name: 'MongoDB',           pct: 68, color: '#a855f7' },
-  { name: 'Git / Deploy',      pct: 75, color: '#22c55e' },
+  { name: 'HTML / CSS',        icon: 'fab fa-html5',       pct: 90, color: '#2f80ed' },
+  { name: 'JavaScript',        icon: 'fab fa-js',          pct: 78, color: '#38bdf8' },
+  { name: 'Node.js / Express', icon: 'fab fa-node-js',     pct: 72, color: '#00e676' },
+  { name: 'Python',            icon: 'fab fa-python',      pct: 65, color: '#00e5ff' },
+  { name: 'MongoDB',           icon: 'fas fa-database',    pct: 68, color: '#a855f7' },
+  { name: 'Git / Deploy',      icon: 'fab fa-git-alt',     pct: 75, color: '#22c55e' },
 ];
 const grid = document.getElementById('skills-grid');
 grid.innerHTML = skills.map(s => `
   <div class="cv-skill-row">
-    <div class="cv-skill-label">${s.name} <span>${s.pct}%</span></div>
+    <div class="cv-skill-label"><span class="cv-skill-name"><i class="${s.icon}" style="color:${s.color};width:15px;text-align:center"></i> ${s.name}</span> <span>${s.pct}%</span></div>
     <div class="cv-skill-bar">
       <div class="cv-skill-fill" data-pct="${s.pct}" style="width:0%;background:${s.color}"></div>
     </div>
