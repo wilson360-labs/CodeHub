@@ -19,6 +19,24 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ── TOAST PROPIO — feedback visual sin depender de otros bundles ──
+// (en esta página no existe toast() global; esto evita feedback mudo)
+function OSToast(msg, type) {
+  let el = document.getElementById('os-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'os-toast';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  const err = type === 'error';
+  el.className = 'show' + (err ? ' os-toast-err' : (type === 'success' ? ' os-toast-ok' : ''));
+  const icon = err ? 'fa-solid fa-circle-xmark' : (type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-info');
+  el.innerHTML = `<i class="${icon}"></i><span>${esc(msg)}</span>`;
+  clearTimeout(OSToast._t);
+  OSToast._t = setTimeout(() => el.classList.remove('show'), err ? 3800 : 2400);
+}
+
 // ── OPTIMIZADOR DE IMÁGENES (proxy wsrv.nl) ───────────────────
 function getOptimizedImageUrl(url, width, height) {
   if (!url) return '';
@@ -134,18 +152,10 @@ document.addEventListener('keydown', e => {
 function copyEchoExtensionUrl() {
   const extensionUrl = 'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json';
   navigator.clipboard.writeText(extensionUrl).then(() => {
-    const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(34,197,94,.95);color:#fff;padding:1rem 1.5rem;border-radius:8px;font-weight:700;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,.3)';
-    toast.textContent = '✅ URL de extensiones copiada';
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 2500);
+    OSToast('✅ URL de extensiones copiada', 'success');
   }).catch(err => {
     console.error('Error al copiar:', err);
-    const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(239,68,68,.95);color:#fff;padding:1rem 1.5rem;border-radius:8px;font-weight:700;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,.3)';
-    toast.textContent = '❌ No se pudo copiar';
-    document.body.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 2500);
+    OSToast('❌ No se pudo copiar', 'error');
   });
 }
 
@@ -634,9 +644,7 @@ const MyApps = (() => {
     _save(list);
     _updateUI();
     _refreshFavButtons();
-    if (typeof toast === 'function') {
-      toast(idx >= 0 ? '📦 App removida de Mis apps' : '❤️ App guardada en Mis apps', 'info', 2000);
-    }
+    OSToast(idx >= 0 ? '📦 App removida de Mis apps' : '❤️ App guardada en Mis apps', 'info');
   }
 
   function _refreshFavButtons() {
@@ -791,9 +799,7 @@ const DeviceApps = (() => {
       if (btn) btn.onclick = async () => {
         btn.disabled = true; btn.textContent = 'Esperando confirmación...';
         const granted2 = await _requestShizukuPermission();
-        if (typeof toast === 'function') {
-          toast(granted2 ? '⚡ Instalación automática activada' : '❌ Permiso denegado', granted2 ? 'success' : 'error', 2500);
-        }
+        OSToast(granted2 ? '⚡ Instalación automática activada' : '❌ Permiso denegado', granted2 ? 'success' : 'error');
         _renderShizukuBanner();
         if (granted2) _updateUI();
       };
@@ -890,14 +896,14 @@ const DeviceApps = (() => {
         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${silent ? 'Instalando...' : 'Descargando...'}`;
         const result = await _installApp(app, url, silent);
         if (result.status === 'installed') {
-          if (typeof toast === 'function') toast(`✅ ${app.nombre} actualizada`, 'success', 2500);
+          OSToast(`✅ ${app.nombre} actualizada`, 'success');
           setTimeout(_updateUI, 1500);
         } else if (result.status === 'prompted') {
           btn.innerHTML = `<i class="fas fa-check"></i> Confirmá la instalación`;
         } else {
           btn.disabled = false;
           btn.innerHTML = `<i class="fas fa-arrow-up"></i> Reintentar`;
-          if (typeof toast === 'function') toast(`❌ No se pudo actualizar ${app.nombre}: ${result.message || ''}`, 'error', 3500);
+          OSToast(`❌ No se pudo actualizar ${app.nombre}: ${result.message || ''}`, 'error');
         }
       };
     });

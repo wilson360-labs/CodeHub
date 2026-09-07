@@ -1425,3 +1425,30 @@ footer a:hover { text-decoration: underline; }
   html { scroll-behavior: smooth; }
 }
 
+/* ═══════════════════════════════════════════════════════
+   Toast propio (OSToast) — feedback visual de esta página,
+   sin depender de js/admin-hub.js (toast() no existe aquí)
+   ═══════════════════════════════════════════════════════ */
+#os-toast {
+  position: fixed; top: 18px; left: 50%; transform: translate(-50%, -16px);
+  z-index: 12000; max-width: min(92vw, 480px);
+  display: flex; align-items: center; gap: .6rem;
+  padding: .72rem 1.1rem; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text); font-size: .8rem; font-weight: 600;
+  box-shadow: var(--shadow-2); opacity: 0; pointer-events: none;
+  transition: all .25s cubic-bezier(.4,0,.2,1); backdrop-filter: blur(10px);
+}
+#os-toast.show { opacity: 1; transform: translate(-50%, 0); }
+#os-toast.os-toast-ok    { border-color: rgba(34,197,94,.55); }
+#os-toast.os-toast-ok i  { color: #4ade80; }
+#os-toast.os-toast-err   { border-color: rgba(239,68,68,.6); }
+#os-toast.os-toast-err i { color: #f87171; }
+#os-toast i { font-size: 1rem; flex: none; }
+
+/* ── Teléfonos compactos (mínimo soportado 380 px) ── */
+@media (max-width: 380px) {
+  .app-grid { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: .75rem; }
+  .app-card .app-version-tag { font-size: .56rem; padding: .12rem .32rem; }
+}
+
