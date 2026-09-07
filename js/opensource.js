@@ -297,7 +297,152 @@ function ensureCategorySection(categoria) {
     toc.appendChild(a);
   }
   OS_CATEGORIES.push({ categoria, id, emoji: '📦' });
+  osEnsureCollapseUI(section);
+  const stored = osStoredCollapse();
+  osSetCollapsed(section, id in stored ? stored[id] : true, false);
   return id;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Secciones plegables — cuadros de apps expandibles/contraíbles.
+   Un clic en la cabecera de una categoría despliega/colapsa su grid.
+   El estado persiste por categoría en localStorage ('os.catCollapsed');
+   el índice expande la sección destino y los botones permiten
+   expandir/contraer todo. Deep-link: #cat-... abre esa categoría.
+   ═══════════════════════════════════════════════════════════════ */
+const OS_COLLAPSED_KEY = 'os.catCollapsed';
+
+function osStoredCollapse() {
+  try { return JSON.parse(localStorage.getItem(OS_COLLAPSED_KEY) || '{}') || {}; }
+  catch { return {}; }
+}
+
+function osPersistCollapse(state) {
+  try { localStorage.setItem(OS_COLLAPSED_KEY, JSON.stringify(state)); } catch {}
+}
+
+function osIsCatalogSection(section) {
+  return /^cat-/.test(section.id || '');
+}
+
+function osDefaultCollapsed(section) {
+  return osIsCatalogSection(section);
+}
+
+function osSetCollapsed(section, collapsed, persist) {
+  section.setAttribute('data-collapsed', collapsed ? 'true' : 'false');
+  const toggle = section.querySelector('.os-cat-toggle');
+  if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+  if (persist) {
+    const state = osStoredCollapse();
+    state[section.id] = collapsed;
+    osPersistCollapse(state);
+  }
+}
+
+function osToggleSection(section) {
+  osSetCollapsed(section, section.getAttribute('data-collapsed') !== 'true', true);
+}
+
+// Prepara la cabecera de una sección: wrapper del texto, contador de
+// apps y botón chevron accesible. Idempotente, sirve para secciones
+// estáticas y para las que se crean al vuelo.
+function osEnsureCollapseUI(section) {
+  const header = section.querySelector('.os-cat-header');
+  if (!header || header.dataset.osReady) return;
+
+  const kids = Array.from(header.childNodes);
+  if (!header.querySelector(':scope > .os-cat-copy')) {
+    const copy = document.createElement('div');
+    copy.className = 'os-cat-copy';
+    header.appendChild(copy);
+    kids.forEach(n => copy.appendChild(n));
+  }
+
+  if (!header.querySelector('.os-cat-meta')) {
+    const meta = document.createElement('div');
+    meta.className = 'os-cat-meta';
+    const count = document.createElement('span');
+    count.className = 'os-cat-count';
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'os-cat-toggle';
+    toggle.setAttribute('aria-label', 'Alternar sección');
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
+    toggle.addEventListener('click', e => { e.stopPropagation(); osToggleSection(section); });
+    meta.appendChild(count);
+    meta.appendChild(toggle);
+    header.appendChild(meta);
+  }
+
+  header.tabIndex = 0;
+  header.addEventListener('click', e => {
+    if (e.target.closest('a,button,[role="button"]')) return;
+    osToggleSection(section);
+  });
+  header.addEventListener('keydown', e => {
+    if (e.target === header && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      osToggleSection(section);
+    }
+  });
+  header.dataset.osReady = '1';
+}
+
+function osSetCount(section, count) {
+  const el = section.querySelector('.os-cat-count');
+  if (el) el.textContent = `${count} ${count === 1 ? 'app' : 'apps'}`;
+}
+
+function osSetupCollapsible() {
+  document.querySelectorAll('.os-category').forEach(section => {
+    osEnsureCollapseUI(section);
+    const stored = osStoredCollapse();
+    osSetCollapsed(section, section.id in stored ? stored[section.id] : osDefaultCollapsed(section), false);
+  });
+
+  const toc = document.querySelector('.os-toc');
+  if (toc) {
+    // Un clic en el índice abre la categoría destino antes del scroll.
+    toc.addEventListener('click', e => {
+      const a = e.target.closest('a[href^="#"]');
+      if (!a) return;
+      const section = document.getElementById((a.getAttribute('href') || '').slice(1));
+      if (section && osIsCatalogSection(section)) osSetCollapsed(section, false, true);
+    });
+    // Botones de expandir/contraer todo al inicio del índice.
+    if (!document.getElementById('os-toc-expand')) {
+      const expand = document.createElement('button');
+      expand.type = 'button';
+      expand.id = 'os-toc-expand';
+      expand.className = 'os-toc-collapse';
+      expand.innerHTML = '<i class="fa-solid fa-table-cells-large"></i> Expandir todo';
+      expand.addEventListener('click', () => {
+        document.querySelectorAll('.os-category').forEach(s => {
+          if (osIsCatalogSection(s)) osSetCollapsed(s, false, true);
+        });
+      });
+      const collapse = document.createElement('button');
+      collapse.type = 'button';
+      collapse.id = 'os-toc-collapse';
+      collapse.className = 'os-toc-collapse';
+      collapse.innerHTML = '<i class="fa-solid fa-compress"></i> Contraer todo';
+      collapse.addEventListener('click', () => {
+        document.querySelectorAll('.os-category').forEach(s => {
+          if (osIsCatalogSection(s)) osSetCollapsed(s, true, true);
+        });
+      });
+      toc.insertBefore(collapse, toc.firstChild);
+      toc.insertBefore(expand, toc.firstChild);
+    }
+  }
+
+  // Deep-link: si se llega con #cat-... en la URL, abrir esa categoría.
+  if (location.hash) {
+    const section = document.getElementById(location.hash.slice(1));
+    if (section && osIsCatalogSection(section)) osSetCollapsed(section, false, true);
+  }
 }
 
 async function loadOpenSourceCatalog() {
@@ -341,6 +486,13 @@ async function loadOpenSourceCatalog() {
       const id = ensureCategorySection(cat);
       const grid = document.getElementById(`grid-${id}`);
       if (grid) grid.innerHTML = byCategory[cat].map(a => buildOSCard(a, window.__osRatings[a.appId])).join('');
+    });
+
+    // Contadores "N apps" por sección (el setup/plegado ya está aplicado).
+    document.querySelectorAll('.os-category').forEach(sec => {
+      if (!osIsCatalogSection(sec)) return;
+      const grid = sec.querySelector('.app-grid');
+      osSetCount(sec, grid ? grid.querySelectorAll('.app-card').length : 0);
     });
   } catch (e) {
     console.error('Error cargando catálogo Open Source:', e);
@@ -406,6 +558,7 @@ function connectOSWebSocket() {
   } catch {}
 }
 
+osSetupCollapsible();
 loadOpenSourceCatalog();
 connectOSWebSocket();
 pausableInterval(() => {

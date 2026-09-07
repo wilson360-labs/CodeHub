@@ -256,6 +256,73 @@ header {
   gap: 1.05rem;
 }
 
+/* ── SECCIONES PLEGABLES (cuadros expandibles) ── */
+.os-cat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.os-cat-header:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: 8px; }
+.os-cat-copy { flex: 1 1 auto; min-width: 0; }
+.os-cat-header p { pointer-events: none; }
+.os-cat-meta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding-top: .15rem;
+}
+.os-cat-count {
+  font-size: .68rem; font-weight: 700;
+  color: var(--muted);
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  padding: .2rem .65rem;
+  border-radius: var(--radius-pill, 999px);
+  white-space: nowrap;
+}
+.os-cat-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.1rem; height: 2.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform .25s cubic-bezier(.16,1,.3,1), color .2s, border-color .2s, background .2s;
+}
+.os-cat-toggle:hover {
+  color: #fff;
+  border-color: var(--border-strong);
+  background: rgba(56,189,248,.1);
+}
+.os-category .app-grid { transition: opacity .18s ease; }
+.os-category[data-collapsed="true"] .app-grid { display: none; }
+.os-category[data-collapsed="true"] .os-cat-header p { display: none; }
+.os-category[data-collapsed="true"] .os-cat-toggle { transform: rotate(-90deg); }
+
+/* Botones de expandir/contraer todo (junto al índice) */
+.os-toc-collapse {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .74rem; font-weight: 700; font-family: inherit;
+  padding: .4rem .85rem;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px dashed var(--border-strong);
+  cursor: pointer;
+  color: var(--a, #38bdf8);
+  background: transparent;
+  transition: background .2s, transform .2s;
+}
+.os-toc-collapse:hover {
+  background: rgba(56,189,248,.1);
+  transform: translateY(-1px);
+}
+
 /* ── APP CARD ── */
 .app-card {
   --cat: var(--primary);
