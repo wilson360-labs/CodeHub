@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de CV con IA — Wilson.E</title>
+<meta name="description" content="Crea tu currículum en minutos con plantillas profesionales y sugerencias con IA.">
+<link rel="canonical" href="https://wilson360-labs.vercel.app/cv-generador">
+<link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
+<link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260831b">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#07070f; --surface:#0d0d1f; --panel:#111126;
+    --text:#eef; --muted:#9aa0c0; --border:rgba(160,160,255,.14);
+    --primary:#2f80ed; --accent:#38bdf8; --cyan:#00e5ff; --green:#00e676; --red:#ff5a7a;
+  }
+  body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; min-height:100vh; }
+  .mono { font-family:ui-monospace,Menlo,Consolas,monospace; }
+
+  .head { position:sticky; top:0; z-index:20; background:rgba(7,7,15,.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:1rem; padding:.6rem 1rem; flex-wrap:wrap; }
+  .head .brand { font-weight:800; letter-spacing:.02em; }
+  .head .brand span { color:var(--accent); }
+  .head .nav { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; margin-left:auto; }
+  .btn { display:inline-flex; align-items:center; gap:.4rem; padding:.42rem .8rem; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:.78rem; cursor:pointer; transition:all .15s; text-decoration:none; }
+  .btn:hover { border-color:var(--primary); }
+  .btn.primary { background:linear-gradient(135deg,var(--primary),#6c3af5); border:none; font-weight:700; }
+  .btn.ai { background:linear-gradient(135deg,#7c2dff,#00b4d8); border:none; font-weight:700; }
+  .btn.ghost { background:transparent; }
+  .btn:disabled { opacity:.5; cursor:default; }
+
+  .wrap { max-width:1180px; margin:0 auto; padding:1rem; }
+  .grid { display:grid; grid-template-columns:minmax(340px,420px) 1fr; gap:1rem; align-items:start; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:1rem; }
+  .panel h2 { font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:.8rem; display:flex; align-items:center; gap:.4rem; }
+  .fld { margin-bottom:.7rem; }
+  .fld label { display:block; font-size:.7rem; color:var(--muted); margin-bottom:.25rem; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .fld input,.fld textarea,.fld select { width:100%; padding:.5rem .6rem; border-radius:9px; border:1px solid var(--border); background:rgba(120,120,170,.08); color:var(--text); font-size:.82rem; font-family:inherit; }
+  .fld textarea { min-height:70px; resize:vertical; }
+  .fld input:focus,.fld textarea:focus { outline:none; border-color:var(--primary); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.5rem; }
+  .mini { font-size:.72rem; }
+  .field-ai { display:flex; gap:.4rem; align-items:flex-start; }
+  .field-ai > textarea { flex:1; }
+  .field-ai .btn { white-space:nowrap; }
+
+  .chipbar { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem; }
+  .chip { display:inline-flex; align-items:center; gap:.3rem; padding:.22rem .6rem; font-size:.72rem; font-family:ui-monospace,Menlo,Consolas,monospace; background:rgba(56,189,248,.1); border:1px solid rgba(56,189,248,.25); border-radius:20px; cursor:pointer; }
+  .chip b { color:var(--cyan); font-weight:800; }
+  .chip-add { display:flex; gap:.35rem; }
+  .chip-add input { flex:1; }
+
+  .item { border:1px solid var(--border); border-radius:12px; padding:.6rem; margin-bottom:.6rem; background:rgba(255,255,255,.015); }
+  .item .item-top { display:flex; align-items:center; gap:.4rem; margin-bottom:.4rem; }
+  .item .item-top b { flex:1; font-size:.78rem; color:var(--accent); font-family:ui-monospace,Menlo,Consolas,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .item-top button { background:none; border:none; color:var(--red); cursor:pointer; font-size:.8rem; }
+  .item input { margin-bottom:.35rem; }
+
+  .tpl-pick { display:flex; gap:.5rem; margin-bottom:.8rem; }
+  .tpl-card { flex:1; padding:.5rem; border:1.5px solid var(--border); border-radius:10px; cursor:pointer; text-align:center; font-size:.72rem; color:var(--muted); }
+  .tpl-card.on { border-color:var(--primary); color:var(--text); }
+  .tpl-card small { display:block; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .colors { display:flex; gap:.4rem; margin-bottom:.6rem; }
+  .sw { width:26px; height:26px; border-radius:8px; cursor:pointer; border:2px solid transparent; }
+  .sw.on { border-color:#fff; }
+
+  .cv-toolbar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.8rem; }
+  .cv-stage { background:repeating-conic-gradient(#0a0a18 0% 25%, #0d0d20 0% 50%) 0 0/22px 22px; border:1px solid var(--border); border-radius:14px; padding:1rem; }
+  #cv-preview { width:100%; max-width:520px; margin:0 auto; background:#fff2; }
+  .cv-paper { background:#fff; color:#1c1c28; width:100%; min-height:200px; transition:all .2s; }
+
+  .cv-paper .pv { padding:1.1rem 1.25rem; }
+  .cv-paper .pv-name { font-weight:800; letter-spacing:-.01em; font-size:1.7rem; }
+  .pv-role { font-weight:600; }
+  .pv-contact { display:flex; flex-wrap:wrap; gap:.3rem 1rem; font-size:.68rem; }
+  .pv-h { font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.62rem; margin:1rem 0 .3rem; }
+  .pv-sec { font-size:.72rem; line-height:1.55; }
+  .pv-item { margin-bottom:.45rem; }
+  .pv-item .t { font-weight:700; font-size:.76rem; }
+  .pv-item .s { font-size:.68rem; }
+  .pv-item .d { font-size:.72rem; opacity:.9; }
+  .pv-skills { display:flex; flex-wrap:wrap; gap:.3rem; }
+  .pv-skill { font-size:.66rem; border:1px solid currentColor; padding:.12rem .45rem; border-radius:20px; }
+
+  .cv-paper[data-tpl="clasico"] { font-family:"Georgia","Times New Roman",serif; }
+  .cv-paper[data-tpl="clasico"] .pv-hero { border-bottom:2px solid var(--cv); padding-bottom:.7rem; }
+  .cv-paper[data-tpl="clasico"] .pv-h { color:var(--cv); border-bottom:1px solid color-mix(in srgb, var(--cv) 45%, transparent); display:inline-block; }
+  .cv-paper[data-tpl="clasico"] .pv-contact { color:#3a3a4a; }
+
+  .cv-paper[data-tpl="minimal"] { font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .cv-paper[data-tpl="minimal"] .pv-hero { text-align:center; padding-bottom:.8rem; }
+  .cv-paper[data-tpl="minimal"] .pv-name { font-size:1.6rem; }
+  .cv-paper[data-tpl="minimal"] .pv-role { color:var(--cv); font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.8rem; letter-spacing:.04em; }
+  .cv-paper[data-tpl="minimal"] .pv-contact { justify-content:center; color:#51515f; }
+  .cv-paper[data-tpl="minimal"] .pv-h { color:var(--cv); }
+
+  .status-line { font-size:.72rem; color:var(--muted); margin-top:.5rem; min-height:1.1em; }
+  .loading-spin { display:inline-block; width:12px; height:12px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @media (max-width: 860px) { .wrap{ padding:.6rem; } .grid { grid-template-columns:1fr; } .cv-stage { order:-1; } }
+  @media (max-width: 480px) { .row2,.row3 { grid-template-columns:1fr; } .field-ai { flex-direction:column; } .nav .btn span { display:none; } .head { gap:.5rem; } }
+  @media print {
+    body { background:#fff; }
+    .head,.panel,.cv-toolbar { display:none !important; }
+    .wrap { max-width:100%; padding:0; }
+    .grid { display:block; }
+    .cv-stage { border:none; padding:0; background:#fff; }
+    #cv-preview { max-width:100%; }
+    .cv-paper { width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="head">
+  <span class="brand">CV<span>GEN</span> · IA</span>
+  <nav class="nav">
+    <a class="btn ghost" href="/cv" title="Mi CV"><i class="fas fa-file-lines"></i> <span>Mi CV</span></a>
+    <a class="btn ghost" href="/" title="Portfolio"><i class="fas fa-house"></i> <span>Inicio</span></a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <section class="panel" id="form-panel">
+      <h2><i class="fas fa-user-pen"></i> Tus datos</h2>
+
+      <div class="fld"><label>Nombre completo</label><input id="f-nombre" placeholder="Tu Nombre"></div>
+      <div class="fld"><label>Rol / Puesto</label><input id="f-rol" placeholder="Desarrollador Web Full Stack"></div>
+      <div class="row3">
+        <div class="fld"><label>Email</label><input id="f-email" type="email" placeholder="tucorreo@mail.com"></div>
+        <div class="fld"><label>Teléfono</label><input id="f-tel" placeholder="+502 0000 0000"></div>
+        <div class="fld"><label>Ubicación</label><input id="f-ubi" placeholder="Guatemala, GT"></div>
+      </div>
+
+      <div class="fld">
+        <label>Sobre mí</label>
+        <div class="field-ai">
+          <textarea id="f-sobre" placeholder="Párrafo profesional de presentación"></textarea>
+          <button class="btn ai" id="btn-ai-sobre" onclick="aiSobre()"><i class="fas fa-wand-magic-sparkles"></i> IA</button>
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>Habilidades técnicas</label>
+        <div class="chip-add">
+          <input id="f-skill-in" placeholder="JavaScript, Node.js, MongoDB…">
+          <button class="btn" onclick="addSkill()"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="chipbar" id="skill-chips"></div>
+      </div>
+
+      <div class="fld">
+        <label>Experiencia</label>
+        <div id="exp-list"></div>
+        <button class="btn" onclick="addExp()"><i class="fas fa-plus"></i> Añadir experiencia</button>
+      </div>
+
+      <div class="fld">
+        <label>Educación</label>
+        <div id="edu-list"></div>
+        <button class="btn" onclick="addEdu()"><i class="fas fa-plus"></i> Añadir educación</button>
+      </div>
+
+      <div class="fld">
+        <label>Idiomas</label>
+        <div id="lang-list"></div>
+        <button class="btn" onclick="addLang()"><i class="fas fa-plus"></i> Añadir idioma</button>
+      </div>
+
+      <h2 style="margin-top:1rem"><i class="fas fa-palette"></i> Plantilla y color</h2>
+      <div class="tpl-pick">
+        <div class="tpl-card" id="tpl-clasico" onclick="setTpl('clasico')"><i class="fas fa-font"></i> Clásico<small>serif · elegante</small></div>
+        <div class="tpl-card" id="tpl-minimal" onclick="setTpl('minimal')"><i class="fas fa-bars"></i> Minimal<small>moderno · limpio</small></div>
+      </div>
+      <div class="colors" id="color-pick">
+        <div class="sw on" data-c="#2f80ed" style="background:#2f80ed" onclick="setColor(this)"></div>
+        <div class="sw" data-c="#0f9d58" style="background:#0f9d58" onclick="setColor(this)"></div>
+        <div class="sw" data-c="#e91e63" style="background:#e91e63" onclick="setColor(this)"></div>
+        <div class="sw" data-c="#7c2dff" style="background:#7c2dff" onclick="setColor(this)"></div>
+        <div class="sw" data-c="#111827" style="background:#111827" onclick="setColor(this)"></div>
+      </div>
+
+      <h2 style="margin-top:1rem"><i class="fas fa-box-archive"></i> Guardar</h2>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn" onclick="saveData()"><i class="fas fa-download"></i> Exportar JSON</button>
+        <button class="btn" onclick="document.getElementById('file-json').click()"><i class="fas fa-upload"></i> Importar JSON</button>
+        <button class="btn ghost" onclick="resetData()"><i class="fas fa-rotate-left"></i> Limpiar</button>
+        <input type="file" id="file-json" accept="application/json,.json" style="display:none" onchange="importJSON(this)">
+      </div>
+    </section>
+
+    <section>
+      <div class="cv-toolbar">
+        <button class="btn primary" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+        <button class="btn" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+        <span class="status-line" id="status"></span>
+      </div>
+      <div class="cv-stage">
+        <div id="cv-preview"></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+"use strict";
+var BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:3000' : 'https://codehub-98s6.onrender.com';
+var LS_KEY = 'ch_cvgen_v1';
+
+var def = {
+  nombre: '', rol: '', email: '', tel: '', ubi: '', sobre: '',
+  skills: [], tpl: 'clasico', color: '#2f80ed',
+  exp: [], edu: [], lang: []
+};
+
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+var data = def;
+try {
+  var saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+  if (saved && typeof saved === 'object') {
+    data = Object.assign(JSON.parse(JSON.stringify(def)), saved);
+  }
+} catch (e) {}
+
+var $ = function (id) { return document.getElementById(id); };
+
+function saveLS() { try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {} }
+
+function fillForm() {
+  $('f-nombre').value = data.nombre || '';
+  $('f-rol').value = data.rol || '';
+  $('f-email').value = data.email || '';
+  $('f-tel').value = data.tel || '';
+  $('f-ubi').value = data.ubi || '';
+  $('f-sobre').value = data.sobre || '';
+  renderSkills(); renderExp(); renderEdu(); renderLang();
+  var c = $('color-pick').querySelectorAll('.sw');
+  for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', c[i].getAttribute('data-c') === data.color);
+  $('tpl-' + data.tpl).classList.add('on');
+  $('tpl-' + (data.tpl === 'minimal' ? 'clasico' : 'minimal')).classList.remove('on');
+  render();
+}
+
+function render() {
+  var p = document.createElement('div');
+  p.className = 'cv-paper';
+  p.setAttribute('data-tpl', data.tpl);
+  p.style.setProperty('--cv', data.color);
+  var contact = [];
+  if (data.email) contact.push('<i class="fas fa-envelope" style="font-size:inherit"></i> ' + esc(data.email));
+  if (data.tel) contact.push('<i class="fas fa-phone" style="font-size:inherit"></i> ' + esc(data.tel));
+  if (data.ubi) contact.push('<i class="fas fa-location-dot" style="font-size:inherit"></i> ' + esc(data.ubi));
+  p.innerHTML =
+    '<div class="pv-hero pv" style="background:' + data.color + '14">' +
+      '<div class="pv-name">' + esc(data.nombre || 'Tu Nombre') + '</div>' +
+      '<div class="pv-role" style="font-size:.85rem;margin-top:.1rem">' + esc(data.rol || 'Tu Puesto') + '</div>' +
+      (contact.length ? '<div class="pv-contact" style="margin-top:.5rem">' + contact.join('') + '</div>' : '') +
+    '</div>' +
+    '<div class="pv">' +
+      (data.sobre ? '<div class="pv-h">Sobre mí</div><div class="pv-sec">' + esc(data.sobre) + '</div>' : '') +
+      (data.skills.length ? '<div class="pv-h">Habilidades técnicas</div><div class="pv-skills">' + data.skills.map(function (s) { return '<span class="pv-skill" style="border-color:' + data.color + '55;color:' + data.color + '">' + esc(s) + '</span>'; }).join('') + '</div>' : '') +
+      (data.exp.length ? '<div class="pv-h">Experiencia</div>' + data.exp.map(function (x) {
+        return '<div class="pv-item"><div class="t">' + esc(x.rol) + (x.emp ? ' — ' + esc(x.emp) : '') + '</div>' +
+          '<div class="s" style="color:#51515f">' + esc(x.periodo) + '</div>' +
+          (x.desc ? '<div class="d" style="margin-top:.15rem">' + esc(x.desc) + '</div>' : '') + '</div>';
+      }).join('') : '') +
+      (data.edu.length ? '<div class="pv-h">Educación</div>' + data.edu.map(function (x) {
+        return '<div class="pv-item"><div class="t">' + esc(x.titulo) + (x.inst ? ' — ' + esc(x.inst) : '') + '</div><div class="s" style="color:#51515f">' + esc(x.periodo) + '</div></div>';
+      }).join('') : '') +
+      (data.lang.length ? '<div class="pv-h">Idiomas</div><div class="pv-sec">' + data.lang.map(function (l) { return '<span style="margin-right:.6rem"><b>' + esc(l.nombre) + '</b> — ' + esc(l.nivel) + '</span>'; }).join('') + '</div>' : '') +
+    '</div>';
+  var wrap = $('cv-preview');
+  wrap.innerHTML = '';
+  wrap.appendChild(p);
+}
+
+function bindForm() {
+  var fields = ['f-nombre', 'f-rol', 'f-email', 'f-tel', 'f-ubi', 'f-sobre'];
+  var keys = ['nombre', 'rol', 'email', 'tel', 'ubi', 'sobre'];
+  fields.forEach(function (id, i) {
+    $('f-' + id.replace('f-', '')).value = data[keys[i]] || '';
+    $('f-' + id.replace('f-', '')).addEventListener('input', function () { data[keys[i]] = this.value; saveLS(); render(); });
+  });
+}
+
+function addSkill() {
+  var inp = $('f-skill-in');
+  var v = inp.value.replace(/,/g, '').trim();
+  if (v && data.skills.indexOf(v) === -1) { data.skills.push(v); saveLS(); renderSkills(); render(); }
+  inp.value = '';
+}
+function removeSkill(i) { data.skills.splice(i, 1); saveLS(); renderSkills(); render(); }
+function renderSkills() {
+  $('skill-chips').innerHTML = data.skills.map(function (s, i) {
+    return '<span class="chip" onclick="removeSkill(' + i + ')" title="Quitar"><b>×</b> ' + esc(s) + '</span>';
+  }).join('');
+}
+
+var expProto = function () { return { rol: '', emp: '', periodo: '', desc: '' }; };
+function addExp() { data.exp.push(expProto()); saveLS(); renderExp(); }
+function renderExp() {
+  $('exp-list').innerHTML = data.exp.map(function (x, i) {
+    return '<div class="item"><div class="item-top"><b>' + esc(x.rol || 'Nueva experiencia') + '</b><button onclick="delExp(' + i + ')" title="Eliminar"><i class="fas fa-trash"></i></button></div>' +
+      '<div class="row2"><input placeholder="Rol / cargo" value="' + esc(x.rol) + '" oninput="data.exp[' + i + '].rol=this.value;saveLS();renderExpName(' + i + ');render()">' +
+      '<input placeholder="Empresa" value="' + esc(x.emp) + '" oninput="data.exp[' + i + '].emp=this.value;saveLS();render()"></div>' +
+      '<input style="margin-bottom:.35rem" placeholder="Periodo (2024 — Presente)" value="' + esc(x.periodo) + '" oninput="data.exp[' + i + '].periodo=this.value;saveLS();render()">' +
+      '<div class="field-ai"><textarea style="min-height:44px" placeholder="Descripción y logros" oninput="data.exp[' + i + '].desc=this.value;saveLS();render()">' + esc(x.desc) + '</textarea>' +
+      '<button class="btn ai mini" onclick="aiExp(' + i + ')" title="Mejorar con IA"><i class="fas fa-wand-magic-sparkles"></i></button></div>' +
+    '</div>';
+  }).join('');
+}
+function renderExpName(i) { var b = $('exp-list').querySelectorAll('.item-top b')[i]; if (b) b.textContent = data.exp[i].rol || 'Nueva experiencia'; }
+function delExp(i) { data.exp.splice(i, 1); saveLS(); renderExp(); render(); }
+
+function addEdu() { data.edu.push({ titulo: '', inst: '', periodo: '' }); saveLS(); renderEdu(); }
+function renderEdu() {
+  $('edu-list').innerHTML = data.edu.map(function (x, i) {
+    return '<div class="item"><div class="item-top"><b>' + esc(x.titulo || 'Nueva educación') + '</b><button onclick="delEdu(' + i + ')"><i class="fas fa-trash"></i></button></div>' +
+      '<input style="margin-bottom:.35rem" placeholder="Título / grado" value="' + esc(x.titulo) + '" oninput="data.edu[' + i + '].titulo=this.value;saveLS();render()">' +
+      '<div class="row2"><input placeholder="Institución" value="' + esc(x.inst) + '" oninput="data.edu[' + i + '].inst=this.value;saveLS();render()">' +
+      '<input placeholder="Periodo" value="' + esc(x.periodo) + '" oninput="data.edu[' + i + '].periodo=this.value;saveLS();render()"></div></div>';
+  }).join('');
+}
+function delEdu(i) { data.edu.splice(i, 1); saveLS(); renderEdu(); render(); }
+
+function addLang() { data.lang.push({ nombre: '', nivel: 'Nativo' }); saveLS(); renderLang(); }
+function renderLang() {
+  $('lang-list').innerHTML = data.lang.map(function (l, i) {
+    return '<div class="item"><div class="item-top"><b>' + esc(l.nombre || 'Nuevo idioma') + '</b><button onclick="delLang(' + i + ')"><i class="fas fa-trash"></i></button></div>' +
+      '<div class="row2"><input placeholder="Idioma" value="' + esc(l.nombre) + '" oninput="data.lang[' + i + '].nombre=this.value;saveLS();render()">' +
+      '<select onchange="data.lang[' + i + '].nivel=this.value;saveLS();render()">' +
+        ['Nativo','Fluido','Avanzado','Intermedio','Básico'].map(function (n) { return '<option' + (l.nivel === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
+      '</select></div></div>';
+  }).join('');
+}
+function delLang(i) { data.lang.splice(i, 1); saveLS(); renderLang(); render(); }
+
+function setTpl(t) { data.tpl = t; saveLS(); $('tpl-' + t).classList.add('on'); $('tpl-' + (t === 'minimal' ? 'clasico' : 'minimal')).classList.remove('on'); render(); }
+function setColor(el) {
+  data.color = el.getAttribute('data-c'); saveLS();
+  var c = $('color-pick').querySelectorAll('.sw');
+  for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', c[i] === el);
+  render();
+}
+
+var statusT = null;
+function status(m, ms) {
+  var el = $('status');
+  el.innerHTML = m;
+  clearTimeout(statusT);
+  if (ms) statusT = setTimeout(function () { el.innerHTML = ''; }, ms);
+}
+
+function aiHeaders() {
+  var h = { 'Content-Type': 'application/json' };
+  if (window.CodeHubAuth) {
+    var s = window.CodeHubAuth.getSession();
+    if (s && s.token) h['Authorization'] = 'Bearer ' + s.token;
+  }
+  return h;
+}
+function aiCall(prompt) {
+  return fetch(BACKEND_URL + '/api/chat', {
+    method: 'POST', headers: aiHeaders(),
+    body: JSON.stringify({ message: prompt.slice(0, 1000), sessionId: 'cvgen', memory: false })
+  }).then(function (r) {
+    if (r.status === 401) throw new Error('login');
+    if (!r.ok) throw new Error('http' + r.status);
+    return r.json();
+  }).then(function (d) { return d && d.reply ? d.reply.trim() : ''; });
+}
+
+function busy(btn, on) {
+  if (!btn) return;
+  if (on) { btn.dataset.old = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="loading-spin"></span>'; }
+  else { btn.disabled = false; btn.innerHTML = btn.dataset.old || ''; }
+}
+
+function aiSobre() {
+  var btn = $('btn-ai-sobre');
+  if (!window.CodeHubAuth || !CodeHubAuth.isLogged()) { status('🔐 Inicia sesión para usar la IA <a href="javascript:" onclick="CodeHubAuth.openLogin(\'login\')">aquí</a>'); return; }
+  var base = 'Crea un párrafo "Sobre mí" profesional para un CV (máximo 120 palabras, primera persona, español neutro, sin markdown ni títulos).';
+  var ctx = ' Persona: ' + (data.nombre || 'un profesional') + '. Puesto: ' + (data.rol || 'no indicado') + '.';
+  if (data.skills.length) ctx += ' Habilidades: ' + data.skills.join(', ') + '.';
+  if (data.sobre) ctx += ' Texto actual del usuario (mejóralo sin inventar datos): "' + data.sobre.slice(0, 400) + '"';
+  else ctx += ' Genera texto genérico pero atractivo y sin inventar empresas ni logros específicos.';
+  busy(btn, true); status('✨ Pensando…');
+  aiCall(base + ctx).then(function (t) {
+    if (t) { data.sobre = t; $('f-sobre').value = t; saveLS(); render(); status('✨ Listo', 2500); }
+    else status('⚠️ Sin respuesta de la IA');
+  }).catch(function (err) {
+    status(err.message === 'login' ? '🔐 Sesión expirada — recarga e inicia sesión.' : '⚠️ No se pudo contactar la IA. ¿Estás en línea?');
+  }).then(function () { busy(btn, false); });
+}
+
+function aiExp(i) {
+  var x = data.exp[i];
+  if (!window.CodeHubAuth || !CodeHubAuth.isLogged()) { status('🔐 Inicia sesión para usar la IA'); return; }
+  var base = 'Mejora esta descripción de experiencia laboral para un CV (en español neutro, primera persona, máximo 60 palabras, logros medibles, sin markdown):\n\n';
+  var text = (x.rol || '') + (x.emp ? ' en ' + x.emp : '') + (x.desc ? '\n' + x.desc : '\n(sin descripción previa — crea una genérica)');
+  var rows = $('exp-list').querySelectorAll('.item');
+  if (rows[i]) busy(rows[i].querySelector('.btn.ai'), true);
+  status('✨ Mejorando experiencia…');
+  aiCall(base + text).then(function (t) {
+    if (t) { x.desc = t; renderExp(); status('✨ Listo', 2500); }
+    else status('⚠️ Sin respuesta');
+  }).catch(function () { status('⚠️ Error al contactar la IA'); }).then(function () {
+    if (rows[i]) busy(rows[i].querySelector('.btn.ai'), false);
+  });
+}
+
+function exportPDF() {
+  var btn = document.querySelector('.cv-toolbar .btn.primary');
+  var node = $('cv-preview').firstElementChild;
+  if (!node) return;
+  busy(btn, true); status('⏳ Generando PDF…');
+  html2canvas(node, { scale: 2, backgroundColor: '#ffffff', logging: false })
+    .then(function (canvas) {
+      var img = canvas.toDataURL('image/jpeg', 0.95);
+      var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      var w = pdf.internal.pageSize.getWidth();
+      var h = (canvas.height * w) / canvas.width;
+      var ph = pdf.internal.pageSize.getHeight();
+      var y = 0;
+      while (y < h) { if (y > 0) pdf.addPage(); pdf.addImage(img, 'JPEG', 0, -y, w, h); y += ph; }
+      pdf.save((data.nombre || 'CV') + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+      status('✅ PDF descargado', 2500);
+    })
+    .catch(function () { status('❌ Error — usa Imprimir → Guardar como PDF'); })
+    .then(function () { busy(btn, false); });
+}
+
+function saveData() {
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mi-cv.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  status('💾 JSON exportado', 2200);
+}
+function importJSON(inp) {
+  var f = inp.files && inp.files[0];
+  if (!f) return;
+  var rd = new FileReader();
+  rd.onload = function () {
+    try {
+      var j = JSON.parse(rd.result);
+      if (typeof j === 'object') {
+        data = Object.assign(JSON.parse(JSON.stringify(def)), j);
+        saveLS(); fillForm(); status('✅ Importado', 2200);
+      }
+    } catch (e) { status('⚠️ JSON inválido'); }
+    inp.value = '';
+  };
+  rd.readAsText(f);
+}
+function resetData() {
+  if (!confirm('¿Borrar todos los datos y empezar de cero?')) return;
+  data = JSON.parse(JSON.stringify(def));
+  localStorage.removeItem(LS_KEY);
+  fillForm(); status('🧹 Reiniciado', 1800);
+}
+
+fillForm();
+bindForm();
+$('f-skill-in').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } });
+addExp(); renderExp();
+</script>
+<footer style="text-align:center;padding:1.5rem 1rem;color:var(--muted);font-size:.75rem;font-family:ui-monospace,Menlo,Consolas,monospace">
+  <a href="/" style="color:var(--accent);text-decoration:none">&lt;Wilson.E/&gt;</a> · Generador de CV con IA · <a href="/privacy" style="color:var(--accent);text-decoration:none">Privacidad</a> · <a href="/terms" style="color:var(--accent);text-decoration:none">Términos</a>
+</footer>
+<script src="../js/auth.js?v=20260808j" defer></script>
+<script src="../js/consent-banner.js?v=20260810a" defer></script>
+<script src="../js/connection-alert.js?v=20260810a" defer></script>
+</body>
+</html>
