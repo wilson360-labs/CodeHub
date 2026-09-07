@@ -530,6 +530,153 @@ async function loadOpenSourceCatalog() {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Catálogo 2.0 — Búsqueda global, filtro por categoría y orden.
+   Con un filtro activo se ocultan las secciones por categoría y se
+   muestra un grid único de resultados (mismas tarjetas, mismo rating
+   en vivo). Con todo limpio se vuelve al catálogo agrupado.
+   Atajo: "/" enfoca la búsqueda desde cualquier parte de la página.
+   ═══════════════════════════════════════════════════════════════ */
+const OS_FILTER = { q: '', cat: 'all', sort: 'catalog' };
+
+function osResultsActive() {
+  return !!(OS_FILTER.q.trim() || OS_FILTER.cat !== 'all' || OS_FILTER.sort !== 'catalog');
+}
+
+function osFilterMatches(app) {
+  const q = OS_FILTER.q.trim().toLowerCase();
+  if (q) {
+    const hay = [app.nombre, app.categoria, app.source_repo, app.descripcion, app.packageName, app.version]
+      .filter(Boolean).join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  if (OS_FILTER.cat !== 'all' && (app.categoria || 'Utilidades') !== OS_FILTER.cat) return false;
+  return true;
+}
+
+function osSortApps(a, b) {
+  const kind = OS_FILTER.sort;
+  if (kind === 'name') return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+  if (kind === 'rating') {
+    const ra = window.__osRatings?.[a.appId]?.avg || 0;
+    const rb = window.__osRatings?.[b.appId]?.avg || 0;
+    if (rb !== ra) return rb - ra;
+    const ca = window.__osRatings?.[a.appId]?.count || 0;
+    const cb = window.__osRatings?.[b.appId]?.count || 0;
+    if (cb !== ca) return cb - ca;
+    return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+  }
+  if (kind === 'updated') return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+  return 0;
+}
+
+function osApplyFilter(force) {
+  const wrap = document.getElementById('os-results-wrap');
+  if (!wrap) return;
+  const active = osResultsActive();
+
+  document.querySelectorAll('.os-category').forEach(sec => {
+    if (osIsCatalogSection(sec)) sec.style.display = active ? 'none' : '';
+  });
+  ['my-apps-section', 'device-apps-section'].forEach(id => {
+    const sec = document.getElementById(id);
+    if (sec) sec.style.display = active ? 'none' : '';
+  });
+  wrap.hidden = !active;
+  if (!active) return;
+
+  const list = (window.__osCatalog || []).filter(osFilterMatches).slice().sort(osSortApps);
+
+  const info = document.getElementById('os-results-info');
+  if (info) {
+    let t = `${list.length} ${list.length === 1 ? 'app' : 'apps'}`;
+    if (OS_FILTER.q.trim()) t += ` para "${OS_FILTER.q.trim()}"`;
+    if (OS_FILTER.cat !== 'all') t += ` en ${OS_FILTER.cat}`;
+    info.textContent = t;
+  }
+  const grid = document.getElementById('os-results-grid');
+  if (grid) {
+    grid.innerHTML = list.length
+      ? list.map(a => buildOSCard(a, window.__osRatings?.[a.appId])).join('')
+      : '';
+  }
+  const empty = document.getElementById('os-results-empty');
+  if (empty) empty.hidden = list.length > 0;
+  const clear = document.getElementById('os-search-clear');
+  if (clear) clear.hidden = !OS_FILTER.q.trim();
+}
+
+function osUpdateChips() {
+  const wrap = document.getElementById('os-chips');
+  if (!wrap) return;
+  const counts = {};
+  (window.__osCatalog || []).forEach(app => {
+    const cat = app.categoria || 'Utilidades';
+    counts[cat] = (counts[cat] || 0) + 1;
+  });
+  const cats = OS_CATEGORIES.map(c => c.categoria)
+    .concat(Object.keys(counts).filter(c => !OS_CATEGORIES.some(o => o.categoria === c)));
+  const total = (window.__osCatalog || []).length;
+
+  let html = `<button type="button" class="os-chip${OS_FILTER.cat === 'all' ? ' on' : ''}" data-cat="all"><i class="fa-solid fa-border-all"></i> Todo <span class="os-chip-count">${total}</span></button>`;
+  cats.forEach(cat => {
+    const emoji = CAT_EMOJI[cat] || '📦';
+    html += `<button type="button" class="os-chip${OS_FILTER.cat === cat ? ' on' : ''}" data-cat="${esc(cat)}">${emoji} ${esc(cat)} <span class="os-chip-count">${counts[cat] || 0}</span></button>`;
+  });
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.os-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      OS_FILTER.cat = btn.dataset.cat;
+      osUpdateChips();
+      osApplyFilter();
+    });
+  });
+}
+
+function osClearFilters() {
+  OS_FILTER.q = ''; OS_FILTER.cat = 'all'; OS_FILTER.sort = 'catalog';
+  const input = document.getElementById('os-search-input');
+  const sort = document.getElementById('os-sort-select');
+  if (input) input.value = '';
+  if (sort) sort.value = 'catalog';
+  osUpdateChips();
+  osApplyFilter();
+}
+
+function osBindSearchTools() {
+  const input = document.getElementById('os-search-input');
+  const clear = document.getElementById('os-search-clear');
+  const sort = document.getElementById('os-sort-select');
+  const resultsClear = document.getElementById('os-results-clear');
+  const emptyClear = document.querySelector('.os-results-empty [data-clear]');
+  if (!input) return;
+  let timer = null;
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { OS_FILTER.q = input.value; osApplyFilter(); }, 200);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { input.value = ''; OS_FILTER.q = ''; osApplyFilter(); input.blur(); }
+  });
+  if (clear) clear.addEventListener('click', () => { input.value = ''; OS_FILTER.q = ''; osApplyFilter(); input.focus(); });
+  if (sort) sort.addEventListener('change', () => { OS_FILTER.sort = sort.value; osApplyFilter(); });
+  if (resultsClear) resultsClear.addEventListener('click', osClearFilters);
+  if (emptyClear) emptyClear.addEventListener('click', osClearFilters);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey &&
+        !/^(input|textarea|select)$/i.test((document.activeElement && document.activeElement.tagName) || '')) {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+}
+
+osBindSearchTools();
+osUpdateChips();
+osApplyFilter();
+document.addEventListener('os:catalog-loaded', () => { osUpdateChips(); osApplyFilter(); });
+
 // ── TIEMPO REAL ─────────────────────────────────────────
 // El backend emite 'apps_changed' (total y apps open source) cada vez que
 // el admin crea, edita, borra o siembra apps. Con el contador se actualiza

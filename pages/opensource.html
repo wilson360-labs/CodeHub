@@ -55,7 +55,7 @@
   <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
 <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260831b" crossorigin="anonymous">
   <link rel="stylesheet" href="../css/native-feel.css?v=20260905c">
-  <link rel="stylesheet" href="../css/opensource.css?v=20260907b">
+  <link rel="stylesheet" href="../css/opensource.css?v=20260907c">
 <link rel="stylesheet" href="../css/site-tour.css?v=20260728a">
   <link rel="stylesheet" href="../css/viewport-guard.css?v=20260906a">
 </head>
@@ -79,7 +79,40 @@
 
 <div class="os-intro">
   <p>La descarga de cada app enlaza directamente a su página oficial de <strong>GitHub Releases</strong> — el mismo repositorio que puedes revisar antes de instalar. Si una app te sirve, considera darle una estrella o aportar al proyecto: la mantienen desarrolladores independientes, no una empresa.</p>
-  <p>CodeHub no aloja APKs ni “mods”. Si un enlace no coincide con el repositorio que ves en GitHub, no lo instales. La categoría de VPN incluye clientes de código abierto; no vendemos VPN ni prometemos anonimato. Una guía más larga está en <a href="/guias#android-foss">Guías: cómo elegir apps FOSS</a>.</p>
+  <p>CodeHub no aloja APKs ni "mods". Si un enlace no coincide con el repositorio que ves en GitHub, no lo instales. La categoría de VPN incluye clientes de código abierto; no vendemos VPN ni prometemos anonimato. Una guía más larga está en <a href="/guias#android-foss">Guías: cómo elegir apps FOSS</a>.</p>
+</div>
+
+<div class="os-tools" id="os-tools" role="search">
+  <div class="os-search">
+    <i class="fa-solid fa-magnifying-glass os-search-icon"></i>
+    <input id="os-search-input" type="search" placeholder="Buscar apps por nombre, categoría o repo…" autocomplete="off" aria-label="Buscar aplicaciones del catálogo">
+    <button id="os-search-clear" class="os-search-clear" aria-label="Borrar búsqueda" hidden><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="os-filter-bar">
+    <div class="os-chips" id="os-chips" aria-label="Filtrar por categoría"></div>
+    <label class="os-sort">
+      <i class="fa-solid fa-arrow-down-wide-short"></i>
+      <select id="os-sort-select" aria-label="Ordenar resultados">
+        <option value="catalog">Orden del catálogo</option>
+        <option value="rating">Mejor valoradas</option>
+        <option value="name">Nombre A–Z</option>
+        <option value="updated">Actualizado recientemente</option>
+      </select>
+    </label>
+  </div>
+</div>
+
+<div class="os-results-wrap" id="os-results-wrap" hidden>
+  <div class="os-results-bar">
+    <span id="os-results-info"></span>
+    <button id="os-results-clear" class="os-results-clear" type="button"><i class="fa-solid fa-filter-circle-xmark"></i> Limpiar filtros</button>
+  </div>
+  <div class="app-grid" id="os-results-grid"></div>
+  <div class="os-results-empty" id="os-results-empty" hidden>
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <p>No encontramos apps para este filtro.</p>
+    <button class="os-results-clear" type="button" data-clear>Mostrar todo el catálogo</button>
+  </div>
 </div>
 
 <button class="we-trigger" id="we-trigger" type="button" aria-haspopup="dialog" aria-controls="we-drawer" aria-expanded="false">
@@ -233,7 +266,7 @@
 </button>
 
 <script src="../js/haptics.js?v=20260905c" defer></script>
-<script src="../js/opensource.js?v=20260907b"></script>
+<script src="../js/opensource.js?v=20260907c"></script>
 <script src="../js/windows-enhance.js"></script>
 <script src="../js/site-tour.js?v=20260826a"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
