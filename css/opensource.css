@@ -1465,6 +1465,7 @@ footer a:hover { text-decoration: underline; }
   border: none; background: rgba(255,255,255,.06); color: var(--muted);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
+.os-search-clear[hidden] { display: none; }
 .os-search-clear:hover { color: var(--text); background: rgba(255,255,255,.1); }
 
 .os-filter-bar { display: flex; align-items: center; gap: .9rem; margin-top: .75rem; flex-wrap: wrap; }
