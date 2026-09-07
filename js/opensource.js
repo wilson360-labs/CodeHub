@@ -145,6 +145,11 @@ function closeHowToDialog(appId) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    const detail = document.getElementById('app-detail-overlay');
+    if (detail && !detail.hidden) {
+      closeAppDetail();
+      return;
+    }
     document.querySelectorAll('.how-to-modal.active').forEach(m => m.classList.remove('active'));
   }
 });
@@ -676,6 +681,166 @@ osBindSearchTools();
 osUpdateChips();
 osApplyFilter();
 document.addEventListener('os:catalog-loaded', () => { osUpdateChips(); osApplyFilter(); });
+
+/* ═══════════════════════════════════════════════════════════════
+   Catálogo 2.0 — Modal de detalle de app (datos que el backend ya
+   entrega: changelog, tutorial_url, plugin_enlace, packageName…).
+   Clic en una tarjeta abre el detalle; los elementos accionables
+   (descargar, favorito, cómo usar, estrellas, copiar) no lo hacen.
+   ═══════════════════════════════════════════════════════════════ */
+const OS_ADVANCED_APPS = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly', 'os-shizuku'];
+
+function renderAppChangelog(text) {
+  const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return '<p>Sin notas de cambio para esta versión.</p>';
+  return lines.map(l => /^[•\-\*\d\.]\s?/.test(l) || /^\d+\.\s/.test(l)
+    ? `<li>${esc(l.replace(/^[•\-\*\d\.]\s?/, ''))}</li>`
+    : `<p>${esc(l)}</p>`).join('');
+}
+
+function renderAppDetail(app) {
+  const body = document.getElementById('app-detail-body');
+  if (!body) return;
+  const emoji = CAT_EMOJI[app.categoria] || '📦';
+  const img = getOptimizedImageUrl(app.imagen || '', 128, 128);
+  const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
+  const updated = timeAgo(app.updatedAt);
+  const rating = window.__osRatings?.[app.appId] || {};
+  const avg = rating.avg || 0;
+  const count = rating.count || 0;
+  const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
+  const enlace = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
+  const dlUrl = enlace ? `${BACKEND}/api/dl/${encodeURIComponent(app.appId)}` : null;
+  const pluginUrl = convertToDirectLink(app.plugin_enlace && app.plugin_enlace !== '#' ? app.plugin_enlace : null);
+  const tutorialUrl = app.tutorial_url && app.tutorial_url !== '#' ? app.tutorial_url : null;
+  const advanced = OS_ADVANCED_APPS.includes(app.appId);
+  const isFav = MyApps.has(app.appId);
+  const changelog = app.changelog && String(app.changelog).trim();
+
+  const badges = [`<span>✅ Open Source</span>`]
+    .concat(version ? [`<span>Versión ${esc(version)}</span>`] : [])
+    .concat(app.verified ? [`<span>Verificada</span>`] : [])
+    .join('');
+
+  const starsHtml = [1, 2, 3, 4, 5].map(n =>
+    `<i class="fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}" data-star="${n}" onclick="OSRatings.submit('${esc(app.appId)}', ${n}, '${esc(app.nombre)}')"></i>`
+  ).join('');
+
+  const echoRaw = app.appId === 'os-echo-nightly' ? `
+    <div class="app-detail-block">
+      <div class="app-detail-block-h"><i class="fa-solid fa-puzzle-piece"></i> Extensiones</div>
+      <div class="os-echo-raw" style="margin-top:.3rem">
+        <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyEchoExtensionUrl()">Copiar URL de extensiones</button>
+      </div>
+    </div>` : '';
+
+  const metaItems = [];
+  if (repoUrl) metaItems.push(`<a href="${repoUrl}" target="_blank" rel="noopener" data-haptic="tab"><i class="fa-brands fa-github"></i> Repositorio</a>`);
+  if (app.source_repo) metaItems.push(`<button onclick="copyDetailText('${esc(app.source_repo)}','repo')" data-haptic="tab"><i class="fa-solid fa-tag"></i> ${esc(app.source_repo)}</button>`);
+  if (app.packageName) metaItems.push(`<button onclick="copyDetailText('${esc(app.packageName)}','packageName')" data-haptic="tab"><i class="fa-solid fa-box"></i> ${esc(app.packageName)}</button>`);
+  if (pluginUrl) metaItems.push(`<a href="${pluginUrl}" target="_blank" rel="noopener" data-haptic="tab"><i class="fa-solid fa-plug"></i> Plugin</a>`);
+  if (tutorialUrl) metaItems.push(`<a href="${tutorialUrl}" target="_blank" rel="noopener" data-haptic="tab"><i class="fa-solid fa-book"></i> Tutorial</a>`);
+
+  const howToBtn = advanced ? `
+    <button class="how-to-btn" data-haptic="game" onclick="openHowToDialog('${esc(app.appId)}')">
+      <i class="fas fa-book"></i> ¿Cómo usar?
+    </button>` : '';
+
+  const dlBtn = dlUrl
+    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
+    : `<a class="dl-btn dl-primary" data-haptic="tab" href="${(repoUrl || '') + '/releases'}" target="_blank" rel="noopener" ${repoUrl ? '' : 'aria-disabled="true"'}><i class="fas fa-download"></i> Ver en Releases</a>`;
+
+  body.innerHTML = `
+    <div class="app-detail-head">
+      <img class="app-detail-img" src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=app-detail-img-fallback>${emoji}</div>'">
+      <div class="app-detail-titlewrap">
+        <div class="app-detail-cat">${emoji} ${esc(app.categoria || 'Utilidades')}</div>
+        <div class="app-detail-title" id="app-detail-title">${esc(app.nombre)}</div>
+        <div class="app-detail-badges">${badges}</div>
+      </div>
+    </div>
+    <div class="app-detail-score">
+      <div class="os-rating" data-rating-for="${esc(app.appId)}" title="${count} voto${count === 1 ? '' : 's'}">
+        <span class="os-rating-stars">${starsHtml}</span>
+        <span class="os-rating-meta">${avg > 0 ? avg.toFixed(1) : '—'} <span class="os-rating-count">(${count})</span></span>
+      </div>
+      ${updated ? `<span class="os-updated-tag" style="margin:0"><i class="fas fa-clock-rotate-left"></i> ${updated}</span>` : ''}
+    </div>
+    <p class="app-detail-desc">${esc(app.descripcion || 'Sin descripción.')}</p>
+    ${changelog ? `
+    <div class="app-detail-block" id="app-detail-changelog-block">
+      <div class="app-detail-block-h"><i class="fa-solid fa-clock-rotate-left"></i> Novedades</div>
+      <div class="app-detail-changelog capped" id="app-detail-changelog">${renderAppChangelog(changelog)}</div>
+      <button class="app-detail-more" id="app-detail-changelog-more" type="button" onclick="osToggleChangelog(this)">Ver todo</button>
+    </div>` : ''}
+    ${echoRaw}
+    ${metaItems.length ? `<div class="app-detail-meta">${metaItems.join('')}</div>` : ''}
+    <div class="app-detail-actions">
+      ${howToBtn}
+      ${dlBtn}
+      <button class="os-fav-btn ${isFav ? 'active' : ''}" data-haptic="tab" onclick="MyApps.toggle('${esc(app.appId)}')" title="${isFav ? 'Quitar de Mis apps' : 'Guardar en Mis apps'}" style="position:static">
+        <i class="fas fa-heart"></i>
+      </button>
+    </div>`;
+}
+
+function openAppDetail(appId) {
+  const overlay = document.getElementById('app-detail-overlay');
+  const app = (window.__osCatalog || []).find(a => a.appId === appId);
+  if (!overlay) return;
+  if (!app) { OSToast('No encontramos el detalle de esa app', 'error'); return; }
+  renderAppDetail(app);
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  const closeBtn = document.getElementById('app-detail-close');
+  if (closeBtn) closeBtn.focus();
+}
+
+function closeAppDetail() {
+  const overlay = document.getElementById('app-detail-overlay');
+  if (!overlay) return;
+  overlay.hidden = true;
+  document.body.style.overflow = '';
+}
+
+function osToggleChangelog(btn) {
+  const block = document.getElementById('app-detail-changelog');
+  if (!block) return;
+  const capped = block.classList.toggle('capped');
+  btn.textContent = capped ? 'Ver todo' : 'Ver menos';
+}
+
+function copyDetailText(text, label) {
+  navigator.clipboard.writeText(text || '').then(() => {
+    OSToast(`✅ ${label || 'Texto'} copiado`, 'success');
+  }).catch(() => OSToast('❌ No se pudo copiar', 'error'));
+}
+
+function osBindDetailTools() {
+  const overlay = document.getElementById('app-detail-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeAppDetail(); });
+  }
+  const closeBtn = document.getElementById('app-detail-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeAppDetail);
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('#app-detail-overlay, .how-to-modal, #we-drawer, #we-backdrop')) return;
+    const card = e.target.closest('.app-card');
+    if (!card || !card.dataset.appId) return;
+    if (e.target.closest('a, button, .os-rating-stars, .os-echo-copy-btn')) return;
+    openAppDetail(card.dataset.appId);
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target && e.target.classList && e.target.classList.contains('app-card')) {
+      e.preventDefault();
+      openAppDetail(e.target.dataset.appId);
+    }
+  });
+}
+
+osBindDetailTools();
 
 // ── TIEMPO REAL ─────────────────────────────────────────
 // El backend emite 'apps_changed' (total y apps open source) cada vez que
