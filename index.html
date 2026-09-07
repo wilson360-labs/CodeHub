@@ -5208,6 +5208,14 @@ async function sendEmail(e) {
       if (d && d.ok) addMsg('ai', '✅ Guardado en tu memoria. Escribe `/memoria` para verlo actualizado.');
       else addMsg('ai', '⚠️ No se pudo guardar: ' + ((d && d.error) || 'error ' + r.status));
     } catch (e) {
+      // Offline-first: encolar y confirmar que se sincronizará solo.
+      if (window.ChQueue) {
+        try {
+          let url = cfg.url || (BACKEND_URL + '/api/wil-e/memory/note');
+          const ok = await window.ChQueue.add({ url, method: 'POST', headers: h, body: JSON.stringify({ text, title }), kind: 'mem-note' });
+          if (ok) return addMsg('ai', '📴 Sin conexión — tu recuerdo quedó guardado y se sincronizará cuando vuelvas.');
+        } catch (_) {}
+      }
       addMsg('ai', 'Error al guardar en memoria.');
     }
   };
@@ -5224,6 +5232,12 @@ async function sendEmail(e) {
       if (d && d.ok) addMsg('ai', '🗑️ Tu memoria de Wil.E fue borrada.');
       else addMsg('ai', '⚠️ No se pudo borrar la memoria.');
     } catch (e) {
+      if (window.ChQueue) {
+        try {
+          const ok = await window.ChQueue.add({ url: cfg.clearUrl || (BACKEND_URL + '/api/wil-e/memory'), method: 'DELETE', headers: h, body: '', kind: 'mem-clear' });
+          if (ok) return addMsg('ai', '📴 Sin conexión — el borrado de tu memoria se sincronizará cuando vuelvas.');
+        } catch (_) {}
+      }
       addMsg('ai', 'Error al borrar la memoria.');
     }
   };
@@ -5261,6 +5275,12 @@ async function sendEmail(e) {
       if (d && d.ok) wilMemLoadList();
       else addMsg('ai', '⚠️ No se pudo borrar el recuerdo.');
     } catch (e) {
+      if (window.ChQueue) {
+        try {
+          const ok = await window.ChQueue.add({ url: (cfg.delUrl || (BACKEND_URL + '/api/wil-e/memory/')) + encodeURIComponent(key), method: 'DELETE', headers: h, body: '', kind: 'mem-del' });
+          if (ok) { wilMemLoadList(); return addMsg('ai', '📴 Sin conexión — el borrado se sincronizará cuando vuelvas.'); }
+        } catch (_) {}
+      }
       addMsg('ai', 'Error al borrar el recuerdo.');
     }
   };
@@ -7998,6 +8018,7 @@ function setAIMood(btn) {
 <script src="js/sys-metrics.js?v=20260905b" defer></script>
 <script src="js/security-scan.js?v=20260905b" defer></script>
 <script src="js/lazy-features.js?v=20260906b" defer></script>
+  <script src="js/offline-queue.js?v=20260907a" defer></script>
 <script src="widgets/weather/weather-widget.js?v=20260901b" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->

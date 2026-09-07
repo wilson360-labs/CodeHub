@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.86';
+const VERSION = 'codehub-v6.87';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -71,6 +71,7 @@ const PRECACHE = [
   '/changelog.json',
   '/js/site-tour.js',
   '/js/opensource.js',
+  '/js/offline-queue.js',
   '/js/consent-banner.js',
   '/js/connection-alert.js',
   '/js/notifications.js',
@@ -552,6 +553,11 @@ function syncCheckWeather() {
 self.addEventListener('sync', e => {
   if (e.tag === SYNC_TAG) {
     e.waitUntil(Promise.allSettled([syncCheckReleases(), syncCheckWeather()]));
+    // Avisar a las páginas abiertas para que vacíen la cola de escrituras
+    // offline (ratings, memoria de Wil.E) recién recuperada la conexión.
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      clients.forEach(c => c.postMessage({ type: 'CH_QUEUE_FLUSH' }));
+    }).catch(() => {});
   }
 });
 

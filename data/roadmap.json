@@ -17,7 +17,7 @@
       "desc": { "es": "Sincronización automática y soporte completo sin conexión en móviles y escritorio.", "en": "Automatic sync and full offline support on mobile and desktop." },
       "status": { "es": "En prueba", "en": "Testing" },
       "statusClass": "wip",
-      "progress": 80
+      "progress": 90
     },
     {
       "id": 3,

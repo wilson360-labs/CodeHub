@@ -236,11 +236,18 @@ const OSRatings = (() => {
 
   async function submit(appId, stars, appName) {
     if (voted[appId]) return; // ya votó desde este dispositivo
+    const payload = { appId, appName, stars };
+    // Sin conexión: encolar el voto y avisar — se reenvía solo al volver.
+    if (!navigator.onLine) {
+      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: 'rating' });
+      if (ok && window.ChQueue.toast) window.ChQueue.toast('📴 Sin conexión — tu voto se enviará cuando vuelvas');
+      return;
+    }
     try {
       const res = await fetch(`${BACKEND}/api/ratings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId, appName, stars })
+        body: JSON.stringify(payload)
       });
       const d = await res.json();
       if (res.ok) {
@@ -251,7 +258,12 @@ const OSRatings = (() => {
         voted[appId] = true; saveVoted();
         updateCard(appId, d.avg, d.count);
       }
-    } catch (e) { console.warn('rating error:', e.message); }
+    } catch (e) {
+      console.warn('rating error:', e.message);
+      // Fallo de red: encolar para reenvío automático (offline-first)
+      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: 'rating' });
+      if (ok && window.ChQueue.toast) window.ChQueue.toast('📴 Sin conexión — tu voto se enviará cuando vuelvas');
+    }
   }
 
   function updateCard(appId, avg, count) {
