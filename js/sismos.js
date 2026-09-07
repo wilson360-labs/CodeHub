@@ -24,14 +24,103 @@
       : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  function ensureLeaflet() {
-    // Si el motor CHGeo está disponible, delegamos su singleton
-    // (ya revisó tags de weather-map, su propio data-chgeo, etc.)
-    if (window.CHGeo && CHGeo.ensureLeaflet) return CHGeo.ensureLeaflet();
-    // Fallback local (sin motor): patrón legacy con data-sismos.
+  // Cargadores locales de Leaflet (vendor primero, CDN de respaldo).
+  // Se usan cuando CHGeo aún no terminó de cargar o no existe.
+  var LEAFLET_CSS   = 'js/vendor/leaflet/leaflet.css';
+  var LEAFLET_JS    = 'js/vendor/leaflet/leaflet.js';
+  var LEAFLET_CSS_B = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  var LEAFLET_JS_B  = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+
+  function waitForLeaflet(resolve, reject, ms) {
+    var start = Date.now();
+    var t = setInterval(function () {
+      if (window.L && window.L.map) { clearInterval(t); resolve(window.L); }
+      else if (Date.now() - start > ms) { clearInterval(t); reject(new Error('leaflet timeout')); }
+    }, 150);
+  }
+
+  // Carga local el JS (CSS se inyecta en paralelo) sin duplicar si ya lo
+  // trajo weather-map o CHGeo; con fallback a CDN si falla la descarga.
+  function loadLocalLeaflet() {
     return new Promise(function (resolve, reject) {
-      resolve(window.L && window.L.map ? window.L : null);
-      // Si no hay L, el timeout de buildMap lo maneja igual que antes.
+      if (!document.querySelector('link[data-wx-leaflet-css], link[data-chgeo-leaflet-css], link[data-sismos-leaflet-css]')) {
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = LEAFLET_CSS;
+        l.setAttribute('data-sismos-leaflet-css', '1');
+        l.onerror = function () { l.href = LEAFLET_CSS_B; };
+        document.head.appendChild(l);
+      }
+      // Ya hay un script de Leaflet (en curso o cargado): esperar a que L exista.
+      if (document.querySelector('script[data-wx-leaflet-js], script[data-chgeo-leaflet-js], script[data-sismos-leaflet-js]')) {
+        waitForLeaflet(resolve, reject, 15000);
+        return;
+      }
+      var s = document.createElement('script');
+      s.src = LEAFLET_JS;
+      s.setAttribute('data-sismos-leaflet-js', '1');
+      s.async = true;
+      var resolved = false;
+      s.onload = function () {
+        if (resolved) return; resolved = true;
+        if (window.L && window.L.map) resolve(window.L);
+        else waitForLeaflet(resolve, reject, 3000);
+      };
+      s.onerror = function () {
+        if (resolved) return; resolved = true;
+        try { document.body.removeChild(s); } catch (e) {}
+        var s2 = document.createElement('script');
+        s2.src = LEAFLET_JS_B;
+        s2.setAttribute('data-sismos-leaflet-js', '1');
+        s2.async = true;
+        s2.onload = function () {
+          if (window.L && window.L.map) resolve(window.L);
+          else waitForLeaflet(resolve, reject, 3000);
+        };
+        s2.onerror = function () { reject(new Error('leaflet load failed')); };
+        document.body.appendChild(s2);
+      };
+      document.body.appendChild(s);
+    });
+  }
+
+  // Leaflet puede llegar por 3 caminos distintos según el orden de carga
+  // async de lazy-features (weather-map, ch-geo, sismos). Este ensure es
+  // robusto a ese orden: 1) delega en CHGeo si ya está listo, 2) usa L si
+  // ya existe, 3) espera 2.5s a CHGeo (suele tardar una fracción), y si no
+  // aparece, carga Leaflet localmente con fallback CDN. Antes esto podía
+  // fallar dejando el mapa con "No se pudo cargar el mapa de sismos".
+  function ensureLeaflet() {
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () { reject(new Error('leaflet timeout')); }, 15000);
+      var settled = false;
+      function ok() {
+        if (settled) return; settled = true; clearTimeout(timer);
+        resolve((window.L && window.L.map) ? window.L : null);
+      }
+      function fail(msg) {
+        if (settled) return; settled = true; clearTimeout(timer);
+        reject(new Error(msg || 'leaflet load failed'));
+      }
+
+      if (window.CHGeo && CHGeo.ensureLeaflet) {
+        CHGeo.ensureLeaflet().then(ok, fail);
+        return;
+      }
+      if (window.L && window.L.map) { ok(); return; }
+
+      var waited = 0;
+      var checker = setInterval(function () {
+        waited += 200;
+        if (window.L && window.L.map) { clearInterval(checker); ok(); }
+        else if (window.CHGeo && CHGeo.ensureLeaflet) {
+          clearInterval(checker);
+          CHGeo.ensureLeaflet().then(ok, fail);
+        } else if (waited >= 2500) {
+          clearInterval(checker);
+          loadLocalLeaflet().then(ok, fail);
+        }
+      }, 200);
     });
   }
 
@@ -134,6 +223,7 @@
     }
     updateSummary();
     renderList();
+    renderCarousel();
     if (_map) plotQuakes();
   };
 
@@ -273,10 +363,39 @@
     chip.textContent = base;
   }
 
+  // ---- Carousel deslizante sobre el mapa (estilo Weather Channel) --
+  // Refleja los mismos filtros que la lista: recorre los eventos con un
+  // gesto lateral y al tocar una tarjeta centra el mapa en ese sismo.
+  function renderCarousel() {
+    var box = document.getElementById('sismos-carousel');
+    if (!box) return;
+    if (!_map) {
+      box.innerHTML = '';
+      return;
+    }
+    var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag && matchesPlace(q); });
+    if (!filtered.length) {
+      box.innerHTML = '<div class="sismos-car-empty">Sin sismos ≥ M' + _currentMag +
+        (_placeFilter ? ' en ' + esc(_placeFilter) : '') + ' en 24 h.</div>';
+      return;
+    }
+    box.innerHTML = filtered.map(function (q) {
+      var cls = magClass(q.mag);
+      return '<button type="button" class="sismos-car-card" onclick="chSismosFocus(' + q.lat + ',' + q.lon + ',' + (+q.mag) + ')">' +
+        '<span class="sismos-car-badge ' + cls + '"><b>' + q.mag.toFixed(1) + '</b><span>MAG</span></span>' +
+        '<span class="sismos-car-main">' +
+        '<span class="sismos-car-place">' + esc(q.place || 'Lugar desconocido') + '</span>' +
+        '<span class="sismos-car-meta">' + esc(nowAge(q.time)) + (q.depth != null ? ' · ' + Math.round(q.depth) + ' km' : '') + '</span>' +
+        '</span>' +
+        '<span class="sismos-car-arrow"><i class="fas fa-angle-right"></i></span>' +
+        '</button>';
+    }).join('');
+  }
+
   // ---- Carga de datos ---------------------------------------------
   function loadSismos(force) {
     if (_loading) return;
-    if (_loaded && !force) { renderList(); updateSummary(); renderPlaces(); return; }
+    if (_loaded && !force) { renderList(); renderCarousel(); updateSummary(); renderPlaces(); return; }
     _loading = true;
     var chip = document.getElementById('sismos-count-chip');
     if (chip) chip.textContent = 'Consultando actividad sísmica…';
@@ -292,6 +411,7 @@
         _loaded = true;
         updateSummary();
         renderList();
+        renderCarousel();
         renderPlaces();
         if (_map) plotQuakes();
       })
@@ -305,12 +425,13 @@
   }
 
   // ---- Acciones públicas (usadas por el HTML inline) ---------------
-  window.chSismosSetMag = function (mag, btn) {
+window.chSismosSetMag = function (mag, btn) {
     _currentMag = mag;
     var btns = document.querySelectorAll('.sismos-mag-btn');
     for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i] === btn);
     updateSummary();
     renderList();
+    renderCarousel();
     renderPlaces();
     if (_map) plotQuakes();
   };
@@ -341,9 +462,9 @@
         L.circleMarker([_center.lat, _center.lon], {
           radius: 6, color: '#22c55e', weight: 2, fillColor: '#22c55e', fillOpacity: 0.5,
         }).addTo(_map).bindPopup('<b>Tu ubicación</b>').openPopup();
-        if (_map._sismosLegendColorChange) {}
       } else {
         buildMap();
+        renderCarousel();
       }
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-location-dot"></i> Mi zona'; }
     }, function () {
@@ -365,6 +486,7 @@
     if (!section) return;
     ensureLeaflet().then(function () {
       buildMap();
+      renderCarousel();
       loadSismos(false);
     }).catch(function () {
       var el = document.getElementById('sismos-map');

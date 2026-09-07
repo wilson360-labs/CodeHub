@@ -247,7 +247,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20260905b">
 <link rel="stylesheet" href="css/native-feel.css?v=20260905c">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20260905a">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20260906a">
 
 
 
@@ -1425,9 +1425,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
             </div>
 
-            <!-- Mapa satélite + topónimos (estilo Weather Channel) -->
-            <div id="sismos-map" class="sismos-map">
-                <div class="wx-map-loading"><div class="wx-spinner-map"></div> Cargando mapa sísmico…</div>
+            <!-- Mapa satélite + topónimos (estilo Weather Channel) con
+                 carousel deslizante de eventos superpuesto -->
+            <div class="sismos-stage">
+                <div id="sismos-map" class="sismos-map">
+                    <div class="wx-map-loading"><div class="wx-spinner-map"></div> Cargando mapa sísmico…</div>
+                </div>
+                <div id="sismos-carousel" class="sismos-carousel" aria-label="Lista deslizante de sismos (toca una tarjeta para centrar el mapa)"></div>
             </div>
 
             <!-- Lista de eventos -->

@@ -951,6 +951,67 @@ section, main, .container, .wrap, .inner, .section-wrap {
   background: #1c2430;
 }
 .sismos-map { touch-action: none; }
+.sismos-stage {
+  position: relative;
+}
+.sismos-carousel {
+  position: absolute; left: 0; right: 0; bottom: 10px;
+  z-index: 5;
+  display: flex; gap: .6rem;
+  overflow-x: auto; overflow-y: hidden;
+  padding: 0 10px 2px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.sismos-carousel::-webkit-scrollbar { display: none; }
+.sismos-car-card {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  width: min(240px, 54vw);
+  display: flex; align-items: center; gap: .55rem;
+  padding: .5rem .6rem;
+  border-radius: 12px;
+  background: rgba(10,14,20,.74);
+  border: 1px solid rgba(255,255,255,.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  font-family: inherit;
+  color: #fff;
+  text-align: left;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease;
+}
+.sismos-car-card:hover, .sismos-car-card:focus-visible {
+  border-color: rgba(34,197,94,.6);
+  background: rgba(16,22,32,.88);
+  transform: translateY(-2px);
+  outline: none;
+}
+.sismos-car-badge {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 10px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-weight: 700; line-height: 1.05; color: #fff;
+}
+.sismos-car-badge b { font-size: .95rem; }
+.sismos-car-badge span { font-size: .56rem; opacity: .8; }
+.sismos-car-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sismos-car-place {
+  font-weight: 600; font-size: .78rem; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sismos-car-meta { font-size: .7rem; color: rgba(255,255,255,.62); margin-top: .1rem; }
+.sismos-car-arrow { flex: 0 0 auto; color: rgba(255,255,255,.45); font-size: .8rem; }
+.sismos-car-empty {
+  flex: 0 0 auto;
+  color: rgba(255,255,255,.75); font-size: .78rem;
+  padding: .6rem .8rem;
+  background: rgba(10,14,20,.6);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
 .sismos-list {
   margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem;
 }
