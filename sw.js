@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.88';
+const VERSION = 'codehub-v6.89';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -178,6 +178,25 @@ function staleWhileRevalidate(request) {
   });
 }
 
+// stale-while-revalidate para la API del catálogo Open Source. Igual
+// que la anterior pero con *fallback JSON* cuando NO hay copia en
+// caché ni conexión (no devuelve undefined, que rompería respondWith).
+function staleWhileRevalidateApi(request) {
+  return caches.match(request).then(cached => {
+    const fresh = fetch(request).then(res => {
+      if (res && res.ok) {
+        const clone = res.clone();
+        caches.open(VERSION).then(c => c.put(request, clone));
+      }
+      return res;
+    }).catch(() => cached || new Response(
+      JSON.stringify({ error: 'Sin conexión', offline: true }),
+      { headers: { 'Content-Type': 'application/json' } }
+    ));
+    return cached || fresh;
+  });
+}
+
 // ── HISTORIAL DE NOTIFICACIONES (para el panel en-app) ──
 // Guarda las últimas notificaciones push recibidas (aunque la app esté
 // cerrada) para que el Centro de Notificaciones las muestre al reabrir.
@@ -251,6 +270,14 @@ self.addEventListener('fetch', e => {
   }
 
   if (url.hostname.includes("onrender.com")) {
+    // Datos del catálogo Open Source: stale-while-revalidate para que
+    // el catálogo aguante offline (sirve copia en caché y refresca en
+    // segundo plano; sin caché ni red devuelve un JSON claro).
+    if (request.method === 'GET' &&
+        (url.pathname === '/api/apps' || url.pathname === '/api/ratings')) {
+      e.respondWith(staleWhileRevalidateApi(request));
+      return;
+    }
     e.respondWith(fetch(request.clone()).catch(() =>
       new Response(JSON.stringify({ error: 'Sin conexión', offline: true }), {
         headers: { 'Content-Type': 'application/json' }

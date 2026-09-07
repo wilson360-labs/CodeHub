@@ -12,6 +12,12 @@
 
 const BACKEND = 'https://codehub-98s6.onrender.com';
 
+// ── META DESCRIPTION DINÁMICA (el número de apps lo da el runtime) ──
+function osSetCatalogMeta(n) {
+  const label = `${n} apps de código abierto para Android, verificadas contra su repositorio oficial en GitHub: música, video, VPN, productividad, lectura y más. Sin mods, sin anuncios ocultos, sin cuentas obligatorias.`;
+  document.querySelectorAll('meta[name="description"], meta[property="og:description"]').forEach(m => m.setAttribute('content', label));
+}
+
 // ── ESCAPADO PARA HTML/ATRIBUTOS ────────────────────────────
 function esc(s) {
   return String(s == null ? '' : s)
@@ -491,6 +497,7 @@ async function loadOpenSourceCatalog() {
     window.__osCatalog = osApps; // usado por DeviceApps para el escaneo de instaladas
 
     if (heroCount) heroCount.textContent = `${osApps.length} apps`;
+    osSetCatalogMeta(osApps.length);
 
     const byCategory = {};
     osApps.forEach(a => {
