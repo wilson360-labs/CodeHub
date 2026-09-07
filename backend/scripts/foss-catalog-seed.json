@@ -543,6 +543,102 @@
       "categoria": "Utilidades",
       "source_repo": "florisboard/florisboard",
       "imagen": "https://opengraph.githubassets.com/1/florisboard/florisboard"
+    },
+    {
+      "appId": "os-open-camera",
+      "nombre": "OpenCamera",
+      "descripcion": "Cámara manual para Android: control total de enfoque, ISO, exposición y modo noche sin anuncios.",
+      "categoria": "Fotografía",
+      "source_repo": "almalence/OpenCamera",
+      "imagen": "https://opengraph.githubassets.com/1/almalence/OpenCamera"
+    },
+    {
+      "appId": "os-outertune",
+      "nombre": "OuterTune",
+      "descripcion": "Reproductor de música con Material 3 y soporte de YouTube Music y archivos locales, sin anuncios.",
+      "categoria": "Música",
+      "source_repo": "OuterTune/OuterTune",
+      "imagen": "https://opengraph.githubassets.com/1/OuterTune/OuterTune"
+    },
+    {
+      "appId": "os-trackercontrol",
+      "nombre": "TrackerControl",
+      "descripcion": "Monitoriza y bloquea los rastreadores y anuncios que esconden las apps que ya tienes instaladas.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "TrackerControl/tracker-control-android",
+      "imagen": "https://opengraph.githubassets.com/1/TrackerControl/tracker-control-android"
+    },
+    {
+      "appId": "os-shadowsocks",
+      "nombre": "Shadowsocks",
+      "descripcion": "Cliente proxy cifrado open source para Android: ligero, sin anuncios y con perfiles configurables.",
+      "categoria": "VPN y Privacidad",
+      "source_repo": "shadowsocks/shadowsocks-android",
+      "imagen": "https://opengraph.githubassets.com/1/shadowsocks/shadowsocks-android"
+    },
+    {
+      "appId": "os-legado",
+      "nombre": "Legado",
+      "descripcion": "Lector de novelas y fuentes de libros open source con sincronización opcional, sin cuentas obligatorias.",
+      "categoria": "Lectura",
+      "source_repo": "gedoor/legado",
+      "imagen": "https://opengraph.githubassets.com/1/gedoor/legado"
+    },
+    {
+      "appId": "os-telegram-foss",
+      "nombre": "Telegram FOSS",
+      "descripcion": "Fork de Telegram para Android sin componentes de Google ni binarios propietarios: libre y auditable.",
+      "categoria": "Mensajería",
+      "source_repo": "Telegram-FOSS-Team/Telegram-FOSS",
+      "imagen": "https://opengraph.githubassets.com/1/Telegram-FOSS-Team/Telegram-FOSS"
+    },
+    {
+      "appId": "os-jami",
+      "nombre": "Jami",
+      "descripcion": "Mensajería y llamadas P2P cifradas de extremo a extremo, sin servidores centrales ni ids de usuario.",
+      "categoria": "Mensajería",
+      "source_repo": "savoirfairelinux/jami-client-android",
+      "imagen": "https://opengraph.githubassets.com/1/savoirfairelinux/jami-client-android"
+    },
+    {
+      "appId": "os-briar",
+      "nombre": "Briar",
+      "descripcion": "Mensajería cifrada que funciona sin internet: por Bluetooth o Wi-Fi directo, ideal para redes comunitarias.",
+      "categoria": "Mensajería",
+      "source_repo": "briar/briar",
+      "imagen": "https://opengraph.githubassets.com/1/briar/briar"
+    },
+    {
+      "appId": "os-notesnook",
+      "nombre": "Notesnook",
+      "descripcion": "Toma de notas completamente cifrada de extremo a extremo, alternativa open source a Evernote.",
+      "categoria": "Productividad",
+      "source_repo": "streetwriters/notesnook",
+      "imagen": "https://opengraph.githubassets.com/1/streetwriters/notesnook"
+    },
+    {
+      "appId": "os-simplenote",
+      "nombre": "Simplenote",
+      "descripcion": "Notas rápidas con sincronización y etiquetas, open source y sin distracciones.",
+      "categoria": "Productividad",
+      "source_repo": "automattic/simplenote-android",
+      "imagen": "https://opengraph.githubassets.com/1/automattic/simplenote-android"
+    },
+    {
+      "appId": "os-appflowy",
+      "nombre": "AppFlowy",
+      "descripcion": "Espacio de trabajo y Notion alternativo open source: documentos, wikis y tableros con tus datos en local.",
+      "categoria": "Productividad",
+      "source_repo": "AppFlowy-IO/AppFlowy",
+      "imagen": "https://opengraph.githubassets.com/1/AppFlowy-IO/AppFlowy"
+    },
+    {
+      "appId": "os-sd-maid-se",
+      "nombre": "SD Maid SE",
+      "descripcion": "Limpieza profunda de Android: cachés, archivos huérfanos y sobras de apps, open source.",
+      "categoria": "Utilidades",
+      "source_repo": "d4rken-org/sdmaid-se",
+      "imagen": "https://opengraph.githubassets.com/1/d4rken-org/sdmaid-se"
     }
   ]
 }
