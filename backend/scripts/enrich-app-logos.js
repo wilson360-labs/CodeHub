@@ -10,7 +10,7 @@
  *
  * Para cada candidata intenta en orden:
  *   1) fastlane/metadata/android/.../icon.png   (ícono real de la app)
- *   2) mipmap-*/ic_launcher.png                 (ícono de Android)
+ *   2) mipmap-{carpeta}/ic_launcher.png         (ícono de Android)
  *   3) avatar de la ORGANIZACIÓN (solo si el dueño es una org, cuyo avatar
  *      normalmente ES el logo de la app). Los repos de usuarios personales
  *      NO usan avatar para no ponerle una foto de desarrollador de logo.
