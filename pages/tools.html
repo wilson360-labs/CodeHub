@@ -29,6 +29,32 @@
       document.head.appendChild(s);
     })();
   </script>
+  <!-- Loader perezoso de CDN pesados (qrcodejs/puter/pdf.js/tesseract) — se cargan solo al usar cada tool -->
+  <script>
+    window.__chLoad = (function () {
+      var consts = {
+        qr: 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
+        puter: 'https://js.puter.com/v2/',
+        pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        tess: 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js'
+      };
+      var cache = {};
+      return function (key) {
+        var url = consts[key];
+        if (!url) return Promise.resolve();
+        if (cache[key] === 'done') return Promise.resolve();
+        if (cache[key]) return cache[key];
+        cache[key] = new Promise(function (resolve, reject) {
+          var s = document.createElement('script');
+          s.src = url; s.async = true;
+          s.onload = function () { cache[key] = 'done'; resolve(); };
+          s.onerror = function () { cache[key] = null; reject(new Error(key)); };
+          document.head.appendChild(s);
+        });
+        return cache[key];
+      };
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-3780093322926832">
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
@@ -53,12 +79,8 @@
 <meta property="og:description" content="27 herramientas web gratuitas: QR, contraseñas, clima, traductor, compresor de imágenes y más.">
 <meta property="og:image" content="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
 <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
-    <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/site-tour.css?v=20260908a">
-<script src="https://js.puter.com/v2/"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/7.0.0/tesseract.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1371,9 +1393,10 @@ function chkStr(){
 //  3. QR
 // ──────────────────────────────────
 let qrObj=null;
-function genQR(){
+async function genQR(){
   const txt=$('qt').value.trim();
   if(!txt){toast('Escribe algo');return}
+  try{ await window.__chLoad('qr'); }catch(e){ toast('Librería QR no disponible'); return; }
   const sz=+$('qs').value,col=$('qc').value,out=$('qr-out');
   out.innerHTML='';
   qrObj=new QRCode(out,{text:txt,width:sz,height:sz,colorDark:col,colorLight:'#0f0f1a',correctLevel:QRCode.CorrectLevel.H});
@@ -2108,6 +2131,7 @@ async function generateImage() {
 
     try {
       if (prov.type === 'puter') {
+        try { await window.__chLoad('puter'); } catch (e) {}
         if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) continue;
         var result = await Promise.race([
           puter.ai.txt2img(prompt, false),
@@ -3168,7 +3192,8 @@ async function rvResolve(force) {
   function pdnHandlePdf(file) {
     toast('Leyendo PDF…');
     var fr = new FileReader();
-    fr.onload = function () {
+    fr.onload = async function () {
+      try { await window.__chLoad('pdf'); } catch (e) { toast('Librería PDF no disponible'); return; }
       var pdfjs = window.pdfjsLib;
       if (!pdfjs) { toast('Librería PDF no disponible'); return; }
       pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -3284,16 +3309,18 @@ async function rvResolve(force) {
 
   /* ---- OCR ---- */
   function pdnOcrCanvas(canvas, lang, label, onProgress) {
-    if (!window.Tesseract) { toast('OCR no disponible'); return Promise.resolve(''); }
-    return Tesseract.createWorker(lang, 1)
-      .then(function (worker) {
-      return worker.recognize(canvas)
-        .then(function (res) {
-          var text = (res && res.data && res.data.text) || '';
-          return worker.terminate().then(function () { return text; });
-        })
-        .catch(function (e) {
-          return worker.terminate().then(function () { throw e; });
+    return window.__chLoad('tess').then(function () {
+      if (!window.Tesseract) { toast('OCR no disponible'); return Promise.resolve(''); }
+      return Tesseract.createWorker(lang, 1)
+        .then(function (worker) {
+          return worker.recognize(canvas)
+            .then(function (res) {
+              var text = (res && res.data && res.data.text) || '';
+              return worker.terminate().then(function () { return text; });
+            })
+            .catch(function (e) {
+              return worker.terminate().then(function () { throw e; });
+            });
         });
     });
   }
