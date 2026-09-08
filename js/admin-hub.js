@@ -715,6 +715,9 @@ async function ghApi(path, opts) {
 }
 
 function ghSub(id, btn) {
+  if (!btn) {
+    btn = [].find.call(document.querySelectorAll('.gh-subnav .gh-sub'), b => (b.getAttribute('onclick') || '').includes("ghSub('" + id + "'"));
+  }
   document.querySelectorAll('.gh-subnav .gh-sub').forEach(b => b.classList.toggle('active', b === btn));
   document.querySelectorAll('.gh-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('gh-panel-' + id);
@@ -722,7 +725,7 @@ function ghSub(id, btn) {
   panel.classList.add('active');
   if (id === 'overview')   loadGhOverview();
   if (id === 'commits')    loadGhCommits();
-  if (id === 'files')      loadGhFiles('');
+  if (id === 'files')      loadGhFiles(_ghPath);
   if (id === 'branches')   loadGhBranches();
   if (id === 'prs')        loadGhPulls();
   if (id === 'releases')   loadGhReleases();
@@ -884,9 +887,23 @@ async function loadGhFiles(path) {
       <button class="gh-btn" onclick="showGhNewFile()"><i class="fas fa-file-circle-plus"></i> Nuevo archivo</button>
       <span class="gh-mono" style="margin-left:auto">${_ghBranch}</span>
     </div>
+    <div class="gh-quick" id="gh-quick"></div>
     <div class="gh-crumbs" id="gh-crumbs"></div>
     <div id="gh-file-list" style="margin-top:.5rem"><div class="gh-empty">Cargando…</div></div>
     <div id="gh-file-editor" style="margin-top:.8rem"></div>`;
+  const QUICK = [
+    { path: '',            label: '🗂️ raíz' },
+    { path: '.github/workflows', label: '⚙️ Disparos (Actions)' },
+    { path: 'backend/scripts',   label: '🧩 Scripts admin' },
+    { path: 'backend',           label: '🖥️ backend' },
+    { path: 'data',              label: '📊 data' },
+    { path: 'js',                label: '🧠 js' },
+    { path: 'css',               label: '🎨 css' },
+    { path: 'pages',             label: '📄 pages' },
+  ];
+  const q = document.getElementById('gh-quick');
+  if (q) q.innerHTML = QUICK.map(x => `
+    <button class="gh-qchip ${_ghPath === x.path ? 'on' : ''}" onclick="loadGhFiles('${x.path.replace(/'/g, "\\'")}')">${x.label}</button>`).join('');
   try {
     const data = await ghApi('/api/admin/github/contents?path=' + encodeURIComponent(_ghPath) + '&branch=' + encodeURIComponent(_ghBranch));
     const parts = _ghPath ? _ghPath.split('/') : [];
@@ -921,8 +938,10 @@ async function loadGhFiles(path) {
 function openGhFileEditor(path, sha, content, size) {
   const ed = document.getElementById('gh-file-editor');
   if (!ed) return;
+  const isWorkflow = /^\.github\/workflows\//.test(path || '');
   ed.innerHTML = `
     <div class="gh-kv"><b>${escapeHtml(path)}</b><span class="gh-mono">${size} B · sha ${sha ? sha.slice(0, 7) : 'nuevo'}</span></div>
+    ${isWorkflow ? `<div class="gh-hint"><i class="fas fa-triangle-exclamation"></i> Workflow de GitHub Actions: tras guardar, el GITHUB_TOKEN de Render debe tener permiso <b>workflow</b>, si no GitHub rechaza el commit con error 422.</div>` : ''}
     <textarea id="gh-file-text" class="gh-input" style="width:100%;min-height:280px;margin:.5rem 0;font-size:.7rem" spellcheck="false"></textarea>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <input id="gh-file-msg" class="gh-input" style="flex:2;min-width:160px" placeholder="Mensaje del commit (obligatorio)">
@@ -1184,6 +1203,7 @@ async function loadGhWorkflows() {
         </div>
         <span style="display:flex;gap:.4rem;flex-wrap:wrap">
           <button class="gh-btn" onclick="loadGhWorkflowRuns('${w.path}',${i})"><i class="fas fa-clock-rotate-left"></i> Runs</button>
+          <button class="gh-btn" onclick="editGhWorkflow('${w.path}')"><i class="fas fa-pen-to-square"></i> Editar YAML</button>
           <button class="gh-btn gh-btn-ok" onclick="dispatchGhWorkflow('${w.path}')"><i class="fas fa-play"></i> Run</button>
         </span>
       </div>
@@ -1199,6 +1219,13 @@ async function dispatchGhWorkflow(file) {
     await ghApi('/api/admin/github/dispatch', { method: 'POST', body: JSON.stringify({ workflow: file }) });
     toast('🚀 Workflow disparado en ' + _ghBranch);
   } catch (e) { toast('❌ ' + e.message, 'error'); }
+}
+
+function editGhWorkflow(file) {
+  _ghPath = '.github/workflows/' + file;
+  _ghEdit = null;
+  ghSub('files');
+  toast('✏️ Editando disparo ' + file + ' — usa "Guardar y commitear"');
 }
 
 async function loadGhWorkflowRuns(file, i) {

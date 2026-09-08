@@ -448,6 +448,15 @@
     .gh-kv b{color:var(--text)}
     .gh-empty{font-size:.7rem;color:var(--muted);padding:.4rem 0}
     .gh-file-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.6rem}
+    .gh-quick{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.6rem}
+    .gh-qchip{padding:.32rem .65rem;border-radius:999px;border:1px solid var(--border);
+      background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;font-family:var(--font);
+      font-size:.68rem;font-weight:600;white-space:nowrap;transition:border-color .15s,color .15s}
+    .gh-qchip:hover{border-color:var(--p);color:var(--p)}
+    .gh-qchip.on{background:rgba(23,215,110,.12);border-color:var(--p);color:var(--p)}
+    .gh-hint{font-size:.66rem;color:#fbbf24;background:rgba(251,191,36,.08);
+      border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:.45rem .6rem;
+      margin:.45rem 0;line-height:1.5}
     @media(max-width:640px){.gh-subnav{gap:.35rem}.gh-sub{flex:1 1 auto;justify-content:center}}
   </style>
 </head>
@@ -917,7 +926,7 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script src="../js/admin-hub.js"></script>
+<script src="../js/admin-hub.js?v=20260908a"></script>
 <script src="../js/remote-config.js?v=20260826b"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
