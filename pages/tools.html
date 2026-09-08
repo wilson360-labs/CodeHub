@@ -915,7 +915,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="tb" onclick="setLinkCheckUrl('https://bit.ly/')"><i class="fas fa-triangle-exclamation"></i> Link corto</button>
   </div>
   <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">
-    <button class="tb primary" onclick="analyzeLinkSafety()" id="link-check-btn"><i class="fas fa-radar"></i> Analizar link</button>
+    <button class="tb primary" onclick="analyzeLinkSafety()" id="link-check-btn"><i class="fas fa-fingerprint"></i> Analizar link</button>
     <span style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">Backend: VirusTotal via Render</span>
   </div>
   <div id="link-check-out" class="rb" style="display:none"></div>
@@ -1012,7 +1012,7 @@ footer a{color:var(--p);text-decoration:none}
   <div class="cd">Revisa APKs antes de instalar: hash, tamano, extension, riesgo y origen recomendado.</div>
   <div class="cp">
   <input class="ti" type="file" id="apk-file" accept=".apk,application/vnd.android.package-archive">
-  <button class="tb primary" onclick="analyzeApkFile()" id="apk-btn"><i class="fas fa-shield-check"></i> Verificar APK</button>
+  <button class="tb primary" onclick="analyzeApkFile()" id="apk-btn"><i class="fas fa-shield-halved"></i> Verificar APK</button>
   <div id="apk-out" class="rb" style="display:none"></div>
   </div>
 </div>
@@ -1046,7 +1046,7 @@ footer a{color:var(--p);text-decoration:none}
       <option value="bold">Bold</option>
     </select>
   </div>
-  <button class="tb primary" onclick="generatePromptStudio()"><i class="fas fa-sparkles"></i> Generar variantes</button>
+  <button class="tb primary" onclick="generatePromptStudio()"><i class="fas fa-wand-magic-sparkles"></i> Generar variantes</button>
   <div id="ps-out" class="rb" style="display:none;white-space:pre-wrap"></div>
   </div>
 </div>
@@ -2405,7 +2405,7 @@ async function analyzeLinkSafety() {
     out.innerHTML = '<div style="color:#ff6b6b;font-weight:700">Fallo la conexion con el backend</div><div style="margin-top:.45rem;color:var(--muted)">' + e.message + '</div>';
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-radar"></i> Analizar link';
+    btn.innerHTML = '<i class="fas fa-fingerprint"></i> Analizar link';
   }
 }
 
@@ -2989,7 +2989,7 @@ async function rvResolve(force) {
       out.textContent = 'No se pudo verificar el APK: ' + e.message;
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-shield-check"></i> Verificar APK';
+      btn.innerHTML = '<i class="fas fa-shield-halved"></i> Verificar APK';
     }
   };
 
