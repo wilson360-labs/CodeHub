@@ -1677,7 +1677,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
 <script src="js/remote-config.js?v=20260903a"></script>
 <script src="js/bug-reporter.js?v=20260902a"></script>
-<script src="js/updater.js?v=20260724a"></script>
+<script src="js/updater.js?v=20260724a" defer></script>
     <script>
         // Gate de debug: activa con localStorage.setItem('ch_debug','1')
         // para ver logs de diagnóstico sin ensuciar la consola en producción.
@@ -7322,7 +7322,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setTimeout(function() { chCheckAndUpdate(false); }, 3000);
   </script>
-  <script src="/js/live-update-check.js"></script>
+  <script src="/js/live-update-check.js?v=20260908a" defer></script>
 
   <script>
   // Intersection Observer para lazy load de secciones pesadas
@@ -8003,7 +8003,7 @@ function setAIMood(btn) {
 
 
 <!-- Anime.js + UX Animations -->
-<script src="js/vendor/anime.min.js" defer></script>
+<script src="js/vendor/anime.min.js?v=20260908a" defer></script>
 <script src="js/site-tour.js?v=20260826a" defer></script>
 <script src="js/theme-switcher.js?v=20260724a" defer></script>
 <script src="js/haptics.js?v=20260905c" defer></script>
