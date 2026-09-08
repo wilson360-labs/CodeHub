@@ -557,6 +557,7 @@ const AppRating = mongoose.model('AppRating', new mongoose.Schema({
   appId:   { type: String, required: true, index: true },
   appName: { type: String },
   ratings: [{ ip: String, stars: Number, createdAt: { type: Date, default: Date.now } }],
+  reviews: [{ ip: String, autor: String, texto: String, stars: Number, createdAt: { type: Date, default: Date.now } }],
   total:   { type: Number, default: 0 },
   count:   { type: Number, default: 0 },
 }));
@@ -2443,6 +2444,8 @@ app.post('/api/contact', (req, res) => {
 });
 
 // Ratings
+const cleanUserText = (raw, max) => (typeof raw === 'string' ? raw.replace(/[<>]/g, '').replace(/\s+/g, ' ').slice(0, max).trim() : '');
+
 app.get('/api/ratings', async (_, res) => {
   if (!dbConnected) return res.json({ ratings: {} });
   try {
@@ -2457,7 +2460,10 @@ app.get('/api/ratings', async (_, res) => {
 });
 
 app.post('/api/ratings', async (req, res) => {
-  const { appId, appName, stars } = req.body; const ip = req.ip || 'anon';
+  const { appId, appName, stars } = req.body;
+  const texto = cleanUserText(req.body.texto, 600);
+  const autor = cleanUserText(req.body.autor, 40);
+  const ip = req.ip || 'anon';
   if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos inválidos' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
@@ -2467,18 +2473,62 @@ app.post('/api/ratings', async (req, res) => {
     // de que el primero guardara, creando 2 documentos con el mismo appId.
     let r = await AppRating.findOneAndUpdate(
       { appId },
-      { $setOnInsert: { appId, appName: appName || appId, ratings: [], total: 0, count: 0 } },
+      { $setOnInsert: { appId, appName: appName || appId, ratings: [], reviews: [], total: 0, count: 0 } },
       { upsert: true, new: true }
     );
+    if (!r.reviews) r.reviews = [];
     const already = r.ratings.find(x => x.ip === ip);
+    const alreadyReview = r.reviews.find(x => x.ip === ip);
+
+    // Ya hay voto + reseña de este cliente: re-subir es un duplicado.
+    if (already && alreadyReview && texto) {
+      return res.status(409).json({ error: 'Ya comentaste esta app', review: true, avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
+    }
+
+    // Ya votó pero aún no comenta → se agrega la reseña sin sumar voto.
+    if (already && texto) {
+      r.reviews.push({ ip, autor: autor || 'Anónimo', texto, stars: Math.round(stars) });
+      if (r.reviews.length > 100) r.reviews = r.reviews.slice(-100);
+      await r.save(); await cacheDel('ratings:all'); await cacheDel('reviews:' + appId);
+      tgAlert('rating', () => `💬 <b>Reseña nueva</b> en ${String(appName || appId).slice(0, 40)} — ${String(autor || 'Anónimo').slice(0, 24)} (${stars}★)`, { windowMs: 30000 });
+      return res.json({ ok: true, review: true, avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
+    }
     if (already) return res.status(409).json({ error: 'Ya votaste', avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
+
+    // Voto nuevo (con o sin reseña adjunta).
     r.ratings.push({ ip, stars }); r.total += stars; r.count += 1;
+    if (texto) r.reviews.push({ ip, autor: autor || 'Anónimo', texto, stars: Math.round(stars) });
+    if (r.reviews.length > 100) r.reviews = r.reviews.slice(-100);
     await r.save(); await cacheDel('ratings:all');
     const avg = Math.round((r.total / r.count) * 10) / 10;
     broadcast('new_rating', { appId, appName: appName || appId, stars, avg, count: r.count });
-    tgAlert('rating', () => `⭐ <b>Rating nuevo</b>: ${stars}★ — ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
-    res.json({ ok: true, avg, count: r.count });
+    if (texto) {
+      await cacheDel('reviews:' + appId);
+      tgAlert('rating', () => `💬 <b>Reseña nueva</b>: ${String(appName || appId).slice(0, 40)} — ${String(autor || 'Anónimo').slice(0, 24)} (${stars}★)`, { windowMs: 30000 });
+    } else {
+      tgAlert('rating', () => `⭐ <b>Rating nuevo</b>: ${stars}★ — ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
+    }
+    res.json({ ok: true, avg, count: r.count, review: !!texto });
   } catch { res.status(500).json({ error: 'Error guardando rating' }); }
+});
+
+// Reseñas de un app — nunca se expone la IP: autor, texto, estrellas y fecha.
+app.get('/api/apps/:appId/reviews', async (req, res) => {
+  if (!dbConnected) return res.json({ reviews: [] });
+  const { appId } = req.params;
+  try {
+    const cached = await cacheGet('reviews:' + appId); if (cached) return res.json(cached);
+    const doc = await AppRating.findOne({ appId }).select('reviews appName').lean();
+    const reviews = (doc && doc.reviews ? doc.reviews : []).map(x => ({
+      autor: (typeof x.autor === 'string' && x.autor) ? x.autor.slice(0, 40) : 'Anónimo',
+      stars: Math.max(1, Math.min(5, Math.round(x.stars) || 5)),
+      texto: typeof x.texto === 'string' ? x.texto.slice(0, 600) : '',
+      createdAt: x.createdAt || new Date(),
+    })).reverse().slice(0, 40);
+    const result = { appId, count: reviews.length, reviews };
+    await cacheSet('reviews:' + appId, result, 60);
+    res.json(result);
+  } catch { res.json({ reviews: [] }); }
 });
 
 // Requests de apps

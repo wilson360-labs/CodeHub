@@ -1581,6 +1581,65 @@ footer a:hover { text-decoration: underline; }
 .app-detail-actions .dl-btn { flex: 1; justify-content: center; }
 .app-detail-actions .how-to-btn { flex: 1; justify-content: center; }
 
+/* ── Reseñas (Catálogo 2.0) ─────────────────────────────── */
+.os-reviews-count {
+  display: inline-block; min-width: 1.15rem; text-align: center;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff; border-radius: var(--radius-pill); padding: .05rem .42rem;
+  font-family: var(--mono); font-size: .62rem; margin-left: .3rem; vertical-align: middle;
+}
+.os-reviews-list { display: flex; flex-direction: column; gap: .6rem; margin-bottom: .8rem; }
+.os-review-none {
+  margin: 0; font-size: .78rem; color: var(--muted);
+  border: 1px dashed var(--border); border-radius: var(--radius-sm);
+  padding: .7rem .8rem; background: rgba(255,255,255,.02);
+}
+.os-review {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.03); padding: .6rem .75rem;
+}
+.os-review-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .3rem; }
+.os-review-autor {
+  font-size: .72rem; font-weight: 700; color: var(--accent);
+  font-family: var(--mono); display: inline-flex; align-items: center; gap: .3rem;
+}
+.os-review-autor i { font-size: .62rem; color: var(--muted); }
+.os-review-stars-mini { color: #f7b500; font-size: .62rem; letter-spacing: 1px; }
+.os-review-date { margin-left: auto; font-size: .62rem; color: var(--muted); font-family: var(--mono); }
+.os-review-text { margin: 0; font-size: .8rem; line-height: 1.5; color: var(--text); overflow-wrap: anywhere; }
+.os-review-form {
+  border-top: 1px dashed var(--border); padding-top: .75rem;
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.os-review-form-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.os-review-stars { display: inline-flex; gap: .12rem; }
+.os-review-stars .fa-star { font-size: .9rem; color: #f7b500; cursor: pointer; transition: transform .12s; }
+.os-review-stars .fa-star.far { color: rgba(240,240,250,.28); }
+.os-review-stars .fa-star:hover { transform: scale(1.25); }
+.os-review-form-head input {
+  flex: 1; min-width: 140px; all: unset; box-sizing: border-box;
+  font-size: .76rem; font-family: var(--font); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-1); padding: .4rem .55rem;
+}
+.os-review-form-head input:focus { border-color: var(--border-strong); }
+.os-review-form textarea {
+  all: unset; box-sizing: border-box; resize: vertical; min-height: 62px;
+  font-size: .8rem; font-family: var(--font); color: var(--text); line-height: 1.5;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-1); padding: .5rem .6rem;
+}
+.os-review-form textarea:focus { border-color: var(--border-strong); }
+.os-review-send {
+  align-self: flex-end; display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .74rem; font-family: var(--mono); font-weight: 700; cursor: pointer;
+  color: #fff; border: none; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  padding: .45rem .8rem; transition: var(--tr);
+}
+.os-review-send:hover { filter: brightness(1.1); }
+.os-review-send:active { transform: scale(.97); }
+
 @keyframes osFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes osSlideUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 

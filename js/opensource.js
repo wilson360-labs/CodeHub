@@ -151,6 +151,8 @@ function closeHowToDialog(appId) {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    const t = e.target;
+    if (t && /^(INPUT|TEXTAREA|SELECT)$/i.test(t.tagName || '')) return;
     const detail = document.getElementById('app-detail-overlay');
     if (detail && !detail.hidden) {
       closeAppDetail();
@@ -255,13 +257,14 @@ const OSRatings = (() => {
   const voted = JSON.parse(localStorage.getItem('ch_os_voted') || '{}');
   function saveVoted() { try { localStorage.setItem('ch_os_voted', JSON.stringify(voted)); } catch {} }
 
-  async function submit(appId, stars, appName) {
-    if (voted[appId]) return; // ya votó desde este dispositivo
-    const payload = { appId, appName, stars };
-    // Sin conexión: encolar el voto y avisar — se reenvía solo al volver.
+  async function submit(appId, stars, appName, extra) {
+    const payload = { appId, appName, stars: Math.max(1, Math.min(5, Math.round(stars) || 5)) };
+    const isReview = extra && extra.texto;
+    if (isReview) { payload.texto = (extra.texto || '').slice(0, 600); payload.autor = (extra.autor || '').slice(0, 40); }
+    // Sin conexión: encolar el voto/reseña y avisar — se reenvía solo al volver.
     if (!navigator.onLine) {
-      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: 'rating' });
-      if (ok && window.ChQueue.toast) window.ChQueue.toast('📴 Sin conexión — tu voto se enviará cuando vuelvas');
+      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: isReview ? 'review' : 'rating' });
+      if (ok && window.ChQueue.toast) window.ChQueue.toast(isReview ? '📴 Sin conexión — tu reseña se enviará cuando vuelvas' : '📴 Sin conexión — tu voto se enviará cuando vuelvas');
       return;
     }
     try {
@@ -274,17 +277,46 @@ const OSRatings = (() => {
       if (res.ok) {
         voted[appId] = stars; saveVoted();
         updateCard(appId, d.avg, d.count);
+        if (isReview) { OSToast('✅ Reseña publicada', 'success'); osResetReviewForm(); loadReviews(appId); }
       } else if (d.avg != null) {
-        // Ya había votado desde este IP en otra sesión — igual reflejar el estado real
+        // Ya había participado desde este IP en otra sesión — reflejar el estado real.
         voted[appId] = true; saveVoted();
-        updateCard(appId, d.avg, d.count);
+        if (d.review) { OSToast(d.error || 'Ya comentaste esta app', 'error'); loadReviews(appId); }
+        else updateCard(appId, d.avg, d.count);
+      } else if (d.error) {
+        OSToast(d.error, 'error');
       }
     } catch (e) {
       console.warn('rating error:', e.message);
       // Fallo de red: encolar para reenvío automático (offline-first)
-      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: 'rating' });
-      if (ok && window.ChQueue.toast) window.ChQueue.toast('📴 Sin conexión — tu voto se enviará cuando vuelvas');
+      const ok = await window.ChQueue.add({ url: `${BACKEND}/api/ratings`, method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), kind: isReview ? 'review' : 'rating' });
+      if (ok && window.ChQueue.toast) window.ChQueue.toast(isReview ? '📴 Sin conexión — tu reseña se enviará cuando vuelvas' : '📴 Sin conexión — tu voto se enviará cuando vuelvas');
     }
+  }
+
+  async function loadReviews(appId) {
+    const box = document.getElementById('os-reviews-list');
+    const countEl = document.getElementById('os-reviews-count');
+    if (!box) return;
+    let list = [];
+    try {
+      const res = await fetch(`${BACKEND}/api/apps/${encodeURIComponent(appId)}/reviews`);
+      if (res.ok) list = (await res.json()).reviews || [];
+    } catch (e) { /* offline: se deja el estado vacío */ }
+    if (!document.getElementById('os-reviews-list')) return; // modal cerrado mientras cargaba
+    box.innerHTML = list.length ? list.map(rv => {
+      const s = Math.max(0, Math.min(5, Math.round(rv.stars) || 0));
+      return `
+      <div class="os-review">
+        <div class="os-review-head">
+          <span class="os-review-autor"><i class="fa-solid fa-user"></i> ${esc(rv.autor || 'Anónimo')}</span>
+          <span class="os-review-stars-mini" aria-hidden="true">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</span>
+          <span class="os-review-date">${timeAgo(rv.createdAt) || ''}</span>
+        </div>
+        <p class="os-review-text">${esc(rv.texto || '')}</p>
+      </div>`;
+    }).join('') : `<p class="os-review-none">Sin reseñas todavía — sé el primero en comentar.</p>`;
+    if (countEl) countEl.textContent = list.length;
   }
 
   function updateCard(appId, avg, count) {
@@ -299,7 +331,7 @@ const OSRatings = (() => {
     });
   }
 
-  return { submit, updateCard };
+  return { submit, updateCard, loadReviews };
 })();
 
 function ensureCategorySection(categoria) {
@@ -774,6 +806,20 @@ function renderAppDetail(app) {
       ${updated ? `<span class="os-updated-tag" style="margin:0"><i class="fas fa-clock-rotate-left"></i> ${updated}</span>` : ''}
     </div>
     <p class="app-detail-desc">${esc(app.descripcion || 'Sin descripción.')}</p>
+    <div class="app-detail-block" id="os-reviews-block">
+      <div class="app-detail-block-h"><i class="fa-solid fa-comments"></i> Comentarios <span class="os-reviews-count" id="os-reviews-count">0</span></div>
+      <div class="os-reviews-list" id="os-reviews-list"><p class="os-review-none">Cargando reseñas…</p></div>
+      <div class="os-review-form">
+        <div class="os-review-form-head">
+          <div class="os-review-stars" id="os-review-stars" title="Toca para calificar tu reseña">
+            ${[1, 2, 3, 4, 5].map(n => `<i class="fa-star far" data-star="${n}" onclick="pickReviewStars(this)"></i>`).join('')}
+          </div>
+          <input id="os-review-autor" type="text" maxlength="40" placeholder="Tu nombre (opcional)" autocomplete="off">
+        </div>
+        <textarea id="os-review-text" data-app-id="${esc(app.appId)}" maxlength="600" rows="3" placeholder="Cuenta tu experiencia con esta app…"></textarea>
+        <button class="os-review-send" type="button" data-haptic="tab" onclick="submitReview('${esc(app.appId)}')"><i class="fa-solid fa-paper-plane"></i> Publicar reseña</button>
+      </div>
+    </div>
     ${changelog ? `
     <div class="app-detail-block" id="app-detail-changelog-block">
       <div class="app-detail-block-h"><i class="fa-solid fa-clock-rotate-left"></i> Novedades</div>
@@ -799,6 +845,8 @@ function openAppDetail(appId) {
   renderAppDetail(app);
   overlay.hidden = false;
   document.body.style.overflow = 'hidden';
+  OSRatings.loadReviews(app.appId);
+  osBindReviewShortcuts();
   const closeBtn = document.getElementById('app-detail-close');
   if (closeBtn) closeBtn.focus();
 }
@@ -821,6 +869,47 @@ function copyDetailText(text, label) {
   navigator.clipboard.writeText(text || '').then(() => {
     OSToast(`✅ ${label || 'Texto'} copiado`, 'success');
   }).catch(() => OSToast('❌ No se pudo copiar', 'error'));
+}
+
+// ── RESEÑAS ───────────────────────────────────────────────
+function pickReviewStars(el) {
+  const wrap = el.closest('.os-review-stars');
+  if (!wrap) return;
+  const n = parseInt(el.dataset.star, 10) || 0;
+  window.__osReviewStars = n;
+  wrap.querySelectorAll('.fa-star').forEach(i => {
+    const v = parseInt(i.dataset.star, 10);
+    i.className = `fa-star ${v <= n ? 'fas' : 'far'}`;
+  });
+}
+
+function osResetReviewForm() {
+  const t = document.getElementById('os-review-text'); if (t) t.value = '';
+  const a = document.getElementById('os-review-autor'); if (a) a.value = '';
+  const wrap = document.getElementById('os-review-stars');
+  if (wrap) wrap.querySelectorAll('.fa-star').forEach(i => i.className = 'fa-star far');
+  window.__osReviewStars = 0;
+}
+
+function submitReview(appId) {
+  const textEl = document.getElementById('os-review-text');
+  const authorEl = document.getElementById('os-review-autor');
+  const texto = (textEl && textEl.value || '').trim();
+  if (!texto) { OSToast('Escribe tu reseña antes de enviar', 'info'); if (textEl) textEl.focus(); return; }
+  const autor = (authorEl && authorEl.value || '').trim();
+  const stars = window.__osReviewStars || 5;
+  const app = (window.__osCatalog || []).find(a => a.appId === appId);
+  OSRatings.submit(appId, stars, (app && app.nombre) || appId, { texto, autor });
+}
+
+function osBindReviewShortcuts() {
+  const ta = document.getElementById('os-review-text');
+  if (ta) ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      submitReview(ta.dataset.appId);
+    }
+  });
 }
 
 function osBindDetailTools() {
