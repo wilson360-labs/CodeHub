@@ -10,7 +10,8 @@ __pycache__/
 *.pyo
 
 # Build / tests
-dist/
+# dist/ se COMMITEA: Vercel/Cloudflare sirven el root sin build step.
+# (solo manifest + bundles hasheados; recalculables con npm run build)
 playwright-report/
 test-results/
 blob-report/
