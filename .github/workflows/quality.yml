@@ -55,6 +55,10 @@ jobs:
         run: |
           node -e "const m = require('./dist/build-manifest.json'); const n = Object.keys(m.bundles).length; if (n < 10) { throw new Error('pocos bundles: ' + n); } console.log('bundles ok: ' + n);"
 
+      - name: Verificar que index.html referencia bundles reales (sin drift)
+        run: |
+          node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const refs=[...html.matchAll(/src=\"(\/dist\/assets\/[^\"]+)\"/g)].map(m=>m[1]); if(!refs.length){throw new Error('index.html sin refs a /dist/assets');} const missing=refs.filter(r=>!fs.existsSync(r.slice(1))); if(missing.length){throw new Error('refs rotas: '+missing.join(', '));} console.log('index.html -> '+refs.length+' bundles OK');"
+
   e2e:
     name: Smoke E2E (Playwright)
     runs-on: ubuntu-latest
@@ -71,6 +75,9 @@ jobs:
 
       - name: npm ci
         run: npm ci --no-audit --no-fund
+
+      - name: Build dist/ (index.html cableado a bundles hasheados)
+        run: npm run build
 
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium

@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.92';
+const VERSION = 'codehub-v6.93';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -76,13 +76,6 @@ const PRECACHE = [
   '/js/consent-banner.js',
   '/js/connection-alert.js',
   '/js/notifications.js',
-  '/js/morphicons-init.js',
-  '/js/vendor/morphicons/element.js',
-  '/js/vendor/morphicons/controller-CXZuwJ_M.js',
-  '/js/vendor/morphicons/dom.js',
-  '/js/vendor/morphicons/index.js',
-  '/js/vendor/morphicons/normalize-CYnN3Npw.js',
-  '/js/vendor/morphicons/spring-CFHloqPP.js',
   '/js/office-generator.js',
   '/js/deep-search.js',
   '/js/weather-map.js',
@@ -96,6 +89,42 @@ const PRECACHE = [
   '/js/vendor/leaflet/leaflet.js',
   '/widgets/weather/weather-widget.css',
   '/widgets/weather/weather-widget.js',
+  // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
+  '/dist/assets/js/admin-hub.874488c531.min.js',
+  '/dist/assets/js/auth.f1e03e6381.min.js',
+  '/dist/assets/js/bug-reporter.0f303b6651.min.js',
+  '/dist/assets/js/ch-geo.71a6d7c724.min.js',
+  '/dist/assets/js/connection-alert.c76b7978b9.min.js',
+  '/dist/assets/js/consent-banner.b3efc7679a.min.js',
+  '/dist/assets/js/deep-search.0171f144d5.min.js',
+  '/dist/assets/js/device-detect.4bdd073619.min.js',
+  '/dist/assets/js/emi-voice.1e65948f96.min.js',
+  '/dist/assets/js/haptics.ee67eff258.min.js',
+  '/dist/assets/js/lazy-features.9b4ac38fa9.min.js',
+  '/dist/assets/js/live-update-check.9dc19d63f8.min.js',
+  '/dist/assets/js/morphicons-init.f06cae5f89.min.js',
+  '/dist/assets/js/notifications.0a225aa2fc.min.js',
+  '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
+  '/dist/assets/js/offline-queue.dd424dde2a.min.js',
+  '/dist/assets/js/opensource.0b9559dc8d.min.js',
+  '/dist/assets/js/permissions-setup.315574d7b4.min.js',
+  '/dist/assets/js/remote-config.353c271f68.min.js',
+  '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
+  '/dist/assets/js/script.7940080e4e.min.js',
+  '/dist/assets/js/security-scan.5a8b5156fe.min.js',
+  '/dist/assets/js/servicios.1cc1caf153.min.js',
+  '/dist/assets/js/sismos.d9073b4140.min.js',
+  '/dist/assets/js/site-tour.f3e4d20220.min.js',
+  '/dist/assets/js/skills-pdf-ia.66b58ffda5.min.js',
+  '/dist/assets/js/sys-metrics.441cf23ca5.min.js',
+  '/dist/assets/js/theme-switcher.4eed2242e8.min.js',
+  '/dist/assets/js/thinking-orb.2b4982d5a0.min.js',
+  '/dist/assets/js/updater.cdaf77f61c.min.js',
+  '/dist/assets/js/ux-animations.f9abe87385.min.js',
+  '/dist/assets/js/view-transitions.e4f2d275aa.min.js',
+  '/dist/assets/js/weather-map.42c7258093.min.js',
+  '/dist/assets/js/windows-enhance.00814c6429.min.js',
+  '/dist/assets/widgets/weather/weather-widget.39d8157690.min.js',
   '/data/roadmap.json',
 ];
 
