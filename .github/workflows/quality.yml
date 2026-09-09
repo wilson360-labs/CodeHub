@@ -92,3 +92,38 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 5
+
+  lighthouse:
+    name: Lighthouse (movil/desktop) - reporte
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Build dist/ (index.html cableado a bundles esbuild)
+        run: npm run build
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Auditar mobile + desktop contra / (servidor local)
+        run: node scripts/lighthouse-audit.js --base http://localhost:4173 --out lighthouse-out
+
+      - name: Subir reporte Lighthouse
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: lighthouse-out/
+          retention-days: 7

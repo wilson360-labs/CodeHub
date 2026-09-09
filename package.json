@@ -14,11 +14,13 @@
     "audit:syntax": "node scripts/syntax-check.js",
     "audit:refs": "node scripts/audit-refs.js",
     "audit:inline": "node scripts/check-inline.js",
+    "lighthouse": "node scripts/lighthouse-audit.js",
     "check:install": "node scripts/audit-project.js --install",
     "check:health": "node scripts/audit-project.js --health"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
-    "esbuild": "^0.24.0"
+    "esbuild": "^0.24.0",
+    "lighthouse": "^13.4.1"
   }
 }
