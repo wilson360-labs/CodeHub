@@ -10,7 +10,7 @@ test.describe('Tools — grid de herramientas', () => {
 
   test('el campo de búsqueda de tools filtra resultado', async ({ page }) => {
     await page.goto('/pages/tools.html');
-    const search = page.locator('#search, #searchInput, .tools-search, input[type="search"]').first();
+    const search = page.locator('input[placeholder^="Buscar"], input[type="search"]').first();
     await expect(search).toBeVisible();
     await search.fill('qr');
     await expect(page.locator('#grid > *').first()).toBeVisible();
