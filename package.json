@@ -5,9 +5,18 @@
   "private": true,
   "scripts": {
     "start": "cd backend && node server.js",
-    "build": "echo 'Static site — no build step'",
+    "build": "node scripts/build.js",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
     "audit:project": "node scripts/audit-project.js",
+    "audit:syntax": "node scripts/syntax-check.js",
+    "audit:refs": "node scripts/audit-refs.js",
+    "audit:inline": "node scripts/check-inline.js",
     "check:install": "node scripts/audit-project.js --install",
     "check:health": "node scripts/audit-project.js --health"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "esbuild": "^0.24.0"
   }
 }

@@ -9,6 +9,12 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Build / tests
+dist/
+playwright-report/
+test-results/
+blob-report/
+
 # Logs y backups locales
 logs/
 backups/

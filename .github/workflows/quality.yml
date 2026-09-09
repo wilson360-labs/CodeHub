@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Sintaxis JS (node --check)
         run: node scripts/syntax-check.js
@@ -30,3 +31,56 @@ jobs:
 
       - name: Auditoría estructural PWA / backend
         run: node scripts/audit-project.js
+
+  build:
+    name: Build esbuild (dist/ aislado)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        run: npm run build
+
+      - name: Verificar manifest y outputs
+        run: node -e "const m=require('./dist/build-manifest.json'); const n=Object.keys(m.bundles).length; if(n<10) throw new Error('pocos bundles: '+n); console.log('bundles ok: '+n)"
+
+  e2e:
+    name: Smoke E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests
+        run: npx playwright test
+
+      - name: Subir reporte si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 5
