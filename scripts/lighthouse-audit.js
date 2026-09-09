@@ -30,15 +30,15 @@ const BASE = arg('--base', process.env.BASE_URL || 'http://localhost:4173');
 const OUT_DIR = arg('--out', process.env.OUT_DIR || path.join(ROOT, 'lighthouse-out'));
 const URL = BASE + '/';
 
-const BUDGETS_BY_METRIC = {
-  firstContentfulPaint: { warnMs: 1800, errorMs: 3000 },
-  largestContentfulPaint: { warnMs: 2500, errorMs: 4000 },
-  totalBlockingTime: { warnMs: 200, errorMs: 500 },
+const BUDGETS = {
+  firstContentfulPaint: { warn: 1800, error: 3000 },
+  largestContentfulPaint: { warn: 2500, error: 4000 },
+  totalBlockingTime: { warn: 200, error: 500 },
   cumulativeLayoutShift: { warn: 0.1, error: 0.25 },
-  speedIndex: { warnMs: 3400, errorMs: 5800 },
+  speedIndex: { warn: 3400, error: 5800 },
 };
 
-function lhConfig(mode) {
+function lhConfig(mode, withBudgets) {
   const desktop = mode === 'desktop';
   return {
     extends: 'lighthouse:default',
@@ -50,21 +50,23 @@ function lhConfig(mode) {
       throttling: desktop
         ? { rttMs: 40, throughputKbps: 10240, cpuSlowdownMultiplier: 1 }
         : { rttMs: 150, throughputKbps: 1638, cpuSlowdownMultiplier: 4 },
-      budgets: { byMetric: BUDGETS_BY_METRIC },
+      budgets: withBudgets ? [
+        { metric: 'firstContentfulPaint', budget: 1800 },
+        { metric: 'largestContentfulPaint', budget: 2500 },
+        { metric: 'totalBlockingTime', budget: 200 },
+        { metric: 'cumulativeLayoutShift', budget: 0.1 },
+        { metric: 'speedIndex', budget: 3400 },
+      ] : undefined,
       onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
     },
   };
 }
 
-function verdict(numericValue, cfg) {
-  const unit = cfg.unit || 1;
+function verdict(numericValue, { warn, error }) {
   if (numericValue == null) return { status: 'N/A', value: '-' };
-  const n = numericValue / unit;
-  if (cfg.error !== undefined && n > cfg.error) return { status: 'ERROR', value: n };
-  if (cfg.errorMs !== undefined && n > cfg.errorMs) return { status: 'ERROR', value: n };
-  if (cfg.warn !== undefined && n > cfg.warn) return { status: 'WARN', value: n };
-  if (cfg.warnMs !== undefined && n > cfg.warnMs) return { status: 'WARN', value: n };
-  return { status: 'OK', value: n };
+  if (error !== undefined && numericValue > error) return { status: 'ERROR', value: numericValue };
+  if (warn !== undefined && numericValue > warn) return { status: 'WARN', value: numericValue };
+  return { status: 'OK', value: numericValue };
 }
 
 function startServer() {
@@ -88,12 +90,27 @@ function startServer() {
 }
 
 async function auditMode(port, mode) {
-  const runner = await lighthouse(URL, {
-    port,
-    output: 'html',
-    logLevel: 'error',
-    outputPath: path.join(OUT_DIR, `${mode}.html`),
-  }, lhConfig(mode));
+  let runner;
+  try {
+    runner = await lighthouse(URL, {
+      port,
+      output: 'html',
+      logLevel: 'error',
+      outputPath: path.join(OUT_DIR, `${mode}.html`),
+    }, lhConfig(mode, true));
+  } catch (err) {
+    console.warn(`w ${mode}: budgets fallaron (${err.message}) — reintento sin budgets`);
+    try {
+      runner = await lighthouse(URL, {
+        port,
+        output: 'html',
+        logLevel: 'error',
+        outputPath: path.join(OUT_DIR, `${mode}.html`),
+      }, lhConfig(mode, false));
+    } catch (err2) {
+      throw new Error(`${mode}: ${err2.message}`);
+    }
+  }
   const lhr = runner && runner.lhr;
   if (!lhr || !lhr.audits) throw new Error(`sin lhr para ${mode}`);
   if (lhr.runtimeError) throw new Error(`${mode}: ${lhr.runtimeError.message}`);
@@ -103,7 +120,7 @@ async function auditMode(port, mode) {
   const bp = (lhr.categories['best-practices'] && lhr.categories['best-practices'].score || 0) * 100;
 
   const metrics = {};
-  for (const [name, cfg] of Object.entries(BUDGETS_BY_METRIC)) {
+  for (const [name, cfg] of Object.entries(BUDGETS)) {
     const audio = lhr.audits[name];
     metrics[name] = { value: audio ? audio.numericValue : null, ...verdict(audio ? audio.numericValue : null, cfg) };
   }
