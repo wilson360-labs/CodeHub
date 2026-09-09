@@ -84,9 +84,7 @@ CodeHub-main/
 │   └── snake.css               ← Estilos del juego Snake
 │
 ├── js/
-│   ├── index-chat.js           ← Chatbot EMI IA (⚠️ duplicado legacy; el código real del chat está inline en index.html)
-│   ├── index-emailjs.js        ← Formulario de contacto
-│   ├── index-whats-new.js      ← Panel "Qué hay de nuevo" en index
+│   ├── (Purga Sep 2026: eliminados index-chat.js, index-emailjs.js e index-whats-new.js — duplicados legacy; el código real vive inline en index.html)
 │   ├── emi-voice.js            ← 🎙️ EMI Voice (micrófono + auto-speak) — integrado en index.html
 │   ├── opensource.js           ← Lógica de /opensource (catálogo, filtros, ratings)
 │   ├── tools.js                ← Lógica de todas las 34 herramientas

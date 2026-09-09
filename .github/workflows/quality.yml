@@ -1,0 +1,32 @@
+name: quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  audit:
+    name: Sintaxis + refs + inline + estructural
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sintaxis JS (node --check)
+        run: node scripts/syntax-check.js
+
+      - name: Referencias locales (HTML + sw.js PRECACHE + manifest)
+        run: node scripts/audit-refs.js
+
+      - name: Scripts inline de los HTML
+        run: node scripts/check-inline.js
+
+      - name: Auditoría estructural PWA / backend
+        run: node scripts/audit-project.js
