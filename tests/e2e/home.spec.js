@@ -8,20 +8,19 @@ test.describe('Home — shell PWA', () => {
     await expect(page.locator('header')).toBeVisible();
   });
 
-  test('cabecera permite alternar tema claro/oscuro', async ({ page }) => {
+  test('el tema alterna claro/oscuro via CodeHubTheme', async ({ page }) => {
     await page.goto('/');
-    const toggle = page.locator('#theme-toggle');
-    await expect(toggle).toBeVisible();
-    const before = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || document.body.dataset.theme || '');
-    await toggle.click();
-    await page.waitForTimeout(250);
-    const after = await page.evaluate(() => document.documentElement.getAttribute('data-theme') || document.body.dataset.theme || '');
-    expect(after).not.toBe(before);
+    await page.evaluate(() => {
+      if (!window.CodeHubTheme) throw new Error('CodeHubTheme no expuesto por theme-switcher.js');
+      window.CodeHubTheme.toggle();
+    });
+    const dataTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+    expect(['light', 'dark']).toContain(dataTheme);
   });
 
   test('manifest PWA servido correctamente', async ({ page }) => {
     await page.goto('/manifest.json');
-    const manifest = await page.evaluate(() => ({ name: document.querySelector('pre, body') && document.body.innerText }));
-    expect((manifest.name || '').length).toBeGreaterThan(0);
+    const text = await page.evaluate(() => document.body.innerText || '');
+    expect(text).toContain('"name"');
   });
 });

@@ -12,7 +12,14 @@ test.describe('Tools — grid de herramientas', () => {
     await page.goto('/pages/tools.html');
     const search = page.locator('input[placeholder^="Buscar"], input[type="search"]').first();
     await expect(search).toBeVisible();
+    const all = page.locator('#grid .card');
+    const total = await all.count();
+    expect(total).toBeGreaterThan(5);
     await search.fill('qr');
-    await expect(page.locator('#grid > *').first()).toBeVisible();
+    const visible = page.locator('#grid .card:not(.hidden)');
+    await expect(visible.first()).toBeVisible();
+    const shown = await visible.count();
+    expect(shown).toBeGreaterThan(0);
+    expect(shown).toBeLessThan(total);
   });
 });

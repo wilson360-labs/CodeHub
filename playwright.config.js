@@ -7,7 +7,7 @@ module.exports = defineConfig({
   fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }], ['list']] : [['list']],
   use: {
     baseURL: 'http://localhost:4173',
     viewport: { width: 1280, height: 800 },
