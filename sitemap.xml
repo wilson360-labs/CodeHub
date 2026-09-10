@@ -33,6 +33,13 @@
   </url>
 
   <url>
+    <loc>https://wilson360-labs.vercel.app/acerca</loc>
+    <lastmod>2026-09-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
     <loc>https://wilson360-labs.vercel.app/servicios</loc>
     <lastmod>2026-08-25</lastmod>
     <changefreq>monthly</changefreq>

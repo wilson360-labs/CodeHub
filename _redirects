@@ -1,6 +1,7 @@
 # ── Rewrites (clean URLs) ──────────────────────────────────
 /privacy                    /privacy.html
 /terms                      /terms.html
+/acerca                     /acerca.html
 /guias                      /pages/guias.html
 /tools                      /pages/tools.html
 /opensource                 /pages/opensource.html

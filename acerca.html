@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/AdSense) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <!-- AdSense no se carga en páginas informativas (política de inventario) -->
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acerca de — CodeHub by Wilson.E</title>
+  <meta name="description" content="CodeHub es el sitio personal de Wilson.E, desarrollador web en Guatemala. Conoce quién está detrás de las herramientas, guías, apps open source y servicios de CodeHub.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/acerca">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <meta property="og:type" content="profile">
+  <meta property="og:url" content="https://wilson360-labs.vercel.app/acerca">
+  <meta property="og:title" content="Acerca de CodeHub — Wilson.E">
+  <meta property="og:description" content="Desarrollador web en Guatemala. Detrás de CodeHub: herramientas gratuitas, guías, apps open source y desarrollo web profesional.">
+  <meta property="og:image" content="https://wilson360-labs.vercel.app/splash/codehub.png">
+  <meta property="og:locale" content="es_GT">
+  <meta property="og:site_name" content="CodeHub by Wilson.E">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Acerca de CodeHub — Wilson.E">
+  <meta name="twitter:description" content="Desarrollador web en Guatemala. Detrás de CodeHub: herramientas gratuitas, guías y desarrollo web profesional.">
+  <link rel="icon" type="image/png" href="splash/codehub.png">
+  <link rel="stylesheet" href="fonts/codehub-fonts.css?v=20260906">
+  <style>
+    :root {
+      --primary: #2f80ed;
+      --accent: #38bdf8;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --border: rgba(47,128,237,.18);
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.55);
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      line-height: 1.75;
+      min-height: 100vh;
+    }
+
+    nav.top-nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,5,16,.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      padding: .75rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    nav.top-nav a { color: var(--text); text-decoration: none; font-size: .85rem; }
+    nav.top-nav a:first-child { color: var(--primary); font-family: var(--mono); font-weight: 700; font-size: 1rem; }
+    nav.top-nav .sep { color: var(--border); }
+    nav.top-nav .badge {
+      margin-left: auto;
+      background: rgba(47,128,237,.1);
+      border: 1px solid rgba(47,128,237,.3);
+      color: var(--primary);
+      font-size: .7rem; font-family: var(--mono);
+      padding: .25rem .75rem; border-radius: 999px;
+    }
+
+    .hero {
+      padding: 4rem 2rem 2.5rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(47,128,237,.08), transparent);
+    }
+    .hero-eyebrow { font-family: var(--mono); font-size: .75rem; color: var(--primary); margin-bottom: .75rem; letter-spacing: .08em; }
+    .hero h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; margin-bottom: .75rem; }
+    .hero h1 span { color: var(--primary); }
+    .hero-meta { font-size: .8rem; color: var(--text-secondary); font-family: var(--mono); }
+
+    .page-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    .toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+    .toc-title { font-family: var(--mono); font-size: .75rem; color: var(--accent); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 1rem; }
+    .toc ol { padding-left: 1.2rem; }
+    .toc li { margin-bottom: .35rem; }
+    .toc a { color: var(--text-secondary); text-decoration: none; font-size: .9rem; transition: color .2s; }
+    .toc a:hover { color: var(--primary); }
+
+    .section { margin-bottom: 3rem; }
+    .section-anchor { display: block; visibility: hidden; height: 80px; margin-top: -80px; }
+    .section h2 {
+      font-size: 1.25rem; font-weight: 700;
+      color: var(--text);
+      border-left: 3px solid var(--primary);
+      padding-left: 1rem;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .6rem;
+    }
+    .section h2 .num {
+      font-family: var(--mono); font-size: .65rem; color: var(--primary);
+      background: rgba(47,128,237,.1); border: 1px solid rgba(47,128,237,.25);
+      border-radius: 6px; padding: .15rem .45rem;
+    }
+    .section p { color: var(--text-secondary); margin-bottom: 1rem; }
+    .section p strong { color: var(--text); }
+    .section ul { padding-left: 1.4rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .section li { margin-bottom: .4rem; }
+    .section li strong { color: var(--text); }
+
+    .link-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .2rem; }
+    .link-row a {
+      color: var(--primary); text-decoration: none; font-size: .85rem;
+      border: 1px solid rgba(47,128,237,.25); border-radius: 999px;
+      padding: .4rem 1rem; transition: all .2s;
+    }
+    .link-row a:hover { background: rgba(47,128,237,.1); border-color: var(--primary); }
+
+    .info-box {
+      background: rgba(56,189,248,.06);
+      border: 1px solid rgba(56,189,248,.2);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.2rem;
+      font-size: .88rem;
+      color: rgba(56,189,248,.8);
+    }
+    .info-box strong { color: var(--accent); }
+
+    .contact-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: .6rem;
+    }
+    .contact-card a { color: var(--primary); text-decoration: none; font-size: .9rem; }
+    .contact-card a:hover { text-decoration: underline; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: .78rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+
+    @media (max-width: 720px) {
+      .page-wrap { padding: 2rem 1rem 4rem; }
+      nav.top-nav { padding: .75rem 1rem; }
+    }
+    @media (max-width: 380px) {
+      nav.top-nav { gap: .5rem; }
+      nav.top-nav a { font-size: .8rem; }
+    }
+  </style>
+  <script type="application/ld+json">
+  [{
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "CodeHub by Wilson.E",
+    "url": "https://wilson360-labs.vercel.app",
+    "inLanguage": "es-GT",
+    "publisher": {
+      "@type": "Person",
+      "name": "Wilson.E",
+      "url": "https://wilson360-labs.vercel.app/acerca",
+      "email": "mailto:wilson.e360labs@gmail.com"
+    }
+  }]
+  </script>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a href="/">CodeHub</a>
+  <span class="sep">/</span>
+  <a href="/acerca">Acerca de</a>
+  <span class="badge">Perfil</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">// sobre este sitio</div>
+  <h1>Acerca de <span>CodeHub</span></h1>
+  <p class="hero-meta">wilson360-labs · Guatemala 🇬🇹</p>
+</div>
+
+<div class="page-wrap">
+
+  <div class="toc">
+    <div class="toc-title">// Contenido</div>
+    <ol>
+      <li><a href="#s1">Quién está detrás</a></li>
+      <li><a href="#s2">Qué es CodeHub</a></li>
+      <li><a href="#s3">Qué puedes esperar</a></li>
+      <li><a href="#s4">Privacidad y dinero</a></li>
+      <li><a href="#s5">Cómo colaborar o contactarme</a></li>
+    </ol>
+  </div>
+
+  <div class="info-box">
+    <strong>En resumen:</strong> CodeHub es un proyecto personal de un desarrollador web en Guatemala que decide construir y compartir en abierto: herramientas gratuitas, guías honestas, apps open source y servicios de desarrollo web.
+  </div>
+
+  <div class="section">
+    <span class="section-anchor" id="s1"></span>
+    <h2><span class="num">01</span> Quién está detrás</h2>
+    <p>Detrás de CodeHub está <strong>Wilson.E</strong>, un desarrollador web que trabaja y responde desde Ciudad de Guatemala, con clientes en toda Latinoamérica y de forma remota. Mi trabajo diario combina tres frentes: construir applicationes web a medida para negocios, mantener herramientas y apps propias de código abierto, y escribir <a href="/guias" style="color:var(--primary)">guías prácticas</a> sobre seguridad digital y desarrollo.</p>
+    <p>Tecnologías con las que trabajo con más frecuencia: HTML5, CSS3, JavaScript moderno (sin frameworks pesados cuando el proyecto no los necesita), Node.js, bases de datos como Supabase/PostgreSQL y MongoDB, servicios como EmailJS y notificaciones push, y despliegue en Vercel y Cloudflare Pages. Este mismo sitio está construido con ese enfoque: rápido, portable y con foco en una buena experiencia móvil.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-anchor" id="s2"></span>
+    <h2><span class="num">02</span> Qué es CodeHub</h2>
+    <p>CodeHub empezó como un espacio para reunir herramientas que uso y que otros desarrolladores o personas comunes necesitan resolver sin instalar aplicaciones ni crear cuentas. Hoy es un conjunto de piezas que se complementan:</p>
+    <ul>
+      <li><strong>Herramientas web gratuitas:</strong> <a href="/tools" style="color:var(--primary)">38 utilidades</a> que corren, en su mayoría, directamente en el navegador.</li>
+      <li><strong>Guías:</strong> texto práctico sobre contraseñas, seguridad y lo que pasa en el navegador vs. en el servidor.</li>
+      <li><strong>Open source:</strong> un <a href="/opensource" style="color:var(--primary)">catálogo de apps</a> publicadas para que cualquiera las instale, use o estudie.</li>
+      <li><strong>Servicios de desarrollo:</strong> proyectos web para negocios (tiendas, landing pages, dashboards) que financian que lo demás siga siendo gratuito.</li>
+    </ul>
+    <p>Cada pieza se publica solo cuando funciona y se explica con claridad. Prefiero un proyecto pequeño bien terminado a una lista larga de pendientes a medias.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-anchor" id="s3"></span>
+    <h2><span class="num">03</span> Qué puedes esperar</h2>
+    <ul>
+      <li><strong>Transparencia:</strong> si una herramienta usa una API externa o envía datos, se dice en su propia tarjeta.</li>
+      <li><strong>Privacidad por diseño:</strong> las herramientas de texto local (contraseñas, hash, UUID) no envían tus datos a ningún servidor.</li>
+      <li><strong>Mobile first:</strong> todo se prueba desde 380px hasta pantallas de escritorio, en modo claro y oscuro.</li>
+      <li><strong>Sin relleno:</strong> texto útil, no párrafos de relleno con palabras clave.</li>
+      <li><strong>Actualizaciones constantes:</strong> el sitio se mejora con cada ciclo de trabajo y cualquier error reportado se atiende de forma prioritaria.</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <span class="section-anchor" id="s4"></span>
+    <h2><span class="num">04</span> Privacidad y dinero</h2>
+    <p>CodeHub se sostiene con dos fuentes: el <a href="/servicios" style="color:var(--primary)">desarrollo web para negocios</a> y anuncios no intrusivos de Google AdSense. Eso permite que las <a href="/tools" style="color:var(--primary)">herramientas sigan siendo gratuitas</a> y sin registro.</p>
+    <p>Respecto a tus datos: no vendo información personal a nadie. Lo que recopilo y cómo se usa está documentado en la <a href="/privacy" style="color:var(--primary)">Política de Privacidad</a>, y las condiciones de uso en <a href="/terms" style="color:var(--primary)">Términos</a>.</p>
+  </div>
+
+  <div class="section">
+    <span class="section-anchor" id="s5"></span>
+    <h2><span class="num">05</span> Cómo colaborar o contactarme</h2>
+    <p>Si encontraste un error en una herramienta, tienes una idea para ampliarlas o quieres hablar de un proyecto web, el canal más directo es WhatsApp y el correo de abajo. También puedes usar el <a href="/#open-to-work" style="color:var(--primary)">formulario de contacto</a> del inicio si prefieres un mensaje estructurado.</p>
+    <div class="link-row" style="margin-bottom:1.2rem">
+      <a href="/tools">Herramientas</a>
+      <a href="/guias">Guías</a>
+      <a href="/opensource">Open Source</a>
+      <a href="/servicios">Servicios</a>
+      <a href="/cv">Mi CV</a>
+    </div>
+    <div class="contact-card">
+      <div>📧 <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a></div>
+      <div>💬 WhatsApp: <a href="https://wa.me/50235131808" target="_blank" rel="noopener">+502 3513 1808</a></div>
+      <div>🌐 <a href="https://wilson360-labs.vercel.app">wilson360-labs.vercel.app</a></div>
+      <div style="margin-top:.5rem;font-size:.8rem;color:var(--text-secondary)">Wilson.E · Ciudad de Guatemala, Guatemala 🇬🇹</div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<footer>
+  <span>&copy; 2024–2026 <strong>Wilson.E</strong> · CodeHub</span>
+  &nbsp;·&nbsp;
+  <a href="/acerca">Acerca de</a>
+  &nbsp;·&nbsp;
+  <a href="/privacy">Privacidad</a>
+  &nbsp;·&nbsp;
+  <a href="/terms">Términos de Uso</a>
+  &nbsp;·&nbsp;
+  <a href="/">Volver al inicio</a>
+</footer>
+
+<script src="js/consent-banner.js?v=20260810a" defer></script>
+<script src="js/connection-alert.js?v=20260810a" defer></script>
+</body>
+</html>

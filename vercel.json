@@ -199,6 +199,9 @@
   "source": "/terms", "destination": "/terms.html"
 },
     {
+      "source": "/acerca", "destination": "/acerca.html"
+    },
+    {
       "source": "/guias",
       "destination": "/pages/guias.html"
     },
