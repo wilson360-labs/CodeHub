@@ -18,7 +18,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const chromeLauncher = require('chrome-launcher');
-const lighthouse = require('lighthouse');
+const lighthouseMod = require('lighthouse');
+const lighthouse = typeof lighthouseMod === 'function' ? lighthouseMod : lighthouseMod.default;
 const { chromium } = require('@playwright/test');
 
 const ROOT = process.cwd();
@@ -28,7 +29,9 @@ const arg = (name, dflt) => {
 };
 const BASE = arg('--base', process.env.BASE_URL || 'http://localhost:4173');
 const OUT_DIR = arg('--out', process.env.OUT_DIR || path.join(ROOT, 'lighthouse-out'));
-const URL = BASE + '/';
+const CHROME = arg('--chrome', process.env.CHROME_PATH || '');
+const PATH = arg('--path', '/');
+const URL = BASE + PATH;
 
 const BUDGETS = {
   firstContentfulPaint: { warn: 1800, error: 3000 },
@@ -50,6 +53,19 @@ function lhConfig(mode, withBudgets) {
       throttling: desktop
         ? { rttMs: 40, throughputKbps: 10240, cpuSlowdownMultiplier: 1 }
         : { rttMs: 150, throughputKbps: 1638, cpuSlowdownMultiplier: 4 },
+      maxWaitForLoad: 30_000,
+      networkQuietThresholdMs: 2_000,
+      cpuQuietThresholdMs: 2_000,
+      // Bloques ads/trackers: jitter externo, no medimos latencia de ads.
+      blockedUrlPatterns: [
+        '*googletagmanager.com/*',
+        '*googlesyndication.com/*',
+        '*google-analytics.com/*',
+        '*doubleclick.net/*',
+        '*pagead2.google*',
+        '*adservice.google*',
+      ],
+      disableFullPageScreenshot: true,
       budgets: withBudgets ? [
         { metric: 'firstContentfulPaint', budget: 1800 },
         { metric: 'largestContentfulPaint', budget: 2500 },
@@ -68,6 +84,14 @@ function verdict(numericValue, { warn, error }) {
   if (warn !== undefined && numericValue > warn) return { status: 'WARN', value: numericValue };
   return { status: 'OK', value: numericValue };
 }
+
+const AUDIT_IDS = {
+  firstContentfulPaint: 'first-contentful-paint',
+  largestContentfulPaint: 'largest-contentful-paint',
+  totalBlockingTime: 'total-blocking-time',
+  cumulativeLayoutShift: 'cumulative-layout-shift',
+  speedIndex: 'speed-index',
+};
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -89,27 +113,32 @@ function startServer() {
   });
 }
 
-async function auditMode(port, mode) {
-  let runner;
-  try {
-    runner = await lighthouse(URL, {
-      port,
-      output: 'html',
-      logLevel: 'error',
-      outputPath: path.join(OUT_DIR, `${mode}.html`),
-    }, lhConfig(mode, true));
-  } catch (err) {
-    console.warn(`w ${mode}: budgets fallaron (${err.message}) — reintento sin budgets`);
+async function runLh(port, mode, withBudgets) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      runner = await lighthouse(URL, {
+      return await lighthouse(URL, {
         port,
         output: 'html',
         logLevel: 'error',
         outputPath: path.join(OUT_DIR, `${mode}.html`),
-      }, lhConfig(mode, false));
-    } catch (err2) {
-      throw new Error(`${mode}: ${err2.message}`);
+      }, lhConfig(mode, withBudgets));
+    } catch (err) {
+      lastErr = err;
+      console.warn(`w ${mode}: intento ${attempt} fallo (${err.message})`);
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
     }
+  }
+  throw lastErr;
+}
+
+async function auditMode(port, mode) {
+  let runner;
+  try {
+    runner = await runLh(port, mode, true);
+  } catch (err) {
+    console.warn(`w ${mode}: budgets fallaron (${err.message}) — reintento sin budgets`);
+    runner = await runLh(port, mode, false);
   }
   const lhr = runner && runner.lhr;
   if (!lhr || !lhr.audits) throw new Error(`sin lhr para ${mode}`);
@@ -121,13 +150,20 @@ async function auditMode(port, mode) {
 
   const metrics = {};
   for (const [name, cfg] of Object.entries(BUDGETS)) {
-    const audio = lhr.audits[name];
+    const audio = lhr.audits[AUDIT_IDS[name]];
     metrics[name] = { value: audio ? audio.numericValue : null, ...verdict(audio ? audio.numericValue : null, cfg) };
   }
   return { mode, perf, acc, bp, metrics };
 }
 
 async function main() {
+  const watchdog = setTimeout(() => {
+    console.error('x Error: tiempo global agotado (780s) en lighthouse-audit');
+    try {
+      fs.writeFileSync(path.join(OUT_DIR, 'error.log'), 'tiempo global agotado (780s)\n');
+    } catch (err) {}
+    process.exit(2);
+  }, 780_000);
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   let server = null;
@@ -138,23 +174,33 @@ async function main() {
     process.exit(1);
   }
 
-  const chromePath = chromium.executablePath();
+  const chromePath = CHROME || chromium.executablePath();
   if (!fs.existsSync(chromePath)) {
     server.kill();
     console.error('x Chromium de Playwright no instalado — ejecuta: npx playwright install chromium');
     process.exit(1);
   }
 
-  let launcher;
   try {
-    launcher = await chromeLauncher.launch({
-      chromePath,
-      chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
-    });
-
     const results = [];
     for (const mode of ['mobile', 'desktop']) {
-      const r = await auditMode(launcher.port, mode);
+      let r = null;
+      for (let attempt = 1; attempt <= 3 && !r; attempt++) {
+        let ch;
+        try {
+          ch = await chromeLauncher.launch({
+            chromePath,
+            chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+          });
+          r = await auditMode(ch.port, mode);
+        } catch (e) {
+          console.warn(`w ${mode} intento ${attempt}/3: ${e.message}`);
+          await new Promise((res) => setTimeout(res, 2000));
+        } finally {
+          if (ch) { try { await ch.kill(); } catch (e) {} }
+        }
+      }
+      if (!r) throw new Error(`${mode}: se agotaron 3 intentos`);
       results.push(r);
       console.log(`[${r.mode}] perf=${r.perf} a11y=${r.acc} b-p=${r.bp}`);
       for (const [name, m] of Object.entries(r.metrics)) {
@@ -178,10 +224,21 @@ async function main() {
     fs.writeFileSync(path.join(OUT_DIR, 'summary.md'), lines.join('\n') + '\n');
 
     console.log(`\nreporte en ${path.relative(ROOT, OUT_DIR)}/ (mobile.html, desktop.html, summary.json/md)`);
+    clearTimeout(watchdog);
   } finally {
-    if (launcher) await launcher.kill().catch(() => {});
     if (server) server.kill();
   }
 }
 
-main().catch((e) => { console.error('x ' + (e && e.stack ? e.stack : e)); process.exit(1); });
+main().catch((e) => {
+  const msg = (e && e.stack ? e.stack : String(e));
+  console.error('x ' + msg);
+  try {
+    fs.writeFileSync(path.join(OUT_DIR, 'error.log'), msg + '\n');
+  } catch (err) {}
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (e) => {
+  console.warn('w unhandledRejection (se ignora; el reintento por modo lo cubre): ' + (e && e.message ? e.message : e));
+});
