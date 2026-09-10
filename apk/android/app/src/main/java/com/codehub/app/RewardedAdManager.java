@@ -14,7 +14,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
 
 /**
  * Maneja la carga y presentación del anuncio recompensado de CodeHub.
- * Unidad: ca-app-pub-3780093322926832/4285173985
+ * Unidad: ca-app-pub-3780093322926832/5757670196
  *
  * Uso desde JS (ver CodeHubBridge):
  *   CodeHubNative.loadRewardedAd()          → precarga (opcional, se auto-precarga)
@@ -26,7 +26,7 @@ import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
  */
 final class RewardedAdManager {
 
-    private static final String AD_UNIT_ID = "ca-app-pub-3780093322926832/4285173985";
+    private static final String AD_UNIT_ID = "ca-app-pub-3780093322926832/5757670196";
     private static RewardedAd rewardedAd;
     private static boolean loading = false;
 

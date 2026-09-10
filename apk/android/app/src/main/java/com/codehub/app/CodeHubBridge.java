@@ -460,7 +460,7 @@ public class CodeHubBridge {
     }
 
     // ── ANUNCIO RECOMPENSADO (AdMob) ────────────────────────────
-    // ca-app-pub-3780093322926832/4285173985
+    // ca-app-pub-3780093322926832/5757670196
     @JavascriptInterface
     public void loadRewardedAd() {
         activity.runOnUiThread(() -> RewardedAdManager.load(activity));

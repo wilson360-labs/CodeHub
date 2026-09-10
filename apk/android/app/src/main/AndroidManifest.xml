@@ -42,7 +42,7 @@
         <!-- AdMob App ID — obligatorio para inicializar el SDK -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3780093322926832~5602908901"/>
+            android:value="ca-app-pub-3780093322926832~1140135893"/>
 
         <activity
             android:name=".MainActivity"

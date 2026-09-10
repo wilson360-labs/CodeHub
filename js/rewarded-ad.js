@@ -2,7 +2,7 @@
    rewarded-ad.js — Anuncio recompensado de AdMob (solo APK)
    CodeHub by Wilson.E
 
-   Unidad: ca-app-pub-3780093322926832/4285173985
+   Unidad: ca-app-pub-3780093322926832/5757670196
 
    Uso desde cualquier botón/página:
 
