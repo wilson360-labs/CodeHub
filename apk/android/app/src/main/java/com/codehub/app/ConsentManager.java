@@ -38,19 +38,17 @@ final class ConsentManager {
     static void init(final Activity activity, final Runnable onResolved) {
         try {
             ConsentRequestParameters params = new ConsentRequestParameters.Builder().build();
-            final ConsentInformation info = ConsentInformation.getInstance(activity);
+            final ConsentInformation info = UserMessagingPlatform.getConsentInformation(activity);
             info.requestConsentInfoUpdate(activity, params,
                     () -> {
                         try {
                             if (info.isConsentFormAvailable()) {
                                 UserMessagingPlatform.loadAndShowConsentFormIfRequired(
                                         activity,
-                                        form -> {
-                                            canRequestAds = info.canRequestAds();
-                                            if (onResolved != null) onResolved.run();
-                                        },
                                         error -> {
-                                            Log.w(TAG, "form error code=" + error.getErrorCode());
+                                            if (error != null) {
+                                                Log.w(TAG, "form dismissed with error code=" + error.getErrorCode());
+                                            }
                                             canRequestAds = info.canRequestAds();
                                             if (onResolved != null) onResolved.run();
                                         });
