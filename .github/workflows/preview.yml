@@ -13,12 +13,21 @@ jobs:
   preview:
     name: Preview deploy
     runs-on: ubuntu-latest
-    if: contains(github.ref, 'pull') && secrets.VERCEL_TOKEN != ''
+    # NOTA: no referenciar secrets.* aquí. Un secreto omitido en un job-level
+    # `if` hace que GitHub marque el run como FAILED con 0 jobs (fallo fantasma
+    # que veíamos en cada push a main). El token se lee vía env más abajo.
+    if: contains(github.ref, 'pull')
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
+      - name: Guard — token disponible
+        if: env.VERCEL_TOKEN == ''
+        run: echo "VERCEL_TOKEN no configurado; preview omitido"
+
       - name: Crear deployment de preview en Vercel
+        if: env.VERCEL_TOKEN != ''
         id: deploy
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           REF: ${{ github.head_ref }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -63,7 +72,7 @@ jobs:
           exit 1
 
       - name: Comentar URL de preview en la PR
-        if: success()
+        if: env.VERCEL_TOKEN != '' && steps.deploy.outputs.ready == 'true'
         uses: actions/github-script@v7
         with:
           script: |

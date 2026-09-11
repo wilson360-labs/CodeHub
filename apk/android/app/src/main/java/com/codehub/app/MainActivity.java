@@ -113,7 +113,7 @@ public class MainActivity extends Activity {
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
         try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
-        try { RewardedAdManager.load(this); } catch (Throwable t) { crashLog("rewardedAd", t); }
+        try { initAdMob(rootLayout); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
@@ -126,6 +126,21 @@ public class MainActivity extends Activity {
         try { CodeHubSyncService.startIfNotRunning(this); } catch (Throwable t) { crashLog("syncService", t); }
 
         handleIntent(getIntent());
+    }
+
+    // ── AdMob: consentimiento UMP + banner + recompensado + intersticial ──
+    // Nada de AdMob se pide antes de que UMP resuelva el consentimiento
+    // (EEE/UK/Canadá). Fuera de esas regiones lookup UMP resuelve inmediato
+    // con canRequestAds=true y no se bloquea ningún anuncio.
+    private void initAdMob(final FrameLayout rootLayout) {
+        ConsentManager.init(this, () -> {
+            runOnUiThread(() -> {
+                if (!ConsentManager.canRequestAds()) return;
+                BannerAdManager.setup(MainActivity.this, rootLayout);
+                RewardedAdManager.load(MainActivity.this);
+                InterstitialAdManager.load(MainActivity.this);
+            });
+        });
     }
 
     private void crashLog(String tag, Throwable t) {

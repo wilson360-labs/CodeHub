@@ -483,6 +483,38 @@ public class CodeHubBridge {
         }));
     }
 
+    // ── ANUNCIO INTERSTICIAL (AdMob) ────────────────────────────
+    @JavascriptInterface
+    public void loadInterstitialAd() {
+        activity.runOnUiThread(() -> InterstitialAdManager.load(activity));
+    }
+
+    @JavascriptInterface
+    public boolean isInterstitialAdReady() {
+        return InterstitialAdManager.isReady();
+    }
+
+    // callbackName: invocada como callbackName(shown) — shown=true si el
+    // anuncio se mostró y se cerró (o false si no estaba listo).
+    @JavascriptInterface
+    public void showInterstitialAd(final String callbackName) {
+        activity.runOnUiThread(() -> InterstitialAdManager.show(activity, shown -> {
+            webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
+                "(" + shown + ");}catch(e){}");
+        }));
+    }
+
+    // ── BANNER NATIVO (AdMob) ───────────────────────────────────
+    @JavascriptInterface
+    public void showNativeBanner() {
+        activity.runOnUiThread(() -> BannerAdManager.show());
+    }
+
+    @JavascriptInterface
+    public void hideNativeBanner() {
+        activity.runOnUiThread(() -> BannerAdManager.hide());
+    }
+
     @JavascriptInterface
     public void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
