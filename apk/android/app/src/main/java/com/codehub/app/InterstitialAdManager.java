@@ -28,8 +28,7 @@ final class InterstitialAdManager {
 
     private static final String TAG = "CodeHubInterstitial";
 
-    // TODO(ads): reemplazar 0000000000 por la unidad INTERSTICIAL real de AdMob.
-    private static final String AD_UNIT_ID_INTERSTITIAL = "ca-app-pub-3780093322926832/0000000000";
+    private static final String AD_UNIT_ID_INTERSTITIAL = "ca-app-pub-3780093322926832/6519180963";
 
     private static InterstitialAd interstitialAd;
     private static boolean loading = false;
