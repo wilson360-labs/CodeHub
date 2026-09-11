@@ -6389,6 +6389,16 @@ app.get('/api/security/scan', scanLimiter, async (req, res) => {
 
 // ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
 app.use((req, res) => {
+  // OPTIONS sin CORS (probes, preflight de rutas sin handler propio): en vez
+  // de 404 + alerta, responder 204 con cabeceras CORS genéricas. El flujo
+  // real de preflight del navegador ya lo cubre app.use(cors) arriba; esto
+  // solo evita ruido de escaneos/scripts y 404 falsos en rutas internas.
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, x-admin-key, x-admin-user, x-admin-session, Accept, Authorization');
+    return res.status(204).end();
+  }
   if (req.path === '/api/health/keys') return res.json({
     autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
     groq:        !!(process.env.GROQ_API_KEY),
