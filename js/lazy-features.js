@@ -7,7 +7,7 @@
   var FEATURES = [
     'js/weather-map.js?v=20260904sf',
     'js/ch-geo.js?v=20260905a',
-    'js/sismos.js?v=20260906a'
+    'js/sismos.js?v=20260911a'
   ];
   var loaded = {};
   var done = false;

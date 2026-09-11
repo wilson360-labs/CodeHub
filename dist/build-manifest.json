@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-11T23:19:18.654Z",
+  "generatedAt": "2026-09-11T23:32:24.977Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.874488c531.min.js",
     "js/auth.js": "assets/js/auth.f1e03e6381.min.js",
@@ -11,7 +11,7 @@
     "js/device-detect.js": "assets/js/device-detect.4bdd073619.min.js",
     "js/emi-voice.js": "assets/js/emi-voice.1e65948f96.min.js",
     "js/haptics.js": "assets/js/haptics.ee67eff258.min.js",
-    "js/lazy-features.js": "assets/js/lazy-features.9b4ac38fa9.min.js",
+    "js/lazy-features.js": "assets/js/lazy-features.e876c91eef.min.js",
     "js/live-update-check.js": "assets/js/live-update-check.9dc19d63f8.min.js",
     "js/morphicons-init.js": "assets/js/morphicons-init.f06cae5f89.min.js",
     "js/notifications.js": "assets/js/notifications.0a225aa2fc.min.js",

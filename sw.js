@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.95';
+const VERSION = 'codehub-v6.96';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -101,7 +101,7 @@ const PRECACHE = [
   '/dist/assets/js/device-detect.4bdd073619.min.js',
   '/dist/assets/js/emi-voice.1e65948f96.min.js',
   '/dist/assets/js/haptics.ee67eff258.min.js',
-  '/dist/assets/js/lazy-features.9b4ac38fa9.min.js',
+  '/dist/assets/js/lazy-features.e876c91eef.min.js',
   '/dist/assets/js/live-update-check.9dc19d63f8.min.js',
   '/dist/assets/js/morphicons-init.f06cae5f89.min.js',
   '/dist/assets/js/notifications.0a225aa2fc.min.js',

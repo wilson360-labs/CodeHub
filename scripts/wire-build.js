@@ -29,9 +29,19 @@ const SW_PATH = path.join(ROOT, 'sw.js');
 
 const SRC_RE = /(<script\b[^>]*\bsrc=")([^"]*)("[^>]*>)/g;
 const LOCAL_PREFIX = /^(?:\/)?(js|widgets)\//;
+// Scripts que ya viven en dist/assets (bundles hasheados de índices previos):
+// también deben re-cablearse si su bundle cambió de hash.
+const DIST_PREFIX = /^(?:\/)?dist\/assets\/(js|widgets)\//;
+const BUNDLED_RE = /\.([0-9a-f]{8,12})\.min\.(js|mjs)$/i;
 
 function clean(src) {
   return src.replace(/\?.*$/, '');
+}
+
+// De "dist/assets/js/foo.abc123def0.min.js" -> "js/foo.js" (origen del manifest).
+function distToPlain(src) {
+  const rel = clean(src).replace(/^\//, '').replace(/^dist\/assets\//, '');
+  return rel.replace(BUNDLED_RE, '.$2');
 }
 
 function splitLines(text) {
@@ -100,9 +110,9 @@ function main() {
   let count = 0;
 
   html = html.replace(SRC_RE, (whole, pre, src, post) => {
-    if (!LOCAL_PREFIX.test(src)) return whole;
-    if (/\.min\.[^?]*/.test(src)) return whole;
-    const rel = clean(src).replace(/^\//, '');
+    if (/\.min\.[^?]*/.test(src) && !DIST_PREFIX.test(src)) return whole;
+    const inDist = DIST_PREFIX.test(src);
+    const rel = inDist ? distToPlain(src) : clean(src).replace(/^\//, '');
     if (!bundles[rel]) return whole;
     const target = '/dist/' + bundles[rel];
     if (src === target) return whole;

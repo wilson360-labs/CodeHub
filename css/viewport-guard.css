@@ -1071,6 +1071,23 @@ section, main, .container, .wrap, .inner, .section-wrap {
 .sismos-sheet-open { display: none; }
 body.ch-sismos-sheet-locked { overflow: hidden; }
 
+@keyframes chSismosFadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes chSismosPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(34,197,94,0)); }
+  50% { transform: scale(1.14); filter: drop-shadow(0 0 8px rgba(34,197,94,.55)); }
+}
+@keyframes chSismosPop {
+  0% { transform: scale(.4) rotate(-14deg); opacity: 0; }
+  60% { transform: scale(1.18) rotate(4deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes chSismosSpinUp {
+  to { transform: rotate(180deg); }
+}
+
 @media (max-width: 768px) {
   .sismos-list { display: none; }
   .sismos-sheet-open {
@@ -1079,7 +1096,13 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
     font-family: inherit; font-size: .85rem; font-weight: 600; color: #fff;
     background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.4);
     border-radius: 12px; cursor: pointer;
+    animation: chSismosFadeUp .4s cubic-bezier(.2,.9,.3,1.15) both;
   }
+  .sismos-sheet-open i {
+    display: inline-block;
+    animation: chSismosPulse 2.8s ease-in-out infinite;
+  }
+  .sismos-sheet-open:hover i { animation: chSismosSpinUp .3s ease forwards; }
   .sismos-sheet-open:active { background: rgba(34,197,94,.24); }
   .sismos-sheet-open b { color: #22c55e; font-weight: 800; }
   .sismos-sheet-backdrop {
@@ -1119,14 +1142,25 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
     display: inline-flex; align-items: center; gap: .45rem;
     font-weight: 700; font-size: .9rem; color: var(--text, #eee);
   }
-  .sismos-sheet-head > span i { color: #22c55e; }
+  .sismos-sheet-head > span i {
+    color: #22c55e; display: inline-block;
+  }
+  .sismos-sheet.open .sismos-sheet-head > span i {
+    animation: chSismosPop .5s cubic-bezier(.2,.9,.3,1.4) .1s both;
+  }
   #sismos-sheet-count { color: #22c55e; }
   .sismos-sheet-head button {
     width: 34px; height: 34px; border-radius: 10px;
     border: 1px solid rgba(255,255,255,.14);
     background: rgba(255,255,255,.06); color: #fff; font-size: 1rem; cursor: pointer;
+    transition: background .18s ease, transform .18s ease;
   }
-  .sismos-sheet-head button:active { background: rgba(255,255,255,.16); }
+  .sismos-sheet-head button:hover { background: rgba(255,255,255,.14); }
+  .sismos-sheet-head button:active {
+    background: rgba(255,255,255,.2); transform: scale(.92);
+  }
+  .sismos-sheet-head button i { display: inline-block; transition: transform .25s ease; }
+  .sismos-sheet-head button:hover i { transform: rotate(90deg); }
   .sismos-sheet-body {
     flex: 1 1 auto; min-height: 0;
     overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -1137,6 +1171,16 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 
 @media (min-width: 769px) {
   .sismos-sheet, .sismos-sheet-backdrop, .sismos-sheet-open { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sismos-sheet-open,
+  .sismos-sheet-open i,
+  .sismos-sheet.open .sismos-sheet-head > span i,
+  .sismos-sheet-head button i {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* ── Alertas de sismos por push (toggle + umbral de magnitud) ── */
