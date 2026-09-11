@@ -55,6 +55,19 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Deep links: cualquier enlace https://wilson360-labs.vercel.app/*
+                 abierto (desde Telegram, navegador, "Compartir", correos, etc.)
+                 entra directo a la app en esa página. android:autoVerify se
+                 activa SOLO cuando exista assetlinks.json publicado con el
+                 SHA-256 del keystore real del CI — sin eso Chrome no usa la
+                 app automáticamente, pero "Abrir con CodeHub" sí aparece. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="wilson360-labs.vercel.app" />
+                <data android:scheme="http" android:host="wilson360-labs.vercel.app" />
+            </intent-filter>
         </activity>
 
         <service

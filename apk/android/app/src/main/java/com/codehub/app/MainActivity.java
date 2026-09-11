@@ -51,6 +51,7 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
@@ -576,17 +577,32 @@ public class MainActivity extends Activity {
         view.loadUrl(js);
     }
 
-    // ── INTENT FROM NOTIFICATION ────────────────────────────────
+    // ── INTENT FROM NOTIFICATION / DEEP LINK ───────────────────
     private void handleIntent(Intent intent) {
         if (intent == null) return;
         String url = intent.getStringExtra("open_url");
-        if (url != null && !url.isEmpty()) {
+        // Deep link: la app se abrió/levantó con un enlace del dominio
+        // (ACTION_VIEW + data https/http de wilson360-labs.vercel.app).
+        if (url == null && intent.getData() != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
+            url = intent.getData().toString();
+        }
+        if (url != null && !url.isEmpty() && isAllowedUrl(url)) {
             final String loadUrl = url;
             webView.postDelayed(new Runnable() {
                 @Override
                 public void run() { webView.loadUrl(loadUrl); }
             }, 1500);
         }
+    }
+
+    /** Solo se permiten URLs del dominio propio (http/https). Todo lo demás
+     *  se ignora: evita cargar páginas arbitrarias viajadas por el intent. */
+    private boolean isAllowedUrl(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (!u.startsWith("https://") && !u.startsWith("http://")) return false;
+        return u.startsWith("https://wilson360-labs.vercel.app") ||
+               u.startsWith("http://wilson360-labs.vercel.app");
     }
 
     @Override
