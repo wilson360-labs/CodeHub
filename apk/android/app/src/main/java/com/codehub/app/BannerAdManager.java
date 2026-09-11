@@ -24,8 +24,7 @@ final class BannerAdManager {
 
     private static final String TAG = "CodeHubBanner";
 
-    // TODO(ads): reemplazar 0000000000 por la unidad BANNER real de AdMob.
-    private static final String AD_UNIT_ID_BANNER = "ca-app-pub-3780093322926832/0000000000";
+    private static final String AD_UNIT_ID_BANNER = "ca-app-pub-3780093322926832/4629093801";
 
     private static AdView adView;
 
