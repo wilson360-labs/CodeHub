@@ -332,26 +332,40 @@
   }
 
   // ---- Lista ------------------------------------------------------
+  // Escribe en la lista inline (desktop) y en el panel deslizante móvil
+  // (#sismos-sheet-body) para mantener ambos sincronizados con los filtros.
   function renderList() {
     var list = document.getElementById('sismos-list');
-    if (!list) return;
+    var sheetBody = document.getElementById('sismos-sheet-body');
     var filtered = _quakes.filter(function (q) { return q.mag >= _currentMag && matchesPlace(q); });
-    if (!filtered.length) {
-      list.innerHTML = '<div class="sismos-none">' + (_placeFilter ? 'Sin sismos ≥ M' + _currentMag + ' en ' + esc(_placeFilter) + ' en las últimas 24 h.' : 'Sin sismos ≥ M' + _currentMag + ' en las últimas 24 h.') + '</div>';
-      return;
+    var emptyHtml = '<div class="sismos-none">' +
+      (_placeFilter ? 'Sin sismos ≥ M' + _currentMag + ' en ' + esc(_placeFilter) + ' en las últimas 24 h.' : 'Sin sismos ≥ M' + _currentMag + ' en las últimas 24 h.') +
+      '</div>';
+    var itemsHtml = '';
+    if (filtered.length) {
+      itemsHtml = filtered.map(function (q) {
+        var cls = magClass(q.mag);
+        return '<div class="sismos-item" onclick="chSismosFocus(' + q.lat + ',' + q.lon + ',' + (+q.mag) + ')">' +
+          '<div class="sismos-badge ' + cls + '"><b>' + q.mag.toFixed(1) + '</b><span>MAG</span></div>' +
+          '<div class="sismos-item-main">' +
+          '<div class="sismos-item-place">' + esc(q.place || 'Lugar desconocido') + '</div>' +
+          '<div class="sismos-item-meta">' + esc(nowAge(q.time)) +
+          (q.depth != null ? ' · Prof. ' + Math.round(q.depth) + ' km' : '') + '</div>' +
+          '</div></div>';
+      }).join('');
     }
-    list.innerHTML = filtered.map(function (q) {
-      var cls = magClass(q.mag);
-      return '<div class="sismos-item" onclick="chSismosFocus(' + q.lat + ',' + q.lon + ',' + (+q.mag) + ')">' +
-        '<div class="sismos-badge ' + cls + '"><b>' + q.mag.toFixed(1) + '</b><span>MAG</span></div>' +
-        '<div class="sismos-item-main">' +
-        '<div class="sismos-item-place">' + esc(q.place || 'Lugar desconocido') + '</div>' +
-        '<div class="sismos-item-meta">' + esc(nowAge(q.time)) +
-        (q.depth != null ? ' · Prof. ' + Math.round(q.depth) + ' km' : '') + '</div>' +
-        '</div></div>';
-    }).join('') +
-      '<div class="sismos-none" style="padding:.6rem">Toca un sismo para centrar el mapa' +
-      (filtered.length > 1 ? ' · muestra de ' + filtered.length + ' eventos con magnitud ≥ ' + _currentMag + (_placeFilter ? ' en ' + _placeFilter : '') : '') + '</div>';
+    if (list) {
+      list.innerHTML = (filtered.length ? itemsHtml : emptyHtml) +
+        '<div class="sismos-none" style="padding:.6rem">Toca un sismo para centrar el mapa' +
+        (filtered.length > 1 ? ' · muestra de ' + filtered.length + ' eventos con magnitud ≥ ' + _currentMag + (_placeFilter ? ' en ' + _placeFilter : '') : '') + '</div>';
+    }
+    if (sheetBody) {
+      sheetBody.innerHTML = filtered.length ? itemsHtml : emptyHtml;
+    }
+    var openCount = document.getElementById('sismos-sheet-open-count');
+    if (openCount) openCount.textContent = '(' + filtered.length + ')';
+    var sheetCount = document.getElementById('sismos-sheet-count');
+    if (sheetCount) sheetCount.textContent = filtered.length ? '· ' + filtered.length : '';
   }
 
   function updateSummary() {
@@ -480,10 +494,58 @@ window.chSismosSetMag = function (mag, btn) {
     if (btn) { setTimeout(function () { var i = btn.querySelector('i'); if (i) i.classList.remove('fa-spin'); }, 800); }
   };
 
+  // ---- Panel deslizante móvil (lista fuera del flujo) ------------
+  window.chSismosOpenSheet = function () {
+    var sheet = document.getElementById('sismos-sheet');
+    var backdrop = document.getElementById('sismos-sheet-backdrop');
+    var close = document.getElementById('sismos-sheet-close');
+    if (sheet) { sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false'); }
+    if (backdrop) backdrop.classList.add('open');
+    document.body.classList.add('ch-sismos-sheet-locked');
+    if (close) { try { close.focus(); } catch (e) {} }
+  };
+
+  window.chSismosCloseSheet = function () {
+    var sheet = document.getElementById('sismos-sheet');
+    var backdrop = document.getElementById('sismos-sheet-backdrop');
+    if (sheet) { sheet.classList.remove('open'); sheet.setAttribute('aria-hidden', 'true'); }
+    if (backdrop) backdrop.classList.remove('open');
+    document.body.classList.remove('ch-sismos-sheet-locked');
+  };
+
+  function initSheetGestures() {
+    var grab = document.getElementById('sismos-sheet-grab');
+    var sheet = document.getElementById('sismos-sheet');
+    var startY = null, startT = 0;
+    if (!grab || !sheet) return;
+    grab.addEventListener('touchstart', function (e) {
+      var t = e.touches[0]; startY = t.clientY; startT = Date.now();
+    }, { passive: true });
+    grab.addEventListener('touchmove', function (e) {
+      if (startY == null) return;
+      if (e.touches[0].clientY - startY > 0 && sheet.classList.contains('open')) e.preventDefault();
+    }, { passive: false });
+    grab.addEventListener('touchend', function (e) {
+      if (startY == null) return;
+      var dy = e.changedTouches[0].clientY - startY;
+      var dt = Date.now() - startT;
+      if (dy > 70 || (dt < 260 && dy > 25)) chSismosCloseSheet();
+      startY = null;
+    });
+  }
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') {
+      var sheet = document.getElementById('sismos-sheet');
+      if (sheet && sheet.classList.contains('open')) chSismosCloseSheet();
+    }
+  });
+
   // ---- Arranque: solo cuando la sección existe --------------------
   function init() {
     var section = document.getElementById('sismos-section');
     if (!section) return;
+    initSheetGestures();
     ensureLeaflet().then(function () {
       buildMap();
       renderCarousel();

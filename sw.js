@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.94';
+const VERSION = 'codehub-v6.95';
 const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
@@ -114,7 +114,7 @@ const PRECACHE = [
   '/dist/assets/js/script.7940080e4e.min.js',
   '/dist/assets/js/security-scan.5a8b5156fe.min.js',
   '/dist/assets/js/servicios.1cc1caf153.min.js',
-  '/dist/assets/js/sismos.d9073b4140.min.js',
+  '/dist/assets/js/sismos.4fc9e614be.min.js',
   '/dist/assets/js/site-tour.f3e4d20220.min.js',
   '/dist/assets/js/skills-pdf-ia.66b58ffda5.min.js',
   '/dist/assets/js/sys-metrics.441cf23ca5.min.js',

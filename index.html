@@ -1435,9 +1435,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <div id="sismos-carousel" class="sismos-carousel" aria-label="Lista deslizante de sismos (toca una tarjeta para centrar el mapa)"></div>
             </div>
 
-            <!-- Lista de eventos -->
+            <!-- Lista de eventos — escritorio: inline; móvil: panel deslizante
+                 (ver .sismos-sheet en viewport-guard.css) para no robar espacio -->
             <div id="sismos-list" class="sismos-list">
                 <div class="sismos-none">Consultando actividad sísmica…</div>
+            </div>
+
+            <!-- Móvil: launcher que despliega la lista en un panel flotante -->
+            <button type="button" id="sismos-sheet-open" class="sismos-sheet-open" onclick="chSismosOpenSheet()">
+                <i class="fas fa-list"></i> Lista de sismos <b id="sismos-sheet-open-count"></b>
+            </button>
+            <div class="sismos-sheet-backdrop" id="sismos-sheet-backdrop" onclick="chSismosCloseSheet()" aria-hidden="true"></div>
+            <div class="sismos-sheet" id="sismos-sheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Lista de sismos">
+                <div class="sismos-sheet-grab" id="sismos-sheet-grab" aria-hidden="true"></div>
+                <div class="sismos-sheet-head">
+                    <span><i class="fas fa-house-crack"></i> Lista de sismos <b id="sismos-sheet-count"></b></span>
+                    <button type="button" id="sismos-sheet-close" aria-label="Cerrar lista de sismos" onclick="chSismosCloseSheet()"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div class="sismos-sheet-body" id="sismos-sheet-body"></div>
             </div>
         </section>
 

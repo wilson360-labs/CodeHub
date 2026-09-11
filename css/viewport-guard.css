@@ -1064,6 +1064,81 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .sismos-mag-options { width: 100%; justify-content: space-between; }
 }
 
+/* ── Lista de sismos en móvil: panel deslizante (no roba espacio) ──
+   La lista vertical queda fuera del flujo en pantallas ≤ 768px; se abre
+   desde un launcher con un panel fijo (bottom sheet) que se desliza sobre
+   la web y no ocupa layout. Desktop conserva la lista inline. */
+.sismos-sheet-open { display: none; }
+body.ch-sismos-sheet-locked { overflow: hidden; }
+
+@media (max-width: 768px) {
+  .sismos-list { display: none; }
+  .sismos-sheet-open {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    width: 100%; margin-top: .8rem; padding: .7rem;
+    font-family: inherit; font-size: .85rem; font-weight: 600; color: #fff;
+    background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.4);
+    border-radius: 12px; cursor: pointer;
+  }
+  .sismos-sheet-open:active { background: rgba(34,197,94,.24); }
+  .sismos-sheet-open b { color: #22c55e; font-weight: 800; }
+  .sismos-sheet-backdrop {
+    position: fixed; inset: 0; z-index: 9990;
+    background: rgba(0,0,0,.55);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+  }
+  .sismos-sheet-backdrop.open { opacity: 1; pointer-events: auto; }
+  .sismos-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 9991;
+    max-height: 72vh; border-radius: 18px 18px 0 0;
+    background: #101520;
+    border: 1px solid rgba(255,255,255,.14); border-bottom: none;
+    display: flex; flex-direction: column;
+    transform: translateY(103%);
+    transition: transform .26s cubic-bezier(.32,.72,.35,1);
+    will-change: transform;
+    box-shadow: 0 -8px 30px rgba(0,0,0,.5);
+  }
+  .sismos-sheet.open { transform: translateY(0); }
+  .sismos-sheet-grab {
+    flex: 0 0 auto; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab; touch-action: pan-y;
+  }
+  .sismos-sheet-grab::before {
+    content: ''; width: 44px; height: 5px; border-radius: 3px;
+    background: rgba(255,255,255,.32);
+  }
+  .sismos-sheet-head {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .2rem .9rem .6rem;
+  }
+  .sismos-sheet-head > span {
+    display: inline-flex; align-items: center; gap: .45rem;
+    font-weight: 700; font-size: .9rem; color: var(--text, #eee);
+  }
+  .sismos-sheet-head > span i { color: #22c55e; }
+  #sismos-sheet-count { color: #22c55e; }
+  .sismos-sheet-head button {
+    width: 34px; height: 34px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06); color: #fff; font-size: 1rem; cursor: pointer;
+  }
+  .sismos-sheet-head button:active { background: rgba(255,255,255,.16); }
+  .sismos-sheet-body {
+    flex: 1 1 auto; min-height: 0;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 0 .9rem calc(.9rem + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .sismos-sheet, .sismos-sheet-backdrop, .sismos-sheet-open { display: none !important; }
+}
+
 /* ── Alertas de sismos por push (toggle + umbral de magnitud) ── */
 .sismos-alerts {
   margin: 0 0 .8rem; padding: .7rem .8rem;
