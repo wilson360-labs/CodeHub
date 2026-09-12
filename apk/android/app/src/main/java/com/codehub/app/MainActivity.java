@@ -51,7 +51,6 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
-import java.util.Locale;
 
 public class MainActivity extends Activity {
 
@@ -599,10 +598,17 @@ public class MainActivity extends Activity {
      *  se ignora: evita cargar páginas arbitrarias viajadas por el intent. */
     private boolean isAllowedUrl(String url) {
         if (url == null) return false;
-        String u = url.toLowerCase(Locale.ROOT);
-        if (!u.startsWith("https://") && !u.startsWith("http://")) return false;
-        return u.startsWith("https://wilson360-labs.vercel.app") ||
-               u.startsWith("http://wilson360-labs.vercel.app");
+        try {
+            Uri uri = Uri.parse(url.trim());
+            String scheme = uri.getScheme();
+            if (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme)) return false;
+            String host = uri.getHost();
+            if (host == null) return false;
+            // Frontera exacta de host: "wilson360-labs.vercel.app.evil.com" no pasa
+            return "wilson360-labs.vercel.app".equalsIgnoreCase(host);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
