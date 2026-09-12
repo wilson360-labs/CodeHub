@@ -1400,23 +1400,23 @@ function renderApps() {
       return '';
     })();
     return `
-    <div class="app-row" id="row-${app.appId}" style="${dupInfo[app.appId] ? 'outline:2px solid rgba(255,107,107,.55);outline-offset:-1px;background:rgba(255,107,107,.05)' : ''}">
+    <div class="app-row" id="row-${escapeHtml(app.appId)}" style="${dupInfo[app.appId] ? 'outline:2px solid rgba(255,107,107,.55);outline-offset:-1px;background:rgba(255,107,107,.05)' : ''}">
       <div class="app-name-cell">
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
-          <img id="img-prev-${app.appId}" src="${app.imagen || ''}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:var(--card2);flex-shrink:0;${app.imagen ? '' : 'display:none'}" onerror="this.style.display='none'">
+          <img id="img-prev-${escapeHtml(app.appId)}" src="${escapeHtml(app.imagen || '')}" alt="" style="width:36px;height:36px;border-radius:10px;object-fit:cover;background:var(--card2);flex-shrink:0;${app.imagen ? '' : 'display:none'}" onerror="this.style.display='none'">
           <div>
-            ${app.nombre}
-            <small>${app.categoria || ''} · ${app.appId}</small>
+            ${escapeHtml(app.nombre)}
+            <small>${escapeHtml(app.categoria || '')} · ${escapeHtml(app.appId)}</small>
           </div>
         </div>
         ${dupInfo[app.appId] ? `
         <div style="margin-top:.35rem;padding:.4rem .5rem;border-radius:8px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.25)">
           <div style="font-family:var(--mono);font-size:.56rem;color:#ff6b6b;font-weight:700;margin-bottom:.25rem">
-            <i class="fas fa-clone"></i> Duplicado con: ${dupInfo[app.appId].group.filter(g => g.appId !== app.appId).map(g => g.appId).join(', ')}
+            <i class="fas fa-clone"></i> Duplicado con: ${dupInfo[app.appId].group.filter(g => g.appId !== app.appId).map(g => escapeHtml(g.appId)).join(', ')}
           </div>
           ${app.appId === dupInfo[app.appId].keepAppId
             ? `<span style="font-family:var(--mono);font-size:.55rem;color:var(--g)"><i class="fas fa-check"></i> Sugerido: conservar esta</span>`
-            : `<span style="font-family:var(--mono);font-size:.55rem;color:var(--muted)">Sugerido: conservar "${dupInfo[app.appId].keepAppId}"</span>`}
+            : `<span style="font-family:var(--mono);font-size:.55rem;color:var(--muted)">Sugerido: conservar "${escapeHtml(dupInfo[app.appId].keepAppId)}"</span>`}
           <button onclick='deleteDuplicateGroup(${JSON.stringify(dupInfo[app.appId].group.map(g => g.appId))}, "${dupInfo[app.appId].keepAppId}")' style="display:block;margin-top:.3rem;width:100%;padding:.28rem .4rem;border-radius:7px;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.35);color:#ff6b6b;font-family:var(--mono);font-size:.58rem;cursor:pointer;font-weight:700">
             <i class="fas fa-broom"></i> Resolver duplicado (conservar ${dupInfo[app.appId].keepAppId})
           </button>
@@ -2242,7 +2242,7 @@ async function loadAdminRequests() {
     }
     list.innerHTML = d.requests.map(r => `
       <div class="req-row">
-        <div class="req-name">${r.appName}<small>${r.reason || ''}</small></div>
+        <div class="req-name">${escapeHtml(r.appName)}<small>${escapeHtml(r.reason || '')}</small></div>
         <div class="req-votes">+${r.votes} votos</div>
         <button class="req-action req-done"   onclick="markRequest('${r._id}','done')"><i class="fas fa-check"></i> Agregar</button>
         <button class="req-action req-reject" onclick="markRequest('${r._id}','rejected')"><i class="fas fa-times"></i> Rechazar</button>
@@ -2282,7 +2282,7 @@ async function loadAdminRatings() {
       const app = appsData.find(a => a.appId === id);
       const stars = '⭐'.repeat(Math.round(r.avg));
       return `<div class="req-row">
-        <div class="req-name">${app?.nombre || id}</div>
+        <div class="req-name">${escapeHtml((app && app.nombre) || id)}</div>
         <div style="font-family:var(--mono);font-size:.74rem;color:var(--a)">${stars} ${r.avg}/5</div>
         <div style="font-family:var(--mono);font-size:.63rem;color:var(--muted)">${r.count} votos</div>
         <div></div>
@@ -2547,12 +2547,12 @@ function renderVisitors(list) {
     body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2.5rem;font-family:var(--mono);color:var(--muted)">Sin visitas registradas aún — visita index.html para generar datos</td></tr>';
     return;
   }
-  body.innerHTML = list.map(v => `
-    <tr onclick="showVisitorJSON(${JSON.stringify(JSON.stringify(v))})">
-      <td style="font-family:var(--mono);font-size:.7rem;color:var(--c)">${v.ip || '—'}</td>
-      <td>${countryFlag(v.country_code)} <span style="font-size:.76rem">${v.country || '—'}</span></td>
-      <td style="color:var(--muted);font-size:.7rem">${v.city || '—'}${v.region ? ', '+v.region : ''}</td>
-      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--muted)" title="${v.isp||''}">${v.isp || v.org || '—'}</td>
+  body.innerHTML = list.map((v, i) => `
+    <tr onclick="showVisitorJSON(${i})">
+      <td style="font-family:var(--mono);font-size:.7rem;color:var(--c)">${escapeHtml(v.ip || '—')}</td>
+      <td>${countryFlag(v.country_code)} <span style="font-size:.76rem">${escapeHtml(v.country || '—')}</span></td>
+      <td style="color:var(--muted);font-size:.7rem">${escapeHtml(v.city || '—')}${v.region ? ', '+escapeHtml(v.region) : ''}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.68rem;color:var(--muted)" title="${escapeHtml(v.isp||'')}">${escapeHtml(v.isp || v.org || '—')}</td>
       <td>${riskPill(v.risk_score)}</td>
       <td>
         ${v.is_vpn   ? '<span class="flag-badge" style="background:rgba(255,189,46,.15);color:#ffbd2e">VPN</span>'   : ''}
@@ -2560,14 +2560,15 @@ function renderVisitors(list) {
         ${v.is_bot   ? '<span class="flag-badge" style="background:rgba(168,85,247,.15);color:#a855f7">BOT</span>'  : ''}
         ${(!v.is_vpn && !v.is_proxy && !v.is_bot) ? '<span style="color:var(--muted);font-size:.65rem">—</span>' : ''}
       </td>
-      <td style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">${v.page || '/'}</td>
+      <td style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">${escapeHtml(v.page || '/')}</td>
       <td style="font-family:var(--mono);font-size:.65rem;color:var(--muted);white-space:nowrap">${fmtDate(v.visited_at)}</td>
     </tr>
   `).join('');
 }
 
-function showVisitorJSON(jsonStr) {
-  const data = JSON.parse(jsonStr);
+function showVisitorJSON(index) {
+  const data = _allVisitors[index];
+  if (!data) return;
   document.getElementById('vt-json-content').textContent = JSON.stringify(data, null, 2);
   document.getElementById('vt-json-overlay').style.display = 'flex';
 }
@@ -2812,14 +2813,16 @@ function toast(m) {
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style'] });
   });
+})();
 
-  // ── REMOTE CONFIG PANEL ────────────────────────────────────
+// ── REMOTE CONFIG PANEL — fuera del IIFE para que HTML/switchTab puedan
+  // invocar load/save/reset (antes eran privadas -> ReferenceError).
   var _cfgData = null;
 
   function loadAdminConfig() {
     var status = document.getElementById('cfg-status');
     if (status) status.textContent = 'Cargando...';
-    fetch(backend + '/api/admin/config', {
+    fetch(BACKEND + '/api/admin/config', {
       headers: { 'X-Admin-Session': ADMIN_SESSION }
     }).then(function(r) { return r.json(); }).then(function(d) {
       if (d.ok && d.config) {
@@ -2849,7 +2852,7 @@ function toast(m) {
       return;
     }
     if (status) status.textContent = 'Guardando...';
-    fetch(backend + '/api/admin/config', {
+    fetch(BACKEND + '/api/admin/config', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -2873,7 +2876,7 @@ function toast(m) {
     if (!confirm('¿Restaurar la config por defecto? Se perderán todos los cambios.')) return;
     var status = document.getElementById('cfg-status');
     if (status) status.textContent = 'Restaurando...';
-    fetch(backend + '/api/admin/config', {
+    fetch(BACKEND + '/api/admin/config', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -2892,4 +2895,3 @@ function toast(m) {
       if (status) status.textContent = 'Error: ' + e.message;
     });
   }
-})();
