@@ -892,51 +892,58 @@ public class CodeHubBridge {
         final String safeContent = content == null ? "" : content;
         final String safeCb = callbackName == null ? "" : callbackName;
         new Thread(() -> {
-            String status = "saved";
-            String message = "Respaldo guardado en Descargas";
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ContentValues values = new ContentValues();
-                    values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
-                    values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
-                    values.put(MediaStore.Downloads.IS_PENDING, 1);
-                    Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
-                    Uri item = activity.getContentResolver().insert(collection, values);
-                    if (item == null) throw new Exception("El sistema no dejó crear el archivo");
-                    try (java.io.OutputStream os = activity.getContentResolver().openOutputStream(item, "w")) {
-                        if (os == null) throw new Exception("Sin acceso de escritura");
-                        os.write(safeContent.getBytes("UTF-8"));
-                    }
-                    values.clear();
-                    values.put(MediaStore.Downloads.IS_PENDING, 0);
-                    activity.getContentResolver().update(item, values, null, null);
-                } else {
-                    File dir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-                    if (dir == null) throw new Exception("Sin almacenamiento disponible");
-                    File f = new File(dir, safeName);
-                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
-                        fos.write(safeContent.getBytes("UTF-8"));
-                    }
-                    final Uri uri = androidx.core.content.FileProvider.getUriForFile(
-                        activity, activity.getPackageName() + ".fileprovider", f);
-                    status = "shared";
-                    message = "Respaldo listo para guardar o compartir";
-                    activity.runOnUiThread(() -> {
-                        try {
-                            Intent send = new Intent(Intent.ACTION_SEND);
-                            send.setType("application/json");
-                            send.putExtra(Intent.EXTRA_STREAM, uri);
-                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            activity.startActivity(Intent.createChooser(send, "Guardar respaldo"));
-                        } catch (Exception ignored) {}
-                    });
-                }
-            } catch (Exception e) {
-                status = "error";
-                message = "No se pudo exportar: " + e.getMessage();
-            }
-            backupNotify(safeCb, status, message);
+            String[] res = exportBackup(safeName, safeContent);
+            backupNotify(safeCb, res[0], res[1]);
         }).start();
+    }
+
+    /** Escribe el respaldo en disco. Devuelve {status, message}: 'saved'
+     *  (MediaStore, Descargas), 'shared' (chooser pre-29) o 'error'. */
+    private String[] exportBackup(String name, String content) {
+        String status = "saved";
+        String message = "Respaldo guardado en Descargas";
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                values.put(MediaStore.Downloads.IS_PENDING, 1);
+                Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                Uri item = activity.getContentResolver().insert(collection, values);
+                if (item == null) throw new Exception("El sistema no dejó crear el archivo");
+                try (java.io.OutputStream os = activity.getContentResolver().openOutputStream(item, "w")) {
+                    if (os == null) throw new Exception("Sin acceso de escritura");
+                    os.write(content.getBytes("UTF-8"));
+                }
+                values.clear();
+                values.put(MediaStore.Downloads.IS_PENDING, 0);
+                activity.getContentResolver().update(item, values, null, null);
+            } else {
+                File dir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (dir == null) throw new Exception("Sin almacenamiento disponible");
+                File f = new File(dir, name);
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
+                    fos.write(content.getBytes("UTF-8"));
+                }
+                final Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    activity, activity.getPackageName() + ".fileprovider", f);
+                status = "shared";
+                message = "Respaldo listo para guardar o compartir";
+                activity.runOnUiThread(() -> {
+                    try {
+                        Intent send = new Intent(Intent.ACTION_SEND);
+                        send.setType("application/json");
+                        send.putExtra(Intent.EXTRA_STREAM, uri);
+                        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        activity.startActivity(Intent.createChooser(send, "Guardar respaldo"));
+                    } catch (Exception ignored) {}
+                });
+            }
+        } catch (Exception e) {
+            status = "error";
+            message = "No se pudo exportar: " + e.getMessage();
+        }
+        return new String[] { status, message };
     }
 
     @JavascriptInterface
