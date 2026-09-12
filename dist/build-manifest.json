@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-09-12T04:31:42.414Z",
+  "generatedAt": "2026-09-12T21:16:26.063Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.49c66dcd7b.min.js",
-    "js/auth.js": "assets/js/auth.f1e03e6381.min.js",
+    "js/auth.js": "assets/js/auth.14f7caec39.min.js",
     "js/bug-reporter.js": "assets/js/bug-reporter.0f303b6651.min.js",
-    "js/ch-geo.js": "assets/js/ch-geo.980af98074.min.js",
+    "js/ch-geo.js": "assets/js/ch-geo.5216946b16.min.js",
     "js/connection-alert.js": "assets/js/connection-alert.c76b7978b9.min.js",
     "js/consent-banner.js": "assets/js/consent-banner.b3efc7679a.min.js",
     "js/deep-search.js": "assets/js/deep-search.0171f144d5.min.js",
@@ -14,10 +14,10 @@
     "js/lazy-features.js": "assets/js/lazy-features.f4fdd9db33.min.js",
     "js/live-update-check.js": "assets/js/live-update-check.c7bd39bcbb.min.js",
     "js/morphicons-init.js": "assets/js/morphicons-init.f06cae5f89.min.js",
-    "js/notifications.js": "assets/js/notifications.0a225aa2fc.min.js",
+    "js/notifications.js": "assets/js/notifications.98e4f0d450.min.js",
     "js/office-generator.js": "assets/js/office-generator.8d6cdf13ee.min.js",
-    "js/offline-queue.js": "assets/js/offline-queue.dd424dde2a.min.js",
-    "js/opensource.js": "assets/js/opensource.0b9559dc8d.min.js",
+    "js/offline-queue.js": "assets/js/offline-queue.6b72f7a657.min.js",
+    "js/opensource.js": "assets/js/opensource.4e32d98935.min.js",
     "js/permissions-setup.js": "assets/js/permissions-setup.315574d7b4.min.js",
     "js/remote-config.js": "assets/js/remote-config.353c271f68.min.js",
     "js/rewarded-ad.js": "assets/js/rewarded-ad.466d6994d0.min.js",
@@ -31,10 +31,10 @@
     "js/theme-switcher.js": "assets/js/theme-switcher.4eed2242e8.min.js",
     "js/thinking-orb.js": "assets/js/thinking-orb.2b4982d5a0.min.js",
     "js/updater.js": "assets/js/updater.cdaf77f61c.min.js",
-    "js/ux-animations.js": "assets/js/ux-animations.f9abe87385.min.js",
+    "js/ux-animations.js": "assets/js/ux-animations.f968650496.min.js",
     "js/view-transitions.js": "assets/js/view-transitions.e4f2d275aa.min.js",
     "js/weather-map.js": "assets/js/weather-map.1ad0c74b42.min.js",
     "js/windows-enhance.js": "assets/js/windows-enhance.00814c6429.min.js",
-    "widgets/weather/weather-widget.js": "assets/widgets/weather/weather-widget.39d8157690.min.js"
+    "widgets/weather/weather-widget.js": "assets/widgets/weather/weather-widget.fd1d5d4d92.min.js"
   }
 }

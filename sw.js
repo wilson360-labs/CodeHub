@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.98';
+const VERSION = 'codehub-v6.99';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -91,9 +91,9 @@ const PRECACHE = [
   '/widgets/weather/weather-widget.js',
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
   '/dist/assets/js/admin-hub.49c66dcd7b.min.js',
-  '/dist/assets/js/auth.f1e03e6381.min.js',
+  '/dist/assets/js/auth.14f7caec39.min.js',
   '/dist/assets/js/bug-reporter.0f303b6651.min.js',
-  '/dist/assets/js/ch-geo.980af98074.min.js',
+  '/dist/assets/js/ch-geo.5216946b16.min.js',
   '/dist/assets/js/connection-alert.c76b7978b9.min.js',
   '/dist/assets/js/consent-banner.b3efc7679a.min.js',
   '/dist/assets/js/deep-search.0171f144d5.min.js',
@@ -103,10 +103,10 @@ const PRECACHE = [
   '/dist/assets/js/lazy-features.f4fdd9db33.min.js',
   '/dist/assets/js/live-update-check.c7bd39bcbb.min.js',
   '/dist/assets/js/morphicons-init.f06cae5f89.min.js',
-  '/dist/assets/js/notifications.0a225aa2fc.min.js',
+  '/dist/assets/js/notifications.98e4f0d450.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
-  '/dist/assets/js/offline-queue.dd424dde2a.min.js',
-  '/dist/assets/js/opensource.0b9559dc8d.min.js',
+  '/dist/assets/js/offline-queue.6b72f7a657.min.js',
+  '/dist/assets/js/opensource.4e32d98935.min.js',
   '/dist/assets/js/permissions-setup.315574d7b4.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
   '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
@@ -120,11 +120,11 @@ const PRECACHE = [
   '/dist/assets/js/theme-switcher.4eed2242e8.min.js',
   '/dist/assets/js/thinking-orb.2b4982d5a0.min.js',
   '/dist/assets/js/updater.cdaf77f61c.min.js',
-  '/dist/assets/js/ux-animations.f9abe87385.min.js',
+  '/dist/assets/js/ux-animations.f968650496.min.js',
   '/dist/assets/js/view-transitions.e4f2d275aa.min.js',
   '/dist/assets/js/weather-map.1ad0c74b42.min.js',
   '/dist/assets/js/windows-enhance.00814c6429.min.js',
-  '/dist/assets/widgets/weather/weather-widget.39d8157690.min.js',
+  '/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js',
   '/data/roadmap.json',
 ];
 
