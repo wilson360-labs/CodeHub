@@ -193,6 +193,7 @@ const uploadSecurityFile = multer({
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
+const publicPostLimiter = rateLimit({ windowMs: 15*60*1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes. Espera un momento.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 // Auth admin: máximo 5 intentos por 15 min por IP (Turnstile + key check)
 const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos de autenticación. Espera 15 minutos.', code: 'ADMIN_AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
 // App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
@@ -1772,13 +1773,26 @@ async function validateTurnstile(token) {
 
 // ── Universal Resolver — Desencriptación heurística de links ──
 const universalResolverRouter = require('./modules/universal-resolver');
+const { validateUrlSafety: validateUrlSsrf } = require('./modules/universal-resolver/resolver');
 app.use('/api/resolver', universalResolverRouter);
 
 // ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
+// Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca
+// acepta el header solo) o valida la sesión HMAC; requireUser exige sesión
+// real para memoria/RAG (evita fuga/borrado de memoria de 'admin').
+function wilEIsAdmin(req) {
+  const session = req.headers['x-admin-session'];
+  if (session) { const p = _verifySession(session); if (p && p.admin === true) return true; }
+  const key = req.headers['x-admin-key'];
+  const validKey = process.env.ADMIN_KEY;
+  if (validKey && key && key === validKey) return true;
+  return !!(req.authUser && req.authUser.email === (process.env.ADMIN_EMAIL || ''));
+}
 const wilERoutes = require('./wil-e/routes')({
   authPayload: (req) => req.authUser,
-  isAdminReq: (req) => !!(req.authUser && req.authUser.email === (process.env.ADMIN_EMAIL || '')) || !!(req.headers['x-admin-key']),
+  isAdminReq: wilEIsAdmin,
+  requireUser: (req) => !!(req.authUser && req.authUser.id),
 });
 app.use('/api/wil-e', wilERoutes);
 
@@ -2445,6 +2459,7 @@ app.post('/api/contact', (req, res) => {
 
 // Ratings
 const cleanUserText = (raw, max) => (typeof raw === 'string' ? raw.replace(/[<>]/g, '').replace(/\s+/g, ' ').slice(0, max).trim() : '');
+const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 app.get('/api/ratings', async (_, res) => {
   if (!dbConnected) return res.json({ ratings: {} });
@@ -2459,10 +2474,12 @@ app.get('/api/ratings', async (_, res) => {
   } catch { res.json({ ratings: {} }); }
 });
 
-app.post('/api/ratings', async (req, res) => {
-  const { appId, appName, stars } = req.body;
+app.post('/api/ratings', publicPostLimiter, async (req, res) => {
+  const appId = cleanUserText(req.body.appId, 60);
+  const appName = cleanUserText(req.body.appName, 60) || appId;
   const texto = cleanUserText(req.body.texto, 600);
   const autor = cleanUserText(req.body.autor, 40);
+  const { stars } = req.body;
   const ip = req.ip || 'anon';
   if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos inválidos' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
@@ -2538,21 +2555,24 @@ app.get('/api/requests', async (_, res) => {
   catch { res.json({ requests: [] }); }
 });
 
-app.post('/api/requests', async (req, res) => {
-  const { appName, reason, turnstileToken } = req.body; const ip = req.ip || 'anon';
+app.post('/api/requests', publicPostLimiter, async (req, res) => {
+  const { turnstileToken } = req.body;
+  const ip = req.ip || 'anon';
+  const appName = cleanUserText(req.body.appName, 60);
+  const reason = cleanUserText(req.body.reason, 200);
   if (!appName || appName.trim().length < 2) return res.status(400).json({ error: 'Nombre requerido' });
   if (!await validateTurnstile(turnstileToken)) return res.status(403).json({ error: 'Verificación fallida' });
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try {
-    const existing = await AppRequest.findOne({ appName: new RegExp(appName.trim(), 'i'), status: 'pending' });
+    const existing = await AppRequest.findOne({ appName: new RegExp(escapeRegExp(appName.trim()), 'i'), status: 'pending' });
     if (existing) {
       if (existing.voters.includes(ip)) return res.status(409).json({ error: 'Ya votaste', votes: existing.votes });
       existing.votes += 1; existing.voters.push(ip); await existing.save();
       return res.json({ ok: true, message: 'Voto agregado', votes: existing.votes });
     }
-    const newReq = new AppRequest({ appName: appName.trim(), reason: reason?.trim() || '', ip, voters: [ip] });
+    const newReq = new AppRequest({ appName: appName.trim(), reason: reason || '', ip, voters: [ip] });
     await newReq.save();
-    tgAlert('appreq', () => `🙋 <b>Solicitud de app</b>\n📱 ${String(appName.trim()).slice(0, 40)}\n💬 ${String(reason || '').trim().slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
+    tgAlert('appreq', () => `🙋 <b>Solicitud de app</b>\n📱 ${appName.trim().slice(0, 40)}\n💬 ${(reason || '').slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
     res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
   } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
@@ -3306,8 +3326,13 @@ async function executeTool(name, arg) {
 }
 
 // Extrae texto de una web (HTML→texto plano) para leer URLs.
+// Seguridad: reutiliza validateUrlSafety del Universal Resolver para
+// bloquear SSRF (IPs privadas/reservadas, localhost, metadata de cloud)
+// antes de emitir el fetch. Nota residual: sigue habiendo una ventana
+// TOCTOU entre la validación de DNS y el fetch (DNS rebinding).
 async function fetchUrlText(url) {
   try {
+    try { await validateUrlSsrf(url); } catch { return ''; }
     const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 CodeHub' } });
     if (!r.ok) return '';
     const html = await r.text();

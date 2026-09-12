@@ -7,8 +7,20 @@ function getKey() {
   // 32 bytes (AES-256). Se deriva de la variable WIL_E_ENC_KEY (hex 64 o texto).
   const raw = process.env.WIL_E_ENC_KEY;
   if (raw) return crypto.createHash('sha256').update(String(raw)).digest();
-  // Fallback: derivado de MONGODB_URI para no romper si no hay clave dedicada.
-  return crypto.createHash('sha256').update(String(process.env.MONGODB_URI || 'wil-e-default')).digest();
+  // Compatibilidad legada: si ya hay datos cifrados con la clave derivada de
+  // MONGODB_URI se siguen pudiendo descifrar (evita orfandad de datos). Pero
+  // ya NO se usa un literal público, y se advierte para que el operador fije
+  // WIL_E_ENC_KEY (única vía de cifrado "de extremo a extremo" real).
+  if (process.env.MONGODB_URI) {
+    if (!process.env.WIL_E_ENC_KEY) {
+      console.warn('⚠️ [wil-e/crypto] WIL_E_ENC_KEY no configurada: usando clave derivada de MONGODB_URI (legado).');
+    }
+    return crypto.createHash('sha256').update(String(process.env.MONGODB_URI)).digest();
+  }
+  // Sin clave ni MONGODB_URI: clave aleatoria por proceso (los datos no
+  // sobreviven reinicios, pero jamás un valor conocido por el atacante).
+  console.warn('⚠️ [wil-e/crypto] Sin WIL_E_ENC_KEY ni MONGODB_URI: clave aleatoria por proceso.');
+  return crypto.randomBytes(32);
 }
 
 // Cifra un string -> "v1:iv:tag:data" (base64)

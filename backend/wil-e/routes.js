@@ -12,17 +12,26 @@ const { AIMemory } = require('./models');
 
 module.exports = function (opts) {
   const router = express.Router();
-  const { getOwnerId, authPayload, isAdminReq } = opts || {};
+  const { getOwnerId, authPayload, isAdminReq, requireUser } = opts || {};
 
+  // owner legítimo: solo un admin puede operar sobre un body.ownerId ajeno;
+  // el resto de peticiones SIEMPRE derivan el userId de la sesión autenticada.
   const resolveOwner = (req) => {
-    // Un admin puede operar sobre un owner; si no, usa el owner del payload.
     if (isAdminReq && isAdminReq(req) && req.body && req.body.ownerId) return req.body.ownerId;
     const p = authPayload ? authPayload(req) : null;
-    return (p && p.id) || req.authUser?.id || (req.body && req.body.ownerId) || 'admin';
+    return (p && p.id) || (req.authUser && req.authUser.id) || '';
+  };
+
+  // Middleware: exige sesión válida (Bearer Supabase) — sin sesión no se
+  // accede a memoria ni a la RAG (antes un invitado caía al owner 'admin').
+  const requireAuthed = (req, res, next) => {
+    const ok = requireUser ? requireUser(req) : !!(req.authUser && req.authUser.id);
+    if (!ok) return res.status(401).json({ error: 'Autenticación requerida' });
+    next();
   };
 
   // ── Búsqueda RAG ──────────────────────────────────────────────
-  router.get('/kb/search', async (req, res) => {
+  router.get('/kb/search', requireAuthed, async (req, res) => {
     try {
       const query = (req.query.q || '').trim();
       if (!query) return res.json({ results: [] });
@@ -78,7 +87,7 @@ module.exports = function (opts) {
   });
 
   // ── Memoria del usuario ───────────────────────────────────────
-  router.get('/memory', async (req, res) => {
+  router.get('/memory', requireAuthed, async (req, res) => {
     try {
       const userId = resolveOwner(req);
       const mem = await recall({ userId, limit: 20 });
@@ -98,9 +107,10 @@ module.exports = function (opts) {
     }
   });
 
-  router.delete('/memory', async (req, res) => {
+  router.delete('/memory', requireAuthed, async (req, res) => {
     try {
       const userId = resolveOwner(req);
+      if (!userId) return res.status(401).json({ error: 'Autenticación requerida' });
       await AIMemory.deleteMany({ userId });
       res.json({ ok: true, userId });
     } catch (e) {
@@ -109,9 +119,10 @@ module.exports = function (opts) {
   });
 
   // ── Borrar UN recuerdo concreto (por clave semántica) ─────────
-  router.delete('/memory/:key', async (req, res) => {
+  router.delete('/memory/:key', requireAuthed, async (req, res) => {
     try {
       const userId = resolveOwner(req);
+      if (!userId) return res.status(401).json({ error: 'Autenticación requerida' });
       const r = await AIMemory.deleteMany({ userId, key: req.params.key });
       res.json({ ok: true, userId, deleted: r.deletedCount || 0 });
     } catch (e) {
