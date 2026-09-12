@@ -35,12 +35,16 @@
         if (l && (l.lat != null || l.lon != null)) return l;
       } catch (e) {}
     }
-    var lat = parseFloat(win.localStorage.getItem('ch_user_lat'));
-    var lon = parseFloat(win.localStorage.getItem('ch_user_lon'));
+    var lat = null, lon = null, city = '';
+    try {
+      lat = parseFloat(win.localStorage.getItem('ch_user_lat'));
+      lon = parseFloat(win.localStorage.getItem('ch_user_lon'));
+      city = win.localStorage.getItem('ch_user_city') || '';
+    } catch (e) {}
     return {
       lat: Number.isFinite(lat) ? lat : null,
       lon: Number.isFinite(lon) ? lon : null,
-      city: win.localStorage.getItem('ch_user_city') || '',
+      city: city
     };
   }
 

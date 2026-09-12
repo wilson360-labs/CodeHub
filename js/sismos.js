@@ -297,8 +297,12 @@
     setTimeout(function () { try { _map.invalidateSize(); } catch (e) {} }, 120);
     if (window.ResizeObserver) {
       try {
-        var ro = new ResizeObserver(function () { try { _map.invalidateSize(); } catch (e) {} });
+        var ro = new ResizeObserver(function () {
+          if (el.offsetParent === null) return;
+          try { _map.invalidateSize(); } catch (e) {}
+        });
         ro.observe(el);
+        window.addEventListener('pagehide', function () { ro.disconnect(); }, { once: true });
       } catch (e) {}
     }
   }

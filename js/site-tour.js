@@ -37,11 +37,12 @@
   };
 
   SiteTour.prototype.hasBeenSeen = function () {
-    return !!localStorage.getItem(this._storeKey());
+    try { return !!localStorage.getItem(this._storeKey()); }
+    catch (e) { return false; }
   };
 
   SiteTour.prototype.markSeen = function () {
-    localStorage.setItem(this._storeKey(), '1');
+    try { localStorage.setItem(this._storeKey(), '1'); } catch (e) {}
   };
 
   SiteTour.prototype.start = function (force) {

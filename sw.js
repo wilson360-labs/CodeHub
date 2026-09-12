@@ -13,7 +13,6 @@
 // ═══════════════════════════════════════════════════════
 
 const VERSION = 'codehub-v6.96';
-const API_CACHE = 'codehub-api-v4';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -149,7 +148,7 @@ self.addEventListener('activate', e => {
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(k => k !== VERSION && k !== API_CACHE)
+          .filter(k => k !== VERSION && !k.startsWith('codehub-api-'))
           .map(k => { console.log('🗑️ Cache eliminado:', k); return caches.delete(k); })
       )
     ).then(() => {
@@ -364,7 +363,9 @@ self.addEventListener('fetch', e => {
     e.respondWith(staleWhileRevalidate(request));
     return;
   }
-  e.respondWith(fetch(request).catch(() => caches.match(request)));
+  e.respondWith(
+    fetch(request).catch(() => caches.match(request).then(cached => cached || Response.error()))
+  );
 });
 
 // ══════════════════════════════════════════════════════

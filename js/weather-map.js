@@ -654,9 +654,11 @@
     }
     var lat = _selected.lat, lon = _selected.lon, city = _selected.city;
 
-    localStorage.setItem('ch_user_lat', lat);
-    localStorage.setItem('ch_user_lon', lon);
-    localStorage.setItem('ch_user_city', city);
+    try {
+      localStorage.setItem('ch_user_lat', lat);
+      localStorage.setItem('ch_user_lon', lon);
+      localStorage.setItem('ch_user_city', city);
+    } catch (e) {}
 
     var label = city + ' 📍';
     if (typeof fetchWeatherByCoords === 'function') {
@@ -676,8 +678,11 @@
     if (window.CodeHubNative && CodeHubNative.saveLocation) {
       try { CodeHubNative.saveLocation(lat, lon, city); } catch (e) {}
     }
-    var endpoint = localStorage.getItem('ch_push_endpoint');
-    var alertsOn = localStorage.getItem('ch_weather_alerts') === '1';
+    var endpoint = null, alertsOn = false;
+    try {
+      endpoint = localStorage.getItem('ch_push_endpoint');
+      alertsOn = localStorage.getItem('ch_weather_alerts') === '1';
+    } catch (e) {}
     if (endpoint) {
       var body = { endpoint: endpoint, location: loc };
       if (alertsOn) body.prefs = { alerts: true };
