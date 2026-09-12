@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build-apk:
@@ -49,9 +50,31 @@ jobs:
         run: |
           gradle assembleDebug --stacktrace > "$RUNNER_TEMP/compile-debug.log" 2>&1
           rc=$?
+          echo "gradle_rc=$rc" >> "$GITHUB_ENV"
           echo "gradle rc=$rc"
           tail -n 60 "$RUNNER_TEMP/compile-debug.log"
           exit 0
+
+      - name: Publicar error de compilacion como Issue (diagnostico)
+        if: env.gradle_rc != '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          {
+            echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
+            echo "";
+            echo "**Paso:** Compile check (debug, sin keystore) — from `.github/workflows/build-apk.yml`";
+            echo "";
+            echo '```text';
+            grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile" "$RUNNER_TEMP/compile-debug.log" | head -n 40;
+            echo '```';
+          } > /tmp/compile-error-body.md
+          gh issue create --repo "$GITHUB_REPO" \
+            --title "CI: error de compilación APK ($GITHUB_SHA)" \
+            --body-file /tmp/compile-error-body.md \
+            --label "ci-apk" 2>/dev/null || true
 
       - name: Upload compile log (debug)
         if: always()
