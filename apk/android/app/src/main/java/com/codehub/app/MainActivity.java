@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://wilson360-labs.vercel.app";
     private static final String CHANNEL_DEFAULT = "codehub_default";
     private static final int FILE_CHOOSER_REQUEST   = 100;
+    private static final int BACKUP_IMPORT_REQUEST  = 101;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
@@ -638,6 +639,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        // Respaldo 1-tap — archivo JSON de configuración elegido con
+        // ACTION_OPEN_DOCUMENT (CodeHubBridge.pickBackupFile).
+        if (requestCode == BACKUP_IMPORT_REQUEST) {
+            Uri picked = (resultCode == RESULT_OK && data != null) ? data.getData() : null;
+            try {
+                if (bridge != null) bridge.onBackupFilePicked(picked);
+            } catch (Exception ignored) {}
+            return;
+        }
         if (requestCode == FILE_CHOOSER_REQUEST && fileUploadCallback != null) {
             Uri[] results = null;
             if (resultCode == RESULT_OK && data != null && data.getDataString() != null) {

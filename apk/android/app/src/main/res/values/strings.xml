@@ -3,4 +3,14 @@
     <string name="app_name">CodeHub</string>
     <string name="widget_weather_description">Clima de CodeHub — muestra tu temperatura, condición y ciudad actual, y abre la app al tocarlo.</string>
 
+    <!-- Atajos dinámicos (long-press del icono) -->
+    <string name="shortcut_wile_short">WIL.E</string>
+    <string name="shortcut_wile_long">Hablar con WIL.E</string>
+    <string name="shortcut_weather_short">Clima</string>
+    <string name="shortcut_weather_long">Ver el clima y el mapa</string>
+    <string name="shortcut_catalog_short">Apps</string>
+    <string name="shortcut_catalog_long">Catálogo Open Source</string>
+    <string name="shortcut_tools_short">Herramientas</string>
+    <string name="shortcut_tools_long">Herramientas web</string>
+
 </resources>

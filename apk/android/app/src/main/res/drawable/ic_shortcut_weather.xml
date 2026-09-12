@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#080810"
+        android:pathData="M24,0a24,24 0 1 0 0,48a24,24 0 1 0 0,-48" />
+
+    <!-- Sun -->
+    <path
+        android:fillColor="#facc15"
+        android:strokeWidth="0"
+        android:pathData="M31,18 m-4.5,0 a4.5,4.5 0 1 1 9,0 a4.5,4.5 0 1 1 -9,0" />
+
+    <!-- Cloud (bumps + base) -->
+    <path
+        android:fillColor="#38bdf8"
+        android:strokeWidth="0"
+        android:pathData="M13,31 h22 v4 h-22 z M13.5,31 a4.5,4.5 0 0 1 0.6,-8.9 a8.5,8.5 0 0 1 16.2,-1.8 a5.5,5.5 0 0 1 4.7,0.7" />
+</vector>

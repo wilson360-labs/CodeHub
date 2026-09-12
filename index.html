@@ -245,7 +245,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-<link rel="stylesheet" href="css/sys-tools.css?v=20260905b">
+<link rel="stylesheet" href="css/sys-tools.css?v=20260912a">
 <link rel="stylesheet" href="css/native-feel.css?v=20260905c">
 <link rel="stylesheet" href="css/viewport-guard.css?v=20260911a">
 
@@ -1608,6 +1608,82 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <p class="roadmap-updated" id="roadmap-updated"></p>
         </section>
 
+        <!-- Panel de dispositivo (solo APK Android) — se revela vía
+             JavaScript cuando CodeHubNative está presente. -->
+        <section id="device-panel" class="dev-panel" hidden>
+            <h2>📱 Panel de dispositivo</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7">Estado en vivo de tu equipo y acciones exclusivas de la app Android de CodeHub.</p>
+
+            <div class="sys-bento dev-bento">
+
+                <!-- Métricas en vivo -->
+                <div class="sys-card dev-card-metrics">
+                    <div class="sys-card-head">
+                        <i class="fas fa-mobile-screen sys-ico"></i>
+                        <div class="sys-head-t">
+                            <h3>Tu dispositivo</h3>
+                            <span class="sys-muted" id="dev-model">—</span>
+                        </div>
+                        <span class="sys-pill" id="dev-network">…</span>
+                    </div>
+                    <div class="sys-rows">
+                        <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-battery-three-quarters"></i> Batería&nbsp;<span id="dev-battery-state"></span></span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-battery"></div></div>
+                            <b id="dev-battery">0%</b>
+                        </div>
+                        <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-microchip"></i> RAM</span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-ram"></div></div>
+                            <b id="dev-ram">—</b>
+                        </div>
+                        <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-hard-drive"></i> Almacenamiento</span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-storage"></div></div>
+                            <b id="dev-storage">—</b>
+                        </div>
+                    </div>
+                    <div class="sys-foot">
+                        <span class="sys-dot-blink"></span> <span id="dev-android">—</span>
+                    </div>
+                </div>
+
+                <!-- Optimización + acciones nativas -->
+                <div class="dev-column">
+                    <div class="sys-card dev-card-opt">
+                        <div class="sys-card-head">
+                            <i class="fas fa-bolt sys-ico"></i>
+                            <div class="sys-head-t">
+                                <h3>Optimización de batería</h3>
+                                <span class="sys-muted">Sincronización en segundo plano</span>
+                            </div>
+                        </div>
+                        <p class="dev-opt-text" id="dev-batt-opt">—</p>
+                        <button type="button" class="sys-btn dev-btn" id="dev-opt-btn" hidden>Ignorar optimización de batería</button>
+                        <div class="dev-btn-grid">
+                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-settings-btn">Ajustes de la app</button>
+                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-cache-btn">Limpiar caché</button>
+                        </div>
+                    </div>
+
+                    <!-- Respaldo 1-tap -->
+                    <div class="sys-card dev-card-backup">
+                        <div class="sys-card-head">
+                            <i class="fas fa-database sys-ico"></i>
+                            <div class="sys-head-t">
+                                <h3>Respaldo 1-tap</h3>
+                                <span class="sys-muted">Preferencias de CodeHub (JSON)</span>
+                            </div>
+                        </div>
+                        <button type="button" class="sys-btn dev-btn" id="dev-export-btn"><i class="fas fa-download"></i> Exportar respaldo</button>
+                        <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-import-btn"><i class="fas fa-upload"></i> Importar respaldo</button>
+                        <div class="sys-scan-hint">El respaldo guarda tus preferencias, tema y configuración en un archivo <b>codehub-backup.json</b> en tu carpeta de Descargas.</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
         <!-- Mi Pueblo Section -->
 
     </main>
@@ -1630,6 +1706,157 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           el.classList.remove('show');
         }, duration || 3200);
       }
+    </script>
+
+    <script>
+      /* ── Panel de dispositivo + respaldo 1-tap (solo APK Android) ── */
+      (function () {
+        var NATIVE = function () { return (typeof window.CodeHubNative !== 'undefined' && window.CodeHubNative) || null; };
+
+        function fmtBytes(b) {
+          if (!b || b <= 0) return '—';
+          if (b >= 1073741824) return (b / 1073741824).toFixed(2) + ' GB';
+          if (b >= 1048576) return (b / 1048576).toFixed(0) + ' MB';
+          return Math.round(b / 1024) + ' KB';
+        }
+
+        function setGauge(id, pct, warn) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          var v = Math.max(0, Math.min(100, Math.round(pct || 0)));
+          el.style.transform = 'scaleX(' + (v / 100) + ')';
+          el.classList.remove('sys-fill-warn', 'sys-fill-crit');
+          if (warn === 'crit') el.classList.add('sys-fill-crit');
+          else if (warn === 'warn') el.classList.add('sys-fill-warn');
+        }
+
+        function refresh() {
+          if (document.hidden) return;
+          var native = NATIVE();
+          if (!native || typeof native.getDeviceStatus !== 'function') return;
+          var st = {};
+          try { st = JSON.parse(native.getDeviceStatus()) || {}; } catch (e) { return; }
+
+          var model = document.getElementById('dev-model');
+          if (model) model.textContent = st.deviceModel || '—';
+          var andro = document.getElementById('dev-android');
+          if (andro) andro.textContent = (st.androidVersion ? st.androidVersion : '—') + (st.versionName ? ' · CodeHub v' + st.versionName : '');
+
+          var netEl = document.getElementById('dev-network');
+          if (netEl) {
+            var net = st.network || 'none';
+            netEl.textContent = net === 'wifi' ? 'Wi-Fi' : net === 'mobile' ? 'Datos móviles' : net === 'none' ? 'Sin red' : 'Otra red';
+            netEl.classList.toggle('sys-pill-off', net === 'none');
+          }
+
+          var pct = (typeof st.batteryPercent === 'number' && st.batteryPercent >= 0) ? st.batteryPercent : -1;
+          var bat = document.getElementById('dev-battery');
+          if (bat) bat.textContent = pct >= 0 ? pct + '%' : '—';
+          var batState = document.getElementById('dev-battery-state');
+          if (batState) batState.textContent = (pct >= 0 && st.batteryCharging) ? '· ⚡' : '';
+          if (pct >= 0) setGauge('fill-battery', pct, pct <= 15 ? 'crit' : pct <= 30 ? 'warn' : '');
+
+          var ramUsed = (st.ramTotalBytes > 0) ? Math.round((1 - (st.ramFreeBytes / st.ramTotalBytes)) * 100) : -1;
+          var ram = document.getElementById('dev-ram');
+          if (ram) ram.textContent = st.ramTotalBytes > 0 ? ramUsed + '% · libre ' + fmtBytes(st.ramFreeBytes) : '—';
+          if (ramUsed >= 0) setGauge('fill-ram', ramUsed, ramUsed >= 85 ? 'crit' : ramUsed >= 70 ? 'warn' : '');
+
+          var stUsed = (st.storageTotalBytes > 0) ? Math.round((1 - (st.storageFreeBytes / st.storageTotalBytes)) * 100) : -1;
+          var stor = document.getElementById('dev-storage');
+          if (stor) stor.textContent = st.storageTotalBytes > 0 ? stUsed + '% · libre ' + fmtBytes(st.storageFreeBytes) : '—';
+          if (stUsed >= 0) setGauge('fill-storage', stUsed, stUsed >= 90 ? 'crit' : stUsed >= 75 ? 'warn' : '');
+
+          var optText = document.getElementById('dev-batt-opt');
+          var optBtn = document.getElementById('dev-opt-btn');
+          var ignoring = !!st.ignoringBatteryOptimizations;
+          if (optText) {
+            optText.textContent = ignoring
+              ? '✓ CodeHub ya puede sincronizar sin límites en segundo plano.'
+              : '⚠ CodeHub está optimizado por el sistema: la sincronización en segundo plano puede retrasarse.';
+            optText.className = 'dev-opt-text ' + (ignoring ? 'dev-opt-ok' : 'dev-opt-off');
+          }
+          if (optBtn) optBtn.hidden = ignoring;
+        }
+
+        function wire() {
+          var sec = document.getElementById('device-panel');
+          if (!sec) return;
+          var native = NATIVE();
+          if (!native) return;
+          sec.hidden = false;
+
+          var optBtn = document.getElementById('dev-opt-btn');
+          if (optBtn) optBtn.addEventListener('click', function () { try { native.requestIgnoreBatteryOptimizations(); } catch (e) {} });
+          var settingsBtn = document.getElementById('dev-settings-btn');
+          if (settingsBtn) settingsBtn.addEventListener('click', function () { try { native.openAppSettings(); } catch (e) {} });
+          var cacheBtn = document.getElementById('dev-cache-btn');
+          if (cacheBtn) cacheBtn.addEventListener('click', function () {
+            try { native.clearAppCache(); } catch (e) {}
+            if (typeof toast === 'function') toast('Caché de la app limpiada', 'info', 3000);
+          });
+
+          var exportBtn = document.getElementById('dev-export-btn');
+          if (exportBtn && typeof native.saveBackupFile === 'function') {
+            exportBtn.addEventListener('click', function () {
+              var data = {}, i;
+              try {
+                for (i = 0; i < localStorage.length; i++) {
+                  var k = localStorage.key(i);
+                  var v = localStorage.getItem(k);
+                  if (v !== null && v !== '') data[k] = v;
+                }
+              } catch (e) {}
+              var payload = {
+                app: 'codehub',
+                type: 'codehub-backup',
+                version: window.__apkVersion || '',
+                exportedAt: new Date().toISOString(),
+                data: data
+              };
+              var cb = '__chBackupExport_' + Date.now();
+              window[cb] = function (status, msg) {
+                delete window[cb];
+                if (typeof toast === 'function') toast(status === 'error' ? '✖ ' + msg : '✔ ' + msg, status === 'error' ? 'error' : 'success', 6000);
+              };
+              try { native.saveBackupFile('codehub-backup.json', JSON.stringify(payload), cb); }
+              catch (e) { delete window[cb]; if (typeof toast === 'function') toast('✖ No se pudo exportar', 'error', 4000); }
+            });
+          } else if (exportBtn) { exportBtn.disabled = true; exportBtn.textContent = 'Exportar no disponible en esta versión'; }
+
+          var importBtn = document.getElementById('dev-import-btn');
+          if (importBtn && typeof native.pickBackupFile === 'function') {
+            importBtn.addEventListener('click', function () {
+              var cb = '__chBackupImport_' + Date.now();
+              window[cb] = function (json) {
+                delete window[cb];
+                if (!json) { if (typeof toast === 'function') toast('No se seleccionó ningún archivo', 'info', 4000); return; }
+                try {
+                  var payload = JSON.parse(json);
+                  if (!payload || payload.type !== 'codehub-backup' || typeof payload.data !== 'object') throw new Error('formato');
+                  var skipped = { ch_device_id: 1, ch_auth_session: 1 };
+                  var cnt = 0;
+                  Object.keys(payload.data).forEach(function (k) {
+                    if (skipped[k]) return;
+                    try { localStorage.setItem(k, payload.data[k]); cnt++; } catch (e) {}
+                  });
+                  if (typeof toast === 'function') toast('✔ Respaldo restaurado (' + cnt + ' preferencias)', 'success', 6000);
+                  setTimeout(function () { try { window.location.reload(); } catch (e) {} }, 1200);
+                } catch (e) {
+                  if (typeof toast === 'function') toast('✖ El archivo no es un respaldo válido de CodeHub', 'error', 5000);
+                }
+              };
+              try { native.pickBackupFile(cb); }
+              catch (e) { delete window[cb]; if (typeof toast === 'function') toast('✖ No se pudo abrir el selector', 'error', 4000); }
+            });
+          } else if (importBtn) { importBtn.disabled = true; importBtn.textContent = 'Importar no disponible en esta versión'; }
+
+          refresh();
+          setInterval(refresh, 5000);
+        }
+
+        if (document.readyState !== 'loading') wire();
+        else document.addEventListener('DOMContentLoaded', wire);
+      })();
     </script>
     
 

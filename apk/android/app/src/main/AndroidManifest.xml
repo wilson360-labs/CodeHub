@@ -51,6 +51,12 @@
             android:launchMode="singleTask"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize">
+            <!-- Atajos dinámicos — long-press del icono en el launcher.
+                 Res/xml/shortcuts.xml: 4 accesos (WIL.E, Clima, Apps, Herramientas)
+                 que se abren como deep links del dominio propio. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

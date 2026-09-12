@@ -328,6 +328,50 @@
   font-weight: 600;
 }
 
+/* ── Panel de dispositivo (solo APK Android) ───────────────────
+   Reutiliza el sistema de tarjetas/métricas del Centro de
+   Operaciones (.sys-card/.sys-bar/.sys-fill) para el estado en
+   vivo del dispositivo + respaldo 1-tap. */
+.dev-panel { max-width: 1080px; margin: 0 auto; }
+.dev-bento { grid-template-columns: 400px 1fr; }
+.dev-bento > .sys-card, .dev-column { min-width: 0; }
+.dev-column { display: flex; flex-direction: column; gap: 1.1rem; }
+.dev-column > .sys-card { flex: 1 1 auto; }
+.dev-bento .sys-foot { flex-wrap: wrap; }
+.dev-bento .sys-foot > * { min-width: 0; overflow-wrap: anywhere; }
+
+.dev-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: .4rem;
+}
+.dev-btn[hidden] { display: none; }
+.dev-btn-ghost {
+  background: rgba(148, 163, 184, .09);
+  color: var(--sys-ink);
+  box-shadow: none;
+  border: 1px solid rgba(148, 163, 184, .22);
+}
+.dev-btn-ghost:hover { background: rgba(148, 163, 184, .16); box-shadow: none; transform: none; }
+.dev-btn-ghost:active { background: rgba(148, 163, 184, .24); }
+.dev-btn-ghost:disabled { opacity: .5; }
+.dev-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .55rem;
+  margin-top: .55rem;
+}
+.dev-opt-text {
+  margin: 0 0 .9rem;
+  font-size: .8rem;
+  line-height: 1.55;
+  color: var(--sys-muted);
+  padding-left: .6rem;
+}
+.dev-opt-ok  { border-left: 3px solid rgba(34, 197, 94, .65); }
+.dev-opt-off { border-left: 3px solid rgba(239, 68, 68, .65); }
+.dev-card-backup .sys-scan-hint { margin-top: .8rem; }
+
 /* ── Responsive (breakpoints canónicos de CodeHub) ── */
 @media (max-width: 860px) {
   .sys-bento { grid-template-columns: 1fr; padding: .2rem .5rem 1rem; }
@@ -341,4 +385,5 @@
   .sys-scan-bar { flex-wrap: wrap; }
   .sys-scan-ico { display: none; }
   .sys-btn { width: 100%; justify-content: center; }
+  .dev-btn-grid { grid-template-columns: 1fr; }
 }

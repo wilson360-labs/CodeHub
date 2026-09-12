@@ -10,10 +10,17 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.app.ActivityManager;
+import android.content.ContentValues;
+import android.content.IntentFilter;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.PowerManager;
+import android.os.StatFs;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.Manifest;
 import android.speech.RecognitionListener;
@@ -61,6 +68,7 @@ public class CodeHubBridge {
     private TextToSpeech tts;
     private SpeechRecognizer sr;
     private String sttCallback = "";
+    private String pendingImportCallback = "";
 
     private void ensureTts() {
         if (tts != null) return;
@@ -775,5 +783,211 @@ public class CodeHubBridge {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // ── PANEL DE DISPOSITIVO ────────────────────────────────────
+    // Métricas en vivo del dispositivo (batería, RAM, almacenamiento,
+    // red, optimización de batería y datos de la app) como JSON, para
+    // el panel de la PWA dentro del WebView.
+
+    @JavascriptInterface
+    public String getDeviceStatus() {
+        JSONObject o = new JSONObject();
+        try {
+            // registerReceiver(null, ...) devuelve el sticky intent de
+            // batería sin registrar ningún receptor (solo lectura).
+            Intent batteryStatus = activity.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            int level = -1, scale = -1, status = -1;
+            boolean plugged = false;
+            if (batteryStatus != null) {
+                level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                plugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            }
+            int pct = (level >= 0 && scale > 0) ? Math.round(level * 100f / scale) : -1;
+            boolean charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL;
+            o.put("batteryPercent", pct);
+            o.put("batteryCharging", charging);
+            o.put("batteryPlugged", plugged);
+
+            // RAM
+            ActivityManager am = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
+            if (am != null) {
+                ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+                am.getMemoryInfo(mi);
+                o.put("ramTotalBytes", mi.totalMem);
+                o.put("ramFreeBytes", mi.availMem);
+            }
+
+            // Almacenamiento del dispositivo
+            try {
+                StatFs sf = new StatFs(Environment.getDataDirectory().getPath());
+                o.put("storageTotalBytes", sf.getTotalBytes());
+                o.put("storageFreeBytes", sf.getAvailableBytes());
+            } catch (Exception ignored) {}
+
+            // Red
+            ConnectivityManager cm = (ConnectivityManager) activity.getSystemService(Context.CONNECTIVITY_SERVICE);
+            String network = "none";
+            if (cm != null) {
+                NetworkInfo ni = cm.getActiveNetworkInfo();
+                if (ni != null && ni.isConnected()) {
+                    int t = ni.getType();
+                    if (t == ConnectivityManager.TYPE_WIFI) network = "wifi";
+                    else if (t == ConnectivityManager.TYPE_MOBILE) network = "mobile";
+                    else network = "other";
+                }
+            }
+            o.put("network", network);
+
+            // Optimización de batería (ignorar = permitir 2do plano)
+            o.put("ignoringBatteryOptimizations", isIgnoringBatteryOptimizations());
+
+            // Datos de la app y del dispositivo
+            o.put("versionName", getVersionName());
+            o.put("versionCode", getVersionCode());
+            o.put("deviceModel", Build.MANUFACTURER + " " + Build.MODEL);
+            o.put("androidVersion", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+        } catch (Exception ignored) {}
+        return o.toString();
+    }
+
+    @JavascriptInterface
+    public boolean isIgnoringBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
+        try {
+            PowerManager pm = (PowerManager) activity.getSystemService(Context.POWER_SERVICE);
+            return pm != null && pm.isIgnoringBatteryOptimizations(activity.getPackageName());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Abre el diálogo nativo para eximir a CodeHub de la optimización de batería. */
+    @JavascriptInterface
+    public void requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        activity.runOnUiThread(() -> {
+            try {
+                PowerManager pm = (PowerManager) activity.getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(activity.getPackageName())) {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + activity.getPackageName()));
+                    activity.startActivity(intent);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    // ── RESPALDO 1-TAP — exportar/importar configuración (JSON) ──
+    // Exporta: Android 10+ (API 29) escribe en Descargas vía MediaStore
+    // (sin permisos de almacenamiento). En versiones anteriores guarda en
+    // la carpeta propia de la app y abre el chooser para que el usuario
+    // decida dónde dejarlo/compartirlo.
+
+    @JavascriptInterface
+    public void saveBackupFile(String fileName, String content, String callbackName) {
+        final String safeName = fileName != null && !fileName.trim().isEmpty() ? fileName : "codehub-backup.json";
+        final String safeContent = content == null ? "" : content;
+        final String safeCb = callbackName == null ? "" : callbackName;
+        new Thread(() -> {
+            String status = "saved";
+            String message = "Respaldo guardado en Descargas";
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, "application/json");
+                    values.put(MediaStore.Downloads.IS_PENDING, 1);
+                    Uri collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI;
+                    Uri item = activity.getContentResolver().insert(collection, values);
+                    if (item == null) throw new Exception("El sistema no dejó crear el archivo");
+                    try (java.io.OutputStream os = activity.getContentResolver().openOutputStream(item, "w")) {
+                        if (os == null) throw new Exception("Sin acceso de escritura");
+                        os.write(safeContent.getBytes("UTF-8"));
+                    }
+                    values.clear();
+                    values.put(MediaStore.Downloads.IS_PENDING, 0);
+                    activity.getContentResolver().update(item, values, null, null);
+                } else {
+                    File dir = activity.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (dir == null) throw new Exception("Sin almacenamiento disponible");
+                    File f = new File(dir, safeName);
+                    try (java.io.FileOutputStream fos = new java.io.FileOutputStream(f)) {
+                        fos.write(safeContent.getBytes("UTF-8"));
+                    }
+                    final Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                        activity, activity.getPackageName() + ".fileprovider", f);
+                    status = "shared";
+                    message = "Respaldo listo para guardar o compartir";
+                    activity.runOnUiThread(() -> {
+                        try {
+                            Intent send = new Intent(Intent.ACTION_SEND);
+                            send.setType("application/json");
+                            send.putExtra(Intent.EXTRA_STREAM, uri);
+                            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            activity.startActivity(Intent.createChooser(send, "Guardar respaldo"));
+                        } catch (Exception ignored) {}
+                    });
+                }
+            } catch (Exception e) {
+                status = "error";
+                message = "No se pudo exportar: " + e.getMessage();
+            }
+            backupNotify(safeCb, status, message);
+        }).start();
+    }
+
+    @JavascriptInterface
+    public void pickBackupFile(final String callbackName) {
+        pendingImportCallback = callbackName == null ? "" : callbackName;
+        activity.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("application/json");
+                activity.startActivityForResult(intent, MainActivity.BACKUP_IMPORT_REQUEST);
+            } catch (Exception e) {
+                String cb = pendingImportCallback;
+                pendingImportCallback = "";
+                backupNotify(cb, "error", "No se pudo abrir el selector: " + e.getMessage());
+            }
+        });
+    }
+
+    /** Llamado desde MainActivity.onActivityResult tras elegir el archivo de respaldo. */
+    public void onBackupFilePicked(Uri uri) {
+        String cb = pendingImportCallback;
+        pendingImportCallback = "";
+        if (uri == null) return;
+        new Thread(() -> {
+            String json;
+            try (java.io.InputStream in = activity.getContentResolver().openInputStream(uri)) {
+                if (in == null) throw new Exception("Sin acceso al archivo");
+                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) != -1) bos.write(buf, 0, n);
+                json = bos.toString("UTF-8");
+            } catch (Exception e) {
+                backupNotify(cb, "error", "Error leyendo el respaldo: " + e.getMessage());
+                return;
+            }
+            // Entrega el JSON completo como literal JS (escapado) a la PWA.
+            if (cb.isEmpty()) return;
+            final String literal = JSONObject.quote(json).replace("\u2028", "\\u2028").replace("\u2029", "\\u2029");
+            final String js = "try{var fn=window." + cb + ";if(fn)fn(" + literal + ");}catch(e){}";
+            activity.runOnUiThread(() -> {
+                try { webView.evaluateJavascript(js, null); } catch (Exception ignored) {}
+            });
+        }).start();
+    }
+
+    private void backupNotify(String cb, String status, String message) {
+        if (cb == null || cb.isEmpty()) return;
+        String safe = message == null ? "" : message.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ");
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + cb + ")window." + cb + "('" + status + "','" + safe + "');}catch(e){}"));
     }
 }

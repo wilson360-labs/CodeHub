@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Atajos dinámicos — acceso directo a secciones de CodeHub.
+         Cada intent es un deep link al dominio propio (wilson360-labs.vercel.app):
+         MainActivity lo recibe vía ACTION_VIEW + data e isAllowedUrl() lo valida
+         antes de cargarlo en el WebView (mismo flujo que los deep links normales). -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_chat"
+        android:shortcutId="wile"
+        android:shortcutShortLabel="@string/shortcut_wile_short"
+        android:shortcutLongLabel="@string/shortcut_wile_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://wilson360-labs.vercel.app/index.html#open-to-work"
+            android:targetClass="com.codehub.app.MainActivity"
+            android:targetPackage="com.codehub.app">
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_weather"
+        android:shortcutId="clima"
+        android:shortcutShortLabel="@string/shortcut_weather_short"
+        android:shortcutLongLabel="@string/shortcut_weather_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://wilson360-labs.vercel.app/index.html#weather-section"
+            android:targetClass="com.codehub.app.MainActivity"
+            android:targetPackage="com.codehub.app">
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_catalog"
+        android:shortcutId="catalogo"
+        android:shortcutShortLabel="@string/shortcut_catalog_short"
+        android:shortcutLongLabel="@string/shortcut_catalog_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://wilson360-labs.vercel.app/opensource"
+            android:targetClass="com.codehub.app.MainActivity"
+            android:targetPackage="com.codehub.app">
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent>
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_tools"
+        android:shortcutId="herramientas"
+        android:shortcutShortLabel="@string/shortcut_tools_short"
+        android:shortcutLongLabel="@string/shortcut_tools_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="https://wilson360-labs.vercel.app/tools"
+            android:targetClass="com.codehub.app.MainActivity"
+            android:targetPackage="com.codehub.app">
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent>
+    </shortcut>
+
+</shortcuts>
