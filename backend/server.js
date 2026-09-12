@@ -590,6 +590,83 @@ const Release = mongoose.model('Release', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 }));
 
+// ── ADMIN ACTIVITY LOG (registro en vivo de operaciones ejecutadas) ──
+// Cada acción del admin-hub (disparo de workflows, ejecución de scripts de
+// DB, seed, edición de apps, pushes, releases, config...) queda registrada
+// aquí. Se mantiene un ring en memoria (funciona aunque Mongo esté caído y
+// alimenta las lecturas inmediatas) y el histórico vive en la colección
+// `adminlogs` de MongoDB (podado a ~500 entradas recientes).
+const AdminLog = mongoose.model('AdminLog', new mongoose.Schema({
+  actor:   { type: String, default: 'admin' },
+  kind:    { type: String, enum: ['op','workflow','system'], default: 'op' },
+  action:  { type: String, required: true },
+  details: { type: mongoose.Schema.Types.Mixed, default: {} },
+  status:  { type: String, enum: ['ok','error','running'], default: 'ok' },
+  ts:      { type: Date, default: Date.now, index: true },
+}, { strict: false, timestamps: false }));
+
+const _adminLogRing   = [];
+const ADMIN_LOG_RING_MAX = 200;
+let   _adminLogLastPrune = 0;
+
+function logAdmin(actor, action, details = {}, status = 'ok', kind = 'op') {
+  const entry = {
+    actor: String(actor == null || actor === '' ? 'admin' : actor).slice(0, 40),
+    kind, action: String(action).slice(0, 80), details, status, ts: Date.now(),
+  };
+  _adminLogRing.unshift(entry);
+  if (_adminLogRing.length > ADMIN_LOG_RING_MAX) _adminLogRing.length = ADMIN_LOG_RING_MAX;
+  if (mongoose.connection.readyState === 1) {
+    AdminLog.create(entry).catch(() => {});
+  }
+  return entry;
+}
+
+// Poda el histórico: conserva solo las 500 entradas más recientes (se llama
+// desde GET /api/admin/activity, al menos una vez por hora).
+async function pruneAdminLog() {
+  try {
+    const recent = await AdminLog.find({}).sort({ ts: -1 }).limit(500).select('_id').lean();
+    const ids = recent.map(d => d._id);
+    if (ids.length) await AdminLog.deleteMany({ _id: { $nin: ids } });
+  } catch (e) { console.error('pruneAdminLog error:', e.message); }
+}
+
+// Actor visible en el registro en vivo (header opcional del panel).
+function adminActorOf(req) {
+  return String(req?.headers?.['x-admin-user'] || req?.body?.adminUser || 'admin').slice(0, 40);
+}
+
+// Cache compartida de último run por workflow (GitHub Actions). El feed en
+// vivo la consulta con TTL para no golpear la API de GitHub 10 veces por
+// minuto; /api/admin/github/runs fuerza refresco.
+let _ghRunsCache = { at: 0, data: null };
+const GH_RUNS_TTL_MS = 60 * 1000;
+
+async function getGhRunsCached(force) {
+  const now = Date.now();
+  if (!force && _ghRunsCache.data && (now - _ghRunsCache.at) < GH_RUNS_TTL_MS) return _ghRunsCache.data;
+  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
+  const out = {};
+  const { data: wfs } = await octokit.rest.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
+  for (const wf of wfs.workflows) {
+    const file = wf.path.split('/').pop();
+    try {
+      const { data } = await octokit.rest.actions.listWorkflowRuns({
+        owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file, per_page: 1,
+      });
+      const run = data.workflow_runs?.[0] || null;
+      out[file] = run ? {
+        status: run.status, conclusion: run.conclusion,
+        created_at: run.created_at, html_url: run.html_url,
+        display_title: run.display_title, run_id: run.id,
+      } : null;
+    } catch { out[file] = null; }
+  }
+  _ghRunsCache = { at: now, data: out };
+  return out;
+}
+
 // ── WIL.E INTELLIGENCE CORE ─────────────────────────────────
 // Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
 const { buildContext, augmentSystem } = require('./wil-e/core');
@@ -1861,6 +1938,7 @@ app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
       }
     }
     const failed = results.filter(r => !r.ok).length;
+    logAdmin(adminActorOf(req), 'db.run.supabase', { total: results.length, ok: results.length - failed, failed }, failed === 0 ? 'ok' : 'error', 'op');
     return res.json({ ok: failed === 0, results, failed, total: results.length });
   }
 
@@ -1890,6 +1968,7 @@ app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
       }
     }
     const failed = results.filter(r => !r.ok).length;
+    logAdmin(adminActorOf(req), 'db.run.mongo', { total: results.length, ok: results.length - failed, failed }, failed === 0 ? 'ok' : 'error', 'op');
     return res.json({ ok: failed === 0, results, failed, total: results.length });
   }
 
@@ -2659,6 +2738,7 @@ app.post('/api/admin/apps', requireAdmin, async (req, res) => {
         if (r.sent) console.log('📲 Push nueva app open source:', r.sent);
       } catch (e) { console.warn('Push nueva app open source error:', e.message); }
     }
+    logAdmin(adminActorOf(req), 'app.create', { appId, nombre, categoria, openSource: !!a.source_repo }, 'ok');
     res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2683,7 +2763,9 @@ app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     update.updatedAt = new Date();
     const a = await App.findOneAndUpdate({ appId: req.params.appId }, update, { new: true });
     if (!a) return res.status(404).json({ error: 'App no encontrada' });
-    await cacheDel('apps:all'); broadcastAppsChanged(); res.json({ ok: true, app: a });
+    await cacheDel('apps:all'); broadcastAppsChanged();
+    logAdmin(adminActorOf(req), 'app.update', { appId: req.params.appId, fields: Object.keys(update) }, 'ok');
+    res.json({ ok: true, app: a });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -2708,6 +2790,7 @@ app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
     await App.deleteOne({ appId: req.params.appId });
     await cacheDel('apps:all');
     broadcastAppsChanged();
+    logAdmin(adminActorOf(req), 'app.delete', { appId: req.params.appId, nombre: a.nombre }, 'ok');
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2746,6 +2829,7 @@ app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
     await App.updateOne({ appId: req.params.appId }, upd);
     await cacheDel('apps:all');
     console.log(`🗑️ APK eliminado: ${req.params.appId} [slot=${isPlugin ? 'plugin' : 'main'}]`);
+    logAdmin(adminActorOf(req), 'app.apk.delete', { appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted }, 'ok');
     res.json({ ok: true, appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -3061,7 +3145,10 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
 
 app.patch('/api/requests/:id', requireAdmin, async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try { await AppRequest.findByIdAndUpdate(req.params.id, { status: req.body.status }); res.json({ ok: true }); }
+  try { const s = req.body.status || '';
+      await AppRequest.findByIdAndUpdate(req.params.id, { status: s });
+      logAdmin(adminActorOf(req), 'request.update', { id: req.params.id, status: s }, 'ok');
+      res.json({ ok: true }); }
   catch { res.status(500).json({ error: 'Error actualizando' }); }
 });
 
@@ -3102,6 +3189,7 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
     }
     await cacheDel('apps:all');
     broadcastAppsChanged();
+    logAdmin(adminActorOf(req), 'seed', { created, updated }, 'ok');
     res.json({ ok: true, created, updated });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -4054,10 +4142,11 @@ app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
 
     await ghUpdateFile(repoPath, buffer, `img: extraer ícono (${safeName})`);
     await cacheDel('apps:all');
-
+    logAdmin(adminActorOf(req), 'icon.extract', { source: String(sourceUrl).slice(0, 80), filename: safeName }, 'ok');
     res.json({ ok: true, imagen: '/' + repoPath, filename: safeName });
   } catch (e) {
     console.error('POST /api/admin/extract-icon error:', e.message);
+    logAdmin(adminActorOf(req), 'icon.extract', { source: String(req.body?.sourceUrl || '').slice(0, 80), error: e.message }, 'error');
     res.status(500).json({ error: e.message });
   }
 });
@@ -4099,11 +4188,17 @@ app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
     });
     tgAlert('ghdispatch', () =>
       `🚀 <b>Workflow disparado</b>\n<code>${workflow}</code>\nRef: <code>${GITHUB_BRANCH}</code>\nIP: <code>${clientIp(req)}</code>`);
+    logAdmin(adminActorOf(req), 'workflow.dispatch', {
+      workflow, branch: GITHUB_BRANCH, inputs, ip: clientIp(req),
+    }, 'ok', 'workflow');
     res.json({ ok: true, workflow, ref: GITHUB_BRANCH, run_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${workflow}` });
   } catch (e) {
     const code = e?.status || 500;
     const hint = code === 403 ? ' — ¿GITHUB_TOKEN tiene permiso workflow?' : '';
     console.error('POST /api/admin/github/dispatch error:', e.message);
+    logAdmin(adminActorOf(req), 'workflow.dispatch', {
+      workflow: req.body?.workflow || '?', error: e.message, ip: clientIp(req),
+    }, 'error', 'workflow');
     res.status(code).json({ error: (e.message || 'Error disparando workflow') + hint });
   }
 });
@@ -4111,26 +4206,73 @@ app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
 // GET /api/admin/github/runs — estado del último run de cada workflow
 app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
   try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render' });
-    const out = {};
-    const { data: wfs } = await octokit.rest.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    for (const wf of wfs.workflows) {
-      const file = wf.path.split('/').pop();
-      try {
-        const { data } = await octokit.rest.actions.listWorkflowRuns({
-          owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file, per_page: 1,
-        });
-        const run = data.workflow_runs?.[0] || null;
-        out[file] = run ? {
-          status: run.status, conclusion: run.conclusion,
-          created_at: run.created_at, html_url: run.html_url,
-          display_title: run.display_title, run_id: run.id,
-        } : null;
-      } catch { out[file] = null; }
-    }
+    const out = await getGhRunsCached(true);
     res.json({ ok: true, runs: out });
   } catch (e) {
     console.error('GET /api/admin/github/runs error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ADMIN: ACTIVITY — registro en vivo de operaciones ejecutadas ──
+// Alimenta el panel "En Vivo" del admin-hub: últimas operaciones admin
+// (del ring en memoria / AdminLog) + último run de cada workflow (cache).
+app.get('/api/admin/activity', requireAdmin, async (req, res) => {
+  try {
+    const ops = [];
+    let source = 'memory';
+    if (dbConnected) {
+      try {
+        const fromDb = await AdminLog.find({}).sort({ ts: -1 }).limit(80).lean();
+        if (fromDb.length) {
+          ops.push(...fromDb.map(o => ({ ...o, ts: new Date(o.ts).getTime() })));
+          source = 'mongo';
+        }
+      } catch {}
+    }
+    if (!ops.length) ops.push(..._adminLogRing.map(o => ({ ...o })).slice(0, 80));
+
+    // Poda del histórico (una vez por hora como máximo)
+    const now = Date.now();
+    if (source === 'mongo' && (now - _adminLogLastPrune) > 3600_000) {
+      _adminLogLastPrune = now;
+      pruneAdminLog().catch(() => {});
+    }
+
+    let workflows = {};
+    try { workflows = await getGhRunsCached(false); } catch {}
+    res.json({ ok: true, source, ops, workflows, serverTime: now });
+  } catch (e) {
+    console.error('GET /api/admin/activity error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ADMIN: LOGOS FALTANTES — apps open source sin logo real de su repo ─
+// Reutiliza el mismo criterio de backend/scripts/enrich-app-logos.js para
+// que el panel muestre exactamente qué limpiará el workflow al ejecutarse.
+app.get('/api/admin/logos/missing', requireAdmin, async (_req, res) => {
+  try {
+    if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+    const NO_LOGO_RE = /opengraph\.githubassets\.com/i;
+    const hasOfficial = (img) => {
+      if (!img) return false;
+      const v = String(img).trim();
+      return /^\/img\//.test(v) || /^https?:\/\//i.test(v);
+    };
+    const all = await App.find({ source_repo: { $ne: null } })
+      .select('appId nombre imagen source_repo updatedAt').lean();
+    const missing = all.filter(a => !hasOfficial(a.imagen) || NO_LOGO_RE.test(a.imagen || ''));
+    res.json({
+      ok: true,
+      total: all.length,
+      missing: missing.length,
+      samples: missing.slice(0, 25).map(a => ({
+        appId: a.appId, nombre: a.nombre, imagen: a.imagen, source_repo: a.source_repo,
+      })),
+    });
+  } catch (e) {
+    console.error('GET /api/admin/logos/missing error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -4738,6 +4880,7 @@ app.patch('/api/admin/config', requireAdmin, async (req, res) => {
 
     tgAlert('config', () =>
       `⚙️ <b>Config actualizada</b> v${merged.version}\nIP: <code>${clientIp(req)}</code>`);
+    logAdmin(adminActorOf(req), 'config.update', { version: merged.version, sections: Object.keys(updates) }, 'ok');
     res.json({ ok: true, version: merged.version });
   } catch (e) {
     console.error('PATCH /api/admin/config error:', e.message);
@@ -5338,6 +5481,7 @@ app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Falta el título de la notificación' });
     }
     const r = await broadcastPush({ title, body, url, type, appId, version });
+    logAdmin(adminActorOf(req), 'push.broadcast', { title: String(title).slice(0, 60), type: type || '', sent: r?.sent || 0 }, 'ok');
     res.json({ ok: true, ...r });
   } catch (e) {
     console.error('admin/push/broadcast error:', e.message);
@@ -5371,6 +5515,7 @@ app.post('/api/admin/releases', requireAdmin, async (req, res) => {
       version: rel.version || '',
       url: rel.url || '/',
     });
+    logAdmin(adminActorOf(req), 'release.create', { title: rel.title, version: rel.version, type: rel.type }, 'ok');
     res.json({ ok: true, release: rel, push });
   } catch (e) {
     console.error('admin/releases error:', e.message);
