@@ -375,7 +375,7 @@ def cmd_health():
 
     for path, label in checks:
         url = f"{BACKEND_URL}{path}"
-        code, data = http_get(url, headers=admin_headers if "admin" in path else {})
+        code, data = http_get(url, headers=admin_headers if ("admin" in path or path == "/api/health") else {})
         if code == 200:
             extra = ""
             if path == "/api/health":

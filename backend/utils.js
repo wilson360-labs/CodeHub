@@ -53,13 +53,27 @@ function splitSqlStatements(sql) {
   return statements.map(s => s.trim()).filter(Boolean);
 }
 
+const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
+const IPV6_RE = /^[0-9a-f:]+$/i;
+
+// IP del cliente priorizando req.ip (Express con trust proxy 1) y validando
+// que el valor sea una IP real. x-real-ip / x-forwarded-for se aceptan solo
+// como cadena de reenvío y nunca texto arbitrario (evita spoofing).
 function clientIp(req) {
-  return String(
-    req.headers['x-real-ip'] ||
-    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    req.socket?.remoteAddress ||
-    req.ip || '?'
-  ).replace(/^::ffff:/, '').trim();
+  const candidates = [];
+  if (req?.ip) candidates.push(req.ip);
+  if (req?.headers) {
+    const xff = (req.headers['x-forwarded-for'] || '').split(',');
+    for (const entry of xff) candidates.push(entry.trim());
+    if (req.headers['x-real-ip']) candidates.push(String(req.headers['x-real-ip']).trim());
+  }
+  if (req?.socket?.remoteAddress) candidates.push(req.socket.remoteAddress);
+  for (const c of candidates) {
+    const clean = String(c).replace(/^::ffff:/, '').trim();
+    if (!clean || clean === 'unknown' || clean === '?') continue;
+    if (IPV4_RE.test(clean) || IPV6_RE.test(clean)) return clean;
+  }
+  return 'unknown';
 }
 
 function truncate(text, max = 400) {

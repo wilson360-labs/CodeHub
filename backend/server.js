@@ -80,8 +80,13 @@ const skillsCache = new Map();
 
 function loadSkillJson(id) {
   if (!id || typeof id !== 'string') return null;
+  // Solo IDs sencillos tipo slug: bloquea path traversal (../, absolutos, %2e)
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(id)) return null;
+  if (id === '.' || id === '..') return null;
   if (skillsCache.has(id)) return skillsCache.get(id);
-  const file = path.join(SKILLS_DIR, id, 'skill.json');
+  const base = path.resolve(SKILLS_DIR);
+  const file = path.resolve(base, id, 'skill.json');
+  if (!file.startsWith(base + path.sep)) return null; // nunca fuera de skills/
   try {
     if (!fs.existsSync(file)) return null;
     const data = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -1800,7 +1805,10 @@ app.use('/api/wil-e', wilERoutes);
 // /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
 // cuando ELEVENLABS_API_KEY está configurada; si no, el frontend usa fallback.
 const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser });
-app.use('/api/tts', ttsRoutes);
+// ElevenLabs es de pago: límite agresivo evita que se gaste el presupuesto
+// (una página pública puede abrir /api/tts desde fuera de la app).
+const ttsLimiter = rateLimit({ windowMs: 60*1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de voz. Espera un momento.', code: 'TTS_RATE_LIMIT' }, handler: rateLimitHandler });
+app.use('/api/tts', ttsLimiter, ttsRoutes);
 
 // ════════════════════════════════════════════════════════════════
 //  RUTAS
@@ -1888,32 +1896,39 @@ app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
   res.status(400).json({ ok: false, error: 'target debe ser "supabase" o "mongo"' });
 });
 
-// Health
-app.get('/api/health', (_, res) => res.json({
-  status: 'ok', version: '3.2',
-  mongo:     dbConnected ? 'connected' : 'disconnected',
-  redis:     redis       ? 'connected' : 'memory',
-  ws:        wsClients.size + ' clients',
-  push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'ok (VAPID de ejemplo — configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
-  push_android: fcmEnabled ? 'ok (FCM habilitado)' : 'missing (configura FIREBASE_SERVICE_ACCOUNT)',
-  render_keepalive: process.env.RENDER_EXTERNAL_URL ? 'ok' : 'missing (configura RENDER_EXTERNAL_URL para que Render no duerma el servicio)',
-  github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantáneas de nuevas versiones)',
-  groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
-  cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
-  huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
-  claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
-  kimi:      process.env.KIMI_API_KEY        ? 'ok' : 'missing',
-  openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
-  gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
-  minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
-  virustotal:process.env.VIRUSTOTAL_API_KEY  ? 'ok' : 'missing',
-  mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
-  cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
-  storage:   supabase ? 'supabase' : 'missing',
-  archive:   (IA_ACCESS_KEY && IA_SECRET_KEY) ? `ok:per-app-item` : 'missing',
-  uptime:    Math.floor(process.uptime()) + 's',
-  ip_geo:    'ip-api.com + ipwho.is (fallback)',
-}));
+// Health — los detalles de qué API keys están configuradas solo se expone a
+// admin (el monitor de Render/público solo ve lo infraestructural).
+app.get('/api/health', (req, res) => {
+  const base = {
+    status: 'ok', version: '3.2',
+    mongo:     dbConnected ? 'connected' : 'disconnected',
+    redis:     redis       ? 'connected' : 'memory',
+    ws:        wsClients.size + ' clients',
+    uptime:    Math.floor(process.uptime()) + 's',
+    ip_geo:    'ip-api.com + ipwho.is (fallback)',
+  };
+  if (!wilEIsAdmin(req)) return res.json(base);
+  res.json({
+    ...base,
+    push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'missing (configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
+    push_android: fcmEnabled ? 'ok (FCM habilitado)' : 'missing (configura FIREBASE_SERVICE_ACCOUNT)',
+    render_keepalive: process.env.RENDER_EXTERNAL_URL ? 'ok' : 'missing (configura RENDER_EXTERNAL_URL para que Render no duerma el servicio)',
+    github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantáneas de nuevas versiones)',
+    groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
+    cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
+    huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
+    claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
+    kimi:      process.env.KIMI_API_KEY        ? 'ok' : 'missing',
+    openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
+    gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
+    minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
+    virustotal:process.env.VIRUSTOTAL_API_KEY  ? 'ok' : 'missing',
+    mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
+    cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
+    storage:   supabase ? 'supabase' : 'missing',
+    archive:   (IA_ACCESS_KEY && IA_SECRET_KEY) ? `ok:per-app-item` : 'missing',
+  });
+});
 
 // Stats en vivo
 app.get('/api/stats/live', (_, res) => {
@@ -1927,15 +1942,9 @@ app.get('/api/stats/live', (_, res) => {
 // se hacen en segundo plano para no bloquear la petición hasta 12s.
 app.post('/api/visit', (req, res) => {
   try {
-    // Vercel/Render: IP real del cliente
-    const rawIp =
-      req.headers['x-real-ip'] ||
-      (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-      req.body?.ip ||
-      req.socket?.remoteAddress ||
-      req.ip || 'unknown';
-
-    const finalIp = rawIp.replace(/^::ffff:/, '').trim();
+    // Vercel/Render: IP real del cliente. Se ignora req.body.ip por completo
+    // (el cliente puede mandar cualquier string) y se valida el formato.
+    const finalIp = clientIp(req);
     const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost|^$)/i.test(finalIp);
 
     // Capturamos lo necesario del request antes de ir a background
@@ -2083,7 +2092,10 @@ app.post('/api/app-updates', async (req, res) => {
     const { apps } = req.body;
     if (!Array.isArray(apps) || apps.length === 0) return res.json([]);
     const results = await Promise.allSettled(apps.map(async (app) => {
-      if (!app.source_repo) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+      // Allowlist de repos: solo "owner/repo" simples. Cualquier otro formato
+      // (URLs, ../, caracteres raros) se ignora en lugar de interpolarse en fetch.
+      const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+      if (!app.source_repo || !REPO_RE.test(app.source_repo)) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
       const cacheKey = `update:${app.source_repo}`;
       const cached = await cacheGet(cacheKey);
       if (cached) return { appId: app.appId, currentVersion: app.version, ...cached };
@@ -4823,9 +4835,10 @@ app.get('/api/search/tavily', chatLimiter, async (req, res) => {
 // push SOLO cuando cambia la condición del clima (sin spam).
 const webpush = require('web-push');
 
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBlyNhTJSKBHt1J_ypW4';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'UUxI4O8-FbRouAevSmBQ6o18hgE4nSG3qwvJTfKsg-I';
-webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_READY = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
+if (VAPID_READY) webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 // ── FIREBASE CLOUD MESSAGING (FCM) ───────────────────────────
 // Push instantáneo para la app Android nativa.
@@ -5002,10 +5015,12 @@ async function sendPush(rec, payload) {
 // webpush.sendNotification nunca llegaba). Este endpoint es la única
 // fuente de verdad: el frontend la consulta en vez de tenerla fija.
 app.get('/api/push/vapid-public-key', (_req, res) => {
+  if (!VAPID_READY) return res.status(503).json({ ok: false, error: 'Web Push no configurado (falta VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)' });
   res.json({ ok: true, key: VAPID_PUBLIC_KEY });
 });
 
 app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
+  if (!VAPID_READY) return res.status(503).json({ ok: false, error: 'Web Push no configurado (falta VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)' });
   try {
     const { subscription, location, prefs } = req.body || {};
     const sub = subscription || {};
@@ -5439,7 +5454,9 @@ const climaEngine = require('./clima')({
 // normalizeWeatherInterval se re-exporta como function declaration (hoisted)
 // para que sigan funcionando las llamadas previas en pushRowToSub/pushSave.
 function normalizeWeatherInterval(v) { return climaEngine.normalizeWeatherInterval(v); }
-app.get('/api/push/weather/check', climaEngine.weatherEndpoint);
+// El widget de clima consulta este endpoint desde el navegador (público);
+// rate limit evita escaneos/abuso contra los proveedores de geocodificación.
+app.get('/api/push/weather/check', chatLimiter, climaEngine.weatherEndpoint);
 // Scheduler climático → cada 30 min; solo envía push cuando cambia la condición
 climaEngine.startScheduler(30 * 60 * 1000);
 
@@ -6424,13 +6441,17 @@ app.use((req, res) => {
     res.set('Access-Control-Allow-Headers', 'Content-Type, x-admin-key, x-admin-user, x-admin-session, Accept, Authorization');
     return res.status(204).end();
   }
-  if (req.path === '/api/health/keys') return res.json({
-    autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
-    groq:        !!(process.env.GROQ_API_KEY),
-    gemini:      !!(process.env.GEMINI_API_KEY),
-    claude:      !!(process.env.ANTHROPIC_API_KEY),
-    cohere:      !!(process.env.COHERE_API_KEY),
-  });
+  if (req.path === '/api/health/keys') {
+    // Detalle de keys solo para admin; para el resto se comporta como 404.
+    if (!wilEIsAdmin(req)) return res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
+    return res.json({
+      autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
+      groq:        !!(process.env.GROQ_API_KEY),
+      gemini:      !!(process.env.GEMINI_API_KEY),
+      claude:      !!(process.env.ANTHROPIC_API_KEY),
+      cohere:      !!(process.env.COHERE_API_KEY),
+    });
+  }
   // Un 404 en /api/* casi siempre es señal de un bug real (ruta mal
   // ordenada, typo, endpoint borrado sin actualizar el frontend) — a
   // diferencia de 404s fuera de /api/ que suelen ser bots escaneando

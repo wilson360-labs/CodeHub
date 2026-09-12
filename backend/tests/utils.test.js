@@ -34,29 +34,41 @@ test('splitSqlStatements: string vacío devuelve []', () => {
 });
 
 // ── clientIp ──────────────────────────────────────────────────────
-test('clientIp: prioriza x-real-ip', () => {
+// Contrato endurecido: prioriza req.ip (Express con trust proxy 1), valida
+// el formato IP y NUNCA acepta strings arbitrarios de headers del cliente.
+test('clientIp: prioriza req.ip (IP válida) sobre headers', () => {
   const req = { headers: { 'x-real-ip': '1.2.3.4', 'x-forwarded-for': '5.6.7.8' }, socket: {}, ip: '9.9.9.9' };
-  assert.equal(clientIp(req), '1.2.3.4');
-});
-
-test('clientIp: usa x-forwarded-for (primer valor) si no hay x-real-ip', () => {
-  const req = { headers: { 'x-forwarded-for': '5.6.7.8, 10.0.0.1' }, socket: {}, ip: '9.9.9.9' };
-  assert.equal(clientIp(req), '5.6.7.8');
-});
-
-test('clientIp: cae a req.socket.remoteAddress', () => {
-  const req = { headers: {}, socket: { remoteAddress: '::ffff:5.6.7.8' }, ip: '9.9.9.9' };
-  assert.equal(clientIp(req), '5.6.7.8');
-});
-
-test('clientIp: cae a req.ip si no hay nada más', () => {
-  const req = { headers: {}, socket: {}, ip: '9.9.9.9' };
   assert.equal(clientIp(req), '9.9.9.9');
 });
 
-test('clientIp: sin nada disponible devuelve "?"', () => {
+test('clientIp: usa x-forwarded-for (primer valor, solo si es IP) sin req.ip', () => {
+  const req = { headers: { 'x-forwarded-for': '5.6.7.8, 10.0.0.1' }, socket: {}, ip: undefined };
+  assert.equal(clientIp(req), '5.6.7.8');
+});
+
+test('clientIp: acepta x-real-ip solo como cadena de reenvío y si es IP', () => {
+  const req = { headers: { 'x-real-ip': '1.2.3.4' }, socket: {}, ip: undefined };
+  assert.equal(clientIp(req), '1.2.3.4');
+});
+
+test('clientIp: normaliza IPv4-mapped (::ffff:) a IPv4', () => {
+  const req = { headers: {}, socket: { remoteAddress: '::ffff:5.6.7.8' }, ip: undefined };
+  assert.equal(clientIp(req), '5.6.7.8');
+});
+
+test('clientIp: cae a req.socket.remoteAddress si no hay req.ip', () => {
+  const req = { headers: {}, socket: { remoteAddress: '9.9.9.9' } };
+  assert.equal(clientIp(req), '9.9.9.9');
+});
+
+test('clientIp: rechaza strings arbitrarios de headers (anti host-injection)', () => {
+  const req = { headers: { 'x-real-ip': 'evil.com/?x=1', 'x-forwarded-for': 'no-es-ip' }, socket: {}, ip: undefined };
+  assert.equal(clientIp(req), 'unknown');
+});
+
+test('clientIp: sin nada disponible devuelve "unknown"', () => {
   const req = { headers: {}, socket: {} };
-  assert.equal(clientIp(req), '?');
+  assert.equal(clientIp(req), 'unknown');
 });
 
 // ── truncate ──────────────────────────────────────────────────────

@@ -2638,7 +2638,7 @@ async function checkStatus() {
 
   try {
     const t0  = Date.now();
-    const res = await fetch(`${BACKEND}/api/health`);
+    const res = await fetch(`${BACKEND}/api/health`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
     const d   = await res.json();
     const lat = Date.now() - t0;
     setCard('backend',  'online',                                         `${lat}ms`);
