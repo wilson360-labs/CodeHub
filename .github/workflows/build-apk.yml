@@ -45,7 +45,21 @@ jobs:
 
       - name: Compile check (debug, sin keystore)
         working-directory: apk/android
-        run: gradle assembleDebug --stacktrace
+        continue-on-error: true
+        run: |
+          gradle assembleDebug --stacktrace > "$RUNNER_TEMP/compile-debug.log" 2>&1
+          rc=$?
+          echo "gradle rc=$rc"
+          tail -n 60 "$RUNNER_TEMP/compile-debug.log"
+          exit 0
+
+      - name: Upload compile log (debug)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: compile-debug-log
+          path: ${{ runner.temp }}/compile-debug.log
+          retention-days: 5
 
       - name: Prepare Release Keystore
         env:
