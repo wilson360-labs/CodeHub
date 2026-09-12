@@ -997,4 +997,92 @@ public class CodeHubBridge {
         activity.runOnUiThread(() -> webView.loadUrl(
             "javascript:try{if(window." + cb + ")window." + cb + "('" + status + "','" + safe + "');}catch(e){}"));
     }
+
+    // ── MANTENIMIENTO PRIVILEGIADO (Shizuku) ──────────────────────
+    // El núcleo real está en SystemCleaner.kt (coroutines, Dispatchers.IO).
+    // Estos métodos cortan el hilo con un Thread para no bloquear el WebView.
+
+    @JavascriptInterface
+    public void shizukuStatus(final String cb) {
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + cb + ")" +
+            "window." + cb + "('" + SystemCleaner.INSTANCE.refreshStatus().name() +
+            "','" + SystemCleaner.INSTANCE.backendDescription() + "');}catch(e){}"));
+    }
+
+    @JavascriptInterface
+    public void shizukuRequestPermission(final String cb) {
+        new Thread(() -> {
+            final boolean granted = SystemCleaner.INSTANCE.requestPermissionAsyncCompat();
+            activity.runOnUiThread(() -> webView.loadUrl(
+                "javascript:try{if(window." + cb + ")" +
+                "window." + cb + "(" + granted + ");}catch(e){}"));
+        }).start();
+    }
+
+    @JavascriptInterface
+    public void shizukuTrimCache(final String cb, double targetFreeMb) {
+        final long bytes = (long) (targetFreeMb * 1024 * 1024);
+        new Thread(() -> {
+            final String result;
+            try {
+                result = SystemCleaner.INSTANCE.trimCacheSync(bytes);
+            } catch (Throwable t) {
+                final String safe = (t.getMessage() == null ? t.toString() : t.getMessage())
+                        .replace("\\", "\\\\").replace("'", "\\'");
+                activity.runOnUiThread(() -> webView.loadUrl(
+                    "javascript:try{if(window." + cb + ")" +
+                    "window." + cb + "('error','" + safe + "');}catch(e){}"));
+                return;
+            }
+            activity.runOnUiThread(() -> webView.loadUrl(
+                "javascript:try{if(window." + cb + ")" +
+                "window." + cb + "('" + result + "');}catch(e){}"));
+        }).start();
+    }
+
+    @JavascriptInterface
+    public void shizukuKillApps(final String cb, String packagesJson) {
+        final java.util.List<String> pkgs = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(packagesJson == null ? "[]" : packagesJson);
+            for (int i = 0; i < arr.length(); i++) pkgs.add(arr.getString(i));
+        } catch (Exception ignored) {}
+        new Thread(() -> {
+            final String result;
+            try {
+                result = SystemCleaner.INSTANCE.killAppsSync(pkgs);
+            } catch (Throwable t) {
+                final String safe = (t.getMessage() == null ? t.toString() : t.getMessage())
+                        .replace("\\", "\\\\").replace("'", "\\'");
+                activity.runOnUiThread(() -> webView.loadUrl(
+                    "javascript:try{if(window." + cb + ")" +
+                    "window." + cb + "('error','" + safe + "');}catch(e){}"));
+                return;
+            }
+            activity.runOnUiThread(() -> webView.loadUrl(
+                "javascript:try{if(window." + cb + ")" +
+                "window." + cb + "('" + result + "');}catch(e){}"));
+        }).start();
+    }
+
+    @JavascriptInterface
+    public void shizukuRunningApps(final String cb) {
+        new Thread(() -> {
+            final String result;
+            try {
+                result = SystemCleaner.INSTANCE.runningAppsSync(activity);
+            } catch (Throwable t) {
+                final String safe = (t.getMessage() == null ? t.toString() : t.getMessage())
+                        .replace("\\", "\\\\").replace("'", "\\'");
+                activity.runOnUiThread(() -> webView.loadUrl(
+                    "javascript:try{if(window." + cb + ")" +
+                    "window." + cb + "('error','" + safe + "');}catch(e){}"));
+                return;
+            }
+            activity.runOnUiThread(() -> webView.loadUrl(
+                "javascript:try{if(window." + cb + ")" +
+                "window." + cb + "('" + result + "');}catch(e){}"));
+        }).start();
+    }
 }

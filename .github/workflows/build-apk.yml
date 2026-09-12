@@ -43,6 +43,10 @@ jobs:
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
 
+      - name: Compile check (debug, sin keystore)
+        working-directory: apk/android
+        run: gradle assembleDebug --stacktrace
+
       - name: Prepare Release Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
