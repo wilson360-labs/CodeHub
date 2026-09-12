@@ -458,6 +458,45 @@
       border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:.45rem .6rem;
       margin:.45rem 0;line-height:1.5}
     @media(max-width:640px){.gh-subnav{gap:.35rem}.gh-sub{flex:1 1 auto;justify-content:center}}
+
+    /* ══ EN VIVO — registro de operaciones ejecutadas ══ */
+    .live-dot{width:9px;height:9px;border-radius:50%;background:var(--g);box-shadow:0 0 10px var(--g);
+      animation:lpulse 1.6s infinite;display:inline-block;vertical-align:middle}
+    .live-dot.off{animation:none;background:rgba(255,255,255,.18);box-shadow:none}
+    .live-dot.error{background:#f87171;box-shadow:0 0 10px rgba(248,113,113,.8);animation:none}
+    @keyframes lpulse{0%,100%{opacity:1}50%{opacity:.35}}
+    .pulse{animation:lpulse 1.6s infinite}
+    .live-muted{font-size:.7rem;color:var(--muted)}
+    .live-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;margin-bottom:1rem}
+    .live-kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:.6rem .7rem}
+    .live-kpi-num{font-size:1.15rem;font-weight:800;font-family:var(--mono);color:var(--a)}
+    .live-kpi-label{font-size:.6rem;color:var(--muted);margin-top:.1rem;text-transform:uppercase;letter-spacing:.06em}
+    .live-filter{padding:.32rem .7rem;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.03);
+      color:var(--muted);cursor:pointer;font-family:var(--font);font-size:.68rem;font-weight:700;white-space:nowrap}
+    .live-filter.on{background:rgba(47,128,237,.14);border-color:var(--p);color:var(--p)}
+    .live-check{display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--muted);cursor:pointer;user-select:none}
+    .live-check input{accent-color:var(--p)}
+    .live-chip{padding:.4rem .75rem;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);
+      cursor:pointer;font-family:var(--font);font-size:.72rem;font-weight:600;white-space:nowrap;transition:border-color .15s,color .15s}
+    .live-chip:hover{border-color:var(--p);color:var(--p)}
+    .live-chip.plus{background:var(--p);color:#06121a;border-color:var(--p)}
+    .live-chip.plus:hover{filter:brightness(1.12)}
+    .blog-btn-primary.secondary{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--border)}
+    .blog-btn-primary.secondary:hover{border-color:var(--p);color:var(--p)}
+    .live-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .1rem;border-bottom:1px dashed var(--border);flex-wrap:wrap}
+    .live-row:last-child{border-bottom:0}
+    .live-badge{font-size:.66rem;padding:.14rem .5rem;border-radius:999px;font-weight:700;white-space:nowrap}
+    .live-badge.ok{color:#22c55e;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)}
+    .live-badge.err{color:#f87171;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25)}
+    .live-badge.run{color:#38bdf8;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3)}
+    .live-badge.wf{color:var(--pu);background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25)}
+    .live-title{font-size:.74rem;font-weight:700;color:var(--text)}
+    .live-detail{font-size:.66rem;color:var(--muted);font-family:var(--mono);word-break:break-word}
+    .live-time{font-size:.64rem;color:var(--muted);margin-left:auto;font-family:var(--mono);white-space:nowrap}
+    .live-wf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.45rem;margin-bottom:1.2rem}
+    .live-wf{display:flex;align-items:center;gap:.5rem;padding:.5rem .65rem;border:1px solid var(--border);border-radius:9px;background:var(--card);min-width:0}
+    .live-wf .wfn{font-size:.68rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+    .live-wf .wfr{font-size:.6rem;font-family:var(--mono);color:var(--muted);white-space:nowrap}
   </style>
 </head>
 <body>
@@ -503,6 +542,7 @@
     <button class="admin-tab" onclick="switchTab('add',this)"><i class="fas fa-plus"></i> <span>Nueva App</span></button>
     <button class="admin-tab" onclick="switchTab('bulk',this)"><i class="fas fa-layer-group"></i> <span>Bulk</span></button>
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
+    <button class="admin-tab" onclick="switchTab('live',this)"><i class="fas fa-broadcast-tower"></i> <span>En Vivo</span></button>
     <button class="admin-tab" onclick="switchTab('push',this)"><i class="fas fa-bell"></i> <span>Push</span></button>
     <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
     <button class="admin-tab" onclick="switchTab('github',this)"><i class="fas fa-brands fa-github"></i> <span>GitHub</span></button>
@@ -781,6 +821,59 @@
     </div>
 
     <!-- TAB: GITHUB AUTOMATION ──────────────────────────────── -->
+    <div class="tab-panel" id="tab-live">
+      <div class="section-title" style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap">
+        <i class="fas fa-broadcast-tower"></i> Registro en vivo
+        <span id="live-dot" class="live-dot" title="Auto-refresh activo"></span>
+        <span class="live-muted" id="live-sub">—</span>
+      </div>
+
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+        <button class="blog-btn-primary" id="live-pause-btn" onclick="toggleLiveAuto()"><i class="fas fa-pause"></i> Pausar</button>
+        <button class="blog-btn-primary secondary" onclick="loadLiveFeed(true)"><i class="fas fa-sync"></i> Refrescar</button>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap" id="live-filters" role="group" aria-label="Filtro de registros">
+          <button class="live-filter on" data-lf="all" onclick="setLiveFilter('all')">Todo</button>
+          <button class="live-filter" data-lf="op" onclick="setLiveFilter('op')">Operaciones</button>
+          <button class="live-filter" data-lf="workflow" onclick="setLiveFilter('workflow')">Workflows</button>
+          <button class="live-filter" data-lf="error" onclick="setLiveFilter('error')">Errores</button>
+        </div>
+      </div>
+
+      <div class="live-kpis">
+        <div class="live-kpi"><div class="live-kpi-num" id="live-source-num">—</div><div class="live-kpi-label">Fuente de logs</div></div>
+        <div class="live-kpi"><div class="live-kpi-num" id="live-workflow-num">—</div><div class="live-kpi-label">Workflows seguidos</div></div>
+        <div class="live-kpi"><div class="live-kpi-num" id="live-logo-num">—</div><div class="live-kpi-label">Apps sin logo real</div></div>
+        <div class="live-kpi"><div class="live-kpi-num" id="live-op-num">—</div><div class="live-kpi-label">Registros visibles</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem"><i class="fas fa-bolt"></i> Comandos rápidos</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem;line-height:1.55">
+          Disparos directos a GitHub Actions. El primero busca el <b style="color:var(--text)">logo real</b> de las apps open source que
+          hoy muestran la portada de opengraph o no tienen imagen (workflow <code>enrich-app-logos.yml</code>), lo sube a
+          <code>img/</code> y actualiza su registro.
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+          <label class="live-check" title="En modo dry-run no se modifica nada: solo se reporta cuántos logos se subirían y cuáles">
+            <input type="checkbox" id="logos-dryrun" checked> Dry-run (solo reportar)
+          </label>
+          <button class="blog-btn-primary" id="logos-run-btn" onclick="runLogosDetected()">
+            <i class="fas fa-magnifying-glass"></i> Buscar logos faltantes — <b id="logos-missing-count">…</b>
+          </button>
+          <button class="live-chip" onclick="quickDispatch('seed-foss-catalog.yml', this)">🌱 Seed FOSS</button>
+          <button class="live-chip" onclick="quickDispatch('check-app-updates.yml', this)">🔄 Check updates</button>
+          <button class="live-chip" onclick="quickDispatch('dedupe-catalog.yml', this)">🧹 Dedupe catálogo</button>
+        </div>
+        <div id="logos-result" style="font-size:.72rem;color:var(--muted);margin-top:.7rem;line-height:1.55"></div>
+      </div>
+
+      <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Últimos runs (GitHub Actions)</div>
+      <div class="live-wf-grid" id="live-workflows"><div class="live-muted">Cargando…</div></div>
+
+      <div class="section-title" style="margin-top:1.2rem"><i class="fas fa-wave-square"></i> Actividad</div>
+      <div class="card" id="live-feed"><div class="live-muted" style="padding:1rem">Cargando…</div></div>
+    </div>
+
     <div class="tab-panel" id="tab-github">
       <div class="section-title"><i class="fas fa-brands fa-github"></i> Automatización (GitHub Actions)</div>
       <div class="card" style="margin-bottom:1rem">
@@ -926,7 +1019,7 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script src="../js/admin-hub.js?v=20260908a"></script>
+<script src="../js/admin-hub.js?v=20260911c"></script>
 <script src="../js/remote-config.js?v=20260826b"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>

@@ -309,6 +309,7 @@ function switchTab(id, btn) {
     loadReleasesList();
   }
   if (id === 'dbrun')    updateDbRunBtn();
+  if (id === 'live')     startLiveFeed();
   if (id === 'github') {
     loadGhAutomation();
     setTimeout(() => { loadGhSecrets(); loadGhVariables(); }, 300);
@@ -498,18 +499,28 @@ const GH_WORKFLOWS = [
 async function loadGhAutomation() {
   const listEl  = document.getElementById('gh-workflow-list');
   const runsEl  = document.getElementById('gh-runs-list');
-  listEl.innerHTML = GH_WORKFLOWS.map(w =>
-    `<div class="blog-row" style="display:flex;align-items:center;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
+  listEl.innerHTML = GH_WORKFLOWS.map(w => {
+    const isLogos = w.file === 'enrich-app-logos.yml';
+    return `
+     <div class="blog-row" style="display:flex;align-items:center;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
        <div style="min-width:0;flex:1">
          <div style="font-weight:700;font-size:.8rem">${w.name}</div>
          <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${w.desc}</div>
+         ${isLogos ? `
+         <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap;align-items:center">
+           <label class="live-check" title="En modo dry-run el workflow solo reporta las apps candidatas, sin modificar nada">
+             <input type="checkbox" id="wf-dry-${w.file}" checked> Dry-run
+           </label>
+           <span class="live-badge wf" title="Apps open source sin logo real (criterio de enrich-app-logos)">🖼️ <b id="logos-missing-count">…</b> sin logo real</span>
+         </div>` : ''}
        </div>
        <button class="blog-btn-primary" onclick="dispatchWorkflow('${w.file}', this)" style="white-space:nowrap">
          <i class="fas fa-play"></i> Ejecutar
        </button>
-     </div>`
-  ).join('');
+     </div>`;
+  }).join('');
   await loadGhRuns();
+  await loadLogosMissing().catch(() => {});
 }
 
 async function loadGhRuns() {
@@ -543,16 +554,19 @@ async function dispatchWorkflow(file, btn) {
   if (!confirm(`¿Disparar el workflow "${w ? w.name : file}"?`)) return;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disparando…';
+  const dryBox = document.getElementById('wf-dry-' + file);
+  const inputs = (dryBox && dryBox.checked) ? { dry_run: true } : {};
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
-      body: JSON.stringify({ workflow: file }),
+      body: JSON.stringify({ workflow: file, inputs }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       toast('🚀 Workflow disparado. Revisá la pestaña de runs en un momento.');
       setTimeout(loadGhRuns, 4000);
+      setTimeout(() => loadLiveFeed(true), 1500);
     } else {
       alert('❌ ' + (data.error || 'Error disparando workflow'));
     }
@@ -561,6 +575,265 @@ async function dispatchWorkflow(file, btn) {
   }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar';
+}
+
+// ── EN VIVO — panel de registro de operaciones ejecutadas ────
+let _liveTimer = null;
+let _liveAuto  = true;
+let _liveFilter = 'all';
+let _liveBusy  = false;
+
+function startLiveFeed() {
+  loadLogosMissing();
+  loadLiveFeed(true);
+  if (_liveTimer) clearInterval(_liveTimer);
+  _liveTimer = setInterval(() => {
+    const panel = document.getElementById('tab-live');
+    if (!_liveAuto || !panel || !panel.classList.contains('active')) return;
+    loadLiveFeed(false);
+  }, 6000);
+}
+
+function setLiveFilter(f) {
+  _liveFilter = f;
+  document.querySelectorAll('#live-filters .live-filter').forEach(b => {
+    b.classList.toggle('on', b.dataset.lf === f);
+  });
+  loadLiveFeed(true);
+}
+
+async function toggleLiveAuto() {
+  _liveAuto = !_liveAuto;
+  const btn = document.getElementById('live-pause-btn');
+  const dot = document.getElementById('live-dot');
+  const sub = document.getElementById('live-sub');
+  if (!btn) return;
+  if (_liveAuto) {
+    btn.innerHTML = '<i class="fas fa-pause"></i> Pausar';
+    btn.classList.remove('secondary');
+    dot.classList.remove('off');
+    if (sub) sub.textContent = 'auto-refresh cada 6s';
+    loadLiveFeed(true);
+  } else {
+    btn.innerHTML = '<i class="fas fa-play"></i> Reanudar';
+    btn.classList.add('secondary');
+    dot.classList.add('off');
+    if (sub) sub.textContent = 'pausado';
+  }
+}
+
+async function loadLiveFeed(force) {
+  if (_liveBusy) return;
+  _liveBusy = true;
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/activity`, {
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'HTTP ' + res.status);
+    const data = await res.json();
+    renderLiveFeed(data, force);
+  } catch (e) {
+    const feed = document.getElementById('live-feed');
+    if (feed) feed.innerHTML = `<div class="live-muted">⚠️ Error conectando: ${escapeHtml(e.message)}</div>`;
+    const dot = document.getElementById('live-dot');
+    if (dot) { dot.classList.add('error'); dot.classList.remove('off'); }
+  } finally {
+    _liveBusy = false;
+  }
+}
+
+function liveTimeAgo(ts) {
+  if (!ts) return '';
+  const d = Math.max(0, Date.now() - ts);
+  const s = Math.floor(d / 1000);
+  if (s < 60) return 'ahora';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + 'h';
+  return Math.floor(h / 24) + 'd';
+}
+
+function liveIcon(action) {
+  if (action.startsWith('workflow.dispatch')) return '🚀';
+  if (action.startsWith('db.run'))           return '🗄️';
+  if (action === 'app.create')               return '➕';
+  if (action === 'app.update')               return '✏️';
+  if (action === 'app.delete')               return '🗑️';
+  if (action.startsWith('app.apk'))          return '📦';
+  if (action === 'seed')                     return '🌱';
+  if (action === 'icon.extract')             return '🖼️';
+  if (action === 'push.broadcast')           return '📢';
+  if (action === 'release.create')           return '🏷️';
+  if (action === 'config.update')            return '⚙️';
+  if (action.startsWith('request'))          return '📥';
+  if (action.startsWith('workflow'))         return '⚙️';
+  return '●';
+}
+
+function liveLabel(action) {
+  const t = String(action || 'op');
+  if (t === 'workflow.dispatch') return 'Workflow disparado';
+  if (t === 'db.run.mongo') return 'Script de DB · Mongo';
+  if (t === 'db.run.supabase') return 'Script de DB · Supabase';
+  if (t === 'app.create') return 'App creada';
+  if (t === 'app.update') return 'App actualizada';
+  if (t === 'app.delete') return 'App eliminada';
+  if (t === 'app.apk.delete') return 'APK eliminado';
+  if (t === 'seed') return 'Seed catálogo FOSS';
+  if (t === 'icon.extract') return 'Logo extraído';
+  if (t === 'push.broadcast') return 'Push broadcast';
+  if (t === 'release.create') return 'Release publicado';
+  if (t === 'config.update') return 'Config actualizada';
+  if (t.startsWith('request')) return 'Solicitud actualizada';
+  return t.split('.').map(x => x.charAt(0).toUpperCase() + x.slice(1)).join(' · ');
+}
+
+function liveDetail(details) {
+  if (!details || typeof details !== 'object') return '';
+  const parts = [];
+  if (details.workflow) parts.push(details.workflow);
+  if (details.appId) parts.push(details.appId);
+  if (details.nombre) parts.push(String(details.nombre).slice(0, 40));
+  if (details.created != null || details.updated != null) {
+    parts.push('+' + (details.created || 0) + ' creadas · +' + (details.updated || 0) + ' actualizadas');
+  }
+  if (details.ok != null) parts.push(details.ok + '/' + details.total + ' ok');
+  if (details.missing != null) parts.push(details.missing + ' faltantes');
+  if (details.sent != null) parts.push(details.sent + ' enviados');
+  if (details.title) parts.push(String(details.title).slice(0, 50));
+  if (details.version) parts.push('v' + details.version);
+  if (details.status) parts.push('estado: ' + details.status);
+  if (details.fields && Array.isArray(details.fields)) parts.push('campos: ' + details.fields.slice(0, 6).join(', '));
+  if (details.error) parts.push('✗ ' + String(details.error).slice(0, 80));
+  return escapeHtml(parts.join(' · '));
+}
+
+function renderLiveFeed(data) {
+  const dot = document.getElementById('live-dot');
+  const sub = document.getElementById('live-sub');
+  if (dot) { dot.classList.remove('error', 'off'); }
+  if (sub) sub.textContent = 'fuente: ' + data.source + ' · server ' + new Date(data.serverTime).toLocaleTimeString();
+
+  const ops = Array.isArray(data.ops) ? data.ops : [];
+  const sourceNum = document.getElementById('live-source-num');
+  if (sourceNum) sourceNum.textContent = (data.source === 'mongo' ? 'DB' : 'memoria').toUpperCase();
+
+  const workflows = data.workflows || {};
+  const wfList = Object.keys(workflows).sort();
+  const wfCountEl = document.getElementById('live-workflow-num');
+  if (wfCountEl) wfCountEl.textContent = wfList.length;
+
+  const wfBox = document.getElementById('live-workflows');
+  if (wfBox) {
+    wfBox.innerHTML = wfList.map(f => {
+      const r = workflows[f];
+      if (!r) return `<div class="live-wf"><span style="font-size:1rem">🤖</span><span class="wfn">${escapeHtml(f)}</span><span class="wfr">sin runs</span></div>`;
+      const run = r.status === 'in_progress' ? `<span class="pulse" style="color:#38bdf8">●</span>` : (r.conclusion === 'success' ? '✅' : (r.conclusion ? '❌' : '⚠️'));
+      return `
+        <div class="live-wf">
+          <span style="font-size:1rem">${run}</span>
+          <span class="wfn" title="${escapeHtml(r.display_title || '')}">${escapeHtml(f)}</span>
+          <a class="wfr" href="${escapeHtml(r.html_url)}" target="_blank" rel="noopener">#${r.run_id}</a>
+        </div>`;
+    }).join('') || '<div class="live-muted">Sin datos de GitHub Actions</div>';
+  }
+
+  const filtered = _liveFilter === 'all' ? ops : ops.filter(o =>
+    _liveFilter === 'error' ? o.status === 'error' : (o.kind || 'op') === _liveFilter
+  );
+
+  const opNum = document.getElementById('live-op-num');
+  if (opNum) opNum.textContent = filtered.length;
+
+  const feed = document.getElementById('live-feed');
+  if (!feed) return;
+  if (!filtered.length) {
+    feed.innerHTML = `<div class="live-muted" style="padding:1rem">Sin registros${_liveFilter !== 'all' ? ' que coincidan con el filtro' : ''} todavía.</div>`;
+    return;
+  }
+  feed.innerHTML = filtered.map(o => {
+    const kind = o.kind || 'op';
+    const isErr = o.status === 'error';
+    const running = o.status === 'running';
+    const badge = isErr ? 'err' : (running ? 'run' : (kind === 'workflow' ? 'wf' : 'ok'));
+    const badgeText = isErr ? 'error' : (running ? 'en curso' : (kind === 'workflow' ? 'workflow' : 'ok'));
+    return `
+      <div class="live-row">
+        <span style="font-size:1rem">${liveIcon(o.action)}</span>
+        <div style="min-width:0;flex:1">
+          <div class="live-title">${escapeHtml(liveLabel(o.action))}</div>
+          <div class="live-detail">${liveDetail(o.details) || ''}</div>
+          <div style="font-size:.62rem;color:var(--muted);margin-top:.1rem">${escapeHtml(o.actor || 'admin')}</div>
+        </div>
+        <span class="live-badge ${badge}">${badgeText}</span>
+        <span class="live-time" title="${new Date(o.ts || Date.now()).toLocaleString()}">${liveTimeAgo(o.ts)}</span>
+      </div>`;
+  }).join('');
+}
+
+async function loadLogosMissing() {
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/logos/missing`, {
+      headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY },
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const n = data.missing ?? 0;
+    document.querySelectorAll('#logos-missing-count').forEach(c => { c.textContent = n; });
+    const liveN = document.getElementById('live-logo-num');
+    if (liveN) liveN.textContent = n;
+  } catch {}
+}
+
+async function runLogosDetected() {
+  const dry = !!(document.getElementById('logos-dryrun') || {}).checked;
+  const btn = document.getElementById('logos-run-btn');
+  const resEl = document.getElementById('logos-result');
+  if (!btn) return;
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (dry ? 'Analizando…' : 'Disparando…');
+  try {
+    const r = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      body: JSON.stringify({ workflow: 'enrich-app-logos.yml', inputs: dry ? { dry_run: true } : {} }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) {
+      if (resEl) resEl.innerHTML = `<span style="color:#22c55e">✔</span> Workflow <code>enrich-app-logos.yml</code> disparado${dry ? ' en <b>dry-run</b>' : ''}. Revisá los runs en un momento.`;
+      setTimeout(() => loadLiveFeed(true), 2000);
+    } else {
+      if (resEl) resEl.innerHTML = `<span style="color:#f87171">✘</span> ${escapeHtml(data.error || 'Error')}`;
+    }
+  } catch (e) {
+    if (resEl) resEl.innerHTML = `<span style="color:#f87171">✘</span> Error de conexión: ${escapeHtml(e.message)}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+function quickDispatch(file, btn) {
+  if (!confirm('¿Disparar el workflow ' + file + '?')) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> …';
+  fetch(`${BACKEND}/api/admin/github/dispatch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+    body: JSON.stringify({ workflow: file }),
+  })
+    .then(r => r.json().catch(() => ({})))
+    .then(d => {
+      toast(d.ok ? '🚀 ' + file + ' disparado' : '❌ ' + (d.error || 'Error'));
+      setTimeout(() => loadLiveFeed(true), 1500);
+    })
+    .catch(e => toast('❌ ' + e.message, 'error'))
+    .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = orig; } });
 }
 
 // ── GITHUB SECRETS & VARIABLES ────────────────────────────────

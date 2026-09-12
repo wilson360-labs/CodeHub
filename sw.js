@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v6.97';
+const VERSION = 'codehub-v6.98';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -90,7 +90,7 @@ const PRECACHE = [
   '/widgets/weather/weather-widget.css',
   '/widgets/weather/weather-widget.js',
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
-  '/dist/assets/js/admin-hub.c5e9cb26f8.min.js',
+  '/dist/assets/js/admin-hub.49c66dcd7b.min.js',
   '/dist/assets/js/auth.f1e03e6381.min.js',
   '/dist/assets/js/bug-reporter.0f303b6651.min.js',
   '/dist/assets/js/ch-geo.980af98074.min.js',
