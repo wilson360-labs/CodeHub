@@ -79,7 +79,6 @@
     }
     if (tag !== knownTag) {
       knownTag = tag;
-      console.log('%c🔄 Nueva versión detectada en el servidor — mostrando actualización…', 'color:#00e5ff;font-weight:bold');
       showUpdateNotification();
     }
   }

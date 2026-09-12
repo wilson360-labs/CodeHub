@@ -177,7 +177,10 @@ function networkFirst(request, fallback) {
 
     fetch(request).then(res => {
       clearTimeout(timer);
-      if (res && res.ok) {
+      // Solo se cachean respuestas válidas de GET: un fetch HEAD (usado por
+      // live-update-check) devolvería ok=true pero con body vacío y pisaría
+      // la copia navegable de '/index.html' en caché (página en blanco offline).
+      if (res && res.ok && request.method === 'GET') {
         const clone = res.clone();
         caches.open(VERSION).then(c => c.put(request, clone));
       }
@@ -198,7 +201,7 @@ function networkFirst(request, fallback) {
 function staleWhileRevalidate(request) {
   return caches.match(request).then(cached => {
     const fresh = fetch(request).then(res => {
-      if (res && res.ok) {
+      if (res && res.ok && request.method === 'GET') {
         const clone = res.clone();
         caches.open(VERSION).then(c => c.put(request, clone));
       }

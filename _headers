@@ -7,8 +7,8 @@
   Permissions-Policy: camera=(), microphone=(self), geolocation=(self)
 
 /admin-hub
-  X-Frame-Options: ALLOWALL
-  Content-Security-Policy: frame-ancestors *
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
 
 /sw.js
   Cache-Control: public, max-age=0, must-revalidate
