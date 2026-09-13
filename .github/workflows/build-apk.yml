@@ -87,26 +87,45 @@ jobs:
       - name: Prepare Release Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
+          mkdir -p apk/android/app
+
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "🔑 Decodificando keystore persistente desde secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks
+            echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           else
-            echo "❌ RELEASE_KEYSTORE_BASE64 no está configurado."
-            echo "Un APK firmado con un keystore temporal no se puede actualizar"
-            echo "en dispositivos con el APK anterior (firma distinta)."
-            echo "Configura RELEASE_KEYSTORE_BASE64, KEYSTORE_PASSWORD y KEY_PASSWORD en"
-            echo "Settings → Secrets and variables → Actions antes de publicar."
-            exit 1
+            echo "⚠️ No hay secrets de firma para release."
+            echo "Se genera un keystore temporal para que la compilación pueda completarse."
+            echo "Esto no es válido para actualizaciones sobre una versión ya instalada con otra firma."
+            keytool -genkeypair -v \
+              -keystore apk/android/app/release.jks \
+              -alias codehub \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass android \
+              -keypass android \
+              -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US"
+            echo "HAS_RELEASE_SECRETS=false" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
           fi
 
       - name: Build Release APK
         working-directory: apk/android
+        env:
+          KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           gradle assembleRelease \
             -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
-            -PKEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
-            -PKEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+            -PKEYSTORE_PASSWORD="${KEYSTORE_PASSWORD}" \
+            -PKEY_PASSWORD="${KEY_PASSWORD}"
 
       - name: Get version
         id: version
@@ -126,8 +145,16 @@ jobs:
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: codehub-apk-build
+          path: ${{ steps.find-apk.outputs.path }}
+          retention-days: 7
+
       - name: Upload APK to Supabase Storage
-        if: env.SUPABASE_URL != ''
+        if: env.HAS_RELEASE_SECRETS == 'true' && env.SUPABASE_URL != ''
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -142,6 +169,7 @@ jobs:
           echo "✅ APK uploaded to Supabase Storage"
 
       - name: Create Release
+        if: env.HAS_RELEASE_SECRETS == 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: apk-${{ steps.version.outputs.version }}
