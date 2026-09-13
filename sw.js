@@ -12,7 +12,7 @@
 //        respaldo offline (o si la red tarda demasiado).
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.00';
+const VERSION = 'codehub-v7.01';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -37,6 +37,7 @@ const PRECACHE = [
   '/css/index-responsive.css',
   '/css/site-tour.css',
   '/css/sys-tools.css',
+  '/css/optimizer.css',
   '/css/native-feel.css',
   '/css/viewport-guard.css',
   '/fonts/codehub-fonts.css',
@@ -71,6 +72,7 @@ const PRECACHE = [
   '/js/thinking-orb.js',
   '/changelog.json',
   '/js/site-tour.js',
+  '/js/optimizer.js',
   '/js/opensource.js',
   '/js/offline-queue.js',
   '/js/consent-banner.js',
