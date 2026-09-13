@@ -1144,7 +1144,10 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void shizukuSubscribe(final String cb) {
         shizukuSubscriber = cb;
-        SystemCleaner.INSTANCE.setStatusPushListener(json -> pushShizukuState(json));
+        SystemCleaner.INSTANCE.setStatusPushListener(json -> {
+            pushShizukuState(json);
+            return kotlin.Unit.INSTANCE;
+        });
         // Empuje inmediato del estado actual (equivalente a un optimizerStatus).
         pushShizukuState(null);
     }

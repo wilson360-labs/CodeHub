@@ -51,17 +51,19 @@ jobs:
           gradle assembleDebug --stacktrace > "$RUNNER_TEMP/compile-debug.log" 2>&1
           rc=$?
           echo "gradle_rc=$rc" >> "$GITHUB_ENV"
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/compile-debug-ok"; fi
           echo "gradle rc=$rc"
           tail -n 60 "$RUNNER_TEMP/compile-debug.log"
           exit $rc
 
       - name: Publicar error de compilacion como Issue (diagnostico)
-        if: env.gradle_rc != '0'
+        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
+          if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then exit 0; fi
           {
             echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
             echo "";
@@ -75,6 +77,13 @@ jobs:
             --title "CI: error de compilación APK ($GITHUB_SHA)" \
             --body-file /tmp/compile-error-body.md \
             --label "bug" 2>/dev/null || true
+
+      - name: Fail job if compile (debug) failed
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then exit 0; fi
+          echo "::error::assembleDebug fallo. Ver log: compile-debug-log"
+          exit 1
 
       - name: Upload compile log (debug)
         if: always()
@@ -129,6 +138,7 @@ jobs:
             -PKEY_PASSWORD="${KEY_PASSWORD}" > "$RUNNER_TEMP/release-build.log" 2>&1
           rc=$?
           echo "release_rc=$rc" >> "$GITHUB_ENV"
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/release-ok"; fi
           echo "release rc=$rc"
           tail -n 60 "$RUNNER_TEMP/release-build.log"
           echo "=== APK output search ==="
@@ -136,12 +146,13 @@ jobs:
           exit $rc
 
       - name: Publicar error de release como Issue (diagnostico)
-        if: env.release_rc != '0'
+        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
+          if [ -f "$RUNNER_TEMP/release-ok" ]; then exit 0; fi
           {
             echo "## Error en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
             echo "";
@@ -165,9 +176,10 @@ jobs:
           retention-days: 5
 
       - name: Fail job if release build failed
-        if: env.release_rc != '0'
+        if: always()
         run: |
-          echo "::error::assembleRelease fallo (release_rc=${{ env.release_rc }}). Ver log: release-build-log"
+          if [ -f "$RUNNER_TEMP/release-ok" ]; then exit 0; fi
+          echo "::error::assembleRelease fallo (ver log: release-build-log)"
           exit 1
 
       - name: Get version
@@ -183,7 +195,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
-          APK=$(find apk/android -name "*.apk" -type f | head -1)
+          # Si el build falló, los pasos de diagnóstico ya lo reportaron.
+          if [ ! -f "$RUNNER_TEMP/release-ok" ]; then exit 1; fi
+          # Preferir el APK de release; si no existe, cualquier .apk (debug).
+          RELEASE=$(find . -path "*outputs*" -type f -name "*.apk" 2>/dev/null | grep -i release | head -1)
+          APK="${RELEASE:-$(find . -path "*outputs*" -type f -name '*.apk' 2>/dev/null | head -1)}"
           if [ -z "$APK" ]; then
             echo "No APK found!"
             {
@@ -203,7 +219,7 @@ jobs:
               echo "";
               echo "**Arbol de outputs de gradle:**";
               echo '```text';
-              find apk/android -path "*/outputs/*" -type f 2>/dev/null || true;
+              find . -path "*/outputs/*" -type f 2>/dev/null || true;
               echo '```';
             } > /tmp/apk-find-error-body.md
             gh issue create --repo "$GITHUB_REPO" \
@@ -212,6 +228,7 @@ jobs:
               --label "bug" 2>/dev/null || true
             exit 1
           fi
+          echo "APK=$APK"
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
