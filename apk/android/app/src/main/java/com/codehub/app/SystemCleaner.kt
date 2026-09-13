@@ -166,10 +166,12 @@ object SystemCleaner {
             try {
                 am.runningAppProcesses?.forEach { info ->
                     val importance = info.importance
+                    val foregroundImportance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+                    val serviceImportance = ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE
                     // Cachados (segundo plano profundo) son lo que el usuario
                     // quiere matar; también mostramos services/surviving.
-                    if (importance > ActivityManager.IMPORTANCE_FOREGROUND ||
-                        importance == ActivityManager.IMPORTANCE_SERVICE) {
+                    if (importance > foregroundImportance ||
+                        importance == serviceImportance) {
                         info.pkgList.forEach { pkg ->
                             if (pkg != SKIP_ON_FORCE_STOP && !pkg.startsWith("com.android.")) {
                                 val label = try {

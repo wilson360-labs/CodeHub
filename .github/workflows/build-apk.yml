@@ -146,11 +146,11 @@ jobs:
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK artifact
-        if: always()
+        if: always() && hashFiles('apk/android/**/*.apk') != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: codehub-apk-build
-          path: ${{ steps.find-apk.outputs.path }}
+          path: apk/android/**/*.apk
           retention-days: 7
 
       - name: Upload APK to Supabase Storage
