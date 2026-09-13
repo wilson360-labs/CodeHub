@@ -178,41 +178,37 @@ jobs:
 
       - name: Find APK
         id: find-apk
-        run: |
-          APK=$(find apk/android -name "*.apk" -type f | head -1)
-          if [ -z "$APK" ]; then
-            echo "No APK found!"
-            find apk/android -path "*/outputs/*" -type f || true
-            echo "apk_find=empty" >> "$GITHUB_ENV"
-            exit 1
-          fi
-          cp "$APK" apk/android/app-release-signed.apk
-          echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
-
-      - name: Publicar falta de APK como Issue (diagnostico)
-        if: env.apk_find == 'empty'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
-          {
-            echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
-            echo "";
-            echo "**Paso:** Find APK — from `.github/workflows/build-apk.yml`";
-            echo "";
-            echo '```text';
-            echo "--- release-build.log (tail) ---";
-            tail -n 60 "$RUNNER_TEMP/release-build.log" 2>/dev/null || true;
-            echo "";
-            echo "--- arbol outputs ---";
-            find . -path "*/build/outputs/*" -type f 2>/dev/null || true;
-            echo '```';
-          } > /tmp/apk-find-error-body.md
-          gh issue create --repo "$GITHUB_REPO" \
-            --title "CI: APK no encontrado tras assembleRelease ($GITHUB_SHA)" \
-            --body-file /tmp/apk-find-error-body.md \
-            --label "bug" 2>/dev/null || true
+          APK=$(find apk/android -name "*.apk" -type f | head -1)
+          if [ -z "$APK" ]; then
+            echo "No APK found!"
+            {
+              echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+              echo "";
+              echo "**Paso:** Find APK — from `.github/workflows/build-apk.yml`";
+              echo "";
+              echo '```text';
+              echo "--- release-build.log (tail 80) ---";
+              tail -n 80 "$RUNNER_TEMP/release-build.log" 2>/dev/null || true;
+              echo "";
+              echo "--- arbol de apk/android (salida de gradle) ---";
+              find apk/android -path "*/outputs/*" -type f 2>/dev/null || true;
+              echo "--- build dirs ---";
+              find apk/android -maxdepth 4 -type d -name "outputs" 2>/dev/null || true;
+              echo '```';
+            } > /tmp/apk-find-error-body.md
+            gh issue create --repo "$GITHUB_REPO" \
+              --title "CI: APK no encontrado tras assembleRelease ($GITHUB_SHA)" \
+              --body-file /tmp/apk-find-error-body.md \
+              --label "bug" 2>/dev/null || true
+            exit 1
+          fi
+          cp "$APK" apk/android/app-release-signed.apk
+          echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
       - name: Upload APK artifact
         if: always() && hashFiles('apk/android/**/*.apk') != ''
