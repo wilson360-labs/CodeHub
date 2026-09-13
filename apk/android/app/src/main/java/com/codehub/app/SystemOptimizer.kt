@@ -1,6 +1,7 @@
 package com.codehub.app
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import rikka.shizuku.Shizuku
 import com.topjohnwu.superuser.Shell
@@ -254,7 +255,7 @@ object SystemOptimizer {
             val apps = pm.getInstalledPackages(0)
                 .mapNotNull { pi ->
                     val flags = pi.applicationInfo?.flags ?: 0
-                    if (flags and PackageManager.FLAG_SYSTEM == 0) return@mapNotNull null
+                    if (flags and ApplicationInfo.FLAG_SYSTEM == 0) return@mapNotNull null
                     val pkg = pi.packageName
                     if (pkg in CRITICAL_PACKAGES) return@mapNotNull null
                     if (CRITICAL_PREFIXES.any { pkg.startsWith(it) }) return@mapNotNull null
