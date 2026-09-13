@@ -76,7 +76,7 @@ object SystemOptimizer {
             try {
                 val proc = shizukuShProcess(arrayOf("sh"))
                 val built = Shell.Builder.create()
-                    .setTimeout(15000)
+                    .setTimeout(30000)
                     .build(proc)
                 shellInstance = built
                 shellInstance
@@ -95,11 +95,20 @@ object SystemOptimizer {
         } catch (_: Throwable) {}
     }
 
-    /** Ejecuta una línea de comando en la shell Shizuku/libsu. */
+    /** Ejecuta una línea de comando en la shell Shizuku/libsu.
+     *  Si el proceso murió a mitad, se reconstruye una vez y se reintenta. */
     private suspend fun runSh(line: String): Pair<Int, List<String>> {
-        val sh = shell() ?: throw IllegalStateException("Shell Shizuku no disponible")
-        val r = sh.newJob().add(line).exec()
-        return r.code to (r.out)
+        var sh = shell() ?: throw IllegalStateException("Shell Shizuku no disponible")
+        try {
+            val r = sh.newJob().add(line).exec()
+            return r.code to r.out
+        } catch (t: Throwable) {
+            // Shell muerta/desincronizada: cierra, reconstruye y reintenta una vez.
+            closeShell()
+            sh = shell() ?: throw IllegalStateException("Shell Shizuku no disponible")
+            val r = sh.newJob().add(line).exec()
+            return r.code to r.out
+        }
     }
 
     private fun requireReady() {
@@ -131,12 +140,69 @@ object SystemOptimizer {
 
     @JvmStatic
     fun statusSync(): String = runBlocking {
-        val st = SystemCleaner.refreshStatus().name
-        val backend = try { SystemCleaner.backendDescription() } catch (t: Throwable) { "desconocido" }
-        val root = isRootBackend()
-        val shellUp = shellInstance != null && shellInstance!!.isAlive
-        "{\"status\":${quoteJs(st)},\"backend\":${quoteJs(backend)},\"root\":$root,\"shellUp\":$shellUp}"
+        ShellStatus()
     }
+
+    /** Estado unificado (JSON rico de SystemCleaner + state interno de shell). */
+    private fun ShellStatus(): String {
+        val base = try { SystemCleaner.statusJson() } catch (t: Throwable) {
+            "{\"status\":\"DISCONNECTED\",\"error\":${quoteJs(t.message ?: t.toString())}}"
+        }
+        val shellUp = shellInstance != null && shellInstance!!.isAlive
+        // añade shellUp insertando antes del cierre }
+        return if (base.endsWith("}")) base.dropLast(1) + ",\"shellUp\":$shellUp}" else base
+    }
+
+    @JvmStatic
+    fun runScriptSync(rawScript: String): String = runBlocking {
+        try {
+            requireReady()
+            val script = (rawScript ?: "").trim()
+            if (script.isEmpty()) return@runBlocking "{\"error\":\"script vacío\"}"
+            val lines = script.replace("\r", "").split("\n")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+            if (lines.isEmpty()) return@runBlocking "{\"error\":\"script vacío\"}"
+            if (lines.any { l -> DENIED_TOKENS.any { l.lowercase().contains(it) } }) {
+                return@runBlocking "{\"error\":\"contiene comandos no permitidos (su, rm, reboot, mount, settings put, wipe…)\"}"
+            }
+            lines.forEach { l ->
+                val bin = l.substringBefore(' ').substringAfterLast('/').trim()
+                if (bin.isNotEmpty() && bin !in ALLOWED_BINS) {
+                    return@runBlocking "{\"error\":${quoteJs("binario no permitido: $bin")}}"
+                }
+            }
+            val outputs = arrayListOf<String>()
+            var highest = 0
+            for (line in lines) {
+                val (code, out) = runSh(line)
+                highest = code
+                if (out.isNotEmpty()) outputs.addAll(out)
+                if (code != 0) outputs += "── exit $code"
+                if (outputs.size > MAX_DIAG_LINES) {
+                    outputs.add("… salida truncada")
+                    break
+                }
+            }
+            val arr = outputs.joinToString(",", "[", "]") { quoteJs(it) }
+            "{\"ok\":true,\"code\":$highest,\"lines\":$arr}"
+        } catch (t: Throwable) {
+            "{\"error\":${quoteJs(t.message ?: t.toString())}}"
+        }
+    }
+
+    // Allowlist de binarios seguros para el runner de scripts.
+    private val ALLOWED_BINS = setOf(
+        "df", "du", "cat", "echo", "dumpsys", "pm", "am", "ps", "top", "free",
+        "uptime", "uname", "getprop", "date", "wc", "ls", "head", "tail",
+        "grep", "id", "whoami", "env"
+    )
+    private val DENIED_TOKENS = listOf(
+        "su ", "sudo", "reboot", "shutdown", "rm ", "chmod", "chown", "mkfs",
+        "dd ", "mount", "umount", "svc ", "settings put", "wipe", "fastboot",
+        "wpa_supplicant", "iptables", "ifconfig", "getenforce"
+    )
+    private const val MAX_DIAG_LINES = 400
 
     @JvmStatic
     fun diagnosticsSync(): String = runBlocking {

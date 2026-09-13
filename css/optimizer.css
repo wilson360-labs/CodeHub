@@ -156,6 +156,90 @@
 
 @keyframes optFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ── Anillos (RAM / batería) ──────────────────────────────────────── */
+.opt-ring {
+  --p: 0%;
+  --c: var(--green);
+  width: 96px;
+  height: 96px;
+  margin: .1rem auto 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--c) var(--p), rgba(255,255,255,.09) 0);
+  display: grid;
+  place-items: center;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+}
+
+.opt-ring-in {
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  background: rgba(10,14,20,.55);
+}
+
+.opt-ring-in b {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+  line-height: 1.1;
+}
+
+.opt-ring-in span {
+  font-size: .58rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-family: var(--mono);
+  margin-top: .1rem;
+}
+
+/* ── Consola de scripts ───────────────────────────────────────────── */
+#opt-script-in {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: .72rem;
+  line-height: 1.55;
+  padding: .6rem .7rem;
+  outline: none;
+}
+
+#opt-script-in:focus { border-color: var(--a); }
+
+.opt-script-out {
+  margin-top: .6rem;
+  background: rgba(0,0,0,.32);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 11px;
+  padding: .6rem .7rem;
+  min-width: 0;
+}
+
+.opt-script-out pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--mono);
+  font-size: .68rem;
+  line-height: 1.5;
+  color: #a6e3a1;
+  max-height: 260px;
+  overflow: auto;
+  min-width: 0;
+}
+
 /* ── Canónico: tablets / móviles grandes ── */
 @media (max-width: 720px) {
   .opt-grid { grid-template-columns: 1fr; }

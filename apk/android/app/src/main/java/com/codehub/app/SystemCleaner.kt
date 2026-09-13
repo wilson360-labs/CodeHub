@@ -105,6 +105,57 @@ object SystemCleaner {
     init {
         // Un solo listener por proceso: ShizukuInstaller ya añade el suyo (9001).
         try { Shizuku.addRequestPermissionResultListener(permissionListener) } catch (t: Throwable) {}
+        ensureBinderListeners()
+    }
+
+    // ── Estado en vivo para el WebView ──────────────────────────────
+
+    /** Suscriptor al que se empuja el estado JSON cada vez que cambia el binder. */
+    @Volatile private var statusPush: ((String) -> Unit)? = null
+    @Volatile private var binderEventsOn = false
+
+    /** El WebView deja su callback global para recibir el estado en vivo
+     *  (se dispara al abrirse Shizuku, morir el binder o cambiar el permiso). */
+    fun setStatusPushListener(cb: ((String) -> Unit)?) {
+        statusPush = cb
+        ensureBinderListeners()
+    }
+
+    /**
+     * JSON rico de estado, para que el panel sepa separar "no instalado",
+     * "Shizuku apagado", "sin permiso" y "listo con root/ADB".
+     */
+    fun statusJson(): String {
+        var installed = false
+        var running = false
+        var granted = false
+        var uid = -1
+        try { installed = !Shizuku.isPreV11() } catch (_: Throwable) {}
+        try { running = Shizuku.pingBinder() } catch (_: Throwable) {}
+        if (running) {
+            try { granted = Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) {}
+            try { uid = Shizuku.getUid() } catch (_: Throwable) {}
+        }
+        val status = refreshStatus()
+        val backend = backendDescription()
+        return "{\"status\":${quoteJs(status.name)},\"installed\":$installed,\"running\":$running," +
+            "\"granted\":$granted,\"uid\":$uid,\"root\":${uid == 0}," +
+            "\"backend\":${quoteJs(backend)}}"
+    }
+
+    private fun pushStatusNow() {
+        try { statusPush?.invoke(statusJson()) } catch (_: Throwable) {}
+    }
+
+    /** Registra los listeners de binder una sola vez (idempotente). */
+    private fun ensureBinderListeners() {
+        if (binderEventsOn) return
+        synchronized(this) {
+            if (binderEventsOn) return
+            binderEventsOn = true
+            try { Shizuku.addBinderReceivedListener { pushStatusNow() } } catch (_: Throwable) {}
+            try { Shizuku.addBinderDeadListener { pushStatusNow() } } catch (_: Throwable) {}
+        }
     }
 
     // ── 1. borrarCacheTurbo ─────────────────────────────────────────

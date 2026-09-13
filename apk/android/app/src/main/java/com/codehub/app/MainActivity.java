@@ -663,6 +663,10 @@ public class MainActivity extends Activity {
         super.onResume();
         if (webView != null) webView.onResume();
         injectNativeFlags(webView);
+        // Re-verificar Shizuku al volver a la app: si el usuario acaba de
+        // conceder el permiso (diálogo in-app o app Shizuku), el panel web
+        // recibe el estado en vivo sin recargar la página.
+        try { if (bridge != null) bridge.pushShizukuState(); } catch (Throwable ignored) {}
     }
 
     @Override

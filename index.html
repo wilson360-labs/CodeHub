@@ -872,16 +872,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Expanding Panels — San Luis Jilotepeque -->
             <div class="pueblo-panels" id="pueblo-panels">
-              <div class="pueblo-panel active" style="background-image:url('https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg')">
+              <div class="pueblo-panel active">
+                <img class="pueblo-panel-img" src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque, Jalapa, Guatemala" loading="lazy" decoding="async">
                 <h3>📍 San Luis Jilotepeque<span>Jalapa, Guatemala</span></h3>
               </div>
-              <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/9gt4vNS/20250101-122927.jpg')">
+              <div class="pueblo-panel">
+                <img class="pueblo-panel-img" src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Paisaje visto desde el pueblo" loading="lazy" decoding="async">
                 <h3>🏔️ Paisaje<span>Vista desde el pueblo</span></h3>
               </div>
-              <div class="pueblo-panel" style="background-image:url('https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg')">
+              <div class="pueblo-panel">
+                <img class="pueblo-panel-img" src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Amanecer en San Luis Jilotepeque" loading="lazy" decoding="async">
                 <h3>🌄 Amanecer<span>Noviembre 2024</span></h3>
               </div>
-              <div class="pueblo-panel" style="background-image:url('https://i.ibb.co/cF1zZJn/20250101-124645.jpg')">
+              <div class="pueblo-panel">
+                <img class="pueblo-panel-img" src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Naturaleza en enero 2025" loading="lazy" decoding="async">
                 <h3>🌿 Naturaleza<span>Enero 2025</span></h3>
               </div>
             </div>
@@ -7929,14 +7933,23 @@ function setAIMood(btn) {
         this.life -= this.decay;
         if (this.life <= 0 || this.y < -10) this.reset();
     };
-    for (var i = 0; i < 80; i++){
+    /* ── Menos partículas en pantallas pequeñas = menos trabajo por frame ── */
+    var particleCount = W < 380 ? 26 : W < 480 ? 32 : W < 720 ? 50 : 80;
+    for (var i = 0; i < particleCount; i++){
         var p = new Particle();
         p.y = Math.random() * H;
         particles.push(p);
     }
     var animRunning = true;
+    var hiddenFlag = document.hidden;
+    document.addEventListener('visibilitychange', function(){
+        hiddenFlag = document.hidden;
+        /* Si volvemos a la pestaña, reanudamos el canvas */
+        if (!hiddenFlag && animRunning) requestAnimationFrame(drawLoop);
+    });
     (function drawLoop(){
-        if (!animRunning) return;
+        /* Pausa total cuando la pestaña no es visible: cero CPU y batería. */
+        if (!animRunning || hiddenFlag) return;
         requestAnimationFrame(drawLoop);
         ctx.clearRect(0, 0, W, H);
         particles.forEach(function(p){

@@ -1127,6 +1127,40 @@ public class CodeHubBridge {
         new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.setAppEnabledSync(pkg, enabled))).start();
     }
 
+    @JavascriptInterface
+    public void optimizerRunScript(final String cb, final String script) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.runScriptSync(script))).start();
+    }
+
+    // ── PERMISO SHIZUKU EN VIVO ────────────────────────────────────
+    // optimizerStatus() ya devuelve el JSON rico (installed/running/granted/uid).
+    // shizukuSubscribe() deja un push: al abrirse Shizuku, morir el binder o
+    // cambiar el permiso se reenvía el estado al WebView sin que JS pregunte.
+    // Esto arregla el caso real: el usuario concede el permiso (diálogo in-app
+    // o app Shizuku) y al volver el panel ya está en "listo" sin recargar.
+
+    private volatile String shizukuSubscriber = null;
+
+    @JavascriptInterface
+    public void shizukuSubscribe(final String cb) {
+        shizukuSubscriber = cb;
+        SystemCleaner.INSTANCE.setStatusPushListener(json -> pushShizukuState(json));
+        // Empuje inmediato del estado actual (equivalente a un optimizerStatus).
+        pushShizukuState(null);
+    }
+
+    /** Llamado en MainActivity.onResume() para re-verificar al volver a la app. */
+    public void pushShizukuState() {
+        pushShizukuState(null);
+    }
+
+    private void pushShizukuState(String prebuilt) {
+        final String cb = shizukuSubscriber;
+        if (cb == null || cb.isEmpty()) return;
+        final String json = prebuilt != null ? prebuilt : SystemCleaner.INSTANCE.statusJson();
+        notifyOptimizer(cb, json);
+    }
+
     /** Pasa un JSON crudo al callback global. Escapa \ y ' para JS (mismo patrón que el resto). */
     private void notifyOptimizer(final String cb, final String payload) {
         final String safe = (payload == null ? "{}" : payload)

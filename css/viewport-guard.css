@@ -1413,3 +1413,35 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   animation-play-state: paused !important;
 }
 
+/* ── Galería "MI PUEBLO": <img> lazy dentro de los expanding panels ──
+   Convierte la carga de fondo en imágenes reales diferidas (loading=lazy,
+   decoding=async) con el MISMO aspecto visual que el background-image
+   original. content-visibility difiere descarga y pintado fuera del viewport. */
+.pueblo-panels {
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
+}
+.pueblo-panel {
+  position: relative;
+}
+.pueblo-panel-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+.pueblo-panel h3 {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Imágenes generadas del chat: contenedor sin distorsión ── */
+.ai-gen-img {
+  aspect-ratio: auto;
+  object-fit: contain;
+}
+
