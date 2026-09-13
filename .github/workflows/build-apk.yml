@@ -191,14 +191,19 @@ jobs:
               echo "";
               echo "**Paso:** Find APK — from `.github/workflows/build-apk.yml`";
               echo "";
+              echo "**release-build.log (completo, es pequeño):**";
               echo '```text';
-              echo "--- release-build.log (tail 80) ---";
-              tail -n 80 "$RUNNER_TEMP/release-build.log" 2>/dev/null || true;
+              cat "$RUNNER_TEMP/release-build.log" 2>/dev/null || true;
+              echo '```';
               echo "";
-              echo "--- arbol de apk/android (salida de gradle) ---";
+              echo "**Fragmentos clave:**";
+              echo '```text';
+              grep -n -B3 -A30 -E "What went wrong|Execution failed|FAILURE:|e: |error: |> Task :app" "$RUNNER_TEMP/release-build.log" 2>/dev/null | head -n 200 || true;
+              echo '```';
+              echo "";
+              echo "**Arbol de outputs de gradle:**";
+              echo '```text';
               find apk/android -path "*/outputs/*" -type f 2>/dev/null || true;
-              echo "--- build dirs ---";
-              find apk/android -maxdepth 4 -type d -name "outputs" 2>/dev/null || true;
               echo '```';
             } > /tmp/apk-find-error-body.md
             gh issue create --repo "$GITHUB_REPO" \
