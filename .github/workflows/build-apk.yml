@@ -118,14 +118,55 @@ jobs:
 
       - name: Build Release APK
         working-directory: apk/android
+        continue-on-error: true
         env:
           KEYSTORE_PASSWORD: ${{ env.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
-          gradle assembleRelease \
+          gradle assembleRelease --stacktrace \
             -PKEYSTORE_PATH="${{ github.workspace }}/apk/android/app/release.jks" \
             -PKEYSTORE_PASSWORD="${KEYSTORE_PASSWORD}" \
-            -PKEY_PASSWORD="${KEY_PASSWORD}"
+            -PKEY_PASSWORD="${KEY_PASSWORD}" > "$RUNNER_TEMP/release-build.log" 2>&1
+          rc=$?
+          echo "release_rc=$rc" >> "$GITHUB_ENV"
+          echo "release rc=$rc"
+          tail -n 60 "$RUNNER_TEMP/release-build.log"
+          [ $rc -eq 0 ] && exit 0 || exit 0
+
+      - name: Publicar error de release como Issue (diagnostico)
+        if: env.release_rc != '0'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          {
+            echo "## Error en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+            echo "";
+            echo "**Paso:** Build Release APK — from `.github/workflows/build-apk.yml`";
+            echo "";
+            echo '```text';
+            grep -E "^(e:|error:|\\* What went wrong|> Task :app:" "$RUNNER_TEMP/release-build.log" | head -n 40;
+            echo '```';
+          } > /tmp/release-error-body.md
+          gh issue create --repo "$GITHUB_REPO" \
+            --title "CI: error de compilación APK release ($GITHUB_SHA)" \
+            --body-file /tmp/release-error-body.md \
+            --label "ci-apk" 2>/dev/null || true
+
+      - name: Upload release build log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-build-log
+          path: ${{ runner.temp }}/release-build.log
+          retention-days: 5
+
+      - name: Fail job if release build failed
+        if: env.release_rc != '0'
+        run: |
+          echo "::error::assembleRelease fallo (release_rc=${{ env.release_rc }}). Ver log: release-build-log"
+          exit 1
 
       - name: Get version
         id: version
