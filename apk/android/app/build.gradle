@@ -71,6 +71,11 @@ dependencies {
     // tiene Shizuku activo (ADB inalámbrico o root). Ver ShizukuInstaller.java.
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
+    // libsu (topjohnwu) — manejo robusto de la shell con identidad Shizuku:
+    // un UNICO proceso `sh` persistente (Shizuku.newProcess) envuelto en un
+    // Shell libsu, con exit codes reales y buffering correcto. Reemplaza el
+    // patrón de "un newProcess por comando" del núcleo de optimización.
+    implementation 'com.github.topjohnwu.libsu:core:6.0.0'
     // Kotlin + Coroutines — núcleo de mantenimiento con Shizuku
     // (borrarCacheTurbo / killAppsPro) en hilos secundarios sin congelar
     // el UI del WebView.

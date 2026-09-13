@@ -1,0 +1,169 @@
+/* ════════════════════════════════════════════════════════════════════
+   optimizer.css — Panel "Optimización del Sistema" (solo APK/WebView)
+   CodeHub by Wilson.E — ver js/optimizer.js
+   - Clases scoped bajo .opt-*. Sin breakpoints inventados: solo los
+     canónicos (max-width: 720 / 480 / 380 px).
+   - Hijos de flex/grid con texto largo llevan min-width:0 (regla de oro
+     de AGENTS.md) para no desbordar.
+   ════════════════════════════════════════════════════════════════════ */
+
+.opt-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .6rem;
+  margin-top: .4rem;
+}
+
+.opt-tile {
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 14px;
+  padding: .7rem .8rem .6rem;
+  display: flex;
+  flex-direction: column;
+  gap: .28rem;
+  min-width: 0;
+}
+
+.opt-tile-h {
+  font-size: .64rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.opt-tile-v {
+  font-family: var(--mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.opt-tile-v span { font-size: .68rem; color: var(--muted); font-weight: 600; }
+
+.opt-tile-f {
+  font-size: .68rem;
+  color: var(--muted);
+  line-height: 1.45;
+  min-width: 0;
+}
+
+.opt-bar-w {
+  height: 6px;
+  background: rgba(255,255,255,.08);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: .15rem;
+}
+
+.opt-bar {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--green);
+  transition: width .45s ease;
+  min-width: 0;
+}
+
+.opt-sec-h {
+  font-size: .7rem;
+  color: var(--a);
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: .9rem 0 .3rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+
+.opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: .38rem;
+}
+
+.opt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 11px;
+  padding: .5rem .65rem;
+  min-width: 0;
+}
+
+.opt-row-l {
+  font-size: .78rem;
+  color: var(--text);
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-row-sub {
+  font-size: .64rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-weight: 400;
+  margin-top: .1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.opt-row-r {
+  font-size: .7rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.opt-row-r span { color: var(--muted); }
+
+.opt-note {
+  background: rgba(56,189,248,.07);
+  border: 1px solid rgba(56,189,248,.18);
+  border-radius: 11px;
+  padding: .7rem .8rem;
+  font-size: .76rem;
+  color: var(--text);
+  line-height: 1.55;
+  min-width: 0;
+}
+
+.opt-note.err { background: rgba(255,107,107,.07); border-color: rgba(255,107,107,.25); color: #ff6b6b; }
+
+.opt-tabs { margin: .55rem 0 .4rem; }
+
+.opt-loaded { animation: optFade .3s ease both; }
+
+@keyframes optFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Canónico: tablets / móviles grandes ── */
+@media (max-width: 720px) {
+  .opt-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Canónico: teléfonos grandes ── */
+@media (max-width: 480px) {
+  .opt-tile-v { font-size: 1.1rem; }
+  .opt-row { flex-wrap: wrap; }
+  .opt-row-l { white-space: normal; }
+}

@@ -10,6 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // libsu (topjohnwu) se publica solo via JitPack.
+        maven { url 'https://jitpack.io' }
     }
 }
 rootProject.name = "CodeHub"

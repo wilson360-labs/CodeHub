@@ -81,6 +81,7 @@
 <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
 <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/site-tour.css?v=20260908a">
+<link rel="stylesheet" href="../css/optimizer.css?v=20260913a">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1283,6 +1284,32 @@ footer a{color:var(--p);text-decoration:none}
       <button class="btn bg" onclick="copyJSON()"><i class="fas fa-copy"></i> Copiar</button>
     </div>
     <div id="jf-out" class="rb" style="display:none;max-height:300px;overflow-y:auto;white-space:pre-wrap;font-family:var(--mono);font-size:.78rem;line-height:1.5"></div>
+  </div>
+</div>
+
+<!-- OPTIMIZADOR DEL SISTEMA (solo APK/WebView · Shizuku + libsu) -->
+<div class="card" data-tags="util" id="opt-card" style="display:none">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-bolt"></i></div>
+    <div><h2>Optimización del Sistema</h2><div class="ct">APK · Shizuku</div></div>
+  <span class="chevron">▼</span></div>
+  <div class="cd">Mantenimiento con privilegios vía Shizuku (ADB o root): diagnóstico de RAM, batería, temperatura y almacenamiento; limpieza de caché global y por app con pre-visión; cierre de procesos en segundo plano y deshabilitado de bloatware. Disponible solo dentro de la app CodeHub.</div>
+  <div class="cb">
+    <div id="opt-dead" class="opt-note" style="display:none"><i class="fas fa-power-off"></i> Shizuku no está disponible en este equipo.</div>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0">
+      <span id="opt-status" style="font-family:var(--mono);font-size:.72rem;color:var(--muted);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:.18rem .7rem">—</span>
+      <span id="opt-backend" style="font-family:var(--mono);font-size:.66rem;color:var(--muted)"></span>
+      <span id="opt-root" style="font-family:var(--mono);font-size:.66rem;border-radius:6px;padding:.08rem .4rem;background:rgba(255,255,255,.05)"></span>
+      <button id="opt-perm-btn" class="tb primary" style="display:none" onclick="window.__optGrant()"><i class="fas fa-bolt"></i> Activar permiso</button>
+    </div>
+    <div id="opt-go">
+      <div class="tabs opt-tabs" id="opt-tabs">
+        <button class="tab on" onclick="window.__optTab('diag',this)"><i class="fas fa-stethoscope"></i> Diagnóstico</button>
+        <button class="tab" onclick="window.__optTab('limpiar',this)"><i class="fas fa-broom"></i> Limpiador</button>
+        <button class="tab" onclick="window.__optTab('procesos',this)"><i class="fas fa-power-off"></i> Procesos</button>
+        <button class="tab" onclick="window.__optTab('bloat',this)"><i class="fas fa-shield-halved"></i> Bloatware</button>
+      </div>
+      <div id="opt-panel"></div>
+    </div>
   </div>
 </div>
 
@@ -3516,5 +3543,6 @@ async function rvResolve(force) {
   });
 })();
 </script>
+<script src="../js/optimizer.js?v=20260913a"></script>
 </body>
 </html>

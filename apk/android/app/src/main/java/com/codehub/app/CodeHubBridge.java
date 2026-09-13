@@ -1085,4 +1085,53 @@ public class CodeHubBridge {
                 "window." + cb + "('" + result + "');}catch(e){}"));
         }).start();
     }
+
+    // ── OPTIMIZACIÓN DEL SISTEMA (Shizuku + libsu) ─────────────────
+    // Núcleo real en SystemOptimizer.kt. Todas en Thread de fondo para no
+    // bloquear el WebView; devuelven JSON crudo que el JS parsea.
+    // Convención de callback: igual que el resto del bridge — se pasa un
+    // nombre global y la respuesta llega como string JSON.
+
+    @JavascriptInterface
+    public void optimizerStatus(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.statusSync())).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerDiagnostics(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.diagnosticsSync())).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerCacheStats(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.cacheStatsSync())).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerClearAppCache(final String cb, final String pkg) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.clearAppCacheSync(pkg))).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerKillCached(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.killCachedSync(activity))).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerSystemApps(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.systemAppsSync(activity))).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerSetAppEnabled(final String cb, final String pkg, final boolean enabled) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.setAppEnabledSync(pkg, enabled))).start();
+    }
+
+    /** Pasa un JSON crudo al callback global. Escapa \ y ' para JS (mismo patrón que el resto). */
+    private void notifyOptimizer(final String cb, final String payload) {
+        final String safe = (payload == null ? "{}" : payload)
+                .replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + cb + ")window." + cb + "('" + safe + "');}catch(e){}"));
+    }
 }
