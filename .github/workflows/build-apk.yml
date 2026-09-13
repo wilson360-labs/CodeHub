@@ -53,7 +53,7 @@ jobs:
           echo "gradle_rc=$rc" >> "$GITHUB_ENV"
           echo "gradle rc=$rc"
           tail -n 60 "$RUNNER_TEMP/compile-debug.log"
-          exit 0
+          exit $rc
 
       - name: Publicar error de compilacion como Issue (diagnostico)
         if: env.gradle_rc != '0'

@@ -57,7 +57,7 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://wilson360-labs.vercel.app";
     private static final String CHANNEL_DEFAULT = "codehub_default";
     private static final int FILE_CHOOSER_REQUEST   = 100;
-    private static final int BACKUP_IMPORT_REQUEST  = 101;
+    static final int BACKUP_IMPORT_REQUEST  = 101;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
