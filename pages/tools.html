@@ -514,7 +514,7 @@ footer a{color:var(--p);text-decoration:none}
     <input class="ti" type="text" id="qt" placeholder="URL, texto, link…">
     <div class="ir">
       <select class="ts" id="qs"><option value="128">Pequeño</option><option value="200" selected>Mediano</option><option value="300">Grande</option></select>
-      <select class="ts" id="qc"><option value="#2f80ed">Naranja</option><option value="#ffffff">Blanco</option><option value="#00e676">Verde</option><option value="#22c55e">Azul</option></select>
+      <select class="ts" id="qc"><option value="#ff9800">Naranja</option><option value="#ffffff">Blanco</option><option value="#00e676">Verde</option><option value="#2f80ed">Azul</option></select>
     </div>
     <button class="btn bp" onclick="genQR()"><i class="fas fa-qrcode"></i> Generar</button>
     <div id="qr-out"></div>
@@ -523,7 +523,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <!-- 4 · IP -->
-<div class="card" data-tags="util">
+<div class="card" data-tags="util net">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-location-dot"></i></div>
     <div><h2>Mi IP y Ubicación</h2><div class="ct">utilidad</div></div><span class="chevron">▼</span></div>
   <div class="cd">Muestra tu dirección IP pública y datos aproximados de ubicación, como país y proveedor de internet. Útil para verificar una VPN, solucionar problemas de red o saber qué ve un servidor remoto sobre tu conexión.</div>
@@ -705,7 +705,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 <!-- 14 · VELOCIDAD -->
-<div class="card" data-tags="util dev">
+<div class="card" data-tags="util dev net">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-gauge-high"></i></div>
     <div><h2>Test de Velocidad</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
   <div class="cd">Mide la velocidad de descarga, subida y latencia de tu conexión. Los resultados son aproximados y sirven para un diagnóstico rápido; una sola prueba es solo una muestra de tu red.</div>
@@ -1268,7 +1268,7 @@ footer a{color:var(--p);text-decoration:none}
 <!-- 36 · DNS LOOKUP — retirado: dependía de una API terceros que dejó de responder ─
 
 <!-- 37 · JSON FORMATTER -->
-<div class="card" data-tags="dev util">
+<div class="card" data-tags="dev util" id="card-json">
   <div class="ch">
     <div class="ci ci-bl"><i class="fas fa-code"></i></div>
     <div><h2>JSON Formatter</h2><div class="ct">dev · utilidad</div></div>
@@ -1323,7 +1323,7 @@ footer a{color:var(--p);text-decoration:none}
     const out = getOut();
     if (!out) return;
     out.style.display = 'block';
-    out.style.borderColor = ok ? 'var(--g)' : '#ff5f56';
+    out.style.borderColor = ok ? 'var(--green)' : '#ff5f56';
     out.textContent = text;
   }
   function parseInput() {
@@ -1554,7 +1554,7 @@ const UB={
 };
 let uType='length';
 function setUT(t,btn){
-  uType=t;document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
+  uType=t;btn.parentElement.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
   fillUS(t);
 }
 function fillUS(t){
@@ -1628,7 +1628,7 @@ const PL={work:'¡Concéntrate! 🍅',short:'Pausa corta ☕',long:'Pausa larga 
 let pMode='work',pTot=PT.work,pLeft=PT.work,pIv=null,pRun=false;
 function setPomo(m,btn){
   if(pRun)return;pMode=m;pTot=PT[m];pLeft=pTot;
-  document.querySelectorAll('.tabs .tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
+  btn.parentElement.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
   updPomo();$('plbl').textContent=PL[m];
 }
 function updPomo(){
@@ -3529,7 +3529,7 @@ async function rvResolve(force) {
           optional: true
         },
         {
-          selector: '#grid .card:last-child .ch',
+          selector: '#card-json .ch',
           icon: 'fa-solid fa-code',
           title: 'JSON Formatter',
           text: 'Parsea, formatea, minifica y valida JSON con resaltado de sintaxis. Errores con línea exacta.',
