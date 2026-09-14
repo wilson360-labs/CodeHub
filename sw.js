@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v5.0 — Wilson.E 2026
+//  CodeHub SW v5.1 — Wilson.E 2026
 //  PWA mejorada: cache inteligente + offline + sync + update
 //  + Push Notifications (app updates + clima)
 //  v5.0: ESTRATEGIA DE CACHÉ CAMBIADA — antes html/css/js
@@ -10,9 +10,12 @@
 //        al instante en la próxima carga de página, sin depender
 //        de recordar bumpear VERSION. La caché queda solo como
 //        respaldo offline (o si la red tarda demasiado).
+//  v5.1: NO interceptar imágenes/fuentes cross-origin (bug del
+//        connect-src del CSP, ver nota en fetch). El navegador
+//        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.01';
+const VERSION = 'codehub-v7.02';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -108,7 +111,8 @@ const PRECACHE = [
   '/dist/assets/js/notifications.98e4f0d450.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
-  '/dist/assets/js/opensource.4e32d98935.min.js',
+  '/dist/assets/js/opensource.5f5dbeab50.min.js',
+  '/dist/assets/js/optimizer.d343e9b344.min.js',
   '/dist/assets/js/permissions-setup.315574d7b4.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
   '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
@@ -303,6 +307,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // ── Imágenes/fuentes CROSS-ORIGIN: NO interceptar ─────────────
+  // Mismo bug documentado arriba (teselas): un fetch() hecho DESDE el
+  // Service Worker se evalúa contra la directiva "connect-src" del CSP,
+  // no contra "img-src"/"font-src" (matiz de Chromium/WebView). Como
+  // connect-src solo lista res.cloudinary.com, el SW bloqueaba el resto
+  // de hosts de imágenes (i.ibb.co, i.postimg.cc, cdn.simpleicons.org,
+  // wsrv.nl, unsplash…) en cuanto controlaba la página — consistente en
+  // móvil/WebView/APK. El fallo del fetch interno tampoco guardaba nada
+  // en caché ("las imágenes no se muestran ni se cachean"). Se dejan
+  // pasar directo al navegador: él las resuelve con img-src/font-src
+  // (que sí permiten https: por esquema) y usa su caché HTTP nativa.
+  // Solo las del MISMO origen se siguen cacheando (stale-while-revalidate)
+  // para que la app funcione offline.
+  if ((request.destination === 'image' || request.destination === 'font') &&
+      url.origin !== self.location.origin) {
+    return;
+  }
+
   if (url.hostname.includes("onrender.com")) {
     // Datos del catálogo Open Source: stale-while-revalidate para que
     // el catálogo aguante offline (sirve copia en caché y refresca en
@@ -360,7 +382,8 @@ self.addEventListener('fetch', e => {
     e.respondWith(networkFirst(request));
     return;
   }
-  // Imágenes/fuentes: stale-while-revalidate — rápido y se refresca solo.
+  // Imágenes/fuentes del MISMO origen: stale-while-revalidate — rápido
+  // y se refresca solo (las cross-origin se dejan pasar: ver arriba).
   if (['image', 'font'].includes(request.destination)) {
     e.respondWith(staleWhileRevalidate(request));
     return;

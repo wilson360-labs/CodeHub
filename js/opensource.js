@@ -66,6 +66,29 @@ function getOptimizedImageUrl(url, width, height) {
   return `https://wsrv.nl/${query}`;
 }
 
+// Fallback resiliente de imágenes: si el proxy wsrv.nl falla (caída o
+// rate-limit, es un servicio de terceros), reintenta una vez con la URL
+// original; si esa tampoco carga, muestra el placeholder de emoji. Se usa
+// en el onerror de <img> de tarjetas y detalle.
+/* global osImgFallback */
+function osImgFallback(img, rawUrl, emoji) {
+  if (!img || !img.dataset) return;
+  if (img.dataset.osImgRaw === '1') {
+    const ph = document.createElement('div');
+    ph.className = img.closest('.app-thumb') ? 'app-thumb-fallback' : 'app-detail-img-fallback';
+    ph.textContent = emoji || '📦';
+    img.replaceWith(ph);
+    return;
+  }
+  img.dataset.osImgRaw = '1';
+  if (rawUrl && /^https?:\/\//i.test(String(rawUrl))) {
+    img.onerror = () => osImgFallback(img, null, emoji);
+    img.src = rawUrl;
+  } else {
+    osImgFallback(img, null, emoji);
+  }
+}
+
 // ── CONVERSOR DE LINKS A DESCARGA DIRECTA ────────────────────
 function convertToDirectLink(url) {
   if (!url || url === '#') return url;
@@ -226,7 +249,7 @@ function buildOSCard(app, ratingInfo) {
   return `
   <div class="app-card" data-app-id="${app.appId}" data-cat="${app.categoria || ''}" data-name="${(app.nombre || '').toLowerCase()} ${(app.categoria || '').toLowerCase()}" data-repo="${app.source_repo || ''}" data-package="${app.packageName || ''}">
     <div class="app-thumb">
-      <img src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>${emoji}</div>'">
+      <img src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="osImgFallback(this,'${esc(app.imagen || '')}','${emoji}')">
       ${badge ? `<span class="app-badge badge-upd">${badge}</span>` : ''}
       <span class="app-verified-badge" style="display:flex">✅ Open Source</span>
       ${version ? `<span class="app-version-tag">${version}</span>` : ''}
@@ -791,7 +814,7 @@ function renderAppDetail(app) {
 
   body.innerHTML = `
     <div class="app-detail-head">
-      <img class="app-detail-img" src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.outerHTML='<div class=app-detail-img-fallback>${emoji}</div>'">
+      <img class="app-detail-img" src="${img}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="osImgFallback(this,'${esc(app.imagen || '')}','${emoji}')">
       <div class="app-detail-titlewrap">
         <div class="app-detail-cat">${emoji} ${esc(app.categoria || 'Utilidades')}</div>
         <div class="app-detail-title" id="app-detail-title">${esc(app.nombre)}</div>
