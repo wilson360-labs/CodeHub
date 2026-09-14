@@ -1887,6 +1887,10 @@ const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser })
 const ttsLimiter = rateLimit({ windowMs: 60*1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de voz. Espera un momento.', code: 'TTS_RATE_LIMIT' }, handler: rateLimitHandler });
 app.use('/api/tts', ttsLimiter, ttsRoutes);
 
+// ── TERMINAL — Shell remoto (WebSocket + PTY, sandbox de proceso) ──
+const terminalModule = require('./modules/terminal');
+terminalModule.attach({ app, server, allowedOrigins });
+
 // ════════════════════════════════════════════════════════════════
 //  RUTAS
 // ════════════════════════════════════════════════════════════════

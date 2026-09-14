@@ -69,7 +69,7 @@
   <!-- End Google Tag Manager -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https://dns-lookup.com https://ip-api.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://codehub-98s6.onrender.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' wss://codehub-98s6.onrender.com ws://codehub-98s6.onrender.com https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https://dns-lookup.com https://ip-api.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://codehub-98s6.onrender.com;">
 <title>36 Herramientas Web Gratis — CodeHub by Wilson.E</title>
 <meta name="description" content="36 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, JSON formatter, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/tools">
@@ -82,6 +82,8 @@
 <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/site-tour.css?v=20260908a">
 <link rel="stylesheet" href="../css/optimizer.css?v=20260913a">
+<link rel="stylesheet" href="../css/xterm.css?v=20260914a">
+<link rel="stylesheet" href="../css/terminal.css?v=20260914a">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -1311,6 +1313,22 @@ footer a{color:var(--p);text-decoration:none}
       </div>
       <div id="opt-panel"></div>
     </div>
+  </div>
+</div>
+
+<!-- TERMINAL (Xterm.js + WebSocket + PTY: web y APK comparten protocolo) -->
+<div class="card" data-tags="dev util" id="term-card" style="grid-column: 1 / -1; max-width: 860px; margin: 0 auto; width: 100%;">
+  <div class="ch"><div class="ci ci-gr"><i class="fas fa-terminal"></i></div>
+    <div><h2>Terminal</h2><div class="ct">Web + APK · Shell remoto</div></div>
+    <span class="chevron">▼</span></div>
+  <div class="cd">Shell interactivo (bash/sh) sobre una PTY segura en el servidor: entorno sin credenciales, proceso sin privilegios y comandos destructivos bloqueados por la sandbox. Funciona en web (vía WebSocket) y dentro de la app CodeHub. Multi-pestaña: cada tab es una sesión independiente.</div>
+  <div class="cb">
+    <div class="term-toolbar">
+      <span class="term-dot" data-s=""></span>
+      <span class="term-state-txt">—</span>
+    </div>
+    <div class="term-tabs" id="term-tabs"></div>
+    <div class="term-body" id="term-body"></div>
   </div>
 </div>
 
@@ -3545,5 +3563,6 @@ async function rvResolve(force) {
 })();
 </script>
 <script src="../js/optimizer.js?v=20260913a"></script>
+<script type="module" src="../js/terminal.js?v=20260914a"></script>
 </body>
 </html>

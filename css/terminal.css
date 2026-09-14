@@ -1,0 +1,125 @@
+/* ════════════════════════════════════════════════════════════════════
+   terminal.css — Tarjeta Terminal (Xterm.js Chrome · CodeHub)
+   CodeHub by Wilson.E · v3
+   - Solo breakpoints canónicos de AGENTS.md (380/480/550/640/720/768/860).
+   - Hijos de flex con texto largo llevan min-width:0 (regla de oro).
+   - La barra de pestañas + toolbar usan el estilo .tb/.tabs ya existente
+     en tools.html.
+   ════════════════════════════════════════════════════════════════════ */
+
+#term-card { display: none; min-width: 0; }
+#term-card.term-off { opacity: 1; }
+
+.term-toolbar {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: wrap;
+  margin-bottom: .55rem;
+  min-width: 0;
+}
+
+.term-toolbar .term-sel {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--text);
+  border-radius: 9px;
+  padding: .45rem .6rem;
+  font-family: var(--mono);
+  font-size: .74rem;
+  max-width: 100%;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.term-toolbar .term-sel:focus { outline: none; border-color: var(--border-h); }
+
+.term-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex: none;
+  margin-left: auto;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245,158,11,.5);
+}
+.term-dot[data-s="open"]   { background: var(--green); box-shadow: 0 0 8px rgba(0,230,118,.55); }
+.term-dot[data-s="connecting"] { background: #f59e0b; animation: termPulse 1.2s ease-in-out infinite; }
+.term-dot[data-s="reconnecting"] { background: #f59e0b; animation: termPulse 1.2s ease-in-out infinite; }
+.term-dot[data-s="closed"] { background: #ff5f56; box-shadow: 0 0 8px rgba(255,95,86,.45); }
+.term-dot[data-s="error"]  { background: #ff5f56; box-shadow: 0 0 8px rgba(255,95,86,.45); }
+.term-dot[data-s="native"] { background: var(--p); box-shadow: 0 0 8px rgba(47,128,237,.55); }
+
+.term-state-txt {
+  font-family: var(--mono);
+  font-size: .64rem;
+  color: var(--muted);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+@keyframes termPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+.term-tabs {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  margin-bottom: .5rem;
+  min-width: 0;
+}
+
+.term-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .32rem .8rem;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: .72rem;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: var(--tr);
+}
+.term-tab.on { background: rgba(47,128,237,.16); border-color: var(--border-h); color: var(--text); }
+.term-tab:hover { border-color: var(--border); color: var(--text); }
+.term-tab.done { text-decoration: line-through; opacity: .6; }
+
+.term-body {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b0d12;
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.term-pane {
+  position: relative;
+  width: 100%;
+  height: clamp(220px, 42vh, 420px);
+  min-width: 0;
+  padding: .45rem;
+  box-sizing: border-box;
+}
+
+.term-pane .xterm { height: 100%; padding: .35rem; }
+.term-pane .xterm-viewport { scrollbar-width: thin; }
+
+/* Pantallas pequeñas: algo de altura fija para que xterm respire. */
+@media (max-width: 720px) {
+  .term-toolbar { gap: .4rem; }
+  .term-toolbar .term-sel { font-size: .68rem; padding: .4rem .5rem; }
+}
+@media (max-width: 480px) {
+  #term-card .tb span, #term-card .tb { font-size: .74rem; }
+  .term-tab { font-size: .66rem; padding: .28rem .6rem; }
+}
+@media (max-width: 380px) {
+  .term-state-txt { display: none; }
+}
