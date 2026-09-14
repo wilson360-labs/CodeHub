@@ -1414,13 +1414,12 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 }
 
 /* ── Galería "MI PUEBLO": <img> lazy dentro de los expanding panels ──
-   Convierte la carga de fondo en imágenes reales diferidas (loading=lazy,
-   decoding=async) con el MISMO aspecto visual que el background-image
-   original. content-visibility difiere descarga y pintado fuera del viewport. */
-.pueblo-panels {
-  content-visibility: auto;
-  contain-intrinsic-size: 320px;
-}
+   Convierte la carga de fondo en imágenes reales diferidas (loading, decoding)
+   con el MISMO aspecto visual que el background-image original.
+   NOTA: content-visibility:auto se retiró — en algunos WebView no pintaba
+   los <img> lazy dentro de los expanding panels mientras el flex anima el
+   ancho, dejándolos en blanco. index.html fuerza eager al acercarse la
+   sección (IntersectionObserver). */
 .pueblo-panel {
   position: relative;
 }
@@ -1433,6 +1432,17 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   display: block;
   z-index: 0;
   pointer-events: none;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+/* Ken Burns real sobre el <img> (el keyframe original de background-position
+   quedó inerte al pasar a <img>). */
+.pueblo-panel.active .pueblo-panel-img {
+  animation: puebloKenBurnsImg 16s ease-in-out infinite alternate;
+}
+@keyframes puebloKenBurnsImg {
+  0%   { transform: scale(1.03) translateY(-2%); }
+  100% { transform: scale(1.12) translateY(1.5%); }
 }
 .pueblo-panel h3 {
   position: relative;

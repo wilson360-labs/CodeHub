@@ -873,19 +873,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- Expanding Panels — San Luis Jilotepeque -->
             <div class="pueblo-panels" id="pueblo-panels">
               <div class="pueblo-panel active">
-                <img class="pueblo-panel-img" src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque, Jalapa, Guatemala" loading="lazy" decoding="async">
+                <img class="pueblo-panel-img" src="https://i.postimg.cc/wBvCwpgP/LMC-30-Mar-18-300.jpg" alt="San Luis Jilotepeque, Jalapa, Guatemala" loading="eager" fetchpriority="high" decoding="async" onerror="this.style.opacity=0">
                 <h3>📍 San Luis Jilotepeque<span>Jalapa, Guatemala</span></h3>
               </div>
               <div class="pueblo-panel">
-                <img class="pueblo-panel-img" src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Paisaje visto desde el pueblo" loading="lazy" decoding="async">
+                <img class="pueblo-panel-img" src="https://i.ibb.co/9gt4vNS/20250101-122927.jpg" alt="Paisaje visto desde el pueblo" loading="lazy" decoding="async" onerror="this.style.opacity=0">
                 <h3>🏔️ Paisaje<span>Vista desde el pueblo</span></h3>
               </div>
               <div class="pueblo-panel">
-                <img class="pueblo-panel-img" src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Amanecer en San Luis Jilotepeque" loading="lazy" decoding="async">
+                <img class="pueblo-panel-img" src="https://i.postimg.cc/htkb4Ksm/20241109-095058.jpg" alt="Amanecer en San Luis Jilotepeque" loading="lazy" decoding="async" onerror="this.style.opacity=0">
                 <h3>🌄 Amanecer<span>Noviembre 2024</span></h3>
               </div>
               <div class="pueblo-panel">
-                <img class="pueblo-panel-img" src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Naturaleza en enero 2025" loading="lazy" decoding="async">
+                <img class="pueblo-panel-img" src="https://i.ibb.co/cF1zZJn/20250101-124645.jpg" alt="Naturaleza en enero 2025" loading="lazy" decoding="async" onerror="this.style.opacity=0">
                 <h3>🌿 Naturaleza<span>Enero 2025</span></h3>
               </div>
             </div>
@@ -7681,6 +7681,22 @@ document.addEventListener('DOMContentLoaded', () => {
       wrap.addEventListener('mouseenter', stopAutoplay);
       wrap.addEventListener('mouseleave', startAutoplay);
       wrap.addEventListener('touchstart', stopAutoplay, { passive: true });
+    }
+
+    // Robustez de carga: algunos WebView no disparan las imágenes lazy
+    // hasta que su contenedor cruza el viewport (especialmente con paneles
+    // ocultos o content-visibility). Al acercarse 600px a la galería, todas
+    // pasan a eager y se cargan sí o sí.
+    if (wrap && 'IntersectionObserver' in window) {
+      new IntersectionObserver(function(entries, obs) {
+        if (entries.some(function(e) { return e.isIntersecting; })) {
+          panels.forEach(function(p) {
+            var img = p.querySelector('.pueblo-panel-img');
+            if (img) img.loading = 'eager';
+          });
+          obs.disconnect();
+        }
+      }, { rootMargin: '600px 0px' }).observe(wrap);
     }
 
     activatePanel(current);

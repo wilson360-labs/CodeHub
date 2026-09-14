@@ -2503,14 +2503,13 @@ body.font-sm{ font-size: 14px; }body.font-lg{ font-size: 18px; }body.no-anim *, 
         }@keyframes pulse-g{0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.4)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)}}/* ════════════════════════════════════════════════════════
    CLS FIXES + COMPONENTES ADICIONALES (About, Stats, Skills)
 ════════════════════════════════════════════════════════ */
-/* Reservar espacio para imágenes antes de cargar.
-   content-visibility: auto SIN contain-intrinsic-size hace que el
-   navegador calcule una altura de 0 para las imágenes fuera del viewport;
-   en WebView Android (app) y algunos navegadores móviles eso deja las
-   imágenes sin renderizar aunque ya estén cargadas. Se agrega
-   contain-intrinsic-size para reservar un mínimo real y se mantiene el
-   recorte solo como optimización de render, no de carga. */
-img{ content-visibility: auto; contain-intrinsic-size: auto 200px; }/* Estabilizar fuentes — evitar FOUT que causa CLS */
+/* Reserva de espacio para imágenes: la carga se difiere con loading="lazy"
+   y el layout se estabiliza con atributos width/height y aspect-ratio.
+   (El content-visibility GLOBAL sobre img se retiró — en algunos WebView
+   no pintaba las imágenes dentro de contenedores animados/transformados,
+   p.ej. el carrusel "Mi Pueblo", dejándolas en blanco. La reserva de espacio
+   no depende de ese recorte de render.) */
+/* imgs: content-visibility global retirado — en algunos WebView no pintaba las imagenes dentro de contenedores animados/transform (carrusel Mi Pueblo) *//* Estabilizar fuentes — evitar FOUT que causa CLS */
 @font-face{
         font-family: 'Space Grotesk';
         font-display: swap;
