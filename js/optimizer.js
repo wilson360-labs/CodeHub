@@ -104,7 +104,7 @@
         '(ADB inalámbrico o root). Instala Shizuku, empareja por ADB y vuelve aquí.</div>';
       return;
     }
-    const fns = { diag: renderDiag, limpiar: renderLimpiar, procesos: renderProcesos, bloat: renderBloat, scripts: renderScripts };
+    const fns = { diag: renderDiag, limpiar: renderLimpiar, procesos: renderProcesos, bloat: renderBloat, scripts: renderScripts, impulso: renderImpulso };
     const fn = fns[state.tab] || renderDiag;
     els.panel.classList.remove('opt-loaded');
     els.panel.innerHTML = '<div class="opt-note" style="text-align:center;padding:1rem">⏳ Cargando…</div>';
@@ -421,6 +421,118 @@
 
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
+  // ── Impulso IA (plan inteligente) ────────────────────────────────
+  async function renderImpulso() {
+    const p = await nativeCall('optimizerBoostPlan');
+    if (p && p.error) {
+      els.panel.innerHTML = '<div class="opt-note err">' + esc(p.error) + '</div>';
+      return;
+    }
+    const score = Math.max(0, Math.min(100, Number(p.score) || 0));
+    const scoreColor = score >= 75 ? 'var(--green)' : score >= 50 ? '#ffb454' : '#ff6b6b';
+
+    const axes = [
+      { k: 'ramScore', label: 'Memoria', icon: 'fa-microchip' },
+      { k: 'storageScore', label: 'Almacenamiento', icon: 'fa-database' },
+      { k: 'batteryScore', label: 'Batería', icon: 'fa-battery-three-quarters' },
+      { k: 'thermalScore', label: 'Térmico', icon: 'fa-temperature-half' },
+      { k: 'procsScore', label: 'Segundo plano', icon: 'fa-diagram-project' }
+    ];
+
+    // Escala de 0..100 → barra: los scores YA son "mejor = más alto".
+    let html = '<div class="opt-note"><i class="fas fa-wand-magic-sparkles"></i> Análisis inteligente ' +
+      'local (sin enviar datos): puntúa RAM, almacenamiento, batería, temperatura y procesos ' +
+      'en segundo plano reales, y sugiere solo acciones que liberan memoria/espacio de verdad.</div>';
+
+    html += '<div class="opt-tile" style="align-items:center;margin-top:.6rem">' +
+      '<div class="opt-ring" style="--p:' + score + '%;--c:' + scoreColor + '">' +
+      '<div class="opt-ring-in" style="width:86px;height:86px"><b>' + score + '/100</b><span>salud</span></div></div>' +
+      '<div class="opt-tile-v" style="font-size:.95rem">' +
+      (score >= 75 ? 'En buen estado' : score >= 50 ? 'Aceptable, hay margen' : 'Requiere atención') + '</div></div>';
+
+    html += '<div class="opt-grid" style="grid-template-columns:repeat(2,1fr);margin-top:.55rem">';
+    axes.forEach(a => {
+      const v = Math.max(0, Math.min(100, Number(p[a.k] !== undefined ? p[a.k] : null) || 0));
+      const c = v >= 75 ? 'var(--green)' : v >= 50 ? '#ffb454' : '#ff6b6b';
+      html += '<div class="opt-tile"><div class="opt-tile-h"><i class="fas ' + a.icon + '"></i> ' + a.label + '</div>' +
+        '<div class="opt-tile-v"><span>' + v + '%</span></div>' +
+        '<div class="opt-bar-w"><div class="opt-bar" style="width:' + v + '%;background:' + c + '"></div></div></div>';
+    });
+    html += '</div>';
+
+    const recs = Array.isArray(p.recs) ? p.recs.filter(r => r && r.title) : [];
+    if (recs.length) {
+      html += '<div class="opt-sec-h"><i class="fas fa-list-check"></i> Plan sugerido</div><div class="opt-list">';
+      recs.forEach((r, i) => {
+        const isInfo = r.kind === 'info';
+        const isOk = r.kind === 'ok';
+        html += '<div class="opt-row" style="align-items:flex-start">' +
+          '<div class="opt-row-l" style="white-space:normal">' +
+          '<i class="fas ' + (isInfo ? 'fa-circle-info' : isOk ? 'fa-circle-check' : 'fa-wand-magic-sparkles') +
+          '" style="color:var(--a);margin-right:.3rem"></i>' + esc(r.title) +
+          (r.detail ? '<div class="opt-row-sub" style="white-space:normal">' + esc(r.detail) + '</div>' : '') +
+          '</div>' +
+          (isInfo || isOk ? '' :
+            '<button class="tb ' + (i === 0 ? 'primary' : '') + '" data-haptic="game" onclick="window.__optApply(\'' + esc(r.kind) + '\')">Aplicar</button>') +
+          '</div>';
+      });
+      html += '</div>';
+      html += '<div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.6rem">' +
+        '<button class="btn bp" onclick="window.__optApplyAll()" data-haptic="game"><i class="fas fa-bolt"></i> Optimizar ahora</button>' +
+        '<button class="btn bg" onclick="window.__optRefreshImpulso()"><i class="fas fa-rotate"></i> Reanalizar</button></div>';
+    }
+
+    if (p.recoverableKb) {
+      html += '<div style="font-size:.66rem;color:var(--muted);font-family:var(--mono);margin-top:.5rem">' +
+        'RAM recuperable en segundo plano: ~' + fmtB(Number(p.recoverableKb) * 1024) +
+        (p.backend ? ' · vía ' + esc(p.backend) : '') + '</div>';
+    }
+    els.panel.innerHTML = html;
+  }
+
+  async function __optApply(kind) {
+    if (kind === 'kill') return __optKill();
+    if (kind === 'trim') return __optTrim();
+    if (kind === 'cache') return __optClearAllCaches();
+    toast('Acción no disponible', false);
+  }
+
+  async function __optApplyAll() {
+    const plan = await nativeCall('optimizerBoostPlan');
+    const recs = plan && Array.isArray(plan.recs) ? plan.recs : [];
+    const actions = recs.filter(r => r && r.kind && r.kind !== 'info' && r.kind !== 'ok');
+    if (!actions.length) { toast('Nada que optimizar', false); return; }
+    toast('Optimizando…');
+    let ok = true;
+    for (const r of actions) {
+      if (r.kind === 'kill') { const k = await nativeCall('optimizerKillCached'); if (k && k.failed && k.failed.length) ok = false; }
+      else if (r.kind === 'trim') {
+        try { await __optTrim(); } catch (e) { ok = false; }
+      } else if (r.kind === 'cache') {
+        const res = await nativeCall('optimizerCacheStats');
+        const apps = (res && res.apps) ? res.apps.slice(0, 6) : [];
+        for (const a of apps) { try { await nativeCall('optimizerClearAppCache', a.pkg); } catch (e) { ok = false; } }
+      }
+    }
+    toast(ok ? 'Optimización completada' : 'Terminado con algunos fallos', ok);
+    renderTab();
+  }
+
+  async function __optClearAllCaches() {
+    const res = await nativeCall('optimizerCacheStats');
+    if (!res || res.error) { toast((res && res.error) || 'No se pudo analizar la caché', false); return; }
+    const apps = (res && res.apps) ? res.apps.slice(0, 6) : [];
+    if (!apps.length) { toast('Sin caché por app limpiable', false); return; }
+    toast('Limpiando caché de ' + apps.length + ' apps…');
+    let bad = 0;
+    for (const a of apps) {
+      const r = await nativeCall('optimizerClearAppCache', a.pkg);
+      if (!r || !r.ok) bad++;
+    }
+    toast(bad ? 'Caché limpiada (' + bad + ' fallos)' : 'Caché de apps limpiada', !bad);
+    window.__optRefreshCache && window.__optRefreshCache();
+  }
+
   // ── estado / init ────────────────────────────────────────────────
   async function refreshStatus(andRender) {
     const s = await nativeCall('optimizerStatus');
@@ -481,6 +593,9 @@
     window.__optRunScript = __optRunScript;
     window.__optClearScript = __optClearScript;
     window.__optTab = onTab;
+    window.__optApply = __optApply;
+    window.__optApplyAll = __optApplyAll;
+    window.__optRefreshImpulso = renderTab;
 
     card.style.display = '';
 

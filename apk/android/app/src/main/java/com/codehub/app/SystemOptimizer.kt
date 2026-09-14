@@ -4,7 +4,11 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import rikka.shizuku.Shizuku
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
 import java.lang.reflect.Method
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -47,6 +51,9 @@ object SystemOptimizer {
 
     @Volatile private var lastShellError: String? = null
 
+    /** Timeout por comando de diagnóstico (10s) — un comando vivo no cuelga la app. */
+    private const val CMD_TIMEOUT_MS = 10_000L
+
     // ── Primitiva de shell ──────────────────────────────────────────
 
     /** Crea un proceso `sh` bajo la identidad de Shizuku (reflexión, patrón ShizukuInstaller). */
@@ -58,21 +65,62 @@ object SystemOptimizer {
         return m.invoke(null, cmd, null, null) as java.lang.Process
     }
 
-    /** Ejecuta un comando con shell Shizuku (un proceso `sh -c` por llamada).
-     *  Lee stdout + stderr, espera exit code y devuelve (código, líneas). */
+    /**
+     * Ejecuta un comando con shell Shizuku (un proceso `sh -c` por llamada).
+     * Lee stdout + stderr EN PARALELO y espera el exit code con timeout.
+     * (Leerlos en serie causaba deadlock real cuando el output superaba el
+     * pipe de 64KB: el hijo se bloquea en stderr y stdout nunca cierra.)
+     * Devuelve (código, líneas) o lanza si Shizuku no está disponible.
+     */
     private suspend fun runSh(line: String): Pair<Int, List<String>> = withContext(Dispatchers.IO) {
         try {
             val proc = shizukuShProcess(arrayOf("sh", "-c", line))
-            val stdout = proc.inputStream.bufferedReader().readLines()
-            val stderr = proc.errorStream.bufferedReader().readLines()
-            val code = try { proc.waitFor() } catch (_: Throwable) { -1 }
-            lastShellError = null
-            code to (stdout + stderr).filter { it.isNotEmpty() }
+            val outBuf = StringBuilder()
+            val errBuf = StringBuilder()
+            val tOut = Thread { drain(proc.inputStream, outBuf) }
+            val tErr = Thread { drain(proc.errorStream, errBuf) }
+            tOut.start(); tErr.start()
+
+            val finished = try {
+                proc.waitFor(CMD_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            } catch (_: Throwable) { false }
+            if (!finished) {
+                lastShellError = "timeout"
+                try { proc.destroyForcibly() } catch (_: Throwable) {}
+                try { proc.waitFor(2, TimeUnit.SECONDS) } catch (_: Throwable) {}
+                (124 to emptyList())   // 124 = timeout (convención coreutils)
+            } else {
+                try { tOut.join(500); tErr.join(500) } catch (_: Throwable) {}
+                val code = try { proc.exitValue() } catch (_: Throwable) { -1 }
+                lastShellError = null
+                val lines = (outBuf.toString() + errBuf.toString())
+                    .lineSequence()
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                    .toList()
+                code to lines
+            }
         } catch (t: Throwable) {
             lastShellError = t.message ?: t.toString()
             throw IllegalStateException(
                 "Shell Shizuku no disponible" + lastShellError?.let { " ($it)" }.orEmpty()
             )
+        }
+    }
+
+    private fun drain(input: InputStream?, into: StringBuilder) {
+        if (input == null) return
+        try {
+            val r = BufferedReader(InputStreamReader(input))
+            val buf = CharArray(8192)
+            while (true) {
+                val n = r.read(buf)
+                if (n < 0) break
+                into.append(buf, 0, n)
+            }
+            r.close()
+        } catch (_: Throwable) {
+            try { input.close() } catch (_: Throwable) {}
         }
     }
 
@@ -130,6 +178,9 @@ object SystemOptimizer {
             if (lines.any { l -> DENIED_TOKENS.any { l.lowercase().contains(it) } }) {
                 return@runBlocking "{\"error\":\"contiene comandos no permitidos (su, rm, reboot, mount, settings put, wipe…)\"}"
             }
+            if (lines.any { l -> SENSITIVE_PATHS.any { l.contains(it) } }) {
+                return@runBlocking "{\"error\":\"contiene rutas privadas de otras apps (databases, shared_prefs, /data/data)\"}"
+            }
             lines.forEach { l ->
                 val bin = l.substringBefore(' ').substringAfterLast('/').trim()
                 if (bin.isNotEmpty() && bin !in ALLOWED_BINS) {
@@ -165,6 +216,12 @@ object SystemOptimizer {
         "su ", "sudo", "reboot", "shutdown", "rm ", "chmod", "chown", "mkfs",
         "dd ", "mount", "umount", "svc ", "settings put", "wipe", "fastboot",
         "wpa_supplicant", "iptables", "ifconfig", "getenforce"
+    )
+    // Rutas con datos de otras apps/privados del sistema: nunca leerlas desde
+    // el runner de scripts, incluso bajo root (el entorno no las necesita).
+    private val SENSITIVE_PATHS = listOf(
+        "/data/data", "/data/user/", "shared_prefs", "/databases/",
+        "content://", "/proc/kcore", "/sys/kernel/debug", "/cache"
     )
     private const val MAX_DIAG_LINES = 400
 
@@ -265,15 +322,148 @@ object SystemOptimizer {
     fun killCachedSync(context: Context): String = runBlocking {
         try {
             requireReady()
-            val running = SystemCleaner.findRunningApps(context)
-            val pkgs = running.map { it.packageName }
+            // Inventario REAL (ps + pm) — la API pública solo muestra procesos
+            // propios en Android 11+, así que esto es lo único exacto con Shizuku.
+            val byMem = SystemCleaner.processesByMemory()
+            val pkgs = byMem.map { it.packageName }
                 .filter { it != SKIP_FORCE_STOP && !it.startsWith("com.android.") }
+                .filter { it != "com.codehub.app" }
                 .distinct()
+            if (pkgs.isEmpty()) return@runBlocking "{\"stopped\":[],\"failed\":[],\"idle\":true}"
             val r = SystemCleaner.killAppsPro(pkgs)
             fun arr(l: List<String>) = l.joinToString(",", "[", "]") { quoteJs(it) }
             "{\"stopped\":${arr(r.stopped)},\"failed\":${arr(r.failed)}}"
         } catch (t: Throwable) {
             "{\"error\":${quoteJs(t.message ?: t.toString())}}"
+        }
+    }
+
+    /** Top consumidores de RAM (RSS real agregado). Síncrono para el panel. */
+    @JvmStatic
+    fun topMemorySync(): String = runBlocking {
+        try {
+            requireReady()
+            SystemCleaner.processesByMemorySync()
+        } catch (t: Throwable) {
+            "{\"error\":${quoteJs(t.message ?: t.toString())}}"
+        }
+    }
+
+    /**
+     * Plan de optimización inteligente: analiza RAM, almacenamiento, batería,
+     * temperatura y procesos en segundo plano reales, calcula un score de
+     * salud 0-100 y propone acciones priorizadas (las que de verdad liberan
+     * memoria/espacio) con estimación de ahorro. 100% local, sin enviar datos.
+     * El frontend decide si ejecutar; acá solo se analiza y se recomienda.
+     */
+    @JvmStatic
+    fun boostPlanSync(): String = runBlocking {
+        try {
+            requireReady()
+            val mem = readMemInfo()
+            val battery = readBattery()
+            val thermal = readThermal()
+            val byMem = try { SystemCleaner.processesByMemory() } catch (_: Throwable) { emptyList() }
+
+            // ── Ejes (cada uno 0..100, más alto = mejor) ──
+            val ramPct = if (mem.total > 0) (mem.total - mem.available) * 100 / mem.total else 100
+            val ramScore = (100 - ramPct).coerceIn(0, 100)
+
+            val storageScore = try { storagePct() } catch (_: Throwable) { 60 }
+
+            var batteryScore = battery.level.coerceIn(0, 100)
+            if (battery.tempC >= 40) batteryScore = (batteryScore - 20).coerceAtLeast(0)
+
+            var thermalScore = 100
+            when {
+                thermal.first >= 45 -> thermalScore = 30
+                thermal.first >= 40 -> thermalScore = 55
+                thermal.first >= 36 -> thermalScore = 80
+            }
+
+            // Procesos: cuánta RAM "recuperable" hay en segundo plano real.
+            val recoverableKb = byMem.filter { it.packageName != "com.codehub.app" }.sumOf { it.rssKb }
+            val procsScore = when {
+                recoverableKb > 1_500_000 -> 30   // >1.5 GB en 2º plano
+                recoverableKb > 800_000   -> 50
+                recoverableKb > 300_000   -> 70
+                else                       -> 90
+            }
+
+            val score = (ramScore * 35 + storageScore * 20 + batteryScore * 20 +
+                thermalScore * 15 + procsScore * 10) / 100
+
+            // ── Recomendaciones priorizadas ──
+            val recs = arrayListOf<String>()
+            var prio = 1
+
+            if (recoverableKb > 150_000) {
+                recs += recJson(
+                    prio++, "kill",
+                    "Cerrar " + byMem.size + " apps en segundo plano",
+                    "Libera ~" + fmtKb(recoverableKb) + " de RAM",
+                    quoteJs(byMem.take(8).joinToString(", ") { it.packageName })
+                )
+            }
+
+            val cache = try { cacheStatsSync() } catch (_: Throwable) { "{}" }
+            val cacheBytes = if (cache.contains("\"rootOnly\":false")) {
+                cache.substringAfter("\"totalBytes\":", "0").substringBefore(",").toLongOrNull() ?: 0L
+            } else 0L
+            if (cacheBytes >= 20_000_000L) {
+                recs += recJson(
+                    prio++, "cache",
+                    "Limpiar caché de apps",
+                    "Recupera ~" + fmtKb(cacheBytes / 1024) + " de almacenamiento",
+                    "null"
+                )
+            }
+
+            if (ramPct >= 80) {
+                recs += recJson(
+                    prio++, "trim",
+                    "Recortar caché global (pm trim-caches)",
+                    "Acelera el arranque de apps pesadas",
+                    "null"
+                )
+            }
+
+            if (thermal.first >= 40) {
+                recs += recJson(prio++, "info",
+                    "El equipo está a " + thermal.first + "°C",
+                    "Evita cargarlo o ejecutar tareas pesadas hasta que baje",
+                    "null")
+            }
+
+            if (recs.isEmpty()) {
+                recs += recJson(1, "ok",
+                    "Sin acciones urgentes",
+                    "El dispositivo está en buen estado",
+                    "null")
+            }
+
+            // ── JSON final ──
+            val recArr = recs.joinToString(",", "[", "]")
+            "{\"score\":$score,\"ramPct\":$ramPct,\"backend\":${quoteJs(backendName())}," +
+                "\"ramScore\":$ramScore,\"storageScore\":$storageScore," +
+                "\"batteryScore\":$batteryScore,\"thermalScore\":$thermalScore," +
+                "\"procsScore\":$procsScore,\"recoverableKb\":$recoverableKb," +
+                "\"recs\":$recArr}"
+        } catch (t: Throwable) {
+            "{\"error\":${quoteJs(t.message ?: t.toString())}}"
+        }
+    }
+
+    private fun recJson(prio: Int, kind: String, title: String, detail: String, targets: String): String =
+        "{\"prio\":$prio,\"kind\":${quoteJs(kind)},\"title\":${quoteJs(title)}," +
+            "\"detail\":${quoteJs(detail)},\"targets\":$targets}"
+
+    private fun fmtKb(kb: Long): String {
+        val mb = kb / 1024
+        return when {
+            mb >= 1024 -> (mb / 1024.0).let { if (it >= 10) (it.toLong()).toString() + " GB" else String.format("%.1f GB", it) }
+            mb > 0 -> mb.toString() + " MB"
+            else -> kb.toString() + " KB"
         }
     }
 
@@ -393,6 +583,24 @@ object SystemOptimizer {
             if (rows.size >= 4) break
         }
         return rows.joinToString(",", "[", "]")
+    }
+
+    /** Porcentaje usado de la partición de datos (0..100) — para el score. */
+    private suspend fun storagePct(): Int {
+        val (_, out) = runSh("df -k /data / 2>/dev/null")
+        var pct = -1
+        for (line in out) {
+            val t = line.trim()
+            if (t.isEmpty() || t.startsWith("Filesystem")) continue
+            val parts = t.split(Regex("\\s+"))
+            if (parts.size < 6) continue
+            val kbTotal = parts[1].toLongOrNull() ?: 0L
+            val kbUsed = parts[2].toLongOrNull() ?: 0L
+            if (kbTotal <= 0) continue
+            pct = if (kbTotal > 0) (kbUsed * 100 / kbTotal).toInt() else -1
+            break
+        }
+        return if (pct < 0) 60 else pct
     }
 
     private suspend fun readBattery(): BatteryInfo {

@@ -1132,6 +1132,16 @@ public class CodeHubBridge {
         new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.runScriptSync(script))).start();
     }
 
+    @JavascriptInterface
+    public void optimizerBoostPlan(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.boostPlanSync())).start();
+    }
+
+    @JavascriptInterface
+    public void optimizerTopMemory(final String cb) {
+        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.topMemorySync())).start();
+    }
+
     // ── PERMISO SHIZUKU EN VIVO ────────────────────────────────────
     // optimizerStatus() ya devuelve el JSON rico (installed/running/granted/uid).
     // shizukuSubscribe() deja un push: al abrirse Shizuku, morir el binder o

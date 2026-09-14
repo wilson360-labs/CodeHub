@@ -8,8 +8,10 @@ import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
 import java.io.BufferedReader
+import java.io.InputStream
 import java.io.InputStreamReader
 import java.lang.reflect.Method
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -20,6 +22,12 @@ data class RunningApp(
     val packageName: String,
     val label: String,
     val importance: Int
+)
+
+/** Paquete con su memoria residente estimada (RSS en KB, sumada por UID→pkg). */
+data class PkgMem(
+    val packageName: String,
+    val rssKb: Long
 )
 
 data class KillResult(
@@ -49,6 +57,9 @@ object SystemCleaner {
 
     private const val USER_ID_CURRENT = 0
     private const val SKIP_ON_FORCE_STOP = "moe.shizuku.privileged.api"
+
+    /** Timeout por comando shell (10s) — evita colgar el WebView con procesos vivos. */
+    private const val SHELL_TIMEOUT_MS = 10_000L
 
     // ── Estado de Shizuku ───────────────────────────────────────────
 
@@ -208,6 +219,11 @@ object SystemCleaner {
     /**
      * Lista de procesos corriendo (API pública de ActivityManager).
      * Se pide QUERY_ALL_PACKAGES en el manifest para etiquetas completas.
+     *
+     * NOTA: `ActivityManager.runningAppProcesses` en Android 11+ solo expone
+     * los procesos del propio llamante salvo que la app sea device-owner, así
+     * que esta lista es un subconjunto conservador. Para el inventario real
+     * (todas las apps de usuario) usar processesByMemory().
      */
     suspend fun findRunningApps(context: Context): List<RunningApp> {
         return withContext(Dispatchers.IO) {
@@ -284,6 +300,15 @@ object SystemCleaner {
         }
     }
 
+    /** Paquetes vivos con RSS para el panel Procesos; síncrono para Java. */
+    @JvmStatic
+    fun processesByMemorySync(): String {
+        val list = runBlocking { processesByMemory() }
+        return list.joinToString(",", "[", "]") {
+            "{\"pkg\":${quoteJs(it.packageName)},\"rssKb\":${it.rssKb}}"
+        }
+    }
+
     private fun quoteJs(s: String): String {
         val escaped = s.replace("\\", "\\\\").replace("\"", "\\\"")
         return "\"$escaped\""
@@ -329,25 +354,120 @@ object SystemCleaner {
      * Ejecuta un comando con identidad shell/root mediante Shizuku.newProcess
      * (reflexión, visibilidad privada desde shizuku-api 13.1.x — mismo puente
      * que usa ShizukuInstaller).
+     *
+     * NOTA: lee stdout y stderr EN PARALELO. Leerlos en serie (stdout completo
+     * y recién después stderr) causa deadlock cuando el proceso llena el pipe
+     * de 64KB de la salida que no se está leyendo: el hijo se bloquea
+     * escribiendo y stdout nunca llega a EOF. Con timeout duro para que un
+     * comando vivo (p. ej. `top` interactivo) no cuelgue la app.
      */
     private fun runShell(vararg cmd: String): String {
+        val (code, full) = runShellDrained(*cmd)
+        if (code != 0 && !full.contains("Success")) {
+            throw IllegalStateException("exit=$code: $full")
+        }
+        return full
+    }
+
+    /** Variante que devuelve (exitCode, salida combinada) sin lanzar — para lecturas tolerantes. */
+    private fun runShellDrained(vararg cmd: String): Pair<Int, String> {
         val m: Method = Shizuku::class.java.getDeclaredMethod(
             "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
         )
         m.isAccessible = true
         val process = m.invoke(null, cmd, null, null) as Process
 
-        val reader = BufferedReader(InputStreamReader(process.inputStream))
-        val out = StringBuilder()
-        var line: String?
-        while (reader.readLine().also { line = it } != null) out.appendLine(line)
-        process.waitFor()
-        reader.close()
-        val full = out.toString().trim()
-        if (process.exitValue() != 0 && !full.contains("Success")) {
-            throw IllegalStateException("exit=${process.exitValue()}: $full")
+        // Drenaje paralelo: stdout y stderr en hilos independientes.
+        val outBuf = StringBuilder()
+        val errBuf = StringBuilder()
+        val tOut = Thread { drain(process.inputStream, outBuf) }
+        val tErr = Thread { drain(process.errorStream, errBuf) }
+        tOut.start(); tErr.start()
+
+        val finished = try {
+            process.waitFor(SHELL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (t: Throwable) { false }
+        if (!finished) {
+            try { process.destroyForcibly() } catch (_: Throwable) {}
+            try { process.waitFor(2, TimeUnit.SECONDS) } catch (_: Throwable) {}
         }
-        return full
+
+        // Espera acotada; los hilos mueren al cerrarse los streams del proceso.
+        try { tOut.join(500); tErr.join(500) } catch (_: Throwable) {}
+
+        val code = try { process.exitValue() } catch (_: Throwable) { -1 }
+        return code to (outBuf.toString() + errBuf.toString()).trim()
+    }
+
+    private fun drain(input: InputStream?, into: StringBuilder) {
+        if (input == null) return
+        try {
+            val r = BufferedReader(InputStreamReader(input))
+            val buf = CharArray(8192)
+            while (true) {
+                val n = r.read(buf)
+                if (n < 0) break
+                into.append(buf, 0, n)
+            }
+            r.close()
+        } catch (_: Throwable) {
+            try { input.close() } catch (_: Throwable) {}
+        }
+    }
+
+    // ── Inventario real de procesos en segundo plano ─────────────────
+    // `ActivityManager.runningAppProcesses` desde Android 11+ solo devuelve
+    // los procesos del propio llamante, así que la "lista de apps corriendo"
+    // quedaba vacía en equipos modernos pese a tener Shizuku. En su lugar se
+    // enumera con `ps` + resolución UID→paquete vía `pm list packages -U`,
+    // ambos con identidad de Shizuku. Es exacto y funciona en todo Android.
+
+    /** Tabla UID→packageName desde `pm list packages -U` (una sola pasada). */
+    private suspend fun uidToPackageMap(): Map<Int, String> = withContext(Dispatchers.IO) {
+        val map = HashMap<Int, String>()
+        val (_, out) = runShellDrained("pm", "list", "packages", "-U")
+        for (line in out.lineSequence()) {
+            val t = line.trim()
+            if (!t.startsWith("package:")) continue
+            val rest = t.removePrefix("package:")
+            val idx = rest.indexOf(" uid:")
+            val pkg = if (idx > 0) rest.substring(0, idx) else rest
+            val uid = if (idx > 0) rest.substring(idx + 5).trim().toIntOrNull() else null
+            if (uid != null && pkg.isNotEmpty()) map.putIfAbsent(uid, pkg)
+        }
+        map
+    }
+
+    /**
+     * Paquetes con procesos vivos y su RSS agregado (KB), ordenados por consumo.
+     * Solo cuentas de usuario (uid ≥ 10000, incluye el uid de CodeHub que el
+     * caller filtra a nivel acción). Devuelve los top-60.
+     */
+    suspend fun processesByMemory(): List<PkgMem> = withContext(Dispatchers.IO) {
+        try {
+            val uidToPkg = uidToPackageMap()
+            val rssByUid = HashMap<Int, Long>()
+            val (_, out) = runShellDrained("ps", "-A", "-o", "uid=,rss=")
+            for (line in out.lineSequence()) {
+                val t = line.trim()
+                if (t.isEmpty()) continue
+                val parts = t.split(Regex("\\s+"))
+                if (parts.size < 2) continue
+                val uid = parts[0].toIntOrNull() ?: continue
+                val rss = parts[1].toLongOrNull() ?: continue
+                if (uid < 10000) continue          // solo apps de usuario
+                rssByUid[uid] = (rssByUid[uid] ?: 0L) + rss
+            }
+            val perPkg = HashMap<String, Long>()
+            for ((uid, kb) in rssByUid) {
+                val pkg = uidToPkg[uid] ?: continue
+                perPkg[pkg] = (perPkg[pkg] ?: 0L) + kb
+            }
+            perPkg.entries
+                .map { PkgMem(it.key, it.value) }
+                .sortedByDescending { it.rssKb }
+                .take(60)
+        } catch (_: Throwable) { emptyList() }
     }
 
     private fun fmt(bytes: Long): String {
