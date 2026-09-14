@@ -53,6 +53,7 @@ object SystemOptimizer {
     )
 
     @Volatile private var shellInstance: Shell? = null
+    @Volatile private var lastShellError: String? = null
     private val shellMutex = Mutex()
 
     // ── Primitiva de shell ──────────────────────────────────────────
@@ -79,9 +80,11 @@ object SystemOptimizer {
                     .setTimeout(30000)
                     .build(proc)
                 shellInstance = built
+                lastShellError = null
                 shellInstance
             } catch (t: Throwable) {
                 shellInstance = null
+                lastShellError = t.message ?: t.toString()
                 null
             }
         }
@@ -98,14 +101,18 @@ object SystemOptimizer {
     /** Ejecuta una línea de comando en la shell Shizuku/libsu.
      *  Si el proceso murió a mitad, se reconstruye una vez y se reintenta. */
     private suspend fun runSh(line: String): Pair<Int, List<String>> {
-        var sh = shell() ?: throw IllegalStateException("Shell Shizuku no disponible")
+        var sh = shell() ?: throw IllegalStateException(
+            "Shell Shizuku no disponible" + lastShellError?.let { " ($it)" }.orEmpty()
+        )
         try {
             val r = sh.newJob().add(line).exec()
             return r.code to r.out
         } catch (t: Throwable) {
             // Shell muerta/desincronizada: cierra, reconstruye y reintenta una vez.
             closeShell()
-            sh = shell() ?: throw IllegalStateException("Shell Shizuku no disponible")
+            sh = shell() ?: throw IllegalStateException(
+                "Shell Shizuku no disponible" + lastShellError?.let { " ($it)" }.orEmpty()
+            )
             val r = sh.newJob().add(line).exec()
             return r.code to r.out
         }
@@ -149,8 +156,10 @@ object SystemOptimizer {
             "{\"status\":\"DISCONNECTED\",\"error\":${quoteJs(t.message ?: t.toString())}}"
         }
         val shellUp = shellInstance != null && shellInstance!!.isAlive
+        val shellErr = lastShellError?.let { quoteJs(it) } ?: "null"
         // añade shellUp insertando antes del cierre }
-        return if (base.endsWith("}")) base.dropLast(1) + ",\"shellUp\":$shellUp}" else base
+        val enriched = if (base.endsWith("}")) base.dropLast(1) + ",\"shellUp\":$shellUp,\"shellError\":$shellErr}" else base
+        return enriched
     }
 
     @JvmStatic
