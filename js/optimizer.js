@@ -3,7 +3,8 @@
    CodeHub by Wilson.E
    - Se comunica con el bridge nativo (CodeHubNative/CodeHubBridge.java)
      que a su vez usa SystemOptimizer.kt (Shizuku + libsu).
-   - En navegador normal (sin CodeHubNative) la card se oculta.
+   - En navegador normal (sin CodeHubNative) la card se muestra bloqueada,
+     explicando que solo corre dentro de la app CodeHub.
    - 4 pestañas: Diagnóstico / Limpiador / Procesos / Bloatware.
    - Local-first: cada llamada nativa corre en Thread de fondo; el JS recibe
      JSON crudo y lo parsea. Nunca se bloquea el hilo del WebView.
@@ -458,7 +459,6 @@
   function init() {
     const card = document.getElementById('opt-card');
     if (!card) return;
-    if (!isNative) { card.style.display = 'none'; return; }
 
     els.status = document.getElementById('opt-status');
     els.backend = document.getElementById('opt-backend');
@@ -483,6 +483,45 @@
     window.__optTab = onTab;
 
     card.style.display = '';
+
+    // Sin bridge = web o navegador normal. Antes la tarjeta desaparecía y
+    // nadie entendía por qué; ahora se muestra bloqueada explicando que el
+    // motor Shizuku solo existe dentro de la app CodeHub.
+    if (!NATIVE) {
+      if (els.status) {
+        els.status.textContent = 'Solo en la app';
+        els.status.style.color = '#8ab4f8';
+        els.status.style.borderColor = '#8ab4f8';
+      }
+      if (els.dead) {
+        els.dead.style.display = 'block';
+        els.dead.innerHTML = '<i class="fas fa-mobile-screen"></i> ' +
+          'La optimización con Shizuku solo corre <strong>dentro de la app CodeHub</strong> (Android): ' +
+          'Herramientas → Optimización del Sistema. Un navegador no tiene privilegios de sistema ' +
+          'y no puede usar Shizuku.';
+      }
+      if (els.goBtn) els.goBtn.style.display = 'none';
+      return;
+    }
+
+    // APK instalado sin el motor Shizuku (versión vieja): mostrar la tarjeta
+    // con aviso claro en vez de esconderla silenciosamente.
+    if (!isNative) {
+      if (els.status) {
+        els.status.textContent = 'App desactualizada';
+        els.status.style.color = '#ffb454';
+        els.status.style.borderColor = '#ffb454';
+      }
+      if (els.dead) {
+        els.dead.style.display = 'block';
+        els.dead.innerHTML = '<i class="fas fa-download"></i> Esta versión de la app no incluye el motor Shizuku. ' +
+          'Actualiza CodeHub y vuelve a esta tarjeta para activar ' +
+          '<strong>Diagnóstico, Limpiador, Procesos, Bloatware y Scripts</strong>.';
+      }
+      if (els.goBtn) els.goBtn.style.display = 'none';
+      return;
+    }
+
     refreshStatus();
 
     // Suscripción al estado en vivo de Shizuku (APKs nuevos). En APKs
