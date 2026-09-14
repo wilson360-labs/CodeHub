@@ -4,26 +4,19 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import rikka.shizuku.Shizuku
-import com.topjohnwu.superuser.Shell
 import java.lang.reflect.Method
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Núcleo de OPTIMIZACIÓN del sistema, vía Shizuku + libsu.
+ * Núcleo de OPTIMIZACIÓN del sistema, vía Shizuku.
  *
- * Diferencias con SystemCleaner:
- *  - SystemCleaner usa un `Shizuku.newProcess` por comando (funcionaba, pero
- *    sin shell persistente ni exit codes fiables).
- *  - Aquí se crea UN SOLO proceso `sh` bajo la identidad de Shizuku y se
- *    envuelve en un [Shell] de libsu (topjohnwu): buffer correcto, exit code
- *    real por comando y sesión persistente reutilizable.
- *
- * El proceso `sh` se obtiene por reflexión porque Shizuku-API 13.1.x dejó
- * `Shizuku.newProcess` privado (el mismo puente que usa ShizukuInstaller).
+ * Ejecuta cada comando como un proceso `sh -c "..."` independiente bajo la
+ * identidad de Shizuku. Sin libsu: ShizukuRemoteProcess usa streams Binder
+ * que libsu 6.x no puede envolver con Shell.Builder.build(Process).
+ * Se reutiliza el mismo patrón de ShizukuInstaller (reflexión sobre
+ * Shizuku.newProcess privado).
  *
  * Operaciones (local-first, todas en Dispatchers.IO):
  *  - Diagnóstico del dispositivo: RAM (/proc/meminfo), almacenamiento (df),
@@ -52,13 +45,11 @@ object SystemOptimizer {
         "com.codehub.app", SKIP_FORCE_STOP
     )
 
-    @Volatile private var shellInstance: Shell? = null
     @Volatile private var lastShellError: String? = null
-    private val shellMutex = Mutex()
 
     // ── Primitiva de shell ──────────────────────────────────────────
 
-    /** Crea el proceso `sh` bajo la identidad de Shizuku (reflexión). */
+    /** Crea un proceso `sh` bajo la identidad de Shizuku (reflexión, patrón ShizukuInstaller). */
     private fun shizukuShProcess(cmd: Array<String>): java.lang.Process {
         val m: Method = Shizuku::class.java.getDeclaredMethod(
             "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java
@@ -67,54 +58,21 @@ object SystemOptimizer {
         return m.invoke(null, cmd, null, null) as java.lang.Process
     }
 
-    /** Shell libsu persistente (crea el proceso `sh` de Shizuku si hace falta). */
-    private suspend fun shell(): Shell? = withContext(Dispatchers.IO) {
-        val current = shellInstance
-        if (current != null && current.isAlive) return@withContext current
-        shellMutex.withLock {
-            val again = shellInstance
-            if (again != null && again.isAlive) return@withLock again
-            try {
-                val proc = shizukuShProcess(arrayOf("sh"))
-                val built = Shell.Builder.create()
-                    .setTimeout(30000)
-                    .build(proc)
-                shellInstance = built
-                lastShellError = null
-                shellInstance
-            } catch (t: Throwable) {
-                shellInstance = null
-                lastShellError = t.message ?: t.toString()
-                null
-            }
-        }
-    }
-
-    private fun closeShell() {
+    /** Ejecuta un comando con shell Shizuku (un proceso `sh -c` por llamada).
+     *  Lee stdout + stderr, espera exit code y devuelve (código, líneas). */
+    private suspend fun runSh(line: String): Pair<Int, List<String>> = withContext(Dispatchers.IO) {
         try {
-            val s = shellInstance
-            shellInstance = null
-            if (s != null && s.isAlive) s.close()
-        } catch (_: Throwable) {}
-    }
-
-    /** Ejecuta una línea de comando en la shell Shizuku/libsu.
-     *  Si el proceso murió a mitad, se reconstruye una vez y se reintenta. */
-    private suspend fun runSh(line: String): Pair<Int, List<String>> {
-        var sh = shell() ?: throw IllegalStateException(
-            "Shell Shizuku no disponible" + lastShellError?.let { " ($it)" }.orEmpty()
-        )
-        try {
-            val r = sh.newJob().add(line).exec()
-            return r.code to r.out
+            val proc = shizukuShProcess(arrayOf("sh", "-c", line))
+            val stdout = proc.inputStream.bufferedReader().readLines()
+            val stderr = proc.errorStream.bufferedReader().readLines()
+            val code = try { proc.waitFor() } catch (_: Throwable) { -1 }
+            lastShellError = null
+            code to (stdout + stderr).filter { it.isNotEmpty() }
         } catch (t: Throwable) {
-            // Shell muerta/desincronizada: cierra, reconstruye y reintenta una vez.
-            closeShell()
-            sh = shell() ?: throw IllegalStateException(
+            lastShellError = t.message ?: t.toString()
+            throw IllegalStateException(
                 "Shell Shizuku no disponible" + lastShellError?.let { " ($it)" }.orEmpty()
             )
-            val r = sh.newJob().add(line).exec()
-            return r.code to r.out
         }
     }
 
@@ -150,16 +108,13 @@ object SystemOptimizer {
         ShellStatus()
     }
 
-    /** Estado unificado (JSON rico de SystemCleaner + state interno de shell). */
+    /** Estado unificado (JSON rico de SystemCleaner + último error de shell). */
     private fun ShellStatus(): String {
         val base = try { SystemCleaner.statusJson() } catch (t: Throwable) {
             "{\"status\":\"DISCONNECTED\",\"error\":${quoteJs(t.message ?: t.toString())}}"
         }
-        val shellUp = shellInstance != null && shellInstance!!.isAlive
         val shellErr = lastShellError?.let { quoteJs(it) } ?: "null"
-        // añade shellUp insertando antes del cierre }
-        val enriched = if (base.endsWith("}")) base.dropLast(1) + ",\"shellUp\":$shellUp,\"shellError\":$shellErr}" else base
-        return enriched
+        return if (base.endsWith("}")) base.dropLast(1) + ",\"shellError\":$shellErr}" else base
     }
 
     @JvmStatic

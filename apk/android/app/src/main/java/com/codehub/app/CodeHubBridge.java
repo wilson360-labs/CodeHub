@@ -1086,7 +1086,7 @@ public class CodeHubBridge {
         }).start();
     }
 
-    // ── OPTIMIZACIÓN DEL SISTEMA (Shizuku + libsu) ─────────────────
+    // ── OPTIMIZACIÓN DEL SISTEMA (Shizuku) ──────────────────────────
     // Núcleo real en SystemOptimizer.kt. Todas en Thread de fondo para no
     // bloquear el WebView; devuelven JSON crudo que el JS parsea.
     // Convención de callback: igual que el resto del bridge — se pasa un
