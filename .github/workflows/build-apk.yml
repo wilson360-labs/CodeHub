@@ -67,7 +67,7 @@ jobs:
           {
             echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
             echo "";
-            echo "**Paso:** Compile check (debug, sin keystore) — from `.github/workflows/build-apk.yml`";
+            echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
             grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile" "$RUNNER_TEMP/compile-debug.log" | head -n 40;
@@ -116,8 +116,12 @@ jobs:
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           elif [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "🔑 Decodificando keystore persistente desde secrets..."
-            echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks
+            if ! echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks 2>/dev/null; then
+              echo "::error::RELEASE_KEYSTORE_BASE64 no es base64 válido. Revisa que copiaste la cadena completa de [Convert]::ToBase64String()."
+              exit 1
+            fi
             chmod 600 apk/android/app/release.jks
+            echo "Magic del JKS: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (esperado: feedfeed)"
             echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
@@ -175,7 +179,7 @@ jobs:
           {
             echo "## Error en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
             echo "";
-            echo "**Paso:** Build Release APK — from `.github/workflows/build-apk.yml`";
+            echo "**Paso:** Build Release APK — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
             grep -E "^(e:|error:|\\* What went wrong|> Task :app:" "$RUNNER_TEMP/release-build.log" | head -n 40;
@@ -224,7 +228,7 @@ jobs:
             {
               echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
               echo "";
-              echo "**Paso:** Find APK — from `.github/workflows/build-apk.yml`";
+              echo "**Paso:** Find APK — from '.github/workflows/build-apk.yml';"
               echo "";
               echo "**release-build.log (completo, es pequeño):**";
               echo '```text';
