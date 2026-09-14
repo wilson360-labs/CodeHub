@@ -70,7 +70,7 @@ jobs:
             echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
-            grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile" "$RUNNER_TEMP/compile-debug.log" | head -n 40;
+            grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile)" "$RUNNER_TEMP/compile-debug.log" | head -n 40;
             echo '```';
           } > /tmp/compile-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
@@ -182,7 +182,7 @@ jobs:
             echo "**Paso:** Build Release APK — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
-            grep -E "^(e:|error:|\\* What went wrong|> Task :app:" "$RUNNER_TEMP/release-build.log" | head -n 40;
+            grep -E "^(e:|error:|\\* What went wrong|> Task :app:)" "$RUNNER_TEMP/release-build.log" | head -n 40;
             echo '```';
           } > /tmp/release-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
