@@ -122,7 +122,12 @@ jobs:
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           else
-            echo "⚠️ No hay secrets de firma para release."
+            echo "⚠️ No hay secrets de firma para release. Detalle:"
+            [ -z "$KEYSTORE_BASE64" ] && echo "  - vacío o falta: RELEASE_KEYSTORE_BASE64"
+            [ -z "$KEYSTORE_PASSWORD" ] && echo "  - vacío o falta: KEYSTORE_PASSWORD"
+            [ -z "$KEY_PASSWORD" ] && echo "  - vacío o falta: KEY_PASSWORD"
+            [ -z "$KEYSTORE_SUPABASE_URL" ] && echo "  - (opcional) no definido: KEYSTORE_SUPABASE_URL"
+            [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "  - (opcional) no definido: SUPABASE_SERVICE_ROLE_KEY"
             echo "Se genera un keystore temporal para que la compilación pueda completarse."
             echo "Esto no es válido para actualizaciones sobre una versión ya instalada con otra firma."
             keytool -genkeypair -v \
