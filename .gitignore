@@ -30,6 +30,14 @@ Thumbs.db
 # APKs locales (van en Backblaze)
 *.apk
 
+# Keystores Android (JAMAS commitear el archivo .jks crudo)
+**/*.jks
+**/*.keystore
+**/*.jceks
+# ...pero el BACKUP cifrado SÍ se commitea (ilegible sin la password)
+!**/*.jks.enc
+!**/*.keystore.enc
+
 # IDE
 .vscode/settings.json
 .idea/

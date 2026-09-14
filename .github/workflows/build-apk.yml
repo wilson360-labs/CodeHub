@@ -98,12 +98,26 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_SUPABASE_URL: ${{ secrets.KEYSTORE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           mkdir -p apk/android/app
 
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
+          # Fuente 1 (recomendada): keystore en Supabase Storage privado.
+          # KEYSTORE_SUPABASE_URL = URL completa del objeto privado, p.ej:
+          #   $SUPABASE_URL/storage/v1/object/private/codehub/keys/release.jks
+          if [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "📦 Descargando keystore desde Supabase Storage (privado)..."
+            curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -o apk/android/app/release.jks "$KEYSTORE_SUPABASE_URL"
+            chmod 600 apk/android/app/release.jks
+            echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+          elif [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
             echo "🔑 Decodificando keystore persistente desde secrets..."
             echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks
+            chmod 600 apk/android/app/release.jks
             echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
@@ -232,6 +246,48 @@ jobs:
           cp "$APK" apk/android/app-release-signed.apk
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
 
+      - name: Verificar pin de firma (keystore original)
+        if: env.HAS_RELEASE_SECRETS == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          APK="${{ steps.find-apk.outputs.path }}"
+          PIN="$GITHUB_WORKSPACE/apk/android/keystore-pin.sha256"
+          EXPECTED=$(tr -d ' :\r\n' < "$PIN" | tr 'A-F' 'a-f')
+          if [ -z "$EXPECTED" ]; then
+            echo "::error::Falta apk/android/keystore-pin.sha256 (genéralo con el workflow 'Generate Cert Pin')."
+            exit 1
+          fi
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name 'apksigner' -type f | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ]; then echo "::error::apksigner no encontrado en el SDK."; exit 1; fi
+          DIGEST=$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'SHA-256 digest' | head -1 | sed -E 's/.*: *//' | tr 'A-F' 'a-f' | tr -d ' :\r\n')
+          if [ -z "$DIGEST" ]; then
+            echo "::error::No se pudo leer el SHA-256 del certificado del APK."
+            exit 1
+          fi
+          echo "Cert digest (firmado): $DIGEST"
+          echo "Pin esperado (v6.96): $EXPECTED"
+          if [ "$DIGEST" != "$EXPECTED" ]; then
+            {
+              echo "## Firma inesperada en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+              echo "";
+              echo "El APK firmado **NO coincide con el keystore original** (pin en \`apk/android/keystore-pin.sha256\`, extraído del release v6.96).";
+              echo "- **Firma detectada:** \`$DIGEST\`";
+              echo "- **Pin esperado:** \`$EXPECTED\`";
+              echo "";
+              echo "Si el keystore cambió deliberadamente, regenera el pin con el workflow **Generate Cert Pin** (los usuarios instalados tendrán que desinstalar/reinstalar la app).";
+            } > /tmp/pin-error-body.md
+            gh issue create --repo "$GITHUB_REPO" \
+              --title "CI: firma distinta al keystore original ($GITHUB_SHA)" \
+              --body-file /tmp/pin-error-body.md \
+              --label "bug" 2>/dev/null || true
+            echo "::error::La firma del APK no coincide con el keystore original. No se publica el release."
+            exit 1
+          fi
+          echo "✅ Firma verificada contra el keystore original."
+
       - name: Upload APK artifact
         if: always() && hashFiles('apk/android/**/*.apk') != ''
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -274,3 +330,9 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Limpiar keystore local del runner
+        if: always()
+        run: |
+          rm -f apk/android/app/release.jks
+          echo "✅ release.jks eliminado del runner"
