@@ -111,6 +111,7 @@ jobs:
             curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
               -o apk/android/app/release.jks "$KEYSTORE_SUPABASE_URL"
             chmod 600 apk/android/app/release.jks
+            echo "Keystore magic: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (JKS=feedfeed | PKCS12=3082...)"
             echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
@@ -121,7 +122,7 @@ jobs:
               exit 1
             fi
             chmod 600 apk/android/app/release.jks
-            echo "Magic del JKS: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (esperado: feedfeed)"
+            echo "Keystore magic: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (JKS=feedfeed | PKCS12=3082...)"
             echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
