@@ -15,7 +15,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.05';
+const VERSION = 'codehub-v7.06';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -102,7 +102,7 @@ const PRECACHE = [
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
   '/dist/assets/js/admin-hub.49c66dcd7b.min.js',
   '/dist/assets/js/auth.14f7caec39.min.js',
-  '/dist/assets/js/bug-reporter.0f303b6651.min.js',
+  '/dist/assets/js/bug-reporter.fa420fbbab.min.js',
   '/dist/assets/js/ch-geo.5216946b16.min.js',
   '/dist/assets/js/connection-alert.c76b7978b9.min.js',
   '/dist/assets/js/consent-banner.b3efc7679a.min.js',
@@ -113,23 +113,27 @@ const PRECACHE = [
   '/dist/assets/js/lazy-features.f4fdd9db33.min.js',
   '/dist/assets/js/live-update-check.c7bd39bcbb.min.js',
   '/dist/assets/js/morphicons-init.f06cae5f89.min.js',
-  '/dist/assets/js/notifications.98e4f0d450.min.js',
+  '/dist/assets/js/notifications.024f9d794c.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
   '/dist/assets/js/opensource.5f5dbeab50.min.js',
-  '/dist/assets/js/optimizer.7fc3642a93.min.js',
+  '/dist/assets/js/optimizer.dd22383a65.min.js',
+  '/dist/assets/js/permissions-setup.315574d7b4.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
   '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
   '/dist/assets/js/script.40e4e0e08a.min.js',
   '/dist/assets/js/security-scan.5a8b5156fe.min.js',
+  '/dist/assets/js/servicios.1cc1caf153.min.js',
   '/dist/assets/js/sismos.14c7b7d046.min.js',
   '/dist/assets/js/site-tour.86fe554324.min.js',
   '/dist/assets/js/skills-pdf-ia.66b58ffda5.min.js',
   '/dist/assets/js/sys-metrics.441cf23ca5.min.js',
+  '/dist/assets/js/terminal.e287924be2.min.js',
   '/dist/assets/js/theme-switcher.4eed2242e8.min.js',
   '/dist/assets/js/thinking-orb.2b4982d5a0.min.js',
   '/dist/assets/js/updater.cdaf77f61c.min.js',
-  '/dist/assets/js/ux-animations.f968650496.min.js',
+  '/dist/assets/js/ux-animations.b6a116abe1.min.js',
+  '/dist/assets/js/view-transitions.e4f2d275aa.min.js',
   '/dist/assets/js/weather-map.1ad0c74b42.min.js',
   '/dist/assets/js/windows-enhance.00814c6429.min.js',
   '/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js',
