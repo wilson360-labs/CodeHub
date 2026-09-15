@@ -53,7 +53,7 @@ jobs:
           echo "gradle_rc=$rc" >> "$GITHUB_ENV"
           if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/compile-debug-ok"; fi
           echo "gradle rc=$rc"
-          tail -n 60 "$RUNNER_TEMP/compile-debug.log"
+          if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then tail -n 60 "$RUNNER_TEMP/compile-debug.log"; else echo "(no se generó log)"; fi
           exit $rc
 
       - name: Publicar error de compilacion como Issue (diagnostico)
@@ -70,7 +70,11 @@ jobs:
             echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
-            grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile)" "$RUNNER_TEMP/compile-debug.log" | head -n 40;
+            if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then
+              grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile)" "$RUNNER_TEMP/compile-debug.log" | head -n 40 || true;
+            else
+              echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)"
+            fi
             echo '```';
           } > /tmp/compile-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
@@ -164,7 +168,7 @@ jobs:
           echo "release_rc=$rc" >> "$GITHUB_ENV"
           if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/release-ok"; fi
           echo "release rc=$rc"
-          tail -n 60 "$RUNNER_TEMP/release-build.log"
+          if [ -f "$RUNNER_TEMP/release-build.log" ]; then tail -n 60 "$RUNNER_TEMP/release-build.log"; else echo "(no se generó log de release)"; fi
           echo "=== APK output search ==="
           find . -path "*/outputs/*" -name "*.apk" 2>/dev/null || true
           exit $rc
@@ -183,7 +187,11 @@ jobs:
             echo "**Paso:** Build Release APK — from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
-            grep -E "^(e:|error:|\\* What went wrong|> Task :app:)" "$RUNNER_TEMP/release-build.log" | head -n 40;
+            if [ -f "$RUNNER_TEMP/release-build.log" ]; then
+              grep -E "^(e:|error:|\\* What went wrong|> Task :app:)" "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
+            else
+              echo "(log de release no encontrado — el paso fue skipeado antes de correr)"
+            fi
             echo '```';
           } > /tmp/release-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
