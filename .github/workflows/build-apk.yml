@@ -369,6 +369,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publicar config de actualización del APK
+        if: env.HAS_RELEASE_SECRETS == 'true'
+        continue-on-error: true
+        shell: bash
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          CH_MSG: ${{ github.event.head_commit.message || '' }}
+        run: |
+          # Activa el diálogo "Actualización disponible" del APK publicando
+          # apkLatestVersion + apkUpdateNotes en /api/admin/config (Render).
+          # Se usa --fallback con el mensaje del commit para que el CI nunca
+          # publique vacío; si no hay ADMIN_KEY en secrets, se advierte y el
+          # release ya quedó publicado (el job se marca con advertencia).
+          MSG="${CH_MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
+          node scripts/update-apk-config.js --fallback "$MSG"
+
       - name: Limpiar keystore local del runner
         if: always()
         run: |
