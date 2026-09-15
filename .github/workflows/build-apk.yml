@@ -374,3 +374,51 @@ jobs:
         run: |
           rm -f apk/android/app/release.jks
           echo "✅ release.jks eliminado del runner"
+
+      # ── Telegram: enviar el log de build al bot cuando algo falla ──
+      # El bot (TELEGRAM_TOKEN/TELEGRAM_CHAT_ID secretos del repo) recibe los
+      # fragmentos de error de compile-debug.log y release-build.log para
+      # detectar la causa exacta del fallo. Máx. ~4000 chars por mensaje.
+      - name: Enviar log de build a Telegram
+        if: failure()
+        shell: bash
+        env:
+          TELEGRAM_TOKEN:   ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set +e
+          SHA_SHORT=$(echo "$GITHUB_SHA" | cut -c1-7)
+
+          grab_log () {
+            local file="$1"; local label="$2"; local out=""
+            if [ -f "$file" ]; then
+              out="✳️ $label:"
+              local err
+              err=$(grep -E "^(e:|error:|\\* What went wrong|Execution failed|^FAILURE|> Task :app:|Caused by:)" "$file" | head -n 18)
+              if [ -z "$err" ]; then err=$(tail -n 20 "$file"); fi
+              out="$out
+              $err"
+            else
+              out="✳️ $label: (log no generado, el paso fue skipeado antes de correr)"
+            fi
+            printf "%s" "$out"
+          }
+
+          COMPILE=$(grab_log "$RUNNER_TEMP/compile-debug.log" "compile-debug.log")
+          RELEASE=$(grab_log "$RUNNER_TEMP/release-build.log" "release-build.log")
+
+          MSG="🔴 *CodeHub · build APK falló* — commit \`$SHA_SHORT\`
+          Link: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          \`\`\`text
+          $COMPILE
+
+          $RELEASE
+          \`\`\`"
+          # Telegram limita a 4096 caracteres → truncamos conservando el final.
+          MSG=$(printf "%s" "$MSG" | head -c 3900)
+
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d parse_mode="Markdown" \
+            --data-urlencode text="$MSG" || true
