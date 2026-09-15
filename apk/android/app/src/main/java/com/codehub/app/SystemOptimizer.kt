@@ -533,10 +533,6 @@ object SystemOptimizer {
         SystemCleaner.backendDescription()
     } catch (_: Throwable) { "desconocido" }
 
-    private suspend fun backendName(): String = try {
-        SystemCleaner.backendDescription()
-    } catch (_: Throwable) { "desconocido" }
-
     /** Porcentaje usado de la partición de datos (0..100) — para el score. */
     private suspend fun storagePct(): Int {
         val (_, out) = runSh("df -k /data / 2>/dev/null")
@@ -595,7 +591,7 @@ object SystemOptimizer {
     }
 
     private fun splitSections(lines: List<String>): Map<String, List<String>> {
-        val sections = HashMap<String, List<String>>()
+        val sections = HashMap<String, MutableList<String>>()
         var current: MutableList<String>? = null
         for (line in lines) {
             val head = line.trim()
