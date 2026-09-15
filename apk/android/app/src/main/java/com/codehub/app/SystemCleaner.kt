@@ -8,6 +8,7 @@ import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.lang.reflect.Method
@@ -60,6 +61,9 @@ object SystemCleaner {
 
     /** Timeout por comando shell (10s) — evita colgar el WebView con procesos vivos. */
     private const val SHELL_TIMEOUT_MS = 10_000L
+
+    /** Primer UID de aplicaciones de usuario (sin contar servicios de sistema). */
+    private const val APP_UID_MIN = 10_000
 
     // ── Estado de Shizuku ───────────────────────────────────────────
 
@@ -419,13 +423,22 @@ object SystemCleaner {
     // `ActivityManager.runningAppProcesses` desde Android 11+ solo devuelve
     // los procesos del propio llamante, así que la "lista de apps corriendo"
     // quedaba vacía en equipos modernos pese a tener Shizuku. En su lugar se
-    // enumera con `ps` + resolución UID→paquete vía `pm list packages -U`,
-    // ambos con identidad de Shizuku. Es exacto y funciona en todo Android.
+    // enumera leyendo /proc/<pid>/status (Uid:+VmRSS:) con identidad de
+    // Shizuku y se resuelve UID→paquete vía `pm list packages -U`. Es exacto
+    // e idéntico en todo Android, sin depender del binario `ps` de cada ROM.
 
-    /** Tabla UID→packageName desde `pm list packages -U` (una sola pasada). */
+    /**
+     * Tabla UID→packageName desde `pm list packages -U` (una sola pasada).
+     * Resiliente entre versiones: en Android 8+ existe `cmd package`, y en
+     * ROMs antiguas o recortadas la salida puede llegar sin columna uid o el
+     * primer comando puede fallar → se prueba la variante siguiente.
+     */
     private suspend fun uidToPackageMap(): Map<Int, String> = withContext(Dispatchers.IO) {
         val map = HashMap<Int, String>()
-        val (_, out) = runShellDrained("pm", "list", "packages", "-U")
+        val out = firstCommandWithOutput(
+            arrayOf("pm", "list", "packages", "-U"),
+            arrayOf("cmd", "package", "list", "packages", "-U")
+        )
         for (line in out.lineSequence()) {
             val t = line.trim()
             if (!t.startsWith("package:")) continue
@@ -438,6 +451,51 @@ object SystemCleaner {
         map
     }
 
+    /** Ejecuta la primera variante del comando que devuelva salida útil (package:). */
+    private fun firstCommandWithOutput(vararg cmds: Array<String>): String {
+        for (cmd in cmds) {
+            try {
+                val (code, out) = runShellDrained(*cmd)
+                if (code == 0 && out.contains("package:")) return out
+            } catch (_: Throwable) { /* probar la siguiente variante */ }
+        }
+        return ""
+    }
+
+    /**
+     * RSS agregado por UID leyendo /proc directamente.
+     *
+     * A diferencia de `ps -o uid=,rss=`, EL FORMATO DE /proc ES IDÉNTICO EN
+     * TODO Android: `Uid:` (12) y `VmRSS:` están en `/proc/<pid>/status` en
+     * AOSP, MIUI, OneUI, ColorOS, EMUI y cualquier ROM, sin depender del
+     * binario `ps` (toybox/toolbox/busybox varían columnas y flags entre
+     * versiones y fabricantes → era una fuente real de incompatibilidad).
+     * Se lee con identidad Shizuku (root/ADB) cubriendo todos los PIDs.
+     */
+    private fun scanProcRss(): HashMap<Int, Long> {
+        val rssByUid = HashMap<Int, Long>()
+        val pids = File("/proc").list() ?: return rssByUid
+        for (pid in pids) {
+            if (pid.isEmpty() || !pid[0].isDigit()) continue
+            var uid = -1L
+            var rss = 0L
+            try {
+                File("/proc/$pid/status").forEachLine { line ->
+                    when {
+                        line.startsWith("Uid:") -> uid = statusNum(line)
+                        line.startsWith("VmRSS:") -> rss = statusNum(line)
+                    }
+                }
+            } catch (_: Throwable) { continue }
+            if (uid >= APP_UID_MIN.toLong()) rssByUid[uid.toInt()] = (rssByUid[uid.toInt()] ?: 0L) + rss
+        }
+        return rssByUid
+    }
+
+    /** Primer número de una línea de /proc status (p. ej. "Uid:\t11023\t…" o "VmRSS:\t  5421 kB"). */
+    private fun statusNum(line: String): Long =
+        line.substringAfter(':').trim().split(Regex("\\s+")).firstOrNull()?.toLongOrNull() ?: 0L
+
     /**
      * Paquetes con procesos vivos y su RSS agregado (KB), ordenados por consumo.
      * Solo cuentas de usuario (uid ≥ 10000, incluye el uid de CodeHub que el
@@ -446,18 +504,8 @@ object SystemCleaner {
     suspend fun processesByMemory(): List<PkgMem> = withContext(Dispatchers.IO) {
         try {
             val uidToPkg = uidToPackageMap()
-            val rssByUid = HashMap<Int, Long>()
-            val (_, out) = runShellDrained("ps", "-A", "-o", "uid=,rss=")
-            for (line in out.lineSequence()) {
-                val t = line.trim()
-                if (t.isEmpty()) continue
-                val parts = t.split(Regex("\\s+"))
-                if (parts.size < 2) continue
-                val uid = parts[0].toIntOrNull() ?: continue
-                val rss = parts[1].toLongOrNull() ?: continue
-                if (uid < 10000) continue          // solo apps de usuario
-                rssByUid[uid] = (rssByUid[uid] ?: 0L) + rss
-            }
+            val rssByUid = scanProcRss()
+            if (rssByUid.isEmpty()) return@withContext emptyList()
             val perPkg = HashMap<String, Long>()
             for ((uid, kb) in rssByUid) {
                 val pkg = uidToPkg[uid] ?: continue

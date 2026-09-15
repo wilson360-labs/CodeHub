@@ -229,26 +229,23 @@ object SystemOptimizer {
     fun diagnosticsSync(): String = runBlocking {
         try {
             requireReady()
-            val mem = readMemInfo()
-            val storage = readStorage()
-            val battery = readBattery()
-            val thermal = readThermal()
+            val snap = readSnapshot()
             buildJson {
                 key("ram", objectFrom {
-                    kv("kbTotal", mem.total); kv("kbAvailable", mem.available)
-                    kv("kbUsed", mem.total - mem.available)
-                    kv("pct", if (mem.total > 0) (mem.total - mem.available) * 100 / mem.total else 0)
-                    kv("mbUsed", (mem.total - mem.available) / 1024)
-                    kv("mbTotal", mem.total / 1024)
+                    kv("kbTotal", snap.mem.total); kv("kbAvailable", snap.mem.available)
+                    kv("kbUsed", snap.mem.total - snap.mem.available)
+                    kv("pct", if (snap.mem.total > 0) (snap.mem.total - snap.mem.available) * 100 / snap.mem.total else 0)
+                    kv("mbUsed", (snap.mem.total - snap.mem.available) / 1024)
+                    kv("mbTotal", snap.mem.total / 1024)
                 })
-                keyJson("storage", storage)
+                keyJson("storage", snap.storageJson)
                 key("battery", objectFrom {
-                    kv("level", battery.level); kv("status", quoteJs(battery.statusLabel))
-                    kv("charging", battery.charging)
-                    kv("tempC", battery.tempC); kv("tempF", battery.tempF)
-                    kv("scale", battery.scale); kv("health", battery.health)
+                    kv("level", snap.battery.level); kv("status", quoteJs(snap.battery.statusLabel))
+                    kv("charging", snap.battery.charging)
+                    kv("tempC", snap.battery.tempC); kv("tempF", snap.battery.tempF)
+                    kv("scale", snap.battery.scale); kv("health", snap.battery.health)
                 })
-                key("thermal", objectFrom { kv("maxC", thermal.first); kv("zone", quoteJs(thermal.second)) })
+                key("thermal", objectFrom { kv("maxC", snap.thermal.first); kv("zone", quoteJs(snap.thermal.second)) })
                 kv("backend", quoteJs(backendName()))
             }
         } catch (t: Throwable) {
@@ -360,9 +357,10 @@ object SystemOptimizer {
     fun boostPlanSync(): String = runBlocking {
         try {
             requireReady()
-            val mem = readMemInfo()
-            val battery = readBattery()
-            val thermal = readThermal()
+            val snap = readSnapshot()
+            val mem = snap.mem
+            val battery = snap.battery
+            val thermal = snap.thermal
             val byMem = try { SystemCleaner.processesByMemory() } catch (_: Throwable) { emptyList() }
 
             // ── Ejes (cada uno 0..100, más alto = mejor) ──
@@ -535,55 +533,9 @@ object SystemOptimizer {
         SystemCleaner.backendDescription()
     } catch (_: Throwable) { "desconocido" }
 
-    private suspend fun readMemInfo(): MemInfo {
-        val (_, out) = runSh("cat /proc/meminfo")
-        var total = 0L
-        var available = 0L
-        for (line in out) {
-            if (line.startsWith("MemTotal:"))
-                total = line.substringAfter("MemTotal:").trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
-            else if (line.startsWith("MemAvailable:"))
-                available = line.substringAfter("MemAvailable:").trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
-        }
-        if (total <= 0) throw IllegalStateException("No se pudo leer /proc/meminfo")
-        if (available <= 0) {
-            // Fallback: MemFree + Buffers + Cached (lectura manual del kernel).
-            var free = 0L; var buffers = 0L; var cached = 0L
-            for (line in out) {
-                val v = line.substringAfterLast(':').trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
-                when {
-                    line.startsWith("MemFree:") -> free = v
-                    line.startsWith("Buffers:") -> buffers = v
-                    line.startsWith("Cached:") -> cached = v
-                }
-            }
-            available = free + buffers + cached
-        }
-        return MemInfo(total, available)
-    }
-
-    private suspend fun readStorage(): String {
-        val (_, out) = runSh("df -k")
-        val rows = arrayListOf<String>()
-        for (line in out) {
-            val t = line.trim()
-            if (t.isEmpty() || t.startsWith("Filesystem")) continue
-            val parts = t.split(Regex("\\s+"))
-            // Filesystem | 1K-blocks | Used | Available | Use% | Mounted on
-            if (parts.size < 6) continue
-            val mounted = parts.subList(5, parts.size).joinToString(" ")
-            if (!mounted.startsWith("/")) continue
-            val kbTotal = parts[1].toLongOrNull() ?: 0L
-            val kbUsed = parts[2].toLongOrNull() ?: 0L
-            val kbAvail = parts[3].toLongOrNull() ?: 0L
-            if (kbTotal <= 0) continue
-            rows += "{\"mounted\":${quoteJs(mounted)},\"filesystem\":${quoteJs(parts[0])}," +
-                "\"kbTotal\":$kbTotal,\"kbUsed\":$kbUsed,\"kbAvail\":$kbAvail," +
-                "\"pct\":${if (kbTotal > 0) kbUsed * 100 / kbTotal else 0}}"
-            if (rows.size >= 4) break
-        }
-        return rows.joinToString(",", "[", "]")
-    }
+    private suspend fun backendName(): String = try {
+        SystemCleaner.backendDescription()
+    } catch (_: Throwable) { "desconocido" }
 
     /** Porcentaje usado de la partición de datos (0..100) — para el score. */
     private suspend fun storagePct(): Int {
@@ -603,11 +555,111 @@ object SystemOptimizer {
         return if (pct < 0) 60 else pct
     }
 
-    private suspend fun readBattery(): BatteryInfo {
-        val (_, out) = runSh("dumpsys battery")
+    // ── Snapshot batched ───────────────────────────────────────────
+    // Diagnóstico e Impulso leen los mismos datos; antes eran 6-7 procesos
+    // `sh` NUEVOS por llamada. Ahora se empaquetan en UN solo subproceso
+    // Shizuku con secciones marcadas (==SECT:...) y los parsers operan sobre
+    // sus líneas. Menos procesos → menos latencia y menos consumo.
+    private const val SECT_MEMINFO = "MEMINFO"
+    private const val SECT_DF = "DF"
+    private const val SECT_BATTERY = "BATTERY"
+    private const val SECT_THERMAL = "THERMAL"
+    private const val SECT_THERMTYPES = "THERMTYPES"
+
+    private val SNAPSHOT_SCRIPT: String = arrayOf(
+        "echo '==SECT:$SECT_MEMINFO'", "cat /proc/meminfo",
+        "echo '==SECT:$SECT_DF'", "df -k",
+        "echo '==SECT:$SECT_BATTERY'", "dumpsys battery",
+        "echo '==SECT:$SECT_THERMAL'", "for f in /sys/class/thermal/thermal_zone*/temp; do cat \"\$f\" 2>/dev/null; done",
+        "echo '==SECT:$SECT_THERMTYPES'", "for f in /sys/class/thermal/thermal_zone*/type; do cat \"\$f\" 2>/dev/null; done"
+    ).joinToString("; ")
+
+    private data class Snapshot(
+        val mem: MemInfo,
+        val storageJson: String,
+        val battery: BatteryInfo,
+        val thermal: Pair<Int, String>
+    )
+
+    /** Un solo subproceso Shizuku para toda la lectura de diagnóstico. */
+    private suspend fun readSnapshot(): Snapshot {
+        val (_, out) = runSh(SNAPSHOT_SCRIPT)
+        val sec = splitSections(out)
+        val battery = parseBattery(sec[SECT_BATTERY])
+        return Snapshot(
+            parseMemInfo(sec[SECT_MEMINFO]),
+            parseStorageDf(sec[SECT_DF]),
+            battery,
+            parseThermalZones(sec[SECT_THERMAL], sec[SECT_THERMTYPES], battery)
+        )
+    }
+
+    private fun splitSections(lines: List<String>): Map<String, List<String>> {
+        val sections = HashMap<String, List<String>>()
+        var current: MutableList<String>? = null
+        for (line in lines) {
+            val head = line.trim()
+            if (head.startsWith("==SECT:")) {
+                current = sections.getOrPut(head.removePrefix("==SECT:")) { arrayListOf() }
+            } else {
+                current?.add(line)
+            }
+        }
+        return sections
+    }
+
+    private fun parseMemInfo(lines: List<String>?): MemInfo {
+        var total = 0L
+        var available = 0L
+        for (line in lines ?: emptyList()) {
+            if (line.startsWith("MemTotal:"))
+                total = line.substringAfter("MemTotal:").trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
+            else if (line.startsWith("MemAvailable:"))
+                available = line.substringAfter("MemAvailable:").trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
+        }
+        if (total <= 0) throw IllegalStateException("No se pudo leer /proc/meminfo")
+        if (available <= 0) {
+            // Fallback: MemFree + Buffers + Cached (lectura manual del kernel).
+            var free = 0L; var buffers = 0L; var cached = 0L
+            for (line in lines ?: emptyList()) {
+                val v = line.substringAfterLast(':').trim().substringBefore("kB").trim().toLongOrNull() ?: 0L
+                when {
+                    line.startsWith("MemFree:") -> free = v
+                    line.startsWith("Buffers:") -> buffers = v
+                    line.startsWith("Cached:") -> cached = v
+                }
+            }
+            available = free + buffers + cached
+        }
+        return MemInfo(total, available)
+    }
+
+    private fun parseStorageDf(lines: List<String>?): String {
+        val rows = arrayListOf<String>()
+        for (line in lines ?: emptyList()) {
+            val t = line.trim()
+            if (t.isEmpty() || t.startsWith("Filesystem")) continue
+            val parts = t.split(Regex("\\s+"))
+            // Filesystem | 1K-blocks | Used | Available | Use% | Mounted on
+            if (parts.size < 6) continue
+            val mounted = parts.subList(5, parts.size).joinToString(" ")
+            if (!mounted.startsWith("/")) continue
+            val kbTotal = parts[1].toLongOrNull() ?: 0L
+            val kbUsed = parts[2].toLongOrNull() ?: 0L
+            val kbAvail = parts[3].toLongOrNull() ?: 0L
+            if (kbTotal <= 0) continue
+            rows += "{\"mounted\":${quoteJs(mounted)},\"filesystem\":${quoteJs(parts[0])}," +
+                "\"kbTotal\":$kbTotal,\"kbUsed\":$kbUsed,\"kbAvail\":$kbAvail," +
+                "\"pct\":${if (kbTotal > 0) kbUsed * 100 / kbTotal else 0}}"
+            if (rows.size >= 4) break
+        }
+        return rows.joinToString(",", "[", "]")
+    }
+
+    private fun parseBattery(lines: List<String>?): BatteryInfo {
         var level = 0; var scale = 0; var status = 0; var health = 0; var temp = 0
         var ac = false; var usb = false; var wireless = false
-        for (line in out) {
+        for (line in lines ?: emptyList()) {
             val key = line.trim()
             if (key.startsWith("level:")) level = num(key)
             else if (key.startsWith("scale:")) scale = num(key)
@@ -639,17 +691,16 @@ object SystemOptimizer {
         return BatteryInfo(level, statusLabel, ac || usb || wireless, tempC, tempF, scale, healthLabel)
     }
 
-    private suspend fun readThermal(): Pair<Int, String> {
+    private fun parseThermalZones(
+        tempLines: List<String>?,
+        typeLines: List<String>?,
+        battery: BatteryInfo
+    ): Pair<Int, String> {
         // thermal zones: temp en m°C. Se emparejan con los type por índice.
-        var (tCode, tOut) = runSh("for f in /sys/class/thermal/thermal_zone*/temp; do cat \"\$f\" 2>/dev/null; done")
-        val temps = tOut.mapNotNull { line -> line.trim().toLongOrNull()?.takeIf { it > 0 } }
-        var (_, nOut) = runSh("for f in /sys/class/thermal/thermal_zone*/type; do cat \"\$f\" 2>/dev/null; done")
-        val types = nOut.map { it.trim() }
-        if (temps.isEmpty()) {
-            // Fallback: la temperatura de la batería (dumpsys battery).
-            val battery = readBattery()
-            return battery.tempC to "batería"
-        }
+        val temps = tempLines?.mapNotNull { line -> line.trim().toLongOrNull()?.takeIf { it > 0 } }
+            ?: emptyList()
+        if (temps.isEmpty()) return battery.tempC to "batería"
+        val types = typeLines?.map { it.trim() } ?: emptyList()
         val maxIdx = temps.indices.maxByOrNull { temps[it] } ?: 0
         val maxC = (temps[maxIdx] / 1000L).toInt()
         val zone = if (maxIdx < types.size && types[maxIdx].isNotEmpty()) types[maxIdx] else "thermal_zone_$maxIdx"
