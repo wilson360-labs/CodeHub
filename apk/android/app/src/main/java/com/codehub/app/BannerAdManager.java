@@ -24,7 +24,7 @@ final class BannerAdManager {
 
     private static final String TAG = "CodeHubBanner";
 
-    private static final String AD_UNIT_ID_BANNER = "ca-app-pub-3780093322926832/4629093801";
+    private static final String AD_UNIT_ID_BANNER = "ca-app-pub-3780093322926832/1968391001";
 
     private static AdView adView;
 

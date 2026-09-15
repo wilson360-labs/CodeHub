@@ -59,7 +59,7 @@ dependencies {
     // versiones recientes del BOM — sin esto, NoClassDefFoundError al
     // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
-    // AdMob — anuncio recompensado (ca-app-pub-3780093322926832/5757670196)
+    // AdMob — anuncio recompensado (ca-app-pub-3780093322926832/4725969175)
     implementation 'com.google.android.gms:play-services-ads:23.6.0'
     // UMP — Consentimiento GDPR/CCPA (User Messaging Platform). Artefacto del
     // SDK de Google (com.google.android.ump), distinto de play-services-ads.

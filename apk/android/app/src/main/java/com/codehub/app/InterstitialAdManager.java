@@ -28,7 +28,7 @@ final class InterstitialAdManager {
 
     private static final String TAG = "CodeHubInterstitial";
 
-    private static final String AD_UNIT_ID_INTERSTITIAL = "ca-app-pub-3780093322926832/6519180963";
+    private static final String AD_UNIT_ID_INTERSTITIAL = "ca-app-pub-3780093322926832/6039497954";
 
     private static InterstitialAd interstitialAd;
     private static boolean loading = false;
