@@ -91,7 +91,7 @@ jobs:
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then
-              grep -E "^(e:|error:|\\* What went wrong|> Task :app:compile)" "$RUNNER_TEMP/compile-debug.log" | head -n 40 || true;
+              grep -nE "error:|e: \$|\\* What went wrong|Execution failed|FAILURE:|FAILED|> Task :app:" "$RUNNER_TEMP/compile-debug.log" | head -n 40 || true;
             else
               echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)"
             fi
@@ -208,7 +208,7 @@ jobs:
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/release-build.log" ]; then
-              grep -E "^(e:|error:|\\* What went wrong|> Task :app:)" "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
+              grep -nE "error:|e: \$|\\* What went wrong|Execution failed|FAILURE:|FAILED|> Task :app:" "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
             else
               echo "(log de release no encontrado — el paso fue skipeado antes de correr)"
             fi
@@ -394,7 +394,7 @@ jobs:
             if [ -f "$file" ]; then
               out="✳️ $label:"
               local err
-              err=$(grep -E "^(e:|error:|\\* What went wrong|Execution failed|^FAILURE|> Task :app:|Caused by:)" "$file" | head -n 18)
+              err=$(grep -nE "error:|e: \$|\\* What went wrong|Execution failed|^FAILURE|> Task :app:|Caused by:" "$file" | head -n 18)
               if [ -z "$err" ]; then err=$(tail -n 20 "$file"); fi
               out="$out
               $err"
