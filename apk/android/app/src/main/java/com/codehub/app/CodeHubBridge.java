@@ -1003,7 +1003,7 @@ public class CodeHubBridge {
     // Estos métodos cortan el hilo con un Thread para no bloquear el WebView.
 
     @JavascriptInterface
-    public String shizukuStatus(final String cb) {
+    public void shizukuStatus(final String cb) {
         activity.runOnUiThread(() -> webView.loadUrl(
             "javascript:try{if(window." + cb + ")" +
             "window." + cb + "('" + SystemCleaner.INSTANCE.refreshStatus().name() +
