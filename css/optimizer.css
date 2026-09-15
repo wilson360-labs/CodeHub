@@ -150,6 +150,42 @@
 
 .opt-note.err { background: rgba(255,107,107,.07); border-color: rgba(255,107,107,.25); color: #ff6b6b; }
 
+/* ── Guía de activación de Shizuku ──────────────────────────────────── */
+.opt-steps {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  margin-top: .6rem;
+  min-width: 0;
+}
+
+.opt-step {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  padding: .6rem .75rem;
+  font-size: .74rem;
+  color: var(--text);
+  line-height: 1.5;
+  display: flex;
+  gap: .55rem;
+  align-items: flex-start;
+}
+
+.opt-step b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--a, #6366f1), #4f46e5);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 700;
+}
+
 .opt-tabs { margin: .55rem 0 .4rem; }
 
 .opt-loaded { animation: optFade .3s ease both; }

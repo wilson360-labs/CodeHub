@@ -1003,11 +1003,43 @@ public class CodeHubBridge {
     // Estos métodos cortan el hilo con un Thread para no bloquear el WebView.
 
     @JavascriptInterface
-    public void shizukuStatus(final String cb) {
+    public String shizukuStatus(final String cb) {
         activity.runOnUiThread(() -> webView.loadUrl(
             "javascript:try{if(window." + cb + ")" +
             "window." + cb + "('" + SystemCleaner.INSTANCE.refreshStatus().name() +
             "','" + SystemCleaner.INSTANCE.backendDescription() + "');}catch(e){}"));
+    }
+
+    /**
+     * Estado de los "compañeros" de Shizuku: la app Shizuku (necesaria para
+     * ADB inalámbrico en Android 11+) y Sui (reduce el permiso en dispositivos
+     * rooteados con Magisk/KernelSU sin necesidad de la app Shizuku).
+     * Devuelve JSON {shizukuApp, sui, canRoot} para que el panel muestre la
+     * guía correcta de activación según el dispositivo.
+     */
+    @JavascriptInterface
+    public String shizukuCompanions() {
+        JSONObject o = new JSONObject();
+        try {
+            PackageManager pm = activity.getPackageManager();
+            boolean app = false, sui = false;
+            try { pm.getApplicationInfo("moe.shizuku.privileged.api", 0); app = true; } catch (Exception ignored) {}
+            try { pm.getApplicationInfo("rikka.sui", 0); sui = true; } catch (Exception ignored) {}
+            o.put("shizukuApp", app);
+            o.put("sui", sui);
+        } catch (Exception ignored) {}
+        return o.toString();
+    }
+
+    /** Abre la app Shizuku (si está instalada) para que el usuario active el servicio. */
+    @JavascriptInterface
+    public void shizukuOpenApp() {
+        activity.runOnUiThread(() -> {
+            try {
+                Intent i = activity.getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api");
+                if (i != null) activity.startActivity(i);
+            } catch (Exception ignored) {}
+        });
     }
 
     @JavascriptInterface

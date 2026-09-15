@@ -99,9 +99,7 @@
       return;
     }
     if (state.status !== 'READY') {
-      els.panel.innerHTML =
-        '<div class="opt-note">La optimización necesita <strong>Shizuku</strong> activo ' +
-        '(ADB inalámbrico o root). Instala Shizuku, empareja por ADB y vuelve aquí.</div>';
+      renderNotReady();
       return;
     }
     const fns = { diag: renderDiag, limpiar: renderLimpiar, procesos: renderProcesos, bloat: renderBloat, scripts: renderScripts, impulso: renderImpulso };
@@ -109,6 +107,63 @@
     els.panel.classList.remove('opt-loaded');
     els.panel.innerHTML = '<div class="opt-note" style="text-align:center;padding:1rem">⏳ Cargando…</div>';
     requestAnimationFrame(() => { fn(); els.panel.classList.add('opt-loaded'); });
+  }
+
+  // ── guía cuando Shizuku no está listo ─────────────────────────
+  // Detecta qué compañero tiene el usuario (app Shizuku, Sui, o ni siquiera
+  // root) y muestra la guía de activación correcta + botón de acción.
+
+  let companionsCache = null;
+
+  async function fetchCompanions() {
+    if (companionsCache) return companionsCache;
+    try {
+      const r = await nativeCall('shizukuCompanions');
+      companionsCache = { app: !!r.shizukuApp, sui: !!r.sui, ver: 1 };
+      return companionsCache;
+    } catch (e) {
+      return { app: true, sui: false }; // fallback: presumir app Shizuku
+    }
+  }
+
+  async function renderNotReady() {
+    const c = await fetchCompanions();
+    const st = state.status;
+    let html = '';
+
+    if (st === 'NOT_INSTALLED') {
+      html = '<div class="opt-note"><i class="fas fa-download"></i> <strong>Shizuku no está disponible.</strong> ' +
+        'La optimización del sistema requiere privilegios de ADB o root, y Shizuku es el puente seguro para ello' +
+        (c.sui ? ' (ya tienes <strong>Sui</strong>, con root basta).' : '.') + '</div>';
+      html += '<div class="opt-steps">' +
+        '<div class="opt-step"><b>1.</b> Instala la app <strong>Shizuku</strong> (está en el catálogo de CodeHub).' +
+        (c.sui ? '' : ' O activa <strong>Sui</strong> si tu dispositivo tiene Magisk/KernelSU.') + '</div>' +
+        '<div class="opt-step"><b>2.</b> Abre Shizuku → «ADB inalámbrico» o «Inicio directo» (root).' + '</div>' +
+        '<div class="opt-step"><b>3.</b> Vuelve aquí; se detectará automáticamente.</div></div>';
+    } else if (st === 'NOT_RUNNING') {
+      html = '<div class="opt-note"><i class="fas fa-power-off"></i> <strong>Shizuku está instalado pero apagado.</strong> ' +
+        'Activa el servicio y este panel se sincroniza solo cuando esté listo.</div>';
+      html += '<div class="opt-steps">' +
+        '<div class="opt-step"><b>1.</b> Abre la app Shizuku.</div>' +
+        '<div class="opt-step"><b>2.</b> Toca «ADB inalámbrico» y empareja tu dispositivo' +
+        (c.sui ? ' (o «Inicio directo» con root).' : ' (o «Usar ADB» desde una PC).') + '</div>' +
+        '<div class="opt-step"><b>3.</b> Vuelve aquí; el estado se actualiza al instante.</div></div>';
+    } else {
+      html = '<div class="opt-note"><i class="fas fa-plug-circle-xmark"></i> Conexión con Shizuku interrumpida. ' +
+        'Reabre Shizuku y, si sigues sin permiso, revive este panel.</div>';
+    }
+
+    html += '<div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.6rem">' +
+      (c.app ? '<button class="btn bp" onclick="window.__optOpenShizuku()"><i class="fas fa-rocket"></i> Abrir Shizuku</button>' : '') +
+      '<button class="btn bg" onclick="window.__optRefresh()"><i class="fas fa-rotate"></i> Volver a comprobar</button></div>';
+    els.panel.innerHTML = html;
+  }
+
+  function __optOpenShizuku() {
+    try {
+      if (NATIVE && typeof NATIVE.shizukuOpenApp === 'function') NATIVE.shizukuOpenApp();
+      else toast('No se pudo abrir Shizuku', false);
+    } catch (e) { toast('No se pudo abrir Shizuku', false); }
   }
 
   // ── Diagnóstico ──────────────────────────────────────────────────
@@ -589,6 +644,7 @@
     window.__optToggle = __optToggle;
     window.__optLoadBloat = __optLoadBloat;
     window.__optGrant = __optGrant;
+    window.__optOpenShizuku = __optOpenShizuku;
     window.__optPreset = __optPreset;
     window.__optRunScript = __optRunScript;
     window.__optClearScript = __optClearScript;

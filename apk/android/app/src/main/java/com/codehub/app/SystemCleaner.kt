@@ -3,7 +3,9 @@ package com.codehub.app
 import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
@@ -62,6 +64,9 @@ object SystemCleaner {
     /** Timeout por comando shell (10s) — evita colgar el WebView con procesos vivos. */
     private const val SHELL_TIMEOUT_MS = 10_000L
 
+    /** Timeout del diálogo de permiso de Shizuku — evita colgar al llamante si el usuario no responde. */
+    private const val PERMISSION_TIMEOUT_MS = 30_000L
+
     /** Primer UID de aplicaciones de usuario (sin contar servicios de sistema). */
     private const val APP_UID_MIN = 10_000
 
@@ -90,14 +95,42 @@ object SystemCleaner {
         }
     } catch (t: Throwable) { "desconocido" }
 
-    /** Solicitud formal de permiso de Shizuku. Suspend hasta la respuesta. */
+    /**
+     * Solicitud formal de permiso de Shizuku. Suspend hasta la respuesta.
+     *
+     * Shizuku.requestPermission() DEBE correrse en el hilo principal (como
+     * una requestPermissions normal de Android) o el diálogo no aparece y el
+     * callback nunca llega → el WebView se quedaba "esperando confirmación"
+     * para siempre. Aquí se publica al main looper y se espera la respuesta
+     * con timeout duro (30s) para no congelar nunca al llamante.
+     */
     suspend fun requestPermissionAsync(): Boolean = suspendCancellableCoroutine { cont ->
         try {
             if (!Shizuku.pingBinder()) { cont.resume(false); return@suspendCancellableCoroutine }
-            pendingPermission = { granted -> if (cont.isActive) cont.resume(granted) }
-            Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                cont.resume(true); return@suspendCancellableCoroutine
+            }
+
+            pendingPermission = { granted ->
+                if (cont.isActive) { cont.resume(granted) }
+            }
+
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    Shizuku.requestPermission(PERMISSION_REQUEST_CODE)
+                } catch (t: Throwable) {
+                    pendingPermission = null
+                    if (cont.isActive) { cont.resume(false) }
+                }
+            }
+            // Timeout: si el usuario nunca responde el diálogo (o el permiso ya
+            // fue dado/revocado fuera), no dejar colgado al hilo del WebView.
+            val watchdog = Runnable { pendingPermission = null; if (cont.isActive) { cont.resume(false) } }
+            Handler(Looper.getMainLooper()).postDelayed(watchdog, PERMISSION_TIMEOUT_MS)
+            cont.invokeOnCancellation { pendingPermission = null }
         } catch (t: Throwable) {
-            cont.resume(false)
+            pendingPermission = null
+            if (cont.isActive) { cont.resume(false) }
         }
     }
 
