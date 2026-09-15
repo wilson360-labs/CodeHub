@@ -38,11 +38,31 @@ jobs:
         with:
           gradle-version: '8.5'
 
+      # android-actions/setup-android@v3 puede fallar por timeouts transitorios
+      # del runner. Se prueba primero; si falla, se asume que ubuntu-latest ya
+      # trae el SDK pre-instalado (compileSdk 34) en $ANDROID_HOME.
       - name: Setup Android SDK
+        id: setup-android
         uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        continue-on-error: true
 
       - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          # Verificar que el SDK esté disponible (ya pre-instalado o vía setup-android)
+          if [ -z "$ANDROID_HOME" ] || [ ! -d "$ANDROID_HOME" ]; then
+            echo "::error::Android SDK no encontrado. ANDROID_HOME=$ANDROID_HOME"
+            exit 1
+          fi
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
+          fi
+          if [ -f "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            echo "SDK listo (licenses aceptadas)"
+          else
+            echo "sdkmanager no encontrado, Gradle se encargará de las licenses"
+          fi
 
       - name: Compile check (debug, sin keystore)
         working-directory: apk/android
