@@ -106,20 +106,39 @@
     if (!cur || !ring) return;
 
     var mx = -100, my = -100, rx = -100, ry = -100;
+    var lastMove = 0, rafId = null;
 
-    document.addEventListener('mousemove', function (e) {
-      mx = e.clientX; my = e.clientY;
-      cur.style.left = mx + 'px';
-      cur.style.top  = my + 'px';
-    });
-
-    (function loop() {
+    // El loop de seguimiento solo corre cuando hay movimiento reciente
+    // y la pestaña está visible: en una página estática en segundo plano
+    // se detiene (menos batería/CPU en escritorio).
+    function tick() {
       rx += (mx - rx) * 0.13;
       ry += (my - ry) * 0.13;
       ring.style.left = rx + 'px';
       ring.style.top  = ry + 'px';
-      requestAnimationFrame(loop);
-    })();
+      if (!document.hidden && (Date.now() - lastMove) < 400) {
+        rafId = requestAnimationFrame(tick);
+      } else {
+        rafId = null;
+      }
+    }
+    function startLoop() {
+      if (rafId == null && !document.hidden) rafId = requestAnimationFrame(tick);
+    }
+    function stopLoop() {
+      if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    document.addEventListener('mousemove', function (e) {
+      mx = e.clientX; my = e.clientY;
+      lastMove = Date.now();
+      cur.style.left = mx + 'px';
+      cur.style.top  = my + 'px';
+      startLoop();
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stopLoop(); else startLoop();
+    });
 
     document.addEventListener('mouseover', function (e) {
       if (e.target.closest('a,button,[onclick],[role=button],label,.skill-chip,.service-card')) {

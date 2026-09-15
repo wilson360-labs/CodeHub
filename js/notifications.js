@@ -417,9 +417,24 @@
       // WS en vivo para releases/apps nuevas (instantáneo).
       connectNotifWS();
       // Respaldo por si el WS se cae: poll cada 5 min en vez de 60s.
-      setInterval(loadReleases, 5 * 60 * 1000);
+      // Guardia de visibilidad: en pestaña oculta no se hace polling
+      // (el backend puede dormir también) — se refresca al volver.
+      setInterval(function () {
+        if (!document.hidden) loadReleases();
+      }, 5 * 60 * 1000);
       // Also re-render badge periodically in case SW pushed while panel was closed
-      setInterval(function () { render(); updateBadge(); }, 30000);
+      setInterval(function () {
+        if (document.hidden) return;
+        render(); updateBadge();
+      }, 30000);
+      // Al volver a la pestaña: refrescar releases/badge al instante.
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) {
+          render(); updateBadge();
+          loadReleases();
+          if (!_notifWs || _notifWs.readyState > 1) connectNotifWS();
+        }
+      });
     });
     wireSW();
   }

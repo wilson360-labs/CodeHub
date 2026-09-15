@@ -62,8 +62,11 @@
       window.addEventListener('hashchange', function () {
         pushActivity('nav', location.hash || 'home');
       });
-      // Muestreo de sección visible cada 1.5s (barato)
+      // Muestreo de sección visible cada 1.5s (barato).
+      // Guardia de visibilidad: en una pestaña oculta no escanea (nadie ve
+      // la sección, así que no hay nada que registrar de todos modos).
       setInterval(function () {
+        if (document.hidden) return;
         var sec = currentSection();
         if (sec && sec !== lastActivity.section) {
           lastActivity.section = sec;
