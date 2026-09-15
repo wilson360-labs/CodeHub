@@ -7,7 +7,10 @@
  *
  * Variables de Entorno (Render):
  *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
- *   ADMIN_KEY, SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
+ *   ADMIN_KEY, ADMIN_SESSION_SECRET (secreto HMAC de sesiones admin;
+ *     si falta se usa ADMIN_KEY y, si tampoco existe, un secreto aleatorio
+ *     EFÍMERO — las sesiones admin no sobreviven a reinicios en ese caso)
+ *   SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
  *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
  *   TOGETHER_API_KEY, OPENROUTER_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY
  *   KIMI_API_KEY (Moonshot AI — https://platform.moonshot.ai)
@@ -36,6 +39,11 @@ const { createClient } = require('@supabase/supabase-js');
 const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.trim())
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
   : null;
+
+// ── TIMEOUTS DE RED (evitan conexiones colgadas → OOM en Render) ──
+const LLM_TIMEOUT_MS      = 30000;  // llamadas no-streaming a proveedores IA
+const SSE_TIMEOUT_MS      = 30000;  // inactividad sin datos en un stream SSE
+const IA_PUT_TIMEOUT_MS   = 120000; // PUT a Archive.org S3 (upload grande)
 
 // Helper: registrar evento en Supabase (fire-and-forget — no bloquea la petición)
 async function trackEvent(type, page = null, metadata = {}) {
@@ -255,6 +263,9 @@ function _recordAdminFail(ip, ua) {
 
 // ── SESSION TOKEN (HMAC-SHA256) ────────────────────────────────
 const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_KEY || crypto.randomBytes(32).toString('hex');
+if (!process.env.ADMIN_SESSION_SECRET && !process.env.ADMIN_KEY) {
+  console.warn('⚠️  SESSION_SECRET: ni ADMIN_SESSION_SECRET ni ADMIN_KEY están definidos — usando secreto efímero aleatorio (las sesiones admin no sobreviven reinicios)');
+}
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
 
 function _signSession(payload) {
@@ -466,6 +477,14 @@ async function cacheSet(k, v, ttl = 60) {
 }
 async function cacheDel(k) { if (redis) await redis.del(k); _mem.delete(k); }
 
+// Barrido periódico del caché en memoria (solo cuando no hay Redis):
+// las claves expiradas solo se purgaban al leerse; sin esto crecía sin límite.
+setInterval(() => {
+  if (redis) return;
+  const now = Date.now();
+  for (const [k, i] of _mem) { if (now > i.e) _mem.delete(k); }
+}, 60000);
+
 // ── WEBSOCKETS ────────────────────────────────────────────────
 const wss = new WebSocketServer({ server, path: '/ws' });
 const wsClients = new Set();
@@ -549,6 +568,8 @@ const App = mongoose.model('App', new mongoose.Schema({
   tg_file_id:         { type: String, default: null },  // file_id Telegram APK main
   tg_plugin_msg_id:   { type: Number, default: null },  // ID mensaje Telegram APK plugin
   tg_plugin_file_id:  { type: String, default: null },  // file_id Telegram APK plugin
+  tg_file_path:       { type: String, default: null },  // file_path Telegram APK main (SIN token — nunca exponer)
+  tg_plugin_file_path:{ type: String, default: null },  // file_path Telegram plugin (SIN token)
   ia_file_name:       { type: String, default: null },  // Nombre archivo en Archive.org (APK main)
   ia_identifier:      { type: String, default: null },  // Item ID de Archive.org
   ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
@@ -1058,6 +1079,23 @@ const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TG_ALERTS_ENABLED = process.env.TG_ALERTS_ENABLED !== 'false';
 const TG_BURST_MS       = Math.max(500, parseInt(process.env.TG_BURST_MS || '4000', 10));
 const TG_STATUS_HOURS   = Math.max(1, parseInt(process.env.TG_STATUS_HOURS || '6', 10) || 6);
+
+// ── SANITIZER DE ENLACES TELEGRAM ─────────────────────────────
+// Prevén la fuga del token del bot cuando un enlace con token se
+// expone públicamente vía /api/apps o el header Location de /api/dl.
+// Extrae el file_path de la URL y devuelve una ruta segura relativa
+// al backend (/api/tgfile/:appId) que reconstruye el token server-side.
+const _TG_FILE_RE = /^https:\/\/api\.telegram\.org\/file\/bot\d+:[^\/]+\/(.+)$/;
+function tgFilePath(lk) {
+  if (!lk || typeof lk !== 'string') return null;
+  const m = String(lk).match(_TG_FILE_RE);
+  try { return m ? decodeURIComponent(m[1]) : null; } catch { return null; }
+}
+function sanitizePublicLink(lk, appId, slot) {
+  if (!tgFilePath(lk)) return lk;
+  const base = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
+  return `${base}/api/tgfile/${encodeURIComponent(appId)}${slot === 'plugin' ? '?slot=plugin' : ''}`;
+}
 const tgBurst = new Map(); // type -> { count, timer }
 
 function tgSend(text) {
@@ -1216,10 +1254,11 @@ async function uploadToTelegram(buffer, fileName, caption = '') {
   if (!fileData.ok) throw new Error('Telegram getFile: ' + fileData.description);
 
   const filePath    = fileData.result?.file_path;
-  const downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
-
+  // NUNCA construir URL con token aquí: esta función solo entrega el
+  // file_path. Quien necesite un enlace público debe exponerlo vía
+  // /api/tgfile (que resuelve el token server-side), no con la URL cruda.
   console.log(`✅ Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
-  return { messageId: msg.message_id, fileId, downloadUrl };
+  return { messageId: msg.message_id, fileId, filePath };
 }
 
 async function deleteFromTelegram(messageId) {
@@ -1584,6 +1623,7 @@ async function callGroq(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
     body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1597,6 +1637,7 @@ async function callCerebras(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}` },
     body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Cerebras ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1610,6 +1651,7 @@ async function callHuggingFace(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
     body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `HuggingFace ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1630,6 +1672,7 @@ async function callGemini(msgs, maxTokens, imageParts) {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM_BASE }] }, contents, generationConfig: { maxOutputTokens: maxTokens || 1500, temperature: 0.7 } }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1664,6 +1707,7 @@ async function callOpenRouterModel(msgs, model, maxTokens) {
       temperature: 0.65,
       messages: msgs,
     }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
@@ -1708,6 +1752,7 @@ async function callMistral(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}` },
     body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: maxTokens || 1500, temperature: 0.65, messages: mistralMsgs }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Mistral ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1728,6 +1773,7 @@ async function callCohere(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.COHERE_API_KEY}` },
     body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: maxTokens || 1500, temperature: 0.65 }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.message || `Cohere ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -1751,7 +1797,8 @@ async function callClaude(msgs, maxTokens) {
       temperature: 0.65,
       system: systemMsg?.content || '',
       messages: chatMsgs.map(m => ({ role: m.role, content: m.content }))
-    })
+    }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
@@ -1769,6 +1816,7 @@ async function callKimi(msgs, maxTokens) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
     body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
@@ -2154,8 +2202,8 @@ app.get('/api/apps', async (_, res) => {
       imagen:       a.imagen,
       categoria:    a.categoria,
       verified:     a.verified,
-      enlace:       a.enlace || '#',
-      plugin_enlace:a.plugin_enlace || null,
+      enlace:       sanitizePublicLink(a.enlace || '#', a.appId),
+      plugin_enlace: a.plugin_enlace ? sanitizePublicLink(a.plugin_enlace, a.appId, 'plugin') : null,
       tutorial_url: a.tutorial_url || null,
       source_repo:  a.source_repo || null,
       packageName:  a.packageName || null,
@@ -2698,13 +2746,42 @@ app.get('/api/dl/:appId', async (req, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   const { appId } = req.params;
   try {
-    const app_ = await App.findOne({ appId }).select('enlace nombre').lean();
+    const app_ = await App.findOne({ appId }).select('enlace plugin_enlace nombre tg_file_path tg_plugin_file_path').lean();
     if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aún' });
-    broadcast('download', { fileName: app_.nombre });
-    trackEvent('download', null, { app_name: app_.nombre, appId });
-    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
+    // Un enlace Telegram con token embebido NO puede salir por el header
+    // Location del 302 (lo vería cualquiera). Se reconstruye con el token
+    // solo en el server, o se redirige a la ruta segura /api/tgfile.
+    const filePath = tgFilePath(app_.enlace);
+    if (filePath) {
+      if (!TG_TOKEN) return res.status(502).json({ error: 'Almacenamiento temporal no disponible' });
+      broadcast('download', { fileName: app_.nombre });
+      trackEvent('download', null, { app_name: app_.nombre, appId });
+      tgAlert('download', () => `⬇️ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
+      return res.redirect(302, `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`);
+    }
     res.redirect(302, app_.enlace);
   } catch (e) { console.error('Error /api/dl:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
+});
+
+// Descarga segura de archivos Telegram (token solo en el server).
+// Enlaza desde /api/apps (enlace sanitizado) y desde /api/dl.
+app.get('/api/tgfile/:appId', async (req, res) => {
+  const { appId } = req.params;
+  const slot = String(req.query.slot || 'main');
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  if (!TG_TOKEN) return res.status(503).json({ error: 'Almacenamiento temporal no disponible' });
+  try {
+    const app_ = await App.findOne({ appId }).select('enlace plugin_enlace tg_file_path tg_plugin_file_path nombre').lean();
+    if (!app_) return res.status(404).json({ error: 'App no encontrada' });
+    const filePath = slot === 'plugin' ? app_.tg_plugin_file_path : app_.tg_file_path;
+    const fallback = slot === 'plugin' ? app_.plugin_enlace : app_.enlace;
+    const fp = filePath || tgFilePath(fallback);
+    if (!fp) return res.status(404).json({ error: 'Enlace no disponible aún' });
+    broadcast('download', { fileName: app_.nombre });
+    trackEvent('download', null, { app_name: app_.nombre, appId });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${app_.nombre} (tgfile${slot === 'plugin' ? ' plugin' : ''})`, { windowMs: 15000 });
+    res.redirect(302, `https://api.telegram.org/file/bot${TG_TOKEN}/${fp}`);
+  } catch (e) { console.error('Error /api/tgfile:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -3036,10 +3113,14 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
         });
         if (!fData.ok) throw new Error('Telegram getFile: ' + fData.description);
 
-        downloadUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${fData.result.file_path}`;
+        // Nunca persistir la URL con token del bot. Se guarda el file_path
+        // (sin token) y un enlace público seguro que el server resuelve.
+        const tgFp     = fData.result.file_path;
+        const publicDl = `${process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com'}/api/tgfile/${encodeURIComponent(appId)}${isPlugin ? '?slot=plugin' : ''}`;
+        downloadUrl    = publicDl;
         upd = isPlugin
-          ? { tg_plugin_msg_id: msg.message_id, tg_plugin_file_id: fileId, plugin_enlace: downloadUrl, updatedAt: new Date() }
-          : { tg_message_id:    msg.message_id, tg_file_id:        fileId, enlace:        downloadUrl, updatedAt: new Date() };
+          ? { tg_plugin_msg_id: msg.message_id, tg_plugin_file_id: fileId, tg_plugin_file_path: tgFp, plugin_enlace: publicDl, updatedAt: new Date() }
+          : { tg_message_id:    msg.message_id, tg_file_id:        fileId, tg_file_path:        tgFp, enlace:        publicDl, updatedAt: new Date() };
 
       } else if (useIA) {
         // ── BUFFER → Archive.org S3 ───────────────────────────
@@ -3099,6 +3180,12 @@ app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
           const tmpRead = fs.createReadStream(tmpPath);
           tmpRead.pipe(iaReq);
           tmpRead.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
+          // Timeout de red — evita uploads que cuelgan y dejan archivos temporales
+          iaReq.setTimeout(IA_PUT_TIMEOUT_MS, () => {
+            fs.unlink(tmpPath, () => {});
+            tmpRead.destroy();
+            iaReq.destroy(new Error(`Archive.org S3 timeout (>${IA_PUT_TIMEOUT_MS/1000}s)`));
+          });
         });
 
         downloadUrl = `https://archive.org/download/${getIAItemId(appId)}/${encodeURIComponent(fileName)}`;
@@ -3507,7 +3594,8 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
           height: h,
           steps: 4,
           n: 1,
-        })
+        }),
+        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
       });
       if (r.ok) {
         const d = await r.json();
@@ -3536,7 +3624,8 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
           body: JSON.stringify({
             instances: [{ prompt: p }],
             parameters: { sampleCount: 1, aspectRatio: w > h ? '16:9' : w === h ? '1:1' : '9:16' }
-          })
+          }),
+          signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
         }
       );
       if (r.ok) {
@@ -3567,7 +3656,8 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
           aspect_ratio: aspectRatio,
           response_format: 'base64',
           n: 1,
-        })
+        }),
+        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
       });
       if (r.ok) {
         const d = await r.json();
@@ -5278,6 +5368,89 @@ async function ensureFCMTable() {
   }
 }
 
+// ── STATS TABLES (Supabase) ─────────────────────────────────
+const STATS_SQL = `
+create table if not exists public.visitor_logs (
+  id bigint generated always as identity primary key,
+  ip text,
+  country text,
+  country_code text,
+  city text,
+  region text,
+  isp text,
+  org text,
+  is_vpn boolean default false,
+  is_proxy boolean default false,
+  is_bot boolean default false,
+  risk_score integer default 0,
+  page text,
+  ua text,
+  visited_at timestamptz default now()
+);
+
+create table if not exists public.daily_stats (
+  date date primary key,
+  visits bigint default 0,
+  downloads bigint default 0,
+  chat_msgs bigint default 0,
+  tool_uses bigint default 0,
+  contacts bigint default 0,
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.tool_stats (
+  id bigint generated always as identity primary key,
+  tool_name text not null unique,
+  uses bigint default 1,
+  last_used timestamptz default now()
+);
+
+create table if not exists public.download_stats (
+  id bigint generated always as identity primary key,
+  app_name text not null unique,
+  downloads bigint default 1,
+  last_download timestamptz default now()
+);
+
+create table if not exists public.events (
+  id bigint generated always as identity primary key,
+  type text,
+  page text,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.scan_logs (
+  id bigint generated always as identity primary key,
+  type text,
+  target text,
+  verdict text,
+  risk_score integer,
+  provider text,
+  metadata jsonb default '{}'::jsonb,
+  scanned_at timestamptz default now()
+);
+`;
+
+async function ensureStatsTables() {
+  if (!supabase) return false;
+  try {
+    const statements = splitSqlStatements(STATS_SQL);
+    for (const stmt of statements) {
+      const { error } = await supabase.rpc('exec_sql', { query: stmt });
+      if (error) {
+        console.warn('⚠️  Stats: no se pudo crear tabla de estadísticas — ' + error.message);
+        return false;
+      }
+    }
+    console.log('✅ Stats: tablas de estadísticas listas');
+    return true;
+  } catch (e) {
+    console.warn('⚠️  Stats: error asegurando tablas:', e.message);
+    return false;
+  }
+}
+
 async function fcmListTokens() {
   if (supabase) {
     try {
@@ -6133,61 +6306,84 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     res.write('event: ' + evt + '\ndata: ' + JSON.stringify(data) + '\n\n');
   }
 
+  // SSE idle watchdog: aborta si pasan SSE_TIMEOUT_MS sin datos nuevos.
+  // Leaked streams en providers lentos ya no acumulan sockets → OOM.
   async function tryStream(name, endpoint, headers, body) {
-    const r = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: upstreamAbort.signal });
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      const err = new Error(e.error?.message || name + ' ' + r.status);
-      err.status = r.status;
-      throw err;
-    }
-    return r;
-  }
-
-  async function consumeOpenAIStream(resp, onChunk) {
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const payload = line.slice(6).trim();
-        if (payload === '[DONE]') return;
-        try {
-          const d = JSON.parse(payload);
-          const delta = d.choices?.[0]?.delta?.content;
-          if (delta) onChunk(delta);
-          if (d.usage) { usage.input = d.usage.prompt_tokens || 0; usage.output = d.usage.completion_tokens || 0; }
-        } catch {}
+    let timer = null;
+    const ctrl = new AbortController();
+    const clearT = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    const kick   = () => { clearT(); timer = setTimeout(() => ctrl.abort(new Error(name + ': timeout SSE')), SSE_TIMEOUT_MS); };
+    const onServerAbort = () => ctrl.abort();
+    upstreamAbort.signal.addEventListener('abort', onServerAbort, { once: true });
+    kick();
+    try {
+      const r = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
+      if (!r.ok) {
+        clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort);
+        const e = await r.json().catch(() => ({}));
+        const err = new Error(e.error?.message || name + ' ' + r.status);
+        err.status = r.status;
+        throw err;
       }
+      return { r, kick, stop() { clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort); } };
+    } catch (e) {
+      clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort);
+      throw e;
     }
   }
 
-  async function consumeClaudeStream(resp, onChunk) {
-    const reader = resp.body.getReader();
+  async function consumeOpenAIStream(s, onChunk) {
+    const reader = s.r.body.getReader();
     const decoder = new TextDecoder();
     let buf = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split('\n');
-      buf = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const d = JSON.parse(line.slice(6));
-          if (d.type === 'content_block_delta' && d.delta?.text) onChunk(d.delta.text);
-          if (d.type === 'message_delta' && d.usage) usage.output = d.usage.output_tokens || 0;
-          if (d.type === 'message_start' && d.message?.usage) usage.input = d.message.usage.input_tokens || 0;
-        } catch {}
+    try {
+      while (true) {
+        s.kick();
+        const { done, value } = await reader.read();
+        if (done) break;
+        s.kick();
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (payload === '[DONE]') return;
+          try {
+            const d = JSON.parse(payload);
+            const delta = d.choices?.[0]?.delta?.content;
+            if (delta) { onChunk(delta); s.kick(); }
+            if (d.usage) { usage.input = d.usage.prompt_tokens || 0; usage.output = d.usage.completion_tokens || 0; }
+          } catch {}
+        }
       }
-    }
+    } finally { s.stop(); }
+  }
+
+  async function consumeClaudeStream(s, onChunk) {
+    const reader = s.r.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        s.kick();
+        const { done, value } = await reader.read();
+        if (done) break;
+        s.kick();
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const d = JSON.parse(line.slice(6));
+            if (d.type === 'content_block_delta' && d.delta?.text) { onChunk(d.delta.text); s.kick(); }
+            if (d.type === 'message_delta' && d.usage) usage.output = d.usage.output_tokens || 0;
+            if (d.type === 'message_start' && d.message?.usage) usage.input = d.message.usage.input_tokens || 0;
+          } catch {}
+        }
+      }
+    } finally { s.stop(); }
   }
 
   try {
@@ -6631,6 +6827,7 @@ app.use((err, req, res, next) => {
   if (supabase) console.log('✅ Supabase Storage listo — bucket:', STORAGE_BUCKET);
   await ensurePushTable();
   await ensureFCMTable();
+  await ensureStatsTables();
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
