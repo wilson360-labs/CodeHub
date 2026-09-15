@@ -301,6 +301,27 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </div>
 </div>
 
+<!-- ── Diálogo de actualización del APK (sin versión ni changelog) ── -->
+<div id="apk-update-overlay" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--card,#1a1a2e);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius-lg,18px);max-width:400px;width:100%;padding:1.5rem;box-shadow:0 24px 64px rgba(0,0,0,.55);font-family:inherit;color:var(--text,#e0e0f0);position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e,#3b6dff,#a855f7)"></div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
+      <div style="width:40px;height:40px;border-radius:12px;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🚀</div>
+      <div style="font-weight:800;font-size:1rem">Actualización disponible</div>
+    </div>
+    <div style="font-size:.84rem;line-height:1.6;color:var(--text-soft,#aaa);margin-bottom:.9rem">Hay una actualización disponible para la app. Descárgala e instálala para tener las últimas mejoras.</div>
+    <div id="apk-update-notes-wrap" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:var(--radius-sm,10px);padding:.7rem .8rem;margin-bottom:1.1rem">
+      <div style="font-size:.72rem;font-weight:700;color:#22c55e;margin-bottom:.3rem">Qué hay de nuevo</div>
+      <div id="apk-update-notes" style="font-size:.8rem;line-height:1.55;color:var(--text-soft,#aaa)"></div>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button id="apk-update-apply" style="flex:1;padding:.6rem 1rem;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:var(--radius-sm,10px);font-weight:700;font-size:.82rem;cursor:pointer;transition:filter .15s">Actualizar</button>
+      <button id="apk-update-later" style="padding:.6rem 1rem;background:rgba(255,255,255,.06);color:var(--muted,#888);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm,10px);font-size:.82rem;cursor:pointer">Más tarde</button>
+    </div>
+    <div style="text-align:center;margin-top:.6rem;font-size:.65rem;color:var(--muted,#666)">La instalación se iniciará al terminar la descarga</div>
+  </div>
+</div>
+
     <!-- Google Tag Manager (noscript) -->
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PFVCPFJJ"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -7567,6 +7588,82 @@ document.addEventListener('DOMContentLoaded', () => {
   window.chApplyUpdate = chApplyUpdate;
   window.chDismissUpdate = chDismissUpdate;
   window.chCheckAndUpdate = chCheckAndUpdate;
+
+  // ── Diálogo de actualización del APK (solo nativo, sin versión/changelog) ──
+  const APK_SKIP_PREFIX = '_apk_update_skip_';
+  let _apkLatest = null;
+
+  function _parseSemver(v) {
+    const parts = String(v || '').replace(/^v/i, '').trim().split('.');
+    const nums = [];
+    for (let i = 0; i < parts.length; i++) {
+      const n = parseInt(parts[i], 10);
+      nums.push(isNaN(n) ? 0 : n);
+    }
+    while (nums.length < 3) nums.push(0);
+    return nums;
+  }
+
+  function _semverGreater(a, b) {
+    const A = _parseSemver(a), B = _parseSemver(b);
+    for (let i = 0; i < 3; i++) {
+      if (A[i] > B[i]) return true;
+      if (A[i] < B[i]) return false;
+    }
+    return false;
+  }
+
+  function _renderApkNotes(notes) {
+    const wrap = document.getElementById('apk-update-notes-wrap');
+    const el = document.getElementById('apk-update-notes');
+    if (!notes || !el || !wrap) return;
+    const lines = String(notes).split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+    if (!lines.length) return;
+    el.innerHTML = lines.map(function(l) {
+      var t = l.replace(/^[•\-\*]\s*/, '');
+      return '<div style="position:relative;padding-left:.9rem;margin-bottom:.3rem"><span style="position:absolute;left:0;color:#22c55e">›</span> ' + t + '</div>';
+    }).join('');
+    wrap.style.display = 'block';
+  }
+
+  async function apkCheckUpdate() {
+    if (!window.__apkVersion) return;
+    try {
+      const res = await fetch(BACKEND_URL + '/api/config', { cache: 'no-store' });
+      const d = await res.json();
+      if (!d.ok || !d.config || !d.config.apkLatestVersion) return;
+      _apkLatest = String(d.config.apkLatestVersion);
+      if (localStorage.getItem(APK_SKIP_PREFIX + _apkLatest) === '1') return;
+      if (!_semverGreater(_apkLatest, window.__apkVersion)) return;
+      _renderApkNotes(d.config.apkUpdateNotes || '');
+      const overlay = document.getElementById('apk-update-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    } catch (e) {}
+  }
+
+  function apkApplyUpdate() {
+    const overlay = document.getElementById('apk-update-overlay');
+    if (overlay) overlay.style.display = 'none';
+    try {
+      if (window.CodeHubNative && CodeHubNative.downloadUpdate) {
+        CodeHubNative.downloadUpdate(BACKEND_URL + '/api/download/app-release-signed.apk');
+        return;
+      }
+    } catch (e) {}
+    window.open(BACKEND_URL + '/api/download/app-release-signed.apk', '_blank');
+  }
+
+  function apkDismissUpdate() {
+    const overlay = document.getElementById('apk-update-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (_apkLatest) localStorage.setItem(APK_SKIP_PREFIX + _apkLatest, '1');
+  }
+
+  document.getElementById('apk-update-apply').addEventListener('click', apkApplyUpdate);
+  document.getElementById('apk-update-later').addEventListener('click', apkDismissUpdate);
+  window.apkCheckUpdate = apkCheckUpdate;
+
+  setTimeout(apkCheckUpdate, 4000);
 
   setTimeout(function() { chCheckAndUpdate(false); }, 3000);
   </script>

@@ -323,6 +323,8 @@ const AppConfig = mongoose.model('AppConfig', new mongoose.Schema({
 
 const DEFAULT_CONFIG = {
   version: 1,
+  apkLatestVersion: '',
+  apkUpdateNotes: '',
   features: {
     chatEnabled: true,
     imageGenEnabled: true,
@@ -2720,17 +2722,28 @@ app.post('/api/requests', publicPostLimiter, async (req, res) => {
   } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
 });
 
-// Download APK (Supabase Storage URL pública)
+// Download APK — link firmado con expiración (Supabase Storage) para no
+// exponer una URL pública permanente del binario.
 app.get('/api/download/:fileName', async (req, res) => {
   const { fileName } = req.params;
   if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre inválido' });
   try {
     if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
-    const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(decodeURIComponent(fileName));
-    broadcast('download', { fileName: decodeURIComponent(fileName) });
-    trackEvent('download', null, { app_name: decodeURIComponent(fileName) });
-    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${decodeURIComponent(fileName)}`, { windowMs: 15000 });
-    res.redirect(302, data.publicUrl);
+    const key = decodeURIComponent(fileName);
+    let target = null;
+    try {
+      const { data: signedData, error: signedErr } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(key, 300);
+      if (!signedErr && signedData && signedData.signedUrl) target = signedData.signedUrl;
+    } catch (e) {}
+    if (!target) {
+      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(key);
+      target = data?.publicUrl || null;
+    }
+    if (!target) return res.status(404).json({ error: 'Archivo no encontrado' });
+    broadcast('download', { fileName: key });
+    trackEvent('download', null, { app_name: key });
+    tgAlert('download', () => `⬇️ <b>Descarga</b>: ${key}`, { windowMs: 15000 });
+    res.redirect(302, target);
   } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
 });
 
@@ -5745,9 +5758,11 @@ app.get('/api/config', async (req, res) => {
     });
     const clientVersion = parseInt(req.query.v) || 0;
     const needsUpdate = clientVersion < cfg.version;
+    const apkLatest = cfg.apkLatestVersion || '';
+    const apkNotes = cfg.apkUpdateNotes || '';
     res.set('Cache-Control', 'public, max-age=30');
     res.set('X-Config-Version', String(cfg.version));
-    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey } });
+    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey, apkLatestVersion: apkLatest, apkUpdateNotes: apkNotes } });
   } catch (e) {
     res.json({ ok: true, config: DEFAULT_CONFIG });
   }
