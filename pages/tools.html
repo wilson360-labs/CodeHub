@@ -70,21 +70,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://js.puter.com https://cdn.jsdelivr.net blob: https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' wss://codehub-98s6.onrender.com ws://codehub-98s6.onrender.com https://ipapi.co https://api.ipify.org https://api.mymemory.translated.net https://geocoding-api.open-meteo.com https://api.open-meteo.com https://www.google.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://tessdata.projectnaptha.com blob: https://image.pollinations.ai https://api.puter.com https://dns-lookup.com https://ip-api.com https://corsproxy.io https://unshorten.me https://api.allorigins.win https://api.codetabs.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://codehub-98s6.onrender.com;">
-<title>36 Herramientas Web Gratis — CodeHub by Wilson.E</title>
-<meta name="description" content="36 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, JSON formatter, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
+<title>40 Herramientas Web Gratis — CodeHub by Wilson.E</title>
+<meta name="description" content="40 herramientas web 100% gratuitas: generador de contraseñas, códigos QR, JSON formatter, clima en tiempo real, traductor, calculadora de préstamos, compresor de imágenes, generador IA y más. Sin registro ni pago.">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/tools">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://wilson360-labs.vercel.app/tools">
-<meta property="og:title" content="36 Herramientas Web Gratis — CodeHub">
-<meta property="og:description" content="36 herramientas web gratuitas: QR, contraseñas, clima, traductor, compresor de imágenes y más.">
+<meta property="og:title" content="40 Herramientas Web Gratis — CodeHub">
+<meta property="og:description" content="40 herramientas web gratuitas: QR, contraseñas, clima, traductor, compresor de imágenes y más.">
 <meta property="og:image" content="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+<link rel="icon" type="image/png" href="../splash/codehub.png">
+<link rel="apple-touch-icon" href="../splash/codehub.png">
 <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
 <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
 <link rel="stylesheet" href="../css/site-tour.css?v=20260908a">
 <link rel="stylesheet" href="../css/optimizer.css?v=20260915a">
 <link rel="stylesheet" href="../css/xterm.css?v=20260914a">
 <link rel="stylesheet" href="../css/terminal.css?v=20260914a">
-<link rel="stylesheet" href="../css/viewport-guard.css?v=20260915a">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -342,21 +343,33 @@ footer a{color:var(--p);text-decoration:none}
 .tools-faq details[open] summary::after{transform:rotate(180deg)}
 .tools-faq .faq-a{padding:0 1.2rem 1rem;font-size:.82rem;color:var(--muted);line-height:1.7}
 .tools-faq .faq-a a{color:var(--a)}
+
+/* ── ANIMACIONES DEL GRID (reveal + filtrado + hover) ── */
+.card{transition:border-color .25s ease}
+.card .ci{transition:transform .3s ease}
+.card.t-enter{opacity:0;transform:translateY(18px)}
+.card.t-enter.t-in{opacity:1;transform:none;transition:opacity .45s cubic-bezier(.22,.9,.3,1),transform .45s cubic-bezier(.22,.9,.3,1)}
+.card.filter-in{animation:tCardIn .34s cubic-bezier(.22,.9,.3,1) both}
+@keyframes tCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@media(hover:hover){
+  .card:not(.hidden):hover{border-color:var(--border-h)}
+  .card:not(.hidden):hover .ci{transform:translateY(-3px)}
+}
+@media(prefers-reduced-motion:reduce){
+  .card,.card.t-enter,.card.t-enter.t-in,.card.filter-in{opacity:1!important;transform:none!important;animation:none!important;transition:none!important}
+  .card .ci{transform:none!important}
+}
 </style>
 
+<link rel="stylesheet" href="../css/viewport-guard.css?v=20260915a">
+
   <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://wilson360-labs.vercel.app/tools">
   <meta name="theme-color" content="#2f80ed">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://wilson360-labs.vercel.app/tools">
-  <meta property="og:title" content="36 Herramientas Web Gratis — CodeHub by Wilson.E">
-  <meta property="og:description" content="36 herramientas web 100% gratuitas: generador de contraseñas, QR, clima, traductor, calculadora, imagen IA y más. Sin registro ni pago.">
-  <meta property="og:image" content="https://wilson360-labs.vercel.app/splash/codehub.png">
   <meta property="og:locale" content="es_GT">
   <meta property="og:site_name" content="CodeHub by Wilson.E">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="36 Herramientas Web Gratis — CodeHub">
-  <meta name="twitter:description" content="36 herramientas web gratuitas. Sin registro. Sin pago.">
+<meta name="twitter:title" content="40 Herramientas Web Gratis — CodeHub">
+<meta name="twitter:description" content="40 herramientas web gratuitas. Sin registro. Sin pago.">
   <!-- Schema.org: WebApplication + FAQPage para Google AdSense/Search -->
   <script type="application/ld+json">
   [
@@ -365,7 +378,7 @@ footer a{color:var(--p);text-decoration:none}
       "@type": "WebApplication",
       "name": "CodeHub Herramientas Web",
       "url": "https://wilson360-labs.vercel.app/tools",
-      "description": "Colección de 36 herramientas web gratuitas: generador de contraseñas, QR, conversor de unidades, clima, traductor, calculadora, compresor de imágenes y generador de imágenes con IA.",
+      "description": "Colección de 40 herramientas web gratuitas: generador de contraseñas, QR, conversor de unidades, clima, traductor, calculadora, compresor de imágenes y generador de imágenes con IA.",
       "applicationCategory": "UtilityApplication",
       "operatingSystem": "Web",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -385,7 +398,7 @@ footer a{color:var(--p);text-decoration:none}
           "name": "¿Las herramientas web de CodeHub son completamente gratuitas?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Sí, todas las 36 herramientas disponibles en CodeHub son 100% gratuitas. No requieren registro, cuenta ni pago de ningún tipo."
+            "text": "Sí, todas las 40 herramientas disponibles en CodeHub son 100% gratuitas. No requieren registro, cuenta ni pago de ningún tipo."
           }
         },
         {
@@ -440,7 +453,7 @@ footer a{color:var(--p);text-decoration:none}
 </header>
 
 <section class="hero">
-<div class="hero-tag"><span class="hero-dot"></span> 36 herramientas · 100% en tu navegador · Sin registro</div>
+<div class="hero-tag"><span class="hero-dot"></span> 40 herramientas · 100% en tu navegador · Sin registro</div>
   <h1>Herramientas que<br>realmente sirven</h1>
   <p>Sin APIs de pago ni servidores de pago. Las herramientas de texto, hash, QR y contraseñas se ejecutan en tu navegador: el dato no viaja a CodeHub. Abajo hay una guía corta de uso responsable; el detalle está en <a href="/guias" style="color:var(--a)">Guías</a>.</p>
 </section>
@@ -448,7 +461,7 @@ footer a{color:var(--p);text-decoration:none}
 <article class="tools-guide" style="position:relative;z-index:1;max-width:860px;margin:0 auto 2.2rem;padding:0 1.5rem;color:var(--muted);font-size:.88rem;line-height:1.75">
   <h2 style="color:var(--text);font-size:1.15rem;margin-bottom:.7rem">Cómo usar estas herramientas (y qué no hacer)</h2>
   <p style="margin-bottom:.85rem">CodeHub concentra utilidades que suelo necesitar al desarrollar o al ayudar a un cliente: generar una contraseña, firmar un texto, leer un QR, formatear JSON o ver qué IP me asignó la red. No sustituyen un gestor de secretos profesional ni un laboratorio de ciberseguridad. Si vas a usar un hash o una contraseña en un sistema real, verifica el resultado y guarda los secretos fuera del navegador.</p>
-  <p style="margin-bottom:.85rem">Las herramientas de red (clima, tasas de cambio, traducción) sí consultan APIs públicas desde tu sesión. No pegas tokens, contraseñas ni datos de clientes en esos campos. El verificador de fuerza de contraseña y el generador no envían el valor a nuestro backend: el cálculo es local. El chat IA y algunas funciones de imagen sí usan proveedores externos; ahí aplica la <a href="/privacy" style="color:var(--a)">política de privacidad</a>.</p>
+  <p style="margin-bottom:.85rem">Las herramientas de red (clima, tasas de cambio, traducción) sí consultan APIs públicas desde tu sesión. No pegas tokens, contraseñas ni datos de clientes en esos campos. El verificador de fuerza de contraseña y el generador no envían el valor a nuestro backend: el cálculo es local. Las herramientas de comunidad (Central de Estafas, Muro de Alertas y Verificador de Hashes) guardan reportes anónimos en el backend de CodeHub para compartirlos entre todos; no piden cuentas ni datos personales. El chat IA y algunas funciones de imagen sí usan proveedores externos; ahí aplica la <a href="/privacy" style="color:var(--a)">política de privacidad</a>.</p>
   <p>Si echas de menos una utilidad, escríbeme desde el <a href="/#open-to-work" style="color:var(--a)">formulario de contacto</a>. Priorizo herramientas que se puedan explicar en una página y usarse sin cuenta.</p>
   <p style="margin-bottom:.85rem">Está pensada para tres públicos: desarrolladores que necesitan una utilidad sin instalar nada, estudiantes que quieren entender cómo funciona un hash o una expresión regular probando en vivo, y personas que necesitan resolver una tarea puntual —leer un QR, saber su IP, comprimir una foto, calcular una cuota— sin crear cuenta en otro servicio.</p>
   <p style="margin-bottom:.85rem">¿Por qué algunas tarjetas dependen de internet? El clima, las tasas de cambio, la traducción o la generación de imágenes necesitan datos o modelos que no viven en tu navegador; esas consultas usan APIs públicas de terceros y quedan marcadas en su propia tarjeta. Las herramientas de texto local —contraseñas, hash, Base64, UUID, regex, conversores y verificadores— se ejecutan sin red: funcionan incluso si estás desconectado y el dato no sale de tu equipo.</p>
@@ -468,12 +481,14 @@ footer a{color:var(--p);text-decoration:none}
     <button class="chip" onclick="filterTag('conv',this)">🔄 Conversor</button>
     <button class="chip" onclick="filterTag('dis',this)">🎨 Diseño</button>
     <button class="chip" onclick="filterTag('dev',this)">💻 Dev</button>
+    <button class="chip" onclick="filterTag('ai',this)">🤖 IA</button>
+    <button class="chip" onclick="filterTag('com',this)">🤝 Comunidad</button>
   </div>
 </div>
 
 <div class="grid" id="grid">
 
-<!-- 1 · CONTRASEÑAS -->
+<!-- CONTRASEÑAS -->
 <div class="card" data-tags="seg">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-key"></i></div>
     <div><h2>Generador de Contraseñas</h2><div class="ct">seguridad</div></div><span class="chevron">▼</span></div>
@@ -496,7 +511,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 2 · FUERZA CONTRASEÑA -->
+<!-- FUERZA CONTRASEÑA -->
 <div class="card" data-tags="seg">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-shield-halved"></i></div>
     <div><h2>Verificador de Fuerza</h2><div class="ct">seguridad</div></div><span class="chevron">▼</span></div>
@@ -508,7 +523,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 3 · QR -->
+<!-- QR -->
 <div class="card" data-tags="util dev">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-qrcode"></i></div>
     <div><h2>Generador de QR</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
@@ -525,7 +540,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 4 · IP -->
+<!-- IP -->
 <div class="card" data-tags="util net">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-location-dot"></i></div>
     <div><h2>Mi IP y Ubicación</h2><div class="ct">utilidad</div></div><span class="chevron">▼</span></div>
@@ -536,7 +551,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 5 · DISPOSITIVO -->
+<!-- DISPOSITIVO -->
 <div class="card" data-tags="util dev">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-microchip"></i></div>
     <div><h2>Info del Dispositivo</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
@@ -547,7 +562,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 6 · CONVERTIDOR UNIDADES -->
+<!-- CONVERTIDOR UNIDADES -->
 <div class="card" data-tags="conv util">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-right-left"></i></div>
     <div><h2>Convertidor de Unidades</h2><div class="ct">conversor</div></div><span class="chevron">▼</span></div>
@@ -569,7 +584,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 7 · MONEDAS -->
+<!-- MONEDAS -->
 <div class="card" data-tags="conv util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-dollar-sign"></i></div>
     <div><h2>Conversor de Monedas</h2><div class="ct">conversor</div></div><span class="chevron">▼</span></div>
@@ -598,7 +613,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 8 · IMC -->
+<!-- IMC -->
 <div class="card" data-tags="util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-weight-scale"></i></div>
     <div><h2>Calculadora de IMC</h2><div class="ct">utilidad · salud</div></div><span class="chevron">▼</span></div>
@@ -621,7 +636,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 9 · PRÉSTAMOS -->
+<!-- PRÉSTAMOS -->
 <div class="card" data-tags="util conv">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-hand-holding-dollar"></i></div>
     <div><h2>Calculadora de Préstamo</h2><div class="ct">utilidad · finanzas</div></div><span class="chevron">▼</span></div>
@@ -637,7 +652,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 10 · POMODORO -->
+<!-- POMODORO -->
 <div class="card" data-tags="util">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-clock"></i></div>
     <div><h2>Temporizador Pomodoro</h2><div class="ct">utilidad · productividad</div></div><span class="chevron">▼</span></div>
@@ -658,7 +673,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 11 · PALETA COLORES -->
+<!-- PALETA COLORES -->
 <div class="card" data-tags="dis dev">
   <div class="ch"><div class="ci ci-pk"><i class="fas fa-palette"></i></div>
     <div><h2>Paleta de Colores</h2><div class="ct">diseño · dev</div></div><span class="chevron">▼</span></div>
@@ -676,7 +691,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 12 · MEMES -->
+<!-- MEMES -->
 <div class="card" data-tags="dis util">
   <div class="ch"><div class="ci ci-yl"><i class="fas fa-face-laugh"></i></div>
     <div><h2>Generador de Memes</h2><div class="ct">diseño</div></div><span class="chevron">▼</span></div>
@@ -690,7 +705,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 13 · COMPRESOR -->
+<!-- COMPRESOR -->
 <div class="card" data-tags="util dis">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-compress"></i></div>
     <div><h2>Compresor de Imágenes</h2><div class="ct">utilidad · diseño</div></div><span class="chevron">▼</span></div>
@@ -707,7 +722,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 14 · VELOCIDAD -->
+<!-- VELOCIDAD -->
 <div class="card" data-tags="util dev net">
   <div class="ch"><div class="ci ci-bl"><i class="fas fa-gauge-high"></i></div>
     <div><h2>Test de Velocidad</h2><div class="ct">utilidad · dev</div></div><span class="chevron">▼</span></div>
@@ -723,7 +738,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 15 · HASH -->
+<!-- HASH -->
 <div class="card" data-tags="seg dev">
   <div class="ch"><div class="ci ci-or"><i class="fas fa-fingerprint"></i></div>
     <div><h2>Generador de Hash</h2><div class="ct">seguridad · dev</div></div><span class="chevron">▼</span></div>
@@ -738,7 +753,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 16 · BASE64 -->
+<!-- BASE64 -->
 <div class="card" data-tags="dev">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-code"></i></div>
     <div><h2>Base64 Encode / Decode</h2><div class="ct">dev</div></div><span class="chevron">▼</span></div>
@@ -755,7 +770,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 17 · REGEX -->
+<!-- REGEX -->
 <div class="card" data-tags="dev">
   <div class="ch"><div class="ci ci-pu"><i class="fas fa-terminal"></i></div>
     <div><h2>Regex Tester</h2><div class="ct">dev</div></div><span class="chevron">▼</span></div>
@@ -772,7 +787,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 18 · UUID -->
+<!-- UUID -->
 <div class="card" data-tags="dev util">
   <div class="ch"><div class="ci ci-gr"><i class="fas fa-id-card"></i></div>
     <div><h2>Generador de UUID</h2><div class="ct">dev · utilidad</div></div><span class="chevron">▼</span></div>
@@ -795,7 +810,7 @@ footer a{color:var(--p);text-decoration:none}
 </div>
 
 
-<!-- 19 · ANALIZADOR DE RED WiFi -->
+<!-- ANALIZADOR DE RED WiFi -->
 <div class="card" data-tags="util dev seg" style="grid-column: 1 / -1; max-width: 680px; margin: 0 auto; width: 100%;">
   <div class="ch">
     <div class="ci" style="background:rgba(0,230,118,.15);color:#00e676;width:48px;height:48px;border-radius:14px;font-size:1.3rem"><i class="fas fa-wifi"></i></div>
@@ -839,7 +854,7 @@ footer a{color:var(--p);text-decoration:none}
 <!--  HERRAMIENTAS POPULARES — Clima, IA, Noticias, Horóscopo -->
 <!-- ══════════════════════════════════════════════════════ -->
 
-<!-- 24 · CLIMA EN TIEMPO REAL -->
+<!-- CLIMA EN TIEMPO REAL -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-cloud-sun"></i><span>Clima en Tiempo Real</span><span class="chevron">▼</span></div>
   <div class="cd">Consulta el clima actual de cualquier ciudad del mundo.</div>
@@ -852,8 +867,8 @@ footer a{color:var(--p);text-decoration:none}
   </div><!-- /cp -->
 </div>
 
-<!-- 25 · GENERADOR DE IMÁGENES CON IA -->
-<div class="card" data-tags="dis util">
+<!-- GENERADOR DE IMÁGENES CON IA -->
+<div class="card" data-tags="dis util ai">
   <div class="ch"><i class="fas fa-wand-magic-sparkles"></i><span>Generar Imagen con IA</span><span class="chevron">▼</span></div>
   <div class="cd">Describe una imagen y la IA la genera gratis al instante. Modo educativo con presets para clases y materiales didácticos.</div>
   <div class="cp">
@@ -963,7 +978,7 @@ footer a{color:var(--p);text-decoration:none}
   </div><!-- /cp -->
 </div>
 
-<!-- 26 · LINK CHECKER PROTECTOR -->
+<!-- LINK CHECKER PROTECTOR -->
 <div class="card" data-tags="seg util">
   <div class="ch"><i class="fas fa-shield-halved"></i><span>Link Checker de Seguridad</span><span class="chevron">▼</span></div>
   <div class="cd">Analiza links sospechosos, reputacion, spam y posibles senales de malware con VirusTotal.</div>
@@ -1002,7 +1017,7 @@ footer a{color:var(--p);text-decoration:none}
   </div><!-- /cp -->
 </div>
 
-<!-- 27 · HORÓSCOPO DEL DÍA -->
+<!-- HORÓSCOPO DEL DÍA -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-star"></i><span>Horóscopo del Día</span><span class="chevron">▼</span></div>
   <div class="cd">Consulta tu horóscopo diario según tu signo zodiacal.</div>
@@ -1017,7 +1032,7 @@ footer a{color:var(--p);text-decoration:none}
 <!--  HERRAMIENTAS EXTRA — Las más buscadas en internet    -->
 <!-- ══════════════════════════════════════════════════════ -->
 
-<!-- 19 · TRADUCTOR -->
+<!-- TRADUCTOR -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-language"></i><span>Traductor de Texto</span><span class="chevron">▼</span></div>
   <div class="cd">Traduce texto entre 10 idiomas al instante.</div>
@@ -1055,7 +1070,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 20 · CALCULADORA CIENTÍFICA -->
+<!-- CALCULADORA CIENTÍFICA -->
 <div class="card" data-tags="util">
   <div class="ch"><i class="fas fa-calculator"></i><span>Calculadora Científica</span><span class="chevron">▼</span></div>
   <div class="cd">Operaciones básicas, potencias, raíces, trigonometría.</div>
@@ -1065,7 +1080,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 21 · GENERADOR DE LOREM IPSUM -->
+<!-- GENERADOR DE LOREM IPSUM -->
 <div class="card" data-tags="seg dev util">
   <div class="ch"><i class="fas fa-mobile-screen-button"></i><span>APK Verifier</span><span class="chevron">▼</span></div>
   <div class="cd">Revisa APKs antes de instalar: hash, tamano, extension, riesgo y origen recomendado.</div>
@@ -1149,7 +1164,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 22 · CONTADOR DE TEXTO -->
+<!-- CONTADOR DE TEXTO -->
 <div class="card" data-tags="util dev">
   <div class="ch"><i class="fas fa-spell-check"></i><span>Contador de Texto</span><span class="chevron">▼</span></div>
   <div class="cd">Cuenta palabras, caracteres, oraciones y tiempo de lectura.</div>
@@ -1159,7 +1174,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 23 · CONVERSOR DE COLORES -->
+<!-- CONVERSOR DE COLORES -->
 <div class="card" data-tags="dis dev">
   <div class="ch"><i class="fas fa-droplet"></i><span>Conversor de Colores</span><span class="chevron">▼</span></div>
   <div class="cd">Convierte entre HEX, RGB y HSL al instante.</div>
@@ -1213,7 +1228,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 34 · CAPTURA DE PANTALLA + OCR (PDNob) -->
+<!-- CAPTURA DE PANTALLA + OCR (PDNob) -->
 <div class="card" data-tags="util dis">
   <div class="ch"><i class="fas fa-camera"></i><span>Captura de Pantalla + OCR</span><span class="chevron">▼</span></div>
   <div class="cd">Captura un area de tu pantalla, guardala como PNG o extrae el texto con OCR para editar PDFs escaneados e imagenes. Todo en tu navegador.</div>
@@ -1259,7 +1274,7 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 35 · PDF IA (skill) -->
+<!-- PDF IA (skill) -->
 <div class="card" data-tags="util ai">
   <div class="ch"><i class="fas fa-file-pdf"></i><span>PDF IA — Chat con tu documento</span><span class="chevron">▼</span></div>
   <div class="cd">Sube un PDF y chatea con WIL.E: resúmenes, datos de facturas, respuestas usando solo tu documento. La extracción del texto es 100% local (pdf.js) — solo la respuesta usa IA.</div>
@@ -1268,9 +1283,9 @@ footer a{color:var(--p);text-decoration:none}
   </div>
 </div>
 
-<!-- 36 · DNS LOOKUP — retirado: dependía de una API terceros que dejó de responder ─
+<!-- DNS LOOKUP — retirado: dependía de una API terceros que dejó de responder ─
 
-<!-- 37 · JSON FORMATTER -->
+<!-- JSON FORMATTER -->
 <div class="card" data-tags="dev util" id="card-json">
   <div class="ch">
     <div class="ci ci-bl"><i class="fas fa-code"></i></div>
@@ -1365,6 +1380,181 @@ footer a{color:var(--p);text-decoration:none}
 })();
 </script>
 
+<!-- CENTRAL DE ESTAFAS -->
+<div class="card" data-tags="seg net com">
+  <div class="ch"><div class="ci ci-pu"><i class="fas fa-flag"></i></div>
+    <div><h2>Central de Estafas</h2><div class="ct">seguridad · comunidad</div></div><span class="chevron">▼</span></div>
+  <div class="cd">Busca una URL o dominio antes de hacer clic y mira si la comunidad ya lo marcó como estafa o phishing, o reporta el tuyo para ayudar a otros. Datos colaborativos en el backend de CodeHub, sin contraseñas ni datos personales.</div>
+  <div class="cp">
+    <label class="lbl">Consultar antes de hacer clic</label>
+    <div class="ir">
+      <input class="ti" type="text" id="scq" placeholder="dominio.com, https://link…">
+      <button class="btn bp" onclick="comSearch()"><i class="fas fa-magnifying-glass"></i> Consultar</button>
+    </div>
+    <label class="lbl" style="margin-top:.4rem">Reportar una URL sospechosa</label>
+    <div class="ir">
+      <input class="ti" type="text" id="scr" placeholder="https://url-sospechosa…">
+      <button class="btn bg" onclick="comReport()"><i class="fas fa-flag"></i> Reportar</button>
+    </div>
+    <input class="ti" type="text" id="scn" placeholder="Nota (opcional): qué te hace sospecharla" style="margin-top:.45rem">
+    <div class="rb" id="scr-out" style="display:none"></div>
+  </div>
+</div>
+
+<!-- MURO DE ALERTAS -->
+<div class="card" data-tags="seg com">
+  <div class="ch"><div class="ci ci-yl"><i class="fas fa-bullhorn"></i></div>
+    <div><h2>Muro de Alertas</h2><div class="ct">seguridad · comunidad</div></div><span class="chevron">▼</span></div>
+  <div class="cd">Avisos y consejos compartidos por la comunidad: nuevas estafas, apps falsas, vulnerabilidades o buenas prácticas. Lee lo último o publica tu alerta para los demás.</div>
+  <div class="cp">
+    <button class="btn bp" onclick="alertLoad()"><i class="fas fa-rotate"></i> Cargar alertas</button>
+    <div class="rb" id="al-out" style="display:none"></div>
+    <label class="lbl" style="margin-top:.4rem">Publicar una alerta</label>
+    <input class="ti" type="text" id="al-t" placeholder="Título (ej: Falsa app de banco circulando)" maxlength="120">
+    <textarea class="ti" id="al-b" placeholder="Detalle…" maxlength="600"></textarea>
+    <button class="btn bg" onclick="alertAdd()"><i class="fas fa-paper-plane"></i> Publicar</button>
+  </div>
+</div>
+
+<!-- VERIFICADOR COLABORATIVO DE HASHES -->
+<div class="card" data-tags="seg dev com">
+  <div class="ch"><div class="ci ci-or"><i class="fas fa-fingerprint"></i></div>
+    <div><h2>Verificador de Hashes</h2><div class="ct">seguridad · comunidad</div></div><span class="chevron">▼</span></div>
+  <div class="cd">Comprueba si un archivo o APK descargado tiene reputación entre la comunidad: pega su SHA-256 (o busca por nombre) antes de instalarlo, o reporta el hash de un archivo que ya conoces.</div>
+  <div class="cp">
+    <label class="lbl">Consultar reputación</label>
+    <div class="ir">
+      <input class="ti" type="text" id="hss" placeholder="SHA-256 (64 hex) o nombre del archivo…">
+      <button class="btn bp" onclick="hashLookup()"><i class="fas fa-magnifying-glass"></i> Buscar</button>
+    </div>
+    <div class="rb" id="hs-out" style="display:none"></div>
+    <label class="lbl" style="margin-top:.5rem">Reportar un hash conocido</label>
+    <input class="ti" type="text" id="hsf" placeholder="Nombre del archivo (ej: app.apk)">
+    <input class="ti" type="text" id="hsh" placeholder="SHA-256 (64 caracteres hexadecimales)" style="margin-top:.45rem">
+    <div class="cr" style="margin-top:.45rem">
+      <label><input type="radio" name="hsv" value="confiable" checked> ✅ Confiable</label>
+      <label><input type="radio" name="hsv" value="sospechoso"> ⚠️ Sospechoso</label>
+      <label><input type="radio" name="hsv" value="malicioso"> ☠️ Malicioso</label>
+    </div>
+    <button class="btn bg" style="margin-top:.4rem" onclick="hashAdd()"><i class="fas fa-fingerprint"></i> Reportar hash</button>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────
+//  HERRAMIENTAS COMUNITARIAS (backend /api/community)
+// ──────────────────────────────────
+const COM_API = 'https://codehub-98s6.onrender.com/api/community';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function comFetch(p,opts){return fetch(COM_API+p,Object.assign({method:'GET',headers:{'Content-Type':'application/json'}},opts)).then(r=>r.json().catch(()=>null))}
+function comOut(id,html,cls){const e=$(id);e.style.display='block';e.className='rb '+(cls||'on');e.innerHTML=html}
+function comStamp(t){try{return new Date(t).toLocaleDateString('es',{day:'numeric',month:'short'})}catch(e){return ''}}
+function comErr(id,msg){comOut(id,'⚠️ '+esc(msg),'err')}
+function cpv(t){navigator.clipboard&&navigator.clipboard.writeText(t).then(()=>toast('✓ Copiado'))}
+
+function comSearch(){
+  const q=($('scq').value||'').trim();const out='scr-out';
+  comOut(out,'<span style="opacity:.6">Buscando…</span>');
+  comFetch('/reports?q='+encodeURIComponent(q)).then(r=>{
+    if(!r||!r.ok)return comErr(out,(r&&r.error)||'No se pudo consultar');
+    const d=r.data||[];
+    if(!d.length)return comOut(out,'No hay reportes para esa búsqueda todavía. Sé el primero en reportar. 🕵️');
+    comOut(out,d.map(v=>
+      '<div style="padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+
+        '<span style="font-family:var(--mono);font-size:.7rem;color:'+(v.votes_scam>v.votes_safe?'#ff6b6b':'var(--green)')+'">'+(v.votes_scam>v.votes_safe?'⚠️ '+v.votes_scam:'✔ '+v.votes_safe)+'</span>'+
+        '<strong style="font-size:.78rem;color:var(--text);word-break:break-all;min-width:0">'+esc(v.url)+'</strong>'+
+      '</div>'+
+      '<div style="display:flex;gap:.4rem;margin-top:.45rem;flex-wrap:wrap;align-items:center">'+
+        '<button class="btn bg bc" title="Votar estafa" onclick="comVote('+v.id+',\'scam\',this)"><i class="fas fa-triangle-exclamation"></i></button>'+
+        '<button class="btn bg bc" title="Votar segura" onclick="comVote('+v.id+',\'safe\',this)"><i class="fas fa-check"></i></button>'+
+        '<button class="btn bg bc" title="Copiar URL" onclick=\'cpv("'+esc(v.url).replace(/"/g,'&quot;')+'")\'><i class="fas fa-copy"></i></button>'+
+        '<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono)">'+v.votes_scam+' ⚠️ / '+v.votes_safe+' ✔</span>'+
+        (v.note?'<span style="font-size:.68rem;color:var(--muted);line-height:1.5;flex-basis:100%">'+esc(v.note)+'</span>':'')+
+      '</div></div>').join(''));
+  }).catch(()=>comErr(out,'Error de red'));
+}
+function comVote(id,verdict,btn){if(btn)btn.disabled=true;comFetch('/reports/vote',{method:'POST',body:JSON.stringify({id,verdict})}).then(r=>{if(!r||!r.ok)return toast('No se pudo votar');comSearch()})}
+function comReport(){
+  const url=($('scr').value||'').trim();const note=($('scn').value||'').trim();
+  if(!/^https?:\/\//i.test(url))return toast('La URL debe empezar por http:// o https://');
+  comFetch('/reports',{method:'POST',body:JSON.stringify({url,note})}).then(r=>{
+    if(!r)return toast('Error de red');
+    if(!r.ok)return toast(r.error||'No se pudo reportar');
+    toast('✓ Reporte guardado — gracias por cuidar la comunidad');
+    $('scr').value='';$('scn').value='';comSearch();
+  });
+}
+
+function alertLoad(){
+  const out='al-out';
+  comOut(out,'<span style="opacity:.6">Cargando alertas…</span>');
+  comFetch('/alerts').then(r=>{
+    if(!r||!r.ok)return comErr(out,(r&&r.error)||'No se pudieron cargar');
+    const d=r.data||[];
+    if(!d.length)return comOut(out,'Aún no hay alertas. Publica la primera para la comunidad. 📢');
+    comOut(out,d.map(a=>
+      '<div style="padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+      '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+
+        '<strong style="font-size:.8rem;color:var(--text)">'+esc(a.title)+'</strong>'+
+        '<span style="font-size:.62rem;color:var(--muted);font-family:var(--mono)">'+comStamp(a.created_at)+'</span>'+
+      '</div>'+
+      (a.body?'<div style="font-size:.75rem;color:var(--muted);line-height:1.55;margin-top:.3rem">'+esc(a.body)+'</div>':'')+
+      '<div style="font-size:.62rem;color:var(--a);font-family:var(--mono);margin-top:.25rem">— '+esc(a.author)+'</div></div>').join(''));
+  }).catch(()=>comErr(out,'Error de red'));
+}
+function alertAdd(){
+  const title=($('al-t').value||'').trim();const body=($('al-b').value||'').trim();
+  if(title.length<4)return toast('El título es demasiado corto');
+  comFetch('/alerts',{method:'POST',body:JSON.stringify({title,body})}).then(r=>{
+    if(!r)return toast('Error de red');
+    if(!r.ok)return toast(r.error||'No se pudo publicar');
+    toast('✓ Alerta publicada');
+    $('al-t').value='';$('al-b').value='';alertLoad();
+  });
+}
+
+function hashLookup(){
+  const q=($('hss').value||'').trim();const out='hs-out';
+  if(!q)return toast('Escribe un SHA-256 o un nombre de archivo');
+  comOut(out,'<span style="opacity:.6">Buscando…</span>');
+  const sha=/^[a-fA-F0-9]{64}$/.test(q)?q:'';
+  comFetch('/hashes?'+(sha?'sha='+encodeURIComponent(sha):'q='+encodeURIComponent(q))).then(r=>{
+    if(!r||!r.ok)return comErr(out,(r&&r.error)||'No se pudo consultar');
+    const d=r.data||[];
+    if(!d.length)return comOut(out,'Sin reputación registrada todavía. Sube el hash para construir la base comunitaria.');
+    comOut(out,d.map(hashRow).join(''));
+  }).catch(()=>comErr(out,'Error de red'));
+}
+function hashRow(v){
+  const col=v.verdict==='confiable'?'var(--green)':v.verdict==='sospechoso'?'#ffb300':'#ff6b6b';
+  const label=v.verdict==='confiable'?'✔ Confiable':v.verdict==='sospechoso'?'⚠️ Sospechoso':'☠️ Malicioso';
+  return '<div style="padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.06)">'+
+    '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+
+      '<span style="font-family:var(--mono);font-size:.68rem;color:'+col+'">'+label+'</span>'+
+      '<span style="font-size:.72rem;color:var(--text)">'+esc(v.file_name||'(sin nombre)')+'</span>'+
+    '</div>'+
+    '<div style="font-family:var(--mono);font-size:.62rem;color:var(--muted);word-break:break-all;margin-top:.25rem">'+esc(v.sha256)+'</div>'+
+    '<div style="display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">'+
+      '<button class="btn bg bc" title="Confiable" onclick="hashVote('+v.id+',\'good\',this)"><i class="fas fa-thumbs-up"></i></button>'+
+      '<button class="btn bg bc" title="Malicioso" onclick="hashVote('+v.id+',\'bad\',this)"><i class="fas fa-thumbs-down"></i></button>'+
+      '<span style="font-size:.66rem;color:var(--muted);font-family:var(--mono)">'+((v.votes_good||0)+(v.votes_bad||0))+' votos</span>'+
+    '</div></div>';
+}
+function hashVote(id,verdict,btn){if(btn)btn.disabled=true;comFetch('/hashes/vote',{method:'POST',body:JSON.stringify({id,verdict})}).then(r=>{if(!r||!r.ok)return toast('No se pudo votar');hashLookup()})}
+function hashAdd(){
+  const file_name=($('hsf').value||'').trim();const sha256=($('hsh').value||'').trim();
+  const verdict=(document.querySelector('input[name="hsv"]:checked')||{}).value||'confiable';
+  if(!/^[a-fA-F0-9]{64}$/.test(sha256))return toast('El SHA-256 debe tener 64 caracteres hexadecimales');
+  comFetch('/hashes',{method:'POST',body:JSON.stringify({file_name,sha256,verdict})}).then(r=>{
+    if(!r)return toast('Error de red');
+    if(!r.ok)return toast(r.error||'No se pudo guardar');
+    toast(r.note?r.note:'✓ Hash guardado — gracias por ayudar');
+    $('hsf').value='';$('hsh').value='';$('hss').value=sha256;hashLookup();
+  });
+}
+</script>
+
 </div><!-- /grid -->
 
 <section class="tools-faq">
@@ -1372,7 +1562,7 @@ footer a{color:var(--p);text-decoration:none}
 
   <details>
     <summary>¿Estas herramientas son gratis y lo seguirán siendo?</summary>
-    <div class="faq-a">Sí, las 36 herramientas son 100% gratuitas y no requieren registro ni pago. El sitio se sostiene con anuncios no intrusivos y servicios de desarrollo web; si en el futuro hubiera planes adicionales, las herramientas gratuitas seguirían siendo gratuitas.</div>
+    <div class="faq-a">Sí, las 40 herramientas son 100% gratuitas y no requieren registro ni pago. El sitio se sostiene con anuncios no intrusivos y servicios de desarrollo web; si en el futuro hubiera planes adicionales, las herramientas gratuitas seguirían siendo gratuitas.</div>
   </details>
 
   <details>
@@ -1440,6 +1630,7 @@ window.addEventListener('scroll',()=>{
 //  FILTROS
 // ──────────────────────────────────
 let activeTag='all';
+let _lastShown=new Set();
 function filterTag(tag,btn){
   activeTag=tag;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
@@ -1449,15 +1640,55 @@ function filterTag(tag,btn){
 function filterTools(q){applyFilter(q)}
 function applyFilter(q){
   const ql=q.toLowerCase();
+  const shown=[],reshown=[];
   document.querySelectorAll('.card').forEach(c=>{
     const titleEl=c.querySelector('h2')||c.querySelector('.ch span')||c.querySelector('.ch');
     const title=(titleEl?.textContent||'').toLowerCase();
     const tags=c.dataset.tags||'';
     const mq=!ql||title.includes(ql)||tags.includes(ql);
     const mt=activeTag==='all'||tags.includes(activeTag);
-    c.classList.toggle('hidden',!(mq&&mt));
+    const nowShow=mq&&mt;
+    const wasHidden=!_lastShown.has(c);
+    c.classList.toggle('hidden',!nowShow);
+    if(nowShow&&wasHidden)reshown.push(c);
+    if(nowShow)shown.push(c);
+  });
+  _lastShown=new Set(shown);
+  animateShown(reshown);
+}
+function animateShown(list){
+  if(!list.length)return;
+  const rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  list.forEach((c,i)=>{
+    c.classList.remove('filter-in');
+    void c.offsetWidth;
+    c.style.animationDelay=rm?'0ms':(Math.min(i*22,330)+'ms');
+    c.classList.add('filter-in');
   });
 }
+// Reveal con stagger al hacer scroll (solo si hay motion e IntersectionObserver)
+(function(){
+  const rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cards=Array.prototype.slice.call(document.querySelectorAll('.grid .card'));
+  if(!cards.length||rm||!('IntersectionObserver' in window))return;
+  cards.forEach(c=>c.classList.add('t-enter'));
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(!e.isIntersecting)return;
+      const c=e.target;
+      const idx=cards.indexOf(c);
+      const delay=Math.min(idx*26,390);
+      c.style.transitionDelay=delay+'ms';
+      c.classList.add('t-in');
+      io.unobserve(c);
+      setTimeout(()=>{
+        c.classList.remove('t-enter','t-in');
+        c.style.transitionDelay='';
+      },520+delay);
+    });
+  },{rootMargin:'0px 0px -48px 0px',threshold:.08});
+  cards.forEach(c=>io.observe(c));
+})();
 
 // ──────────────────────────────────
 //  1. CONTRASEÑAS
@@ -3526,7 +3757,7 @@ async function rvResolve(force) {
           selector: '.fbar .chips',
           icon: 'fa-solid fa-filter',
           title: 'Filtrar por categoría',
-          text: 'Usa las chips para ver solo Seguridad, Utilidad, Network, Conversores, Diseño o Dev.'
+          text: 'Usa las chips para ver solo Seguridad, Utilidad, Network, Conversores, Diseño, Dev o IA.'
         },
         {
           selector: '.card[data-tags="seg"] .ch',

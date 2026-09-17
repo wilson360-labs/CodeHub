@@ -2,7 +2,7 @@
 
 # `<Wilson.E/>` — CodeHub
 
-**Portfolio profesional · 27 herramientas web · Apps Android · Chat IA**
+**Portfolio profesional · 40 herramientas web · Apps Android · Chat IA**
 
 [![Deploy](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://wilson360-labs.vercel.app)
 [![Backend](https://img.shields.io/badge/Backend-Render-purple?logo=render)](https://codehub-98s6.onrender.com/api/health)
@@ -19,7 +19,7 @@
 
 Portfolio de **Wilson.E**, desarrollador web full stack de Guatemala. Incluye:
 
-- **27 herramientas web** gratuitas (contraseñas, QR, clima, traductor, imagen IA, y más)
+- **40 herramientas web** gratuitas (contraseñas, QR, clima, traductor, imagen IA, y más)
 - **Catálogo de apps Open Source** verificadas contra su repositorio de GitHub
 - **Chat IA** powered by Groq (LLaMA 3.3 70B) con fallback a Gemini
 - **Descargador de videos** de redes sociales
@@ -45,7 +45,7 @@ Portfolio de **Wilson.E**, desarrollador web full stack de Guatemala. Incluye:
 ```
 CodeHub/
 ├── index.html          # Portfolio principal
-├── tools.html          # 27 herramientas web
+├── tools.html          # 40 herramientas web
 ├── opensource.html     # Apps Android Open Source
 ├── servicios.html      # Servicios freelance
 ├── downloader.html     # Descargador de videos

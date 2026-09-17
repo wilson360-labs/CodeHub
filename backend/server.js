@@ -1908,6 +1908,12 @@ const universalResolverRouter = require('./modules/universal-resolver');
 const { validateUrlSafety: validateUrlSsrf } = require('./modules/universal-resolver/resolver');
 app.use('/api/resolver', universalResolverRouter);
 
+// ── Community — herramientas comunitarias de ciberseguridad ────
+// Central de estafas, muro de alertas y verificador de hashes (Supabase).
+const { createCommunityRouter, ensureCommunityTables } = require('./modules/community');
+const communityRouter = createCommunityRouter(supabase);
+app.use('/api/community', communityRouter);
+
 // ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
 // Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca
@@ -6843,6 +6849,7 @@ app.use((err, req, res, next) => {
   await ensurePushTable();
   await ensureFCMTable();
   await ensureStatsTables();
+  await ensureCommunityTables(supabase, splitSqlStatements);
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);
