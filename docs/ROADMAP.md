@@ -76,8 +76,15 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 - **▶ Avance (Fase 1.1, Sept 2026):** favoritos de tools en `/tools` con estrellas por card,
   `localStorage` (invitado) + sync en la nube (registrado) vía `/api/user/data` (`backend/modules/userdata.js`,
   tabla Supabase `user_data`, protegida por `requireAuth`); migración automática anónimo→cuenta al detectar
-  sesión (`ch_auth_session` reutilizada, sin duplicar el panel de login). Resta: favoritos de apps,
-  historial de uso y settings cloud para cerrar 3.1.
+  sesión (`ch_auth_session` reutilizada, sin duplicar el panel de login). **Completada**.
+- **▶ Avance (tramo 3.1, Sept 2026):** favoritos de apps en `/opensource` (sync del namespace
+  `app:` vía `MyApps.importIds` sin pisar favoritos de tools), historial de uso de herramientas
+  (`/tools`: registro por interacción, chip ⏱ Recientes, cola cloud con debounce),
+  settings cloud (tema, fuente, alertas, región sismos/clima) con restore al iniciar sesión
+  y subida por cambios. Estrellas de tools ahora funcionan para todas las cards (slug por título,
+  no solo las 3 con id). Backend: `favorites` con semántica PATCH (true add / false delete),
+  `history` (cap 40) y `settings` con región `loc` en `/api/user/data`; cobertura de tests
+  (`backend/tests/userdata.test.js`).
 
 ### 3.2 Polish app-like
 - **Qué:** install prompt PWA propio (antes del nativo), offline shell real de `/tools` (copy, sin HTML), pull-to-refresh, gestos entre vistas, transición de páginas (ya existe `view-transitions.js` — integrar por página).
