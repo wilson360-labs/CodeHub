@@ -30,6 +30,11 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || null;
 
 if (!MONGODB_URI) {
   console.error('❌ Falta MONGODB_URI en el entorno.');
+  console.error('   1) Add the repo secret:  GitHub → Settings → Secrets and variables → Actions');
+  console.error('      → New repository secret → MONGODB_URI → pega la misma URI de MongoDB Atlas');
+  console.error('      que usa Render (backend/render.yaml). GITHUB_TOKEN NO hay que crearlo:');
+  console.error('      Actions lo provee automáticamente.');
+  console.error('   2) Vuelve a correr este workflow (Actions → "Revisar GitHub Releases" → Run workflow).');
   process.exit(1);
 }
 

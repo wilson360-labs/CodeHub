@@ -29,6 +29,9 @@ jobs:
       - name: 🔎 Revisar y actualizar catálogo
         working-directory: ./backend
         env:
+          # Requerido: crear el repo secret MONGODB_URI con la MISMA URI de MongoDB
+          # Atlas que usa Render (backend/render.yaml). Sin él, el job falla a propósito.
+          # GITHUB_TOKEN es automático (no hay que crearlo).
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/check-app-updates.js
