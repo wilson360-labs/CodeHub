@@ -17,16 +17,13 @@
       });
     })();
   </script>
-  <!-- Google AdSense — Auto Ads (no se carga en WebView/APK) -->
+  <!-- Google AdSense — Auto Ads vía gtag (respeta Consent Mode v2; no se carga en WebView/APK) -->
   <script>
     (function () {
       if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
-      var s = document.createElement('script');
-      s.async = true;
-      s.crossOrigin = 'anonymous';
-      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3780093322926832';
-      s.setAttribute('data-ad-client', 'ca-pub-3780093322926832');
-      document.head.appendChild(s);
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('config', 'ca-pub-3780093322926832');
     })();
   </script>
   <!-- Loader perezoso de CDN pesados (qrcodejs/puter/pdf.js/tesseract) — se cargan solo al usar cada tool -->
