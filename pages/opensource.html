@@ -280,6 +280,60 @@
   <script src="../js/connection-alert.js?v=20260810a" defer></script>
   <script src="../js/offline-queue.js?v=20260907a" defer></script>
 <script>
+// ═══════════════════════════════════════════════════════════════
+//  CUENTA (Fase 1) — favoritos de apps en la nube (MyApps sync)
+//  "Mis apps" vive en localStorage (ch_my_apps). Con sesión de
+//  js/auth.js (ch_auth_session), se importa la nube al local y cada
+//  toggle sincroniza el namespace "app:" de /api/user/data sin pisar
+//  los favoritos de tools (merge read-modify-write).
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+  var SKEY='ch_auth_session', MY='ch_my_apps';
+  var API=(typeof _CH_BACKEND!=='undefined'?_CH_BACKEND:'https://codehub-98s6.onrender.com')+'/api/user/data';
+  function readSession(){try{var raw=localStorage.getItem(SKEY)||sessionStorage.getItem(SKEY);if(!raw)return null;var s=JSON.parse(raw);return(s&&s.token&&s.id)?s:null;}catch(e){return null;}}
+  function auth(){var s=readSession();return {Authorization:'Bearer '+(s?s.token:''),'Content-Type':'application/json'};}
+  function cloudGet(){var s=readSession();if(!s)return Promise.resolve(null);return fetch(API,{headers:auth()}).then(function(r){return r.json().catch(function(){return{ok:false};});}).catch(function(){return null;});}
+  function cloudPut(payload){var s=readSession();if(!s)return Promise.resolve();return fetch(API,{method:'PUT',headers:auth(),body:JSON.stringify(payload)}).catch(function(){});}
+  function appList(){var a=[];try{var r=localStorage.getItem(MY);var o=r?JSON.parse(r):[];a=Array.isArray(o)?o:[];}catch(e){}return a;}
+  function cloudToLocal(){
+    cloudGet().then(function(body){
+      if(!body||!body.ok||!body.data)return;
+      var f=body.data.favorites||{},ids=[],k;
+      for(k in f)if(k.indexOf('app:')===0&&f[k])ids.push(k.slice(4));
+      if(ids.length&&window.MyApps&&MyApps.importIds)MyApps.importIds(ids);
+    });
+  }
+  function cloudSyncApps(){
+    var s=readSession();if(!s)return;
+    cloudGet().then(function(body){
+      var cur=(body&&body.ok&&body.data&&body.data.favorites)?body.data.favorites:{};
+      var next={},k;
+      for(k in cur)if(k.indexOf('app:')!==0&&cur[k])next[k]=true;
+      appList().forEach(function(app){next['app:'+app.appId]=true;});
+      return cloudPut({favorites:next});
+    }).catch(function(){});
+  }
+  if(window.MyApps&&MyApps.toggle&&!MyApps._chSynced){
+    var _t=MyApps.toggle;
+    MyApps.toggle=function(id){var r=_t(id);cloudSyncApps();return r;};
+    try{MyApps._chSynced=true;}catch(e){}
+  }
+  var wasLogged=!!readSession();
+  function syncDown(){if(readSession())cloudToLocal();}
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',syncDown);
+  }else syncDown();
+  document.addEventListener('os:catalog-loaded',syncDown);
+  window.addEventListener('storage',function(e){
+    if(e.key!==SKEY)return;
+    var now=!!readSession();
+    if(now&&!wasLogged)syncDown();
+    wasLogged=now;
+  });
+})();
+</script>
+<script>
 // ── SCROLL PROGRESS ─────────────────────────────────────────────
 (function () {
   var bar = document.getElementById('pbar');

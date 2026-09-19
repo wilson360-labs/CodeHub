@@ -491,6 +491,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="chip" onclick="filterTag('ai',this)">🤖 IA</button>
     <button class="chip" onclick="filterTag('com',this)">🤝 Comunidad</button>
     <button class="chip" onclick="filterTag('fav',this)">⭐ Favoritas</button>
+    <button class="chip" onclick="filterRecent(this)">⏱ Recientes</button>
   </div>
 </div>
 
@@ -1564,61 +1565,118 @@ function hashAdd(){
 </script>
 
 <script>
-// ──────────────────────────────────
-//  FAVORITOS (Fase 1) — estrellas por tool
-//  Invitado: localStorage (ch_favs). Registrado: nube (/api/user/data)
-//  con migración al detectar sesión. Reusa la sesión guardada por
-//  js/auth.js (ch_auth_session) sin duplicar el panel de login.
-// ──────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+//  CUENTA (Fase 1) — estrellas + historial por tool
+//  Invitado: localStorage (ch_favs / ch_recent). Registrado: nube
+//  (/api/user/data) con merge read-modify-write para no pisar los
+//  favoritos de apps (prefijo app:) ni de otros dispositivos.
+//  Reusa la sesión de js/auth.js (ch_auth_session) sin duplicar
+//  el panel de login. El backend aplica PATCH: true agrega / false elimina.
+// ═══════════════════════════════════════════════════════════════
 (function(){
   'use strict';
-  var FAV_KEY='ch_favs';
-  var SKEY='ch_auth_session';
+  var FAV_KEY='ch_favs', REC_KEY='ch_recent', SKEY='ch_auth_session', MAX_REC=40;
   var API=(typeof _CH_BACKEND!=='undefined'?_CH_BACKEND:'https://codehub-98s6.onrender.com')+'/api/user/data';
   function readSession(){try{var raw=localStorage.getItem(SKEY)||sessionStorage.getItem(SKEY);if(!raw)return null;var s=JSON.parse(raw);return(s&&s.token&&s.id)?s:null;}catch(e){return null;}}
-  function getDeviceFavs(){try{var r=localStorage.getItem(FAV_KEY);var o=r?JSON.parse(r):{};return(o&&typeof o==='object')?o:{};}catch(e){return{};}}
-  function setDeviceFavs(o){try{localStorage.setItem(FAV_KEY,JSON.stringify(o));}catch(e){}}
-  var session=readSession();
-  var favs=getDeviceFavs();
-  var stars=[];
-
-  function pushCloud(favsToSave){
-    if(!session)return Promise.resolve();
-    return fetch(API,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.token},body:JSON.stringify({favorites:favsToSave||favs})}).catch(function(){});
+  function getObj(k){try{var r=localStorage.getItem(k);var o=r?JSON.parse(r):null;return(o&&typeof o==='object')?o:{};}catch(e){return{};}}
+  function setObj(k,o){try{localStorage.setItem(k,JSON.stringify(o));}catch(e){}}
+  function slugOf(card){
+    try{
+      var el=card.querySelector('h2')||card.querySelector('.ch span')||card.querySelector('.ch');
+      return (el&&el.textContent||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48);
+    }catch(e){return '';}
   }
-  function loadCloud(){
+  window._chSlug=function(card){return card?(card.id||slugOf(card)):'';};
+
+  var session=readSession();
+  var favs=getObj(FAV_KEY);
+  var stars=[];
+  function authHeaders(){return {Authorization:'Bearer '+(session?session.token:''),'Content-Type':'application/json'};}
+  function cloudPut(payload){
     if(!session)return Promise.resolve();
-    return fetch(API,{headers:{Authorization:'Bearer '+session.token}})
+    return fetch(API,{method:'PUT',headers:authHeaders(),body:JSON.stringify(payload)}).catch(function(){});
+  }
+
+  // ── Historial reciente (device + nube) ──────────────────────
+  function getRecent(){var a=[];try{var r=localStorage.getItem(REC_KEY);var o=r?JSON.parse(r):[];a=Array.isArray(o)?o:[];}catch(e){}return a;}
+  function rebuildRecSets(){
+    var list=getRecent();
+    window._recTs={};window._recSet=new Set();
+    list.forEach(function(x){if(x&&x.id&&x.ts){window._recTs[x.id]=x.ts;window._recSet.add(x.id);}});
+  }
+  function saveRecent(list){
+    list=(Array.isArray(list)?list:[]).slice(0,MAX_REC);
+    try{localStorage.setItem(REC_KEY,JSON.stringify(list));}catch(e){}
+    window._recTs={};window._recSet=new Set();
+    list.forEach(function(x){if(x&&x.id&&x.ts){window._recTs[x.id]=x.ts;window._recSet.add(x.id);}});
+  }
+  function recordUse(card){
+    var id=window._chSlug(card);if(!id)return;
+    var now=Date.now();
+    if(window._recTs&&window._recTs[id]&&(now-window._recTs[id])<20000)return;
+    var list=getRecent().filter(function(x){return x&&x.id!==id;});
+    list.unshift({id:id,ts:now});
+    saveRecent(list);
+    scheduleHistoryPush();
+  }
+  var _hTimer=null;
+  function scheduleHistoryPush(){if(!session)return;if(_hTimer)clearTimeout(_hTimer);_hTimer=setTimeout(pushHistory,4000);}
+  function pushHistory(){
+    _hTimer=null;if(!session)return;
+    var list=getRecent().slice(0,MAX_REC);
+    if(!list.length)return;
+    cloudPut({history:list});
+  }
+  function mergeHistoryCloud(cloudList){
+    if(!Array.isArray(cloudList))return;
+    var map={};
+    getRecent().forEach(function(x){if(x&&x.id&&!map[x.id])map[x.id]=x;});
+    cloudList.forEach(function(x){if(x&&x.id&&(!map[x.id]||x.ts>map[x.id].ts))map[x.id]=x;});
+    var merged=Object.keys(map).map(function(id){return map[id];}).sort(function(a,b){return b.ts-a.ts;}).slice(0,MAX_REC);
+    saveRecent(merged);
+    scheduleHistoryPush();
+  }
+  // usar una tool = interactuar dentro de su cuerpo (.cb)
+  document.addEventListener('click',function(e){
+    var cb=e.target.closest&&e.target.closest('.cb');
+    if(!cb)return;
+    var card=cb.closest('.card');
+    if(card)recordUse(card);
+  },true);
+
+  // ── Favoritos (PATCH + RMW) ─────────────────────────────────
+  function rmwPatch(patch){
+    if(!session)return Promise.resolve(null);
+    return fetch(API,{headers:authHeaders()})
       .then(function(r){return r.json().catch(function(){return{ok:false};});})
       .then(function(body){
-        if(!body||!body.ok||!body.data||!body.data.favorites)return;
-        var cloud=bootData_favs(body.data.favorites);
-        var merged={},k,changed=false;
-        for(k in cloud)merged[k]=1;
-        for(k in favs){ if(favs[k]&&!merged[k]){merged[k]=true;changed=true;} }
-        if(changed){favs=merged;setDeviceFavs(favs);pushCloud(favs);}
-        else favs=cloud;
-        setStars();
-      }).catch(function(){});
-  }
-  function bootData_favs(o){ // normaliza: solo trues
-    var out={};try{if(o&&typeof o==='object')for(var k in o)if(o[k])out[k]=true;}catch(e){}return out;
+        var cur=(body&&body.ok&&body.data&&body.data.favorites)?body.data.favorites:{};
+        var k,changed=false;
+        for(k in patch){
+          if(patch[k]){if(!cur[k])changed=true;cur[k]=true;}
+          else if(cur[k]){delete cur[k];changed=true;}
+        }
+        if(!changed)return cur;
+        return cloudPut({favorites:cur}).then(function(){return cur;});
+      }).catch(function(){return null;});
   }
   function setStars(){
     stars.forEach(function(s){s.btn.classList.toggle('on',!!favs[s.id]);s.btn.setAttribute('aria-pressed',favs[s.id]?'true':'false');});
   }
   function toggleFav(id,btn){
-    var on=!favs[id];
+    var on=!favs[id],patch={};
+    patch[id]=on;
     if(on)favs[id]=true;else delete favs[id];
     btn.classList.toggle('on',on);btn.setAttribute('aria-pressed',on?'true':'false');
     var card=btn.closest('.card');
     if(card){var t=(card.dataset.tags||'').split(/\s+/).filter(Boolean);var i=t.indexOf('fav');if(on&&i<0)t.push('fav');if(!on&&i>=0)t.splice(i,1);card.dataset.tags=t.join(' ');}
-    session?pushCloud(favs):setDeviceFavs(favs);
+    if(session)rmwPatch(patch).then(function(cur){if(cur){favs=cur;setObj(FAV_KEY,favs);}});
+    else setObj(FAV_KEY,favs);
     if(activeTag==='fav'){var inp=document.querySelector('.sw input');if(inp)applyFilter(inp.value);}
   }
   function addStars(){
     document.querySelectorAll('.grid .card').forEach(function(card){
-      var id=card.id;if(!id||card.querySelector('.fav'))return;
+      var id=window._chSlug(card);if(!id||card.querySelector('.fav'))return;
       var btn=document.createElement('button');
       btn.type='button';btn.className='fav';btn.title='Guardar en favoritos';btn.setAttribute('aria-pressed','false');
       btn.innerHTML='<i class="fas fa-star"></i>';
@@ -1632,17 +1690,49 @@ function hashAdd(){
       stars.push({id:id,btn:btn});
     });
   }
+
+  // ── Carga de nube + migración anónimo→cuenta ─────────────────
+  function loadCloud(){
+    if(!session)return Promise.resolve();
+    return fetch(API,{headers:authHeaders()})
+      .then(function(r){return r.json().catch(function(){return{ok:false};});})
+      .then(function(body){
+        if(!body||!body.ok||!body.data)return null;
+        var cloud=body.data.favorites||{};
+        var merged={},k,added=[];
+        for(k in cloud)if(cloud[k])merged[k]=true;
+        for(k in favs)if(favs[k]&&!merged[k]){merged[k]=true;added.push(k);}
+        favs=merged;setObj(FAV_KEY,favs);setStars();
+        if(added.length){var p={};for(k=0;k<added.length;k++)p[added[k]]=true;rmwPatch(p);}
+        if(Array.isArray(body.data.history))mergeHistoryCloud(body.data.history);
+        return body.data;
+      }).catch(function(){return null;});
+  }
   function init(){
     addStars();
+    rebuildRecSets();
     if(session)loadCloud();
     window.addEventListener('storage',function(e){
       if(e.key!==SKEY)return;
       var was=session;session=readSession();
-      if(session&&!was)loadCloud();
+      if(session&&!was){
+        addStars();
+        loadCloud();
+      }else if(!session&&was){
+        session=null;
+      }
     });
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
+// Chip ⏱ Recientes: modo propio de applyFilter (window._recSet)
+function filterRecent(btn){
+  activeTag='rec';
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  btn.classList.add('on');
+  var inp=document.querySelector('.sw input');
+  if(inp)applyFilter(inp.value);
+}
 </script>
 
 </div><!-- /grid -->
@@ -1731,18 +1821,24 @@ function filterTools(q){applyFilter(q)}
 function applyFilter(q){
   const ql=q.toLowerCase();
   const shown=[],reshown=[];
+  const isRec=activeTag==='rec';
   document.querySelectorAll('.card').forEach(c=>{
     const titleEl=c.querySelector('h2')||c.querySelector('.ch span')||c.querySelector('.ch');
     const title=(titleEl?.textContent||'').toLowerCase();
     const tags=c.dataset.tags||'';
     const mq=!ql||title.includes(ql)||tags.includes(ql);
-    const mt=activeTag==='all'||tags.includes(activeTag);
+    const mt=activeTag==='all'||(isRec?(window._recSet&&window._recSet.has(c)):tags.includes(activeTag));
     const nowShow=mq&&mt;
     const wasHidden=!_lastShown.has(c);
     c.classList.toggle('hidden',!nowShow);
     if(nowShow&&wasHidden)reshown.push(c);
     if(nowShow)shown.push(c);
   });
+  if(isRec&&window._recTs){
+    const grid=document.getElementById('grid');
+    shown.sort((a,b)=>(window._recTs[b]||0)-(window._recTs[a]||0));
+    shown.forEach(c=>grid.appendChild(c));
+  }
   _lastShown=new Set(shown);
   animateShown(reshown);
 }

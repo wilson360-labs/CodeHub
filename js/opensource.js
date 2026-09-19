@@ -1152,7 +1152,33 @@ const MyApps = (() => {
     }).join('');
   }
 
-  return { has, toggle, updateUI: _updateUI };
+  function importIds(ids) {
+    if (!Array.isArray(ids)) return;
+    let list = _load();
+    let changed = false;
+    ids.forEach(id => {
+      if (!id || list.some(a => a.appId === id)) return;
+      const card = document.querySelector(`.app-card[data-app-id="${id}"]`);
+      const obj = card
+        ? {
+            appId: id,
+            nombre: card.querySelector('.app-name')?.textContent || id,
+            version: card.querySelector('.app-version-tag')?.textContent?.replace(/^v/, '') || '',
+            imagen: card.querySelector('.app-thumb img')?.src || '',
+            source_repo: card.dataset.repo || '',
+          }
+        : { appId: id, nombre: id };
+      list.push(obj);
+      changed = true;
+    });
+    if (changed) {
+      _save(list);
+      _updateUI();
+      _refreshFavButtons();
+    }
+  }
+
+  return { has, toggle, updateUI: _updateUI, refreshFavButtons: _refreshFavButtons, importIds };
 })();
 
 // Render initial My Apps state after catalog loads

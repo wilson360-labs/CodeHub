@@ -15,7 +15,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.06';
+const VERSION = 'codehub-v7.07';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -116,7 +116,7 @@ const PRECACHE = [
   '/dist/assets/js/notifications.024f9d794c.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
-  '/dist/assets/js/opensource.5f5dbeab50.min.js',
+  '/dist/assets/js/opensource.5c2e066b4f.min.js',
   '/dist/assets/js/optimizer.dd22383a65.min.js',
   '/dist/assets/js/permissions-setup.315574d7b4.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',

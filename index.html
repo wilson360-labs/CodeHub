@@ -8460,5 +8460,78 @@ function setAIMood(btn) {
 <script src="/dist/assets/js/connection-alert.c76b7978b9.min.js" defer></script>
 <script src="/dist/assets/js/notifications.024f9d794c.min.js" defer></script>
 <script src="/dist/assets/js/rewarded-ad.466d6994d0.min.js" defer></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CUENTA (Fase 1) — settings cloud (tema, fuente, alertas, región)
+//  Con sesión (CodeHubAuth), cada cambio de preferencias se sube a
+//  /api/user/data (settings) con debounce; al iniciar sesión se
+//  restauran las preferencias guardadas. Las claves dispositivas
+//  (ch_push_endpoint, ch_user_lat/lon) NO se sincronizan.
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+  var KEYS=['theme','cfg_font','cfg_lang','cfg_anim','cfg_neural','ch_weather_alerts','ch_weather_interval','ch_notif_sismos','ch_notif_sismos_mag','ch_user_city','ch_user_country'];
+  var API=((typeof window.BACKEND_INDEX!=='undefined'&&window.BACKEND_INDEX)?window.BACKEND_INDEX:'https://codehub-98s6.onrender.com')+'/api/user/data';
+  function sess(){try{return (window.CodeHubAuth&&CodeHubAuth.getSession)?CodeHubAuth.getSession():null;}catch(e){return null;}}
+  function snap(){var s=sess();if(!s)return'anon';var o={};KEYS.forEach(function(k){o[k]=localStorage.getItem(k)||'';});o.s=1;return JSON.stringify(o);}
+  function put(settings){
+    var s=sess();if(!s)return;
+    try{fetch(API,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+s.token},body:JSON.stringify({settings:settings})}).catch(function(){});}catch(e){}
+  }
+  var last=snap();
+  setInterval(function(){
+    var cur=snap();if(cur===last)return;last=cur;
+    var s=sess();if(!s)return;
+    var o={};KEYS.forEach(function(k){var v=localStorage.getItem(k);if(v!==null)o[k]=v;});
+    put(o);
+  },4000);
+  function applySettings(s){
+    if(!s||typeof s!=='object')return;
+    if(s.theme==='dark'||s.theme==='light'){
+      localStorage.setItem('theme',s.theme);
+      if(window.CodeHubTheme&&CodeHubTheme.apply)CodeHubTheme.apply(s.theme,true);
+    }
+    if(s.cfg_font==='sm'||s.cfg_font==='lg'||s.cfg_font==='md'){
+      localStorage.setItem('cfg_font',s.cfg_font);
+      document.body.classList.remove('font-sm','font-lg');
+      if(s.cfg_font!=='md')document.body.classList.add('font-'+s.cfg_font);
+      document.querySelectorAll('[onclick*="setCfg(\'font\'"]').forEach(function(b){
+        b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("'"+s.cfg_font+"'")>=0);
+      });
+    }
+    if(s.cfg_lang&&typeof applyLang==='function'){localStorage.setItem('cfg_lang',s.cfg_lang);applyLang(s.cfg_lang);}
+    if(s.cfg_anim==='1'){localStorage.setItem('cfg_anim','1');document.body.classList.remove('no-anim');}
+    else if(s.cfg_anim==='0'){localStorage.setItem('cfg_anim','0');document.body.classList.add('no-anim');}
+    if(s.ch_weather_alerts==='1'||s.ch_weather_alerts==='0'){
+      localStorage.setItem('ch_weather_alerts',s.ch_weather_alerts);
+      var wx=document.getElementById('wx-alerts-toggle');
+      if(wx)wx.classList.toggle('on',s.ch_weather_alerts==='1');
+    }
+    if(s.ch_weather_interval){localStorage.setItem('ch_weather_interval',s.ch_weather_interval);if(typeof chSyncIntervalUI==='function')chSyncIntervalUI();}
+    if(s.ch_notif_sismos==='1'||s.ch_notif_sismos==='0'){localStorage.setItem('ch_notif_sismos',s.ch_notif_sismos);if(typeof chSyncSeismicAlertUI==='function')chSyncSeismicAlertUI();}
+    if(s.ch_notif_sismos_mag){localStorage.setItem('ch_notif_sismos_mag',s.ch_notif_sismos_mag);if(typeof chSyncSeismicAlertUI==='function')chSyncSeismicAlertUI();}
+    if(s.ch_user_city&&!localStorage.getItem('ch_user_city'))localStorage.setItem('ch_user_city',s.ch_user_city);
+    if(s.ch_user_country&&!localStorage.getItem('ch_user_country'))localStorage.setItem('ch_user_country',s.ch_user_country);
+  }
+  function loadCloud(){
+    var s=sess();if(!s)return;
+    fetch(API,{headers:{Authorization:'Bearer '+s.token}}).then(function(r){return r.json();}).then(function(body){
+      if(!body||!body.ok||!body.data)return;
+      last=snap();
+      applySettings(body.data.settings||{});
+      last=snap();
+    }).catch(function(){});
+  }
+  var booted=false;
+  function init(){
+    if(booted)return;booted=true;
+    if(window.CodeHubAuth&&CodeHubAuth.on)CodeHubAuth.on(loadCloud);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadCloud);
+    else loadCloud();
+  }
+  if(window.CodeHubAuth)init();
+  else setTimeout(init,2500);
+})();
+</script>
 </body>
 </html>
