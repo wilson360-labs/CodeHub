@@ -40,3 +40,16 @@ en 380, 480, 640, 720 y 768 px como mínimo, además de escritorio.
 - `sw.js` precachea los CSS principales (`index.css`, `components.css`,
   `index-responsive.css`, `site-tour.css`, `viewport-guard.css`). Si se agrega
   un CSS nuevo, agregarlo al `PRECACHE` y bumpear `VERSION` en `sw.js`.
+
+## Anuncios (OBLIGATORIO seguir Google, nunca reglas propias)
+
+Toda edición relacionada con publicidad (AdSense web / AdMob app) debe seguir
+`docs/ADS-COMPLIANCE.md`. Reglas mínimas que SIEMPRE aplican:
+
+1. **No reintroducir** el loader clásico `adsbygoogle.js?client=…` en páginas;
+   usar `gtag('config', 'ca-pub-3780093322926832')`.
+2. **No quitar** el Consent Mode v2 (default `denied` + `wait_for_update`) ni el
+   guard `CodeHubNative`/`__apkNative` que impide AdSense dentro del WebView/APK.
+3. La app monetiza **solo con AdMob (GMA SDK)** bajo el gate de UMP
+   (`ConsentManager.java`); nunca inyectar AdSense en el WebView.
+4. Mantener `ads.txt` y `app-ads.txt` servidos por el host real.
