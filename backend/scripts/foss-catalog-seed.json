@@ -639,6 +639,86 @@
       "categoria": "Utilidades",
       "source_repo": "d4rken-org/sdmaid-se",
       "imagen": "https://opengraph.githubassets.com/1/d4rken-org/sdmaid-se"
+    },
+    {
+      "appId": "os-redreader",
+      "nombre": "RedReader",
+      "descripcion": "Cliente de Reddit open source: navegación sin rastreadores, multiusuario y modo offline.",
+      "categoria": "Lectura",
+      "source_repo": "QuantumBadger/RedReader",
+      "imagen": "https://opengraph.githubassets.com/1/QuantumBadger/RedReader"
+    },
+    {
+      "appId": "os-feeder",
+      "nombre": "Feeder",
+      "descripcion": "Lector de feeds RSS/Atom de código abierto, con descargas offline y filtros.",
+      "categoria": "Lectura",
+      "source_repo": "spacecowboy/Feeder",
+      "imagen": "https://opengraph.githubassets.com/1/spacecowboy/Feeder"
+    },
+    {
+      "appId": "os-session",
+      "nombre": "Session",
+      "descripcion": "Mensajería cifrada y descentralizada que no necesita número de teléfono.",
+      "categoria": "Mensajería",
+      "source_repo": "oxen-io/session-android",
+      "imagen": "https://opengraph.githubassets.com/1/oxen-io/session-android"
+    },
+    {
+      "appId": "os-deltachat",
+      "nombre": "Delta Chat",
+      "descripcion": "Chat que funciona sobre tu propio correo electrónico, con cifrado de extremo a extremo.",
+      "categoria": "Mensajería",
+      "source_repo": "deltachat/deltachat-android",
+      "imagen": "https://opengraph.githubassets.com/1/deltachat/deltachat-android"
+    },
+    {
+      "appId": "os-aniyomi",
+      "nombre": "Aniyomi",
+      "descripcion": "Fork de Mihon para ver y leer anime, manga y novelas ligeras con extensiones.",
+      "categoria": "Video",
+      "source_repo": "aniyomiorg/aniyomi",
+      "imagen": "https://opengraph.githubassets.com/1/aniyomiorg/aniyomi"
+    },
+    {
+      "appId": "os-joplin",
+      "nombre": "Joplin",
+      "descripcion": "Toma de notas open source con markdown, tareas pendientes y sincronización cifrada.",
+      "categoria": "Productividad",
+      "source_repo": "laurent22/joplin",
+      "imagen": "https://opengraph.githubassets.com/1/laurent22/joplin"
+    },
+    {
+      "appId": "os-kiss-launcher",
+      "nombre": "KISS Launcher",
+      "descripcion": "Launcher minimalista que abre apps escribiendo, de código abierto y sin publicidad.",
+      "categoria": "Productividad",
+      "source_repo": "Neamar/KISS",
+      "imagen": "https://opengraph.githubassets.com/1/Neamar/KISS"
+    },
+    {
+      "appId": "os-aurora-droid",
+      "nombre": "Aurora Droid",
+      "descripcion": "Cliente F-Droid de Aurora Store para buscar e instalar apps del repositorio F-Droid.",
+      "categoria": "Productividad",
+      "source_repo": "whyorean/AuroraDroid",
+      "imagen": "https://opengraph.githubassets.com/1/whyorean/AuroraDroid"
+    },
+    {
+      "appId": "os-music-player-go",
+      "nombre": "Music Player GO",
+      "descripcion": "Reproductor de música local con ecualizador, temas y control por gestos, open source.",
+      "categoria": "Música",
+      "source_repo": "enricocid/Music-Player-GO",
+      "imagen": "https://opengraph.githubassets.com/1/enricocid/Music-Player-GO"
+    },
+    {
+      "appId": "os-fossify-notes",
+      "nombre": "Fossify Notes",
+      "descripcion": "Notas rápidas organizadas por carpetas, open source y respetuoso con la privacidad.",
+      "categoria": "Utilidades",
+      "source_repo": "FossifyOrg/Notes",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Notes"
     }
   ]
 }
