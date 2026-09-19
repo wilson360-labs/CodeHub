@@ -27,6 +27,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.LinearLayout;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.webkit.CookieManager;
@@ -69,6 +70,8 @@ public class MainActivity extends Activity {
     private FusedLocationProviderClient fusedLocation;
     private boolean backPressedOnce = false;
     private final Handler backHandler = new Handler(Looper.getMainLooper());
+    /** Franja inferior reservada para el banner de AdMob (nunca superpuesto al contenido). */
+    private FrameLayout bannerSlot;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -102,11 +105,23 @@ public class MainActivity extends Activity {
         progressBar.setLayoutParams(pbParams);
         progressBar.setVisibility(View.GONE);
 
-        FrameLayout rootLayout = new FrameLayout(this);
+        // Estructura vertical (AdMob — banners SIEMPRE abajo, nunca sobre el
+        // contenido): mainFrame (webview + barra de progreso) arriba, banner abajo.
+        LinearLayout rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(0xFF080810);
-        rootLayout.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
+
+        FrameLayout mainFrame = new FrameLayout(this);
+        mainFrame.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        rootLayout.addView(progressBar);
+        mainFrame.addView(progressBar);
+        rootLayout.addView(mainFrame, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        bannerSlot = new FrameLayout(this);
+        bannerSlot.setVisibility(View.GONE);
+        rootLayout.addView(bannerSlot, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         setContentView(rootLayout);
 
@@ -114,7 +129,7 @@ public class MainActivity extends Activity {
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
         try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
-        try { initAdMob(rootLayout); } catch (Throwable t) { crashLog("adMob", t); }
+        try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
@@ -133,11 +148,11 @@ public class MainActivity extends Activity {
     // Nada de AdMob se pide antes de que UMP resuelva el consentimiento
     // (EEE/UK/Canadá). Fuera de esas regiones lookup UMP resuelve inmediato
     // con canRequestAds=true y no se bloquea ningún anuncio.
-    private void initAdMob(final FrameLayout rootLayout) {
+    private void initAdMob() {
         ConsentManager.init(this, () -> {
             runOnUiThread(() -> {
                 if (!ConsentManager.canRequestAds()) return;
-                BannerAdManager.setup(MainActivity.this, rootLayout);
+                BannerAdManager.setup(MainActivity.this, bannerSlot);
                 RewardedAdManager.load(MainActivity.this);
                 InterstitialAdManager.load(MainActivity.this);
             });

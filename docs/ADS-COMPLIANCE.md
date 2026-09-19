@@ -69,11 +69,12 @@ apps salvo integraciones aprobadas; la app monetiza con AdMob, ver §2).
 - **Interstitial spam**: no mostrar intersticiales que bloqueen la UI sin interacción.
 - Clics propios en la app (usar **test ads** durante desarrollo, no ads reales).
 
-### Mejora recomendada (no urgente)
-El banner (`BannerAdManager`) se ancla sobre el FrameLayout raíz (cubre el borde
-inferior del WebView). Google prefiere que el banner NO solape contenido
-interactivo: idealmente la WebView debería quedar encima con padding inferior y
-el banner debajo (Layout vertical WebView+banner), o `WEBVIEW_PADDING` al mostrar.
+### Banner según guía de AdMob (implementado)
+`MainActivity` usa estructura vertical: **WebView arriba** (`mainFrame`, weight 1) y
+**franja inferior reservada** (`bannerSlot`) para el banner. `BannerAdManager`
+coloca el SMART_BANNER dentro de esa franja debajo del contenido; `show/hide`
+(desde JS) ocultan todo el slot → **el banner nunca se superpone a la UI**
+(patrón "recommended" de AdMob, no el "discouraged" que cubre contenido).
 
 ## 3) Cruzado (aplica en ambos)
 - Membresía y conflictos: no distributions de ads vía software (toolbars/ext) ni
