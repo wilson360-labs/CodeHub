@@ -359,6 +359,13 @@ footer a{color:var(--p);text-decoration:none}
   .card,.card.t-enter,.card.t-enter.t-in,.card.filter-in{opacity:1!important;transform:none!important;animation:none!important;transition:none!important}
   .card .ci{transform:none!important}
 }
+/* FAVORITOS (Fase 1) — estrella por card */
+.card{position:relative}
+.fav{position:absolute;top:.85rem;right:2.3rem;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:.75rem;opacity:0;transition:opacity .2s,color .2s,border-color .2s,background .2s}
+.card:hover .fav{opacity:1}
+.card .fav.on{opacity:1;color:#ffcf5c;background:rgba(255,170,0,.14);border-color:rgba(255,170,0,.4)}
+@media(hover:none){.fav{opacity:1}}
+.fav.on:active{transform:scale(.9)}
 </style>
 
 <link rel="stylesheet" href="../css/viewport-guard.css?v=20260915a">
@@ -483,6 +490,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="chip" onclick="filterTag('dev',this)">💻 Dev</button>
     <button class="chip" onclick="filterTag('ai',this)">🤖 IA</button>
     <button class="chip" onclick="filterTag('com',this)">🤝 Comunidad</button>
+    <button class="chip" onclick="filterTag('fav',this)">⭐ Favoritas</button>
   </div>
 </div>
 
@@ -1553,6 +1561,88 @@ function hashAdd(){
     $('hsf').value='';$('hsh').value='';$('hss').value=sha256;hashLookup();
   });
 }
+</script>
+
+<script>
+// ──────────────────────────────────
+//  FAVORITOS (Fase 1) — estrellas por tool
+//  Invitado: localStorage (ch_favs). Registrado: nube (/api/user/data)
+//  con migración al detectar sesión. Reusa la sesión guardada por
+//  js/auth.js (ch_auth_session) sin duplicar el panel de login.
+// ──────────────────────────────────
+(function(){
+  'use strict';
+  var FAV_KEY='ch_favs';
+  var SKEY='ch_auth_session';
+  var API=(typeof _CH_BACKEND!=='undefined'?_CH_BACKEND:'https://codehub-98s6.onrender.com')+'/api/user/data';
+  function readSession(){try{var raw=localStorage.getItem(SKEY)||sessionStorage.getItem(SKEY);if(!raw)return null;var s=JSON.parse(raw);return(s&&s.token&&s.id)?s:null;}catch(e){return null;}}
+  function getDeviceFavs(){try{var r=localStorage.getItem(FAV_KEY);var o=r?JSON.parse(r):{};return(o&&typeof o==='object')?o:{};}catch(e){return{};}}
+  function setDeviceFavs(o){try{localStorage.setItem(FAV_KEY,JSON.stringify(o));}catch(e){}}
+  var session=readSession();
+  var favs=getDeviceFavs();
+  var stars=[];
+
+  function pushCloud(favsToSave){
+    if(!session)return Promise.resolve();
+    return fetch(API,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.token},body:JSON.stringify({favorites:favsToSave||favs})}).catch(function(){});
+  }
+  function loadCloud(){
+    if(!session)return Promise.resolve();
+    return fetch(API,{headers:{Authorization:'Bearer '+session.token}})
+      .then(function(r){return r.json().catch(function(){return{ok:false};});})
+      .then(function(body){
+        if(!body||!body.ok||!body.data||!body.data.favorites)return;
+        var cloud=bootData_favs(body.data.favorites);
+        var merged={},k,changed=false;
+        for(k in cloud)merged[k]=1;
+        for(k in favs){ if(favs[k]&&!merged[k]){merged[k]=true;changed=true;} }
+        if(changed){favs=merged;setDeviceFavs(favs);pushCloud(favs);}
+        else favs=cloud;
+        setStars();
+      }).catch(function(){});
+  }
+  function bootData_favs(o){ // normaliza: solo trues
+    var out={};try{if(o&&typeof o==='object')for(var k in o)if(o[k])out[k]=true;}catch(e){}return out;
+  }
+  function setStars(){
+    stars.forEach(function(s){s.btn.classList.toggle('on',!!favs[s.id]);s.btn.setAttribute('aria-pressed',favs[s.id]?'true':'false');});
+  }
+  function toggleFav(id,btn){
+    var on=!favs[id];
+    if(on)favs[id]=true;else delete favs[id];
+    btn.classList.toggle('on',on);btn.setAttribute('aria-pressed',on?'true':'false');
+    var card=btn.closest('.card');
+    if(card){var t=(card.dataset.tags||'').split(/\s+/).filter(Boolean);var i=t.indexOf('fav');if(on&&i<0)t.push('fav');if(!on&&i>=0)t.splice(i,1);card.dataset.tags=t.join(' ');}
+    session?pushCloud(favs):setDeviceFavs(favs);
+    if(activeTag==='fav'){var inp=document.querySelector('.sw input');if(inp)applyFilter(inp.value);}
+  }
+  function addStars(){
+    document.querySelectorAll('.grid .card').forEach(function(card){
+      var id=card.id;if(!id||card.querySelector('.fav'))return;
+      var btn=document.createElement('button');
+      btn.type='button';btn.className='fav';btn.title='Guardar en favoritos';btn.setAttribute('aria-pressed','false');
+      btn.innerHTML='<i class="fas fa-star"></i>';
+      btn.addEventListener('click',function(e){e.stopPropagation();toggleFav(id,btn);});
+      var ch=card.querySelector('.ch');
+      if(ch)ch.appendChild(btn);else card.appendChild(btn);
+      if(favs[id]){
+        btn.classList.add('on');btn.setAttribute('aria-pressed','true');
+        var t=(card.dataset.tags||'').split(/\s+/).filter(Boolean);if(t.indexOf('fav')<0){t.push('fav');card.dataset.tags=t.join(' ');}
+      }
+      stars.push({id:id,btn:btn});
+    });
+  }
+  function init(){
+    addStars();
+    if(session)loadCloud();
+    window.addEventListener('storage',function(e){
+      if(e.key!==SKEY)return;
+      var was=session;session=readSession();
+      if(session&&!was)loadCloud();
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
 </script>
 
 </div><!-- /grid -->

@@ -73,6 +73,11 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
   - Historial de uso de herramientas (recientes por dispositivo + cloud).
   - Settings cloud (tema, fuente, notificaciones, región sismos/clima).
 - **Definición de hecho:** flujo de visita anónima → cuenta: datos migran; re-login restaura favoritos.
+- **▶ Avance (Fase 1.1, Sept 2026):** favoritos de tools en `/tools` con estrellas por card,
+  `localStorage` (invitado) + sync en la nube (registrado) vía `/api/user/data` (`backend/modules/userdata.js`,
+  tabla Supabase `user_data`, protegida por `requireAuth`); migración automática anónimo→cuenta al detectar
+  sesión (`ch_auth_session` reutilizada, sin duplicar el panel de login). Resta: favoritos de apps,
+  historial de uso y settings cloud para cerrar 3.1.
 
 ### 3.2 Polish app-like
 - **Qué:** install prompt PWA propio (antes del nativo), offline shell real de `/tools` (copy, sin HTML), pull-to-refresh, gestos entre vistas, transición de páginas (ya existe `view-transitions.js` — integrar por página).

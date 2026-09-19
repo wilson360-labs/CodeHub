@@ -163,7 +163,6 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 // /api/chat necesita un límite más alto que el resto (las imágenes van en
 // base64 dentro del JSON). Se registra ANTES del límite global de 10kb;
 // como ya deja el body parseado, el parser global de abajo lo detecta y
@@ -1913,6 +1912,12 @@ app.use('/api/resolver', universalResolverRouter);
 const { createCommunityRouter, ensureCommunityTables } = require('./modules/community');
 const communityRouter = createCommunityRouter(supabase);
 app.use('/api/community', communityRouter);
+
+// ── UserData — favoritos y settings por cuenta (Fase 1: producto) ──
+// Sesión validada con requireAuth (Bearer Supabase); guarda en Supabase.
+const { createUserDataRouter, ensureUserDataTables } = require('./modules/userdata');
+const userDataRouter = createUserDataRouter(supabase);
+app.use('/api/user', requireAuth, userDataRouter);
 
 // ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
@@ -6850,6 +6855,7 @@ app.use((err, req, res, next) => {
   await ensureFCMTable();
   await ensureStatsTables();
   await ensureCommunityTables(supabase, splitSqlStatements);
+  await ensureUserDataTables(supabase, splitSqlStatements);
 
   server.listen(PORT, () => {
     console.log(`🚀 CodeHub Backend v3.0 en puerto ${PORT}`);

@@ -13,6 +13,7 @@
 
 const express      = require('express');
 const rateLimit    = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit;
 const { resolve, hashUrl } = require('./resolver');
 const ResolvedLink = require('./ResolvedLink.model');
 
@@ -28,7 +29,7 @@ const resolverLimiter = rateLimit({
   keyGenerator: (req) =>
     req.headers['x-real-ip'] ||
     (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-    req.ip,
+    ipKeyGenerator()(req),
 });
 
 // ── Middleware de autenticación admin (reutiliza ADMIN_KEY del server) ──
