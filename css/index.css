@@ -913,24 +913,6 @@
             box-shadow: 0 4px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(47,128,237,0.15);
         }
 
-        /* Línea animada bajo el header */
-        header::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--primary), var(--secondary), var(--accent), var(--primary), transparent);
-            background-size: 200% 100%;
-            animation: headerLine 4s linear infinite;
-        }
-
-        @keyframes headerLine {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
         /* Contenedor interno del header */
         .header-inner {
             display: flex;
@@ -1158,22 +1140,6 @@
         }
 
 
-        header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 69, 0, 0.1), transparent);
-            animation: shimmer 3s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
         header h1 {
             font-size: 3.5rem;
             margin-bottom: 1rem;
@@ -1224,22 +1190,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
-            animation: flowingGradient 3s ease-in-out infinite;
-        }
-
-        @keyframes flowingGradient {
-            0%, 100% { transform: translateX(-100%); }
-            50% { transform: translateX(100%); }
-        }
-
         h2 {
             font-size: 2.5rem;
             margin-bottom: 2rem;
@@ -1274,23 +1224,6 @@
             .stat-label { font-size: .9rem !important; }
             .stat-sub { font-size: .68rem !important; }
             .stat-icon { font-size: 1.2rem !important; }
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 69, 0, 0.1), transparent);
-            transform: rotate(45deg);
-            animation: statShine 3s ease-in-out infinite;
-        }
-
-        @keyframes statShine {
-            0%, 100% { transform: translateX(-100%) rotate(45deg); }
-            50% { transform: translateX(100%) rotate(45deg); }
         }
 
         .stat-card:hover {
