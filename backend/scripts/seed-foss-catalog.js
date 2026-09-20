@@ -36,13 +36,16 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
 
   let creadas = 0, existentes = 0;
   for (const app of seed.apps) {
-    // Guarda anti-revert: si el seed trae la portada social del repo
-    // (opengraph.githubassets.com) y la DB ya tiene un logo real local
-    // (/img/...), se conserva el logo local en vez de pisarlo.
+    // Guarda anti-revert: si el seed NO propone un logo real (viene vacío o
+    // es la portada social del repo opengraph.githubassets.com) y la DB ya
+    // tiene un logo local (/img/... — aplicado por enrich-app-logos o de
+    // forma manual), se conserva el logo local en vez de pisarlo. Antes solo
+    // se protegía el caso opengraph, así que sembrar pisaba los logos de los
+    // apps sin imagen en el seed (ej. Magisk, Termux) dejándolas sin logo.
     const prev = await App.findOne({ appId: app.appId }).select('imagen').lean();
-    const seedIsPortada = /opengraph\.githubassets\.com/i.test(app.imagen || '');
+    const seedSinLogoOficial = !(app.imagen || '').trim() || /opengraph\.githubassets\.com/i.test(app.imagen || '');
     const prevIsLocal   = !!prev?.imagen && /^\/img\//.test(prev.imagen);
-    const imagenFinal   = (seedIsPortada && prevIsLocal) ? prev.imagen : (app.imagen || '');
+    const imagenFinal   = (seedSinLogoOficial && prevIsLocal) ? prev.imagen : (app.imagen || '');
 
     const res = await App.updateOne(
       { appId: app.appId },
