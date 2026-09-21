@@ -15,7 +15,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.08';
+const VERSION = 'codehub-v7.09';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -43,6 +43,8 @@ const PRECACHE = [
   '/css/optimizer.css',
   '/css/native-feel.css',
   '/css/viewport-guard.css',
+  '/css/prefs.css',
+  '/js/prefs.js',
   '/css/terminal.css',
   '/css/xterm.css',
   '/fonts/codehub-fonts.css',

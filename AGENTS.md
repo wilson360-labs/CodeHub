@@ -21,25 +21,37 @@ en 380, 480, 640, 720 y 768 px como mínimo, además de escritorio.
 
 ## Reglas de oro al editar CSS
 
-1. **`css/viewport-guard.css` es la última capa CSS** (se carga al final de la
-   cadena en `index.html`). Red de seguridad anti-desbordes. Toda corrección
-   de un componente se añade allí o dentro de su `@media` canónico.
-2. **Nunca inventar breakpoints intermedios** arbitrarios (p.ej. 517px, 703px).
+1. **`css/viewport-guard.css` es la penúltima capa CSS** (red de seguridad
+   anti-desbordes; se carga al final de la cadena en `index.html`, justo antes
+   de `css/prefs.css`). Toda corrección de un componente se añade allí o dentro
+   de su `@media` canónico.
+2. **`css/prefs.css` es SIEMPRE la última capa CSS** (una sola línea, después de
+   `viewport-guard.css`): contiene la personalización del usuario
+   (acento, esquinas, densidad, contraste, kill-switches). No añadirle
+   animaciones nuevas; solo reglas estáticas por atributos de `<html>`
+   (`data-accent`, `data-radius`, `data-density`, `data-contrast`,
+   `data-bg`, `data-wf/wh/ws/wk`).
+3. **Nunca inventar breakpoints intermedios** arbitrarios (p.ej. 517px, 703px).
    Reusar la tabla de arriba.
-3. **Todo medio** (`img`, `video`, `canvas`, `iframe`, `svg`) con `max-width: 100%`.
-4. **Hijos de grid/flex** con `min-width: 0` cuando contengan texto largo,
+4. **Todo medio** (`img`, `video`, `canvas`, `iframe`, `svg`) con `max-width: 100%`.
+5. **Hijos de grid/flex** con `min-width: 0` cuando contengan texto largo,
    tablas, `pre` o `code` para evitar desbordes.
-5. **Probar en móvil y escritorio** cada cambio, en claro y oscuro.
-6. **Cascada**: `index.css` → `components.css` → `index-responsive.css` →
-   `site-tour.css` → `viewport-guard.css`. Para override, usar un archivo que
-   cargue después o `!important` solo cuando sea necesario.
+6. **Probar en móvil y escritorio** cada cambio, en claro y oscuro.
+7. **Cascada**: `index.css` → `components.css` → `index-responsive.css` →
+   `site-tour.css` → `viewport-guard.css` → `prefs.css`. Para override, usar un
+   archivo que cargue después o `!important` solo cuando sea necesario.
+   Las preferencias de usuario (prefs.css) pueden usar `!important` porque son
+   overrides deliberados del usuario.
 
 ## Notas de mantenimiento
 
-- `index.html` carga los CSS en el orden de la regla 6. Mantener ese orden.
+- `index.html` carga los CSS en el orden de la regla 7. Mantener ese orden.
 - `sw.js` precachea los CSS principales (`index.css`, `components.css`,
-  `index-responsive.css`, `site-tour.css`, `viewport-guard.css`). Si se agrega
-  un CSS nuevo, agregarlo al `PRECACHE` y bumpear `VERSION` en `sw.js`.
+  `index-responsive.css`, `site-tour.css`, `viewport-guard.css`, `prefs.css`).
+  Si se agrega un CSS nuevo, agregarlo al `PRECACHE` y bumpear `VERSION` en `sw.js`.
+- `js/prefs.js` se carga en `<head>` (antes del render) para aplicar los
+  atributos de personalización sin flash; mantenerlo como única capa de
+  personalización en JS.
 
 ## Anuncios (OBLIGATORIO seguir Google, nunca reglas propias)
 

@@ -1,0 +1,122 @@
+/* ═══ prefs.css — Personalización de estilos (sin animaciones) ═══
+   Capa de personalización del usuario. Se carga DESPUÉS de
+   viewport-guard.css en index.html (última capa CSS) para poder
+   sobreescribir tokens/diseño mediante atributos de <html>
+   (data-accent, data-radius, data-density, data-contrast,
+   data-bg, data-wf/wh/ws/wk). Solo reglas estáticas + kill-switches:
+   aquí NO se añade ninguna animación nueva. */
+
+/* ── Acento de color ─────────────────────────────────────────── */
+:root[data-accent="azul"]    { --primary: #2f80ed; --primary-deep: #2563eb; --accent: #38bdf8; }
+:root[data-accent="cian"]    { --primary: #0ea5e9; --primary-deep: #0369a1; --accent: #7dd3fc; }
+:root[data-accent="verde"]   { --primary: #16a34a; --primary-deep: #15803d; --accent: #4ade80; }
+:root[data-accent="violeta"] { --primary: #7c4dff; --primary-deep: #5b21b6; --accent: #a78bfa; }
+:root[data-accent="rosa"]    { --primary: #ec4899; --primary-deep: #be185d; --accent: #f9a8d4; }
+:root[data-accent="rojo"]    { --primary: #ef4444; --primary-deep: #b91c1c; --accent: #f87171; }
+:root[data-accent="ambar"]   { --primary: #f59e0b; --primary-deep: #b45309; --accent: #fcd34d; }
+/* Acento personalizado (hex): prefs.js aplica
+   --accent/--primary/--primary-deep en línea. */
+#pref-accent-color {
+  width: 36px; height: 36px; padding: 0;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: var(--radius-sm, 10px);
+  background: transparent; cursor: pointer; flex-shrink: 0;
+}
+#pref-accent-color::-webkit-color-swatch-wrapper { padding: 3px; }
+#pref-accent-color::-webkit-color-swatch { border: none; border-radius: 7px; }
+
+/* ── Radio de esquinas ─────────────────────────────────────── */
+:root[data-radius="angular"] {
+  --radius-2xs: 2px;  --radius-xs: 3px;  --radius-sm: 5px;
+  --radius-md: 7px;   --radius-lg: 9px;  --radius-xl: 11px;
+  --radius-2xl: 13px; --radius-3xl: 16px;
+}
+:root[data-radius="redondo"] {
+  --radius-2xs: 7px;  --radius-xs: 10px; --radius-sm: 14px;
+  --radius-md: 20px;  --radius-lg: 24px; --radius-xl: 28px;
+  --radius-2xl: 32px; --radius-3xl: 40px;
+}
+
+/* ── Densidad (conservador: tokens + contenedores visibles) ── */
+:root[data-density="compacta"] {
+  --btn-padding: .4rem .8rem; --btn-padding-sm: .28rem .6rem; --btn-padding-lg: .55rem 1.15rem;
+}
+:root[data-density="espaciosa"] {
+  --btn-padding: .75rem 1.5rem; --btn-padding-sm: .45rem 1rem; --btn-padding-lg: .95rem 1.9rem;
+}
+html[data-density="compacta"] .service-card { padding: 1.5rem !important; }
+html[data-density="compacta"] .services-grid { gap: 1.2rem !important; }
+html[data-density="compacta"] .skills-grid { gap: .45rem !important; }
+html[data-density="espaciosa"] .service-card { padding: 3rem !important; }
+html[data-density="espaciosa"] .services-grid { gap: 2.5rem !important; }
+html[data-density="espaciosa"] .skills-grid { gap: .95rem !important; }
+
+/* ── Alto contraste ────────────────────────────────────────── */
+:root[data-contrast="high"] {
+  --text: #ffffff;
+  --text-secondary: rgba(255,255,255,.94);
+  --muted: rgba(255,255,255,.8);
+  --tc: #ffffff;
+}
+:root[data-theme="light"][data-contrast="high"] {
+  --text: #05050c;
+  --text-secondary: rgba(5,5,12,.92);
+  --muted: rgba(5,5,12,.78);
+  --tc: #05050c;
+}
+[data-contrast="high"] .service-card,
+[data-contrast="high"] .stat-card,
+[data-contrast="high"] .skills-grid > * {
+  border: 1px solid rgba(255,255,255,.28) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="light"][data-contrast="high"] .service-card,
+:root[data-theme="light"][data-contrast="high"] .stat-card,
+:root[data-theme="light"][data-contrast="high"] .skills-grid > * {
+  border: 1px solid rgba(0,0,0,.35) !important;
+}
+
+/* ── Reducir movimiento — respeto automático del sistema ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Kill-switches por widget (efectos suavizados) ─────────── */
+html[data-wf="off"] #ai-fab .fab-wave,
+html[data-wf="off"] #ai-fab::before,
+html[data-wf="off"] #ai-fab::after { animation: none !important; opacity: 0 !important; }
+html[data-wh="off"] .ch-ring-wrap,
+html[data-wh="off"] .ch-ring,
+html[data-wh="off"] .ch-ring-inner,
+html[data-wh="off"] .ch-glow-ring { animation: none !important; }
+html[data-wh="off"] .ch-ring,
+html[data-wh="off"] .ch-ring-inner { opacity: .35; }
+html[data-ws="off"] .parallax-scanline { display: none !important; }
+html[data-wk="off"] .pueblo-panel.active { animation: none !important; }
+
+/* ── Fondo estático (sin ken-burns ni movimiento) ──────────── */
+html[data-bg="osc-azul"] body {
+  background:
+    radial-gradient(1100px 650px at 18% -5%, rgba(47,128,237,.30), transparent 58%),
+    radial-gradient(950px 600px at 90% 105%, rgba(0,198,255,.18), transparent 55%),
+    #0a0a14 !important;
+}
+html[data-bg="osc-violeta"] body {
+  background:
+    radial-gradient(1100px 650px at 80% -5%, rgba(124,77,255,.32), transparent 58%),
+    radial-gradient(900px 550px at 5% 105%, rgba(37,117,252,.20), transparent 55%),
+    #0a0a14 !important;
+}
+html[data-bg="osc-verde"] body {
+  background:
+    radial-gradient(1100px 650px at 50% -5%, rgba(34,197,94,.22), transparent 58%),
+    radial-gradient(900px 550px at 95% 105%, rgba(14,165,233,.16), transparent 55%),
+    #0a0a14 !important;
+}
+html[data-bg="osc-azul"] #neural-network,
+html[data-bg="osc-violeta"] #neural-network,
+html[data-bg="osc-verde"] #neural-network { opacity: .15 !important; }

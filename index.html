@@ -245,6 +245,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="stylesheet" href="css/sys-tools.css?v=20260912a">
 <link rel="stylesheet" href="css/native-feel.css?v=20260905c">
 <link rel="stylesheet" href="css/viewport-guard.css?v=20260911a">
+    <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
+<link rel="stylesheet" href="css/prefs.css?v=20260920a">
+    <!-- prefs.js en head: aplica atributos de personalización antes del render -->
+    <script src="js/prefs.js"></script>
 
 
 
@@ -676,6 +680,94 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <span data-i18n-config="cfgBgRow">Fondos animados (red + partículas)</span>
                         <label class="cfg-toggle">
                             <input type="checkbox" id="cfg-neural" onchange="toggleNeural(this)">
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Acento de color -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Acento de color</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="accent" data-prefval="azul" style="background:#2f80ed55;border-color:#2f80ed" title="Azul (predeterminado)" onclick="window.Prefs?.set('accent','azul')" aria-label="Acento azul"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="cian" style="background:#0ea5e955;border-color:#0ea5e9" title="Cian" onclick="window.Prefs?.set('accent','cian')" aria-label="Acento cian"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="verde" style="background:#16a34a55;border-color:#16a34a" title="Verde" onclick="window.Prefs?.set('accent','verde')" aria-label="Acento verde"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="violeta" style="background:#7c4dff55;border-color:#7c4dff" title="Violeta" onclick="window.Prefs?.set('accent','violeta')" aria-label="Acento violeta"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="rosa" style="background:#ec489955;border-color:#ec4899" title="Rosa" onclick="window.Prefs?.set('accent','rosa')" aria-label="Acento rosa"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="rojo" style="background:#ef444455;border-color:#ef4444" title="Rojo" onclick="window.Prefs?.set('accent','rojo')" aria-label="Acento rojo"></button>
+                        <button class="cfg-opt" data-pref="accent" data-prefval="ambar" style="background:#f59e0b55;border-color:#f59e0b" title="Ámbar" onclick="window.Prefs?.set('accent','ambar')" aria-label="Acento ámbar"></button>
+                        <input type="color" data-pref="accent" id="pref-accent-color" aria-label="Acento personalizado" title="Acento personalizado">
+                    </div>
+                </div>
+
+                <!-- Radio de esquinas -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Esquinas de tarjetas</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="radius" data-prefval="angular" onclick="window.Prefs?.set('radius','angular')">Angular</button>
+                        <button class="cfg-opt" data-pref="radius" data-prefval="medio" onclick="window.Prefs?.set('radius','medio')">Medio</button>
+                        <button class="cfg-opt" data-pref="radius" data-prefval="redondo" onclick="window.Prefs?.set('radius','redondo')">Redondo</button>
+                    </div>
+                </div>
+
+                <!-- Densidad -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Densidad</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="density" data-prefval="compacta" onclick="window.Prefs?.set('density','compacta')">Compacta</button>
+                        <button class="cfg-opt" data-pref="density" data-prefval="normal" onclick="window.Prefs?.set('density','normal')">Normal</button>
+                        <button class="cfg-opt" data-pref="density" data-prefval="espaciosa" onclick="window.Prefs?.set('density','espaciosa')">Espaciosa</button>
+                    </div>
+                </div>
+
+                <!-- Contraste -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Contraste</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="contrast" data-prefval="normal" onclick="window.Prefs?.set('contrast','normal')">Normal</button>
+                        <button class="cfg-opt" data-pref="contrast" data-prefval="high" onclick="window.Prefs?.set('contrast','high')">Alto</button>
+                    </div>
+                </div>
+
+                <!-- Fondo estático -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Fondo estático</div>
+                    <div class="cfg-options">
+                        <button class="cfg-opt" data-pref="bg" data-prefval="auto" onclick="window.Prefs?.set('bg','auto')">Automático</button>
+                        <button class="cfg-opt" data-pref="bg" data-prefval="osc-azul" onclick="window.Prefs?.set('bg','osc-azul')">Azul</button>
+                        <button class="cfg-opt" data-pref="bg" data-prefval="osc-violeta" onclick="window.Prefs?.set('bg','osc-violeta')">Violeta</button>
+                        <button class="cfg-opt" data-pref="bg" data-prefval="osc-verde" onclick="window.Prefs?.set('bg','osc-verde')">Verde</button>
+                    </div>
+                </div>
+
+                <!-- Widgets sin animación -->
+                <div class="cfg-group">
+                    <div class="cfg-label">Efectos decorativos (estáticos)</div>
+                    <div class="cfg-toggle-row">
+                        <span>Ondas del FAB IA</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" data-pref-toggle="wf" checked>
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                    <div class="cfg-toggle-row">
+                        <span>Anillo giratorio del logo</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" data-pref-toggle="wh" checked>
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                    <div class="cfg-toggle-row">
+                        <span>Línea de escaneo (parallax)</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" data-pref-toggle="ws" checked>
+                            <span class="cfg-slider"></span>
+                        </label>
+                    </div>
+                    <div class="cfg-toggle-row">
+                        <span>Ken Burns (fotos del pueblo)</span>
+                        <label class="cfg-toggle">
+                            <input type="checkbox" data-pref-toggle="wk" checked>
                             <span class="cfg-slider"></span>
                         </label>
                     </div>
@@ -6247,6 +6339,9 @@ function setCfg(key, val, btn) {
             localStorage.setItem('theme', val);
         }
     }
+    if (key !== 'font' && key !== 'lang' && key !== 'theme' && window.Prefs) {
+        window.Prefs.set(key, val);
+    }
 }
 
 function toggleAnim(chk) {
@@ -6264,6 +6359,7 @@ function toggleNeural(chk) {
 function resetCfg() {
     // Borrar todas las preferencias guardadas
     ['cfg_font','cfg_anim','cfg_neural','cfg_lang','theme'].forEach(k => localStorage.removeItem(k));
+    if (window.Prefs) window.Prefs.reset();
     // Aplicar defaults
     document.body.classList.remove('font-sm','font-lg','no-anim');
     // Tema: restablecer a la preferencia del sistema (o oscuro por defecto)
