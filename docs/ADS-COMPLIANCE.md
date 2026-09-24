@@ -46,17 +46,25 @@ if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
 Evita que el WebView del APK sirva AdSense (Google no permite AdSense dentro de
 apps salvo integraciones aprobadas; la app monetiza con AdMob, ver §2).
 
-## 2) APP (AdMob)
+## 2) APP (Appodeal mediation → AdMob + AppLovin + Unity Ads + Vungle/Liftoff + BidMachine)
 
 ### Qué ADMITIMOS
-- **Solo AdMob (GMA SDK)** dentro de la app: banner, rewarded e interstitial.
-  `CodeHubApp.java` inicializa `MobileAds.initialize`; los tres managers y la
-  unidad de ads ID están declarados en `AndroidManifest.xml`
-  (`com.google.android.gms.ads.APPLICATION_ID`).
+- **Mediación con Appodeal SDK 4.4.0 (Mediation Only)** dentro de la app:
+  banner (franja inferior), rewarded e interstitial. `AppodealManager.java`
+  inicializa `Appodeal.initialize` (APP_KEY del panel de Appodeal); los
+  formatos y cascada se configuran en el dashboard de Appodeal, y AdMob entra
+  como red vía el adaptador `admob` (`play-services-ads` transitivo — exige
+  compileSdk 36). El meta-data del AdMob App ID
+  (`com.google.android.gms.ads.APPLICATION_ID`) se conserva en el manifest.
 - **UMP gate**: `ConsentManager.java` (User Messaging Platform) resuelve el
-  consentimiento ANTES de pedir cualquier anuncio (`MainActivity.initAdMob`).
+  consentimiento ANTES de inicializar Appodeal (`MainActivity.initAdMob`). El
+  adaptador `iab` lee los strings IABTCF que escribe UMP para respetar la
+  decisión del usuario en el WebView.
+- **`network_security_config.xml`** con base-config `cleartextTrafficPermitted`
+  en `true` (requisito de Appodeal para servir la red de mediación; decisión
+  deliberada de monetización, documentada en el propio XML).
 - **app-ads.txt** en la raíz del sitio (verificación de redes, obligatorio desde
-  Ene 2025 para apps nuevas en AdMob).
+  Ene 2025): añadir también el seller de **Appodeal**.
 - WebView configurado según guía de Google: `setAcceptThirdPartyCookies(true)`,
   JS y DOM storage habilitados.
 
@@ -66,15 +74,19 @@ apps salvo integraciones aprobadas; la app monetiza con AdMob, ver §2).
   se quiere monetizar el contenido del WebView, hay que hacerlo vía
   **WebView API for Ads** (registrar el WebView con el GMA SDK), nunca inyectando
   AdSense.
+- **No reintroducir** `MobileAds.initialize` directo ni `play-services-ads`
+  declarado a mano: lo aporta el adaptador `admob` de Appodeal.
+- **No añadir adapters no aprobados** (Meta, Mintegral, Amazon, Bidon, etc.)
+  sin revisar antes este doc y las políticas de Google.
 - **Interstitial spam**: no mostrar intersticiales que bloqueen la UI sin interacción.
 - Clics propios en la app (usar **test ads** durante desarrollo, no ads reales).
 
 ### Banner según guía de AdMob (implementado)
 `MainActivity` usa estructura vertical: **WebView arriba** (`mainFrame`, weight 1) y
-**franja inferior reservada** (`bannerSlot`) para el banner. `BannerAdManager`
-coloca el SMART_BANNER dentro de esa franja debajo del contenido; `show/hide`
-(desde JS) ocultan todo el slot → **el banner nunca se superpone a la UI**
-(patrón "recommended" de AdMob, no el "discouraged" que cubre contenido).
+**franja inferior reservada** (`bannerSlot`) para el banner. `AppodealManager`
+coloca un `BannerView` (smart banner) dentro de esa franja debajo del contenido;
+`show/hide` (desde JS) ocultan todo el slot → **el banner nunca se superpone a la
+UI** (patrón "recommended" de AdMob, no el "discouraged" que cubre contenido).
 
 ## 3) Cruzado (aplica en ambos)
 - Membresía y conflictos: no distributions de ads vía software (toolbars/ext) ni

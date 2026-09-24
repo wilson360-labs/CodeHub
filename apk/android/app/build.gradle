@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace 'com.codehub.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.codehub.app"
         minSdk 24
-        targetSdk 34
+        targetSdk 36
         versionCode 5
         versionName "1.4.0"
     }
@@ -41,6 +41,9 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+        // minSdk 24 < 26 → necesario para las APIs `java.time` que usa el
+        // adaptador de Appodeal/AdMob en runtime sin subir el minSdk.
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -59,12 +62,26 @@ dependencies {
     // versiones recientes del BOM — sin esto, NoClassDefFoundError al
     // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
-    // AdMob — anuncio recompensado (ca-app-pub-3780093322926832/4725969175)
-    implementation 'com.google.android.gms:play-services-ads:23.6.0'
     // UMP — Consentimiento GDPR/CCPA (User Messaging Platform). Artefacto del
     // SDK de Google (com.google.android.ump), distinto de play-services-ads.
     // Debe consultarse antes de pedir anuncios en regiones exigidas (EEE/UK/Canadá).
     implementation 'com.google.android.ump:user-messaging-platform:3.2.0'
+    // Appodeal 4.4.0 (Mediation Only) — sustituye las llamadas directas a
+    // AdMob (BannerAdManager/RewardedAdManager/InterstitialAdManager). El
+    // adaptador de AdMob trae play-services-ads y exige compileSdk 36; las
+    // unidades de banner/rewarded/interstitial se configuran en el panel de
+    // Appodeal (APP_KEY en AppodealManager). Repo: artifactory.appodeal.com.
+    implementation 'com.appodeal.ads.sdk:core:4.4.0'
+    implementation 'com.appodeal.ads.sdk.adapters:admob:25.2.0.0'
+    implementation 'com.appodeal.ads.sdk.adapters:applovin:13.6.3.0'
+    implementation 'com.appodeal.ads.sdk.adapters:unity_ads:4.17.0.0'
+    implementation 'com.appodeal.ads.sdk.adapters:vungle:7.7.4.0'
+    implementation 'com.appodeal.ads.sdk.adapters:bidmachine:3.7.1.0'
+    // iab — puente TCF: Appodeal lee los strings IABTCF que escribe UMP
+    // (ConsentManager.java) para respetar la decisión del usuario.
+    implementation 'com.appodeal.ads.sdk.adapters:iab:1.8.1.1'
+    // Desugaring de librerías java.time (ver compileOptions arriba).
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation 'com.google.android.gms:play-services-location:21.3.0'
     // Shizuku — detección de servicio/permiso + instalación silenciosa de
     // APKs (apps Open Source) sin el diálogo nativo, cuando el usuario

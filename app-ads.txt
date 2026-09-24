@@ -1,1 +1,4 @@
 google.com, pub-3780093322926832, DIRECT, f08c47fec0942fa0
+# Appodeal (mediación): añadir aquí el seller que da Appodeal en
+# panel → Apps → CodeHub → "App-ads.txt" cuando se cree la cuenta.
+# Formato: <exchange-domain>, <publisher-id>, DIRECT, <certification-id>

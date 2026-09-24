@@ -70,7 +70,7 @@ public class MainActivity extends Activity {
     private FusedLocationProviderClient fusedLocation;
     private boolean backPressedOnce = false;
     private final Handler backHandler = new Handler(Looper.getMainLooper());
-    /** Franja inferior reservada para el banner de AdMob (nunca superpuesto al contenido). */
+    /** Franja inferior reservada para el banner (nunca superpuesto al contenido). */
     private FrameLayout bannerSlot;
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -105,7 +105,7 @@ public class MainActivity extends Activity {
         progressBar.setLayoutParams(pbParams);
         progressBar.setVisibility(View.GONE);
 
-        // Estructura vertical (AdMob — banners SIEMPRE abajo, nunca sobre el
+        // Estructura vertical (banners SIEMPRE abajo, nunca sobre el
         // contenido): mainFrame (webview + barra de progreso) arriba, banner abajo.
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
@@ -144,17 +144,15 @@ public class MainActivity extends Activity {
         handleIntent(getIntent());
     }
 
-    // ── AdMob: consentimiento UMP + banner + recompensado + intersticial ──
-    // Nada de AdMob se pide antes de que UMP resuelva el consentimiento
+    // ── Anuncios: consentimiento UMP + Appodeal (mediación) ────────────
+    // Nada de anuncios se pide antes de que UMP resuelva el consentimiento
     // (EEE/UK/Canadá). Fuera de esas regiones lookup UMP resuelve inmediato
     // con canRequestAds=true y no se bloquea ningún anuncio.
     private void initAdMob() {
         ConsentManager.init(this, () -> {
             runOnUiThread(() -> {
                 if (!ConsentManager.canRequestAds()) return;
-                BannerAdManager.setup(MainActivity.this, bannerSlot);
-                RewardedAdManager.load(MainActivity.this);
-                InterstitialAdManager.load(MainActivity.this);
+                AppodealManager.init(MainActivity.this, bannerSlot);
             });
         });
     }

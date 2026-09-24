@@ -3,8 +3,6 @@ package com.codehub.app;
 import android.app.Application;
 import android.util.Log;
 
-import com.google.android.gms.ads.MobileAds;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -21,8 +19,8 @@ public class CodeHubApp extends Application {
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
         // (sin internet en el momento del crash), lo reintenta ahora.
         CrashReporter.flushPendingLog(this);
-        // Inicializa el SDK de AdMob (una sola vez, en segundo plano).
-        MobileAds.initialize(this, initializationStatus -> {});
+        // Appodeal (mediación) se inicializa en MainActivity tras el gate de
+        // UMP (ConsentManager) — el adaptador de AdMob se inicializa solo.
         // Lanzar Foreground Service lo antes posible para WakeLock + sync
         CodeHubSyncService.startIfNotRunning(this);
     }

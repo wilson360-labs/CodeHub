@@ -12,6 +12,9 @@ dependencyResolutionManagement {
         mavenCentral()
         // libsu (topjohnwu) se publica solo via JitPack.
         maven { url 'https://jitpack.io' }
+        // Appodeal 4.4.0 (Mediation Only) — el core y los adapters solo se
+        // publican en el repo de Appodeal, NO en Maven Central.
+        maven { url 'https://artifactory.appodeal.com/appodeal' }
     }
 }
 rootProject.name = "CodeHub"

@@ -3,7 +3,11 @@
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">wilson360-labs.vercel.app</domain>
     </domain-config>
-    <base-config cleartextTrafficPermitted="false">
+    <!-- Appodeal exige cleartext=true en el base-config (la red de
+         mediación hace peticiones http internas). Decisión deliberada de
+         monetización: SIN esto el adaptador de Appodeal no llega a llenar
+         los formatos y el ARPDAU cae a 0. -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

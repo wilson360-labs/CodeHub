@@ -467,16 +467,15 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    // ── ANUNCIO RECOMPENSADO (AdMob) ────────────────────────────
-    // ca-app-pub-3780093322926832/4725969175
+    // ── ANUNCIO RECOMPENSADO (Appodeal) ────────────────────────────
     @JavascriptInterface
     public void loadRewardedAd() {
-        activity.runOnUiThread(() -> RewardedAdManager.load(activity));
+        activity.runOnUiThread(() -> AppodealManager.loadRewarded(activity));
     }
 
     @JavascriptInterface
     public boolean isRewardedAdReady() {
-        return RewardedAdManager.isReady();
+        return AppodealManager.isRewardedReady();
     }
 
     // callbackName: nombre de una función global en window, invocada como
@@ -484,43 +483,43 @@ public class CodeHubBridge {
     // vio el anuncio completo y ganó la recompensa.
     @JavascriptInterface
     public void showRewardedAd(final String callbackName) {
-        activity.runOnUiThread(() -> RewardedAdManager.show(activity, (earned, amount, type) -> {
+        activity.runOnUiThread(() -> AppodealManager.showRewarded(activity, (earned, amount, type) -> {
             String safeType = type == null ? "" : type.replace("'", "\\'");
             webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
                 "(" + earned + "," + amount + ",'" + safeType + "');}catch(e){}");
         }));
     }
 
-    // ── ANUNCIO INTERSTICIAL (AdMob) ────────────────────────────
+    // ── ANUNCIO INTERSTICIAL (Appodeal) ────────────────────────────
     @JavascriptInterface
     public void loadInterstitialAd() {
-        activity.runOnUiThread(() -> InterstitialAdManager.load(activity));
+        activity.runOnUiThread(() -> AppodealManager.loadInterstitial(activity));
     }
 
     @JavascriptInterface
     public boolean isInterstitialAdReady() {
-        return InterstitialAdManager.isReady();
+        return AppodealManager.isInterstitialReady();
     }
 
     // callbackName: invocada como callbackName(shown) — shown=true si el
     // anuncio se mostró y se cerró (o false si no estaba listo).
     @JavascriptInterface
     public void showInterstitialAd(final String callbackName) {
-        activity.runOnUiThread(() -> InterstitialAdManager.show(activity, shown -> {
+        activity.runOnUiThread(() -> AppodealManager.showInterstitial(activity, shown -> {
             webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
                 "(" + shown + ");}catch(e){}");
         }));
     }
 
-    // ── BANNER NATIVO (AdMob) ───────────────────────────────────
+    // ── BANNER NATIVO (Appodeal, franja inferior) ──────────────────
     @JavascriptInterface
     public void showNativeBanner() {
-        activity.runOnUiThread(() -> BannerAdManager.show());
+        activity.runOnUiThread(AppodealManager::showBanner);
     }
 
     @JavascriptInterface
     public void hideNativeBanner() {
-        activity.runOnUiThread(() -> BannerAdManager.hide());
+        activity.runOnUiThread(AppodealManager::hideBanner);
     }
 
     @JavascriptInterface

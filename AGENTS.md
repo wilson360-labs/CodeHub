@@ -62,6 +62,8 @@ Toda edición relacionada con publicidad (AdSense web / AdMob app) debe seguir
    usar `gtag('config', 'ca-pub-3780093322926832')`.
 2. **No quitar** el Consent Mode v2 (default `denied` + `wait_for_update`) ni el
    guard `CodeHubNative`/`__apkNative` que impide AdSense dentro del WebView/APK.
-3. La app monetiza **solo con AdMob (GMA SDK)** bajo el gate de UMP
-   (`ConsentManager.java`); nunca inyectar AdSense en el WebView.
-4. Mantener `ads.txt` y `app-ads.txt` servidos por el host real.
+3. La app monetiza con **Appodeal 4.4.0 (Mediation Only)** bajo el gate de UMP
+   (`ConsentManager.java` → `AppodealManager.init`): AdMob (adaptador), AppLovin,
+   Unity Ads, Vungle/Liftoff y BidMachine. NUNCA inyectar AdSense en el WebView.
+4. Mantener `ads.txt` y `app-ads.txt` servidos por el host real (añadir el
+   seller de Appodeal en el `app-ads.txt` de la app).
