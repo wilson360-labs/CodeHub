@@ -15,7 +15,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.09';
+const VERSION = 'codehub-v7.10';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -120,12 +120,10 @@ const PRECACHE = [
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
   '/dist/assets/js/opensource.5c2e066b4f.min.js',
   '/dist/assets/js/optimizer.dd22383a65.min.js',
-  '/dist/assets/js/permissions-setup.315574d7b4.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
   '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
   '/dist/assets/js/script.40e4e0e08a.min.js',
   '/dist/assets/js/security-scan.5a8b5156fe.min.js',
-  '/dist/assets/js/servicios.1cc1caf153.min.js',
   '/dist/assets/js/sismos.14c7b7d046.min.js',
   '/dist/assets/js/site-tour.86fe554324.min.js',
   '/dist/assets/js/skills-pdf-ia.66b58ffda5.min.js',
@@ -135,7 +133,6 @@ const PRECACHE = [
   '/dist/assets/js/thinking-orb.2b4982d5a0.min.js',
   '/dist/assets/js/updater.cdaf77f61c.min.js',
   '/dist/assets/js/ux-animations.b6a116abe1.min.js',
-  '/dist/assets/js/view-transitions.e4f2d275aa.min.js',
   '/dist/assets/js/weather-map.1ad0c74b42.min.js',
   '/dist/assets/js/windows-enhance.00814c6429.min.js',
   '/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js',

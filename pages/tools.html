@@ -512,7 +512,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="btn bp" onclick="genPass()"><i class="fas fa-bolt"></i> Generar</button>
     <div class="rb" id="pr">
       <div class="rrow"><span id="pv"></span>
-        <button class="btn bg bc" onclick="cp('pv')"><i class="fas fa-copy"></i></button></div></div>
+        <button class="btn bg bc" aria-label="Copiar valor" onclick="cp('pv')"><i class="fas fa-copy"></i></button></div></div>
     <div class="sbar-w"><div class="sbar" id="psb" style="width:0%"></div></div>
   </div>
 </div>
@@ -691,7 +691,7 @@ footer a{color:var(--p);text-decoration:none}
         <div style="font-size:.88rem;font-weight:700;color:var(--text)" id="chex">#2f80ed</div>
         <div style="font-size:.72rem;color:var(--muted);font-family:var(--mono)" id="crgb">rgb(47,128,237)</div>
       </div>
-      <button class="btn bg bc" style="margin-left:auto" onclick="cp('chex')"><i class="fas fa-copy"></i></button>
+      <button class="btn bg bc" style="margin-left:auto" aria-label="Copiar valor" onclick="cp('chex')"><i class="fas fa-copy"></i></button>
     </div>
     <div class="swatches" id="csw" style="margin-bottom:1.2rem"></div>
   </div>
@@ -755,7 +755,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="btn bp" onclick="genHash()"><i class="fas fa-fingerprint"></i> Generar Hash</button>
     <div class="rb" id="hr">
       <div class="rrow"><span class="hout" id="hv"></span>
-        <button class="btn bg bc" onclick="cp('hv')"><i class="fas fa-copy"></i></button></div></div>
+        <button class="btn bg bc" aria-label="Copiar valor" onclick="cp('hv')"><i class="fas fa-copy"></i></button></div></div>
   </div>
 </div>
 
@@ -772,7 +772,7 @@ footer a{color:var(--p);text-decoration:none}
     </div>
     <div class="rb" id="b6r">
       <div class="rrow"><span class="hout" id="b6v"></span>
-        <button class="btn bg bc" onclick="cp('b6v')"><i class="fas fa-copy"></i></button></div></div>
+        <button class="btn bg bc" aria-label="Copiar valor" onclick="cp('b6v')"><i class="fas fa-copy"></i></button></div></div>
   </div>
 </div>
 
@@ -811,7 +811,7 @@ footer a{color:var(--p);text-decoration:none}
     <button class="btn bp" onclick="genUUID()"><i class="fas fa-dice"></i> Generar</button>
     <div class="rb" id="udr">
       <div class="rrow"><span class="hout" id="udv" style="white-space:pre-line;font-size:.75rem"></span>
-        <button class="btn bg bc" style="align-self:flex-start" onclick="cp('udv')"><i class="fas fa-copy"></i></button></div></div>
+        <button class="btn bg bc" style="align-self:flex-start" aria-label="Copiar valor" onclick="cp('udv')"><i class="fas fa-copy"></i></button></div></div>
   </div>
 </div>
 
@@ -3226,7 +3226,7 @@ function rvRender(finalUrl, rawUrl, hops, method, cached, status) {
     '<div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.28rem">URL real descubierta</div>' +
     '<div style="display:flex;align-items:flex-start;gap:.5rem;background:rgba(0,0,0,.3);border-radius:9px;padding:.6rem .75rem;margin-bottom:.4rem">' +
       '<span id="rv-final" style="font-size:.8rem;color:var(--a);word-break:break-all;flex:1;line-height:1.5">' + finalUrl + '</span>' +
-      '<button class="btn bg bc" onclick="cp(\'rv-final\')" title="Copiar"><i class="fas fa-copy"></i></button>' +
+      '<button class="btn bg bc" onclick="cp(\'rv-final\')" title="Copiar" aria-label="Copiar resultado"><i class="fas fa-copy"></i></button>' +
     '</div>' +
     '<a href="' + finalUrl + '" target="_blank" rel="noopener noreferrer" ' +
       'style="font-size:.75rem;color:var(--p);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;' +

@@ -57,7 +57,6 @@
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
   gtag('config', 'G-205F26ETCC');
@@ -573,7 +572,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <div class="side-group">
             <div class="side-group-label">Navegación</div>
             <a class="side-link" href="#mi-pueblo" onclick="closeMobileNav()"><i class="fas fa-user"></i> Sobre mí</a>
-            <a class="side-link" href="#stats" onclick="closeMobileNav()"><i class="fas fa-chart-line"></i> Estadísticas</a>
             <a class="side-link" href="#skills" onclick="closeMobileNav()"><i class="fas fa-code"></i> Habilidades</a>
             <a class="side-link" href="#services" onclick="closeMobileNav()"><i class="fas fa-briefcase"></i> Servicios</a>
             <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
@@ -1472,7 +1470,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 <span id="wx-error-msg">No se pudo detectar tu ubicación.</span>
                 <div class="wx-search" style="margin-top:.8rem">
                     <input type="text" id="wx-manual-input" class="wx-input" placeholder="Escribe tu ciudad manualmente…" onkeydown="if(event.key==='Enter')searchWeatherManual()">
-                    <button class="wx-search-btn" onclick="searchWeatherManual()"><i class="fas fa-search"></i></button>
+                    <button class="wx-search-btn" onclick="searchWeatherManual()" aria-label="Buscar ciudad" title="Buscar ciudad"><i class="fas fa-search"></i></button>
                 </div>
             </div>
         </section>
@@ -1748,7 +1746,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </div>
                         <div class="sys-row sys-row-gauge">
                             <span class="sys-name"><i class="fas fa-microchip"></i> RAM</span>
-                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-ram"></div></div>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-ram-dev"></div></div>
                             <b id="dev-ram">—</b>
                         </div>
                         <div class="sys-row sys-row-gauge">
@@ -1873,7 +1871,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           var ramUsed = (st.ramTotalBytes > 0) ? Math.round((1 - (st.ramFreeBytes / st.ramTotalBytes)) * 100) : -1;
           var ram = document.getElementById('dev-ram');
           if (ram) ram.textContent = st.ramTotalBytes > 0 ? ramUsed + '% · libre ' + fmtBytes(st.ramFreeBytes) : '—';
-          if (ramUsed >= 0) setGauge('fill-ram', ramUsed, ramUsed >= 85 ? 'crit' : ramUsed >= 70 ? 'warn' : '');
+          if (ramUsed >= 0) setGauge('fill-ram-dev', ramUsed, ramUsed >= 85 ? 'crit' : ramUsed >= 70 ? 'warn' : '');
 
           var stUsed = (st.storageTotalBytes > 0) ? Math.round((1 - (st.storageFreeBytes / st.storageTotalBytes)) * 100) : -1;
           var stor = document.getElementById('dev-storage');
@@ -2760,22 +2758,26 @@ DISPONIBILIDAD:
                 if (menu.classList.contains('active')) {
                     toggleExperimentalMenu();
                 }
+                if (typeof chActivityOpen !== 'undefined' && chActivityOpen && typeof chCloseActivity === 'function') {
+                    chCloseActivity();
+                }
             }
         });
 
         // Command Palette
         const commands = [
-            { name: 'Ir a Estadísticas', icon: 'fa-chart-line', action: () => scrollToSection('stats') },
             { name: 'Ir a Habilidades', icon: 'fa-code', action: () => scrollToSection('skills') },
             { name: 'Ir a Servicios', icon: 'fa-briefcase', action: () => scrollToSection('services') },
-            { name: 'Ir a Logros', icon: 'fa-trophy', action: () => scrollToSection('achievements') },
-            { name: 'Ir a Testimonios', icon: 'fa-comment', action: () => scrollToSection('testimonials') },
-            { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('about') },
+            { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('mi-pueblo') },
+            { name: 'Ir a Clima', icon: 'fa-cloud-sun', action: () => scrollToSection('weather-section') },
+            { name: 'Ir a Sismos', icon: 'fa-house-crack', action: () => scrollToSection('sismos-section') },
+            { name: 'Ir a Noticias', icon: 'fa-newspaper', action: () => scrollToSection('news-section') },
+            { name: 'Ir a Operaciones', icon: 'fa-shield-halved', action: () => scrollToSection('security-section') },
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('open-to-work') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
             { name: 'Copiar Email', icon: 'fa-copy', action: copyEmail },
             { name: 'Jugar Snake', icon: 'fa-gamepad', action: () => openGameWindow('snake') },
-            { name: 'Jugar Tetris', icon: 'fa-table-cells', action: () => openGameWindow('tetris') },
+            { name: 'Jugar Tetris', icon: 'fa-cubes', action: () => openGameWindow('tetris') },
             { name: 'Jugar Buscaminas', icon: 'fa-bomb', action: () => openGameWindow('mines') },
             { name: 'Jugar Memoria', icon: 'fa-brain', action: () => openGameWindow('memory') },
             { name: 'Piedra Papel o Tijera', icon: 'fa-hand-fist', action: () => openGameWindow('rps') },
@@ -2787,7 +2789,9 @@ DISPONIBILIDAD:
             const input = document.getElementById('commandInput');
             overlay.classList.add('active');
             input.focus();
-            renderCommands(commands);
+            input.value = '';
+            _filteredCmds = commands;
+            renderCommands(_filteredCmds);
             _cmdSelected = -1;
         }
 
@@ -2810,7 +2814,8 @@ DISPONIBILIDAD:
         }
 
         function executeCommand(index) {
-            commands[index].action();
+            const cmd = _filteredCmds[index];
+            if (cmd) cmd.action();
             closeCommandPalette();
         }
 
@@ -2847,7 +2852,8 @@ DISPONIBILIDAD:
         });
 
         function scrollToSection(id) {
-            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
         }
 
         // Scroll Progress Bar
@@ -2859,14 +2865,18 @@ DISPONIBILIDAD:
         });
 
         // Copy Email Function
-        function copyEmail() {
+        function copyEmail(e) {
             const email = 'wilson.e360labs@gmail.com';
             navigator.clipboard.writeText(email).then(() => {
-                const btn = event.target.closest('.copy-email');
+                const btn = (e && e.target && e.target.closest) ? e.target.closest('.copy-email') : null;
+                if (!btn) {
+                    if (typeof toast === 'function') toast('✅ Email copiado', 'success', 1800);
+                    return;
+                }
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!';
                 btn.style.background = 'linear-gradient(45deg, #00ff00, #00cc00)';
-                
+
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.style.background = '';
@@ -3165,7 +3175,7 @@ DISPONIBILIDAD:
 <!-- ══════════════════════════════════════════════════════
      REGISTRO DE ACTIVIDADES — Diálogo flotante
      ══════════════════════════════════════════════════════ -->
-<div id="ch-activity-dialog" style="
+<div id="ch-activity-dialog" role="dialog" aria-modal="true" aria-label="Registro de actividades" style="
   position:fixed;bottom:162px;right:16px;z-index:4800;
   background:linear-gradient(145deg,#0d0d1a,#111120);
   border:1px solid rgba(47,128,237,.28);border-radius:var(--radius-lg, 18px);
@@ -3226,6 +3236,7 @@ DISPONIBILIDAD:
   box-shadow:0 4px 16px rgba(0,0,0,.4)
 ">
   <i class="fas fa-list-check"></i>
+  <span id="changelog-dot" aria-hidden="true"></span>
   <span id="ch-activity-count" style="
     position:absolute;top:-4px;right:-4px;
     background:#2f80ed;color:#fff;border-radius:var(--radius-pill, 999px);
@@ -4027,6 +4038,71 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 });
 
+/* ── A11y: modales con Escape + focus-trap + foco restaurable ── */
+(function () {
+  var MODAL_IDS = ['ch-app-perms-overlay', 'ios-notif-overlay'];
+  function visibleModal() {
+    for (var i = 0; i < MODAL_IDS.length; i++) {
+      var el = document.getElementById(MODAL_IDS[i]);
+      if (el && el.classList.contains('show')) return el;
+    }
+    return null;
+  }
+  document.addEventListener('keydown', function (e) {
+    var m = visibleModal();
+    if (!m) return;
+    if (e.key === 'Escape') {
+      m.classList.remove('show');
+      if (m.id === 'ios-notif-overlay') localStorage.setItem('ch_notif_dismissed', Date.now());
+      if (m._chPrevFocus && m._chPrevFocus.focus) m._chPrevFocus.focus();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    var f = m.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (!m.contains(a)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
+    if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+  });
+  MODAL_IDS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el || !window.MutationObserver) return;
+    new MutationObserver(function () {
+      if (el.classList.contains('show')) {
+        el._chPrevFocus = document.activeElement;
+        var btn = el.querySelector('button');
+        if (btn) setTimeout(function () { btn.focus(); }, 60);
+      }
+    }).observe(el, { attributes: true, attributeFilter: ['class'] });
+  });
+})();
+
+/* ── A11y: roles/teclado para toggles y menú experimental ── */
+(function () {
+  function bindActivate(el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  }
+  document.querySelectorAll('#experimental-menu .menu-item').forEach(function (el) {
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    bindActivate(el);
+  });
+  document.querySelectorAll('.wx-alerts-toggle').forEach(function (t) {
+    t.setAttribute('role', 'switch');
+    t.tabIndex = 0;
+    t.setAttribute('aria-checked', t.classList.contains('on') ? 'true' : 'false');
+    bindActivate(t);
+    if (window.MutationObserver) {
+      new MutationObserver(function () {
+        t.setAttribute('aria-checked', t.classList.contains('on') ? 'true' : 'false');
+      }).observe(t, { attributes: true, attributeFilter: ['class'] });
+    }
+  });
+})();
+
 // Exponer para abrirlo desde cualquier parte (ej. centro de notificaciones)
 window.chShowAppPerms = chShowAppPerms;
 
@@ -4323,6 +4399,7 @@ async function sendEmail(e) {
   });
 </script>
 
+<div id="ai-backdrop" aria-hidden="true" onclick="typeof closeEmiChat==='function'&&closeEmiChat()"></div>
 <div id="ai-panel" role="dialog" aria-modal="true" aria-label="WIL.E COPILOT" style="display:none">
 
   <!-- Header -->
@@ -4388,6 +4465,17 @@ async function sendEmail(e) {
     </div>
   </div>
 
+  <!-- Sugerencias rápidas (moods + chips) -->
+  <div class="ai-sugs-wrap">
+    <div class="ai-moods" role="group" aria-label="Temas de sugerencias">
+      <button type="button" class="ai-mood-btn active" data-mood="general" onclick="setAIMood(this)">🛠 General</button>
+      <button type="button" class="ai-mood-btn" data-mood="code" onclick="setAIMood(this)">⚡ Código</button>
+      <button type="button" class="ai-mood-btn" data-mood="portfolio" onclick="setAIMood(this)">💼 Diseño</button>
+      <button type="button" class="ai-mood-btn" data-mood="debug" onclick="setAIMood(this)">🐞 Debug</button>
+    </div>
+    <div id="ai-sugs" class="ai-sugs" role="group" aria-label="Sugerencias"></div>
+  </div>
+
   <!-- Input -->
   <div class="ai-input-wrap">
     <!-- Shell principal -->
@@ -4451,7 +4539,6 @@ async function sendEmail(e) {
   const input  = document.getElementById('ai-input');
   const inputHint = document.getElementById('ai-input-hint');
   const sendBtn= document.getElementById('ai-send-btn');
-  const closeB = document.getElementById('ai-close-btn');
   const sugs   = document.getElementById('ai-sugs');
   const status = document.getElementById('ai-status');
 
@@ -4573,7 +4660,7 @@ async function sendEmail(e) {
         head.innerHTML = `🔍 Resultados para <span>"${cleanQuery}"</span>`;
         grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:.5rem;';
         grid.innerHTML = data.images.slice(0, 6).map(img => `
-          <div class="ai-sr-img" onclick="window.open(this.dataset.link,'_blank')" title="${img.title.replace(/"/g, '&quot;')}" data-link="${img.link.replace(/"/g, '&quot;')}">
+          <div class="ai-sr-img" role="button" tabindex="0" onkeydown="if(event.key==='Enter'){this.click()}" onclick="window.open(this.dataset.link,'_blank')" title="${img.title.replace(/"/g, '&quot;')}" data-link="${img.link.replace(/"/g, '&quot;')}">
             <img src="${img.thumbnail}" alt="${img.title.replace(/"/g, '&quot;')}" loading="lazy"
               onerror="if(this.parentElement)this.parentElement.style.background='rgba(124,77,255,.15)';this.remove()">
             <div class="ai-sr-img-label">${img.source || cleanQuery}</div>
@@ -4582,14 +4669,14 @@ async function sendEmail(e) {
         const links = document.createElement('div');
         links.className = 'ai-sr-links';
         links.innerHTML = `
-          <div class="ai-sr-link" onclick="window.open('https://www.google.com/search?q=${encodedQ}&tbm=isch','_blank')">
+          <div class="ai-sr-link" role="button" tabindex="0" onkeydown="if(event.key==='Enter'){this.click()}" onclick="window.open('https://www.google.com/search?q=${encodedQ}&tbm=isch','_blank')">
             <span class="ai-sr-link-icon">🖼</span>
             <div class="ai-sr-link-info">
               <div class="ai-sr-link-title">Ver más en Google Imágenes</div>
               <div class="ai-sr-link-snippet">Todos los resultados para "${cleanQuery}"</div>
             </div>
           </div>
-          <div class="ai-sr-link" onclick="window.open('https://unsplash.com/s/photos/${encodedQ}','_blank')">
+          <div class="ai-sr-link" role="button" tabindex="0" onkeydown="if(event.key==='Enter'){this.click()}" onclick="window.open('https://unsplash.com/s/photos/${encodedQ}','_blank')">
             <span class="ai-sr-link-icon">🎨</span>
             <div class="ai-sr-link-info">
               <div class="ai-sr-link-title">Fotos libres en Unsplash</div>
@@ -4610,8 +4697,6 @@ async function sendEmail(e) {
   }
 
   fab.addEventListener('click', toggle);
-  if (closeB) closeB.addEventListener('click', () => setOpen(false));
-  const clearB = document.getElementById('ai-clear-btn');
   function persistChat() {
     try {
       localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history.slice(-12)));
@@ -4628,6 +4713,7 @@ async function sendEmail(e) {
       if (welcome) welcome.remove();
       msgs.innerHTML = '';
       history = [];
+      if (sugs) sugs.style.display = 'none';
       saved.forEach(item => {
         if (!item || !item.role || !item.content) return;
         const role = item.role === 'user' ? 'user' : 'ai';
@@ -4647,7 +4733,6 @@ async function sendEmail(e) {
     addMsg('ai', '¡Conversación reiniciada! 🔄 ¿En qué te puedo ayudar?');
     if (sugs) sugs.style.display = 'flex';
   };
-  if (clearB) clearB.addEventListener('click', resetChat);
   window.resetEmiChat = resetChat;
   window.closeEmiChat = function () { setOpen(false); };
   restoreChat();
@@ -4741,11 +4826,6 @@ async function sendEmail(e) {
   function getTime() {
     return new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
   }
-
-  window.aiSugg = function(btn) {
-    input.value = btn.textContent;
-    sendAI();
-  };
 
   // ── CONFIGURACIÓN DEL SERVIDOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Detecta automáticamente si estás en local o producción.
@@ -5028,6 +5108,7 @@ async function sendEmail(e) {
     const text = input.value.trim();
     const attachment = _pendingAttachment;
     if ((!text && !attachment) || loading) return;
+    if (sugs) sugs.style.display = 'none';
 
     // Anti-spam: máx 30 mensajes por sesión
     const chatCount = parseInt(sessionStorage.getItem('ch_chat_count') || '0');
@@ -7277,18 +7358,6 @@ function applyLang(lang) {
         const key = el.dataset.i18nTitle;
         if (dict[key] !== undefined) { el.title = dict[key]; el.setAttribute('aria-label', dict[key]); }
     });
-    // Traducir la card PWA (si no está en modo guía iOS)
-    const pwaCard = document.getElementById('pwa-install');
-    if (pwaCard && !pwaCard.classList.contains('ios-guide')) {
-        const t = document.getElementById('pwa-title');
-        const s = document.getElementById('pwa-sub');
-        const b = document.getElementById('pwa-btn-install');
-        const n = document.getElementById('pwa-btn-no');
-        if (t) t.textContent = dict.pwaTitle;
-        if (s) s.innerHTML = dict.pwaSub;
-        if (b) b.textContent = dict.pwaBtn;
-        if (n) n.textContent = dict.pwaDismiss;
-    }
     // Traducir el panel de configuración
     const cfgTheme = document.querySelector('#config-panel [data-i18n-label="cfgTheme"]');
     if (cfgTheme) cfgTheme.textContent = dict.cfgTheme;
@@ -7918,6 +7987,9 @@ function setAIMood(btn) {
     sugs.appendChild(b);
   });
 }
+
+var _defMood = document.querySelector('.ai-mood-btn.active') || document.querySelector('.ai-mood-btn');
+if (_defMood) setAIMood(_defMood);
 
 </script>
 

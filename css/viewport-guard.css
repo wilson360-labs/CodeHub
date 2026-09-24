@@ -604,7 +604,7 @@ section, main, .container, .wrap, .inner, .section-wrap {
    (380–730px): antes solo existían reglas en 720 y 380px, dejando un
    salto brusco de tamaño en 420/480/550/640 donde el mapa/controles
    podían quedar desproporcionados según el ancho exacto del teléfono. */
-@media (max-width: 730px) {
+@media (max-width: 720px) {
   .wx-minimap { height: 220px; }
   .wx-map-retry-btn { font-size: .74rem; padding: .45rem 1rem; }
 }
@@ -1169,7 +1169,7 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   }
 }
 
-@media (min-width: 769px) {
+@media (min-width: 768px) {
   .sismos-sheet, .sismos-sheet-backdrop, .sismos-sheet-open { display: none !important; }
 }
 

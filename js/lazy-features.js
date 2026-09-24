@@ -40,4 +40,28 @@
   // Respaldo idle: aunque no haya interacción, carga tras unos segundos.
   if ('requestIdleCallback' in window) requestIdleCallback(trigger, { timeout: 4000 });
   else setTimeout(trigger, 3500);
+
+  // Stubs: los onclick inline de HTML pueden ejecutarse ANTES de que el
+  // módulo correspondiente cargue (sismos/mapa). En vez de ReferenceError,
+  // disparamos la carga y reintentamos hasta que la función real exista.
+  var STUBS = [
+    'chApplyMapCity', 'chMapSearch', 'chToggleMap', 'chMapSuggest', 'chMapSuggestKey',
+    'chSismosOpenSheet', 'chSismosCloseSheet', 'chSismosReload',
+    'chSismosUseMyLocation', 'chToggleSismosPlaces', 'chSetSismosPlace',
+    'chSismosSetMag', 'chSismosFocus'
+  ];
+  STUBS.forEach(function (name) {
+    if (typeof window[name] === 'function') return;
+    var stub = function () {
+      var args = arguments, self = this;
+      trigger();
+      var tries = 0;
+      (function retry() {
+        var fn = window[name];
+        if (typeof fn === 'function' && fn !== stub) { fn.apply(self, args); return; }
+        if (++tries < 40) setTimeout(retry, 250);
+      })();
+    };
+    window[name] = stub;
+  });
 })();

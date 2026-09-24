@@ -115,18 +115,19 @@ function main() {
     const rel = inDist ? distToPlain(src) : clean(src).replace(/^\//, '');
     if (!bundles[rel]) return whole;
     const target = '/dist/' + bundles[rel];
-    if (src === target) return whole;
     distRefs.add(target);
+    if (src === target) return whole;
     count++;
     return pre + target + post;
   });
 
   fs.writeFileSync(INDEX_PATH, html);
 
-  // Ref de dist para el PRECACHE: TODOS los bundles del manifest
-  // (index.html es la unica pagina cableada en Fase 0.1; el resto del
-  // js original queda en precache porque otras paginas lo siguen usando).
-  const allDist = Object.values(bundles).map((u) => '/dist/' + u);
+  // Ref de dist para el PRECACHE: SOLO los bundles que index.html carga.
+  // (Otras páginas no están cableadas a dist — viven de las entradas
+  // /js/... del PRECACHE; precachear bundles nunca referenciados solo
+  // desperdicia espacio y envejece la caché.)
+  const allDist = Array.from(distRefs).sort();
 
   const sw = fs.readFileSync(SW_PATH, 'utf8');
   const res = syncSw(sw, allDist);

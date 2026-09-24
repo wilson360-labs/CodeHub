@@ -319,6 +319,18 @@ function switchTab(id, btn) {
   if (id === 'config') loadAdminConfig();
 }
 
+function clearAdminPush() {
+  const t = document.getElementById('push-title');
+  const b = document.getElementById('push-body');
+  const u = document.getElementById('push-url');
+  const ty = document.getElementById('push-type');
+  if (t) t.value = '';
+  if (b) b.value = '';
+  if (u) u.value = '/';
+  if (ty) ty.value = 'announcement';
+  toast('🧹 Formulario limpio');
+}
+
 async function sendAdminBroadcast() {
   const title = document.getElementById('push-title')?.value.trim();
   const body = document.getElementById('push-body')?.value.trim();

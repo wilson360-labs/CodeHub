@@ -1038,8 +1038,8 @@
   .command-item { padding: 0.6rem 0.75rem; font-size: 0.82rem; min-height: 44px; }
 }
 
-/* ── 500px y menos: ajustes extra finos ── */
-@media (max-width: 500px) {
+/* ── 480px y menos: ajustes extra finos ── */
+@media (max-width: 480px) {
   .hero-name { font-size: clamp(2rem, 10vw, 2.5rem) !important; }
   .hero-ctas { grid-template-columns: 1fr 1fr; }
   .hero-btn { font-size: 0.73rem; padding: 0.6rem 0.6rem; }
@@ -1328,7 +1328,7 @@ html.is-mobile .dock-label {
 }
 html.is-mobile .dock-item { gap: 3px; }
 html.is-mobile .dock-sep { height: 28px; margin: 0 1px 6px; }
-@media (max-width: 360px) {
+@media (max-width: 380px) {
   html.is-mobile #hub-dock { gap: 2px; padding: 6px 8px; }
   html.is-mobile .dock-icon { width: 36px; height: 36px; font-size: .95rem; }
   html.is-mobile .dock-label { font-size: .46rem; }
@@ -1344,7 +1344,7 @@ html.is-mobile .blogger-card-desc { display: none; }
 html.is-mobile .blogger-card-thumb { height: 76px !important; }
 html.is-mobile .news-toggle-wrap { display: flex; }
 html.is-mobile .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
-@media (max-width: 360px) {
+@media (max-width: 380px) {
   html.is-mobile .blogger-grid { grid-template-columns: 1fr !important; }
   html.is-mobile .blogger-card { flex-direction: row; }
   html.is-mobile .blogger-card-thumb { width: 96px; height: 96px !important; flex-shrink: 0; }

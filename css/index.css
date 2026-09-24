@@ -220,7 +220,7 @@
   background: rgba(255,255,255,0.05);
 }
 
-@media (max-width:520px) {
+@media (max-width:550px) {
   #whatsNewIcon { right: 14px; width: 48px; height: 48px; font-size: 1.2rem; }
   .whatsNewDialog { padding: 20px; border-radius: var(--radius-lg, 18px); }
 }
@@ -291,7 +291,7 @@
             --font: 'Space Grotesk', 'Segoe UI', sans-serif;
             --text: rgba(232, 232, 240, 0.92);
             --text-secondary: rgba(232, 232, 240, 0.6);
-            --muted: rgba(232, 232, 240, 0.45);
+            --muted: rgba(232, 232, 240, 0.62);
             --a: #22c55e;
             --tc: rgba(255, 255, 255, 0.85);
             --secondary: #22c55e;
@@ -2015,7 +2015,7 @@
         .wx-grid {
             display: grid; grid-template-columns: repeat(4,1fr); gap: .6rem;
         }
-        @media(max-width:600px){ .wx-grid { grid-template-columns: repeat(2,1fr); } }
+        @media(max-width:640px){ .wx-grid { grid-template-columns: repeat(2,1fr); } }
         .wx-stat {
             display: flex; flex-direction: column; align-items: center; gap: .2rem;
             background: rgba(255,255,255,.04);
@@ -2220,7 +2220,7 @@
             box-shadow: 0 20px 60px rgba(0,0,0,.6);
             height: 320px; max-width: 640px;
         }
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
             .pueblo-gallery { grid-template-columns: 1fr; }
             .pueblo-side-imgs { grid-template-rows: auto; grid-template-columns: repeat(3,1fr); }
             .pueblo-main-img { height: 220px; }
