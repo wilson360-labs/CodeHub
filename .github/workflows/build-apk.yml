@@ -176,15 +176,20 @@ jobs:
           temp_keystore () {
             echo "⚠️ Keystore temporal (failed-safe): la compilación completará, pero NO habrá release firmado."
             echo "   No es válido para actualizar una versión ya instalada con otra firma."
-            keytool -genkeypair -v \
-              -keystore "$KS" \
-              -alias codehub \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass android \
-              -keypass android \
-              -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US" >/dev/null 2>&1
+            rm -f "$KS"
+            if ! keytool -genkeypair -v \
+                -keystore "$KS" \
+                -alias codehub \
+                -keyalg RSA \
+                -keysize 2048 \
+                -validity 10000 \
+                -storepass android \
+                -keypass android \
+                -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US" >/dev/null 2>&1; then
+              echo "::error::Falló generar el keystore temporal (reporta este CI run)."
+              return 1
+            fi
+            [ -s "$KS" ] || { echo "::error::Keystore temporal no creado."; return 1; }
             chmod 600 "$KS"
             echo "HAS_RELEASE_SECRETS=false" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
@@ -199,10 +204,16 @@ jobs:
              && valid_pw "KEY_PASSWORD" "$KEY_PASSWORD"; then
             echo "📦 Descargando keystore desde Supabase Storage (privado)..."
             if curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-                -o "$KS" "$KEYSTORE_SUPABASE_URL" && probe_keystore "$KS"; then
-              adopt_keystore
+                -o "$KS" "$KEYSTORE_SUPABASE_URL"; then
+              if probe_keystore "$KS"; then
+                adopt_keystore
+              else
+                rm -f "$KS"
+                echo "::error::Supabase no aportó un keystore firnable (archivo descartado)."
+              fi
             else
-              echo "::error::Supabase no aportó un keystore firnable."
+              rm -f "$KS"
+              echo "::error::curl no pudo descargar el keystore desde Supabase."
             fi
           fi
 
@@ -214,6 +225,7 @@ jobs:
             if echo "$KEYSTORE_BASE64" | base64 -d > "$KS" 2>/dev/null && probe_keystore "$KS"; then
               adopt_keystore
             else
+              rm -f "$KS"
               echo "::error::RELEASE_KEYSTORE_BASE64 no produce un keystore válido (¿base64 corrupto o passwords?)."
             fi
           fi
@@ -226,7 +238,10 @@ jobs:
             [ -z "$KEYSTORE_BASE64" ] && echo "  ✗ RELEASE_KEYSTORE_BASE64"
             [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEYSTORE_PASSWORD" ] && echo "  ✗ KEYSTORE_PASSWORD (vacío)"
             [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEY_PASSWORD" ] && echo "  ✗ KEY_PASSWORD (vacío)"
-            temp_keystore
+            if ! temp_keystore; then
+              echo "::error::Sin keystore posible — no hay modo de firmar el release. Aborta con diagnóstico."
+              exit 1
+            fi
           fi
 
           echo ">>> HAS_RELEASE_SECRETS=$keystore_ok"
