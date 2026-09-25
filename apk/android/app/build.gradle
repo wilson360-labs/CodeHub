@@ -45,9 +45,11 @@ android {
         // adaptador de Appodeal/AdMob en runtime sin subir el minSdk.
         coreLibraryDesugaringEnabled true
     }
+}
 
-    kotlinOptions {
-        jvmTarget = '17'
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -91,7 +93,7 @@ dependencies {
     // Kotlin + Coroutines — núcleo de mantenimiento con Shizuku
     // (borrarCacheTurbo / killAppsPro) en hilos secundarios sin congelar
     // el UI del WebView.
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 }
 
