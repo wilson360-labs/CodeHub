@@ -125,54 +125,111 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEYSTORE_SUPABASE_URL: ${{ secrets.KEYSTORE_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        shell: bash
         run: |
           mkdir -p apk/android/app
+          KS="apk/android/app/release.jks"
+          keystore_ok=false
 
-          # Fuente 1 (recomendada): keystore en Supabase Storage privado.
-          # KEYSTORE_SUPABASE_URL = URL completa del objeto privado, p.ej:
-          #   $SUPABASE_URL/storage/v1/object/private/codehub/keys/release.jks
-          if [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "📦 Descargando keystore desde Supabase Storage (privado)..."
-            curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              -o apk/android/app/release.jks "$KEYSTORE_SUPABASE_URL"
-            chmod 600 apk/android/app/release.jks
-            echo "Keystore magic: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (JKS=feedfeed | PKCS12=3082...)"
-            echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-          elif [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "🔑 Decodificando keystore persistente desde secrets..."
-            if ! echo "$KEYSTORE_BASE64" | base64 -d > apk/android/app/release.jks 2>/dev/null; then
-              echo "::error::RELEASE_KEYSTORE_BASE64 no es base64 válido. Revisa que copiaste la cadena completa de [Convert]::ToBase64String()."
-              exit 1
+          # ── Helpers ──────────────────────────────────────────────
+          valid_pw () {
+            local name="$1" value="$2"
+            if [ -z "$value" ]; then
+              echo "::warning::$name está vacío"
+              return 1
             fi
-            chmod 600 apk/android/app/release.jks
-            echo "Keystore magic: $(od -A n -t x1 -N 4 apk/android/app/release.jks | tr -d ' \n') (JKS=feedfeed | PKCS12=3082...)"
+            if [ "${#value}" -lt 6 ]; then
+              echo "::warning::$name tiene ${#value} chars (<6). keytool no acepta passwords cortas."
+              return 1
+            fi
+            return 0
+          }
+
+          # Valida magic-bytes y que el keystore abra con storepass/keypass (alias codehub).
+          probe_keystore () {
+            local f="$1" magic
+            magic=$(od -A n -t x1 -N 4 "$f" | tr -d ' \n')
+            echo "Keystore magic: $magic (JKS=feedfeed | PKCS12=3082...)"
+            case "$magic" in
+              feed*|3082*|3080*) ;;
+              *) echo "::error::El archivo no parece un keystore (magic=$magic)."; return 1 ;;
+            esac
+            if keytool -certreq -alias codehub -keystore "$f" \
+                -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" \
+                >/dev/null 2>&1; then
+              echo "✅ Keystore válido: storepass+keypass correctos y alias 'codehub' recuperable."
+              return 0
+            fi
+            echo "::error::El keystore no abre con KEYSTORE_PASSWORD/KEY_PASSWORD (o falta el alias 'codehub')."
+            echo "::error::Corrige los secrets o restaura el keystore original antes de publicar."
+            return 1
+          }
+
+          adopt_keystore () {
+            chmod 600 "$KS"
+            keystore_ok=true
             echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-          else
-            echo "⚠️ No hay secrets de firma para release. Detalle:"
-            [ -z "$KEYSTORE_BASE64" ] && echo "  - vacío o falta: RELEASE_KEYSTORE_BASE64"
-            [ -z "$KEYSTORE_PASSWORD" ] && echo "  - vacío o falta: KEYSTORE_PASSWORD"
-            [ -z "$KEY_PASSWORD" ] && echo "  - vacío o falta: KEY_PASSWORD"
-            [ -z "$KEYSTORE_SUPABASE_URL" ] && echo "  - (opcional) no definido: KEYSTORE_SUPABASE_URL"
-            [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "  - (opcional) no definido: SUPABASE_SERVICE_ROLE_KEY"
-            echo "Se genera un keystore temporal para que la compilación pueda completarse."
-            echo "Esto no es válido para actualizaciones sobre una versión ya instalada con otra firma."
+          }
+
+          temp_keystore () {
+            echo "⚠️ Keystore temporal (failed-safe): la compilación completará, pero NO habrá release firmado."
+            echo "   No es válido para actualizar una versión ya instalada con otra firma."
             keytool -genkeypair -v \
-              -keystore apk/android/app/release.jks \
+              -keystore "$KS" \
               -alias codehub \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
               -storepass android \
               -keypass android \
-              -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US"
+              -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US" >/dev/null 2>&1
+            chmod 600 "$KS"
             echo "HAS_RELEASE_SECRETS=false" >> "$GITHUB_ENV"
             echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
+          }
+
+          # ── Fuente 1 (recomendada): keystore en Supabase Storage privado ──
+          # KEYSTORE_SUPABASE_URL = URL completa del objeto privado, p.ej:
+          #   $SUPABASE_URL/storage/v1/object/private/codehub/keys/release.jks
+          if [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] \
+             && valid_pw "KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" \
+             && valid_pw "KEY_PASSWORD" "$KEY_PASSWORD"; then
+            echo "📦 Descargando keystore desde Supabase Storage (privado)..."
+            if curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+                -o "$KS" "$KEYSTORE_SUPABASE_URL" && probe_keystore "$KS"; then
+              adopt_keystore
+            else
+              echo "::error::Supabase no aportó un keystore firnable."
+            fi
           fi
+
+          # ── Fuente 2: base64 persistente en secrets ──
+          if [ "$keystore_ok" = false ] && [ -n "$KEYSTORE_BASE64" ] \
+             && valid_pw "KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" \
+             && valid_pw "KEY_PASSWORD" "$KEY_PASSWORD"; then
+            echo "🔑 Decodificando keystore persistente desde secrets..."
+            if echo "$KEYSTORE_BASE64" | base64 -d > "$KS" 2>/dev/null && probe_keystore "$KS"; then
+              adopt_keystore
+            else
+              echo "::error::RELEASE_KEYSTORE_BASE64 no produce un keystore válido (¿base64 corrupto o passwords?)."
+            fi
+          fi
+
+          # ── Fuente 3: keystore temporal (el build jamás se rompe) ──
+          if [ "$keystore_ok" = false ]; then
+            echo "⚠️ Ninguna fuente fue firnable. Detalle de secrets:"
+            [ -z "$KEYSTORE_SUPABASE_URL" ] && echo "  ✗ KEYSTORE_SUPABASE_URL (vacío)"
+            [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "  ✗ SUPABASE_SERVICE_ROLE_KEY"
+            [ -z "$KEYSTORE_BASE64" ] && echo "  ✗ RELEASE_KEYSTORE_BASE64"
+            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEYSTORE_PASSWORD" ] && echo "  ✗ KEYSTORE_PASSWORD (vacío)"
+            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEY_PASSWORD" ] && echo "  ✗ KEY_PASSWORD (vacío)"
+            temp_keystore
+          fi
+
+          echo ">>> HAS_RELEASE_SECRETS=$keystore_ok"
 
       - name: Build Release APK
         working-directory: apk/android
