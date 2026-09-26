@@ -23,7 +23,7 @@ En el panel de **Render** → Tu Servicio (**codehub**) → **Environment**:
 | `MONGODB_URI` | `mongodb+srv://...` (MongoDB Atlas) |
 | `ADMIN_KEY` | Clave de acceso para el panel admin |
 | `SUPABASE_URL` | URL de tu proyecto Supabase |
-| `SUPABASE_KEY` | Service role key de Supabase (bucket `codehub-apks`) |
+| `SUPABASE_KEY` | Service role key de Supabase (bucket `CodeHub`) |
 | `GROQ_API_KEY` | API Key de Groq (LLaMA 3.3 70B) |
 | `GEMINI_API_KEY` | API Key de Google Gemini (fallback) |
 | `OPENROUTER_API_KEY` | API Key de OpenRouter (opcional) |
@@ -32,6 +32,28 @@ En el panel de **Render** → Tu Servicio (**codehub**) → **Environment**:
 | `FIREBASE_SERVICE_ACCOUNT` | JSON de la cuenta de servicio de Firebase (FCM) |
 | `GITHUB_WEBHOOK_SECRET` | Secret del webhook de GitHub para releases |
 | `RENDER_EXTERNAL_URL` | `https://codehub-98s6.onrender.com` |
+
+---
+
+## 2b. Configuración de Supabase (una sola vez)
+
+El backend usa Supabase para: estadísticas diarias (`daily_stats`), registro de
+visitas/servicios, push (`push_subs`, `fcm_tokens`) y storage de APKs (bucket
+`CodeHub`). Pasos:
+
+1. **Render** → servicio `codehub` → **Environment** → añadir `SUPABASE_URL`
+   (`https://<project-ref>.supabase.co`) y `SUPABASE_KEY` (la **service role**
+   key, no la anon/`publishable`; está en Supabase → Settings → API) y guardar
+   (se redepliega).
+2. **Supabase → SQL Editor** → ejecutar una vez `backend/bootstrap_exec_sql.sql`
+   (crea la RPC `exec_sql`). Sin ella, el backend no puede auto-crear sus
+   tablas ni el admin-hub correr el DB Runner contra Supabase.
+3. **Supabase → Storage** → crear un bucket **público** llamado **`CodeHub`**
+   (el backend genera URLs públicas tipo `getPublicUrl`).
+
+En el siguiente reinicio el backend crea solas las tablas (`ensure*Table` al
+arrancar) y el reporte periódico de Telegram ya muestra "Stats diarias" reales.
+Se verifica con el health check (clave admin): `storage: 'supabase'`.
 
 ---
 
