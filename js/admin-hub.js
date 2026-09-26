@@ -312,6 +312,7 @@ function switchTab(id, btn) {
   if (id === 'live')     startLiveFeed();
   if (id === 'github') {
     loadGhAutomation();
+    loadGhJobs();
     setTimeout(() => { loadGhSecrets(); loadGhVariables(); }, 300);
     const firstSub = document.querySelector('.gh-subnav .gh-sub');
     if (firstSub) ghSub('overview', firstSub);
@@ -619,6 +620,48 @@ async function dispatchWorkflow(file, btn) {
   }
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-play"></i> Ejecutar';
+}
+
+// ── TAREAS PROGRAMADAS (cron jobs de Render) ──────────────────
+// No son workflows de GitHub: corren en Render (render.yaml). El
+// backend los expone en /api/admin/jobs; aquí solo se muestran.
+function cronHuman(sched) {
+  const m = /^(\d+) (\*|\d+|\d+\/\d+) (\*|\d+) (\*|\*\/\d+) (\*)$/.exec((sched || '').trim());
+  if (!m) return sched || '';
+  const [, min, hr, dom, mon, dow] = m;
+  const time = `${hr.padStart(2, '0')}:${min.padStart(2, '0')}`;
+  if (dom === '*' && mon === '*') {
+    if (hr === '*/12') return `cada 12 horas (min ${min.padStart(2, '0')})`;
+    if (hr === '*/6') return `cada 6 horas (min ${min.padStart(2, '0')})`;
+    if (hr === '*') return 'cada hora';
+    if (dow === '*') return `todos los días a las ${time} UTC`;
+  }
+  return sched + ' UTC';
+}
+
+async function loadGhJobs() {
+  const el = document.getElementById('gh-render-jobs');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:.72rem">Cargando tareas programadas…</div>';
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/jobs`, { headers: _adminHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${escapeHtml(data.error || 'Error cargando cron jobs')}</div>`; return; }
+    const jobs = data.jobs || [];
+    if (!jobs.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.72rem">No hay cron jobs definidos en render.yaml.</div>'; return; }
+    el.innerHTML = jobs.map(j => `
+     <div class="blog-row" style="display:flex;align-items:flex-start;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
+       <div style="min-width:0;flex:1">
+         <div style="font-weight:700;font-size:.8rem">${j.icon || '⏰'} ${escapeHtml(j.name)}</div>
+         ${j.desc ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${escapeHtml(j.desc)}</div>` : ''}
+         <div style="font-size:.68rem;color:var(--muted);font-family:var(--mono);margin-top:.15rem">${escapeHtml(j.schedule)} · ${escapeHtml(j.startCommand)}</div>
+         <div style="font-size:.72rem;margin-top:.25rem">${escapeHtml(cronHuman(j.schedule))}</div>
+         ${j.envKeys && j.envKeys.length ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">Requiere env del job: <code>${j.envKeys.map(escapeHtml).join('</code>, <code>')}</code></div>` : ''}
+       </div>
+     </div>`).join('');
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:.72rem">Error de conexión: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 // ── EN VIVO — panel de registro de operaciones ejecutadas ────
@@ -2158,6 +2201,9 @@ async function refreshApps() {
 
   // 3. GitHub workflows + runs
   tasks.push(loadGhAutomation().catch(() => {}));
+
+  // 3b. Tareas programadas (cron jobs de Render)
+  tasks.push(loadGhJobs().catch(() => {}));
 
   // 4. GitHub secrets
   tasks.push(loadGhSecrets().catch(() => {}));

@@ -4332,6 +4332,62 @@ app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
   }
 });
 
+// ── ADMIN: JOBS — tareas programadas (cron jobs de Render) ────
+// Los cron jobs del Blueprint (render.yaml) NO son workflows de GitHub,
+// por eso no aparecen en /api/admin/github/workflows. Este endpoint los
+// expone tal cual están definidos en el repo, para que admin-hub los
+// muestre (check-app-updates, daily-report-bot, ...).
+const RENDER_BLUEPRINT = path.resolve(__dirname, '..', 'render.yaml');
+const RENDER_JOB_META = [
+  { name: 'check-app-updates', icon: '🔄', desc: 'Monitor de actualizaciones: revisa GitHub Releases del catálogo y actualiza versiones/APKs (antes workflow check-app-updates.yml).' },
+  { name: 'daily-report-bot',  icon: '📊', desc: 'Bot de informes diarios: envía por Telegram el resumen del día (antes workflow daily_report.yml).' },
+];
+app.get('/api/admin/jobs', requireAdmin, async (req, res) => {
+  try {
+    const raw = fs.readFileSync(RENDER_BLUEPRINT, 'utf8');
+    const jobs = [];
+    const parseBlock = (name, blk) => {
+      const grab = (re) => { const x = blk.match(re); return x ? x[1].trim().replace(/^["']|["']$/g, '') : ''; };
+      const envKeys = [];
+      let k; const keyRe = /^      - key:\s*(.+)$/gm;
+      while ((k = keyRe.exec(blk)) !== null) envKeys.push(k[1].trim());
+      const meta = RENDER_JOB_META.find(j => j.name === name) || {};
+      jobs.push({
+        name,
+        icon: meta.icon || '⏰',
+        desc: meta.desc || '',
+        type: 'cron',
+        runtime: grab(/^    runtime:\s*(.+)$/m),
+        rootDir: grab(/^    rootDir:\s*(.+)$/m),
+        schedule: grab(/^    schedule:\s*(.+)$/m),
+        startCommand: grab(/^    startCommand:\s*(.+)$/m),
+        envKeys,
+      });
+    };
+    let inCron = false, acc = '', curName = '';
+    for (const ln of raw.split('\n')) {
+      const t = ln.match(/^  - type:\s*(\w+)/);
+      if (t) {
+        if (inCron && acc.trim()) parseBlock(curName, acc);
+        acc = '';
+        curName = '';
+        inCron = t[1] === 'cron';
+      } else if (inCron) {
+        const nm = ln.match(/^    name:\s*(.+)\s*$/);
+        if (nm) curName = nm[1].trim();
+        acc += ln + '\n';
+      }
+    }
+    if (inCron && acc.trim()) parseBlock(curName, acc);
+    logAdmin(adminActorOf(req), 'jobs.list', { count: jobs.length, ip: clientIp(req) }, 'ok', 'workflow');
+    res.json({ ok: true, jobs });
+  } catch (e) {
+    console.error('GET /api/admin/jobs error:', e.message);
+    logAdmin(adminActorOf(req), 'jobs.list', { error: e.message, ip: clientIp(req) }, 'error', 'workflow');
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── ADMIN: ACTIVITY — registro en vivo de operaciones ejecutadas ──
 // Alimenta el panel "En Vivo" del admin-hub: últimas operaciones admin
 // (del ring en memoria / AdminLog) + último run de cada workflow (cache).

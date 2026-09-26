@@ -884,6 +884,15 @@
         <div id="gh-workflow-list"></div>
       </div>
 
+      <div class="section-title" style="margin-top:1.2rem"><i class="fas fa-clock"></i> Tareas programadas (Render cron)</div>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem;line-height:1.6">
+          No son workflows de GitHub: corren en los servidores de Render (definidos en <code>render.yaml</code>),
+          por eso no aparecen en la lista de arriba. Configura cada env var en Render → tu job → <b style="color:var(--text)">Environment</b>.
+        </div>
+        <div id="gh-render-jobs"></div>
+      </div>
+
       <!-- SECRETS & VARIABLES -->
       <div class="section-title" style="margin-top:1.2rem"><i class="fas fa-lock"></i> Secrets del Repositorio</div>
       <div class="card" style="margin-bottom:1rem">
@@ -1015,7 +1024,7 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script src="../js/admin-hub.js?v=20260926g"></script>
+<script src="../js/admin-hub.js?v=20260926h"></script>
 <script src="../js/remote-config.js?v=20260826b"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
