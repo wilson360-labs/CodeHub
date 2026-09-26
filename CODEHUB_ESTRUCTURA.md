@@ -37,7 +37,7 @@ Repositorio: GitHub → desplegado automáticamente en **Vercel** (frontend) y *
 ## 3. Árbol de archivos completo
 
 ```
-CodeHub-main/
+CodeHub/
 │
 ├── index.html                  ← Página principal (única SPA-like, ~5260 líneas)
 ├── 404.html                    ← Página de error personalizada
