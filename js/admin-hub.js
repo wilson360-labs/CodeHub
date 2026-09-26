@@ -2978,11 +2978,15 @@ function exportVisitors() {
 // ── STATUS CHECK ──────────────────────────────────────────────
 async function checkStatus() {
   const services = [
-    { id: 'backend',  name: 'Backend — Render',   url: BACKEND },
-    { id: 'mongo',    name: 'MongoDB Atlas',       url: BACKEND },
-    { id: 'supabase', name: 'Supabase',            url: BACKEND },
-    { id: 'groq',     name: 'Groq AI',             url: BACKEND },
-    { id: 'vercel',   name: 'Vercel (Frontend)',   url: 'https://wilson360-labs.vercel.app' },
+    { id: 'backend',   name: 'Backend — Render',          url: BACKEND },
+    { id: 'mongo',     name: 'MongoDB Atlas',             url: BACKEND },
+    { id: 'supabase',  name: 'Supabase',                  url: BACKEND },
+    { id: 'groq',      name: 'Groq AI',                   url: BACKEND },
+    { id: 'vercel',    name: 'Vercel (Frontend)',         url: 'https://wilson360-labs.vercel.app' },
+    { id: 'webpush',   name: 'Web Push (VAPID)',          url: BACKEND },
+    { id: 'fcm',       name: 'Push Android (FCM)',        url: BACKEND },
+    { id: 'keepalive', name: 'Keepalive Render',          url: BACKEND },
+    { id: 'webhook',   name: 'Webhook GitHub (releases)', url: BACKEND },
   ];
   const grid = document.getElementById('svc-grid');
   grid.innerHTML = services.map(s => `
@@ -3006,10 +3010,14 @@ async function checkStatus() {
     const lat = Date.now() - t0;
     setCard('backend',  'online',                                         `${lat}ms`);
     setCard('mongo',    d.mongo    === 'connected' ? 'online' : 'offline', d.mongo === 'connected' ? `${lat}ms` : 'Desconectado');
-    setCard('supabase', d.supabase !== false       ? 'online' : 'offline', d.supabase !== false    ? `${lat}ms` : 'Sin configurar');
-    setCard('groq',     d.groq     !== false       ? 'online' : 'warning', d.groq !== false        ? `${lat}ms` : 'Sin API key');
+    setCard('supabase', d.storage  === 'supabase'  ? 'online' : 'offline', d.storage === 'supabase' ? `${lat}ms` : 'Sin configurar (URL/KEY)');
+    setCard('groq',     d.groq     === 'ok'        ? 'online' : 'warning', d.groq    === 'ok'        ? `${lat}ms` : 'Sin API key');
+    setCard('webpush',  d.push_web?.startsWith('ok') ? 'online' : 'warning', d.push_web?.startsWith('ok') ? 'VAPID OK' : 'Faltan VAPID keys');
+    setCard('fcm',      d.push_android?.startsWith('ok') ? 'online' : 'warning', d.push_android?.startsWith('ok') ? 'FCM OK' : 'Falta FIREBASE_SERVICE_ACCOUNT');
+    setCard('keepalive', d.render_keepalive?.startsWith('ok') ? 'online' : 'warning', d.render_keepalive?.startsWith('ok') ? 'RENDER_EXTERNAL_URL OK' : 'Falta RENDER_EXTERNAL_URL');
+    setCard('webhook',  d.github_webhook_secret?.startsWith('ok') ? 'online' : 'warning', d.github_webhook_secret?.startsWith('ok') ? 'Webhook OK' : 'Falta GITHUB_WEBHOOK_SECRET');
   } catch {
-    ['backend','mongo','supabase','groq'].forEach(k => setCard(k, 'offline', 'Sin respuesta'));
+    ['backend','mongo','supabase','groq','webpush','fcm','keepalive','webhook'].forEach(k => setCard(k, 'offline', 'Sin respuesta'));
   }
 
   try {
