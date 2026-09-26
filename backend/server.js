@@ -673,6 +673,7 @@ async function getGhRunsCached(force) {
   const { data: wfs } = await octokit.rest.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
   for (const wf of wfs.workflows) {
     const file = wf.path.split('/').pop();
+    if (!isRealGitHubWorkflow(file)) continue;
     try {
       const { data } = await octokit.rest.actions.listWorkflowRuns({
         owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file, per_page: 1,
@@ -683,7 +684,7 @@ async function getGhRunsCached(force) {
         created_at: run.created_at, html_url: run.html_url,
         display_title: run.display_title, run_id: run.id,
       } : null;
-    } catch { out[file] = null; }
+    } catch { _ghPhantomWorkflows.add(file); out[file] = null; }
   }
   _ghRunsCache = { at: now, data: out };
   return out;
@@ -4134,6 +4135,17 @@ const GITHUB_OWNER  = process.env.GITHUB_OWNER  || 'wilson360-labs';
 const GITHUB_REPO   = process.env.GITHUB_REPO   || 'CodeHub';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
+// GitHub lista un workflow "virtual" `dependabot-updates.yml` en repos con
+// Dependabot activo: NO es un archivo real y consultar sus runs devuelve 404.
+// Se filtra estáticamente + blacklist aprendida en runtime, para no spamear
+// la API ni mostrar tarjetas fantasma en admin-hub.
+const GH_VIRTUAL_WORKFLOWS = new Set(['dependabot-updates.yml']);
+let _ghPhantomWorkflows = new Set();
+function isRealGitHubWorkflow(path) {
+  const file = String(path).split('/').pop();
+  return !GH_VIRTUAL_WORKFLOWS.has(file) && !_ghPhantomWorkflows.has(file);
+}
+
 async function ghUpdateFile(filePath, content, message) {
   if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
   let sha;
@@ -4829,7 +4841,7 @@ app.get('/api/admin/github/workflows', requireAdmin, async (req, res) => {
   try {
     const gh = ghGuard();
     const { data } = await gh.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    res.json({ ok: true, workflows: data.workflows.map(w => ({ id: w.id, name: w.name, path: w.path.split('/').pop(), state: w.state, html_url: w.html_url })) });
+    res.json({ ok: true, workflows: data.workflows.filter(w => isRealGitHubWorkflow(w.path)).map(w => ({ id: w.id, name: w.name, path: w.path.split('/').pop(), state: w.state, html_url: w.html_url })) });
   } catch (e) {
     console.error('GET github/workflows error:', e.message);
     res.status(500).json({ error: e.message });
@@ -4839,6 +4851,7 @@ app.get('/api/admin/github/workflows', requireAdmin, async (req, res) => {
 // GET /api/admin/github/workflows/:file/runs — últimos runs de un workflow
 app.get('/api/admin/github/workflows/:file/runs', requireAdmin, async (req, res) => {
   try {
+    if (!isRealGitHubWorkflow(req.params.file)) return res.json({ ok: true, runs: [] });
     const gh = ghGuard();
     const per_page = Math.min(parseInt(req.query.per_page, 10) || 10, 50);
     const { data } = await gh.actions.listWorkflowRuns({
