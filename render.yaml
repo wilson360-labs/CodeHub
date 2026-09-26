@@ -51,3 +51,42 @@ services:
       # lleguen al instante en vez de esperar el polling cada 6h.
       - key: GITHUB_WEBHOOK_SECRET
         sync: false
+
+# ── Tareas programadas — automatización con la config de Render ──
+# Cron Jobs (type: cron, dentro de services): leen las variables del
+# ENTORNO DE CADA JOB en Render (NO GitHub Secrets). Tras desplegar el
+# Blueprint, crear a mano en cada cron job (Dashboard → job → Environment):
+#   · check-app-updates → MONGODB_URI (misma URI Atlas del web service);
+#     GITHUB_TOKEN es OPCIONAL (PAT de lectura pública: sin él, la API de
+#     GitHub limita a 60 req/hora y el monitor solo revisa ~60 apps).
+#   · daily-report-bot  → TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, ADMIN_KEY y
+#     BACKEND_URL (mismos valores del web service).
+  - type: cron
+    name: check-app-updates
+    runtime: node
+    rootDir: backend
+    schedule: "0 */12 * * *"
+    buildCommand: npm install
+    startCommand: node scripts/check-app-updates.js
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+
+  - type: cron
+    name: daily-report-bot
+    runtime: python
+    rootDir: python
+    schedule: "0 3 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python telegram_bot.py
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: ADMIN_KEY
+        sync: false
+      - key: BACKEND_URL
+        sync: false

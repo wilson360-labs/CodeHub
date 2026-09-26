@@ -17,8 +17,9 @@
  * a 5,000/hora — más que suficiente para revisar el catálogo entero
  * varias veces al día.
  *
- * Pensado para ejecutarse vía GitHub Actions con un cron (ver
- * .github/workflows/check-app-updates.yml).
+ * Se ejecuta como Cron Job en Render (render.yaml → cronJobs →
+ * "check-app-updates", cada 12 h): MONGODB_URI y GITHUB_TOKEN viven
+ * en el entorno del job en Render, NO en GitHub Secrets.
  */
 
 'use strict';
@@ -30,11 +31,10 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN || null;
 
 if (!MONGODB_URI) {
   console.error('❌ Falta MONGODB_URI en el entorno.');
-  console.error('   1) Add the repo secret:  GitHub → Settings → Secrets and variables → Actions');
-  console.error('      → New repository secret → MONGODB_URI → pega la misma URI de MongoDB Atlas');
-  console.error('      que usa Render (backend/render.yaml). GITHUB_TOKEN NO hay que crearlo:');
-  console.error('      Actions lo provee automáticamente.');
-  console.error('   2) Vuelve a correr este workflow (Actions → "Revisar GitHub Releases" → Run workflow).');
+  console.error('   Se ejecuta como Cron Job en Render (render.yaml → cronJobs →');
+  console.error('   check-app-updates). Configúrala en: Render Dashboard → job');
+  console.error('   check-app-updates → Environment → añadir MONGODB_URI con el');
+  console.error('   mismo valor de MongoDB Atlas del web service, y Redis deploy.');
   process.exit(1);
 }
 
