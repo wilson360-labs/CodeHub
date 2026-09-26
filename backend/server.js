@@ -4135,15 +4135,32 @@ const GITHUB_OWNER  = process.env.GITHUB_OWNER  || 'wilson360-labs';
 const GITHUB_REPO   = process.env.GITHUB_REPO   || 'CodeHub';
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-// GitHub lista un workflow "virtual" `dependabot-updates.yml` en repos con
-// Dependabot activo: NO es un archivo real y consultar sus runs devuelve 404.
-// Se filtra estáticamente + blacklist aprendida en runtime, para no spamear
-// la API ni mostrar tarjetas fantasma en admin-hub.
-const GH_VIRTUAL_WORKFLOWS = new Set(['dependabot-updates.yml']);
+// GitHub lista workflows "virtuales" en repos con Dependabot/Pages activos
+// (p.ej. dependabot-updates.yml, pages-build-deployment.yml): no son archivos
+// reales y consultar sus runs devuelve 404. Se filtran contra los archivos
+// reales de .github/workflows de este repo (a prueba de futuros fantasmas),
+// más blacklist estática + aprendida en runtime.
+const GH_VIRTUAL_WORKFLOWS = new Set(['dependabot-updates.yml', 'pages-build-deployment.yml']);
+const GH_WORKFLOWS_DIR = path.resolve(__dirname, '..', '.github', 'workflows');
+let _ghWfFilesCache = null;
+let _ghWfFilesAt = 0;
+function localWorkflowFiles() {
+  const now = Date.now();
+  if (!_ghWfFilesCache || (now - _ghWfFilesAt) > 30000) {
+    try {
+      _ghWfFilesCache = new Set(fs.readdirSync(GH_WORKFLOWS_DIR).filter(f => /\.ya?ml$/i.test(f)));
+    } catch { _ghWfFilesCache = new Set(); }
+    _ghWfFilesAt = now;
+  }
+  return _ghWfFilesCache;
+}
 let _ghPhantomWorkflows = new Set();
 function isRealGitHubWorkflow(path) {
   const file = String(path).split('/').pop();
-  return !GH_VIRTUAL_WORKFLOWS.has(file) && !_ghPhantomWorkflows.has(file);
+  if (GH_VIRTUAL_WORKFLOWS.has(file) || _ghPhantomWorkflows.has(file)) return false;
+  const local = localWorkflowFiles();
+  if (local.size === 0) return true; // no se pudo leer el dir: no filtrar por disco
+  return local.has(file);
 }
 
 async function ghUpdateFile(filePath, content, message) {
@@ -5174,13 +5191,24 @@ if (VAPID_READY) webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC
 // Push instantáneo para la app Android nativa.
 let admin = null;
 let fcmEnabled = false;
+let adminMessagingRef = null;
 try {
   admin = require('firebase-admin');
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
     : null;
   if (serviceAccount) {
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    // firebase-admin v14+ expone `cert` en la raíz y `getMessaging(app)` en el
+    // subpath; v11-13 lo hacían vía `admin.credential.cert` y `admin.messaging()`.
+    const certFn = admin.cert || (admin.credential && admin.credential.cert);
+    if (!certFn) throw new Error('firebase-admin sin credential.cert ni cert');
+    admin.initializeApp({ credential: certFn(serviceAccount) });
+    if (typeof admin.messaging === 'function') {
+      adminMessagingRef = admin.messaging();
+    } else {
+      const { getMessaging } = require('firebase-admin/messaging');
+      adminMessagingRef = getMessaging();
+    }
     fcmEnabled = true;
     console.log('✅ FCM: Firebase Cloud Messaging habilitado');
   } else {
@@ -5600,7 +5628,7 @@ async function fcmDeleteToken(token) {
 async function sendFCM(token, payload) {
   if (!fcmEnabled || !admin) return { ok: false, reason: 'fcm_disabled' };
   try {
-    await admin.messaging().send({
+    await (adminMessagingRef || admin.messaging()).send({
       token: token,
       notification: { title: payload.title, body: payload.body },
       data: { type: payload.type || 'general', url: payload.url || '/' },
