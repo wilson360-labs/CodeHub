@@ -500,70 +500,102 @@ function initAdmin(apps) {
 }
 
 // ── GITHUB AUTOMATION ─────────────────────────────────────────
-const GH_WORKFLOWS = [
-  { file: 'seed-foss-catalog.yml',      name: '🌱 Seed catálogo FOSS',      desc: 'Upsert de las apps de foss-catalog-seed.json en MongoDB + check de versiones.' },
-  { file: 'check-app-updates.yml',      name: '🔄 Monitor de actualizaciones', desc: 'Revisa GitHub Releases del catálogo y actualiza versiones/APKs.' },
-  { file: 'dedupe-catalog.yml',         name: '🧹 Limpiar duplicados',      desc: 'Elimina apps duplicadas (dry-run por defecto).' },
-  { file: 'enrich-app-logos.yml',       name: '🖼️ Aplicar logos FOSS',      desc: 'Universal: para cualquier app open source (nueva o existente) sin logo oficial (portada opengraph o vacío), busca el logo real y lo sube a img/. No toca logos locales ni URLs puestas a mano.' },
-  { file: 'build-apk.yml',             name: '📱 Compilar APK Android',    desc: 'Compila el APK nativo de CodeHub con Bubblewrap/TWA. Genera release con el APK para descarga directa.' },
-];
+// La lista de workflows se construye SIEMPRE desde GitHub
+// (GET /api/admin/github/workflows), así refleja los flujos actuales y
+// los que se agreguen en el futuro sin tocar código.
+// GH_WF_META solo aporta icono/descripción/dry-run; un workflow nuevo
+// sin metadata igual aparece con su nombre real del repo.
+const GH_WF_META = {
+  'seed-foss-catalog.yml':    { icon: '🌱', name: 'Seed catálogo FOSS',          desc: 'Upsert de las apps de foss-catalog-seed.json en MongoDB + check de versiones.' },
+  'dedupe-catalog.yml':       { icon: '🧹', name: 'Limpiar duplicados',          desc: 'Elimina apps duplicadas (dry-run por defecto).' },
+  'enrich-app-logos.yml':     { icon: '🖼️', name: 'Aplicar logos FOSS',          desc: 'Universal: para cualquier app open source (nueva o existente) sin logo oficial (portada opengraph o vacío), busca el logo real y lo sube a img/. No toca logos locales ni URLs puestas a mano.', hasDryRun: true },
+  'build-apk.yml':            { icon: '📱', name: 'Compilar APK Android',        desc: 'Compila el APK nativo de CodeHub con Bubblewrap/TWA. Genera release con el APK para descarga directa.' },
+  'autoscript.yml':           { icon: '⚡', name: 'CodeHub AutoScript',          desc: 'Automatización general del repositorio.' },
+  'deploy.yml':               { icon: '🚀', name: 'CodeHub CI/CD',               desc: 'Pipeline de integración y despliegue continuo.' },
+  'preview.yml':              { icon: '👁️', name: 'Vista previa de Vercel',      desc: 'Preview de despliegue por pull request.' },
+  'quality.yml':              { icon: '✅', name: 'Control de calidad',           desc: 'Checks de calidad del código.' },
+  'generate-cert-pin.yml':    { icon: '🔐', name: 'Generar Cert Pin',            desc: 'Calcula el pin del certificado del APK.' },
+  'keystore-generate.yml':    { icon: '🔑', name: 'Generar keystore (una vez)',  desc: 'Crea el almacén de claves de release del APK.' },
+  'vapid-keys.yml':           { icon: '📡', name: 'Setup VAPID Keys (Render)',   desc: 'Configura las claves VAPID de push sincronizadas con Render.' },
+};
+let _ghWfList = null; // cache { path, name, state, html_url } de la última carga
+
+function wfMeta(file) {
+  const m = GH_WF_META[file] || {};
+  return { icon: m.icon || '⚙️', name: m.name || '', desc: m.desc || '', hasDryRun: !!m.hasDryRun };
+}
+
+function wfName(file) {
+  const cached = (_ghWfList || []).find(w => w.path === file);
+  const meta = wfMeta(file);
+  return (cached && cached.name) || meta.name || file;
+}
 
 async function loadGhAutomation() {
-  const listEl  = document.getElementById('gh-workflow-list');
-  const runsEl  = document.getElementById('gh-runs-list');
-  listEl.innerHTML = GH_WORKFLOWS.map(w => {
-    const isLogos = w.file === 'enrich-app-logos.yml';
+  const listEl = document.getElementById('gh-workflow-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--muted);font-size:.72rem">Cargando workflows…</div>';
+  let workflows = [];
+  try {
+    const res = await fetch(`${BACKEND}/api/admin/github/workflows`, { headers: _adminHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      listEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${escapeHtml(data.error || 'Error cargando workflows')}</div>`;
+      return;
+    }
+    workflows = data.workflows || [];
+    _ghWfList = workflows;
+  } catch (e) {
+    listEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">Error de conexión: ${escapeHtml(e.message)}</div>`;
+    return;
+  }
+  if (!workflows.length) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.72rem">No hay workflows en el repositorio.</div>';
+    return;
+  }
+  let runs = {};
+  try {
+    const r = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: _adminHeaders() });
+    if (r.ok) ({ runs } = await r.json());
+  } catch {}
+  listEl.innerHTML = workflows.map(w => {
+    const meta = wfMeta(w.path);
+    const last = runs[w.path];
+    const stateBadge = w.state !== 'active'
+      ? `<span class="live-badge wf" style="margin-left:.35rem">⛔ ${escapeHtml(w.state || 'deshabilitado')}</span>` : '';
+    const runLine = last
+      ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap">
+          ${last.conclusion === 'success' ? '✅' : (last.conclusion ? '❌' : (last.status === 'completed' ? '⚠️' : '⏳'))}
+          <span>${escapeHtml(last.status)}${last.conclusion ? ' / ' + escapeHtml(last.conclusion) : ''}</span>
+          <span>${new Date(last.created_at).toLocaleString()}</span>
+          <a href="${last.html_url}" target="_blank" rel="noopener" style="color:var(--a)">ver run ↗</a>
+        </div>`
+      : '<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">sin ejecuciones todavía</div>';
     return `
-     <div class="blog-row" style="display:flex;align-items:center;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
+     <div class="blog-row" style="display:flex;align-items:flex-start;gap:.8rem;justify-content:space-between;flex-wrap:wrap;padding:.7rem;border:1px solid var(--border);border-radius:9px;margin-bottom:.55rem">
        <div style="min-width:0;flex:1">
-         <div style="font-weight:700;font-size:.8rem">${w.name}</div>
-         <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${w.desc}</div>
-         ${isLogos ? `
+         <div style="font-weight:700;font-size:.8rem">${meta.icon} ${escapeHtml(w.name || meta.name || w.path)}${stateBadge}</div>
+         <div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">${escapeHtml(w.path)}</div>
+         ${meta.desc ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${escapeHtml(meta.desc)}</div>` : ''}
+         ${meta.hasDryRun ? `
          <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap;align-items:center">
            <label class="live-check" title="En modo dry-run el workflow solo reporta las apps candidatas, sin modificar nada">
-             <input type="checkbox" id="wf-dry-${w.file}" checked> Dry-run
+             <input type="checkbox" id="wf-dry-${w.path}" checked> Dry-run
            </label>
            <span class="live-badge wf" title="Apps open source sin logo real (criterio de enrich-app-logos)">🖼️ <b id="logos-missing-count">…</b> sin logo real</span>
          </div>` : ''}
+         ${runLine}
        </div>
-       <button class="blog-btn-primary" onclick="dispatchWorkflow('${w.file}', this)" style="white-space:nowrap">
+       <button class="blog-btn-primary" onclick="dispatchWorkflow('${w.path}', this)" style="white-space:nowrap">
          <i class="fas fa-play"></i> Ejecutar
        </button>
      </div>`;
   }).join('');
-  await loadGhRuns();
   await loadLogosMissing().catch(() => {});
 }
 
-async function loadGhRuns() {
-  const runsEl = document.getElementById('gh-runs-list');
-  try {
-    const res = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
-    if (!res.ok) { runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${(await res.json()).error || 'Error cargando runs'}</div>`; return; }
-    const { runs } = await res.json();
-    const files = Object.keys(runs || {}).sort();
-    const rows = files.map(f => {
-      const w = GH_WORKFLOWS.find(x => x.file === f);
-      const r = runs[f];
-      if (!r) return `<div style="font-size:.72rem;padding:.35rem 0"><b style="color:var(--text)">${w ? w.name : f}:</b> <span style="color:var(--muted)">sin ejecuciones todavía</span></div>`;
-      const icon = r.conclusion === 'success' ? '✅' : (r.conclusion ? '❌' : (r.status === 'completed' ? '⚠️' : '⏳'));
-      const when = new Date(r.created_at).toLocaleString();
-      return `<div style="font-size:.72rem;padding:.35rem 0;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <b style="color:var(--text)">${w ? w.name : f}:</b>
-        <span>${icon} ${r.status}${r.conclusion ? ' / ' + r.conclusion : ''}</span>
-        <span style="color:var(--muted)">${when}</span>
-        <a href="${r.html_url}" target="_blank" rel="noopener" style="color:var(--a)">ver run ↗</a>
-      </div>`;
-    }).join('');
-    runsEl.innerHTML = rows || '<div style="color:var(--muted);font-size:.7rem">Sin datos.</div>';
-  } catch (e) {
-    runsEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">Error de conexión: ${e.message}</div>`;
-  }
-}
-
 async function dispatchWorkflow(file, btn) {
-  const w = GH_WORKFLOWS.find(x => x.file === file);
-  if (!confirm(`¿Disparar el workflow "${w ? w.name : file}"?`)) return;
+  if (!confirm(`¿Disparar el workflow "${wfName(file)}"?`)) return;
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Disparando…';
   const dryBox = document.getElementById('wf-dry-' + file);
@@ -576,8 +608,8 @@ async function dispatchWorkflow(file, btn) {
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      toast('🚀 Workflow disparado. Revisá la pestaña de runs en un momento.');
-      setTimeout(loadGhRuns, 4000);
+      toast('🚀 Workflow disparado. Su estado se actualiza a continuación.');
+      setTimeout(loadGhAutomation, 4000);
       setTimeout(() => loadLiveFeed(true), 1500);
     } else {
       alert('❌ ' + (data.error || 'Error disparando workflow'));
@@ -3063,8 +3095,7 @@ function toast(m) {
 
     for (const [wf, status] of Object.entries(newRuns)) {
       if (lastRuns[wf] && lastRuns[wf] !== status) {
-        const wfInfo = GH_WORKFLOWS.find(w => w.file === wf);
-        const name = wfInfo ? wfInfo.name : wf;
+        const name = wfName(wf);
         if (status.includes('success')) {
           toast(`✅ ${name} completado exitosamente`);
         } else if (status.includes('failure')) {

@@ -861,7 +861,6 @@
             <i class="fas fa-magnifying-glass"></i> Buscar logos faltantes — <b id="logos-missing-count">…</b>
           </button>
           <button class="live-chip" onclick="quickDispatch('seed-foss-catalog.yml', this)">🌱 Seed FOSS</button>
-          <button class="live-chip" onclick="quickDispatch('check-app-updates.yml', this)">🔄 Check updates</button>
           <button class="live-chip" onclick="quickDispatch('dedupe-catalog.yml', this)">🧹 Dedupe catálogo</button>
         </div>
         <div id="logos-result" style="font-size:.72rem;color:var(--muted);margin-top:.7rem;line-height:1.55"></div>
@@ -878,14 +877,11 @@
       <div class="section-title"><i class="fas fa-brands fa-github"></i> Automatización (GitHub Actions)</div>
       <div class="card" style="margin-bottom:1rem">
         <div style="font-size:.76rem;color:var(--muted);margin-bottom:1rem;line-height:1.65">
-          Dispara los workflows de mantenimiento del repositorio directamente desde el panel, sin abrir GitHub.
+          Lista dinámica de <b style="color:var(--text)">todos</b> los workflows del repositorio (los actuales y los que
+          se agreguen en el futuro aparecen automáticamente), con su última ejecución. Disparalos sin abrir GitHub.
           Requiere que <b style="color:var(--text)">GITHUB_TOKEN</b> esté configurado en Render con permiso <b style="color:var(--text)">workflow</b>.
         </div>
         <div id="gh-workflow-list"></div>
-      </div>
-      <div class="section-title"><i class="fas fa-clock-rotate-left"></i> Última ejecución</div>
-      <div class="card" id="gh-runs-list">
-        <div style="color:var(--muted);font-family:var(--mono);font-size:.7rem">Cargando…</div>
       </div>
 
       <!-- SECRETS & VARIABLES -->
@@ -1019,7 +1015,7 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-<script src="../js/admin-hub.js?v=20260911c"></script>
+<script src="../js/admin-hub.js?v=20260926g"></script>
 <script src="../js/remote-config.js?v=20260826b"></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
