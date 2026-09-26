@@ -14,7 +14,19 @@ try:
 except ImportError:
     pass
 
-TOKEN    = os.getenv("TELEGRAM_TOKEN", "").strip()
+def _first_env(*names):
+    """Primera variable con valor. Orden: nombre canónico del proyecto en
+    Render (TELEGRAM_BOT_TOKEN, el mismo que usa backend/server.js), alias
+    legacy de GitHub Actions (TELEGRAM_TOKEN) y la variante con typo
+    "TELEGRAM_BOT_TOKE" que llegó a existir en el entorno de Render."""
+    for n in names:
+        v = os.getenv(n, "").strip()
+        if v:
+            log.info(f"Token leído desde: {n}")
+            return v
+    return ""
+
+TOKEN    = _first_env("TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "TELEGRAM_BOT_TOKE")
 CHAT_ID  = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 BACKEND  = os.getenv("BACKEND_URL", "https://codehub-98s6.onrender.com").strip().rstrip("/")
 ADMIN_KEY= os.getenv("ADMIN_KEY", "").strip()
@@ -68,7 +80,7 @@ def http_get(url, headers=None):
 
 def main():
     if not TOKEN:
-        print("ERROR: TELEGRAM_TOKEN no configurado")
+        print("ERROR: TELEGRAM_BOT_TOKEN no configurado (asegúralo en el cron job de Render 'daily-report-bot' → Environment)")
         sys.exit(1)
     if not CHAT_ID:
         print("ERROR: TELEGRAM_CHAT_ID no configurado")

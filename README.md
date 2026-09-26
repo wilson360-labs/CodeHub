@@ -83,7 +83,7 @@ B2_KEY_ID           # Backblaze B2
 B2_APP_KEY          # Backblaze B2
 B2_BUCKET_ID        # Backblaze B2
 B2_BUCKET_NAME      # Backblaze B2
-TELEGRAM_TOKEN      # Bot Telegram
+TELEGRAM_BOT_TOKEN   # Bot Telegram (canónico; alias legacy: TELEGRAM_TOKEN)
 TELEGRAM_CHAT_ID    # Tu chat ID
 BACKEND_URL         # https://codehub-98s6.onrender.com
 ```

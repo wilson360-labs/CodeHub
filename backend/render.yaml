@@ -59,8 +59,8 @@ services:
 #   · check-app-updates → MONGODB_URI (misma URI Atlas del web service);
 #     GITHUB_TOKEN es OPCIONAL (PAT de lectura pública: sin él, la API de
 #     GitHub limita a 60 req/hora y el monitor solo revisa ~60 apps).
-#   · daily-report-bot  → TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, ADMIN_KEY y
-#     BACKEND_URL (mismos valores del web service).
+#   · daily-report-bot  → TELEGRAM_BOT_TOKEN (canónico, el mismo de
+#     server.js), TELEGRAM_CHAT_ID, ADMIN_KEY y BACKEND_URL.
   - type: cron
     name: check-app-updates
     runtime: node
@@ -82,7 +82,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python telegram_bot.py
     envVars:
-      - key: TELEGRAM_TOKEN
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
