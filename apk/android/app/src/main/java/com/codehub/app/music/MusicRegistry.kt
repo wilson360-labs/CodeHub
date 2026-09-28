@@ -28,28 +28,26 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.WeakHashMap
 
-/**
- * Registro de extensiones de música Echo del reproductor de CodeHub.
- *
- * Escanea:
- *  - paquetes instalados con el feature `dev.brahmkshatriya.echo.MUSIC`
- *    (como hace la app de Echo con `AppRepository`), y
- *  - APKs en `filesDir/extensions/*.apk` (`FileRepository`).
- *
- * Construye cada [MusicExtension] inyectando proveedores de CodeHub
- * (metadata, settings por extensión en SharedPreferences, settings
- * globales, mensajes, red y webview). La selección de extensión actual
- * se guarda en `music_registry`.
- */
+// Registro de extensiones de música Echo del reproductor de CodeHub.
+//
+// Escanea:
+//  - paquetes instalados con el feature `dev.brahmkshatriya.echo.MUSIC`
+//    (como hace la app de Echo con `AppRepository`), y
+//  - APKs en `filesDir/extensions/*.apk` (`FileRepository`).
+//
+// Construye cada MusicExtension inyectando proveedores de CodeHub
+// (metadata, settings por extensión en SharedPreferences, settings
+// globales, mensajes, red y webview). La selección de extensión actual
+// se guarda en `music_registry`.
 class MusicRegistry(private val context: Context) {
 
     private val parser = ExtensionParser(context)
     private val registryPrefs = context.getSharedPreferences("music_registry", Context.MODE_PRIVATE)
 
-    /** Flujo compartido de mensajes que las extensiones envían (login, etc.). */
+    // Flujo compartido de mensajes que las extensiones envían (login, etc.).
     val messageFlow = MutableSharedFlow<Message>()
 
-    /** Cliente webview de las extensiones (login vía dialog). */
+    // Cliente webview de las extensiones (login vía dialog).
     val webViewClient: WebViewClient = MusicWebViewClient(context)
 
     private val appMap = WeakHashMap<String, Pair<String, Result<Pair<Metadata, Lazy<ExtensionClient>>>>>()

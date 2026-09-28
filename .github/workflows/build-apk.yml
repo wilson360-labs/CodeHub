@@ -92,7 +92,14 @@ jobs:
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then
-              grep -nE "error:|e: \$|\\* What went wrong|Execution failed|FAILURE:|FAILED|> Task :app:" "$RUNNER_TEMP/compile-debug.log" | head -n 40 || true;
+              echo "--- Tareas ---";
+              grep -nE "> Task :app:|FAILURE:|BUILD (SUCCESSFUL|FAILED)" "$RUNNER_TEMP/compile-debug.log" | head -n 80 || true;
+              echo "";
+              echo "--- Contexto de errores ---";
+              grep -nE -B2 -A45 "Duplicate class|Found duplicate|^Caused by:|cannot find symbol|e: file:|error:" "$RUNNER_TEMP/compile-debug.log" | head -n 300 || true;
+              echo "";
+              echo "--- Tail (80 líneas) ---";
+              tail -n 80 "$RUNNER_TEMP/compile-debug.log" || true;
             else
               echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)"
             fi
@@ -281,7 +288,14 @@ jobs:
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/release-build.log" ]; then
-              grep -nE "error:|e: \$|\\* What went wrong|Execution failed|FAILURE:|FAILED|> Task :app:" "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
+              echo "--- Tareas ---";
+              grep -nE "> Task :app:|FAILURE:|BUILD (SUCCESSFUL|FAILED)" "$RUNNER_TEMP/release-build.log" | head -n 80 || true;
+              echo "";
+              echo "--- Contexto de errores ---";
+              grep -nE -B2 -A45 "Duplicate class|Found duplicate|^Caused by:|cannot find symbol|e: file:|error:" "$RUNNER_TEMP/release-build.log" | head -n 300 || true;
+              echo "";
+              echo "--- Tail (80 líneas) ---";
+              tail -n 80 "$RUNNER_TEMP/release-build.log" || true;
             else
               echo "(log de release no encontrado — el paso fue skipeado antes de correr)"
             fi
