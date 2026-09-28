@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget de accesos rápidos de CodeHub (pantalla de inicio).
+  Grid 2x2 con acceso a WIL.E, Clima, Catálogo y Herramientas.
+  Mismo patrón que weather_widget_info: previewImage con el gradiente
+  de widget_background (compatible con Android 7-11 y todos los
+  launchers) + previewLayout en vivo para Android 12+.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="2"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_quick"
+    android:previewImage="@drawable/widget_background"
+    android:previewLayout="@layout/widget_quick"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_quick_description">
+</appwidget-provider>

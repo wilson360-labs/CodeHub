@@ -49,6 +49,7 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -810,6 +811,26 @@ public class CodeHubBridge {
             o.put("batteryCharging", charging);
             o.put("batteryPlugged", plugged);
 
+            // Temperatura de la batería (EXTRA_TEMPERATURE llega en décimas de grado)
+            int tempRaw = batteryStatus != null ? batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) : -1;
+            o.put("batteryTempC", tempRaw > 0 ? Math.round(tempRaw / 10f) : -1);
+
+            // CPU: % de uso derivado de /proc/stat entre llamadas (el panel
+            // web refresca cada 5s) y número de núcleos activos.
+            o.put("cpuPercent", readCpuPercent());
+            o.put("cpuCores", Runtime.getRuntime().availableProcessors());
+
+            // Pantalla: resolución física + densidad del panel
+            android.util.DisplayMetrics dm = activity.getResources().getDisplayMetrics();
+            if (dm != null) {
+                o.put("screenWidthPx", dm.widthPixels);
+                o.put("screenHeightPx", dm.heightPixels);
+                o.put("screenDensity", (int) dm.densityDpi + "dpi");
+            }
+
+            // Uptime del sistema (segundos desde el último arranque)
+            o.put("uptimeSeconds", android.os.SystemClock.uptimeMillis() / 1000L);
+
             // RAM
             ActivityManager am = (ActivityManager) activity.getSystemService(Context.ACTIVITY_SERVICE);
             if (am != null) {
@@ -850,6 +871,51 @@ public class CodeHubBridge {
             o.put("androidVersion", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
         } catch (Exception ignored) {}
         return o.toString();
+    }
+
+    /** Abre la pantalla nativa de descargas del dispositivo (historial y
+     *  gestión de archivos descargados por el sistema). */
+    @JavascriptInterface
+    public void openDownloads() {
+        try {
+            Intent i = new Intent(activity, DownloadsActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+        } catch (Exception ignored) {}
+    }
+
+    /** % de CPU usado desde la llamada anterior, por delta de ticks idle/
+     *  total en /proc/stat. La primera llamada solo guarda la muestra
+     *  (devuelve -1); desde la segunda calcula el delta real. */
+    private static long sCpuLastTotal = -1;
+    private static long sCpuLastIdle = -1;
+
+    private static double readCpuPercent() {
+        try (BufferedReader r = new BufferedReader(new FileReader("/proc/stat"))) {
+            String line = r.readLine();
+            if (line == null || !line.startsWith("cpu")) return -1;
+            String[] parts = line.trim().split("\\s+");
+            long idle = 0, total = 0;
+            for (int i = 1; i < parts.length; i++) {
+                long v = Long.parseLong(parts[i]);
+                total += v;
+                if (i == 4 || i == 5) idle += v; // idle + iowait
+            }
+            if (sCpuLastTotal <= 0) {
+                sCpuLastTotal = total;
+                sCpuLastIdle = idle;
+                return -1;
+            }
+            long dTotal = total - sCpuLastTotal;
+            long dIdle = idle - sCpuLastIdle;
+            sCpuLastTotal = total;
+            sCpuLastIdle = idle;
+            if (dTotal <= 0) return -1;
+            double pct = (dTotal - dIdle) * 100.0 / dTotal;
+            return Math.max(0.0, Math.min(100.0, pct));
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     @JavascriptInterface

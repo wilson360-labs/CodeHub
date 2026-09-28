@@ -57,10 +57,6 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <!-- Share target: la app aparece en el menú "Compartir" de otras
                  apps (texto/links). MainActivity.handleIntent abre la URL si
                  es de CodeHub o reenvía el texto a la web. -->
@@ -82,6 +78,26 @@
                 <data android:scheme="https" android:host="wilson360-labs.vercel.app" />
                 <data android:scheme="http" android:host="wilson360-labs.vercel.app" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.CodeHub"
+            android:screenOrientation="unspecified">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Historial y gestión de descargas (abierto desde el panel de
+             dispositivo del WebView vía CodeHubBridge.openDownloads). -->
+        <activity
+            android:name=".DownloadsActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified">
         </activity>
 
         <service
@@ -115,6 +131,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weather_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".QuickAccessWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_access_widget_info" />
         </receiver>
 
         <!-- Servicio del emoji animado del widget (AdapterViewFlipper).
