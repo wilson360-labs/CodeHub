@@ -1455,3 +1455,36 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   object-fit: contain;
 }
 
+/* ── FIX: iconos de la sección Servicios (#services) ─────────────
+   El icono es un <i class="fas"> cuyo glifo se dibuja en ::before.
+   components.css/index-responsive.css lo convierten en flex y le
+   aplican iconFloat con rotateY(5deg): en algunas pantallas el glifo
+   queda descentrado/torcido dentro de su caja. Se fuerza una caja
+   de icono centrada, sin rotación 3D (solo flotación vertical), con
+   ancho de línea neutro para que ninguna regla previa lo descoloque
+   ni desborde la tarjeta en el rango móvil 380–720px. */
+#services .service-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  line-height: 1;
+  margin-bottom: clamp(0.6rem, 2vw, 1.2rem);
+  animation: serviceIconFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.4));
+}
+
+@keyframes serviceIconFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+/* En los grids de 2 columnas del rango móvil el icono no debe
+   comprimirse ni desbordar su tarjeta compacta. */
+@media (max-width: 720px) {
+  #services .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem); }
+}
+

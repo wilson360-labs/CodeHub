@@ -1750,13 +1750,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <b id="dev-ram">—</b>
                         </div>
                         <div class="sys-row sys-row-gauge">
+                            <span class="sys-name"><i class="fas fa-microchip"></i> CPU</span>
+                            <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-cpu"></div></div>
+                            <b id="dev-cpu">—</b>
+                        </div>
+                        <div class="sys-row sys-row-gauge">
                             <span class="sys-name"><i class="fas fa-hard-drive"></i> Almacenamiento</span>
                             <div class="sys-bar" role="meter" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="sys-fill" id="fill-storage"></div></div>
                             <b id="dev-storage">—</b>
                         </div>
+                        <div class="sys-row">
+                            <span class="sys-name"><i class="fas fa-thermometer-half"></i> Batería</span>
+                            <b id="dev-batt-temp">—</b>
+                        </div>
                     </div>
                     <div class="sys-foot">
                         <span class="sys-dot-blink"></span> <span id="dev-android">—</span>
+                        <span class="sys-muted" id="dev-screen">—</span>
                     </div>
                 </div>
 
@@ -1775,6 +1785,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         <div class="dev-btn-grid">
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-settings-btn">Ajustes de la app</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-cache-btn">Limpiar caché</button>
+                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-downloads-btn"><i class="fas fa-folder-open"></i> Descargas</button>
                         </div>
                     </div>
 
@@ -1832,6 +1843,14 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           return Math.round(b / 1024) + ' KB';
         }
 
+        function fmtUptime(s) {
+          s = Math.max(0, Math.floor(s));
+          var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+          if (d > 0) return d + 'd ' + h + 'h';
+          if (h > 0) return h + 'h ' + m + 'm';
+          return 'activo ' + m + 'm';
+        }
+
         function setGauge(id, pct, warn) {
           var el = document.getElementById(id);
           if (!el) return;
@@ -1878,6 +1897,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           if (stor) stor.textContent = st.storageTotalBytes > 0 ? stUsed + '% · libre ' + fmtBytes(st.storageFreeBytes) : '—';
           if (stUsed >= 0) setGauge('fill-storage', stUsed, stUsed >= 90 ? 'crit' : stUsed >= 75 ? 'warn' : '');
 
+          var cpuPct = (typeof st.cpuPercent === 'number' && st.cpuPercent >= 0) ? Math.round(st.cpuPercent) : -1;
+          var cpu = document.getElementById('dev-cpu');
+          if (cpu) cpu.textContent = cpuPct >= 0 ? cpuPct + '%' : '—';
+          if (cpuPct >= 0) setGauge('fill-cpu', cpuPct, cpuPct >= 90 ? 'crit' : cpuPct >= 70 ? 'warn' : '');
+
+          var battTemp = document.getElementById('dev-batt-temp');
+          if (battTemp) battTemp.textContent = (typeof st.batteryTempC === 'number' && st.batteryTempC > 0) ? st.batteryTempC + '°C' : '—';
+
+          var screen = document.getElementById('dev-screen');
+          if (screen) {
+            var up = (typeof st.uptimeSeconds === 'number' && st.uptimeSeconds > 0) ? fmtUptime(st.uptimeSeconds) : '';
+            var res = (st.screenWidthPx && st.screenHeightPx) ? st.screenWidthPx + '×' + st.screenHeightPx + (st.screenDensity ? ' · ' + st.screenDensity : '') : '';
+            var cores = (typeof st.cpuCores === 'number' && st.cpuCores > 0) ? st.cpuCores + ' núcleos' : '';
+            screen.textContent = [res, cores, up].filter(Boolean).join(' · ');
+          }
+
           var optText = document.getElementById('dev-batt-opt');
           var optBtn = document.getElementById('dev-opt-btn');
           var ignoring = !!st.ignoringBatteryOptimizations;
@@ -1906,6 +1941,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             try { native.clearAppCache(); } catch (e) {}
             if (typeof toast === 'function') toast('Caché de la app limpiada', 'info', 3000);
           });
+          var downloadsBtn = document.getElementById('dev-downloads-btn');
+          if (downloadsBtn) downloadsBtn.addEventListener('click', function () { try { native.openDownloads(); } catch (e) {} });
 
           var exportBtn = document.getElementById('dev-export-btn');
           if (exportBtn && typeof native.saveBackupFile === 'function') {
