@@ -131,6 +131,7 @@ public class DownloadsActivity extends Activity {
                 int byIdx   = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
                 int totIdx  = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
                 int uriIdx  = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
+                int srcIdx  = cursor.getColumnIndex(DownloadManager.COLUMN_URI);
                 int tsIdx   = cursor.getColumnIndex(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP);
                 do {
                     DownloadEntry e = new DownloadEntry();
@@ -140,6 +141,7 @@ public class DownloadsActivity extends Activity {
                     e.bytes = byIdx >= 0 ? cursor.getLong(byIdx) : 0;
                     e.total = totIdx >= 0 ? cursor.getLong(totIdx) : 0;
                     e.localUri = uriIdx >= 0 ? cursor.getString(uriIdx) : null;
+                    e.srcUri = srcIdx >= 0 ? cursor.getString(srcIdx) : null;
                     e.time = tsIdx >= 0 ? cursor.getLong(tsIdx) : 0;
                     if (e.title == null || e.title.isEmpty()) {
                         e.title = e.localUri != null ? e.localUri : "Descarga " + e.id;
@@ -259,12 +261,40 @@ public class DownloadsActivity extends Activity {
 
     private void retry(DownloadEntry e) {
         if (dm == null) return;
+        if (e.srcUri == null || e.srcUri.isEmpty()) {
+            toast("No hay URL de origen para reintentar");
+            return;
+        }
         try {
-            dm.restart(e.id);
-            toast("Descarga reintentada");
+            dm.remove(e.id);
+            DownloadManager.Request req = new DownloadManager.Request(Uri.parse(e.srcUri));
+            String name = fileBaseName(e.srcUri);
+            if (name == null || name.isEmpty()) {
+                name = e.title != null && !e.title.isEmpty() ? e.title.replaceAll("[^a-zA-Z0-9._-]", "_") : "download";
+            }
+            if (name.isEmpty()) name = "download";
+            if (name.length() > 80) name = name.substring(name.length() - 80);
+            req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
+            req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            req.setTitle(name);
+            req.setDescription("Descargando desde CodeHub");
+            dm.enqueue(req);
+            toast("Descarga reencolada");
             loadDownloads();
         } catch (Exception ex) {
             toast("No se pudo reintentar: " + ex.getMessage());
+        }
+    }
+
+    private String fileBaseName(String url) {
+        try {
+            Uri u = Uri.parse(url);
+            String path = u.getPath();
+            if (path == null) return "";
+            String seg = path.substring(path.lastIndexOf('/') + 1);
+            return seg.replaceAll("[^a-zA-Z0-9._-]", "_");
+        } catch (Exception e) {
+            return "";
         }
     }
 
@@ -397,6 +427,7 @@ public class DownloadsActivity extends Activity {
         long bytes;
         long total;
         String localUri;
+        String srcUri;
         long time;
     }
 }
