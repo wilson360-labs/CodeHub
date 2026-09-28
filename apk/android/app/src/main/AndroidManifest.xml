@@ -100,6 +100,20 @@
             android:screenOrientation="unspecified">
         </activity>
 
+        <!-- Reproductor de musica "slide" (abierto desde el panel de
+             dispositivo via CodeHubBridge.openMusic). Ejecuta extensiones
+             del ecosistema Echo dentro de CodeHub; escanea paquetes con el
+             feature `dev.brahmkshatriya.echo.FEATURE.${type}` y APKs de
+             `filesDir/extensions`. -->
+        <activity
+            android:name=".music.MusicPlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:theme="@style/Theme.CodeHub"
+            android:windowSoftInputMode="adjustResize">
+        </activity>
+
         <service
             android:name=".CodeHubFirebaseService"
             android:exported="false">

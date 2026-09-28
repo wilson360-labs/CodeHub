@@ -884,6 +884,16 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
+    /** Abre el reproductor de música "slide" de CodeHub (extensiones Echo). */
+    @JavascriptInterface
+    public void openMusic() {
+        try {
+            Intent i = new Intent(activity, com.codehub.app.music.MusicPlayerActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+        } catch (Exception ignored) {}
+    }
+
     /** % de CPU usado desde la llamada anterior, por delta de ticks idle/
      *  total en /proc/stat. La primera llamada solo guarda la muestra
      *  (devuelve -1); desde la segunda calcula el delta real. */

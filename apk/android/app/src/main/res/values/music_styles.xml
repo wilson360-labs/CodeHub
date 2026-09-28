@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="MusicSlideAnimation">
+        <item name="android:windowEnterAnimation">@anim/music_slide_up</item>
+        <item name="android:windowExitAnimation">@anim/music_slide_down</item>
+    </style>
+</resources>

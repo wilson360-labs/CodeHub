@@ -95,6 +95,24 @@ dependencies {
     // el UI del WebView.
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+
+    // Music player "slide" - jugador nativo compacto para extensiones del
+    // ecosistema Echo (echo-nightly). Contrato de extensiones reciclado
+    // byte-a-byte desde Maven Central (dev.brahmkshatriya.echo:common:1.0.0,
+    // common-android, publicada 2025-10-14). Sin Room/Koin/KSP: la app solo
+    // consume la API; el parser de extensiones es un port de ExtensionParser.
+    // Licencia de las extensiones: UPL-1.0 / GPLv3 - ver nota en apk/README.md.
+    implementation 'dev.brahmkshatriya.echo:common:1.0.0'
+    // Media3 (ExoPlayer 1.8.0, misma version que el fork) - HLS/DASH del
+    // reproductor + progresivo. El cache de SimpleCache no se usa en v1.
+    implementation 'androidx.media3:media3-exoplayer:1.8.0'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.8.0'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
+    // Listas de shelves/colas del player (stable, agnostico de tema).
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    // okhttp del ecosistema Echo - llega transitivamente con common:1.0.0.
+    // Se fuerza explicitamente para evitar ambiguedad de versiones.
+    implementation 'com.squareup.okhttp3:okhttp:5.1.0'
 }
 
 // La librería androidx.datastore migró a Kotlin Multiplatform en versiones

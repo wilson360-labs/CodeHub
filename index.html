@@ -1786,6 +1786,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-settings-btn">Ajustes de la app</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-cache-btn">Limpiar caché</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-downloads-btn"><i class="fas fa-folder-open"></i> Descargas</button>
+                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-music-btn"><i class="fas fa-music"></i> Música</button>
                         </div>
                     </div>
 
@@ -1943,6 +1944,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           });
           var downloadsBtn = document.getElementById('dev-downloads-btn');
           if (downloadsBtn) downloadsBtn.addEventListener('click', function () { try { native.openDownloads(); } catch (e) {} });
+          var musicBtn = document.getElementById('dev-music-btn');
+          if (musicBtn) musicBtn.addEventListener('click', function () {
+            try {
+              if (native && typeof native.openMusic === 'function') native.openMusic();
+              else { if (typeof toast === 'function') toast('El reproductor está disponible en el APK', 'info', 3000); }
+            } catch (e) {}
+          });
 
           var exportBtn = document.getElementById('dev-export-btn');
           if (exportBtn && typeof native.saveBackupFile === 'function') {

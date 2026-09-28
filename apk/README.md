@@ -34,3 +34,20 @@ Keystore is generated at build time from GitHub Secrets.
 Required secrets:
 - `KEYSTORE_PASSWORD`
 - `KEY_PASSWORD`
+
+## Music player ("slide")
+
+The APK bundles a native music player that reuses the **Echo** ecosystem
+(`dev.brahmkshatriya.echo:common` 1.0.0 + third-party extension APKs).
+
+Licensing:
+
+- The player and feed code in `app/src/main/java/com/codehub/app/music/`
+  is adapted from [Echo](https://github.com/brahmkshatriya/echo) (its
+  `StreamableMediaSource`, `StreamableResolver`, `MediaItemUtils`,
+  `ExtensionUtils`, feed loader and player). Echo is licensed under the
+  **UPL-1.0** Open License and its app code under the **GPL-3.0**. This
+  adaptation keeps that licensing: music feature code is provided under the
+  same terms.
+- Extensions loaded by the player are third-party APKs; their licenses
+  remain with their authors.
