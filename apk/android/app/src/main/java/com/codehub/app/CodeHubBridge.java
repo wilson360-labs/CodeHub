@@ -1198,6 +1198,24 @@ public class CodeHubBridge {
         pushShizukuState(null);
     }
 
+    /** Texto compartido desde otra app (Share target). Si la página expone
+     *  window.chHandleSharedText(text) se lo pasa; si no, lo rellena en el
+     *  primer campo de entrada visible (búsqueda) como fallback. Nunca lanza
+     *  si la web no está lista. */
+    public void handleSharedText(final String text) {
+        if (text == null || text.isEmpty()) return;
+        final String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+        activity.runOnUiThread(() -> {
+            try {
+                webView.loadUrl("javascript:(function(){try{" +
+                    "if(typeof window.chHandleSharedText==='function'){window.chHandleSharedText('" + safe + "');return;}" +
+                    "var f=document.querySelector('input[type=search],input[name=q],input[name=s],input[type=text]');" +
+                    "if(f&&f.offsetParent!==null){f.value='" + safe + "';f.focus();try{f.dispatchEvent(new Event('input',{bubbles:true}));}catch(e1){}}" +
+                    "}catch(e2){}})()");
+            } catch (Exception ignored) {}
+        });
+    }
+
     private void pushShizukuState(String prebuilt) {
         final String cb = shizukuSubscriber;
         if (cb == null || cb.isEmpty()) return;

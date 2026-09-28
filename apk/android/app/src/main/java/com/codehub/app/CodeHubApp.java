@@ -32,6 +32,14 @@ public class CodeHubApp extends Application {
 
         CrashHandler(CodeHubApp app) { this.app = app; }
 
+        /** Versión real del APK (versionName) en el crash.log — antes quedaba
+         *  hardcodeada como 1.2.0 y los reportes de crash mostraban la versión
+         *  equivocada (la actual es 1.4.0). */
+        private String appVersion() {
+            try { return app.getPackageManager().getPackageInfo(app.getPackageName(), 0).versionName; }
+            catch (Exception e) { return "1.2.0"; }
+        }
+
         @Override
         public void uncaughtException(Thread t, Throwable e) {
             // Intento síncrono con timeout corto — el proceso está a punto de
@@ -50,7 +58,7 @@ public class CodeHubApp extends Application {
                     pw.println("Time: " + System.currentTimeMillis());
                     pw.println("Device: " + android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL
                         + " (Android " + android.os.Build.VERSION.RELEASE + ", API " + android.os.Build.VERSION.SDK_INT + ")");
-                    pw.println("App Version: 1.2.0");
+                    pw.println("App Version: " + appVersion());
                     e.printStackTrace(pw);
                     pw.println("========================");
                     pw.println();

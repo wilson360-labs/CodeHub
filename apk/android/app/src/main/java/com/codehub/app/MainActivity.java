@@ -27,9 +27,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
+import android.speech.tts.TextToSpeech;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.ValueCallback;
@@ -72,6 +74,11 @@ public class MainActivity extends Activity {
     private final Handler backHandler = new Handler(Looper.getMainLooper());
     /** Franja inferior reservada para el banner (nunca superpuesto al contenido). */
     private FrameLayout bannerSlot;
+
+    /** Modo lector: TTS + botón flotante para leer la página actual en voz alta. */
+    private TextToSpeech tts;
+    private boolean ttsSpeaking = false;
+    private Button readerBtn;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -125,6 +132,9 @@ public class MainActivity extends Activity {
 
         setContentView(rootLayout);
 
+        try { setupReaderButton(mainFrame); } catch (Throwable t) { crashLog("readerBtn", t); }
+        try { initTts(); } catch (Throwable t) { crashLog("tts", t); }
+
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
@@ -169,6 +179,80 @@ public class MainActivity extends Activity {
             pw.println("---");
             pw.close();
         } catch (Exception ignored) {}
+    }
+
+    // ── MODO LECTOR CON VOZ ──────────────────────────────────
+    // Botón flotante → extrae el texto visible de la página actual y lo lee
+    // con el TTS del sistema (es). Presionar otra vez detiene la lectura.
+    private void setupReaderButton(FrameLayout mainFrame) {
+        float density = getResources().getDisplayMetrics().density;
+        readerBtn = new Button(this);
+        readerBtn.setText("🔊");
+        readerBtn.setTextSize(20);
+        readerBtn.setAllCaps(false);
+        readerBtn.setBackgroundColor(0xFF252539);
+        readerBtn.setTextColor(0xFFFFFFFF);
+        int pad = (int) (10 * density);
+        readerBtn.setPadding(pad, pad, pad, pad);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+            (int) (52 * density), (int) (52 * density));
+        lp.gravity = android.view.Gravity.END | android.view.Gravity.BOTTOM;
+        lp.setMargins(0, 0, (int) (14 * density), (int) (14 * density));
+        readerBtn.setLayoutParams(lp);
+        readerBtn.setOnClickListener(v -> toggleReader());
+        readerBtn.setVisibility(View.GONE); // se muestra al cargar la web
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            readerBtn.setElevation(8 * density);
+        }
+        if (mainFrame != null) mainFrame.addView(readerBtn, lp);
+    }
+
+    private void initTts() {
+        tts = new TextToSpeech(this, status -> {
+            if (status != TextToSpeech.SUCCESS) return;
+            int res = tts.setLanguage(new java.util.Locale("es", "ES"));
+            if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
+                tts.setLanguage(java.util.Locale.getDefault());
+            }
+        });
+    }
+
+    private void toggleReader() {
+        if (webView == null) return;
+        if (ttsSpeaking) {
+            if (tts != null) tts.stop();
+            ttsSpeaking = false;
+            readerBtn.setText("🔊");
+            return;
+        }
+        // Extrae el texto visible (innerText) de la página y lo lee en voz alta.
+        webView.evaluateJavascript(
+            "(function(){" +
+            "  try{var b=document.body;if(!b)return '';" +
+            "    var t=(b.innerText||b.textContent||'').replace(/\\s+/g,' ').trim();" +
+            "    return t.slice(0,8000);" +
+            "  }catch(e){return '';}" +
+            "})()",
+            value -> {
+                String text = "";
+                if (value != null && !"null".equals(value) && value.length() > 2) {
+                    // el WebView devuelve un JSON string escapado
+                    text = value.substring(1, value.length() - 1)
+                        .replace("\\\"", "\"").replace("\\\\", "\\");
+                }
+                text = text.trim();
+                if (text.isEmpty()) {
+                    android.widget.Toast.makeText(this, "No hay texto para leer en esta página",
+                        android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (tts != null && !ttsSpeaking) {
+                    tts.setSpeechRate(0.95f);
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "reader");
+                    ttsSpeaking = true;
+                    readerBtn.setText("⏹");
+                }
+            });
     }
 
     // ── STATUS BAR ──────────────────────────────────────────────
@@ -437,11 +521,26 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (url.contains("wilson360-labs.vercel.app") || url.contains("codehub-98s6.onrender.com")) {
+                // Validación por HOST EXACTO (no contains): "wilson360-labs.
+                // vercel.app.evil.com" no debe quedarse dentro del WebView.
+                // about/data/blob: se dejan pasar (recursos internos).
+                if (url.startsWith("about:") || url.startsWith("data:") || url.startsWith("blob:")) {
                     return false;
                 }
+                if (isAppHost(url)) return false;
                 try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception ignored) {}
                 return true;
+            }
+
+            /** true si el host es uno de los dominios de la app (comparación
+             *  exacta de host, sin subdominios falsos). */
+            private boolean isAppHost(String url) {
+                try {
+                    String host = Uri.parse(url).getHost();
+                    if (host == null) return false;
+                    return "wilson360-labs.vercel.app".equalsIgnoreCase(host)
+                        || "codehub-98s6.onrender.com".equalsIgnoreCase(host);
+                } catch (Exception e) { return false; }
             }
 
             @Override
@@ -458,6 +557,7 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
+                if (readerBtn != null) readerBtn.setVisibility(View.VISIBLE);
                 injectNativeFlags(view);
             }
 
@@ -466,6 +566,7 @@ public class MainActivity extends Activity {
                 super.onReceivedError(view, request, error);
                 if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
+                if (readerBtn != null) readerBtn.setVisibility(View.GONE);
                 if (request != null && request.isForMainFrame()) {
                     showOfflineFallback(view);
                 }
@@ -590,9 +691,37 @@ public class MainActivity extends Activity {
         view.loadUrl(js);
     }
 
-    // ── INTENT FROM NOTIFICATION / DEEP LINK ───────────────────
+    // ── INTENT FROM NOTIFICATION / DEEP LINK / SHARE ────────
     private void handleIntent(Intent intent) {
         if (intent == null) return;
+
+        // Share target nativo (ACTION_SEND, text/plain): si lo que compartió
+        // otra app contiene una URL de CodeHub, se abre aquí; si es texto
+        // suelto, se reenvía a la web para que la procese (búsqueda/chat).
+        if (Intent.ACTION_SEND.equals(intent.getAction()) && "text/plain".equals(intent.getType())) {
+            String shared = intent.getStringExtra(Intent.EXTRA_TEXT);
+            if (shared != null && !shared.isEmpty()) {
+                final String trimmed = shared.trim();
+                String url = extractCodeHubUrl(trimmed);
+                if (url != null && !url.isEmpty()) {
+                    final String loadUrl = url;
+                    webView.postDelayed(new Runnable() {
+                        @Override
+                        public void run() { webView.loadUrl(loadUrl); }
+                    }, 800);
+                    return;
+                }
+                // Texto (no URL) → se deja en la web vía bridge para search/chat.
+                if (bridge != null) {
+                    try {
+                        bridge.handleSharedText(trimmed);
+                    } catch (Exception ignored) {}
+                }
+                return;
+            }
+            return;
+        }
+
         String url = intent.getStringExtra("open_url");
         // Deep link: la app se abrió/levantó con un enlace del dominio
         // (ACTION_VIEW + data https/http de wilson360-labs.vercel.app).
@@ -606,6 +735,22 @@ public class MainActivity extends Activity {
                 public void run() { webView.loadUrl(loadUrl); }
             }, 1500);
         }
+    }
+
+    /** Busca la primera URL http(s) del texto compartido que pertenezca a
+     *  CodeHub (host exacto). Devuelve null si no hay ninguna permitida. */
+    private String extractCodeHubUrl(String text) {
+        try {
+            String[] parts = text.split("\\s+");
+            for (String p : parts) {
+                String clean = p.trim().replaceAll("[.,;:!?)]+$", "");
+                if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                    if (isAllowedUrl(clean)) return clean;
+                    return null; // hay URL, pero no es de CodeHub → no abrir
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     /** Solo se permiten URLs del dominio propio (http/https). Todo lo demás
@@ -686,10 +831,21 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         if (webView != null) webView.onPause();
+        // Detener la lectura cuando la app pasa a segundo plano.
+        if (tts != null && ttsSpeaking) {
+            tts.stop();
+            ttsSpeaking = false;
+            if (readerBtn != null) readerBtn.setText("🔊");
+        }
     }
 
     @Override
     protected void onDestroy() {
+        if (tts != null) {
+            try { tts.stop(); } catch (Exception ignored) {}
+            try { tts.shutdown(); } catch (Exception ignored) {}
+            tts = null;
+        }
         if (webView != null) webView.destroy();
         super.onDestroy();
     }

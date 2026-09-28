@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Widget de clima de CodeHub para la pantalla de inicio (rediseñado).
@@ -49,6 +50,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     private static final String ACTION_CLOCK_TICK = "com.codehub.app.WIDGET_CLOCK_TICK";
     private static final long ALARM_INTERVAL_MS = 30 * 60 * 1000; // 30 min
     private static final long CLOCK_TICK_MS = 60 * 1000; // reloj en vivo, cada minuto
+
+    /** Single-flight: evita solapar threads de refresh (onUpdate + requestRefresh
+     *  + alarma pueden dispararse casi a la vez y lanzar varias consultas HTTP). */
+    private static final AtomicBoolean sRefreshing = new AtomicBoolean(false);
 
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] appWidgetIds) {
@@ -161,7 +166,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
                 RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
                 views.setTextViewText(R.id.widget_updated, time);
-                for (int id : ids) mgr.partiallyUpdateAppWidget(id, views);
+                for (int id : ids) safePartialUpdate(context, mgr, id, views);
                 // Reprogramar para el siguiente minuto.
                 scheduleClockTick(context);
             }
@@ -202,13 +207,47 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                 RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
                 views.setViewVisibility(R.id.widget_refresh, loading ? View.GONE : View.VISIBLE);
                 views.setViewVisibility(R.id.widget_refresh_progress, loading ? View.VISIBLE : View.GONE);
-                mgr.partiallyUpdateAppWidget(id, views);
+                safePartialUpdate(context, mgr, id, views);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    // OJO: partiallyUpdateAppWidget SOLO existe desde API 31. En minSdk=24 una
+    // llamada directa lanza NoSuchMethodError (no Exception), no se captura y
+    // crashea el onReceive en Android 7-11. En APIs viejas se repinta completo.
+    private static void safePartialUpdate(Context context, AppWidgetManager mgr, int id, RemoteViews views) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try { mgr.partiallyUpdateAppWidget(id, views); } catch (Exception ignored) { mgr.updateAppWidget(id, views); }
+        } else {
+            mgr.updateAppWidget(id, views);
+        }
+    }
+
+    // Sin ubicación guardada: pinta un estado informativo en lugar de quedarse
+    // con "--°" / spinner. El botón de refrescar vuelve a aparecer.
+    private static void paintNoLocation(Context context) {
+        if (!hasAnyWidget(context)) return;
+        try {
+            AppWidgetManager mgr = AppWidgetManager.getInstance(context);
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
+            String now = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
+            for (int id : ids) {
+                RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
+                views.setTextViewText(R.id.widget_city, "Configura tu ciudad");
+                views.setTextViewText(R.id.widget_temp, "--°");
+                views.setTextViewText(R.id.widget_condition, "Abre CodeHub y añade tu ubicación");
+                views.setTextViewText(R.id.widget_updated, now);
+                safePartialUpdate(context, mgr, id, views);
             }
         } catch (Exception ignored) {}
     }
 
     private static void refreshAllInBackground(final Context context) {
         if (!hasAnyWidget(context)) return;
+        // Single-flight: si ya hay un refresh en curso, este se descarta. Evita
+        // solapar peticiones HTTP cuando el onUpdate, el botón manual, la alarma
+        // o requestRefresh() coinciden en el tiempo.
+        if (!sRefreshing.compareAndSet(false, true)) return;
         // Feedback visual: mostrar spinner en el botón de refrescar.
         showLoading(context, true);
         new Thread(new Runnable() {
@@ -217,7 +256,13 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
                     double lat = Double.longBitsToDouble(prefs.getLong("lat_bits", 0));
                     double lon = Double.longBitsToDouble(prefs.getLong("lon_bits", 0));
-                    if (lat == 0 && lon == 0) return;
+                    if (lat == 0 && lon == 0) {
+                        // Sin ubicación guardada: en vez de quedarse mudo con
+                        // "--°" y la carga eterna, se pinta un aviso de que hay
+                        // que abrir la app y configurar la ciudad.
+                        paintNoLocation(context);
+                        return;
+                    }
 
                     URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat +
                         "&longitude=" + lon +
@@ -265,11 +310,25 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                             long now = System.currentTimeMillis();
                             int idx = -1;
                             SimpleDateFormat isoFmt = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
-                            isoFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                            // Los tiempos por hora de Open-Meteo vienen en la hora
+                            // LOCAL de la ubicación (timezone=auto). Parsearlos como
+                            // UTC y compararlos con "ahora" desplaza el índice en
+                            // zonas != UTC (lluvia/UV la hora equivocada). Se usa el
+                            // offset que devuelve la API; si no viene, se parsea con
+                            // la zona local del dispositivo como aproximación.
+                            double utcOffset = json.optDouble("utc_offset_seconds", Double.NaN);
+                            boolean hasOffset = !Double.isNaN(utcOffset);
+                            if (hasOffset) {
+                                isoFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                            } else {
+                                isoFmt.setTimeZone(java.util.TimeZone.getDefault());
+                            }
                             for (int i = 0; i < hTimes.length(); i++) {
                                 try {
                                     Date t = isoFmt.parse(hTimes.optString(i, "") );
-                                    if (t != null && t.getTime() >= now) { idx = i; break; }
+                                    if (t == null) continue;
+                                    long tMs = t.getTime() - (long) Math.round(hasOffset ? utcOffset * 1000.0 : 0.0);
+                                    if (tMs >= now) { idx = i; break; }
                                 } catch (Exception ignored) {}
                             }
                             if (idx < 0) idx = hTimes.length() - 1;
@@ -332,7 +391,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     for (int id : ids) mgr.updateAppWidget(id, views);
                 } catch (Exception ignored) {
                 } finally {
-                    // Quitar el spinner una vez terminada la actualización.
+                    // Liberar single-flight + quitar el spinner al terminar.
+                    sRefreshing.set(false);
                     showLoading(context, false);
                 }
             }

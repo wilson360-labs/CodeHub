@@ -61,6 +61,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Share target: la app aparece en el menú "Compartir" de otras
+                 apps (texto/links). MainActivity.handleIntent abre la URL si
+                 es de CodeHub o reenvía el texto a la web. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
             <!-- Deep links: cualquier enlace https://wilson360-labs.vercel.app/*
                  abierto (desde Telegram, navegador, "Compartir", correos, etc.)
                  entra directo a la app en esa página. android:autoVerify se
