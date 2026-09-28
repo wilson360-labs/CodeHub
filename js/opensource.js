@@ -1129,7 +1129,7 @@ const MyApps = (() => {
       return `
       <div class="app-card my-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
         <div class="app-thumb">
-          <img src="${app.imagen}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          <img src="${getOptimizedImageUrl(app.imagen || '', 192, 192)}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="osImgFallback(this,'${esc(app.imagen || '')}','${CAT_EMOJI[app.categoria] || '📦'}')">
           ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
         </div>
         <div class="app-body">
@@ -1319,7 +1319,7 @@ const DeviceApps = (() => {
       return `
       <div class="app-card device-app-card ${hasUpdate ? 'has-update' : ''}" data-app-id="${app.appId}">
         <div class="app-thumb">
-          <img src="${app.imagen}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="this.parentElement.innerHTML='<div class=app-thumb-fallback>📦</div>'">
+          <img src="${getOptimizedImageUrl(app.imagen || '', 192, 192)}" alt="${esc(app.nombre)}" loading="lazy" decoding="async" onerror="osImgFallback(this,'${esc(app.imagen || '')}','${CAT_EMOJI[app.categoria] || '📦'}')">
           <span class="app-badge badge-installed">📲 Instalada</span>
           ${hasUpdate ? '<span class="app-badge badge-update">🆕 Actualiza</span>' : ''}
         </div>
