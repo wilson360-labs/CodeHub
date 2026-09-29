@@ -51,6 +51,12 @@
             android:launchMode="singleTask"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize">
+            <!-- Launcher: la app abre directo en MainActivity. El splash
+                 vive SOLO en la web (navegador), no en la app Android. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             <!-- Atajos dinámicos — long-press del icono en el launcher.
                  Res/xml/shortcuts.xml: 4 accesos (WIL.E, Clima, Apps, Herramientas)
                  que se abren como deep links del dominio propio. -->
@@ -77,17 +83,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="wilson360-labs.vercel.app" />
                 <data android:scheme="http" android:host="wilson360-labs.vercel.app" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".SplashActivity"
-            android:exported="true"
-            android:theme="@style/Theme.CodeHub"
-            android:screenOrientation="unspecified">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
