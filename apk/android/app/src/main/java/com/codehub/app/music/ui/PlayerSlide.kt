@@ -127,8 +127,8 @@ class PlayerSlide(
             background = placeholder
             outlineProvider = ViewOutlineProvider.BACKGROUND
             clipToOutline = true
-            elevation = dpF(10).toFloat()
-            translationZ = dpF(8).toFloat()
+            elevation = dpF(10f).toFloat()
+            translationZ = dpF(8f).toFloat()
             setImageDrawable(null)
         }
         val cover = minOf(dm.widthPixels - dp(40), (dm.heightPixels * 0.52f).toInt())
@@ -198,8 +198,8 @@ class PlayerSlide(
             shape = GradientDrawable.OVAL
             setColor(accent())
         }
-        play.elevation = dpF(12).toFloat()
-        play.translationZ = dpF(6).toFloat()
+        play.elevation = dpF(12f).toFloat()
+        play.translationZ = dpF(6f).toFloat()
         play.setOnClickListener { player.toggle() }
         val next = tv("⏭", 26f, color = Color.WHITE)
         next.gravity = Gravity.CENTER
@@ -222,7 +222,7 @@ class PlayerSlide(
             t.gravity = Gravity.CENTER
             t.setPadding(dp(16), dp(8), dp(16), dp(8))
             t.background = GradientDrawable().apply {
-                cornerRadius = dpF(20).toFloat()
+                cornerRadius = dpF(20f).toFloat()
                 setColor(0xFF1E1E2A.toInt())
             }
             return t

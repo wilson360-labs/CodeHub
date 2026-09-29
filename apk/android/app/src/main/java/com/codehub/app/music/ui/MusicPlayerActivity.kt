@@ -551,11 +551,11 @@ class MusicPlayerActivity : Activity() {
         col.addView(miniTitle)
         col.addView(miniArtist)
 
-        val prevMini = MusicTheme.circle(ctx, "⏮", 40, sizeSp = 15)
+        val prevMini = MusicTheme.circle(ctx, "⏮", 40, sizeSp = 15f)
         prevMini.setOnClickListener { player.prev() }
-        miniPlay = MusicTheme.circle(ctx, "▶", 44, bg = MusicTheme.ACCENT, color = MusicTheme.BG, sizeSp = 20)
+        miniPlay = MusicTheme.circle(ctx, "▶", 44, bg = MusicTheme.ACCENT, color = MusicTheme.BG, sizeSp = 20f)
         miniPlay.setOnClickListener { seekToggled() }
-        val nextMini = MusicTheme.circle(ctx, "⏭", 40, sizeSp = 15)
+        val nextMini = MusicTheme.circle(ctx, "⏭", 40, sizeSp = 15f)
         nextMini.setOnClickListener { player.next() }
         val controls = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
