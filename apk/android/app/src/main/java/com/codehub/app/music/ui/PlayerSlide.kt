@@ -127,7 +127,7 @@ class PlayerSlide(
 
         val placeholder = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpF(22f)
+            cornerRadius = dpF(22f).toFloat()
             setColor(if (isDark()) 0xFF202027.toInt() else 0xFFE3E3E8.toInt())
         }
         artView = ImageView(context).apply {
