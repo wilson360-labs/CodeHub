@@ -21,6 +21,7 @@ import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicClient.getAs
 import com.codehub.app.music.MusicPlayer
 import com.codehub.app.music.MusicRegistry
+import com.codehub.app.music.MusicWebViewClient
 import dev.brahmkshatriya.echo.common.MusicExtension
 import dev.brahmkshatriya.echo.common.clients.AlbumClient
 import dev.brahmkshatriya.echo.common.clients.ArtistClient
@@ -94,6 +95,7 @@ class MusicPlayerActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.let { it.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
         registry = MusicRegistry(this)
+        (registry.webViewClient as? MusicWebViewClient)?.attach(this)
         player = MusicPlayer(this, scope)
         setContentView(buildUi())
         collectPlayer()
@@ -103,6 +105,7 @@ class MusicPlayerActivity : Activity() {
 
     override fun onDestroy() {
         mainHandler.removeCallbacks(ticker)
+        (registry.webViewClient as? MusicWebViewClient)?.detach(this)
         scope.coroutineContext[Job]?.cancel()
         player.release()
         super.onDestroy()
@@ -340,7 +343,7 @@ class MusicPlayerActivity : Activity() {
 
     private fun updateMiniProgress() {
         val dur = player.duration()
-        val pos = player.position().coerceIn(0, if (dur <= 0) 0 else dur)
+        val pos = player.position().coerceIn(0L, if (dur <= 0L) 0L else dur)
         if (dur > 0) {
             miniProgress.max = dur.toInt()
             miniProgress.progress = pos.toInt()

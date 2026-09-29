@@ -161,7 +161,7 @@ class FeedAdapter(
             4 -> CardsVH(cardsView(parent))
             5 -> TrackVH(trackView(parent))
             6 -> VH(loadingView(parent))
-            else -> VH(infoView(parent))
+            else -> InfoVH(infoView(parent))
         }
     }
 

@@ -204,7 +204,7 @@ class PlayerSlide(
             ThemeColors.of(context, android.R.attr.colorBackground, if (isDark()) 0xFF1A1A1A.toInt() else Color.WHITE)
         ))
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        window?.attributes?.windowAnimations = R.style.MusicSlideAnimation
+        window?.setWindowAnimations(R.style.MusicSlideAnimation)
         updated()
         main.post(ticker)
     }
