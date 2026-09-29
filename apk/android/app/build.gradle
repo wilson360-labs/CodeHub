@@ -110,9 +110,12 @@ dependencies {
     implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
     // Listas de shelves/colas del player (stable, agnostico de tema).
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    // okhttp del ecosistema Echo - llega transitivamente con common:1.0.0.
-    // Se fuerza explicitamente para evitar ambiguedad de versiones.
-    implementation 'com.squareup.okhttp3:okhttp:5.1.0'
+    // okhttp del ecosistema Echo - llega transitivamente con common:1.0.0
+    // como `okhttp-android` (variante Android). Se declara explicitamente con
+    // LA MISMA variante android para fijar version sin provocar clases
+    // duplicadas: declarar `okhttp` (JVM) junto a `okhttp-android` hace que
+    // AGP falle en checkDebugDuplicateClasses (mismas okhttp3/* en ambos GAV).
+    implementation 'com.squareup.okhttp3:okhttp-android:5.1.0'
 }
 
 // La librería androidx.datastore migró a Kotlin Multiplatform en versiones
