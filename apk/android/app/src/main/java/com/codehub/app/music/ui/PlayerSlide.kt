@@ -75,23 +75,15 @@ class PlayerSlide(
     private fun dp(v: Int) = (v * dm.density).toInt()
     private fun dpF(v: Float) = (v * dm.density).toInt()
 
-    private fun isDark(): Boolean {
-        val mode = context.resources.configuration.uiMode and
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK
-        return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-    }
+    private fun isDark(): Boolean = true
 
-    private fun primary(): Int =
-        ThemeColors.of(context, android.R.attr.textColorPrimary, if (isDark()) Color.WHITE else 0xFF111111.toInt())
+    private fun primary(): Int = MusicTheme.TEXT
 
-    private fun secondary(): Int =
-        ThemeColors.of(context, android.R.attr.textColorSecondary, if (isDark()) 0xFFBBBBBB.toInt() else 0xFF666666.toInt())
+    private fun secondary(): Int = MusicTheme.MUTED
 
-    private fun accent(): Int =
-        ThemeColors.of(context, android.R.attr.colorAccent, 0xFF448AFF.toInt())
+    private fun accent(): Int = MusicTheme.ACCENT
 
-    private fun background(): Int =
-        ThemeColors.of(context, android.R.attr.colorBackground, if (isDark()) 0xFF0F0F12.toInt() else Color.WHITE)
+    private fun background(): Int = MusicTheme.BG
 
     private fun tv(
         text: String,
@@ -135,6 +127,8 @@ class PlayerSlide(
             background = placeholder
             outlineProvider = ViewOutlineProvider.BACKGROUND
             clipToOutline = true
+            elevation = dpF(10).toFloat()
+            translationZ = dpF(8).toFloat()
             setImageDrawable(null)
         }
         val cover = minOf(dm.widthPixels - dp(40), (dm.heightPixels * 0.52f).toInt())
@@ -155,6 +149,7 @@ class PlayerSlide(
 
         seek = SeekBar(context).apply {
             max = 0
+            MusicTheme.tintSeek(this)
             setPadding(dpF(4f), 0, dpF(4f), 0)
         }
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -190,35 +185,53 @@ class PlayerSlide(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        val prev = tv("⏮", 32f)
+        val prev = tv("⏮", 26f, color = Color.WHITE)
         prev.gravity = Gravity.CENTER
-        prev.setPadding(dp(16), dp(12), dp(16), dp(12))
+        prev.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(0xFF1E1E2A.toInt())
+        }
         prev.setOnClickListener { player.prev() }
-        val play = tv("▶", 44f, color = Color.WHITE)
+        val play = tv("▶", 42f, color = Color.WHITE)
         play.gravity = Gravity.CENTER
         play.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
             setColor(accent())
         }
+        play.elevation = dpF(12).toFloat()
+        play.translationZ = dpF(6).toFloat()
         play.setOnClickListener { player.toggle() }
-        val next = tv("⏭", 32f)
+        val next = tv("⏭", 26f, color = Color.WHITE)
         next.gravity = Gravity.CENTER
-        next.setPadding(dp(16), dp(12), dp(16), dp(12))
+        next.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(0xFF1E1E2A.toInt())
+        }
         next.setOnClickListener { player.next() }
         playButton = play
-        controls.addView(prev)
-        controls.addView(play, LinearLayout.LayoutParams(dp(78), dp(78)))
-        controls.addView(next)
+        controls.addView(prev, LinearLayout.LayoutParams(dp(56), dp(56)))
+        controls.addView(play, LinearLayout.LayoutParams(dp(82), dp(82)))
+        controls.addView(next, LinearLayout.LayoutParams(dp(56), dp(56)))
 
         val actions = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        val queueBtn = tv("📋 Cola", 13f, color = secondary())
+        fun pill(text: String): TextView {
+            val t = tv(text, 13f, color = secondary())
+            t.gravity = Gravity.CENTER
+            t.setPadding(dp(16), dp(8), dp(16), dp(8))
+            t.background = GradientDrawable().apply {
+                cornerRadius = dpF(20).toFloat()
+                setColor(0xFF1E1E2A.toInt())
+            }
+            return t
+        }
+        val queueBtn = pill("📋 Cola")
         queueBtn.setOnClickListener { queueDialog() }
-        qualityButton = tv("🎚 Calidades", 13f, color = secondary())
+        qualityButton = pill("🎚 Calidades")
         qualityButton.setOnClickListener { qualityDialog() }
-        val closeBt = tv("✕ Cerrar", 13f, color = secondary())
+        val closeBt = pill("✕ Cerrar")
         closeBt.setOnClickListener { dismiss() }
         actions.addView(queueBtn)
         actions.addView(qualityButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))

@@ -3,7 +3,6 @@ package com.codehub.app.music.ui
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -20,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicClient.getAs
 import com.codehub.app.music.MusicPlayer
+import com.codehub.app.music.MusicPlayerDuration.toClockTime
 import com.codehub.app.music.MusicRegistry
 import com.codehub.app.music.MusicWebViewClient
 import dev.brahmkshatriya.echo.common.MusicExtension
@@ -75,6 +75,8 @@ class MusicPlayerActivity : Activity() {
     private lateinit var miniArtist: TextView
     private lateinit var miniPlay: TextView
     private lateinit var miniProgress: SeekBar
+    private lateinit var miniCurr: TextView
+    private lateinit var miniTot: TextView
 
     private var slide: PlayerSlide? = null
 
@@ -349,6 +351,8 @@ class MusicPlayerActivity : Activity() {
             miniProgress.max = dur.toInt()
             miniProgress.progress = pos.toInt()
         }
+        miniCurr.text = pos.toClockTime()
+        miniTot.text = if (dur > 0) dur.toClockTime() else "0:00"
     }
 
     private fun collectMessages() {
@@ -441,22 +445,25 @@ class MusicPlayerActivity : Activity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     private fun buildUi(): View {
-        val root = LinearLayout(this).apply {
+        val ctx = this@MusicPlayerActivity
+        val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(ThemeColors.of(this@MusicPlayerActivity, android.R.attr.colorBackground, Color.WHITE))
-            setPadding(dp(8), dp(12), dp(8), 0)
+            setBackgroundColor(MusicTheme.BG)
+            setPadding(MusicTheme.dp(ctx, 14), MusicTheme.dp(ctx, 16), MusicTheme.dp(ctx, 14), 0)
         }
 
-        extLabel = tv("🎵 Música", 22f, bold = true)
-        val sub = tv("", 12f, secondary = true)
+        // Cabecera
+        extLabel = MusicTheme.tv(ctx, "🎵 Música", 26f, bold = true)
+        val sub = MusicTheme.tv(ctx, "Extensiones Echo · reproductor de CodeHub", 12f, color = MusicTheme.MUTED)
 
-        val actions = LinearLayout(this).apply {
+        // Acciones tipo chip
+        val actions = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val btnExt = tv("📦 Extensión", 13f, hover = true)
-            val btnLib = tv("📚 Biblioteca", 13f, hover = true)
-            val btnQual = tv("⚙ Calidad", 13f, hover = true)
-            val btnRefresh = tv("⟳", 18f, hover = true)
+            val btnExt = MusicTheme.pill(ctx, "📦 Extensión")
+            val btnLib = MusicTheme.pill(ctx, "📚 Biblioteca")
+            val btnQual = MusicTheme.pill(ctx, "⚙ Calidad")
+            val btnRefresh = MusicTheme.pill(ctx, "⟳")
             btnExt.setOnClickListener { chooseExtension() }
             btnLib.setOnClickListener { chooseLibrary() }
             btnQual.setOnClickListener { chooseQuality() }
@@ -465,24 +472,33 @@ class MusicPlayerActivity : Activity() {
             addView(btnLib)
             addView(btnQual)
             addView(btnRefresh)
+            listOf(btnExt, btnLib, btnQual).forEach { b ->
+                val lp = b.layoutParams
+                if (lp is ViewGroup.MarginLayoutParams) lp.rightMargin = MusicTheme.dp(ctx, 6)
+            }
         }
 
-        searchField = EditText(this).apply {
+        // Busqueda redondeada
+        searchField = EditText(ctx).apply {
             hint = "Buscar canciones, artistas…"
             textSize = 14f
             setSingleLine(true)
-            setPadding(dp(12), 0, dp(12), 0)
+            setTextColor(MusicTheme.TEXT)
+            setHintTextColor(MusicTheme.MUTED)
+            setPadding(MusicTheme.dp(ctx, 14), 0, MusicTheme.dp(ctx, 14), 0)
+            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE_2, 14)
         }
         searchField.setOnEditorActionListener { _, _, _ ->
             performSearch(searchField.text.toString())
             false
         }
-        val searchRow = LinearLayout(this).apply {
+        val btnSearch = MusicTheme.pill(ctx, "🔎 Buscar")
+        btnSearch.setOnClickListener { performSearch(searchField.text.toString()) }
+        val searchRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val btnSearch = tv("🔎 Buscar", 13f, hover = true)
-            btnSearch.setOnClickListener { performSearch(searchField.text.toString()) }
-            addView(searchField, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(searchField, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                .apply { rightMargin = MusicTheme.dp(ctx, 8) })
             addView(btnSearch)
         }
 
@@ -504,76 +520,93 @@ class MusicPlayerActivity : Activity() {
         list = RecyclerView(this).apply {
             layoutManager = LinearLayoutManager(this@MusicPlayerActivity)
             adapter = this@MusicPlayerActivity.adapter
+            setBackgroundColor(MusicTheme.BG)
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
             )
         }
-        list.setBackgroundColor(ThemeColors.of(this, android.R.attr.colorBackground, Color.WHITE))
 
-        // Mini barra de reproducción
-        miniBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        // Mini reproductor: tarjeta flotante redondeada con carátula,
+        // título/artista, controles (prev/play/next) y progreso con tiempos.
+        miniBar = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
             visibility = View.GONE
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            setBackgroundColor(ThemeColors.of(this@MusicPlayerActivity, android.R.attr.colorBackground, Color.WHITE))
+            setPadding(MusicTheme.dp(ctx, 12), MusicTheme.dp(ctx, 10), MusicTheme.dp(ctx, 12), MusicTheme.dp(ctx, 10))
+            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE, 18)
+            elevation = MusicTheme.dp(ctx, 8).toFloat()
             setOnClickListener { openSlide() }
         }
-        miniCover = ImageView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(dp(44), dp(44))
+        miniCover = ImageView(ctx).apply {
+            layoutParams = ViewGroup.LayoutParams(MusicTheme.dp(ctx, 48), MusicTheme.dp(ctx, 48))
             scaleType = ImageView.ScaleType.CENTER_CROP
+            MusicTheme.roundImage(ctx, this, 12)
         }
-        val col = LinearLayout(this).apply {
+        val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding(dp(10), 0, dp(10), 0)
+            setPadding(MusicTheme.dp(ctx, 10), 0, 0, 0)
         }
-        miniTitle = tv("", 13f, bold = true, hover = false)
-        miniArtist = tv("", 11f, secondary = true, hover = false)
+        miniTitle = MusicTheme.tv(ctx, "", 13f, bold = true)
+        miniArtist = MusicTheme.tv(ctx, "", 11f, color = MusicTheme.MUTED)
         col.addView(miniTitle)
         col.addView(miniArtist)
-        miniProgress = SeekBar(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(10)
-            )
-            max = 0
-        }
-        miniProgress.setOnClickListener { openSlide() }
-        val progressCol = LinearLayout(this)
-        progressCol.orientation = LinearLayout.VERTICAL
-        progressCol.addView(miniProgress)
 
-        miniPlay = tv("▶", 26f, hover = true)
+        val prevMini = MusicTheme.circle(ctx, "⏮", 40, sizeSp = 15)
+        prevMini.setOnClickListener { player.prev() }
+        miniPlay = MusicTheme.circle(ctx, "▶", 44, bg = MusicTheme.ACCENT, color = MusicTheme.BG, sizeSp = 20)
         miniPlay.setOnClickListener { seekToggled() }
-        val nextBtn = tv("⏭", 20f, hover = true)
-        nextBtn.setOnClickListener { player.next() }
-
-        val controls = LinearLayout(this).apply {
+        val nextMini = MusicTheme.circle(ctx, "⏭", 40, sizeSp = 15)
+        nextMini.setOnClickListener { player.next() }
+        val controls = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            addView(prevMini)
             addView(miniPlay)
-            addView(nextBtn)
+            addView(nextMini)
+        }
+        listOf(prevMini, miniPlay).forEach { b ->
+            val lp = b.layoutParams
+            if (lp is ViewGroup.MarginLayoutParams) lp.rightMargin = MusicTheme.dp(ctx, 6)
         }
 
-        val bottomRow = LinearLayout(this)
-        bottomRow.orientation = LinearLayout.HORIZONTAL
-        bottomRow.gravity = Gravity.CENTER_VERTICAL
-        bottomRow.addView(progressCol, LinearLayout.LayoutParams(dp(0), ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        bottomRow.addView(controls)
+        miniCurr = MusicTheme.tv(ctx, "0:00", 10f, color = MusicTheme.MUTED)
+        miniTot = MusicTheme.tv(ctx, "0:00", 10f, color = MusicTheme.MUTED)
+        miniTot.gravity = Gravity.END
+        val timeRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(miniCurr, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(miniTot)
+        }
+        miniProgress = SeekBar(ctx).apply {
+            max = 0
+            MusicTheme.tintSeek(this)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, MusicTheme.dp(ctx, 26))
+        }
+        miniProgress.setOnClickListener { openSlide() }
 
-        miniBar.addView(miniCover)
-        miniBar.addView(col)
-        miniBar.addView(bottomRow)
-        miniBar.setOnClickListener { openSlide() }
+        val miniTop = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(miniCover)
+            addView(col)
+            addView(controls)
+        }
+        miniBar.addView(miniTop)
+        miniBar.addView(timeRow)
+        miniBar.addView(miniProgress)
 
         root.addView(extLabel)
-        root.addView(sub)
-        root.addView(actions)
-        root.addView(searchRow)
+        root.addView(sub, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = MusicTheme.dp(ctx, 2); bottomMargin = MusicTheme.dp(ctx, 10) })
+        root.addView(actions, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { bottomMargin = MusicTheme.dp(ctx, 12) })
+        root.addView(searchRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { bottomMargin = MusicTheme.dp(ctx, 4) })
         root.addView(list)
-        root.addView(miniBar)
+        root.addView(miniBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = MusicTheme.dp(ctx, 8); bottomMargin = MusicTheme.dp(ctx, 12) })
 
-        sub.text = "extensiones Echo · slide de CodeHub"
         return root
     }
 

@@ -95,12 +95,7 @@ class FeedAdapter(
         val t = TextView(parent.context)
         t.textSize = sizeSp
         t.setTypeface(Typeface.DEFAULT, if (bold) Typeface.BOLD else Typeface.NORMAL)
-        t.setTextColor(ThemeColors.of(
-            parent.context,
-            if (secondary) android.R.attr.textColorSecondary
-            else android.R.attr.textColorPrimary,
-            if (secondary) 0xFF666666.toInt() else 0xFF1A1A1A.toInt()
-        ))
+        t.setTextColor(if (secondary) MusicTheme.MUTED else MusicTheme.TEXT)
         t.maxLines = 1
         return t
     }
@@ -109,19 +104,18 @@ class FeedAdapter(
         val iv = ImageView(context)
         iv.layoutParams = ViewGroup.LayoutParams(dp(sizeDp), dp(sizeDp))
         iv.scaleType = ImageView.ScaleType.CENTER_CROP
+        MusicTheme.roundImage(context, iv, 12)
         return iv
     }
 
     private fun placeholder(iv: ImageView) {
         iv.setImageDrawable(null)
-        iv.setBackgroundResource(R.drawable.music_placeholder)
     }
 
     private fun loadImage(iv: ImageView, holder: ImageHolder?) {
         placeholder(iv)
         artwork.load(holder) { bmp ->
             iv.setImageBitmap(bmp)
-            iv.setBackgroundResource(0)
         }
     }
 
@@ -264,7 +258,7 @@ class FeedAdapter(
         val title = textView(parent, 16f, bold = true)
         title.id = ID_TITLE
         title.layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        val more = textView(parent, 13f, secondary = true)
+        val more = textView(parent, 13f, secondary = true).apply { setTextColor(MusicTheme.ACCENT) }
         more.id = ID_MORE
         row.addView(title)
         row.addView(more)
@@ -279,12 +273,14 @@ class FeedAdapter(
         val cell = LinearLayout(parent.context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(8))
-            layoutParams = RecyclerView.LayoutParams(
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = MusicTheme.ripple(parent.context, MusicTheme.rounded(parent.context, MusicTheme.SURFACE, 14))
+            val lp = RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
+            lp.setMargins(dp(12), dp(4), dp(12), dp(4))
+            layoutParams = lp
             isClickable = true
-            setBackgroundResource(android.R.drawable.list_selector_background)
         }
         val iv = imageView(parent.context, if (big) 96 else 52)
         iv.id = ID_IMAGE
@@ -361,11 +357,13 @@ class FeedAdapter(
         val cell = LinearLayout(parent.context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), dp(6), dp(16), dp(6))
-            layoutParams = RecyclerView.LayoutParams(
+            setPadding(dp(14), dp(8), dp(14), dp(8))
+            background = MusicTheme.ripple(parent.context, MusicTheme.rounded(parent.context, MusicTheme.SURFACE, 12))
+            val lp = RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            setBackgroundResource(android.R.drawable.list_selector_background)
+            lp.setMargins(dp(10), dp(2), dp(10), dp(2))
+            layoutParams = lp
         }
         val number = textView(parent, 13f, secondary = true)
         number.id = ID_NUMBER
@@ -409,7 +407,7 @@ class FeedAdapter(
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(dp(24), dp(24), dp(24), dp(24))
-            setTextColor(ThemeColors.of(parent.context, android.R.attr.textColorSecondary, 0xFF777777.toInt()))
+            setTextColor(MusicTheme.MUTED)
             layoutParams = RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -429,28 +427,27 @@ class FeedAdapter(
                 val ctx = inner.context
                 val chip = TextView(ctx)
                 chip.text = tab.title
-                chip.textSize = 14f
-                val padding = (10 * ctx.resources.displayMetrics.density).toInt()
-                chip.setPadding(padding, padding, padding, padding)
-                chip.setTypeface(
-                    Typeface.DEFAULT,
-                    if (index == selected) Typeface.BOLD else Typeface.NORMAL
+                chip.textSize = 13f
+                val horizontal = (14 * ctx.resources.displayMetrics.density).toInt()
+                val vertical = (8 * ctx.resources.displayMetrics.density).toInt()
+                chip.setPadding(horizontal, vertical, horizontal, vertical)
+                chip.gravity = Gravity.CENTER
+                val selectedChip = index == selected
+                chip.setTypeface(Typeface.DEFAULT, if (selectedChip) Typeface.BOLD else Typeface.NORMAL)
+                chip.setTextColor(if (selectedChip) MusicTheme.BG else MusicTheme.MUTED)
+                chip.background = MusicTheme.ripple(
+                    ctx,
+                    MusicTheme.rounded(
+                        ctx,
+                        if (selectedChip) MusicTheme.ACCENT else MusicTheme.SURFACE_2,
+                        18,
+                    )
                 )
-                if (index == selected) {
-                    chip.setTextColor(
-                        ThemeColors.of(ctx, android.R.attr.colorAccent, 0xFF448AFF.toInt())
-                    )
-                } else {
-                    chip.setTextColor(
-                        ThemeColors.of(ctx, android.R.attr.textColorSecondary, 0xFF666666.toInt())
-                    )
-                }
-                val ctxApp = ctx
                 chip.setOnClickListener { onSelected(index) }
                 val lp = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
                 )
-                lp.setMargins(16, 0, 0, 0)
+                lp.setMargins(12, 8, 0, 8)
                 chip.layoutParams = lp
                 inner.addView(chip)
             }
