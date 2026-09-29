@@ -102,7 +102,13 @@ dependencies {
     // common-android, publicada 2025-10-14). Sin Room/Koin/KSP: la app solo
     // consume la API; el parser de extensiones es un port de ExtensionParser.
     // Licencia de las extensiones: UPL-1.0 / GPLv3 - ver nota en apk/README.md.
-    implementation 'dev.brahmkshatriya.echo:common:1.0.0'
+    // Se excluye protobuf-java: echo common lo declara en su POM pero el AAR
+    // common-android (282 clases, verificado) NO referencia com.google.protobuf
+    // en su bytecode; el stack Appodeal/AdMob trae protobuf-javalite:3.25.6 y
+    // ambos artefactos comparten clases com.google.protobuf.* → duplicadas.
+    implementation('dev.brahmkshatriya.echo:common:1.0.0') {
+        exclude group: 'com.google.protobuf', module: 'protobuf-java'
+    }
     // Media3 (ExoPlayer 1.8.0, misma version que el fork) - HLS/DASH del
     // reproductor + progresivo. El cache de SimpleCache no se usa en v1.
     implementation 'androidx.media3:media3-exoplayer:1.8.0'
