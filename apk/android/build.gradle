@@ -1,140 +1,17 @@
+buildscript {
+    ext {
+        compileSdk = 34
+        minSdk = 24
+        targetSdk = 34
+        versionCode = 3
+        versionName = "1.2.0"
+    }
+}
+
 plugins {
-    id 'com.android.application'
-    id 'com.google.gms.google-services'
-    id 'org.jetbrains.kotlin.android'
-}
-
-android {
-    namespace 'com.codehub.app'
-    compileSdk 36
-
-    defaultConfig {
-        applicationId "com.codehub.app"
-        minSdk 24
-        targetSdk 36
-        versionCode 5
-        versionName "1.4.0"
-    }
-
-    signingConfigs {
-        release {
-            def ksPath = project.hasProperty('KEYSTORE_PATH') ? project.property('KEYSTORE_PATH') : 'release.jks'
-            def ksPass = project.hasProperty('KEYSTORE_PASSWORD') ? project.property('KEYSTORE_PASSWORD') : ''
-            def keyPass = project.hasProperty('KEY_PASSWORD') ? project.property('KEY_PASSWORD') : ''
-            storeFile file(ksPath)
-            storePassword ksPass
-            keyAlias "codehub"
-            keyPassword keyPass
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            signingConfig signingConfigs.release
-        }
-        debug {
-            minifyEnabled false
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-        // minSdk 24 < 26 → necesario para las APIs `java.time` que usa el
-        // adaptador de Appodeal/AdMob en runtime sin subir el minSdk.
-        coreLibraryDesugaringEnabled true
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.webkit:webkit:1.9.0'
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation platform('com.google.firebase:firebase-bom:34.18.0')
-    implementation 'com.google.firebase:firebase-messaging'
-    // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde
-    // versiones recientes del BOM — sin esto, NoClassDefFoundError al
-    // registrar el token FCM (registerFCMToken -> FirebaseInstallations).
-    implementation 'androidx.datastore:datastore-preferences:1.0.0'
-    // UMP — Consentimiento GDPR/CCPA (User Messaging Platform). Artefacto del
-    // SDK de Google (com.google.android.ump), distinto de play-services-ads.
-    // Debe consultarse antes de pedir anuncios en regiones exigidas (EEE/UK/Canadá).
-    implementation 'com.google.android.ump:user-messaging-platform:3.2.0'
-    // Appodeal 4.4.0 (Mediation Only) — sustituye las llamadas directas a
-    // AdMob (BannerAdManager/RewardedAdManager/InterstitialAdManager). El
-    // adaptador de AdMob trae play-services-ads y exige compileSdk 36; las
-    // unidades de banner/rewarded/interstitial se configuran en el panel de
-    // Appodeal (APP_KEY en AppodealManager). Repo: artifactory.appodeal.com.
-    implementation 'com.appodeal.ads.sdk:core:4.4.0'
-    implementation 'com.appodeal.ads.sdk.adapters:admob:25.2.0.0'
-    implementation 'com.appodeal.ads.sdk.adapters:applovin:13.6.3.0'
-    implementation 'com.appodeal.ads.sdk.adapters:unity_ads:4.17.0.0'
-    implementation 'com.appodeal.ads.sdk.adapters:vungle:7.7.4.0'
-    implementation 'com.appodeal.ads.sdk.adapters:bidmachine:3.7.1.0'
-    // iab — puente TCF: Appodeal lee los strings IABTCF que escribe UMP
-    // (ConsentManager.java) para respetar la decisión del usuario.
-    implementation 'com.appodeal.ads.sdk.adapters:iab:1.8.1.1'
-    // Desugaring de librerías java.time (ver compileOptions arriba).
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
-    implementation 'com.google.android.gms:play-services-location:21.3.0'
-    // Shizuku — detección de servicio/permiso + instalación silenciosa de
-    // APKs (apps Open Source) sin el diálogo nativo, cuando el usuario
-    // tiene Shizuku activo (ADB inalámbrico o root). Ver ShizukuInstaller.java.
-    implementation 'dev.rikka.shizuku:api:13.1.5'
-    implementation 'dev.rikka.shizuku:provider:13.1.5'
-    // Kotlin + Coroutines — núcleo de mantenimiento con Shizuku
-    // (borrarCacheTurbo / killAppsPro) en hilos secundarios sin congelar
-    // el UI del WebView.
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
-
-    // Music player "slide" - jugador nativo compacto para extensiones del
-    // ecosistema Echo (echo-nightly). Contrato de extensiones reciclado
-    // byte-a-byte desde Maven Central (dev.brahmkshatriya.echo:common:1.0.0,
-    // common-android, publicada 2025-10-14). Sin Room/Koin/KSP: la app solo
-    // consume la API; el parser de extensiones es un port de ExtensionParser.
-    // Licencia de las extensiones: UPL-1.0 / GPLv3 - ver nota en apk/README.md.
-    // Se excluye protobuf-java: echo common lo declara en su POM pero el AAR
-    // common-android (282 clases, verificado) NO referencia com.google.protobuf
-    // en su bytecode; el stack Appodeal/AdMob trae protobuf-javalite:3.25.6 y
-    // ambos artefactos comparten clases com.google.protobuf.* → duplicadas.
-    implementation('dev.brahmkshatriya.echo:common:1.0.0') {
-        exclude group: 'com.google.protobuf', module: 'protobuf-java'
-    }
-    // Media3 (ExoPlayer 1.8.0, misma version que el fork) - HLS/DASH del
-    // reproductor + progresivo. El cache de SimpleCache no se usa en v1.
-    implementation 'androidx.media3:media3-exoplayer:1.8.0'
-    implementation 'androidx.media3:media3-exoplayer-dash:1.8.0'
-    implementation 'androidx.media3:media3-exoplayer-hls:1.8.0'
-    // Listas de shelves/colas del player (stable, agnostico de tema).
-    implementation 'androidx.recyclerview:recyclerview:1.3.2'
-    // okhttp del ecosistema Echo - llega transitivamente con common:1.0.0
-    // como `okhttp-android` (variante Android). Se declara explicitamente con
-    // LA MISMA variante android para fijar version sin provocar clases
-    // duplicadas: declarar `okhttp` (JVM) junto a `okhttp-android` hace que
-    // AGP falle en checkDebugDuplicateClasses (mismas okhttp3/* en ambos GAV).
-    implementation 'com.squareup.okhttp3:okhttp-android:5.1.0'
-}
-
-// La librería androidx.datastore migró a Kotlin Multiplatform en versiones
-// recientes (variantes -core/-android por separado); en ese esquema Gradle
-// a veces resuelve una variante que NO trae PreferenceDataStoreDelegateKt,
-// causando NoClassDefFoundError aunque la dependencia esté declarada arriba
-// (bug conocido y aún abierto en varios issues de firebase-android-sdk).
-// Forzamos la versión 1.0.0 (clásica, un solo .aar de Android, sin
-// ambigüedad de variantes KMP) en TODO el árbol de dependencias, incluida
-// cualquier versión distinta que firebase-installations pida por su cuenta.
-configurations.all {
-    resolutionStrategy {
-        force 'androidx.datastore:datastore-preferences:1.0.0'
-        force 'androidx.datastore:datastore-core:1.0.0'
-    }
+    // AGP 8.9.2 — requisito mínimo para compileSdk 36 (Appodeal adapters).
+    // Requiere Gradle 8.11.1+ (ver .github/workflows/build-apk.yml).
+    id 'com.android.application' version '8.9.2' apply false
+    id 'com.google.gms.google-services' version '4.5.0' apply false
+    id 'org.jetbrains.kotlin.android' version '2.3.21' apply false
 }
