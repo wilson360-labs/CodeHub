@@ -213,6 +213,25 @@ const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeade
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 // Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
 const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
+// Mejora/edición de imágenes (Autoenhance·Gemini): cuota propia más agresiva,
+// no comparte el bucket de generación y evita el abuso de llamadas de pago.
+const imageEditLimiter = rateLimit({ windowMs: 15*60*1000, max: 6, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de mejora/edición de imágenes alcanzado.', code: 'IMAGE_EDIT_RATE_LIMIT' }, handler: rateLimitHandler });
+// Límites diarios por IP para generación y edición de imágenes (anti-abuso de
+// proveedores de pago). Cada guard mantiene su propio Map fechado por día.
+function dailyLimitGuard(max, msg) {
+  const m = new Map();
+  return function dailyGuard(req, res, next) {
+    const ip = clientIp(req);
+    const today = new Date().toISOString().slice(0, 10);
+    const e = m.get(ip);
+    if (!e || e.date !== today) { m.set(ip, { date: today, count: 1 }); return next(); }
+    if (e.count >= max) return res.status(429).json({ error: msg, code: 'DAILY_LIMIT' });
+    e.count++;
+    next();
+  };
+}
+const imgGenDailyGuard  = dailyLimitGuard(60, 'Límite diario de generación de imágenes alcanzado.');
+const imgEditDailyGuard = dailyLimitGuard(40, 'Límite diario de mejora/edición de imágenes alcanzado.');
 
 // ── ADMIN BAN SYSTEM (anti brute-force) ───────────────────────
 // Map<ip, { expiresAt, attempts, firstAttemptAt }>
@@ -1620,6 +1639,12 @@ function buildSmartMessages(system, history, maxInputTokens) {
   return msgs;
 }
 
+// Keys de chat aceptadas por la cascada de providers. El gate de /api/chat y
+// /api/chat/stream valida contra CUALQUIERA de ellas, no solo Groq/Gemini
+// (antes stream devolvía 503 si el único provider configurado era otro).
+const AI_CHAT_KEYS = ['GROQ_API_KEY','GEMINI_API_KEY','HUGGINGFACE_API_KEY','ANTHROPIC_API_KEY','KIMI_API_KEY','OPENROUTER_API_KEY','MISTRAL_API_KEY','COHERE_API_KEY','CEREBRAS_API_KEY'];
+const hasAnyChatKey = () => AI_CHAT_KEYS.some((k) => !!process.env[k]);
+
 async function callGroq(msgs, maxTokens) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -1938,7 +1963,9 @@ const wilERoutes = require('./wil-e/routes')({
   isAdminReq: wilEIsAdmin,
   requireUser: (req) => !!(req.authUser && req.authUser.id),
 });
-app.use('/api/wil-e', wilERoutes);
+// requireAuth (opcional) adjunta req.authUser cuando llega un Bearer Supabase;
+// las rutas internas usan requireAuthed/isAdminReq para exijir sesión real.
+app.use('/api/wil-e', requireAuth, wilERoutes);
 
 // ── WIL.E VOZ — TTS neural premium (Jarvis) ────────────────────────
 // /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
@@ -2462,7 +2489,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
-  if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
+  if (!hasAnyChatKey()) return res.status(503).json({ error: 'Sin API keys.' });
 
   // ── Límite diario server-side ─────────────────────────────────
   const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
@@ -3315,6 +3342,8 @@ app.post('/api/admin/seed', requireAdmin, async (req, res) => {
 // F2.6: Cache de imágenes por prompt hash (TTL 1 hora)
 const _imgCache = new Map();
 const IMG_CACHE_TTL = 3600000; // 1 hour
+const IMG_CACHE_MAX_BYTES = 64 * 1024 * 1024; // 64 MB de budget total (evita que base64 grandes agoten la memoria)
+let _imgCacheBytes = 0;
 function imgCacheKey(p, w, h) {
   let h1 = 0; const s = p.toLowerCase().trim().replace(/\s+/g, ' ');
   for (let i = 0; i < s.length; i++) { h1 = ((h1 << 5) - h1 + s.charCodeAt(i)) | 0; }
@@ -3323,12 +3352,21 @@ function imgCacheKey(p, w, h) {
 function imgCacheGet(key) {
   const e = _imgCache.get(key);
   if (!e) return null;
-  if (Date.now() - e.ts > IMG_CACHE_TTL) { _imgCache.delete(key); return null; }
+  if (Date.now() - e.ts > IMG_CACHE_TTL) { _imgCache.delete(key); _imgCacheBytes -= e.size || 0; return null; }
   return e.data;
 }
 function imgCacheSet(key, data) {
-  if (_imgCache.size > 200) { const first = _imgCache.keys().next().value; _imgCache.delete(first); }
-  _imgCache.set(key, { data, ts: Date.now() });
+  const size = data ? (String(data.image || data.url || '').length + 256) : 1024;
+  if (_imgCache.has(key)) _imgCacheBytes -= _imgCache.get(key).size || 0;
+  while ((_imgCache.size >= 200 || _imgCacheBytes + size > IMG_CACHE_MAX_BYTES) && _imgCache.size > 0) {
+    const oldest = _imgCache.keys().next().value;
+    if (oldest === undefined) break;
+    const old = _imgCache.get(oldest);
+    _imgCacheBytes -= old.size || 0;
+    _imgCache.delete(oldest);
+  }
+  _imgCache.set(key, { data, ts: Date.now(), size });
+  _imgCacheBytes += size;
 }
 function sendAndCache(res, data, cacheKey) {
   if (data && (data.image || data.url)) {
@@ -3564,7 +3602,7 @@ async function fetchUrlText(url) {
   } catch (e) { return ''; }
 }
 
-app.post('/api/generate-image', imageLimiter, async (req, res) => {
+app.post('/api/generate-image', imageLimiter, imgGenDailyGuard, async (req, res) => {
   const { prompt, width = 512, height = 512, provider = 'auto', skill_id = null, preset_id = null } = req.body;
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 2) {
     return res.status(400).json({ error: 'Prompt requerido' });
@@ -3735,7 +3773,7 @@ app.post('/api/generate-image', imageLimiter, async (req, res) => {
 
 // ── Helper: guardar log de escaneo en Supabase ───────────────
 // POST /api/enhance-image - Autoenhance.ai (mejorar calidad de imagen)
-app.post('/api/enhance-image', requireAuth, async (req, res) => {
+app.post('/api/enhance-image', imageEditLimiter, imgEditDailyGuard, requireAuth, async (req, res) => {
   const { image } = req.body || {};
   if (!image || typeof image !== 'string') {
     return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
@@ -3791,7 +3829,7 @@ app.post('/api/enhance-image', requireAuth, async (req, res) => {
 // ── POST /api/edit-image — Edición de imagen con IA (Gemini) ────────
 // Acepta una imagen (data URL) y una instrucción ("quita el fondo", "cambia
 // la camiseta a rojo", "borra el perro", etc.) y devuelve la imagen editada.
-app.post('/api/edit-image', requireAuth, async (req, res) => {
+app.post('/api/edit-image', imageEditLimiter, imgEditDailyGuard, requireAuth, async (req, res) => {
   const { image, prompt } = req.body || {};
   if (!image || typeof image !== 'string') {
     return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
@@ -6334,7 +6372,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
   const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
   if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
-  if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) return res.status(503).json({ error: 'Sin API keys.' });
+  if (!hasAnyChatKey()) return res.status(503).json({ error: 'Sin API keys.' });
 
   // ── Imagen/PDF escaneado: fallback a non-streaming (solo Gemini Vision) ──
   const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);

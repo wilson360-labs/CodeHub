@@ -5082,10 +5082,15 @@ async function sendEmail(e) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 40000);
+      const headers = { 'Content-Type': 'application/json' };
+      if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
+        const _ses = CodeHubAuth.getSession();
+        if (_ses && _ses.token) headers['Authorization'] = 'Bearer ' + _ses.token;
+      }
       const res = await fetch(IMG_GEN_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: cleanPrompt, session_id: SESSION_ID, width: 512, height: 512 }),
+        headers,
+        body: JSON.stringify({ prompt: cleanPrompt, sessionId: SESSION_ID, width: 512, height: 512 }),
         signal: controller.signal
       });
       clearTimeout(timeout);
@@ -5215,7 +5220,7 @@ async function sendEmail(e) {
             try {
               const rr = await fetch(BACKEND_URL + '/api/chat', {
                 method: 'POST', headers,
-                body: JSON.stringify({ message: 'Resume este contenido de la URL en máximo 40 palabras y responde SOLO con ese resumen (sin texto extra): ' + u, session_id: SESSION_ID })
+                body: JSON.stringify({ message: 'Resume este contenido de la URL en máximo 40 palabras y responde SOLO con ese resumen (sin texto extra): ' + u, sessionId: SESSION_ID })
               });
               const dd = await rr.json();
               let resText = (dd && (dd.reply || dd.message || dd.response)) || '';
@@ -8601,7 +8606,7 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/office-generator.8d6cdf13ee.min.js" defer></script>
 <script src="/dist/assets/js/ux-animations.b6a116abe1.min.js" defer></script>
 <script src="/dist/assets/js/auth.14f7caec39.min.js" defer></script>
-<script src="/dist/assets/js/emi-voice.1e65948f96.min.js" defer></script>
+<script src="/dist/assets/js/emi-voice.fcce3b41ee.min.js" defer></script>
 <script src="/dist/assets/js/sys-metrics.441cf23ca5.min.js" defer></script>
 <script src="/dist/assets/js/security-scan.5a8b5156fe.min.js" defer></script>
 <script src="/dist/assets/js/lazy-features.d93159e9dd.min.js" defer></script>

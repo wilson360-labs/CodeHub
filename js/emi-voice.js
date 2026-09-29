@@ -229,10 +229,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [
-            { role: 'system', content: 'You are a translator. Return ONLY the English translation of the user message. No explanations, no quotes, no markdown.' },
-            { role: 'user', content: text.slice(0, 500) }
-          ]
+          message: text.slice(0, 500)
         }),
         signal: ctrl.signal,
       });

@@ -2677,7 +2677,7 @@ async function generateImage() {
       var resp = await Promise.race([
         fetch(BACKEND + '/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders(),
           body: JSON.stringify(bodyData)
         }),
         new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 35000); })
@@ -2827,7 +2827,7 @@ async function generateImageEdu() {
       var resp = await Promise.race([
         fetch(BACKEND + '/api/generate-image', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders(),
           body: JSON.stringify(bodyData)
         }),
         new Promise(function(_, r){ setTimeout(function(){ r(new Error('timeout')); }, 35000); })
