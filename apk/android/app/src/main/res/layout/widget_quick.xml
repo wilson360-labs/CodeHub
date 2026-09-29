@@ -5,6 +5,7 @@
   Solo se usan clases que RemoteViews puede inflar en el proceso del
   launcher (LinearLayout/FrameLayout/TextView/ImageButton/ProgressBar),
   y cada celda abre MainActivity con un deep link del dominio propio.
+  Celdas redondeadas (widget_cell_bg) con iconos-badge del set de shortcuts.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/quick_root"
@@ -12,7 +13,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="6dp">
+    android:padding="8dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,7 +27,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:padding="4dp"
-            android:background="?android:attr/selectableItemBackground">
+            android:background="@drawable/widget_cell_bg">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -36,11 +37,12 @@
 
                 <ImageButton
                     android:id="@+id/quick_icon_wile"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:src="@drawable/ic_shortcut_chat"
                     android:background="@android:color/transparent"
                     android:scaleType="fitCenter"
+                    android:importantForAccessibility="no"
                     android:contentDescription="@string/shortcut_wile_short" />
 
                 <TextView
@@ -48,12 +50,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/shortcut_wile_short"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#E8EAF2"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:layout_marginTop="3dp" />
+                    android:layout_marginTop="4dp" />
             </LinearLayout>
         </FrameLayout>
 
@@ -63,7 +65,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:padding="4dp"
-            android:background="?android:attr/selectableItemBackground">
+            android:background="@drawable/widget_cell_bg">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -73,11 +75,12 @@
 
                 <ImageButton
                     android:id="@+id/quick_icon_weather"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:src="@drawable/ic_shortcut_weather"
                     android:background="@android:color/transparent"
                     android:scaleType="fitCenter"
+                    android:importantForAccessibility="no"
                     android:contentDescription="@string/shortcut_weather_short" />
 
                 <TextView
@@ -85,12 +88,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/shortcut_weather_short"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#E8EAF2"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:layout_marginTop="3dp" />
+                    android:layout_marginTop="4dp" />
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
@@ -107,7 +110,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:padding="4dp"
-            android:background="?android:attr/selectableItemBackground">
+            android:background="@drawable/widget_cell_bg">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -117,11 +120,12 @@
 
                 <ImageButton
                     android:id="@+id/quick_icon_catalog"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:src="@drawable/ic_shortcut_catalog"
                     android:background="@android:color/transparent"
                     android:scaleType="fitCenter"
+                    android:importantForAccessibility="no"
                     android:contentDescription="@string/shortcut_catalog_short" />
 
                 <TextView
@@ -129,12 +133,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/shortcut_catalog_short"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#E8EAF2"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:layout_marginTop="3dp" />
+                    android:layout_marginTop="4dp" />
             </LinearLayout>
         </FrameLayout>
 
@@ -144,7 +148,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:padding="4dp"
-            android:background="?android:attr/selectableItemBackground">
+            android:background="@drawable/widget_cell_bg">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -154,11 +158,12 @@
 
                 <ImageButton
                     android:id="@+id/quick_icon_tools"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:src="@drawable/ic_shortcut_tools"
                     android:background="@android:color/transparent"
                     android:scaleType="fitCenter"
+                    android:importantForAccessibility="no"
                     android:contentDescription="@string/shortcut_tools_short" />
 
                 <TextView
@@ -166,12 +171,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/shortcut_tools_short"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#E8EAF2"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:maxLines="1"
                     android:ellipsize="end"
-                    android:layout_marginTop="3dp" />
+                    android:layout_marginTop="4dp" />
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>

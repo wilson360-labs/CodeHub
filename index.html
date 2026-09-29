@@ -90,15 +90,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <script>
-    /* Aplicar tema guardado ANTES del primer pintado (anti-FOUC).
-       Prioridad: localStorage['theme'] > prefers-color-scheme > oscuro. */
+    /* CodeHub es oscuro por diseno (el tema claro se retiro en v1.4).
+       Se fuerza data-theme=dark antes del primer pintado (anti-FOUC). */
     (function () {
-      var theme = null;
-      try { theme = localStorage.getItem('theme'); } catch (e) {}
-      if (theme !== 'light' && theme !== 'dark') {
-        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
-      }
-      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-theme', 'dark');
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
@@ -558,11 +553,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <!-- Acciones derecha -->
             <div class="header-actions">
 
-                <button id="theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
-                    <i class="fas theme-toggle-icon fa-moon" data-fa-theme-icon></i>
-                    <morph-icon class="theme-toggle-icon" data-morph theme-icon size="17" color="currentColor" icon="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></morph-icon>
-                </button>
-
                 <button id="lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
                     <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
                 </button>
@@ -627,9 +617,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
         <div class="side-group side-prefs">
             <div class="side-group-label">Preferencias</div>
-            <button class="side-pref-btn" id="side-theme-toggle" data-theme-toggle aria-label="Cambiar tema claro/oscuro" aria-pressed="false" title="Cambiar a modo claro">
-                <i class="fas theme-toggle-icon fa-moon" data-fa-theme-icon></i><morph-icon class="theme-toggle-icon" data-morph theme-icon size="16" color="currentColor" icon="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></morph-icon><span data-i18n="sidePrefTheme">Tema claro/oscuro</span>
-            </button>
             <button class="side-pref-btn" id="side-lang-toggle" data-lang-toggle aria-label="Cambiar idioma" title="Cambiar idioma / Change language" onclick="toggleLang()">
                 <i class="fas fa-globe"></i><span class="lang-toggle-text">EN</span>
             </button>
@@ -681,14 +668,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </div>
                 </div>
 
-                <!-- Tema -->
-                <div class="cfg-group">
-                    <div class="cfg-label" data-i18n-label="cfgTheme">Tema</div>
-                    <div class="cfg-options">
-                        <button class="cfg-opt" data-theme-option="dark" data-i18n-config="cfgDark" onclick="setCfg('theme','dark',this)">🌙 Oscuro</button>
-                        <button class="cfg-opt" data-theme-option="light" data-i18n-config="cfgLight" onclick="setCfg('theme','light',this)">☀️ Claro</button>
-                    </div>
-                </div>
+                <!-- Tema (retirado: CodeHub es oscuro por diseno, v1.4) -->
 
                 <!-- Idioma -->
                 <div class="cfg-group">
@@ -6486,11 +6466,11 @@ function setCfg(key, val, btn) {
     }
     if (key === 'theme') {
         if (window.CodeHubTheme?.apply) {
-            window.CodeHubTheme.apply(val, true);
+            window.CodeHubTheme.apply('dark', true);
         } else {
-            document.documentElement.setAttribute('data-theme', val);
-            document.body.classList.toggle('light-mode', val === 'light');
-            localStorage.setItem('theme', val);
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
         }
     }
     if (key !== 'font' && key !== 'lang' && key !== 'theme' && window.Prefs) {
@@ -6516,12 +6496,11 @@ function resetCfg() {
     if (window.Prefs) window.Prefs.reset();
     // Aplicar defaults
     document.body.classList.remove('font-sm','font-lg','no-anim');
-    // Tema: restablecer a la preferencia del sistema (o oscuro por defecto)
+    // Tema: siempre oscuro (el tema claro se retiro en v1.4)
     if (window.CodeHubTheme?.apply) {
-        var sysLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-        window.CodeHubTheme.apply(sysLight ? 'light' : 'dark', false);
+        window.CodeHubTheme.apply('dark', false);
     } else {
-        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.setAttribute('data-theme', 'dark');
         document.body.classList.remove('light-mode');
     }
     const canvas = document.getElementById('neural-network');
@@ -8613,7 +8592,7 @@ if (_defMood) setAIMood(_defMood);
 <!-- Anime.js + UX Animations -->
 <script src="js/vendor/anime.min.js?v=20260908a" defer></script>
 <script src="/dist/assets/js/site-tour.86fe554324.min.js" defer></script>
-<script src="/dist/assets/js/theme-switcher.4eed2242e8.min.js" defer></script>
+<script src="/dist/assets/js/theme-switcher.87479ab399.min.js" defer></script>
 <script src="/dist/assets/js/haptics.ee67eff258.min.js" defer></script>
 <script type="module" src="/dist/assets/js/morphicons-init.a38de871fc.min.js"></script>
 <script src="/dist/assets/js/device-detect.4bdd073619.min.js" defer></script>
@@ -8725,7 +8704,7 @@ if (_defMood) setAIMood(_defMood);
   },4000);
   function applySettings(s){
     if(!s||typeof s!=='object')return;
-    if(s.theme==='dark'||s.theme==='light'){
+    if(s.theme==='dark'){
       localStorage.setItem('theme',s.theme);
       if(window.CodeHubTheme&&CodeHubTheme.apply)CodeHubTheme.apply(s.theme,true);
     }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Celda de acceso rápido del widget: tile redondeado con ripple (el
+     launcher dibuja el feedback al pulsar) sobre el color de superficie. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#22FFFFFF">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="14dp" />
+            <solid android:color="#1B1B28" />
+            <stroke android:width="1dp" android:color="#1E6C9CFF" />
+        </shape>
+    </item>
+</ripple>

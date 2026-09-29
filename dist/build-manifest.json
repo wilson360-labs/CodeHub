@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-29T14:55:24.213Z",
+  "generatedAt": "2026-09-29T15:33:14.679Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.49be778e50.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
@@ -31,7 +31,7 @@
     "js/skills-pdf-ia.js": "assets/js/skills-pdf-ia.66b58ffda5.min.js",
     "js/sys-metrics.js": "assets/js/sys-metrics.441cf23ca5.min.js",
     "js/terminal.js": "assets/js/terminal.e287924be2.min.js",
-    "js/theme-switcher.js": "assets/js/theme-switcher.4eed2242e8.min.js",
+    "js/theme-switcher.js": "assets/js/theme-switcher.87479ab399.min.js",
     "js/thinking-orb.js": "assets/js/thinking-orb.2b4982d5a0.min.js",
     "js/updater.js": "assets/js/updater.cdaf77f61c.min.js",
     "js/ux-animations.js": "assets/js/ux-animations.b6a116abe1.min.js",

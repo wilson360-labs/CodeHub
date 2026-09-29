@@ -5,10 +5,7 @@
   var root = document.documentElement;
 
   function getInitialTheme() {
-    var saved = null;
-    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-    if (saved === 'light' || saved === 'dark') return saved;
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    // CodeHub es oscuro por diseno: el tema claro se retiro (v1.4).
     return 'dark';
   }
 
@@ -17,7 +14,8 @@
   }
 
   function applyTheme(theme, save) {
-    var isLight = theme === 'light';
+    if (theme === 'light') theme = 'dark';
+    var isLight = false;
     root.setAttribute('data-theme', isLight ? 'light' : 'dark');
     document.body.classList.toggle('light-mode', isLight);
     getThemeBtns().forEach(function (btn) {
