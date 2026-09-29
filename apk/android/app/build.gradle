@@ -94,7 +94,7 @@ dependencies {
     // (borrarCacheTurbo / killAppsPro) en hilos secundarios sin congelar
     // el UI del WebView.
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
 
     // Music player "slide" - jugador nativo compacto para extensiones del
     // ecosistema Echo (echo-nightly). Contrato de extensiones reciclado
