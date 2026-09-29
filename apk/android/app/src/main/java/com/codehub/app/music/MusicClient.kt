@@ -18,8 +18,8 @@ object MusicClient {
         block: suspend ExtensionClient.() -> R
     ): Result<R> = runCatching {
         withContext(Dispatchers.IO) {
-            @Suppress("UNCHECKED_CAST")
-            (instance.value().getOrThrow() as ExtensionClient).block()
+            val client: ExtensionClient = instance.value().getOrThrow()
+            client.block()
         }
     }
 

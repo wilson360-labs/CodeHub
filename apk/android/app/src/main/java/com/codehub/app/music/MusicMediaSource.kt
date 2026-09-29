@@ -78,31 +78,25 @@ class MusicMediaSource(
             val trackId = mediaItem.decodeTrack()?.id ?: mediaItem.mediaId ?: ""
             player.servers[trackId] = serverResult
             val server = serverResult.getOrNull()
-            val sources = server?.sources
-            val actual = when (sources?.size) {
-                0, null -> factories.create(new, -1, null)
-                1 -> {
-                    val source = sources.first()
-                    factories.create(new, 0, source)
-                }
-
+            val sources = server?.sources.orEmpty()
+            val actual: MediaSource = when {
+                server == null || sources.isEmpty() -> factories.create(new, -1, null)
+                sources.size == 1 -> factories.create(new, 0, sources.first())
+                server.merged -> MergingMediaSource(
+                    *sources.mapIndexed { index, source ->
+                        factories.create(new, index, source)
+                    }.toTypedArray()
+                )
                 else -> {
-                    if (server.merged) {
-                        MergingMediaSource(
-                            *sources.mapIndexed { index, source ->
-                                factories.create(new, index, source)
-                            }.toTypedArray()
-                        )
-                    } else {
-                        val requested = mediaItem.sourceIndex()
-                        val source = sources.getOrNull(requested)
-                            ?: MusicQuality.select(sources, qualityPref)
-                        val newIndex = sources.indexOf(source)
-                        new = buildSourceItem(new, newIndex)
-                        factories.create(new, newIndex, source)
-                    }
+                    val requested = mediaItem.sourceIndex()
+                    val source = sources.getOrNull(requested)
+                        ?: MusicQuality.select(sources, qualityPref)
+                    val newIndex = sources.indexOf(source)
+                    new = buildSourceItem(new, newIndex)
+                    factories.create(new, newIndex, source)
                 }
             }
+            actualSource = actual
             mediaItem = new
             handler.post {
                 runCatching {
@@ -327,11 +321,11 @@ object MusicLoader {
         }
     }
 
-    private fun playableLabel(track: Track): String? = when (track.isPlayable) {
+    private fun playableLabel(track: Track): String? = when (val playable = track.isPlayable) {
         Track.Playable.Yes -> null
         Track.Playable.RegionLocked -> "Track no disponible en tu región"
         Track.Playable.Unreleased -> "Track aún no publicado"
-        is Track.Playable.No -> track.isPlayable.reason.ifBlank { "Track no reproducible" }
+        is Track.Playable.No -> playable.reason.ifBlank { "Track no reproducible" }
     }
 }
 
