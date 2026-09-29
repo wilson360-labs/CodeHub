@@ -86,18 +86,42 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
         run: |
           if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then echo "compile OK"; exit 0; fi
+          LOG="$RUNNER_TEMP/compile-debug.log"
           {
             echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
             echo "";
             echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
             echo "";
-            echo '```text';
-            if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then
-              tail -c 52000 "$RUNNER_TEMP/compile-debug.log" || true;
+            if [ -f "$LOG" ]; then
+              echo '**Diagnósticos kotlinc (`e:`/`error:`):**';
+              echo '```text';
+              grep -nE '^e: |error:|warning: |Unclosed comment|Unresolved reference|cannot find symbol|Conflicting|Duplicate class|Unable to' "$LOG" | head -n 80 || true;
+              echo '```';
+              echo "";
+              echo '**Región alrededor del primer error kotlinc:**';
+              echo '```text';
+              FIRST=$(grep -nE '^e: ' "$LOG" | head -1 | cut -d: -f1 || true);
+              if [ -n "$FIRST" ] && [ "$FIRST" -ge 1 ] 2>/dev/null; then
+                S=$((FIRST-10)); [ "$S" -lt 1 ] && S=1;
+                sed -n "${S},$((FIRST+170))p" "$LOG" || true;
+              else
+                echo "(sin líneas \`e:\` detectadas — se muestra el contexto de falla)"
+                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$LOG" | tail -n 25 || true;
+              fi
+              echo '```';
+              echo "";
+              echo '**Tareas fallidas / contexto:**';
+              echo '```text';
+              grep -nE 'FAILURE:|Execution failed for task|What went wrong|^* What went wrong|Caused by:' "$LOG" | tail -n 40 || true;
+              echo '```';
+              echo "";
+              echo '**Cola del log:**';
+              echo '```text';
+              tail -n 150 "$LOG" || true;
+              echo '```';
             else
-              echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)"
+              echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)";
             fi
-            echo '```';
           } > /tmp/compile-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
             --title "CI: error de compilación APK ($GITHUB_SHA)" \
@@ -264,6 +288,7 @@ jobs:
           echo ">>> HAS_RELEASE_SECRETS=$keystore_ok"
 
       - name: Build Release APK
+        id: release-build
         working-directory: apk/android
         continue-on-error: true
         env:
@@ -284,7 +309,7 @@ jobs:
           exit $rc
 
       - name: Publicar error de release como Issue (diagnostico)
-        if: always()
+        if: always() && steps.release-build.conclusion == 'failure'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
