@@ -75,7 +75,7 @@ class MusicMediaSource(
                     error = it
                     return@launch
                 }
-            val trackId = mediaItem.decodeTrack()?.id ?: mediaItem.mediaId ?: ""
+            val trackId = mediaItem.decodeTrack()?.id ?: mediaItem.mediaId
             player.servers[trackId] = serverResult
             val server = serverResult.getOrNull()
             val sources = server?.sources.orEmpty()

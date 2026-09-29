@@ -888,7 +888,7 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void openMusic() {
         try {
-            Intent i = new Intent(activity, com.codehub.app.music.MusicPlayerActivity.class);
+            Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(i);
         } catch (Exception ignored) {}
