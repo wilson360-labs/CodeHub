@@ -202,16 +202,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          motivo la fuente local no aplica, cae a cdnjs como respaldo remoto
          (ya permitido por la CSP). */
       (function () {
-        function faLoaded() {
+        function faStyleApplied() {
           try {
             var t = document.createElement('i');
             t.className = 'fas fa-bars';
             t.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
             document.body.appendChild(t);
-            var ok = getComputedStyle(t).fontFamily.indexOf('Font Awesome') !== -1;
+            var fam = getComputedStyle(t).fontFamily || '';
             t.remove();
-            return ok;
+            return fam.indexOf('Font Awesome') !== -1 || fam.indexOf('FontAwesome') !== -1;
           } catch (e) { return false; }
+        }
+        function faGlyphsReady() {
+          try {
+            if (!document.fonts || typeof document.fonts.check !== 'function') return null;
+            var solid  = document.fonts.check('900 16px "Font Awesome 6 Free"');
+            var brands = document.fonts.check('400 16px "Font Awesome 6 Brands"');
+            return !!(solid || brands);
+          } catch (e) { return null; }
         }
         var swapped = false;
         function swapCss(href) {
@@ -220,9 +228,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           var l = document.getElementById('fa-css');
           if (l) l.href = href;
         }
+        function needSwap() {
+          if (!faStyleApplied()) return true;
+          var ready = faGlyphsReady();
+          return ready === false;
+        }
         window.addEventListener('load', function () {
           setTimeout(function () {
-            if (!faLoaded()) {
+            if (!needSwap()) return;
+            try {
+              if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function () {
+                  setTimeout(function () {
+                    if (needSwap()) {
+                      swapCss('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
+                    }
+                  }, 250);
+                }).catch(function () {
+                  swapCss('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
+                });
+              } else {
+                swapCss('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
+              }
+            } catch (e) {
               swapCss('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css');
             }
           }, 600);
@@ -243,7 +271,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20260912a">
 <link rel="stylesheet" href="css/native-feel.css?v=20260905c">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20260911a">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20260929a">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20260920a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -8587,7 +8615,7 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/site-tour.86fe554324.min.js" defer></script>
 <script src="/dist/assets/js/theme-switcher.4eed2242e8.min.js" defer></script>
 <script src="/dist/assets/js/haptics.ee67eff258.min.js" defer></script>
-<script type="module" src="/dist/assets/js/morphicons-init.f06cae5f89.min.js"></script>
+<script type="module" src="/dist/assets/js/morphicons-init.a38de871fc.min.js"></script>
 <script src="/dist/assets/js/device-detect.4bdd073619.min.js" defer></script>
 <script src="/dist/assets/js/thinking-orb.2b4982d5a0.min.js" defer></script>
 <script src="/dist/assets/js/deep-search.0171f144d5.min.js" defer></script>

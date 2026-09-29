@@ -1488,3 +1488,34 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   #services .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem); }
 }
 
+/* ── ICONOS INDEX — ajuste uniforme en WebView Android ──────────────
+   Emojis y glifos Font Awesome usan métricas de fuente distintas; en el
+   WebView Android pueden verse descentrados o con descensor visible.
+   Caja fija + línea neutra + centrado vertical = mismo encuadre en
+   Chrome móvil y en la app (catalogo de install, panel de permisos,
+   dock, nav inferior, botones hero). */
+.apk-info-icon {
+  width: 20px; height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: .85rem;
+  line-height: 1;
+}
+.ch-perm-icon,
+.ios-notif-icon,
+.dock-icon,
+#mobile-nav-bar a .mnb-icon,
+.hero-btn > i.fa,
+.hero-proof span i.fa,
+.hero-note span i.fa {
+  line-height: 1;
+}
+
+/* Los emojis del instalador no deben encogerse ni desalinearse en los
+   teléfonos más compactos. */
+@media (max-width: 380px) {
+  .apk-info-icon { width: 18px; height: 18px; font-size: .8rem; }
+}
+

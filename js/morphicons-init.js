@@ -30,7 +30,13 @@ window.CodeHubMorphTo = function (root, pathName, spring) {
 };
 
 // Ocultar los iconos FA de respaldo cuando el morph-icon está activo.
+// Solo cuando el custom element realmente se actualizó (:defined): si el
+// módulo ES del morph-icon falla en el WebView, se mantiene el FA visible
+// en vez de dejar un hueco vacío (el CSS ya lo oculta vía :has()).
 function chHideFaIcons() {
+  var upgradeReady = window.customElements &&
+    typeof window.customElements.get === 'function' &&
+    !!window.customElements.get('morph-icon');
   var groups = [
     { btnSel: '[data-theme-toggle]', faSel: '[data-fa-theme-icon]' },
     { btnSel: '#wx-alerts-toggle', faSel: '[data-fa-wx-icon]' },
@@ -38,8 +44,10 @@ function chHideFaIcons() {
   groups.forEach(function (g) {
     var btns = document.querySelectorAll(g.btnSel);
     Array.prototype.forEach.call(btns, function (btn) {
+      var morph = btn.querySelector('morph-icon');
       var fa = btn.querySelector(g.faSel);
-      if (fa) fa.style.display = 'none';
+      if (!fa) return;
+      if (upgradeReady && morph && morph.shadowRoot) fa.style.display = 'none';
     });
   });
 }
