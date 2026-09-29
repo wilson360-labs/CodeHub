@@ -49,9 +49,11 @@ class PlayerSlide(
 
     private var trackId: String? = null
     private var dragging = false
-    private var ticker: Runnable = Runnable {
-        updateProgress()
-        if (isShowing) main.postDelayed(this, 300)
+    private val ticker: Runnable = object : Runnable {
+        override fun run() {
+            updateProgress()
+            if (isShowing) main.postDelayed(this, 300)
+        }
     }
 
     init {

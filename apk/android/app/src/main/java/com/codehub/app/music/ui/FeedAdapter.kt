@@ -15,7 +15,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.R
-import dev.brahmkshatriya.echo.common.models.Category
+import dev.brahmkshatriya.echo.common.models.Shelf.Category
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.ImageHolder
 import dev.brahmkshatriya.echo.common.models.Tab
@@ -150,7 +150,7 @@ class FeedAdapter(
         is Row.Info -> 7
     }
 
-    class VH(view: View) : RecyclerView.ViewHolder(view)
+    open class VH(view: View) : RecyclerView.ViewHolder(view)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {

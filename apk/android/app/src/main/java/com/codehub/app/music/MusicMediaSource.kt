@@ -29,6 +29,8 @@ import com.codehub.app.music.MusicMedia.EXTRA_SOURCE_INDEX
 import com.codehub.app.music.MusicMedia.EXTRA_STATE
 import com.codehub.app.music.MusicMedia.decodeTrack
 import com.codehub.app.music.MusicMedia.encodeTrack
+import com.codehub.app.music.MusicMedia.serverIndex
+import com.codehub.app.music.MusicMedia.sourceIndex
 import dev.brahmkshatriya.echo.common.clients.TrackClient
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
@@ -312,7 +314,7 @@ object MusicLoader {
             val extension = player.extension ?: error("Sin extensión activa")
             val unloaded = mediaItem.decodeTrack() ?: error("Track inválido")
             playableLabel(unloaded)?.let { throw Exception(it) }
-            val trackClient = extension.getAs<TrackClient> { this }.getOrThrow()
+            val trackClient = extension.getAs<TrackClient, TrackClient> { this }.getOrThrow()
             val track = trackClient.loadTrack(unloaded, false)
             val servers = track.servers
             val serverIndex = mediaItem.serverIndex()
@@ -325,11 +327,11 @@ object MusicLoader {
         }
     }
 
-    private fun playableLabel(track: Track): String? = when (track.playable) {
+    private fun playableLabel(track: Track): String? = when (track.isPlayable) {
         Track.Playable.Yes -> null
         Track.Playable.RegionLocked -> "Track no disponible en tu región"
         Track.Playable.Unreleased -> "Track aún no publicado"
-        is Track.Playable.No -> track.playable.reason.ifBlank { "Track no reproducible" }
+        is Track.Playable.No -> track.isPlayable.reason.ifBlank { "Track no reproducible" }
     }
 }
 

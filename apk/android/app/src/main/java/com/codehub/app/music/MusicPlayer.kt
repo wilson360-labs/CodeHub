@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.json.jsonObject
 import java.util.WeakHashMap
 
 /**
@@ -120,7 +121,11 @@ class MusicPlayer(
     var extension: MusicExtension? = null
 
     val exo: ExoPlayer = ExoPlayer.Builder(context)
-        .setMediaSourceFactory(MusicMediaSource.Factory(this, scope))
+        .setMediaSourceFactory(MusicMediaSource.Factory(
+            this,
+            scope,
+            context.getSharedPreferences("music_global", Context.MODE_PRIVATE)
+        ))
         .build()
 
     private val _nowPlaying = MutableStateFlow<Track?>(null)
@@ -214,9 +219,10 @@ class MusicPlayer(
     fun selectSource(track: Track, sourceIndex: Int) {
         val ext = extension ?: return
         val index = exo.currentMediaItemIndex.coerceAtLeast(0)
-        exo.setMediaItem(
-            buildItem(track, serverIndex = -1, sourceIndex = sourceIndex),
-            index
+        exo.setMediaItems(
+            listOf(buildItem(track, serverIndex = -1, sourceIndex = sourceIndex)),
+            index,
+            0L
         )
         exo.prepare()
         exo.play()
@@ -247,7 +253,7 @@ class MusicPlayer(
             .setTitle(track.title)
             .setArtist(track.artists.joinToString(", ") { it.name })
             .setAlbumTitle(track.album?.title)
-            .setIsPlayable(track.playable == Track.Playable.Yes)
+            .setIsPlayable(track.isPlayable == Track.Playable.Yes)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
             .setExtras(bundle)
             .build()

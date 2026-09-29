@@ -31,7 +31,7 @@ import dev.brahmkshatriya.echo.common.clients.QuickSearchClient
 import dev.brahmkshatriya.echo.common.clients.RadioClient
 import dev.brahmkshatriya.echo.common.clients.SearchFeedClient
 import dev.brahmkshatriya.echo.common.models.Album
-import dev.brahmkshatriya.echo.common.models.Category
+import dev.brahmkshatriya.echo.common.models.Shelf.Category
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.Feed
 import dev.brahmkshatriya.echo.common.models.Feed.Companion.loadAll
@@ -82,9 +82,11 @@ class MusicPlayerActivity : Activity() {
     private var libraryFeed: Feed<Shelf>? = null
     private var extensionTabs: List<Tab> = emptyList()
     private var selectedTabIndex = 0
-    private val ticker = Runnable {
-        updateMiniProgress()
-        mainHandler.postDelayed(this, 300)
+    private val ticker: Runnable = object : Runnable {
+        override fun run() {
+            updateMiniProgress()
+            mainHandler.postDelayed(this, 300)
+        }
     }
     private var currentTrack: Track? = null
 
@@ -132,7 +134,7 @@ class MusicPlayerActivity : Activity() {
         val ext = activeExtension ?: return
         scope.launch {
             adapter.submit(listOf(Row.Loading))
-            val home = runCatching { ext.getAs<HomeFeedClient> { loadHomeFeed() }.getOrThrow() }
+            val home = runCatching { ext.getAs<HomeFeedClient, Feed<Shelf>> { loadHomeFeed() }.getOrThrow() }
             if (home.isFailure) {
                 adapter.submit(listOf(Row.Info("El home no está disponible")));
                 return@launch
@@ -152,7 +154,7 @@ class MusicPlayerActivity : Activity() {
         val ext = activeExtension ?: return
         scope.launch {
             adapter.submit(listOf(Row.Loading))
-            val lib = runCatching { ext.getAs<LibraryFeedClient> { loadLibraryFeed() }.getOrThrow() }
+            val lib = runCatching { ext.getAs<LibraryFeedClient, Feed<Shelf>> { loadLibraryFeed() }.getOrThrow() }
             if (lib.isFailure) {
                 adapter.submit(listOf(Row.Info("La biblioteca no está disponible")))
                 return@launch
@@ -182,7 +184,7 @@ class MusicPlayerActivity : Activity() {
             is dev.brahmkshatriya.echo.common.models.Radio -> {
                 scope.launch {
                     adapter.submit(listOf(Row.Loading))
-                    val feed = ext.getAs<RadioClient> { loadTracks(media) }.getOrNull()
+                    val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(media) }.getOrNull()
                     if (feed == null) {
                         adapter.submit(listOf(Row.Info("No se pudo cargar la radio")))
                     } else {
@@ -194,7 +196,7 @@ class MusicPlayerActivity : Activity() {
             is dev.brahmkshatriya.echo.common.models.Artist -> {
                 scope.launch {
                     adapter.submit(listOf(Row.Loading))
-                    val feed = ext.getAs<ArtistClient> { loadFeed(media) }.getOrNull()
+                    val feed = ext.getAs<ArtistClient, Feed<Shelf>> { loadFeed(media) }.getOrNull()
                     if (feed == null) {
                         adapter.submit(listOf(Row.Info("No se pudo cargar el artista")))
                     } else {
@@ -212,10 +214,10 @@ class MusicPlayerActivity : Activity() {
             var tracks: Feed<Track>? = null
             when (media) {
                 is Playlist -> {
-                    tracks = ext.getAs<PlaylistClient> { loadTracks(media) }.getOrNull()
+                    tracks = ext.getAs<PlaylistClient, Feed<Track>> { loadTracks(media) }.getOrNull()
                 }
                 is Album -> {
-                    tracks = ext.getAs<AlbumClient> { loadTracks(media) }.getOrNull()
+                    tracks = ext.getAs<AlbumClient, Feed<Track>?> { loadTracks(media) }.getOrNull()
                 }
                 else -> tracks = null
             }
@@ -254,7 +256,7 @@ class MusicPlayerActivity : Activity() {
         if (trimmed.isEmpty()) return
         scope.launch {
             adapter.submit(listOf(Row.Loading))
-            val feed = ext.getAs<SearchFeedClient> { loadSearchFeed(trimmed) }.getOrNull()
+            val feed = ext.getAs<SearchFeedClient, Feed<Shelf>> { loadSearchFeed(trimmed) }.getOrNull()
             if (feed == null) {
                 adapter.submit(listOf(Row.Info("La extensión no soporta búsqueda")))
             } else {
@@ -267,7 +269,7 @@ class MusicPlayerActivity : Activity() {
         val ext = activeExtension ?: return
         if (query.trim().length < 3) return
         scope.launch {
-            val items = ext.getAs<QuickSearchClient> { quickSearch(query) }.getOrNull()
+            val items = ext.getAs<QuickSearchClient, List<QuickSearchItem>> { quickSearch(query) }.getOrNull()
                 ?: return@launch
             val rows = items.map { item ->
                 when (item) {
@@ -464,7 +466,7 @@ class MusicPlayerActivity : Activity() {
         searchField = EditText(this).apply {
             hint = "Buscar canciones, artistas…"
             textSize = 14f
-            singleLine = true
+            setSingleLine(true)
             setPadding(dp(12), 0, dp(12), 0)
         }
         searchField.setOnEditorActionListener { _, _, _ ->
@@ -484,9 +486,9 @@ class MusicPlayerActivity : Activity() {
         adapter.onCard = { openList(it) }
         adapter.onTrackClick = { _, track -> playTrack(track) }
         adapter.onCategory = { openCategory(it) }
-        adapter.onTabSelected = { index ->
+        adapter.onTabSelected = fun(index: Int) {
             selectedTabIndex = index
-            val ext = activeExtension ?: return@onTabSelected
+            val ext = activeExtension ?: return
             scope.launch {
                 val feed = homeFeed ?: return@launch
                 val tab = extensionTabs.getOrNull(index)
