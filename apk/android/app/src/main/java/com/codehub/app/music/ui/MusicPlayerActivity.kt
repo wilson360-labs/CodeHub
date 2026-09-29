@@ -94,6 +94,7 @@ class MusicPlayerActivity : Activity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         window.let { it.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
+        com.codehub.app.SystemBars.fit(this)
         registry = MusicRegistry(this)
         (registry.webViewClient as? MusicWebViewClient)?.attach(this)
         player = MusicPlayer(this, scope)

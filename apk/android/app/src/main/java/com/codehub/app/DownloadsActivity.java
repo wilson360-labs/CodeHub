@@ -45,6 +45,8 @@ public class DownloadsActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        SystemBars.fit(this);
+
         dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
 
         int d = (int) getResources().getDisplayMetrics().density;
