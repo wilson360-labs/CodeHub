@@ -3,30 +3,36 @@ package com.codehub.app.music.ui
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
+import com.codehub.app.R
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicPlayer
 import com.codehub.app.music.MusicPlayerDuration.toClockTime
 import com.codehub.app.music.MusicRegistry
-import com.codehub.app.R
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 
 /**
- * Slide a pantalla completa del reproductor: carátula, progreso, controles
- * y accesos a calidades/cola. Dialog de framework con animación slide_up.
+ * Slide a pantalla completa del reproductor, estilo reproductor moderno:
+ * carátula grande redondeada, fondo con degradado derivado del artwork,
+ * progreso prominente y controles grandes. Dialog de framework con la
+ * animación slide_up.
  */
 class PlayerSlide(
     context: Context,
@@ -36,6 +42,7 @@ class PlayerSlide(
 ) : Dialog(context) {
 
     private val main = Handler(Looper.getMainLooper())
+    private val dm = context.resources.displayMetrics
 
     private lateinit var bg: LinearLayout
     private lateinit var artView: ImageView
@@ -49,6 +56,8 @@ class PlayerSlide(
 
     private var trackId: String? = null
     private var dragging = false
+    private var artColor = 0
+
     private val ticker: Runnable = object : Runnable {
         override fun run() {
             updateProgress()
@@ -60,24 +69,11 @@ class PlayerSlide(
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         setCancelable(true)
         buildView()
+        applyBackground()
     }
 
-    private fun dp(v: Int) = (v * context.resources.displayMetrics.density).toInt()
-
-    private fun tv(text: String, sizeSp: Float = 15f, bold: Boolean = false): TextView {
-        val t = TextView(context)
-        t.text = text
-        t.textSize = sizeSp
-        t.setTypeface(
-            android.graphics.Typeface.DEFAULT,
-            if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
-        )
-        t.setTextColor(
-            ThemeColors.of(context, android.R.attr.textColorPrimary,
-                if (isDark()) Color.WHITE else 0xFF111111.toInt())
-        )
-        return t
-    }
+    private fun dp(v: Int) = (v * dm.density).toInt()
+    private fun dpF(v: Float) = (v * dm.density).toInt()
 
     private fun isDark(): Boolean {
         val mode = context.resources.configuration.uiMode and
@@ -85,45 +81,81 @@ class PlayerSlide(
         return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES
     }
 
-    private fun secondaryColor(): Int =
+    private fun primary(): Int =
+        ThemeColors.of(context, android.R.attr.textColorPrimary, if (isDark()) Color.WHITE else 0xFF111111.toInt())
+
+    private fun secondary(): Int =
         ThemeColors.of(context, android.R.attr.textColorSecondary, if (isDark()) 0xFFBBBBBB.toInt() else 0xFF666666.toInt())
+
+    private fun accent(): Int =
+        ThemeColors.of(context, android.R.attr.colorAccent, 0xFF448AFF.toInt())
+
+    private fun background(): Int =
+        ThemeColors.of(context, android.R.attr.colorBackground, if (isDark()) 0xFF0F0F12.toInt() else Color.WHITE)
+
+    private fun tv(
+        text: String,
+        sizeSp: Float = 15f,
+        bold: Boolean = false,
+        color: Int = primary(),
+    ): TextView {
+        val t = TextView(context)
+        t.text = text
+        t.textSize = sizeSp
+        t.setTypeface(Typeface.DEFAULT, if (bold) Typeface.BOLD else Typeface.NORMAL)
+        t.setTextColor(color)
+        return t
+    }
 
     private fun buildView() {
         bg = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(20), dp(20), dp(20), dp(32))
+            setPadding(dp(20), dp(14), dp(20), dp(32))
         }
 
-        val closeRow = LinearLayout(context).apply {
+        val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val titleLeft = tv("", 13f)
-        titleLeft.setTextColor(secondaryColor())
-        titleLeft.text = "Reproducción"
+        val headerTitle = tv("Reproducción", 13f, color = secondary())
         val close = tv("✕", 20f)
+        close.setPadding(dp(8), dp(4), dp(4), dp(4))
         close.setOnClickListener { dismiss() }
-        closeRow.addView(titleLeft, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        closeRow.addView(close)
+        header.addView(headerTitle, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        header.addView(close)
 
+        val placeholder = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dpF(22f)
+            setColor(if (isDark()) 0xFF202027.toInt() else 0xFFE3E3E8.toInt())
+        }
         artView = ImageView(context).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
+            background = placeholder
+            outlineProvider = ViewOutlineProvider.BACKGROUND
+            clipToOutline = true
+            setImageDrawable(null)
         }
+        val cover = minOf(dm.widthPixels - dp(40), (dm.heightPixels * 0.52f).toInt())
 
-        titleView = tv("", 18f, bold = true)
+        titleView = tv("", 22f, bold = true)
         titleView.gravity = Gravity.CENTER_HORIZONTAL
-        artistsView = tv("", 13f)
-        artistsView.setTextColor(secondaryColor())
+        titleView.maxLines = 2
+        titleView.ellipsize = android.text.TextUtils.TruncateAt.END
+        artistsView = tv("", 15f, color = secondary())
         artistsView.gravity = Gravity.CENTER_HORIZONTAL
+        artistsView.maxLines = 2
+        artistsView.ellipsize = android.text.TextUtils.TruncateAt.END
 
-        currentLabel = tv("0:00", 12f)
-        currentLabel.setTextColor(secondaryColor())
-        totalLabel = tv("0:00", 12f)
-        totalLabel.setTextColor(secondaryColor())
+        val fill = View(context)
+        fill.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+        )
 
         seek = SeekBar(context).apply {
             max = 0
+            setPadding(dpF(4f), 0, dpF(4f), 0)
         }
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -143,8 +175,13 @@ class PlayerSlide(
             }
         })
 
+        currentLabel = tv("0:00", 12f, color = secondary())
+        totalLabel = tv("0:00", 12f, color = secondary())
+        totalLabel.gravity = Gravity.END
+
         val timeRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
         timeRow.addView(currentLabel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         timeRow.addView(totalLabel)
@@ -153,56 +190,87 @@ class PlayerSlide(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        val prev = tv("⏮", 22f)
-        val play = tv("▶", 40f)
-        val next = tv("⏭", 22f)
+        val prev = tv("⏮", 32f)
+        prev.gravity = Gravity.CENTER
+        prev.setPadding(dp(16), dp(12), dp(16), dp(12))
         prev.setOnClickListener { player.prev() }
+        val play = tv("▶", 44f, color = Color.WHITE)
+        play.gravity = Gravity.CENTER
+        play.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(accent())
+        }
         play.setOnClickListener { player.toggle() }
+        val next = tv("⏭", 32f)
+        next.gravity = Gravity.CENTER
+        next.setPadding(dp(16), dp(12), dp(16), dp(12))
         next.setOnClickListener { player.next() }
         playButton = play
         controls.addView(prev)
-        controls.addView(play, LinearLayout.LayoutParams(dp(88), dp(72)))
+        controls.addView(play, LinearLayout.LayoutParams(dp(78), dp(78)))
         controls.addView(next)
 
         val actions = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(16), 0, 0)
         }
-        val queueBtn = tv("📋 Cola", 13f)
-        queueBtn.setTextColor(secondaryColor())
-        qualityButton = tv("🎚 Calidades", 13f)
-        qualityButton.setTextColor(secondaryColor())
-        val closeBt = tv("✕ Cerrar", 13f)
-        closeBt.setTextColor(secondaryColor())
+        val queueBtn = tv("📋 Cola", 13f, color = secondary())
         queueBtn.setOnClickListener { queueDialog() }
+        qualityButton = tv("🎚 Calidades", 13f, color = secondary())
         qualityButton.setOnClickListener { qualityDialog() }
+        val closeBt = tv("✕ Cerrar", 13f, color = secondary())
         closeBt.setOnClickListener { dismiss() }
         actions.addView(queueBtn)
         actions.addView(qualityButton, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         actions.addView(closeBt)
 
-        bg.addView(closeRow)
-        bg.addView(artView, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(260)
-        ).apply { setMargins(0, dp(16), 0, dp(16)) })
-        bg.addView(titleView)
-        bg.addView(artistsView)
-        bg.addView(seek, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(40)
-        ).apply { setMargins(dp(12), dp(8), dp(12), 0) })
-        bg.addView(timeRow)
-        bg.addView(controls)
-        bg.addView(actions)
+        val artLp = LinearLayout.LayoutParams(cover, cover)
+        artLp.topMargin = dp(20)
+        artLp.bottomMargin = dp(14)
+        bg.addView(header, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+        bg.addView(artView, artLp)
+        val titleLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        titleLp.topMargin = dp(4)
+        bg.addView(titleView, titleLp)
+        val artistsLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        artistsLp.topMargin = dp(2)
+        bg.addView(artistsView, artistsLp)
+        bg.addView(fill)
+
+        val seekLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        seekLp.topMargin = dp(6)
+        bg.addView(seek, seekLp)
+        bg.addView(timeRow, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
+
+        val controlsLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        controlsLp.topMargin = dp(14)
+        bg.addView(controls, controlsLp)
+
+        val actionsLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        actionsLp.topMargin = dp(18)
+        bg.addView(actions, actionsLp)
+
         setContentView(bg)
     }
 
     override fun show() {
         super.show()
         window ?: return
-        window?.setBackgroundDrawable(ColorDrawable(
-            ThemeColors.of(context, android.R.attr.colorBackground, if (isDark()) 0xFF1A1A1A.toInt() else Color.WHITE)
-        ))
+        window?.setBackgroundDrawable(ColorDrawable(background()))
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window?.setWindowAnimations(R.style.MusicSlideAnimation)
         updated()
@@ -211,7 +279,6 @@ class PlayerSlide(
 
     private fun updated() {
         val track = player.nowPlaying.value
-
         if (track != null) {
             if (track.id != trackId) {
                 trackId = track.id
@@ -220,7 +287,9 @@ class PlayerSlide(
                     track.artists.joinToString(", ") { it.name }.ifBlank { track.album?.title ?: "" }
                 artView.setImageDrawable(null)
                 artwork.load(track.cover ?: track.background) { bmp ->
-                    artView.setImageBitmap(bmp)
+                    artColor = bmp?.let(::dominantColor) ?: 0
+                    applyBackground()
+                    if (trackId == track.id) artView.setImageBitmap(bmp)
                 }
             }
             playButton.text = if (player.isPlaying.value) "⏸" else "▶"
@@ -281,5 +350,57 @@ class PlayerSlide(
             }
             .setNegativeButton("Cerrar", null)
             .show()
+    }
+
+    private fun dominantColor(bitmap: Bitmap): Int {
+        val scaled = runCatching { Bitmap.createScaledBitmap(bitmap, 12, 12, true) }
+            .getOrNull() ?: return primary()
+        var r = 0
+        var g = 0
+        var b = 0
+        var n = 0
+        for (x in 0 until 12) {
+            for (y in 0 until 12) {
+                val c = scaled.getPixel(x, y)
+                r += Color.red(c)
+                g += Color.green(c)
+                b += Color.blue(c)
+                n++
+            }
+        }
+        if (n > 0) {
+            r /= n
+            g /= n
+            b /= n
+        }
+        return Color.rgb(r, g, b)
+    }
+
+    private fun darken(color: Int, f: Float): Int {
+        fun ch(c: Int) = (c * (1f - f)).toInt()
+        return Color.rgb(ch(Color.red(color)), ch(Color.green(color)), ch(Color.blue(color)))
+    }
+
+    private fun blend(a: Int, b: Int, t: Float): Int {
+        fun ch(c: Int, d: Int) = (c + (d - c) * t).toInt()
+        return Color.rgb(
+            ch(Color.red(a), Color.red(b)),
+            ch(Color.green(a), Color.green(b)),
+            ch(Color.blue(a), Color.blue(b))
+        )
+    }
+
+    private fun applyBackground() {
+        val base = background()
+        val top = if (artColor == 0) base
+        else blend(
+            darken(artColor, if (isDark()) 0.7f else 0.35f),
+            base,
+            if (isDark()) 0.55f else 0.35f
+        )
+        bg.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(top, base)
+        )
     }
 }
