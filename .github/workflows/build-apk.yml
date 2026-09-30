@@ -143,22 +143,6 @@ jobs:
           path: ${{ runner.temp }}/compile-debug.log
           retention-days: 5
 
-      - name: Guardar compile-debug.log en el repo (diagnostico)
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then echo "compile OK, no hay log que guardar"; exit 0; fi
-          if [ ! -f "$RUNNER_TEMP/compile-debug.log" ]; then echo "log ausente en RUNNER_TEMP"; exit 0; fi
-          mkdir -p ci-logs || exit 1
-          cp "$RUNNER_TEMP/compile-debug.log" "ci-logs/compile-${GITHUB_SHA}.log" && echo "archivo copiado" || echo "cp fallo"
-          git config user.name "codehub-ci"
-          git config user.email "ci@codehub.local"
-          git add -f "ci-logs/compile-${GITHUB_SHA}.log"
-          git commit -m "docs(ci): compile-debug.log ${GITHUB_SHA}" && echo "commit ok" || echo "commit fallo"
-          timeout 90 git push origin HEAD:main && echo "push ok" || echo "push fallo"
-          echo "fin paso (estado observado arriba)"
-
       - name: Prepare Release Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -341,22 +325,6 @@ jobs:
           name: release-build-log
           path: ${{ runner.temp }}/release-build.log
           retention-days: 5
-
-      - name: Guardar release-build.log en el repo (diagnostico)
-        if: always()
-        shell: bash
-        run: |
-          set +e
-          if [ -f "$RUNNER_TEMP/release-ok" ]; then echo "release OK, no hay log que guardar"; exit 0; fi
-          if [ ! -f "$RUNNER_TEMP/release-build.log" ]; then echo "log ausente en RUNNER_TEMP"; exit 0; fi
-          mkdir -p ci-logs || exit 1
-          cp "$RUNNER_TEMP/release-build.log" "ci-logs/release-${GITHUB_SHA}.log" && echo "archivo copiado" || echo "cp fallo"
-          git config user.name "codehub-ci"
-          git config user.email "ci@codehub.local"
-          git add -f "ci-logs/release-${GITHUB_SHA}.log"
-          git commit -m "docs(ci): release-build.log ${GITHUB_SHA}" && echo "commit ok" || echo "commit fallo"
-          timeout 90 git push origin HEAD:main && echo "push ok" || echo "push fallo"
-          echo "fin paso (estado observado arriba)"
 
       - name: Fail job if release build failed
         if: always()

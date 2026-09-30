@@ -21,8 +21,6 @@ lighthouse-out/
 logs/
 backups/
 *.log
-# ...pero los logs de diagnostico de CI SI se commitean (workflow build-apk.yml)
-!ci-logs/*.log
 
 # Salida de Gradle (Android)
 apk/android/.gradle/
