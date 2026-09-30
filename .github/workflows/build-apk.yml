@@ -524,7 +524,7 @@ jobs:
               if [ -z "$err" ]; then err=$(grep -E "error:|Unresolved|Unclosed|exception" "$file" | head -n 8); fi
               if [ -z "$err" ]; then err="(sin líneas de error reconocibles en el log)"; fi
               out="$out
-$err"
+              $err"
             else
               out="✳️ $label: (log no generado, el paso fue skipeado antes de correr)"
             fi
