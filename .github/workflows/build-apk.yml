@@ -86,39 +86,32 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
         run: |
           if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then echo "compile OK"; exit 0; fi
-          LOG="$RUNNER_TEMP/compile-debug.log"
+LOG="$RUNNER_TEMP/compile-debug.log"
           {
             echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
             echo "";
             echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
             echo "";
             if [ -f "$LOG" ]; then
-              echo '**Diagnósticos kotlinc (`e:`/`error:`):**';
-              echo '```text';
-              grep -nE '^e: |error:|warning: |Unclosed comment|Unresolved reference|cannot find symbol|Conflicting|Duplicate class|Unable to' "$LOG" | head -n 80 || true;
-              echo '```';
-              echo "";
-              echo '**Región alrededor del primer error kotlinc:**';
-              echo '```text';
-              FIRST=$(grep -nE '^e: ' "$LOG" | head -1 | cut -d: -f1 || true);
-              if [ -n "$FIRST" ] && [ "$FIRST" -ge 1 ] 2>/dev/null; then
-                S=$((FIRST-10)); [ "$S" -lt 1 ] && S=1;
-                sed -n "${S},$((FIRST+170))p" "$LOG" || true;
+              # Solo los errores reales (con archivo:línea y causa), sin colas
+              # gigantes que se cortan. Las `e:` ya traen ubicación y mensaje.
+              ERR1=$(grep -nE '^e: ' "$LOG" | head -n 60 || true)
+              if [ -n "$ERR1" ]; then
+                echo "**Errores kotlinc (\`e:\`, archivo:línea:mensaje):**";
+                echo '```text';
+                echo "$ERR1" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 40;
+                echo '```';
+                echo "";
+                echo '**Causa del fallo de Gradle:**';
+                echo '```text';
+                grep -nE 'What went wrong|Execution failed for task|Caused by:' "$LOG" | head -n 10 || true;
+                echo '```';
               else
-                echo "(sin líneas \`e:\` detectadas — se muestra el contexto de falla)"
-                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$LOG" | tail -n 25 || true;
+                echo '**Sin líneas `e:` detectadas — causa del fallo:**';
+                echo '```text';
+                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$LOG" | head -n 25 || true;
+                echo '```';
               fi
-              echo '```';
-              echo "";
-              echo '**Tareas fallidas / contexto:**';
-              echo '```text';
-              grep -nE 'FAILURE:|Execution failed for task|What went wrong|^* What went wrong|Caused by:' "$LOG" | tail -n 40 || true;
-              echo '```';
-              echo "";
-              echo '**Cola del log:**';
-              echo '```text';
-              tail -n 150 "$LOG" || true;
-              echo '```';
             else
               echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)";
             fi
@@ -307,7 +300,23 @@ jobs:
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/release-build.log" ]; then
-              tail -c 52000 "$RUNNER_TEMP/release-build.log" || true;
+              ERR=$(grep -nE '^e: ' "$RUNNER_TEMP/release-build.log" | head -n 40 || true)
+              if [ -n "$ERR" ]; then
+                echo '**Errores kotlinc (`e:`, archivo:línea:mensaje):**';
+                echo '```text';
+                echo "$ERR" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 30;
+                echo '```';
+                echo "";
+                echo '**Causa del fallo de Gradle:**';
+                echo '```text';
+                grep -nE 'What went wrong|Execution failed for task|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 10 || true;
+                echo '```';
+              else
+                echo '**Sin líneas `e:` detectadas — causa del fallo:**';
+                echo '```text';
+                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 25 || true;
+                echo '```';
+              fi
             else
               echo "(log de release no encontrado — el paso fue skipeado antes de correr)"
             fi
@@ -358,14 +367,10 @@ jobs:
               echo "";
               echo "**Paso:** Find APK — from '.github/workflows/build-apk.yml';"
               echo "";
-              echo "**release-build.log (completo, es pequeño):**";
+              echo "**release-build.log — solo errores y causa:**";
               echo '```text';
-              cat "$RUNNER_TEMP/release-build.log" 2>/dev/null || true;
-              echo '```';
-              echo "";
-              echo "**Fragmentos clave:**";
-              echo '```text';
-              grep -n -B3 -A30 -E "What went wrong|Execution failed|FAILURE:|e: |error: |> Task :app" "$RUNNER_TEMP/release-build.log" 2>/dev/null | head -n 200 || true;
+              grep -E "^e: |What went wrong|Execution failed|Caused by:|^FAILURE:" "$RUNNER_TEMP/release-build.log" 2>/dev/null \
+                | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 40 || true;
               echo '```';
               echo "";
               echo "**Arbol de outputs de gradle:**";
@@ -509,10 +514,17 @@ jobs:
             if [ -f "$file" ]; then
               out="✳️ $label:"
               local err
-              err=$(grep -nE "error:|e: \$|\\* What went wrong|Execution failed|^FAILURE|> Task :app:|Caused by:" "$file" | head -n 18)
-              if [ -z "$err" ]; then err=$(tail -n 20 "$file"); fi
+              # Prioridad 1: errores kotlinc (e: archivo:línea:mensaje).
+              err=$(grep -E "^e: " "$file" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 12)
+              # Prioridad 2: causa del fallo de Gradle (sin volcar tareas).
+              if [ -z "$err" ]; then
+                err=$(grep -E "What went wrong|Execution failed for task|Caused by:|^FAILURE:" "$file" | head -n 8)
+              fi
+              # Prioridad 3: contexto mínimo si no hay nada reconocible.
+              if [ -z "$err" ]; then err=$(grep -E "error:|Unresolved|Unclosed|exception" "$file" | head -n 8); fi
+              if [ -z "$err" ]; then err="(sin líneas de error reconocibles en el log)"; fi
               out="$out
-              $err"
+$err"
             else
               out="✳️ $label: (log no generado, el paso fue skipeado antes de correr)"
             fi

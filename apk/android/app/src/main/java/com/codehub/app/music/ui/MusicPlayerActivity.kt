@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.codehub.app.R
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicClient.getAs
 import com.codehub.app.music.MusicPlayer

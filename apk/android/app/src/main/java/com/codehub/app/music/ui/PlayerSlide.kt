@@ -203,8 +203,8 @@ class PlayerSlide(
             max = 1000
             progress = 0
             trackThickness = dp(2)
-            indicatorColor = 0x73000000.toInt()
-            trackColor = android.graphics.Color.TRANSPARENT
+            setIndicatorColor(0x73000000)
+            setTrackColor(android.graphics.Color.TRANSPARENT)
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(2)
             ).apply {
@@ -217,7 +217,6 @@ class PlayerSlide(
             max = 0
             progressTintList = android.content.res.ColorStateList.valueOf(MusicTheme.ACCENT)
             thumbTintList = android.content.res.ColorStateList.valueOf(MusicTheme.ACCENT)
-            trackTintList = android.content.res.ColorStateList.valueOf(MusicTheme.SURFACE_2)
             progressBackgroundTintList =
                 android.content.res.ColorStateList.valueOf(MusicTheme.SURFACE_2)
             layoutParams = FrameLayout.LayoutParams(
