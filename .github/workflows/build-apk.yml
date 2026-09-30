@@ -86,7 +86,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
         run: |
           if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then echo "compile OK"; exit 0; fi
-LOG="$RUNNER_TEMP/compile-debug.log"
+          LOG="$RUNNER_TEMP/compile-debug.log"
           {
             echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
             echo "";
