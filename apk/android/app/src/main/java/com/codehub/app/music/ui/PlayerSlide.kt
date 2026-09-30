@@ -8,7 +8,10 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.media.audiofx.BassBoost
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.Virtualizer
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -16,11 +19,14 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.Window
+import android.widget.CompoundButton
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.codehub.app.R
@@ -78,6 +84,11 @@ class PlayerSlide(
         Toast.makeText(context, "Temporizador: reproducción en pausa", Toast.LENGTH_SHORT).show()
     }
     private var equalizer: Equalizer? = null
+    private var bassBoost: BassBoost? = null
+    private var virtualizer: Virtualizer? = null
+    private var loudness: LoudnessEnhancer? = null
+
+    private val eqPrefs = context.getSharedPreferences("music_global", Context.MODE_PRIVATE)
 
     private lateinit var scrimDrawable: GradientDrawable
 
@@ -335,6 +346,10 @@ class PlayerSlide(
         val delim = View(context).apply {
             background = ColorDrawable(0x22FFFFFF)
         }
+        val back10 = actionChip("-10s", R.drawable.ic_music_prev)
+        back10.setOnClickListener { player.seekBy(-10_000) }
+        val fwd10 = actionChip("+10s", R.drawable.ic_music_next)
+        fwd10.setOnClickListener { player.seekBy(10_000) }
         val cola = actionChip("Cola", R.drawable.ic_music_queue)
         cola.setOnClickListener { queueDialog() }
         val eq = actionChip("Efectos", R.drawable.ic_music_eq)
@@ -343,7 +358,7 @@ class PlayerSlide(
         sleep.setOnClickListener { sleepDialog() }
         val cal = actionChip("Calidad", R.drawable.ic_music_quality)
         cal.setOnClickListener { qualityDialog() }
-        listOf(cola, eq, sleep, cal).forEach { b ->
+        listOf(back10, fwd10, cola, eq, sleep, cal).forEach { b ->
             actionsRow.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         actions.addView(actionsRow, FrameLayout.LayoutParams(
@@ -420,8 +435,7 @@ class PlayerSlide(
     override fun dismiss() {
         main.removeCallbacks(ticker)
         main.removeCallbacks(sleepRunnable)
-        equalizer?.release()
-        equalizer = null
+        releaseEffects()
         super.dismiss()
     }
 
@@ -596,15 +610,123 @@ class PlayerSlide(
     private fun queueDialog() {
         val queue = player.queue.value
         if (queue.isEmpty()) return
-        val labels = queue.mapIndexed { index, t ->
-            "${index + 1}. ${t.title} — ${t.artists.joinToString(", ") { it.name }}"
+
+        lateinit var dlg: androidx.appcompat.app.AlertDialog
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(14), dp(20), dp(6))
         }
-        AlertDialog.Builder(context)
-            .setTitle("Cola (${queue.size})")
-            .setItems(labels.toTypedArray()) { _, which ->
-                player.exo.seekToDefaultPosition(which)
+
+        val header = tv("Cola de reproducción", 15f, bold = true, color = MusicTheme.TEXT)
+        val sub = tv("${queue.size} · Toca para reproducir", 12f, color = MusicTheme.MUTED).apply {
+            setPadding(0, dp(2), 0, dp(6))
+        }
+        content.addView(header)
+        content.addView(sub)
+
+        val scroll = ScrollView(context).apply {
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val rows = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        queue.forEachIndexed { index, t ->
+            val isCurrent = index == player.exo.currentMediaItemIndex
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(7), 0, dp(7))
+                background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+                setOnClickListener {
+                    dlg.dismiss()
+                    player.jumpTo(index)
+                    if (!player.isPlaying.value) player.play()
+                    queueDialog()
+                }
             }
-            .setNegativeButton("Cerrar", null)
+            val num = tv(if (isCurrent) "▶" else "${index + 1}", 13f, bold = true,
+                color = if (isCurrent) MusicTheme.ACCENT else MusicTheme.MUTED).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                width = dp(34)
+            }
+            val col = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(8), 0, dp(6), 0)
+            }
+            val titleLine = tv(t.title, 13f, color = MusicTheme.TEXT).apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            val subLine = tv(
+                t.artists.joinToString(", ") { it.name }.ifBlank { t.album?.title ?: "" },
+                11f, color = MusicTheme.MUTED
+            ).apply {
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            col.addView(titleLine)
+            col.addView(subLine)
+            val remove = tv("Quitar", 12f, color = MusicTheme.MUTED).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(8), dp(4), dp(4), dp(4))
+                setOnClickListener {
+                    dlg.dismiss()
+                    player.removeFromQueue(index)
+                    updated()
+                    if (player.queue.value.isEmpty()) {
+                        Toast.makeText(context, "Cola vacía", Toast.LENGTH_SHORT).show()
+                    } else {
+                        queueDialog()
+                    }
+                }
+            }
+            row.addView(num)
+            row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(remove)
+            rows.addView(row)
+            if (index < queue.size - 1) {
+                rows.addView(View(context).apply { background = ColorDrawable(0x14FFFFFF) },
+                    LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)))
+            }
+        }
+        scroll.addView(rows)
+
+        val actionsRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(10), 0, 0)
+        }
+        val clear = tv("Vaciar cola", 13f, bold = true, color = 0xFFE06666.toInt()).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(10))
+            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            setOnClickListener {
+                    dlg.dismiss()
+                    player.clearQueue()
+                    updated()
+                    Toast.makeText(context, "Cola vacía", Toast.LENGTH_SHORT).show()
+                }
+        }
+        val close = tv("Listo", 13f, bold = true, color = MusicTheme.ACCENT).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(10), 0, dp(10))
+            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+        }
+        actionsRow.addView(clear, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        actionsRow.addView(close, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+
+        content.addView(scroll, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(4)
+        })
+        content.addView(actionsRow)
+
+        close.setOnClickListener { dlg.dismiss() }
+        dlg = AlertDialog.Builder(context)
+            .setView(content)
+            .setOnDismissListener { }
             .show()
     }
 
@@ -638,7 +760,7 @@ class PlayerSlide(
     private fun effectsDialog() {
         val session = player.audioSessionId
         if (session == 0) {
-            Toast.makeText(context, "Inicia una reproducción para usar el ecualizador", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Inicia una reproducción para usar los efectos de audio", Toast.LENGTH_SHORT).show()
             return
         }
         val eq = runCatching { Equalizer(0, session) }.getOrNull()
@@ -646,29 +768,231 @@ class PlayerSlide(
             Toast.makeText(context, "Ecualizador no disponible en este dispositivo", Toast.LENGTH_SHORT).show()
             return
         }
-        equalizer?.release()
+        releaseEffects()
         equalizer = eq
-        val names = mutableListOf<String>()
-        val count = runCatching { eq.numberOfPresets.toInt() }.getOrDefault(0)
-        for (i in 0 until count) {
-            runCatching { names += eq.getPresetName(i.toShort()) }
+        runCatching { eq.enabled = true }
+        bassBoost = runCatching { BassBoost(0, session) }.getOrNull()
+        virtualizer = runCatching { Virtualizer(0, session) }.getOrNull()
+        loudness = runCatching { LoudnessEnhancer(0, session) }.getOrNull()
+
+        val bands = runCatching { eq.numberOfBands.toInt() }.getOrElse { 0 }
+        val range = runCatching { eq.bandLevelRange }.getOrNull()
+        val eqMin = range?.get(0)?.toInt() ?: -1000
+        val eqMax = range?.get(1)?.toInt() ?: 1000
+        val savedGains = loadBands()
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(14), dp(20), dp(6))
         }
-        val labels = (listOf("Plano (sin efectos)") + names).toTypedArray()
-        AlertDialog.Builder(context)
-            .setTitle("Efectos de audio")
-            .setItems(labels) { _, which ->
-                runCatching {
-                    if (which == 0) {
-                        eq.enabled = false
-                    } else {
-                        eq.enabled = true
-                        eq.usePreset((which - 1).toShort())
+        val scroll = ScrollView(context).apply {
+            isFillViewport = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val rows = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        // Bandas del ecualizador (sliders -1000..+1000 millibeles)
+        val bandsLabel = tv("Ecualizador", 14f, bold = true, color = MusicTheme.TEXT)
+        rows.addView(bandsLabel)
+        for (i in 0 until bands) {
+            val index = i
+            val initial = savedGains.getOrNull(i)?.coerceIn(eqMin, eqMax) ?: 0
+            val row = sliderRow(
+                bandLabel(eq, index),
+                eqMin, eqMax, initial,
+                { value ->
+                    runCatching { eq.setBandLevel(index.toShort(), value.toShort()) }
+                    saveBands(bands, row)
+                }
+            )
+            rows.addView(row)
+        }
+
+        // Bajos (BassBoost 0..1000)
+        if (bassBoost != null) {
+            val bassRow = sliderRow(
+                "Bajos", 0, 1000, eqPrefs.getInt("eq_bass", 0),
+                { value ->
+                    runCatching {
+                        bassBoost?.strength = value.toShort()
+                        bassBoost?.enabled = value > 0
+                    }
+                    eqPrefs.edit().putInt("eq_bass", value).apply()
+                }
+            )
+            rows.addView(bassRow)
+        }
+
+        // Virtualizer (0..1000)
+        if (virtualizer != null) {
+            val virtRow = sliderRow(
+                "Sonido envolvente", 0, 1000, eqPrefs.getInt("eq_virtual", 0),
+                { value ->
+                    runCatching {
+                        virtualizer?.strength = value.toShort()
+                        virtualizer?.enabled = value > 0
+                    }
+                    eqPrefs.edit().putInt("eq_virtual", value).apply()
+                }
+            )
+            rows.addView(virtRow)
+        }
+
+        // Loudness enhancer (switch)
+        if (loudness != null) {
+            val loudRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(14), 0, dp(2))
+                addView(tv("Potenciador de volumen", 14f),
+                    LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+                val sw = Switch(context).apply {
+                    isChecked = eqPrefs.getBoolean("eq_loudness", false)
+                    setOnCheckedChangeListener { _: CompoundButton, on: Boolean ->
+                        runCatching {
+                            loudness?.setTargetGain(if (on) 1500 else 0)
+                            loudness?.enabled = on
+                        }
+                        eqPrefs.edit().putBoolean("eq_loudness", on).apply()
                     }
                 }
+                addView(sw)
             }
-            .setOnDismissListener { eq.release(); equalizer = null }
-            .setNegativeButton("Cerrar", null)
-            .show()
+            rows.addView(loudRow)
+        }
+
+        // Aplicar prefijos guardados (bandas + bass + virtual + loudness)
+        runCatching {
+            for (i in 0 until bands) {
+                eq.setBandLevel(i.toShort(), (savedGains.getOrNull(i)?.coerceIn(eqMin, eqMax) ?: 0).toShort())
+            }
+            val bass = eqPrefs.getInt("eq_bass", 0)
+            if (bass > 0) {
+                bassBoost?.strength = bass.toShort()
+                bassBoost?.enabled = true
+            }
+            val virt = eqPrefs.getInt("eq_virtual", 0)
+            if (virt > 0) {
+                virtualizer?.strength = virt.toShort()
+                virtualizer?.enabled = true
+            }
+            if (loudness != null && eqPrefs.getBoolean("eq_loudness", false)) {
+                loudness?.setTargetGain(1500)
+                loudness?.enabled = true
+            }
+        }
+
+        scroll.addView(rows)
+        content.addView(scroll)
+
+        val actions = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+            val reset = MusicTheme.pill(context, "Restablecer", bg = MusicTheme.SURFACE_2)
+            reset.setOnClickListener {
+                resetEffects(eq, rows, bands)
+            }
+            val ok = MusicTheme.pill(context, "Listo", bg = MusicTheme.ACCENT, color = MusicTheme.BG)
+            ok.setOnClickListener { dialogRef?.dismiss() }
+            addView(reset, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ok)
+        }
+        content.addView(actions, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(8) })
+
+        val dlg = Dialog(context)
+        dlgRef = dlg
+        dlg.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dlg.setContentView(content)
+        dlg.window?.setBackgroundDrawable(ColorDrawable(0xFF101018.toInt()))
+        dlg.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dlg.setOnDismissListener { releaseEffects() }
+        dlg.show()
+    }
+
+    private var dialogRef: Dialog? = null
+
+    private fun releaseEffects() {
+        runCatching { equalizer?.release() }
+        runCatching { bassBoost?.release() }
+        runCatching { virtualizer?.release() }
+        runCatching { loudness?.release() }
+        equalizer = null
+        bassBoost = null
+        virtualizer = null
+        loudness = null
+    }
+
+    /** Fila label + SeekBar con valor en millibeles/intensidad. */
+    private fun sliderRow(
+        label: String,
+        min: Int,
+        max: Int,
+        initial: Int,
+        onChanged: (Int) -> Unit,
+    ): LinearLayout {
+        val valueLabel = tv("$label  $initial", 13f, color = MusicTheme.MUTED)
+        val normalized = initial.coerceIn(min, max) - min
+        val bar = SeekBar(context).apply {
+            max = max - min
+            progress = normalized
+            MusicTheme.tintSeek(this)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) {
+                    val value = min + p
+                    valueLabel.text = "$label  $value"
+                    if (fromUser) onChanged(value)
+                }
+                override fun onStartTrackingTouch(s: SeekBar?) {}
+                override fun onStopTrackingTouch(s: SeekBar?) {}
+            })
+        }
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(6), 0, dp(2))
+            addView(valueLabel)
+            addView(bar)
+        }
+    }
+
+    private fun bandLabel(eq: Equalizer, index: Int): String {
+        val freq = runCatching { eq.getCenterFreq(index.toShort()) }.getOrDefault(0)
+        if (freq <= 0) return "Banda ${index + 1}"
+        val khz = freq / 1000f
+        return if (khz >= 10f) "${khz.toInt()} kHz" else "%.1f kHz".format(khz)
+    }
+
+    private fun resetEffects(eq: Equalizer, rows: LinearLayout, bands: Int) {
+        eqPrefs.edit()
+            .putInt("eq_bass", 0)
+            .putInt("eq_virtual", 0)
+            .putBoolean("eq_loudness", false)
+            .putString("eq_gains", "")
+            .apply()
+        runCatching {
+            if (bassBoost != null) { bassBoost!!.enabled = false; bassBoost!!.strength = 0 }
+            if (virtualizer != null) { virtualizer!!.enabled = false; virtualizer!!.strength = 0 }
+            if (loudness != null) { loudness!!.enabled = false; loudness!!.setTargetGain(0) }
+            for (i in 0 until bands) eq.setBandLevel(i.toShort(), 0)
+        }
+        // Releer: recrear filas no trivial; reiniciar texto de la primera fila basta
+        Toast.makeText(context, "Efectos restablecidos", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadBands(): List<Int> {
+        val raw = eqPrefs.getString("eq_gains", "") ?: ""
+        return raw.split(",").mapNotNull { it.toIntOrNull() }
+    }
+
+    private fun saveBands(total: Int, row: LinearLayout) {
+        val eq = equalizer ?: return
+        val values = (0 until total).map { i ->
+            runCatching { eq.getBandLevel(i.toShort()).toInt() }.getOrDefault(0)
+        }
+        eqPrefs.edit().putString("eq_gains", values.joinToString(",")).apply()
     }
 
     // ------------------------------------------------------------------

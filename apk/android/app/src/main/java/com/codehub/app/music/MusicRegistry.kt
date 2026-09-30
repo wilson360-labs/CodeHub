@@ -32,6 +32,7 @@ import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.WeakHashMap
+import java.util.zip.ZipFile
 
 // Registro de extensiones de música Echo del reproductor de CodeHub.
 //
@@ -149,26 +150,56 @@ class MusicRegistry(private val context: Context) {
     // ------------------------------------------------------------------
 
     /** Copia un APK de extensión a `filesDir/extensions`, lo valida y lo deja de solo lectura
-     *  (Android 14+ rechaza DexClassLoader sobre ficheros escribibles). */
+     *  (Android 14+ rechaza DexClassLoader sobre ficheros escribibles).
+     *
+     *  El parseo se hace desde `filesDir/extensions` (nunca desde `cacheDir`):
+     *  en varios equipos/versiones `getPackageArchiveInfo` devuelve null sobre
+     *  archivos de la caché, igual que hace Echo con su FileRepository. */
     suspend fun importStream(input: InputStream): Result<Metadata> = withContext(Dispatchers.IO) {
         runCatching {
-            val tmp = File(context.cacheDir, "ext_import_${System.nanoTime()}.apk")
+            val dir = File(context.filesDir, "extensions").apply { mkdirs() }
+            val tmp = File(dir, ".import_${System.nanoTime()}.apk")
             try {
                 input.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                require(tmp.length() > 0) { "El archivo recibido está vacío" }
+                requireZip(tmp)
                 val meta = parser.parseManifest(tmp, ImportType.File)
                 require(meta.type == ExtensionType.MUSIC) {
-                    "La extensión es de tipo ${meta.type}, se requiere MUSIC"
+                    "El APK no es una extensión de música Echo (tipo: ${meta.type})"
                 }
-                val dir = File(context.filesDir, "extensions").apply { mkdirs() }
-                val target = File(dir, "${meta.id}.apk")
-                if (target.exists()) { target.setWritable(true); target.delete() }
-                tmp.copyTo(target, overwrite = true)
-                target.setReadOnly()
+                duplicateCleanup(dir, meta.id)
+                if (!tmp.renameTo(File(dir, "${meta.id}.apk"))) {
+                    File(dir, "${meta.id}.apk").outputStream().use { o ->
+                        tmp.inputStream().use { i -> i.copyTo(o) }
+                    }
+                }
+                File(dir, "${meta.id}.apk").setReadOnly()
                 invalidate()
                 meta
             } finally {
-                tmp.delete()
+                if (tmp.exists()) { runCatching { tmp.setWritable(true) }; tmp.delete() }
             }
+        }
+    }
+
+    /** Borra cualquier APK previo con el mismo id (y su staging) quedando intacto. */
+    private fun duplicateCleanup(dir: File, id: String) {
+        val stale = listOf(File(dir, "$id.apk"), File(dir, ".$id.tmp"))
+        stale.forEach { f ->
+            if (f.exists()) {
+                runCatching { f.setWritable(true) }
+                f.delete()
+            }
+        }
+    }
+
+    /** Comprueba que el archivo sea un contenedor ZIP (los APK lo son). */
+    private fun requireZip(file: File) {
+        val ok = runCatching { ZipFile(file).use { it.entries().hasMoreElements() } }
+            .getOrDefault(false)
+        require(ok) {
+            "El archivo no es un APK válido. Si pegaste la URL desde el " +
+                    "navegador, usa el enlace directo de descarga del .apk"
         }
     }
 
@@ -186,7 +217,15 @@ class MusicRegistry(private val context: Context) {
             conn.readTimeout = 60000
             conn.instanceFollowRedirects = true
             conn.setRequestProperty("User-Agent", "CodeHub-Music")
-            check(conn.responseCode in 200..299) { "HTTP ${conn.responseCode}" }
+            val code = conn.responseCode
+            check(code in 200..299) { "El servidor respondió HTTP $code" }
+            val len = conn.contentLength
+            if (len > 0) check(len < 60L * 1024 * 1024) { "El APK es demasiado grande ($len bytes)" }
+            val type = conn.contentType?.lowercase() ?: ""
+            if (type.isNotBlank()) check(
+                type.contains("zip") || type.contains("octet-stream") ||
+                        type.contains("package") || type.contains("apk")
+            ) { "La URL no apunta a un APK (tipo: $type)" }
             importStream(conn.inputStream).getOrThrow()
         }
     }

@@ -1,10 +1,15 @@
 package com.codehub.app.music
 
 import android.content.Context
+import android.content.Intent
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -18,6 +23,8 @@ import dev.brahmkshatriya.echo.common.MusicExtension
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,8 +112,8 @@ object MusicPlayerDuration {
  *
  * Usa ExoPlayer/media3 con una [MediaSource] propia (MusicMediaSource)
  * que resuelve cada track del ecosistema Echo (HLS/DASH/progresivo) usando
- * la API de la extensión activa. Sin servicio foreground en esta versión:
- * la reproducción vive en la Activity.
+ * la API de la extensión activa. La reproducción vive en [MusicPlaybackService]
+ * (foreground) y reusa la misma instancia singleton del proceso.
  */
 @OptIn(UnstableApi::class)
 class MusicPlayer(
@@ -120,12 +127,19 @@ class MusicPlayer(
     /** Extensión activa de la cola actual. */
     var extension: MusicExtension? = null
 
+    private val audioManager =
+        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var focusRequest: AudioFocusRequest? = null
+    private var focusListener: AudioManager.OnAudioFocusChangeListener? = null
+
     val exo: ExoPlayer = ExoPlayer.Builder(context)
         .setMediaSourceFactory(MusicMediaSource.Factory(
             this,
             scope,
             context.getSharedPreferences("music_global", Context.MODE_PRIVATE)
         ))
+        .setAudioAttributes(AudioAttributes.DEFAULT, true)
+        .setHandleAudioBecomingNoisy(true)
         .build()
 
     private val _nowPlaying = MutableStateFlow<Track?>(null)
@@ -195,6 +209,7 @@ class MusicPlayer(
 
     /** Detiene la reproducción actual y deja la cola vacía (botón cerrar). */
     fun stop() {
+        abandonFocus()
         exo.stop()
         exo.clearMediaItems()
         _isBuffering.value = false
@@ -215,6 +230,8 @@ class MusicPlayer(
     ) {
         if (tracks.isEmpty()) return
         this.extension = extension
+        ensureService()
+        requestFocus()
         val items = tracks.map { buildItem(it, serverIndex, sourceIndex) }
         _queue.value = tracks
         val index = startIndex.coerceIn(0, items.lastIndex)
@@ -235,7 +252,13 @@ class MusicPlayer(
 
     fun toggle() {
         if (exo.playbackState == Player.STATE_IDLE) return
-        if (exo.isPlaying) exo.pause() else exo.play()
+        if (exo.isPlaying) {
+            exo.pause()
+        } else {
+            ensureService()
+            requestFocus()
+            exo.play()
+        }
     }
 
     fun next() {
@@ -252,10 +275,37 @@ class MusicPlayer(
         exo.seekTo(positionMs)
     }
 
+    /** Adelanta/atrasa la reproducción sin salir de la cola (±10s). */
+    fun seekBy(deltaMs: Long) {
+        val dur = exo.duration.coerceAtLeast(0L)
+        val target = (exo.currentPosition + deltaMs).coerceIn(0L, dur)
+        exo.seekTo(target)
+    }
+
+    /** Salta a la posición [index] de la cola (sin detener el play). */
+    fun jumpTo(index: Int) {
+        if (index < 0 || index >= exo.mediaItemCount) return
+        exo.seekToDefaultPosition(index)
+    }
+
+    /** Quita un elemento de la cola; al quitar el actual pasa al siguiente. */
+    fun removeFromQueue(index: Int) {
+        if (index < 0 || index >= exo.mediaItemCount) return
+        exo.removeMediaItem(index)
+        val q = _queue.value.toMutableList()
+        if (index < q.size) q.removeAt(index)
+        _queue.value = q
+    }
+
+    /** Vacía la cola por completo y detiene la reproducción. */
+    fun clearQueue() = stop()
+
     /** Re-encola el track actual con otra fuente (calidad) del mismo server. */
     fun selectSource(track: Track, sourceIndex: Int) {
         val ext = extension ?: return
         val index = exo.currentMediaItemIndex.coerceAtLeast(0)
+        ensureService()
+        requestFocus()
         exo.setMediaItems(
             listOf(buildItem(track, serverIndex = -1, sourceIndex = sourceIndex)),
             index,
@@ -268,6 +318,66 @@ class MusicPlayer(
     fun position(): Long = exo.currentPosition
 
     fun duration(): Long = exo.duration
+
+    // ------------------------------------------------------------------
+    // Audio focus (port de AudioFocusListener de echo-nightly)
+    // ------------------------------------------------------------------
+
+    private fun requestFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attributes = android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            val listener = AudioManager.OnAudioFocusChangeListener { change ->
+                when (change) {
+                    AudioManager.AUDIOFOCUS_LOSS,
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                        if (exo.isPlaying) exo.pause()
+                    }
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                        runCatching { exo.volume = 0.15f }
+                    }
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        runCatching { exo.volume = 1f }
+                        if (exo.playWhenReady && !exo.isPlaying) exo.play()
+                    }
+                }
+            }
+            focusListener = listener
+            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .setOnAudioFocusChangeListener(listener)
+                .build()
+            focusRequest = req
+            runCatching { audioManager.requestAudioFocus(req) }
+        } else {
+            @Suppress("DEPRECATION")
+            runCatching {
+                audioManager.requestAudioFocus(
+                    null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN
+                )
+            }
+        }
+    }
+
+    private fun abandonFocus() {
+        focusRequest?.let { runCatching { audioManager.abandonAudioFocusRequest(it) } }
+        focusRequest = null
+        focusListener = null
+    }
+
+    private var serviceStarted = false
+
+    /** Arranca [MusicPlaybackService] (foreground) la primera vez que se
+     *  reproduce algo; así la notificación de medios solo existe al sonar. */
+    fun ensureService() {
+        if (serviceStarted) return
+        serviceStarted = true
+        runCatching {
+            context.startForegroundService(Intent(context, MusicPlaybackService::class.java))
+        }
+    }
 
     fun release() {
         exo.release()
@@ -299,5 +409,31 @@ class MusicPlayer(
             .setUri(Uri.parse(track.id))
             .setMediaMetadata(metadata)
             .build()
+    }
+
+    companion object {
+        @Volatile
+        private var sharedInstance: MusicPlayer? = null
+
+        /** Instancia única por proceso; la mantiene [MusicPlaybackService]. */
+        @Synchronized
+        fun shared(context: Context): MusicPlayer {
+            sharedInstance?.let { return it }
+            val created = MusicPlayer(
+                context.applicationContext,
+                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+            )
+            sharedInstance = created
+            return created
+        }
+
+        /** Libera ExoPlayer y anula la singleton (solo el servicio lo llama). */
+        @Synchronized
+        fun releaseShared() {
+            val player = sharedInstance ?: return
+            player.abandonFocus()
+            runCatching { player.exo.release() }
+            sharedInstance = null
+        }
     }
 }

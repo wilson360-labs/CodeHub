@@ -71,6 +71,8 @@ class MusicPlayerActivity : Activity() {
     private lateinit var list: RecyclerView
     private lateinit var extLabel: TextView
     private lateinit var searchField: EditText
+    private lateinit var tabHome: TextView
+    private lateinit var tabLibrary: TextView
 
     // Mini player
     private lateinit var miniBar: LinearLayout
@@ -104,18 +106,31 @@ class MusicPlayerActivity : Activity() {
         com.codehub.app.SystemBars.fit(this)
         registry = MusicRegistry(this)
         (registry.webViewClient as? MusicWebViewClient)?.attach(this)
-        player = MusicPlayer(this, scope)
+        // Instancia única por proceso: la mantiene MusicPlaybackService para
+        // que la música siga sonando al cerrar la Activity.
+        player = MusicPlayer.shared(this)
+        requestNotificationPermission()
         setContentView(buildUi())
         collectPlayer()
         collectMessages()
         boot()
     }
 
+    private fun requestNotificationPermission() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            runCatching {
+                requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 5200)
+            }
+        }
+    }
+
     override fun onDestroy() {
         mainHandler.removeCallbacks(ticker)
         (registry.webViewClient as? MusicWebViewClient)?.detach(this)
         scope.coroutineContext[Job]?.cancel()
-        player.release()
+        // Sin player.release(): la reproducción debe continuar en segundo
+        // plano (MusicPlaybackService). MusicPlayer.releaseShared() solo la
+        // llama el servicio al apagar de verdad.
         super.onDestroy()
     }
 
@@ -130,13 +145,16 @@ class MusicPlayerActivity : Activity() {
             activeExtension = current ?: exts.firstOrNull()
             if (activeExtension == null) {
                 val rows = mutableListOf<Row>()
-                rows += Row.Header("Aún no hay extensiones", "Necesitas al menos una extensión Echo (APK) para reproducir música")
-                rows += Row.Header("＋ Importar APK de extensión", "Elige el archivo .apk desde tu dispositivo", "Elegir ›") { pickApk() }
-                rows += Row.Header("＋ Importar desde URL", "Pega un enlace https:// directo al .apk", "Pegar ›") { askUrl() }
+                rows += Row.Header(
+                    "Sin fuentes de música",
+                    "Instala una extensión Echo (APK): Spotify, Deezer, YouTube Music y más. Al instalarla podrás iniciar sesión y reproducir dentro de esta app."
+                )
+                rows += Row.Header("＋ Importar un APK", null, "Elegir archivo ›") { pickApk() }
+                rows += Row.Header("＋ Importar desde URL", null, "Pegar enlace ›") { askUrl() }
                 registry.lastErrors.firstOrNull()?.let {
                     rows += Row.Info("Extensión inválida ignorada: $it")
                 }
-                extLabel.text = "🎵 Música"
+                extLabel.text = "Música"
                 adapter.submit(rows)
                 return@launch
             }
@@ -394,12 +412,12 @@ class MusicPlayerActivity : Activity() {
     private fun chooseExtension() {
         scope.launch {
             val exts = registry.music()
-            val labels = exts.map { "🎵 ${it.metadata.name} · v${it.metadata.version}" }.toMutableList()
-            labels += "＋ Importar APK…"
-            labels += "＋ Desde URL…"
-            if (exts.isNotEmpty()) labels += "🗑 Quitar extensión…"
+            val labels = exts.map { "${it.metadata.name} · v${it.metadata.version}" }.toMutableList()
+            labels += "＋ Importar un APK…"
+            labels += "＋ Importar desde URL…"
+            if (exts.isNotEmpty()) labels += "Quitar extensión…"
             AlertDialog.Builder(this@MusicPlayerActivity)
-                .setTitle("Extensiones")
+                .setTitle("Fuentes de música")
                 .setItems(labels.toTypedArray()) { _, which ->
                     when {
                         which < exts.size -> {
@@ -485,11 +503,26 @@ class MusicPlayerActivity : Activity() {
             }.onFailure { e ->
                 AlertDialog.Builder(this@MusicPlayerActivity)
                     .setTitle("No se pudo instalar")
-                    .setMessage((e.cause ?: e).message ?: e.toString())
+                    .setMessage(installError(e))
                     .setPositiveButton("OK", null)
                     .show()
             }
         }
+    }
+
+    private fun installError(e: Throwable): String {
+        val cause = e.cause ?: e
+        val msg = cause.message ?: cause.toString()
+        val hint = when {
+            msg.contains("HTTP", ignoreCase = true) -> "\n\n· Verifica que el enlace responda (HTTP 200)."
+            msg.contains("APK válido", ignoreCase = true) ->
+                "\n\n· Copia el enlace directo de descarga del .apk, no la página del navegador."
+            msg.contains("vacío", ignoreCase = true) -> "\n\n· El archivo descargado no tiene contenido."
+            msg.contains("MUSIC", ignoreCase = true) ->
+                "\n\n· El APK debe ser una extensión de música de Echo (feature dev.brahmkshatriya.echo.MUSIC)."
+            else -> "\n\n· Si la URL es de GitHub, usa la descarga directa de la versión o el .apk en bruto."
+        }
+        return msg + hint
     }
 
     private fun chooseQuality() {
@@ -508,6 +541,31 @@ class MusicPlayerActivity : Activity() {
 
     private fun chooseHome() = refreshHome()
     private fun chooseLibrary() = refreshLibrary()
+
+    private fun styleTab(tab: TextView, selected: Boolean) {
+        tab.setTypeface(
+            android.graphics.Typeface.DEFAULT,
+            if (selected) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
+        )
+        tab.setTextColor(if (selected) MusicTheme.BG else MusicTheme.MUTED)
+        tab.background = if (selected)
+            MusicTheme.ripple(this, MusicTheme.rounded(this, MusicTheme.ACCENT, 11))
+        else
+            MusicTheme.ripple(this, MusicTheme.rounded(this, MusicTheme.SURFACE, 11))
+    }
+
+    private fun selectHomeTab() {
+        if (selectedTabIndex != 0) selectedTabIndex = 0
+        styleTab(tabHome, true)
+        styleTab(tabLibrary, false)
+        refreshHome()
+    }
+
+    private fun selectLibraryTab() {
+        styleTab(tabHome, false)
+        styleTab(tabLibrary, true)
+        refreshLibrary()
+    }
 
     private fun openSlide() {
         if (slide == null) {
@@ -550,26 +608,51 @@ class MusicPlayerActivity : Activity() {
         }
 
         // Cabecera
-        extLabel = MusicTheme.tv(ctx, "🎵 Música", 26f, bold = true)
-        val sub = MusicTheme.tv(ctx, "Extensiones Echo · reproductor de CodeHub", 12f, color = MusicTheme.MUTED)
+        extLabel = MusicTheme.tv(ctx, "Música", 24f, bold = true)
+        val sub = MusicTheme.tv(ctx, "Reproductor de extensiones Echo · CodeHub", 12f, color = MusicTheme.MUTED)
 
-        // Acciones tipo chip
+        // Navegación segmentada (Inicio · Biblioteca)
+        val navRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(3), dp(3), dp(3), dp(3))
+            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE, 13)
+        }
+        tabHome = TextView(ctx).apply {
+            text = "Inicio"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            isClickable = true
+            setOnClickListener { selectHomeTab() }
+            layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f)
+        }
+        tabLibrary = TextView(ctx).apply {
+            text = "Biblioteca"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            isClickable = true
+            setOnClickListener { selectLibraryTab() }
+            layoutParams = LinearLayout.LayoutParams(0, dp(36), 1f)
+        }
+        navRow.addView(tabHome)
+        navRow.addView(tabLibrary)
+        styleTab(tabHome, true)
+        styleTab(tabLibrary, false)
+
+        // Chips de acciones: fuentes · calidad · actualizar
         val actions = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            val btnExt = MusicTheme.pill(ctx, "📦 Extensión")
-            val btnLib = MusicTheme.pill(ctx, "📚 Biblioteca")
-            val btnQual = MusicTheme.pill(ctx, "⚙ Calidad")
-            val btnRefresh = MusicTheme.pill(ctx, "⟳")
+            val btnExt = MusicTheme.pill(ctx, "＋ Añadir extensión")
+            val btnQual = MusicTheme.pill(ctx, "Calidad")
+            val btnRefresh = MusicTheme.pill(ctx, "↻")
             btnExt.setOnClickListener { chooseExtension() }
-            btnLib.setOnClickListener { chooseLibrary() }
             btnQual.setOnClickListener { chooseQuality() }
             btnRefresh.setOnClickListener { chooseHome() }
             addView(btnExt)
-            addView(btnLib)
             addView(btnQual)
             addView(btnRefresh)
-            listOf(btnExt, btnLib, btnQual).forEach { b ->
+            listOf(btnExt, btnQual).forEach { b ->
                 val lp = b.layoutParams
                 if (lp is ViewGroup.MarginLayoutParams) lp.rightMargin = MusicTheme.dp(ctx, 6)
             }
@@ -577,7 +660,7 @@ class MusicPlayerActivity : Activity() {
 
         // Busqueda redondeada
         searchField = EditText(ctx).apply {
-            hint = "Buscar canciones, artistas…"
+            hint = "Buscar canciones, artistas, playlists…"
             textSize = 14f
             setSingleLine(true)
             setTextColor(MusicTheme.TEXT)
@@ -589,7 +672,8 @@ class MusicPlayerActivity : Activity() {
             performSearch(searchField.text.toString())
             false
         }
-        val btnSearch = MusicTheme.pill(ctx, "🔎 Buscar")
+        val btnSearch = MusicTheme.pill(ctx, "Buscar")
+        btnSearch.setTextColor(MusicTheme.ACCENT)
         btnSearch.setOnClickListener { performSearch(searchField.text.toString()) }
         val searchRow = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -701,6 +785,8 @@ class MusicPlayerActivity : Activity() {
         root.addView(extLabel)
         root.addView(sub, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { topMargin = MusicTheme.dp(ctx, 2); bottomMargin = MusicTheme.dp(ctx, 10) })
+        root.addView(navRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            .apply { bottomMargin = MusicTheme.dp(ctx, 8) })
         root.addView(actions, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             .apply { bottomMargin = MusicTheme.dp(ctx, 12) })
         root.addView(searchRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
