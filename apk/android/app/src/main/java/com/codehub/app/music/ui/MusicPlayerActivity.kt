@@ -3,6 +3,7 @@ package com.codehub.app.music.ui
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -73,7 +74,7 @@ class MusicPlayerActivity : Activity() {
     private lateinit var miniCover: ImageView
     private lateinit var miniTitle: TextView
     private lateinit var miniArtist: TextView
-    private lateinit var miniPlay: TextView
+    private lateinit var miniPlay: ImageView
     private lateinit var miniProgress: SeekBar
     private lateinit var miniCurr: TextView
     private lateinit var miniTot: TextView
@@ -309,7 +310,9 @@ class MusicPlayerActivity : Activity() {
         scope.launch {
             player.isPlaying.collect { playing ->
                 runOnUiThread {
-                    miniPlay.text = if (playing) "⏸" else "▶"
+                    miniPlay.setImageResource(
+                        if (playing) R.drawable.ic_music_pause else R.drawable.ic_music_play
+                    )
                     if (playing) startTicker() else stopTicker()
                 }
             }
@@ -417,7 +420,10 @@ class MusicPlayerActivity : Activity() {
 
     private fun openSlide() {
         if (slide == null) {
-            slide = PlayerSlide(this, player, artwork, registry)
+            slide = PlayerSlide(
+                this, player, artwork, registry,
+                extName = activeExtension?.metadata?.name
+            )
         }
         slide?.show()
     }
@@ -551,18 +557,23 @@ class MusicPlayerActivity : Activity() {
         col.addView(miniTitle)
         col.addView(miniArtist)
 
-        val prevMini = MusicTheme.circle(ctx, "⏮", 40, sizeSp = 15f)
+        val prevMini = MusicTheme.iconCircle(ctx, R.drawable.ic_music_prev, 24)
         prevMini.setOnClickListener { player.prev() }
-        miniPlay = MusicTheme.circle(ctx, "▶", 44, bg = MusicTheme.ACCENT, color = MusicTheme.BG, sizeSp = 20f)
+        miniPlay = MusicTheme.iconCircle(
+            ctx, R.drawable.ic_music_play, 28, bg = MusicTheme.ACCENT, tint = Color.WHITE
+        )
         miniPlay.setOnClickListener { seekToggled() }
-        val nextMini = MusicTheme.circle(ctx, "⏭", 40, sizeSp = 15f)
+        val nextMini = MusicTheme.iconCircle(ctx, R.drawable.ic_music_next, 24)
         nextMini.setOnClickListener { player.next() }
+        val closeMini = MusicTheme.iconCircle(ctx, R.drawable.ic_music_close, 20, tint = MusicTheme.MUTED)
+        closeMini.setOnClickListener { player.stop() }
         val controls = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(prevMini)
             addView(miniPlay)
             addView(nextMini)
+            addView(closeMini)
         }
         listOf(prevMini, miniPlay).forEach { b ->
             val lp = b.layoutParams

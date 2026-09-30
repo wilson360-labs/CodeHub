@@ -134,8 +134,17 @@ class MusicPlayer(
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
+    private val _isBuffering = MutableStateFlow(false)
+    val isBuffering: StateFlow<Boolean> = _isBuffering
+
     private val _queue = MutableStateFlow<List<Track>>(emptyList())
     val queue: StateFlow<List<Track>> = _queue
+
+    private val _shuffle = MutableStateFlow(false)
+    val shuffle: StateFlow<Boolean> = _shuffle
+
+    private val _repeat = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    val repeat: StateFlow<Int> = _repeat
 
     val failures = MutableSharedFlow<String>()
 
@@ -158,11 +167,39 @@ class MusicPlayer(
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                _isBuffering.value = (playbackState == Player.STATE_BUFFERING)
                 if (playbackState == Player.STATE_READY) {
                     _isPlaying.value = (exo.playWhenReady && exo.playbackState == Player.STATE_READY)
                 }
             }
         })
+    }
+
+    val audioSessionId: Int
+        get() = exo.audioSessionId
+
+    fun toggleShuffle() {
+        exo.shuffleModeEnabled = !exo.shuffleModeEnabled
+        _shuffle.value = exo.shuffleModeEnabled
+    }
+
+    fun cycleRepeat() {
+        val next = when (exo.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        exo.repeatMode = next
+        _repeat.value = next
+    }
+
+    /** Detiene la reproducción actual y deja la cola vacía (botón cerrar). */
+    fun stop() {
+        exo.stop()
+        exo.clearMediaItems()
+        _isBuffering.value = false
+        _queue.value = emptyList()
+        _nowPlaying.value = null
     }
 
     // ------------------------------------------------------------------

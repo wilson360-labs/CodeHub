@@ -114,4 +114,29 @@ object MusicTheme {
         bar.progressTintList = list
         bar.thumbTintList = list
     }
+
+    /** ImageView con un icono vectorial (Material) teñido y tamaño en dp. */
+    fun icon(
+        context: Context,
+        res: Int,
+        sizeDp: Int,
+        tint: Int = TEXT,
+    ): ImageView = ImageView(context).apply {
+        setImageResource(res)
+        setColorFilter(tint)
+        layoutParams = ViewGroup.LayoutParams(dp(context, sizeDp), dp(context, sizeDp))
+    }
+
+    /** Botón circular con icono vectorial + ripple (reemplaza los glifos). */
+    fun iconCircle(
+        context: Context,
+        res: Int,
+        sizeDp: Int,
+        bg: Int = SURFACE_2,
+        tint: Int = TEXT,
+    ): ImageView {
+        val iv = icon(context, res, sizeDp, tint)
+        iv.background = ripple(context, oval(context, bg))
+        return iv
+    }
 }
