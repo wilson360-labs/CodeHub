@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.codehub.app.R
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicClient.getAs
+import com.codehub.app.music.MusicDownloads
 import com.codehub.app.music.MusicPlayer
 import com.codehub.app.music.MusicPlayerDuration.toClockTime
 import com.codehub.app.music.MusicRegistry
@@ -62,6 +63,7 @@ class MusicPlayerActivity : Activity() {
 
     private lateinit var registry: MusicRegistry
     private lateinit var player: MusicPlayer
+    private lateinit var downloads: MusicDownloads
     private val artwork: ArtworkLoader by lazy { ArtworkLoader(this) }
 
     private var activeExtension: MusicExtension? = null
@@ -109,6 +111,8 @@ class MusicPlayerActivity : Activity() {
         // Instancia única por proceso: la mantiene MusicPlaybackService para
         // que la música siga sonando al cerrar la Activity.
         player = MusicPlayer.shared(this)
+        downloads = MusicDownloads.shared(this)
+        player.downloads = downloads
         requestNotificationPermission()
         setContentView(buildUi())
         collectPlayer()
@@ -181,7 +185,7 @@ class MusicPlayerActivity : Activity() {
             val tab = extensionTabs.getOrNull(selectedTabIndex)
             val tabsRow = if (extensionTabs.isNotEmpty())
                 listOf(Row.Tabs(extensionTabs, selectedTabIndex)) else emptyList()
-            adapter.submit(tabsRow + MusicFeed.shelves(ext, homeFeed!!, tab) {
+            adapter.submit(downloadsRows() + tabsRow + MusicFeed.shelves(ext, homeFeed!!, tab) {
                 openMore(it)
             })
         }
@@ -197,8 +201,22 @@ class MusicPlayerActivity : Activity() {
                 return@launch
             }
             libraryFeed = lib.getOrNull()
-            adapter.submit(MusicFeed.shelves(ext, libraryFeed!!) { openMore(it) })
+            adapter.submit(downloadsRows() + MusicFeed.shelves(ext, libraryFeed!!) { openMore(it) })
         }
+    }
+
+    /** Sección "Descargas · sin conexión" del feed (tracks offline). */
+    private fun downloadsRows(): List<Row> {
+        val tracks = downloads.entries.value.mapNotNull { it.track() }
+        if (tracks.isEmpty()) return emptyList()
+        val rows = mutableListOf<Row>()
+        rows += Row.Header("Descargas · sin conexión", "${tracks.size} canción(es)")
+        rows += Row.Header("▶ Reproducir todas", null, "Play ›") {
+            val ext = activeExtension
+            if (ext != null && tracks.isNotEmpty()) player.play(ext, tracks, 0)
+        }
+        tracks.forEachIndexed { index, t -> rows += Row.TrackRow(index, t) }
+        return rows
     }
 
     private fun openMore(feed: Feed<Shelf>) {

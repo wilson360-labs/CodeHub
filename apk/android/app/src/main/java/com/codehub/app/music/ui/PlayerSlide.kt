@@ -76,6 +76,10 @@ class PlayerSlide(
     private lateinit var subtitle: TextView
     private lateinit var sleepLabel: TextView
 
+    private lateinit var dlIcon: ImageView
+    private lateinit var dlLabel: TextView
+    private var dlState: Boolean? = null
+
     private var trackId: String? = null
     private var dragging = false
     private var sleepAt = 0L
@@ -95,6 +99,7 @@ class PlayerSlide(
     private val ticker: Runnable = object : Runnable {
         override fun run() {
             updateProgress()
+            refreshDownloadChip()
             if (isShowing) main.postDelayed(this, 300)
         }
     }
@@ -350,6 +355,7 @@ class PlayerSlide(
         back10.setOnClickListener { player.seekBy(-10_000) }
         val fwd10 = actionChip("+10s", R.drawable.ic_music_next)
         fwd10.setOnClickListener { player.seekBy(10_000) }
+        val dl = buildDownloadChip()
         val cola = actionChip("Cola", R.drawable.ic_music_queue)
         cola.setOnClickListener { queueDialog() }
         val eq = actionChip("Efectos", R.drawable.ic_music_eq)
@@ -358,7 +364,7 @@ class PlayerSlide(
         sleep.setOnClickListener { sleepDialog() }
         val cal = actionChip("Calidad", R.drawable.ic_music_quality)
         cal.setOnClickListener { qualityDialog() }
-        listOf(back10, fwd10, cola, eq, sleep, cal).forEach { b ->
+        listOf(back10, fwd10, dl, cola, eq, sleep, cal).forEach { b ->
             actionsRow.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         actions.addView(actionsRow, FrameLayout.LayoutParams(
@@ -420,6 +426,63 @@ class PlayerSlide(
             background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
         }
         return btn
+    }
+
+    /** Chip de descarga mutable: guarda/actualiza su propio icono y etiqueta. */
+    private fun buildDownloadChip(): LinearLayout {
+        val btn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(4), 0, dp(2))
+            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            setOnClickListener { toggleDownload() }
+        }
+        dlIcon = MusicTheme.icon(context, R.drawable.ic_music_download, 18, MusicTheme.MUTED)
+        dlLabel = tv("Descargar", 11f, color = MusicTheme.MUTED).apply {
+            setPadding(0, dp(4), 0, 0)
+        }
+        btn.addView(dlIcon)
+        btn.addView(dlLabel)
+        dlState = null
+        return btn
+    }
+
+    private fun toggleDownload() {
+        val track = player.nowPlaying.value ?: return
+        val dl = player.downloads
+        if (dl == null) {
+            Toast.makeText(context, "Descargas no disponibles en este dispositivo", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (dl.lookup(track.id) != null) {
+            dl.remove(track.id)
+            Toast.makeText(context, "Descarga eliminada", Toast.LENGTH_SHORT).show()
+        } else {
+            val ext = player.extension
+            if (ext == null) {
+                Toast.makeText(context, "Sin extensión activa", Toast.LENGTH_SHORT).show()
+                return
+            }
+            dl.enqueue(track, ext)
+            Toast.makeText(context, "Descargando…", Toast.LENGTH_SHORT).show()
+        }
+        refreshDownloadChip()
+    }
+
+    /** Refleja en el chip si el track actual está descargado (offline). */
+    private fun refreshDownloadChip() {
+        val track = player.nowPlaying.value ?: return
+        val present = player.downloads?.lookup(track.id) != null
+        if (dlState == present) return
+        dlState = present
+        val res = if (present) R.drawable.ic_music_download_done else R.drawable.ic_music_download
+        val color = if (present) MusicTheme.ACCENT else MusicTheme.MUTED
+        runCatching {
+            dlIcon.setImageResource(res)
+            dlIcon.setColorFilter(color)
+            dlLabel.text = if (present) "Offline" else "Descargar"
+            dlLabel.setTextColor(color)
+        }
     }
 
     override fun show() {

@@ -127,6 +127,9 @@ class MusicPlayer(
     /** Extensión activa de la cola actual. */
     var extension: MusicExtension? = null
 
+    /** Descargas offline (null si el player no se ha vinculado a MusicDownloads). */
+    var downloads: MusicDownloads? = null
+
     private val audioManager =
         context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var focusRequest: AudioFocusRequest? = null

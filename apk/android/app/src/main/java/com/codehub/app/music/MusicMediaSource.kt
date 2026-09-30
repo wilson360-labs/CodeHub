@@ -69,6 +69,23 @@ class MusicMediaSource(
         super.prepareSourceInternal(mediaTransferListener)
         val handler = Util.createHandlerForCurrentLooper()
         scope.launch {
+            // Reproducción offline: si el track está descargado, se reproduce
+            // el archivo local y no se consulta la API de la extensión.
+            val track = mediaItem.decodeTrack()
+            val local = track?.let { player.downloads?.lookup(it.id) }
+            if (local != null && java.io.File(local.filePath).exists()) {
+                val uri = Uri.parse(java.io.File(local.filePath).toURI().toString())
+                val localItem = mediaItem.buildUpon().setUri(uri).build()
+                val localSource = factories.local.value.createMediaSource(localItem)
+                mediaItem = localItem
+                actualSource = localSource
+                handler.post {
+                    runCatching {
+                        prepareChildSource(null, localSource)
+                    }
+                }
+                return@launch
+            }
             var new = mediaItem
             val serverResult = runCatching { MusicLoader.load(player, mediaItem) }
                 .getOrElse {
@@ -153,6 +170,7 @@ class MusicMediaSource(
         val dash: Lazy<MediaSource.Factory>,
         val hls: Lazy<MediaSource.Factory>,
         val default: Lazy<MediaSource.Factory>,
+        val local: Lazy<MediaSource.Factory>,
     ) {
 
         @OptIn(UnstableApi::class)
@@ -186,17 +204,22 @@ class MusicMediaSource(
             dataSourceFactory,
             StreamableResolver(servers)
         )
-        private val factories = createFactories(dataSource)
+        private val factories = createFactories(
+            dataSource,
+            androidx.media3.datasource.FileDataSource.Factory()
+        )
 
         private var drmSessionManagerProvider: DrmSessionManagerProvider? = null
         private var loadErrorHandlingPolicy: LoadErrorHandlingPolicy? = null
 
         private fun createFactories(
             dataSource: ResolvingDataSource.Factory,
+            localDataSource: androidx.media3.datasource.FileDataSource.Factory,
         ) = Factories(
             dash = lazily { DashMediaSource.Factory(dataSource) },
             hls = lazily { HlsMediaSource.Factory(dataSource) },
-            default = lazily { DefaultMediaSourceFactory(dataSource) }
+            default = lazily { DefaultMediaSourceFactory(dataSource) },
+            local = lazily { DefaultMediaSourceFactory(localDataSource) }
         )
 
         private fun lazily(factory: () -> MediaSource.Factory) = lazy {
