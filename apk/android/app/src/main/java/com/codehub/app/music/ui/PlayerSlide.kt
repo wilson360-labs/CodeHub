@@ -280,7 +280,7 @@ class PlayerSlide(
             gravity = Gravity.CENTER
         }
         shuffleButton = MusicTheme.iconCircle(
-            context, R.drawable.ic_music_shuffle, 24, tint = 0x80FFFFFF
+            context, R.drawable.ic_music_shuffle, 24, tint = 0x80FFFFFF.toInt()
         )
         shuffleButton.setOnClickListener {
             player.toggleShuffle()
@@ -296,7 +296,7 @@ class PlayerSlide(
         val next = MusicTheme.icon(context, R.drawable.ic_music_next, 42, Color.WHITE)
         next.setOnClickListener { player.next() }
         repeatButton = MusicTheme.iconCircle(
-            context, R.drawable.ic_music_repeat, 24, tint = 0x80FFFFFF
+            context, R.drawable.ic_music_repeat, 24, tint = 0x80FFFFFF.toInt()
         )
         repeatButton.setOnClickListener {
             player.cycleRepeat()
@@ -331,6 +331,7 @@ class PlayerSlide(
         }
         sleepLabel = tv("", 11f, color = MusicTheme.MUTED)
         sleepLabel.gravity = Gravity.CENTER_HORIZONTAL
+        sleepLabel.visibility = View.GONE
         val delim = View(context).apply {
             background = ColorDrawable(0x22FFFFFF)
         }
@@ -373,7 +374,6 @@ class PlayerSlide(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply {
             topMargin = dp(2)
-            visibility = View.GONE
         })
         root.addView(delim, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(1)
