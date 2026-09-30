@@ -169,10 +169,12 @@ class MusicPlayer(
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
+                MusicWidget.refresh(context)
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 _nowPlaying.value = mediaItem?.decodeTrack()
+                MusicWidget.refresh(context)
             }
 
             override fun onPlayerError(error: PlaybackException) {

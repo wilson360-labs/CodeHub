@@ -111,15 +111,15 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
-        <!-- Servicio de reproducción en segundo plano (media3 MediaSessionService).
+        <!-- Servicio de reproducción en segundo plano (media3 MediaLibraryService).
              Mantiene el MusicPlayer singleton con notificación de medios,
-             control desde bloqueo/headset y salida de audio vía MediaButton. -->
+             control desde bloqueo/headset y browse para Android Auto. -->
         <service
             android:name=".music.MusicPlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
@@ -131,6 +131,19 @@
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
+        </receiver>
+
+        <!-- Widget (4x1) del reproductor de música. -->
+        <receiver
+            android:name=".music.MusicWidget"
+            android:exported="false"
+            android:label="CodeHub Music">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_widget_info" />
         </receiver>
 
         <service
