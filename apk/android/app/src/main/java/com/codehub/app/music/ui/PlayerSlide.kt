@@ -1,7 +1,5 @@
 package com.codehub.app.music.ui
 
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Context
@@ -38,9 +36,10 @@ import dev.brahmkshatriya.echo.common.models.Track
  * Slide a pantalla completa del reproductor, estilo Echo Player: port de la
  * estetica de echo-nightly (fragment_player + item_player_controls) en UI
  * programatica sin dependencias nuevas:
- *  - fondo con artwork difuso + pan lento (Ken Burns) + scrim en gradiente
- *  - colores dinamicos derivados del artwork (PlayerColors: bg/accent)
- *  - cover grande redondeada, titulo marquee, like persistente,
+ *  - fondo con artwork difuso + scrim en gradiente dinamico del artwork
+ *  - colores dinamicos derivados del artwork (PlayerColors accent)
+ *  - cover grande, texto alineado a la izquierda, play en circulo blanco,
+ *    barra inferior de acciones (estilo Now Playing de Spotify)
  *  - seekbar con buffer, shuffle/repeat, sleep timer y ecualizador.
  */
 class PlayerSlide(
@@ -80,9 +79,7 @@ class PlayerSlide(
     }
     private var equalizer: Equalizer? = null
 
-    private var panScale: ObjectAnimator? = null
-    private var panPan: ObjectAnimator? = null
-    private var panScaleY: ObjectAnimator? = null
+    private lateinit var scrimDrawable: GradientDrawable
 
     private val ticker: Runnable = object : Runnable {
         override fun run() {
@@ -116,18 +113,20 @@ class PlayerSlide(
         MusicTheme.icon(context, res, sizeDp, tint)
 
     private fun buildView() {
-        // Fondo dinámico
+        // Fondo dinámico (artwork difuso, sin Ken Burns como Spotify)
         bgImage = ImageView(context).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
+        // Scrim estilo Spotify: color derivado del artwork arriba -> negro abajo
+        scrimDrawable = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(0x80101018.toInt(), 0x40111118.toInt(), 0xF2080810.toInt())
+        )
         val scrim = View(context).apply {
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0x99000000.toInt(), 0xE6080808.toInt())
-            )
+            background = scrimDrawable
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -135,35 +134,48 @@ class PlayerSlide(
         root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(20), dp(14), dp(20), dp(26))
+            setPadding(dp(24), dp(10), dp(24), dp(18))
         }
 
-        // Cabecera: "Reproduciendo desde <ext>" + like + cerrar
+        // Grabber (pill superior como bottom-sheet de Spotify)
+        val grabber = View(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dpF(2f).toFloat()
+                setColor(0x33FFFFFF)
+            }
+        }
+        root.addView(grabber, LinearLayout.LayoutParams(dp(40), dp(4)).apply {
+            topMargin = dp(2)
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
+
+        // Cabecera: like a la izquierda, fuente centrada, cerrar a la derecha
         val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+        likeButton = MusicTheme.iconCircle(context, R.drawable.ic_music_like_border, 26)
+        likeButton.setOnClickListener { toggleLike() }
         val extCol = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
-        extCol.addView(tv("Reproduciendo desde", 12f, color = MusicTheme.MUTED))
+        extCol.addView(tv("Reproduciendo desde", 11f, color = MusicTheme.MUTED))
         extView = tv(extName ?: "Extensión", 13f, bold = true, color = MusicTheme.ACCENT)
         extCol.addView(extView)
-
-        likeButton = MusicTheme.iconCircle(context, R.drawable.ic_music_like_border, 28)
-        likeButton.setOnClickListener { toggleLike() }
         val close = MusicTheme.iconCircle(context, R.drawable.ic_music_close, 24)
         close.setOnClickListener { dismiss() }
 
-        header.addView(extCol)
         header.addView(likeButton, LinearLayout.LayoutParams(dp(40), dp(40)))
+        header.addView(extCol)
         header.addView(close, LinearLayout.LayoutParams(dp(40), dp(40)))
 
-        // Cover
+        // Cover (grande, casi a todo el ancho, esquinas suaves como Spotify)
         val placeholder = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dpF(24f).toFloat()
+            cornerRadius = dpF(10f).toFloat()
             setColor(0xFF202027.toInt())
         }
         artView = ImageView(context).apply {
@@ -171,26 +183,33 @@ class PlayerSlide(
             background = placeholder
             outlineProvider = ViewOutlineProvider.BACKGROUND
             clipToOutline = true
-            elevation = dpF(12f).toFloat()
-            translationZ = dpF(10f).toFloat()
+            elevation = dpF(8f).toFloat()
+            translationZ = dpF(6f).toFloat()
         }
         val cover = minOf(
-            dm.widthPixels - dp(40),
-            (dm.heightPixels * 0.36f).toInt(),
-            (dm.heightPixels - dp(230)).coerceAtLeast(0),
+            dm.widthPixels - dp(48),
+            (dm.heightPixels * 0.40f).toInt(),
+            (dm.heightPixels - dp(280)).coerceAtLeast(0),
         ).coerceAtLeast(1)
+        val coverLp = LinearLayout.LayoutParams(cover, cover)
+        coverLp.topMargin = dp(8)
+        coverLp.bottomMargin = dp(12)
 
-        // Título / artista
-        titleView = tv("", 21f, bold = true)
-        titleView.gravity = Gravity.CENTER_HORIZONTAL
+        // Título / artista: alineados a la izquierda como el reproductor de Spotify
+        titleView = tv("", 19f, bold = true, color = MusicTheme.TEXT)
         titleView.maxLines = 1
         titleView.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         titleView.isSelected = true
         titleView.marqueeRepeatLimit = -1
+        val titleLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        )
         artistsView = tv("", 14f, color = MusicTheme.MUTED)
-        artistsView.gravity = Gravity.CENTER_HORIZONTAL
         artistsView.maxLines = 2
         artistsView.ellipsize = android.text.TextUtils.TruncateAt.END
+        val artistsLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(2) }
 
         val fill = View(context)
         fill.layoutParams = LinearLayout.LayoutParams(
@@ -255,29 +274,29 @@ class PlayerSlide(
         timeRow.addView(currentLabel, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         timeRow.addView(totalLabel)
 
-        // Controles: shuffle | prev | play | next | repeat
+        // Controles: shuffle | prev | play | next | repeat (play en círculo blanco como Spotify)
         val controls = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
         shuffleButton = MusicTheme.iconCircle(
-            context, R.drawable.ic_music_shuffle, 26, tint = MusicTheme.MUTED
+            context, R.drawable.ic_music_shuffle, 24, tint = 0x80FFFFFF
         )
         shuffleButton.setOnClickListener {
             player.toggleShuffle()
             updateModes()
         }
-        val prev = MusicTheme.icon(context, R.drawable.ic_music_prev, 40, MusicTheme.TEXT)
+        val prev = MusicTheme.icon(context, R.drawable.ic_music_prev, 42, Color.WHITE)
         prev.setOnClickListener { player.prev() }
         playButton = MusicTheme.iconCircle(
-            context, R.drawable.ic_music_play, 52,
-            bg = MusicTheme.ACCENT, tint = Color.WHITE
+            context, R.drawable.ic_music_play, 56,
+            bg = Color.WHITE, tint = Color.BLACK
         )
         playButton.setOnClickListener { player.toggle() }
-        val next = MusicTheme.icon(context, R.drawable.ic_music_next, 40, MusicTheme.TEXT)
+        val next = MusicTheme.icon(context, R.drawable.ic_music_next, 42, Color.WHITE)
         next.setOnClickListener { player.next() }
         repeatButton = MusicTheme.iconCircle(
-            context, R.drawable.ic_music_repeat, 26, tint = MusicTheme.MUTED
+            context, R.drawable.ic_music_repeat, 24, tint = 0x80FFFFFF
         )
         repeatButton.setOnClickListener {
             player.cycleRepeat()
@@ -287,13 +306,12 @@ class PlayerSlide(
         val order = listOf<Pair<View, Int>>(
             shuffleButton to 52,
             prev to 56,
-            playButton to 76,
+            playButton to 78,
             next to 56,
             repeatButton to 52,
         )
-        order.forEachIndexed { index, (view, w) ->
+        order.forEach { (view, w) ->
             controls.addView(view, LinearLayout.LayoutParams(dp(w), dp(w)))
-            if (index == 2) { /* play más separado */ }
         }
 
         // Subtítulo: calidad del stream actual
@@ -302,7 +320,7 @@ class PlayerSlide(
         subtitle.maxLines = 2
         subtitle.ellipsize = android.text.TextUtils.TruncateAt.END
 
-        // Acciones: Cola · Efectos · Temporizador · Calidades
+        // Barra inferior estilo Spotify: icono + etiqueta (chips)
         val actions = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -311,57 +329,58 @@ class PlayerSlide(
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        sleepLabel = tv("", 12f, color = MusicTheme.MUTED)
-        val cola = actionPill("Cola", R.drawable.ic_music_queue)
+        sleepLabel = tv("", 11f, color = MusicTheme.MUTED)
+        sleepLabel.gravity = Gravity.CENTER_HORIZONTAL
+        val delim = View(context).apply {
+            background = ColorDrawable(0x22FFFFFF)
+        }
+        val cola = actionChip("Cola", R.drawable.ic_music_queue)
         cola.setOnClickListener { queueDialog() }
-        val eq = actionPill("Efectos", R.drawable.ic_music_eq)
+        val eq = actionChip("Efectos", R.drawable.ic_music_eq)
         eq.setOnClickListener { effectsDialog() }
-        val sleep = actionPill("Dormir", R.drawable.ic_music_sleep)
+        val sleep = actionChip("Dormir", R.drawable.ic_music_sleep)
         sleep.setOnClickListener { sleepDialog() }
-        val cal = actionPill("Calidad", R.drawable.ic_music_quality)
+        val cal = actionChip("Calidad", R.drawable.ic_music_quality)
         cal.setOnClickListener { qualityDialog() }
         listOf(cola, eq, sleep, cal).forEach { b ->
-            actionsRow.addView(b)
-            val lp = b.layoutParams as? LinearLayout.LayoutParams
-            lp?.rightMargin = dp(8)
+            actionsRow.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         }
         actions.addView(actionsRow, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
 
-        val artLp = LinearLayout.LayoutParams(cover, cover)
-        artLp.topMargin = dp(18)
-        artLp.bottomMargin = dp(10)
         root.addView(header, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
-        root.addView(artView, artLp)
-        root.addView(titleView, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ))
-        root.addView(artistsView, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(2) })
+        root.addView(artView, coverLp)
+        root.addView(titleView, titleLp)
+        root.addView(artistsView, artistsLp)
         root.addView(fill)
 
         root.addView(progressBox, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(30)
-        ).apply { topMargin = dp(8) })
+        ).apply { topMargin = dp(4) })
         root.addView(timeRow, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
         root.addView(controls, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(6) })
+        ).apply { topMargin = dp(4) })
         root.addView(subtitle, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(4) })
         root.addView(sleepLabel, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(2) })
+        ).apply {
+            topMargin = dp(2)
+            visibility = View.GONE
+        })
+        root.addView(delim, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(1)
+        ).apply { topMargin = dp(12) })
         root.addView(actions, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(12) })
+        ).apply { topMargin = dp(8) })
 
         val frame = FrameLayout(context).apply {
             addView(bgImage)
@@ -373,19 +392,17 @@ class PlayerSlide(
         setContentView(frame)
     }
 
-    private fun actionPill(text: String, res: Int): LinearLayout {
+    private fun actionChip(text: String, res: Int): LinearLayout {
         val btn = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            val ic = icon(res, 16, MusicTheme.MUTED)
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            val ic = icon(res, 18, MusicTheme.MUTED)
             addView(ic)
-            val label = tv(text, 12f, color = MusicTheme.MUTED)
-            label.setPadding(dp(4), 0, 0, 0)
+            val label = tv(text, 11f, color = MusicTheme.MUTED)
+            label.setPadding(0, dp(4), 0, 0)
             addView(label)
-            setPadding(dp(14), dp(8), dp(14), dp(8))
-            background = MusicTheme.ripple(
-                context, MusicTheme.rounded(context, MusicTheme.SURFACE_2, 20)
-            )
+            setPadding(0, dp(4), 0, dp(2))
+            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
         }
         return btn
     }
@@ -397,48 +414,15 @@ class PlayerSlide(
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window?.setWindowAnimations(R.style.MusicSlideAnimation)
         updated()
-        startPan()
         main.post(ticker)
     }
 
     override fun dismiss() {
-        stopPan()
         main.removeCallbacks(ticker)
         main.removeCallbacks(sleepRunnable)
         equalizer?.release()
         equalizer = null
         super.dismiss()
-    }
-
-    private fun startPan() {
-        stopPan()
-        panScale = ObjectAnimator.ofFloat(bgImage, View.SCALE_X, 1f, 1.18f).apply {
-            duration = 24000
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-            start()
-        }
-        panScaleY = ObjectAnimator.ofFloat(bgImage, View.SCALE_Y, 1f, 1.18f).apply {
-            duration = 24000
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-            start()
-        }
-        panPan = ObjectAnimator.ofFloat(bgImage, View.TRANSLATION_X, 0f, dpF(-24f).toFloat()).apply {
-            duration = 32000
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.REVERSE
-            start()
-        }
-    }
-
-    private fun stopPan() {
-        panScale?.cancel()
-        panScale = null
-        panScaleY?.cancel()
-        panScaleY = null
-        panPan?.cancel()
-        panPan = null
     }
 
     private fun updated() {
@@ -498,14 +482,16 @@ class PlayerSlide(
     }
 
     private fun updateModes() {
-        shuffleButton.setColorFilter(if (player.shuffle.value) MusicTheme.ACCENT else MusicTheme.MUTED)
+        shuffleButton.setColorFilter(
+            if (player.shuffle.value) MusicTheme.ACCENT else 0x80FFFFFF.toInt()
+        )
         repeatButton.setImageResource(
             if (player.repeat.value == androidx.media3.common.Player.REPEAT_MODE_ONE)
                 R.drawable.ic_music_repeat_one else R.drawable.ic_music_repeat
         )
         repeatButton.setColorFilter(
             if (player.repeat.value != androidx.media3.common.Player.REPEAT_MODE_OFF)
-                MusicTheme.ACCENT else MusicTheme.MUTED
+                MusicTheme.ACCENT else 0x80FFFFFF.toInt()
         )
     }
 
@@ -522,14 +508,18 @@ class PlayerSlide(
             }
             else -> extName ?: "Reproduciendo"
         }
-        subtitle.text = "$label · ${track.title}"
+        subtitle.text = label
     }
 
     private fun updateSleepLabel() {
         val left = sleepAt - System.currentTimeMillis()
-        sleepLabel.text = if (left > 0) "Dormir en ${
-            ((left / 1000 + 59) / 60).toInt()
-        } min" else ""
+        if (left > 0) {
+            sleepLabel.text = "Dormir en ${((left / 1000 + 59) / 60).toInt()} min"
+            sleepLabel.visibility = View.VISIBLE
+        } else {
+            sleepLabel.text = ""
+            sleepLabel.visibility = View.GONE
+        }
     }
 
     private fun updateProgress() {
@@ -554,9 +544,17 @@ class PlayerSlide(
     private fun applyPalette(bitmap: Bitmap) {
         val accent = vibrantColor(bitmap)
         val bmp = Blur.blur(context, bitmap)
-        titleView.setTextColor(blend(accent, Color.WHITE, 0.72f))
         bgImage.setImageBitmap(bmp)
-        bgImage.setColorFilter(blend(accent, Color.BLACK, 0.86f))
+        bgImage.setColorFilter(blend(accent, Color.BLACK, 0.82f))
+        if (::scrimDrawable.isInitialized) {
+            scrimDrawable.setColors(
+                intArrayOf(
+                    blend(accent, 0xFF101018.toInt(), 0.40f),
+                    blend(accent, 0xFF101018.toInt(), 0.80f),
+                    0xF2080810.toInt(),
+                )
+            )
+        }
     }
 
     /** Mezcla [c1] con [c2] por [t] (0=100% c1, 1=100% c2). */
