@@ -3,6 +3,8 @@ package com.codehub.app.music.ui
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
@@ -94,6 +96,7 @@ class MusicPlayerActivity : Activity() {
         }
     }
     private var currentTrack: Track? = null
+    private val REQ_PICK_APK = 4201
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,10 +129,15 @@ class MusicPlayerActivity : Activity() {
             val current = registry.currentId()?.let { id -> exts.firstOrNull { it.id == id } }
             activeExtension = current ?: exts.firstOrNull()
             if (activeExtension == null) {
-                adapter.submit(listOf(Row.Info(
-                    "No hay extensiones de música. Instala un APK de " +
-                            "extensión Echo desde la web."
-                )))
+                val rows = mutableListOf<Row>()
+                rows += Row.Header("Aún no hay extensiones", "Necesitas al menos una extensión Echo (APK) para reproducir música")
+                rows += Row.Header("＋ Importar APK de extensión", "Elige el archivo .apk desde tu dispositivo", "Elegir ›") { pickApk() }
+                rows += Row.Header("＋ Importar desde URL", "Pega un enlace https:// directo al .apk", "Pegar ›") { askUrl() }
+                registry.lastErrors.firstOrNull()?.let {
+                    rows += Row.Info("Extensión inválida ignorada: $it")
+                }
+                extLabel.text = "🎵 Música"
+                adapter.submit(rows)
                 return@launch
             }
             registry.select(activeExtension!!.id)
@@ -144,7 +152,10 @@ class MusicPlayerActivity : Activity() {
             adapter.submit(listOf(Row.Loading))
             val home = runCatching { ext.getAs<HomeFeedClient, Feed<Shelf>> { loadHomeFeed() }.getOrThrow() }
             if (home.isFailure) {
-                adapter.submit(listOf(Row.Info("El home no está disponible")));
+                adapter.submit(listOf(Row.Info(
+                    "El home no está disponible: " +
+                            (home.exceptionOrNull()?.let { (it.cause ?: it).message } ?: "error desconocido")
+                )))
                 return@launch
             }
             homeFeed = home.getOrNull()
@@ -235,7 +246,7 @@ class MusicPlayerActivity : Activity() {
             }
             val rows = mutableListOf<Row>()
             rows += Row.Header(media.title, MusicFeed.uiItem(media).subtitle)
-            rows += Row.Header("▶ Reproducir todo", null) { playAll(feed) }
+            rows += Row.Header("▶ Reproducir todo", null, "Play ›") { playAll(feed) }
             rows += MusicFeed.tracks(ext, feed)
             adapter.submit(rows)
         }
@@ -383,22 +394,101 @@ class MusicPlayerActivity : Activity() {
     private fun chooseExtension() {
         scope.launch {
             val exts = registry.music()
-            if (exts.isEmpty()) {
-                Toast.makeText(this@MusicPlayerActivity, "No hay extensiones", Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            val names = exts.map { it.metadata.name }
+            val labels = exts.map { "🎵 ${it.metadata.name} · v${it.metadata.version}" }.toMutableList()
+            labels += "＋ Importar APK…"
+            labels += "＋ Desde URL…"
+            if (exts.isNotEmpty()) labels += "🗑 Quitar extensión…"
             AlertDialog.Builder(this@MusicPlayerActivity)
-                .setTitle("Extensión de música")
-                .setItems(names.toTypedArray()) { _, which ->
-                    val ext = exts[which]
-                    activeExtension = ext
-                    registry.select(ext.id)
-                    extLabel.text = ext.metadata.name
-                    refreshHome()
+                .setTitle("Extensiones")
+                .setItems(labels.toTypedArray()) { _, which ->
+                    when {
+                        which < exts.size -> {
+                            val ext = exts[which]
+                            activeExtension = ext
+                            registry.select(ext.id)
+                            extLabel.text = ext.metadata.name
+                            selectedTabIndex = 0
+                            refreshHome()
+                        }
+                        which == exts.size -> pickApk()
+                        which == exts.size + 1 -> askUrl()
+                        else -> chooseRemove(exts)
+                    }
                 }
                 .setNegativeButton("Cancelar", null)
                 .show()
+        }
+    }
+
+    private fun chooseRemove(exts: List<MusicExtension>) {
+        AlertDialog.Builder(this)
+            .setTitle("Quitar extensión")
+            .setItems(exts.map { it.metadata.name }.toTypedArray()) { _, which ->
+                val ext = exts[which]
+                if (registry.remove(ext)) {
+                    if (activeExtension?.id == ext.id) activeExtension = null
+                    Toast.makeText(this, "Extensión quitada", Toast.LENGTH_SHORT).show()
+                    boot()
+                } else {
+                    Toast.makeText(this,
+                        "Es un paquete instalado: desinstálalo desde Android",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun pickApk() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf(
+                "application/vnd.android.package-archive", "application/octet-stream"
+            ))
+        }
+        try { startActivityForResult(i, REQ_PICK_APK) }
+        catch (e: Exception) { Toast.makeText(this, "No hay selector de archivos", Toast.LENGTH_LONG).show() }
+    }
+
+    private fun askUrl() {
+        val input = EditText(this).apply {
+            hint = "https://…/extension.apk"
+            setSingleLine(true)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Importar desde URL")
+            .setView(input)
+            .setPositiveButton("Instalar") { _, _ ->
+                val url = input.text.toString().trim()
+                if (url.isNotEmpty()) installExtension { registry.importUrl(url) }
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_PICK_APK || resultCode != RESULT_OK) return
+        val uri: Uri = data?.data ?: return
+        installExtension { registry.importUri(uri) }
+    }
+
+    private fun installExtension(block: suspend () -> Result<dev.brahmkshatriya.echo.common.models.Metadata>) {
+        Toast.makeText(this, "Instalando extensión…", Toast.LENGTH_SHORT).show()
+        scope.launch {
+            val r = block()
+            r.onSuccess { meta ->
+                Toast.makeText(this@MusicPlayerActivity, "Instalada: ${meta.name}", Toast.LENGTH_SHORT).show()
+                registry.select(meta.id)
+                boot()
+            }.onFailure { e ->
+                AlertDialog.Builder(this@MusicPlayerActivity)
+                    .setTitle("No se pudo instalar")
+                    .setMessage((e.cause ?: e).message ?: e.toString())
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
         }
     }
 

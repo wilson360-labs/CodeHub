@@ -29,6 +29,7 @@ sealed class Row {
     data class Header(
         val title: String,
         val subtitle: String?,
+        val moreLabel: String? = null,
         val more: (() -> Unit)? = null,
     ) : Row()
 
@@ -170,9 +171,11 @@ class FeedAdapter(
                 h.title.text = row.title
                 h.subtitle.text = row.subtitle ?: ""
                 h.subtitle.visibility = if (row.subtitle == null) View.GONE else View.VISIBLE
-                h.more.text = "Ver todo ›"
+                h.more.text = row.moreLabel ?: "Ver todo ›"
                 h.more.visibility = if (row.more == null) View.GONE else View.VISIBLE
                 h.more.setOnClickListener { row.more?.invoke() }
+                h.itemView.setOnClickListener(if (row.more == null) null else View.OnClickListener { row.more.invoke() })
+                h.itemView.isClickable = row.more != null
             }
 
             is Row.Card -> {

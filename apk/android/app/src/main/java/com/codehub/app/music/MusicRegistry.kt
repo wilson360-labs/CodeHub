@@ -3,6 +3,7 @@ package com.codehub.app.music
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
@@ -11,6 +12,7 @@ import dev.brahmkshatriya.echo.common.MusicExtension
 import dev.brahmkshatriya.echo.common.clients.ExtensionClient
 import dev.brahmkshatriya.echo.common.helpers.Injectable
 import dev.brahmkshatriya.echo.common.helpers.WebViewClient
+import dev.brahmkshatriya.echo.common.models.ExtensionType
 import dev.brahmkshatriya.echo.common.models.ImportType
 import dev.brahmkshatriya.echo.common.models.Message
 import dev.brahmkshatriya.echo.common.models.Metadata
@@ -26,6 +28,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.WeakHashMap
 
 // Registro de extensiones de música Echo del reproductor de CodeHub.
@@ -56,11 +61,20 @@ class MusicRegistry(private val context: Context) {
 
     suspend fun music(): List<MusicExtension> = cache ?: reload()
 
+    /** Errores de carga de la última recarga (APKs de extensión inválidos). */
+    var lastErrors: List<String> = emptyList()
+        private set
+
     suspend fun reload(): List<MusicExtension> = withContext(Dispatchers.IO) {
         val apps = parser.getAllDynamically(ImportType.App, appMap, installedPackages())
         val files = parser.getAllDynamically(ImportType.File, fileMap, extensionFiles())
-        (apps + files).mapNotNull { result ->
+        val all = apps + files
+        lastErrors = all.mapNotNull { r ->
+            r.exceptionOrNull()?.let { (it.cause ?: it).message ?: it.toString() }
+        }
+        all.mapNotNull { result ->
             val pair = result.getOrNull() ?: return@mapNotNull null
+            if (pair.first.type != ExtensionType.MUSIC || !pair.first.isEnabled) return@mapNotNull null
             injected(pair.first, pair.second)
         }.also { cache = it }
     }
@@ -105,15 +119,21 @@ class MusicRegistry(private val context: Context) {
     // Escaneo
     // ------------------------------------------------------------------
 
+    @Suppress("DEPRECATION")
     private fun installedPackages(): List<File> {
         val pm = context.packageManager
-        return pm.getInstalledApplications(PackageManager.MATCH_ALL)
-            .mapNotNull { info ->
-                val source = info.sourceDir ?: return@mapNotNull null
-                val file = File(source)
-                if (file.isFile && source.endsWith(".apk", ignoreCase = true)) file else null
-            }
-            .toList()
+        val infos = if (Build.VERSION.SDK_INT >= 33)
+            pm.getInstalledPackages(
+                PackageManager.PackageInfoFlags.of(PackageManager.GET_CONFIGURATIONS.toLong())
+            )
+        else pm.getInstalledPackages(PackageManager.GET_CONFIGURATIONS)
+        return infos.mapNotNull { pi ->
+            val feats = pi.reqFeatures ?: return@mapNotNull null
+            if (feats.none { it.name?.startsWith(ExtensionParser.FEATURE) == true })
+                return@mapNotNull null
+            val src = pi.applicationInfo?.sourceDir ?: return@mapNotNull null
+            File(src).takeIf { it.isFile }
+        }
     }
 
     private fun extensionFiles(): List<File> {
@@ -122,6 +142,64 @@ class MusicRegistry(private val context: Context) {
         return dir.listFiles()
             ?.filter { it.isFile && it.name.endsWith(".apk", ignoreCase = true) }
             ?.toList() ?: emptyList()
+    }
+
+    // ------------------------------------------------------------------
+    // Gestión de extensiones (importar / quitar)
+    // ------------------------------------------------------------------
+
+    /** Copia un APK de extensión a `filesDir/extensions`, lo valida y lo deja de solo lectura
+     *  (Android 14+ rechaza DexClassLoader sobre ficheros escribibles). */
+    suspend fun importStream(input: InputStream): Result<Metadata> = withContext(Dispatchers.IO) {
+        runCatching {
+            val tmp = File(context.cacheDir, "ext_import_${System.nanoTime()}.apk")
+            try {
+                input.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } }
+                val meta = parser.parseManifest(tmp, ImportType.File)
+                require(meta.type == ExtensionType.MUSIC) {
+                    "La extensión es de tipo ${meta.type}, se requiere MUSIC"
+                }
+                val dir = File(context.filesDir, "extensions").apply { mkdirs() }
+                val target = File(dir, "${meta.id}.apk")
+                if (target.exists()) { target.setWritable(true); target.delete() }
+                tmp.copyTo(target, overwrite = true)
+                target.setReadOnly()
+                invalidate()
+                meta
+            } finally {
+                tmp.delete()
+            }
+        }
+    }
+
+    suspend fun importUri(uri: Uri): Result<Metadata> {
+        val stream = runCatching { context.contentResolver.openInputStream(uri) }.getOrNull()
+            ?: return Result.failure(IllegalStateException("No se pudo abrir el archivo"))
+        return importStream(stream)
+    }
+
+    suspend fun importUrl(url: String): Result<Metadata> = withContext(Dispatchers.IO) {
+        runCatching {
+            require(url.startsWith("https://")) { "Solo se admiten URLs https://" }
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 15000
+            conn.readTimeout = 60000
+            conn.instanceFollowRedirects = true
+            conn.setRequestProperty("User-Agent", "CodeHub-Music")
+            check(conn.responseCode in 200..299) { "HTTP ${conn.responseCode}" }
+            importStream(conn.inputStream).getOrThrow()
+        }
+    }
+
+    /** Quita una extensión importada (los paquetes instalados se desinstalan desde Android). */
+    fun remove(ext: MusicExtension): Boolean {
+        if (ext.metadata.importType != ImportType.File) return false
+        val f = File(ext.metadata.path)
+        f.setWritable(true)
+        val ok = f.delete()
+        if (currentId() == ext.id) select(null)
+        invalidate()
+        return ok
     }
 
     // ------------------------------------------------------------------
