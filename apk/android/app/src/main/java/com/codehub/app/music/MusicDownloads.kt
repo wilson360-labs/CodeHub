@@ -1,8 +1,10 @@
 package com.codehub.app.music
 
 import android.content.Context
+import com.codehub.app.music.MusicClient.getAs
 import dev.brahmkshatriya.echo.common.MusicExtension
 import dev.brahmkshatriya.echo.common.clients.TrackClient
+import dev.brahmkshatriya.echo.common.models.ImageHolder
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.CoroutineScope
@@ -12,19 +14,21 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
 /**
  * Gestor de descargas offline del player de CodeHub (port del sistema de
- * descargas de echo-nightly SIN Room ni WorkManager):
+ * descargas de echo-nightly SIN Room ni WorkManager ni plugin de
+ * serialización: el índice se persiste con org.json del SDK):
  *
  *  - Cada track se guarda como audio crudo en
  *    `filesDir/music_downloads/<extensionId>/<trackId>.dat` (+ portada JPG).
- *  - El índice vive en `filesDir/music_downloads/index.json` (serializable,
- *    sin base de datos). La fuente local se resuelve en lectura: si el
+ *  - El índice vive en `filesDir/music_downloads/index.json` (org.json, sin
+ *    base de datos). La fuente local se resuelve en lectura: si el
  *    [MusicMediaSource] encuentra una descarga, reproduce el archivo y no
  *    contacta la API de la extensión.
  *  - `remove()` borra archivo + entrada; `clearAll()` limpia todo.
@@ -35,7 +39,6 @@ class MusicDownloads private constructor(context: Context) {
     private val root: File = File(ctx.filesDir, "music_downloads").apply { mkdirs() }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    @Serializable
     data class Entry(
         val trackId: String,
         val extensionId: String,
@@ -48,20 +51,36 @@ class MusicDownloads private constructor(context: Context) {
         fun track(): Track? = runCatching {
             MusicMedia.json.decodeFromString(Track.serializer(), trackJson)
         }.getOrNull()
-    }
 
-    @Serializable
-    data class Index(
-        val version: Int = 1,
-        val entries: MutableList<Entry> = mutableListOf(),
-    )
+        fun toJson(): JSONObject = JSONObject().apply {
+            put("trackId", trackId)
+            put("extensionId", extensionId)
+            put("trackJson", trackJson)
+            put("filePath", filePath)
+            put("coverPath", coverPath ?: JSONObject.NULL)
+            put("size", size)
+            put("timestamp", timestamp)
+        }
+
+        companion object {
+            fun fromJson(o: JSONObject): Entry = Entry(
+                trackId = o.getString("trackId"),
+                extensionId = o.getString("extensionId"),
+                trackJson = o.getString("trackJson"),
+                filePath = o.getString("filePath"),
+                coverPath = if (o.isNull("coverPath")) null else o.getString("coverPath"),
+                size = o.optLong("size"),
+                timestamp = o.optLong("timestamp"),
+            )
+        }
+    }
 
     private val _progress = MutableStateFlow<Map<String, Int>>(emptyMap())
 
     /** Progreso en % por trackId (0..100; -1 = fallo). */
     val progress: StateFlow<Map<String, Int>> = _progress
 
-    private val _entries = MutableStateFlow(loadIndex().entries)
+    private val _entries = MutableStateFlow<List<Entry>>(loadIndex())
     val entries: StateFlow<List<Entry>> = _entries
 
     private val _failures = MutableSharedFlow<String>()
@@ -129,13 +148,14 @@ class MusicDownloads private constructor(context: Context) {
             throw Exception("No se pudo guardar la descarga")
         }
 
+        val coverUrl = track.cover?.let { coverHttpUrl(it) }
         val cover = runCatching {
-            track.cover?.let { fetchCover(trackId, extensionId, it) }
+            coverUrl?.let { fetchCover(trackId, extensionId, it) }
         }.getOrNull()
 
         mutateIndex {
-            it.entries.removeAll { e -> e.trackId == trackId }
-            it.entries.add(
+            it.removeAll { e -> e.trackId == trackId }
+            it.add(
                 Entry(
                     trackId = trackId,
                     extensionId = extensionId,
@@ -150,6 +170,12 @@ class MusicDownloads private constructor(context: Context) {
         report(trackId, 100)
     }
 
+    /** Solo los covers con URL real (request) se pueden descargar a disco. */
+    private fun coverHttpUrl(holder: ImageHolder): String? = when (holder) {
+        is ImageHolder.NetworkRequestImageHolder -> holder.request.url
+        else -> null
+    }
+
     private fun fetchCover(trackId: String, extensionId: String, url: String): String? {
         val file = File(File(root, extensionId), "$trackId.jpg")
         val conn = URL(url).openConnection() as HttpURLConnection
@@ -161,7 +187,7 @@ class MusicDownloads private constructor(context: Context) {
 
     fun remove(trackId: String) {
         val entry = lookup(trackId) ?: return
-        mutateIndex { it.entries.removeAll { e -> e.trackId == trackId } }
+        mutateIndex { it.removeAll { e -> e.trackId == trackId } }
         runCatching { File(entry.filePath).delete() }
         entry.coverPath?.let { runCatching { File(it).delete() } }
         runCatching { File(File(root, entry.extensionId), "$trackId.part").delete() }
@@ -169,7 +195,7 @@ class MusicDownloads private constructor(context: Context) {
 
     /** Elimina la carpeta completa de descargas (offline). */
     fun clearAll() {
-        mutateIndex { it.entries.clear() }
+        mutateIndex { it.clear() }
         runCatching { root.deleteRecursively(); root.mkdirs() }
     }
 
@@ -177,26 +203,29 @@ class MusicDownloads private constructor(context: Context) {
         _progress.value = _progress.value + (trackId to percent)
     }
 
-    private fun mutateIndex(block: (Index) -> Unit) {
-        val index = loadIndex()
-        block(index)
-        saveIndex(index)
-        _entries.value = index.entries.toList()
+    private fun mutateIndex(block: (MutableList<Entry>) -> Unit) {
+        val entries = loadIndex().toMutableList()
+        block(entries)
+        saveIndex(entries)
+        _entries.value = entries
     }
 
-    private fun loadIndex(): Index {
+    private fun loadIndex(): List<Entry> {
         val file = File(root, "index.json")
-        if (!file.exists()) return Index()
+        if (!file.exists()) return emptyList()
         return runCatching {
-            MusicMedia.json.decodeFromString(Index.serializer(), file.readText())
-        }.getOrElse { Index() }
+            val arr = JSONObject(file.readText()).optJSONArray("entries")
+                ?: JSONArray()
+            (0 until arr.length()).map { Entry.fromJson(arr.getJSONObject(it)) }
+        }.getOrElse { emptyList() }
     }
 
-    private fun saveIndex(index: Index) {
+    private fun saveIndex(entries: List<Entry>) {
         runCatching {
-            File(root, "index.json").writeText(
-                MusicMedia.json.encodeToString(Index.serializer(), index)
-            )
+            val arr = JSONArray()
+            entries.forEach { arr.put(it.toJson()) }
+            val obj = JSONObject().put("version", 1).put("entries", arr)
+            File(root, "index.json").writeText(obj.toString())
         }
     }
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Iconos de la notificación media3 (media3 1.8.0 los sobreescribe por
+     nombre de recurso; ver DefaultMediaNotificationProvider). -->
+<resources>
+    <item name="media3_icon_play" type="drawable">@drawable/ic_music_play</item>
+    <item name="media3_icon_pause" type="drawable">@drawable/ic_music_pause</item>
+    <item name="media3_icon_previous" type="drawable">@drawable/ic_music_prev</item>
+    <item name="media3_icon_next" type="drawable">@drawable/ic_music_next</item>
+    <item name="media3_notification_small_icon" type="drawable">@drawable/ic_music_play</item>
+</resources>

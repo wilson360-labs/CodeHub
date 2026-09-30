@@ -41,18 +41,11 @@ class MusicPlaybackService : MediaLibraryService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notificationProvider = DefaultMediaNotificationProvider.Builder(this)
-            .setSmallIconResourceId(R.drawable.ic_music_play)
-            .setPauseIconResourceId(R.drawable.ic_music_pause)
-            .setPlayIconResourceId(R.drawable.ic_music_play)
-            .setNextIconResourceId(R.drawable.ic_music_next)
-            .setPreviousIconResourceId(R.drawable.ic_music_prev)
-            .setContentIntentProvider { pendingIntent }
-            .build()
+        val notificationProvider = DefaultMediaNotificationProvider.Builder(this).build()
+        notificationProvider.setSmallIcon(R.drawable.ic_music_play)
 
-        session = MediaLibrarySession.Builder(this, player.exo)
+        session = MediaLibrarySession.Builder(this, player.exo, MusicAutoCallback(this))
             .setSessionActivity(pendingIntent)
-            .setCallback(MusicAutoCallback(this))
             .build()
 
         setMediaNotificationProvider(notificationProvider)

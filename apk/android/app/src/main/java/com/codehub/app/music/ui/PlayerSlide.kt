@@ -674,7 +674,7 @@ class PlayerSlide(
         val queue = player.queue.value
         if (queue.isEmpty()) return
 
-        lateinit var dlg: androidx.appcompat.app.AlertDialog
+        lateinit var dlg: AlertDialog
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -706,7 +706,7 @@ class PlayerSlide(
                 setOnClickListener {
                     dlg.dismiss()
                     player.jumpTo(index)
-                    if (!player.isPlaying.value) player.play()
+                    if (!player.isPlaying.value) player.exo.play()
                     queueDialog()
                 }
             }
@@ -836,7 +836,7 @@ class PlayerSlide(
         runCatching { eq.enabled = true }
         bassBoost = runCatching { BassBoost(0, session) }.getOrNull()
         virtualizer = runCatching { Virtualizer(0, session) }.getOrNull()
-        loudness = runCatching { LoudnessEnhancer(0, session) }.getOrNull()
+        loudness = runCatching { LoudnessEnhancer(session) }.getOrNull()
 
         val bands = runCatching { eq.numberOfBands.toInt() }.getOrElse { 0 }
         val range = runCatching { eq.bandLevelRange }.getOrNull()
@@ -867,7 +867,7 @@ class PlayerSlide(
                 eqMin, eqMax, initial,
                 { value ->
                     runCatching { eq.setBandLevel(index.toShort(), value.toShort()) }
-                    saveBands(bands, row)
+                    saveBands(bands)
                 }
             )
             rows.addView(row)
@@ -879,7 +879,7 @@ class PlayerSlide(
                 "Bajos", 0, 1000, eqPrefs.getInt("eq_bass", 0),
                 { value ->
                     runCatching {
-                        bassBoost?.strength = value.toShort()
+                        bassBoost?.setStrength(value.toShort())
                         bassBoost?.enabled = value > 0
                     }
                     eqPrefs.edit().putInt("eq_bass", value).apply()
@@ -894,7 +894,7 @@ class PlayerSlide(
                 "Sonido envolvente", 0, 1000, eqPrefs.getInt("eq_virtual", 0),
                 { value ->
                     runCatching {
-                        virtualizer?.strength = value.toShort()
+                        virtualizer?.setStrength(value.toShort())
                         virtualizer?.enabled = value > 0
                     }
                     eqPrefs.edit().putInt("eq_virtual", value).apply()
@@ -933,12 +933,12 @@ class PlayerSlide(
             }
             val bass = eqPrefs.getInt("eq_bass", 0)
             if (bass > 0) {
-                bassBoost?.strength = bass.toShort()
+                bassBoost?.setStrength(bass.toShort())
                 bassBoost?.enabled = true
             }
             val virt = eqPrefs.getInt("eq_virtual", 0)
             if (virt > 0) {
-                virtualizer?.strength = virt.toShort()
+                virtualizer?.setStrength(virt.toShort())
                 virtualizer?.enabled = true
             }
             if (loudness != null && eqPrefs.getBoolean("eq_loudness", false)) {
@@ -967,7 +967,7 @@ class PlayerSlide(
         ).apply { topMargin = dp(8) })
 
         val dlg = Dialog(context)
-        dlgRef = dlg
+        dialogRef = dlg
         dlg.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dlg.setContentView(content)
         dlg.window?.setBackgroundDrawable(ColorDrawable(0xFF101018.toInt()))
@@ -1000,7 +1000,7 @@ class PlayerSlide(
         val valueLabel = tv("$label  $initial", 13f, color = MusicTheme.MUTED)
         val normalized = initial.coerceIn(min, max) - min
         val bar = SeekBar(context).apply {
-            max = max - min
+            this.max = max - min
             progress = normalized
             MusicTheme.tintSeek(this)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -1036,8 +1036,8 @@ class PlayerSlide(
             .putString("eq_gains", "")
             .apply()
         runCatching {
-            if (bassBoost != null) { bassBoost!!.enabled = false; bassBoost!!.strength = 0 }
-            if (virtualizer != null) { virtualizer!!.enabled = false; virtualizer!!.strength = 0 }
+            if (bassBoost != null) { bassBoost!!.enabled = false; bassBoost!!.setStrength(0.toShort()) }
+            if (virtualizer != null) { virtualizer!!.enabled = false; virtualizer!!.setStrength(0.toShort()) }
             if (loudness != null) { loudness!!.enabled = false; loudness!!.setTargetGain(0) }
             for (i in 0 until bands) eq.setBandLevel(i.toShort(), 0)
         }
@@ -1050,7 +1050,7 @@ class PlayerSlide(
         return raw.split(",").mapNotNull { it.toIntOrNull() }
     }
 
-    private fun saveBands(total: Int, row: LinearLayout) {
+    private fun saveBands(total: Int) {
         val eq = equalizer ?: return
         val values = (0 until total).map { i ->
             runCatching { eq.getBandLevel(i.toShort()).toInt() }.getOrDefault(0)
