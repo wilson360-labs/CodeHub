@@ -34,7 +34,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # 8.11.1 = mínimo para AGP 8.9 (compileSdk 36, Appodeal adapters)
           gradle-version: '8.11.1'
@@ -44,7 +44,7 @@ jobs:
       # trae el SDK pre-instalado (compileSdk 36) en $ANDROID_HOME.
       - name: Setup Android SDK
         id: setup-android
-        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         continue-on-error: true
 
       - name: Accept SDK licenses
