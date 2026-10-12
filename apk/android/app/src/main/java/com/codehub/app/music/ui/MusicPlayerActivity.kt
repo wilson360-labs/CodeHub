@@ -2,6 +2,8 @@ package com.codehub.app.music.ui
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -1355,13 +1357,32 @@ class MusicPlayerActivity : Activity() {
         }
         option("＋  Añadir a lista…") { addToPlaylistDialog(track) }
         option("♪  Ver letras") { showLyrics(track) }
+        if (track.isRadioSupported) {
+            option("📻  Radio desde esta canción") { startRadio(track) }
+        }
 
         val localId = currentLocalId
-        if (localId != null && playlists.byId(localId)?.tracks?.any { it.trackId == track.id } == true) {
-            option("✕  Quitar de esta lista") {
-                playlists.remove(localId, track.id)
-                toast("Quitada de la lista")
-                refreshCurrent()
+        val localEntry = localId?.let { playlists.byId(it) }
+        if (localId != null && localEntry != null) {
+            val idx = localEntry.tracks.indexOfFirst { it.trackId == track.id }
+            if (idx >= 0) {
+                if (idx > 0) {
+                    option("▲  Subir en la lista") {
+                        playlists.move(localId, idx, idx - 1)
+                        refreshCurrent()
+                    }
+                }
+                if (idx < localEntry.tracks.size - 1) {
+                    option("▼  Bajar en la lista") {
+                        playlists.move(localId, idx, idx + 1)
+                        refreshCurrent()
+                    }
+                }
+                option("✕  Quitar de esta lista") {
+                    playlists.remove(localId, track.id)
+                    toast("Quitada de la lista")
+                    refreshCurrent()
+                }
             }
         }
 
@@ -1386,6 +1407,30 @@ class MusicPlayerActivity : Activity() {
             .setItems(labels.toTypedArray()) { _, which -> actions.getOrNull(which)?.invoke() }
             .setNegativeButton("Cancelar", null)
             .show()
+    }
+
+    /** Inicia la "radio" de la extensión a partir de una canción. */
+    private fun startRadio(track: Track) {
+        val ext = activeExtension ?: return
+        scope.launch {
+            val loading = AlertDialog.Builder(this@MusicPlayerActivity)
+                .setMessage("Cargando radio…")
+                .setCancelable(true)
+                .show()
+            val tracks = runCatching {
+                val base = ext.getAs<RadioClient, Radio> { radio(track, null) }.getOrNull()
+                    ?: return@runCatching emptyList<Track>()
+                val loaded = ext.getAs<RadioClient, Radio> { loadRadio(base) }.getOrNull() ?: base
+                val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(loaded) }.getOrNull()
+                feed?.loadAll().orEmpty()
+            }.getOrNull().orEmpty()
+            loading.dismiss()
+            if (tracks.isEmpty()) {
+                toast("Esta canción no tiene radio disponible")
+                return@launch
+            }
+            player.play(ext, tracks, 0)
+        }
     }
 
     // ------------------------------------------------------------------
@@ -1524,6 +1569,7 @@ class MusicPlayerActivity : Activity() {
                 }
             }
             val dialog = AlertDialog.Builder(this).setView(content)
+                .withLyricsActions(track, lyrics)
                 .setPositiveButton("Cerrar", null)
                 .create()
             dialog.setOnDismissListener { handler.removeCallbacks(tick) }
@@ -1532,6 +1578,46 @@ class MusicPlayerActivity : Activity() {
             return
         }
 
-        AlertDialog.Builder(this).setView(content).setPositiveButton("Cerrar", null).show()
+        AlertDialog.Builder(this).setView(content)
+            .withLyricsActions(track, lyrics)
+            .setPositiveButton("Cerrar", null)
+            .show()
+    }
+
+    // ------------------------------------------------------------------
+    // Letras: texto plano, copiar y compartir
+    // ------------------------------------------------------------------
+
+    private fun lyricsPlainText(lyrics: Lyrics): String = when (val l = lyrics.lyrics) {
+        is Lyrics.Simple -> l.text
+        is Lyrics.Timed -> l.list.joinToString("\n") { it.text }
+        is Lyrics.WordByWord -> l.list.joinToString("\n") { line -> line.joinToString(" ") { it.text } }
+        null -> ""
+    }.trim()
+
+    private fun AlertDialog.Builder.withLyricsActions(track: Track, lyrics: Lyrics): AlertDialog.Builder {
+        val text = lyricsPlainText(lyrics)
+        if (text.isBlank()) return this
+        val artists = track.artists.joinToString(", ") { it.name }
+        val heading = if (artists.isBlank()) track.title else "${track.title} — $artists"
+        setNeutralButton("Copiar") { _, _ -> copyLyrics(text) }
+        setNegativeButton("Compartir") { _, _ -> shareLyrics(heading, "$heading\n\n$text") }
+        return this
+    }
+
+    private fun copyLyrics(text: String) {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
+        cm.setPrimaryClip(ClipData.newPlainText("Letras", text))
+        toast("Letras copiadas")
+    }
+
+    private fun shareLyrics(subject: String, text: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        runCatching { startActivity(Intent.createChooser(send, "Compartir letras")) }
+            .onFailure { toast("No hay apps para compartir") }
     }
 }

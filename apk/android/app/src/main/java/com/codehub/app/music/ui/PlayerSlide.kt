@@ -78,6 +78,7 @@ class PlayerSlide(
     private lateinit var repeatButton: ImageView
     private lateinit var subtitle: TextView
     private lateinit var sleepLabel: TextView
+    private lateinit var speedLabelView: TextView
 
     private lateinit var dlIcon: ImageView
     private lateinit var dlLabel: TextView
@@ -376,11 +377,12 @@ class PlayerSlide(
         sleep.setOnClickListener { sleepDialog() }
         val cal = actionChip("Calidad", R.drawable.ic_music_quality)
         cal.setOnClickListener { qualityDialog() }
-        listOf(back10, fwd10, dl, cola, eq, sleep, cal).forEach { b ->
-            actionsRow.addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val speed = buildSpeedChip()
+        listOf(back10, fwd10, dl, cola, eq, sleep, cal, speed).forEach { b ->
+            actionsRow.addView(b, LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         actions.addView(actionsRow, FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
 
         root.addView(header, LinearLayout.LayoutParams(
@@ -457,6 +459,42 @@ class PlayerSlide(
         btn.addView(dlLabel)
         dlState = null
         return btn
+    }
+
+    /** Chip de velocidad: icono + valor actual (1×, 1.5×…). */
+    private fun buildSpeedChip(): LinearLayout {
+        val btn = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(4), 0, dp(2))
+            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            setOnClickListener { speedDialog() }
+        }
+        speedLabelView = tv(speedLabel(), 13f, bold = true, color = MusicTheme.MUTED)
+        btn.addView(icon(R.drawable.ic_music_speed, 18, MusicTheme.MUTED))
+        btn.addView(speedLabelView)
+        return btn
+    }
+
+    private fun speedLabel(v: Float = player.speed.value): String {
+        val s = if (v == v.toInt().toFloat()) v.toInt().toString()
+        else String.format(java.util.Locale.US, "%.2f", v).trimEnd('0').trimEnd('.')
+        return "$s×"
+    }
+
+    private fun speedDialog() {
+        val options = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
+        val labels = options.map { speedLabel(it) }
+        val current = options.indexOfFirst { kotlin.math.abs(it - player.speed.value) < 0.001f }
+        AlertDialog.Builder(context)
+            .setTitle("Velocidad de reproducción")
+            .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { d, which ->
+                player.setSpeed(options[which])
+                speedLabelView.text = speedLabel()
+                d.dismiss()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun toggleDownload() {
@@ -556,6 +594,7 @@ class PlayerSlide(
             updateModes()
             updateSubtitle(track)
             updateSleepLabel()
+            speedLabelView.text = speedLabel()
             updateProgress()
         }
     }

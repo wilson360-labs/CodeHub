@@ -196,6 +196,10 @@ class MusicPlayer(
     /** Avisos puntuales (p. ej. fin del temporizador de dormir) para la UI. */
     val events = MutableSharedFlow<String>()
 
+    /** Velocidad de reproducción actual (0.5×–2.0×), persistida en prefs. */
+    private val _speed = MutableStateFlow(1f)
+    val speed: StateFlow<Float> get() = _speed
+
     // ------------------------------------------------------------------
     // Temporizador de dormir (vive en el player, no en el slide: sigue
     // contando aunque se cierre la UI, y se restaura tras reiniciar).
@@ -244,6 +248,9 @@ class MusicPlayer(
 
     init {
         restoreSleepTimer()
+        val savedSpeed = prefs.getFloat("speed", 1f)
+        _speed.value = savedSpeed
+        if (savedSpeed != 1f) runCatching { exo.setPlaybackSpeed(savedSpeed) }
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
@@ -278,6 +285,14 @@ class MusicPlayer(
     fun toggleShuffle() {
         exo.shuffleModeEnabled = !exo.shuffleModeEnabled
         _shuffle.value = exo.shuffleModeEnabled
+    }
+
+    /** Cambia la velocidad de reproducción (0.5×–2.0×) y la recuerda. */
+    fun setSpeed(value: Float) {
+        val v = value.coerceIn(0.5f, 2.0f)
+        _speed.value = v
+        runCatching { exo.setPlaybackSpeed(v) }
+        prefs.edit().putFloat("speed", v).apply()
     }
 
     fun cycleRepeat() {
