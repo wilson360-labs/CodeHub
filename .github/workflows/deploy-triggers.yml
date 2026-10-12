@@ -1,17 +1,15 @@
 name: Deploy triggers
 
-# Dispara el despliegue de Render (backend) y Vercel (frontend) por API.
+# Fuerza el deploy de producción de Vercel por API en cada push a main.
+# La integración Git de Vercel dejó de auto-desplegar (producción congelada
+# desde el 30-sep), así que lo disparamos con el token ya existente
+# (VERCEL_TOKEN) y esperamos a que el build quede READY.
 #
-# Motivo: las integraciones Git nativas de Vercel/Render dejaron de
-# redesplegar en push (producción se quedó congelada). Este workflow
-# garantiza "push a main -> producción" sin depender de ellas, usando
-# los secretos que el repo YA tiene:
-#   · RENDER_API_KEY      (+ RENDER_SERVICE_ID opcional)
-#   - VERCEL_TOKEN
-#
-# Si un secreto falta, ese job avisa y se omite (no rompe el CI).
-# Si Render/Vercel cambian su API o el token caduca, el job falla y
-# queda visible aquí.
+# Render NO se dispara aquí en cada push: usa su
+# "Auto-Deploy: After CI Checks Pass" nativo. El job de Render queda solo
+# como RESPALDO MANUAL (se ejecuta con workflow_dispatch) por si algún día
+# vuelve a fallar; para usarlo hay que tener el secreto RENDER_API_KEY y,
+# opcionalmente, RENDER_SERVICE_ID (srv-xxxx).
 
 on:
   push:
@@ -22,74 +20,6 @@ permissions:
   contents: read
 
 jobs:
-  render:
-    name: Render (backend)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Disparar deploy en Render
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          COMMIT: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          if [ -z "${RENDER_API_KEY}" ]; then
-            echo "::warning::RENDER_API_KEY no configurado — se omite el deploy de Render."
-            exit 0
-          fi
-
-          if [ -n "${RENDER_SERVICE_ID}" ]; then
-            ID="${RENDER_SERVICE_ID}"
-          else
-            ID=$(curl -sf -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services?name=codehub&limit=1" | jq -r '.[0].id')
-          fi
-          if [ -z "${ID}" ] || [ "${ID}" = "null" ]; then
-            echo "::error::No se encontró el servicio 'codehub' en Render (revisa RENDER_API_KEY / RENDER_SERVICE_ID)."
-            exit 1
-          fi
-          echo "Servicio Render: ${ID}"
-
-          # Intento 1: deploy del commit exacto. Si falla (p.ej. el commit
-          # aún no es visible para el servicio), reintenta con deploy simple.
-          RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"commitId\":\"${COMMIT}\",\"clearCache\":\"do_not_clear\"}")
-          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
-          if [ -z "${DEPLOY_ID}" ]; then
-            echo "Reintentando deploy simple de Render tras: $(printf '%s' "${RESP}" | head -c 300)"
-            RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d '{"clearCache":"do_not_clear"}')
-            DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
-          fi
-
-          echo "Respuesta Render: $(printf '%s' "${RESP}" | head -c 600)"
-          if [ -z "${DEPLOY_ID}" ]; then
-            echo "::error::Render no devolvió un id de deploy."
-            exit 1
-          fi
-          echo "✅ Deploy de Render disparado: ${DEPLOY_ID}"
-
-          # Sondeo del estado del deploy (hasta ~10 min)
-          for i in $(seq 1 60); do
-            sleep 10
-            ST=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services/${ID}/deploys/${DEPLOY_ID}" \
-              | jq -r '.status // .deploy.status // empty')
-            echo "  estado: ${ST}"
-            case "${ST}" in
-              live) echo "✅ Render desplegado y live."; exit 0 ;;
-              build_failed|update_failed|canceled|pre_deploy_failed)
-                echo "::error::El deploy de Render terminó en '${ST}'. Revisa el dashboard de Render (Eventos/Logs)."
-                exit 1 ;;
-            esac
-          done
-          echo "::warning::Render sigue desplegando tras ~10 min; se deja el deploy en curso."
-
   vercel:
     name: Vercel (frontend)
     runs-on: ubuntu-latest
@@ -135,3 +65,72 @@ jobs:
             fi
           done
           echo "::warning::Vercel sigue construyendo tras ~4 min; se deja el deployment en curso."
+
+  render-manual:
+    name: Render (respaldo manual)
+    # Solo se ejecuta al lanzarlo a mano (workflow_dispatch), no en cada push:
+    # en push normal el deploy de Render lo hace su auto-deploy nativo.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Disparar deploy en Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_API_KEY}" ]; then
+            echo "::warning::RENDER_API_KEY no configurado — respaldo manual de Render omitido."
+            exit 0
+          fi
+
+          if [ -n "${RENDER_SERVICE_ID}" ]; then
+            ID="${RENDER_SERVICE_ID}"
+          else
+            ID=$(curl -sf -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services?name=codehub&limit=1" | jq -r '.[0].id')
+          fi
+          if [ -z "${ID}" ] || [ "${ID}" = "null" ]; then
+            echo "::error::No se encontró el servicio 'codehub' en Render (revisa RENDER_API_KEY / RENDER_SERVICE_ID)."
+            exit 1
+          fi
+          echo "Servicio Render: ${ID}"
+
+          RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"commitId\":\"${COMMIT}\",\"clearCache\":\"do_not_clear\"}")
+          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "Reintentando deploy simple de Render tras: $(printf '%s' "${RESP}" | head -c 300)"
+            RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache":"do_not_clear"}')
+            DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
+          fi
+
+          echo "Respuesta Render: $(printf '%s' "${RESP}" | head -c 600)"
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "::error::Render no devolvió un id de deploy."
+            exit 1
+          fi
+          echo "✅ Deploy de Render disparado: ${DEPLOY_ID}"
+
+          # Sondeo del estado del deploy (hasta ~10 min)
+          for i in $(seq 1 60); do
+            sleep 10
+            ST=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services/${ID}/deploys/${DEPLOY_ID}" \
+              | jq -r '.status // .deploy.status // empty')
+            echo "  estado: ${ST}"
+            case "${ST}" in
+              live) echo "✅ Render desplegado y live."; exit 0 ;;
+              build_failed|update_failed|canceled|pre_deploy_failed)
+                echo "::error::El deploy de Render terminó en '${ST}'. Revisa el dashboard de Render (Eventos/Logs)."
+                exit 1 ;;
+            esac
+          done
+          echo "::warning::Render sigue desplegando tras ~10 min; se deja el deploy en curso."
