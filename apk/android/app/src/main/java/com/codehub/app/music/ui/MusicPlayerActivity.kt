@@ -8,6 +8,8 @@ import android.net.Uri
 import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -37,12 +39,14 @@ import dev.brahmkshatriya.echo.common.clients.QuickSearchClient
 import dev.brahmkshatriya.echo.common.clients.RadioClient
 import dev.brahmkshatriya.echo.common.clients.SearchFeedClient
 import dev.brahmkshatriya.echo.common.models.Album
+import dev.brahmkshatriya.echo.common.models.Artist
 import dev.brahmkshatriya.echo.common.models.Shelf.Category
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.Feed
 import dev.brahmkshatriya.echo.common.models.Feed.Companion.loadAll
 import dev.brahmkshatriya.echo.common.models.Playlist
 import dev.brahmkshatriya.echo.common.models.QuickSearchItem
+import dev.brahmkshatriya.echo.common.models.Radio
 import dev.brahmkshatriya.echo.common.models.Shelf
 import dev.brahmkshatriya.echo.common.models.Tab
 import dev.brahmkshatriya.echo.common.models.Track
@@ -102,6 +106,19 @@ class MusicPlayerActivity : Activity() {
     private var currentTrack: Track? = null
     private val REQ_PICK_APK = 4201
 
+    // Navegación con historial (Inicio/Biblioteca → Ver todo/álbum/búsqueda…)
+    private val navStack = ArrayDeque<() -> Unit>()
+    private var currentScreen: (() -> Unit)? = null
+    private var lastRows: List<Row> = emptyList()
+    private var quickSearchJob: Runnable? = null
+
+    /** Envía filas al adaptador y recuerda el último feed (para la cola
+     *  contextual al tocar una canción). */
+    private fun submit(rows: List<Row>) {
+        lastRows = rows
+        adapter.submit(rows)
+    }
+
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         window.let { it.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
@@ -159,22 +176,22 @@ class MusicPlayerActivity : Activity() {
                     rows += Row.Info("Extensión inválida ignorada: $it")
                 }
                 extLabel.text = "Música"
-                adapter.submit(rows)
+                submit(rows)
                 return@launch
             }
             registry.select(activeExtension!!.id)
             extLabel.text = activeExtension?.metadata?.name ?: "Música"
-            refreshHome()
+            home()
         }
     }
 
     private fun refreshHome() {
         val ext = activeExtension ?: return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
+            submit(listOf(Row.Loading))
             val home = runCatching { ext.getAs<HomeFeedClient, Feed<Shelf>> { loadHomeFeed() }.getOrThrow() }
             if (home.isFailure) {
-                adapter.submit(listOf(Row.Info(
+                submit(listOf(Row.Info(
                     "El home no está disponible: " +
                             (home.exceptionOrNull()?.let { (it.cause ?: it).message } ?: "error desconocido")
                 )))
@@ -185,7 +202,7 @@ class MusicPlayerActivity : Activity() {
             val tab = extensionTabs.getOrNull(selectedTabIndex)
             val tabsRow = if (extensionTabs.isNotEmpty())
                 listOf(Row.Tabs(extensionTabs, selectedTabIndex)) else emptyList()
-            adapter.submit(downloadsRows() + tabsRow + MusicFeed.shelves(ext, homeFeed!!, tab) {
+            submit(downloadsRows() + tabsRow + MusicFeed.shelves(ext, homeFeed!!, tab) {
                 openMore(it)
             })
         }
@@ -194,14 +211,14 @@ class MusicPlayerActivity : Activity() {
     private fun refreshLibrary() {
         val ext = activeExtension ?: return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
+            submit(listOf(Row.Loading))
             val lib = runCatching { ext.getAs<LibraryFeedClient, Feed<Shelf>> { loadLibraryFeed() }.getOrThrow() }
             if (lib.isFailure) {
-                adapter.submit(listOf(Row.Info("La biblioteca no está disponible")))
+                submit(listOf(Row.Info("La biblioteca no está disponible")))
                 return@launch
             }
             libraryFeed = lib.getOrNull()
-            adapter.submit(downloadsRows() + MusicFeed.shelves(ext, libraryFeed!!) { openMore(it) })
+            submit(downloadsRows() + MusicFeed.shelves(ext, libraryFeed!!) { openMore(it) })
         }
     }
 
@@ -210,7 +227,9 @@ class MusicPlayerActivity : Activity() {
         val tracks = downloads.entries.value.mapNotNull { it.track() }
         if (tracks.isEmpty()) return emptyList()
         val rows = mutableListOf<Row>()
-        rows += Row.Header("Descargas · sin conexión", "${tracks.size} canción(es)")
+        rows += Row.Header("Descargas · sin conexión", "${tracks.size} canción(es)", "Gestionar ›") {
+            openDownloadsDialog()
+        }
         rows += Row.Header("▶ Reproducir todas", null, "Play ›") {
             val ext = activeExtension
             if (ext != null && tracks.isNotEmpty()) player.play(ext, tracks, 0)
@@ -219,72 +238,108 @@ class MusicPlayerActivity : Activity() {
         return rows
     }
 
-    private fun openMore(feed: Feed<Shelf>) {
+    private fun openMore(feed: Feed<Shelf>) = go { showMore(feed) }
+
+    private fun showMore(feed: Feed<Shelf>) {
         val ext = activeExtension ?: return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
-            adapter.submit(MusicFeed.shelves(ext, feed) { openMore(it) })
+            submit(listOf(Row.Loading))
+            submit(listOf(backRow()) + MusicFeed.shelves(ext, feed) { openMore(it) })
         }
     }
 
     // ------------------------------------------------------------------
-    // Navegación
+    // Navegación con historial
     // ------------------------------------------------------------------
+
+    /** Abre una pantalla nueva guardando la actual en la pila. */
+    private fun go(render: () -> Unit) {
+        currentScreen?.let { navStack.addLast(it) }
+        currentScreen = render
+        render()
+    }
+
+    /** Vuelve a la pantalla anterior; false si ya estamos en la raíz. */
+    private fun goBack(): Boolean {
+        if (navStack.isEmpty()) return false
+        val prev = navStack.removeLast()
+        currentScreen = prev
+        prev()
+        return true
+    }
+
+    override fun onBackPressed() {
+        if (!goBack()) super.onBackPressed()
+    }
+
+    private fun backRow(): Row = Row.Header("‹ Atrás", null, "") { goBack() }
+
+    private fun home() {
+        navStack.clear()
+        currentScreen = { refreshHome() }
+        refreshHome()
+    }
+
+    private fun library() {
+        navStack.clear()
+        currentScreen = { refreshLibrary() }
+        refreshLibrary()
+    }
 
     private fun openList(media: EchoMediaItem) {
-        val ext = activeExtension ?: return
         when (media) {
             is Track -> playTrack(media)
-            is Album, is Playlist -> openTracks(media)
-            is dev.brahmkshatriya.echo.common.models.Radio -> {
-                scope.launch {
-                    adapter.submit(listOf(Row.Loading))
-                    val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(media) }.getOrNull()
-                    if (feed == null) {
-                        adapter.submit(listOf(Row.Info("No se pudo cargar la radio")))
-                    } else {
-                        adapter.submit(MusicFeed.tracks(ext, feed))
-                    }
-                }
-            }
-
-            is dev.brahmkshatriya.echo.common.models.Artist -> {
-                scope.launch {
-                    adapter.submit(listOf(Row.Loading))
-                    val feed = ext.getAs<ArtistClient, Feed<Shelf>> { loadFeed(media) }.getOrNull()
-                    if (feed == null) {
-                        adapter.submit(listOf(Row.Info("No se pudo cargar el artista")))
-                    } else {
-                        adapter.submit(MusicFeed.shelves(ext, feed) { openMore(it) })
-                    }
-                }
-            }
+            is Album, is Playlist -> go { showTracks(media) }
+            is Radio -> go { showRadio(media) }
+            is Artist -> go { showArtist(media) }
         }
     }
 
-    private fun openTracks(media: EchoMediaItem) {
+    private fun showTracks(media: EchoMediaItem) {
         val ext = activeExtension ?: return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
-            var tracks: Feed<Track>? = null
-            when (media) {
-                is Playlist -> {
-                    tracks = ext.getAs<PlaylistClient, Feed<Track>> { loadTracks(media) }.getOrNull()
-                }
-                is Album -> {
-                    tracks = ext.getAs<AlbumClient, Feed<Track>?> { loadTracks(media) }.getOrNull()
-                }
-                else -> tracks = null
+            submit(listOf(Row.Loading))
+            val feed: Feed<Track>? = when (media) {
+                is Playlist -> ext.getAs<PlaylistClient, Feed<Track>> { loadTracks(media) }.getOrNull()
+                is Album -> ext.getAs<AlbumClient, Feed<Track>?> { loadTracks(media) }.getOrNull()
+                else -> null
             }
-            val feed = tracks ?: run {
-                adapter.submit(listOf(Row.Info("No se pudieron cargar los tracks")))
+            if (feed == null) {
+                submit(listOf(backRow(), Row.Info("No se pudieron cargar los tracks")))
                 return@launch
             }
             val rows = mutableListOf<Row>()
+            rows += backRow()
             rows += Row.Header(media.title, MusicFeed.uiItem(media).subtitle)
             rows += Row.Header("▶ Reproducir todo", null, "Play ›") { playAll(feed) }
             rows += MusicFeed.tracks(ext, feed)
-            adapter.submit(rows)
+            submit(rows)
+        }
+    }
+
+    private fun showRadio(media: EchoMediaItem) {
+        val ext = activeExtension ?: return
+        scope.launch {
+            submit(listOf(Row.Loading))
+            val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(media as Radio) }.getOrNull()
+            if (feed == null) {
+                submit(listOf(backRow(), Row.Info("No se pudo cargar la radio")))
+            } else {
+                submit(listOf(backRow()) + MusicFeed.tracks(ext, feed))
+            }
+        }
+    }
+
+    private fun showArtist(media: EchoMediaItem) {
+        val ext = activeExtension ?: return
+        scope.launch {
+            submit(listOf(Row.Loading))
+            val feed = ext.getAs<ArtistClient, Feed<Shelf>> { loadFeed(media as Artist) }.getOrNull()
+            if (feed == null) {
+                submit(listOf(backRow(), Row.Info("No se pudo cargar el artista")))
+            } else {
+                submit(listOf(backRow()) + MusicFeed.shelves(ext, feed) { openMore(it) })
+            }
         }
     }
 
@@ -301,23 +356,61 @@ class MusicPlayerActivity : Activity() {
         player.playTrack(ext, track)
     }
 
+    /** Click en una canción de una lista: encola el contexto (álbum, lista o
+     *  descargas) en vez de reproducir solo ese track. */
+    private fun playFromList(number: Int, track: Track) {
+        val ext = activeExtension ?: return
+        val group = trackGroup(number, track)
+        val index = group.indexOfFirst { it.id == track.id }
+        if (group.size > 1 && index >= 0) player.play(ext, group, index)
+        else player.playTrack(ext, track)
+    }
+
+    /** Reconstruye el grupo contiguo de tracks (una lista) que contiene el
+     *  click, a partir de las filas mostradas. */
+    private fun trackGroup(number: Int, track: Track): List<Track> {
+        val groups = mutableListOf<MutableList<Track>>()
+        var current: MutableList<Track>? = null
+        for (row in lastRows) {
+            if (row is Row.TrackRow) {
+                val g = current ?: mutableListOf<Track>().also { groups += it; current = it }
+                g += row.track
+            } else {
+                current = null
+            }
+        }
+        return groups.firstOrNull { it.getOrNull(number)?.id == track.id } ?: listOf(track)
+    }
+
     // ------------------------------------------------------------------
     // Búsqueda
     // ------------------------------------------------------------------
 
-    private fun performSearch(query: String) {
+    private fun performSearch(query: String) = go { showSearch(query) }
+
+    private fun showSearch(query: String) {
         val ext = activeExtension ?: return
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
+            submit(listOf(Row.Loading))
             val feed = ext.getAs<SearchFeedClient, Feed<Shelf>> { loadSearchFeed(trimmed) }.getOrNull()
             if (feed == null) {
-                adapter.submit(listOf(Row.Info("La extensión no soporta búsqueda")))
+                submit(listOf(backRow(), Row.Info("La extensión no soporta búsqueda")))
             } else {
-                adapter.submit(MusicFeed.shelves(ext, feed) { openMore(it) })
+                submit(listOf(backRow()) + MusicFeed.shelves(ext, feed) { openMore(it) })
             }
         }
+    }
+
+    /** Sugerencias inmediatas mientras se escribe (con retardo para no
+     *  golpear la extensión en cada tecla). */
+    private fun scheduleQuickSearch(query: String) {
+        quickSearchJob?.let { mainHandler.removeCallbacks(it) }
+        if (query.trim().length < 3) return
+        val job = Runnable { quickSearch(query) }
+        quickSearchJob = job
+        mainHandler.postDelayed(job, 300)
     }
 
     private fun quickSearch(query: String) {
@@ -334,7 +427,7 @@ class MusicPlayerActivity : Activity() {
                     is QuickSearchItem.Media -> Row.Card(MusicFeed.uiItem(item.media))
                 }
             }
-            if (rows.isNotEmpty()) adapter.submit(rows)
+            if (rows.isNotEmpty()) submit(rows)
         }
     }
 
@@ -367,6 +460,16 @@ class MusicPlayerActivity : Activity() {
         }
         scope.launch {
             player.failures.collect { msg ->
+                runOnUiThread { Toast.makeText(this@MusicPlayerActivity, msg, Toast.LENGTH_LONG).show() }
+            }
+        }
+        scope.launch {
+            player.events.collect { msg ->
+                runOnUiThread { Toast.makeText(this@MusicPlayerActivity, msg, Toast.LENGTH_SHORT).show() }
+            }
+        }
+        scope.launch {
+            downloads.failures.collect { msg ->
                 runOnUiThread { Toast.makeText(this@MusicPlayerActivity, msg, Toast.LENGTH_LONG).show() }
             }
         }
@@ -444,7 +547,7 @@ class MusicPlayerActivity : Activity() {
                             registry.select(ext.id)
                             extLabel.text = ext.metadata.name
                             selectedTabIndex = 0
-                            refreshHome()
+                            selectHomeTab()
                         }
                         which == exts.size -> pickApk()
                         which == exts.size + 1 -> askUrl()
@@ -557,8 +660,8 @@ class MusicPlayerActivity : Activity() {
             .show()
     }
 
-    private fun chooseHome() = refreshHome()
-    private fun chooseLibrary() = refreshLibrary()
+    private fun chooseHome() = home()
+    private fun chooseLibrary() = library()
 
     private fun styleTab(tab: TextView, selected: Boolean) {
         tab.setTypeface(
@@ -576,13 +679,13 @@ class MusicPlayerActivity : Activity() {
         if (selectedTabIndex != 0) selectedTabIndex = 0
         styleTab(tabHome, true)
         styleTab(tabLibrary, false)
-        refreshHome()
+        home()
     }
 
     private fun selectLibraryTab() {
         styleTab(tabHome, false)
         styleTab(tabLibrary, true)
-        refreshLibrary()
+        library()
     }
 
     private fun openSlide() {
@@ -690,6 +793,13 @@ class MusicPlayerActivity : Activity() {
             performSearch(searchField.text.toString())
             false
         }
+        searchField.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                scheduleQuickSearch(s?.toString().orEmpty())
+            }
+        })
         val btnSearch = MusicTheme.pill(ctx, "Buscar")
         btnSearch.setTextColor(MusicTheme.ACCENT)
         btnSearch.setOnClickListener { performSearch(searchField.text.toString()) }
@@ -703,7 +813,7 @@ class MusicPlayerActivity : Activity() {
 
         adapter = FeedAdapter(this, artwork)
         adapter.onCard = { openList(it) }
-        adapter.onTrackClick = { _, track -> playTrack(track) }
+        adapter.onTrackClick = { index, track -> playFromList(index, track) }
         adapter.onCategory = { openCategory(it) }
         adapter.onTabSelected = fun(index: Int) {
             selectedTabIndex = index
@@ -713,7 +823,7 @@ class MusicPlayerActivity : Activity() {
                 val tab = extensionTabs.getOrNull(index)
                 val tabsRow = if (extensionTabs.isNotEmpty())
                     listOf(Row.Tabs(extensionTabs, index)) else emptyList()
-                adapter.submit(tabsRow + MusicFeed.shelves(ext, feed, tab) { openMore(it) })
+                submit(tabsRow + MusicFeed.shelves(ext, feed, tab) { openMore(it) })
             }
         }
         list = RecyclerView(this).apply {
@@ -817,11 +927,60 @@ class MusicPlayerActivity : Activity() {
     }
 
     private fun openCategory(category: Category) {
-        val ext = activeExtension ?: return
         val feed = category.feed ?: return
+        go { showCategory(feed, category.title) }
+    }
+
+    private fun showCategory(feed: Feed<Shelf>, title: String) {
+        val ext = activeExtension ?: return
         scope.launch {
-            adapter.submit(listOf(Row.Loading))
-            adapter.submit(MusicFeed.shelves(ext, feed) { openMore(it) })
+            submit(listOf(Row.Loading))
+            val rows = mutableListOf<Row>()
+            rows += Row.Header("‹ Atrás", title, "") { goBack() }
+            rows += MusicFeed.shelves(ext, feed) { openMore(it) }
+            submit(rows)
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Gestión de descargas
+    // ------------------------------------------------------------------
+
+    private fun openDownloadsDialog() {
+        val entries = downloads.entries.value
+        if (entries.isEmpty()) {
+            Toast.makeText(this, "No hay descargas", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val labels = entries.map { e ->
+            val t = e.track()
+            val mb = e.size / (1024L * 1024L)
+            val artists = t?.artists?.joinToString(", ") { it.name }.orEmpty()
+            listOf(t?.title ?: e.trackId, mb.toString() + " MB")
+                .joinToString(" · ") + if (artists.isBlank()) "" else " · $artists"
+        }.toMutableList()
+        labels += "Vaciar todas las descargas"
+        AlertDialog.Builder(this)
+            .setTitle("Descargas (${entries.size})")
+            .setItems(labels.toTypedArray()) { _, which ->
+                if (which < entries.size) {
+                    downloads.remove(entries[which].trackId)
+                    Toast.makeText(this, "Descarga eliminada", Toast.LENGTH_SHORT).show()
+                    currentScreen?.invoke()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("Vaciar descargas")
+                        .setMessage("¿Eliminar las ${entries.size} canciones sin conexión?")
+                        .setPositiveButton("Vaciar") { _, _ ->
+                            downloads.clearAll()
+                            Toast.makeText(this, "Descargas eliminadas", Toast.LENGTH_SHORT).show()
+                            currentScreen?.invoke()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
     }
 }

@@ -78,15 +78,10 @@ class PlayerSlide(
 
     private lateinit var dlIcon: ImageView
     private lateinit var dlLabel: TextView
-    private var dlState: Boolean? = null
+    private var dlState: String? = null
 
     private var trackId: String? = null
     private var dragging = false
-    private var sleepAt = 0L
-    private val sleepRunnable = Runnable {
-        player.exo.pause()
-        Toast.makeText(context, "Temporizador: reproducción en pausa", Toast.LENGTH_SHORT).show()
-    }
     private var equalizer: Equalizer? = null
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
@@ -469,18 +464,40 @@ class PlayerSlide(
         refreshDownloadChip()
     }
 
-    /** Refleja en el chip si el track actual está descargado (offline). */
+    /** Refleja en el chip el estado de descarga del track actual (%). */
     private fun refreshDownloadChip() {
         val track = player.nowPlaying.value ?: return
-        val present = player.downloads?.lookup(track.id) != null
-        if (dlState == present) return
-        dlState = present
-        val res = if (present) R.drawable.ic_music_download_done else R.drawable.ic_music_download
-        val color = if (present) MusicTheme.ACCENT else MusicTheme.MUTED
+        val dl = player.downloads
+        val present = dl?.lookup(track.id) != null
+        val pct = dl?.progress?.value?.get(track.id)
+        val key: String
+        val label: String
+        val res: Int
+        val color: Int
+        when {
+            present -> {
+                key = "offline"; label = "Offline"
+                res = R.drawable.ic_music_download_done; color = MusicTheme.ACCENT
+            }
+            pct == -1 -> {
+                key = "error"; label = "Reintentar"
+                res = R.drawable.ic_music_download; color = 0xFFFF6B6B.toInt()
+            }
+            pct != null -> {
+                key = "dl$pct"; label = "$pct%"
+                res = R.drawable.ic_music_download; color = MusicTheme.ACCENT
+            }
+            else -> {
+                key = "none"; label = "Descargar"
+                res = R.drawable.ic_music_download; color = MusicTheme.MUTED
+            }
+        }
+        if (dlState == key) return
+        dlState = key
         runCatching {
             dlIcon.setImageResource(res)
             dlIcon.setColorFilter(color)
-            dlLabel.text = if (present) "Offline" else "Descargar"
+            dlLabel.text = label
             dlLabel.setTextColor(color)
         }
     }
@@ -497,14 +514,12 @@ class PlayerSlide(
 
     override fun dismiss() {
         main.removeCallbacks(ticker)
-        main.removeCallbacks(sleepRunnable)
         releaseEffects()
         super.dismiss()
     }
 
     private fun updated() {
         val track = player.nowPlaying.value
-        sleepAt = registry.globalPrefs.getLong("sleep_at", 0L)
         if (track != null) {
             if (track.id != trackId) {
                 trackId = track.id
@@ -589,7 +604,7 @@ class PlayerSlide(
     }
 
     private fun updateSleepLabel() {
-        val left = sleepAt - System.currentTimeMillis()
+        val left = player.sleepAt - System.currentTimeMillis()
         if (left > 0) {
             sleepLabel.text = "Dormir en ${((left / 1000 + 59) / 60).toInt()} min"
             sleepLabel.visibility = View.VISIBLE
@@ -805,15 +820,8 @@ class PlayerSlide(
         AlertDialog.Builder(context)
             .setTitle("Temporizador para dormir")
             .setItems(labels.toTypedArray()) { _, which ->
-                val minutes = options[which].second
-                main.removeCallbacks(sleepRunnable)
-                if (minutes > 0) {
-                    sleepAt = System.currentTimeMillis() + minutes
-                    main.postDelayed(sleepRunnable, minutes)
-                } else {
-                    sleepAt = 0L
-                }
-                registry.globalPrefs.edit().putLong("sleep_at", sleepAt).apply()
+                val duration = options[which].second
+                player.setSleepTimer(duration)
                 updateSleepLabel()
             }
             .setNegativeButton("Cancelar", null)
@@ -955,7 +963,11 @@ class PlayerSlide(
             gravity = Gravity.END
             val reset = MusicTheme.pill(context, "Restablecer", bg = MusicTheme.SURFACE_2)
             reset.setOnClickListener {
-                resetEffects(eq, rows, bands)
+                resetEffects(eq, bands)
+                // Reabrir para reflejar los valores por defecto en las barras.
+                dialogRef?.dismiss()
+                dialogRef = null
+                effectsDialog()
             }
             val ok = MusicTheme.pill(context, "Listo", bg = MusicTheme.ACCENT, color = MusicTheme.BG)
             ok.setOnClickListener { dialogRef?.dismiss() }
@@ -1028,7 +1040,7 @@ class PlayerSlide(
         return if (khz >= 10f) "${khz.toInt()} kHz" else "%.1f kHz".format(khz)
     }
 
-    private fun resetEffects(eq: Equalizer, rows: LinearLayout, bands: Int) {
+    private fun resetEffects(eq: Equalizer, bands: Int) {
         eqPrefs.edit()
             .putInt("eq_bass", 0)
             .putInt("eq_virtual", 0)

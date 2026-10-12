@@ -2,11 +2,14 @@ package com.codehub.app.music
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -20,6 +23,7 @@ import com.codehub.app.music.MusicMedia.decodeTrack
 import com.codehub.app.music.MusicMedia.extensionIdOf
 import com.codehub.app.music.MusicPlayerDuration.toClockTime
 import dev.brahmkshatriya.echo.common.MusicExtension
+import dev.brahmkshatriya.echo.common.models.ImageHolder
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.models.Track
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 import java.util.WeakHashMap
 
@@ -87,6 +92,29 @@ object MusicMedia {
     fun MediaItem.serverIndex(): Int = mediaMetadata.extras?.getInt(EXTRA_SERVER_INDEX, -1) ?: -1
 
     fun MediaItem.sourceIndex(): Int = mediaMetadata.extras?.getInt(EXTRA_SOURCE_INDEX, -1) ?: -1
+
+    // ------------------------------------------------------------------
+    // Portada (`codehub-art://`): el ImageHolder se serializa en la query
+    // y lo resuelve [SessionArtworkLoader] para la notificación, la pantalla
+    // de bloqueo y las salidas de sistema (espejo de `toUriWithJson` de
+    // Echo + su `PlayerBitmapLoader`).
+    // ------------------------------------------------------------------
+
+    const val ART_SCHEME = "codehub-art"
+
+    fun ImageHolder.toArtworkUri(): Uri {
+        val jsonText = json.encodeToString(ImageHolder.serializer(), this)
+        return Uri.parse("$ART_SCHEME://cover")
+            .buildUpon()
+            .appendQueryParameter("actual_data", jsonText)
+            .build()
+    }
+
+    fun Uri.artworkHolder(): ImageHolder? = runCatching {
+        if (scheme != ART_SCHEME) return@runCatching null
+        val raw = getQueryParameter("actual_data") ?: return@runCatching null
+        json.decodeFromString(ImageHolder.serializer(), raw)
+    }.getOrNull()
 }
 
 /**
@@ -118,7 +146,7 @@ object MusicPlayerDuration {
 @OptIn(UnstableApi::class)
 class MusicPlayer(
     private val context: Context,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
 
     /** Servers cargados por trackId (resueltos por [MusicMediaSource]). */
@@ -165,7 +193,57 @@ class MusicPlayer(
 
     val failures = MutableSharedFlow<String>()
 
+    /** Avisos puntuales (p. ej. fin del temporizador de dormir) para la UI. */
+    val events = MutableSharedFlow<String>()
+
+    // ------------------------------------------------------------------
+    // Temporizador de dormir (vive en el player, no en el slide: sigue
+    // contando aunque se cierre la UI, y se restaura tras reiniciar).
+    // ------------------------------------------------------------------
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("music_global", Context.MODE_PRIVATE)
+
+    /** Instante (epoch ms) en que se apagará la reproducción; 0 = sin timer. */
+    var sleepAt: Long = 0L
+        private set
+
+    private val sleepRunnable = Runnable {
+        sleepAt = 0L
+        prefs.edit().remove("sleep_at").apply()
+        if (exo.isPlaying) exo.pause()
+        scope.launch { events.emit("Temporizador: reproducción en pausa") }
+    }
+
+    /** Programa (durationMs > 0) o cancela (<= 0) el temporizador de dormir. */
+    fun setSleepTimer(durationMs: Long) {
+        handler.removeCallbacks(sleepRunnable)
+        if (durationMs <= 0L) {
+            sleepAt = 0L
+            prefs.edit().remove("sleep_at").apply()
+            return
+        }
+        sleepAt = System.currentTimeMillis() + durationMs
+        prefs.edit().putLong("sleep_at", sleepAt).apply()
+        handler.postDelayed(sleepRunnable, durationMs)
+    }
+
+    private fun restoreSleepTimer() {
+        val at = prefs.getLong("sleep_at", 0L)
+        if (at <= 0L) return
+        val left = at - System.currentTimeMillis()
+        if (left <= 0L) {
+            sleepAt = 0L
+            prefs.edit().remove("sleep_at").apply()
+            return
+        }
+        sleepAt = at
+        handler.postDelayed(sleepRunnable, left)
+    }
+
     init {
+        restoreSleepTimer()
         exo.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _isPlaying.value = isPlaying
@@ -401,10 +479,12 @@ class MusicPlayer(
             putInt(MusicMedia.EXTRA_SERVER_INDEX, serverIndex)
             putInt(MusicMedia.EXTRA_SOURCE_INDEX, sourceIndex)
         }
+        val cover = track.cover ?: track.background
         val metadata = MediaMetadata.Builder()
             .setTitle(track.title)
             .setArtist(track.artists.joinToString(", ") { it.name })
             .setAlbumTitle(track.album?.title)
+            .setArtworkUri(cover?.let { with(MusicMedia) { it.toArtworkUri() } })
             .setIsPlayable(track.isPlayable == Track.Playable.Yes)
             .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
             .setExtras(bundle)

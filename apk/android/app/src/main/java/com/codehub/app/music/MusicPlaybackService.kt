@@ -45,6 +45,7 @@ class MusicPlaybackService : MediaLibraryService() {
         notificationProvider.setSmallIcon(R.drawable.ic_music_play)
 
         session = MediaLibrarySession.Builder(this, player.exo, MusicAutoCallback(this))
+            .setBitmapLoader(SessionArtworkLoader(this))
             .setSessionActivity(pendingIntent)
             .build()
 
