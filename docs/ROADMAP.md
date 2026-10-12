@@ -106,6 +106,12 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 ### 4.2 App Hub / Workspace
 - **Qué:** pantalla unificada de las 34 tools con: recientes, favoritas, búsqueda instantánea, categorías, atajos `Ctrl+K`.
 - **Definición de hecho:** acceso a cualquier tool en ≤2 interacciones; favoritos sincronizados (Fase 1).
+- **▶ Avance (Fase 2.1, Oct 2026):** App Hub en `/tools` con **paleta de comandos `Ctrl+K`**
+  (atajo de teclado + botón «Buscar"): lista las tools agrupadas en ⭐ Favoritas / ⏱ Recientes /
+  Todas, búsqueda instantánea normalizada (título, categoría y etiquetas), navegación con
+  ↑↓/Enter/Esc y salto directo que abre y resalta la tarjeta. 100% frontend: reusa
+  `ch_favs`/`ch_recent` de Fase 1 y no toca los rate-limits del backend. **Parcial** (falta el
+  atajo global fuera de `/tools` y agrupar por categoría como secciones colapsables).
 
 ---
 

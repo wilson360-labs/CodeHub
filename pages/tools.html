@@ -363,6 +363,42 @@ footer a{color:var(--p);text-decoration:none}
 .card .fav.on{opacity:1;color:#ffcf5c;background:rgba(255,170,0,.14);border-color:rgba(255,170,0,.4)}
 @media(hover:none){.fav{opacity:1}}
 .fav.on:active{transform:scale(.9)}
+
+/* ═══════════════════════════════════════════════════════════════
+   APP HUB 2.0 (Fase 2 · 4.2) — paleta de comandos Ctrl+K
+   Pantalla unificada: favoritas + recientes + búsqueda instantánea
+   + salto directo a la tarjeta. Solo CSS estático, sin dependencias.
+   ═══════════════════════════════════════════════════════════════ */
+.hub-open{display:inline-flex;align-items:center;gap:.45rem;padding:.42rem .8rem;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--mono);font-size:.72rem;font-weight:600;cursor:pointer;transition:var(--tr);white-space:nowrap}
+.hub-open:hover{border-color:var(--p);color:var(--a);background:rgba(47,128,237,.1)}
+.hub-open kbd{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:.68rem}
+#hub-overlay{position:fixed;inset:0;z-index:9000;display:none;align-items:flex-start;justify-content:center;padding:9vh 1rem 1.5rem;background:rgba(4,4,10,.62);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+#hub-overlay.active{display:flex}
+.hub-panel{width:min(640px,100%);max-height:78vh;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--border-h);border-radius:var(--r);box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden;animation:hubIn .16s ease both}
+@keyframes hubIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.hub-head{display:flex;align-items:center;gap:.7rem;padding:.85rem 1rem;border-bottom:1px solid var(--border)}
+.hub-head>i{color:var(--a);font-size:.95rem}
+.hub-input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--text);font-family:var(--font);font-size:.98rem}
+.hub-input::placeholder{color:var(--muted)}
+.hub-kbd,.hub-foot kbd{font-family:var(--mono);font-size:.68rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:4px;padding:1px 5px;color:var(--muted)}
+.hub-results{overflow-y:auto;padding:.45rem;min-height:0}
+.hub-sec{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.6rem .7rem .25rem}
+.hub-item{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;padding:.55rem .7rem;border:0;border-radius:10px;background:transparent;color:var(--text);font-family:var(--font);font-size:.9rem;cursor:pointer;transition:background .12s ease}
+.hub-item:hover,.hub-item.sel{background:rgba(47,128,237,.14)}
+.hub-item .hi{width:30px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(47,128,237,.12);color:var(--a);font-size:.82rem}
+.hub-item .ht{display:flex;flex-direction:column;min-width:0;flex:1}
+.hub-item .hn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-item .hc{font-family:var(--mono);font-size:.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.hub-item .hstar{color:#ffcf5c;font-size:.72rem;margin-left:.4rem;flex:none}
+.hub-item mark{background:rgba(56,189,248,.22);color:var(--a);border-radius:3px;padding:0 1px}
+.hub-empty{padding:1.6rem 1rem;text-align:center;color:var(--muted);font-size:.85rem}
+.hub-foot{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:center;padding:.55rem .95rem;border-top:1px solid var(--border);color:var(--muted);font-size:.68rem}
+.hub-foot span{display:inline-flex;align-items:center;gap:.35rem}
+.card.hub-flash{border-color:var(--border-h)!important;box-shadow:0 0 0 2px var(--a),0 0 34px rgba(56,189,248,.35)!important;animation:hubPulse 1.3s ease}
+@keyframes hubPulse{0%,100%{box-shadow:0 0 0 2px var(--a),0 0 34px rgba(56,189,248,.35)}50%{box-shadow:0 0 0 3px var(--a),0 0 46px rgba(56,189,248,.55)}}
+@media(max-width:768px){#hub-overlay{padding:6vh .75rem 1rem}.hub-panel{max-height:84vh}}
+@media(max-width:480px){.hub-panel{width:100%}.hub-foot{display:none}}
+@media(prefers-reduced-motion:reduce){.hub-panel{animation:none}.card.hub-flash{animation:none}}
 </style>
 
 <link rel="stylesheet" href="../css/viewport-guard.css?v=20260915a">
@@ -489,6 +525,24 @@ footer a{color:var(--p);text-decoration:none}
     <button class="chip" onclick="filterTag('com',this)">🤝 Comunidad</button>
     <button class="chip" onclick="filterTag('fav',this)">⭐ Favoritas</button>
     <button class="chip" onclick="filterRecent(this)">⏱ Recientes</button>
+  </div>
+  <button type="button" class="hub-open" id="hub-open" aria-haspopup="dialog" aria-controls="hub-overlay" title="Búsqueda rápida de herramientas (Ctrl+K)"><i class="fas fa-magnifying-glass"></i> Buscar <kbd>Ctrl</kbd><kbd>K</kbd></button>
+</div>
+
+<!-- APP HUB 2.0 — paleta de comandos (Ctrl+K) -->
+<div id="hub-overlay" role="dialog" aria-modal="true" aria-label="App Hub — buscar herramientas">
+  <div class="hub-panel" role="document">
+    <div class="hub-head">
+      <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+      <input type="text" id="hub-input" class="hub-input" placeholder="Busca una herramienta, categoría o etiqueta…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="hub-results" aria-label="Buscar herramienta">
+      <kbd class="hub-kbd">Esc</kbd>
+    </div>
+    <div class="hub-results" id="hub-results" role="listbox" aria-label="Resultados"></div>
+    <div class="hub-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navegar</span>
+      <span><kbd>↵</kbd> abrir</span>
+      <span><kbd>Ctrl</kbd><kbd>K</kbd> buscar</span>
+    </div>
   </div>
 </div>
 
@@ -3920,6 +3974,179 @@ async function rvResolve(force) {
     }
     if (e.key === 'Enter' && pdnSelecting) pdnCrop();
   });
+})();
+</script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  APP HUB 2.0 (Fase 2 · 4.2) — paleta de comandos Ctrl+K
+//  Lista unificada de las tools del grid: favoritas (ch_favs) y
+//  recientes (ch_recent) primero, búsqueda instantánea normalizada
+//  y salto directo a la tarjeta (abre + resalta). Sin dependencias y
+//  sin tocar el rate-limit del backend (todo es frontend).
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+  var CATS={seg:'Seguridad',util:'Utilidad',net:'Network',conv:'Conversor',dis:'Diseño',dev:'Dev',ai:'IA',com:'Comunidad'};
+  var MAX_REC=8;
+  var tools=[], items=[], sel=-1, lastFocus=null;
+  var OV,INP,RES;
+
+  function gid(id){return document.getElementById(id);}
+  function norm(s){return (s==null?'':String(s)).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];});}
+  function favMap(){try{var o=JSON.parse(localStorage.getItem('ch_favs')||'{}');return(o&&typeof o==='object')?o:{};}catch(e){return{};}}
+  function recMap(){var m={};try{var a=JSON.parse(localStorage.getItem('ch_recent')||'[]');if(Array.isArray(a))a.forEach(function(x){if(x&&x.id)m[x.id]=x.ts||0;});}catch(e){}return m;}
+  function slug(card){try{return window._chSlug?window._chSlug(card):'';}catch(e){return'';}}
+
+  function collect(){
+    var out=[], cards=document.querySelectorAll('.grid .card');
+    for(var i=0;i<cards.length;i++){
+      var card=cards[i];
+      var h=card.querySelector('h2')||card.querySelector('.ch span');
+      var title=h?(h.textContent||'').trim():'';
+      if(!title)continue;
+      var ct=card.querySelector('.ct');
+      var tags=(card.dataset.tags||'').split(/\s+/).filter(function(t){return t&&t!=='fav';});
+      var ic=card.querySelector('.ci i');
+      out.push({
+        card:card, title:title, cat:(ct?ct.textContent:'').trim(), tags:tags,
+        icon:((ic&&ic.className)?ic.className:'fas fa-cube'),
+        id:slug(card),
+        hay:norm(title+' '+(card.dataset.tags||'')+(ct&&ct.textContent?(' '+ct.textContent):''))
+      });
+    }
+    return out;
+  }
+
+  function catLabel(t){
+    if(t.cat)return t.cat;
+    return t.tags.map(function(x){return CATS[x]||x;}).join(' · ');
+  }
+
+  function markTitle(title,q){
+    if(!q)return esc(title);
+    var nt=norm(title),nq=norm(q);
+    if(!nq||title.length!==nt.length)return esc(title);
+    var i=title.toLowerCase().indexOf(nq);
+    if(i<0)return esc(title);
+    return esc(title.slice(0,i))+'<mark>'+esc(title.slice(i,i+nq.length))+'</mark>'+esc(title.slice(i+nq.length));
+  }
+
+  function itemHTML(t,q,fav){
+    var i=items.length; items.push(t);
+    return '<button type="button" class="hub-item" role="option" data-i="'+i+'">'
+      +'<span class="hi" aria-hidden="true"><i class="'+esc(t.icon)+'"></i></span>'
+      +'<span class="ht"><span class="hn">'+markTitle(t.title,q)+'</span><span class="hc">'+esc(catLabel(t))+'</span></span>'
+      +(fav?'<span class="hstar" title="Favorita"><i class="fas fa-star"></i></span>':'')
+      +'</button>';
+  }
+
+  function render(q){
+    items=[]; sel=-1;
+    q=(q||'').trim();
+    var fav=favMap(), rec=recMap(), html='';
+    if(!q){
+      var favs=[], recs=[];
+      tools.forEach(function(t){if(fav[t.id])favs.push(t);});
+      tools.forEach(function(t){if(!fav[t.id]&&rec[t.id])recs.push(t);});
+      recs.sort(function(a,b){return (rec[b.id]||0)-(rec[a.id]||0);});
+      if(favs.length){ html+='<div class="hub-sec">⭐ Favoritas</div>'; favs.forEach(function(t){html+=itemHTML(t,'',true);}); }
+      if(recs.length){ html+='<div class="hub-sec">⏱ Recientes</div>'; recs.slice(0,MAX_REC).forEach(function(t){html+=itemHTML(t,'',!!fav[t.id]);}); }
+      html+='<div class="hub-sec">Todas las herramientas</div>';
+      tools.forEach(function(t){html+=itemHTML(t,'',!!fav[t.id]);});
+    }else{
+      var ql=norm(q);
+      var hits=tools.filter(function(t){return t.hay.indexOf(ql)>=0;});
+      if(!hits.length){ html='<div class="hub-empty">Sin resultados para “'+esc(q)+'”</div>'; }
+      else hits.forEach(function(t){html+=itemHTML(t,q,!!fav[t.id]);});
+    }
+    RES.innerHTML=html;
+    var first=RES.querySelector('.hub-item');
+    if(first){sel=0;first.classList.add('sel');}
+  }
+
+  function move(d){
+    var els=RES.querySelectorAll('.hub-item');
+    if(!els.length)return;
+    sel=(sel<0)?0:((sel+d+els.length)%els.length);
+    for(var i=0;i<els.length;i++)els[i].classList.toggle('sel',i===sel);
+    els[sel].scrollIntoView({block:'nearest'});
+  }
+
+  function choose(card){
+    close();
+    try{
+      activeTag='all';
+      var chips=document.querySelectorAll('.chip');
+      for(var i=0;i<chips.length;i++)chips[i].classList.remove('on');
+      if(chips[0])chips[0].classList.add('on');
+      var sw=document.querySelector('.sw input'); if(sw)sw.value='';
+      if(typeof applyFilter==='function')applyFilter('');
+    }catch(e){}
+    if(!card)return;
+    card.classList.remove('hidden');
+    try{
+      if(_openCard&&_openCard!==card)_openCard.classList.remove('card-open');
+      card.classList.add('card-open');
+      _openCard=card;
+    }catch(e){}
+    setTimeout(function(){
+      try{card.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){try{card.scrollIntoView();}catch(e2){}}
+      card.classList.add('hub-flash');
+      setTimeout(function(){card.classList.remove('hub-flash');},1400);
+    },60);
+  }
+
+  function open(){
+    if(!OV)return;
+    tools=collect();
+    lastFocus=document.activeElement;
+    OV.classList.add('active');
+    document.body.style.overflow='hidden';
+    INP.value='';
+    render('');
+    setTimeout(function(){try{INP.focus();}catch(e){}},30);
+  }
+  function close(){
+    if(!OV||!OV.classList.contains('active'))return;
+    OV.classList.remove('active');
+    document.body.style.overflow='';
+    if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}}
+  }
+  function isOpen(){return !!(OV&&OV.classList.contains('active'));}
+
+  function init(){
+    OV=gid('hub-overlay');INP=gid('hub-input');RES=gid('hub-results');
+    if(!OV||!INP||!RES)return;
+    var btn=gid('hub-open');
+    if(btn)btn.addEventListener('click',open);
+    OV.addEventListener('click',function(e){if(e.target===OV)close();});
+    INP.addEventListener('input',function(){render(INP.value);});
+    RES.addEventListener('click',function(e){
+      var b=e.target.closest?e.target.closest('.hub-item'):null;
+      if(!b)return;
+      var i=parseInt(b.getAttribute('data-i'),10);
+      if(items[i])choose(items[i].card);
+    });
+    RES.addEventListener('mousemove',function(e){
+      var b=e.target.closest?e.target.closest('.hub-item'):null;
+      if(!b)return;
+      var els=RES.querySelectorAll('.hub-item'), idx=Array.prototype.indexOf.call(els,b);
+      if(idx<0||idx===sel)return;
+      sel=idx;
+      for(var i=0;i<els.length;i++)els[i].classList.toggle('sel',i===sel);
+    });
+    document.addEventListener('keydown',function(e){
+      var k=(e.key||'').toLowerCase();
+      if((e.ctrlKey||e.metaKey)&&k==='k'){e.preventDefault();if(isOpen())close();else open();return;}
+      if(!isOpen())return;
+      if(e.key==='Escape'){e.preventDefault();close();return;}
+      if(e.key==='ArrowDown'){e.preventDefault();move(1);return;}
+      if(e.key==='ArrowUp'){e.preventDefault();move(-1);return;}
+      if(e.key==='Enter'){e.preventDefault();if(items[sel])choose(items[sel].card);return;}
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
