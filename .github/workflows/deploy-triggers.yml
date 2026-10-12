@@ -1,0 +1,121 @@
+name: Deploy triggers
+
+# Dispara el despliegue de Render (backend) y Vercel (frontend) por API.
+#
+# Motivo: las integraciones Git nativas de Vercel/Render dejaron de
+# redesplegar en push (producción se quedó congelada). Este workflow
+# garantiza "push a main -> producción" sin depender de ellas, usando
+# los secretos que el repo YA tiene:
+#   · RENDER_API_KEY      (+ RENDER_SERVICE_ID opcional)
+#   - VERCEL_TOKEN
+#
+# Si un secreto falta, ese job avisa y se omite (no rompe el CI).
+# Si Render/Vercel cambian su API o el token caduca, el job falla y
+# queda visible aquí.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render (backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Disparar deploy en Render
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_API_KEY}" ]; then
+            echo "::warning::RENDER_API_KEY no configurado — se omite el deploy de Render."
+            exit 0
+          fi
+
+          if [ -n "${RENDER_SERVICE_ID}" ]; then
+            ID="${RENDER_SERVICE_ID}"
+          else
+            ID=$(curl -sf -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services?name=codehub&limit=1" | jq -r '.[0].id')
+          fi
+          if [ -z "${ID}" ] || [ "${ID}" = "null" ]; then
+            echo "::error::No se encontró el servicio 'codehub' en Render (revisa RENDER_API_KEY / RENDER_SERVICE_ID)."
+            exit 1
+          fi
+          echo "Servicio Render: ${ID}"
+
+          # Intento 1: deploy del commit exacto. Si falla (p.ej. el commit
+          # aún no es visible para el servicio), reintenta con deploy simple.
+          RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{\"commitId\":\"${COMMIT}\",\"clearCache\":\"do_not_clear\"}")
+          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "Reintentando deploy simple de Render tras: $(printf '%s' "${RESP}" | head -c 300)"
+            RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
+              -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{"clearCache":"do_not_clear"}')
+            DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
+          fi
+
+          echo "Respuesta Render: $(printf '%s' "${RESP}" | head -c 600)"
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "::error::Render no devolvió un id de deploy."
+            exit 1
+          fi
+          echo "✅ Deploy de Render disparado: ${DEPLOY_ID}"
+
+  vercel:
+    name: Vercel (frontend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Disparar deploy de producción en Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN}" ]; then
+            echo "::warning::VERCEL_TOKEN no configurado — se omite el deploy de Vercel."
+            exit 0
+          fi
+
+          RESP=$(curl -sS -X POST "https://api.vercel.com/v13/deployments" \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"name\":\"code-hub\",\"project\":\"code-hub\",\"target\":\"production\",\"gitSource\":{\"type\":\"github\",\"repoId\":856671518,\"ref\":\"main\",\"sha\":\"${COMMIT}\"}}")
+
+          echo "Respuesta Vercel: $(printf '%s' "${RESP}" | head -c 600)"
+          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "::error::Vercel no devolvió un id de deployment."
+            exit 1
+          fi
+          echo "✅ Deploy de Vercel disparado: ${DEPLOY_ID}"
+
+          # Esperar a que Vercel termine el build (hasta ~4 min)
+          for i in $(seq 1 48); do
+            sleep 5
+            STATE=$(curl -s "https://api.vercel.com/v13/deployments/${DEPLOY_ID}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}" | jq -r '.readyState // empty')
+            echo "  estado: ${STATE}"
+            if [ "${STATE}" = "READY" ]; then
+              echo "✅ Vercel listo."
+              exit 0
+            fi
+            if [ "${STATE}" = "ERROR" ] || [ "${STATE}" = "CANCELED" ]; then
+              echo "::error::El deployment de Vercel terminó en ${STATE}."
+              exit 1
+            fi
+          done
+          echo "::warning::Vercel sigue construyendo tras ~4 min; se deja el deployment en curso."
