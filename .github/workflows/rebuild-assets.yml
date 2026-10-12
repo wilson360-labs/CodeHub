@@ -10,6 +10,9 @@ on:
     branches: [main]
     paths:
       - 'js/**'
+      - 'index.html'
+      - 'scripts/build.js'
+      - 'scripts/wire-build.js'
   workflow_dispatch:
 
 permissions:

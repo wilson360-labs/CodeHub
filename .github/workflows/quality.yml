@@ -58,8 +58,13 @@ jobs:
         run: |
           node -e "const m = require('./dist/build-manifest.json'); const n = Object.keys(m.bundles).length; if (n < 10) { throw new Error('pocos bundles: ' + n); } console.log('bundles ok: ' + n);"
 
+      # Nota: si un commit solo cambió js/** (sin re-bundlear), el rewrite
+      # determinista lo hace el workflow "Rebuild assets". Aquí re-cableamos en
+      # el sandbox antes de verificar, para no fallar por drift transitorio pero
+      # seguir detectando un build roto o bundles ausentes.
       - name: Verificar que index.html referencia bundles reales (sin drift)
         run: |
+          npm run wire
           node -e "const fs=require('fs'); const html=fs.readFileSync('index.html','utf8'); const refs=[...html.matchAll(/src=\"(\/dist\/assets\/[^\"]+)\"/g)].map(m=>m[1]); if(!refs.length){throw new Error('index.html sin refs a /dist/assets');} const missing=refs.filter(r=>!fs.existsSync(r.slice(1))); if(missing.length){throw new Error('refs rotas: '+missing.join(', '));} console.log('index.html -> '+refs.length+' bundles OK');"
 
   e2e:
