@@ -33,6 +33,7 @@ import com.codehub.app.R
 import com.codehub.app.music.ArtworkLoader
 import com.codehub.app.music.MusicPlayer
 import com.codehub.app.music.MusicPlayerDuration.toClockTime
+import com.codehub.app.music.MusicPlaylists
 import com.codehub.app.music.MusicRegistry
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import dev.brahmkshatriya.echo.common.models.Streamable
@@ -54,6 +55,8 @@ class PlayerSlide(
     private val artwork: ArtworkLoader,
     private val registry: MusicRegistry,
     private val extName: String? = null,
+    private val onLyrics: (() -> Unit)? = null,
+    private val onAddToPlaylist: ((Track) -> Unit)? = null,
 ) : Dialog(context) {
 
     private val main = Handler(Looper.getMainLooper())
@@ -176,11 +179,25 @@ class PlayerSlide(
         extCol.addView(tv("Reproduciendo desde", 11f, color = MusicTheme.MUTED))
         extView = tv(extName ?: "Extensión", 13f, bold = true, color = MusicTheme.ACCENT)
         extCol.addView(extView)
+        val lyricsButton = MusicTheme.icon(
+            context, R.drawable.ic_music_lyrics, 24, MusicTheme.MUTED
+        ).apply {
+            setOnClickListener { onLyrics?.invoke() }
+            background = MusicTheme.ripple(context, MusicTheme.oval(context, MusicTheme.SURFACE_2))
+        }
+        val listButton = MusicTheme.icon(
+            context, R.drawable.ic_music_playlist_add, 24, MusicTheme.MUTED
+        ).apply {
+            setOnClickListener { player.nowPlaying.value?.let { onAddToPlaylist?.invoke(it) } }
+            background = MusicTheme.ripple(context, MusicTheme.oval(context, MusicTheme.SURFACE_2))
+        }
         val close = MusicTheme.iconCircle(context, R.drawable.ic_music_close, 24)
         close.setOnClickListener { dismiss() }
 
         header.addView(likeButton, LinearLayout.LayoutParams(dp(40), dp(40)))
         header.addView(extCol)
+        header.addView(lyricsButton, LinearLayout.LayoutParams(dp(36), dp(36)))
+        header.addView(listButton, LinearLayout.LayoutParams(dp(36), dp(36)))
         header.addView(close, LinearLayout.LayoutParams(dp(40), dp(40)))
 
         // Cover (grande, casi a todo el ancho, esquinas suaves como Spotify)
@@ -568,8 +585,19 @@ class PlayerSlide(
         val id = trackId ?: return
         val prefs = registry.globalPrefs
         val set = (prefs.getStringSet("liked_tracks", emptySet()) ?: emptySet()).toMutableSet()
-        if (set.contains(id)) set.remove(id) else set.add(id)
+        val liked: Boolean
+        if (set.contains(id)) {
+            set.remove(id)
+            liked = false
+        } else {
+            set.add(id)
+            liked = true
+        }
         prefs.edit().putStringSet("liked_tracks", set).apply()
+        // Espejo en la lista local "Me gusta" para poder reproducirla.
+        player.nowPlaying.value?.let { track ->
+            runCatching { MusicPlaylists.shared(context).setLiked(track, liked) }
+        }
         updateLike()
     }
 
@@ -697,7 +725,7 @@ class PlayerSlide(
         }
 
         val header = tv("Cola de reproducción", 15f, bold = true, color = MusicTheme.TEXT)
-        val sub = tv("${queue.size} · Toca para reproducir", 12f, color = MusicTheme.MUTED).apply {
+        val sub = tv("${queue.size} · Toca para reproducir · ▲▼ reordenar", 12f, color = MusicTheme.MUTED).apply {
             setPadding(0, dp(2), 0, dp(6))
         }
         content.addView(header)
@@ -747,9 +775,37 @@ class PlayerSlide(
             }
             col.addView(titleLine)
             col.addView(subLine)
-            val remove = tv("Quitar", 12f, color = MusicTheme.MUTED).apply {
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(4), dp(4), dp(4))
+            val up = tv("▲", 11f, color = MusicTheme.MUTED).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+                background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+                if (index == 0) alpha = 0.3f
+                setOnClickListener {
+                    if (index > 0) {
+                        dlg.dismiss()
+                        player.moveInQueue(index, index - 1)
+                        updated()
+                        queueDialog()
+                    }
+                }
+            }
+            val down = tv("▼", 11f, color = MusicTheme.MUTED).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(8), dp(6), dp(8), dp(6))
+                background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+                if (index == queue.size - 1) alpha = 0.3f
+                setOnClickListener {
+                    if (index < queue.size - 1) {
+                        dlg.dismiss()
+                        player.moveInQueue(index, index + 1)
+                        updated()
+                        queueDialog()
+                    }
+                }
+            }
+            val remove = tv("✕", 13f, color = MusicTheme.MUTED).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(8), dp(4), dp(2), dp(4))
                 setOnClickListener {
                     dlg.dismiss()
                     player.removeFromQueue(index)
@@ -761,9 +817,16 @@ class PlayerSlide(
                     }
                 }
             }
+            val rowControls = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(up)
+                addView(down)
+                addView(remove)
+            }
             row.addView(num)
             row.addView(col, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            row.addView(remove)
+            row.addView(rowControls)
             rows.addView(row)
             if (index < queue.size - 1) {
                 rows.addView(View(context).apply { background = ColorDrawable(0x14FFFFFF) },

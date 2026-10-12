@@ -75,6 +75,7 @@ class FeedAdapter(
     var onCard: ((EchoMediaItem) -> Unit)? = null
     var onCategory: ((Category) -> Unit)? = null
     var onTrackClick: ((Int, Track) -> Unit)? = null
+    var onTrackLongClick: ((Int, Track) -> Unit)? = null
     var onTabSelected: ((Int) -> Unit)? = null
 
     private val rows = mutableListOf<Row>()
@@ -218,6 +219,11 @@ class FeedAdapter(
                 h.artists.text = row.track.artists.joinToString(", ") { it.name }
                 h.duration.text = row.track.duration?.let { clock(it) } ?: ""
                 holder.itemView.setOnClickListener { onTrackClick?.invoke(row.number, row.track) }
+                holder.itemView.setOnLongClickListener {
+                    onTrackLongClick?.invoke(row.number, row.track)
+                    true
+                }
+                h.more.setOnClickListener { onTrackLongClick?.invoke(row.number, row.track) }
             }
 
             is Row.Loading, is Row.Info -> Unit
@@ -384,11 +390,24 @@ class FeedAdapter(
         artists.id = ID_ARTISTS
         val duration = textView(parent, 12f, secondary = true)
         duration.id = ID_DURATION
+        val more = ImageView(parent.context).apply {
+            id = ID_MORE_TRACK
+            setImageResource(R.drawable.ic_music_more)
+            setColorFilter(MusicTheme.MUTED)
+            scaleType = ImageView.ScaleType.CENTER
+            layoutParams = LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginStart = dp(4) }
+            background = MusicTheme.ripple(
+                parent.context,
+                MusicTheme.oval(parent.context, android.graphics.Color.TRANSPARENT)
+            )
+            isClickable = true
+        }
         col.addView(title)
         col.addView(artists)
         cell.addView(number)
         cell.addView(col)
         cell.addView(duration)
+        cell.addView(more)
         return cell
     }
 
@@ -482,6 +501,7 @@ class FeedAdapter(
         val title: TextView = view.findViewById(ID_TITLE)
         val artists: TextView = view.findViewById(ID_ARTISTS)
         val duration: TextView = view.findViewById(ID_DURATION)
+        val more: ImageView = view.findViewById(ID_MORE_TRACK)
     }
 
     private class InfoVH(view: View) : VH(view) {
@@ -496,5 +516,6 @@ class FeedAdapter(
         const val ID_NUMBER = 0x05
         const val ID_ARTISTS = 0x06
         const val ID_DURATION = 0x07
+        const val ID_MORE_TRACK = 0x08
     }
 }

@@ -375,9 +375,54 @@ class MusicPlayer(
     fun removeFromQueue(index: Int) {
         if (index < 0 || index >= exo.mediaItemCount) return
         exo.removeMediaItem(index)
-        val q = _queue.value.toMutableList()
-        if (index < q.size) q.removeAt(index)
-        _queue.value = q
+        rebuildQueue()
+    }
+
+    /** Añade [track] al final de la cola (o lo reproduce si no hay nada). */
+    fun addToQueue(track: Track) = addAllToQueue(listOf(track))
+
+    /** Añade [track] justo después del elemento actual (siguiente en sonar). */
+    fun playNext(track: Track) = addAllToQueue(listOf(track), next = true)
+
+    /**
+     * Añade [tracks] a la cola. Con [next] = true se insertan justo después del
+     * track actual; si la cola está vacía se comporta como [play].
+     */
+    fun addAllToQueue(tracks: List<Track>, next: Boolean = false) {
+        if (tracks.isEmpty()) return
+        val ext = extension ?: return
+        if (exo.mediaItemCount == 0) {
+            play(ext, tracks, 0)
+            return
+        }
+        val items = tracks.map { buildItem(it, -1, -1) }
+        val at = if (next) (exo.currentMediaItemIndex + 1).coerceIn(0, exo.mediaItemCount)
+        else exo.mediaItemCount
+        exo.addMediaItems(at, items)
+        rebuildQueue()
+        events.tryEmit(
+            if (tracks.size == 1) "Añadido a la cola: ${tracks.first().title}"
+            else "${tracks.size} canciones añadidas a la cola"
+        )
+    }
+
+    /** Mueve un elemento de la cola de [from] a [to] (reordenar). */
+    fun moveInQueue(from: Int, to: Int) {
+        if (from == to) return
+        if (from < 0 || from >= exo.mediaItemCount) return
+        val target = to.coerceIn(0, exo.mediaItemCount - 1)
+        if (target == from) return
+        exo.moveMediaItem(from, target)
+        rebuildQueue()
+    }
+
+    /** Reconstruye [_queue] a partir de la timeline real de ExoPlayer. */
+    private fun rebuildQueue() {
+        val list = ArrayList<Track>(exo.mediaItemCount)
+        for (i in 0 until exo.mediaItemCount) {
+            exo.getMediaItemAt(i).decodeTrack()?.let { list += it }
+        }
+        _queue.value = list
     }
 
     /** Vacía la cola por completo y detiene la reproducción. */
