@@ -5182,8 +5182,63 @@ async function sendEmail(e) {
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(' ');
       const COMMANDS = {
-        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/memoria` — Panel visual para ver/entrenar tu memoria\n- `/edit-img <instrucción>` — Edita la imagen adjunta con IA\n- `/jarvis on` — Activa la voz estilo Jarvis de Wil.E\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo')),
+        '/help':    () => addMsg('ai', formatAIReply('**Comandos disponibles:**\n\n- `/help` — Muestra esta ayuda\n- `/img <descripción>` — Genera una imagen\n- `/enhance-img [png|jpg|webp]` — Mejora la imagen adjunta\n- `/entrenar <texto|url>` — Wil.E guarda contenido en tu memoria\n- `/memoria` — Panel visual para ver/entrenar tu memoria\n- `/edit-img <instrucción>` — Edita la imagen adjunta con IA\n- `/jarvis on` — Activa la voz estilo Jarvis de Wil.E\n- `/debug <código>` — Depura código con WIL.E\n- `/review <código>` — Review de código\n- `/readme` — Genera un README\n- `/translate <texto>` — Traduce texto\n- `/explain <código>` — Explica código\n- `/test <código>` — Genera tests\n- `/resumen <texto>` — Resume texto\n- `/clear` — Limpia el chat\n- `/skills` — Lista skills disponibles\n- `/model` — Muestra el modelo activo' + String.fromCharCode(10) + '- /clima <ciudad> — Clima actual de una ciudad' + String.fromCharCode(10) + '- /sismo [magnitud] — Sismos recientes (USGS; por defecto M>=4)' + String.fromCharCode(10) + '- /search <consulta> — Busqueda web con fuentes (Tavily)')),
         '/clear':   () => { history = []; msgs.innerHTML = ''; try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch {} addMsg('ai', 'Chat reiniciado.'); },
+        '/clima':   async () => {
+          if (!arg) return addMsg('ai', '🌤️ Usa: /clima <ciudad> — por ejemplo /clima Ciudad de Guatemala.');
+          const tl = addMsg('typing', '▌');
+          try {
+            const g = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(arg) + '&count=1&language=es&format=json').then(r => r.json()).then(d => (d && d.results && d.results[0]) || null);
+            if (!g) { tl.remove(); return addMsg('ai', 'No encontré la ciudad <b>' + escHtml(arg) + '</b>. Prueba con otro nombre (ej. Guatemala).'); }
+            const w = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + g.latitude + '&longitude=' + g.longitude + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto').then(r => r.json());
+            const c = (w && w.current) || {};
+            const WX = { 0:'☀️ Despejado',1:'🌤️ Mayormente despejado',2:'⛅ Parcialmente nublado',3:'☁️ Nublado',45:'🌫️ Niebla',48:'🌫️ Niebla con escarcha',51:'🌦️ Llovizna ligera',53:'🌦️ Llovizna',55:'🌧️ Llovizna intensa',61:'🌧️ Lluvia ligera',63:'🌧️ Lluvia',65:'🌧️ Lluvia intensa',71:'🌨️ Nieve ligera',73:'🌨️ Nieve',75:'❄️ Nieve intensa',80:'🌦️ Chubascos',81:'🌦️ Chubascos',82:'⛈️ Chubascos intensos',95:'⛈️ Tormenta eléctrica',96:'⛈️ Tormenta con granizo',99:'⛈️ Tormenta fuerte' };
+            const rows = [];
+            rows.push('<li>' + (WX[c.weather_code] || 'Clima actual') + '</li>');
+            if (c.temperature_2m != null) rows.push('<li>Temperatura: <b>' + Math.round(c.temperature_2m) + '°C</b>' + (c.apparent_temperature != null ? ' (sensación ' + Math.round(c.apparent_temperature) + '°C)' : '') + '</li>');
+            if (c.relative_humidity_2m != null) rows.push('<li>Humedad: ' + c.relative_humidity_2m + '%</li>');
+            if (c.wind_speed_10m != null) rows.push('<li>Viento: ' + Math.round(c.wind_speed_10m) + ' km/h</li>');
+            if (w && w.daily && w.daily.temperature_2m_max) rows.push('<li>Máx/Mín hoy: ' + Math.round(w.daily.temperature_2m_max[0]) + '° / ' + Math.round(w.daily.temperature_2m_min[0]) + '°</li>');
+            tl.remove();
+            addMsg('ai', '<b>🌡️ Clima en ' + escHtml(g.name || '') + (g.country ? ', ' + escHtml(g.country) : '') + '</b><ul class="ai-md-list">' + rows.join('') + '</ul>');
+          } catch (e) { tl.remove(); addMsg('ai', 'No pude consultar el clima ahora mismo. Revisa tu conexión e intenta de nuevo.'); }
+        },
+        '/sismo':   async () => {
+          const n = parseFloat(arg);
+          const minMag = (isFinite(n) && n > 0) ? String(n) : '4';
+          const tl = addMsg('typing', '▌');
+          try {
+            const r = await fetch(BACKEND_URL + '/api/sismos?minMag=' + encodeURIComponent(minMag) + '&limit=8');
+            const d = await r.json().catch(() => ({}));
+            tl.remove();
+            const list = (d && d.quakes) ? d.quakes : [];
+            if (!list.length) return addMsg('ai', '🌎 No hay sismos recientes con magnitud ≥ ' + escHtml(minMag) + '.');
+            const rows = list.map(q => {
+              const when = q.time ? new Date(q.time).toLocaleString('es-GT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+              return '<li><b>M' + Number(q.mag).toFixed(1) + '</b> · ' + escHtml(q.place || '') + (when ? ' <span style="opacity:.6">· ' + escHtml(when) + '</span>' : '') + (q.url ? ' · <a class="ai-md-link" href="' + escHtml(q.url) + '" target="_blank" rel="noopener noreferrer">detalle</a>' : '') + '</li>';
+            }).join('');
+            addMsg('ai', '<b>🌎 Sismos recientes (M ≥ ' + escHtml(minMag) + ')</b><ul class="ai-md-list">' + rows + '</ul>');
+          } catch (e) { tl.remove(); addMsg('ai', 'No pude consultar los sismos ahora mismo.'); }
+        },
+        '/search':  async () => {
+          if (!arg) return addMsg('ai', 'Usa: /search <consulta> — busca en la web con fuentes.');
+          const tl = addMsg('typing', '▌');
+          try {
+            const r = await fetch(BACKEND_URL + '/api/search/tavily?q=' + encodeURIComponent(arg));
+            const d = await r.json().catch(() => ({}));
+            tl.remove();
+            const results = (d && d.results) ? d.results : [];
+            if (!r.ok || !results.length) return addMsg('ai', 'No encontré resultados para <b>' + escHtml(arg) + '</b>. Prueba con otras palabras.');
+            const ans = d.answer ? '<div style="margin:.2rem 0 .5rem">' + escHtml(d.answer) + '</div>' : '';
+            const items = results.slice(0, 5).map(it => {
+              const u = String(it.url || '');
+              const safe = (u.indexOf('http://') === 0 || u.indexOf('https://') === 0) ? u : '';
+              const sn = String(it.content || it.snippet || '').slice(0, 180);
+              return '<li>' + (safe ? '<a class="ai-md-link" href="' + escHtml(safe) + '" target="_blank" rel="noopener noreferrer">' + escHtml(it.title || safe) + '</a>' : escHtml(it.title || '')) + (sn ? '<br><span style="opacity:.6;font-size:.88em">' + escHtml(sn) + '</span>' : '') + '</li>';
+            }).join('');
+            addMsg('ai', '<b>🔎 Resultados para: ' + escHtml(arg) + '</b>' + ans + '<ul class="ai-md-list">' + items + '</ul>');
+          } catch (e) { tl.remove(); addMsg('ai', 'La búsqueda web no está disponible ahora mismo.'); }
+        },
         '/img':     () => { if (!arg) return addMsg('ai', 'Usa: `/img <descripción de la imagen>`'); _forceImageGen = true; input.value = '🎨 genera una imagen de ' + arg; sendAI(); },
         '/debug':   () => { if (!arg) return addMsg('ai', 'Pega código después de `/debug` para que WIL.E lo analice.'); input.value = 'Depura este código y explica los errores: ' + arg; sendAI(); },
         '/review':  () => { if (!arg) return addMsg('ai', 'Pega código después de `/review` para el review.'); input.value = 'Haz un code review de este código, sugiere mejoras: ' + arg; sendAI(); },

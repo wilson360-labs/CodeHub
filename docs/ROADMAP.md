@@ -102,6 +102,13 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
   - Slash-commands (`/clima`, `/sismo`, `/search`, `/img`).
 - **Definición de hecho:** usuario logueado retoma una conversación de otra sesión; comandos ejecutan herramientas reales.
 - **Riesgo:** los endpoints de búsqueda/imagen ya tienen rate-limit — mantener los `chatLimiter`/`imageLimiter`.
+- **▶ Avance (Fase 2.2, Oct 2026):** comandos `/clima <ciudad>`, `/sismo [magnitud]` y
+  `/search <consulta>` añadidos al chat EMI (`index.html`). Son 100 % frontend y reutilizan
+  los endpoints ya desplegados: clima vía Open-Meteo (`geocoding-api` + `api.open-meteo.com`,
+  ya permitidos por la CSP), sismos vía `/api/sismos` (USGS) y búsqueda vía
+  `/api/search/tavily` (respeta su `chatLimiter`). Actualizan `/help` y muestran estado
+  «escribiendo» mientras cargan. `/img` ya existía. **Parcial** (faltan hilos/memoria en la
+  nube y voz e2e STT→LLM→TTS).
 
 ### 4.2 App Hub / Workspace
 - **Qué:** pantalla unificada de las 34 tools con: recientes, favoritas, búsqueda instantánea, categorías, atajos `Ctrl+K`.
