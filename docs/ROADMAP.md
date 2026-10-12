@@ -107,8 +107,10 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
   los endpoints ya desplegados: clima vía Open-Meteo (`geocoding-api` + `api.open-meteo.com`,
   ya permitidos por la CSP), sismos vía `/api/sismos` (USGS) y búsqueda vía
   `/api/search/tavily` (respeta su `chatLimiter`). Actualizan `/help` y muestran estado
-  «escribiendo» mientras cargan. `/img` ya existía. **Parcial** (faltan hilos/memoria en la
-  nube y voz e2e STT→LLM→TTS).
+  «escribiendo» mientras cargan. `/img` ya existía. Además, **voz extremo a extremo** vía el
+  toggle «Manos libres» en `js/emi-voice.js`: al hablar, el STT rellena el input, se envía
+  solo (`maybeAutoSend`) y la respuesta se locuta con el auto-speak/TTS de WIL.E.
+  **Parcial** (faltan los hilos/memoria en la nube, que dependen del backend).
 
 ### 4.2 App Hub / Workspace
 - **Qué:** pantalla unificada de las 34 tools con: recientes, favoritas, búsqueda instantánea, categorías, atajos `Ctrl+K`.

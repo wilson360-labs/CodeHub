@@ -44,6 +44,7 @@
     speakQueue   : [],
     lang         : localStorage.getItem('ch_lang') === 'en' ? 'en-US' : 'es-GT',
     autoSpeak    : JSON.parse(localStorage.getItem('emi_auto_speak') ?? 'false'),
+    e2e          : JSON.parse(localStorage.getItem('emi_e2e_voice') ?? 'false'),
     jarvis       : localStorage.getItem('emi_jarvis_voice') === '1',
   };
 
@@ -125,11 +126,15 @@
 
     rec.onend = () => {
       stopListening();
+      maybeAutoSend();
     };
     } // end HAS_RECOGNITION else
 
     /* ── Botón de auto-speak (siempre, incluso sin STT) ── */
     injectAutoSpeakToggle();
+
+    /* ── Botón de manos libres: STT → LLM → TTS ── */
+    injectE2EToggle();
 
     /* ── Exponer en window para uso externo ── */
     window.emiVoice = publicAPI;
@@ -159,7 +164,7 @@
       if (inputEl)  inputEl.placeholder  = 'Habla ahora…';
       window._sttCb = {
         onStart: () => {},
-        onResult: (txt) => { finishNativeStt(); if (inputEl) inputEl.value = (inputEl.value.trim() ? inputEl.value.trim() + ' ' : '') + txt; },
+        onResult: (txt) => { finishNativeStt(); if (inputEl) inputEl.value = (inputEl.value.trim() ? inputEl.value.trim() + ' ' : '') + txt; maybeAutoSend(); },
         onError: (msg) => { finishNativeStt(); showVoiceToast(String(msg).replace(/error_nativo_(\d+)/, ''), 'error'); }
       };
       try { CodeHubNative.sttStart('_sttCb'); } catch (e) { finishNativeStt(); showVoiceToast('Error al iniciar micrófono.', 'error'); }
@@ -196,6 +201,18 @@
     } else {
       startListening();
     }
+  }
+
+  /* Manos libres: al terminar de transcribir, envía solo tu mensaje para
+     cerrar el ciclo STT → LLM; la respuesta la locuta el auto-speak. */
+  function maybeAutoSend() {
+    if (!state.e2e) return;
+    const text = (inputEl && inputEl.value ? inputEl.value : '').trim();
+    if (!text) return;
+    if (typeof window.sendAI !== 'function') return;
+    /* No enviar si WIL.E sigue generando o ya hay un indicador de escritura */
+    if (document.querySelector('.ai-typing')) return;
+    try { window.sendAI(); } catch (e) {}
   }
 
   /* ════════════════════════════════════════════
@@ -423,6 +440,43 @@
   }
 
   /* ════════════════════════════════════════════
+     TOGGLE MANOS LIBRES (STT → LLM → TTS)
+  ════════════════════════════════════════════ */
+  function injectE2EToggle() {
+    const bottomBar = document.querySelector('.ai-bottom-bar');
+    if (!bottomBar || document.getElementById('emi-e2e-toggle')) return;
+
+    const btn = document.createElement('button');
+    btn.className   = 'ai-circle-btn';
+    btn.id          = 'emi-e2e-toggle';
+    btn.title       = 'Manos libres: habla y WIL.E responde en voz alta';
+    btn.setAttribute('aria-label', 'Toggle manos libres');
+    btn.innerHTML   = `
+      <div class="ai-circle-icon"><i class="fas fa-headset"></i></div>
+      <span class="ai-circle-label" data-subtitle="Manos libres">Manos libres</span>
+    `;
+    btn.onclick = () => {
+      state.e2e = !state.e2e;
+      try { localStorage.setItem('emi_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
+      /* Manos libres implica respuesta por voz: activa auto-speak */
+      if (state.e2e && !state.autoSpeak) {
+        state.autoSpeak = true;
+        try { localStorage.setItem('emi_auto_speak', 'true'); } catch (e) {}
+        const sb = document.getElementById('emi-speak-toggle');
+        const si = sb && sb.querySelector('i');
+        if (si) si.className = 'fas fa-volume-high';
+      }
+      showVoiceToast(
+        state.e2e
+          ? '🙌 Manos libres activado: habla y WIL.E responde en voz alta'
+          : '✋ Manos libres desactivado',
+        'info'
+      );
+    };
+    bottomBar.insertBefore(btn, bottomBar.firstChild);
+  }
+
+  /* ════════════════════════════════════════════
      TOAST DE NOTIFICACIÓN
   ════════════════════════════════════════════ */
   function showVoiceToast(msg, type = 'info') {
@@ -460,6 +514,11 @@
     get isListening() { return state.listening; },
     get isSpeaking()  { return state.speaking; },
     get autoSpeak()   { return state.autoSpeak; },
+    get e2e()         { return state.e2e; },
+    setE2E(on) {
+      state.e2e = !!on;
+      try { localStorage.setItem('emi_e2e_voice', JSON.stringify(state.e2e)); } catch (e) {}
+    },
     get jarvis()      { return state.jarvis; },
     setJarvis(on) {
       state.jarvis = !!on;
