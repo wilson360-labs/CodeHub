@@ -32,6 +32,9 @@ jobs:
       - name: Auditoría estructural PWA / backend
         run: node scripts/audit-project.js
 
+      - name: Coherencia de versiones (advisory)
+        run: node scripts/audit-versions.js
+
   build:
     name: Build esbuild (dist/ aislado)
     runs-on: ubuntu-latest

@@ -1,5 +1,234 @@
 [
   {
+    "version": "v7.14",
+    "date": "2026-09-29",
+    "type": "fix",
+    "title": "Endurecimiento de la capa de IA",
+    "changes": [
+      "enhance/edit con rate-limit propio, cupo diario y validación MIME",
+      "generate-image con cupo diario y caché de imágenes con budget de bytes",
+      "gates de /api/chat y /api/chat/stream validan contra cualquier provider (no solo Groq/Gemini)",
+      "/api/wil-e monta requireAuth (arregla RAG/memoria 401/403)",
+      "emi-voice traduce con payload/endpoints correctos; generateImage manda Authorization y sessionId",
+      "tools.html e index.html usan auth en generación de imagen"
+    ]
+  },
+  {
+    "version": "v7.13",
+    "date": "2026-09-29",
+    "type": "feature",
+    "title": "CodeHub solo oscuro + widget de accesos rápidos",
+    "changes": [
+      "Se retira el tema claro: theme-switcher fuerza dark, anti-FOUC y nube ignoran light",
+      "Widget de accesos rápidos con celdas redondeadas (ripple + stroke de acento) e iconos más grandes"
+    ]
+  },
+  {
+    "version": "v7.12",
+    "date": "2026-09-29",
+    "type": "fix",
+    "title": "Iconos en la vista Android",
+    "changes": [
+      "morphicons con fallback FA solo si :defined (evita icono de tema/campana invisibles)",
+      "loader Font Awesome verifica que el webfont cargó (document.fonts.check + reintento tras fonts.ready)",
+      "caja/line-height uniformes para emojis y glifos en WebView"
+    ]
+  },
+  {
+    "version": "v7.11",
+    "date": "2026-09-24",
+    "type": "fix",
+    "title": "Regenerar bundles dist + rewire",
+    "changes": [
+      "bundles regenerados (lazy-features/admin-hub/prefs)",
+      "rewire de index.html y sw.js v7.11"
+    ]
+  },
+  {
+    "version": "v7.10",
+    "date": "2026-09-23",
+    "type": "fix",
+    "title": "Auditoría de accesibilidad (30 hallazgos)",
+    "changes": [
+      "paleta de rutas reales, AI panel y focus-trap",
+      "breakpoints canónicos"
+    ]
+  },
+  {
+    "version": "v7.09",
+    "date": "2026-09-21",
+    "type": "feature",
+    "title": "Personalización de estilos",
+    "changes": [
+      "acento, esquinas, densidad, contraste, fondo y widgets",
+      "prefs.css/prefs.js como última capa de personalización"
+    ]
+  },
+  {
+    "version": "v7.07",
+    "date": "2026-09-19",
+    "type": "feature",
+    "title": "Cuenta: historial, favoritos y settings cloud (Fase 1)",
+    "changes": [
+      "historial de tools, favoritos de apps y settings en la nube (Fase 1)"
+    ]
+  },
+  {
+    "version": "v7.06",
+    "date": "2026-09-15",
+    "type": "fix",
+    "title": "Re-cableado de bundles tras reescribir JS",
+    "changes": [
+      "bundles editados en dist e index.html re-cableados (v7.06)"
+    ]
+  },
+  {
+    "version": "v7.05",
+    "date": "2026-09-15",
+    "type": "fix",
+    "title": "Precache sin bundles huérfanos",
+    "changes": [
+      "depurar bundles huérfanos del precache del Service Worker (v7.05)"
+    ]
+  },
+  {
+    "version": "v7.04",
+    "date": "2026-09-14",
+    "type": "feature",
+    "title": "Terminal web + APK con PTY compartida",
+    "changes": [
+      "backend node-pty y terminal compartida web/APK",
+      "sesión PTY persistente entre web y app"
+    ]
+  },
+  {
+    "version": "v7.03",
+    "date": "2026-09-14",
+    "type": "feature",
+    "title": "Backup del keystore de firma",
+    "changes": [
+      "respaldo y restauración del keystore de firma del APK"
+    ]
+  },
+  {
+    "version": "v6.96",
+    "date": "2026-09-11",
+    "type": "fix",
+    "title": "Precache del Service Worker sin huérfanos",
+    "changes": [
+      "depuración de bundles huérfanos del precache (v6.96)"
+    ]
+  },
+  {
+    "version": "v6.94",
+    "date": "2026-09-08",
+    "type": "feature",
+    "title": "Contenido E-E-A-T para AdSense",
+    "changes": [
+      "tools ampliado (guía + FAQ + descripciones) y servicios reforzados",
+      "página Acerca E-E-A-T con ruta /acerca en routing, sw y sitemap",
+      "enlaces cruzados entre páginas de contenido"
+    ]
+  },
+  {
+    "version": "v6.91",
+    "date": "2026-09-08",
+    "type": "feature",
+    "title": "Purga de CSS muerto",
+    "changes": [
+      "se eliminan componentes sin uso de components.css (-48KB, -171 reglas)"
+    ]
+  },
+  {
+    "version": "v6.90",
+    "date": "2026-09-08",
+    "type": "feature",
+    "title": "Font Awesome subseteado",
+    "changes": [
+      "webfonts -89% (300KB → 34KB)",
+      "all.min.css -74% (74KB → 19KB)"
+    ]
+  },
+  {
+    "version": "v6.88",
+    "date": "2026-09-07",
+    "type": "feature",
+    "title": "Generador de CV",
+    "changes": [
+      "plantillas de currículum, export PDF y sugerencias con IA"
+    ]
+  },
+  {
+    "version": "v6.87",
+    "date": "2026-09-07",
+    "type": "feature",
+    "title": "Cola de escritura offline",
+    "changes": [
+      "cola con IndexedDB para ratings y memoria de Wil.E sin conexión"
+    ]
+  },
+  {
+    "version": "v6.78",
+    "date": "2026-09-05",
+    "type": "feature",
+    "title": "Push de sismos por magnitud",
+    "changes": [
+      "umbral M4/M5/M6 configurable por usuario, independiente del clima",
+      "fase lunar en el panel geográfico y widget Android día/noche real"
+    ]
+  },
+  {
+    "version": "v6.76",
+    "date": "2026-09-05",
+    "type": "feature",
+    "title": "Centro de Operaciones + auditoría de seguridad",
+    "changes": [
+      "monitoreo en vivo (CPU/red/conexiones) con ahorro de batería",
+      "escaneo de seguridad con score 0-100 sobre cabeceras y TLS"
+    ]
+  },
+  {
+    "version": "v6.75",
+    "date": "2026-09-05",
+    "type": "feature",
+    "title": "Motor geo unificado + Sol PRO",
+    "changes": [
+      "CHGeo unifica clima y sismos (Leaflet, ubicación y cielo compartidos)",
+      "panel de Sol con cielo animado, arco solar/lunar y horarios reales"
+    ]
+  },
+  {
+    "version": "v6.73",
+    "date": "2026-09-04",
+    "type": "feature",
+    "title": "Sección Sismos con mapa",
+    "changes": [
+      "mapa Carto dark con filtro por magnitud y 'mi zona'",
+      "backend GET /api/sismos (proxy USGS filtrable)",
+      "push sísmico apunta a la sección de sismos"
+    ]
+  },
+  {
+    "version": "v6.55",
+    "date": "2026-09-01",
+    "type": "fix",
+    "title": "Mapa del clima autohospedado",
+    "changes": [
+      "Leaflet y su CSS ya no dependen de CSP/CDN",
+      "arreglo del botón A2HS y leaflet offline para el APK"
+    ]
+  },
+  {
+    "version": "v6.48",
+    "date": "2026-08-29",
+    "type": "feature",
+    "title": "Wil.E: memoria entrenable, RAG y cifrado E2E",
+    "changes": [
+      "capa de inteligencia con memoria entrenable y RAG",
+      "cifrado E2E de los datos de memoria"
+    ]
+  },
+  {
     "version": "v6.35",
     "date": "2026-08-25",
     "type": "feature",

@@ -13,6 +13,7 @@
     "audit:project": "node scripts/audit-project.js",
     "audit:syntax": "node scripts/syntax-check.js",
     "audit:refs": "node scripts/audit-refs.js",
+    "audit:versions": "node scripts/audit-versions.js",
     "audit:inline": "node scripts/check-inline.js",
     "update:apk": "node scripts/update-apk-config.js",
     "lighthouse": "node scripts/lighthouse-audit.js",

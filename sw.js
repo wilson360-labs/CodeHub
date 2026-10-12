@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════
-//  CodeHub SW v5.1 — Wilson.E 2026
+//  CodeHub SW — Wilson.E 2026
+//  Versión vigente: ver la constante VERSION más abajo
+//  (build-apk.yml publica la release del APK como apk-<VERSION>).
 //  PWA mejorada: cache inteligente + offline + sync + update
 //  + Push Notifications (app updates + clima)
 //  v5.0: ESTRATEGIA DE CACHÉ CAMBIADA — antes html/css/js
