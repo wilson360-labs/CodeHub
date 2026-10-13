@@ -63,6 +63,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Reproductor "slide" de CodeHub: el player nativo que corre extensiones
@@ -409,7 +410,9 @@ class MusicPlayerActivity : Activity() {
     private fun playAll(tracks: Feed<Track>) {
         val ext = activeExtension ?: return
         scope.launch {
-            val list = tracks.loadAll()
+            // La carga de páginas del feed hace red: fuera del hilo principal.
+            val list = runCatching { withContext(Dispatchers.IO) { tracks.loadAll() } }
+                .getOrNull().orEmpty()
             if (list.isNotEmpty()) player.play(ext, list, 0)
         }
     }
@@ -1418,11 +1421,13 @@ class MusicPlayerActivity : Activity() {
                 .setCancelable(true)
                 .show()
             val tracks = runCatching {
-                val base = ext.getAs<RadioClient, Radio> { radio(track, null) }.getOrNull()
-                    ?: return@runCatching emptyList<Track>()
-                val loaded = ext.getAs<RadioClient, Radio> { loadRadio(base) }.getOrNull() ?: base
-                val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(loaded) }.getOrNull()
-                feed?.loadAll().orEmpty()
+                withContext(Dispatchers.IO) {
+                    val base = ext.getAs<RadioClient, Radio> { radio(track, null) }.getOrNull()
+                        ?: return@withContext emptyList<Track>()
+                    val loaded = ext.getAs<RadioClient, Radio> { loadRadio(base) }.getOrNull() ?: base
+                    val feed = ext.getAs<RadioClient, Feed<Track>> { loadTracks(loaded) }.getOrNull()
+                    feed?.loadAll().orEmpty()
+                }
             }.getOrNull().orEmpty()
             loading.dismiss()
             if (tracks.isEmpty()) {
@@ -1467,7 +1472,9 @@ class MusicPlayerActivity : Activity() {
         val feed = ext.getAs<LyricsClient, Feed<Lyrics>> {
             searchTrackLyrics(ext.id, track)
         }.getOrNull() ?: return null
-        val candidates = runCatching { feed.pagedDataOfFirst().loadAll() }.getOrNull().orEmpty()
+        val candidates = runCatching {
+            withContext(Dispatchers.IO) { feed.pagedDataOfFirst().loadAll() }
+        }.getOrNull().orEmpty()
         val first = candidates.firstOrNull() ?: return null
         return if (first.lyrics != null) first
         else ext.getAs<LyricsClient, Lyrics> { loadLyrics(first) }.getOrNull() ?: first

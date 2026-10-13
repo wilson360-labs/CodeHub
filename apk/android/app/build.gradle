@@ -17,8 +17,8 @@ android {
         // compara ese tag contra este versionName. En CI, el workflow
         // "Sincronizar versión" sobreescribe ambos valores desde sw.js para que
         // la versión instalada siempre coincida con el tag del release.
-        versionCode 7
-        versionName "7.15"
+        versionCode 8
+        versionName "7.16"
     }
 
     signingConfigs {

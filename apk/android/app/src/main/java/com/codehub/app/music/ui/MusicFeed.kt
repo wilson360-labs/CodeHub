@@ -10,33 +10,45 @@ import dev.brahmkshatriya.echo.common.models.Radio
 import dev.brahmkshatriya.echo.common.models.Shelf
 import dev.brahmkshatriya.echo.common.models.Tab
 import dev.brahmkshatriya.echo.common.models.Track
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Convertidor de feeds Echo a filas del adaptador del reproductor. */
 object MusicFeed {
 
+    // La carga del feed (`getPagedData` + `PagedData.loadAll`) hace red dentro
+    // de la extensión; la app la invoca desde `Dispatchers.Main` (la Activity),
+    // así que aquí se conmuta a IO. Sin esto, Android lanza
+    // NetworkOnMainThreadException (mensaje null) y el runCatching lo mostraba
+    // como el genérico "Error al cargar el feed". Echo hace lo mismo en
+    // `FeedData` (`withContext(Dispatchers.IO) { feed.getPagedData(tab) }`).
     suspend fun shelves(
         extension: MusicExtension,
         feed: Feed<Shelf>,
         tab: Tab? = null,
         onMore: (Feed<Shelf>) -> Unit = {},
-    ): List<Row> = runCatching {
-        val data = feed.getPagedData(tab)
-        data.pagedData.loadAll().flatMap { shelfToRows(it, onMore) }
-    }.getOrElse { listOf(Row.Info(it.message ?: "Error al cargar el feed")) }
+    ): List<Row> = withContext(Dispatchers.IO) {
+        runCatching {
+            val data = feed.getPagedData(tab)
+            data.pagedData.loadAll().flatMap { shelfToRows(it, onMore) }
+        }.getOrElse { listOf(Row.Info(it.message ?: "Error al cargar el feed")) }
+    }
 
     suspend fun tracks(
         extension: MusicExtension,
         feed: Feed<Track>,
         title: String? = null,
-    ): List<Row> = runCatching {
-        val rows = mutableListOf<Row>()
-        if (title != null) rows += Row.Header(title, null)
-        val all = feed.pagedDataOfFirst().loadAll()
-        all.onEachIndexed { index, track ->
-            rows += Row.TrackRow(index, track)
-        }
-        rows
-    }.getOrElse { listOf(Row.Info(it.message ?: "No se pudieron cargar los tracks")) }
+    ): List<Row> = withContext(Dispatchers.IO) {
+        runCatching {
+            val rows = mutableListOf<Row>()
+            if (title != null) rows += Row.Header(title, null)
+            val all = feed.pagedDataOfFirst().loadAll()
+            all.onEachIndexed { index, track ->
+                rows += Row.TrackRow(index, track)
+            }
+            rows
+        }.getOrElse { listOf(Row.Info(it.message ?: "No se pudieron cargar los tracks")) }
+    }
 
     fun trackRows(tracks: List<Track>, start: Int = 0): List<Row> =
         tracks.mapIndexed { index, track -> Row.TrackRow(start + index, track) }

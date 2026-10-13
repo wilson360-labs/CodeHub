@@ -150,6 +150,19 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 - **Definición de hecho:** instalar el APK del tag X deja de avisar hasta que se
   publique el tag X+1.
 
+### 5.5 Feed del reproductor de música (APK)
+
+- **Qué:** el feed del reproductor (Inicio/Biblioteca/artista/categoría) mostraba
+  "Error al cargar el feed". `MusicFeed.shelves`/`tracks` invocaban
+  `feed.getPagedData(tab)` y `PagedData.loadAll()` desde `Dispatchers.Main`, pero
+  esos métodos hacen red dentro de la extensión → `NetworkOnMainThreadException`
+  (mensaje nulo), que `runCatching` convertía en el texto de error genérico.
+- **✔ Corregido (Oct 2026):** la carga del feed corre en `Dispatchers.IO` (como
+  `FeedData.kt` de Echo); también `playAll`, radio y letras. La UI (`submit`)
+  sigue en el hilo principal.
+- **Definición de hecho:** el feed carga en un dispositivo real sin el mensaje de
+  error; canciones, radio y letras siguen funcionando.
+
 ---
 
 ## 6. Anti-objetivos (NO hacer)
