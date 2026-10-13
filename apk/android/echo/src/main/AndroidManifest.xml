@@ -47,10 +47,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Tema propio: Theme.CodeHub hereda de android:Theme.Material (no
+             AppCompat/Material3), y MainActivity es AppCompatActivity → sin un
+             tema Material3, super.onCreate() lanza "You need to use a
+             Theme.AppCompat theme". Echo luego ajusta la variante con
+             setTheme(getAppTheme()) (Default/Amoled/BigCover). -->
         <activity
             android:name=".MainActivity"
             android:exported="false"
             android:launchMode="singleTop"
+            android:theme="@style/Default"
             android:windowSoftInputMode="stateVisible|adjustPan" />
 
         <activity
@@ -59,6 +65,7 @@
             android:enabled="false"
             android:exported="false"
             android:launchMode="singleTop"
+            android:theme="@style/Default"
             android:windowSoftInputMode="stateVisible|adjustPan" />
 
         <!-- Clase propia (subclase de FileProvider) para no chocar con el
