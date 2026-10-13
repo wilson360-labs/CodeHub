@@ -2,6 +2,7 @@ package dev.brahmkshatriya.echo
 
 import android.content.Context
 import coil3.SingletonImageLoader
+import dev.brahmkshatriya.echo.MainActivity.Companion.getMainActivity
 import dev.brahmkshatriya.echo.di.DI
 import dev.brahmkshatriya.echo.utils.ContextUtils.getSettings
 import org.koin.android.ext.koin.androidContext
@@ -31,6 +32,16 @@ object EchoBoot {
     /** ¿Koin (y el WorkManager factory) del reproductor quedó operativo? */
     @JvmStatic
     fun isReady(): Boolean = ready
+
+    /**
+     * Activity de entrada de Echo. Echo alterna `MainActivity` y
+     * `MainActivity$Back` (ajuste "back animation") habilitando uno y
+     * deshabilitando el otro con `setComponentEnabledSetting`. Lanzar siempre
+     * `MainActivity` fallaría cuando BACK_ANIM está activo (queda deshabilitada);
+     * este accesor devuelve la clase habilitada correcta.
+     */
+    @JvmStatic
+    fun mainActivity(context: Context): Class<*> = context.getMainActivity()
 
     /**
      * Enciende Koin para el reproductor Echo. Idempotente y seguro de llamar

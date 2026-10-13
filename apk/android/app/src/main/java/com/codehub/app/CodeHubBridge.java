@@ -896,8 +896,11 @@ public class CodeHubBridge {
         }
         if (dev.brahmkshatriya.echo.EchoBoot.isReady()) {
             try {
-                Intent i = new Intent();
-                i.setClassName(activity, "dev.brahmkshatriya.echo.MainActivity");
+                // Echo alterna MainActivity y MainActivity$Back segun el ajuste
+                // "back animation" (habilita uno y deshabilita el otro), así que
+                // el nombre fijo de la clase no sirve: se resuelve el vigente.
+                Class<?> echoEntry = dev.brahmkshatriya.echo.EchoBoot.mainActivity(activity);
+                Intent i = new Intent(activity, echoEntry);
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity.startActivity(i);
                 return;
