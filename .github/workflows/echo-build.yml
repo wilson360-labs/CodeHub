@@ -108,6 +108,28 @@ jobs:
           echo "::error:::app:assembleDebug falló (ver resumen/logs)"
           exit 1
 
+      - name: Verificar componentes media3 unicos
+        if: always()
+        run: |
+          # media3 exige EXACTAMENTE un receptor ACTION_MEDIA_BUTTON
+          # (MediaSessionLegacyStub) y un servicio MediaLibraryService
+          # (MediaButtonReceiver). Con dos de cualquiera arranca el crash:
+          # "Expected 1 ... found 2". Se valida sobre el manifiesto fusionado
+          # para no depender de probar en dispositivo.
+          MM=$(find apk/android/app/build/intermediates -name AndroidManifest.xml 2>/dev/null | grep -iE 'merged_manifest' | head -n 1)
+          if [ -z "$MM" ]; then
+            echo "::warning::No se encontró el manifiesto fusionado; se omite la verificación."
+            exit 0
+          fi
+          echo "Manifiesto fusionado: $MM"
+          RECV=$(grep -c '<action android:name="android.intent.action.MEDIA_BUTTON"' "$MM" || true)
+          SVC=$(grep -c '<action android:name="androidx.media3.session.MediaLibraryService"' "$MM" || true)
+          echo "receptores MEDIA_BUTTON=$RECV  servicios MediaLibraryService=$SVC"
+          rc=0
+          [ "$RECV" = "1" ] || { echo "::error::media3 necesita exactamente 1 receptor ACTION_MEDIA_BUTTON (hay $RECV); PlayerService crashea al crearse"; rc=1; }
+          [ "$SVC" = "1" ] || { echo "::error::media3 necesita exactamente 1 servicio MediaLibraryService (hay $SVC); crash al pulsar boton de medios"; rc=1; }
+          exit $rc
+
       - name: Subir logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
