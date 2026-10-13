@@ -1,0 +1,101 @@
+name: Echo module (rama)
+
+# Workflow de iteración para el injerto del reproductor Echo Nightly.
+# Solo compila (no publica release) y se dispara en ramas de trabajo, para
+# poder iterar sin tocar main ni romper el pipeline de APK.
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'echo/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar :echo + :app (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        id: setup-android
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        continue-on-error: true
+
+      - name: Accept SDK licenses
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -f "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          fi
+
+      - name: Compile :echo (debug)
+        id: echo
+        working-directory: apk/android
+        continue-on-error: true
+        run: |
+          set +e
+          gradle :echo:assembleDebug --stacktrace > "$RUNNER_TEMP/echo-build.log" 2>&1
+          rc=$?
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/echo-ok"; fi
+          echo "== :echo:assembleDebug rc=$rc =="
+          if [ -f "$RUNNER_TEMP/echo-build.log" ]; then tail -n 40 "$RUNNER_TEMP/echo-build.log"; fi
+          exit $rc
+
+      - name: Compile :app (debug, con :echo)
+        working-directory: apk/android
+        run: |
+          set +e
+          gradle :app:assembleDebug --stacktrace > "$RUNNER_TEMP/app-build.log" 2>&1
+          rc=$?
+          echo "gradle_rc=$rc" >> "$GITHUB_ENV"
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/app-build-ok"; fi
+          exit $rc
+
+      - name: Resumen de errores
+        if: always()
+        run: |
+          for L in "$RUNNER_TEMP/echo-build.log" "$RUNNER_TEMP/app-build.log"; do
+            [ -f "$L" ] || continue
+            echo "===== $L ====="
+            echo "--- errores kotlinc (e:) ---"
+            grep -nE '^e: ' "$L" | head -n 80 || true
+            echo "--- causa Gradle ---"
+            grep -nE 'FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine)' "$L" | head -n 40 || true
+          done
+          exit 0
+
+      - name: Fail si :app no compila
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/app-build-ok" ]; then echo "compile :app OK"; exit 0; fi
+          echo "::error:::app:assembleDebug falló (ver resumen/logs)"
+          exit 1
+
+      - name: Subir logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: echo-build-logs
+          path: |
+            /home/runner/work/_temp/echo-build.log
+            /home/runner/work/_temp/app-build.log
+          if-no-files-found: ignore
+          retention-days: 5

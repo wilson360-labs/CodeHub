@@ -884,14 +884,22 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    /** Abre el reproductor de música "slide" de CodeHub (extensiones Echo). */
+    /** Abre el reproductor completo de Echo Nightly injertado en CodeHub
+     *  (módulo :echo). Si algo falla, cae al reproductor "slide" nativo. */
     @JavascriptInterface
     public void openMusic() {
         try {
-            Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
+            Intent i = new Intent();
+            i.setClassName(activity, "dev.brahmkshatriya.echo.MainActivity");
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(i);
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            try {
+                Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(i);
+            } catch (Exception ignored) {}
+        }
     }
 
     /** % de CPU usado desde la llamada anterior, por delta de ticks idle/

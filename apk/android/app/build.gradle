@@ -59,6 +59,9 @@ kotlin {
 }
 
 dependencies {
+    // Reproductor completo de Echo Nightly (see apk/android/echo). Se lanza
+    // desde el panel Música de CodeHub (CodeHubBridge.openMusic).
+    implementation project(':echo')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'

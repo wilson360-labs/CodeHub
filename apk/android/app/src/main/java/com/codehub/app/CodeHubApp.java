@@ -3,13 +3,27 @@ package com.codehub.app;
 import android.app.Application;
 import android.util.Log;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import org.koin.androix.startup.KoinStartup;
+import org.koin.dsl.KoinConfiguration;
 
-public class CodeHubApp extends Application {
+public class CodeHubApp extends Application implements KoinStartup {
 
     private File crashDir;
+
+    /**
+     * Arranque del contenedor Koin del reproductor Echo (módulo :echo).
+     *
+     * Echo enciende su Koin desde `dev.brahmkshatriya.echo.MainApplication`
+     * implementando `KoinStartup`; como la Application de CodeHub es esta, el
+     * hook no se dispararía. `koin-androidx-startup` descubre la clase que
+     * implementa `KoinStartup` (esta) y llama a este método antes de
+     * `onCreate`, dejando Koin + el WorkManager factory listos para la UI de
+     * Echo.
+     */
+    @Override
+    public KoinConfiguration onKoinStartup() {
+        return dev.brahmkshatriya.echo.EchoBoot.config(this);
+    }
 
     @Override
     public void onCreate() {
