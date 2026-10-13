@@ -71,21 +71,26 @@ jobs:
       - name: Resumen de errores
         if: always()
         run: |
-          PATTERN="^e: |^w: .*deprecat|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|Duplicate class|Duplicate resources|error:|Invoke-customs"
-          for L in "$RUNNER_TEMP/echo-build.log" "$RUNNER_TEMP/app-build.log"; do
+          ERRPAT="^e: |error:|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|Duplicate class|Duplicate resources|Duplicate entry|AAPT|Android resource linking failed"
+          for L in "$RUNNER_TEMP/app-build.log" "$RUNNER_TEMP/echo-build.log"; do
             [ -f "$L" ] || continue
-            echo "===== $L ====="
-            grep -nE "$PATTERN" "$L" | head -n 80 || true
+            echo "===== $L (ERRORES) ====="
+            grep -nE -A2 "$ERRPAT" "$L" | head -n 80 || true
           done
-          # Anotaciones de check públicas (leíbles por la API sin admin) con los
-          # errores más relevantes, para poder diagnosticar desde fuera del CI.
-          for L in "$RUNNER_TEMP/echo-build.log" "$RUNNER_TEMP/app-build.log"; do
-            [ -f "$L" ] || continue
-            grep -nE "$PATTERN" "$L" | head -n 14 | while IFS= read -r line; do
-              clean=$(printf '%s' "$line" | tr -d '\r' | sed 's/%/%25/g' | cut -c1-500)
-              echo "::error::${L##*/}: $clean"
+          # Anotaciones de check públicas (leíbles por la API sin admin), app
+          # primero y sin warnings, para poder diagnosticar sin acceso al log.
+          {
+            for L in "$RUNNER_TEMP/app-build.log" "$RUNNER_TEMP/echo-build.log"; do
+              [ -f "$L" ] || continue
+              grep -nE "$ERRPAT" "$L" 2>/dev/null | sed "s|^|${L##*/}: |"
             done
-          done
+          } > "$RUNNER_TEMP/errs.txt" || true
+          if [ -f "$RUNNER_TEMP/errs.txt" ]; then
+            head -n 12 "$RUNNER_TEMP/errs.txt" | while IFS= read -r line; do
+              clean=$(printf '%s' "$line" | tr -d '\r' | sed 's/%/%25/g' | cut -c1-500)
+              echo "::error::$clean"
+            done
+          fi
           exit 0
 
       - name: Fail si :app no compila

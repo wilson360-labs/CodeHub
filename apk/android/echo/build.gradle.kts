@@ -110,7 +110,10 @@ dependencies {
     implementation("com.github.acsbendi:Android-Request-Inspector-WebView:1.0.12")
 
     // Red / serialización que expone common
-    implementation("com.squareup.okhttp3:okhttp:5.1.0")
+    // Misma variante Android que usa :app y que trae common:1.0.0. Declarar
+    // okhttp (JVM) junto a okhttp-android provoca clases okhttp3/* duplicadas
+    // y AGP falla en checkDebugDuplicateClasses (ver :app/build.gradle).
+    implementation("com.squareup.okhttp3:okhttp-android:5.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
