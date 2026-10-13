@@ -19,6 +19,11 @@ android {
 
     defaultConfig {
         minSdk = 24
+        // AGP no genera BuildConfig.VERSION_NAME/VERSION_CODE en módulos
+        // librería (solo en aplicaciones); el código de Echo los usa en
+        // ContextUtils.appVersion() y en la versión de las extensiones built-in.
+        buildConfigField("String", "VERSION_NAME", "\"7.17\"")
+        buildConfigField("int", "VERSION_CODE", "9")
     }
 
     buildFeatures {

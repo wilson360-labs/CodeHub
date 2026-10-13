@@ -30,7 +30,7 @@ import org.koin.dsl.koinConfiguration
 @OptIn(KoinExperimentalAPI::class)
 class MainApplication : Application(), SingletonImageLoader.Factory {
 
-    override fun onKoinStartup() = koinConfiguration {
+    fun onKoinStartup() = koinConfiguration {
         androidContext(this@MainApplication)
         modules(DI.appModule)
         workManagerFactory()
