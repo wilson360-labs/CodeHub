@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.16';
+const VERSION = 'codehub-v7.17';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';

@@ -7584,18 +7584,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('appinstalled', () => { window.__deferredPrompt = null; });
 
+  // URL directa del APK firmado: GitHub sirve el asset del ÚLTIMO release en
+  // una ruta estable (/releases/latest/download/...). Evita el salto por el
+  // backend (/api/download → Supabase), que podía colgarse o devolver un link
+  // muerto, y evita bajar el binario dentro de un fetch solo para "resolver" la
+  // URL (eso hacía la descarga doble y el "no se carga" en móvil).
+  const APK_DIRECT_URL = 'https://github.com/wilson360-labs/CodeHub/releases/latest/download/app-release-signed.apk';
+
   async function getAPKUrl() {
-    try {
-      const res = await fetch(BACKEND_URL + '/api/download/app-release-signed.apk', { method: 'GET', redirect: 'follow' });
-      if (res.redirected && res.url && !res.url.includes('/api/')) return res.url;
-      if (res.ok && res.url && !res.url.includes('/api/')) return res.url;
-    } catch {}
-    try {
-      const r = await fetch('/apk-download.json?' + Date.now());
-      if (r.ok) { const d = await r.json(); if (d.url && d.url.startsWith('http')) return d.url; }
-    } catch {}
-    return null;
+    return APK_DIRECT_URL;
   }
+
 
   function isPublicInstallPage() {
     const path = (window.location.pathname || '').toLowerCase();
@@ -7920,11 +7919,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (overlay) overlay.style.display = 'none';
     try {
       if (window.CodeHubNative && CodeHubNative.downloadUpdate) {
-        CodeHubNative.downloadUpdate(BACKEND_URL + '/api/download/app-release-signed.apk');
+        CodeHubNative.downloadUpdate(APK_DIRECT_URL);
         return;
       }
     } catch (e) {}
-    window.open(BACKEND_URL + '/api/download/app-release-signed.apk', '_blank');
+    window.open(APK_DIRECT_URL, '_blank');
   }
 
   function apkDismissUpdate() {
