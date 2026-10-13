@@ -34,7 +34,7 @@ public class CodeHubApp extends Application {
 
         /** Versión real del APK (versionName) en el crash.log — antes quedaba
          *  hardcodeada como 1.2.0 y los reportes de crash mostraban la versión
-         *  equivocada (la actual es 1.4.0). */
+         *  equivocada (hoy la serie se sincroniza con sw.js: 7.x). */
         private String appVersion() {
             try { return app.getPackageManager().getPackageInfo(app.getPackageName(), 0).versionName; }
             catch (Exception e) { return "1.2.0"; }

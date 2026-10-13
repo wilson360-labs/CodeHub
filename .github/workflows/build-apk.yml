@@ -27,6 +27,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Sincronizar version de la app con sw.js
+        id: appver
+        shell: bash
+        run: |
+          set -e
+          # El tag de release es apk-<VERSION> (VERSION = sw.js). Para que
+          # AppUpdateChecker.java no marque actualizaciones falsas, el
+          # versionName del APK publicado debe ser el mismo esquema numérico
+          # que ese tag (7.15, no 1.4.0). Se inyecta aquí en build.gradle.
+          VERSION=$(grep "const VERSION" sw.js | sed "s/.*'\(.*\)'.*/\1/")
+          APPVER=${VERSION##*v}                 # codehub-v7.15 -> 7.15
+          APPCODE=$(echo "$APPVER" | awk -F. '{printf "%d%02d\n", $1, $2}')  # 7.15 -> 715
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "APPVER=$APPVER"   >> "$GITHUB_ENV"
+          echo "APPCODE=$APPCODE" >> "$GITHUB_ENV"
+          sed -i -E "s/versionName \"[^\"]*\"/versionName \"$APPVER\"/" apk/android/app/build.gradle
+          sed -i -E "s/versionCode [0-9]+/versionCode $APPCODE/"       apk/android/app/build.gradle
+          echo "build.gradle -> versionName $APPVER (versionCode $APPCODE)"
+
       - name: Setup Java JDK 17
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:

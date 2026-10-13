@@ -12,8 +12,13 @@ android {
         applicationId "com.codehub.app"
         minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName "1.4.0"
+        // La serie debe coincidir con sw.js VERSION (site/PWA = 7.x), porque
+        // build-apk.yml publica el APK como apk-<VERSION> y AppUpdateChecker.java
+        // compara ese tag contra este versionName. En CI, el workflow
+        // "Sincronizar versión" sobreescribe ambos valores desde sw.js para que
+        // la versión instalada siempre coincida con el tag del release.
+        versionCode 7
+        versionName "7.15"
     }
 
     signingConfigs {

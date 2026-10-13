@@ -138,6 +138,18 @@ Racional: cualquier feature construida sobre un monolito sin build/CI agranda el
 - **Qué:** funnels de conversión en `/analytics` (visita→tool→favorito→cuenta), LCP/CLS por página en dashboard, alertas de regresión.
 - **Definición de hecho:** dashboard responde "¿dónde se va la gente?".
 
+### 5.4 Actualizador de la app APK
+- **Qué:** `AppUpdateChecker.java` comparaba el tag `apk-codehub-v7.15` (que se
+  reducía a la serie **7**) contra un `versionName` de serie `1.4.0`, por lo que
+  avisaba de una actualización falsa en cada arranque.
+- **✔ Corregido (Oct 2026):** el updater ahora normaliza el tag a su bloque
+  numérico final (`7.15`) y `build-apk.yml` sincroniza `versionName`/`versionCode`
+  de `build.gradle` con `sw.js VERSION` antes de compilar. Así la versión
+  instalada coincide con el tag del release y el aviso solo aparece con un APK
+  nuevo real.
+- **Definición de hecho:** instalar el APK del tag X deja de avisar hasta que se
+  publique el tag X+1.
+
 ---
 
 ## 6. Anti-objetivos (NO hacer)

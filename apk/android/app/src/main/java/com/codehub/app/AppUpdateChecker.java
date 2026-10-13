@@ -32,6 +32,10 @@ import java.nio.charset.StandardCharsets;
  * (tag "apk-<version>" con el .apk firmado adjunto). No requiere backend
  * ni fallback JSON: si GitHub está caído, simplemente no hay chequeo.
  *
+ * La versión del tag se normaliza a su bloque numérico final (ver
+ * normalizeVersion) y se compara contra versionName, que el CI sincroniza
+ * con sw.js VERSION para que la serie coincida (7.x).
+ *
  * Uso: AppUpdateChecker.checkIfDue(activity);
  */
 public class AppUpdateChecker {
@@ -63,7 +67,7 @@ public class AppUpdateChecker {
                 if (release == null) return;
 
                 String tag = release.optString("tag_name", "");
-                String remoteVersion = tag.startsWith("apk-") ? tag.substring(4) : tag;
+                String remoteVersion = normalizeVersion(tag);
                 String apkUrl = findApkAssetUrl(release);
                 if (remoteVersion.isEmpty() || apkUrl == null) return;
 
@@ -125,6 +129,26 @@ public class AppUpdateChecker {
             }
         }
         return null;
+    }
+
+    /**
+     * Normaliza el tag de release a una versión comparable con versionName.
+     * El workflow publica el tag `apk-<VERSION>` (VERSION = sw.js, p.ej.
+     * `apk-codehub-v7.15`); aquí se extrae el último bloque numérico ("7.15").
+     *
+     * Esto corrige el bug anterior: `tag.substring(4)` producía "codehub-v7.15"
+     * y `parseIntSafe` lo reducía a la serie 7, que comparada contra un
+     * versionName de serie 1 avisaba SIEMPRE de una actualización falsa.
+     */
+    private static String normalizeVersion(String tag) {
+        if (tag == null) return "";
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("(\\d+(?:\\.\\d+)*)")
+            .matcher(tag);
+        String found = null;
+        while (m.find()) found = m.group(1); // el último bloque numérico del tag
+        if (found != null) return found;
+        return tag.replaceFirst("^apk-", "").replaceFirst("^codehub-", "");
     }
 
     /** Compara versiones tipo "1.3.0" vs "1.2.0" (numérica por segmento). */
