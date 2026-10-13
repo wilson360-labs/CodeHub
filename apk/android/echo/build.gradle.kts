@@ -77,7 +77,6 @@ dependencies {
     implementation("androidx.room:room-ktx:2.7.2")
     ksp("androidx.room:room-compiler:2.7.2")
 
-    // Koin (DI) + WorkManager factory (Echo elimina el initializer por defecto)
     // Koin (DI) + WorkManager factory (Echo elimina el initializer por defecto).
     // NO se usa koin-androidx-startup: su Initializer aborta el proceso si la
     // Application no implementa KoinStartup. El arranque lo hace EchoBoot.

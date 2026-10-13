@@ -32,7 +32,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
-          gradle-version: '8.11.1'
+          gradle-version: '8.13'
 
       - name: Setup Android SDK
         id: setup-android
@@ -49,7 +49,6 @@ jobs:
       - name: Compile :echo (debug)
         id: echo
         working-directory: apk/android
-        continue-on-error: true
         run: |
           set +e
           gradle :echo:assembleDebug --stacktrace > "$RUNNER_TEMP/echo-build.log" 2>&1
