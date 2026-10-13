@@ -71,12 +71,17 @@ jobs:
       - name: Resumen de errores
         if: always()
         run: |
-          ERRPAT="^e: |error:|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|Duplicate class|Duplicate resources|Duplicate entry|AAPT|Android resource linking failed"
+          ERRPAT="^e: |error:|Error:|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|is also present at|needs to be explicitly specified|Suggestion:|Duplicate class|Duplicate resources|Duplicate entry|AAPT|Android resource linking failed"
+          MR="app/build/outputs/logs/manifest-merger-debug-report.txt"
           for L in "$RUNNER_TEMP/app-build.log" "$RUNNER_TEMP/echo-build.log"; do
             [ -f "$L" ] || continue
             echo "===== $L (ERRORES) ====="
             grep -nE -A2 "$ERRPAT" "$L" | head -n 80 || true
           done
+          if [ -f "$MR" ]; then
+            echo "===== $MR (ERRORES) ====="
+            grep -nE "Error|error|ERROR|also present|Suggestion|needs to be explicitly" "$MR" | head -n 60 || true
+          fi
           # Anotaciones de check públicas (leíbles por la API sin admin), app
           # primero y sin warnings, para poder diagnosticar sin acceso al log.
           {
@@ -84,9 +89,12 @@ jobs:
               [ -f "$L" ] || continue
               grep -nE "$ERRPAT" "$L" 2>/dev/null | sed "s|^|${L##*/}: |"
             done
+            if [ -f "$MR" ]; then
+              grep -nE "Error:|is also present at|needs to be explicitly specified|Suggestion:" "$MR" 2>/dev/null | sed 's|^|merger: |'
+            fi
           } > "$RUNNER_TEMP/errs.txt" || true
           if [ -f "$RUNNER_TEMP/errs.txt" ]; then
-            head -n 12 "$RUNNER_TEMP/errs.txt" | while IFS= read -r line; do
+            head -n 14 "$RUNNER_TEMP/errs.txt" | while IFS= read -r line; do
               clean=$(printf '%s' "$line" | tr -d '\r' | sed 's/%/%25/g' | cut -c1-500)
               echo "::error::$clean"
             done

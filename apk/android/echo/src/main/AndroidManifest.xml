@@ -61,8 +61,11 @@
             android:launchMode="singleTop"
             android:windowSoftInputMode="stateVisible|adjustPan" />
 
+        <!-- Clase propia (subclase de FileProvider) para no chocar con el
+             FileProvider de :app, que fusiona por android:name. La authority
+             se mantiene: InstallationUtils resuelve por authority. -->
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name="dev.brahmkshatriya.echo.EchoFileProvider"
             android:authorities="${applicationId}.provider"
             android:enabled="true"
             android:exported="false"
