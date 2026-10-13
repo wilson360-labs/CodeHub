@@ -1,7 +1,9 @@
 package dev.brahmkshatriya.echo
 
 import android.content.Context
+import coil3.SingletonImageLoader
 import dev.brahmkshatriya.echo.di.DI
+import dev.brahmkshatriya.echo.utils.ContextUtils.getSettings
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.workmanager.koin.workManagerFactory
 import org.koin.core.context.startKoin
@@ -34,6 +36,11 @@ object EchoBoot {
      * Enciende Koin para el reproductor Echo. Idempotente y seguro de llamar
      * varias veces. Si falla, lanza; el llamador (CodeHubApp) lo captura para
      * no tumbar CodeHub.
+     *
+     * Además reproduce los efectos de `MainApplication.onCreate` que sí afectan
+     * al reproductor y que se perdían al ser CodeHubApp la Application real:
+     *  - registra el loader de imágenes de Echo (SingletonImageLoader),
+     *  - aplica el idioma persistido de Echo (mismo `applyLocale`).
      */
     @JvmStatic
     fun start(context: Context) {
@@ -45,6 +52,11 @@ object EchoBoot {
                 modules(DI.appModule)
                 workManagerFactory()
             }
+            // Sin esto Coil usa el loader por defecto con hardware bitmaps y
+            // el palette/GIF de Echo puede fallar.
+            runCatching { SingletonImageLoader.setSafe { ctx -> EchoImageLoader.build(ctx) } }
+            // Idioma elegido en Echo (por defecto "system" = sin override).
+            runCatching { MainApplication.applyLocale(context.getSettings()) }
             ready = true
         }
     }

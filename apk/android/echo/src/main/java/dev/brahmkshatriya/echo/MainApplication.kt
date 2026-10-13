@@ -12,11 +12,6 @@ import androidx.core.os.LocaleListCompat
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
-import coil3.disk.DiskCache
-import coil3.disk.directory
-import coil3.memory.MemoryCache
-import coil3.request.allowHardware
-import coil3.request.crossfade
 import dev.brahmkshatriya.echo.di.DI
 import dev.brahmkshatriya.echo.extensions.ExtensionLoader
 import dev.brahmkshatriya.echo.utils.AppShortcuts.configureAppShortcuts
@@ -47,21 +42,9 @@ class MainApplication : Application(), SingletonImageLoader.Factory {
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
-        return ImageLoader.Builder(context)
-            .memoryCache {
-                MemoryCache.Builder()
-                    .maxSizePercent(context, 0.25)
-                    .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(cacheDir.resolve("image-cache"))
-                    .maxSizeBytes(1024 * 1024 * 100) // 100MB
-                    .build()
-            }
-            .allowHardware(false)
-            .crossfade(true)
-            .build()
+        // Config única compartida (ver EchoImageLoader); se registra como
+        // singleton desde EchoBoot cuando MainApplication no es la Application.
+        return EchoImageLoader.build(context)
     }
 
     override fun getPackageName(): String {
