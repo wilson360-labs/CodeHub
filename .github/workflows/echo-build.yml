@@ -72,13 +72,20 @@ jobs:
       - name: Resumen de errores
         if: always()
         run: |
+          PATTERN="^e: |^w: .*deprecat|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|Duplicate class|Duplicate resources|error:|Invoke-customs"
           for L in "$RUNNER_TEMP/echo-build.log" "$RUNNER_TEMP/app-build.log"; do
             [ -f "$L" ] || continue
             echo "===== $L ====="
-            echo "--- errores kotlinc (e:) ---"
-            grep -nE '^e: ' "$L" | head -n 80 || true
-            echo "--- causa Gradle ---"
-            grep -nE 'FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine)' "$L" | head -n 40 || true
+            grep -nE "$PATTERN" "$L" | head -n 80 || true
+          done
+          # Anotaciones de check públicas (leíbles por la API sin admin) con los
+          # errores más relevantes, para poder diagnosticar desde fuera del CI.
+          for L in "$RUNNER_TEMP/echo-build.log" "$RUNNER_TEMP/app-build.log"; do
+            [ -f "$L" ] || continue
+            grep -nE "$PATTERN" "$L" | head -n 14 | while IFS= read -r line; do
+              clean=$(printf '%s' "$line" | tr -d '\r' | sed 's/%/%25/g' | cut -c1-500)
+              echo "::error::${L##*/}: $clean"
+            done
           done
           exit 0
 

@@ -24,12 +24,11 @@ import dev.brahmkshatriya.echo.utils.CoroutineUtils
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.workmanager.koin.workManagerFactory
-import org.koin.androix.startup.KoinStartup
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.koinConfiguration
 
 @OptIn(KoinExperimentalAPI::class)
-class MainApplication : Application(), KoinStartup, SingletonImageLoader.Factory {
+class MainApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onKoinStartup() = koinConfiguration {
         androidContext(this@MainApplication)

@@ -78,8 +78,10 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.2")
 
     // Koin (DI) + WorkManager factory (Echo elimina el initializer por defecto)
+    // Koin (DI) + WorkManager factory (Echo elimina el initializer por defecto).
+    // NO se usa koin-androidx-startup: su Initializer aborta el proceso si la
+    // Application no implementa KoinStartup. El arranque lo hace EchoBoot.
     implementation("io.insert-koin:koin-android:4.1.0")
-    implementation("io.insert-koin:koin-androidx-startup:4.1.0")
     implementation("io.insert-koin:koin-androidx-workmanager:4.1.0")
 
     // Media3 (misma versión que CodeHub y el fork)

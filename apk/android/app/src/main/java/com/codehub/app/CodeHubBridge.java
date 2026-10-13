@@ -885,21 +885,30 @@ public class CodeHubBridge {
     }
 
     /** Abre el reproductor completo de Echo Nightly injertado en CodeHub
-     *  (módulo :echo). Si algo falla, cae al reproductor "slide" nativo. */
+     *  (módulo :echo). Si el arranque de Koin falló o la activity no está,
+     *  cae al reproductor "slide" nativo para no dejar al usuario sin música. */
     @JavascriptInterface
     public void openMusic() {
         try {
-            Intent i = new Intent();
-            i.setClassName(activity, "dev.brahmkshatriya.echo.MainActivity");
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            activity.startActivity(i);
-        } catch (Exception e) {
+            dev.brahmkshatriya.echo.EchoBoot.start(activity);
+        } catch (Throwable t) {
+            android.util.Log.e("CodeHub", "Echo no arrancó (openMusic): " + t, t);
+        }
+        if (dev.brahmkshatriya.echo.EchoBoot.isReady()) {
             try {
-                Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
+                Intent i = new Intent();
+                i.setClassName(activity, "dev.brahmkshatriya.echo.MainActivity");
                 i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 activity.startActivity(i);
+                return;
             } catch (Exception ignored) {}
         }
+        // Fallback: reproductor "slide" nativo de CodeHub.
+        try {
+            Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            activity.startActivity(i);
+        } catch (Exception ignored) {}
     }
 
     /** % de CPU usado desde la llamada anterior, por delta de ticks idle/

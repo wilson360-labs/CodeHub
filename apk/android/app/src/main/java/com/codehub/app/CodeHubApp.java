@@ -3,27 +3,13 @@ package com.codehub.app;
 import android.app.Application;
 import android.util.Log;
 
-import org.koin.androix.startup.KoinStartup;
-import org.koin.dsl.KoinConfiguration;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
-public class CodeHubApp extends Application implements KoinStartup {
+public class CodeHubApp extends Application {
 
     private File crashDir;
-
-    /**
-     * Arranque del contenedor Koin del reproductor Echo (módulo :echo).
-     *
-     * Echo enciende su Koin desde `dev.brahmkshatriya.echo.MainApplication`
-     * implementando `KoinStartup`; como la Application de CodeHub es esta, el
-     * hook no se dispararía. `koin-androidx-startup` descubre la clase que
-     * implementa `KoinStartup` (esta) y llama a este método antes de
-     * `onCreate`, dejando Koin + el WorkManager factory listos para la UI de
-     * Echo.
-     */
-    @Override
-    public KoinConfiguration onKoinStartup() {
-        return dev.brahmkshatriya.echo.EchoBoot.config(this);
-    }
 
     @Override
     public void onCreate() {
@@ -33,6 +19,14 @@ public class CodeHubApp extends Application implements KoinStartup {
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
         // (sin internet en el momento del crash), lo reintenta ahora.
         CrashReporter.flushPendingLog(this);
+        // Arranque del reproductor Echo Nightly (módulo :echo): enciende Koin y
+        // el WorkManager factory. DEFENSIVO: si falla, CodeHub sigue igual y
+        // CodeHubBridge.openMusic cae al reproductor "slide" nativo.
+        try {
+            dev.brahmkshatriya.echo.EchoBoot.start(this);
+        } catch (Throwable t) {
+            Log.e("CodeHub", "Echo no arrancó (Koin): " + t, t);
+        }
         // Appodeal (mediación) se inicializa en MainActivity tras el gate de
         // UMP (ConsentManager) — el adaptador de AdMob se inicializa solo.
         // Lanzar Foreground Service lo antes posible para WakeLock + sync
