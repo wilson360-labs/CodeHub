@@ -9,7 +9,7 @@ buildscript {
 }
 
 plugins {
-    // AGP 8.12.2 — requisito mínimo para compileSdk 36 (Appodeal adapters).
+    // AGP 8.12.2 - requisito minimo para compileSdk 36 (SDK 36).
     // Requiere Gradle 8.13+ (ver workflows build-apk/echo-build).
     id 'com.android.application' version '8.12.2' apply false
     id 'com.android.library' version '8.12.2' apply false

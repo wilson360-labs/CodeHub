@@ -1945,6 +1945,13 @@ const { createUserDataRouter, ensureUserDataTables } = require('./modules/userda
 const userDataRouter = createUserDataRouter(supabase);
 app.use('/api/user', requireAuth, userDataRouter);
 
+// ── Rewards — anuncios recompensados verificados por servidor ─
+// El navegador nunca acredita: /token emite un nonce single-use y la
+// red confirma con un postback S2S (secret en el panel de la red).
+// Ver docs/REWARDED-ADS.md.
+const rewardsRouter = require('./modules/rewards');
+app.use('/api/rewards', requireAuth, rewardsRouter);
+
 // ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
 // Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca

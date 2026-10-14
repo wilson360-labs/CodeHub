@@ -27,8 +27,8 @@ public class CodeHubApp extends Application {
         } catch (Throwable t) {
             Log.e("CodeHub", "Echo no arrancó (Koin): " + t, t);
         }
-        // Appodeal (mediación) se inicializa en MainActivity tras el gate de
-        // UMP (ConsentManager) — el adaptador de AdMob se inicializa solo.
+        // Unity Ads se inicializa en MainActivity (UnityAdsManager) tras el
+        // gate de consentimiento UMP (ConsentManager).
         // Lanzar Foreground Service lo antes posible para WakeLock + sync
         CodeHubSyncService.startIfNotRunning(this);
     }

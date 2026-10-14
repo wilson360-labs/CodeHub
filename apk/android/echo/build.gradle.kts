@@ -50,7 +50,7 @@ dependencies {
 
     // Contrato de extensiones (mismo artefacto que ya usa CodeHub; se excluye
     // protobuf-java porque el AAR no lo referencia y chocaría con el
-    // protobuf-javalite del stack Appodeal/AdMob).
+    // protobuf duplicado de otras dependencias).
     implementation("dev.brahmkshatriya.echo:common:1.0.0") {
         exclude(group = "com.google.protobuf", module = "protobuf-java")
     }

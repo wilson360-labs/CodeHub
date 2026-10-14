@@ -86,6 +86,18 @@ B2_BUCKET_NAME      # Backblaze B2
 TELEGRAM_BOT_TOKEN   # Bot Telegram (canónico; alias legacy: TELEGRAM_TOKEN)
 TELEGRAM_CHAT_ID    # Tu chat ID
 BACKEND_URL         # https://codehub-98s6.onrender.com
+
+# ── Recompensas (rewarded ads, ver docs/REWARDED-ADS.md) ──
+REWARD_POSTBACK_SECRET           # Secreto único del postback (cualquier red)
+# REWARD_POSTBACK_SECRETS        # JSON por red: {"monetag":"<s>","offerwall":"<s>"}
+# MONETAG_POSTBACK_SECRET        # atajo por red (también ADGEM_/AYET_/BITLABS_)
+REWARD_HMAC_SECRET               # Firma de nonces (def. ADMIN_KEY)
+REWARD_AMOUNTS                   # JSON {"default":1,"bonus":5}
+REWARD_DAILY_CAP                 # Tope de créditos/usuario/día (def. 50)
+REWARD_AD_UNIT                   # Unidad por defecto (def. "default")
+REWARD_USER_ID_SOURCES           # CSV redes vía user_id: "adgem,bitlabs"
+# App: Unity Ads — Game ID y placements en
+# apk/android/app/src/main/java/com/codehub/app/UnityAdsManager.java
 ```
 
 ## 🤖 AutoScript

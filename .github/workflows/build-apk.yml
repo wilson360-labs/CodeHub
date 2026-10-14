@@ -55,7 +55,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
-          # 8.11.1 = mínimo para AGP 8.9 (compileSdk 36, Appodeal adapters)
+          # 8.11.1 = mínimo para AGP 8.9 (compileSdk 36)
           gradle-version: '8.13'
 
       # android-actions/setup-android@v3 puede fallar por timeouts transitorios

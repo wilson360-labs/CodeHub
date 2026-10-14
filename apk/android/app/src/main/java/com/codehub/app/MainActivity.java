@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
         handleIntent(getIntent());
     }
 
-    // ── Anuncios: consentimiento UMP + Appodeal (mediación) ────────────
+    // ── Anuncios: consentimiento UMP + Unity Ads ──────────────────────
     // Nada de anuncios se pide antes de que UMP resuelva el consentimiento
     // (EEE/UK/Canadá). Fuera de esas regiones lookup UMP resuelve inmediato
     // con canRequestAds=true y no se bloquea ningún anuncio.
@@ -163,7 +163,7 @@ public class MainActivity extends Activity {
         ConsentManager.init(this, () -> {
             runOnUiThread(() -> {
                 if (!ConsentManager.canRequestAds()) return;
-                AppodealManager.init(MainActivity.this, bannerSlot);
+                UnityAdsManager.init(MainActivity.this, bannerSlot);
             });
         });
     }
