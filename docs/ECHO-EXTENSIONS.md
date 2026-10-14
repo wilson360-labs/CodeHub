@@ -28,6 +28,9 @@ App (Echo)                    Backend CodeHub                    Origen (privado
   parser ni la UI de "Añadir extensiones".
 - `updateUrl` lo reescribe el backend hacia su propio proxy. La URL real
   (p. ej. `api.github.com/repos/…/releases`) nunca sale del servidor.
+- `iconUrl` también se reescribe hacia `/api/extensions/icon/:id`: si el icono
+  del origen vive en un repo (`raw.githubusercontent.com/<autor>/<ext>/…`), el
+  dispositivo no ve ni el repo ni el usuario.
 - El servidor solo acepta `id` presentes en el catálogo → no hay SSRF.
 
 ## Homologación con Echo
@@ -43,6 +46,7 @@ Echo considera que hay actualización si la etiqueta de la última release cambi
 | `GET` | `/api/extensions` | Lista para instalar (JSON de Echo, sin origen). |
 | `GET` | `/api/extensions/pkg/:id` | Descarga el `.eapk` (proxy del origen). |
 | `GET` | `/api/extensions/pkg/:id?check=1&from=<v>` | `200` = hay update, `204` = no hay. |
+| `GET` | `/api/extensions/icon/:id` | Icono reenviado por CodeHub (sin URL de origen). |
 | `POST` | `/api/extensions/refresh` | Invalida la caché (header `x-admin-key`). |
 
 ## Variables de entorno (todas opcionales)
@@ -55,6 +59,7 @@ Echo considera que hay actualización si la etiqueta de la última release cambi
 | `ECHO_EXTENSIONS_CACHE_TTL_MS` | `6h` | TTL del catálogo. |
 | `ECHO_EXTENSIONS_ASSET_TTL_MS` | `30min` | TTL de la resolución del `.eapk`. |
 | `ECHO_EXTENSIONS_MAX_BYTES` | `80 MB` | Tamaño máximo a reenviar. |
+| `ECHO_EXTENSIONS_MAX_ICON_BYTES` | `512 KB` | Tamaño máximo de icono reenviado. |
 | `ECHO_EXTENSIONS_FETCH_TIMEOUT_MS` | `20s` | Timeout saliente. |
 | `BACKEND_URL` | `https://codehub-98s6.onrender.com` | Base pública del proxy. |
 | `GITHUB_TOKEN` / `GH_TOKEN` | *(opcional)* | Sube el límite de la API de GitHub. |

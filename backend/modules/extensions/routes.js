@@ -7,6 +7,7 @@
  *   GET  /                       Lista para instalar (JSON que consume Echo).
  *   GET  /pkg/:id                Descarga el .eapk (proxy del origen).
  *   GET  /pkg/:id?check=1&from=  Responden 200 (hay update) o 204 (no hay).
+ *   GET  /icon/:id               Icono reenviado por CodeHub (sin URL origen).
  *   POST /refresh                Invalida la caché del catálogo (ADMIN_KEY).
  *
  * Seguridad/privacidad:
@@ -38,6 +39,14 @@ const pkgLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { ok: false, error: 'Demasiadas descargas. Espera un momento.' },
+});
+
+const iconLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Demasiadas solicitudes. Espera un momento.' },
 });
 
 // ── GET / — catálogo público (metadatos, sin origen) ────────────────
@@ -91,6 +100,30 @@ router.get('/pkg/:id', pkgLimiter, async (req, res) => {
     return res.send(buf);
   } catch (e) {
     return fail(res, 'No se pudo descargar el paquete', 502);
+  }
+});
+
+// ── GET /icon/:id — proxy del icono (nunca viaja la URL de origen) ──
+router.get('/icon/:id', iconLimiter, async (req, res) => {
+  const id = String(req.params.id || '');
+  let item;
+  try {
+    const items = await cat.loadCatalog();
+    item = items.get(id);
+  } catch (e) {
+    return fail(res, 'Catálogo no disponible', 502);
+  }
+  if (!item || !item.iconUrl) return fail(res, 'Icono no encontrado', 404);
+
+  try {
+    const icon = await cat.fetchIcon(item);
+    if (!icon) return fail(res, 'Icono no disponible', 404);
+    res.setHeader('Content-Type', icon.contentType);
+    res.setHeader('Content-Length', String(icon.buf.length));
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    return res.send(icon.buf);
+  } catch (e) {
+    return fail(res, 'No se pudo obtener el icono', 502);
   }
 });
 

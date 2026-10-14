@@ -19,6 +19,7 @@ const ABI_ORDER = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'];
 let _catalog = null; // { at, items: Map<id, item> }
 let _catalogPending = null;
 const _assets = new Map(); // id -> { at, asset }
+const _icons = new Map(); // id -> { at, contentType, buf }
 
 function isAllowed(id) {
   if (cfg.BLOCKLIST.includes(id)) return false;
@@ -117,7 +118,12 @@ function toPublic(item) {
   };
   if (item.type != null) out.type = item.type;
   if (item.subtitle != null) out.subtitle = item.subtitle;
-  if (item.iconUrl != null) out.iconUrl = item.iconUrl;
+  // El icono tambien viaja por el proxy: si el origen lo aloja en un repo
+  // (p.ej. raw.githubusercontent.com/<autor>/<ext>/...), el dispositivo no
+  // debe ver ni ese repo ni el usuario. Sirve solo metadatos + /icon/:id.
+  if (item.iconUrl != null) {
+    out.iconUrl = `${cfg.BACKEND_URL}/api/extensions/icon/${encodeURIComponent(item.id)}`;
+  }
   return out;
 }
 
@@ -213,11 +219,37 @@ async function fetchBinary(url) {
   return buf;
 }
 
+/**
+ * Descarga y cachea el icono del ORIGEN para reenviarlo desde CodeHub.
+ * Devuelve { contentType, buf } o null si la extensión no trae icono.
+ */
+async function fetchIcon(item, force = false) {
+  if (!item || !item.iconUrl) return null;
+  const cached = _icons.get(item.id);
+  if (!force && cached && Date.now() - cached.at < cfg.ASSET_TTL_MS) return cached;
+
+  const res = await fetchWithTimeout(item.iconUrl, true, cfg.FETCH_TIMEOUT_MS);
+  if (!res.ok) throw new Error(`icono HTTP ${res.status}`);
+  const declared = Number(res.headers.get('content-length') || 0);
+  if (declared && declared > cfg.MAX_ICON_BYTES) throw new Error('icono demasiado grande');
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length > cfg.MAX_ICON_BYTES) throw new Error('icono demasiado grande');
+
+  // Solo se reenvían imágenes: si el origen devuelve otra cosa, se normaliza.
+  let contentType = String(res.headers.get('content-type') || '');
+  if (!/^image\//i.test(contentType)) contentType = 'image/png';
+
+  const entry = { at: Date.now(), contentType, buf };
+  _icons.set(item.id, entry);
+  return entry;
+}
+
 module.exports = {
   loadCatalog,
   toPublic,
   resolveAsset,
   hasUpdate,
   fetchBinary,
+  fetchIcon,
   baseName,
 };

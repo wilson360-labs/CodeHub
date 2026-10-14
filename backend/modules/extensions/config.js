@@ -43,6 +43,9 @@ const cfg = {
   CACHE_TTL_MS: num(process.env.ECHO_EXTENSIONS_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
   ASSET_TTL_MS: num(process.env.ECHO_EXTENSIONS_ASSET_TTL_MS, 30 * 60 * 1000),
   MAX_BYTES: num(process.env.ECHO_EXTENSIONS_MAX_BYTES, 80 * 1024 * 1024),
+  // Los iconos tambien se reenvian desde CodeHub: si el icono del origen vive
+  // en un repo (p.ej. raw.githubusercontent) el dispositivo no debe verlo.
+  MAX_ICON_BYTES: num(process.env.ECHO_EXTENSIONS_MAX_ICON_BYTES, 512 * 1024),
   FETCH_TIMEOUT_MS: num(process.env.ECHO_EXTENSIONS_FETCH_TIMEOUT_MS, 20000),
 
   GITHUB_TOKEN: process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '',
