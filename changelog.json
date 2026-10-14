@@ -1,5 +1,17 @@
 [
   {
+    "version": "v7.20",
+    "date": "2026-10-14",
+    "type": "feature",
+    "title": "Reproductor Echo y catálogo privado de extensiones",
+    "changes": [
+      "Reproductor Echo integrado en CodeHub (música, letras y cola)",
+      "Catálogo privado de extensiones: se instalan y actualizan desde CodeHub, sin exponer nunca el origen",
+      "Anuncios migrados a Unity Ads (banner, interstitial y rewarded), con recompensas verificadas por el servidor",
+      "Estabilidad: correcciones de compilación, codificación y rendimiento"
+    ]
+  },
+  {
     "version": "v7.14",
     "date": "2026-09-29",
     "type": "fix",
