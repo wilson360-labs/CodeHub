@@ -244,6 +244,25 @@ public final class UnityAdsManager {
         try {
             BannerView view = new BannerView(activity, PLACEMENT_BANNER, new UnityBannerSize(320, 50));
             view.setListener(new BannerView.IListener() {
+                    @Override
+                    public void onBannerLoaded(BannerView bannerAdView) {
+                        Log.i(TAG, "banner cargado");
+                    }
+
+                    @Override
+                    public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
+                        Log.w(TAG, "banner no cargado: " + (errorInfo != null ? (errorInfo.getErrorCode() + " " + errorInfo.getErrorMessage()) : "unknown"));
+                    }
+
+                    @Override
+                    public void onBannerClick(BannerView bannerAdView) {
+                        Log.i(TAG, "banner clickeado");
+                    }
+
+                    @Override
+                    public void onBannerLeftApplication(BannerView bannerAdView) {
+                        Log.i(TAG, "banner sale de app");
+                    }
                 @Override
                 public void onBannerLoaded(BannerView bannerAdView) {
                     Log.i(TAG, "banner cargado");
