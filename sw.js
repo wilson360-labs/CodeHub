@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-const VERSION = 'codehub-v7.18';
+const VERSION = 'codehub-v7.19';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -120,7 +120,7 @@ const PRECACHE = [
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
   '/dist/assets/js/prefs.759f7e9abd.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
-  '/dist/assets/js/rewarded-ad.466d6994d0.min.js',
+  '/dist/assets/js/rewarded-ad.24a00c4021.min.js',
   '/dist/assets/js/script.40e4e0e08a.min.js',
   '/dist/assets/js/security-scan.5a8b5156fe.min.js',
   '/dist/assets/js/site-tour.86fe554324.min.js',
