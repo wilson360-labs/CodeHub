@@ -13,6 +13,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+// Backend público de CodeHub. Se usa para el catálogo privado de extensiones:
+// el dispositivo solo habla con CodeHub, nunca con el origen real.
+// Se puede sobreescribir con -PCODEHUB_BACKEND=... o en gradle.properties.
+val codehubBackend: String =
+    (findProperty("CODEHUB_BACKEND") as String?)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "https://codehub-98s6.onrender.com"
+
 android {
     namespace = "dev.brahmkshatriya.echo"
     compileSdk = 36
@@ -24,6 +31,7 @@ android {
         // ContextUtils.appVersion() y en la versión de las extensiones built-in.
         buildConfigField("String", "VERSION_NAME", "\"7.18\"")
         buildConfigField("int", "VERSION_CODE", "10")
+        buildConfigField("String", "CODEHUB_BACKEND", "\"$codehubBackend\"")
     }
 
     buildFeatures {

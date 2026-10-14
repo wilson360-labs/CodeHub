@@ -14,6 +14,7 @@ import dev.brahmkshatriya.echo.di.App
 import dev.brahmkshatriya.echo.extensions.ExtensionLoader
 import dev.brahmkshatriya.echo.extensions.ExtensionUtils.getExtensionOrThrow
 import dev.brahmkshatriya.echo.extensions.ExtensionUtils.getOrThrow
+import dev.brahmkshatriya.echo.extensions.CodeHubExtensions
 import dev.brahmkshatriya.echo.extensions.InstallationUtils.installApp
 import dev.brahmkshatriya.echo.extensions.InstallationUtils.installFile
 import dev.brahmkshatriya.echo.extensions.InstallationUtils.uninstallApp
@@ -212,7 +213,10 @@ class ExtensionsViewModel(
         show: Boolean = false
     ): File? {
         val currentVersion = extension.version
-        val updateUrl = extension.metadata.updateUrl ?: return null
+        // Catálogo privado de CodeHub primero (el origen nunca se expone);
+        // si la extensión no está en él, se mantiene la URL de su manifiesto.
+        val updateUrl = CodeHubExtensions.updateUrlFor(extension.id, client)
+            ?: extension.metadata.updateUrl ?: return null
         val url = runCatching {
             getUpdateFileUrl(currentVersion, updateUrl, client).getOrThrow()
         }.recoverCatching {

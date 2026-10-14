@@ -1952,6 +1952,13 @@ app.use('/api/user', requireAuth, userDataRouter);
 const rewardsRouter = require('./modules/rewards');
 app.use('/api/rewards', requireAuth, rewardsRouter);
 
+// ── Extensions — catálogo privado + proxy de extensiones de Echo ─
+// El dispositivo solo conoce URLs de CodeHub: el backend resuelve el
+// .eapk real (GitHub/GitLab) y lo reenvía. El origen nunca se expone.
+// Ver backend/modules/extensions/.
+const extensionsRouter = require('./modules/extensions');
+app.use('/api/extensions', requireAuth, extensionsRouter);
+
 // ── WIL.E INTELLIGENCE CORE — rutas ──────────────────────────
 // Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
 // Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca

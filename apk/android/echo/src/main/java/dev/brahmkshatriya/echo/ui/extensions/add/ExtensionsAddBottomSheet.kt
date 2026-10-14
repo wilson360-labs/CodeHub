@@ -9,6 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import dev.brahmkshatriya.echo.R
 import dev.brahmkshatriya.echo.databinding.DialogExtensionAddBinding
+import dev.brahmkshatriya.echo.extensions.CodeHubExtensions
 import dev.brahmkshatriya.echo.extensions.InstallationUtils.openFileSelector
 import dev.brahmkshatriya.echo.ui.common.SnackBarHandler.Companion.createSnack
 import dev.brahmkshatriya.echo.ui.extensions.ExtensionsViewModel
@@ -56,6 +57,12 @@ class ExtensionsAddBottomSheet : BottomSheetDialogFragment() {
                 if (link.isEmpty()) return@setOnClickListener
                 viewModel.addFromLinkOrCode(link)
             }
+        }
+
+        // Catálogo privado de CodeHub: se carga solo al abrir, sin que el
+        // usuario pegue ningún enlace y sin mostrar nunca la URL de origen.
+        if (!viewModel.opened && viewModel.addingFlow.value is AddViewModel.AddState.Init) {
+            viewModel.addFromLinkOrCode(CodeHubExtensions.catalogUrl())
         }
 
         observe(viewModel.addingFlow) {

@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.use
 import java.io.File
+import java.net.URLEncoder
 import java.util.zip.ZipFile
 
 object AppUpdater {
@@ -174,10 +175,36 @@ object AppUpdater {
         client: OkHttpClient
     ) = runIOCatching {
         if (updateUrl.isEmpty()) return@runIOCatching null
-        if (updateUrl.startsWith("https://api.github.com/repos/")) {
-            getGithubUpdateUrl(currentVersion, updateUrl, client)
-        } else {
-            throw Exception("Unsupported update url")
+        when {
+            updateUrl.startsWith("https://api.github.com/repos/") ->
+                getGithubUpdateUrl(currentVersion, updateUrl, client)
+
+            // Catálogo privado de CodeHub: el backend resuelve el origen y
+            // decide si hay actualización. El enlace real nunca llega aquí.
+            updateUrl.contains("/api/extensions/pkg/") ->
+                getCodeHubUpdateUrl(currentVersion, updateUrl, client)
+
+            else -> throw Exception("Unsupported update url")
+        }
+    }
+
+    private suspend fun getCodeHubUpdateUrl(
+        currentVersion: String,
+        updateUrl: String,
+        client: OkHttpClient
+    ): String? {
+        val check = updateUrl + "?check=1&from=" +
+                URLEncoder.encode(currentVersion, "UTF-8")
+        val response = client.newCall(Request.Builder().url(check).build()).await()
+        return try {
+            when (response.code) {
+                200 -> updateUrl
+                204 -> null
+                404 -> throw Exception("Extensión no encontrada en el catálogo")
+                else -> throw Exception("CodeHub extensions: HTTP ${response.code}")
+            }
+        } finally {
+            response.close()
         }
     }
 

@@ -44,6 +44,11 @@ jobs:
         run: cd backend && npm install
       - name: Verificar sintaxis
         run: node --check backend/server.js && echo "Sintaxis OK"
+      - name: Verificar sintaxis modulos
+        run: |
+          for f in backend/modules/extensions/*.js; do
+            node --check "$f" && echo "OK $f"
+          done
       - name: Verificar archivos
         run: |
           test -f backend/server.js    && echo "OK server.js"
