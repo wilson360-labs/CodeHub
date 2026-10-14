@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!--
+        Módulo librería: SIN android:name en <application> (la Application es
+        CodeHubApp) y SIN intent-filter LAUNCHER en las activities de Echo
+        (el launcher de la app es el de CodeHub). El resto de componentes
+        (PlayerService, widgets, FileProvider, InitializationProvider, …) se
+        fusionan en el manifiesto de CodeHub.
+    -->
+    <application>
+
+        <!-- Widgets de inicio de Echo (se perdieron al injertar el manifiesto).
+             Nombres propios y recursos distintos a los widgets de CodeHub, sin
+             conflicto de merger. -->
+        <receiver
+            android:name=".widget.WidgetVertical"
+            android:exported="false"
+            android:label="@string/vertical">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_vertical" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetCircle"
+            android:exported="false"
+            android:label="@string/circle">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_circle" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetHorizontal"
+            android:exported="false"
+            android:label="@string/horizontal">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_horizontal" />
+        </receiver>
+
+        <activity
+            android:name=".ui.extensions.ExtensionOpenerActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:scheme="file" />
+                <data android:pathPattern=".*" />
+                <data android:pathPattern=".*\\.eapk" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <!-- Tema propio: Theme.CodeHub hereda de android:Theme.Material (no
+             AppCompat/Material3), y MainActivity es AppCompatActivity → sin un
+             tema Material3, super.onCreate() lanza "You need to use a
+             Theme.AppCompat theme". Echo luego ajusta la variante con
+             setTheme(getAppTheme()) (Default/Amoled/BigCover). -->
+        <activity
+            android:name=".MainActivity"
+            android:enableOnBackInvokedCallback="false"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Default"
+            android:windowSoftInputMode="stateVisible|adjustPan" />
+
+        <activity
+            android:name=".MainActivity$Back"
+            android:enableOnBackInvokedCallback="true"
+            android:enabled="false"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Default"
+            android:windowSoftInputMode="stateVisible|adjustPan" />
+
+        <!-- Clase propia (subclase de FileProvider) para no chocar con el
+             FileProvider de :app, que fusiona por android:name. La authority
+             se mantiene: InstallationUtils resuelve por authority. -->
+        <provider
+            android:name="dev.brahmkshatriya.echo.EchoFileProvider"
+            android:authorities="${applicationId}.provider"
+            android:enabled="true"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+
+        <service
+            android:name=".playback.PlayerService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".playback.PlayerCallback$ButtonReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
+        <activity android:name=".playback.PlayerService$MainActivityOpener" />
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+    </application>
+
+</manifest>

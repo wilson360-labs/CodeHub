@@ -111,27 +111,26 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
-        <!-- Servicio de reproducción en segundo plano (media3 MediaLibraryService).
-             Mantiene el MusicPlayer singleton con notificación de medios,
-             control desde bloqueo/headset y browse para Android Auto. -->
+        <!-- Servicio de reproducción en segundo plano del player nativo.
+             Se arranca SIEMPRE de forma explícita (MusicPlayer.ensureService →
+             startForegroundService(Intent(...))) y MusicPlayerActivity lee el
+             singleton, así que NO declara androidx.media3.session.MediaLibraryService.
+
+             media3 sólo admite UN MediaSessionService por app: su
+             MediaButtonReceiver resuelve el servicio por esa acción y lanza
+             "Expected 1 service that handles …, found 2" si hay dos; y
+             MediaSessionLegacyStub exige exactamente un receptor de
+             ACTION_MEDIA_BUTTON. El reproductor Echo (:echo, PlayerService) es
+             ahora el principal y aporta ambos componentes; CodeHub solo
+             mantiene el servicio nativo, arrancado explícitamente. -->
         <service
             android:name=".music.MusicPlaybackService"
             android:exported="true"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaLibraryService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
-
-        <!-- Botones de medios globales (headset / bluetooth) → MediaSessionService. -->
-        <receiver
-            android:name="androidx.media3.session.MediaButtonReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </receiver>
 
         <!-- Widget (4x1) del reproductor de música. -->
         <receiver

@@ -19,8 +19,16 @@ public class CodeHubApp extends Application {
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
         // (sin internet en el momento del crash), lo reintenta ahora.
         CrashReporter.flushPendingLog(this);
-        // Appodeal (mediación) se inicializa en MainActivity tras el gate de
-        // UMP (ConsentManager) — el adaptador de AdMob se inicializa solo.
+        // Arranque del reproductor Echo Nightly (módulo :echo): enciende Koin y
+        // el WorkManager factory. DEFENSIVO: si falla, CodeHub sigue igual y
+        // CodeHubBridge.openMusic cae al reproductor "slide" nativo.
+        try {
+            dev.brahmkshatriya.echo.EchoBoot.start(this);
+        } catch (Throwable t) {
+            Log.e("CodeHub", "Echo no arrancó (Koin): " + t, t);
+        }
+        // Unity Ads se inicializa en MainActivity (UnityAdsManager) tras el
+        // gate de consentimiento UMP (ConsentManager).
         // Lanzar Foreground Service lo antes posible para WakeLock + sync
         CodeHubSyncService.startIfNotRunning(this);
     }

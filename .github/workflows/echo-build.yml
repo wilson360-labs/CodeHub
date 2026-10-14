@@ -1,0 +1,151 @@
+name: Echo module (rama)
+
+# Workflow de iteración para el injerto del reproductor Echo Nightly.
+# Solo compila (no publica release) y se dispara en ramas de trabajo, para
+# poder iterar sin tocar main ni romper el pipeline de APK.
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'echo/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar :echo + :app (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: '8.13'
+
+      - name: Setup Android SDK
+        id: setup-android
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        continue-on-error: true
+
+      - name: Accept SDK licenses
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -f "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          fi
+
+      - name: Compile :echo (debug)
+        id: echo
+        working-directory: apk/android
+        run: |
+          set +e
+          gradle :echo:assembleDebug --stacktrace > "$RUNNER_TEMP/echo-build.log" 2>&1
+          rc=$?
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/echo-ok"; fi
+          echo "== :echo:assembleDebug rc=$rc =="
+          if [ -f "$RUNNER_TEMP/echo-build.log" ]; then tail -n 40 "$RUNNER_TEMP/echo-build.log"; fi
+          exit $rc
+
+      - name: Compile :app (debug, con :echo)
+        working-directory: apk/android
+        run: |
+          set +e
+          gradle :app:assembleDebug --stacktrace > "$RUNNER_TEMP/app-build.log" 2>&1
+          rc=$?
+          echo "gradle_rc=$rc" >> "$GITHUB_ENV"
+          if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/app-build-ok"; fi
+          exit $rc
+
+      - name: Resumen de errores
+        if: always()
+        run: |
+          ERRPAT="^e: |error:|Error:|FAILURE:|What went wrong|Execution failed for task|Caused by:|Could not (resolve|find|determine|download|open)|Manifest merger|is also present at|needs to be explicitly specified|Suggestion:|Duplicate class|Duplicate resources|Duplicate entry|AAPT|Android resource linking failed"
+          MR="app/build/outputs/logs/manifest-merger-debug-report.txt"
+          for L in "$RUNNER_TEMP/app-build.log" "$RUNNER_TEMP/echo-build.log"; do
+            [ -f "$L" ] || continue
+            echo "===== $L (ERRORES) ====="
+            grep -nE -A2 "$ERRPAT" "$L" | head -n 80 || true
+          done
+          if [ -f "$MR" ]; then
+            echo "===== $MR (ERRORES) ====="
+            grep -nE "Error|error|ERROR|also present|Suggestion|needs to be explicitly" "$MR" | head -n 60 || true
+          fi
+          # Anotaciones de check públicas (leíbles por la API sin admin), app
+          # primero y sin warnings, para poder diagnosticar sin acceso al log.
+          {
+            for L in "$RUNNER_TEMP/app-build.log" "$RUNNER_TEMP/echo-build.log"; do
+              [ -f "$L" ] || continue
+              grep -nE "$ERRPAT" "$L" 2>/dev/null | sed "s|^|${L##*/}: |"
+            done
+            if [ -f "$MR" ]; then
+              grep -nE "Error:|is also present at|needs to be explicitly specified|Suggestion:" "$MR" 2>/dev/null | sed 's|^|merger: |'
+            fi
+          } > "$RUNNER_TEMP/errs.txt" || true
+          if [ -f "$RUNNER_TEMP/errs.txt" ]; then
+            head -n 14 "$RUNNER_TEMP/errs.txt" | while IFS= read -r line; do
+              clean=$(printf '%s' "$line" | tr -d '\r' | sed 's/%/%25/g' | cut -c1-500)
+              echo "::error::$clean"
+            done
+          fi
+          exit 0
+
+      - name: Fail si :app no compila
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/app-build-ok" ]; then echo "compile :app OK"; exit 0; fi
+          echo "::error:::app:assembleDebug falló (ver resumen/logs)"
+          exit 1
+
+      - name: Verificar componentes media3 unicos
+        if: always()
+        run: |
+          # media3 exige EXACTAMENTE un receptor ACTION_MEDIA_BUTTON
+          # (MediaSessionLegacyStub) y un servicio MediaLibraryService
+          # (MediaButtonReceiver). Con dos de cualquiera arranca el crash:
+          # "Expected 1 ... found 2". Se valida sobre el manifiesto fusionado
+          # para no depender de probar en dispositivo.
+          MM=$(find apk/android/app/build/intermediates -name AndroidManifest.xml 2>/dev/null | grep -iE 'merged_manifest' | head -n 1)
+          if [ -z "$MM" ]; then
+            echo "::warning::No se encontró el manifiesto fusionado; se omite la verificación."
+            exit 0
+          fi
+          echo "Manifiesto fusionado: $MM"
+          RECV=$(grep -c '<action android:name="android.intent.action.MEDIA_BUTTON"' "$MM" || true)
+          SVC=$(grep -c '<action android:name="androidx.media3.session.MediaLibraryService"' "$MM" || true)
+          echo "receptores MEDIA_BUTTON=$RECV  servicios MediaLibraryService=$SVC"
+          rc=0
+          [ "$RECV" = "1" ] || { echo "::error::media3 necesita exactamente 1 receptor ACTION_MEDIA_BUTTON (hay $RECV); PlayerService crashea al crearse"; rc=1; }
+          [ "$SVC" = "1" ] || { echo "::error::media3 necesita exactamente 1 servicio MediaLibraryService (hay $SVC); crash al pulsar boton de medios"; rc=1; }
+          exit $rc
+
+      - name: Subir logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: echo-build-logs
+          path: |
+            /home/runner/work/_temp/echo-build.log
+            /home/runner/work/_temp/app-build.log
+          if-no-files-found: ignore
+          retention-days: 5
+
+      - name: Subir APK debug (prueba en dispositivo)
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: codehub-echo-debug-apk
+          path: apk/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

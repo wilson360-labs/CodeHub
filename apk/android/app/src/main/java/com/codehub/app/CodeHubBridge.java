@@ -468,15 +468,15 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    // ── ANUNCIO RECOMPENSADO (Appodeal) ────────────────────────────
+    // ── ANUNCIO RECOMPENSADO (Unity Ads) ───────────────────────────
     @JavascriptInterface
     public void loadRewardedAd() {
-        activity.runOnUiThread(() -> AppodealManager.loadRewarded(activity));
+        activity.runOnUiThread(UnityAdsManager::loadRewarded);
     }
 
     @JavascriptInterface
     public boolean isRewardedAdReady() {
-        return AppodealManager.isRewardedReady();
+        return UnityAdsManager.isRewardedReady();
     }
 
     // callbackName: nombre de una función global en window, invocada como
@@ -484,43 +484,43 @@ public class CodeHubBridge {
     // vio el anuncio completo y ganó la recompensa.
     @JavascriptInterface
     public void showRewardedAd(final String callbackName) {
-        activity.runOnUiThread(() -> AppodealManager.showRewarded(activity, (earned, amount, type) -> {
+        activity.runOnUiThread(() -> UnityAdsManager.showRewarded(activity, (earned, amount, type) -> {
             String safeType = type == null ? "" : type.replace("'", "\\'");
             webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
                 "(" + earned + "," + amount + ",'" + safeType + "');}catch(e){}");
         }));
     }
 
-    // ── ANUNCIO INTERSTICIAL (Appodeal) ────────────────────────────
+    // ── ANUNCIO INTERSTICIAL (Unity Ads) ───────────────────────────
     @JavascriptInterface
     public void loadInterstitialAd() {
-        activity.runOnUiThread(() -> AppodealManager.loadInterstitial(activity));
+        activity.runOnUiThread(UnityAdsManager::loadInterstitial);
     }
 
     @JavascriptInterface
     public boolean isInterstitialAdReady() {
-        return AppodealManager.isInterstitialReady();
+        return UnityAdsManager.isInterstitialReady();
     }
 
     // callbackName: invocada como callbackName(shown) — shown=true si el
     // anuncio se mostró y se cerró (o false si no estaba listo).
     @JavascriptInterface
     public void showInterstitialAd(final String callbackName) {
-        activity.runOnUiThread(() -> AppodealManager.showInterstitial(activity, shown -> {
+        activity.runOnUiThread(() -> UnityAdsManager.showInterstitial(activity, shown -> {
             webView.loadUrl("javascript:try{if(window." + callbackName + ")window." + callbackName +
                 "(" + shown + ");}catch(e){}");
         }));
     }
 
-    // ── BANNER NATIVO (Appodeal, franja inferior) ──────────────────
+    // ── BANNER NATIVO (Unity Ads, franja inferior) ─────────────────
     @JavascriptInterface
     public void showNativeBanner() {
-        activity.runOnUiThread(AppodealManager::showBanner);
+        activity.runOnUiThread(UnityAdsManager::showBanner);
     }
 
     @JavascriptInterface
     public void hideNativeBanner() {
-        activity.runOnUiThread(AppodealManager::hideBanner);
+        activity.runOnUiThread(UnityAdsManager::hideBanner);
     }
 
     @JavascriptInterface
@@ -884,9 +884,29 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    /** Abre el reproductor de música "slide" de CodeHub (extensiones Echo). */
+    /** Abre el reproductor completo de Echo Nightly injertado en CodeHub
+     *  (módulo :echo). Si el arranque de Koin falló o la activity no está,
+     *  cae al reproductor "slide" nativo para no dejar al usuario sin música. */
     @JavascriptInterface
     public void openMusic() {
+        try {
+            dev.brahmkshatriya.echo.EchoBoot.start(activity);
+        } catch (Throwable t) {
+            android.util.Log.e("CodeHub", "Echo no arrancó (openMusic): " + t, t);
+        }
+        if (dev.brahmkshatriya.echo.EchoBoot.isReady()) {
+            try {
+                // Echo alterna MainActivity y MainActivity$Back segun el ajuste
+                // "back animation" (habilita uno y deshabilita el otro), así que
+                // el nombre fijo de la clase no sirve: se resuelve el vigente.
+                Class<?> echoEntry = dev.brahmkshatriya.echo.EchoBoot.mainActivity(activity);
+                Intent i = new Intent(activity, echoEntry);
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                activity.startActivity(i);
+                return;
+            } catch (Exception ignored) {}
+        }
+        // Fallback: reproductor "slide" nativo de CodeHub.
         try {
             Intent i = new Intent(activity, com.codehub.app.music.ui.MusicPlayerActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

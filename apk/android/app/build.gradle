@@ -46,8 +46,9 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-        // minSdk 24 < 26 → necesario para las APIs `java.time` que usa el
-        // adaptador de Appodeal/AdMob en runtime sin subir el minSdk.
+        // minSdk 24 < 26 → necesario para las APIs `java.time` que usan
+        // (en runtime) las librerías del stack de anuncios/analytics sin subir
+        // el minSdk (ver AlexParser/AutoLauncher y el fork de Echo).
         coreLibraryDesugaringEnabled true
     }
 }
@@ -59,6 +60,9 @@ kotlin {
 }
 
 dependencies {
+    // Reproductor completo de Echo Nightly (see apk/android/echo). Se lanza
+    // desde el panel Música de CodeHub (CodeHubBridge.openMusic).
+    implementation project(':echo')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
@@ -73,20 +77,9 @@ dependencies {
     // SDK de Google (com.google.android.ump), distinto de play-services-ads.
     // Debe consultarse antes de pedir anuncios en regiones exigidas (EEE/UK/Canadá).
     implementation 'com.google.android.ump:user-messaging-platform:3.2.0'
-    // Appodeal 4.4.0 (Mediation Only) — sustituye las llamadas directas a
-    // AdMob (BannerAdManager/RewardedAdManager/InterstitialAdManager). El
-    // adaptador de AdMob trae play-services-ads y exige compileSdk 36; las
-    // unidades de banner/rewarded/interstitial se configuran en el panel de
-    // Appodeal (APP_KEY en AppodealManager). Repo: artifactory.appodeal.com.
-    implementation 'com.appodeal.ads.sdk:core:4.4.0'
-    implementation 'com.appodeal.ads.sdk.adapters:admob:25.2.0.0'
-    implementation 'com.appodeal.ads.sdk.adapters:applovin:13.6.3.0'
-    implementation 'com.appodeal.ads.sdk.adapters:unity_ads:4.17.0.0'
-    implementation 'com.appodeal.ads.sdk.adapters:vungle:7.7.4.0'
-    implementation 'com.appodeal.ads.sdk.adapters:bidmachine:3.7.1.0'
-    // iab — puente TCF: Appodeal lee los strings IABTCF que escribe UMP
-    // (ConsentManager.java) para respetar la decisión del usuario.
-    implementation 'com.appodeal.ads.sdk.adapters:iab:1.8.1.1'
+    // Unity Ads (SDK directo, sin mediación). Game ID y placements se declaran
+    // en UnityAdsManager.java; el banner vive en la franja reservada del layout.
+    implementation 'com.unity3d.ads:unity-ads:4.20.0'
     // Desugaring de librerías java.time (ver compileOptions arriba).
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation 'com.google.android.gms:play-services-location:21.3.0'
@@ -109,8 +102,8 @@ dependencies {
     // Licencia de las extensiones: UPL-1.0 / GPLv3 - ver nota en apk/README.md.
     // Se excluye protobuf-java: echo common lo declara en su POM pero el AAR
     // common-android (282 clases, verificado) NO referencia com.google.protobuf
-    // en su bytecode; el stack Appodeal/AdMob trae protobuf-javalite:3.25.6 y
-    // ambos artefactos comparten clases com.google.protobuf.* → duplicadas.
+    // en su bytecode. El exclude es defensivo para no arrastrar una copia
+    // duplicada de com.google.protobuf.* junto a otras dependencias.
     implementation('dev.brahmkshatriya.echo:common:1.0.0') {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
