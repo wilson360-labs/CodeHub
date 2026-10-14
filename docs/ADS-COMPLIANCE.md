@@ -46,47 +46,43 @@ if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
 Evita que el WebView del APK sirva AdSense (Google no permite AdSense dentro de
 apps salvo integraciones aprobadas; la app monetiza con AdMob, ver §2).
 
-## 2) APP (Appodeal mediation → AdMob + AppLovin + Unity Ads + Vungle/Liftoff + BidMachine)
+## 2) APP (Unity Ads directo)
 
 ### Qué ADMITIMOS
-- **Mediación con Appodeal SDK 4.4.0 (Mediation Only)** dentro de la app:
-  banner (franja inferior), rewarded e interstitial. `AppodealManager.java`
-  inicializa `Appodeal.initialize` (APP_KEY del panel de Appodeal); los
-  formatos y cascada se configuran en el dashboard de Appodeal, y AdMob entra
-  como red vía el adaptador `admob` (`play-services-ads` transitivo — exige
-  compileSdk 36). El meta-data del AdMob App ID
-  (`com.google.android.gms.ads.APPLICATION_ID`) se conserva en el manifest.
+- **Unity Ads SDK directo** (`com.unity3d.ads:unity-ads`) dentro de la app:
+  banner (franja inferior), interstitial y rewarded. `UnityAdsManager.java`
+  inicializa `UnityAds.initialize` con el **Game ID** y sirve cada formato con
+  su placement (`BP_Banner_Android`, `BP_Interstitial_Android`,
+  `BP_Rewarded_Android`). Sin mediación ni APP_KEY → menos superficie de fallo.
 - **UMP gate**: `ConsentManager.java` (User Messaging Platform) resuelve el
-  consentimiento ANTES de inicializar Appodeal (`MainActivity.initAdMob`). El
-  adaptador `iab` lee los strings IABTCF que escribe UMP para respetar la
-  decisión del usuario en el WebView.
+  consentimiento ANTES de inicializar Unity Ads (`MainActivity.initAdMob`).
+  `UnityAdsManager.init` no se llama si `canRequestAds()` es false.
 - **`network_security_config.xml`** con base-config `cleartextTrafficPermitted`
-  en `true` (requisito de Appodeal para servir la red de mediación; decisión
-  deliberada de monetización, documentada en el propio XML).
-- **app-ads.txt** en la raíz del sitio (verificación de redes, obligatorio desde
-  Ene 2025): añadir también el seller de **Appodeal**.
+  en true (decisión de monetización documentada en el XML).
+- **app-ads.txt** en la raíz del sitio (verificación de redes): añadir el seller
+  de **Unity Ads** (`# Unity Ads`).
 - WebView configurado según guía de Google: `setAcceptThirdPartyCookies(true)`,
   JS y DOM storage habilitados.
 
 ### Qué PROHIBIMOS
-- **Cargar AdSense/Ads web dentro del WebView** (viola AdSense y AdMob). Los
-  `ins`/gtag de AdSense solo se sirven en navegador real; en la app, si algún día
-  se quiere monetizar el contenido del WebView, hay que hacerlo vía
-  **WebView API for Ads** (registrar el WebView con el GMA SDK), nunca inyectando
-  AdSense.
-- **No reintroducir** `MobileAds.initialize` directo ni `play-services-ads`
-  declarado a mano: lo aporta el adaptador `admob` de Appodeal.
-- **No añadir adapters no aprobados** (Meta, Mintegral, Amazon, Bidon, etc.)
-  sin revisar antes este doc y las políticas de Google.
-- **Interstitial spam**: no mostrar intersticiales que bloqueen la UI sin interacción.
-- Clics propios en la app (usar **test ads** durante desarrollo, no ads reales).
+- **Cargar AdSense/Ads web dentro del WebView** (viola AdSense). El gtag de
+  AdSense solo se sirve en navegador real; en la app, si algún día se quiere
+  monetizar contenido del WebView, hacerlo vía **WebView API for Ads**
+  (registrar el WebView con el GMA SDK), nunca inyectando AdSense.
+- **Inicializar anuncios antes del consentimiento** (UMP). Nada de anuncios sin
+  `canRequestAds()`.
+- **No añadir redes/SDKs no revisados** (Meta, Mintegral, Amazon, Bidon, …) sin
+  revisar antes este doc y las políticas de Google.
+- **Interstitial spam**: no mostrar intersticiales que bloqueen la UI sin
+  interacción del usuario.
+- Clics propios en la app (usar **modo test** durante desarrollo, no ads reales).
 
-### Banner según guía de AdMob (implementado)
-`MainActivity` usa estructura vertical: **WebView arriba** (`mainFrame`, weight 1) y
-**franja inferior reservada** (`bannerSlot`) para el banner. `AppodealManager`
-coloca un `BannerView` (smart banner) dentro de esa franja debajo del contenido;
-`show/hide` (desde JS) ocultan todo el slot → **el banner nunca se superpone a la
-UI** (patrón "recommended" de AdMob, no el "discouraged" que cubre contenido).
+### Banner (franja inferior, nunca superpuesto)
+`MainActivity` usa layout vertical: **WebView arriba** (`mainFrame`, weight 1) y
+**franja inferior reservada** (`bannerSlot`) para el banner. `UnityAdsManager`
+coloca un `BannerView` dentro de esa franja debajo del contenido; `show/hide`
+desde el WebView (`showNativeBanner`/`hideNativeBanner`) ocultan todo el slot →
+**el banner nunca tapa contenido** (patrón "reservado", no el que cubre).
 
 ## 3) Cruzado (aplica en ambos)
 - Membresía y conflictos: no distributions de ads vía software (toolbars/ext) ni
