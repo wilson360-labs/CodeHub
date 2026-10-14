@@ -1,4 +1,4 @@
-name: Build CodeHub APK
+﻿name: Build CodeHub APK
 
 on:
   push:
@@ -34,8 +34,8 @@ jobs:
           set -e
           # El tag de release es apk-<VERSION> (VERSION = sw.js). Para que
           # AppUpdateChecker.java no marque actualizaciones falsas, el
-          # versionName del APK publicado debe ser el mismo esquema numérico
-          # que ese tag (7.15, no 1.4.0). Se inyecta aquí en build.gradle.
+          # versionName del APK publicado debe ser el mismo esquema numÃ©rico
+          # que ese tag (7.15, no 1.4.0). Se inyecta aquÃ­ en build.gradle.
           VERSION=$(grep "const VERSION" sw.js | sed "s/.*'\(.*\)'.*/\1/")
           APPVER=${VERSION##*v}                 # codehub-v7.15 -> 7.15
           APPCODE=$(echo "$APPVER" | awk -F. '{printf "%d%02d\n", $1, $2}')  # 7.15 -> 715
@@ -55,7 +55,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
-          # 8.11.1 = mínimo para AGP 8.9 (compileSdk 36)
+          # 8.11.1 = mÃ­nimo para AGP 8.9 (compileSdk 36)
           gradle-version: '8.13'
 
       # android-actions/setup-android@v3 puede fallar por timeouts transitorios
@@ -68,7 +68,7 @@ jobs:
 
       - name: Accept SDK licenses
         run: |
-          # Verificar que el SDK esté disponible (ya pre-instalado o vía setup-android)
+          # Verificar que el SDK estÃ© disponible (ya pre-instalado o vÃ­a setup-android)
           if [ -z "$ANDROID_HOME" ] || [ ! -d "$ANDROID_HOME" ]; then
             echo "::error::Android SDK no encontrado. ANDROID_HOME=$ANDROID_HOME"
             exit 1
@@ -81,7 +81,7 @@ jobs:
             yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
             echo "SDK listo (licenses aceptadas)"
           else
-            echo "sdkmanager no encontrado, Gradle se encargará de las licenses"
+            echo "sdkmanager no encontrado, Gradle se encargarÃ¡ de las licenses"
           fi
 
       - name: Compile check (debug, sin keystore)
@@ -94,7 +94,7 @@ jobs:
           echo "gradle_rc=$rc" >> "$GITHUB_ENV"
           if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/compile-debug-ok"; fi
           echo "gradle rc=$rc"
-          if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then tail -n 60 "$RUNNER_TEMP/compile-debug.log"; else echo "(no se generó log)"; fi
+          if [ -f "$RUNNER_TEMP/compile-debug.log" ]; then tail -n 60 "$RUNNER_TEMP/compile-debug.log"; else echo "(no se generÃ³ log)"; fi
           exit $rc
 
       - name: Publicar error de compilacion como Issue (diagnostico)
@@ -107,16 +107,16 @@ jobs:
           if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then echo "compile OK"; exit 0; fi
           LOG="$RUNNER_TEMP/compile-debug.log"
           {
-            echo "## Error de compilación en \`assembleDebug\` · commit \`$GITHUB_SHA\`";
+            echo "## Error de compilaciÃ³n en \`assembleDebug\` Â· commit \`$GITHUB_SHA\`";
             echo "";
-            echo "**Paso:** Compile check (debug, sin keystore) — from '.github/workflows/build-apk.yml';"
+            echo "**Paso:** Compile check (debug, sin keystore) â€” from '.github/workflows/build-apk.yml';"
             echo "";
             if [ -f "$LOG" ]; then
-              # Solo los errores reales (con archivo:línea y causa), sin colas
-              # gigantes que se cortan. Las `e:` ya traen ubicación y mensaje.
-              ERR1=$(grep -nE '^e: ' "$LOG" | head -n 60 || true)
+              # Solo los errores reales (con archivo:lÃ­nea y causa), sin colas
+              # gigantes que se cortan. Las `e:` ya traen ubicaciÃ³n y mensaje.
+              ERR1=$(grep -nE '^e: |^[[:space:]]*error:|error:' "$LOG" | head -n 60 || true)
               if [ -n "$ERR1" ]; then
-                echo "**Errores kotlinc (\`e:\`, archivo:línea:mensaje):**";
+                echo "**Errores kotlinc (\`e:\`, archivo:lÃ­nea:mensaje):**";
                 echo '```text';
                 echo "$ERR1" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 40;
                 echo '```';
@@ -126,17 +126,17 @@ jobs:
                 grep -nE 'What went wrong|Execution failed for task|Caused by:' "$LOG" | head -n 10 || true;
                 echo '```';
               else
-                echo '**Sin líneas `e:` detectadas — causa del fallo:**';
+                echo '**Sin lÃ­neas `e:` detectadas â€” causa del fallo:**';
                 echo '```text';
                 grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$LOG" | head -n 25 || true;
                 echo '```';
               fi
             else
-              echo "(log de compilación no encontrado — el paso fue skipeado antes de correr)";
+              echo "(log de compilaciÃ³n no encontrado â€” el paso fue skipeado antes de correr)";
             fi
           } > /tmp/compile-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
-            --title "CI: error de compilación APK ($GITHUB_SHA)" \
+            --title "CI: error de compilaciÃ³n APK ($GITHUB_SHA)" \
             --body-file /tmp/compile-error-body.md \
             --label "bug" 2>/dev/null && echo "issue creado" || echo "gh issue create fallo"
 
@@ -168,11 +168,11 @@ jobs:
           KS="apk/android/app/release.jks"
           keystore_ok=false
 
-          # ── Helpers ──────────────────────────────────────────────
+          # â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
           valid_pw () {
             local name="$1" value="$2"
             if [ -z "$value" ]; then
-              echo "::warning::$name está vacío"
+              echo "::warning::$name estÃ¡ vacÃ­o"
               return 1
             fi
             if [ "${#value}" -lt 6 ]; then
@@ -194,7 +194,7 @@ jobs:
             if keytool -certreq -alias codehub -keystore "$f" \
                 -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" \
                 >/dev/null 2>&1; then
-              echo "✅ Keystore válido: storepass+keypass correctos y alias 'codehub' recuperable."
+              echo "âœ… Keystore vÃ¡lido: storepass+keypass correctos y alias 'codehub' recuperable."
               return 0
             fi
             echo "::error::El keystore no abre con KEYSTORE_PASSWORD/KEY_PASSWORD (o falta el alias 'codehub')."
@@ -211,8 +211,8 @@ jobs:
           }
 
           temp_keystore () {
-            echo "⚠️ Keystore temporal (failed-safe): la compilación completará, pero NO habrá release firmado."
-            echo "   No es válido para actualizar una versión ya instalada con otra firma."
+            echo "âš ï¸ Keystore temporal (failed-safe): la compilaciÃ³n completarÃ¡, pero NO habrÃ¡ release firmado."
+            echo "   No es vÃ¡lido para actualizar una versiÃ³n ya instalada con otra firma."
             rm -f "$KS"
             if ! keytool -genkeypair -v \
                 -keystore "$KS" \
@@ -223,7 +223,7 @@ jobs:
                 -storepass android \
                 -keypass android \
                 -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US" >/dev/null 2>&1; then
-              echo "::error::Falló generar el keystore temporal (reporta este CI run)."
+              echo "::error::FallÃ³ generar el keystore temporal (reporta este CI run)."
               return 1
             fi
             [ -s "$KS" ] || { echo "::error::Keystore temporal no creado."; return 1; }
@@ -233,20 +233,20 @@ jobs:
             echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
           }
 
-          # ── Fuente 1 (recomendada): keystore en Supabase Storage privado ──
+          # â”€â”€ Fuente 1 (recomendada): keystore en Supabase Storage privado â”€â”€
           # KEYSTORE_SUPABASE_URL = URL completa del objeto privado, p.ej:
           #   $SUPABASE_URL/storage/v1/object/private/codehub/keys/release.jks
           if [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] \
              && valid_pw "KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" \
              && valid_pw "KEY_PASSWORD" "$KEY_PASSWORD"; then
-            echo "📦 Descargando keystore desde Supabase Storage (privado)..."
+            echo "ðŸ“¦ Descargando keystore desde Supabase Storage (privado)..."
             if curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
                 -o "$KS" "$KEYSTORE_SUPABASE_URL"; then
               if probe_keystore "$KS"; then
                 adopt_keystore
               else
                 rm -f "$KS"
-                echo "::error::Supabase no aportó un keystore firnable (archivo descartado)."
+                echo "::error::Supabase no aportÃ³ un keystore firnable (archivo descartado)."
               fi
             else
               rm -f "$KS"
@@ -254,29 +254,29 @@ jobs:
             fi
           fi
 
-          # ── Fuente 2: base64 persistente en secrets ──
+          # â”€â”€ Fuente 2: base64 persistente en secrets â”€â”€
           if [ "$keystore_ok" = false ] && [ -n "$KEYSTORE_BASE64" ] \
              && valid_pw "KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" \
              && valid_pw "KEY_PASSWORD" "$KEY_PASSWORD"; then
-            echo "🔑 Decodificando keystore persistente desde secrets..."
+            echo "ðŸ”‘ Decodificando keystore persistente desde secrets..."
             if echo "$KEYSTORE_BASE64" | base64 -d > "$KS" 2>/dev/null && probe_keystore "$KS"; then
               adopt_keystore
             else
               rm -f "$KS"
-              echo "::error::RELEASE_KEYSTORE_BASE64 no produce un keystore válido (¿base64 corrupto o passwords?)."
+              echo "::error::RELEASE_KEYSTORE_BASE64 no produce un keystore vÃ¡lido (Â¿base64 corrupto o passwords?)."
             fi
           fi
 
-          # ── Fuente 3: keystore temporal (el build jamás se rompe) ──
+          # â”€â”€ Fuente 3: keystore temporal (el build jamÃ¡s se rompe) â”€â”€
           if [ "$keystore_ok" = false ]; then
-            echo "⚠️ Ninguna fuente fue firnable. Detalle de secrets:"
-            [ -z "$KEYSTORE_SUPABASE_URL" ] && echo "  ✗ KEYSTORE_SUPABASE_URL (vacío)"
-            [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "  ✗ SUPABASE_SERVICE_ROLE_KEY"
-            [ -z "$KEYSTORE_BASE64" ] && echo "  ✗ RELEASE_KEYSTORE_BASE64"
-            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEYSTORE_PASSWORD" ] && echo "  ✗ KEYSTORE_PASSWORD (vacío)"
-            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEY_PASSWORD" ] && echo "  ✗ KEY_PASSWORD (vacío)"
+            echo "âš ï¸ Ninguna fuente fue firnable. Detalle de secrets:"
+            [ -z "$KEYSTORE_SUPABASE_URL" ] && echo "  âœ— KEYSTORE_SUPABASE_URL (vacÃ­o)"
+            [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && echo "  âœ— SUPABASE_SERVICE_ROLE_KEY"
+            [ -z "$KEYSTORE_BASE64" ] && echo "  âœ— RELEASE_KEYSTORE_BASE64"
+            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEYSTORE_PASSWORD" ] && echo "  âœ— KEYSTORE_PASSWORD (vacÃ­o)"
+            [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -z "$KEY_PASSWORD" ] && echo "  âœ— KEY_PASSWORD (vacÃ­o)"
             if ! temp_keystore; then
-              echo "::error::Sin keystore posible — no hay modo de firmar el release. Aborta con diagnóstico."
+              echo "::error::Sin keystore posible â€” no hay modo de firmar el release. Aborta con diagnÃ³stico."
               exit 1
             fi
           fi
@@ -299,7 +299,7 @@ jobs:
           echo "release_rc=$rc" >> "$GITHUB_ENV"
           if [ $rc -eq 0 ]; then : > "$RUNNER_TEMP/release-ok"; fi
           echo "release rc=$rc"
-          if [ -f "$RUNNER_TEMP/release-build.log" ]; then tail -n 60 "$RUNNER_TEMP/release-build.log"; else echo "(no se generó log de release)"; fi
+          if [ -f "$RUNNER_TEMP/release-build.log" ]; then tail -n 60 "$RUNNER_TEMP/release-build.log"; else echo "(no se generÃ³ log de release)"; fi
           echo "=== APK output search ==="
           find . -path "*/outputs/*" -name "*.apk" 2>/dev/null || true
           exit $rc
@@ -313,15 +313,15 @@ jobs:
         run: |
           if [ -f "$RUNNER_TEMP/release-ok" ]; then exit 0; fi
           {
-            echo "## Error en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+            echo "## Error en \`assembleRelease\` Â· commit \`$GITHUB_SHA\`";
             echo "";
-            echo "**Paso:** Build Release APK — from '.github/workflows/build-apk.yml';"
+            echo "**Paso:** Build Release APK â€” from '.github/workflows/build-apk.yml';"
             echo "";
             echo '```text';
             if [ -f "$RUNNER_TEMP/release-build.log" ]; then
               ERR=$(grep -nE '^e: ' "$RUNNER_TEMP/release-build.log" | head -n 40 || true)
               if [ -n "$ERR" ]; then
-                echo '**Errores kotlinc (`e:`, archivo:línea:mensaje):**';
+                echo '**Errores kotlinc (`e:`, archivo:lÃ­nea:mensaje):**';
                 echo '```text';
                 echo "$ERR" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 30;
                 echo '```';
@@ -331,18 +331,18 @@ jobs:
                 grep -nE 'What went wrong|Execution failed for task|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 10 || true;
                 echo '```';
               else
-                echo '**Sin líneas `e:` detectadas — causa del fallo:**';
+                echo '**Sin lÃ­neas `e:` detectadas â€” causa del fallo:**';
                 echo '```text';
                 grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 25 || true;
                 echo '```';
               fi
             else
-              echo "(log de release no encontrado — el paso fue skipeado antes de correr)"
+              echo "(log de release no encontrado â€” el paso fue skipeado antes de correr)"
             fi
             echo '```';
           } > /tmp/release-error-body.md
           gh issue create --repo "$GITHUB_REPO" \
-            --title "CI: error de compilación APK release ($GITHUB_SHA)" \
+            --title "CI: error de compilaciÃ³n APK release ($GITHUB_SHA)" \
             --body-file /tmp/release-error-body.md \
             --label "bug" 2>/dev/null && echo "issue creado" || echo "gh issue create fallo"
 
@@ -374,7 +374,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
         run: |
-          # Si el build falló, los pasos de diagnóstico ya lo reportaron.
+          # Si el build fallÃ³, los pasos de diagnÃ³stico ya lo reportaron.
           if [ ! -f "$RUNNER_TEMP/release-ok" ]; then exit 1; fi
           # Preferir el APK de release; si no existe, cualquier .apk (debug).
           RELEASE=$(find . -path "*outputs*" -type f -name "*.apk" 2>/dev/null | grep -i release | head -1)
@@ -382,11 +382,11 @@ jobs:
           if [ -z "$APK" ]; then
             echo "No APK found!"
             {
-              echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+              echo "## No se encontrÃ³ APK tras \`assembleRelease\` Â· commit \`$GITHUB_SHA\`";
               echo "";
-              echo "**Paso:** Find APK — from '.github/workflows/build-apk.yml';"
+              echo "**Paso:** Find APK â€” from '.github/workflows/build-apk.yml';"
               echo "";
-              echo "**release-build.log — solo errores y causa:**";
+              echo "**release-build.log â€” solo errores y causa:**";
               echo '```text';
               grep -E "^e: |What went wrong|Execution failed|Caused by:|^FAILURE:" "$RUNNER_TEMP/release-build.log" 2>/dev/null \
                 | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 40 || true;
@@ -418,7 +418,7 @@ jobs:
           PIN="$GITHUB_WORKSPACE/apk/android/keystore-pin.sha256"
           EXPECTED=$(tr -d ' :\r\n' < "$PIN" | tr 'A-F' 'a-f')
           if [ -z "$EXPECTED" ]; then
-            echo "::error::Falta apk/android/keystore-pin.sha256 (genéralo con el workflow 'Generate Cert Pin')."
+            echo "::error::Falta apk/android/keystore-pin.sha256 (genÃ©ralo con el workflow 'Generate Cert Pin')."
             exit 1
           fi
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name 'apksigner' -type f | sort -V | tail -1)
@@ -432,13 +432,13 @@ jobs:
           echo "Pin esperado (v6.96): $EXPECTED"
           if [ "$DIGEST" != "$EXPECTED" ]; then
             {
-              echo "## Firma inesperada en \`assembleRelease\` · commit \`$GITHUB_SHA\`";
+              echo "## Firma inesperada en \`assembleRelease\` Â· commit \`$GITHUB_SHA\`";
               echo "";
-              echo "El APK firmado **NO coincide con el keystore original** (pin en \`apk/android/keystore-pin.sha256\`, extraído del release v6.96).";
+              echo "El APK firmado **NO coincide con el keystore original** (pin en \`apk/android/keystore-pin.sha256\`, extraÃ­do del release v6.96).";
               echo "- **Firma detectada:** \`$DIGEST\`";
               echo "- **Pin esperado:** \`$EXPECTED\`";
               echo "";
-              echo "Si el keystore cambió deliberadamente, regenera el pin con el workflow **Generate Cert Pin** (los usuarios instalados tendrán que desinstalar/reinstalar la app).";
+              echo "Si el keystore cambiÃ³ deliberadamente, regenera el pin con el workflow **Generate Cert Pin** (los usuarios instalados tendrÃ¡n que desinstalar/reinstalar la app).";
             } > /tmp/pin-error-body.md
             gh issue create --repo "$GITHUB_REPO" \
               --title "CI: firma distinta al keystore original ($GITHUB_SHA)" \
@@ -447,7 +447,7 @@ jobs:
             echo "::error::La firma del APK no coincide con el keystore original. No se publica el release."
             exit 1
           fi
-          echo "✅ Firma verificada contra el keystore original."
+          echo "âœ… Firma verificada contra el keystore original."
 
       - name: Upload APK artifact
         if: always() && hashFiles('apk/android/**/*.apk') != ''
@@ -470,29 +470,29 @@ jobs:
             -H "x-upsert: true" \
             "${SUPABASE_URL}/storage/v1/object/CodeHub/app-release-signed.apk" \
             --data-binary @apk/android/app-release-signed.apk
-          echo "✅ APK uploaded to Supabase Storage"
+          echo "âœ… APK uploaded to Supabase Storage"
 
       - name: Create Release
         if: env.HAS_RELEASE_SECRETS == 'true'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: apk-${{ steps.version.outputs.version }}
-          name: "📱 CodeHub APK ${{ steps.version.outputs.version }}"
+          name: "ðŸ“± CodeHub APK ${{ steps.version.outputs.version }}"
           body: |
-            ## CodeHub APK — App Nativa Android
-            **Versión:** ${{ steps.version.outputs.version }}
-            ### Instalación
+            ## CodeHub APK â€” App Nativa Android
+            **VersiÃ³n:** ${{ steps.version.outputs.version }}
+            ### InstalaciÃ³n
             1. Descarga el APK
             2. Abre en tu Android
             3. Acepta fuentes desconocidas
-            4. ¡Listo!
+            4. Â¡Listo!
           files: ${{ steps.find-apk.outputs.path }}
           make_latest: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publicar config de actualización del APK
+      - name: Publicar config de actualizaciÃ³n del APK
         if: env.HAS_RELEASE_SECRETS == 'true'
         continue-on-error: true
         shell: bash
@@ -500,24 +500,24 @@ jobs:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           CH_MSG: ${{ github.event.head_commit.message || '' }}
         run: |
-          # Activa el diálogo "Actualización disponible" del APK publicando
+          # Activa el diÃ¡logo "ActualizaciÃ³n disponible" del APK publicando
           # apkLatestVersion + apkUpdateNotes en /api/admin/config (Render).
           # Se usa --fallback con el mensaje del commit para que el CI nunca
-          # publique vacío; si no hay ADMIN_KEY en secrets, se advierte y el
-          # release ya quedó publicado (el job se marca con advertencia).
-          MSG="${CH_MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
+          # publique vacÃ­o; si no hay ADMIN_KEY en secrets, se advierte y el
+          # release ya quedÃ³ publicado (el job se marca con advertencia).
+          MSG="${CH_MSG:-Nueva versiÃ³n de CodeHub con mejoras y correcciones}"
           node scripts/update-apk-config.js --fallback "$MSG"
 
       - name: Limpiar keystore local del runner
         if: always()
         run: |
           rm -f apk/android/app/release.jks
-          echo "✅ release.jks eliminado del runner"
+          echo "âœ… release.jks eliminado del runner"
 
-      # ── Telegram: enviar el log de build al bot cuando algo falla ──
+      # â”€â”€ Telegram: enviar el log de build al bot cuando algo falla â”€â”€
       # El bot (TELEGRAM_TOKEN/TELEGRAM_CHAT_ID secretos del repo) recibe los
       # fragmentos de error de compile-debug.log y release-build.log para
-      # detectar la causa exacta del fallo. Máx. ~4000 chars por mensaje.
+      # detectar la causa exacta del fallo. MÃ¡x. ~4000 chars por mensaje.
       - name: Enviar log de build a Telegram
         if: failure()
         shell: bash
@@ -531,21 +531,21 @@ jobs:
           grab_log () {
             local file="$1"; local label="$2"; local out=""
             if [ -f "$file" ]; then
-              out="✳️ $label:"
+              out="âœ³ï¸ $label:"
               local err
-              # Prioridad 1: errores kotlinc (e: archivo:línea:mensaje).
+              # Prioridad 1: errores kotlinc (e: archivo:lÃ­nea:mensaje).
               err=$(grep -E "^e: " "$file" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 12)
               # Prioridad 2: causa del fallo de Gradle (sin volcar tareas).
               if [ -z "$err" ]; then
                 err=$(grep -E "What went wrong|Execution failed for task|Caused by:|^FAILURE:" "$file" | head -n 8)
               fi
-              # Prioridad 3: contexto mínimo si no hay nada reconocible.
+              # Prioridad 3: contexto mÃ­nimo si no hay nada reconocible.
               if [ -z "$err" ]; then err=$(grep -E "error:|Unresolved|Unclosed|exception" "$file" | head -n 8); fi
-              if [ -z "$err" ]; then err="(sin líneas de error reconocibles en el log)"; fi
+              if [ -z "$err" ]; then err="(sin lÃ­neas de error reconocibles en el log)"; fi
               out="$out
               $err"
             else
-              out="✳️ $label: (log no generado, el paso fue skipeado antes de correr)"
+              out="âœ³ï¸ $label: (log no generado, el paso fue skipeado antes de correr)"
             fi
             printf "%s" "$out"
           }
@@ -553,7 +553,7 @@ jobs:
           COMPILE=$(grab_log "$RUNNER_TEMP/compile-debug.log" "compile-debug.log")
           RELEASE=$(grab_log "$RUNNER_TEMP/release-build.log" "release-build.log")
 
-          MSG="🔴 *CodeHub · build APK falló* — commit \`$SHA_SHORT\`
+          MSG="ðŸ”´ *CodeHub Â· build APK fallÃ³* â€” commit \`$SHA_SHORT\`
           Link: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           \`\`\`text
@@ -561,7 +561,7 @@ jobs:
 
           $RELEASE
           \`\`\`"
-          # Telegram limita a 4096 caracteres → truncamos conservando el final.
+          # Telegram limita a 4096 caracteres â†’ truncamos conservando el final.
           MSG=$(printf "%s" "$MSG" | head -c 3900)
 
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
