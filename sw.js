@@ -64,6 +64,7 @@ const PRECACHE = [
   '/css/fontawesome/webfonts/fa-solid-900.woff2',
   '/css/fontawesome/webfonts/fa-v4compatibility.woff2',
   '/manifest.json',
+  '/splash/codehub-splash.webp',
   '/offline.html',
   '/js/script.js',
   '/js/lazy-features.js',

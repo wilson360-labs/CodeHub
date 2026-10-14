@@ -105,8 +105,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#2f80ed">
     
-    <link rel="preload" as="image"
-           href="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+    <link rel="preload" as="image" href="splash/codehub-splash.webp" type="image/webp" fetchpriority="high">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/">
 
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
@@ -256,7 +255,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <!-- Estilos principales -->
     <link rel="stylesheet" href="css/index.css?v=20260808f">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20260908d">
+    <link rel="stylesheet" href="css/components.css?v=20261014a">
     <!-- Media queries responsive -->
     <link rel="stylesheet" href="css/index-responsive.css?v=20260809a">
     <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
@@ -484,42 +483,39 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- ══ SPLASH SCREEN ══ -->
     <div id="ch-splash" role="status" aria-label="Cargando CodeHub">
-        <canvas id="ch-splash-canvas"></canvas>
-
-
+        <div class="ch-aurora" aria-hidden="true"></div>
+        <div class="ch-stars ch-stars--a" aria-hidden="true"></div>
+        <div class="ch-stars ch-stars--b" aria-hidden="true"></div>
 
         <div class="ch-ring-wrap">
             <div class="ch-glow-ring"></div>
             <div class="ch-ring"></div>
             <div class="ch-ring-inner"></div>
-            <!-- Orbital dots -->
-            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpin 5s linear infinite;">
-                <div style="position:absolute;top:6px;left:50%;width:8px;height:8px;margin-left:-4px;border-radius:var(--radius-full, 50%);background:#2f80ed;box-shadow:0 0 14px rgba(47,128,237,1),0 0 28px rgba(47,128,237,.6);"></div>
-            </div>
-            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpinRev 7s linear infinite;">
-                <div style="position:absolute;bottom:6px;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:var(--radius-full, 50%);background:#00c6ff;box-shadow:0 0 12px rgba(0,198,255,1),0 0 22px rgba(0,198,255,.6);"></div>
-            </div>
-            <div style="position:absolute;inset:0;border-radius:var(--radius-full, 50%);pointer-events:none;z-index:3;animation:chSpin 9s linear infinite 1s;">
-                <div style="position:absolute;top:50%;right:5px;width:5px;height:5px;margin-top:-2.5px;border-radius:var(--radius-full, 50%);background:#7c4dff;box-shadow:0 0 10px rgba(124,77,255,1),0 0 20px rgba(124,77,255,.6);"></div>
-            </div>
+            <!-- Puntos orbitales -->
+            <div class="ch-orbit ch-orbit--a"><i></i></div>
+            <div class="ch-orbit ch-orbit--b"><i></i></div>
+            <div class="ch-orbit ch-orbit--c"><i></i></div>
+            <!-- Logo local (13 KB, mismo origen, caché inmutable) con respaldo PNG -->
             <img class="ch-logo-img"
                  id="ch-logo-img"
-                 src="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png"
+                 src="splash/codehub-splash.webp"
+                 width="256" height="256"
                  alt="CodeHub"
                  fetchpriority="high"
-                 decoding="sync"
+                 decoding="async"
                  onload="window.chLogoLoaded()"
-                 onerror="this.onerror=null;this.src='splash/codehub.png';window.chLogoLoaded();">
+                 onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='splash/codehub-splash.png';}else{window.chLogoLoaded();}">
         </div>
 
         <div class="ch-brand">
-            <div class="ch-brand-name">Code<span>Hub</span></div>
+            <div class="ch-greet" id="ch-greet">Bienvenido</div>
+            <div class="ch-brand-name"><span class="ch-w ch-w--l">Code</span><span class="ch-w ch-w--r">Hub</span></div>
             <div class="ch-brand-sub">by Wilson.E · Guatemala</div>
         </div>
 
-        <div class="ch-progress-wrap">
+        <div class="ch-progress-wrap" aria-hidden="true">
             <div class="ch-progress-label">
-                <span class="ch-progress-status" id="ch-status">Cargando...</span>
+                <span class="ch-progress-status" id="ch-status">Iniciando…</span>
                 <span class="ch-progress-pct" id="ch-pct">0%</span>
             </div>
             <div class="ch-progress-track">
@@ -8215,177 +8211,127 @@ if (_defMood) setAIMood(_defMood);
 
 // ══ SPLASH SCREEN JS ══════════════════════════════════════════════
 (function(){
-    var splash  = document.getElementById('ch-splash');
+    var splash = document.getElementById('ch-splash');
     if (!splash) return;
 
-    /* ── Solo mostrar una vez por sesión ── */
-    if (sessionStorage.getItem('ch_splash_done')) {
-        splash.style.display = 'none';
-        return;
-    }
-
-    var bar     = document.getElementById('ch-bar');
-    var pct     = document.getElementById('ch-pct');
-    var status  = document.getElementById('ch-status');
-    var canvas  = document.getElementById('ch-splash-canvas');
-
-    /* ── Estado de carga ── */
-    var logoReady   = false;
-    var minTimeDone = false;
-    var progress    = 0;
-    var targetPct   = 15;
-
-    /* ── Cerrar splash ── */
-    function closeSplash(){
-        animRunning = false;
-        sessionStorage.setItem('ch_splash_done', '1');
+    /* Quita el splash del DOM (libera sus capas). Añade --out para que
+       ux-animations dispare la entrada cinemática del sitio. */
+    function removeSplash(){
         splash.classList.add('ch-splash--out');
-        setTimeout(function(){ splash.style.display = 'none'; }, 850);
-    }
-    function tryClose(){
-        if (logoReady && minTimeDone) closeSplash();
+        splash.style.display = 'none';
+        if (splash.parentNode) splash.parentNode.removeChild(splash);
     }
 
-    /* ── onLogoReady: lógica interna cuando el logo cargó ── */
-    function onLogoReady(){
-        if (logoReady) return;
-        logoReady = true;
-        var imgEl = document.getElementById('ch-logo-img');
-        if (imgEl) { 
-            imgEl.style.opacity = '1';
-            imgEl.classList.add('loaded');
-            /* Spin logo del splash */
-            var angle = 0;
-            var spinning = true;
-            var speedDeg = 0.5;
-            (function spinLogo() {
-                if (!spinning) return;
-                angle = (angle + speedDeg) % 360;
-                // Slow breathe spin - not full 360 rotation (it's a logo, not a spinner)
-                // Instead do a harmonic oscillation
-                var osc = Math.sin(angle * Math.PI / 180) * 6;
-                imgEl.style.transform = 'scale(1) rotate(' + osc + 'deg)';
-                requestAnimationFrame(spinLogo);
-            })();
-        }
-        cancelAnimationFrame(rafId);
-        targetPct = 100;
-        var fillInterval = setInterval(function(){
-            progress += 3.5;
-            if (progress >= 100){
-                progress = 100; setBar(100);
-                clearInterval(fillInterval);
-                setTimeout(tryClose, 420);
-            } else { setBar(progress); }
-        }, 16);
+    /* ── Solo una vez por sesión ── */
+    try {
+        if (sessionStorage.getItem('ch_splash_done')) { removeSplash(); return; }
+    } catch (e) {}
+
+    var bar    = document.getElementById('ch-bar');
+    var pct    = document.getElementById('ch-pct');
+    var status = document.getElementById('ch-status');
+    var greet  = document.getElementById('ch-greet');
+    var logo   = document.getElementById('ch-logo-img');
+
+    /* ── Contexto: idioma, hora del día y modo ── */
+    var lang = 'es';
+    try { lang = localStorage.getItem('ch_lang') === 'en' ? 'en' : 'es'; } catch (e) {}
+    var returning = false;
+    try { returning = !!localStorage.getItem('ch_splash_seen'); } catch (e) {}
+    var isNative = typeof window.CodeHubNative !== 'undefined' || !!window.__apkNative ||
+        !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+    /* Tiempo mínimo visible: completo en la 1ª visita; compacto en APK,
+       visitante recurrente o movimiento reducido. MAX_MS = tope duro. */
+    var MIN_MS = reduceMotion ? 700 : isNative ? 900 : returning ? 1200 : 2000;
+    var MAX_MS = 3500;
+
+    var h = new Date().getHours();
+    var part = (h >= 5 && h < 12) ? 0 : (h >= 12 && h < 19) ? 1 : 2;
+    var TXT = lang === 'en'
+        ? { g: ['Good morning', 'Good afternoon', 'Good evening'], w: 'Welcome',
+            st: ['Starting…', 'Loading assets…', 'Almost there…', 'Ready!'] }
+        : { g: ['Buenos días', 'Buenas tardes', 'Buenas noches'], w: 'Bienvenido',
+            st: ['Iniciando…', 'Cargando recursos…', 'Casi listo…', '¡Listo!'] };
+    if (greet)  greet.textContent  = TXT.g[part] + ' · ' + TXT.w;
+    if (status) status.textContent = TXT.st[0];
+
+    /* ── Progreso REAL: cada señal de carga aporta un tramo ── */
+    var sig = { dom: false, fonts: false, logo: false, load: false };
+    function mark(k){ sig[k] = true; }
+    function sigTarget(){
+        return 8 + (sig.dom ? 25 : 0) + (sig.fonts ? 20 : 0) + (sig.logo ? 17 : 0) + (sig.load ? 30 : 0);
     }
 
-    /* ── Sobrescribir chLogoLoaded del head encadenando la lógica del splash ── */
-    var _prevCb = window.chLogoLoaded;
-    window.chLogoLoaded = function(){
-        if (_prevCb) _prevCb();
-        onLogoReady();
-    };
+    if (document.readyState !== 'loading') mark('dom');
+    else document.addEventListener('DOMContentLoaded', function(){ mark('dom'); });
 
-    /* ── Si el logo ya cargó antes de este script (caché) ── */
+    if (document.readyState === 'complete') mark('load');
+    else window.addEventListener('load', function(){ mark('load'); });
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function(){ mark('fonts'); }, function(){ mark('fonts'); });
+    } else { mark('fonts'); }
+
+    /* Logo: encadena el callback del <head> (que añade .loaded) */
+    var prevCb = window.chLogoLoaded;
+    window.chLogoLoaded = function(){ if (prevCb) prevCb(); mark('logo'); };
+    if (logo && logo.complete && logo.naturalWidth > 0) window.chLogoLoaded();
+
+    /* ── Render de la barra: solo transform + texto cuando cambia el entero ── */
+    var shown = 0, lastInt = -1, lastStage = -1;
+    function render(v){
+        if (bar) bar.style.transform = 'translate3d(' + (v - 100).toFixed(2) + '%,0,0)';
+        var n = Math.round(v);
+        if (n === lastInt) return;
+        lastInt = n;
+        if (pct) pct.textContent = n + '%';
+        var stage = n < 30 ? 0 : n < 60 ? 1 : n < 90 ? 2 : 3;
+        if (stage !== lastStage && status) { lastStage = stage; status.textContent = TXT.st[stage]; }
+    }
+
+    /* ── Cierre ── */
+    var finished = false, closed = false, rafId = 0;
+    function closeSplash(){
+        if (closed) return;
+        closed = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        try { sessionStorage.setItem('ch_splash_done', '1'); } catch (e) {}
+        try { localStorage.setItem('ch_splash_seen', '1'); } catch (e) {}
+        splash.classList.add('ch-splash--out');
+        setTimeout(removeSplash, 750);
+    }
+    function finish(){
+        if (finished) return;
+        finished = true;
+        setTimeout(closeSplash, 220);   /* deja ver el 100% */
+    }
+
+    /* ── Loop: la barra sigue lo real, pero no se adelanta al tiempo mínimo ── */
+    var t0 = performance.now(), lastT = t0;
+    function frame(now){
+        rafId = 0;
+        if (finished || closed) return;
+        var dt = Math.max(0, Math.min(now - lastT, 64)); lastT = now;
+        var timeCap = 6 + Math.min(1, Math.max(0, now - t0) / MIN_MS) * 94;
+        var target  = Math.min(sigTarget(), timeCap);
+        shown += (target - shown) * Math.min(1, dt * 0.01);
+        if (target >= 100 && shown > 99.4) shown = 100;
+        render(shown);
+        if (shown >= 100) { finish(); return; }
+        rafId = requestAnimationFrame(frame);
+    }
+    render(0);
+    rafId = requestAnimationFrame(frame);
+
+    /* Tope duro: si algo tarda de más, se completa igual */
     setTimeout(function(){
-        var imgEl = document.getElementById('ch-logo-img');
-        if (imgEl && imgEl.complete && imgEl.naturalWidth > 0 && !logoReady) {
-            window.chLogoLoaded();
-        }
-    }, 0);
-
-    /* ── Partículas de fondo ── */
-    var ctx = canvas.getContext('2d');
-    var W, H, particles = [];
-    function resizeCanvas(){
-        W = canvas.width  = window.innerWidth;
-        H = canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    function Particle(){ this.reset(); }
-    Particle.prototype.reset = function(){
-        this.x    = Math.random() * W;
-        this.y    = Math.random() * H;
-        this.r    = .5 + Math.random() * 1.6;
-        this.vx   = (Math.random() - .5) * .35;
-        this.vy   = -(Math.random() * .5 + .15);
-        this.life = 1;
-        this.decay= .003 + Math.random() * .004;
-        this.col  = Math.random() < .5 ? '16,185,129' : '232,201,120';
-    };
-    Particle.prototype.update = function(){
-        this.x += this.vx;
-        this.y += this.vy;
-        this.life -= this.decay;
-        if (this.life <= 0 || this.y < -10) this.reset();
-    };
-    /* ── Menos partículas en pantallas pequeñas = menos trabajo por frame ── */
-    var particleCount = W < 380 ? 26 : W < 480 ? 32 : W < 720 ? 50 : 80;
-    for (var i = 0; i < particleCount; i++){
-        var p = new Particle();
-        p.y = Math.random() * H;
-        particles.push(p);
-    }
-    var animRunning = true;
-    var hiddenFlag = document.hidden;
-    document.addEventListener('visibilitychange', function(){
-        hiddenFlag = document.hidden;
-        /* Si volvemos a la pestaña, reanudamos el canvas */
-        if (!hiddenFlag && animRunning) requestAnimationFrame(drawLoop);
-    });
-    (function drawLoop(){
-        /* Pausa total cuando la pestaña no es visible: cero CPU y batería. */
-        if (!animRunning || hiddenFlag) return;
-        requestAnimationFrame(drawLoop);
-        ctx.clearRect(0, 0, W, H);
-        particles.forEach(function(p){
-            p.update();
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(' + p.col + ',' + (p.life * .75) + ')';
-            ctx.fill();
-        });
-    })();
-
-    /* ── Barra de progreso animada ── */
-    var rafId;
-    function animateBar(){
-        if (progress < targetPct) {
-            // Velocidad variable: rápido al inicio, lento al acercarse al target
-            var step = Math.max(0.3, (targetPct - progress) * 0.045);
-            progress = Math.min(progress + step, targetPct);
-            setBar(progress);
-            rafId = requestAnimationFrame(animateBar);
-        }
-    }
-
-    function setBar(val){
-        val = Math.round(val);
-        if (bar) bar.style.width = val + '%';
-        if (pct) pct.textContent = val + '%';
-        // Actualizar texto de estado
-        if (status){
-            if (val < 30)       status.textContent = 'Iniciando...';
-            else if (val < 60)  status.textContent = 'Cargando recursos...';
-            else if (val < 90)  status.textContent = 'Casi listo...';
-            else                status.textContent = '¡Listo!';
-        }
-    }
-
-    /* ── Arrancar animación de barra — avanza libremente hasta 70% */
-    targetPct = 70;
-    animateBar();
-
-    /* Tiempo mínimo de visualización: 3s */
-    setTimeout(function(){ minTimeDone = true; tryClose(); }, 3000);
-
-    /* Fallback: si el logo no cargó en 5s, forzar cierre */
-    setTimeout(function(){
-        if (!logoReady) { window.chLogoLoaded(); }
-    }, 5000);
+        if (!sig.logo) window.chLogoLoaded();
+        mark('dom'); mark('fonts'); mark('load');
+    }, MAX_MS);
+    /* Red de seguridad: sale aunque rAF esté bloqueado (pestaña en 2º plano) */
+    setTimeout(closeSplash, MAX_MS + 1500);
 })();
 
 </script>
