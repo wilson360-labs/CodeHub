@@ -251,7 +251,7 @@ final class UnityAdsManager {
 
                 @Override
                 public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
-                    Log.w(TAG, "banner no cargÃ³: " + errorInfo.errorCode + " " + errorInfo.errorMessage);
+                    Log.w(TAG, "banner no cargÃ³: " + errorInfo.getErrorCode() + " " + errorInfo.getErrorMessage());
                 }
 
                 @Override
