@@ -246,9 +246,14 @@ public final class UnityAdsManager {
                 }
 
                 @Override
+                public void onBannerShown(BannerView bannerAdView) {
+                    Log.i(TAG, "banner mostrado");
+                }
+
+                @Override
                 public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
                     Log.w(TAG, "banner no cargo: " + (errorInfo != null
-                            ? (errorInfo.getErrorCode() + " " + errorInfo.getErrorMessage())
+                            ? (errorInfo.errorCode + " " + errorInfo.errorMessage)
                             : "unknown"));
                 }
 
