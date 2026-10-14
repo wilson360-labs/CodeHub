@@ -96,7 +96,7 @@ jobs:
               "https://api.render.com/v1/services?limit=100")
             echo "Render /v1/services → $(printf '%s' "${RAW}" | head -c 400)"
             ID=$(printf '%s' "${RAW}" \
-              | jq -r '[.[] | (.service // .)] | map(select(.name=="codehub")) | (.[0].id // empty)' 2>/dev/null)
+              | jq -r '[.[] | (.service // .)] | map(select((.name // "") | ascii_downcase | test("codehub"))) | (.[0].id // empty)' 2>/dev/null)
           fi
           if [ -z "${ID}" ] || [ "${ID}" = "null" ]; then
             echo "::error::No se encontró el servicio 'codehub' en Render. Crea el secret RENDER_SERVICE_ID (srv-xxxx) o revisa RENDER_API_KEY."
