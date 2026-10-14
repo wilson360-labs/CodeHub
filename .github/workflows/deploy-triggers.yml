@@ -89,11 +89,17 @@ jobs:
           if [ -n "${RENDER_SERVICE_ID}" ]; then
             ID="${RENDER_SERVICE_ID}"
           else
-            ID=$(curl -sf -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              "https://api.render.com/v1/services?name=codehub&limit=1" | jq -r '.[0].id')
+            # La API v1 lista servicios como [{ "service": { "id": "srv-…" } }]
+            # (según la cuenta puede venir el objeto plano): cubrimos ambos y
+            # mostramos la lista para diagnosticar si la key no tiene acceso.
+            RAW=$(curl -s -H "Authorization: Bearer ${RENDER_API_KEY}" \
+              "https://api.render.com/v1/services?limit=100")
+            echo "Render /v1/services → $(printf '%s' "${RAW}" | head -c 400)"
+            ID=$(printf '%s' "${RAW}" \
+              | jq -r '[.[] | (.service // .)] | map(select(.name=="codehub")) | (.[0].id // empty)' 2>/dev/null)
           fi
           if [ -z "${ID}" ] || [ "${ID}" = "null" ]; then
-            echo "::error::No se encontró el servicio 'codehub' en Render (revisa RENDER_API_KEY / RENDER_SERVICE_ID)."
+            echo "::error::No se encontró el servicio 'codehub' en Render. Crea el secret RENDER_SERVICE_ID (srv-xxxx) o revisa RENDER_API_KEY."
             exit 1
           fi
           echo "Servicio Render: ${ID}"
