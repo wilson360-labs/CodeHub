@@ -1,40 +1,40 @@
-﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   rewarded-ad.js â€” Anuncios recompensados de CodeHub (verificados por servidor)
-   CodeHub by Wilson.E Â· ver docs/REWARDED-ADS.md
+/* ═══════════════════════════════════════════════════════════════════════
+   rewarded-ad.js — Anuncios recompensados de CodeHub (verificados por servidor)
+   CodeHub by Wilson.E · ver docs/REWARDED-ADS.md
 
    REGLA DE ORO: el navegador nunca decide la recompensa. El flujo es:
 
-     1) POST /api/rewards/token                     â†’ nonce (un solo uso)
-     2) el usuario ve el anuncio (red / oferta)     â†’ la red obtiene el nonce
-     3) LA RED llama /api/rewards/postback (S2S)    â†’ EL SERVIDOR acredita
-     4) el front consulta /api/rewards/balance      â†’ confirma
+     1) POST /api/rewards/token                     → nonce (un solo uso)
+     2) el usuario ve el anuncio (red / oferta)     → la red obtiene el nonce
+     3) LA RED llama /api/rewards/postback (S2S)    → EL SERVIDOR acredita
+     4) el front consulta /api/rewards/balance      → confirma
 
-   API (compatible con la versiÃ³n anterior â€” solo usaba isReady/preload/show):
+   API (compatible con la versión anterior — solo usaba isReady/preload/show):
 
      CodeHubRewardedAd.configure({ apiBase, adUnit, getToken, provider })
-     CodeHubRewardedAd.isReady()          â†’ bool
+     CodeHubRewardedAd.isReady()          → bool
      CodeHubRewardedAd.preload()
-     CodeHubRewardedAd.show(cb)           â†’ cb(earned, amount, type)  [legacy]
-     CodeHubRewardedAd.watch(opts)        â†’ Promise<{earned,amount,credits}>
-     CodeHubRewardedAd.balance()          â†’ Promise<{credits,todayEarned}>
-     CodeHubRewardedAd.openOfferwall()    â†’ bool
-     CodeHubRewardedAd.available()        â†’ {native,web,server}
+     CodeHubRewardedAd.show(cb)           → cb(earned, amount, type)  [legacy]
+     CodeHubRewardedAd.watch(opts)        → Promise<{earned,amount,credits}>
+     CodeHubRewardedAd.balance()          → Promise<{credits,todayEarned}>
+     CodeHubRewardedAd.openOfferwall()    → bool
+     CodeHubRewardedAd.available()        → {native,web,server}
 
    En el APK, `window.CodeHubNative` delega en Unity Ads (ver el
-   cÃ³digo de la app: UnityAdsManager). En web, el rewarded pasa por el
+   código de la app: UnityAdsManager). En web, el rewarded pasa por el
    backend de recompensas (Monetag / offerwall).
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════ */
 'use strict';
 
 const CodeHubRewardedAd = (function () {
-  // â”€â”€ Config por defecto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Config por defecto ────────────────────────────────────────────
   let _cfg = {
     apiBase: (typeof window._CH_BACKEND !== 'undefined' && window._CH_BACKEND)
       ? window._CH_BACKEND
       : 'https://codehub-98s6.onrender.com',
     adUnit: 'video',
     getToken: null,   // () => string | null (si no se define, usa CodeHubAuth)
-    provider: null,   // { zoneId } | { call({nonce})=>â€¦ }  (p. ej. Monetag)
+    provider: null,   // { zoneId } | { call({nonce})=>… }  (p. ej. Monetag)
     offerwall: null,  // { url, param }
     poll: { tries: 8, delayMs: 1500 },
   };
@@ -51,7 +51,7 @@ const CodeHubRewardedAd = (function () {
     return b + '/api/rewards';
   }
 
-  // â”€â”€ SesiÃ³n / token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sesión / token ───────────────────────────────────────────────
   function getSession() {
     try {
       if (window.CodeHubAuth && typeof window.CodeHubAuth.getSession === 'function') {
@@ -79,7 +79,7 @@ const CodeHubRewardedAd = (function () {
     return h;
   }
 
-  // â”€â”€ Puente nativo (APK) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Puente nativo (APK) ──────────────────────────────────────────
   function isNative() {
     return !!(window.CodeHubNative && typeof window.CodeHubNative.showRewardedAd === 'function');
   }
@@ -102,7 +102,7 @@ const CodeHubRewardedAd = (function () {
     });
   }
 
-  // â”€â”€ Anuncios web (con verificaciÃ³n de servidor) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Anuncios web (con verificación de servidor) ──────────────────
   function requestNonce(adUnit) {
     return fetch(apiBase() + '/token', {
       method: 'POST',
@@ -127,7 +127,7 @@ const CodeHubRewardedAd = (function () {
     return Promise.reject(new Error('proveedor no cargado'));
   }
 
-  // â”€â”€ API HTTP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── API HTTP ─────────────────────────────────────────────────────
   function http(path, opts, method) {
     const url = apiBase() + path;
     return fetch(url, Object.assign({ method: method || 'GET', headers: authHeaders() }, opts || {}))
@@ -175,14 +175,14 @@ const CodeHubRewardedAd = (function () {
     return sleep().then(loop);
   }
 
-  // â”€â”€ Flujo principal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Devuelve { earned, amount, credits, reason } sin prometer crÃ©ditos
+  // ── Flujo principal ──────────────────────────────────────────────
+  // Devuelve { earned, amount, credits, reason } sin prometer créditos
   // que el backend no haya confirmado.
   async function watch(opts) {
     opts = opts || {};
 
     // 1) En el APK manda el SDK nativo (Unity Ads). El consentimiento ya
-    //    se resolviÃ³ en ConsentManager; aquÃ­ solo se muestra.
+    //    se resolvió en ConsentManager; aquí solo se muestra.
     if (isNative()) {
       const native = await showNative();
       return Object.assign({ credits: null, source: 'native' }, native);
@@ -221,7 +221,7 @@ const CodeHubRewardedAd = (function () {
     return { earned: false, credits: before, reason: 'sin-verificar' };
   }
 
-  // â”€â”€ Compatibilidad con la versiÃ³n anterior â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Compatibilidad con la versión anterior ───────────────────────
   function isReady() {
     if (isNative()) {
       try { if (typeof window.CodeHubNative.isRewardedAdReady === 'function') return !!window.CodeHubNative.isRewardedAdReady(); } catch (e) { /* noop */ }
@@ -235,7 +235,7 @@ const CodeHubRewardedAd = (function () {
     try { if (typeof window.CodeHubNative !== 'undefined' && window.CodeHubNative.loadRewardedAd) window.CodeHubNative.loadRewardedAd(); } catch (e) { /* noop */ }
   }
 
-  // cb(earned, amount, type) â€” compatible.
+  // cb(earned, amount, type) — compatible.
   function show(cb) {
     Promise.resolve()
       .then(function () {
