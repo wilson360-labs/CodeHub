@@ -1378,3 +1378,163 @@ pausableInterval(() => { DeviceApps.updateUI(); }, 5 * 60 * 1000);
     if (!el.hasAttribute('data-haptic')) el.setAttribute('data-haptic', el.classList.contains('we-trigger') ? 'game' : 'tab');
   });
 })();
+
+/* ═══════════════════════════════════════════════════════════════
+   ANUNCIO RECOMPENSADO AL DESCARGAR (Unity Ads en el APK)
+   Al tocar "Descargar" / "Actualizar" se ofrece, de forma EXPLÍCITA y
+   opcional, ver un anuncio corto que desbloquea la descarga.
+   - Solo actúa si hay un anuncio LISTO (CodeHubRewardedAd.isReady()).
+     Sin SDK, sin consentimiento (UMP), sin anuncio cargado o con error
+     técnico → la descarga sigue normal: nunca se bloquea por fallo de ads.
+   - Tras ver un anuncio completo hay COOLDOWN_MS sin volver a pedirlo.
+   - Re-dispara el clic original (no reemplaza handlers ni contadores).
+   Ver docs/REWARDED-ADS.md y docs/ADS-COMPLIANCE.md.
+   ═══════════════════════════════════════════════════════════════ */
+const OSRewardedGate = (() => {
+  const COOLDOWN_MS = 10 * 60 * 1000;
+  const KEY = 'ch_os_dl_unlock';
+  const SEL = 'a.dl-btn.dl-primary, button.device-update-btn';
+  let busy = false;
+
+  const ads = () => window.CodeHubRewardedAd || null;
+
+  function available() {
+    const r = ads();
+    if (!r) return false;
+    try { const a = r.available(); return !!(a.native || (a.web && a.server)); } catch { return false; }
+  }
+  function ready() {
+    try { return !!(ads() && ads().isReady()); } catch { return false; }
+  }
+  function unlocked() {
+    try { return Date.now() < Number(localStorage.getItem(KEY) || 0); } catch { return false; }
+  }
+  function unlock() {
+    try { localStorage.setItem(KEY, String(Date.now() + COOLDOWN_MS)); } catch {}
+  }
+  function warm() {
+    if (!available() || unlocked()) return;
+    try { if (!ready()) ads().preload(); } catch {}
+  }
+
+  function appNameOf(el) {
+    const card = el.closest('.app-card');
+    const n = card && card.querySelector('.app-name');
+    if (n && n.textContent.trim()) return n.textContent.trim();
+    if (el.closest('.app-detail-actions')) {
+      const t = document.getElementById('app-detail-title');
+      if (t && t.textContent.trim()) return t.textContent.trim();
+    }
+    return 'esta app';
+  }
+
+  // Devuelve 'granted' | 'unavailable' | 'cancel'
+  function ask(appName) {
+    return new Promise(resolve => {
+      const mins = Math.round(COOLDOWN_MS / 60000);
+      const ov = document.createElement('div');
+      ov.className = 'os-rw-overlay';
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-modal', 'true');
+      ov.setAttribute('aria-labelledby', 'os-rw-title');
+      ov.innerHTML = `
+        <div class="os-rw-card">
+          <div class="os-rw-icon"><i class="fas fa-gift"></i></div>
+          <h3 class="os-rw-title" id="os-rw-title">Descarga ${esc(appName)}</h3>
+          <p class="os-rw-text">Mira un anuncio corto para desbloquear la descarga y mantener CodeHub gratis. Después tendrás ${mins} minutos sin anuncios.</p>
+          <p class="os-rw-status" id="os-rw-status" role="status" aria-live="polite"></p>
+          <div class="os-rw-actions">
+            <button type="button" class="os-rw-btn os-rw-go" id="os-rw-go"><i class="fas fa-play"></i> Ver anuncio y descargar</button>
+            <button type="button" class="os-rw-btn os-rw-cancel" id="os-rw-cancel">Ahora no</button>
+          </div>
+          <p class="os-rw-note">Los APK vienen del repositorio oficial de cada proyecto.</p>
+        </div>`;
+      document.body.appendChild(ov);
+
+      const go = ov.querySelector('#os-rw-go');
+      const cancel = ov.querySelector('#os-rw-cancel');
+      const status = ov.querySelector('#os-rw-status');
+      const prevFocus = document.activeElement;
+      let done = false;
+
+      function close(result) {
+        if (done) return;
+        done = true;
+        document.removeEventListener('keydown', onKey, true);
+        ov.remove();
+        try { if (prevFocus && prevFocus.focus) prevFocus.focus(); } catch {}
+        resolve(result);
+      }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.stopPropagation(); close('cancel'); return; }
+        if (e.key === 'Tab') {            // trampa de foco mínima entre los 2 botones
+          const items = [go, cancel].filter(b => !b.disabled);
+          if (!items.length) { e.preventDefault(); return; }
+          const i = items.indexOf(document.activeElement);
+          e.preventDefault();
+          items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length].focus();
+        }
+      }
+      document.addEventListener('keydown', onKey, true);
+      cancel.addEventListener('click', () => close('cancel'));
+      ov.addEventListener('click', e => { if (e.target === ov && !go.disabled) close('cancel'); });
+
+      go.addEventListener('click', async () => {
+        if (done) return;
+        go.disabled = true; cancel.disabled = true;
+        status.className = 'os-rw-status';
+        status.textContent = 'Cargando anuncio…';
+        let res;
+        try { res = await ads().watch({ adUnit: 'os-download' }); }
+        catch { res = { earned: false, reason: 'error' }; }
+        if (done) return;
+        if (res && res.earned) { close('granted'); return; }
+        // `reason` = fallo técnico (sin proveedor, red, no mostrado…) → no se bloquea
+        if (res && res.reason) { close('unavailable'); return; }
+        // Sin `reason`: el usuario cerró el anuncio antes de terminar
+        go.disabled = false; cancel.disabled = false;
+        go.innerHTML = '<i class="fas fa-rotate-right"></i> Reintentar';
+        status.className = 'os-rw-status os-rw-status--warn';
+        status.textContent = 'Mira el anuncio completo para desbloquear la descarga.';
+        warm();
+        go.focus();
+      });
+
+      go.focus();
+    });
+  }
+
+  // Captura: corre antes que los onclick propios (countDl, hápticos, instalación nativa)
+  document.addEventListener('click', e => {
+    const el = e.target.closest && e.target.closest(SEL);
+    if (!el) return;
+    if (el.dataset.osRwOk === '1') { delete el.dataset.osRwOk; return; }   // re-clic ya autorizado
+    if (el.tagName === 'A') {
+      const h = el.getAttribute('href');
+      if (!h || h === '#' || el.getAttribute('aria-disabled') === 'true') return;
+    }
+    if (unlocked() || !available()) return;            // flujo normal
+    if (busy) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    if (!ready()) { warm(); return; }                  // sin anuncio listo → descarga normal
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    busy = true;
+    ask(appNameOf(el)).then(result => {
+      busy = false;
+      if (result === 'granted') { unlock(); OSToast('✅ Descarga desbloqueada', 'success'); }
+      else if (result === 'unavailable') OSToast('Anuncio no disponible — descarga directa', 'info');
+      if (result === 'granted' || result === 'unavailable') {
+        el.dataset.osRwOk = '1';
+        el.click();
+      }
+    });
+  }, true);
+
+  document.addEventListener('os:catalog-loaded', warm);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) warm(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', warm);
+  else warm();
+
+  return { available, ready, unlocked };
+})();
