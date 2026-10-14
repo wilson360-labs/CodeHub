@@ -12,7 +12,7 @@ import com.unity3d.ads.IUnityAdsShowListener;
 import com.unity3d.ads.UnityAds;
 import com.unity3d.ads.UnityAdsShowOptions;
 import com.unity3d.services.banners.BannerErrorInfo;
-import com.unity3d.services.banners.BannerView;
+import com.unity3d.services.banners.BannerErrorCode;
 import com.unity3d.services.banners.UnityBannerSize;
 
 /**
