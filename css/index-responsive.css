@@ -1033,7 +1033,8 @@
   #scroll-progress { height: 3px; }
 
   /* ── COMMAND PALETTE ── */
-  .command-palette { width: 95%; padding: 0.75rem; }
+  .command-palette { width: 95%; padding: 0.75rem; top: auto; bottom: 110px; max-height: calc(100dvh - 160px); overflow-y: auto; transform: translate(-50%, 0); }
+  #command-overlay.active .command-palette { transform: translate(-50%, 0); }
   .command-input { font-size: 16px !important; }
   .command-item { padding: 0.6rem 0.75rem; font-size: 0.82rem; min-height: 44px; }
 }
