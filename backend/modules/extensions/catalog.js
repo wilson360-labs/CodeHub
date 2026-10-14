@@ -147,10 +147,16 @@ async function resolveGitHub(originUrl) {
   };
 }
 
+function isApkUrl(value) {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+  const clean = value.split('#')[0].split('?')[0];
+  return /apk$/i.test(clean);
+}
+
 function findApkUrlDeep(node, depth) {
   const d = depth || 0;
   if (node == null || d > 6) return null;
-  if (typeof node === 'string') return /\.apk(k)?(\?|$)/i.test(node) ? node : null;
+  if (typeof node === 'string') return isApkUrl(node) ? node : null;
   if (Array.isArray(node)) {
     for (const v of node) {
       const hit = findApkUrlDeep(v, d + 1);
@@ -168,7 +174,7 @@ function findApkUrlDeep(node, depth) {
 }
 
 async function resolveGeneric(originUrl) {
-  if (/\.apk(k)?(\?|$)/i.test(originUrl)) {
+  if (isApkUrl(originUrl)) {
     return { url: originUrl, version: '', name: baseName(originUrl) };
   }
   const data = await fetchJson(originUrl);

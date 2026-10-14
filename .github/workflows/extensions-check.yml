@@ -1,0 +1,50 @@
+name: Extensions module (rama)
+
+# Verificación del módulo backend de extensiones de Echo
+# (backend/modules/extensions). Node viene preinstalado en los runners de
+# GitHub, así que no hace falta setup-node.
+#
+# Complementa a deploy.yml (que solo corre en main/PR): aquí se valida en
+# ramas de trabajo para no tocar main sin comprobar antes la sintaxis.
+on:
+  push:
+    branches:
+      - 'feat/**'
+      - 'echo/**'
+      - main
+    paths:
+      - 'backend/modules/extensions/**'
+      - '.github/workflows/extensions-check.yml'
+  pull_request:
+    paths:
+      - 'backend/modules/extensions/**'
+      - '.github/workflows/extensions-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Verificar módulo de extensiones (JS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Sintaxis (node --check)
+        run: |
+          node -v
+          for f in backend/modules/extensions/*.js; do
+            node --check "$f" && echo "OK $f"
+          done
+
+      - name: Carga y exports (catalog.js no depende de npm)
+        run: |
+          node -e "const c=require('./backend/modules/extensions/catalog.js'); const need=['loadCatalog','toPublic','resolveAsset','hasUpdate','fetchBinary','baseName']; for (const k of need) { if (typeof c[k] !== 'function') throw new Error('falta export: ' + k); } console.log('catalog.js OK:', Object.keys(c).join(', '));"
+
+      - name: Carga y exports (config.js)
+        run: |
+          node -e "const c=require('./backend/modules/extensions/config.js'); const need=['SOURCE_URL','BACKEND_URL','CACHE_TTL_MS','ASSET_TTL_MS','MAX_BYTES','FETCH_TIMEOUT_MS']; for (const k of need) { if (c[k] === undefined) throw new Error('falta config: ' + k); } console.log('config.js OK:', c.BACKEND_URL);"
