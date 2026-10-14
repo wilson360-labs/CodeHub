@@ -1,4 +1,4 @@
-package com.codehub.app;
+﻿package com.codehub.app;
 
 import android.app.Activity;
 import android.util.Log;
@@ -16,17 +16,17 @@ import com.unity3d.services.banners.BannerView;
 import com.unity3d.services.banners.UnityBannerSize;
 
 /**
- * Unity Ads (SDK directo) — banners, interstitials y rewarded.
+ * Unity Ads (SDK directo) â€” banners, interstitials y rewarded.
  *
  * Reemplaza a AppodealManager como motor de anuncios conservando EL MISMO
  * contrato JS de CodeHubBridge; por eso CodeHubBridge y js/rewarded-ad.js
- * no cambian. Unity Ads no usa "APP_KEY" de mediación: se inicializa con
+ * no cambian. Unity Ads no usa "APP_KEY" de mediaciÃ³n: se inicializa con
  * el Game ID y se carga/muestra con un Placement ID por formato.
  *
- *   · Game ID      800397583
- *   · Rewarded     BP_Rewarded_Android
- *   · Interstitial BP_Interstitial_Android
- *   · Banner       BP_Banner_Android
+ *   Â· Game ID      800397583
+ *   Â· Rewarded     BP_Rewarded_Android
+ *   Â· Interstitial BP_Interstitial_Android
+ *   Â· Banner       BP_Banner_Android
  *
  * El consentimiento sigue siendo el de UMP (ConsentManager): solo se llama
  * a init() cuando canRequestAds() es true. Nada de anuncios antes de eso.
@@ -35,7 +35,7 @@ final class UnityAdsManager {
 
     private static final String TAG = "CodeHubUnityAds";
 
-    // Dashboard Unity → proyecto "CodeHub".
+    // Dashboard Unity â†’ proyecto "CodeHub".
     private static final String GAME_ID = "800397583";
 
     private static final String PLACEMENT_REWARDED = "BP_Rewarded_Android";
@@ -47,7 +47,7 @@ final class UnityAdsManager {
 
     private static boolean initialized;
 
-    private static View bannerSlot;
+    private static ViewGroup bannerSlot;
     private static BannerView bannerView;
 
     private static RewardedCallback rewardedCallback;
@@ -68,10 +68,10 @@ final class UnityAdsManager {
 
     private UnityAdsManager() {}
 
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  INIT
-    // ─────────────────────────────────────────────────────────────
-    static void init(final Activity activity, final View reservedBannerSlot) {
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    static void init(final Activity activity, final ViewGroup reservedBannerSlot) {
         if (initialized || activity == null) return;
         bannerSlot = reservedBannerSlot;
         try {
@@ -87,7 +87,7 @@ final class UnityAdsManager {
 
                 @Override
                 public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                    Log.w(TAG, "init falló: [" + error + "] " + message);
+                    Log.w(TAG, "init fallÃ³: [" + error + "] " + message);
                 }
             });
         } catch (Throwable t) {
@@ -99,9 +99,9 @@ final class UnityAdsManager {
         return initialized;
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  REWARDED
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     static void loadRewarded() {
         if (!initialized) return;
         try {
@@ -114,7 +114,7 @@ final class UnityAdsManager {
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     rewardedReady = false;
-                    Log.w(TAG, "rewarded no cargó: [" + error + "] " + message);
+                    Log.w(TAG, "rewarded no cargÃ³: [" + error + "] " + message);
                 }
             });
         } catch (Throwable t) { Log.w(TAG, "loadRewarded", t); }
@@ -135,7 +135,7 @@ final class UnityAdsManager {
             UnityAds.show(activity, PLACEMENT_REWARDED, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                 @Override
                 public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
-                    Log.w(TAG, "rewarded show falló: [" + error + "] " + message);
+                    Log.w(TAG, "rewarded show fallÃ³: [" + error + "] " + message);
                     deliverRewarded(false);
                     loadRewarded();
                 }
@@ -168,9 +168,9 @@ final class UnityAdsManager {
         if (cb != null) cb.onResult(earned, 0, "");
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  INTERSTITIAL
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     static void loadInterstitial() {
         if (!initialized) return;
         try {
@@ -183,7 +183,7 @@ final class UnityAdsManager {
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     interstitialReady = false;
-                    Log.w(TAG, "interstitial no cargó: [" + error + "] " + message);
+                    Log.w(TAG, "interstitial no cargÃ³: [" + error + "] " + message);
                 }
             });
         } catch (Throwable t) { Log.w(TAG, "loadInterstitial", t); }
@@ -204,7 +204,7 @@ final class UnityAdsManager {
             UnityAds.show(activity, PLACEMENT_INTERSTITIAL, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                 @Override
                 public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
-                    Log.w(TAG, "interstitial show falló: [" + error + "] " + message);
+                    Log.w(TAG, "interstitial show fallÃ³: [" + error + "] " + message);
                     deliverInterstitial(false);
                     loadInterstitial();
                 }
@@ -236,9 +236,9 @@ final class UnityAdsManager {
         if (cb != null) cb.onResult(shown);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  BANNER (franja reservada, nunca superpuesta)
-    // ─────────────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     private static void setupBanner(Activity activity) {
         if (bannerSlot == null) return;
         try {
@@ -251,7 +251,7 @@ final class UnityAdsManager {
 
                 @Override
                 public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
-                    Log.w(TAG, "banner no cargó: " + errorInfo.errorCode + " " + errorInfo.errorMessage);
+                    Log.w(TAG, "banner no cargÃ³: " + errorInfo.errorCode + " " + errorInfo.errorMessage);
                 }
 
                 @Override
@@ -261,11 +261,11 @@ final class UnityAdsManager {
 
                 @Override
                 public void onBannerLeftApplication(BannerView bannerAdView) {
-                    Log.i(TAG, "banner abrió app externa");
+                    Log.i(TAG, "banner abriÃ³ app externa");
                 }
             });
-            bannerSlot.removeAllViews();
-            ((ViewGroup) bannerSlot).addView(view, new FrameLayout.LayoutParams(
+            ((ViewGroup) bannerSlot).removeAllViews();
+            bannerSlot.addView(view, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             bannerSlot.setVisibility(View.VISIBLE);
             bannerView = view;
