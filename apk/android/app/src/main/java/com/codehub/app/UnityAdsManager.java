@@ -31,7 +31,7 @@ import com.unity3d.services.banners.UnityBannerSize;
  * El consentimiento sigue siendo el de UMP (ConsentManager): solo se llama
  * a init() cuando canRequestAds() es true. Nada de anuncios antes de eso.
  */
-final class UnityAdsManager {
+public final class UnityAdsManager {
 
     private static final String TAG = "CodeHubUnityAds";
 
@@ -71,7 +71,7 @@ final class UnityAdsManager {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  INIT
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    static void init(final Activity activity, final ViewGroup reservedBannerSlot) {
+    public static void init(final Activity activity, final ViewGroup reservedBannerSlot) {
         if (initialized || activity == null) return;
         bannerSlot = reservedBannerSlot;
         try {
@@ -95,14 +95,14 @@ final class UnityAdsManager {
         }
     }
 
-    static boolean isInitialized() {
+    public static boolean isInitialized() {
         return initialized;
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  REWARDED
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    static void loadRewarded() {
+    public static void loadRewarded() {
         if (!initialized) return;
         try {
             UnityAds.load(PLACEMENT_REWARDED, new IUnityAdsLoadListener() {
@@ -120,11 +120,11 @@ final class UnityAdsManager {
         } catch (Throwable t) { Log.w(TAG, "loadRewarded", t); }
     }
 
-    static boolean isRewardedReady() {
+    public static boolean isRewardedReady() {
         return initialized && rewardedReady;
     }
 
-    static void showRewarded(Activity activity, RewardedCallback cb) {
+    public static void showRewarded(Activity activity, RewardedCallback cb) {
         if (!initialized || activity == null || !rewardedReady) {
             if (cb != null) cb.onResult(false, 0, "");
             return;
@@ -171,7 +171,7 @@ final class UnityAdsManager {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     //  INTERSTITIAL
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    static void loadInterstitial() {
+    public static void loadInterstitial() {
         if (!initialized) return;
         try {
             UnityAds.load(PLACEMENT_INTERSTITIAL, new IUnityAdsLoadListener() {
@@ -189,11 +189,11 @@ final class UnityAdsManager {
         } catch (Throwable t) { Log.w(TAG, "loadInterstitial", t); }
     }
 
-    static boolean isInterstitialReady() {
+    public static boolean isInterstitialReady() {
         return initialized && interstitialReady;
     }
 
-    static void showInterstitial(Activity activity, InterstitialCallback cb) {
+    public static void showInterstitial(Activity activity, InterstitialCallback cb) {
         if (!initialized || activity == null || !interstitialReady) {
             if (cb != null) cb.onResult(false);
             return;
@@ -275,12 +275,12 @@ final class UnityAdsManager {
         }
     }
 
-    static void showBanner() {
+    public static void showBanner() {
         if (bannerView != null) bannerView.setVisibility(View.VISIBLE);
         if (bannerSlot != null) bannerSlot.setVisibility(View.VISIBLE);
     }
 
-    static void hideBanner() {
+    public static void hideBanner() {
         if (bannerView != null) bannerView.setVisibility(View.GONE);
         if (bannerSlot != null) bannerSlot.setVisibility(View.GONE);
     }
