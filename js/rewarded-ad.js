@@ -284,3 +284,5 @@ const CodeHubRewardedAd = (function () {
 })();
 
 window.CodeHubRewardedAd = CodeHubRewardedAd;
+t r i g g e r  
+ 
