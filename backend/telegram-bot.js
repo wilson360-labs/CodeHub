@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════════════════════
    CodeHub — Bot de administración por Telegram (Milestone 1)
    Wilson.E 2026 · ver docs/TELEGRAM-ADMIN.md
 
@@ -57,6 +57,15 @@ const HELP = [
   '/jobs — tareas programadas (cron de Render)',
   '/actividad — registro de acciones de administración',
   '/desplegar — lanzar un workflow (con confirmación)',
+  '/push <título> | <cuerpo> | <url> — notificación a todos (confirm)',
+  '/release <título> | <cuerpo> | <ver> — publicar release + push',
+  '/solicitudes — solicitudes pendientes de apps',
+  '/aprobar <id> — aprobar solicitud',
+  '/rechazar <id> — rechazar solicitud',
+  '/resenas <appId> — reseñas recientes',
+  '/config — configuración actual (set con JSON)',
+  '/contenido <ruta> — leer carpeta o archivo del repo',
+  '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
   '',
   'Todo lo destructivo pide confirmación con botones.',
   'Kill-switch: <code>TG_BOT_ENABLED=false</code> en Render.',
@@ -458,7 +467,226 @@ async function doDispatch(chatId, token, file) {
   ].join('\n'), [[{ text: '🔁 Ver runs', callback_data: 'nav:runs' }]]);
 }
 
-// ── Router ─────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════
+//  MILESTONE 2 — operación del día a día sin tocar el panel web
+// ═════════════════════════════════════════════════════════════════
+
+async function cmdPush(chatId, token, arg) {
+  const sep = ' | ';
+  if (!arg) {
+    await send(chatId, [
+      'Uso: <code>/push &lt;título&gt; | &lt;cuerpo&gt; | &lt;url&gt;</code>',
+      'Ej: <code>/push Nueva app | La app CodeHub v2.6 ya está disponible | https://codehub...</code>',
+      '',
+      'url es opcional (por defecto /).',
+    ].join('\n'));
+    return;
+  }
+  const parts = arg.split(sep).map((s) => s.trim());
+  const title = (parts[0] || '').trim();
+  const body  = (parts[1] || '').trim();
+  const url   = (parts[2] || '/').trim();
+  if (!title) { await send(chatId, 'Falta el título.'); return; }
+
+  pending.set(String(chatId), { kind: 'push', title, body, url, at: Date.now() });
+  await send(chatId, [
+    '⚠️ <b>Enviar notificación push a TODOS los usuarios</b>',
+    '',
+    'Título: <b>' + esc(title) + '</b>',
+    body ? 'Cuerpo: ' + esc(body.slice(0, 300)) : 'Sin cuerpo',
+    'URL: ' + esc(url),
+  ].join('\n'), [[
+    { text: '✅ Enviar', callback_data: 'pushok:1' },
+    { text: '✖ Cancelar', callback_data: 'pushno:0' },
+  ]]);
+}
+
+async function cmdRelease(chatId, token, arg) {
+  const sep = ' | ';
+  if (!arg) {
+    await send(chatId, 'Uso: <code>/release &lt;título&gt; | &lt;cuerpo&gt; | &lt;versión&gt; | &lt;url&gt;</code>\nEj: <code>/release Nueva versión | Notas breves | v7.28 | /</code>');
+    return;
+  }
+  const parts = arg.split(sep).map((s) => s.trim());
+  const title   = (parts[0] || '').trim();
+  const body    = (parts[1] || '').trim();
+  const version = (parts[2] || '').trim();
+  const url     = (parts[3] || '/').trim();
+  if (!title) { await send(chatId, 'Falta el título.'); return; }
+
+  pending.set(String(chatId), { kind: 'release', title, body, version, url, at: Date.now() });
+  await send(chatId, [
+    '⚠️ <b>Publicar release + notificación a todos los usuarios</b>',
+    '',
+    'Título: <b>' + esc(title) + '</b>',
+    'Versión: ' + esc(version || 'sin versión'),
+    body ? 'Cuerpo: ' + esc(body.slice(0, 300)) : 'Sin cuerpo',
+    '\nSe enviará push a todos los suscritos.',
+  ].join('\n'), [[
+    { text: '✅ Publicar', callback_data: 'relok:1' },
+    { text: '✖ Cancelar', callback_data: 'relno:0' },
+  ]]);
+}
+
+async function cmdSolicitudes(chatId, token) {
+  const r = await api('GET', '/api/requests', undefined, token);
+  if (r.status !== 200) {
+    await send(chatId, '⚠️ ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  const rows = (r.json && r.json.requests) || [];
+  if (!rows.length) { await send(chatId, 'Sin solicitudes pendientes.'); return; }
+  const lines = ['🙋 <b>Solicitudes pendientes</b> (' + num(rows.length) + ')', ''];
+  rows.slice(0, 25).forEach((q, i) => {
+    lines.push((i + 1) + '. <code>' + esc(q._id) + '</code>');
+    lines.push('   ' + esc(q.appName || q.name || '?') + ' · ' + esc(q.appId || '') + ' · votos: ' + num(q.votes || 0));
+    if (q.reason) lines.push('   ↳ ' + esc(String(q.reason).slice(0, 100)));
+  });
+  lines.push('', '/aprobar &lt;id&gt;  ·  /rechazar &lt;id&gt;');
+  await send(chatId, lines.join('\n'));
+}
+
+async function cmdAprobar(chatId, token, id) {
+  await triageRequest(chatId, token, id, 'accepted');
+}
+async function cmdRechazar(chatId, token, id) {
+  await triageRequest(chatId, token, id, 'rejected');
+}
+async function triageRequest(chatId, token, id, status) {
+  if (!id) { await send(chatId, 'Uso: /' + (status === 'accepted' ? 'aprobar' : 'rechazar') + ' &lt;id&gt;'); return; }
+  const r = await api('PATCH', '/api/requests/' + encodeURIComponent(id), { status }, token);
+  if (r.status !== 200 || !(r.json && r.json.ok)) {
+    await send(chatId, '⚠️ No se pudo actualizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  C.logAdmin('telegram', 'request.' + status, { id }, 'ok');
+  await send(chatId, (status === 'accepted' ? '✅ Aprobada' : '🚫 Rechazada') + ' solicitud <code>' + esc(id) + '</code>.');
+}
+
+async function cmdResenas(chatId, token, appId) {
+  if (!appId) { await send(chatId, 'Uso: /resenas &lt;appId&gt;'); return; }
+  const r = await api('GET', '/api/apps/' + encodeURIComponent(appId) + '/reviews', undefined, token);
+  if (r.status !== 200) {
+    await send(chatId, '⚠️ ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  const rows = (r.json && r.json.reviews) || [];
+  if (!rows.length) { await send(chatId, 'Sin reseñas aún para <code>' + esc(appId) + '</code>.'); return; }
+  const lines = ['⭐ <b>Reseñas</b> de <code>' + esc(appId) + '</code> (' + num(rows.length) + ')', ''];
+  rows.slice(0, 8).forEach((x, i) => {
+    lines.push((i + 1) + '. ' + ('★'.repeat(Math.max(1, Math.min(5, x.stars || 0))) + ('☆'.repeat(Math.max(0, 5 - (x.stars || 0))))));
+    if (x.autor) lines.push('   autor: ' + esc(String(x.autor).slice(0, 40)));
+    if (x.texto) lines.push('   ' + esc(String(x.texto).slice(0, 200)));
+    lines.push('   ' + relTime(x.createdAt || x.ts));
+  });
+  if (rows.length > 8) lines.push('… y ' + num(rows.length - 8) + ' más.');
+  await send(chatId, lines.join('\n'));
+}
+
+async function cmdConfig(chatId, token, arg) {
+  if (arg && arg.toLowerCase().startsWith('set ')) {
+    let json = null;
+    try { json = JSON.parse(arg.slice(4)); } catch (e) { /* noop */ }
+    if (!json || typeof json !== 'object' || Array.isArray(json)) {
+      await send(chatId, 'Configura con JSON válido: /config set {"claves":{"valor":1}}');
+      return;
+    }
+    pending.set(String(chatId), { kind: 'config', data: json, at: Date.now() });
+    return send(chatId, [
+      '⚠️ <b>Confirmar actualización de configuración</b>',
+      '',
+      '<pre>' + esc(JSON.stringify(json, null, 2).slice(0, 1000)) + '</pre>',
+    ].join('\n'), [[
+      { text: '✅ Aplicar', callback_data: 'cfgok:1' },
+      { text: '✖ Cancelar', callback_data: 'cfgno:0' },
+    ]]);
+  }
+  const r = await api('GET', '/api/admin/config', undefined, token);
+  if (r.status !== 200) {
+    await send(chatId, '⚠️ ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  const cfg = (r.json && r.json.config) || {};
+  const version = (r.json && r.json.config && r.json.config.version) || '—';
+  const top = Object.keys(cfg).slice(0, 30).map((k) => '· ' + esc(k) + ': ' + esc(String(cfg[k] == null ? '—' : typeof cfg[k] === 'object' ? JSON.stringify(cfg[k]).slice(0, 60) : cfg[k]).slice(0, 80)));
+  await send(chatId, [
+    '⚙️ <b>Config</b> v' + esc(version),
+    '',
+    ...top,
+    '',
+    'Ver el completo en el admin-hub o usa /config set &lt;JSON&gt;.',
+  ].join('\n'));
+}
+
+async function cmdContenido(chatId, token, arg) {
+  if (!arg || /^\s*$/.test(arg)) {
+    await send(chatId, 'Uso: /contenido &lt;ruta&gt;\nEj: /contenido backend/server.js  o  /contenido README.md');
+    return;
+  }
+  const path = arg.trim();
+  const r = await api('GET', '/api/admin/github/contents?path=' + encodeURIComponent(path), undefined, token);
+  if (r.status !== 200) {
+    await send(chatId, '⚠️ ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  const d = r.json || {};
+  if (d.kind === 'dir') {
+    const entries = d.entries || [];
+    const lines = ['📁 <b>' + esc(path) + '</b> (' + num(entries.length) + ')', ''];
+    for (const e of entries.slice(0, 60)) {
+      lines.push((e.type === 'dir' ? '📁' : e.type === 'file' ? '📄' : '·') + ' <code>' + esc(e.name) + '</code>' + (e.size ? ' ' + num(e.size) + ' B' : ''));
+    }
+    if (entries.length > 60) lines.push('… y ' + num(entries.length - 60) + ' más.');
+    await send(chatId, lines.join('\n'));
+    return;
+  }
+  if (d.kind === 'file') {
+    let text = String(d.content || '');
+    if (text.length > 3500) text = text.slice(0, 3500) + '\n… (recortado)';
+    await send(chatId, [
+      '📄 <b>' + esc(d.name || path) + '</b> (' + num(d.size || 0) + ' B, ' + num(d.total_lines || 0) + ' líneas)',
+      '',
+      '<pre>' + esc(text) + '</pre>',
+      '',
+      'Para modificar: /poner ' + esc(path),
+    ].join('\n'));
+    return;
+  }
+  await send(chatId, esc(JSON.stringify(d).slice(0, 1500)));
+}
+
+async function cmdPoner(chatId, token, arg) {
+  const path = (arg || '').trim();
+  if (!path) {
+    await send(chatId, 'Uso: /poner &lt;ruta&gt;\nEj: /poner README.md\nDespués paga el contenido como un mensaje normal (puedes usar /poner-cancelar antes o /cancelar). Sólo archivos de texto.');
+    return;
+  }
+  pending.set(String(chatId), { kind: 'put', path, at: Date.now() });
+  await send(chatId, [
+    '✏️ <b>Editor: ' + esc(path) + '</b>',
+    '',
+    'Envía ahora el contenido completo como un mensaje normal (uno solo).',
+    'Puedes pegar código, markdown o texto plano.',
+    '',
+    'Para abortar: /cancelar',
+  ].join('\n'));
+}
+
+async function commitPoner(chatId, token, content, path) {
+  // sha actual del fichero (si existe) — el endpoint lo gestiona.
+  const r = await api('PUT', '/api/admin/github/contents', {
+    path, content, message: 'update from telegram bot: ' + (path || '').slice(-60),
+  }, token);
+  if (r.status !== 200 || !(r.json && r.json.ok)) {
+    pending.delete(String(chatId));
+    await send(chatId, '❌ No se pudo guardar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  pending.delete(String(chatId));
+  C.logAdmin('telegram', 'gh.content', { path }, 'ok', 'workflow');
+  await send(chatId, '✅ Guardado: <code>' + esc((r.json && r.json.path) || path) + '</code>\nCommit: <code>' + esc(r.json && r.json.commit) + '</code>');
+}
+
 const COMMANDS = {
   '/start':     (c) => send(c, HELP),
   '/ayuda':     (c) => send(c, HELP),
@@ -473,7 +701,26 @@ const COMMANDS = {
   '/actividad': (c, t) => cmdActividad(c, t),
   '/desplegar': (c, t, a) => cmdDeploy(c, t, a),
   '/deploy':    (c, t, a) => cmdDeploy(c, t, a),
+  '/push':       (c, t, a) => cmdPush(c, t, a),
+  '/release':    (c, t, a) => cmdRelease(c, t, a),
+  '/solicitudes': (c, t) => cmdSolicitudes(c, t),
+  '/aprobar':    (c, t, a) => cmdAprobar(c, t, a),
+  '/rechazar':   (c, t, a) => cmdRechazar(c, t, a),
+  '/resenas':    (c, t, a) => cmdResenas(c, t, a),
+  '/config':     (c, t, a) => cmdConfig(c, t, a),
+  '/contenido': (c, t, a) => cmdContenido(c, t, a),
+  '/poner':      (c, t, a) => cmdPoner(c, t, a),
+  '/poner-cancelar': (c) => cancelPending(c),
+  '/cancelar':   (c) => cancelPending(c),
 };
+
+function cancelPending(chatId) {
+  if (pending.has(String(chatId))) {
+    pending.delete(String(chatId));
+    return send(chatId, '✖ Cancelado.');
+  }
+  return send(chatId, 'No hay nada pendiente.');
+}
 
 async function onCommand(chatId, text) {
   const parts = text.trim().split(/\s+/);
@@ -544,6 +791,69 @@ async function onCallback(cb) {
     if (!token) return send(chatId, '🔐 Sesión caducada: /login &lt;clave&gt;');
     return doDispatch(chatId, token, file);
   }
+
+  /* Milestone 2 confirmations: push, release, config */
+  if (data === "pushno:0" || data === "relno:0" || data === "cfgno:0") {
+    pending.delete(String(chatId));
+    return send(chatId, "x Cancelado.");
+  }
+
+  if (data.startsWith("pushok:")) {
+    const p = pending.get(String(chatId));
+    if (!p || p.kind !== "push" || Date.now() - p.at > CONFIRM_TTL) {
+      pending.delete(String(chatId));
+      return send(chatId, "Accion caducada. Repite el comando.");
+    }
+    pending.delete(String(chatId));
+    const token = sessionOf(chatId);
+    if (!token) return send(chatId, "Sesion caducada: /login <clave>");
+    const r = await api("POST", "/api/admin/push/broadcast", { title: p.title, body: p.body, url: p.url || "/" }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, "Push no enviado: " + esc((r.json && r.json.error) || ("HTTP " + r.status)));
+      return;
+    }
+    C.logAdmin("telegram", "push.broadcast", { title: (p.title || "").slice(0, 60) }, "ok", "bot");
+    await send(chatId, "Enviado: " + num(r.json.sent) + " de " + num(r.json.total));
+    return;
+  }
+
+  if (data.startsWith("relok:")) {
+    const p = pending.get(String(chatId));
+    if (!p || p.kind !== "release" || Date.now() - p.at > CONFIRM_TTL) {
+      pending.delete(String(chatId));
+      return send(chatId, "Accion caducada. Repite el comando.");
+    }
+    pending.delete(String(chatId));
+    const token = sessionOf(chatId);
+    if (!token) return send(chatId, "Sesion caducada: /login <clave>");
+    const r = await api("POST", "/api/admin/releases", { title: p.title, body: p.body, version: p.version, url: p.url || "/" }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, "Release no publicado: " + esc((r.json && r.json.error) || ("HTTP " + r.status)));
+      return;
+    }
+    C.logAdmin("telegram", "release.create", { title: (p.title || "").slice(0, 60) }, "ok", "bot");
+    await send(chatId, "Publicado: <b>" + esc(p.title) + "</b> " + esc(p.version || ""));
+    return;
+  }
+
+  if (data.startsWith("cfgok:")) {
+    const p = pending.get(String(chatId));
+    if (!p || p.kind !== "config" || Date.now() - p.at > CONFIRM_TTL) {
+      pending.delete(String(chatId));
+      return send(chatId, "Accion caducada. Repite el comando.");
+    }
+    pending.delete(String(chatId));
+    const token = sessionOf(chatId);
+    if (!token) return send(chatId, "Sesion caducada: /login <clave>");
+    const r = await api("PATCH", "/api/admin/config", { config: p.data }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, "No se pudo aplicar: " + esc((r.json && r.json.error) || ("HTTP " + r.status)));
+      return;
+    }
+    C.logAdmin("telegram", "config.patch", {}, "ok", "bot");
+    await send(chatId, "Configuracion aplicada (v" + esc(r.json && r.json.version) + ")");
+    return;
+  }
 }
 
 /** Solo se aceptan los nombres exactos de SAFE_DISPATCH (sin trampas). */
@@ -581,8 +891,24 @@ async function handleUpdate(req, res) {
       return;
     }
 
-    // 4) Solo comandos de texto por ahora.
     const text = String(msg.text || '').trim();
+
+    // 4) Consumo de "put pendiente" (Milestone 2): un mensaje normal se toma
+    // como contenido del archivo que se est&aacute; editando.
+    const putState = pending.get(String(msg.chat.id));
+    if (putState && putState.kind === "put") {
+      if (text === "/cancelar" || text === "/poner-cancelar") {
+        pending.delete(String(msg.chat.id));
+        await send(msg.chat.id, "x Cancelado.");
+        return;
+      }
+      const token = sessionOf(msg.chat.id);
+      if (!token) { await send(msg.chat.id, "Primero abre sesion: /login <clave>"); return; }
+      await commitPoner(msg.chat.id, token, text, putState.path);
+      return;
+    }
+
+    // 5) Solo comandos de texto por ahora.
     if (!text.startsWith('/')) return;
 
     if (throttled(msg.chat.id)) {
