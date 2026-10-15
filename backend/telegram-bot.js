@@ -976,7 +976,7 @@ function registerWebhook() {
     url,
     secret_token: C.webhookSecret,
     allowed_updates: ['message', 'callback_query'],
-    drop_pending_updates: false,
+    drop_pending_updates: true,
   }).then((r) => {
     if (r && r.ok) console.log('🤖 Webhook de Telegram registrado:', url);
     else console.warn('⚠️ No se pudo registrar el webhook de Telegram:', r && r.description);
@@ -997,7 +997,7 @@ function init(deps) {
     webhookSecret: (process.env.TELEGRAM_WEBHOOK_SECRET || '').trim(),
     adminKey: deps.adminKey || process.env.ADMIN_KEY || '',
     backendUrl: deps.backendUrl || ('http://127.0.0.1:' + (deps.port || 3001)),
-    publicUrl: (deps.publicUrl || process.env.BACKEND_URL || '').trim(),
+    publicUrl: (deps.publicUrl || process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || 'https://codehub-98s6.onrender.com').trim(),
     port: deps.port || 3001,
     signSession: deps.signSession,
     sessionTtl: deps.sessionTtl || 30 * 60 * 1000,

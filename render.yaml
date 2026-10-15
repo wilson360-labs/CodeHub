@@ -51,6 +51,9 @@ services:
       # lleguen al instante en vez de esperar el polling cada 6h.
       - key: GITHUB_WEBHOOK_SECRET
         sync: false
+      # URL publica del backend (usada por el bot para registrarse a si mismo)
+      - key: BACKEND_URL
+        value: https://codehub-98s6.onrender.com
       # ── Bot de administración por Telegram ─────────────────────
       # TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID son los mismos que ya usa
       # el resumen diario (vars del entorno del servicio). Añade además:
