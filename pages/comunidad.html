@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('config', 'ca-pub-3780093322926832');
+    })();
+  </script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comunidad de CodeHub - Verificadas, guías y avisos</title>
+  <meta name="description" content="Sección comunitaria de CodeHub: criterio de catálogo verificado, guías por objetivo, aviso responsável y canal de reportes de seguridad.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/comunidad">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
+  <style>
+    :root {
+      --primary: #2f80ed;
+      --accent: #38bdf8;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --card: #141428;
+      --border: rgba(47,128,237,.18);
+      --success: #4ade80;
+      --warning: #f59e0b;
+      --danger: #f87171;
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.58);
+      --mono: 'JetBrains Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.04rem;
+      line-height: 1.78;
+      min-height: 100vh;
+    }
+    img, svg { max-width: 100%; }
+    .top-nav {
+      max-width: none;
+      padding: .9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: .55rem;
+      align-items: center;
+      background: rgba(5,5,16,.7);
+    }
+    .top-nav a { color: var(--primary); text-decoration: none; }
+    .sep { color: var(--text-secondary); }
+    .hero {
+      padding: clamp(3.5rem,6vw,5rem) 1.25rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-eyebrow { font-family: var(--mono); color: var(--primary); font-size: .78rem; margin-bottom: .7rem; letter-spacing:.08em; }
+    .hero h1 { font-size: clamp(1.8rem,4.6vw,2.75rem); margin-bottom:.8rem; line-height:1.15; }
+    .hero h1 span { color:var(--primary); }
+    .hero p { max-width: 720px; margin: 0 auto; color: var(--text-secondary); }
+    .page-wrap { max-width: 980px; margin: 0 auto; padding: clamp(1.5rem,3vw,2.6rem) 1.25rem 6rem; min-width: 0; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1.1rem; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.1rem; min-width:0; }
+    .card h2 { font-size:1.18rem; margin-bottom:.6rem; }
+    .card h3 { font-size:1.05rem; margin:.9rem 0 .45rem; color:var(--accent); }
+    .card p { color:var(--text-secondary); margin-bottom:.8rem; }
+    .card a { color:var(--primary); }
+    .badge {
+      display:inline-flex; align-items:center; gap:.35rem;
+      font-family:var(--mono); font-size:.72rem; border-radius:999px;
+      padding:.26rem .7rem; border:1px solid transparent;
+      margin-bottom:.65rem;
+    }
+    .badge.ok { color:var(--success); border-color:rgba(74,222,128,.22); background:rgba(74,222,128,.08); }
+    .badge.review { color:var(--warning); border-color:rgba(245,158,11,.22); background:rgba(245,158,11,.08); }
+    .badge.info { color:var(--accent); border-color:rgba(56,189,248,.20); background:rgba(56,189,248,.08); }
+    table { width:100%; border-collapse:collapse; margin:.85rem 0; }
+    th,td { border-bottom:1px solid var(--border); padding:.7rem .45rem; text-align:left; vertical-align:top; }
+    th { font-size:.85rem; color:var(--accent); }
+    ul,ol { padding-left:1.25rem; color:var(--text-secondary); }
+    li { margin-bottom:.4rem; }
+    .full { grid-column:1 / -1; }
+    .callout { border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:14px; padding:1rem; background:rgba(47,128,237,.08); }
+    footer { padding:2rem; text-align:center; color:var(--text-secondary); font-size:.78rem; font-family:var(--mono); border-top:1px solid var(--border); }
+    footer a { color:var(--primary); text-decoration:none; }
+    @media (max-width:768px) { .grid { grid-template-columns:1fr; } .page-wrap { padding:1.5rem 1rem 4.5rem; } }
+  </style>
+</head>
+<body>
+  <nav class="top-nav">
+    <a href="/">CodeHub</a><span class="sep">/</span><a href="/guias">Guías</a><span class="sep">/</span><a href="/comunidad">Comunidad</a>
+  </nav>
+  <header class="hero">
+    <p class="hero-eyebrow">// comunidad de visitantes y creadores</p>
+    <h1>Espacio <span>comunitario</span> de CodeHub</h1>
+    <p>Una sección viva para saber qué se revisa antes de recomendar una app, cómo valorar guías y qué canales económicos usar para avisos sin spam.</p>
+  </header>
+  <main class="page-wrap">
+    <div class="grid">
+      <article class="card">
+        <span class="badge review">Componente de confianza</span>
+        <h2>Catálogo verificado por CodeHub</h2>
+        <p>La página de Open Source deja constancia del origen del APK, el repo que lo respalda y el estado público de su última verificación.</p>
+        <ul>
+          <li>Repositorio oficial del proyecto como fuente principal.</li>
+          <li>Released reciente o mantenimiento mínimo verificado contra releases.</li>
+          <li>Permisos solicitados con un motivo visible (sin instalar por sorpresa).</li>
+          <li>Si no puede verificarse, se marca como externo o incompleto.</li>
+        </ul>
+        <p><a href="/opensource">Ver catálogo verificado</a></p>
+      </article>
+
+      <article class="card">
+        <span class="badge info">Lee primero</span>
+        <h2>Guías por objetivo</h2>
+        <p>Las guías se organizan por problemas reales de visitante: claves, APK, privacidad, build de clima y conversiones de freelance.</p>
+        <ul>
+          <li>Prioriza una sola idea por guía.</li>
+          <li>Enlaces a tools y artículos sin marketing ornamental.</li>
+          <li>Checklists para comprobar la seguridad de un enlace.</li>
+        </ul>
+        <p><a href="/guias">Ir a las guías</a></p>
+      </article>
+
+      <article class="card">
+        <span class="badge ok">Canal controlado</span>
+        <h2>Avisos sin ruido</h2>
+        <p>CodeHub no envía notificaciones generales todas las semanas. El canal de avisos se reserva para releases relevantes, incidentes y cambios de seguridad.</p>
+        <ul>
+          <li>Solo 1 novedad por envío o un aviso de incidente.</li>
+          <li>Más contexto en guías y notas de publish.</li>
+          <li>Los cambios se publican primero como fuente revisable.</li>
+        </ul>
+        <p><a href="/opensource">Ver catálogo verificado</a></p>
+      </article>
+    </div>
+
+    <section class="grid" id="reportes">
+      <article class="card full">
+        <span class="badge review">Seguridad corresponsable</span>
+        <h2>Si encontraste una vulnerabilidad, repórtala con responsabilidad</h2>
+        <p>CodeHub acepta reportes de seguridad con el mismo criterio de verificación que el catálogo. No publiques detalles explotables en foros públicos antes de una corrección.</p>
+        <h3>Qué incluir en el reporte</h3>
+        <ul>
+          <li>Página o endpoint afectado.</li>
+          <li>Pasos mínimos de reproducción.</li>
+          <li>VERSIÓN exacta o commit si lo sabes.</li>
+          <li>Impacto real (confidencialidad, integridad, disponibilidad).</li>
+        </ul>
+        <h3>Qué no hace falta</h3>
+        <ul>
+          <li>Explotar más allá del mínimo necesario para demostrar.</li>
+          <li>Acceder o mover datos ajenos.</li>
+          <li>Automatizar escaneos masivos contra el sitio.</li>
+        </ul>
+        <p>Contacto: <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a>. Respuesta esperada en un plazo razonable según la carga del proyecto.</p>
+      </article>
+    </section>
+
+    <section class="grid" id="estado-catalogo">
+      <article class="card full">
+        <h2>Criterio público del catálogo</h2>
+        <p>La página de Open Source se construye con fichas revisables, no con marketing estático. Esto es lo que se entiende por “verificado”:</p>
+        <table aria-label="Criterio de verificación del catálogo">
+          <thead>
+            <tr>
+              <th>Sello</th>
+              <th>Significado</th>
+              <th>Limitación importante</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Verificado</td>
+              <td>El enlace, la licencia y el release visible apuntan al mismo proyecto.</td>
+              <td>No sustituye una auditoría de seguridad del código.</td>
+            </tr>
+            <tr>
+              <td>Revisado</td>
+              <td>Fuente y checksum validados parcialmente; aún en control manual.</td>
+              <td>Puede cambiar de estado entre revisiones.</td>
+            </tr>
+            <tr>
+              <td>Externo</td>
+              <td>Se enlista por transparencia, pero se advierte que requiere revisión del usuario.</td>
+              <td>No se garantiza la seguridad del APK.</td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+  <footer>
+    <span>&copy; 2026 Wilson.E — CodeHub</span>
+    &nbsp;·&nbsp;
+    <a href="/guias">Guías</a>
+    &nbsp;·&nbsp;
+    <a href="/opensource">Open Source</a>
+    &nbsp;·&nbsp;
+    <a href="/terms">Términos</a>
+    &nbsp;·&nbsp;
+    <a href="/privacy">Privacidad</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:wilson.e360labs@gmail.com">Contacto</a>
+  </footer>
+  <script src="../js/unity-ads.js?v=20261015c" defer></script>
+  <script src="../js/consent-banner.js?v=20260810a" defer></script>
+  <script src="../js/connection-alert.js?v=20260810a" defer></script>
+  <script src="../js/sw-update.js?v=20261015a" defer></script>
+</body>
+</html>

@@ -250,6 +250,10 @@
       "destination": "/pages/flexbox-labs.html"
     },
     {
+      "source": "/comunidad",
+      "destination": "/pages/comunidad.html"
+    },
+    {
       "source": "/mines",
       "destination": "/games/mines.html"
     },

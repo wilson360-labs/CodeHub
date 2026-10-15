@@ -49,3 +49,6 @@
 /games/mines.html           /mines                       301
 /games/memory.html          /memory                      301
 /games/rps.html             /rps                         301
+
+# Community
+/comunidad   /pages/comunidad.html
