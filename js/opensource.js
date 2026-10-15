@@ -185,8 +185,8 @@ document.addEventListener('keydown', e => {
   }
 });
 
-function copyEchoExtensionUrl() {
-  const extensionUrl = 'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/refs/heads/main/echo_extensions.json';
+function copyCodeHubCatalogUrl() {
+  const extensionUrl = `${BACKEND}/api/extensions`;
   navigator.clipboard.writeText(extensionUrl).then(() => {
     OSToast('✅ URL de extensiones copiada', 'success');
   }).catch(err => {
@@ -229,7 +229,7 @@ function buildOSCard(app, ratingInfo) {
   const echoRaw = app.appId === 'os-echo-nightly' ? `
     <div class="os-echo-raw">
       <span>Extensiones</span>
-      <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyEchoExtensionUrl()">Copiar extension de pluhings</button>
+      <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyCodeHubCatalogUrl()">Copiar extension de pluhings</button>
     </div>` : '';
 
   const advancedApps = ['os-magisk', 'os-kernelsu', 'os-lsposed', 'os-app-manager', 'os-echo-nightly', 'os-shizuku'];
@@ -792,7 +792,7 @@ function renderAppDetail(app) {
     <div class="app-detail-block">
       <div class="app-detail-block-h"><i class="fa-solid fa-puzzle-piece"></i> Extensiones</div>
       <div class="os-echo-raw" style="margin-top:.3rem">
-        <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyEchoExtensionUrl()">Copiar URL de extensiones</button>
+        <button class="os-echo-copy-btn" data-haptic="tab" onclick="copyCodeHubCatalogUrl()">Copiar URL de extensiones</button>
       </div>
     </div>` : '';
 
