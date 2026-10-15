@@ -1790,7 +1790,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-settings-btn">Ajustes de la app</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-cache-btn">Limpiar caché</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-downloads-btn"><i class="fas fa-folder-open"></i> Descargas</button>
-                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-music-btn"><i class="fas fa-music"></i> Música</button>
+                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="open-ch-music" onclick="document.getElementById('chMusicPlayerRoot')?.classList.remove('chmp--hidden'); window.__chMusicPlayer?.expand && window.__chMusicPlayer.expand(); return false;"><i class="fas fa-music"></i> Reproductor</button>
                         </div>
                     </div>
 
@@ -8547,5 +8547,6 @@ if (_defMood) setAIMood(_defMood);
 </script>
 <script src="/dist/assets/js/unity-ads.17d13add03.min.js" defer></script>
 <script src="/dist/assets/js/sw-update.4cda8937e9.min.js" defer></script>
+<script src="/js/music-player.js" defer></script>
 </body>
 </html>
