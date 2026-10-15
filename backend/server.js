@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
@@ -5938,6 +5938,36 @@ app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
   }
 });
 
+// ── TELEGRAM ALERTS (gestión bot) ─────────────────────────────
+app.get('/api/admin/telegram/alerts', requireAdmin, async (_, res) => {
+  try { const cfg = await getAppConfig(); const a = (cfg && cfg.alerts) || {}; res.json({ ok: true, alerts: a }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/admin/telegram/alerts', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    const { alerts = {} } = req.body || {};
+    if (!alerts || typeof alerts !== 'object' || Array.isArray(alerts)) return res.status(400).json({ error: 'Objeto alerts requerido' });
+    const cur = await getAppConfig();
+    const merged = (cur && cur.alerts ? { ...cur.alerts, ...alerts } : { ...alerts });
+    await AppConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'config.alerts': merged } }, { upsert: true });
+    _appConfigCache = null; _appConfigCacheTs = 0;
+    logAdmin(adminActorOf(req), 'telegram.alerts.patch', { alerts }, 'ok');
+    res.json({ ok: true, alerts: merged });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/admin/telegram/test-alert', requireAdmin, async (req, res) => {
+  try {
+    const title = String((req.body && req.body.title) || 'Prueba de alerta').slice(0, 80);
+    const msg = `🧪 <b>Prueba de alerta</b>\n${escHtml(title)}\nHora: <code>${new Date().toISOString()}</code>`;
+    tgSend(msg);
+    logAdmin(adminActorOf(req), 'telegram.test_alert', { title }, 'ok');
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── CODEHUB RELEASES ────────────────────────────────────────────
 // Novedades del proyecto publicadas desde el admin-hub. Al publicar se
 // guardan en MongoDB, se avisa por WebSocket y se envía push a todos.
@@ -7141,6 +7171,8 @@ app.use((err, req, res, next) => {
     console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Storage:    ${supabase ? '✅ Supabase' : '❌ falta SUPABASE_URL/KEY'}`);
+     console.log('   Alertas:    ?? smart alerts cada 15 min (config via /alertas)');
+     setTimeout(() => { try { runAlertChecks(); setInterval(runAlertChecks, 15 * 60 * 1000); } catch(e) {} }, 60000);
     console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? '✅' : '⚠️  sin configurar'}`);
     console.log(`   Push Clima: ✅ VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
     console.log(`   Monitor Releases: ✅ auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
@@ -7168,5 +7200,68 @@ function startRenderKeepalive() {
   console.log('   Keepalive:  ✅ self-ping activo → ' + target + ' (cada 10 min)');
 }
 startRenderKeepalive();
+startRenderKeepalive();
 
+const _alertState = { failedRuns: new Set(), lastDbOffline: 0, lastVisitsAlertDate: null };
+async function runAlertChecks() {
+  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
+  try {
+    const cfg = await getAppConfig().catch(() => ({}));
+    const a = (cfg && cfg.alerts) || {};
+    if (a.enabled === false) return;
+
+    // 1) Health
+    if (a.health !== false && !dbConnected) {
+      const now = Date.now();
+      if (now - _alertState.lastDbOffline > 60 * 60 * 1000) {
+        _alertState.lastDbOffline = now;
+        tgSend('ALERTA: MongoDB desconectado en backend (health offline).');
+      }
+    }
+
+    // 2) Workflows fallidos
+    if (a.github !== false && process.env.GITHUB_TOKEN) {
+      try {
+        const runs = await getGhRunsCached(true);
+        for (const [wf, run] of Object.entries(runs || {})) {
+          if (!run || !run.run_id) continue;
+          if (run.status === 'completed' && run.conclusion === 'failure') {
+            if (!_alertState.failedRuns.has(run.run_id)) {
+              _alertState.failedRuns.add(run.run_id);
+              tgAlert('alert_gh_' + String(run.run_id), () =>
+                ' ALERTA: build fallida\n' + escHtml(wf) + '\nRun: ' + Number(run.run_id) + '\n' + escHtml(run.html_url || ''));
+            }
+          } else if (run.conclusion === 'success') {
+            _alertState.failedRuns.delete(run.run_id);
+          }
+        }
+      } catch (e) {
+        console.warn('Alert check GitHub error:', e && e.message);
+      }
+    }
+
+    // 3) Caída de visitas por día
+    if (a.visits !== false && supabase) {
+      try {
+        const { data } = await supabase.from('daily_stats').select('date,visits').order('date', { ascending: false }).limit(8);
+        const rows = (Array.isArray(data) ? data : []).slice();
+        if (rows.length >= 3) {
+          const yesterday = rows[1].visits || 0;
+          const baseline = Math.round(rows.slice(2).reduce((acc, r) => acc + Number(r.visits || 0), 0) / Math.max(1, rows.length - 2));
+          const ratio = (a.visitsDropRatio && a.visitsDropRatio < 1) ? a.visitsDropRatio : 0.5;
+          const threshold = Math.floor(baseline * (1 - ratio));
+          const yDate = String(rows[1].date || '').slice(0, 10);
+          if (yesterday < threshold && _alertState.lastVisitsAlertDate !== yDate) {
+            _alertState.lastVisitsAlertDate = yDate;
+            tgSend(' ALERTA: caida de visitas\nAyer: ' + yesterday + '\nPromedio prior: ' + baseline + '\nRatio configurado: ' + Math.round(ratio * 100) + '%');
+          }
+        }
+      } catch (e) {
+        console.warn('Alert check visits error:', e && e.message);
+      }
+    }
+  } catch (e) {
+    console.warn('runAlertChecks error:', e && e.message);
+  }
+}
 

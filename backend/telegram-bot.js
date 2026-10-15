@@ -66,6 +66,7 @@ const HELP = [
   '/config — configuración actual (set con JSON)',
   '/contenido <ruta> — leer carpeta o archivo del repo',
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
+  '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
   '',
   'Todo lo destructivo pide confirmación con botones.',
@@ -711,6 +712,7 @@ const COMMANDS = {
   '/config':     (c, t, a) => cmdConfig(c, t, a),
   '/contenido': (c, t, a) => cmdContenido(c, t, a),
   '/poner':      (c, t, a) => cmdPoner(c, t, a),
+'/alertas': (c, t, a) => cmdAlertas(c, t, a),
   '/subirapk':   (c, t, a) => cmdSubirapk(c, t, a),
   '/poner-cancelar': (c) => cancelPending(c),
   '/cancelar':   (c) => cancelPending(c),
@@ -752,6 +754,75 @@ async function processUploadDoc(chatId, doc) {
   C.logAdmin('telegram', 'app.apk.upload_from_telegram', { appId: state.appId, slot: state.slot }, 'ok', 'bot');
   await send(chatId, 'APK guardado para ' + esc(state.appId) + ' (' + esc(state.slot) + '):\n' + esc(up.json.url));
   return true;
+}
+
+async function cmdAlertas(chatId, token, arg) {
+  const a = (arg || '').trim().toLowerCase();
+  if (!a || a === 'ver' || a === 'status') {
+    const r = await api('GET', '/api/admin/telegram/alerts', undefined, token);
+    if (r.status !== 200) { await send(chatId, 'Alertas no disponibles: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status))); return; }
+    const x = r.json && r.json.alerts ? r.json.alerts : {};
+    await send(chatId, [
+      '?? <b>Alertas inteligentes</b>',
+      '',
+      'Estado: ' + (x.enabled === false ? '⛔ desactivadas' : '✅ activas'),
+      'GitHub: ' + (x.github === false ? '❌' : '✅'),
+      'Health/DB: ' + (x.health === false ? '❌' : '✅'),
+      'Visitas: ' + (x.visits === false ? '❌' : '✅'),
+      'Umbral de caída: ' + Math.round(((x.visitsDropRatio || 0.5) * 100)) + '%',
+      '',
+      'Comandos:',
+      '/alertas on · /alertas off · /alertas test',
+      '/alertas umbral 0.4 · /alertas umbrales {"github":true}',
+    ].join('\n'));
+    return;
+  }
+
+  if (a === 'on' || a === 'off') {
+    const enabled = a === 'on';
+    const r = await api('PATCH', '/api/admin/telegram/alerts', { alerts: { enabled } }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, 'No se pudo cambiar las alertas: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+      return;
+    }
+    C.logAdmin('telegram', 'alerts.toggle', { enabled }, 'ok', 'bot');
+    await send(chatId, (enabled ? '✅ Alertas activadas.' : '⛔ Alertas desactivadas.'));
+    return;
+  }
+
+  if (a === 'test') {
+    const r = await api('POST', '/api/admin/telegram/test-alert', { title: 'Prueba desde bot' }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, 'No se pudo enviar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+      return;
+    }
+    C.logAdmin('telegram', 'alerts.test', {}, 'ok', 'bot');
+    await send(chatId, '✅ Alerta de prueba enviada.');
+    return;
+  }
+
+  if (a.startsWith('umbral ') || a.startsWith('umbral=') || a.startsWith('umbrales ') || a.startsWith('umbrales=')) {
+    const raw = a.replace(/^umbral(?:es)?[ =]+/, '').trim();
+    let alerts = {};
+    if (/^[\d.]+$/.test(raw)) {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0 || n >= 1) { await send(chatId, 'Umbral debe ser entre 0.01 y 0.99 (ej. 0.5 = 50% caída)'); return; }
+      alerts = { visitsDropRatio: n };
+    } else {
+      try { alerts = JSON.parse(raw); } catch (e) { await send(chatId, 'JSON inválido. Ejemplo: /alertas umbrales {"github":false}'); return; }
+      if (!alerts || typeof alerts !== 'object' || Array.isArray(alerts)) { await send(chatId, 'Debe ser un objeto (no array).'); return; }
+    }
+    const r = await api('PATCH', '/api/admin/telegram/alerts', { alerts }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, 'No se pudo actualizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+      return;
+    }
+    C.logAdmin('telegram', 'alerts.threshold', alerts, 'ok', 'bot');
+    await send(chatId, '✅ Alertas actualizadas.\n' + esc(JSON.stringify((r.json && r.json.alerts) || {})));
+    return;
+  }
+
+  await send(chatId, 'Uso: /alertas [on|off|test|umbral <n>|umbrales {json}]');
 }
 
 function cancelPending(chatId) {
