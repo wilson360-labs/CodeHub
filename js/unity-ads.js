@@ -138,6 +138,96 @@
   }
   window.chAdsDebug = debug;
 
+  // ── Panel visible (solo si la página trae <div id="ch-ads-panel">) ──
+  // Así el estado se ve DENTRO de la app sin consola ni tocar URLs.
+  function pretty(json) {
+    try { return JSON.stringify(JSON.parse(json), null, 2); } catch (e) { return String(json); }
+  }
+
+  function mountPanel() {
+    const host = document.getElementById('ch-ads-panel');
+    if (!host) return;
+    host.hidden = false;
+    host.className = 'opt-note';
+    host.style.cssText = 'margin-top:.8rem;display:block';
+
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;gap:.5rem;align-items:center;flex-wrap:wrap';
+
+    const title = document.createElement('strong');
+    title.style.fontSize = '.78rem';
+    title.innerHTML = '<i class="fas fa-rectangle-ad"></i> Anuncios (Unity Ads)';
+
+    const bStatus = document.createElement('button');
+    bStatus.type = 'button';
+    bStatus.className = 'tb';
+    bStatus.innerHTML = '<i class="fas fa-stethoscope"></i> Ver estado';
+
+    const bTest = document.createElement('button');
+    bTest.type = 'button';
+    bTest.className = 'tb';
+
+    const out = document.createElement('pre');
+    out.style.cssText = 'margin:.5rem 0 0;max-height:240px;overflow:auto;padding:.55rem .7rem;' +
+      'border-radius:8px;font-size:.68rem;line-height:1.5;white-space:pre-wrap;word-break:break-word;' +
+      'background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12)';
+    out.textContent = 'Pulsa «Ver estado» para leer el SDK.';
+
+    const paint = json => {
+      host.dataset.state = json ? 'ok' : 'empty';
+      window.chAdsLast = json;
+      try { console.info('[unity-ads] estado:', json); } catch (e) {}
+      const el = document.getElementById('ch-ads-debug');
+      if (el && json) el.textContent = json;
+      out.textContent = json
+        ? pretty(json)
+        : 'Sin datos: el puente nativo no responde (app antigua o SDK no inicializado por consentimiento).';
+      // Reflejar el modo test REAL del SDK (fuente de verdad = nativo).
+      try {
+        const o = JSON.parse(json || '{}');
+        if (o && typeof o.testMode === 'boolean' && o.testMode !== testOn) {
+          testOn = o.testMode;
+          paintTest();
+        }
+      } catch (e) { /* noop */ }
+    };
+    window.__chAdsPaint = paint;
+
+    // Estado del modo test (preferencia persistente; se aplica al reiniciar).
+    let testOn = false;
+    try { testOn = localStorage.getItem('ch_ads_test_pref') === '1'; } catch (e) {}
+    const paintTest = () => {
+      bTest.innerHTML = '<i class="fas fa-flask"></i> Modo test: ' + (testOn ? 'ON' : 'OFF');
+    };
+    paintTest();
+
+    bStatus.addEventListener('click', () => {
+      bStatus.disabled = true;
+      out.textContent = 'Consultando…';
+      status(json => { paint(json); bStatus.disabled = false; });
+      setTimeout(() => { bStatus.disabled = false; }, 8000);
+    });
+
+    bTest.addEventListener('click', () => {
+      testOn = !testOn;
+      try { if (typeof N.setAdsTestMode === 'function') N.setAdsTestMode(testOn); } catch (e) {}
+      try { localStorage.setItem('ch_ads_test_pref', testOn ? '1' : '0'); } catch (e) {}
+      paintTest();
+      out.textContent = 'Modo test ' + (testOn ? 'ACTIVADO' : 'desactivado') + '.\n' +
+        'Se aplica al reiniciar la app (UnityAds.initialize corre una vez por proceso).';
+    });
+
+    head.append(title, bStatus, bTest);
+
+    const hint = document.createElement('div');
+    hint.style.cssText = 'margin-top:.45rem;font-size:.68rem;color:var(--muted)';
+    hint.textContent = 'Estado real del SDK: inicializado, modo test, listo por formato y último error. ' +
+      'El modo test se aplica al reiniciar la app.';
+
+    host.append(head, hint, out);
+    setTimeout(() => status(json => { if (json) paint(json); }), 900);
+  }
+
   function init() {
     if (noAds()) hideBanner();                    // limpia un banner previo si toca
     else setTimeout(showBanner, 1200);            // deja pintar la página primero
@@ -178,6 +268,9 @@
       else if (localStorage.getItem(DBG_KEY) === '1') debug(true);
       else setTimeout(readStatus, 1500);
     } catch (e) { setTimeout(readStatus, 1500); }
+
+    // Panel de estado dentro de la app (si la página trae el contenedor).
+    try { mountPanel(); } catch (e) { /* noop */ }
   }
 
   window.CodeHubNativeAds = {
