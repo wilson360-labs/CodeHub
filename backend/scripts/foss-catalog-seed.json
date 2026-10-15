@@ -338,7 +338,7 @@
     },
     {
       "appId": "os-echo-nightly",
-      "nombre": "Echo Nightly",
+      "nombre": "CodeHub Player (Nightly)",
       "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales.",
       "categoria": "Música",
       "source_repo": "brahmkshatriya/echo",
