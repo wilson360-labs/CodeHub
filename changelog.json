@@ -1,5 +1,16 @@
 [
   {
+    "version": "v7.24",
+    "date": "2026-10-15",
+    "type": "fix",
+    "title": "La web deja de quedarse con una version vieja (Service Worker)",
+    "changes": [
+      "El Service Worker se actualiza desde CUALQUIER pagina (antes solo lo pedia index.html): ya no sirve una copia antigua tras un despliegue cuando entrabas directo a /servicios, /tools, /opensource o desde el WebView del APK",
+      "Recarga automatica al detectar version nueva + reparacion manual con ?force=1 (desregistra el SW, borra todas las caches y recarga limpio)",
+      "Diagnostico de anuncios sin logcat: chAdsStatus()/chAdsDebug() y ?ads_debug=1 muestran el estado real de Unity Ads (inicializado, modo test, listo y ultimo error de banner/interstitial/rewarded)"
+    ]
+  },
+  {
     "version": "v7.23",
     "date": "2026-10-15",
     "type": "fix",

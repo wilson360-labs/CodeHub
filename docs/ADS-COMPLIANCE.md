@@ -103,6 +103,19 @@ en `js/unity-ads.js` y cumple las políticas:
 `RETRY_MS = 30 s` y `MAX_RETRIES = 8` (los contadores se resetean al cargar
 bien). Evita pantallas vacías por *no fill* intermitente sin spamear la red.
 
+### Diagnóstico "no se ven anuncios" (sin logcat)
+`GAME_ID` (`800397583`) es el **ID de proyecto**; los *placements* son
+`BP_Rewarded_Android` / `BP_Interstitial_Android` / `BP_Banner_Android` y
+deben existir **exactos** en el dashboard. Para ver por qué un formato no
+aparece, el WebView expone el estado real del SDK:
+- `window.chAdsStatus(console.log)` → JSON puntual (`initialized`, `testMode`,
+  `rewardedReady`, `interstitialReady`, `bannerAttached`, `lastErrors`).
+- `window.chAdsDebug(true)` o abrir la URL con `?ads_debug=1` → badge fijo.
+- `?ads_test=1|0` escribe la preferencia de **modo test** (`ch_ads/test_mode`);
+  se aplica al **reiniciar** la app (`UnityAds.initialize` corre una vez por
+  proceso). En modo test Unity sirve anuncios de prueba: úsalo para confirmar
+  que el código de colocación funciona y descarta *no fill*.
+
 ## 3) Cruzado (aplica en ambos)
 - Membresía y conflictos: no distributions de ads vía software (toolbars/ext) ni
   "software applications" fuera de web/WebView aprobado.

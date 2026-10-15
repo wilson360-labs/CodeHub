@@ -7547,10 +7547,11 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showAPKGuide = showAPKGuide;
   // ── Service Worker ────────────────────────────────────────
   if ('serviceWorker' in navigator) {
+    window.__chSwInline = true;   // sw-update.js: no dupliques este manejador
     let refreshing = false;
     let userTriggeredUpdate = false;
 
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => {
       if (chDebug()) console.log('✅ SW registrado v4.3');
 
       setInterval(() => reg.update().catch(() => {}), 60 * 1000);
@@ -8549,5 +8550,6 @@ if (_defMood) setAIMood(_defMood);
 })();
 </script>
 <script src="/dist/assets/js/unity-ads.73cd28457a.min.js" defer></script>
+<script src="js/sw-update.js?v=20261015a" defer></script>
 </body>
 </html>

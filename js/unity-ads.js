@@ -92,7 +92,52 @@
     catch (e) { clearTimeout(watchdog); delete window[cb]; busy = false; }
   }
 
-  // ── Momentos "inteligentes" ────────────────────────────────────
+  // ── DIAGNÓSTICO (para responder "¿por qué no se ven los anuncios?") ──
+  // En el APK no hay logcat a mano, así que el estado del SDK se puede pedir
+  // y ver desde la propia web:
+  //   chAdsStatus(console.log)            → estado puntual (JSON)
+  //   chAdsDebug(true)                    → badge fijo que se refresca solo
+  //   abrir la URL con ?ads_debug=1       → activa el badge automáticamente
+  //   abrir la URL con ?ads_test=1|0      → modo test de Unity (al reiniciar)
+  function status(cb) {
+    if (!N || typeof N.adsStatus !== 'function') { if (cb) cb(null); return; }
+    const name = '__ch_ads_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const done = json => { delete window[name]; try { if (cb) cb(json); } catch (e) {} };
+    window[name] = done;
+    try { N.adsStatus(name); } catch (e) { done(null); }
+  }
+  window.chAdsStatus = status;
+
+  const DBG_KEY = 'ch_ads_debug';
+  function readStatus() {
+    status(json => {
+      window.chAdsLast = json;
+      try { console.info('[unity-ads] estado:', json); } catch (e) {}
+      const el = document.getElementById('ch-ads-debug');
+      if (el && json) el.textContent = json;
+    });
+  }
+
+  function debug(on) {
+    try { localStorage.setItem(DBG_KEY, on ? '1' : '0'); } catch (e) {}
+    let el = document.getElementById('ch-ads-debug');
+    if (!on) { if (el) el.remove(); clearInterval(window.__chAdsTimer); return; }
+    if (!el) {
+      el = document.createElement('pre');
+      el.id = 'ch-ads-debug';
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;max-width:92vw;' +
+        'max-height:40vh;overflow:auto;margin:0;padding:8px 10px;border-radius:8px;' +
+        'font:11px/1.45 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-word;' +
+        'background:rgba(0,0,0,.86);color:#7CFFB2;border:1px solid rgba(255,255,255,.18)';
+      el.textContent = 'consultando estado de anuncios…';
+      document.body.appendChild(el);
+    }
+    readStatus();
+    clearInterval(window.__chAdsTimer);
+    window.__chAdsTimer = setInterval(readStatus, 5000);
+  }
+  window.chAdsDebug = debug;
+
   function init() {
     if (noAds()) hideBanner();                    // limpia un banner previo si toca
     else setTimeout(showBanner, 1200);            // deja pintar la página primero
@@ -118,12 +163,29 @@
       if (document.hidden) return;
       if (noAds()) hideBanner(); else showBanner();
     });
+
+    // Parámetros de diagnóstico en la URL (y estado inicial en consola).
+    try {
+      const p = new URLSearchParams(location.search);
+      if (p.get('ads_test') === '1' || p.get('ads_test') === '0') {
+        const on = p.get('ads_test') === '1';
+        if (typeof N.setAdsTestMode === 'function') {
+          N.setAdsTestMode(on);
+          console.info('[unity-ads] modo test =', on, '· se aplica al reiniciar la app');
+        }
+      }
+      if (p.get('ads_debug') === '1') debug(true);
+      else if (localStorage.getItem(DBG_KEY) === '1') debug(true);
+      else setTimeout(readStatus, 1500);
+    } catch (e) { setTimeout(readStatus, 1500); }
   }
 
   window.CodeHubNativeAds = {
     showBanner, hideBanner,
     interstitial,
-    isBannerVisible: () => bannerVisible
+    isBannerVisible: () => bannerVisible,
+    status,
+    debug
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

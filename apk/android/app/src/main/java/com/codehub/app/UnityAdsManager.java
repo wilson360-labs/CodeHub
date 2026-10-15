@@ -41,7 +41,20 @@ public final class UnityAdsManager {
     /** false = anuncios reales; true = servidor de pruebas de Unity. */
     private static final boolean TEST_MODE = false;
 
+    /** Prefs donde se guarda el modo test conmutable en runtime (ch_ads/test_mode). */
+    private static final String PREFS = "ch_ads";
+    private static final String KEY_TEST = "test_mode";
+
     private static boolean initialized;
+
+    /** Modo test efectivo (TEST_MODE de compilación, sobre-escribible por prefs). */
+    private static boolean testMode = TEST_MODE;
+
+    // ── Diagnóstico (lo lee el WebView vía CodeHubBridge.adsStatus) ──
+    private static String lastInitError;
+    private static String lastRewardedError;
+    private static String lastInterstitialError;
+    private static String lastBannerError;
 
     /** Handler principal para reintentos de carga (fill intermitente). */
     private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -78,11 +91,22 @@ public final class UnityAdsManager {
     public static void init(final Activity activity, final ViewGroup reservedBannerSlot) {
         if (initialized || activity == null) return;
         bannerSlot = reservedBannerSlot;
+        // El modo test puede sobre-escribirse en runtime (prefs ch_ads/test_mode).
+        // UnityAds.initialize corre una sola vez por proceso, asi que cambiarlo
+        // exige reiniciar la app.
         try {
-            UnityAds.initialize(activity, GAME_ID, TEST_MODE, new IUnityAdsInitializationListener() {
+            testMode = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
+                    .getBoolean(KEY_TEST, TEST_MODE);
+        } catch (Throwable t) { testMode = TEST_MODE; }
+        lastInitError = null;
+        try {
+            UnityAds.setDebugMode(testMode);
+            Log.i(TAG, "init GAME_ID=" + GAME_ID + " testMode=" + testMode);
+            UnityAds.initialize(activity, GAME_ID, testMode, new IUnityAdsInitializationListener() {
                 @Override
                 public void onInitializationComplete() {
                     initialized = true;
+                    lastInitError = null;
                     Log.i(TAG, "Unity Ads inicializado (" + GAME_ID + ")");
                     try { setupBanner(activity); } catch (Throwable t) { Log.w(TAG, "banner setup", t); }
                     loadRewarded();
@@ -91,10 +115,12 @@ public final class UnityAdsManager {
 
                 @Override
                 public void onInitializationFailed(UnityAds.UnityAdsInitializationError error, String message) {
-                    Log.w(TAG, "init fallo: [" + error + "] " + message);
+                    lastInitError = "[" + error + "] " + message;
+                    Log.w(TAG, "init fallo: " + lastInitError);
                 }
             });
         } catch (Throwable t) {
+            lastInitError = String.valueOf(t);
             Log.w(TAG, "error en init", t);
         }
     }
@@ -114,12 +140,14 @@ public final class UnityAdsManager {
                 public void onUnityAdsAdLoaded(String placementId) {
                     rewardedReady = true;
                     rewardedRetries = 0;
+                    lastRewardedError = null;
                 }
 
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     rewardedReady = false;
-                    Log.w(TAG, "rewarded no cargo: [" + error + "] " + message);
+                    lastRewardedError = "load: [" + error + "] " + message;
+                    Log.w(TAG, "rewarded no cargo: " + lastRewardedError);
                     if (initialized && rewardedRetries++ < MAX_RETRIES) {
                         MAIN.postDelayed(UnityAdsManager::loadRewarded, RETRY_MS);
                     }
@@ -143,7 +171,8 @@ public final class UnityAdsManager {
             UnityAds.show(activity, PLACEMENT_REWARDED, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                 @Override
                 public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
-                    Log.w(TAG, "rewarded show fallo: [" + error + "] " + message);
+                    lastRewardedError = "show: [" + error + "] " + message;
+                    Log.w(TAG, "rewarded show fallo: " + lastRewardedError);
                     deliverRewarded(false);
                     loadRewarded();
                 }
@@ -187,12 +216,14 @@ public final class UnityAdsManager {
                 public void onUnityAdsAdLoaded(String placementId) {
                     interstitialReady = true;
                     interstitialRetries = 0;
+                    lastInterstitialError = null;
                 }
 
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     interstitialReady = false;
-                    Log.w(TAG, "interstitial no cargo: [" + error + "] " + message);
+                    lastInterstitialError = "load: [" + error + "] " + message;
+                    Log.w(TAG, "interstitial no cargo: " + lastInterstitialError);
                     if (initialized && interstitialRetries++ < MAX_RETRIES) {
                         MAIN.postDelayed(UnityAdsManager::loadInterstitial, RETRY_MS);
                     }
@@ -216,7 +247,8 @@ public final class UnityAdsManager {
             UnityAds.show(activity, PLACEMENT_INTERSTITIAL, new UnityAdsShowOptions(), new IUnityAdsShowListener() {
                 @Override
                 public void onUnityAdsShowFailure(String placementId, UnityAds.UnityAdsShowError error, String message) {
-                    Log.w(TAG, "interstitial show fallo: [" + error + "] " + message);
+                    lastInterstitialError = "show: [" + error + "] " + message;
+                    Log.w(TAG, "interstitial show fallo: " + lastInterstitialError);
                     deliverInterstitial(false);
                     loadInterstitial();
                 }
@@ -259,6 +291,7 @@ public final class UnityAdsManager {
                 @Override
                 public void onBannerLoaded(BannerView bannerAdView) {
                     bannerRetries = 0;
+                    lastBannerError = null;
                     Log.i(TAG, "banner cargado");
                 }
 
@@ -269,9 +302,10 @@ public final class UnityAdsManager {
 
                 @Override
                 public void onBannerFailedToLoad(BannerView bannerAdView, BannerErrorInfo errorInfo) {
-                    Log.w(TAG, "banner no cargo: " + (errorInfo != null
+                    lastBannerError = errorInfo != null
                             ? (errorInfo.errorCode + " " + errorInfo.errorMessage)
-                            : "unknown"));
+                            : "desconocido";
+                    Log.w(TAG, "banner no cargo: " + lastBannerError);
                     if (initialized && bannerRetries++ < MAX_RETRIES) {
                         MAIN.postDelayed(() -> { if (bannerView != null) bannerView.load(); }, RETRY_MS);
                     }
@@ -306,5 +340,63 @@ public final class UnityAdsManager {
     public static void hideBanner() {
         if (bannerView != null) bannerView.setVisibility(View.GONE);
         if (bannerSlot != null) bannerSlot.setVisibility(View.GONE);
+    }
+
+    // ------------------------------------------------------------------
+    //  DIAGNÓSTICO (lo lee el WebView vía CodeHubBridge.adsStatus)
+    // ------------------------------------------------------------------
+    /** Activa/desactiva el modo test para la próxima inicialización (requiere reinicio). */
+    public static void setTestModePref(Activity activity, boolean enabled) {
+        testMode = enabled;
+        try {
+            activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
+                    .edit().putBoolean(KEY_TEST, enabled).apply();
+        } catch (Throwable t) { Log.w(TAG, "setTestModePref", t); }
+    }
+
+    /** Escapa una cadena para incrustarla tal cual en JSON (null -> null). */
+    private static String q(String s) {
+        if (s == null) return "null";
+        StringBuilder b = new StringBuilder(s.length() + 2).append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"':  b.append("\\\""); break;
+                case '\\': b.append("\\\\"); break;
+                case '\n': b.append("\\n");  break;
+                case '\r': b.append("\\r");  break;
+                case '\t': b.append("\\t");  break;
+                default:
+                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
+                    else b.append(c);
+            }
+        }
+        return b.append('"').toString();
+    }
+
+    /**
+     * Estado completo del SDK como JSON, para diagnosticar "no se ven anuncios"
+     * sin logcat: init, modo test, si hay anuncio cargado y el último error de
+     * cada formato (incluye el GAME_ID y los placements en uso).
+     */
+    public static String statusJson() {
+        return "{"
+                + "\"gameId\":" + q(GAME_ID)
+                + ",\"initialized\":" + initialized
+                + ",\"testMode\":" + testMode
+                + ",\"rewardedReady\":" + rewardedReady
+                + ",\"interstitialReady\":" + interstitialReady
+                + ",\"bannerAttached\":" + (bannerView != null)
+                + ",\"retries\":{\"rewarded\":" + rewardedRetries
+                + ",\"interstitial\":" + interstitialRetries
+                + ",\"banner\":" + bannerRetries + "}"
+                + ",\"placements\":{\"rewarded\":" + q(PLACEMENT_REWARDED)
+                + ",\"interstitial\":" + q(PLACEMENT_INTERSTITIAL)
+                + ",\"banner\":" + q(PLACEMENT_BANNER) + "}"
+                + ",\"lastErrors\":{\"init\":" + q(lastInitError)
+                + ",\"rewarded\":" + q(lastRewardedError)
+                + ",\"interstitial\":" + q(lastInterstitialError)
+                + ",\"banner\":" + q(lastBannerError) + "}"
+                + "}";
     }
 }

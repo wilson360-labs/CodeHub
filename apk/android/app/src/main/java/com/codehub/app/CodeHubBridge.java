@@ -523,6 +523,21 @@ public class CodeHubBridge {
         activity.runOnUiThread(UnityAdsManager::hideBanner);
     }
 
+    // ── DIAGNÓSTICO DE ANUNCIOS (sin logcat) ───────────────────────
+    // Llama al callback global con el estado del SDK como JSON:
+    //   cb(adsStatusJson)  → { gameId, initialized, testMode, ... lastErrors }
+    @JavascriptInterface
+    public void adsStatus(final String callbackName) {
+        activity.runOnUiThread(() -> notifyOptimizer(callbackName, UnityAdsManager.statusJson()));
+    }
+
+    // Activa/desactiva el modo test de Unity Ads (prefs ch_ads/test_mode).
+    // UnityAds.initialize corre una vez por proceso: se aplica al reiniciar.
+    @JavascriptInterface
+    public void setAdsTestMode(final boolean enabled) {
+        activity.runOnUiThread(() -> UnityAdsManager.setTestModePref(activity, enabled));
+    }
+
     @JavascriptInterface
     public void requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
