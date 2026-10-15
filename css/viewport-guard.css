@@ -1529,3 +1529,17 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 
 
 .dl-disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+
+/* --- ESPACIO FINAL PARA EL DOCK FLOTANTE (#hub-dock) ---
+   El dock de index.html es position:fixed. Sin una reserva de espacio el
+   dock tapa el ultimo contenido del footer al llegar al final de la pagina.
+   body.has-dock se define solo en index.html. El valor = offset inferior
+   del dock + su alto real + margen de respiro (+ safe-area del dispositivo). */
+body.has-dock {
+  padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
+}
+@media (max-width: 768px) {
+  body.has-dock {
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
