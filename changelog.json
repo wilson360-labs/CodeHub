@@ -1,5 +1,18 @@
 [
   {
+    "version": "v7.21",
+    "date": "2026-10-14",
+    "type": "fix",
+    "title": "Descargas opacas, statusbar nativo y limpieza open-source",
+    "changes": [
+      "Descargas open source siempre proxy CodeHub; sin abrir navegador ni mostrar repo origen",
+      "Boton Descargar unificado, sin fallbacks externos",
+      "Noticias y extensiones no filtran URLs",
+      "Android: barras solidas y sin pantalla completa inmersiva",
+      "Ajustes de estilo de anuncios y Ctrl+K de moviles"
+    ]
+  },
+  {
     "version": "v7.20",
     "date": "2026-10-14",
     "type": "feature",

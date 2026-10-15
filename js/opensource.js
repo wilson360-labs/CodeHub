@@ -217,8 +217,12 @@ function buildOSCard(app, ratingInfo) {
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
   const desc    = app.descripcion || '';
   const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
-  const dlUrl   = enlace ? `${BACKEND}/api/apps/${encodeURIComponent(app.appId)}/download` : null;
-  const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
+  // La descarga siempre pasa por el proxy opaco de CodeHub: nunca se expone la URL
+  // real del release de GitHub. Si no hay enlace directo, el backend resuelve el
+  // repo de GitHub por appId (source_repo) y sirve el binario via proxy.
+  const canDownload = !!((app.source_repo && /^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(app.source_repo)) || enlace);
+  const dlUrl   = canDownload ? `${BACKEND}/api/apps/${encodeURIComponent(app.appId)}/download` : null;
+  const repoUrl = null; // No enlazar el repo en los botones de descarga
   const emoji   = CAT_EMOJI[app.categoria] || '📦';
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
@@ -239,8 +243,8 @@ function buildOSCard(app, ratingInfo) {
     </button>` : '';
 
   const dlBtn = dlUrl
-    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
-    : `<a class="dl-btn dl-primary" data-haptic="tab" href="${repoUrl || '#'}${repoUrl ? '/releases' : ''}" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`;
+    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
+    : `<span class="dl-btn dl-primary dl-disabled" aria-disabled="true"><i class="fas fa-download"></i> Sin binario disponible</span>`;
 
   const starsHtml = [1,2,3,4,5].map(n =>
     `<i class="fa-star ${n <= Math.round(avg) ? 'fas' : 'far'}" data-star="${n}" onclick="OSRatings.submit('${esc(app.appId)}', ${n}, '${esc(app.nombre)}')"></i>`
@@ -809,8 +813,8 @@ function renderAppDetail(app) {
     </button>` : '';
 
   const dlBtn = dlUrl
-    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" target="_blank" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
-    : `<a class="dl-btn dl-primary" data-haptic="tab" href="${(repoUrl || '') + '/releases'}" target="_blank" rel="noopener" ${repoUrl ? '' : 'aria-disabled="true"'}><i class="fas fa-download"></i> Ver en Releases</a>`;
+    ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" onclick="countDl()" rel="noopener"><i class="fas fa-download"></i> Descargar</a>`
+    : `<span class="dl-btn dl-primary dl-disabled" aria-disabled="true"><i class="fas fa-download"></i> Sin binario disponible</span>`;
 
   body.innerHTML = `
     <div class="app-detail-head">
@@ -1140,8 +1144,8 @@ const MyApps = (() => {
           }
           <div class="app-actions">
             ${hasUpdate
-              ? `<a class="dl-btn dl-primary my-app-update-btn" data-haptic="game" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Actualizar ahora</a>`
-              : `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-check"></i> Última versión</a>`
+              ? `<a class="dl-btn dl-primary my-app-update-btn" data-haptic="game" href="${dlUrl}" rel="noopener"><i class="fas fa-arrow-up"></i> Actualizar ahora</a>`
+              : `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" rel="noopener"><i class="fas fa-check"></i> Última versión</a>`
             }
             <button class="os-fav-btn active" data-haptic="tab" onclick="MyApps.toggle('${esc(app.appId)}')" title="Quitar de Mis apps">
               <i class="fas fa-heart"></i>
@@ -1335,7 +1339,7 @@ const DeviceApps = (() => {
                    <i class="fas fa-arrow-up"></i> ${shizukuReady ? 'Actualizar automáticamente' : 'Actualizar'}
                  </button>`
               : hasUpdate
-                ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" target="_blank" rel="noopener"><i class="fas fa-arrow-up"></i> Ver actualización</a>`
+                ? `<a class="dl-btn dl-primary" data-haptic="tab" href="${dlUrl}" rel="noopener"><i class="fas fa-arrow-up"></i> Ver actualización</a>`
                 : `<span class="dl-btn dl-check"><i class="fas fa-check"></i> Al día</span>`
             }
           </div>

@@ -1527,3 +1527,5 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   .apk-info-icon { width: 18px; height: 18px; font-size: .8rem; }
 }
 
+
+.dl-disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
