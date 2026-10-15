@@ -220,9 +220,8 @@ function buildOSCard(app, ratingInfo) {
   // La descarga siempre pasa por el proxy opaco de CodeHub: nunca se expone la URL
   // real del release de GitHub. Si no hay enlace directo, el backend resuelve el
   // repo de GitHub por appId (source_repo) y sirve el binario via proxy.
-  const canDownload = !!((app.source_repo && /^[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+$/.test(app.source_repo)) || enlace);
+  const canDownload = !!((app.source_repo && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(app.source_repo)) || enlace);
   const dlUrl   = canDownload ? `${BACKEND}/api/apps/${encodeURIComponent(app.appId)}/download` : null;
-  const repoUrl = null; // No enlazar el repo en los botones de descarga
   const emoji   = CAT_EMOJI[app.categoria] || '📦';
   const updated = timeAgo(app.updatedAt);
   const badge   = (app.tag || '').includes('Actualiz') ? app.tag : null;
