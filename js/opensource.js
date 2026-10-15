@@ -217,7 +217,7 @@ function buildOSCard(app, ratingInfo) {
   const version = app.version ? `v${app.version.replace(/^v/i, '')}` : null;
   const desc    = app.descripcion || '';
   const enlace  = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
-  const dlUrl   = enlace ? `${BACKEND}/api/dl/${encodeURIComponent(app.appId)}` : null;
+  const dlUrl   = enlace ? `${BACKEND}/api/apps/${encodeURIComponent(app.appId)}/download` : null;
   const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
   const emoji   = CAT_EMOJI[app.categoria] || '📦';
   const updated = timeAgo(app.updatedAt);
@@ -772,7 +772,7 @@ function renderAppDetail(app) {
   const count = rating.count || 0;
   const repoUrl = app.source_repo ? `https://github.com/${app.source_repo}` : null;
   const enlace = convertToDirectLink(app.enlace && app.enlace !== '#' ? app.enlace : null);
-  const dlUrl = enlace ? `${BACKEND}/api/dl/${encodeURIComponent(app.appId)}` : null;
+  const dlUrl = enlace ? `${BACKEND}/api/apps/${encodeURIComponent(app.appId)}/download` : null;
   const pluginUrl = convertToDirectLink(app.plugin_enlace && app.plugin_enlace !== '#' ? app.plugin_enlace : null);
   const tutorialUrl = app.tutorial_url && app.tutorial_url !== '#' ? app.tutorial_url : null;
   const advanced = OS_ADVANCED_APPS.includes(app.appId);
