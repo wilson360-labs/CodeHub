@@ -1,4 +1,4 @@
-# Bot de administración por Telegram
+﻿# Bot de administración por Telegram
 
 Wilson.E 2026 · Milestone 1 (monitoreo + despliegue)
 
@@ -107,6 +107,7 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 | `/config` | ver/editar configuración | `/api/admin/config` |
 | `/contenido <ruta>` | leer carpeta o archivo | `/api/admin/github/contents` |
 | `/poner <ruta>` | edita archivo (siguiente msg) | `/api/admin/github/contents` |
+| `/subirapk <appId>` | subir APK enviado al chat | `/api/admin/apps/:id/upload-from-telegram` |
 
 Atajos: los botones de resultado incluyen «🔁 Ver runs» para no teclear.
 
