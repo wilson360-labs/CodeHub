@@ -2257,8 +2257,8 @@ app.get('/api/apps', async (_, res) => {
       imagen:       a.imagen,
       categoria:    a.categoria,
       verified:     a.verified,
-      enlace:       sanitizePublicLink(a.enlace || '#', a.appId),
-      plugin_enlace: a.plugin_enlace ? sanitizePublicLink(a.plugin_enlace, a.appId, 'plugin') : null,
+      enlace:       `${base}/api/apps/${encodeURIComponent(a.appId)}/download`,
+      plugin_enlace: a.plugin_enlace ? `${base}/api/apps/${encodeURIComponent(a.appId)}/download?slot=plugin` : null,
       tutorial_url: a.tutorial_url || null,
       source_repo:  a.source_repo || null,
       packageName:  a.packageName || null,
@@ -2268,6 +2268,62 @@ app.get('/api/apps', async (_, res) => {
     await cacheSet('apps:all', result, 300);
     res.set('X-Cache', 'MISS'); res.json(result);
   } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
+});
+
+// ── APP DOWNLOAD PROXY — oculta el enlace real y el origen ─────────
+app.get('/api/apps/:appId/download', async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  try {
+    const slot = req.query.slot === 'plugin' ? 'plugin' : 'app';
+    const appDoc = await App.findOne({ appId: req.params.appId }).lean();
+    if (!appDoc) return res.status(404).json({ error: 'App no encontrada' });
+
+    const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+    const orig = slot === 'plugin' ? appDoc.plugin_enlace : appDoc.enlace;
+    let target = tgFilePath(orig) ? null : (orig ? String(orig) : null);
+    let fileName = '';
+    if (appDoc.source_repo && REPO_RE.test(appDoc.source_repo)) {
+      try {
+        const ghRes = await fetch(`https://api.github.com/repos/${appDoc.source_repo}/releases/latest`, {
+          headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (ghRes.ok) {
+          const release = await ghRes.json();
+          const asset = (release.assets || []).find(a => a && a.name && /\.(apk|eapk)$/i.test(a.name));
+          if (asset && asset.browser_download_url) {
+            target = asset.browser_download_url;
+            fileName = asset.name;
+          }
+        }
+      } catch {}
+    }
+    if (!target) return res.status(404).json({ error: 'Binario no disponible' });
+    const base = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
+    const tgPath = tgFilePath(target);
+    if (tgPath) {
+      return res.redirect(302, `${base}/api/tgfile/${encodeURIComponent(appDoc.appId)}${slot === 'plugin' ? '?slot=plugin' : ''}`);
+    }
+    if (!fileName) fileName = target.split('/').pop().split('?')[0] || appDoc.appId;
+    let r;
+    try {
+      r = await fetch(target, { redirect: 'follow', headers: { 'User-Agent': 'CodeHub-Apps/1.0', Accept: '*/*' } });
+    } catch {
+      return res.status(502).json({ error: 'No se pudo alcanzar el origen' });
+    }
+    if (!r.ok) return res.status(502).json({ error: `origen HTTP ${r.status}` });
+    const ct = r.headers.get('content-type');
+    if (ct) res.setHeader('Content-Type', ct);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '')}"`);
+    const cl = r.headers.get('content-length');
+    if (cl) res.setHeader('Content-Length', cl);
+    res.setHeader('Cache-Control', 'no-store');
+    const { Readable } = require('stream');
+    Readable.fromWeb(r.body).pipe(res);
+  } catch (e) {
+    console.error('Error /api/apps/:appId/download:', e.message);
+    if (!res.headersSent) res.status(500).json({ error: 'No se pudo descargar el binario' });
+  }
 });
 
 // ── App Updates — verificar versiones desde GitHub Releases ──
@@ -2294,8 +2350,8 @@ app.post('/api/app-updates', async (req, res) => {
       const latest = (release.tag_name || '').replace(/^v/i, '');
       const current = (app.version || '').replace(/^v/i, '');
       const apkAsset = (release.assets || []).find(a => a.name && a.name.endsWith('.apk'));
-      const downloadUrl = apkAsset ? apkAsset.browser_download_url : release.html_url;
-      const result = { latestVersion: release.tag_name || latest, hasUpdate: latest !== current && !!latest, downloadUrl };
+const downloadUrl = `${(process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, '')}/api/apps/${encodeURIComponent(app.appId)}/download`;
+    const result = { latestVersion: release.tag_name || latest, hasUpdate: latest !== current && !!latest, downloadUrl };
       await cacheSet(cacheKey, result, 600);
       return { appId: app.appId, currentVersion: app.version, ...result };
     }));
