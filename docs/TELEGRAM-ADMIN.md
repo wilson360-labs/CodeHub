@@ -98,6 +98,15 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 | `/jobs` | crons definidos en `render.yaml` | `/api/admin/jobs` |
 | `/actividad` | registro de acciones admin | `/api/admin/activity` |
 | `/desplegar` | lanzar un workflow (con confirmación) | `/api/admin/github/workflows` + `/dispatch` |
+| `/push ...` | notificación a todos (confirm) | `/api/admin/push/broadcast` |
+| `/release ...` | publicar release + push | `/api/admin/releases` |
+| `/solicitudes` | solicitudes pendientes | `/api/requests` |
+| `/aprobar <id>` | aprobar solicitud | `/api/requests/:id` |
+| `/rechazar <id>` | rechazar solicitud | `/api/requests/:id` |
+| `/resenas <appId>` | reseñas recientes | `/api/apps/:id/reviews` |
+| `/config` | ver/editar configuración | `/api/admin/config` |
+| `/contenido <ruta>` | leer carpeta o archivo | `/api/admin/github/contents` |
+| `/poner <ruta>` | edita archivo (siguiente msg) | `/api/admin/github/contents` |
 
 Atajos: los botones de resultado incluyen «🔁 Ver runs» para no teclear.
 
