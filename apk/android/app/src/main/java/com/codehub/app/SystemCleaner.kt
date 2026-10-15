@@ -78,8 +78,7 @@ object SystemCleaner {
         return try {
             if (Shizuku.isPreV11()) Status.NOT_INSTALLED
             else if (!Shizuku.pingBinder()) Status.NOT_RUNNING
-            else if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED)
-                Status.NEEDS_PERMISSION
+            else if (!isSelfGranted()) Status.NEEDS_PERMISSION
             else Status.READY
         } catch (t: Throwable) {
             Status.DISCONNECTED
@@ -143,11 +142,46 @@ object SystemCleaner {
 
     private const val PERMISSION_REQUEST_CODE = 9002
 
+    // ── Estado en vivo para el WebView ──────────────────────────────
+    // Declarado ANTES de los listeners y del `init`: Kotlin inicializa las
+    // propiedades y los bloques `init` en orden textual. Si `statusPush` /
+    // `binderEventsOn` se declararan después del `init`, este los registraría
+    // y acto seguido volverían a su valor por defecto (eventos duplicados o
+    // inexistentes).
+
+    /** Suscriptor al que se empuja el estado JSON cada vez que cambia el binder/permiso. */
+    @Volatile private var statusPush: ((String) -> Unit)? = null
+    @Volatile private var binderEventsOn = false
+
+    /**
+     * El usuario concedió el permiso en esta sesión (diálogo in-app o app
+     * Shizuku). En varias ROMs `Shizuku.checkSelfPermission()` puede tardar o
+     * devolver DENIED aunque el permiso ya esté concedido; este indicador
+     * evita que el panel se quede clavado en "Permiso pendiente". Se limpia
+     * cuando muere el binder para volver a verificar contra el estado real.
+     */
+    @Volatile private var grantedViaDialog = false
+
+    /** ¿Tenemos permiso de Shizuku ahora mismo? (chequeo real + memoria de la sesión). */
+    fun isSelfGranted(): Boolean {
+        if (grantedViaDialog) return true
+        return try {
+            Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        } catch (_: Throwable) { false }
+    }
+
     private val permissionListener = Shizuku.OnRequestPermissionResultListener { code, result ->
+        val granted = result == PackageManager.PERMISSION_GRANTED
+        if (granted) grantedViaDialog = true
+        else if (code == PERMISSION_REQUEST_CODE) grantedViaDialog = false
         if (code == PERMISSION_REQUEST_CODE) {
-            pendingPermission?.invoke(result == PackageManager.PERMISSION_GRANTED)
+            pendingPermission?.invoke(granted)
             pendingPermission = null
         }
+        // Empujón inmediato: al conceder el permiso el panel pasa a "Listo" sin
+        // esperar a que el usuario recargue (antes solo se refrescaba al volver
+        // a la app y, si el chequeo tardaba, se quedaba en "pendiente").
+        pushStatusNow()
     }
 
     init {
@@ -155,12 +189,6 @@ object SystemCleaner {
         try { Shizuku.addRequestPermissionResultListener(permissionListener) } catch (t: Throwable) {}
         ensureBinderListeners()
     }
-
-    // ── Estado en vivo para el WebView ──────────────────────────────
-
-    /** Suscriptor al que se empuja el estado JSON cada vez que cambia el binder. */
-    @Volatile private var statusPush: ((String) -> Unit)? = null
-    @Volatile private var binderEventsOn = false
 
     /** El WebView deja su callback global para recibir el estado en vivo
      *  (se dispara al abrirse Shizuku, morir el binder o cambiar el permiso). */
@@ -181,7 +209,7 @@ object SystemCleaner {
         try { installed = !Shizuku.isPreV11() } catch (_: Throwable) {}
         try { running = Shizuku.pingBinder() } catch (_: Throwable) {}
         if (running) {
-            try { granted = Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (_: Throwable) {}
+            granted = isSelfGranted()
             try { uid = Shizuku.getUid() } catch (_: Throwable) {}
         }
         val status = refreshStatus()
@@ -202,7 +230,12 @@ object SystemCleaner {
             if (binderEventsOn) return
             binderEventsOn = true
             try { Shizuku.addBinderReceivedListener { pushStatusNow() } } catch (_: Throwable) {}
-            try { Shizuku.addBinderDeadListener { pushStatusNow() } } catch (_: Throwable) {}
+            try {
+                Shizuku.addBinderDeadListener {
+                    grantedViaDialog = false   // el binder murió: re-verificar contra el estado real
+                    pushStatusNow()
+                }
+            } catch (_: Throwable) {}
         }
     }
 

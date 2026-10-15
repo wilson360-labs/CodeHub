@@ -84,6 +84,25 @@ coloca un `BannerView` dentro de esa franja debajo del contenido; `show/hide`
 desde el WebView (`showNativeBanner`/`hideNativeBanner`) ocultan todo el slot →
 **el banner nunca tapa contenido** (patrón "reservado", no el que cubre).
 
+### Colocación (reglas de `js/unity-ads.js`)
+El WebView pide el banner/interstitial al nativo, pero **cuándo** se muestra vive
+en `js/unity-ads.js` y cumple las políticas:
+- **Banner**: se muestra solo en páginas de contenido, con un retardo (no
+  compite con la primera pintura) y se oculta en páginas no aptas
+  (`data-no-ads` en `<html>`/`<body>`: admin, analytics, juegos).
+- **Interstitial**: **solo** tras una acción del usuario y en una pausa natural
+  (abrir la ficha de una app en Open Source), nunca sobre el botón de descarga
+  ni al cargar la página. Lleva **cooldown** (3 min) + **tope por sesión** (4) y
+  *single-flight* (`isInterstitialAdReady()` antes de mostrar). Si no está
+  listo, se precarga y se sale (no bloquea).
+- **Rewarded**: sin cambios; sigue ligado a la descarga con verificación de
+  recompensa en servidor.
+
+### Recarga ante fallo de fill (nunca en bucle)
+`UnityAdsManager` reintenta la carga de banner/interstitial/rewarded con
+`RETRY_MS = 30 s` y `MAX_RETRIES = 8` (los contadores se resetean al cargar
+bien). Evita pantallas vacías por *no fill* intermitente sin spamear la red.
+
 ## 3) Cruzado (aplica en ambos)
 - Membresía y conflictos: no distributions de ads vía software (toolbars/ext) ni
   "software applications" fuera de web/WebView aprobado.

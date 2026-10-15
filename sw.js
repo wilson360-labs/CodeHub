@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.22';
+const VERSION = 'codehub-v7.23';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -98,6 +98,7 @@ const PRECACHE = [
   '/js/ch-geo.js',
   '/js/sismos.js',
   '/js/haptics.js',
+  '/js/unity-ads.js',
   '/js/sys-metrics.js',
   '/js/security-scan.js',
   '/js/vendor/leaflet/leaflet.css',

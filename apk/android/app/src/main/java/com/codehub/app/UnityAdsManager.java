@@ -43,6 +43,14 @@ public final class UnityAdsManager {
 
     private static boolean initialized;
 
+    /** Handler principal para reintentos de carga (fill intermitente). */
+    private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
+    private static final long RETRY_MS = 30_000L;
+    private static final int MAX_RETRIES = 8;
+    private static int rewardedRetries;
+    private static int interstitialRetries;
+    private static int bannerRetries;
+
     private static ViewGroup bannerSlot;
     private static BannerView bannerView;
 
@@ -105,12 +113,16 @@ public final class UnityAdsManager {
                 @Override
                 public void onUnityAdsAdLoaded(String placementId) {
                     rewardedReady = true;
+                    rewardedRetries = 0;
                 }
 
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     rewardedReady = false;
                     Log.w(TAG, "rewarded no cargo: [" + error + "] " + message);
+                    if (initialized && rewardedRetries++ < MAX_RETRIES) {
+                        MAIN.postDelayed(UnityAdsManager::loadRewarded, RETRY_MS);
+                    }
                 }
             });
         } catch (Throwable t) { Log.w(TAG, "loadRewarded", t); }
@@ -174,12 +186,16 @@ public final class UnityAdsManager {
                 @Override
                 public void onUnityAdsAdLoaded(String placementId) {
                     interstitialReady = true;
+                    interstitialRetries = 0;
                 }
 
                 @Override
                 public void onUnityAdsFailedToLoad(String placementId, UnityAds.UnityAdsLoadError error, String message) {
                     interstitialReady = false;
                     Log.w(TAG, "interstitial no cargo: [" + error + "] " + message);
+                    if (initialized && interstitialRetries++ < MAX_RETRIES) {
+                        MAIN.postDelayed(UnityAdsManager::loadInterstitial, RETRY_MS);
+                    }
                 }
             });
         } catch (Throwable t) { Log.w(TAG, "loadInterstitial", t); }
@@ -242,6 +258,7 @@ public final class UnityAdsManager {
             view.setListener(new BannerView.IListener() {
                 @Override
                 public void onBannerLoaded(BannerView bannerAdView) {
+                    bannerRetries = 0;
                     Log.i(TAG, "banner cargado");
                 }
 
@@ -255,6 +272,9 @@ public final class UnityAdsManager {
                     Log.w(TAG, "banner no cargo: " + (errorInfo != null
                             ? (errorInfo.errorCode + " " + errorInfo.errorMessage)
                             : "unknown"));
+                    if (initialized && bannerRetries++ < MAX_RETRIES) {
+                        MAIN.postDelayed(() -> { if (bannerView != null) bannerView.load(); }, RETRY_MS);
+                    }
                 }
 
                 @Override

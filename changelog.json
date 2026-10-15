@@ -1,5 +1,17 @@
 [
   {
+    "version": "v7.23",
+    "date": "2026-10-15",
+    "type": "fix",
+    "title": "Optimizador Shizuku fiable y anuncios nativos mejor colocados",
+    "changes": [
+      "Optimización del Sistema: el estado ya no se queda en «pendiente» tras conceder el permiso (estado concedido en la sesión + reconsulta optimista)",
+      "Servicios que ofrezco: iconos vectoriales por servicio y color propio por tipo",
+      "Unity Ads: reintento acotado de carga (banner, interstitial y rewarded) ante fill intermitente",
+      "Banner nativo automatico y no invasivo; interstitial solo en pausas naturales del usuario (apertura de ficha) con enfriamiento y tope por sesion"
+    ]
+  },
+  {
     "version": "v7.22",
     "date": "2026-10-15",
     "type": "fix",

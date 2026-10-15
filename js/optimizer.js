@@ -464,7 +464,15 @@
     window[cbName] = granted => {
       delete window[cbName];
       toast(granted ? 'Permiso activado' : 'Permiso denegado', !!granted);
-      refreshStatus(true);
+      if (granted) {
+        // Optimista: pinta "Listo" al instante; el nativo también empuja el
+        // estado real en cuanto el diálogo devuelve el resultado.
+        applyStatus({ status: 'READY', backend: state.backend, root: state.root, granted: true });
+        if (els.goBtn) els.goBtn.style.display = 'block';
+        if (els.dead) els.dead.style.display = 'none';
+      }
+      // Re-verificar varias veces por si el chequeo contra Shizuku tarda.
+      [0, 800, 2500, 5000].forEach((d, i) => setTimeout(() => refreshStatus(i > 0), d));
     };
     try {
       NATIVE.shizukuRequestPermission(cbName);
@@ -603,6 +611,12 @@
   // Estado entrante (respuesta puntual o push en vivo de Shizuku).
   function applyStatus(s) {
     if (!s || !s.status) return;
+    // El nativo puede responder NEEDS_PERMISSION unos ms aunque el permiso ya
+    // esté concedido (el chequeo contra Shizuku tarda). Si el payload ya dice
+    // granted:true, confiamos en eso y no nos quedamos en "pendiente".
+    if (s.granted === true && s.status === 'NEEDS_PERMISSION') {
+      s = Object.assign({}, s, { status: 'READY' });
+    }
     const prev = state.status;
     state.status = s.status;
     state.backend = s.backend || state.backend;

@@ -138,7 +138,7 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.92);backdrop-fi
   background:rgba(47,128,237,.1);border:1px solid rgba(47,128,237,.2);
   transition:var(--tr);
 }
-.srv-card:hover .srv-icon-wrap{background:rgba(47,128,237,.18);transform:scale(1.08)}
+.srv-card:hover .srv-icon-wrap{transform:scale(1.08);filter:brightness(1.18)}
 
 .srv-card h3{font-size:1.05rem;font-weight:700;margin-bottom:.5rem}
 .srv-card p{font-size:.82rem;color:var(--muted);line-height:1.7;margin-bottom:1.2rem}
@@ -155,19 +155,19 @@ header{position:sticky;top:0;z-index:100;background:rgba(7,7,15,.92);backdrop-fi
 .srv-cta:hover{color:var(--a);gap:.6rem}
 
 /* Colores por tipo */
-.srv-card.ecom .srv-icon-wrap{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.25)}
+.srv-card.ecom .srv-icon-wrap{background:rgba(0,230,118,.1);border-color:rgba(0,230,118,.25);color:var(--green)}
 .srv-card.ecom .srv-cta{color:var(--green)}
-.srv-card.landing .srv-icon-wrap{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.25)}
+.srv-card.landing .srv-icon-wrap{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.25);color:var(--cyan)}
 .srv-card.landing .srv-cta{color:var(--cyan)}
-.srv-card.dash .srv-icon-wrap{background:rgba(179,136,255,.1);border-color:rgba(179,136,255,.25)}
+.srv-card.dash .srv-icon-wrap{background:rgba(179,136,255,.1);border-color:rgba(179,136,255,.25);color:var(--purple)}
 .srv-card.dash .srv-cta{color:var(--purple)}
-.srv-card.portfolio .srv-icon-wrap{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.25)}
+.srv-card.portfolio .srv-icon-wrap{background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.25);color:var(--a)}
 .srv-card.portfolio .srv-cta{color:var(--a)}
-.srv-card.seo .srv-icon-wrap{background:rgba(47,128,237,.1);border-color:rgba(47,128,237,.25)}
-.srv-card.bot .srv-icon-wrap{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2)}
+.srv-card.seo .srv-icon-wrap{background:rgba(47,128,237,.1);border-color:rgba(47,128,237,.25);color:var(--p)}
+.srv-card.bot .srv-icon-wrap{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.25);color:var(--cyan)}
 .srv-card.bot .srv-cta{color:var(--cyan)}
-.srv-card.mant .srv-icon-wrap{background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.2)}
-.srv-card.mant .srv-cta{color:var(--green)}
+.srv-card.mant .srv-icon-wrap{background:rgba(255,180,84,.1);border-color:rgba(255,180,84,.25);color:#ffb454}
+.srv-card.mant .srv-cta{color:#ffb454}
 
 /* ── PROCESO ── */
 .proceso-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;margin-top:2rem}
@@ -311,7 +311,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- E-commerce -->
     <div class="srv-card ecom">
-      <div class="srv-icon-wrap">🛒</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></div>
       <h3>Tienda Online / E-commerce</h3>
       <p>Vende tus productos en internet con un sistema completo: catálogo, carrito, pagos y panel de administración. Ideal para tiendas, boutiques, restaurantes y cualquier negocio que quiera vender online. El panel te permite actualizar precios, stock y promociones sin tocar código.</p>
       <div class="srv-tags">
@@ -327,7 +327,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- Landing Page -->
     <div class="srv-card landing">
-      <div class="srv-icon-wrap">🚀</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-rocket" aria-hidden="true"></i></div>
       <h3>Landing Page para Negocios</h3>
       <p>Una página de alto impacto diseñada para convertir visitantes en clientes. Perfecta para lanzar un producto, captar leads o presentar tu negocio de forma profesional. Cada sección se construye pensando en la conversión: mensaje claro, llamadas a la acción visibles y carga rápida en móviles.</p>
       <div class="srv-tags">
@@ -343,7 +343,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- Dashboard -->
     <div class="srv-card dash">
-      <div class="srv-icon-wrap">📊</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></div>
       <h3>Sistemas de Gestión / Dashboard</h3>
       <p>Controla tu negocio desde un panel centralizado. Gestión de pedidos, empleados, inventario, reportes y estadísticas en tiempo real. Sistemas a medida para tu operación, con permisos por rol para que cada persona vea solo lo que necesita y reportes exportables.</p>
       <div class="srv-tags">
@@ -359,7 +359,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- Portafolio -->
     <div class="srv-card portfolio">
-      <div class="srv-icon-wrap">👤</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-user-tie" aria-hidden="true"></i></div>
       <h3>Portafolio Profesional</h3>
       <p>Tu presencia digital que impresiona. Ideal para freelancers, diseñadores, fotógrafos, arquitectos o cualquier profesional que quiera mostrar su trabajo y atraer clientes.</p>
       <div class="srv-tags">
@@ -375,7 +375,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- SEO -->
     <div class="srv-card seo">
-      <div class="srv-icon-wrap">🔍</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-magnifying-glass-chart" aria-hidden="true"></i></div>
       <h3>SEO y Posicionamiento</h3>
       <p>Que Google te encuentre primero. Optimización técnica, velocidad de carga, metadatos, estructura de URLs y estrategia de contenido para que tu sitio aparezca en los primeros resultados. Alineado con Search Console y buenas prácticas de Core Web Vitals, sin trucos de relleno de palabras clave.</p>
       <div class="srv-tags">
@@ -391,7 +391,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- Bots -->
     <div class="srv-card bot">
-      <div class="srv-icon-wrap">🤖</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-robot" aria-hidden="true"></i></div>
       <h3>Bots y Automatizaciones</h3>
       <p>Automatiza tareas repetitivas y atiende a tus clientes 24/7. Bots de WhatsApp para negocios, catálogos automáticos, respuestas inteligentes y flujos de venta automatizados. Se diseñan como flujos seguros: confirmaciones claras, límites de reintentos y control de acceso para reducir abusos.</p>
       <div class="srv-tags">
@@ -407,7 +407,7 @@ footer a{color:var(--p);text-decoration:none}
 
     <!-- Mantenimiento -->
     <div class="srv-card mant">
-      <div class="srv-icon-wrap">🔧</div>
+      <div class="srv-icon-wrap"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></div>
       <h3>Mantenimiento y Soporte Web</h3>
       <p>¿Tu web está desactualizada, lenta o con errores? Me encargo del mantenimiento mensual: actualizaciones, backups, corrección de bugs, mejoras de velocidad y soporte continuo.</p>
       <div class="srv-tags">
@@ -572,6 +572,7 @@ function toggleFaq(btn) {
   }).catch(function () {});
 })();
 </script>
+<script src="../js/unity-ads.js?v=20261015a" defer></script>
 <script src="../js/consent-banner.js?v=20260810a" defer></script>
 <script src="../js/connection-alert.js?v=20260810a" defer></script>
 </body>

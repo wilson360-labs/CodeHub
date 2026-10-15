@@ -61,7 +61,7 @@ public class ShizukuInstaller {
     /** true si además de estar activo, ya nos dio permiso explícito. */
     public static boolean hasPermission() {
         if (!isBinderAlive()) return false;
-        try { return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED; }
+        try { return SystemCleaner.INSTANCE.isSelfGranted(); }
         catch (Throwable t) { return false; }
     }
 
