@@ -179,7 +179,7 @@
     <string name="cache_size">Önbellek Boyutu</string>
     <string name="cache_size_summary">Ses ve video için önbellek boyutu MB cinsinden</string>
     <string name="system">Sistem</string>
-    <string name="installation_type_summary">Uygulama kurulumu, aşağıdaki bağlantıların Echo\'da açılmasına izin verecektir:</string>
+    <string name="installation_type_summary">Uygulama kurulumu, aşağıdaki bağlantıların CodeHub\'da açılmasına izin verecektir:</string>
     <string name="could_not_find_the_file">Dosya bulunamadı.</string>
     <string name="extension_installed_successfully">Eklenti başarıyla yüklendi.</string>
     <string name="extension_uninstalled_successfully">Eklenti başarıyla kaldırıldı.</string>

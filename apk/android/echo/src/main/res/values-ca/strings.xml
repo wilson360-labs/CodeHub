@@ -118,7 +118,7 @@
     <string name="app">App</string>
     <string name="file">Fitxer</string>
     <string name="installation_type">Tipus d\'instal·lació</string>
-    <string name="installation_type_summary">La instal·lació permetrà que els següents enllaços s\'obrin a Echo:</string>
+    <string name="installation_type_summary">La instal·lació permetrà que els següents enllaços s\'obrin a CodeHub:</string>
     <string name="installation_type_warning">No disponible si s\'instal·la la extensió com un fitxer.</string>
     <string name="could_not_find_the_file">No s\'ha pogut trobar el fitxer.</string>
     <string name="extension_installer">Instal·lador d\'extensions</string>

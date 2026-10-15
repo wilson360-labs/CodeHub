@@ -121,7 +121,7 @@
     <string name="app">التطبيق</string>
     <string name="file">ملف</string>
     <string name="installation_type">نوع التثبيت</string>
-    <string name="installation_type_summary">سيسمح تثبيت التطبيق بفتح الروابط التالية في Echo:</string>
+    <string name="installation_type_summary">سيسمح تثبيت التطبيق بفتح الروابط التالية في CodeHub:</string>
     <string name="installation_type_warning">غير متاح إذا قمت بتثبيت الامتداد كملف.</string>
     <string name="could_not_find_the_file">تعذر العثور على الملف.</string>
     <string name="extension_installer">مثبت الامتداد</string>

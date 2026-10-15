@@ -17,7 +17,7 @@
     <string name="theme">Tema</string>
     <string name="save_to_library">Salva nella libreria</string>
     <string name="save">Salva</string>
-    <string name="app_widget_description">Echo nella tua schermata home!</string>
+    <string name="app_widget_description">CodeHub nella tua schermata home!</string>
     <plurals name="number_min">
         <item quantity="one">%1$d minuto</item>
         <item quantity="many">%1$d minuti</item>
@@ -112,7 +112,7 @@
     <string name="app">App</string>
     <string name="file">File</string>
     <string name="installation_type">Tipo di Installazione</string>
-    <string name="installation_type_summary">L\'installazione come App consente di aprire i seguenti link in Echo:</string>
+    <string name="installation_type_summary">L\'installazione come App consente di aprire i seguenti link in CodeHub:</string>
     <string name="installation_type_warning">Non disponibile se installi l’estensione come File.</string>
     <string name="could_not_find_the_file">Impossibile trovare il file.</string>
     <string name="extension_installer">Installazione Estensioni</string>

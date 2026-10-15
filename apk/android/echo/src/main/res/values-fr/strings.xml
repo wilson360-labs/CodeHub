@@ -204,7 +204,7 @@
     <string name="saved_to_playlists">Sauvegardée dans la playlist</string>
     <string name="removing_x">Suppression de %1$s</string>
     <string name="download_complete">Téléchargement Terminé</string>
-    <string name="app_widget_description">Echo sur votre écran d\'accueil !</string>
+    <string name="app_widget_description">CodeHub sur votre écran d\'accueil !</string>
     <string name="okay">OK</string>
     <string name="no_internet">Pas d\'Internet</string>
     <string name="error_x">Erreur : %1$s</string>
@@ -231,7 +231,7 @@
         <item quantity="other">%1$d Heures</item>
     </plurals>
     <string name="animations_summary">Interface pas fluide ? Désactiver cette option pourrait aider</string>
-    <string name="installation_type_summary">L\'installation de l\'application permettra aux liens suivants de s\'ouvrir dans Echo :</string>
+    <string name="installation_type_summary">L\'installation de l\'application permettra aux liens suivants de s\'ouvrir dans CodeHub :</string>
     <string name="could_not_find_the_file">Fichier introuvable.</string>
     <string name="custom_theme_color_summary">Utilise une couleur de thème personnalisée, au lieu de celle du système.</string>
     <string name="extension_installed_successfully">Extension installée avec succès.</string>

@@ -212,7 +212,7 @@
     <string name="app">App</string>
     <string name="file">File</string>
     <string name="installation_type">Installation Type</string>
-    <string name="installation_type_summary">App Installation Se Ye Links Echo Mein Khulenge:</string>
+    <string name="installation_type_summary">App Installation Se Ye Links CodeHub Mein Khulenge:</string>
     <string name="installation_type_warning">Agar Extension File Ke Roop Mein Install Kiya To Ye Available Nahi Hoga.</string>
     <string name="could_not_find_the_file">File Nahi Mili.</string>
     <string name="extension_installer">Extension Installer</string>
@@ -340,7 +340,7 @@
     <string name="delete_download">Download Delete Karo</string>
     <string name="removed_x_from_downloads">%1$s Downloads Se Hataya</string>
     <string name="download_complete">Download Pura Ho Gaya</string>
-    <string name="app_widget_description">Echo Aapke Home Screen Par!</string>
+    <string name="app_widget_description">CodeHub Aapke Home Screen Par!</string>
     <string name="opening_webview_x">Webview Khul Raha Hai: %1$s</string>
     <string name="no_update_available_for_x">%1$s Ke Liye Koi Update Nahi</string>
     <string name="language_x">Bhasha: %1$s</string>

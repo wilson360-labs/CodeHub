@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">Echo</string>
+    <string name="app_name" translatable="false">CodeHub</string>
     <string name="app_github_repo" translatable="false">brahmkshatriya/echo</string>
     <string name="okay">Okay</string>
     <string name="cancel">Cancel</string>
@@ -142,7 +142,7 @@
     <string name="app">App</string>
     <string name="file">File</string>
     <string name="installation_type">Installation Type</string>
-    <string name="installation_type_summary">App installation will allow the following links to open in Echo:</string>
+    <string name="installation_type_summary">App installation will allow the following links to open in CodeHub:</string>
     <string name="installation_type_warning">Not available if you install the extension as a File.</string>
     <string name="could_not_find_the_file">Could not find the file.</string>
     <string name="extension_installer">Extension Installer</string>
@@ -395,7 +395,7 @@
     <string name="removed_x_from_downloads">Removed %1$s from Downloads</string>
     <string name="download_complete">Download Complete</string>
 
-    <string name="app_widget_description">Echo on your home screen!</string>
+    <string name="app_widget_description">CodeHub on your home screen!</string>
     <string name="opening_webview_x">Opening Webview: %1$s</string>
     <string name="no_update_available_for_x">No update available for %1$s</string>
     <string name="other">Other</string>

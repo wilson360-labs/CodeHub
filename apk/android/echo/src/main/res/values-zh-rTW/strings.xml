@@ -77,7 +77,7 @@
     <string name="app">應用程式</string>
     <string name="file">檔案</string>
     <string name="installation_type">安裝類型</string>
-    <string name="installation_type_summary">應用程式安裝將允許以下連結在 Echo 中開啟：</string>
+    <string name="installation_type_summary">應用程式安裝將允許以下連結在 CodeHub 中開啟：</string>
     <string name="installation_type_warning">如果將擴展安裝為檔，則不可用。</string>
     <string name="could_not_find_the_file">找不到檔案。</string>
     <string name="extension_installer">擴充功能安裝程式</string>

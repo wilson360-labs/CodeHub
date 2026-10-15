@@ -82,7 +82,7 @@
     <string name="audio_fx_summary">모든 곡에 적용되는 효과</string>
     <string name="extension_installer">확장 프로그램 설치 관리자</string>
     <string name="keep_queue_summary">앱을 다시 열면 플레이어 대기열을 복구합니다.</string>
-    <string name="installation_type_summary">앱을 설치하면 Echo에서 다음 링크가 열립니다:</string>
+    <string name="installation_type_summary">앱을 설치하면 CodeHub에서 다음 링크가 열립니다:</string>
     <string name="extension_uninstalled_successfully">확장 프로그램이 성공적으로 제거되었습니다.</string>
     <string name="skip_silence_summary">끊김없는 재생을 위해 노래의 조용한 부분을 건너뜁니다.</string>
     <string name="installation_type">설치 유형</string>

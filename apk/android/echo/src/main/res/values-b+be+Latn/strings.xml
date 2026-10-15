@@ -119,7 +119,7 @@
     <string name="app">Dadatak</string>
     <string name="file">Fajł</string>
     <string name="installation_type">Typ instalavannia</string>
-    <string name="installation_type_summary">Instalavannie dadatku dazvolić adkryccio nastupnych spasyłak u Echo:</string>
+    <string name="installation_type_summary">Instalavannie dadatku dazvolić adkryccio nastupnych spasyłak u CodeHub:</string>
     <string name="installation_type_warning">Niedastupna, kali vy instalujecie pašyrennie ŭ vyhladzie fajłu.</string>
     <string name="could_not_find_the_file">Nie atrymałasia znajsci fajł.</string>
     <string name="extension_installer">Instalavač pašyrenniaŭ</string>
@@ -347,7 +347,7 @@
     <string name="delete_download">Vydalić spampavannie</string>
     <string name="removed_x_from_downloads">%1$s vydalena z spampavanniaŭ</string>
     <string name="download_complete">Spampavannie zavieršana</string>
-    <string name="app_widget_description">Echo na haloŭnym ekranie!</string>
+    <string name="app_widget_description">CodeHub na haloŭnym ekranie!</string>
     <string name="opening_webview_x">Adkryccio WebView: %1$s</string>
     <string name="no_update_available_for_x">Niama dastupnych abnaŭlenniaŭ dla %1$s</string>
     <string name="other">Inšaje</string>

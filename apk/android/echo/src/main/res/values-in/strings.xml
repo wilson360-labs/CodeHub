@@ -272,7 +272,7 @@
     <string name="loading_x">Memuat %1s</string>
     <string name="download_started">Unduhan dimulai</string>
     <string name="cache_playlist_warning">Fitur percobaan. Semua kecuali mendengarkan ini tidak terdukung.</string>
-    <string name="installation_type_summary">Pemasangan melalui aplikasi akan memungkinkan link berikut terbuka di Echo:</string>
+    <string name="installation_type_summary">Pemasangan melalui aplikasi akan memungkinkan link berikut terbuka di CodeHub:</string>
     <string name="animations_summary">Puyeng? Coba matiin ini</string>
     <string name="reset">Mulai ulang</string>
     <string name="ui">UI</string>

@@ -119,7 +119,7 @@
     <string name="app">Дадатак</string>
     <string name="file">Файл</string>
     <string name="installation_type">Тып інсталявання</string>
-    <string name="installation_type_summary">Інсталяванне дадатку дазволіць адкрыццё наступных спасылак у Echo:</string>
+    <string name="installation_type_summary">Інсталяванне дадатку дазволіць адкрыццё наступных спасылак у CodeHub:</string>
     <string name="installation_type_warning">Недаступна, калі вы інсталюеце пашырэнне ў выглядзе файлу.</string>
     <string name="could_not_find_the_file">Не атрымалася знайсці файл.</string>
     <string name="extension_installer">Інсталявач пашырэнняў</string>
@@ -344,7 +344,7 @@
     <string name="delete_download">Выдаліць спампаванне</string>
     <string name="removed_x_from_downloads">%1$s выдалена з спампаванняў</string>
     <string name="download_complete">Спампаванне завершана</string>
-    <string name="app_widget_description">Echo на галоўным экране!</string>
+    <string name="app_widget_description">CodeHub на галоўным экране!</string>
     <string name="opening_webview_x">Адкрыццё WebView: %1$s</string>
     <string name="no_update_available_for_x">Няма даступных абнаўленняў для %1$s</string>
     <string name="other">Іншае</string>

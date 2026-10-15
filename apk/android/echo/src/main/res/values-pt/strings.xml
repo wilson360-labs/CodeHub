@@ -7,7 +7,7 @@
     <string name="stop_player_summary">Pare o jogador, quando o aplicativo for removido de recentes</string>
     <string name="invalid_extension_list">Lista de extensões inválidas</string>
     <string name="no_user_found">Nenhum usuário encontrado</string>
-    <string name="installation_type_summary">A instalação do aplicativo permitirá que os seguintes links sejam abertos no Echo:</string>
+    <string name="installation_type_summary">A instalação do aplicativo permitirá que os seguintes links sejam abertos no CodeHub:</string>
     <string name="sleep_timer">Temporizador de sono</string>
     <string name="extension_uninstalled_successfully">Extensão desinstalada com êxito.</string>
     <string name="auto_start_radio_summary">Adicione automaticamente músicas relacionadas da faixa na lista de reprodução, para ter uma fila infinita</string>

@@ -141,7 +141,7 @@
     <string name="check_for_updates">更新を確認</string>
     <string name="check_for_updates_summary">アプリを開いた際に、アプリと拡張機能の両方の更新を確認します。</string>
     <string name="installation_type">インストール方式</string>
-    <string name="installation_type_summary">アプリをインストールすると、以下のリンクをEchoで開くことができます:</string>
+    <string name="installation_type_summary">アプリをインストールすると、以下のリンクをCodeHubで開くことができます:</string>
     <string name="installation_type_warning">拡張機能をファイルとしてインストールした場合、利用できません。</string>
     <string name="could_not_find_the_file">ファイルが見つかりませんでした。</string>
     <string name="extension_installer">拡張機能インストーラー</string>

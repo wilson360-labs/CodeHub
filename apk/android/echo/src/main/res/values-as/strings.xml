@@ -120,7 +120,7 @@
     <string name="app">এপ</string>
     <string name="file">ফাইল</string>
     <string name="installation_type">ইনষ্টলেশ্যনৰ টাইপ</string>
-    <string name="installation_type_summary">এপ ইনষ্টলেশ্যনে তলৰ লিংকবোৰ Echoত খোলাৰ পাৰ্মিছন দিব:</string>
+    <string name="installation_type_summary">এপ ইনষ্টলেশ্যনে তলৰ লিংকবোৰ CodeHubত খোলাৰ পাৰ্মিছন দিব:</string>
     <string name="installation_type_warning">যদি আপুনি এক্সটেনশ্যন ফাইল হিচাপে ইনষ্টল কৰে তেন্তে উপলব্ধ নহয়।</string>
     <string name="could_not_find_the_file">ফাইলটো বিচাৰি পোৱা নগ’ল।</string>
     <string name="extension_installer">এক্সটেনশ্যন ইনষ্টলাৰ</string>
@@ -289,7 +289,7 @@
     <string name="delete_download">ডাউনলোড ডিলিট কৰক</string>
     <string name="removed_x_from_downloads">ডাউনলোডৰ পৰা %1$s আঁতৰোৱা হ’ল</string>
     <string name="download_complete">ডাউনলোড কম্প্লিট</string>
-    <string name="app_widget_description">আপোনাৰ হোম স্ক্ৰীনত Echo!</string>
+    <string name="app_widget_description">আপোনাৰ হোম স্ক্ৰীনত CodeHub!</string>
     <string name="feed">ফিড</string>
     <string name="item">আইটেম</string>
     <plurals name="number_items">

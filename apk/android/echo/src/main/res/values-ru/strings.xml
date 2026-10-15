@@ -167,7 +167,7 @@
     <string name="download_started">Начало скачивания</string>
     <string name="extension_uninstalled_successfully">Расширение успешно удалено.</string>
     <string name="installation_type">Тип установки</string>
-    <string name="installation_type_summary">Установка приложения разрешит открытие следующих ссылок в Echo:</string>
+    <string name="installation_type_summary">Установка приложения разрешит открытие следующих ссылок в CodeHub:</string>
     <string name="theme">Тема</string>
     <string name="file">Файл</string>
     <string name="extension_installed_successfully">Расширение успешно установлено.</string>
@@ -290,7 +290,7 @@
     <string name="delete_download">Удалить скачивание</string>
     <string name="removed_x_from_downloads">%1$s удалено из скачиваний</string>
     <string name="download_complete">Скачивание завершено</string>
-    <string name="app_widget_description">Echo на вашем главном экране!</string>
+    <string name="app_widget_description">CodeHub на вашем главном экране!</string>
     <string name="feed">Лента</string>
     <string name="item">Элемент</string>
     <plurals name="number_items">

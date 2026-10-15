@@ -146,7 +146,7 @@
     <string name="app">אפליקציה</string>
     <string name="file">קובץ</string>
     <string name="installation_type">סוג התקנה</string>
-    <string name="installation_type_summary">התקנת האפליקציה תאפשר פתיחת הקישורים הבאים ב-Echo:</string>
+    <string name="installation_type_summary">התקנת האפליקציה תאפשר פתיחת הקישורים הבאים ב-CodeHub:</string>
     <string name="installation_type_warning">לא זמין אם תתקין את התוסף כקובץ.</string>
     <string name="could_not_find_the_file">לא הצלחנו למצוא את הקובץ.</string>
     <string name="extension_installer">מתקין תוספים</string>
@@ -275,7 +275,7 @@
     <string name="delete_download">מחק הורדה</string>
     <string name="removed_x_from_downloads">%1$s נמחק מהורדות</string>
     <string name="download_complete">הורדה הושלמה</string>
-    <string name="app_widget_description">Echo במסך הבית שלך!</string>
+    <string name="app_widget_description">CodeHub במסך הבית שלך!</string>
     <string name="opening_webview_x">פותח תצוגת אינטרנט: %1$s</string>
     <string name="no_update_available_for_x">אין עדכון זמין עבור %1$s</string>
     <string name="other">אחר</string>

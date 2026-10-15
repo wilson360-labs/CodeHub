@@ -117,7 +117,7 @@
     <string name="app">Alkalmazás</string>
     <string name="file">Fajl</string>
     <string name="installation_type">Telepítés Módja</string>
-    <string name="installation_type_summary">Az app telepítése engedélyezi az alábbi linkek megnyitását az Echo-ban:</string>
+    <string name="installation_type_summary">Az app telepítése engedélyezi az alábbi linkek megnyitását az CodeHub-ban:</string>
     <string name="installation_type_warning">Nem elérhető ha a bővítményt fajlként telepíted.</string>
     <string name="could_not_find_the_file">A fájl nem található.</string>
     <string name="extension_installer">Bővítmény Telepítő</string>

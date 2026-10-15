@@ -79,7 +79,7 @@
     <string name="app">App</string>
     <string name="file">Datei</string>
     <string name="installation_type">Art der Installation</string>
-    <string name="installation_type_summary">Durch die App-Installation können die folgenden Links in Echo geöffnet werden:</string>
+    <string name="installation_type_summary">Durch die App-Installation können die folgenden Links in CodeHub geöffnet werden:</string>
     <string name="could_not_find_the_file">Die Datei konnte nicht gefunden werden.</string>
     <string name="extension_installer">Installer für Erweiterungen</string>
     <string name="extension_uninstalled_successfully">Die Erweiterung wurde erfolgreich deinstalliert.</string>
@@ -289,7 +289,7 @@
     <string name="delete_download">Download löschen</string>
     <string name="removed_x_from_downloads">%1$s aus Downloads entfernt</string>
     <string name="download_complete">Download Komplett</string>
-    <string name="app_widget_description">Echo auf Ihrem Startbildschirm!</string>
+    <string name="app_widget_description">CodeHub auf Ihrem Startbildschirm!</string>
     <string name="item">Eintrag</string>
     <plurals name="number_items">
         <item quantity="one">%1$d Eintrag</item>
@@ -300,7 +300,7 @@
     <string name="unmetered_stream_quality_summary">Streamingqualität in unbegrenzten Netzwerkerkverbindungen. Überschreibt die Standard-Streamingqualität.</string>
     <string name="select_language">Sprache auswählen</string>
     <string name="check_for_updates">Nach Updates suchen</string>
-    <string name="check_for_updates_summary">Prüfe beim Öffnen von Echo die App und Erweiterungen auf Aktualisierungen.</string>
+    <string name="check_for_updates_summary">Prüfe beim Öffnen von CodeHub die App und Erweiterungen auf Aktualisierungen.</string>
     <string name="checking_for_updates">Suche nach Aktualisierungen</string>
     <string name="back_animations">\"Zurück\"-Animationen</string>
     <string name="back_animations_summary">Kann visuellen Android-Bug auslösen, lässt sich aber beheben durch öffnen von \"Letzte Apps\".</string>

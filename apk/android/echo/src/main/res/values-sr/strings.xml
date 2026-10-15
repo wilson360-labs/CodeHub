@@ -108,7 +108,7 @@
     <string name="app">Aplikacija</string>
     <string name="file">Fajl</string>
     <string name="installation_type">Tip instalacije</string>
-    <string name="installation_type_summary">Instalacija aplikacije će dozvoliti da se sledeći linkovi otvore u Echo:</string>
+    <string name="installation_type_summary">Instalacija aplikacije će dozvoliti da se sledeći linkovi otvore u CodeHub:</string>
     <string name="installation_type_warning">Nedostupno ako se instalira ekstenzija kao fajl.</string>
     <string name="could_not_find_the_file">Nije moguće pronaći fajl.</string>
     <string name="extension_installer">Instaler ekstenzija</string>
@@ -320,7 +320,7 @@
     <string name="delete_download">Obriši preuzeto</string>
     <string name="removed_x_from_downloads">Uklonjeno%1$s iz Preuzimanja</string>
     <string name="download_complete">Preuzimanje dovršeno</string>
-    <string name="app_widget_description">Echo na tvom početnom ekranu!</string>
+    <string name="app_widget_description">CodeHub na tvom početnom ekranu!</string>
     <string name="opening_webview_x">Otvaranje Webview: %1$s</string>
     <string name="no_update_available_for_x">Nije pronađeno ni jedno ažuriranje za %1$s</string>
     <string name="other">Ostalo</string>

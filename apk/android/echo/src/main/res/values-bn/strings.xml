@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Echo</string>
+    <string name="app_name" translatable="false">CodeHub</string>
     <string name="app_github_repo" translatable="false">brahmkshatriya/echo</string>
     <string name="okay">ঠিক আছে</string>
     <string name="cancel">বাতিল</string>
@@ -124,7 +124,7 @@
     <string name="app">অ্যাপ</string>
     <string name="file">ফাইল</string>
     <string name="installation_type">ইনস্টলেশন প্রকার</string>
-    <string name="installation_type_summary">অ্যাপ ইনস্টলেশন নিম্নলিখিত লিঙ্কগুলি Echo তে খুলতে অনুমতি দেবে:</string>
+    <string name="installation_type_summary">অ্যাপ ইনস্টলেশন নিম্নলিখিত লিঙ্কগুলি CodeHub তে খুলতে অনুমতি দেবে:</string>
     <string name="installation_type_warning">ফাইল হিসাবে এক্সটেনশন ইনস্টল করলে উপলব্ধ নয়।</string>
     <string name="could_not_find_the_file">ফাইল খুঁজে পাওয়া যায়নি।</string>
     <string name="extension_installer">এক্সটেনশন ইনস্টলার</string>
@@ -347,7 +347,7 @@
     <string name="delete_download">ডাউনলোড মুছুন</string>
     <string name="removed_x_from_downloads">%1$s ডাউনলোড থেকে সরানো হয়েছে</string>
     <string name="download_complete">ডাউনলোড সম্পূর্ণ</string>
-    <string name="app_widget_description">আপনার হোম স্ক্রিনে Echo!</string>
+    <string name="app_widget_description">আপনার হোম স্ক্রিনে CodeHub!</string>
     <string name="opening_webview_x">ওয়েবভিউ খোলা হচ্ছে: %1$s</string>
     <string name="no_update_available_for_x">%1$s এর জন্য কোন আপডেট উপলব্ধ নেই</string>
     <string name="other">অন্যান্য</string>
