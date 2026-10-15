@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <!-- Polyfill de window.Notification — el WebView de la app nativa
@@ -4441,10 +4441,6 @@ async function sendEmail(e) {
     chip.addEventListener('click', () => applyPromptPreset(chip.dataset.prompt));
   });
 
-  // Sistema: quién es el asistente
-  // SYSTEM prompt is defined server-side in server.js — this client const is unused
-  const _DEAD_SYSTEM = `
-  `;
 
   const ACTIVE_PROMPTS = [
     { placeholder: 'Explicame este error de JavaScript...', hint: 'Debug rapido para frontend, backend y APIs' },
