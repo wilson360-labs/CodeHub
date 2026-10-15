@@ -111,6 +111,7 @@ public class DownloadsActivity extends Activity {
         });
 
         setContentView(root);
+        SystemBars.applyInsets(this);
         loadDownloads();
     }
 

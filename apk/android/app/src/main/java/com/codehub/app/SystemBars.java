@@ -3,14 +3,17 @@ package com.codehub.app;
 import android.app.Activity;
 import android.os.Build;
 import android.view.View;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 
 /**
  * Barras del sistema de Android (estado + navegación) consistentes en todas
  * las activities de CodeHub.
  *
- * No se usa modo pantalla completa: la ventana se adapta a la pantalla
- * normalmente, sin esconder la barra de notificaciones ni forzar edge-to-edge.
+ * No se usa modo pantalla completa. En Android 14 o menos el sistema reserva
+ * el espacio de las barras (setDecorFitsSystemWindows). Desde Android 15 con
+ * targetSdk 35+ el edge-to-edge es obligatorio y setDecorFitsSystemWindows(true)
+ * se ignora, por eso {@link #applyInsets(Activity)} añade ese espacio a mano.
  */
 public final class SystemBars {
 
@@ -31,5 +34,28 @@ public final class SystemBars {
             try { activity.getWindow().setStatusBarContrastEnforced(true); } catch (Throwable ignored) {}
             try { activity.getWindow().setNavigationBarContrastEnforced(true); } catch (Throwable ignored) {}
         }
+    }
+
+    /**
+     * Llamar DESPUÉS de setContentView(). En Android 15+ (SDK 35+) la app se
+     * dibuja detrás de la barra de estado y la de navegación; aquí se aplica
+     * como padding el área de barras + notch + teclado para que el contenido
+     * (WebView, banner, listas) quede entre ambas barras, igual que en
+     * Android 14. En versiones anteriores no hace nada (ya funciona).
+     */
+    public static void applyInsets(Activity activity) {
+        if (Build.VERSION.SDK_INT < 35) return;
+        final View content = activity.findViewById(android.R.id.content);
+        if (content == null) return;
+        content.setOnApplyWindowInsetsListener((v, insets) -> {
+            android.graphics.Insets i = insets.getInsets(
+                WindowInsets.Type.systemBars()
+                    | WindowInsets.Type.displayCutout()
+                    | WindowInsets.Type.ime());
+            v.setPadding(i.left, i.top, i.right, i.bottom);
+            // Consumido: el WebView no vuelve a aplicar env(safe-area-inset-*).
+            return WindowInsets.CONSUMED;
+        });
+        content.requestApplyInsets();
     }
 }

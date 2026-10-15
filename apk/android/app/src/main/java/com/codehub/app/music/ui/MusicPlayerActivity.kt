@@ -150,6 +150,7 @@ class MusicPlayerActivity : Activity() {
         player.downloads = downloads
         requestNotificationPermission()
         setContentView(buildUi())
+        com.codehub.app.SystemBars.applyInsets(this)
         collectPlayer()
         collectMessages()
         boot()

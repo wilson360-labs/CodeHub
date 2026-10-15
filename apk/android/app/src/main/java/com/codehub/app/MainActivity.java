@@ -132,6 +132,7 @@ public class MainActivity extends Activity {
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         setContentView(rootLayout);
+        SystemBars.applyInsets(this);
 
         try { setupReaderButton(mainFrame); } catch (Throwable t) { crashLog("readerBtn", t); }
         try { initTts(); } catch (Throwable t) { crashLog("tts", t); }
