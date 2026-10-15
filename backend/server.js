@@ -2914,6 +2914,45 @@ app.get('/api/tgfile/:appId', async (req, res) => {
 //  ADMIN
 // ════════════════════════════════════════════════════════════════
 
+// Endpoint: registrar un APK que ya fue subido a Telegram (file_id) sin
+// re-pipear los bytes (el operador lo envia como documento al bot).
+app.post('/api/admin/apps/:appId/upload-from-telegram', requireAdmin, async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
+  const { appId } = req.params;
+  const { file_id, slot, file_name } = req.body || {};
+  if (!file_id) return res.status(400).json({ error: 'Falta file_id' });
+  if (!TG_TOKEN) return res.status(503).json({ error: 'Sin token de Telegram en el servidor' });
+  const https = require('https');
+  try {
+    const a = await App.findOne({ appId });
+    if (!a) return res.status(404).json({ error: 'App no encontrada' });
+
+    const fData = await new Promise((resolve, reject) => {
+      https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${encodeURIComponent(file_id)}` }, (r) => {
+        const chunks = []; r.on('data', c => chunks.push(c));
+        r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch (e) { reject(e); } });
+      }).on('error', reject);
+    });
+    if (!fData || !fData.ok) {
+      return res.status(400).json({ error: 'Telegram getFile fallo: ' + (fData && fData.description || 'no response') });
+    }
+
+    const isPlugin = slot === 'plugin';
+    const tgFp = fData.result.file_path;
+    const publicDl = `${process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com'}/api/tgfile/${encodeURIComponent(appId)}${isPlugin ? '?slot=plugin' : ''}`;
+    const upd = isPlugin
+      ? { tg_plugin_msg_id: 0, tg_plugin_file_id: file_id, tg_plugin_file_path: tgFp, plugin_enlace: publicDl, updatedAt: new Date(), lastAttempt: 'upload-from-telegram' }
+      : { tg_message_id: 0, tg_file_id: file_id, tg_file_path: tgFp, enlace: publicDl, updatedAt: new Date(), lastAttempt: 'upload-from-telegram' };
+
+    await App.updateOne({ appId }, upd);
+    logAdmin(adminActorOf(req), 'app.apk.upload_from_telegram', { appId, slot: isPlugin ? 'plugin' : 'main', has_file_name: !!file_name }, 'ok');
+    res.json({ ok: true, appId, slot: isPlugin ? 'plugin' : 'main', file_id, file_path: tgFp, url: publicDl });
+  } catch (e) {
+    console.error('upload-from-telegram error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/admin/apps', requireAdmin, async (_, res) => {
   if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
   try { const apps = await App.find({}).sort({ createdAt: 1 }).lean(); res.json({ apps, total: apps.length }); }

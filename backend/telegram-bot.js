@@ -66,6 +66,7 @@ const HELP = [
   '/config — configuración actual (set con JSON)',
   '/contenido <ruta> — leer carpeta o archivo del repo',
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
+  '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
   '',
   'Todo lo destructivo pide confirmación con botones.',
   'Kill-switch: <code>TG_BOT_ENABLED=false</code> en Render.',
@@ -710,9 +711,48 @@ const COMMANDS = {
   '/config':     (c, t, a) => cmdConfig(c, t, a),
   '/contenido': (c, t, a) => cmdContenido(c, t, a),
   '/poner':      (c, t, a) => cmdPoner(c, t, a),
+  '/subirapk':   (c, t, a) => cmdSubirapk(c, t, a),
   '/poner-cancelar': (c) => cancelPending(c),
   '/cancelar':   (c) => cancelPending(c),
 };
+
+async function cmdSubirapk(chatId, token, arg) {
+  const parts = String(arg || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    await send(chatId, 'Uso: /subirapk <appId> [plugin|main]\nEnvia el APK justo despues como documento.');
+    return;
+  }
+  const appId = parts[0];
+  const slot = ((parts[1] || 'main').toLowerCase() === 'plugin') ? 'plugin' : 'main';
+  pending.set(String(chatId), { kind: 'upload', appId, slot, at: Date.now() });
+  await send(chatId, 'Envia ahora un documento .apk para ' + esc(appId) + ' (' + esc(slot) + ').\n/cancelar para abortar.');
+}
+
+async function processUploadDoc(chatId, doc) {
+  const state = pending.get(String(chatId));
+  if (!state || state.kind !== 'upload') return false;
+  const token = sessionOf(chatId);
+  if (!token) { await send(chatId, 'Primero abre sesion: /login <clave>'); return true; }
+  const name = String(doc.file_name || '');
+  const mime = String(doc.mime_type || '');
+  if (!name.toLowerCase().endsWith('.apk') && mime !== 'application/vnd.android.package-archive') {
+    await send(chatId, 'Eso no es un APK (' + esc(name || mime) + '). Envia .apk.');
+    return true;
+  }
+  const up = await api('POST', '/api/admin/apps/' + encodeURIComponent(state.appId) + '/upload-from-telegram', {
+    file_id: doc.file_id,
+    slot: state.slot,
+    file_name: name
+  }, token);
+  pending.delete(String(chatId));
+  if (up.status !== 200 || !(up.json && up.json.ok)) {
+    await send(chatId, 'No se pudo guardar: ' + esc((up.json && up.json.error) || ('HTTP ' + up.status)));
+    return true;
+  }
+  C.logAdmin('telegram', 'app.apk.upload_from_telegram', { appId: state.appId, slot: state.slot }, 'ok', 'bot');
+  await send(chatId, 'APK guardado para ' + esc(state.appId) + ' (' + esc(state.slot) + '):\n' + esc(up.json.url));
+  return true;
+}
 
 function cancelPending(chatId) {
   if (pending.has(String(chatId))) {
@@ -888,6 +928,13 @@ async function handleUpdate(req, res) {
     // 3) Whitelist de chat.
     if (!C.chatId || String(msg.chat.id) !== String(C.chatId)) {
       C.tgAlert('tgchat', () => '🚫 <b>Chat no autorizado en el bot</b>\nID: <code>' + esc(msg.chat.id) + '</code>', { windowMs: 30000 });
+      return;
+    }
+
+    const doc = msg.document;
+    const pendingUpload = pending.get(String(msg.chat.id));
+    if (doc && pendingUpload && pendingUpload.kind === 'upload') {
+      await processUploadDoc(msg.chat.id, doc);
       return;
     }
 
