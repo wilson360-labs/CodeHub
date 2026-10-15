@@ -73,11 +73,14 @@ async function runAudit() {
   try {
     const manifest = readJson('manifest.json');
     checks += 1;
-    if (manifest.display !== 'standalone') {
+    // CodeHub evita el look "pantalla completa" del standalone (decision de
+    // producto): se aceptan minimal-ui y browser ademas de standalone.
+    const displayOk = ['minimal-ui', 'browser', 'standalone'].includes(manifest.display);
+    if (!displayOk) {
       errors += 1;
-      fail('manifest.json no usa display standalone');
+      fail('manifest.json usa un display no soportado: ' + manifest.display);
     } else {
-      ok('manifest.json en modo standalone');
+      ok('manifest.json en modo ' + manifest.display);
     }
 
     if (!manifest.start_url) {
@@ -142,9 +145,10 @@ async function runAudit() {
   if (args.has('--install')) {
     try {
       const manifest = readJson('manifest.json');
-      const installReady = !!(manifest.display === 'standalone' && manifest.start_url && manifest.icons && manifest.icons.length);
+      const displayOk = ['minimal-ui', 'browser', 'standalone'].includes(manifest.display);
+      const installReady = !!(displayOk && manifest.start_url && manifest.icons && manifest.icons.length);
       if (installReady) {
-        ok('Instalación PWA lista para usuarios: manifest + standalone + iconos');
+        ok('Instalación PWA lista para usuarios: manifest + display + iconos');
       } else {
         fail('PWA no está lista para instalar');
         process.exitCode = 1;
