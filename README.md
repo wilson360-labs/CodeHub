@@ -65,10 +65,11 @@ CodeHub/
 │   └── autoscript.yml  # AutoScript lunes 8AM GT
 ├── css/                # Estilos
 ├── js/                 # Scripts
-└── backend/
-    ├── server.js       # API REST
-    ├── package.json
-    └── render.yaml
+├── backend/
+│   ├── server.js       # API REST
+│   ├── telegram-bot.js # Bot de administración por Telegram
+│   ├── package.json
+│   └── render.yaml
 ```
 
 ## ⚡ Variables de Entorno (GitHub Secrets)
@@ -85,6 +86,8 @@ B2_BUCKET_ID        # Backblaze B2
 B2_BUCKET_NAME      # Backblaze B2
 TELEGRAM_BOT_TOKEN   # Bot Telegram (canónico; alias legacy: TELEGRAM_TOKEN)
 TELEGRAM_CHAT_ID    # Tu chat ID
+TELEGRAM_WEBHOOK_SECRET  # Secreto del webhook del bot admin (obligatoria)
+TG_BOT_ENABLED      # Kill-switch del bot admin ("false" lo apaga)
 BACKEND_URL         # https://codehub-98s6.onrender.com
 
 # ── Recompensas (rewarded ads, ver docs/REWARDED-ADS.md) ──

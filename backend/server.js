@@ -184,6 +184,10 @@ app.use('/api/webhook', express.json({
   limit: '200kb',
   verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
+// /api/telegram — los updates del bot (mensajes, audios, documentos con
+// APKs...) superan de sobra el límite global de 10kb; mismo patrón que
+// /api/webhook. Se registra antes del límite global.
+app.use('/api/telegram', express.json({ limit: '512kb' }));
 app.use(express.json({ limit: '10kb' }));
 
 // Multer APKs — Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene límite de 50 MB.
@@ -7004,6 +7008,28 @@ app.get('/api/security/scan', scanLimiter, async (req, res) => {
     });
   }
 });
+
+// ── BOT DE TELEGRAM (administración por chat) ───────────────────
+// Receptor del webhook de Telegram: /api/telegram/webhook. Se monta ANTES
+// del 404/500 globales (si no, quedaría inalcanzable). La lógica vive en
+// backend/telegram-bot.js; aquí solo se le inyecta lo que ya existe:
+// la firma de sesiones admin, tgAlert y logAdmin.
+// Variables nuevas en Render: TELEGRAM_WEBHOOK_SECRET (obligatoria) y
+// TG_BOT_ENABLED (kill-switch, default true). TELEGRAM_BOT_TOKEN y
+// TELEGRAM_CHAT_ID ya se usaban para el resumen diario.
+try {
+  require('./telegram-bot').init({
+    app,
+    signSession: _signSession,
+    tgAlert,
+    logAdmin,
+    port: PORT,
+    backendUrl: process.env.BACKEND_URL || ('http://127.0.0.1:' + PORT),
+    adminKey: process.env.ADMIN_KEY,
+  });
+} catch (e) {
+  console.error('⚠️ telegram-bot no se pudo montar:', e.message);
+}
 
 // ── 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) ──
 app.use((req, res) => {

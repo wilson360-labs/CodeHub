@@ -51,6 +51,16 @@ services:
       # lleguen al instante en vez de esperar el polling cada 6h.
       - key: GITHUB_WEBHOOK_SECRET
         sync: false
+      # ── Bot de administración por Telegram ─────────────────────
+      # TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID son los mismos que ya usa
+      # el resumen diario (vars del entorno del servicio). Añade además:
+      #   TELEGRAM_WEBHOOK_SECRET → secreto compartido con @BotFather
+      #     (setWebhook secret_token). Sin él el webhook responde 503.
+      #   TG_BOT_ENABLED          → kill-switch ("false" apaga el bot).
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: TG_BOT_ENABLED
+        sync: false
 
 # ── Tareas programadas — automatización con la config de Render ──
 # Cron Jobs (type: cron, dentro de services): leen las variables del
