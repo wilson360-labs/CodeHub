@@ -5,13 +5,13 @@
   "description": "Portfolio de Wilson.E - Dev Full Stack de Guatemala. Tools, Apps Android, IA.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "display": "minimal-ui",
+  "display_override": ["minimal-ui", "browser"],
   "launch_handler": {
     "client_mode": "navigate-existing"
   },
   "background_color": "#080810",
-  "theme_color": "#2f80ed",
+  "theme_color": "#080810",
   "orientation": "portrait-primary",
   "lang": "es",
   "dir": "ltr",
