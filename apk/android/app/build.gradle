@@ -83,6 +83,12 @@ dependencies {
     // Desugaring de librerías java.time (ver compileOptions arriba).
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation 'com.google.android.gms:play-services-location:21.3.0'
+    // WorkManager — sync periódico (FCM + ubicación) sin Foreground Service.
+    // Reemplaza a CodeHubSyncService (tipo dataSync), que en Android 15/16
+    // lanzaba ForegroundServiceDidNotStopInTimeException. Misma versión que la
+    // que ya arrastra :echo (koin-androidx-workmanager:4.1.0 → 2.10.1); el
+    // inicializador por defecto lo desactiva :echo y lo enciende EchoBoot.
+    implementation 'androidx.work:work-runtime:2.10.1'
     // Shizuku — detección de servicio/permiso + instalación silenciosa de
     // APKs (apps Open Source) sin el diálogo nativo, cuando el usuario
     // tiene Shizuku activo (ADB inalámbrico o root). Ver ShizukuInstaller.java.

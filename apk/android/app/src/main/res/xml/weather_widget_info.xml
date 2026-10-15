@@ -5,7 +5,7 @@
   - updatePeriodMillis: el sistema nunca lo dispara más seguido de 30
     min aunque se ponga menos (mínimo impuesto por Android), así que
     además nos apoyamos en WeatherWidgetAlarmReceiver (AlarmManager,
-    igual que CodeHubSyncService) para refrescar con más precisión
+    igual que CodeHubSyncWorker) para refrescar con más precisión
     cuando la app está en uso.
   - minWidth/minHeight ~ 4x3 celdas: se amplió (antes 4x2) para el
     segundo renglón de stats (ráfagas/presión/UV) y la línea de

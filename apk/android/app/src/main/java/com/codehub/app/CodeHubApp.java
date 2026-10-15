@@ -29,8 +29,9 @@ public class CodeHubApp extends Application {
         }
         // Unity Ads se inicializa en MainActivity (UnityAdsManager) tras el
         // gate de consentimiento UMP (ConsentManager).
-        // Lanzar Foreground Service lo antes posible para WakeLock + sync
-        CodeHubSyncService.startIfNotRunning(this);
+        // Sync en 2do plano (FCM + ubicación) vía WorkManager — sin Foreground
+        // Service, que en Android 15/16 se agota y crasheaba la app.
+        try { CodeHubSyncScheduler.schedule(this); } catch (Throwable ignored) {}
     }
 
     private static final class CrashHandler implements Thread.UncaughtExceptionHandler {

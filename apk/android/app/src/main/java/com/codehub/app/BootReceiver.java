@@ -36,8 +36,10 @@ public class BootReceiver extends BroadcastReceiver {
                 });
             } catch (Exception ignored) {}
 
-            // Iniciar Foreground Service inmediatamente después del boot
-            CodeHubSyncService.startIfNotRunning(context);
+            // Reagendar el sync periódico (WorkManager sobrevive al reboot por
+            // su propio receiver; esto es redundancia defensiva) y una pasada ya.
+            try { CodeHubSyncScheduler.schedule(context); } catch (Throwable ignored) {}
+            try { CodeHubSyncScheduler.syncNow(context); } catch (Throwable ignored) {}
         }
     }
 }

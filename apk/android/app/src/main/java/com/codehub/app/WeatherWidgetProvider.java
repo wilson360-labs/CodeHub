@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Widget de clima de CodeHub para la pantalla de inicio (rediseñado).
  *
- * Reutiliza la misma ubicación (lat/lon) que guarda CodeHubSyncService
+ * Reutiliza la misma ubicación (lat/lon) que guarda CodeHubSyncWorker
  * en SharedPreferences("codehub") cada ~15 min, y consulta Open-Meteo
  * directamente (mismo proveedor que usa el backend). Muestra:
  * temperatura, condición, sensación térmica, humedad, viento, mini-
@@ -94,7 +94,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         } catch (Exception ignored) {}
     }
 
-    // ── Utilidad pública: llamado desde CodeHubBridge/CodeHubSyncService
+    // ── Utilidad pública: llamado desde CodeHubBridge/CodeHubSyncWorker
     //    cuando hay ubicación o clima nuevos, para no esperar al alarm. ──
     public static void requestRefresh(Context context) {
         if (!hasAnyWidget(context)) return;

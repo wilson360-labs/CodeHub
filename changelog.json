@@ -1,5 +1,16 @@
 [
   {
+    "version": "v7.22",
+    "date": "2026-10-15",
+    "type": "fix",
+    "title": "Android: fin del crash del servicio de sync y arranque tolerante",
+    "changes": [
+      "El sync en segundo plano (token FCM + ubicacion) pasa de Foreground Service tipo dataSync a WorkManager: en Android 15/16 el sistema agotaba su limite de tiempo y lanzaba ForegroundServiceDidNotStopInTimeException / ForegroundServiceStartNotAllowedException que tumbaban la app",
+      "Arranque tolerante: si el proveedor de WebView del dispositivo falla (Resources$NotFoundException 'failed to redirect ResourcesImpl'), se muestra una pantalla nativa de recuperacion con Reintentar/Cerrar en vez de crashear la Activity",
+      "Sincronizacion tambien al reiniciar el telefono y al actualizar el APK, sin servicios en primer plano persistentes"
+    ]
+  },
+  {
     "version": "v7.21",
     "date": "2026-10-14",
     "type": "fix",

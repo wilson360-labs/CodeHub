@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.provider.Settings;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,6 +31,7 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.speech.tts.TextToSpeech;
@@ -86,7 +88,17 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        webView = new WebView(this);
+        // Algunos dispositivos con Android 16 y el proveedor de WebView
+        // corrupto lanzan Resources$NotFoundException ("failed to redirect
+        // ResourcesImpl"). No dejamos que tumbe la Activity: mostramos una
+        // pantalla nativa de recuperación con botón para reintentar.
+        try {
+            webView = new WebView(this);
+        } catch (Throwable t) {
+            crashLog("webViewCreate", t);
+            showWebViewUnavailable();
+            return;
+        }
 
         swipeRefreshLayout = new SwipeRefreshLayout(this);
         swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF38EF7D);
@@ -149,9 +161,14 @@ public class MainActivity extends Activity {
         // repo es privado, la API pública no lo sirve y el diálogo de "release
         // notes" no debía exponer el repo. La app se actualiza vía backend.)
 
-        // Iniciar Foreground Service — mantiene la app viva en 2do plano
-        // con WakeLock + sync periódico cada 15 min.
-        try { CodeHubSyncService.startIfNotRunning(this); } catch (Throwable t) { crashLog("syncService", t); }
+        // Sync en 2do plano vía WorkManager (token FCM + ubicación cada 15 min).
+        // Ya NO se usa Foreground Service tipo dataSync: en Android 15/16 el
+        // sistema lo mata por límite de tiempo y lanzaba excepciones que
+        // tumbaban el proceso.
+        try {
+            CodeHubSyncScheduler.schedule(this);
+            CodeHubSyncScheduler.syncNow(this);
+        } catch (Throwable t) { crashLog("syncScheduler", t); }
 
         handleIntent(getIntent());
     }
@@ -181,6 +198,53 @@ public class MainActivity extends Activity {
             pw.println("---");
             pw.close();
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Pantalla nativa de recuperación cuando el proveedor de WebView del
+     * dispositivo falla al inicializarse (p. ej. "failed to redirect
+     * ResourcesImpl" en Android 16 con Android System WebView dañado).
+     * Evita que la Activity muera y ofrece reintentar sin salir de la app.
+     */
+    private void showWebViewUnavailable() {
+        float density = getResources().getDisplayMetrics().density;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackgroundColor(0xFF080810);
+        int pad = (int) (24 * density);
+        box.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(this);
+        title.setText("No se pudo iniciar el visor web");
+        title.setTextColor(0xFFFFFFFF);
+        title.setTextSize(20);
+        title.setGravity(Gravity.CENTER);
+
+        TextView msg = new TextView(this);
+        msg.setText("Actualiza \"Android System WebView\" y \"Chrome\" desde Play Store, "
+            + "luego vuelve a abrir CodeHub.");
+        msg.setTextColor(0xFFB0B0C0);
+        msg.setTextSize(14);
+        msg.setGravity(Gravity.CENTER);
+        int gap = (int) (16 * density);
+        msg.setPadding(0, gap, 0, gap);
+
+        Button retry = new Button(this);
+        retry.setText("Reintentar");
+        retry.setAllCaps(false);
+        retry.setOnClickListener(v -> recreate());
+
+        Button close = new Button(this);
+        close.setText("Cerrar");
+        close.setAllCaps(false);
+        close.setOnClickListener(v -> finish());
+
+        box.addView(title);
+        box.addView(msg);
+        box.addView(retry);
+        box.addView(close);
+        setContentView(box);
     }
 
     // ── MODO LECTOR CON VOZ ──────────────────────────────────
