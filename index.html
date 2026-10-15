@@ -103,7 +103,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
     <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
     <meta name="robots" content="index, follow">
-    <meta name="theme-color" content="#2f80ed">
+    <meta name="theme-color" content="#080810">
     
     <link rel="preload" as="image" href="splash/codehub-splash.webp" type="image/webp" fetchpriority="high">
 <link rel="canonical" href="https://wilson360-labs.vercel.app/">
@@ -2089,7 +2089,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         window.chDebug = function() { try { return !!localStorage.getItem('ch_debug'); } catch(e) { return false; } };
         if (chDebug()) console.log('Script started');
         // ========== REMOTE CONFIG: MAINTENANCE MODE ==========
-        RC.ready().then(function(cfg) {
+        (window.RC && window.RC.ready) ? window.RC.ready().then(function(cfg) {
           if (cfg.maintenance && cfg.maintenance.enabled) {
             document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;text-align:center;padding:2rem;background:#0a0a1a;color:#e2e8f0;"><div><h1 style="font-size:2rem;margin-bottom:1rem;">⚙️ Mantenimiento</h1><p style="opacity:.7;">' + (cfg.maintenance.message || 'Vuelve pronto.') + '</p></div></div>';
           }
@@ -6448,7 +6448,7 @@ var _wxRefreshTimer = null;
 var _wxAutoRefreshInterval = 5 * 60 * 1000; // 5 minutes (default, overridden by RC)
 
 // Apply RC weather config on load
-RC.ready().then(function(cfg) {
+(window.RC && window.RC.ready) ? window.RC.ready().then(function(cfg) {
   if (cfg.features && !cfg.features.weatherEnabled) {
     var wxEl = document.getElementById('weather-section');
     if (wxEl) wxEl.style.display = 'none';
@@ -7510,7 +7510,7 @@ document.addEventListener('DOMContentLoaded', () => {
   var _installOverlayTimer;
   _hideInstallIfNative();
   // Respect RC: hide hero install button if disabled
-  RC.ready().then(function() {
+  (window.RC && window.RC.ready) ? window.RC.ready().then(function() {
     if (!RC.feature('heroInstallBtn')) {
       var btn = document.getElementById('hero-install-apk');
       var info = document.getElementById('hero-apk-info');
