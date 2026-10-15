@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T14:59:16.931Z",
+  "generatedAt": "2026-10-15T17:00:54.300Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.49be778e50.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
@@ -25,7 +25,6 @@
     "js/rewarded-ad.js": "assets/js/rewarded-ad.24a00c4021.min.js",
     "js/script.js": "assets/js/script.40e4e0e08a.min.js",
     "js/security-scan.js": "assets/js/security-scan.5a8b5156fe.min.js",
-    "js/servicios.js": "assets/js/servicios.1cc1caf153.min.js",
     "js/sismos.js": "assets/js/sismos.14c7b7d046.min.js",
     "js/site-tour.js": "assets/js/site-tour.86fe554324.min.js",
     "js/skills-pdf-ia.js": "assets/js/skills-pdf-ia.66b58ffda5.min.js",
