@@ -46,10 +46,18 @@ img, svg, video, canvas, iframe, embed, object, audio {
 img, video { height: auto; }
 picture, figure { max-width: 100%; }
 
-/* Morphicons (<morph-icon>) — el svg generado hereda el color del botón
-   y no debe empujar el layout ni salirse del contenedor. */
-morph-icon { display: inline-flex; align-items: center; justify-content: center; }
-morph-icon svg { max-width: 100%; }
+/* ═══════════════ AD SIZE GUARD (web only) ═══════════════ */
+ins.adsbygoogle, .ad-slot, .ad-slot iframe, .adsbygoogle iframe {
+  max-width: 100% !important;
+  max-height: min(250px, 50vh) !important;
+  overflow: hidden !important;
+}
+.ad-slot { width: 100%; text-align: center; }
+@media (max-width: 768px) {
+  ins.adsbygoogle, .ad-slot, .ad-slot iframe, .adsbygoogle iframe {
+    max-height: 200px !important;
+  }
+}
 /* En cuanto el custom element está definido, ocultar el icono Font Awesome
    de respaldo para que no se vean los dos a la vez. */
 [data-theme-toggle]:has(morph-icon:defined) [data-fa-theme-icon],
