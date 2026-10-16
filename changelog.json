@@ -1,5 +1,19 @@
 [
   {
+    "version": "v7.29",
+    "date": "2026-10-15",
+    "type": "feat",
+    "title": "Reproductor de música, comunidad verificada y administración por Telegram",
+    "changes": [
+      "Comunidad: catálogo «verified» con guías y aviso de seguridad responsable, accesible desde su propia ruta",
+      "Reproductor de música flotante (archivos locales y streaming) con arrastre, MediaSession, persistencia y botón en el panel",
+      "Música v2: portada del álbum, shuffle/repeat, atajos de teclado, export/import en JSON y tema claro/oscuro",
+      "Panel de estado de Unity Ads dentro de la app (en Herramientas) para diagnóstico sin logcat",
+      "Administración de CodeHub desde el bot de Telegram: broadcast, releases, solicitudes, reseñas, config y edición de archivos, subida de APK y alertas inteligentes",
+      "Limpieza: eliminados módulos muertos (js/servicios.js, backend/skills-routes.js y la constante _DEAD_SYSTEM)"
+    ]
+  },
+  {
     "version": "v7.24",
     "date": "2026-10-15",
     "type": "fix",
