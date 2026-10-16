@@ -4,6 +4,12 @@
 (function () {
   'use strict';
 
+  // Dentro del APK (WebView con el puente CodeHubNative) el reproductor es
+  // Echo Nightly, que se abre desde su tarjeta en el panel del dispositivo.
+  // El reproductor web (archivos locales/streaming) y su botón flotante solo
+  // aplican en el navegador, así que en la app no se monta nada.
+  if (window.CodeHubNative || window.__apkNative) return;
+
   if (window.__chMusicPlayerLoaded) return;
   window.__chMusicPlayerLoaded = true;
 
