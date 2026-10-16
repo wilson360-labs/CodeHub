@@ -89,3 +89,155 @@ html[data-vt="back"]::view-transition-new(root) {
     background: rgba(47, 128, 237, .12);
   }
 }
+
+/* ── 4) Control de música flotante (solo APK) ────────────────────────
+   Se monta SOLO cuando Android empuja estado de reproducción
+   (js/native-music.js → window.__chMusicOnState): en el navegador no
+   existe el elemento y aquí no queda nada suelto.
+   Flota justo encima de #hub-dock; el offset real lo mide el JS en cada
+   breakpoint, y este valor es la red de seguridad si no hay dock. */
+#chNativeMusic {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 116px;
+  z-index: 4001;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(380px, calc(100vw - 20px));
+  max-width: calc(100vw - 20px);
+  min-width: 0;
+  padding: 8px 12px 10px;
+  border-radius: var(--radius-xl, 22px);
+  background: rgba(12, 12, 20, .82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  color: #e8ecf5;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* display:flex del bloque no puede ganarle al atributo hidden */
+#chNativeMusic[hidden] { display: none !important; }
+
+/* Progreso: 2px pegados al borde superior */
+.ch-nm__bar {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .12);
+  overflow: hidden;
+}
+.ch-nm__bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary, #2f80ed), var(--accent, #00d4ff));
+  transition: width .3s linear;
+}
+
+.ch-nm__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Metadatos = botón "abrir reproductor" */
+.ch-nm__meta {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 6px 2px 2px;
+  margin: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ch-nm__title,
+.ch-nm__sub {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-nm__title { font-size: .82rem; font-weight: 600; line-height: 1.25; }
+.ch-nm__sub   { font-size: .68rem; line-height: 1.3; opacity: .65; }
+
+.ch-nm__btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: var(--radius-md, 14px);
+  background: rgba(255, 255, 255, .06);
+  color: inherit;
+  font-size: .9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .12s ease;
+}
+.ch-nm__btn:active { transform: scale(.94); }
+.ch-nm__btn:hover  { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .18); }
+.ch-nm__meta:focus-visible,
+.ch-nm__btn:focus-visible { outline: 2px solid var(--primary, #2f80ed); outline-offset: 2px; }
+.ch-nm__play {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border-color: transparent;
+  background: linear-gradient(150deg, var(--primary, #2f80ed), var(--accent, #1b6ef3));
+  color: #fff;
+  font-size: 1rem;
+}
+.ch-nm__play:hover {
+  background: linear-gradient(150deg, var(--primary, #2f80ed), var(--accent, #1b6ef3));
+  border-color: transparent;
+  filter: brightness(1.08);
+}
+
+/* Teléfonos: mismo lenguaje que #hub-dock a ≤480px (dock a ~14px + 74px) */
+@media (max-width: 480px) {
+  #chNativeMusic { bottom: 100px; padding: 7px 10px 9px; gap: 5px; }
+  .ch-nm__title { font-size: .78rem; }
+  .ch-nm__sub   { font-size: .64rem; }
+  .ch-nm__row   { gap: 6px; }
+  .ch-nm__btn   { width: 36px; height: 36px; font-size: .82rem; }
+  .ch-nm__play  { width: 40px; height: 40px; font-size: .95rem; }
+}
+
+/* Mínimo soportado (380px): nada puede desbordar */
+@media (max-width: 380px) {
+  #chNativeMusic { width: calc(100vw - 16px); }
+  .ch-nm__btn  { width: 34px; height: 34px; }
+  .ch-nm__play { width: 38px; height: 38px; }
+}
+
+/* Tema claro: mismo lenguaje que #hub-dock */
+[data-theme="light"] #chNativeMusic {
+  background: rgba(255, 255, 255, .88);
+  border-color: rgba(15, 23, 42, .1);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, .15);
+  color: #0f172a;
+}
+[data-theme="light"] .ch-nm__bar { background: rgba(15, 23, 42, .12); }
+[data-theme="light"] .ch-nm__btn {
+  border-color: rgba(15, 23, 42, .1);
+  background: rgba(15, 23, 42, .04);
+}
+[data-theme="light"] .ch-nm__btn:hover { background: rgba(15, 23, 42, .08); }
+[data-theme="light"] .ch-nm__sub { opacity: .7; }

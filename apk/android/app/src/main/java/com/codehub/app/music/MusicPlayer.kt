@@ -580,5 +580,9 @@ class MusicPlayer(
             runCatching { player.exo.release() }
             sharedInstance = null
         }
+
+        /** Instancia viva sin crearla: sirve para saber si el player slide
+         *  está en uso en este proceso (MusicSessionBridge). */
+        fun peek(): MusicPlayer? = sharedInstance
     }
 }

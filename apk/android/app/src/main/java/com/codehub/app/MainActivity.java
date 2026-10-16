@@ -885,12 +885,17 @@ public class MainActivity extends Activity {
         // conceder el permiso (diálogo in-app o app Shizuku), el panel web
         // recibe el estado en vivo sin recargar la página.
         try { if (bridge != null) bridge.pushShizukuState(); } catch (Throwable ignored) {}
+        // Control de música flotante: escuchar la sesión de medios solo
+        // mientras la WebView está en pantalla.
+        try { if (bridge != null) bridge.musicAttach(); } catch (Throwable ignored) {}
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         if (webView != null) webView.onPause();
+        // Sin WebView en primer plano no se empuja estado de reproducción.
+        try { if (bridge != null) bridge.musicDetach(); } catch (Throwable ignored) {}
         // Detener la lectura cuando la app pasa a segundo plano.
         if (tts != null && ttsSpeaking) {
             tts.stop();

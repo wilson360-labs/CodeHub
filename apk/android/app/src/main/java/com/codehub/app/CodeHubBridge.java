@@ -904,6 +904,9 @@ public class CodeHubBridge {
      *  cae al reproductor "slide" nativo para no dejar al usuario sin música. */
     @JavascriptInterface
     public void openMusic() {
+        // El usuario va a abrir el reproductor: es evidencia suficiente para
+        // enlazar la sesión de medios y mostrar el control flotante en CodeHub.
+        try { MusicSessionBridge.onPlayerOpened(); } catch (Throwable ignored) {}
         try {
             dev.brahmkshatriya.echo.EchoBoot.start(activity);
         } catch (Throwable t) {
@@ -927,6 +930,41 @@ public class CodeHubBridge {
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activity.startActivity(i);
         } catch (Exception ignored) {}
+    }
+
+    // ── CONTROL DE MÚSICA FLOTANTE (solo APK) ─────────────────────
+    // El estado llega de MusicSessionBridge → window.__chMusicOnState(...)
+    // y el control web manda por estos métodos (js/native-music.js).
+
+    /** Ciclo de vida del control: lo llama MainActivity. */
+    public void musicAttach() {
+        try { MusicSessionBridge.attach(activity.getApplication(), webView); } catch (Throwable ignored) {}
+    }
+
+    /** Sin WebView en pantalla no se empuja estado (batería). */
+    public void musicDetach() {
+        try { MusicSessionBridge.detach(); } catch (Throwable ignored) {}
+    }
+
+    /** La página recargada pide el estado vigente de reproducción. */
+    @JavascriptInterface
+    public void musicRequestState() {
+        try { MusicSessionBridge.requestState(); } catch (Throwable ignored) {}
+    }
+
+    @JavascriptInterface
+    public void musicTogglePlay() {
+        try { MusicSessionBridge.togglePlay(); } catch (Throwable ignored) {}
+    }
+
+    @JavascriptInterface
+    public void musicNext() {
+        try { MusicSessionBridge.next(); } catch (Throwable ignored) {}
+    }
+
+    @JavascriptInterface
+    public void musicPrev() {
+        try { MusicSessionBridge.prev(); } catch (Throwable ignored) {}
     }
 
     /** % de CPU usado desde la llamada anterior, por delta de ticks idle/
