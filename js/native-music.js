@@ -38,6 +38,157 @@
     } catch (e) {}
   }
 
+  // ── Arrastre (mantener presionado 350 ms y mover) ──────────────────
+  // La posición se guarda en el WebView: cada teléfono puede dejar el
+  // control donde le quede cómodo, y así no se pelea con el FAB de WIL.E
+  // ni con el dock. Sin posición guardada vuelve al lugar por defecto.
+  var POS_KEY = 'ch:native-music-pos';
+  var savedPos = null;
+  var drag = { timer: null, active: false, moved: false, id: -1, sx: 0, sy: 0, cx: 0, cy: 0, ox: 0, oy: 0 };
+  var suppressClick = false;
+  var suppressTimer = null;
+
+  try {
+    var raw = window.localStorage.getItem(POS_KEY);
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (p && isFinite(p.l) && isFinite(p.t)) savedPos = { l: +p.l, t: +p.t };
+    }
+  } catch (e) {}
+
+  // Nunca fuera del viewport (aunque roten el teléfono o abran el teclado).
+  function clampPos(l, t) {
+    var w = root ? root.offsetWidth : 0;
+    var h = root ? root.offsetHeight : 0;
+    var maxX = Math.max(0, window.innerWidth - w);
+    var maxY = Math.max(0, window.innerHeight - h);
+    return {
+      l: Math.min(Math.max(0, l), maxX),
+      t: Math.min(Math.max(0, t), maxY)
+    };
+  }
+
+  // Coloca el control en coordenadas absolutas (desactiva centrado/bottom).
+  function applyPos(l, t) {
+    if (!root) return;
+    var c = clampPos(l, t);
+    root.style.left = Math.round(c.l) + 'px';
+    root.style.top = Math.round(c.t) + 'px';
+    root.style.right = 'auto';
+    root.style.bottom = 'auto';
+    root.style.transform = 'none';
+  }
+
+  // Vuelve al layout por defecto (centrado sobre el dock, vía CSS).
+  function resetInlinePos() {
+    if (!root) return;
+    root.style.left = '';
+    root.style.top = '';
+    root.style.right = '';
+    root.style.bottom = '';
+    root.style.transform = '';
+  }
+
+  function onPointerDown(ev) {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    // Un gesto nuevo invalida cualquier supresión pendiente: un tap
+    // legítimo nunca se pierde.
+    suppressClick = false;
+    if (suppressTimer) {
+      window.clearTimeout(suppressTimer);
+      suppressTimer = null;
+    }
+    if (drag.timer || drag.active) return; // un solo puntero
+    drag.id = ev.pointerId;
+    drag.sx = drag.cx = ev.clientX;
+    drag.sy = drag.cy = ev.clientY;
+    drag.moved = false;
+    drag.timer = window.setTimeout(startDrag, 350);
+  }
+
+  function onPointerMove(ev) {
+    drag.cx = ev.clientX;
+    drag.cy = ev.clientY;
+    if (drag.active) {
+      if (ev.pointerId !== drag.id) return;
+      if (Math.abs(drag.cx - drag.sx) > 2 || Math.abs(drag.cy - drag.sy) > 2) drag.moved = true;
+      var c = clampPos(drag.cx - drag.ox, drag.cy - drag.oy);
+      root.style.left = Math.round(c.l) + 'px';
+      root.style.top = Math.round(c.t) + 'px';
+      return;
+    }
+    // Antes de los 350 ms, un desplazamiento >8px es un scroll, no un arrastre.
+    if (!drag.timer || ev.pointerId !== drag.id) return;
+    if (Math.abs(drag.cx - drag.sx) > 8 || Math.abs(drag.cy - drag.sy) > 8) {
+      window.clearTimeout(drag.timer);
+      drag.timer = null;
+      drag.id = -1;
+    }
+  }
+
+  function startDrag() {
+    drag.timer = null;
+    if (!root || root.hidden) { drag.id = -1; return; }
+    var r = root.getBoundingClientRect();
+    drag.active = true;
+    drag.moved = false;
+    drag.ox = drag.cx - r.left;
+    drag.oy = drag.cy - r.top;
+    applyPos(r.left, r.top);          // fija left/top reales y quita el centrado
+    root.style.transform = 'scale(1.03)';
+    root.classList.add('ch-nm--drag');
+    try { root.setPointerCapture(drag.id); } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+  }
+
+  function endDrag() {
+    var id = drag.id;
+    var moved = drag.moved;
+    drag.active = false;
+    drag.moved = false;
+    drag.id = -1;
+    if (!root) return;
+    root.classList.remove('ch-nm--drag');
+    try { root.releasePointerCapture(id); } catch (e) {}
+    if (moved) {
+      var l = parseFloat(root.style.left) || 0;
+      var t = parseFloat(root.style.top) || 0;
+      applyPos(l, t);                 // re-clampea y quita el scale
+      root.classList.add('ch-nm--placed');
+      savedPos = {
+        l: Math.round(parseFloat(root.style.left) || 0),
+        t: Math.round(parseFloat(root.style.top) || 0)
+      };
+      try { window.localStorage.setItem(POS_KEY, JSON.stringify(savedPos)); } catch (e) {}
+    } else if (savedPos) {
+      applyPos(savedPos.l, savedPos.t); // long-press sin mover: donde estaba
+    } else {
+      resetInlinePos();               // ...o al sitio por defecto
+      layout();
+    }
+    // El navegador dispara el click del botón sobre el que soltamos: se
+    // descarta ese click (y por si acaso se autolimpia a los 700 ms).
+    suppressClick = true;
+    if (suppressTimer) window.clearTimeout(suppressTimer);
+    suppressTimer = window.setTimeout(function () {
+      suppressClick = false;
+      suppressTimer = null;
+    }, 700);
+  }
+
+  function onPointerUp(ev) {
+    if (ev && ev.pointerId !== drag.id) return; // otro dedo: no es el nuestro
+    if (drag.id === -1) return;
+    if (drag.timer) {                  // tap normal: no hubo long-press
+      window.clearTimeout(drag.timer);
+      drag.timer = null;
+      drag.id = -1;
+      return;
+    }
+    if (!drag.active) return;
+    endDrag();
+  }
+
   function build() {
     var el = document.createElement('div');
     el.id = 'chNativeMusic';
@@ -67,6 +218,17 @@
 
     // Delegación: un solo listener para los cuatro botones.
     el.addEventListener('click', function (ev) {
+      // Si venimos de un arrastre, el click de soltar no cuenta.
+      if (suppressClick) {
+        suppressClick = false;
+        if (suppressTimer) {
+          window.clearTimeout(suppressTimer);
+          suppressTimer = null;
+        }
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
       var t = ev && ev.target;
       var btn = t && t.closest ? t.closest('[data-act]') : null;
       if (!btn || !el.contains(btn)) return;
@@ -77,14 +239,35 @@
       else if (act === 'open') native('openMusic');
     });
 
+    // Arrastre por long-press: los movimientos se escuchan en document
+    // para no perder el gesto si el dedo sale del control.
+    el.addEventListener('pointerdown', onPointerDown);
+    el.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+    document.addEventListener('pointercancel', onPointerUp);
+
+    if (savedPos) el.classList.add('ch-nm--placed');
+
     document.body.appendChild(el);
     root = el;
   }
 
-  // Queda justo encima del dock flotante, midiendo su alto real en cada
-  // breakpoint (no hay que replicar aquí la tabla de breakpoints).
+  // Sin posición guardada queda justo encima del dock flotante, midiendo su
+  // alto real en cada breakpoint (no hay que replicar aquí la tabla de
+  // breakpoints). Si el usuario ya lo movió, manda su posición.
   function layout() {
     if (!root) return;
+    if (drag.active) { // resize a mitad de arrastre: solo re-clampear
+      var d = clampPos(parseFloat(root.style.left) || 0, parseFloat(root.style.top) || 0);
+      root.style.left = Math.round(d.l) + 'px';
+      root.style.top = Math.round(d.t) + 'px';
+      return;
+    }
+    if (savedPos) {
+      applyPos(savedPos.l, savedPos.t);
+      return;
+    }
     var dock = document.getElementById('hub-dock');
     var px = 116; // dock por defecto (desktop): bottom 28 + alto ~88
     if (dock && dock.getClientRects().length) {

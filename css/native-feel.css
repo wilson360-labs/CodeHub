@@ -105,6 +105,9 @@ html[data-vt="back"]::view-transition-new(root) {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* border-box: el ancho declarado es el ancho real (padding+borde dentro).
+     Sin esto, en 380px el control desbordaba ~6px. */
+  box-sizing: border-box;
   width: min(380px, calc(100vw - 20px));
   max-width: calc(100vw - 20px);
   min-width: 0;
@@ -119,9 +122,34 @@ html[data-vt="back"]::view-transition-new(root) {
   color: #e8ecf5;
   user-select: none;
   -webkit-user-select: none;
+  /* Arrastrable con long-press: nada de scroll ni menú de selección */
+  touch-action: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
 }
 /* display:flex del bloque no puede ganarle al atributo hidden */
 #chNativeMusic[hidden] { display: none !important; }
+
+/* Arrastre activo (long-press) y posición personalizada del usuario.
+   z 5100 para que, si lo colocan encima del FAB de WIL.E (5000), el
+   control se vea completo; el dock queda por debajo (4000). */
+#chNativeMusic.ch-nm--drag,
+#chNativeMusic.ch-nm--placed {
+  z-index: 5100;
+}
+#chNativeMusic.ch-nm--drag {
+  cursor: grabbing;
+  border-color: rgba(255, 255, 255, .2);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .62), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+#chNativeMusic.ch-nm--drag .ch-nm__meta,
+#chNativeMusic.ch-nm--drag .ch-nm__btn {
+  cursor: grabbing;
+}
+[data-theme="light"] #chNativeMusic.ch-nm--drag {
+  border-color: rgba(15, 23, 42, .25);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, .35);
+}
 
 /* Progreso: 2px pegados al borde superior */
 .ch-nm__bar {
