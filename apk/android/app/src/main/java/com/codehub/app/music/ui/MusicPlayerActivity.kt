@@ -187,7 +187,7 @@ class MusicPlayerActivity : Activity() {
                 val rows = mutableListOf<Row>()
                 rows += Row.Header(
                     "Sin fuentes de música",
-                    "Instala una extensión Echo (APK): Spotify, Deezer, YouTube Music y más. Al instalarla podrás iniciar sesión y reproducir dentro de esta app."
+                    "Instala una extensión CodeBeat (APK): Spotify, Deezer, YouTube Music y más. Al instalarla podrás iniciar sesión y reproducir dentro de esta app."
                 )
                 rows += Row.Header("＋ Importar un APK", null, "Elegir archivo ›") { pickApk() }
                 rows += Row.Header("＋ Importar desde URL", null, "Pegar enlace ›") { askUrl() }
@@ -724,7 +724,7 @@ class MusicPlayerActivity : Activity() {
                 "\n\n· Copia el enlace directo de descarga del .apk, no la página del navegador."
             msg.contains("vacío", ignoreCase = true) -> "\n\n· El archivo descargado no tiene contenido."
             msg.contains("MUSIC", ignoreCase = true) ->
-                "\n\n· El APK debe ser una extensión de música de Echo (feature dev.brahmkshatriya.echo.MUSIC)."
+                "\n\n· El APK debe ser una extensión de música de CodeBeat (feature dev.brahmkshatriya.echo.MUSIC)."
             else -> "\n\n· Si la URL es de GitHub, usa la descarga directa de la versión o el .apk en bruto."
         }
         return msg + hint
@@ -816,7 +816,7 @@ class MusicPlayerActivity : Activity() {
 
         // Cabecera
         extLabel = MusicTheme.tv(ctx, "Música", 24f, bold = true)
-        val sub = MusicTheme.tv(ctx, "Reproductor de extensiones Echo · CodeHub", 12f, color = MusicTheme.MUTED)
+        val sub = MusicTheme.tv(ctx, "CodeBeat 🔥 · Reproductor en streaming", 12f, color = MusicTheme.MUTED)
 
         // Navegación segmentada (Inicio · Biblioteca)
         val navRow = LinearLayout(ctx).apply {

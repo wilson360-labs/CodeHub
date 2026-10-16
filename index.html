@@ -263,7 +263,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-<link rel="stylesheet" href="css/sys-tools.css?v=20261015a">
+<link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261016b">
 <link rel="stylesheet" href="css/viewport-guard.css?v=20261015a">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
@@ -1793,15 +1793,24 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </div>
                     </div>
 
-                    <!-- Reproductor de música (Echo Nightly) -->
-                    <div class="sys-card dev-card-music" id="dev-music-btn" role="button" tabindex="0" aria-label="Abrir el reproductor de música (Echo Nightly)">
+                    <!-- Reproductor de música en streaming (CodeBeat) -->
+                    <div class="sys-card dev-card-music" id="dev-music-btn" role="button" tabindex="0" aria-label="Abrir CodeBeat, el reproductor de música en streaming">
+                        <span class="cb-halo" aria-hidden="true"></span>
                         <div class="sys-card-head">
-                            <i class="fas fa-music sys-ico"></i>
+                            <span class="cb-logo" aria-hidden="true">
+                                <i class="fas fa-music"></i>
+                                <span class="cb-eq"><i></i><i></i><i></i><i></i></span>
+                            </span>
                             <div class="sys-head-t">
-                                <h3>Reproductor de música</h3>
-                                <span class="sys-muted">Echo Nightly · streaming y sin conexión</span>
+                                <h3>CodeBeat <span class="cb-flame" aria-hidden="true">🔥</span></h3>
+                                <span class="sys-muted">Streaming, sin conexión y extensiones</span>
                             </div>
                             <i class="fas fa-chevron-right dev-card-music-arrow" aria-hidden="true"></i>
+                        </div>
+                        <div class="cb-chips">
+                            <span class="cb-chip"><i class="fab fa-spotify" aria-hidden="true"></i> Spotify</span>
+                            <span class="cb-chip"><i class="fab fa-youtube" aria-hidden="true"></i> YouTube Music</span>
+                            <span class="cb-chip"><i class="fas fa-puzzle-piece" aria-hidden="true"></i> Más</span>
                         </div>
                     </div>
 
@@ -2502,6 +2511,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         icon: 'fa-solid fa-code-branch',
                         title: 'Catálogo Open Source',
                         text: 'Apps 100% código abierto, verificadas contra GitHub. Incluye Windows Enhance para recuperación y optimización.'
+                    },
+                    {
+                        selector: '#dev-music-btn',
+                        emoji: '🔥',
+                        title: 'CodeBeat — música en streaming',
+                        text: 'El reproductor de CodeHub. Abre tus fuentes (Spotify, YouTube Music, Deezer y más), escucha en streaming o sin conexión y no pares la música al navegar: el control flotante te deja pausar, cambiar de pista o volver al reproductor.',
+                        optional: true
                     }
                 ], {
                     delay: 0,

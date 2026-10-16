@@ -899,7 +899,7 @@ public class CodeHubBridge {
         } catch (Exception ignored) {}
     }
 
-    /** Abre el reproductor completo de Echo Nightly injertado en CodeHub
+    /** Abre el reproductor completo de CodeBeat en streaming injertado en CodeHub
      *  (módulo :echo). Si el arranque de Koin falló o la activity no está,
      *  cae al reproductor "slide" nativo para no dejar al usuario sin música. */
     @JavascriptInterface

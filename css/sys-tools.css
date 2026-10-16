@@ -372,13 +372,97 @@
 .dev-opt-off { border-left: 3px solid rgba(239, 68, 68, .65); }
 .dev-card-backup .sys-scan-hint { margin-top: .8rem; }
 
-/* ── Tarjeta de reproductor (abre Echo Nightly) ── */
+/* ── Tarjeta CodeBeat (reproductor en streaming) ── */
 .sys-card.dev-card-music {
   flex: 0 0 auto;
+  position: relative;
+  overflow: hidden;
   cursor: pointer;
+  padding: 1.15rem 1.25rem;
+  border-color: rgba(56, 189, 248, .24);
+  background:
+    radial-gradient(130% 150% at 100% 0%, rgba(249, 115, 22, .18), transparent 55%),
+    radial-gradient(120% 140% at 0% 100%, rgba(124, 77, 255, .16), transparent 58%),
+    linear-gradient(160deg, var(--sys-card) 0%, var(--sys-card-2) 100%);
   transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-.dev-card-music .sys-card-head { margin-bottom: 0; }
+/* Halo decorativo (GPU: solo radial-gradient + blur, sin reflow) */
+.dev-card-music .cb-halo {
+  position: absolute;
+  top: -70px; right: -50px;
+  width: 190px; height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, .3), transparent 65%);
+  pointer-events: none;
+}
+.dev-card-music .sys-card-head { margin-bottom: 0; position: relative; }
+
+/* Logotipo: degradado cálido (fuego) + ecualizador animado */
+.dev-card-music .cb-logo {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px; height: 46px;
+  display: grid; place-items: center;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  color: #fff;
+  background: linear-gradient(140deg, #f97316 0%, #ef4444 55%, #7c4dff 100%);
+  box-shadow: 0 10px 24px rgba(239, 68, 68, .32), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.dev-card-music .cb-eq {
+  position: absolute;
+  right: 6px; bottom: 5px;
+  display: flex; align-items: flex-end;
+  gap: 2px; height: 10px;
+}
+.dev-card-music .cb-eq i {
+  width: 2px; height: 10px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, .92);
+  transform-origin: bottom;
+  animation: cb-eq 1.15s ease-in-out infinite;
+}
+.dev-card-music .cb-eq i:nth-child(1) { animation-delay: 0s; }
+.dev-card-music .cb-eq i:nth-child(2) { animation-delay: .18s; }
+.dev-card-music .cb-eq i:nth-child(3) { animation-delay: .36s; }
+.dev-card-music .cb-eq i:nth-child(4) { animation-delay: .54s; }
+@keyframes cb-eq {
+  0%, 100% { transform: scaleY(.35); }
+  50%      { transform: scaleY(1); }
+}
+
+.dev-card-music h3 { display: flex; align-items: center; gap: .28rem; }
+.dev-card-music .cb-flame { font-size: .82rem; line-height: 1; }
+
+/* Chips de fuentes compatibles */
+.dev-card-music .cb-chips {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .85rem;
+  min-width: 0;
+}
+.dev-card-music .cb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: .22rem .5rem;
+  border-radius: 999px;
+  border: 1px solid var(--sys-line);
+  background: rgba(148, 163, 184, .08);
+  color: var(--sys-muted);
+  font-size: .63rem;
+  line-height: 1.3;
+  font-family: var(--sys-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dev-card-music .cb-chip i { flex: 0 0 auto; font-size: .68rem; color: var(--sys-blue); }
+
 .dev-card-music-arrow {
   flex: 0 0 auto;
   margin-left: auto;
@@ -409,4 +493,10 @@
   .sys-scan-ico { display: none; }
   .sys-btn { width: 100%; justify-content: center; }
   .dev-btn-grid { grid-template-columns: 1fr; }
+  /* CodeBeat: el logo no se encoge y las chips siguen cabiendo */
+  .dev-card-music { padding: .95rem 1rem; }
+  .dev-card-music .cb-logo { width: 42px; height: 42px; }
+}
+@media (max-width: 380px) {
+  .dev-card-music .cb-chip { font-size: .6rem; padding: .2rem .45rem; }
 }

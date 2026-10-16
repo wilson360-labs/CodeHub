@@ -165,7 +165,7 @@ class MusicRegistry(private val context: Context) {
                 requireZip(tmp)
                 val meta = parser.parseManifest(tmp, ImportType.File)
                 require(meta.type == ExtensionType.MUSIC) {
-                    "El APK no es una extensión de música Echo (tipo: ${meta.type})"
+                    "El APK no es una extensión de música CodeBeat (tipo: ${meta.type})"
                 }
                 duplicateCleanup(dir, meta.id)
                 if (!tmp.renameTo(File(dir, "${meta.id}.apk"))) {
