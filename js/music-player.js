@@ -1,6 +1,5 @@
-﻿// Reproductor multimedia flotante de CodeHub.
-// Funciona con archivos locales (File API) y con URLs de streaming.
-// El audio se mantiene mientras la pestaña siga abierta; no requiere login.
+﻿// Reproductor multimedia flotante de CodeHub — v2
+// Local (File API) + streaming (URL) + portada + shuffle/repeat + atajos + export/import.
 
 (function () {
   'use strict';
@@ -8,729 +7,639 @@
   if (window.__chMusicPlayerLoaded) return;
   window.__chMusicPlayerLoaded = true;
 
-  var STORAGE_KEY = 'ch:music-player';
+  var STORAGE_KEY = 'ch:music-player-v2';
   var maxFiles = 250;
   var queue = [];
   var currentIndex = 0;
+  var shuffleMode = false;
+  var repeatMode = 0; // 0 = off, 1 = all, 2 = one
   var dragging = false;
   var startPointer = { x: 0, y: 0 };
   var startPlayer = { left: 0, top: 0 };
-  var launcherPinned = true;
+  var playerRoot = null;
+  var audioEl = null;
+  var refs = {};
+  var lastVolume = 0.7;
+
+  var escapeHtml = function (v) {
+    return String(v || '').replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  };
 
   function injectStyles() {
     if (document.getElementById('ch-music-player-css')) return;
-    var style = document.createElement('style');
-    style.id = 'ch-music-player-css';
-    style.textContent = `
-      #chMusicPlayerRoot {
-        position: fixed;
-        width: min(360px, calc(100vw - 24px));
-        z-index: 2147483000;
-        right: 16px;
-        bottom: 16px;
-        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        transition: transform .18s ease, opacity .18s ease;
-        user-select: none;
-      }
-      #chMusicPlayerRoot.chmp--dragging { transition: none; }
-      #chMusicPlayerRoot.chmp--minimized { width: 80px; }
-      #chMusicPlayerRoot.chmp--hidden { display: none; }
-      .chmp__launcher,
-      .chmp__panel {
-        background: rgba(10, 10, 22, .94);
-        border: 1px solid rgba(47,128,237,.35);
-        box-shadow: 0 18px 54px rgba(0,0,0,.38), 0 0 0 1px rgba(255,255,255,.04) inset;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        color: #e8e8f0;
-      }
-      .chmp__launcher {
-        width: 58px; height: 58px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        margin-left: auto;
-        cursor: pointer;
-        border: none;
-        background: linear-gradient(135deg, #2f80ed, #00b894);
-        color: #fff;
-        box-shadow: 0 10px 28px rgba(0,0,0,.32);
-      }
-      .chmp__panel {
-        border-radius: 18px;
-        padding: 14px;
-        margin-top: 12px;
-        overflow: hidden;
-      }
-      .chmp__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 10px;
-        cursor: move;
-        touch-action: none;
-      }
-      .chmp__title {
-        min-width: 0;
-        display: grid;
-        gap: 2px;
-      }
-      .chmp__title strong {
-        font-size: .96rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .chmp__title small {
-        color: rgba(232,232,240,.55);
-        font-size: .72rem;
-      }
-      .chmp__actions {
-        display: flex;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-      .chmp__icon-btn {
-        width: 30px;
-        height: 30px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.1);
-        background: rgba(255,255,255,.05);
-        color: #fff;
-        display: grid;
-        place-items: center;
-        cursor: pointer;
-        padding: 0;
-      }
-      .chmp__icon-btn:hover { background: rgba(255,255,255,.1); }
-      .chmp__controls {
-        display: grid;
-        grid-template-columns: auto auto auto 1fr;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 10px;
-      }
-      .chmp__btn {
-        border: none;
-        border-radius: 999px;
-        padding: 8px 11px;
-        background: rgba(255,255,255,.08);
-        color: #fff;
-        cursor: pointer;
-        font-size: .9rem;
-      }
-      .chmp__btn--primary {
-        background: linear-gradient(135deg, #2f80ed, #00b894);
-        min-width: 58px;
-      }
-      .chmp__btn:hover { background: rgba(255,255,255,.14); }
-      .chmp__btn--primary:hover { filter: brightness(1.08); }
-      .chmp__progress {
-        width: 100%;
-        accent-color: #2f80ed;
-        cursor: pointer;
-        margin: 6px 0 8px;
-      }
-      .chmp__meta {
-        display: flex;
-        justify-content: space-between;
-        color: rgba(232,232,240,.5);
-        font-size: .72rem;
-        font-family: "JetBrains Mono", ui-monospace, monospace;
-      }
-      .chmp__field { display: grid; gap: 6px; margin-bottom: 10px; }
-      .chmp__field label { font-size: .72rem; color: rgba(232,232,240,.58); }
-      .chmp__input {
-        width: 100%;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.05);
-        color: #fff;
-        padding: 8px 10px;
-        font-size: .86rem;
-      }
-      .chmp__row { display: flex; gap: 6px; align-items: center; }
-      .chmp__btn-small {
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: rgba(255,255,255,.05);
-        color: #fff;
-        padding: 8px 10px;
-        cursor: pointer;
-        font-size: .78rem;
-      }
-      .chmp__btn-small:hover { background: rgba(255,255,255,.14); }
-      .chmp__playlist {
-        max-height: 158px;
-        overflow: auto;
-        border-radius: 10px;
-        border: 1px solid rgba(255,255,255,.08);
-        background: rgba(255,255,255,.03);
-        margin-bottom: 10px;
-      }
-      .chmp__playlist-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 7px 9px;
-        cursor: pointer;
-        border-bottom: 1px solid rgba(255,255,255,.05);
-      }
-      .chmp__playlist-item:last-child { border-bottom: none; }
-      .chmp__playlist-item:hover { background: rgba(255,255,255,.07); }
-      .chmp__playlist-item.chmp--active { background: rgba(47,128,237,.18); color: #fff; }
-      .chmp__playlist-item b {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 200px;
-      }
-      .chmp__playlist-item span { font-size: .7rem; color: rgba(232,232,240,.44); }
-      .chmp__status { font-size: .76rem; color: rgba(232,232,240,.58); margin-bottom: 8px; }
-      .chmp__drop {
-        border: 1px dashed rgba(47,128,237,.25);
-        border-radius: 10px;
-        padding: 8px;
-        font-size: .76rem;
-        color: rgba(232,232,240,.55);
-      }
-      #chMusicPlayerRoot.chmp--minimized .chmp__panel { display: none; }
-      @media (max-width: 430px) {
-        #chMusicPlayerRoot { right: 8px; bottom: 8px; width: min(340px, calc(100vw - 16px)); }
-        .chmp__launcher { width: 54px; height: 54px; }
-      }
-    `;
-    document.head.appendChild(style);
+    var st = document.createElement('style');
+    st.id = 'ch-music-player-css';
+    st.textContent = [
+      '#chMusicPlayerRoot{position:fixed;width:min(380px,calc(100vw - 20px));z-index:2147483000;right:14px;bottom:14px;font-family:"Space Grotesk",system-ui,sans-serif;user-select:none;transition:left .18s ease,top .18s ease,opacity .18s ease}',
+      '#chMusicPlayerRoot.chmp--dragging{transition:none!important}',
+      '#chMusicPlayerRoot.chmp--minimized{width:78px!important}',
+      '#chMusicPlayerRoot.chmp--hidden{display:none!important}',
+      '.chmp__launcher,.chmp__panel{background:rgba(10,10,22,.94);border:1px solid rgba(47,128,237,.35);box-shadow:0 18px 54px rgba(0,0,0,.38),0 0 0 1px rgba(255,255,255,.04) inset;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:#e8e8f0;border-radius:18px}',
+      '.chmp__launcher{width:58px;height:58px;border-radius:50%!important;display:grid;place-items:center;margin-left:auto;cursor:pointer;border:none!important;background:linear-gradient(135deg,#2f80ed,#00b894)!important;color:#fff!important;box-shadow:0 10px 28px rgba(0,0,0,.32)!important;font-size:1.2rem}',
+      '.chmp__panel{padding:14px;margin-top:10px;overflow:hidden}',
+      '.chmp__header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;cursor:move;touch-action:none}',
+      '.chmp__header-info{display:flex;align-items:center;gap:10px;min-width:0;flex:1}',
+      '.chmp__cover{width:48px;height:48px;border-radius:10px;object-fit:cover;background:linear-gradient(135deg,#1a1a2e,#2f80ed33);border:1px solid rgba(255,255,255,.1);flex-shrink:0;display:grid;place-items:center;font-size:1.1rem;color:#38bdf8}',
+      '.chmp__title{min-width:0;display:grid;gap:2px}',
+      '.chmp__title strong{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.chmp__title small{color:rgba(232,232,240,.55);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.chmp__actions{display:flex;gap:5px;flex-shrink:0}',
+      '.chmp__icon-btn{width:30px;height:30px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0;font-size:.78rem}',
+      '.chmp__icon-btn:hover{background:rgba(255,255,255,.1)}',
+      '.chmp__icon-btn.chmp--active{background:rgba(47,128,237,.35);border-color:rgba(47,128,237,.6)}',
+      '.chmp__progress{width:100%;accent-color:#2f80ed;cursor:pointer;margin:6px 0 6px;height:20px}',
+      '.chmp__meta{display:flex;justify-content:space-between;color:rgba(232,232,240,.5);font-size:.68rem;font-family:"JetBrains Mono",monospace}',
+      '.chmp__controls{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 6px}',
+      '.chmp__btn{border:none;border-radius:999px;padding:8px 12px;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:.85rem;min-width:36px;display:grid;place-items:center}',
+      '.chmp__btn:hover{background:rgba(255,255,255,.14)}',
+      '.chmp__btn--primary{background:linear-gradient(135deg,#2f80ed,#00b894)!important;min-width:52px;height:52px;font-size:1.15rem;border-radius:50%!important;padding:0!important}',
+      '.chmp__btn--primary:hover{filter:brightness(1.12)}',
+      '.chmp__field{display:grid;gap:5px;margin-bottom:8px}',
+      '.chmp__field label{font-size:.68rem;color:rgba(232,232,240,.58)}',
+      '.chmp__input{width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;padding:7px 10px;font-size:.82rem;box-sizing:border-box}',
+      '.chmp__row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}',
+      '.chmp__btn-small{border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;padding:6px 9px;cursor:pointer;font-size:.72rem;white-space:nowrap}',
+      '.chmp__btn-small:hover{background:rgba(255,255,255,.14)}',
+      '.chmp__playlist{max-height:150px;overflow:auto;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);margin-bottom:8px}',
+      '.chmp__playlist-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 9px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);font-size:.76rem}',
+      '.chmp__playlist-item:last-child{border-bottom:none}',
+      '.chmp__playlist-item:hover{background:rgba(255,255,255,.07)}',
+      '.chmp__playlist-item.chmp--active{background:rgba(47,128,237,.18);color:#fff}',
+      '.chmp__playlist-item b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}',
+      '.chmp__playlist-item .chmp__tag{font-size:.62rem;color:rgba(232,232,240,.44);flex-shrink:0;display:flex;gap:4px;align-items:center}',
+      '.chmp__playlist-item .chmp__del{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:.68rem;padding:2px 4px;flex-shrink:0}',
+      '.chmp__playlist-item .chmp__del:hover{color:#f87171}',
+      '.chmp__status{font-size:.7rem;color:rgba(232,232,240,.58);margin-bottom:7px;min-height:1.1em}',
+      '.chmp__drop{border:1px dashed rgba(47,128,237,.25);border-radius:10px;padding:7px;font-size:.72rem;color:rgba(232,232,240,.55);margin-bottom:8px;text-align:center}',
+      '#chMusicPlayerRoot.chmp--minimized .chmp__panel{display:none}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__launcher,#chMusicPlayerRoot[data-theme="light"] .chmp__panel{background:rgba(248,250,255,.95);color:#1a1a2e;border-color:rgba(47,128,237,.25)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__title small,#chMusicPlayerRoot[data-theme="light"] .chmp__meta,#chMusicPlayerRoot[data-theme="light"] .chmp__status,#chMusicPlayerRoot[data-theme="light"] .chmp__field label{color:rgba(26,26,46,.55)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__icon-btn,#chMusicPlayerRoot[data-theme="light"] .chmp__btn,#chMusicPlayerRoot[data-theme="light"] .chmp__btn-small,#chMusicPlayerRoot[data-theme="light"] .chmp__input{border-color:rgba(47,128,237,.18);background:rgba(47,128,237,.06);color:#1a1a2e}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__icon-btn:hover,#chMusicPlayerRoot[data-theme="light"] .chmp__btn:hover{background:rgba(47,128,237,.12)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__playlist{background:rgba(47,128,237,.04);border-color:rgba(47,128,237,.12)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__playlist-item:hover{background:rgba(47,128,237,.08)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__playlist-item.chmp--active{background:rgba(47,128,237,.14);color:#1a1a2e}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__playlist-item .chmp__del{color:rgba(26,26,46,.3)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__drop{border-color:rgba(47,128,237,.2);color:rgba(26,26,46,.5)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__cover{background:linear-gradient(135deg,#e8efff,#d0e4ff);border-color:rgba(47,128,237,.15)}',
+      '#chMusicPlayerRoot[data-theme="light"] .chmp__icon-btn.chmp--active{background:rgba(47,128,237,.2)}',
+      '@media(max-width:430px){#chMusicPlayerRoot{right:6px;bottom:6px;width:min(340px,calc(100vw - 12px))}.chmp__launcher{width:54px;height:54px!important}.chmp__cover{width:40px;height:40px}}',
+    ].join('\n');
+    document.head.appendChild(st);
   }
 
-  function formatTime(sec) {
-    if (!Number.isFinite(sec)) return '0:00';
-    var m = Math.floor(sec / 60);
-    var s = Math.floor(sec % 60);
-    return m + ':' + String(s).padStart(2, '0');
-  }
-
-  function cssVariable(element, name, value) {
-    element.style[name] = value;
+  function formatTime(s) {
+    if (!Number.isFinite(s) || s < 0) return '0:00';
+    var m = Math.floor(s / 60);
+    var r = Math.floor(s % 60);
+    return m + ':' + String(r).padStart(2, '0');
   }
 
   function storageLoad() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   }
 
   function storageSave(state) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
   }
 
-  function makeTrack(name, address, local, size) {
+  function makeTrack(name, address, local, size, coverData) {
     return {
-      id: 'track_' + Math.random().toString(36).slice(2, 10),
-      name: name,
-      address: address,
-      local: !!local,
-      size: size || 0,
-      loaded: false
+      id: 't_' + Math.random().toString(36).slice(2, 10),
+      name: name, address: address, local: !!local,
+      size: size || 0, loaded: false, cover: coverData || ''
     };
   }
 
-  function clearObjectUrls() {
-    queue.forEach(function (track) {
-      if (track.local && track.address && track.address.indexOf('blob:') === 0) {
-        try { URL.revokeObjectURL(track.address); } catch (e) {}
-      }
-    });
+  function pickCover(file) {
+    if (!file) return '';
+    var isImg = /^image\//.test(file.type || '');
+    var isAudio = /^audio\//.test(file.type || '');
+    if (isImg) return URL.createObjectURL(file);
+    if (isAudio) {
+      var name = file.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').toLowerCase();
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#1a1a2e"/><text x="50%" y="55%" text-anchor="middle" font-size="36" fill="#38bdf8" font-family="sans-serif">' +
+        escapeHtml(name.slice(0, 2).toUpperCase()) + '</text></svg>'
+      );
+    }
+    return '';
   }
 
-  function clampPlayerPosition() {
-    var player = document.getElementById('chMusicPlayerRoot');
-    if (!player) return;
-    var rect = player.getBoundingClientRect();
-    var maxLeft = Math.max(0, window.innerWidth - rect.width - 8);
-    var maxTop = Math.max(0, window.innerHeight - rect.height - 8);
-    var left = parseFloat(player.style.left || player.getBoundingClientRect().left);
-    var top = parseFloat(player.style.top || player.getBoundingClientRect().top);
-    if (!Number.isFinite(left)) left = window.innerWidth - rect.width - 16;
-    if (!Number.isFinite(top)) top = window.innerHeight - rect.height - 16;
-    player.style.left = Math.min(Math.max(8, left), maxLeft) + 'px';
-    player.style.top = Math.min(Math.max(8, top), maxTop) + 'px';
-    player.style.right = 'auto';
-    player.style.bottom = 'auto';
+  function detectPageTheme() {
+    var html = document.documentElement;
+    var theme = html.getAttribute('data-theme') || html.getAttribute('data-bs-theme') || '';
+    if (theme === 'light' || theme === 'dark') return theme;
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light';
+    return 'dark';
   }
 
-  function ensureAudioContextPolicy(audio) {
-    if (!audio) return;
+  function applyTheme() {
+    if (!playerRoot) return;
+    var theme = detectPageTheme();
+    playerRoot.setAttribute('data-theme', theme);
   }
 
-  function buildPlayer() {
-    injectStyles();
+  function clampPos() {
+    if (!playerRoot || playerRoot.classList.contains('chmp--minimized')) return;
+    var rect = playerRoot.getBoundingClientRect();
+    var maxL = Math.max(0, window.innerWidth - rect.width - 6);
+    var maxT = Math.max(0, window.innerHeight - rect.height - 6);
+    var l = parseFloat(playerRoot.style.left);
+    var t = parseFloat(playerRoot.style.top);
+    if (!Number.isFinite(l)) l = window.innerWidth - rect.width - 14;
+    if (!Number.isFinite(t)) t = window.innerHeight - rect.height - 14;
+    playerRoot.style.left = Math.min(Math.max(6, l), maxL) + 'px';
+    playerRoot.style.top = Math.min(Math.max(6, t), maxT) + 'px';
+    playerRoot.style.right = 'auto';
+    playerRoot.style.bottom = 'auto';
+  }
 
-    var root = document.createElement('div');
-    root.id = 'chMusicPlayerRoot';
-    root.className = 'chmp--minimized';
-    root.style.left = Math.max(8, window.innerWidth - 96) + 'px';
-    root.style.top = Math.max(8, window.innerHeight - 78) + 'px';
-    root.style.right = 'auto';
-    root.style.bottom = 'auto';
-    root.innerHTML =
-      '<button class="chmp__launcher" type="button" aria-label="Abrir reproductor de música" title="Música">' +
-        '<i class="fas fa-music" aria-hidden="true"></i>' +
-      '</button>' +
+  function buildUI() {
+    playerRoot = document.createElement('div');
+    playerRoot.id = 'chMusicPlayerRoot';
+    playerRoot.className = 'chmp--minimized';
+    playerRoot.setAttribute('data-theme', detectPageTheme());
+    playerRoot.style.left = Math.max(6, window.innerWidth - 92) + 'px';
+    playerRoot.style.top = Math.max(6, window.innerHeight - 74) + 'px';
+    playerRoot.style.right = 'auto';
+    playerRoot.style.bottom = 'auto';
+    playerRoot.innerHTML =
+      '<button class="chmp__launcher" type="button" aria-label="Abrir reproductor de música" title="Música"><i class="fas fa-music" aria-hidden="true"></i></button>' +
       '<div class="chmp__panel">' +
         '<div class="chmp__header" data-drag-handle="true">' +
-          '<div class="chmp__title">' +
-            '<strong id="chmpTitle">Reproductor CodeHub</strong>' +
-            '<small id="chmpMeta">Archivo local o streaming</small>' +
+          '<div class="chmp__header-info">' +
+            '<div class="chmp__cover" id="chmpCover"><i class="fas fa-music" aria-hidden="true"></i></div>' +
+            '<div class="chmp__title"><strong id="chmpTitle">Reproductor CodeHub</strong><small id="chmpMeta">Local o streaming</small></div>' +
           '</div>' +
           '<div class="chmp__actions">' +
-            '<button class="chmp__icon-btn" type="button" data-role="minimize" title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>' +
-            '<button class="chmp__icon-btn" type="button" data-role="close" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>' +
+            '<button class="chmp__icon-btn" data-role="shuffle" title="Aleatorio" aria-label="Aleatorio"><i class="fas fa-shuffle"></i></button>' +
+            '<button class="chmp__icon-btn" data-role="repeat" title="Repetir" aria-label="Repetir"><i class="fas fa-redo"></i></button>' +
+            '<button class="chmp__icon-btn" data-role="minimize" title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>' +
+            '<button class="chmp__icon-btn" data-role="close" title="Cerrar" aria-label="Cerrar"><i class="fas fa-xmark"></i></button>' +
           '</div>' +
         '</div>' +
-        '<p class="chmp__status" id="chmpStatus">Arrastra el encabezado, minimiza o cierra la ventana.</p>' +
+        '<p class="chmp__status" id="chmpStatus">Atajos: Espacio=play · ←/→=seek · ↑/↓=volumen</p>' +
         '<audio id="chmpAudio" preload="metadata" playsinline></audio>' +
         '<div class="chmp__controls">' +
-          '<button class="chmp__btn chmp__btn--primary" type="button" data-role="play" aria-label="Reproducir"><i class="fas fa-play"></i></button>' +
-          '<button class="chmp__btn" type="button" data-role="prev" aria-label="Pista anterior"><i class="fas fa-backward-step"></i></button>' +
-          '<button class="chmp__btn" type="button" data-role="next" aria-label="Siguiente pista"><i class="fas fa-forward-step"></i></button>' +
-          '<input class="chmp__progress" type="range" min="0" max="100" value="0" step="0.1" aria-label="Progreso">' +
+          '<button class="chmp__btn" data-role="prev" title="Anterior" aria-label="Anterior"><i class="fas fa-backward-step"></i></button>' +
+          '<button class="chmp__btn chmp__btn--primary" data-role="play" title="Play/Pause" aria-label="Reproducir"><i class="fas fa-play"></i></button>' +
+          '<button class="chmp__btn" data-role="next" title="Siguiente" aria-label="Siguiente"><i class="fas fa-forward-step"></i></button>' +
         '</div>' +
-        '<div class="chmp__meta"><span id="chmpTime">0:00 / 0:00</span><span id="chmpVolumeLabel">Vol 70%</span></div>' +
-        '<input class="chmp__progress chmp__volume" type="range" min="0" max="1" value="0.7" step="0.01" aria-label="Volumen">' +
-        '<div class="chmp__field">' +
-          '<label for="chmpLocalFiles">Archivos locales</label>' +
-          '<input id="chmpLocalFiles" class="chmp__input" type="file" accept="audio/*,audio/mpeg,audio/ogg,audio/wav,audio/flac" multiple>' +
-        '</div>' +
-        '<div class="chmp__drop">Arrastra aquí un archivo o pega una URL de streaming.</div>' +
-        '<div class="chmp__field">' +
-          '<label for="chmpStreamUrl">Streaming (URL)</label>' +
-          '<div class="chmp__row">' +
-            '<input id="chmpStreamUrl" class="chmp__input" type="url" placeholder="https://tu-stream/radio.mp3">' +
-            '<button class="chmp__btn-small" type="button" data-role="addStream">Agregar</button>' +
-          '</div>' +
+        '<input class="chmp__progress" data-role="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Progreso">' +
+        '<div class="chmp__meta"><span id="chmpTime">0:00 / 0:00</span><span id="chmpVolLabel">Vol 70%</span></div>' +
+        '<input class="chmp__progress" data-role="vol" type="range" min="0" max="1" value="0.7" step="0.01" aria-label="Volumen">' +
+        '<div class="chmp__drop">Arrastra archivos o pega una URL de streaming</div>' +
+        '<div class="chmp__field"><label for="chmpFiles">▸ Archivos locales</label>' +
+          '<input id="chmpFiles" class="chmp__input" type="file" accept="audio/*,image/*" multiple></div>' +
+        '<div class="chmp__field"><label for="chmpStream">▸ Streaming (URL)</label>' +
+          '<div class="chmp__row"><input id="chmpStream" class="chmp__input" type="url" placeholder="https://…/radio.mp3">' +
+          '<button class="chmp__btn-small" data-role="addStream">Agregar</button></div></div>' +
+        '<div class="chmp__row" style="margin-bottom:8px">' +
+          '<button class="chmp__btn-small" data-role="export">⬇ Exportar</button>' +
+          '<button class="chmp__btn-small" data-role="import">⬆ Importar</button>' +
+          '<button class="chmp__btn-small" data-role="clear">🗑 Limpiar</button>' +
+          '<input id="chmpImportFile" type="file" accept="application/json,.json" style="display:none">' +
         '</div>' +
         '<div class="chmp__playlist" id="chmpPlaylist" aria-label="Lista de reproducción"></div>' +
       '</div>';
+    document.body.appendChild(playerRoot);
 
-    document.body.appendChild(root);
+    refs = {
+      audio: playerRoot.querySelector('#chmpAudio'),
+      title: playerRoot.querySelector('#chmpTitle'),
+      meta: playerRoot.querySelector('#chmpMeta'),
+      status: playerRoot.querySelector('#chmpStatus'),
+      seek: playerRoot.querySelector('[data-role="seek"]'),
+      vol: playerRoot.querySelector('[data-role="vol"]'),
+      volLabel: playerRoot.querySelector('#chmpVolLabel'),
+      time: playerRoot.querySelector('#chmpTime'),
+      playlist: playerRoot.querySelector('#chmpPlaylist'),
+      files: playerRoot.querySelector('#chmpFiles'),
+      stream: playerRoot.querySelector('#chmpStream'),
+      importFile: playerRoot.querySelector('#chmpImportFile'),
+      launcher: playerRoot.querySelector('.chmp__launcher'),
+      header: playerRoot.querySelector('.chmp__header'),
+      cover: playerRoot.querySelector('#chmpCover'),
+      play: playerRoot.querySelector('[data-role="play"]'),
+      prev: playerRoot.querySelector('[data-role="prev"]'),
+      next: playerRoot.querySelector('[data-role="next"]'),
+      shuffle: playerRoot.querySelector('[data-role="shuffle"]'),
+      repeat: playerRoot.querySelector('[data-role="repeat"]'),
+      addStream: playerRoot.querySelector('[data-role="addStream"]'),
+      export: playerRoot.querySelector('[data-role="export"]'),
+      import: playerRoot.querySelector('[data-role="import"]'),
+      clear: playerRoot.querySelector('[data-role="clear"]'),
+      drop: playerRoot.querySelector('.chmp__drop')
+    };
 
-    var audio = root.querySelector('#chmpAudio');
-    var title = root.querySelector('#chmpTitle');
-    var meta = root.querySelector('#chmpMeta');
-    var status = root.querySelector('#chmpStatus');
-    var progress = root.querySelector('.chmp__progress');
-    var volume = root.querySelector('.chmp__volume');
-    var volumeLabel = root.querySelector('#chmpVolumeLabel');
-    var timeLabel = root.querySelector('#chmpTime');
-    var playlist = root.querySelector('#chmpPlaylist');
-    var localInput = root.querySelector('#chmpLocalFiles');
-    var streamUrlInput = root.querySelector('#chmpStreamUrl');
-    var launcher = root.querySelector('.chmp__launcher');
-    var header = root.querySelector('.chmp__header');
-    var minimizeBtn = root.querySelector('[data-role="minimize"]');
-    var closeBtn = root.querySelector('[data-role="close"]');
-    var playBtn = root.querySelector('[data-role="play"]');
-    var prevBtn = root.querySelector('[data-role="prev"]');
-    var nextBtn = root.querySelector('[data-role="next"]');
-    var addStreamBtn = root.querySelector('[data-role="addStream"]');
-    var sourceReady = false;
+    refs.audio.volume = 0.7;
+  }
 
-    audio.volume = 0.7;
+  function setStatus(t) { refs.status.textContent = t; }
 
-    function setStatus(text) {
-      status.textContent = text;
+  function setPlayIcon(playing) {
+    refs.play.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+    refs.play.setAttribute('aria-label', playing ? 'Pausar' : 'Reproducir');
+  }
+
+  function updateVolLabel() {
+    refs.volLabel.textContent = 'Vol ' + Math.round(refs.audio.volume * 100) + '%';
+  }
+
+  function updateCover(track) {
+    if (!track || !track.cover) {
+      refs.cover.innerHTML = '<i class="fas fa-music" aria-hidden="true"></i>';
+      return;
     }
+    var img = document.createElement('img');
+    img.className = 'chmp__cover';
+    img.src = track.cover;
+    img.alt = 'Portada de ' + track.name;
+    img.onerror = function () {
+      refs.cover.innerHTML = '<i class="fas fa-music" aria-hidden="true"></i>';
+    };
+    var old = refs.cover;
+    if (old && old.parentNode) old.parentNode.replaceChild(img, old);
+    refs.cover = img;
+  }
 
-    function setPlayIcon(playing) {
-      playBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+  function renderPlaylist() {
+    if (!queue.length) {
+      refs.playlist.innerHTML = '<div class="chmp__playlist-item"><b>Sin pistas</b><span>Agrega archivos o URL</span></div>';
+      return;
     }
+    refs.playlist.innerHTML = queue.map(function (t, i) {
+      var active = i === currentIndex ? ' chmp--active' : '';
+      var tag = t.local ? 'local' : 'stream';
+      var coverBtn = '';
+      return '<div class="chmp__playlist-item' + active + '" data-index="' + i + '">' +
+        '<b>' + escapeHtml(t.name) + '</b>' +
+        '<span class="chmp__tag">' + tag +
+          (queue.length > 1 ? ' <button class="chmp__del" data-del="' + i + '" title="Quitar">✕</button>' : '') +
+        '</span></div>';
+    }).join('');
+  }
 
-    function updateVolumeLabel() {
-      var pct = Math.round(Number(volume.value || audio.volume) * 100);
-      volumeLabel.textContent = 'Vol ' + pct + '%';
+  function shufflePick() {
+    if (shuffleMode && queue.length > 1) {
+      var idx;
+      do { idx = Math.floor(Math.random() * queue.length); } while (idx === currentIndex);
+      return idx;
     }
+    return currentIndex + 1;
+  }
 
-    function renderPlaylist() {
-      if (!queue.length) {
-        playlist.innerHTML = '<div class="chmp__playlist-item"><b>Sin pistas</b><span>Agrega archivos o una URL</span></div>';
-        return;
-      }
-      playlist.innerHTML = queue.map(function (track, idx) {
-        return (
-          '<div class="chmp__playlist-item' + (idx === currentIndex ? ' chmp--active' : '') + '" data-index="' + idx + '">' +
-            '<b>' + escapeHtml(track.name) + '</b>' +
-            '<span>' + (track.local ? 'local' : (track.local ? 'local' : 'stream')) + '</span>' +
-          '</div>'
-        );
-      }).join('');
-    }
-
-    function escapeHtml(value) {
-      return String(value || '').replace(/[&<>"']/g, function (char) {
-        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
-      });
-    }
-
-    function ensureTrack(index) {
-      if (!queue.length) {
-        audio.removeAttribute('src');
-        title.textContent = 'Reproductor CodeHub';
-        meta.textContent = 'Archivo local o streaming';
-        setStatus('Agrega archivos o una URL.');
-        timeLabel.textContent = '0:00 / 0:00';
-        setPlayIcon(false);
-        sourceReady = false;
-        return;
-      }
-      currentIndex = (index + queue.length) % queue.length;
-      var track = queue[currentIndex];
-      if (!track.loaded) {
-        track.url = track.address;
-        track.loaded = true;
-      }
-      audio.src = track.address;
-      audio.load();
-      title.textContent = track.name;
-      meta.textContent = track.local ? 'Fuente local' : 'Streaming';
-      setStatus(track.local ? 'Pista local lista.' : 'Streaming preparado.');
-      sourceReady = true;
-      renderPlaylist();
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: track.name,
-          artist: 'CodeHub',
-          album: track.local ? 'Archivo local' : 'Streaming'
-        });
-        navigator.mediaSession.setActionHandler('play', function () { audio.play(); });
-        navigator.mediaSession.setActionHandler('pause', function () { audio.pause(); });
-        navigator.mediaSession.setActionHandler('previoustrack', function () { previous(true); });
-        navigator.mediaSession.setActionHandler('nexttrack', function () { next(true); });
-      }
-    }
-
-    function play() {
-      try {
-        var result = audio.play();
-        if (result && typeof result.then === 'function') {
-          result.then(function () {
-            setPlayIcon(true);
-            setStatus('Reproduciendo.');
-            updateNowPlaying();
-          }).catch(function (error) {
-            setPlayIcon(false);
-            setStatus('No se pudo iniciar: ' + (error && error.message ? error.message : 'permiso o formato'));
-          });
-        }
-      } catch (error) {
-        setPlayIcon(false);
-        setStatus('No se pudo iniciar la reproducción.');
-      }
-    }
-
-    function pause() {
-      audio.pause();
+  function setTrack(index, autoplay) {
+    if (!queue.length) {
+      refs.audio.removeAttribute('src');
+      refs.title.textContent = 'Reproductor CodeHub';
+      refs.meta.textContent = 'Local o streaming';
+      refs.time.textContent = '0:00 / 0:00';
+      updateCover(null);
       setPlayIcon(false);
-      setStatus('En pausa.');
+      setStatus('Agrega archivos o una URL.');
+      return;
     }
-
-    function previous(playAfter) {
-      if (!queue.length) return;
-      ensureTrack(currentIndex - 1);
-      if (playAfter) play();
-    }
-
-    function next(playAfter) {
-      if (!queue.length) return;
-      ensureTrack(currentIndex + 1);
-      if (playAfter) play();
-    }
-
-    function updateNowPlaying() {
-      var track = queue[currentIndex];
-      if (!track) return;
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
-        } catch (e) {}
-      }
-    }
-
-    function expand() {
-      root.classList.remove('chmp--minimized');
-      launcherPinned = false;
-      rememberState();
-    }
-
-    function minimize() {
-      root.classList.add('chmp--minimized');
-      launcherPinned = false;
-      rememberState();
-    }
-
-    function closePlayer() {
-      root.classList.add('chmp--minimized');
-      setStatus('Reproductor cerrado. Vuelve a abrirlo con el icono flotante.');
-      rememberState();
-    }
-
-    function rememberState() {
-      storageSave({ minimized: root.classList.contains('chmp--minimized') });
-    }
-
-    function restoreState() {
-      var state = storageLoad();
-      if (state && state.minimized) root.classList.add('chmp--minimized');
-    }
-
-    function choosePosition() {
-      if (!root.classList.contains('chmp--minimized')) {
-        clampPlayerPosition();
-      }
-    }
-
-    function dropFiles(files) {
-      if (!files || !files.length) return;
-      var added = 0;
-      Array.from(files).forEach(function (file) {
-        if (!file.type || file.type.indexOf('audio/') !== 0) return;
-        if (queue.length + added >= maxFiles) return;
-        queue.push(makeTrack(file.name, URL.createObjectURL(file), true, file.size));
-        added++;
-      });
-      if (added > 0) {
-        setStatus(added + ' pista(s) agregada(s).');
-        if (!audio.src) ensureTrack(currentIndex);
-        renderPlaylist();
-        if (root.classList.contains('chmp--minimized')) expand();
-      }
-    }
-
-    function uploadToQueueFromInput() {
-      var files = localInput.files;
-      dropFiles(files);
-      if (localInput) localInput.value = '';
-    }
-
-    function addStreamUrl() {
-      var value = (streamUrlInput.value || '').trim();
-      if (!value) {
-        setStatus('Escribe una URL de streaming.');
-        return;
-      }
-      var name = deriveNameFromUrl(value);
-      queue.push(makeTrack(name, value, false, 0));
-      ensureTrack(queue.length - 1);
-      streamUrlInput.value = '';
-      renderPlaylist();
-      expand();
-      setStatus('Streaming agregado.');
-    }
-
-    function deriveNameFromUrl(value) {
+    currentIndex = (index + queue.length) % queue.length;
+    var track = queue[currentIndex];
+    refs.audio.src = track.address;
+    refs.audio.load();
+    refs.title.textContent = track.name;
+    refs.meta.textContent = track.local ? 'Archivo local' : 'Streaming';
+    updateCover(track);
+    setStatus(track.local ? 'Pista local lista.' : 'Streaming preparado.');
+    renderPlaylist();
+    if ('mediaSession' in navigator) {
       try {
-        var parsed = new URL(value);
-        var last = parsed.pathname.split('/').pop();
-        if (last && last.indexOf('.') !== -1) return decodeURIComponent(last);
-      } catch (e) {}
-      return 'Streaming ' + (queue.filter(function (t) { return !t.local; }).length + 1);
-    }
-
-    function attachHandlers() {
-      launcher.addEventListener('click', function () {
-        if (root.classList.contains('chmp--minimized')) {
-          root.classList.remove('chmp--minimized');
-          rememberState();
-        } else {
-          minimize();
-        }
-      });
-
-      minimizeBtn.addEventListener('click', function () { minimize(); });
-      closeBtn.addEventListener('click', function () { closePlayer(); });
-
-      playBtn.addEventListener('click', function () {
-        if (!audio.src && queue.length) ensureTrack(0);
-        if (audio.paused) play(); else pause();
-      });
-      prevBtn.addEventListener('click', function () { previous(true); });
-      nextBtn.addEventListener('click', function () { next(true); });
-
-      progress.addEventListener('input', function () {
-        if (isFinite(audio.duration) && audio.duration > 0) {
-          audio.currentTime = (Number(progress.value) / 100) * audio.duration;
-        }
-      });
-      volume.addEventListener('input', function () {
-        audio.volume = Number(volume.value);
-        updateVolumeLabel();
-        storageSave(storageFormat());
-      });
-
-      localInput.addEventListener('change', uploadToQueueFromInput);
-      addStreamBtn.addEventListener('click', addStreamUrl);
-      streamUrlInput.addEventListener('keydown', function (evt) {
-        if (evt.key === 'Enter') { evt.preventDefault(); addStreamUrl(); }
-      });
-
-      header.addEventListener('pointerdown', function (event) {
-        if (event.target && (event.target.closest('button') || event.target.closest('input') || event.target.closest('[data-role="close"]'))) {
-          return;
-        }
-        dragging = true;
-        root.classList.add('chmp--dragging');
-        startPointer = { x: event.clientX, y: event.clientY };
-        startPlayer = { left: playerLeft(), top: playerTop() };
-        try { header.setPointerCapture(event.pointerId); } catch (e) {}
-      });
-
-      document.addEventListener('pointermove', function (event) {
-        if (!dragging) return;
-        var left = startPlayer.left + (event.clientX - startPointer.x);
-        var top = startPlayer.top + (event.clientY - startPointer.y);
-        root.style.left = left + 'px';
-        root.style.top = top + 'px';
-        root.style.right = 'auto';
-        root.style.bottom = 'auto';
-        if (event.pointerId) {
-          try {
-            header.setPointerCapture(event.pointerId);
-          } catch (e) {}
-        }
-      });
-      document.addEventListener('pointerup', function () {
-        if (!dragging) return;
-        dragging = false;
-        root.classList.remove('chmp--dragging');
-        clampPlayerPosition();
-        rememberState();
-      });
-      document.addEventListener('pointercancel', function () {
-        dragging = false;
-        root.classList.remove('chmp--dragging');
-        clampPlayerPosition();
-      });
-
-      audio.addEventListener('timeupdate', function () {
-        if (isFinite(audio.duration) && audio.duration > 0) {
-          progress.value = String((audio.currentTime / audio.duration) * 100);
-        }
-        timeLabel.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
-      });
-      audio.addEventListener('loadedmetadata', function () {
-        timeLabel.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration);
-      });
-      audio.addEventListener('ended', function () {
-        setStatus('Pista finalizada.');
-        next(false);
-      });
-      audio.addEventListener('waiting', function () { setStatus('Buffering...'); });
-      audio.addEventListener('playing', function () {
-        setPlayIcon(true);
-        setStatus('Reproduciendo.');
-        updateNowPlaying();
-      });
-      audio.addEventListener('pause', function () {
-        setPlayIcon(false);
-        setStatus('En pausa.');
-      });
-      audio.addEventListener('error', function () {
-        setPlayIcon(false);
-        setStatus('No se pudo reproducir la pista actual.');
-      });
-
-      playlist.addEventListener('click', function (event) {
-        var item = event.target.closest('[data-index]');
-        if (!item) return;
-        var index = Number(item.getAttribute('data-index'));
-        if (Number.isFinite(index)) {
-          ensureTrack(index);
-          audio.play().catch(function () {});
-        }
-      });
-
-      root.querySelector('.chmp__drop').addEventListener('dragover', function (event) {
-        event.preventDefault();
-        this.style.borderColor = 'rgba(0,184,148,.45)';
-      });
-
-      root.querySelector('.chmp__drop').addEventListener('dragleave', function () {
-        this.style.borderColor = 'rgba(47,128,237,.25)';
-      });
-
-      root.querySelector('.chmp__drop').addEventListener('drop', function (event) {
-        event.preventDefault();
-        this.style.borderColor = 'rgba(47,128,237,.25)';
-        dropFiles(event.dataTransfer && event.dataTransfer.files);
-      });
-
-      window.addEventListener('resize', function () {
-        if (!root.classList.contains('chmp--minimized')) {
-          choosePosition();
-        }
-      });
-    }
-
-    function playerLeft() {
-      var styleLeft = parseFloat(document.getElementById('chMusicPlayerRoot').style.left);
-      if (Number.isFinite(styleLeft)) return styleLeft;
-      return window.innerWidth - (document.getElementById('chMusicPlayerRoot').getBoundingClientRect().width || 360) - 16;
-    }
-
-    function playerTop() {
-      var styleTop = parseFloat(document.getElementById('chMusicPlayerRoot').style.top);
-      if (Number.isFinite(styleTop)) return styleTop;
-      return window.innerHeight - (document.getElementById('chMusicPlayerRoot').getBoundingClientRect().height || 260) - 16;
-    }
-
-    function storageFormat() {
-      var volumeValue = document.querySelector('#chMusicPlayerRoot .chmp__volume');
-      return { minimized: document.getElementById('chMusicPlayerRoot').classList.contains('chmp--minimized'), volume: Number(volumeValue ? volumeValue.value : 0.7) };
-    }
-
-    function init() {
-      var existing = document.getElementById('chMusicPlayerRoot');
-      if (existing) return;
-      buildPlayer();
-      attachHandlers();
-      window.__chMusicPlayer = { expand: expand, minimize: minimize, close: closePlayer };
-      var restored = storageLoad();
-      if (restored) {
-        var volume = document.querySelector('#chMusicPlayerRoot .chmp__volume');
-        if (volume && Number.isFinite(restored.volume)) {
-          volume.value = String(restored.volume);
-          document.getElementById('chmpAudio').volume = restored.volume;
-          updateVolumeLabel();
-        }
-        if (restored.minimized) {
-          document.getElementById('chMusicPlayerRoot').classList.add('chmp--minimized');
-        }
-      }
-      ensureTrack(0);
-      window.addEventListener('pagehide', function () {
-        queue.forEach(function (track) {
-          if (track.local && track.address && track.address.indexOf('blob:') === 0) {
-            try { URL.revokeObjectURL(track.address); } catch (e) {}
-          }
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.name, artist: 'CodeHub',
+          album: track.local ? 'Archivo local' : 'Streaming',
+          artwork: track.cover && track.cover.indexOf('data:') !== 0
+            ? [{ src: track.cover, sizes: '96x96', type: 'image/jpeg' }]
+            : [{ src: track.cover, sizes: '96x96' }]
         });
-      });
+        navigator.mediaSession.setActionHandler('play', function () { playTrack(); });
+        navigator.mediaSession.setActionHandler('pause', function () { pauseTrack(); });
+        navigator.mediaSession.setActionHandler('previoustrack', function () { prevTrack(true); });
+        navigator.mediaSession.setActionHandler('nexttrack', function () { nextTrack(true); });
+      } catch (e) {}
     }
+    if (autoplay) playTrack();
+  }
 
-    if (typeof MutationObserver === 'function') {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init, { once: true });
-      } else {
-        init();
-      }
-    } else {
-      init();
+  function playTrack() {
+    var p = refs.audio.play();
+    if (p && typeof p.then === 'function') {
+      p.then(function () { setPlayIcon(true); setStatus('Reproduciendo.'); updateMS(); })
+       .catch(function (err) { setPlayIcon(false); setStatus('No se pudo iniciar: ' + (err && err.message ? err.message : 'formato/permiso')); });
     }
   }
+
+  function pauseTrack() {
+    refs.audio.pause();
+    setPlayIcon(false);
+    setStatus('En pausa.');
+  }
+
+  function nextTrack(autoplay) {
+    if (!queue.length) return;
+    if (repeatMode === 2) { setTrack(currentIndex, autoplay !== false); return; }
+    var idx = shufflePick();
+    if (idx >= queue.length) { setTrack(0, autoplay !== false); return; }
+    setTrack(idx, autoplay !== false);
+  }
+
+  function prevTrack(autoplay) {
+    if (!queue.length) return;
+    setTrack(currentIndex - 1, autoplay !== false);
+  }
+
+  function updateMS() {
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.playbackState = refs.audio.paused ? 'paused' : 'playing'; } catch (e) {}
+    }
+  }
+
+  function expand() { playerRoot.classList.remove('chmp--minimized'); remember(); clampPos(); }
+  function minimize() { playerRoot.classList.add('chmp--minimized'); remember(); }
+  function closePlayer() { playerRoot.classList.add('chmp--minimized'); setStatus('Cerrado — icono flotante disponible.'); remember(); }
+  function remember() { storageSave(storageFormat()); }
+
+  function storageFormat() {
+    return {
+      minimized: playerRoot.classList.contains('chmp--minimized'),
+      volume: refs.audio.volume,
+      shuffle: shuffleMode,
+      repeat: repeatMode
+    };
+  }
+
+  function dropFiles(files) {
+    if (!files || !files.length) return;
+    var added = 0;
+    var pendingCover = null;
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      if (/^audio\//.test(f.type)) {
+        if (queue.length >= maxFiles) continue;
+        queue.push(makeTrack(f.name.replace(/\.[^.]+$/, ''), URL.createObjectURL(f), true, f.size, pickCover(f)));
+        added++;
+      } else if (/^image\//.test(f.type) && pendingCover === null) {
+        pendingCover = URL.createObjectURL(f);
+      }
+    }
+    if (pendingCover && queue.length) queue[0].cover = pendingCover;
+    if (added > 0) {
+      setStatus(added + ' pista(s) agregada(s).');
+      if (!refs.audio.src) setTrack(currentIndex, false);
+      renderPlaylist();
+      if (playerRoot.classList.contains('chmp--minimized')) expand();
+    }
+  }
+
+  function deriveName(url) {
+    try {
+      var p = new URL(url);
+      var last = p.pathname.split('/').pop();
+      if (last && last.indexOf('.') !== -1) return decodeURIComponent(last);
+    } catch (e) {}
+    return 'Stream ' + (queue.filter(function (t) { return !t.local; }).length + 1);
+  }
+
+  function addStream() {
+    var v = (refs.stream.value || '').trim();
+    if (!v) { setStatus('Escribe una URL de streaming.'); return; }
+    queue.push(makeTrack(deriveName(v), v, false, 0, ''));
+    setTrack(queue.length - 1, false);
+    refs.stream.value = '';
+    expand();
+    setStatus('Streaming agregado.');
+  }
+
+  function exportPlaylist() {
+    var data = queue.filter(function (t) { return !t.local; }).map(function (t) {
+      return { name: t.name, url: t.address };
+    });
+    if (!data.length) { setStatus('Solo hay archivos locales — nada que exportar.'); return; }
+    var blob = new Blob([JSON.stringify({ v: 1, tracks: data }, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'codehub-playlist.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    setStatus('Playlist exportada (' + data.length + ' stream(s)).');
+  }
+
+  function importPlaylist(file) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var json = JSON.parse(e.target.result);
+        var list = json && json.tracks && Array.isArray(json.tracks) ? json.tracks : [];
+        var n = 0;
+        list.forEach(function (t) {
+          if (t && t.url) { queue.push(makeTrack(t.name || deriveName(t.url), t.url, false, 0, '')); n++; }
+        });
+        setStatus(n + ' stream(s) importados.');
+        if (n > 0 && !refs.audio.src) setTrack(0, false);
+        renderPlaylist();
+      } catch (err) { setStatus('JSON inválido.'); }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearQueue() {
+    queue.forEach(function (t) {
+      if (t.local && t.address.indexOf('blob:') === 0) { try { URL.revokeObjectURL(t.address); } catch (e) {} }
+      if (t.cover && t.cover.indexOf('blob:') === 0) { try { URL.revokeObjectURL(t.cover); } catch (e) {} }
+    });
+    queue = [];
+    currentIndex = 0;
+    refs.audio.removeAttribute('src');
+    refs.audio.load();
+    setPlayIcon(false);
+    renderPlaylist();
+    setTrack(0, false);
+    setStatus('Playlist limpia.');
+  }
+
+  function removeTrack(idx) {
+    if (idx < 0 || idx >= queue.length) return;
+    var t = queue[idx];
+    if (t.local && t.address.indexOf('blob:') === 0) { try { URL.revokeObjectURL(t.address); } catch (e) {} }
+    queue.splice(idx, 1);
+    if (currentIndex >= queue.length) currentIndex = 0;
+    renderPlaylist();
+    if (!queue.length) setTrack(0, false);
+  }
+
+  function toggleShuffle() {
+    shuffleMode = !shuffleMode;
+    refs.shuffle.classList.toggle('chmp--active', shuffleMode);
+    setStatus(shuffleMode ? 'Aleatorio activado.' : 'Aleatorio desactivado.');
+    remember();
+  }
+
+  function cycleRepeat() {
+    repeatMode = (repeatMode + 1) % 3;
+    refs.repeat.classList.toggle('chmp--active', repeatMode !== 0);
+    refs.repeat.innerHTML = repeatMode === 2 ? '<i class="fas fa-repeat"></i> <span style="font-size:.55rem">1</span>' : '<i class="fas fa-redo"></i>';
+    var labels = ['Repetir: apagado', 'Repetir: toda la lista', 'Repetir: una pista'];
+    setStatus(labels[repeatMode]);
+    remember();
+  }
+
+  function onKeyDown(e) {
+    if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    if (!playerRoot || playerRoot.classList.contains('chmp--hidden')) return;
+    var k = e.key;
+    if (k === ' ' || k === 'Spacebar') {
+      e.preventDefault();
+      if (refs.audio.paused) { if (!refs.audio.src && queue.length) setTrack(0, true); else playTrack(); }
+      else pauseTrack();
+    } else if (k === 'ArrowRight') {
+      e.preventDefault();
+      if (isFinite(refs.audio.duration)) refs.audio.currentTime = Math.min(refs.audio.duration, refs.audio.currentTime + 5);
+    } else if (k === 'ArrowLeft') {
+      e.preventDefault();
+      if (isFinite(refs.audio.duration)) refs.audio.currentTime = Math.max(0, refs.audio.currentTime - 5);
+    } else if (k === 'ArrowUp') {
+      e.preventDefault();
+      refs.audio.volume = Math.min(1, refs.audio.volume + 0.05);
+      refs.vol.value = String(refs.audio.volume);
+      updateVolLabel(); remember();
+    } else if (k === 'ArrowDown') {
+      e.preventDefault();
+      refs.audio.volume = Math.max(0, refs.audio.volume - 0.05);
+      refs.vol.value = String(refs.audio.volume);
+      updateVolLabel(); remember();
+    }
+  }
+
+  function attach() {
+    refs.launcher.addEventListener('click', function () {
+      if (playerRoot.classList.contains('chmp--minimized')) { expand(); }
+      else { minimize(); }
+    });
+    playerRoot.querySelector('[data-role="minimize"]').addEventListener('click', minimize);
+    playerRoot.querySelector('[data-role="close"]').addEventListener('click', closePlayer);
+    playerRoot.querySelector('[data-role="shuffle"]').addEventListener('click', toggleShuffle);
+    playerRoot.querySelector('[data-role="repeat"]').addEventListener('click', cycleRepeat);
+    refs.play.addEventListener('click', function () {
+      if (!refs.audio.src && queue.length) setTrack(0, false);
+      if (refs.audio.paused) playTrack(); else pauseTrack();
+    });
+    refs.prev.addEventListener('click', function () { prevTrack(true); });
+    refs.next.addEventListener('click', function () { nextTrack(true); });
+    refs.seek.addEventListener('input', function () {
+      if (isFinite(refs.audio.duration) && refs.audio.duration > 0)
+        refs.audio.currentTime = (Number(refs.seek.value) / 100) * refs.audio.duration;
+    });
+    refs.vol.addEventListener('input', function () {
+      refs.audio.volume = Number(refs.vol.value);
+      lastVolume = refs.audio.volume;
+      updateVolLabel(); remember();
+    });
+    refs.files.addEventListener('change', function () { dropFiles(this.files); this.value = ''; });
+    refs.addStream.addEventListener('click', addStream);
+    refs.stream.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addStream(); } });
+    refs.export.addEventListener('click', exportPlaylist);
+    refs.import.addEventListener('click', function () { refs.importFile.click(); });
+    refs.importFile.addEventListener('change', function () { if (this.files[0]) importPlaylist(this.files[0]); this.value = ''; });
+    refs.clear.addEventListener('click', clearQueue);
+
+    refs.header.addEventListener('pointerdown', function (e) {
+      if (e.target && e.target.closest('button,input')) return;
+      dragging = true;
+      playerRoot.classList.add('chmp--dragging');
+      startPointer = { x: e.clientX, y: e.clientY };
+      startPlayer = { left: parseFloat(playerRoot.style.left) || 0, top: parseFloat(playerRoot.style.top) || 0 };
+      try { refs.header.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      playerRoot.style.left = (startPlayer.left + e.clientX - startPointer.x) + 'px';
+      playerRoot.style.top = (startPlayer.top + e.clientY - startPointer.y) + 'px';
+      playerRoot.style.right = 'auto';
+      playerRoot.style.bottom = 'auto';
+    });
+    document.addEventListener('pointerup', function () {
+      if (!dragging) return;
+      dragging = false;
+      playerRoot.classList.remove('chmp--dragging');
+      clampPos(); remember();
+    });
+
+    refs.audio.addEventListener('timeupdate', function () {
+      if (isFinite(refs.audio.duration) && refs.audio.duration > 0)
+        refs.seek.value = String((refs.audio.currentTime / refs.audio.duration) * 100);
+      refs.time.textContent = formatTime(refs.audio.currentTime) + ' / ' + formatTime(refs.audio.duration);
+    });
+    refs.audio.addEventListener('playing', function () { setPlayIcon(true); setStatus('Reproduciendo.'); updateMS(); });
+    refs.audio.addEventListener('pause', function () { setPlayIcon(false); setStatus('En pausa.'); });
+    refs.audio.addEventListener('waiting', function () { setStatus('Buffering…'); });
+    refs.audio.addEventListener('error', function () { setPlayIcon(false); setStatus('No se pudo reproducir.'); });
+    refs.audio.addEventListener('ended', function () { nextTrack(true); });
+
+    refs.playlist.addEventListener('click', function (e) {
+      var del = e.target.closest('[data-del]');
+      if (del) { e.stopPropagation(); removeTrack(Number(del.getAttribute('data-del'))); return; }
+      var item = e.target.closest('[data-index]');
+      if (item) setTrack(Number(item.getAttribute('data-index')), true);
+    });
+
+    refs.drop.addEventListener('dragover', function (e) { e.preventDefault(); this.style.borderColor = 'rgba(0,184,148,.45)'; });
+    refs.drop.addEventListener('dragleave', function () { this.style.borderColor = 'rgba(47,128,237,.25)'; });
+    refs.drop.addEventListener('drop', function (e) { e.preventDefault(); this.style.borderColor = 'rgba(47,128,237,.25)'; dropFiles(e.dataTransfer && e.dataTransfer.files); });
+
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', clampPos);
+    window.addEventListener('storage', function (e) { if (e.key === 'ch-theme' || e.key === 'ch:theme') applyTheme(); });
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest && e.target.closest('[data-theme-toggle],[data-set-theme]');
+      if (el) setTimeout(applyTheme, 50);
+    });
+  }
+
+  function restore() {
+    var st = storageLoad();
+    if (st) {
+      if (isFinite(st.volume)) { refs.audio.volume = Math.min(1, Math.max(0, st.volume)); refs.vol.value = String(refs.audio.volume); }
+      shuffleMode = !!st.shuffle;
+      repeatMode = st.repeat || 0;
+      if (st.minimized) playerRoot.classList.add('chmp--minimized');
+    }
+    updateVolLabel();
+    if (shuffleMode) refs.shuffle.classList.add('chmp--active');
+    if (repeatMode !== 0) {
+      refs.repeat.classList.add('chmp--active');
+      if (repeatMode === 2) refs.repeat.innerHTML = '<i class="fas fa-repeat"></i> <span style="font-size:.55rem">1</span>';
+    }
+  }
+
+  function init() {
+    if (document.getElementById('chMusicPlayerRoot')) return;
+    injectStyles();
+    buildUI();
+    attach();
+    restore();
+    renderPlaylist();
+    setTrack(0, false);
+    applyTheme();
+    window.__chMusicPlayer = { expand: expand, minimize: minimize, close: closePlayer, addStream: addStream, clear: clearQueue };
+    window.addEventListener('pagehide', function () {
+      queue.forEach(function (t) {
+        if (t.local && t.address.indexOf('blob:') === 0) { try { URL.revokeObjectURL(t.address); } catch (e) {} }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();
