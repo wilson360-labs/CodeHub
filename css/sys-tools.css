@@ -372,6 +372,29 @@
 .dev-opt-off { border-left: 3px solid rgba(239, 68, 68, .65); }
 .dev-card-backup .sys-scan-hint { margin-top: .8rem; }
 
+/* ── Tarjeta de reproductor (abre Echo Nightly) ── */
+.sys-card.dev-card-music {
+  flex: 0 0 auto;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.dev-card-music .sys-card-head { margin-bottom: 0; }
+.dev-card-music-arrow {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: .82rem;
+  color: var(--sys-muted);
+  transition: transform .15s ease, color .15s ease;
+}
+.dev-card-music:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, .5);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, .4);
+}
+.dev-card-music:hover .dev-card-music-arrow { transform: translateX(3px); color: var(--sys-blue); }
+.dev-card-music:active { transform: scale(.99); }
+.dev-card-music:focus-visible { outline: 2px solid var(--sys-blue); outline-offset: 2px; }
+
 /* ── Responsive (breakpoints canónicos de CodeHub) ── */
 @media (max-width: 860px) {
   .sys-bento { grid-template-columns: 1fr; padding: .2rem .5rem 1rem; }

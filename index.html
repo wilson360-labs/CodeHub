@@ -263,7 +263,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
-<link rel="stylesheet" href="css/sys-tools.css?v=20260912a">
+<link rel="stylesheet" href="css/sys-tools.css?v=20261015a">
 <link rel="stylesheet" href="css/native-feel.css?v=20260905c">
 <link rel="stylesheet" href="css/viewport-guard.css?v=20261015a">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
@@ -1790,7 +1790,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-settings-btn">Ajustes de la app</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-cache-btn">Limpiar caché</button>
                             <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="dev-downloads-btn"><i class="fas fa-folder-open"></i> Descargas</button>
-                            <button type="button" class="sys-btn dev-btn dev-btn-ghost" id="open-ch-music" onclick="document.getElementById('chMusicPlayerRoot')?.classList.remove('chmp--hidden'); window.__chMusicPlayer?.expand && window.__chMusicPlayer.expand(); return false;"><i class="fas fa-music"></i> Reproductor</button>
+                        </div>
+                    </div>
+
+                    <!-- Reproductor de música (Echo Nightly) -->
+                    <div class="sys-card dev-card-music" id="dev-music-btn" role="button" tabindex="0" aria-label="Abrir el reproductor de música (Echo Nightly)">
+                        <div class="sys-card-head">
+                            <i class="fas fa-music sys-ico"></i>
+                            <div class="sys-head-t">
+                                <h3>Reproductor de música</h3>
+                                <span class="sys-muted">Echo Nightly · streaming y sin conexión</span>
+                            </div>
+                            <i class="fas fa-chevron-right dev-card-music-arrow" aria-hidden="true"></i>
                         </div>
                     </div>
 
@@ -1949,12 +1960,18 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           var downloadsBtn = document.getElementById('dev-downloads-btn');
           if (downloadsBtn) downloadsBtn.addEventListener('click', function () { try { native.openDownloads(); } catch (e) {} });
           var musicBtn = document.getElementById('dev-music-btn');
-          if (musicBtn) musicBtn.addEventListener('click', function () {
-            try {
-              if (native && typeof native.openMusic === 'function') native.openMusic();
-              else { if (typeof toast === 'function') toast('El reproductor está disponible en el APK', 'info', 3000); }
-            } catch (e) {}
-          });
+          if (musicBtn) {
+            var openMusic = function () {
+              try {
+                if (native && typeof native.openMusic === 'function') native.openMusic();
+                else { if (typeof toast === 'function') toast('El reproductor está disponible en el APK', 'info', 3000); }
+              } catch (e) {}
+            };
+            musicBtn.addEventListener('click', openMusic);
+            musicBtn.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); openMusic(); }
+            });
+          }
 
           var exportBtn = document.getElementById('dev-export-btn');
           if (exportBtn && typeof native.saveBackupFile === 'function') {
