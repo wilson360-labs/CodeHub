@@ -1,5 +1,62 @@
 [
   {
+    "version": "v7.34",
+    "date": "2026-10-16",
+    "type": "fix",
+    "title": "Saneamiento de seguridad y control de musica accesible",
+    "changes": [
+      "XSS: se escapan converted/info.label/error/e.message/destino en el panel de administracion",
+      "CSP: se permiten los endpoints de geolocalizacion IP (ipapi, ip-api, ipwho, ipify)",
+      "Control flotante de musica: iconos SVG independientes de Font Awesome",
+      "Reproductor web: aviso claro al pegar una URL de YouTube (usar CodeBeat)",
+      "Control de musica: region aria-live y foco visible para accesibilidad"
+    ]
+  },
+  {
+    "version": "v7.33",
+    "date": "2026-10-16",
+    "type": "feat",
+    "title": "CodeBeat: nuevo nombre y tarjeta del reproductor de musica",
+    "changes": [
+      "El reproductor embebido pasa a llamarse CodeBeat (antes Echo Nightly) en los textos visibles",
+      "Tarjeta de musica rediseñada: halo, logo con ecualizador animado y chips de fuentes",
+      "Se retira el boton flotante del lector TTS (lee la pagina en voz alta) que siempre estaba presente",
+      "Tour guiado: nuevo paso que presenta CodeBeat y el control flotante"
+    ]
+  },
+  {
+    "version": "v7.32",
+    "date": "2026-10-16",
+    "type": "feat",
+    "title": "Control de musica arrastrable con long-press",
+    "changes": [
+      "Mantener presionado 350 ms y arrastrar el control flotante a cualquier lado",
+      "La posicion se guarda en localStorage y se restaura al remontar",
+      "Correccion de box model (box-sizing) para evitar desborde a 380 px"
+    ]
+  },
+  {
+    "version": "v7.31",
+    "date": "2026-10-16",
+    "type": "chore",
+    "title": "Rebuild de assets y cableado de index.html/sw.js",
+    "changes": [
+      "Se publica el bundle minificado del control de musica arrastrable",
+      "Service Worker actualizado a codehub-v7.32"
+    ]
+  },
+  {
+    "version": "v7.30",
+    "date": "2026-10-16",
+    "type": "feat",
+    "title": "Control flotante de reproduccion dentro del APK",
+    "changes": [
+      "Control flotante en el WebView que refleja y controla Echo Nightly (play/pausa, siguiente, anterior, abrir)",
+      "Se oculta sin pista cargada; se muestra sonando o pausada",
+      "Puente nativo MusicSessionBridge via SessionToken (media3) con gate de evidencia"
+    ]
+  },
+  {
     "version": "v7.29",
     "date": "2026-10-15",
     "type": "feat",
