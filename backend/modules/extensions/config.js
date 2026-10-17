@@ -33,7 +33,7 @@ function list(value) {
 const cfg = {
   SOURCE_URL:
     process.env.ECHO_EXTENSIONS_SOURCE_URL ||
-    'https://raw.githubusercontent.com/itsmechinmoy/echo-extensions/main/echo_extensions.json',
+    'https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/backend/data/codebeat-extensions.json',
 
   BACKEND_URL: (process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, ''),
 
