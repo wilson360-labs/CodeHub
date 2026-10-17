@@ -8,6 +8,9 @@ import dev.brahmkshatriya.echo.extension.utils.RetryUtils
 import dev.toastbits.ytmkt.impl.youtubei.YoutubeiApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
 
 
@@ -42,6 +45,22 @@ class YouTubeStreamResolver(
         private const val REFERER = "https://music.youtube.com/"
         private const val PROBE_LIMIT = 8
         private const val PROBE_TIMEOUT_MS = 15_000
+
+        /**
+         * Ruta principal CodeBeat: InnerTube `clientName=ANDROID`.
+         *
+         * Desde 2026 YouTube exige un **PO token GVS** para `web_music`, `ios`, `mweb`,
+         * `tv_simply`, etc.: por eso esas rutas devuelven 403 al reproducir o
+         * `400 Precondition check failed` al llamar a `/player`. El cliente `ANDROID`
+         * **no exige PO token** y entrega `streamingData` con URLs **sin signatureCipher**,
+         * asi que no hace falta descifrar firmas.
+         * Verificado en vivo (oct-2026): `status=OK` + `GET Range` -> 206.
+         */
+        private const val INNERTUBE_PLAYER_URL =
+            "https://www.youtube.com/youtubei/v1/player?prettyPrint=false"
+        private const val ANDROID_CLIENT_VERSION = "20.10.38"
+        private const val ANDROID_USER_AGENT =
+            "com.google.android.youtube/20.10.38 (Linux; U; Android 11) gzip"
 
         private val probeClient by lazy {
             okhttp3.OkHttpClient.Builder()
@@ -135,6 +154,113 @@ class YouTubeStreamResolver(
         return working to failed
     }
 
+    /**
+     * POST a InnerTube con `clientName=ANDROID` (sin PO token, URLs sin cifrar).
+     * Se usa `HttpURLConnection` para no depender de la API de OkHttp.
+     */
+    private fun postAndroidPlayer(videoId: String): String {
+        val payload = JSONObject().apply {
+            put("context", JSONObject().put("client", JSONObject().apply {
+                put("clientName", "ANDROID")
+                put("clientVersion", ANDROID_CLIENT_VERSION)
+                put("androidSdkVersion", 30)
+                put("osName", "Android")
+                put("osVersion", "11")
+                put("hl", "en")
+                put("gl", "US")
+            }))
+            put("videoId", videoId)
+            put("contentCheckOk", true)
+            put("racyCheckOk", true)
+        }.toString().toByteArray(Charsets.UTF_8)
+
+        val connection = java.net.URL(INNERTUBE_PLAYER_URL)
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = PROBE_TIMEOUT_MS
+            connection.readTimeout = PROBE_TIMEOUT_MS
+            connection.doOutput = true
+            connection.instanceFollowRedirects = false
+            connection.setFixedLengthStreamingMode(payload.size)
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("User-Agent", ANDROID_USER_AGENT)
+            connection.setRequestProperty("X-Goog-Api-Format-Version", "1")
+            connection.setRequestProperty("X-Youtube-Client-Name", "3")
+            connection.setRequestProperty("X-Youtube-Client-Version", ANDROID_CLIENT_VERSION)
+            connection.setRequestProperty("Origin", "https://www.youtube.com")
+            connection.setRequestProperty("Referer", "https://www.youtube.com/")
+            connection.outputStream.use { it.write(payload) }
+
+            val code = connection.responseCode
+            val stream = if (code >= 400) connection.errorStream else connection.inputStream
+            val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) throw Exception("HTTP $code: ${text.take(300)}")
+            return text
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Extrae fuentes reproducibles de un JSONArray de `streamingData` (solo URLs sin cifrar). */
+    private fun readFormats(array: JSONArray?, audio: Boolean): List<Streamable.Source.Http> {
+        if (array == null) return emptyList()
+        val sources = mutableListOf<Streamable.Source.Http>()
+        for (i in 0 until array.length()) {
+            val format = array.optJSONObject(i) ?: continue
+            val url = format.optString("url") ?: ""
+            if (url.isEmpty()) continue // signatureCipher: el cliente ANDROID no deberia darlo
+            val mime = (format.optString("mimeType") ?: "").substringBefore(";").trim()
+            val isAudio = mime.startsWith("audio")
+            if (isAudio != audio) continue
+
+            val quality = if (audio) {
+                val bps = maxOf(format.optInt("averageBitrate"), format.optInt("bitrate"))
+                if (bps > 0) bps / 1000 else 128
+            } else {
+                format.optInt("height")
+            }
+            val title = if (audio) {
+                "Audio - $mime - ${quality}kbps"
+            } else {
+                "Video - $mime - ${quality}p"
+            }
+            sources.add(sourceOf(url, quality, title))
+        }
+        return sources
+    }
+
+    private suspend fun tryAndroidClient(videoId: String, preferVideos: Boolean): ExtractionResult {
+        return try {
+            println("CodeBeat: InnerTube ANDROID para video ID: $videoId (preferVideos=$preferVideos)")
+            val text = withContext(Dispatchers.IO) { postAndroidPlayer(videoId) }
+            val root = JSONObject(text)
+
+            val playability = root.optJSONObject("playabilityStatus")
+            val status = playability?.optString("status") ?: ""
+            if (status.isNotEmpty() && status != "OK") {
+                val reason = (playability?.optString("reason") ?: "").ifEmpty { status }
+                return ExtractionResult.Error("status=$status ($reason)")
+            }
+
+            val streaming = root.optJSONObject("streamingData")
+                ?: return ExtractionResult.Error("sin streamingData (status=${status.ifEmpty {"?"}})")
+
+            if (preferVideos) {
+                val muxed = readFormats(streaming.optJSONArray("formats"), audio = false)
+                if (muxed.isNotEmpty()) return finalize(muxed, "ANDROID (muxed)")
+                println("CodeBeat: ANDROID sin formatos muxed, usando audio")
+            }
+
+            val audio = readFormats(streaming.optJSONArray("adaptiveFormats"), audio = true)
+            if (audio.isEmpty()) return ExtractionResult.Error("0 fuentes de audio en streamingData")
+            finalize(audio, "ANDROID")
+        } catch (e: Exception) {
+            println("CodeBeat: ANDROID fallo: ${e.message}")
+            ExtractionResult.Error(e.message ?: "error inesperado")
+        }
+    }
+
     private suspend fun finalize(
         sources: List<Streamable.Source.Http>,
         label: String
@@ -163,18 +289,29 @@ class YouTubeStreamResolver(
         }
     }
     
-   //Three-tier fallback strategy
-   //CodeBeat: si el usuario inicio sesion con Google, se intentan PRIMERO las rutas
-   //autenticadas (YtmKt y YouTube Music API) porque YouTube exige PO token/anti-bot y
-   //la sesion autenticada reduce muchisimo los errores 403. Luego se conserva el orden
-   //original (RealNewPipe -> YtmKt -> YouTube Music API) como respaldo.
+   //Fallback strategy CodeBeat
+   //CodeBeat: PRIMERO la ruta `InnerTube ANDROID`, que no exige PO token GVS y entrega
+   //URLs sin cifrar (las demas rutas dan 403/400 desde 2026). Si el usuario inicio
+   //sesion con Google, despues se intentan las rutas autenticadas (YtmKt y YouTube
+   //Music API). Al final se conserva el orden original (RealNewPipe -> YtmKt ->
+   //YouTube Music API) como ultimo respaldo.
 
     private suspend fun resolveStreamableInternal(videoId: String, preferVideos: Boolean): Streamable.Media {
         val errorReasons = mutableListOf<String>()
         val isLoggedIn = api.userAuthState != null
 
+        // CodeBeat: ruta principal (no necesita sesion ni PO token)
+        println("CodeBeat: probando InnerTube ANDROID para video ID: $videoId")
+        val androidResult = tryAndroidClient(videoId, preferVideos)
+        if (androidResult is ExtractionResult.Success) {
+            println("CodeBeat: exito con InnerTube ANDROID")
+            return androidResult.media
+        } else if (androidResult is ExtractionResult.Error) {
+            errorReasons.add("InnerTube ANDROID: ${androidResult.reason}")
+        }
+
         if (isLoggedIn) {
-            println("CodeBeat: sesion autenticada detectada, probando YtmKt primero para video ID: $videoId")
+            println("CodeBeat: sesion autenticada detectada, probando rutas autenticadas para video ID: $videoId")
             val ytmKtAuthResult = tryYtmKtEndpoint(videoId, preferVideos)
             if (ytmKtAuthResult is ExtractionResult.Success) {
                 println("CodeBeat: exito con YtmKt (autenticado)")
@@ -285,16 +422,18 @@ class YouTubeStreamResolver(
             )
             
             if (streamsResult.isFailure) {
-                println("RealNewPipe Failed to get audio streams: ${streamsResult.exceptionOrNull()?.message}")
-                return ExtractionResult.Failed
+                val detail = streamsResult.exceptionOrNull()?.message ?: "sin detalle"
+                println("RealNewPipe Failed to get audio streams: $detail")
+                // Se reporta (antes era ExtractionResult.Failed y desaparecia del error)
+                return ExtractionResult.Error("extraccion: $detail")
             }
-            
+
             val (_, audioFormats) = streamsResult.getOrThrow()
             println("RealNewPipe Got ${audioFormats.size} audio streams")
-            
+
             if (audioFormats.isEmpty()) {
                 println("RealNewPipe No audio streams available")
-                return ExtractionResult.Failed
+                return ExtractionResult.Error("extraccion: 0 fuentes de audio en la pagina")
             }
             
             val audioSources = audioFormats.map { format ->

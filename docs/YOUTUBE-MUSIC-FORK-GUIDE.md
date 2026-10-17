@@ -109,29 +109,65 @@ llevó a cabo (borra la extension e importa de nuevo).
 > Espera ~30 min tras publicar una release: el backend cachea la resolucion
 > del `.eapk` (`ECHO_EXTENSIONS_ASSET_TTL_MS`).
 
-## Nota sobre el 403
+## Nota sobre el 403 — causa raiz (build `cb-9+`)
 
-**Causa raiz encontrada y corregida (build `cb-8+`).** El fallo no estaba en
-la resolucion de la URL: el reproductor la pedia **sin la cabecera `Range`**.
+**El fallo no era ni la URL ni las cabeceras: era un PO token.**
 
-En Media3, `DefaultHttpDataSource` calcula el `Range` con
-`HttpUtil.buildRangeRequestHeader(position, length)`, que devuelve **`null`**
-cuando `position == 0 && length == UNSET` (que es justo la primera petición de
-un stream progresivo). Por tanto **el reproductor nunca envía `Range` en la
-primera carga** y `googlevideo` responde **403**. El pre-flight sí lo enviaba,
-por eso "pasaba" y luego fallaba al reproducir.
+Desde 2026 YouTube exige un **PO token GVS** (Proof of Origin) para los clientes
+de InnerTube `web_music`, `ios`, `mweb`, `tv_simply`, etc. Sin ese token, las
+URLs que devuelve `/player` dan **HTTP 403** al reproducir, y la propia llamada
+`/player` del cliente `ios` devuelve **400 `Precondition check failed`**. Es
+exactamente lo que se veia en el error agregado:
 
-Fix (en `mediaHeaders()`): el extension añade `Range: bytes=0-` a las cabeceras
-de cada `Streamable.Source.Http`. Media3 lo respeta porque solo aplica su
-`Range` propio cuando `position > 0 || length != UNSET`, es decir **solo en los
-seek** (donde lo pisa con el valor correcto). No rompe el avance.
+```
+YtmKt (auth): URL bloqueada (HTTP 403)
+YouTube Music API (auth): 400 "Precondition check failed"
+```
 
-Además el pre-flight ahora replica **exactamente** la petición del reproductor
-(`HttpURLConnection`, mismas cabeceras) en vez de usar OkHttp. Si en algún
-momento vuelve a fallar, el mensaje lleva el diagnóstico `HTTP 403 [okhttp=206]`,
-lo que indicaría que el problema sería la pila HTTP (h2 de OkHttp frente a
-h1.1 de `HttpURLConnection`), no la URL.
+### La solucion: cliente InnerTube `ANDROID`
 
-Otras alternativas pendientes si el 403 volviera: subir `newpipe` en
-`gradle/libs.versions.toml` a una versión que gestione PO token, o usar
-`OkHttpDataSource` en `StreamableDataSource.Factory` de CodeBeat.
+El cliente `ANDROID` **no exige PO token** y devuelve `streamingData` con URLs
+**sin `signatureCipher`** (sin necesidad de descifrar firmas). Verificado en vivo
+contra `youtubei/v1/player` con `clientName=ANDROID` (`clientVersion=20.10.38`)
+en dos videos distintos:
+
+```
+ANDROID              status=OK   audioUrl=6  audioCipher=0  GET Range -> 206
+WEB / WEB_REMIX / ANDROID_VR / WEB_EMBEDDED / TVHTML5   -> todos bloqueados
+```
+
+Ademas las URLs aguantan las cabeceras exactas del reproductor (`Origin` y
+`Referer` de music, `Range`, User-Agent): todas las combinaciones devolvieron
+**206**.
+
+`YouTubeStreamResolver.kt` ahora arranca con `tryAndroidClient()`:
+
+1. `POST /youtubei/v1/player` con `clientName=ANDROID` (via `HttpURLConnection`,
+   sin dependencias nuevas) con `contentCheckOk`/`racyCheckOk`.
+2. `preferVideos=false` → `adaptiveFormats` de **audio**; `preferVideos=true` →
+   `formats` **muxed** (itag 18), con audio y video sincronizados.
+3. `playabilityStatus != OK` → el error reporta `status` + `reason`.
+4. Despues siguen todas las demas rutas como respaldo (cero regresion): sesion
+   Google → YtmKt → YouTube Music API → RealNewPipe → YtmKt → YouTube Music API.
+
+### Cambios de apoyo (cb-8)
+
+- **`Range: bytes=0-`** en `mediaHeaders()`. `DefaultHttpDataSource` calcula su
+  propio `Range` con `HttpUtil.buildRangeRequestHeader(position, length)`, que
+  devuelve `null` si `position==0 && length==UNSET`, asi que la primera carga se
+  hacia **sin Range**. Media3 solo lo pisa en los seeks, no rompe el avance.
+- El pre-flight es una **replica exacta** del reproductor (`HttpURLConnection`,
+  mismas cabeceras) en vez de OkHttp, y anade `[okhttp=...]` al error si OkHttp
+  hubiera aceptado la misma URL (diagnostico de pila HTTP).
+- `RealNewPipe` ya no se traga en silencio: antes devolvia
+  `ExtractionResult.Failed`, que no se reportaba y desaparecia del error
+  agregado; ahora devuelve `Error` con el motivo real.
+
+### Alternativas pendientes
+
+Si en algun momento `ANDROID` pidiera PO token: implementar un proveedor de PO
+tokens (BgUtils / botguard). La tabla vigente de yt-dlp (jul-2026) marca
+`web_embedded` y `tv` como "no requerido", pero con limitaciones: `web_embedded`
+solo sirve para videos incrustables y `tv` entrega formatos DRM si no se pasan
+cookies. Subir `newpipe` no sirve: el fork ya esta en v0.26.5, la ultima
+version publicada (ago-2026).
