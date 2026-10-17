@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">wilson360-labs.vercel.app</domain>
-    </domain-config>
-    <!-- Los SDKs de terceros usan HTTPS. El cleartext del base-config se
-         mantiene porque algunas integraciones del ecosistema lo requieren;
-         revisar antes de endurecer. -->
+    <!-- base-config unico (sin domain-config): en Android 15+ la presencia de
+         domain-config obliga a usar checkServerTrusted(X509[], String, String)
+         (hostname-aware) en todos los clientes TLS (Ktor/OkHttp de las
+         extensiones), que llamaban a la version de 2 args y fallaban con
+         CertificateException. Sin domain-config, la version de 2 args vuelve
+         a funcionar. El cleartext se mantiene en base-config por compat. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
