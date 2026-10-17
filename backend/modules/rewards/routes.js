@@ -60,6 +60,15 @@ const spendLimiter = rateLimit({
   keyGenerator: (req) => (req.authUser && req.authUser.id) || clientIp(req),
 });
 
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 90,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Demasiadas solicitudes.' },
+  keyGenerator: (req) => (req.authUser && req.authUser.id) || clientIp(req),
+});
+
 // ─────────────────────────────────────────────────────────────────
 //  GET /config — el front sabe si las recompensas están activas
 // ─────────────────────────────────────────────────────────────────
