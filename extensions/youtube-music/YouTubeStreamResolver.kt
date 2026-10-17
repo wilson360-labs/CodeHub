@@ -41,6 +41,7 @@ class YouTubeStreamResolver(
                     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
         private const val REFERER = "https://music.youtube.com/"
         private const val PROBE_LIMIT = 8
+        private const val PROBE_TIMEOUT_MS = 15_000
 
         private val probeClient by lazy {
             okhttp3.OkHttpClient.Builder()
@@ -51,12 +52,21 @@ class YouTubeStreamResolver(
         }
     }
 
-    /** Cabeceras que se envian tanto en la comprobacion como en la reproduccion. */
+    /**
+     * Cabeceras que se envian tanto en la comprobacion como en la reproduccion.
+     *
+     * `Range: bytes=0-` es imprescindible: `DefaultHttpDataSource` solo calcula
+     * su propio Range si `position > 0 || length != UNSET` (`HttpUtil.buildRangeRequestHeader`
+     * devuelve null con `0`/`UNSET`), es decir que en la primera peticion el
+     * reproductor NO envia Range y YouTube responde 403. Al mandarlo aqui, Media3
+     * lo respeta y solo lo pisa en los seeks (donde es el correcto).
+     */
     private fun mediaHeaders(): Map<String, String> {
         val headers = mutableMapOf(
             "User-Agent" to USER_AGENT,
             "Referer" to REFERER,
-            "Origin" to "https://music.youtube.com"
+            "Origin" to "https://music.youtube.com",
+            "Range" to "bytes=0-"
         )
         runCatching {
             api.userAuthState?.headers?.forEach { name, values ->
@@ -74,6 +84,31 @@ class YouTubeStreamResolver(
             title = title
         )
 
+    /**
+     * Replica EXACTA de la peticion que hace el reproductor:
+     * `HttpURLConnection` (no OkHttp) con las mismas cabeceras, incluido el
+     * `Range` que envia `DefaultHttpDataSource`. Si esto pasa, el reproductor
+     * puede reproducir; si falla, fallara igual.
+     */
+    private fun probePlayerRequest(url: String, headers: Map<String, String>): Int {
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        try {
+            connection.connectTimeout = PROBE_TIMEOUT_MS
+            connection.readTimeout = PROBE_TIMEOUT_MS
+            connection.instanceFollowRedirects = true
+            headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
+            return connection.responseCode
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun probeOkHttp(url: String, headers: Map<String, String>): Int {
+        val builder = okhttp3.Request.Builder().url(url)
+        headers.forEach { (key, value) -> builder.header(key, value) }
+        return probeClient.newCall(builder.build()).execute().use { it.code }
+    }
+
     /** Devuelve (fuentes ok, motivos de fallo). Solo 401/403 cuentan como fallo. */
     private fun probeSources(
         sources: List<Streamable.Source.Http>
@@ -82,16 +117,18 @@ class YouTubeStreamResolver(
         val working = mutableListOf<Streamable.Source.Http>()
         val failed = mutableListOf<String>()
         for (source in sources.take(PROBE_LIMIT)) {
-            val code = runCatching {
-                val builder = okhttp3.Request.Builder().url(source.request.url)
-                headers.forEach { (key, value) -> builder.header(key, value) }
-                builder.header("Range", "bytes=0-1")
-                probeClient.newCall(builder.build()).execute().use { it.code }
-            }
-            val httpCode = code.getOrNull()
+            val url = source.request.url
+            val result = runCatching { probePlayerRequest(url, headers) }
+            val code = result.getOrNull()
             when {
-                httpCode == null -> failed.add("red: ${code.exceptionOrNull()?.message ?: "error"}")
-                httpCode == 401 || httpCode == 403 -> failed.add("HTTP $httpCode (bloqueada)")
+                code == null -> failed.add("red: ${result.exceptionOrNull()?.message ?: "error"}")
+                code == 401 || code == 403 -> {
+                    // Diagnostico: si OkHttp acepta la misma URL, el problema no es la
+                    // URL sino la pila HTTP (h2 de OkHttp frente a h1.1 de HttpURLConnection).
+                    val alt = runCatching { probeOkHttp(url, headers) }.getOrNull()
+                    val altTxt = if (alt != null && alt < 400) " [okhttp=$alt]" else ""
+                    failed.add("HTTP $code$altTxt")
+                }
                 else -> working.add(source)
             }
         }

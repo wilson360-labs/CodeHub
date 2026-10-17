@@ -111,6 +111,27 @@ llevó a cabo (borra la extension e importa de nuevo).
 
 ## Nota sobre el 403
 
-Si el 403 persiste incluso autenticado, es que NewPipeExtractor necesita un
-PO token explicito. Alternativas: subir `newpipe` en `gradle/libs.versions.toml`
-del fork a una version mas nueva que maneje PO tokens, o esperar el fix upstream.
+**Causa raiz encontrada y corregida (build `cb-8+`).** El fallo no estaba en
+la resolucion de la URL: el reproductor la pedia **sin la cabecera `Range`**.
+
+En Media3, `DefaultHttpDataSource` calcula el `Range` con
+`HttpUtil.buildRangeRequestHeader(position, length)`, que devuelve **`null`**
+cuando `position == 0 && length == UNSET` (que es justo la primera petición de
+un stream progresivo). Por tanto **el reproductor nunca envía `Range` en la
+primera carga** y `googlevideo` responde **403**. El pre-flight sí lo enviaba,
+por eso "pasaba" y luego fallaba al reproducir.
+
+Fix (en `mediaHeaders()`): el extension añade `Range: bytes=0-` a las cabeceras
+de cada `Streamable.Source.Http`. Media3 lo respeta porque solo aplica su
+`Range` propio cuando `position > 0 || length != UNSET`, es decir **solo en los
+seek** (donde lo pisa con el valor correcto). No rompe el avance.
+
+Además el pre-flight ahora replica **exactamente** la petición del reproductor
+(`HttpURLConnection`, mismas cabeceras) en vez de usar OkHttp. Si en algún
+momento vuelve a fallar, el mensaje lleva el diagnóstico `HTTP 403 [okhttp=206]`,
+lo que indicaría que el problema sería la pila HTTP (h2 de OkHttp frente a
+h1.1 de `HttpURLConnection`), no la URL.
+
+Otras alternativas pendientes si el 403 volviera: subir `newpipe` en
+`gradle/libs.versions.toml` a una versión que gestione PO token, o usar
+`OkHttpDataSource` en `StreamableDataSource.Factory` de CodeBeat.
