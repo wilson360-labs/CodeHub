@@ -6,6 +6,9 @@ import dev.brahmkshatriya.echo.common.settings.Settings
 import dev.brahmkshatriya.echo.extension.RealNewPipeVideoFormatsEndpoint
 import dev.brahmkshatriya.echo.extension.utils.RetryUtils
 import dev.toastbits.ytmkt.impl.youtubei.YoutubeiApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 
 class YouTubeStreamResolver(
@@ -22,6 +25,94 @@ class YouTubeStreamResolver(
     
     private val maxVideoQuality: Int
         get() = settings.getString("video_quality")?.toIntOrNull() ?: 480  
+
+    // ------------------------------------------------------------------
+    // CodeBeat: verificacion previa de URLs (pre-flight)
+    //
+    // YouTube devuelve HTTP 403 en la reproduccion cuando la URL no esta
+    // autorizada (sesion/anti-bot). Antes de entregar las fuentes al
+    // reproductor se comprueba cada URL; se descartan las que dan 401/403
+    // y, si una ruta completa falla, se pasa a la siguiente.
+    // ------------------------------------------------------------------
+
+    companion object {
+        private const val USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+        private const val REFERER = "https://music.youtube.com/"
+        private const val PROBE_LIMIT = 8
+
+        private val probeClient by lazy {
+            okhttp3.OkHttpClient.Builder()
+                .connectTimeout(15, TimeUnit.SECONDS)
+                .readTimeout(15, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build()
+        }
+    }
+
+    /** Cabeceras que se envian tanto en la comprobacion como en la reproduccion. */
+    private fun mediaHeaders(): Map<String, String> {
+        val headers = mutableMapOf(
+            "User-Agent" to USER_AGENT,
+            "Referer" to REFERER,
+            "Origin" to "https://music.youtube.com"
+        )
+        runCatching {
+            api.userAuthState?.headers?.forEach { name, values ->
+                if (values.isNotEmpty()) headers[name] = values.joinToString("; ")
+            }
+        }
+        return headers
+    }
+
+    private fun sourceOf(url: String, bitrateKbps: Int, title: String): Streamable.Source.Http =
+        Streamable.Source.Http(
+            request = NetworkRequest(url = url, headers = mediaHeaders()),
+            type = Streamable.SourceType.Progressive,
+            quality = bitrateKbps,
+            title = title
+        )
+
+    /** Devuelve (fuentes ok, motivos de fallo). Solo 401/403 cuentan como fallo. */
+    private fun probeSources(
+        sources: List<Streamable.Source.Http>
+    ): Pair<List<Streamable.Source.Http>, List<String>> {
+        val headers = mediaHeaders()
+        val working = mutableListOf<Streamable.Source.Http>()
+        val failed = mutableListOf<String>()
+        for (source in sources.take(PROBE_LIMIT)) {
+            val code = runCatching {
+                val builder = okhttp3.Request.Builder().url(source.request.url)
+                headers.forEach { (key, value) -> builder.header(key, value) }
+                builder.header("Range", "bytes=0-1")
+                probeClient.newCall(builder.build()).execute().use { it.code }
+            }
+            val httpCode = code.getOrNull()
+            when {
+                httpCode == null -> failed.add("red: ${code.exceptionOrNull()?.message ?: "error"}")
+                httpCode == 401 || httpCode == 403 -> failed.add("HTTP $httpCode (bloqueada)")
+                else -> working.add(source)
+            }
+        }
+        return working to failed
+    }
+
+    private suspend fun finalize(
+        sources: List<Streamable.Source.Http>,
+        label: String
+    ): ExtractionResult {
+        if (sources.isEmpty()) return ExtractionResult.Error("$label: sin fuentes")
+        val (working, failed) = withContext(Dispatchers.IO) { probeSources(sources) }
+        return if (working.isNotEmpty()) {
+            println("CodeBeat: $label OK -> ${working.size}/${sources.size} URLs reproducibles")
+            ExtractionResult.Success(Streamable.Media.Server(working, merged = false))
+        } else {
+            val detail = failed.distinct().joinToString("; ").ifEmpty { "sin detalle" }
+            println("CodeBeat: $label FALLO -> $detail")
+            ExtractionResult.Error("$label: URL bloqueada ($detail)")
+        }
+    }
 
     suspend fun resolveStreamable(videoId: String, preferVideos: Boolean): Streamable.Media {
         println("Loading streamable media for video ID: $videoId")
@@ -139,16 +230,11 @@ class YouTubeStreamResolver(
                     } else {
                         val muxedSources = muxedFormats.map { format ->
                             val qualityKbps = if (format.bitrate > 0) format.bitrate / 1000 else 0
-                            Streamable.Source.Http(
-                                request = NetworkRequest(url = format.url!!),
-                                type = Streamable.SourceType.Progressive,
-                                quality = qualityKbps,
-                                title = format.mimeType
-                            )
+                            sourceOf(format.url!!, qualityKbps, format.mimeType)
                         }
 
                         println("RealNewPipe Returning ${muxedSources.size} muxed video+audio sources (instant playback, perfect sync)")
-                        return ExtractionResult.Success(Streamable.Media.Server(muxedSources, merged = false))
+                        return finalize(muxedSources, "RealNewPipe (muxed)")
                     }
                 } else {
                     println("RealNewPipe Muxed streams failed: ${muxedResult.exceptionOrNull()?.message}")
@@ -176,16 +262,11 @@ class YouTubeStreamResolver(
             
             val audioSources = audioFormats.map { format ->
                 val bitrateKbps = if (format.bitrate > 0) format.bitrate / 1000 else 0
-                Streamable.Source.Http(
-                    request = NetworkRequest(url = format.url!!),
-                    type = Streamable.SourceType.Progressive,
-                    quality = bitrateKbps,
-                    title = "Audio - ${format.mimeType} - ${bitrateKbps}kbps"
-                )
+                sourceOf(format.url!!, bitrateKbps, "Audio - ${format.mimeType} - ${bitrateKbps}kbps")
             }
             
             println("RealNewPipe Returning ${audioSources.size} audio-only sources (instant playback)")
-            return ExtractionResult.Success(Streamable.Media.Server(audioSources, merged = false))
+            return finalize(audioSources, "RealNewPipe")
         } catch (e: Exception) {
             println("RealNewPipe Exception: ${e.message}")
             e.printStackTrace()
@@ -228,16 +309,12 @@ class YouTubeStreamResolver(
                     if (muxedFormats.isNotEmpty()) {
                         val muxedSources = muxedFormats.map { format ->
                             val qualityKbps = if (format.bitrate > 0) format.bitrate / 1000 else 0
-                            Streamable.Source.Http(
-                                request = NetworkRequest(url = format.url!!),
-                                type = Streamable.SourceType.Progressive,
-                                quality = qualityKbps,
-                                title = format.mimeType
-                            )
+                            sourceOf(format.url!!, qualityKbps, format.mimeType)
                         }
                         
                         println("YtmKt: Returning ${muxedSources.size} muxed video+audio sources")
-                        return ExtractionResult.Success(Streamable.Media.Server(muxedSources, merged = false))
+                        val muxedFinal = finalize(muxedSources, "YtmKt (muxed)")
+                        if (muxedFinal is ExtractionResult.Success) return muxedFinal
                     }
                 }
                 
@@ -262,16 +339,11 @@ class YouTubeStreamResolver(
             
             val audioSources = audioFormats.map { format ->
                 val bitrateKbps = if (format.bitrate > 0) format.bitrate / 1000 else 0
-                Streamable.Source.Http(
-                    request = NetworkRequest(url = format.url!!),
-                    type = Streamable.SourceType.Progressive,
-                    quality = bitrateKbps,
-                    title = "Audio - ${format.mimeType} - ${bitrateKbps}kbps"
-                )
+                sourceOf(format.url!!, bitrateKbps, "Audio - ${format.mimeType} - ${bitrateKbps}kbps")
             }
             
             println("YtmKt Returning ${audioSources.size} audio-only sources")
-            return ExtractionResult.Success(Streamable.Media.Server(audioSources, merged = false))
+            return finalize(audioSources, "YtmKt")
         } catch (e: Exception) {
             println("YtmKt: Exception: ${e.message}")
             e.printStackTrace()
@@ -326,16 +398,15 @@ class YouTubeStreamResolver(
             
             val audioSources = audioFormats.map { format ->
                 val bitrateKbps = if (format.bitrate > 0) format.bitrate / 1000 else 128
-                Streamable.Source.Http(
-                    request = NetworkRequest(url = format.url!!),
-                    type = Streamable.SourceType.Progressive,
-                    quality = bitrateKbps,
-                    title = "Audio - ${format.mimeType}${if (format.bitrate > 0) " - ${bitrateKbps}kbps" else ""}"
+                sourceOf(
+                    format.url!!,
+                    bitrateKbps,
+                    "Audio - ${format.mimeType}${if (format.bitrate > 0) " - ${bitrateKbps}kbps" else ""}"
                 )
             }
             
             println("Successfully loaded streamable media using YouTube Music API with ${audioSources.size} quality options")
-            return ExtractionResult.Success(Streamable.Media.Server(audioSources, merged = false))
+            return finalize(audioSources, "YouTube Music API")
         } catch (e: Exception) {
             println("YouTube Music API also failed: ${e.message}")
             e.printStackTrace()

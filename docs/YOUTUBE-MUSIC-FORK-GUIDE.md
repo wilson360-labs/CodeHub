@@ -30,11 +30,22 @@ suficiente para instalar el extension desde CodeBeat.
 `extensions/youtube-music/YouTubeStreamResolver.kt` sobreescribe
 `ext/src/main/java/dev/brahmkshatriya/echo/extension/streaming/YouTubeStreamResolver.kt`.
 
-Cambio clave en `resolveStreamableInternal`: si `api.userAuthState != null`
-(sesion de Google iniciada), se prueban primero las rutas autenticadas
-(`tryYtmKtEndpoint` → `tryYouTubeMusicApi`) y luego se conserva el orden
-original (`RealNewPipe` → `YtmKt` → `YouTube Music API`) como respaldo.
-Esto reduce mucho los errores HTTP 403 de YouTube (PO token / anti-bot).
+Cambios clave:
+
+1. **Orden por autenticacion** en `resolveStreamableInternal`: si
+   `api.userAuthState != null` (sesion de Google iniciada), se prueban primero
+   las rutas autenticadas (`tryYtmKtEndpoint` → `tryYouTubeMusicApi`) y luego
+   se conserva el orden original (`RealNewPipe` → `YtmKt` → `YouTube Music API`).
+
+2. **Cabeceras en la reproduccion**: cada `Streamable.Source.Http` lleva
+   `User-Agent`, `Referer`, `Origin` y, si hay sesion, la `Cookie` y
+   `Authorization` de `api.userAuthState`. Sin cabeceras YouTube responde 403.
+
+3. **Pre-flight (verificacion previa)**: antes de entregar las fuentes al
+   reproductor se hace un `GET` con `Range: bytes=0-1` a cada URL. Las que
+   responden 401/403 se descartan; si una ruta entera queda sin URLs validas,
+   se pasa a la siguiente ruta. Si todas fallan, el error del reproductor
+   indica exactamente que ruta y que codigo HTTP fallo.
 
 Para cambiar el parche: edita `extensions/youtube-music/YouTubeStreamResolver.kt`
 en CodeHub, commit y vuelve a correr el workflow.
