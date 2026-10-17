@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-10-17T03:50:29.581Z",
+  "generatedAt": "2026-10-17T04:07:29.658Z",
   "bundles": {
-    "js/admin-hub.js": "assets/js/admin-hub.49be778e50.min.js",
+    "js/admin-hub.js": "assets/js/admin-hub.ea5dfb60f2.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
     "js/bug-reporter.js": "assets/js/bug-reporter.fa420fbbab.min.js",
     "js/ch-geo.js": "assets/js/ch-geo.5216946b16.min.js",
