@@ -72,7 +72,13 @@ class ExceptionFragment : Fragment() {
                 WindowManager.LayoutParams.FLAG_SECURE
             )
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@run
-            registerScreenCaptureCallback(mainExecutor, screenCaptureCallback)
+            try {
+                registerScreenCaptureCallback(mainExecutor, screenCaptureCallback)
+            } catch (e: SecurityException) {
+                // El permiso DETECT_SCREEN_CAPTURE no está concedido en este
+                // dispositivo/ROM: se omite el callback (la copia manual sigue
+                // disponible vía el botón).
+            }
         }
     }
 
@@ -95,7 +101,11 @@ class ExceptionFragment : Fragment() {
         requireActivity().run {
             window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@run
-            unregisterScreenCaptureCallback(screenCaptureCallback)
+            try {
+                unregisterScreenCaptureCallback(screenCaptureCallback)
+            } catch (e: Exception) {
+                // Ignorar: el callback pudo no haberse registrado.
+            }
         }
     }
 }
