@@ -160,5 +160,23 @@
     "iconUrl": "https://i.imgur.com/Lv07pqy.png",
     "url": "https://github.com/rebelonion/echo-lyrics-translator",
     "updateUrl": "https://api.github.com/repos/rebelonion/echo-lyrics-translator/releases/latest"
+  },
+  {
+    "id": "tidal",
+    "type": "music",
+    "name": "Tidal",
+    "subtitle": "Reproduce musica de Tidal en CodeBeat",
+    "iconUrl": "https://tidal.com/favicon.ico",
+    "url": "https://tidal.com",
+    "updateUrl": "https://api.github.com/repos/n0201/echo-tidal-extension/releases/latest"
+  },
+  {
+    "id": "echo_combine",
+    "type": "music",
+    "name": "Combine",
+    "subtitle": "Combina metadatos y audio de varias extensiones en CodeBeat",
+    "iconUrl": "https://files.catbox.moe/li52rq.jpg",
+    "url": "https://github.com/dutixlf/echo-combine-extension",
+    "updateUrl": "https://api.github.com/repos/dutixlf/echo-combine-extension/releases/latest"
   }
 ]
