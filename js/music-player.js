@@ -421,6 +421,13 @@
   function addStream() {
     var v = (refs.stream.value || '').trim();
     if (!v) { setStatus('Escribe una URL de streaming.'); return; }
+    // YouTube no se puede reproducir directamente (su audio requiere un
+    // extractor/proxy que no está en el navegador). Avisamos y sugerimos
+    // CodeBeat, que sí maneja YouTube Music vía extensiones.
+    if (/youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts\//i.test(v)) {
+      setStatus('YouTube no se reproduce aquí. Usa CodeBeat (🔥) para YouTube Music.');
+      return;
+    }
     queue.push(makeTrack(deriveName(v), v, false, 0, ''));
     setTrack(queue.length - 1, false);
     refs.stream.value = '';
