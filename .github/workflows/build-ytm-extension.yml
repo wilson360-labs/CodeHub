@@ -60,6 +60,22 @@ jobs:
           echo "APK_NAME=youtube-music-codebeat.eapk" >> $GITHUB_ENV
           chmod +x ./gradlew
 
+      - name: Apply CodeBeat patch (fallback autenticado)
+        working-directory: ext
+        run: |
+          set -euo pipefail
+          PATCHED="$GITHUB_WORKSPACE/codehub/extensions/youtube-music/YouTubeStreamResolver.kt"
+          test -f "$PATCHED"
+          TARGET=$(find . -type f -name 'YouTubeStreamResolver.kt' -path '*streaming*' | head -n 1)
+          if [ -z "$TARGET" ]; then
+            TARGET=$(find . -type f -name 'YouTubeStreamResolver.kt' | head -n 1)
+          fi
+          test -n "$TARGET"
+          echo "Parcheando: $TARGET"
+          cp "$PATCHED" "$TARGET"
+          grep -q 'CodeBeat: sesion autenticada' "$TARGET"
+          echo "Parche aplicado OK ($(wc -l < "$TARGET") lineas)"
+
       - name: Build with Gradle
         working-directory: ext
         run: |
