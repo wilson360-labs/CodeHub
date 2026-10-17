@@ -1,0 +1,60 @@
+name: Build YouTube Music Extension (Echo)
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'Repo del fork (owner/name)'
+        required: true
+        default: 'abhishekkchoudharyy/Eco-Youtube_Music'
+      ref:
+        description: 'Branch o tag a compilar'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build extension APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ github.event.inputs.repo }}
+          ref: ${{ github.event.inputs.ref }}
+          path: ext
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Make gradlew executable
+        run: chmod +x ext/gradlew
+
+      - name: Build extension
+        working-directory: ext
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Find APK
+        id: apk
+        run: |
+          APK=$(find ext -name '*.apk' -path '*release*' | head -1)
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+          echo "Built: $APK"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ytm-${{ github.run_number }}
+          name: YouTube Music Extension (CodeBeat build)
+          files: ${{ steps.apk.outputs.apk }}
+          prerelease: true
