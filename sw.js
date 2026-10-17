@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.33';
+const VERSION = 'codehub-v7.34';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -119,7 +119,7 @@ const PRECACHE = [
   '/dist/assets/js/live-update-check.c7bd39bcbb.min.js',
   '/dist/assets/js/morphicons-init.a38de871fc.min.js',
   '/dist/assets/js/music-player.44377ac08d.min.js',
-  '/dist/assets/js/native-music.19189c98b9.min.js',
+  '/dist/assets/js/native-music.e236b19dad.min.js',
   '/dist/assets/js/notifications.024f9d794c.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
