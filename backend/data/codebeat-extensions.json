@@ -15,7 +15,8 @@
     "subtitle": "Reproduce musica de YouTube en CodeBeat (build CodeBeat)",
     "iconUrl": "https://music.youtube.com/img/favicon_144.png",
     "url": "https://music.youtube.com",
-    "updateUrl": "https://github.com/wilson360-labs/CodeHub/releases/download/ytm-6/youtube-music-codebeat.eapk"
+    "updateUrl": "https://github.com/wilson360-labs/CodeHub/releases/download/ytm-7/youtube-music-codebeat.eapk",
+    "version": "cb-7"
   },
   {
     "id": "soundcloud",
