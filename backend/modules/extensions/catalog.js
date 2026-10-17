@@ -142,13 +142,23 @@ function pickAsset(assets) {
 async function resolveGitHub(originUrl) {
   const m = GH_RE.exec(originUrl);
   if (!m) return null;
-  const url = `https://api.github.com/repos/${m[1]}/${m[2]}/releases/latest`;
-  const rel = await fetchJson(url);
+  const base = `https://api.github.com/repos/${m[1]}/${m[2]}`;
+  let rel = null;
+  try { rel = await fetchJson(`${base}/releases/latest`); } catch (e) { rel = null; }
+  if (!rel || !rel.assets || !pickAsset(rel.assets)) {
+    // Fallback: algunas extensiones solo publican pre-releases (p. ej. Spotify),
+    // para las que /releases/latest devuelve 404. Usamos la release mas reciente
+    // de la lista completa.
+    try {
+      const list = await fetchJson(`${base}/releases`);
+      if (Array.isArray(list) && list.length) rel = list[0];
+    } catch (e) { rel = null; }
+  }
   const asset = pickAsset(rel && rel.assets);
   if (!asset) return null;
   return {
     url: String(asset.browser_download_url),
-    version: String((rel && rel.tag_name) || ''),
+    version: String((rel && (rel.tag_name || rel.name)) || ''),
     name: String(asset.name || baseName(asset.browser_download_url)),
   };
 }

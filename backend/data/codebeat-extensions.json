@@ -183,7 +183,7 @@
     "id": "spotify",
     "type": "music",
     "name": "Spotify",
-    "subtitle": "Reproduce musica de Spotify en CodeBeat",
+    "subtitle": "Reproduce musica de Spotify en CodeBeat (experimental)",
     "iconUrl": "https://open.spotifycdn.com/cdn/images/favicon32.b64ecc03.png",
     "url": "https://open.spotify.com",
     "updateUrl": "https://raw.githubusercontent.com/wilson360-labs/CodeHub/main/backend/data/extensions/spotify.eapk"
