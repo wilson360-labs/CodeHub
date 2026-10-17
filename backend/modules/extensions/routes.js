@@ -48,8 +48,13 @@ const iconLimiter = rateLimit({
   legacyHeaders: false,
   message: { ok: false, error: 'Demasiadas solicitudes. Espera un momento.' },
 });
-
-// ── GET / — catálogo público (metadatos, sin origen) ────────────────
+const refreshLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Demasiadas solicitudes. Espera un momento.' },
+});
 router.get('/', listLimiter, async (req, res) => {
   try {
     const items = await cat.loadCatalog();
@@ -128,7 +133,7 @@ router.get('/icon/:id', iconLimiter, async (req, res) => {
 });
 
 // ── POST /refresh — invalida la caché del catálogo (admin) ──────────
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', refreshLimiter, async (req, res) => {
   const validKey = process.env.ADMIN_KEY;
   const key = req.headers['x-admin-key'];
   if (!validKey || !key || key !== validKey) return fail(res, 'No autorizado', 401);

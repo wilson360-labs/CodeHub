@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
@@ -841,22 +841,7 @@ function requireAdmin(req, res, next) {
     return res.status(401).json({ error: 'Sesión expirada o inválida' });
   }
 
-  // 3) Fallback: key directa (legacy, con ban tracking)
-  const key  = req.headers['x-admin-key'] || req.body?.adminKey;
-  const user = req.headers['x-admin-user'] || req.body?.adminUser || null;
-  const validUser = process.env.ADMIN_USER;
-
-  if (key !== validKey) {
-    const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
-    _recordAdminFail(ip, ua);
-    tgAlert('adminfail', () => {
-      return `🔐 <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(key || '').slice(0, 6)}…\nUA: ${ua}`;
-    }, { windowMs: 15000 });
-    return res.status(403).json({ error: 'Credenciales incorrectas' });
-  }
-  // Si ADMIN_USER está configurado en Render, también lo validamos
-  if (validUser && user && user !== validUser) return res.status(403).json({ error: 'Credenciales incorrectas' });
-  next();
+  return res.status(401).json({ error: 'Sesión requerida. Autentícate en /api/admin/auth.' });
 }
 
 // ── AUTH USUARIO (opcional) ────────────────────────────────────

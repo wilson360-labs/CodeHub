@@ -51,12 +51,12 @@ const tokenLimiter = rateLimit({
   message: { ok: false, error: 'Demasiadas solicitudes. Espera un momento.' },
   keyGenerator: (req) => (req.authUser && req.authUser.id) || clientIp(req),
 });
-const readLimiter = rateLimit({
+const spendLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 90,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, error: 'Demasiadas solicitudes.' },
+  message: { ok: false, error: 'Demasiadas solicitudes. Espera un momento.' },
   keyGenerator: (req) => (req.authUser && req.authUser.id) || clientIp(req),
 });
 
@@ -245,7 +245,7 @@ router.get('/history', readLimiter, async (req, res) => {
 // ─────────────────────────────────────────────────────────────────
 //  POST /spend — canjear créditos (decremento atómico)
 // ─────────────────────────────────────────────────────────────────
-router.post('/spend', async (req, res) => {
+router.post('/spend', spendLimiter, async (req, res) => {
   if (!req.authUser) return fail(res, 'No autenticado', 401);
   const amount = parseInt(req.body?.amount, 10);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) {
