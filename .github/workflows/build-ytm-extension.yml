@@ -90,6 +90,7 @@ jobs:
         env:
           RUN_NUMBER: ${{ github.run_number }}
           REPO: ${{ github.repository }}
+          DOWNLOAD_URL: https://github.com/${{ github.repository }}/releases/download/ytm-${{ github.run_number }}/youtube-music-codebeat.eapk
         run: |
           set -euo pipefail
           DOWNLOAD_URL="https://github.com/${REPO}/releases/download/ytm-${RUN_NUMBER}/youtube-music-codebeat.eapk"
