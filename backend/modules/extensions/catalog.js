@@ -85,6 +85,10 @@ function buildCatalog() {
         name: raw.name != null ? String(raw.name) : id,
         subtitle: raw.subtitle != null ? String(raw.subtitle) : undefined,
         iconUrl: raw.iconUrl != null ? String(raw.iconUrl) : undefined,
+        // Version explicita del build. Solo aplica al catalogo de CodeHub, donde
+        // el origen es un .eapk directo: sin ella, la version quedaba vacia y
+        // `hasUpdate` no podia detectar cambios entre builds.
+        version: raw.version != null ? String(raw.version) : undefined,
         // Campos privados (NUNCA se serializan al cliente):
         originUpdateUrl,
         serviceUrl: raw.url != null ? String(raw.url) : undefined,
@@ -189,9 +193,16 @@ function findApkUrlDeep(node, depth) {
   return null;
 }
 
-async function resolveGeneric(originUrl) {
+async function resolveGeneric(item) {
+  const originUrl = item.originUpdateUrl;
+  // Catalogo de CodeHub: el origen es un .eapk directo, no hay API de
+  // releases que descubra la version, asi que la toma del catalogo.
   if (isApkUrl(originUrl)) {
-    return { url: originUrl, version: '', name: baseName(originUrl) };
+    return {
+      url: originUrl,
+      version: String(item.version || ''),
+      name: baseName(originUrl),
+    };
   }
   const data = await fetchJson(originUrl);
   const url = findApkUrlDeep(data, 0);
@@ -206,7 +217,7 @@ async function resolveAsset(item, force = false) {
 
   const asset = GH_RE.test(item.originUpdateUrl)
     ? await resolveGitHub(item.originUpdateUrl)
-    : await resolveGeneric(item.originUpdateUrl);
+    : await resolveGeneric(item);
 
   if (asset) _assets.set(item.id, { at: Date.now(), asset });
   return asset;

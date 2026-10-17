@@ -62,15 +62,52 @@ extDescription=YouTube Music para CodeBeat
 extAuthor=Wilson.E
 extAuthorUrl=https://github.com/wilson360-labs
 extRepoUrl=https://github.com/wilson360-labs/Eco-Youtube_Music
-extUpdateUrl=https://api.github.com/repos/wilson360-labs/Eco-Youtube_Music/releases/latest
+extUpdateUrl=https://codehub-98s6.onrender.com/api/extensions/pkg/Youtube_music
 extIconUrl=https://music.youtube.com/img/favicon_144.png
 ```
 
-## Prueba
+> El workflow **sobreescribe** `extUpdateUrl` en cada build para que el
+> manifiesto apunte al proxy de CodeHub. Si apuntara al repo upstream de
+> Abhishek, un fallo del catalogo reinstalaria la extension **sin** el parche.
 
-- En CodeBeat, instala YouTube Music desde la lista de extensiones.
-- Inicia sesion con tu cuenta de Google (Configuracion del extension).
-- Reproduce una cancion: deberia resolverse con la sesion autenticada.
+## Version por build (importante)
+
+El fork deriva `version`/`version_code` del git del checkout
+(`v<hash7>` / commit count). Como el parche se aplica sin commitear, **todos
+los builds salian identicos** (`vba0fa73`), y por eso:
+
+- la app no podia distinguir que habia una version nueva,
+- CodeBeat mostraba siempre la misma version, asi que era imposible saber
+  que build tenias instalado.
+
+Por eso el workflow inyecta en `app/build.gradle.kts`:
+
+```properties
+verCode = System.getenv("YTM_VERSION_CODE")  ->  numero de run de Actions
+verName = System.getenv("YTM_VERSION_NAME")  ->  "cb-<run>"
+```
+
+y anade `"version": "cb-<run>"` al catalogo para que el backend pueda
+comprobar correctamente si hay actualizacion (`?check=1&from=...`).
+
+## Instalar / actualizar en el dispositivo
+
+CodeBeat **no** tiene auto-actualizacion de extensiones: hay que instalarla a
+mano. Usa en CodeBeat **Extensiones → Importar desde URL** con:
+
+```
+https://codehub-98s6.onrender.com/api/extensions/pkg/Youtube_music
+```
+
+Esa URL siempre sirve el build mas reciente (el proxy resuelve el asset),
+asi que no hay que andar copiando la release `ytm-<n>` a mano.
+
+**Verifica el build instalado**: en la lista de extensiones debe aparecer
+`YouTube Music · vcb-<n>`. Si sigue diciendo `vba0fa73`, la instalacion no se
+llevó a cabo (borra la extension e importa de nuevo).
+
+> Espera ~30 min tras publicar una release: el backend cachea la resolucion
+> del `.eapk` (`ECHO_EXTENSIONS_ASSET_TTL_MS`).
 
 ## Nota sobre el 403
 

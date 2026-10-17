@@ -60,10 +60,12 @@ jobs:
           echo "APK_NAME=youtube-music-codebeat.eapk" >> $GITHUB_ENV
           chmod +x ./gradlew
 
-      - name: Apply CodeBeat patch (fallback autenticado)
+      - name: Apply CodeBeat patch (resolver + version + fallback)
         working-directory: ext
         run: |
           set -euo pipefail
+
+          # 1) Resolver CodeBeat (cabeceras de reproduccion + pre-flight de URLs)
           PATCHED="$GITHUB_WORKSPACE/codehub/extensions/youtube-music/YouTubeStreamResolver.kt"
           test -f "$PATCHED"
           TARGET=$(find . -type f -name 'YouTubeStreamResolver.kt' -path '*streaming*' | head -n 1)
@@ -76,8 +78,53 @@ jobs:
           grep -q 'CodeBeat: sesion autenticada' "$TARGET"
           echo "Parche aplicado OK ($(wc -l < "$TARGET") lineas)"
 
+          # 2) Version unica por build. El fork deriva version/version_code del git
+          #    del checkout, que NO cambia (el parche va sin commitear), asi que
+          #    todos los builds salian identicos (vba0fa73) y la app no podia
+          #    distinguirlos. Ahora se inyectan desde el numero de run.
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path("app/build.gradle.kts")
+          s = p.read_text(encoding="utf-8")
+          before = s
+          s = s.replace(
+              'val verCode = gitCount',
+              'val verCode = System.getenv("YTM_VERSION_CODE")?.toIntOrNull() ?: gitCount')
+          s = s.replace(
+              'val verName = "v$gitHash"',
+              'val verName = System.getenv("YTM_VERSION_NAME") ?: "v$gitHash"')
+          if s == before:
+              raise SystemExit("No se pudo inyectar la version en app/build.gradle.kts")
+          p.write_text(s, encoding="utf-8")
+          PY
+          grep -q 'YTM_VERSION_NAME' app/build.gradle.kts
+
+          # 3) El "update_url" del manifiesto (fallback cuando el catalogo de
+          #    CodeHub no responde) apuntaba al repo upstream de Abhishek, lo que
+          #    reinstalaba la extension SIN el parche. Se redirige al proxy.
+          python3 - <<'PY'
+          import pathlib
+          proxy = "https://codehub-98s6.onrender.com/api/extensions/pkg/Youtube_music"
+          p = pathlib.Path("gradle.properties")
+          lines = p.read_text(encoding="utf-8").splitlines()
+          out, seen = [], False
+          for line in lines:
+              if line.startswith("extUpdateUrl="):
+                  out.append("extUpdateUrl=" + proxy); seen = True
+              else:
+                  out.append(line)
+          if not seen:
+              out.append("extUpdateUrl=" + proxy)
+          p.write_text("\n".join(out) + "\n", encoding="utf-8")
+          PY
+          grep -q 'extUpdateUrl=https://codehub-98s6.onrender.com/api/extensions/pkg/Youtube_music' gradle.properties
+          echo "Version y fallback listos (cb-${GITHUB_RUN_NUMBER})"
+
       - name: Build with Gradle
         working-directory: ext
+        env:
+          YTM_VERSION_CODE: ${{ github.run_number }}
+          YTM_VERSION_NAME: cb-${{ github.run_number }}
         run: |
           set -euo pipefail
           ./gradlew assembleDebug --stacktrace
@@ -117,9 +164,11 @@ jobs:
           with open(path, encoding="utf-8") as f:
               data = json.load(f)
           url = os.environ["DOWNLOAD_URL"]
+          version = "cb-" + os.environ["RUN_NUMBER"]
           for item in data:
               if item.get("id") == "Youtube_music":
                   item["updateUrl"] = url
+                  item["version"] = version
                   item["subtitle"] = "Reproduce musica de YouTube en CodeBeat (build CodeBeat)"
           with open(path, "w", encoding="utf-8") as f:
               json.dump(data, f, ensure_ascii=False, indent=2)
