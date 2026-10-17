@@ -148,9 +148,9 @@ public class MainActivity extends Activity {
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
-        // (Chequeo de actualización vía GitHub Releases deshabilitado: el
-        // repo es privado, la API pública no lo sirve y el diálogo de "release
-        // notes" no debía exponer el repo. La app se actualiza vía backend.)
+        // Chequeo de actualización vía GitHub Releases (tag apk-codehub-vX.Y
+        // con el APK firmado). El repo es público y la API sirve el release.
+        try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheck", t); }
 
         // Sync en 2do plano vía WorkManager (token FCM + ubicación cada 15 min).
         // Ya NO se usa Foreground Service tipo dataSync: en Android 15/16 el
