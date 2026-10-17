@@ -204,11 +204,11 @@
           '<small class="ch-nm__sub"></small>' +
         '</button>' +
         '<button type="button" class="ch-nm__btn" data-act="prev" aria-label="Anterior" title="Anterior">' +
-          '<i class="fas fa-backward-step" aria-hidden="true"></i></button>' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M18 5 L10 12 L18 19 Z M6 5 h2 v14 h-2 z"/></svg></button>' +
         '<button type="button" class="ch-nm__btn ch-nm__play" data-act="toggle" aria-label="Reproducir" title="Reproducir">' +
-          '<i class="fas fa-play" aria-hidden="true"></i></button>' +
+          '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5 L17 12 L7 19 Z"/></svg></button>' +
         '<button type="button" class="ch-nm__btn" data-act="next" aria-label="Siguiente" title="Siguiente">' +
-          '<i class="fas fa-forward-step" aria-hidden="true"></i></button>' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M6 5 L14 12 L6 19 Z M16 5 h2 v14 h-2 z"/></svg></button>' +
       '</span>';
 
     refs.title = el.querySelector('.ch-nm__title');
@@ -292,8 +292,8 @@
     refs.title.textContent = state.title || 'Pista en reproducción';
     refs.sub.textContent = state.artist || '';
     refs.play.innerHTML = state.playing
-      ? '<i class="fas fa-pause" aria-hidden="true"></i>'
-      : '<i class="fas fa-play" aria-hidden="true"></i>';
+      ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5 h3 v14 h-3 z M14 5 h3 v14 h-3 z"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5 L17 12 L7 19 Z"/></svg>';
     refs.play.setAttribute('aria-label', state.playing ? 'Pausar' : 'Reproducir');
     refs.fill.style.width = progressPct().toFixed(2) + '%';
   }
