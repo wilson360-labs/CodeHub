@@ -45,103 +45,35 @@ jobs:
       - name: Cook variables from gradle.properties
         working-directory: ext
         run: |
+          set -euo pipefail
           name=$(grep '^extName=' gradle.properties | cut -d'=' -f2)
           echo "NAME=$name Extension" >> $GITHUB_ENV
           id=$(grep '^extId=' gradle.properties | cut -d'=' -f2)
           echo "TAG=$id" >> $GITHUB_ENV
 
-      - name: Prepare Release Keystore (igual que build-apk.yml)
-        env:
-          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          KEYSTORE_SUPABASE_URL: ${{ secrets.KEYSTORE_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        shell: bash
+      - name: Make environment
         working-directory: ext
         run: |
-          KS="signing-key.jks"
-          keystore_ok=false
-
-          adopt_keystore () {
-            chmod 600 "$KS"
-            keystore_ok=true
-            echo "HAS_RELEASE_SECRETS=true" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-          }
-
-          temp_keystore () {
-            echo "Keystore temporal (debug): la compilacion completara, pero NO sera valido para actualizar."
-            rm -f "$KS"
-            keytool -genkeypair -v \
-              -keystore "$KS" \
-              -alias codehub \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass android \
-              -keypass android \
-              -dname "CN=CodeHub, OU=CI, O=CodeHub, L=Local, S=Local, C=US" >/dev/null 2>&1
-            chmod 600 "$KS"
-            echo "HAS_RELEASE_SECRETS=false" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASSWORD=android" >> "$GITHUB_ENV"
-            echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
-          }
-
-          # Fuente 1: Supabase Storage (privado)
-          if [ -n "$KEYSTORE_SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] \
-             && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "Descargando keystore desde Supabase..."
-            if curl -fsSL -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-                -o "$KS" "$KEYSTORE_SUPABASE_URL" 2>/dev/null; then
-              if keytool -certreq -alias codehub -keystore "$KS" \
-                  -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" >/dev/null 2>&1; then
-                adopt_keystore
-              else
-                rm -f "$KS"
-              fi
-            else
-              rm -f "$KS"
-            fi
-          fi
-
-          # Fuente 2: base64 persistente en secrets
-          if [ "$keystore_ok" = false ] && [ -n "$KEYSTORE_BASE64" ] \
-             && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_PASSWORD" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$KS" 2>/dev/null
-            if keytool -certreq -alias codehub -keystore "$KS" \
-                -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" >/dev/null 2>&1; then
-              adopt_keystore
-            else
-              rm -f "$KS"
-            fi
-          fi
-
-          # Fallback: keystore temporal
-          if [ "$keystore_ok" = false ]; then
-            temp_keystore
-          fi
-
-          echo "APP_PATH=app/build/${{ env.TAG }}-codebeat.eapk" >> "$GITHUB_ENV"
+          set -euo pipefail
+          version=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "VERSION=v$version" >> $GITHUB_ENV
+          echo "APK_NAME=youtube-music-codebeat.eapk" >> $GITHUB_ENV
           chmod +x ./gradlew
 
       - name: Build with Gradle
         working-directory: ext
         run: |
-          ./gradlew assembleDebug \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/ext/signing-key.jks \
-            -Pandroid.injected.signing.store.password=${{ env.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=codehub \
-            -Pandroid.injected.signing.key.password=${{ env.KEY_PASSWORD }} \
-            --stacktrace
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/${{ env.APK_NAME }}"
+          set -euo pipefail
+          ./gradlew assembleDebug --stacktrace
+          ls -la app/build/outputs/apk/debug/
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/youtube-music-codebeat.eapk"
+          test -f "$GITHUB_WORKSPACE/youtube-music-codebeat.eapk" && echo "APK listo: $(du -h "$GITHUB_WORKSPACE/youtube-music-codebeat.eapk" | cut -f1)"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ytm-extension
-          path: ${{ env.APK_NAME }}
+          path: youtube-music-codebeat.eapk
 
       - name: Create Release
         id: release
@@ -149,19 +81,18 @@ jobs:
         with:
           tag_name: ytm-${{ github.run_number }}
           name: YouTube Music Extension (CodeBeat build)
-          files: ${{ env.APK_NAME }}
+          files: youtube-music-codebeat.eapk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update CodeBeat catalog
         working-directory: codehub
         env:
-          APK_NAME: ${{ env.APK_NAME }}
           RUN_NUMBER: ${{ github.run_number }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/ytm-${RUN_NUMBER}/${APK_NAME}"
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/ytm-${RUN_NUMBER}/youtube-music-codebeat.eapk"
           echo "Updating catalog with: $DOWNLOAD_URL"
           python3 - <<'PY'
           import json, os
