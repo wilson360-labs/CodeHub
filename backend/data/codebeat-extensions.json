@@ -133,5 +133,32 @@
     "iconUrl": "https://cdn-images.dzcdn.net/images/cover/00e78b6d932527f79d2df3f4f694510b/264x264-000000-80-0-0.jpg",
     "url": "https://github.com/LuftVerbot/echo-echodown-extension",
     "updateUrl": "https://api.github.com/repos/LuftVerbot/echo-echodown-extension/releases/latest"
+  },
+  {
+    "id": "applemusic_lyrics",
+    "type": "lyrics",
+    "name": "Apple Music (Lyrics)",
+    "subtitle": "Letras de Apple Music en CodeBeat",
+    "iconUrl": "https://music.apple.com/assets/favicon/favicon-180.png",
+    "url": "https://music.apple.com",
+    "updateUrl": "https://api.github.com/repos/ancientcatz/echo-apple-music-extension/releases/latest"
+  },
+  {
+    "id": "kugou_lyrics",
+    "type": "lyrics",
+    "name": "Kugou",
+    "subtitle": "Letras con Kugou en CodeBeat",
+    "iconUrl": "https://upload.wikimedia.org/wikipedia/commons/e/e9/KuGou_app_icon.png",
+    "url": "https://www.kugou.com",
+    "updateUrl": "https://api.github.com/repos/shub39/echo-kugou-extension/releases/latest"
+  },
+  {
+    "id": "lyricstranslator",
+    "type": "lyrics",
+    "name": "Lyrics Translator",
+    "subtitle": "Traduce letras en CodeBeat",
+    "iconUrl": "https://i.imgur.com/Lv07pqy.png",
+    "url": "https://github.com/rebelonion/echo-lyrics-translator",
+    "updateUrl": "https://api.github.com/repos/rebelonion/echo-lyrics-translator/releases/latest"
   }
 ]
