@@ -162,6 +162,15 @@
     "updateUrl": "https://api.github.com/repos/rebelonion/echo-lyrics-translator/releases/latest"
   },
   {
+    "id": "tidal",
+    "type": "music",
+    "name": "Tidal",
+    "subtitle": "Reproduce musica de Tidal en CodeBeat",
+    "iconUrl": "https://resources.tidal.com/images/common/favicon/favicon-96x96.png",
+    "url": "https://tidal.com",
+    "updateUrl": "https://api.github.com/repos/brahmkshatriya/echo-tidal-extension/releases/latest"
+  },
+  {
     "id": "echo_combine",
     "type": "music",
     "name": "Combine",
