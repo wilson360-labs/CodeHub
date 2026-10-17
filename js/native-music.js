@@ -198,6 +198,7 @@
     el.hidden = true;
     el.innerHTML =
       '<span class="ch-nm__bar"><i></i></span>' +
+      '<span class="ch-nm__live" aria-live="polite" aria-atomic="true"></span>' +
       '<span class="ch-nm__row">' +
         '<button type="button" class="ch-nm__meta" data-act="open" aria-label="Abrir reproductor" title="Abrir reproductor">' +
           '<strong class="ch-nm__title"></strong>' +
@@ -215,6 +216,7 @@
     refs.sub = el.querySelector('.ch-nm__sub');
     refs.fill = el.querySelector('.ch-nm__bar i');
     refs.play = el.querySelector('.ch-nm__play');
+    refs.live = el.querySelector('.ch-nm__live');
 
     // Delegación: un solo listener para los cuatro botones.
     el.addEventListener('click', function (ev) {
@@ -295,7 +297,8 @@
       ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5 h3 v14 h-3 z M14 5 h3 v14 h-3 z"/></svg>'
       : '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M7 5 L17 12 L7 19 Z"/></svg>';
     refs.play.setAttribute('aria-label', state.playing ? 'Pausar' : 'Reproducir');
-    refs.fill.style.width = progressPct().toFixed(2) + '%';
+    if (refs.live) refs.live.textContent = (state.title || 'Pista') + (state.playing ? ' — reproduciendo' : ' — en pausa');
+    if (refs.fill) refs.fill.style.width = progressPct().toFixed(2) + '%';
   }
 
   function show() {

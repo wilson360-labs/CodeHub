@@ -96,6 +96,13 @@ html[data-vt="back"]::view-transition-new(root) {
    existe el elemento y aquí no queda nada suelto.
    Flota justo encima de #hub-dock; el offset real lo mide el JS en cada
    breakpoint, y este valor es la red de seguridad si no hay dock. */
+.ch-nm__live {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
 #chNativeMusic {
   position: fixed;
   left: 50%;
