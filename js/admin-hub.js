@@ -195,10 +195,10 @@ function previewLink(input, spanId) {
 
   if (converted !== raw) {
     // Link convertible — mostrar resultado
-    span.innerHTML = `${platformBadge}<span style="color:#00e5ff;font-size:.55rem">⚡ Convertido →</span> <span style="opacity:.6;font-size:.52rem;word-break:break-all">${converted}</span>`;
+    span.innerHTML = `${platformBadge}<span style="color:#00e5ff;font-size:.55rem">⚡ Convertido →</span> <span style="opacity:.6;font-size:.52rem;word-break:break-all">${escapeHtml(converted)}</span>`;
   } else if (info.direct === false) {
     // Plataforma sin descarga directa
-    span.innerHTML = `${platformBadge}<span style="color:var(--a);font-size:.55rem">⚠️ Sin descarga directa — el usuario verá la página de ${info.label}</span>`;
+    span.innerHTML = `${platformBadge}<span style="color:var(--a);font-size:.55rem">⚠️ Sin descarga directa — el usuario verá la página de ${escapeHtml(info.label)}</span>`;
   } else if (info.direct === true || platform) {
     // Ya es link directo o plataforma reconocida
     span.innerHTML = `${platformBadge}<span style="color:#00e676;font-size:.55rem">✅ Link directo</span>`;
@@ -929,7 +929,7 @@ async function loadGhSecrets() {
   if (!el) return;
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/secrets`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
-    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
+    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${escapeHtml((await res.json()).error || '')}</div>`; return; }
     const { secrets } = await res.json();
     if (!secrets.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin secrets configurados</div>'; return; }
     el.innerHTML = secrets.map(s => `
@@ -943,7 +943,7 @@ async function loadGhSecrets() {
         </button>
       </div>
     `).join('');
-  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${e.message}</div>`; }
+  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${escapeHtml(e.message)}</div>`; }
 }
 
 async function saveGhSecret() {
@@ -993,7 +993,7 @@ async function loadGhVariables() {
   if (!el) return;
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/variables`, { headers: { 'x-admin-session': ADMIN_SESSION || ADMIN_KEY } });
-    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${(await res.json()).error}</div>`; return; }
+    if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${escapeHtml((await res.json()).error || '')}</div>`; return; }
     const { variables } = await res.json();
     if (!variables.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.7rem">Sin variables configuradas</div>'; return; }
     el.innerHTML = variables.map(v => `
@@ -1007,7 +1007,7 @@ async function loadGhVariables() {
         </button>
       </div>
     `).join('');
-  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${e.message}</div>`; }
+  } catch (e) { el.innerHTML = `<div style="color:var(--muted);font-size:.7rem">Error: ${escapeHtml(e.message)}</div>`; }
 }
 
 async function saveGhVariable() {
@@ -2096,7 +2096,7 @@ function uploadAPK(appId, slot, input) {
   progressWrap.style.display = 'block';
 
   toast(`⬆️ ${file.name} (${sizeMB} MB) → ${destino}...`);
-  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 0% · ${sizeMB} MB → ${destino}`;
+  label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 0% · ${sizeMB} MB → ${escapeHtml(destino)}`;
   label.style.color = 'var(--a)';
 
   const formData = new FormData();
@@ -2111,7 +2111,7 @@ function uploadAPK(appId, slot, input) {
     if (!e.lengthComputable) return;
     const pct = Math.round((e.loaded / e.total) * 100);
     progressBar.style.width = pct + '%';
-    label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${pct}% · ${(e.loaded/1024/1024).toFixed(1)}/${sizeMB} MB → ${destino}`;
+    label.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${pct}% · ${(e.loaded/1024/1024).toFixed(1)}/${sizeMB} MB → ${escapeHtml(destino)}`;
   });
 
   xhr.addEventListener('load', async () => {
@@ -2880,7 +2880,7 @@ async function loadVisitors() {
     renderVisitors(_allVisitors);
     updateVisitorKPIs(_allVisitors);
   } catch (e) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ff6b6b;font-family:var(--mono)">${e.message}</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:#ff6b6b;font-family:var(--mono)">${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
