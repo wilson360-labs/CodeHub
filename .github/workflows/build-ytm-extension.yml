@@ -21,12 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Checkout CodeHub (para catalogo)
+        uses: actions/checkout@v4
+        with:
+          path: codehub
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout fork
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.inputs.repo }}
           ref: ${{ github.event.inputs.ref }}
           submodules: recursive
+          path: ext
 
       - name: Setup JDK 17
         uses: actions/setup-java@v4
@@ -36,7 +43,7 @@ jobs:
           cache: 'gradle'
 
       - name: Cook variables from gradle.properties
-        working-directory: .
+        working-directory: ext
         run: |
           name=$(grep '^extName=' gradle.properties | cut -d'=' -f2)
           echo "NAME=$name Extension" >> $GITHUB_ENV
@@ -44,29 +51,65 @@ jobs:
           echo "TAG=$id" >> $GITHUB_ENV
 
       - name: Make environment
+        working-directory: ext
         run: |
           version=$(echo ${{ github.sha }} | cut -c1-7)
           echo "VERSION=v$version" >> $GITHUB_ENV
-          echo -e "## ${{ env.NAME }}\nBuild from ${{ github.event.inputs.repo }}@${{ github.event.inputs.ref }}" > commit.txt
-          echo "APP_PATH=app/build/${{ env.TAG }}-$version.eapk" >> $GITHUB_ENV
+          echo "APK_NAME=youtube-music-codebeat.eapk" >> $GITHUB_ENV
           chmod +x ./gradlew
 
       - name: Build with Gradle
+        working-directory: ext
         run: |
           ./gradlew assembleDebug --stacktrace
-          cp app/build/outputs/apk/debug/app-debug.apk ${{ env.APP_PATH }}
+          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/${{ env.APK_NAME }}"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ytm-extension
-          path: ${{ env.APP_PATH }}
+          path: ${{ env.APK_NAME }}
 
       - name: Create Release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ytm-${{ github.run_number }}
           name: YouTube Music Extension (CodeBeat build)
-          files: ${{ env.APP_PATH }}
+          files: ${{ env.APK_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CodeBeat catalog
+        working-directory: codehub
+        env:
+          APK_NAME: ${{ env.APK_NAME }}
+          RUN_NUMBER: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/ytm-${RUN_NUMBER}/${APK_NAME}"
+          echo "Updating catalog with: $DOWNLOAD_URL"
+          python3 - <<'PY'
+          import json, os
+          path = "backend/data/codebeat-extensions.json"
+          with open(path, encoding="utf-8") as f:
+              data = json.load(f)
+          url = os.environ["DOWNLOAD_URL"]
+          for item in data:
+              if item.get("id") == "Youtube_music":
+                  item["updateUrl"] = url
+                  item["subtitle"] = "Reproduce musica de YouTube en CodeBeat (build CodeBeat)"
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/data/codebeat-extensions.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(codebeat): actualiza YouTube Music a build CodeBeat ytm-${RUN_NUMBER}"
+            git push
+          fi
