@@ -12,7 +12,7 @@
     "id": "Youtube_music",
     "type": "music",
     "name": "YouTube Music",
-    "subtitle": "Reproduce musica de YouTube en CodeBeat",
+    "subtitle": "Reproduce musica de YouTube en CodeBeat (puede fallar por bloqueo de YouTube)",
     "iconUrl": "https://music.youtube.com/img/favicon_144.png",
     "url": "https://music.youtube.com",
     "updateUrl": "https://api.github.com/repos/Abhishek890/Eco-Youtube_Music/releases/latest"
