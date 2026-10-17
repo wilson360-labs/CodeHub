@@ -1472,14 +1472,14 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
    ancho de línea neutro para que ninguna regla previa lo descoloque
    ni desborde la tarjeta en el rango móvil 380–720px. */
 #services .service-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 1.6em;
-  height: 1.6em;
-  line-height: 1;
-  margin: 0 auto 0.9rem;
-  padding: 0;
-  animation: serviceIconFloat 3s ease-in-out infinite;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 1.6em !important;
+  height: 1.6em !important;
+  line-height: 1 !important;
+  margin: 0 auto 0.9rem !important;
+  padding: 0 !important;
+  animation: serviceIconFloat 3s ease-in-out infinite !important;
   filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.4));
   position: relative;
   z-index: 1;
@@ -1493,7 +1493,7 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 /* En los grids de 2 columnas del rango móvil el icono no debe
    comprimirse ni desbordar su tarjeta compacta. */
 @media (max-width: 720px) {
-  #services .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem); display: block; text-align: center; padding: 0.15em 0; }
+  #services .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem) !important; display: inline-grid !important; place-items: center !important; width: 1.6em !important; height: 1.6em !important; padding: 0 !important; }
 }
 
 /* ── ICONOS INDEX — ajuste uniforme en WebView Android ──────────────
