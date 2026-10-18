@@ -1,5 +1,6 @@
 package dev.brahmkshatriya.echo.extension.streaming
 
+import dev.brahmkshatriya.echo.common.helpers.ClientException
 import dev.brahmkshatriya.echo.common.models.NetworkRequest
 import dev.brahmkshatriya.echo.common.models.Streamable
 import dev.brahmkshatriya.echo.common.settings.Settings
@@ -415,6 +416,20 @@ class YouTubeStreamResolver(
             errorReasons.add("YouTube Music API: ${youtubeMusicResult.reason}")
         }
         
+        // Eco-403-fix v2: si TODAS las rutas fallaron con 403/bot y no hay sesion,
+        // lo habitual es el chequeo anti-bot de YouTube ("confirm you're not a bot").
+        // En vez de un error crudo se lanza LoginRequired, y Echo muestra el boton
+        // "Login" (ExceptionUtils → openLoginException) para que el usuario complete
+        // el inicio de sesion. Solo se activa SIN sesion: con sesion los motivos
+        // reales se reportan tal cual.
+        val joined = errorReasons.joinToString("\n")
+        val botCheck = listOf("403", "bot", "sign in", "login_required")
+            .any { joined.contains(it, ignoreCase = true) }
+        if (api.userAuthState == null && botCheck) {
+            println("CodeBeat: todas las rutas dieron 403/bot sin sesion -> LoginRequired")
+            throw ClientException.LoginRequired()
+        }
+
         // All fallbacks failed
         val detailedError = if (errorReasons.isNotEmpty()) {
             "Failed to resolve streaming URLs for video $videoId:\n" + errorReasons.joinToString("\n")

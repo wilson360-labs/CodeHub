@@ -169,6 +169,12 @@ Combinados sobre la base anterior sin perder nada de lo ya verificado:
   Music API auth → RealNewPipe → YtmKt → YouTube Music API.
 - Cookies de la sesión Google solo se adjuntan a clientes **web**; los clientes
   nativos (IOS/ANDROID) no soportan cookies de cuenta.
+- **`ClientException.LoginRequired()`** (v2) — si **todas** las rutas fallan con
+  403/bot y **no hay sesión**, se lanza en vez del error crudo. Echo lo traduce a
+  `AppException.LoginRequired` y muestra el botón **"Login"**
+  (`ExceptionUtils.kt` → `openLoginException`), que abre el flujo de inicio de
+  sesión para que el usuario se loguee. Con sesión activa no se intercepta: los
+  motivos reales se reportan tal cual.
 
 ### Cambios de apoyo (cb-8)
 
