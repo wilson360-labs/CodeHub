@@ -39,10 +39,19 @@ class YouTubeStreamResolver(
     // ------------------------------------------------------------------
 
     companion object {
-        private const val USER_AGENT =
+        // UA por cliente (Eco-403-fix): googlevideo responde 403 si la User-Agent no
+        // coincide con el cliente que genero la URL. El cliente viaja en el parametro
+        // "c=" de la propia URL (verificado: &c=ANDROID en las URLs del cliente ANDROID).
+        private const val IOS_UA =
+            "com.google.ios.youtube/19.34.2 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X;)"
+        private const val ANDROID_UA =
+            "com.google.android.youtube/19.44.38 (Linux; U; Android 11) gzip"
+        private const val ANDROID_VR_UA =
+            "com.google.android.apps.youtube.vr.oculus/1.60.19 (Linux; U; Android 12L; " +
+                    "eureka-user Build/SQ3A.220605.009.A1) gzip"
+        private const val WEB_UA =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-        private const val REFERER = "https://music.youtube.com/"
+                    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         private const val PROBE_LIMIT = 8
         private const val PROBE_TIMEOUT_MS = 15_000
 
@@ -72,32 +81,48 @@ class YouTubeStreamResolver(
     }
 
     /**
-     * Cabeceras que se envian tanto en la comprobacion como en la reproduccion.
+     * Cabeceras por URL (base Eco-403-fix + aportes CodeBeat).
      *
-     * `Range: bytes=0-` es imprescindible: `DefaultHttpDataSource` solo calcula
-     * su propio Range si `position > 0 || length != UNSET` (`HttpUtil.buildRangeRequestHeader`
-     * devuelve null con `0`/`UNSET`), es decir que en la primera peticion el
-     * reproductor NO envia Range y YouTube responde 403. Al mandarlo aqui, Media3
-     * lo respeta y solo lo pisa en los seeks (donde es el correcto).
+     * 1. **UA segun el cliente** (`c=` de la URL): si no coincide con el cliente que
+     *    genero la URL, googlevideo responde 403.
+     * 2. **`Range: bytes=0-`**: `DefaultHttpDataSource` no envia Range en la primera
+     *    carga (`HttpUtil.buildRangeRequestHeader` devuelve null con `0`/`UNSET`).
+     *    Media3 solo lo pisa en los seeks, asi que no rompe el avance.
+     * 3. **Cookies de la sesion Google** solo para clientes web (los nativos IOS /
+     *    ANDROID no soportan cookies de cuenta y llegarian sucias).
      */
-    private fun mediaHeaders(): Map<String, String> {
-        val headers = mutableMapOf(
-            "User-Agent" to USER_AGENT,
-            "Referer" to REFERER,
-            "Origin" to "https://music.youtube.com",
-            "Range" to "bytes=0-"
-        )
-        runCatching {
-            api.userAuthState?.headers?.forEach { name, values ->
-                if (values.isNotEmpty()) headers[name] = values.joinToString("; ")
+    private fun headersFor(url: String): Map<String, String> {
+        val client = Regex("[?&]c=([A-Z_0-9]+)").find(url)?.groupValues?.get(1)
+        val nativeClient = client == "IOS" || client == "ANDROID" ||
+                client == "ANDROID_MUSIC" || client == "ANDROID_VR"
+
+        val headers = when (client) {
+            "IOS" -> mutableMapOf("User-Agent" to IOS_UA)
+            "ANDROID_VR" -> mutableMapOf("User-Agent" to ANDROID_VR_UA)
+            "ANDROID", "ANDROID_MUSIC" -> mutableMapOf("User-Agent" to ANDROID_UA)
+            else -> mutableMapOf(
+                "User-Agent" to WEB_UA,
+                "Origin" to "https://www.youtube.com",
+                "Referer" to "https://www.youtube.com/"
+            )
+        }
+        headers["Range"] = "bytes=0-"
+
+        if (!nativeClient) {
+            runCatching {
+                api.userAuthState?.headers?.forEach { name, values ->
+                    if (values.isNotEmpty()) headers[name] = values.joinToString("; ")
+                }
             }
         }
         return headers
     }
 
+    private fun streamRequest(url: String) = NetworkRequest(url = url, headers = headersFor(url))
+
     private fun sourceOf(url: String, bitrateKbps: Int, title: String): Streamable.Source.Http =
         Streamable.Source.Http(
-            request = NetworkRequest(url = url, headers = mediaHeaders()),
+            request = streamRequest(url),
             type = Streamable.SourceType.Progressive,
             quality = bitrateKbps,
             title = title
@@ -132,11 +157,11 @@ class YouTubeStreamResolver(
     private fun probeSources(
         sources: List<Streamable.Source.Http>
     ): Pair<List<Streamable.Source.Http>, List<String>> {
-        val headers = mediaHeaders()
         val working = mutableListOf<Streamable.Source.Http>()
         val failed = mutableListOf<String>()
         for (source in sources.take(PROBE_LIMIT)) {
             val url = source.request.url
+            val headers = source.request.headers
             val result = runCatching { probePlayerRequest(url, headers) }
             val code = result.getOrNull()
             when {
@@ -152,6 +177,28 @@ class YouTubeStreamResolver(
             }
         }
         return working to failed
+    }
+
+    /**
+     * De Eco-403-fix: descarta la ruta si el CDN rechaza la primera fuente (403),
+     * pasando a la siguiente en vez de devolver un error directo.
+     *
+     * Nota: `finalize()` ya sondea TODAS las fuentes y filtra; este es el guardia
+     * adicional de Eco-403-fix aplicado a las tres rutas originales.
+     */
+    private suspend fun isPlayable(media: Streamable.Media): Boolean {
+        val source = (media as? Streamable.Media.Server)?.sources?.firstOrNull()
+                as? Streamable.Source.Http ?: return true
+        return withContext(Dispatchers.IO) {
+            try {
+                val code = probePlayerRequest(source.request.url, source.request.headers)
+                println("Probe $code for ${source.request.url.take(80)}")
+                code in 200..299
+            } catch (e: Exception) {
+                println("Probe error: ${e.message}")
+                true // fallo de red puntual: no se descarta una ruta valida
+            }
+        }
     }
 
     /**
@@ -330,12 +377,16 @@ class YouTubeStreamResolver(
             }
         }
 
+        // ---- Base Eco-403-fix: tres rutas originales + guardia `isPlayable` ----
+
         //RealNewPipe
         println("RealNewPipe extractor for video ID: $videoId, preferVideos: $preferVideos")
         val realNewPipeResult = tryRealNewPipeExtractor(videoId, preferVideos)
-        if (realNewPipeResult is ExtractionResult.Success) {
+        if (realNewPipeResult is ExtractionResult.Success && isPlayable(realNewPipeResult.media)) {
             println("Successfully loaded streamable media using RealNewPipe extractor")
             return realNewPipeResult.media
+        } else if (realNewPipeResult is ExtractionResult.Success) {
+            errorReasons.add("RealNewPipe: CDN rechazo el stream (403)")
         } else if (realNewPipeResult is ExtractionResult.Error) {
             errorReasons.add("RealNewPipe: ${realNewPipeResult.reason}")
         }
@@ -343,9 +394,11 @@ class YouTubeStreamResolver(
         //MultipleVideoFormatsEndpoint
         println("RealNewPipe failed, trying YtmKt MultipleVideoFormatsEndpoint for video ID: $videoId")
         val ytmKtResult = tryYtmKtEndpoint(videoId, preferVideos)
-        if (ytmKtResult is ExtractionResult.Success) {
+        if (ytmKtResult is ExtractionResult.Success && isPlayable(ytmKtResult.media)) {
             println("Successfully loaded streamable media using YtmKt library")
             return ytmKtResult.media
+        } else if (ytmKtResult is ExtractionResult.Success) {
+            errorReasons.add("YtmKt: CDN rechazo el stream (403)")
         } else if (ytmKtResult is ExtractionResult.Error) {
             errorReasons.add("YtmKt: ${ytmKtResult.reason}")
         }
@@ -353,9 +406,11 @@ class YouTubeStreamResolver(
         //YouTube Music API 
         println("YtmKt failed, trying YouTube Music API for video ID: $videoId")
         val youtubeMusicResult = tryYouTubeMusicApi(videoId, preferVideos)
-        if (youtubeMusicResult is ExtractionResult.Success) {
+        if (youtubeMusicResult is ExtractionResult.Success && isPlayable(youtubeMusicResult.media)) {
             println("Successfully loaded streamable media using YouTube Music API")
             return youtubeMusicResult.media
+        } else if (youtubeMusicResult is ExtractionResult.Success) {
+            errorReasons.add("YouTube Music API: CDN rechazo el stream (403)")
         } else if (youtubeMusicResult is ExtractionResult.Error) {
             errorReasons.add("YouTube Music API: ${youtubeMusicResult.reason}")
         }

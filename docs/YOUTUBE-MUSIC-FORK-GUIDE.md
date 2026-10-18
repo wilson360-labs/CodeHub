@@ -150,6 +150,26 @@ Ademas las URLs aguantan las cabeceras exactas del reproductor (`Origin` y
 4. Despues siguen todas las demas rutas como respaldo (cero regresion): sesion
    Google → YtmKt → YouTube Music API → RealNewPipe → YtmKt → YouTube Music API.
 
+### Aportes del fix `Eco-403-fix` (cb-9)
+
+Combinados sobre la base anterior sin perder nada de lo ya verificado:
+
+- **`headersFor(url)`** — googlevideo devuelve **403 si la User-Agent no coincide
+  con el cliente que generó la URL**, que viaja en el parámetro `c=` de la propia
+  URL (verificado en vivo: `&c=ANDROID`). Ahora cada fuente lleva la UA de su
+  cliente: `IOS` → `com.google.ios.youtube/19.34.2`, `ANDROID`/`ANDROID_MUSIC` →
+  `com.google.android.youtube/19.44.38`, `ANDROID_VR` → UA de Oculus, resto →
+  UA de Chrome + `Origin`/`Referer` de youtube.com. Los sondeos ahora usan las
+  cabeceras de **cada fuente** en vez de un mapa global.
+- **`isPlayable(media)`** — guardia de Eco-403-fix: si el CDN rechaza la primera
+  fuente, la ruta se descarta y se pasa a la siguiente (aplicado a RealNewPipe,
+  YtmKt y YouTube Music API). `finalize()` sigue sondeando **todas** las fuentes
+  y filtrando, que es la versión fuerte de esta misma idea.
+- **Orden final**: InnerTube `ANDROID` → (sesión Google) YtmKt auth → YouTube
+  Music API auth → RealNewPipe → YtmKt → YouTube Music API.
+- Cookies de la sesión Google solo se adjuntan a clientes **web**; los clientes
+  nativos (IOS/ANDROID) no soportan cookies de cuenta.
+
 ### Cambios de apoyo (cb-8)
 
 - **`Range: bytes=0-`** en `mediaHeaders()`. `DefaultHttpDataSource` calcula su
