@@ -29,10 +29,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Guías de CodeHub — Herramientas, FOSS y freelance en Guatemala</title>
-  <meta name="description" content="Guías escritas por Wilson.E: cómo usar las herramientas web de CodeHub, elegir apps Android de código abierto, practicar CSS Flexbox y cotizar un sitio freelance en Guatemala.">
+  <meta name="description" content="Guías escritas por Wilson.E con fecha de actualización: cómo instalar extensiones en CodeBeat, qué hace realmente una PWA, usar las herramientas web de CodeHub, elegir apps Android de código abierto, proteger tus contraseñas y cotizar un sitio freelance en Guatemala.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://wilson360-labs.vercel.app/guias">
   <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <meta name="date" content="2026-10-18">
+  <meta itemprop="dateModified" content="2026-10-18">
   <link rel="icon" type="image/png" href="../splash/codehub.png">
   <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
   <style>
@@ -102,6 +104,28 @@
     article li { margin-bottom: .4rem; }
     article a { color: var(--primary); }
     .meta { font-family: var(--mono); font-size: .72rem; color: var(--text-secondary); margin-bottom: 1rem; }
+    .meta time { color: var(--primary); }
+    .meta .sep { color: var(--border); }
+    article code {
+      font-family: var(--mono); font-size: .88em;
+      color: var(--accent); background: rgba(56,189,248,.08);
+      border: 1px solid rgba(56,189,248,.18); border-radius: 6px;
+      padding: .1em .38em; word-break: break-word;
+    }
+    article pre {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: .95rem 1.1rem;
+      overflow-x: auto; min-width: 0; max-width: 100%;
+      margin-bottom: 1rem;
+    }
+    article pre code { background: none; border: 0; padding: 0; color: var(--text); }
+    .toc ol { counter-reset: toc; list-style: none; padding-left: 0; }
+    .toc li { counter-increment: toc; }
+    .toc li::before {
+      content: counter(toc, decimal-leading-zero);
+      font-family: var(--mono); font-size: .72rem; color: var(--primary);
+      margin-right: .55rem;
+    }
     footer {
       text-align: center;
       padding: 2rem;
@@ -116,6 +140,62 @@
       .page-wrap { padding: 1.75rem 1rem 4rem; }
     }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://wilson360-labs.vercel.app/#website",
+        "url": "https://wilson360-labs.vercel.app/",
+        "name": "CodeHub by Wilson.E",
+        "inLanguage": "es",
+        "publisher": { "@id": "https://wilson360-labs.vercel.app/#person" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://wilson360-labs.vercel.app/#person",
+        "name": "Wilson.E",
+        "jobTitle": "Desarrollador Web Full Stack",
+        "email": "mailto:wilson.e360labs@gmail.com",
+        "knowsLanguage": "es",
+        "url": "https://wilson360-labs.vercel.app/acerca"
+      },
+      {
+        "@type": "CollectionPage",
+        "@id": "https://wilson360-labs.vercel.app/guias#page",
+        "url": "https://wilson360-labs.vercel.app/guias",
+        "name": "Guías de CodeHub",
+        "inLanguage": "es",
+        "isPartOf": { "@id": "https://wilson360-labs.vercel.app/#website" },
+        "about": { "@id": "https://wilson360-labs.vercel.app/#person" },
+        "dateModified": "2026-10-18",
+        "mainEntity": {
+          "@type": "ItemList",
+          "itemListOrder": "https://schema.org/ItemListOrderDescending",
+          "numberOfItems": 8,
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Cómo instalar una extensión desde una URL en CodeBeat" },
+            { "@type": "ListItem", "position": 2, "name": "PWA: qué se instala de verdad en tu teléfono" },
+            { "@type": "ListItem", "position": 3, "name": "Qué corre en tu navegador y qué no" },
+            { "@type": "ListItem", "position": 4, "name": "Contraseñas que sí resisten un dump filtrado" },
+            { "@type": "ListItem", "position": 5, "name": "Cómo elijo apps Android de GitHub Releases" },
+            { "@type": "ListItem", "position": 6, "name": "Qué pido cuando cotizo un sitio en Guatemala" },
+            { "@type": "ListItem", "position": 7, "name": "Flexbox: un eje, no un grid" },
+            { "@type": "ListItem", "position": 8, "name": "Comunidad viva: verificación, avisos y seguridad responsable" }
+          ]
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://wilson360-labs.vercel.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Guías", "item": "https://wilson360-labs.vercel.app/guias" }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 <nav class="top-nav">
@@ -129,108 +209,203 @@
 <div class="hero">
   <div class="hero-eyebrow">// notas de Wilson.E</div>
   <h1>Guías de <span>CodeHub</span></h1>
-  <p>Textos propios sobre las herramientas del sitio, apps de código abierto y cómo cotizo trabajo freelance desde Guatemala. No son copias de documentación de terceros.</p>
+  <p>Textos propios con fecha de publicación y de actualización, escritos por quien mantiene el sitio: extensiones de CodeBeat, PWAs, herramientas web, apps de código abierto y cómo cotizo trabajo freelance desde Guatemala. Ninguno es una copia de la documentación de un tercero.</p>
 </div>
 
-<div class="page-wrap">
+<main class="page-wrap">
   <div class="toc">
     <ol>
+      <li><a href="#codebeat-url">Cómo instalar una extensión desde una URL en CodeBeat</a></li>
+      <li><a href="#pwa">PWA: qué se instala de verdad en tu teléfono</a></li>
       <li><a href="#herramientas-locales">Qué corre en tu navegador y qué no</a></li>
-      <li><a href="#passwords">Contraseñas que sí resisten un dump filtrado</a></li>
-      <li><a href="#android-foss">Cómo elijo apps Android de GitHub Releases</a></li>
-      <li><a href="#flexbox">Flexbox: un eje, no un grid</a></li>
       <li><a href="#freelance-gt">Qué pido cuando cotizo un sitio en Guatemala</a></li>
+      <li><a href="#android-foss">Cómo elijo apps Android de GitHub Releases</a></li>
+      <li><a href="#passwords">Contraseñas que sí resisten un dump filtrado</a></li>
       <li><a href="#comunidad">Comunidad viva: verificación, avisos y seguridad responsable</a></li>
+      <li><a href="#flexbox">Flexbox: un eje, no un grid</a></li>
     </ol>
   </div>
 
-  <article id="herramientas-locales">
-    <p class="meta">Actualizado: 25 ago 2026 · /tools</p>
-    <h2>Qué corre en tu navegador y qué no</h2>
-    <p>La página de herramientas de CodeHub mezcla dos tipos de utilidades. Conviene saber cuál es cuál antes de pegar un secreto.</p>
-    <p><strong>Locales:</strong> generador y verificador de contraseñas, QR, Base64, UUID, hashes SHA, JSON formatter, regex tester, pomodoro, conversor de unidades. El cálculo ocurre en JavaScript de la pestaña. Si cierras la pestaña, el dato se va con ella, salvo que lo hayas copiado tú.</p>
-    <p><strong>Con red:</strong> clima, IP lookup, DNS lookup, traductor, generador de imágenes y el chat WIL.E. Esas llamadas salen a APIs públicas o a nuestro backend. No pongas tokens de clientes, cookies de sesión ni documentos privados en esos campos.</p>
-    <p>No ofrezco “privacidad absoluta”: el navegador sigue siendo un entorno que puede tener extensiones. Para un secreto de producción uso un gestor de contraseñas, no un generador web, aunque el mío sea local. La herramienta sirve para un draft rápido o para enseñar cómo se ve una cadena aleatoria de 20 caracteres.</p>
-    <p>Si una utilidad pide permisos del sistema (ubicación para el clima), es el navegador quien pregunta. CodeHub no instala un servicio oculto. Detalle de cookies y terceros: <a href="/privacy">Política de privacidad</a>.</p>
-  </article>
-
-  <article id="passwords">
-    <p class="meta">Seguridad práctica · sin jerga de marketing</p>
-    <h2>Contraseñas que sí resisten un dump filtrado</h2>
-    <p>La longitud gana a los “símbolos raros” si el atacante tiene un hash y puede probar combinaciones. Doce caracteres aleatorios de un alfabeto amplio suelen ser suficientes para una cuenta personal; dieciséis o más para correo y bancos. Reutilizar la misma clave entre sitios es peor que usar una clave “fea” de 8 caracteres: un leak en un foro te abre el correo.</p>
-    <h3>Qué hago yo</h3>
+  <article id="codebeat-url">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> publicado <span class="sep">·</span> CodeBeat <span class="sep">·</span> lectura 4 min
+    </p>
+    <h2>Cómo instalar una extensión desde una URL en CodeBeat</h2>
+    <p>CodeBeat no es un catálogo cerrado. Cualquier persona puede escribir una extensión y otra puede instalarla sin que yo la revise antes. Ese es el punto, pero también es el riesgo, así que conviene saber exactamente qué hace el botón «Importar desde URL» antes de pulsarlo.</p>
+    <h3>Qué es realmente una extensión</h3>
+    <p>Una extensión de CodeBeat es un archivo JavaScript empaquetado (un <code>.js</code> de un solo módulo, con metadatos de nombre, versión y manifiesto). No es un APK y no tiene permisos de sistema: corre dentro del motor del reproductor, que expone un conjunto fijo de utilidades de red, de reproducción y de almacenamiento. Lo que la extensión <em>no</em> puede hacer es salirse de ese puente, así que la superficie de ataque es mucho menor que la de una app nativa, pero sigue existiendo: una extensión con acceso a red puede descargar lo que quiera y pedirte que lo instales.</p>
+    <h3>Qué mira el cliente antes de instalar</h3>
     <ol>
-      <li>Genero la clave en el <a href="/tools">generador de CodeHub</a> o en el del gestor.</li>
-      <li>La copio una vez y la guardo en el gestor. No la dejo en un chat ni en una captura.</li>
-      <li>Activo 2FA donde el servicio lo permita (app, no SMS si hay otra opción).</li>
+      <li>Descarga el archivo desde la URL que le diste y verifica que el manifiesto sea válido (nombre, versión, punto de entrada).</li>
+      <li>Lee la <strong>origen declarada</strong>: el catálogo de CodeHub publica solo extensiones cuyo código está en un repositorio público. Si la URL apunta a un archivo suelto sin repo detrás, el sello será «Externo».</li>
+      <li>Compara la versión local con la remota. Si la remota es <em>menor</em> que la instalada, no la sustituye: evitar el downgrade automático es una decisión deliberada.</li>
     </ol>
-    <p>El “verificador de fuerza” del sitio estima entropía a ojo: mayúsculas, números, longitud. No detecta si escribiste tu fecha de nacimiento. Úsalo como recordatorio visual, no como auditoría.</p>
-    <p>Nunca pegas una contraseña real en el chat de WIL.E ni en el traductor. Esos textos pueden pasar por un proveedor de IA.</p>
+    <h3>Por qué a veces falla una extensión aunque el enlace sea válido</h3>
+    <p>El motivo más común es que el servicio que aloja el archivo bloquee la petición del cliente por no ser un navegador. Algunos proveedores de video responden <code>403</code> cuando detectan un agente de usuario desconocido o cuando exigen un token de reproducción. CodeBeat no disimula ese error: te devuelve la ruta exacta que falló y el código HTTP, para que sepas si el problema está en la extensión, en el origen o en tu conexión.</p>
+    <p>Hay extensiones que están marcadas como <strong>experimentales</strong> precisamente por eso: funcionan hoy con un cliente concreto de ese servicio y dejarán de funcionar cuando el servicio cambie su API privada. Instalar una de esas es una apuesta consciente, no un bug del reproductor.</p>
+    <h3>Cómo actualizar o desinstalar</h3>
+    <p>Cada extensión instalada muestra su versión y su canal de actualización. CodeBeat comprueba la fuente declarada y te avisa cuando aparece una versión nueva; también puedes forzar la comprobación desde los ajustes. La desinstalación borra la extensión y sus datos de sesión locales, pero no toca tus credenciales del navegador ni nada fuera de la app.</p>
+    <p>Si una extensión te pide iniciar sesión en un servicio de terceros, esa sesión vive en el almacenamiento local del dispositivo y se elimina al desinstalar. No la compartas: el almacenamiento de CodeBeat no está cifrado a nivel de archivo y un dispositivo desbloqueado con acceso físico puede leerlo.</p>
   </article>
 
-  <article id="android-foss">
-    <p class="meta">Catálogo /opensource · criterio editorial</p>
-    <h2>Cómo elijo apps Android de GitHub Releases</h2>
-    <p>El catálogo de CodeHub no es una tienda. Cada ficha apunta al repositorio que yo pude abrir y contrastar: nombre del paquete, actividad reciente, licencia y que el APK salga de Releases del mismo org/user, no de un mega.nz anónimo.</p>
-    <p>Instalar fuera de Play implica aceptar el riesgo: no hay revisión de Google Play Protect como en la tienda. Por eso filtro mods, “premium cracked” y APKs reempaquetados. Si el README y el Release no coinciden, no listo la app.</p>
-    <h3>Lista corta antes de instalar</h3>
+  <article id="pwa">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> publicado <span class="sep">·</span> Web <span class="sep">·</span> lectura 5 min
+    </p>
+    <h2>PWA: qué se instala de verdad en tu teléfono</h2>
+    <p>Cuando un sitio te ofrece «Agregar a pantalla de inicio» no te está instalando una app en el sentido de la Play Store. Es una Progressive Web App, y lo que ocurre por debajo depende del navegador y del sistema operativo. Vale la pena entenderlo, porque la diferencia decide qué esperar del comportamiento offline y de las notificaciones.</p>
+    <h3>El manifiesto y el service worker</h3>
+    <p>Una PWA necesita dos piezas. El <strong>manifiesto</strong> es un JSON con el nombre, los iconos y el modo de visualización. El <strong>service worker</strong> es un script que el navegador registra y que queda vivo en segundo plano: intercepta las peticiones de red y puede responder desde una caché cuando no hay conexión.</p>
+    <p>En Chrome sobre Android, si el sitio cumple los criterios de instalabilidad, el sistema crea una <strong>WebAPK</strong>: un APK generado localmente que se ve en el cajón de aplicaciones como cualquier otra app. No viene de la tienda, no tiene firma del desarrollador original y no pasa por Play Protect, pero se comporta casi igual: icono propio, pantalla completa, ventana independiente.</p>
+    <h3>Qué significa «funciona sin conexión»</h3>
+    <p>Es mentira y verdad a la vez. Lo que realmente pasa es esto:</p>
     <ul>
-      <li>El dominio de descarga es github.com/…/releases, no un acortador.</li>
-      <li>La firma o el checksum, si el proyecto los publica, coinciden.</li>
-      <li>Los permisos del manifiesto tienen sentido (una linterna no necesita contactos).</li>
-      <li>Hay issues y commits recientes, o al menos una nota de que el proyecto está en mantenimiento mínimo.</li>
+      <li><strong>Recursos precacheados</strong> (HTML, CSS, JS, iconos): sí se cargan sin red, porque el service worker los guardó al abrir el sitio por primera vez.</li>
+      <li><strong>Datos en vivo</strong> (clima, noticias, catálogo): no. Si son peticiones a una API, sin red no hay datos, y un service worker bien escrito debe mostrar un estado honesto de «sin conexión», no una página vieja fingiendo estar actualizada.</li>
+      <li><strong>Lo que el usuario ya tenía en caché</strong>: depende de la política del sitio. Purgar la caché del navegador borra el precache y la próxima visita vuelve a requerir red.</li>
     </ul>
-    <p>Las VPN de la lista son clientes de código abierto. No vendo túneles ni prometo que “te vuelves invisible”. Una VPN mal configurada o un servidor de un tercero sigue viendo tu tráfico. Si necesitas una VPN comercial con jurisdicción clara, eso es otra compra; CodeHub no la intermedia.</p>
-    <p>Windows Enhance, en el mismo sitio, es un recuento de herramientas de recuperación con enlaces. Tampoco alojamos ejecutables de Windows.</p>
+    <h3>El error clásico: cachear una página que cambia</h3>
+    <p>El fallo más frecuente al escribir un service worker es cachear en modo <code>only-if-cached</code> o con una estrategia de caché primero para todo, incluidas respuestas que cambian a cada segundo. El resultado es que el usuario ve un precio viejo, un marcador viejo o un catálogo desactualizado, y no hay forma de distinguirlo a simple vista. La regla que uso: <strong>shell de la app en caché, datos siempre de red</strong>, y cuando no hay red, un aviso explícito.</p>
+    <p>CodeHub se instala como PWA y precachea su propio shell (CSS, JS e iconos), pero cualquier petición a su backend se resuelve contra la red y degrada a un mensaje de sin conexión en lugar de servir contenido viejo.</p>
+    <h3>Cómo desinstalarla por completo</h3>
+    <p>Arrastrar el icono a la papelera no siempre borra todo. En Android, además de quitar el acceso directo, conviene borrar el almacenamiento de la app desde los ajustes del sistema, porque la WebAPK conserva su propio perfil de almacenamiento local y de service worker. Desde el navegador, <code>chrome://serviceworker-internals</code> (o el panel de Aplicaciones en DevTools) deja ver y dar de baja los workers registrados.</p>
   </article>
 
-  <article id="flexbox">
-    <p class="meta">CSS · /flexbox-labs</p>
-    <h2>Flexbox: un eje, no un grid</h2>
-    <p>Flexbox alinea hijos en una fila o una columna. El gap, el wrap y el justify-content resuelven barras, chips y centrados. Cuando el diseño es una tabla de celdas (galería, dashboard de 12 columnas), CSS Grid ahorra anidaciones.</p>
-    <p>En CodeHub incrusto Flexbox Labs (MIT, prazzon) para que puedas mover sliders y ver el CSS generado. Ese playground no lo escribí yo: si el iframe falla, usa el enlace “abrir en pestaña nueva”. Lo que sí es mío es cuándo lo recomiendo: primero flex en el header y el menú; grid en el listado de tarjetas.</p>
-    <p>Un error típico es poner <code>width: 100%</code> en un hijo flex sin <code>min-width: 0</code>. El texto largo o un <code>pre</code> entonces empuja el layout. En este sitio lo documentamos en las reglas de responsividad: los hijos de flex/grid que contienen código llevan min-width 0.</p>
+  <article id="herramientas-locales">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> /tools <span class="sep">·</span> lectura 4 min
+    </p>
+    <h2>Qué corre en tu navegador y qué no</h2>
+    <p>La página de herramientas de CodeHub mezcla dos tipos de utilidades. Conviene saber cuál es cuál antes de pegar un secreto, y también antes de asumir que «es local» significa algo más de lo que significa.</p>
+    <h3>Locales: el cálculo nunca sale de la pestaña</h3>
+    <p>Generador y verificador de contraseñas, codificador y decodificador de Base64, generador de UUID, hashes SHA-256, formateador y validador de JSON, probador de expresiones regulares, temporizador pomodoro y conversor de unidades. En todos esos, el JavaScript se ejecuta en el hilo de la pestaña y no se hace ninguna petición de red con el dato que introduces.</p>
+    <p>Puedes comprobarlo tú mismo: abre las herramientas de red del navegador, marca «Preserve log», y ve el listado mientras escribes. En las herramientas locales no verás ninguna petición saliente con tu contenido. Esa verificación es la única razón por la que confío en ellas para un borrador.</p>
+    <h3>Con red: lo que viaja y quién lo recibe</h3>
+    <p>Clima, consulta de IP, resolución DNS, traducción, generación de imágenes y el chat WIL.E sí salen de la pestaña. Algunas van a APIs públicas y otras a nuestro backend. Traducir un texto implica que ese texto llegue a un tercero; generar una imagen implica que el prompt lo procese un modelo remoto.</p>
+    <p><strong>No pongas tokens de cliente, cookies de sesión, documentos privados ni credenciales en esos campos.</strong> No porque el sitio las robe, sino porque el proveedor de la función las ve por definición.</p>
+    <h3>Lo que «local» no garantiza</h3>
+    <p>No ofrezco privacidad absoluta. El navegador sigue siendo un entorno donde pueden estar instaladas extensiones, y una extensión con permisos de lectura en la página puede ver lo que escribes en un campo. Para un secreto de producción uso un gestor de contraseñas con bloqueo biométrico, no un generador web, aunque el mío sea local. La herramienta sirve para un borrador rápido o para enseñar cómo se ve una cadena aleatoria de veinte caracteres, no para custodiar una clave maestra.</p>
+    <p>Si una utilidad pide un permiso del sistema (ubicación para el clima, por ejemplo), es el navegador quien hace la pregunta y quien revoca. CodeHub no instala un servicio oculto ni guarda el resultado. El detalle de cookies y de terceros está en la <a href="/privacy">política de privacidad</a>, y la parte importante es la tabla de proveedores: cada uno con su finalidad y su duración.</p>
   </article>
 
   <article id="freelance-gt">
-    <p class="meta">Servicios · Guatemala</p>
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> Servicios · Guatemala <span class="sep">·</span> lectura 4 min
+    </p>
     <h2>Qué pido cuando cotizo un sitio en Guatemala</h2>
-    <p>Trabajo freelance desde Ciudad de Guatemala, remoto o presencial según el proyecto. Un mensaje útil no es “¿cuánto cuesta una página?”. Necesito alcance:</p>
+    <p>Trabajo freelance desde Ciudad de Guatemala, remoto o presencial según el proyecto. Un mensaje útil no es «¿cuánto cuesta una página?»: esa pregunta solo admite una respuesta honesta, que es «depende», y no ayuda a nadie. Necesito alcance para poder dar un número al que puedas aferrarte.</p>
+    <h3>Las cinco preguntas que desbloquean un rango</h3>
     <ul>
-      <li>¿Es una landing, una tienda, un panel o un portfolio?</li>
-      <li>¿Hay marca, textos y fotos, o hay que producirlos?</li>
-      <li>¿Quién hospeda y quién pone el dominio?</li>
-      <li>¿Hace falta pago en línea, WhatsApp, o solo formulario?</li>
-      <li>¿Hay fecha de evento o de campaña?</li>
+      <li>¿Es una landing, una tienda, un panel interno o un portfolio?</li>
+      <li>¿Hay marca, textos y fotos, o hay que producirlos desde cero?</li>
+      <li>¿Quién hospeda y quién pone el dominio? ¿O ya están comprados?</li>
+      <li>¿Hace falta cobrar en línea, conectar WhatsApp o solo un formulario?</li>
+      <li>¿Hay fecha de evento o de campaña que no se puede mover?</li>
     </ul>
-    <p>Con eso armo un rango. El precio cambia si el contenido llega a destiempo o si hay que integrar un ERP. No entrego “plantillas infinitas”: entrego un sitio que puedas editar, con HTTPS y un canal de soporte acotado (ajustes menores post-entrega, no rediseño eterno).</p>
-    <p>Contacto: formulario en la home, <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a> o WhatsApp. Detalle de paquetes en <a href="/servicios">Servicios</a>.</p>
+    <p>Con eso armo un rango y te digo qué lo mueve hacia arriba o hacia abajo. El precio sube cuando el contenido llega a destiempo, cuando hay que integrar un ERP o una pasarela con conciliación, o cuando la «fecha» es en tres semanas y el alcance es el de un proyecto de dos meses.</p>
+    <h3>Qué incluye una entrega</h3>
+    <p>No entrego «plantillas infinitas». Entrego un sitio que puedas editar sin llamarme por cada coma: estructura de contenido clara, HTTPS activo, dominio bien apuntado, analítica configurada y un canal de soporte acotado. Ajustes menores después de la entrega sí; rediseño eterno no, porque eso no es soporte, es otro proyecto.</p>
+    <h3>Dónde suele fricción el proceso</h3>
+    <p>En tres puntos, siempre los mismos. Primero, el contenido: el diseño no avanza si los textos y las fotos no llegan, y esa espera se cobra después en prisa. Segundo, las decisiones de marca tardías: cambiar el color principal en la semana de pruebas arrastra retoques en todo el sitio. Tercero, el acceso: sin credenciales del dominio o del hospedaje a tiempo, la publicación se retrasa aunque el desarrollo esté listo.</p>
+    <p>Contacto por el formulario de la home, por <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a> o por WhatsApp. El detalle de paquetes y lo que incluye cada uno está en <a href="/servicios">Servicios</a>.</p>
+  </article>
+
+  <article id="android-foss">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> Catálogo /opensource <span class="sep">·</span> lectura 5 min
+    </p>
+    <h2>Cómo elijo apps Android de GitHub Releases</h2>
+    <p>El catálogo de CodeHub no es una tienda. Cada ficha apunta al repositorio que yo pude abrir y contrastar: nombre del paquete, actividad reciente, licencia visible y que el APK salga de los Releases del mismo usuario u organización, no de un acortador ni de un archivo anónimo en un servicio de nube.</p>
+    <h3>Por qué instalar fuera de Play implica un riesgo asumido</h3>
+    <p>Android permite instalar APKs de terceros, y eso es útil: hay proyectos de código abierto que jamás entrarían en la tienda por sus políticas, y hay apps útiles cuyo autor no quiere depender de una cuenta de desarrollador. Pero el precio es que <strong>no hay revisión previa</strong>. Play Protect hace un análisis limitado, y en muchos dispositivos ni siquiera se ejecuta sobre APKs sideloaded.</p>
+    <p>Por eso filtro sin excepción: mods, apps con «premium desbloqueado», APKs reempaquetados con otro nombre y compilarciones que no coinciden con su README. Si el texto del repositorio y el artefacto del Release no cuadran, no entra en el catálogo.</p>
+    <h3>Lista corta antes de instalar</h3>
+    <ul>
+      <li>El dominio de descarga es <code>github.com/…/releases</code>, no un acortador ni un espejo de terceros.</li>
+      <li>Si el proyecto publica firma o checksum, lo verificas. Un <code>SHA-256</code> publicado y que no coincide es una señal de alarma, no de un error tuyo.</li>
+      <li>Los permisos del manifiesto tienen sentido para lo que hace la app: una linterna no necesita contactos.</li>
+      <li>Hay commits o issues recientes, o al menos una nota del autor de que el proyecto está en mantenimiento mínimo.</li>
+      <li>El paquete declarado en el manifiesto es el del proyecto original.</li>
+    </ul>
+    <h3>Sobre las VPN de la lista</h3>
+    <p>Son clientes de código abierto, y esa es toda la recomendación: puedes leer el código y elegir tú mismo a qué servidor te conectas. No vendo túneles ni prometo que «te vuelves invisible». Una VPN mal configurada, o un servidor gestionado por un tercero, sigue viendo tu tráfico y en muchos casos lo registra. Si necesitas una VPN comercial con jurisdicción y política de registros clara, eso es otra compra aparte: CodeHub no la intermedia.</p>
+    <h3>Windows Enhance, mismo criterio</h3>
+    <p>En la misma sección hay un recuento de herramientas de recuperación de Windows con enlaces a sus repositorios. Tampoco alojamos ejecutables: solo enlazamos la fuente y explicamos para qué sirve cada una.</p>
+  </article>
+
+  <article id="passwords">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> Seguridad práctica <span class="sep">·</span> lectura 5 min
+    </p>
+    <h2>Contraseñas que sí resisten un dump filtrado</h2>
+    <p>La longitud gana a los «símbolos raros» cuando el atacante tiene el hash y puede probar combinaciones. Doce caracteres aleatorios de un alfabeto amplio suelen ser suficientes para una cuenta personal; dieciséis o más para el correo y para lo bancario. Pero el problema real no es la fuerza de una clave individual: es la reutilización.</p>
+    <h3>El escenario real: no es que te «adivinen»</h3>
+    <p>Casi nadie intenta adivinar tu contraseña a mano. Lo que ocurre es que un servicio sufre un filtrado, los hashes terminan en un foro, y alguien ejecuta una lista contra todos ellos. Esa misma clave reutilizada abre tu correo, y con el correo recuperas el resto. Una clave «fea» de ocho caracteres pero única en cada servicio te protege mejor que una clave compleja y repetida en diez sitios.</p>
+    <h3>Qué hago yo, en orden</h3>
+    <ol>
+      <li>Genero la clave con el <a href="/tools">generador de CodeHub</a> o con el del gestor, nunca de memoria.</li>
+      <li>La copio una vez y va al gestor. No queda en un chat, en una nota del escritorio ni en una captura.</li>
+      <li>Activo segundo factor donde exista, preferindo una app autenticadora por sobre SMS, que puede ser suplantado por un intercambio de SIM.</li>
+      <li>Reviso las cuentas viejas y cierro las que ya no uso. Una cuenta abandonada es un vector que no te acuerdas de defender.</li>
+    </ol>
+    <h3>Sobre el «verificador de fuerza»</h3>
+    <p>El del sitio estima entropía a ojo: mayúsculas, números, longitud. <strong>No detecta si escribiste tu fecha de nacimiento ni si la clave aparece en un filtrado conocido.</strong> Úsalo como recordatorio visual, no como auditoría. Si quieres una comprobación real, un buen gestor te avisa cuáles de tus claves aparecieron en incidentes conocidos, sin que tengas que pegarlas en ningún sitio web.</p>
+    <p>Y una regla sin excepción: nunca pegas una contraseña real en el chat de WIL.E ni en el traductor. Esos textos pueden pasar por un proveedor de IA ajeno al sitio, y una clave pegada por traducción deja de ser tuya.</p>
   </article>
 
   <article id="comunidad">
-    <p class="meta">Comunidad CodeHub  -  criterio y transparencia</p>
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> Comunidad CodeHub <span class="sep">·</span> lectura 4 min
+    </p>
     <h2>Comunidad viva: verificación, avisos y seguridad responsable</h2>
-    <p>CodeHub no busca una audiencia pasiva. Esto es lo que significa tener un espacio comunitario útil sin inflarlo con ruido.</p>
-    <h3>Catálogo verificado</h3>
+    <p>CodeHub no busca una audiencia pasiva. Un catálogo de apps que nadie cuestiona es un catálogo en el que cualquiera puede colar algo. Esto es lo que significa tener un espacio comunitario útil sin inflarlo con ruido.</p>
+    <h3>Catálogo verificado: qué promete y qué no</h3>
     <ul>
-      <li>Un sello <strong>Verificado</strong> significa que la ficha apunta al repositorio oficial, la licencia visible y el release enlazado.</li>
-      <li><strong>Revisado</strong> implica que el origen y el checksum parcial coinciden, pero todavía falta control manual.</li>
-      <li><strong>Externo</strong> se usa cuando el proyecto se lista por transparencia, pero el usuario debe terminar la comprobación.</li>
-      <li>Los sellos no dicen "seguro para todo el mundo"; dicen "esto es lo que pude comprobar hoy".</li>
+      <li><strong>Verificado</strong>: la ficha apunta al repositorio oficial, la licencia está visible y el release está enlazado. Significa «comprobé hoy que el enlace, la licencia y el artefacto son del mismo proyecto».</li>
+      <li><strong>Revisado</strong>: el origen y el checksum parcial coinciden, pero todavía falta control manual. Puede cambiar de estado entre revisiones.</li>
+      <li><strong>Externo</strong>: el proyecto se lista por transparencia, y tú terminas la comprobación.</li>
+      <li>Ninguno de los tres sellos dice «segura para todo el mundo». Dicen qué pude comprobar y cuándo.</li>
     </ul>
-    <p>Detalle y tabla de criterios: <a href="/comunidad">página de comunidad</a>.</p>
+    <p>La tabla completa de criterios y sus limitaciones está en <a href="/comunidad">Comunidad</a>. El punto que más insisto: el sello no sustituye una auditoría de seguridad del código, y quien instala un APK de terceros asume ese riesgo aunque el catálogo lo haya revisado.</p>
     <h3>Avisos sin spam</h3>
-    <p>Las novedades relevantes se publican como releases. El ritmo recomendado es un anuncio por lanzamiento importante o una nota de incidente. La comunidad no espera una cadencia diaria: espera señales de que el sitio sigue mantenida y que los cambios tienen documentos detrás.</p>
+    <p>Las novedades relevantes se publican como releases. El ritmo recomendado es un anuncio por lanzamiento importante o una nota por incidente. La comunidad no espera cadencia diaria: espera señales de que el sitio sigue mantenida y de que los cambios tienen documentos detrás.</p>
     <ul>
-      <li>Prioridad alta: seguridad, descarga incorrecta, regresión de PWA.</li>
-      <li>Prioridad media: nueva guía, nueva app o mejora visual pública.</li>
-      <li>Prioridad baja: cambios internos que no afectan al lector.</li>
+      <li><strong>Prioridad alta</strong>: seguridad, descarga incorrecta, regresión de la PWA.</li>
+      <li><strong>Prioridad media</strong>: nueva guía, nueva app en el catálogo o mejora visual pública.</li>
+      <li><strong>Prioridad baja</strong>: cambios internos que no afectan a quien lee o instala.</li>
     </ul>
     <h3>Seguridad corresponsable</h3>
-    <p>Si encuentras una vulnerabilidad, envía el resumen, la página o endpoint afectado y el impacto real a <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a>. No hará falta lanzar ataques o automatizar escaneo masivo para validar el problema.</p>
-    <p>La respuesta no es inmediata porque se mantiene el proyecto junto con otros servicios, pero el reporte debe ser claro y humano: zona afectada, versión visible y pasos reproducibles mínimos.</p>
+    <p>Si encuentras una vulnerabilidad, envía el resumen, la página o endpoint afectado y el impacto real a <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a>. No hará falta lanzar ataques ni automatizar escaneo masivo para validar el problema; con la reproducción mínima basta.</p>
+    <p>La respuesta no es inmediata porque el proyecto se mantiene junto con otros servicios, pero el reporte debe ser claro y humano: zona afectada, versión visible y pasos reproducibles. Un reporte sin eso obliga a adivinar, y adivinar cuesta días.</p>
   </article>
-</div>
+
+  <article id="flexbox">
+    <p class="meta">
+      <time datetime="2026-10-18">18 oct 2026</time>
+      <span class="sep">·</span> actualizado <span class="sep">·</span> CSS · /flexbox-labs <span class="sep">·</span> lectura 3 min
+    </p>
+    <h2>Flexbox: un eje, no un grid</h2>
+    <p>Flexbox alinea hijos en <strong>una fila o una columna</strong>, y esa es toda su fuerza: resuelve con poco código las barras de navegación, los chips, los grupos de botones y los centrados que en la tabla de propiedades antiguas costaban tres declaraciones y un comment de resignación.</p>
+    <h3>Cuándo flex y cuándo grid</h3>
+    <p>Cuando el diseño se piensa en un eje (empujar algo a la derecha, apilar en columna, repartir con el mismo hueco), flex. Cuando el diseño es una matriz de celdas (galería, un panel de doce columnas, cualquier cosa que describas como «n filas de m elementos»), grid ahorra anidaciones y evita que el HTML termine lleno de contenedores de relleno que no significan nada.</p>
+    <p>En CodeHub incrusto <a href="/flexbox-labs">Flexbox Labs</a> (MIT, prazzon) para que puedas mover sliders y ver el CSS generado. Ese playground no lo escribí yo: si el iframe no carga, usa el enlace de abrir en pestaña nueva. Lo que sí es mío es cuándo recomiendo cada uno — flex en el encabezado y en el menú, grid en el listado de tarjetas.</p>
+    <h3>El error que más veo: <code>min-width: 0</code></h3>
+    <p>Un hijo de flex o grid tiene <code>min-width: auto</code> por defecto, lo que significa que <strong>no puede encogerse por debajo de su contenido</strong>. Si dentro hay texto largo, una tabla, un <code>pre</code> o un <code>code</code> sin espacios, el elemento empuja el layout y aparece el scroll horizontal de toda la página.</p>
+    <pre><code>.card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.card &gt; * { min-width: 0; }</code></pre>
+    <p>Ese <code>minmax(0, 1fr)</code> y ese <code>min-width: 0</code> son la diferencia entre un grid que se adapta y uno que se desborda. Es la regla que sigo en todo el sitio, y es la razón por la que las tablas y los bloques de código no rompen la vista en pantallas angostas.</p>
+  </article>
+</main>
 
 <footer>
   <span>&copy; 2026 Wilson.E · CodeHub</span>

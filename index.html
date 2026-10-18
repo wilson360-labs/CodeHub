@@ -1301,6 +1301,44 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             </div>
         </section>
 
+        <!-- ── CONTENIDO EDITORIAL / GUÍAS ─────────────────────────────────
+             Sección de contenido real con autor y fechas. Reutiliza
+             .services-grid / .service-card (ya cubiertos por
+             index-responsive.css y viewport-guard.css) para no duplicar CSS
+             ni afectar la responsividad de 380–720 px. -->
+        <section id="guias-home">
+            <h2>📝 Guías y notas técnicas</h2>
+            <p style="text-align:center;color:var(--text-secondary,#888);margin-bottom:2rem;font-size:.9rem;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.75">Todo lo que publico en CodeHub lo escribe quien mantiene el sitio, con fecha de publicación y de actualización. No son resúmenes ni traducciones de documentación ajena: cada nota explica cómo funciona algo concreto del proyecto o cómo tomo una decisión técnica y cuál es su límite.</p>
+            <div class="services-grid">
+                <a class="service-card" href="/guias#codebeat-url" style="text-decoration:none;color:inherit">
+                    <i class="fas fa-puzzle-piece service-icon"></i>
+                    <h3>Instalar extensiones desde una URL en CodeBeat</h3>
+                    <p>Qué hace realmente el botón «Importar desde URL», qué puede y qué no puede hacer una extensión dentro del reproductor, y por qué una fuente que responde <em>403</em> no siempre es un fallo del reproductor. Actualizado el 18 de octubre de 2026.</p>
+                </a>
+                <a class="service-card" href="/guias#pwa" style="text-decoration:none;color:inherit">
+                    <i class="fas fa-mobile-screen-button service-icon"></i>
+                    <h3>PWA: qué se instala de verdad en tu teléfono</h3>
+                    <p>Qué es el manifiesto, qué hace el service worker, por qué Chrome crea una WebAPK en Android y qué significa realmente que un sitio «funcione sin conexión». Publicado el 18 de octubre de 2026.</p>
+                </a>
+                <a class="service-card" href="/guias#android-foss" style="text-decoration:none;color:inherit">
+                    <i class="fas fa-shield-halved service-icon"></i>
+                    <h3>Cómo elijo las apps del catálogo</h3>
+                    <p>El procedimiento completo de verificación: repositorio, trazabilidad del artefacto, licencia y permisos. También qué NO garantifica el sello, porque el «verificado» sin esa aclaración no significa nada. Actualizado el 18 de octubre de 2026.</p>
+                </a>
+                <a class="service-card" href="/guias#passwords" style="text-decoration:none;color:inherit">
+                    <i class="fas fa-key service-icon"></i>
+                    <h3>Contraseñas que sí resisten un dump filtrado</h3>
+                    <p>Por qué la longitud gana a los símbolos raros, qué es realmente un ataque de diccionario contra hashes filtrados y por qué reutilizar una clave es peor que usar una clave corta y única. Actualizado el 18 de octubre de 2026.</p>
+                </a>
+            </div>
+            <p style="text-align:center;margin-top:2rem;font-size:.9rem;color:var(--text-secondary,#888);line-height:1.75;max-width:680px;margin-left:auto;margin-right:auto">Hay ocho guías en total, más el criterio público de verificación del catálogo publicado en <a href="/comunidad" style="color:var(--primary)">Comunidad</a>: qué reviso antes de listar una app, cómo se clasifica y por qué se retira una del catálogo cuando dejo de poder comprobarla. Si algo de ese criterio no te convence, puedes discutirlo por correo — está escrito para que se discuta, no para que se acepte por fe.</p>
+            <div style="text-align:center;margin-top:1.5rem">
+                <a href="/guias" style="display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.8rem;border-radius:var(--radius-md, 14px);background:linear-gradient(135deg,#2f80ed,#22c55e);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 18px rgba(47,128,237,.3);transition:all .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 28px rgba(47,128,237,.45)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(47,128,237,.3)'">
+                    <i class="fas fa-book-open"></i> Leer todas las guías
+                </a>
+            </div>
+        </section>
+
         <!-- Achievements/Badges -->
         
 

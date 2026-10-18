@@ -31,6 +31,8 @@
   <meta name="description" content="Sección comunitaria de CodeHub: criterio de catálogo verificado, guías por objetivo, aviso responsável y canal de reportes de seguridad.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://wilson360-labs.vercel.app/comunidad">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <meta name="date" content="2026-10-18">
   <link rel="icon" type="image/png" href="../splash/codehub.png">
   <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
   <style>
@@ -102,10 +104,61 @@
     li { margin-bottom:.4rem; }
     .full { grid-column:1 / -1; }
     .callout { border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:14px; padding:1rem; background:rgba(47,128,237,.08); }
+    .prose { font-size:.95rem; line-height:1.85; color:var(--text-secondary); max-width:74ch; min-width:0; }
+    .prose p { margin-bottom:1rem; }
+    .prose strong { color:var(--text); }
+    .prose h3 { font-size:1.08rem; color:var(--accent); margin:1.6rem 0 .6rem; }
+    .prose a { color:var(--primary); }
+    .stamped {
+      font-family:var(--mono); font-size:.72rem; color:var(--text-secondary);
+      display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; margin-bottom:1rem;
+    }
+    .stamped time { color:var(--primary); }
+    .stamped .sep { color:var(--border); }
     footer { padding:2rem; text-align:center; color:var(--text-secondary); font-size:.78rem; font-family:var(--mono); border-top:1px solid var(--border); }
     footer a { color:var(--primary); text-decoration:none; }
     @media (max-width:768px) { .grid { grid-template-columns:1fr; } .page-wrap { padding:1.5rem 1rem 4.5rem; } }
   </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://wilson360-labs.vercel.app/comunidad#page",
+        "url": "https://wilson360-labs.vercel.app/comunidad",
+        "name": "Comunidad de CodeHub",
+        "inLanguage": "es",
+        "isPartOf": { "@id": "https://wilson360-labs.vercel.app/#website" },
+        "dateModified": "2026-10-18",
+        "author": {
+          "@type": "Person",
+          "name": "Wilson.E",
+          "email": "mailto:wilson.e360labs@gmail.com",
+          "url": "https://wilson360-labs.vercel.app/acerca"
+        },
+        "mainEntity": {
+          "@type": "Article",
+          "headline": "Cómo se revisa una app antes de entrar al catálogo",
+          "inLanguage": "es",
+          "datePublished": "2026-10-18",
+          "dateModified": "2026-10-18",
+          "author": { "@type": "Person", "name": "Wilson.E" },
+          "publisher": { "@type": "Person", "name": "Wilson.E" },
+          "articleSection": "Seguridad",
+          "description": "Procedimiento público de verificación del catálogo de CodeHub: revisión del repositorio, trazabilidad del artefacto, análisis de permisos y motivos de retirada."
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://wilson360-labs.vercel.app/" },
+          { "@type": "ListItem", "position": 2, "name": "Comunidad", "item": "https://wilson360-labs.vercel.app/comunidad" }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <nav class="top-nav">
@@ -208,6 +261,41 @@
             </tr>
           </tbody>
         </table>
+      </article>
+    </section>
+
+    <section class="grid" id="metodo">
+      <article class="card full">
+        <span class="badge info">Cómo trabajo</span>
+        <h2>Cómo se revisa una app antes de entrar al catálogo</h2>
+        <div class="stamped">
+          <time datetime="2026-10-18">18 oct 2026</time>
+          <span class="sep">·</span> <span>Wilson.E</span>
+          <span class="sep">·</span> <span>lectura 4 min</span>
+        </div>
+        <div class="prose">
+          <p>La palabra «verificado» se usa mucho y significa poco. Aquí está el procedimiento concreto que sigo para que el sello diga algo comprobable, y también dónde llega ese procedimiento y dónde se queda corto. Está escrito así para que cualquiera pueda discutirlo, no para que se acepte por fe.</p>
+
+          <h3>Primer paso: la fuente, no el archivo</h3>
+          <p>Antes de mirar el APK miro el repositorio. Un proyecto que no tiene repositorio público no entra, aunque su APK funcione perfectamente. La razón no es ideología: es que sin código revisable no hay manera de distinguir una app legítima de una que exfiltra datos, y yo no puedo poner mi nombre delante de algo que no pude leer.</p>
+          <p>Una vez dentro del repositorio reviso cuatro cosas. Que el <strong>paquete declarado</strong> en el manifiesto coincida con el del proyecto original — un nombre de paquete distinto es la señal más clara de una reempaquetación. Que la <strong>licencia</strong> esté presente y sea una licencia real, no un archivo vacío. Que haya <strong>actividad reciente</strong>: commits, issues abiertos y cerrados, respuesta del autor. Y que el proyecto tenga un <code>README</code> que describa lo que hace sin prometer lo que no hace.</p>
+
+          <h3>Segundo paso: el artefacto tiene que salir de ahí</h3>
+          <p>El APK debe venir de los <em>Releases</em> del mismo usuario u organización. No de un espejo, no de un acortador, no de un archivo subido a un servicio de nube por una cuenta anónima. Si el proyecto publica checksum o firma, lo comparo; si no lo publica, lo anoto como una limitación de la ficha en lugar de fingir que la verificación ocurrió.</p>
+          <p>También comparo el <strong>historial de versiones</strong>. Un salto de versión sin tag correspondiente, o un Release cuyo artefacto pesa mucho más que el del proyecto anterior sin cambio de dependencias, es algo que conviene mirar antes de recomendar.</p>
+
+          <h3>Tercer paso: permisos y comportamiento</h3>
+          <p>Leo el manifiesto y pregunto por cada permiso: ¿esta app lo necesita para lo que anuncia? Una linterna que pide contactos no tiene explicación legítima. Una app de notas con permiso de red debe justificar por qué sincroniza, y si no lo explica, la ficha lo dice.</p>
+          <p>Este es el paso más lento y el que más aporta. También es donde está el límite honesto del sello: <strong>no hago análisis dinámico ni pruebas de tráfico</strong>. No instrumento la app en un dispositivo de prueba para ver qué dominios consulta. Lo que el sello afirma es lo que pude comprobar leyendo y contrastando fuentes, y esa distinción está escrita en la tabla de la sección anterior.</p>
+
+          <h3>Cuándo se retira una app del catálogo</h3>
+          <p>Tres motivos, y los publico como aviso cuando afecta a quien ya la tenía instalada. Primero, que el repositorio cambie de dueño o desaparezca, porque entonces ya no hay fuente que respaldar. Segundo, que aparezca un Release cuyo artefacto no coincide con lo publicado. Tercero, que el proyecto empiece a distribuirse por canales paralelos con builds distintas, lo cual rompe la trazabilidad por completo.</p>
+          <p>Retirar una app no es un castigo al proyecto: es que dejé de poder verificarlo. Si el autor recupera el repositorio y publica con trazabilidad, la ficha vuelve con una nueva fecha de revisión.</p>
+
+          <h3>Qué NO hace el sello</h3>
+          <p>No certifica que la app sea segura. No sustituye una auditoría de seguridad del código. No garantiza que el proyecto se mantenga. Y no convierte la instalación fuera de Play en algo sin riesgo: quien instala un APK de terceros asume ese riesgo aunque el catálogo lo haya revisado. Si buscas certeza absoluta, esta no es la sección adecuada; si buscas un criterio público, reproducible y escrito, esta sí lo es.</p>
+          <p>Dudas sobre un sello concreto: escríbeme a <a href="mailto:wilson.e360labs@gmail.com">wilson.e360labs@gmail.com</a> indicando la app y qué parte quieres que justifique. Si encontraste una vulnerabilidad, el canal de reportes está en la sección superior.</p>
+        </div>
       </article>
     </section>
   </main>
