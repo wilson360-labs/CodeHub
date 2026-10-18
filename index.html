@@ -7417,12 +7417,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('appinstalled', () => { window.__deferredPrompt = null; });
 
-  // URL directa del APK firmado: GitHub sirve el asset del ÚLTIMO release en
-  // una ruta estable (/releases/latest/download/...). Evita el salto por el
-  // backend (/api/download → Supabase), que podía colgarse o devolver un link
-  // muerto, y evita bajar el binario dentro de un fetch solo para "resolver" la
-  // URL (eso hacía la descarga doble y el "no se carga" en móvil).
-  const APK_DIRECT_URL = 'https://github.com/wilson360-labs/CodeHub/releases/latest/download/app-release-signed.apk';
+  // La APK se resuelve SIEMPRE desde el build de CodeHub (backend → Supabase),
+  // nunca desde /releases/latest del repo.
+  //
+  // Motivo del cambio: /releases/latest apunta a la release más reciente del
+  // repo, y las releases de extensiones (ytm-*) la pisaban. Al pedir
+  // .../latest/download/app-release-signed.apk, GitHub redirigía al tag ytm-N
+  // (cuyo único asset es youtube-music-codebeat.eapk) → 404 y el usuario caía
+  // en la página del repo en vez de descargar.
+  //
+  // /api/download/app-release-signed.apk hace un 302 al objeto que sube
+  // build-apk.yml en cada compilación, o sea que siempre es la última APK, y
+  // además queda trackeada. El 302 lo resuelve el navegador: no hay fetch
+  // previo, así que no se descarga el binario dos veces.
+  const APK_DIRECT_URL = BACKEND_URL + '/api/download/app-release-signed.apk';
 
   async function getAPKUrl() {
     return APK_DIRECT_URL;
