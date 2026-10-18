@@ -175,6 +175,14 @@ Combinados sobre la base anterior sin perder nada de lo ya verificado:
   (`ExceptionUtils.kt` → `openLoginException`), que abre el flujo de inicio de
   sesión para que el usuario se loguee. Con sesión activa no se intercepta: los
   motivos reales se reportan tal cual.
+- **JSON con `kotlinx.serialization`, nunca `org.json`** — el módulo `ext` del
+  fork es **JVM puro** (`java-library` + `kotlin.jvm` + `jvmToolchain(17)`) y
+  `org.json` es una librería de **Android**, no de la JDK: no está en el
+  classpath (tampoco llega de `echo-common` ni de NewPipeExtractor, que usa
+  `nanojson`). Usar `org.json` rompe Gradle con **`Unresolved reference`**. El
+  POST a `/player` se construye y parsea con `kotlinx.serialization.json`
+  (`buildJsonObject`, `Json.parseToJsonElement`, `JsonArray`), que ya usa el
+  propio fork en `YouTubeAuthManager.kt`. **No reintroducir `org.json`.**
 
 ### Cambios de apoyo (cb-8)
 

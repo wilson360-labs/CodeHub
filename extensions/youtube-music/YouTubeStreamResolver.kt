@@ -9,8 +9,15 @@ import dev.brahmkshatriya.echo.extension.utils.RetryUtils
 import dev.toastbits.ytmkt.impl.youtubei.YoutubeiApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import java.net.HttpURLConnection
 import java.util.concurrent.TimeUnit
 
@@ -207,16 +214,22 @@ class YouTubeStreamResolver(
      * Se usa `HttpURLConnection` para no depender de la API de OkHttp.
      */
     private fun postAndroidPlayer(videoId: String): String {
-        val payload = JSONObject().apply {
-            put("context", JSONObject().put("client", JSONObject().apply {
-                put("clientName", "ANDROID")
-                put("clientVersion", ANDROID_CLIENT_VERSION)
-                put("androidSdkVersion", 30)
-                put("osName", "Android")
-                put("osVersion", "11")
-                put("hl", "en")
-                put("gl", "US")
-            }))
+        // kotlinx.serialization y no org.json: el modulo `ext` del fork es JVM puro
+        // (java-library + kotlin.jvm), asi que org.json NO esta en el classpath y
+        // rompia el build con "Unresolved reference". kotlinx.serialization.json ya
+        // lo usa el propio fork (YouTubeAuthManager.kt).
+        val payload = buildJsonObject {
+            put("context", buildJsonObject {
+                put("client", buildJsonObject {
+                    put("clientName", "ANDROID")
+                    put("clientVersion", ANDROID_CLIENT_VERSION)
+                    put("androidSdkVersion", 30)
+                    put("osName", "Android")
+                    put("osVersion", "11")
+                    put("hl", "en")
+                    put("gl", "US")
+                })
+            })
             put("videoId", videoId)
             put("contentCheckOk", true)
             put("racyCheckOk", true)
@@ -250,23 +263,23 @@ class YouTubeStreamResolver(
         }
     }
 
-    /** Extrae fuentes reproducibles de un JSONArray de `streamingData` (solo URLs sin cifrar). */
-    private fun readFormats(array: JSONArray?, audio: Boolean): List<Streamable.Source.Http> {
+    /** Extrae fuentes reproducibles de un JsonArray de `streamingData` (solo URLs sin cifrar). */
+    private fun readFormats(array: JsonArray?, audio: Boolean): List<Streamable.Source.Http> {
         if (array == null) return emptyList()
         val sources = mutableListOf<Streamable.Source.Http>()
-        for (i in 0 until array.length()) {
-            val format = array.optJSONObject(i) ?: continue
-            val url = format.optString("url") ?: ""
+        for (element in array) {
+            val format = element as? JsonObject ?: continue
+            val url = format.str("url") ?: continue
             if (url.isEmpty()) continue // signatureCipher: el cliente ANDROID no deberia darlo
-            val mime = (format.optString("mimeType") ?: "").substringBefore(";").trim()
+            val mime = (format.str("mimeType") ?: "").substringBefore(";").trim()
             val isAudio = mime.startsWith("audio")
             if (isAudio != audio) continue
 
             val quality = if (audio) {
-                val bps = maxOf(format.optInt("averageBitrate"), format.optInt("bitrate"))
+                val bps = maxOf(format.int("averageBitrate"), format.int("bitrate"))
                 if (bps > 0) bps / 1000 else 128
             } else {
-                format.optInt("height")
+                format.int("height")
             }
             val title = if (audio) {
                 "Audio - $mime - ${quality}kbps"
@@ -278,29 +291,38 @@ class YouTubeStreamResolver(
         return sources
     }
 
+    /** Lectura segura de JSON: null si falta el campo o si cambia de tipo (nunca lanza). */
+    private fun JsonObject.str(key: String): String? =
+        (this[key] as? JsonPrimitive)?.contentOrNull
+
+    private fun JsonObject.int(key: String): Int =
+        (this[key] as? JsonPrimitive)?.intOrNull ?: 0
+
     private suspend fun tryAndroidClient(videoId: String, preferVideos: Boolean): ExtractionResult {
         return try {
             println("CodeBeat: InnerTube ANDROID para video ID: $videoId (preferVideos=$preferVideos)")
             val text = withContext(Dispatchers.IO) { postAndroidPlayer(videoId) }
-            val root = JSONObject(text)
+            val root = Json.parseToJsonElement(text).jsonObject
 
-            val playability = root.optJSONObject("playabilityStatus")
-            val status = playability?.optString("status") ?: ""
+            val playability = root["playabilityStatus"] as? JsonObject
+            val status = playability?.str("status") ?: ""
             if (status.isNotEmpty() && status != "OK") {
-                val reason = (playability?.optString("reason") ?: "").ifEmpty { status }
+                val reason = (playability?.str("reason") ?: "").ifEmpty { status }
                 return ExtractionResult.Error("status=$status ($reason)")
             }
 
-            val streaming = root.optJSONObject("streamingData")
-                ?: return ExtractionResult.Error("sin streamingData (status=${status.ifEmpty {"?"}})")
+            val streaming = root["streamingData"] as? JsonObject
+                ?: return ExtractionResult.Error(
+                    "sin streamingData (status=" + status.ifEmpty { "?" } + ")"
+                )
 
             if (preferVideos) {
-                val muxed = readFormats(streaming.optJSONArray("formats"), audio = false)
+                val muxed = readFormats(streaming["formats"] as? JsonArray, audio = false)
                 if (muxed.isNotEmpty()) return finalize(muxed, "ANDROID (muxed)")
                 println("CodeBeat: ANDROID sin formatos muxed, usando audio")
             }
 
-            val audio = readFormats(streaming.optJSONArray("adaptiveFormats"), audio = true)
+            val audio = readFormats(streaming["adaptiveFormats"] as? JsonArray, audio = true)
             if (audio.isEmpty()) return ExtractionResult.Error("0 fuentes de audio en streamingData")
             finalize(audio, "ANDROID")
         } catch (e: Exception) {
