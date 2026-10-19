@@ -32,34 +32,24 @@
   }
 
   // ── PAÍS DEL USUARIO (IP) ────────────────────────────────────
-  // Mismo patrón que el widget de clima: intenta ipapi.co y cae a
-  // ip-api.com. Se guarda en sesión para no golpear estos servicios
-  // en cada recarga.
+  // Se usa ipapi.co, que responde por HTTPS. ip-api.com se descartó:
+  // su plan gratuito solo permite HTTP y por HTTPS devuelve 403, así
+  // que el "respaldo" nunca podía funcionar y solo generaba ruido.
+  // El resultado se guarda en sesión para no repetir la petición.
   function detectNewsCountry() {
     var cached = sessionStorage.getItem('ch_news_country');
     if (cached) return Promise.resolve(cached);
 
     return fetchWithTimeoutNT('https://ipapi.co/json/', {}, 4000)
       .then(function (r) { return r.json(); })
-      .then(function (g1) {
-        if (g1.country_code && !g1.error) {
-          sessionStorage.setItem('ch_news_country', g1.country_code);
-          return g1.country_code;
+      .then(function (geo) {
+        if (geo.country_code && !geo.error) {
+          sessionStorage.setItem('ch_news_country', geo.country_code);
+          return geo.country_code;
         }
-        throw new Error('sin país en ipapi');
+        return null;
       })
-      .catch(function () {
-        return fetchWithTimeoutNT('https://ip-api.com/json/?fields=countryCode,status', {}, 4000)
-          .then(function (r) { return r.json(); })
-          .then(function (g2) {
-            if (g2.status === 'success' && g2.countryCode) {
-              sessionStorage.setItem('ch_news_country', g2.countryCode);
-              return g2.countryCode;
-            }
-            return null;
-          })
-          .catch(function () { return null; });
-      });
+      .catch(function () { return null; });
   }
 
   function relativeTime(pub) {
