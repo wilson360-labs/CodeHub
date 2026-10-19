@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T15:12:24.753Z",
+  "generatedAt": "2026-10-19T15:51:55.532Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.ea5dfb60f2.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
@@ -16,6 +16,7 @@
     "js/morphicons-init.js": "assets/js/morphicons-init.a38de871fc.min.js",
     "js/music-player.js": "assets/js/music-player.35668e7a10.min.js",
     "js/native-music.js": "assets/js/native-music.3a7a58cdbe.min.js",
+    "js/noticias.js": "assets/js/noticias.6a6c7926f4.min.js",
     "js/notifications.js": "assets/js/notifications.024f9d794c.min.js",
     "js/office-generator.js": "assets/js/office-generator.8d6cdf13ee.min.js",
     "js/offline-queue.js": "assets/js/offline-queue.6b72f7a657.min.js",
@@ -37,7 +38,7 @@
     "js/thinking-orb.js": "assets/js/thinking-orb.2b4982d5a0.min.js",
     "js/unity-ads.js": "assets/js/unity-ads.17d13add03.min.js",
     "js/updater.js": "assets/js/updater.cdaf77f61c.min.js",
-    "js/ux-animations.js": "assets/js/ux-animations.b6a116abe1.min.js",
+    "js/ux-animations.js": "assets/js/ux-animations.a8bd2381d0.min.js",
     "js/view-transitions.js": "assets/js/view-transitions.e4f2d275aa.min.js",
     "js/weather-map.js": "assets/js/weather-map.1ad0c74b42.min.js",
     "js/windows-enhance.js": "assets/js/windows-enhance.00814c6429.min.js",
