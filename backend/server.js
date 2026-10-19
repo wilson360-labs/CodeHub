@@ -110,7 +110,7 @@ function loadSkillJson(id) {
 // Respeta strings entre comillas simples/dobles y bloques con
 // dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
 // plpgsql) para no cortar un ';' que esté dentro de esos bloques.
-const { splitSqlStatements, clientIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
+const { splitSqlStatements, clientIp, isPrivateIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
 
 const app    = express();
 const server = http.createServer(app);
@@ -2117,18 +2117,6 @@ app.get('/api/stats/live', (_, res) => {
 // navegador) y limita el ritmo; por eso el cliente NUNCA la llama
 // directo: la consume el backend y el front pide el resultado a
 // GET /api/geo. Nunca lanza: devuelve { ok:false, reason }.
-function isPrivateIp(ip) {
-  const s = String(ip || '').trim();
-  if (!s || s === 'unknown' || s === 'localhost' || s === '::1') return true;
-  if (/^127\./.test(s)) return true;
-  if (/^10\./.test(s)) return true;
-  if (/^192\.168\./.test(s)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(s)) return true;
-  if (/^169\.254\./.test(s)) return true;            // link-local
-  if (/^f[cd][0-9a-f]{2}:/i.test(s) || /^fe80:/i.test(s)) return true; // ULA/link-local v6
-  return false;
-}
-
 async function geoIp(ip) {
   if (isPrivateIp(ip)) return { ok: false, reason: 'private-ip' };
 

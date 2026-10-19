@@ -56,24 +56,49 @@ function splitSqlStatements(sql) {
 const IPV4_RE = /^\d{1,3}(\.\d{1,3}){3}$/;
 const IPV6_RE = /^[0-9a-f:]+$/i;
 
-// IP del cliente priorizando req.ip (Express con trust proxy 1) y validando
-// que el valor sea una IP real. x-real-ip / x-forwarded-for se aceptan solo
-// como cadena de reenvío y nunca texto arbitrario (evita spoofing).
+// IP privada / no enrutable (RFC1918, loopback, link-local, ULA, vacía).
+function isPrivateIp(ip) {
+  const s = String(ip || '').trim();
+  if (!s || s === 'unknown' || s === 'localhost' || s === '::1') return true;
+  if (/^127\./.test(s)) return true;
+  if (/^10\./.test(s)) return true;
+  if (/^192\.168\./.test(s)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(s)) return true;
+  if (/^169\.254\./.test(s)) return true;
+  if (/^f[cd][0-9a-f]{2}:/i.test(s) || /^fe80:/i.test(s)) return true;
+  return false;
+}
+
+// IP del cliente. Prioriza la IP PÚBLICA más a la DERECHA de la cadena de
+// proxies: Render (como la mayoría de PaaS) termina el TLS y añade su origen
+// a la derecha de X-Forwarded-For, mientras que lo que inyecte el cliente
+// queda a la izquierda. Con `trust proxy: 1` req.ip cae en la dirección
+// interna (10.x) de Render, así que se descarta. Recorrer de derecha a
+// izquierda evita el spoofing de los límites por IP. Solo se aceptan IPs
+// reales: x-forwarded-for/x-real-ip nunca se usan como texto arbitrario.
 function clientIp(req) {
-  const candidates = [];
-  if (req?.ip) candidates.push(req.ip);
-  if (req?.headers) {
-    const xff = (req.headers['x-forwarded-for'] || '').split(',');
-    for (const entry of xff) candidates.push(entry.trim());
-    if (req.headers['x-real-ip']) candidates.push(String(req.headers['x-real-ip']).trim());
+  const norm = (c) => String(c).replace(/^::ffff:/, '').trim();
+  const isIp = (c) => c && c !== 'unknown' && c !== '?' && (IPV4_RE.test(c) || IPV6_RE.test(c));
+
+  const xff = String(req?.headers?.['x-forwarded-for'] || '')
+    .split(',').map((s) => s.trim()).filter(Boolean);
+
+  // Cadena controlada por el proxy: req.ip (derivado de XFF) + XFF.
+  const chain = [];
+  if (req?.ip) chain.push(req.ip);
+  chain.push(...xff);
+  const chainIps = chain.map(norm).filter(isIp);
+  for (let i = chainIps.length - 1; i >= 0; i--) {
+    if (!isPrivateIp(chainIps[i])) return chainIps[i];
   }
-  if (req?.socket?.remoteAddress) candidates.push(req.socket.remoteAddress);
-  for (const c of candidates) {
-    const clean = String(c).replace(/^::ffff:/, '').trim();
-    if (!clean || clean === 'unknown' || clean === '?') continue;
-    if (IPV4_RE.test(clean) || IPV6_RE.test(clean)) return clean;
-  }
-  return 'unknown';
+
+  // Respaldo: cabeceras/socket que no controla el proxy.
+  const tail = [req?.headers?.['x-real-ip'], req?.socket?.remoteAddress]
+    .map(norm).filter(isIp);
+  for (const c of tail) if (!isPrivateIp(c)) return c;
+
+  // Sin IP pública (red local/dev): primera válida para no quedarnos en 'unknown'.
+  return chainIps[0] || tail[0] || 'unknown';
 }
 
 function truncate(text, max = 400) {
@@ -93,4 +118,4 @@ function parseImageDataUrl(dataUrl) {
   return { mimeType, data: m[2] };
 }
 
-module.exports = { splitSqlStatements, clientIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME };
+module.exports = { splitSqlStatements, clientIp, isPrivateIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME };
