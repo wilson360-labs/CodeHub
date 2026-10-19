@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   CodeHub Widget — Clima (pastilla flotante expandible)
+   CodeHub Widget — Clima (pastilla flotante expandible, escena One UI 8.5)
    - Anclada arriba-izquierda, pegada al navbar (no abajo — evita
      taparse con el dock/botones flotantes del borde inferior).
      El offset superior se recalcula con la altura real de <header>.
@@ -97,7 +97,7 @@
 
   function fetchWeather(lat, lon) {
     var url = API + '?latitude=' + lat + '&longitude=' + lon +
-      '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&' +
+      '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day&' +
       'hourly=temperature_2m,weather_code,precipitation_probability,uv_index&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto&forecast_days=2';
     return fetch(url).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -105,7 +105,35 @@
     });
   }
 
-  function icon(code) { return WX_ICON[code] || '🌡️'; }
+  /* ── Escena animada One UI 8.5 (js/wx-oneui.js) ── */
+  function bucketOf(code) {
+    if (typeof wxConditionBucket === 'function') return wxConditionBucket(code);
+    if (code === 0) return 'clear';
+    if (code <= 3) return code === 3 ? 'cloudy' : 'partly';
+    if (code === 45 || code === 48) return 'fog';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 95) return 'storm';
+    return 'clear';
+  }
+  function applyScene(code, isDay) {
+    var panel = q('.chw-panel');
+    if (!panel || code == null) return;
+    var bucket = bucketOf(code);
+    var day = isDay === 0 ? '0' : '1';
+    [_root, panel].forEach(function (n) {
+      n.setAttribute('data-wx', bucket);
+      n.setAttribute('data-day', day);
+    });
+    _root.classList.add('wxs-on');
+    if (window.CHWxScene) window.CHWxScene.mount(panel, { lite: true });
+  }
+
+  function icon(code, isDay) {
+    if (isDay === 0 && code <= 1) return '🌙';
+    if (isDay === 0 && code === 2) return '☁️';
+    return WX_ICON[code] || '🌡️';
+  }
   function label(code) { return WX_LABEL[code] || 'Variable'; }
 
   function recommend(d) {
@@ -164,13 +192,14 @@
     var feels = c.apparent_temperature;
     var code = c.weather_code;
     var tip = recommend(data);
+    applyScene(code, c.is_day);
 
     if (q('.chw-pill-temp')) q('.chw-pill-temp').textContent = t != null ? Math.round(t) + '°' : '--';
     if (q('.chw-pill-city')) q('.chw-pill-city').textContent = city || 'Mi ubicación';
-    if (q('.chw-pill-icon')) q('.chw-pill-icon').textContent = icon(code);
+    if (q('.chw-pill-icon')) q('.chw-pill-icon').textContent = icon(code, c.is_day);
 
     if (q('.chw-now-temp')) q('.chw-now-temp').textContent = t != null ? Math.round(t) + '°' : '--';
-    if (q('.chw-now-icon')) q('.chw-now-icon').textContent = icon(code);
+    if (q('.chw-now-icon')) q('.chw-now-icon').textContent = icon(code, c.is_day);
     if (q('.chw-now-sub')) q('.chw-now-sub').textContent =
       label(code) + ' · Sensación ' + (feels != null ? Math.round(feels) : '--') + '°C';
     if (q('.chw-now-city')) q('.chw-now-city').textContent = city || 'Mi ubicación';

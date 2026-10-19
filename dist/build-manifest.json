@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T21:29:37.813Z",
+  "generatedAt": "2026-10-19T21:37:14.364Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.ea5dfb60f2.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
@@ -42,6 +42,7 @@
     "js/view-transitions.js": "assets/js/view-transitions.e4f2d275aa.min.js",
     "js/weather-map.js": "assets/js/weather-map.1ad0c74b42.min.js",
     "js/windows-enhance.js": "assets/js/windows-enhance.00814c6429.min.js",
-    "widgets/weather/weather-widget.js": "assets/widgets/weather/weather-widget.fd1d5d4d92.min.js"
+    "js/wx-oneui.js": "assets/js/wx-oneui.c2b4bef30e.min.js",
+    "widgets/weather/weather-widget.js": "assets/widgets/weather/weather-widget.34b062ad94.min.js"
   }
 }

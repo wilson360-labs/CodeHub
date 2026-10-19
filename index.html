@@ -260,12 +260,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="stylesheet" href="css/index-responsive.css?v=20260809a">
     <link rel="stylesheet" href="css/site-tour.css?v=20261019a">
     <!-- Widgets CodeHub (carpeta widgets/) — siempre entre site-tour y viewport-guard -->
-    <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
+    <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20261019a">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261019d">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261019e">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -6524,7 +6524,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
 
       document.getElementById('wx-city').textContent   = city;
       document.getElementById('wx-desc').textContent   = capitalize(data.weather[0].description);
-      var _wxC1 = document.getElementById('wx-card'); if (_wxC1) _wxC1.setAttribute('data-wx', wxConditionBucket(data.weather[0].id));
+      var _wxC1 = document.getElementById('wx-card'); if (_wxC1) { _wxC1.setAttribute('data-day', /n$/.test(data.weather[0].icon || '') ? '0' : '1'); _wxC1.setAttribute('data-wx', wxConditionBucket(data.weather[0].id)); if (window.CHWxScene) CHWxScene.hourly(null); }
       document.getElementById('wx-emoji-big').textContent = icon;
       document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}°`;
       document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C · Máx ${Math.round(data.main.temp_max)}° / Mín ${Math.round(data.main.temp_min)}°`;
@@ -6541,7 +6541,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
     } else {
       // ── Fallback: Open-Meteo (sin key) ──
       const res = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&wind_speed_unit=kmh&timezone=auto`
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure,precipitation,is_day&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&hourly=temperature_2m,weather_code,precipitation_probability&wind_speed_unit=kmh&timezone=auto`
       );
       const d = await res.json();
       const c = d.current;
@@ -6567,8 +6567,8 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       const dMin = d.daily?.temperature_2m_min?.[0];
       document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
       document.getElementById('wx-desc').textContent   = WX[c.weather_code] || 'Variable';
-      var _wxC2 = document.getElementById('wx-card'); if (_wxC2) _wxC2.setAttribute('data-wx', wxConditionBucket(c.weather_code));
-      document.getElementById('wx-emoji-big').textContent = WX_ICON[c.weather_code] || '🌡️';
+      var _wxC2 = document.getElementById('wx-card'); if (_wxC2) { _wxC2.setAttribute('data-day', c.is_day === 0 ? '0' : '1'); _wxC2.setAttribute('data-wx', wxConditionBucket(c.weather_code)); }
+      document.getElementById('wx-emoji-big').textContent = (c.is_day === 0 && c.weather_code <= 1) ? '🌙' : (c.is_day === 0 && c.weather_code === 2) ? '☁️' : (WX_ICON[c.weather_code] || '🌡️');
       document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
       const extrema = (dMax != null && dMin != null) ? ` · ↑ ${Math.round(dMax)}° ↓ ${Math.round(dMin)}°` : '';
       document.getElementById('wx-feels').textContent  = `Sensación: ${Math.round(c.apparent_temperature)}°C${extrema}`;
@@ -6578,6 +6578,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       document.getElementById('wx-gust').textContent   = c.wind_gusts_10m != null ? `${Math.round(c.wind_gusts_10m)} km/h` : '—';
       document.getElementById('wx-pressure').textContent = c.surface_pressure != null ? `${Math.round(c.surface_pressure)} hPa` : '—';
       document.getElementById('wx-updated').textContent= new Date().toLocaleTimeString('es-GT',{hour:'2-digit',minute:'2-digit'});
+      if (window.CHWxScene) CHWxScene.hourly(d.hourly, c.time);
       if (window.CHGeo && d.daily && d.daily.sunrise && d.daily.sunset) {
         CHGeo.renderSun(new Date(d.daily.sunrise[0]).getTime(), new Date(d.daily.sunset[0]).getTime());
       } else if (window.CHGeo) {
@@ -8385,7 +8386,8 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/security-scan.5a8b5156fe.min.js" defer></script>
 <script src="/dist/assets/js/lazy-features.8633234919.min.js" defer></script>
   <script src="/dist/assets/js/offline-queue.6b72f7a657.min.js" defer></script>
-<script src="/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js" defer></script>
+<script src="/dist/assets/js/wx-oneui.c2b4bef30e.min.js" defer></script>
+<script src="/dist/assets/widgets/weather/weather-widget.34b062ad94.min.js" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

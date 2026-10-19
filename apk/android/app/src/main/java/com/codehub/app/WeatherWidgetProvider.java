@@ -567,12 +567,12 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     // ── Fondo con gradiente según la condición meteorológica y el
     //    momento del día (día/noche cambia la paleta). ──
     private static Bitmap backgroundBitmap(int wcode, boolean night) {
-        int w = 2, h = 2;
+        int w = 4, h = 96;
         Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         try {
             int[] colors = palette(wcode, night);
             GradientDrawable grad = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR, colors);
+                GradientDrawable.Orientation.TOP_BOTTOM, colors);
             grad.setCornerRadius(0);
             grad.setBounds(0, 0, w, h);
             grad.draw(new Canvas(bmp));
@@ -583,47 +583,33 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static int[] palette(int wcode, boolean night) {
-        int clearDayDark = Color.rgb(21, 44, 91);
-        int mid = Color.rgb(37, 99, 235);
-        int accent = Color.rgb(14, 20, 32);
-
         boolean rain = wcode >= 51 && wcode <= 67 || wcode >= 80 && wcode <= 82;
         boolean storm = wcode >= 95;
         boolean snow = wcode >= 71 && wcode <= 77 || wcode >= 85 && wcode <= 86;
         boolean overcast = wcode == 3;
         boolean fog = wcode == 45 || wcode == 48;
-        boolean clear = wcode == 0;
         boolean partly = wcode >= 1 && wcode <= 2;
 
-        int top, bottom;
+        // Cielos estilo One UI 8.5: degradado de 3 paradas (arriba, medio, abajo).
+        int top, mid, bottom;
         if (night) {
-            top = Color.rgb(10, 13, 28);
-            bottom = rain ? Color.rgb(30, 41, 82)
-                    : storm ? Color.rgb(30, 20, 40)
-                    : Color.rgb(19, 27, 61);
-        } else if (rain || storm) {
-            top = Color.rgb(59, 91, 145);
-            bottom = Color.rgb(30, 41, 82);
-        } else if (snow) {
-            top = Color.rgb(150, 185, 220);
-            bottom = Color.rgb(90, 115, 150);
-        } else if (clear) {
-            top = Color.rgb(56, 130, 246);
-            bottom = Color.rgb(135, 170, 255);
-        } else if (partly) {
-            top = Color.rgb(59, 130, 246);
-            bottom = Color.rgb(148, 150, 175);
-        } else if (overcast) {
-            top = Color.rgb(96, 108, 130);
-            bottom = Color.rgb(160, 166, 180);
-        } else if (fog) {
-            top = Color.rgb(110, 118, 132);
-            bottom = Color.rgb(150, 155, 165);
+            if (storm)         { top = Color.rgb(10, 10, 26);  mid = Color.rgb(28, 23, 54);  bottom = Color.rgb(51, 40, 79); }
+            else if (rain)     { top = Color.rgb(12, 18, 34);  mid = Color.rgb(28, 42, 68);  bottom = Color.rgb(44, 64, 96); }
+            else if (snow)     { top = Color.rgb(20, 28, 51);  mid = Color.rgb(43, 60, 96);  bottom = Color.rgb(89, 111, 148); }
+            else if (fog)      { top = Color.rgb(20, 26, 38);  mid = Color.rgb(42, 51, 66);  bottom = Color.rgb(71, 82, 98); }
+            else if (overcast) { top = Color.rgb(17, 23, 41);  mid = Color.rgb(34, 44, 66);  bottom = Color.rgb(58, 69, 87); }
+            else if (partly)   { top = Color.rgb(11, 17, 40);  mid = Color.rgb(26, 40, 80);  bottom = Color.rgb(52, 70, 111); }
+            else               { top = Color.rgb(7, 11, 31);   mid = Color.rgb(20, 33, 79);  bottom = Color.rgb(42, 63, 126); }
         } else {
-            top = Color.rgb(37, 99, 235);
-            bottom = Color.rgb(14, 20, 32);
+            if (storm)         { top = Color.rgb(39, 44, 71);   mid = Color.rgb(65, 63, 104);  bottom = Color.rgb(91, 86, 133); }
+            else if (rain)     { top = Color.rgb(57, 75, 105);  mid = Color.rgb(85, 112, 143); bottom = Color.rgb(123, 146, 174); }
+            else if (snow)     { top = Color.rgb(122, 153, 193); mid = Color.rgb(173, 197, 225); bottom = Color.rgb(228, 238, 250); }
+            else if (fog)      { top = Color.rgb(136, 148, 159); mid = Color.rgb(169, 179, 190); bottom = Color.rgb(205, 211, 219); }
+            else if (overcast) { top = Color.rgb(103, 118, 143); mid = Color.rgb(150, 163, 182); bottom = Color.rgb(196, 204, 216); }
+            else if (partly)   { top = Color.rgb(58, 127, 230);  mid = Color.rgb(116, 169, 236); bottom = Color.rgb(196, 219, 243); }
+            else               { top = Color.rgb(47, 123, 255);  mid = Color.rgb(90, 169, 255);  bottom = Color.rgb(169, 216, 255); }
         }
-        return new int[]{top, accent, bottom};
+        return new int[]{top, mid, bottom};
     }
 
     // Códigos WMO de Open-Meteo → emoji + etiqueta corta en español.
