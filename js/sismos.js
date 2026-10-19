@@ -518,24 +518,49 @@ window.chSismosSetMag = function (mag, btn) {
   };
 
   function initSheetGestures() {
-    var grab = document.getElementById('sismos-sheet-grab');
     var sheet = document.getElementById('sismos-sheet');
-    var startY = null, startT = 0;
-    if (!grab || !sheet) return;
-    grab.addEventListener('touchstart', function (e) {
-      var t = e.touches[0]; startY = t.clientY; startT = Date.now();
-    }, { passive: true });
-    grab.addEventListener('touchmove', function (e) {
-      if (startY == null) return;
-      if (e.touches[0].clientY - startY > 0 && sheet.classList.contains('open')) e.preventDefault();
-    }, { passive: false });
-    grab.addEventListener('touchend', function (e) {
-      if (startY == null) return;
-      var dy = e.changedTouches[0].clientY - startY;
-      var dt = Date.now() - startT;
-      if (dy > 70 || (dt < 260 && dy > 25)) chSismosCloseSheet();
-      startY = null;
-    });
+    var grab = document.getElementById('sismos-sheet-grab');
+    var head = sheet ? sheet.querySelector('.sismos-sheet-head') : null;
+    if (!sheet) return;
+
+    // El panel se puede cerrar DESLIZANDO hacia abajo desde el asa o desde
+    // la cabecera (antes solo respondía el asa de 22px, así que el usuario
+    // sentía que no podía deslizar por ningún lado).
+    function bindDrag(el) {
+      if (!el) return;
+      var startY = null, startT = 0, dragging = false;
+      el.addEventListener('touchstart', function (e) {
+        var t = e.touches[0]; startY = t.clientY; startT = Date.now(); dragging = true;
+      }, { passive: true });
+      el.addEventListener('touchmove', function (e) {
+        if (!dragging || startY == null) return;
+        if (e.touches[0].clientY - startY > 0 && sheet.classList.contains('open')) e.preventDefault();
+      }, { passive: false });
+      el.addEventListener('touchend', function (e) {
+        if (!dragging || startY == null) { dragging = false; return; }
+        var dy = e.changedTouches[0].clientY - startY;
+        var dt = Date.now() - startT;
+        dragging = false; startY = null;
+        if (dy > 70 || (dt < 260 && dy > 25)) chSismosCloseSheet();
+      });
+    }
+    bindDrag(grab);
+    bindDrag(head);
+
+    // Deslizar hacia abajo en el fondo también cierra (además del toque).
+    var backdrop = document.getElementById('sismos-sheet-backdrop');
+    if (backdrop) {
+      var bStartY = null;
+      backdrop.addEventListener('touchstart', function (e) {
+        var t = e.touches[0]; bStartY = t.clientY;
+      }, { passive: true });
+      backdrop.addEventListener('touchend', function (e) {
+        if (bStartY == null) return;
+        var dy = e.changedTouches[0].clientY - bStartY;
+        if (dy > 40) chSismosCloseSheet();
+        bStartY = null;
+      }, { passive: true });
+    }
   }
 
   document.addEventListener('keydown', function (ev) {

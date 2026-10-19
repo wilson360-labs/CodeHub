@@ -3618,10 +3618,14 @@ async function chResolveAndShowWeather(lat, lon, source) {
    MISMA coordenada — nunca una desincronizada de la otra. */
 function chAutoDetectAndSave(updateWidget) {
   function onOk(lat, lon) {
+    wxGpsDenied = false;
     if (updateWidget) chResolveAndShowWeather(lat, lon, 'gps');
     else chSavePushLocation(lat, lon, 'Tu ubicación', '', 'gps');
   }
-  function onFail() { detectWeatherByIP(updateWidget); }
+  function onFail(err) {
+    wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
+    detectWeatherByIP(updateWidget);
+  }
 
   // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, alta precisión)
   if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
@@ -6586,8 +6590,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
     document.getElementById('wx-error').style.display   = 'none';
     // Aviso de ubicación aproximada (IP): visible solo si el nombre
     // contiene "(aprox.)", para invitar a activar GPS o buscar la ciudad.
-    var wxApproxEl = document.getElementById('wx-approx');
-    if (wxApproxEl) wxApproxEl.style.display = (cityName && /aprox/i.test(cityName)) ? 'flex' : 'none';
+    wxShowApproxNote(!!(cityName && /aprox/i.test(cityName)));
     var wxCityEl = document.getElementById('wx-city');
     if (wxCityEl && typeof toast === 'function') {
       toast('Clima actualizado · ' + wxCityEl.textContent, 'weather', 2600);
@@ -6664,6 +6667,24 @@ async function weatherGeoErrorMessage(tried) {
   return 'No se pudo detectar tu ubicación. Toca "Usar mi ubicación", escribe tu ciudad abajo o inténtalo de nuevo.' + detail;
 }
 
+/* ¿El GPS del navegador está bloqueado (PERMISSION_DENIED)? Sirve para que
+   el aviso de "ubicación aproximada" explique la causa real en vez de
+   mostrar una ciudad equivocada en silencio. */
+var wxGpsDenied = false;
+
+/* Muestra/oculta el aviso de ubicación aproximada. Solo aparece cuando el
+   resultado proviene de IP; si el GPS estaba bloqueado, el texto apunta a
+   activarlo (candado 🔒 → Ubicación → Permitir). */
+function wxShowApproxNote(show) {
+  var el = document.getElementById('wx-approx');
+  if (!el) return;
+  el.style.display = show ? 'flex' : 'none';
+  if (show && wxGpsDenied) {
+    var span = el.querySelector('span');
+    if (span) span.textContent = 'Tu navegador bloqueó la ubicación. Actívala desde el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página, o escribe tu ciudad abajo.';
+  }
+}
+
 async function detectWeatherByIP(updateWidget) {
   if (updateWidget === undefined) updateWidget = true;
   // ÚLTIMO RECURSO: la geolocalización por IP solo puede aproximar la
@@ -6705,10 +6726,12 @@ async function detectWeatherByIP(updateWidget) {
     try {
       var loc = await attempts[i].fn();
       if (loc && loc.lat) {
-        var flag = loc.cc === 'GT' ? ' 🇬🇹' : '';
-        var area = loc.region && loc.region !== loc.city ? ', ' + loc.region : '';
         if (updateWidget) {
-          await fetchWeatherByCoords(loc.lat, loc.lon, loc.city + area + ', ' + loc.country + ' (aprox.) 📶' + flag);
+          // Etiqueta NEUTRA: NO mostramos la ciudad del nodo de salida
+          // (puede ser un proxy/VPN lejos del usuario) porque parece un
+          // bug. El aviso de "aproximada" explica cómo obtener la
+          // ubicación exacta (GPS) o buscar la ciudad.
+          await fetchWeatherByCoords(loc.lat, loc.lon, 'Tu ubicación (aprox.) 📶');
         }
         chSavePushLocation(loc.lat, loc.lon, loc.city, loc.country, 'ip');
         return true;
@@ -6749,10 +6772,18 @@ function requestGeoLocation() {
 
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
+      wxGpsDenied = false;
       await chResolveAndShowWeather(pos.coords.latitude, pos.coords.longitude, 'gps');
       done(true);
     },
-    async () => { await detectWeatherByIP(true); done(false); },
+    async (err) => {
+      // PERMISSION_DENIED (1): el navegador bloqueó la ubicación; el
+      // aviso de "aproximada" explicará cómo activarla en vez de
+      // mostrar otra ciudad en silencio.
+      wxGpsDenied = !!(err && err.code === 1);
+      await detectWeatherByIP(true);
+      done(false);
+    },
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 }
@@ -6790,6 +6821,7 @@ async function searchWeatherByName(name) {
 function showWeatherError(msg) {
   document.getElementById('wx-loading').style.display  = 'none';
   document.getElementById('wx-result').style.display   = 'none';
+  wxShowApproxNote(false);
   document.getElementById('wx-error').style.display    = 'flex';
   const errMsg = document.getElementById('wx-error-msg');
   if (errMsg) errMsg.textContent = msg;
@@ -8351,7 +8383,7 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/emi-voice.d7c975d11a.min.js" defer></script>
 <script src="/dist/assets/js/sys-metrics.441cf23ca5.min.js" defer></script>
 <script src="/dist/assets/js/security-scan.5a8b5156fe.min.js" defer></script>
-<script src="/dist/assets/js/lazy-features.d93159e9dd.min.js" defer></script>
+<script src="/dist/assets/js/lazy-features.8633234919.min.js" defer></script>
   <script src="/dist/assets/js/offline-queue.6b72f7a657.min.js" defer></script>
 <script src="/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js" defer></script>
 
