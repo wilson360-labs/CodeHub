@@ -35,12 +35,18 @@
   // Se usa ipapi.co, que responde por HTTPS. ip-api.com se descartó:
   // su plan gratuito solo permite HTTP y por HTTPS devuelve 403, así
   // que el "respaldo" nunca podía funcionar y solo generaba ruido.
-  // El resultado se guarda en sesión para no repetir la petición.
+  //
+  // Es un extra, no un requisito: su plan gratuito devuelve 503 cuando
+  // se agota la cuota. Por eso el presupuesto es de 1,5 s (no 4): si
+  // no responde a tiempo, se pide el feed sin país y el backend
+  // devuelve BBC Mundo. El resultado bueno se cachea en sesión.
+  var GEO_TIMEOUT_MS = 1500;
+
   function detectNewsCountry() {
     var cached = sessionStorage.getItem('ch_news_country');
     if (cached) return Promise.resolve(cached);
 
-    return fetchWithTimeoutNT('https://ipapi.co/json/', {}, 4000)
+    return fetchWithTimeoutNT('https://ipapi.co/json/', {}, GEO_TIMEOUT_MS)
       .then(function (r) { return r.json(); })
       .then(function (geo) {
         if (geo.country_code && !geo.error) {
