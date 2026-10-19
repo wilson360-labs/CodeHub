@@ -3162,13 +3162,29 @@ DISPONIBILIDAD:
         });
 
         // Efecto parallax suave
+        //
+        // SOLO .skill-icon. Antes incluía .service-icon, y eso rompía los
+        // iconos de las tarjetas: el desplazamiento se calculaba como
+        // (posición de scroll * speed * 0.01) con speed creciente por índice
+        // del NodeList, así que los iconos de #guias-home —los últimos del
+        // listado, speed 1.7–2.0— se desplazaban más de 100 px hacia abajo y
+        // caían por debajo del título y de la descripción.
+        //
+        // Ese daño quedaba oculto mientras una animación CSS de `transform`
+        // siguiera en marcha, porque una declaración de animación tiene más
+        // peso que un estilo inline. En cuanto se desactivan las animaciones
+        // (prefers-reduced-motion: reduce, que prefs.css aplica a *; o los
+        // kill-switches por widget) el transform inline tomaba el control y
+        // el icono se descolocaba. Se acota además el offset a ±8 px para que
+        // la misma clase de bug no pueda reaparecer en .skill-icon.
         window.addEventListener('scroll', () => {
             const scrolled = window.pageYOffset;
-            const parallaxElements = document.querySelectorAll('.skill-icon, .service-icon');
+            const parallaxElements = document.querySelectorAll('.skill-icon');
             
             parallaxElements.forEach((el, index) => {
                 const speed = 0.5 + (index * 0.1);
-                el.style.transform = `translateY(${scrolled * speed * 0.01}px)`;
+                const offset = Math.max(-8, Math.min(8, scrolled * speed * 0.01));
+                el.style.transform = `translateY(${offset}px)`;
             });
         });
 

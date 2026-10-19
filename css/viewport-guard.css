@@ -1463,15 +1463,19 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   object-fit: contain;
 }
 
-/* ── FIX: iconos de la sección Servicios (#services) ─────────────
+/* ── FIX: iconos de las tarjetas (#services y #guias-home) ─────
    El icono es un <i class="fas"> cuyo glifo se dibuja en ::before.
    components.css/index-responsive.css lo convierten en flex y le
    aplican iconFloat con rotateY(5deg): en algunas pantallas el glifo
    queda descentrado/torcido dentro de su caja. Se fuerza una caja
    de icono centrada, sin rotación 3D (solo flotación vertical), con
    ancho de línea neutro para que ninguna regla previa lo descoloque
-   ni desborde la tarjeta en el rango móvil 380–720px. */
-#services .service-icon {
+   ni desborde la tarjeta en el rango móvil 380–720px.
+   Aplica a TODAS las tarjetas .service-icon: #guias-home reutiliza el
+   mismo componente y antes no recibía esta normalización, así que sus
+   iconos quedaban desalineados respecto a los de #services. */
+#services .service-icon,
+#guias-home .service-icon {
   display: inline-grid !important;
   place-items: center !important;
   width: 1.6em !important;
@@ -1493,7 +1497,8 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 /* En los grids de 2 columnas del rango móvil el icono no debe
    comprimirse ni desbordar su tarjeta compacta. */
 @media (max-width: 720px) {
-  #services .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem) !important; display: inline-grid !important; place-items: center !important; width: 1.6em !important; height: 1.6em !important; padding: 0 !important; }
+  #services .service-icon,
+  #guias-home .service-icon { font-size: clamp(1.6rem, 6vw, 2.6rem) !important; display: inline-grid !important; place-items: center !important; width: 1.6em !important; height: 1.6em !important; padding: 0 !important; }
 }
 
 /* ── ICONOS INDEX — ajuste uniforme en WebView Android ──────────────
