@@ -106,7 +106,7 @@
     try {
       var stored = loadFromStorage();
       var clientVersion = stored ? (stored.version || 0) : 0;
-      var url = '/api/config' + (clientVersion ? '?v=' + clientVersion : '');
+      var url = (window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/config' + (clientVersion ? '?v=' + clientVersion : '');
       var res = await fetch(url);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var body = await res.json();

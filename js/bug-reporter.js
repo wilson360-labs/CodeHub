@@ -14,7 +14,7 @@
   if (window.__chBugReporter) return;
   window.__chBugReporter = true;
 
-  var ENDPOINT = '/api/crash-report';
+  var ENDPOINT = (window.BACKEND_INDEX || 'https://codehub-98s6.onrender.com') + '/api/crash-report';
   var APP_VERSION = 'codehub-web';
   var enabled = false;
   var enabledChecked = false;

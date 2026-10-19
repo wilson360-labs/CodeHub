@@ -2124,8 +2124,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- CSS ADICIONAL PARA NUEVAS SECCIONES -->
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
-<script src="/dist/assets/js/remote-config.353c271f68.min.js"></script>
-<script src="/dist/assets/js/bug-reporter.fa420fbbab.min.js"></script>
+<script src="/dist/assets/js/remote-config.45cfc79a3f.min.js"></script>
+<script src="/dist/assets/js/bug-reporter.36559939c5.min.js"></script>
 <script src="/dist/assets/js/updater.cdaf77f61c.min.js" defer></script>
     <script>
         // Gate de debug: activa con localStorage.setItem('ch_debug','1')
@@ -7567,7 +7567,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function chFetchLatest() {
     try {
-      const r = await fetch('/api/changelog', { cache: 'no-store' });
+      const r = await fetch(BACKEND_INDEX + '/api/changelog', { cache: 'no-store' });
       const d = await r.json();
       if (d.ok && d.entries && d.entries.length) return d.entries[0];
     } catch (e) {}

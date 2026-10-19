@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.38';
+const VERSION = 'codehub-v7.39';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -108,7 +108,7 @@ const PRECACHE = [
   '/widgets/weather/weather-widget.js',
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
   '/dist/assets/js/auth.14f7caec39.min.js',
-  '/dist/assets/js/bug-reporter.fa420fbbab.min.js',
+  '/dist/assets/js/bug-reporter.36559939c5.min.js',
   '/dist/assets/js/connection-alert.93f5557731.min.js',
   '/dist/assets/js/consent-banner.65800153df.min.js',
   '/dist/assets/js/deep-search.0171f144d5.min.js',
@@ -124,7 +124,7 @@ const PRECACHE = [
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
   '/dist/assets/js/prefs.853367107e.min.js',
-  '/dist/assets/js/remote-config.353c271f68.min.js',
+  '/dist/assets/js/remote-config.45cfc79a3f.min.js',
   '/dist/assets/js/rewarded-ad.24a00c4021.min.js',
   '/dist/assets/js/script.40e4e0e08a.min.js',
   '/dist/assets/js/security-scan.5a8b5156fe.min.js',
