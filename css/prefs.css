@@ -76,13 +76,46 @@ html[data-density="espaciosa"] .skills-grid { gap: .95rem !important; }
   border: 1px solid rgba(0,0,0,.35) !important;
 }
 
-/* ── Reducir movimiento — respeto automático del sistema ── */
+/* ── Animaciones — las decide la app, no el sistema ──────────
+   El interruptor "Animaciones" del panel de Configuración escribe
+   data-anim en <html> (llave cfg_anim). El ajuste del teléfono se
+   ignora a propósito: la misma preferencia vale en web y en la APK. */
+:root[data-anim="0"] {
+  scroll-behavior: auto !important;
+}
+:root[data-anim="0"] *,
+:root[data-anim="0"] *::before,
+:root[data-anim="0"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html[data-anim="0"]::view-transition-old(root),
+html[data-anim="0"]::view-transition-new(root),
+html[data-anim="0"]::view-transition-group(root) {
+  animation: none !important;
+}
+
+/* Font Awesome apaga sus spinners con prefers-reduced-motion; se restaura
+   para que el giro dependa solo de data-anim. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+  .fa-spin {
+    animation-name: fa-spin !important;
+    animation-duration: var(--fa-animation-duration, 2s) !important;
+    animation-iteration-count: var(--fa-animation-iteration-count, infinite) !important;
+    animation-timing-function: var(--fa-animation-timing, linear) !important;
+    animation-delay: var(--fa-animation-delay, 0s) !important;
+    animation-direction: var(--fa-animation-direction, normal) !important;
   }
+}
+
+/* Nota secundaria bajo un toggle del panel */
+#config-panel .cfg-note {
+  margin: .1rem 0 0;
+  font-size: .68rem;
+  line-height: 1.45;
+  color: var(--muted, #8a8f9f);
+  opacity: .8;
 }
 
 /* ── Kill-switches por widget (efectos suavizados) ─────────── */

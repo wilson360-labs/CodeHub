@@ -1567,17 +1567,24 @@ ins.adsbygoogle[data-ad-status="unfilled"],
     #ch-splash .ch-brand{ margin-top: 1rem; }
     #ch-splash .ch-progress-wrap{ margin-top: 1.1rem; }
 }
-/* Accesibilidad: sin movimiento, el splash queda estático y breve */
-@media (prefers-reduced-motion: reduce){
-    .ch-aurora, .ch-stars, .ch-ring, .ch-ring-inner, .ch-glow-ring,
-    .ch-logo-img.loaded, .ch-progress-bar::after{ animation: none !important; }
-    .ch-orbit{ display: none; }
-    .ch-ring-wrap, .ch-greet, .ch-w, .ch-brand-sub, .ch-progress-wrap{
-        animation-duration: .01ms !important;
-        animation-delay: 0s !important;
-    }
-    #ch-splash{ transition-duration: .2s; }
+/* Animaciones apagadas en la app: el splash queda estático y breve */
+:root[data-anim="0"] .ch-aurora,
+:root[data-anim="0"] .ch-stars,
+:root[data-anim="0"] .ch-ring,
+:root[data-anim="0"] .ch-ring-inner,
+:root[data-anim="0"] .ch-glow-ring,
+:root[data-anim="0"] .ch-logo-img.loaded,
+:root[data-anim="0"] .ch-progress-bar::after{ animation: none !important; }
+:root[data-anim="0"] .ch-orbit{ display: none; }
+:root[data-anim="0"] .ch-ring-wrap,
+:root[data-anim="0"] .ch-greet,
+:root[data-anim="0"] .ch-w,
+:root[data-anim="0"] .ch-brand-sub,
+:root[data-anim="0"] .ch-progress-wrap{
+    animation-duration: .01ms !important;
+    animation-delay: 0s !important;
 }
+:root[data-anim="0"] #ch-splash{ transition-duration: .2s; }
 .hero-desc{
             font-size: .95rem;
             color: rgba(232,232,240,.5);
@@ -2265,10 +2272,7 @@ ins.adsbygoogle[data-ad-status="unfilled"],
             transition: all .2s;
             display: flex; align-items: center; justify-content: center;
         }#cfg-btn:hover{ border-color: var(--primary); color: var(--accent); background: rgba(47,128,237,.08); }/* Font size cfg */
-body.font-sm{ font-size: 14px; }body.font-lg{ font-size: 18px; }body.no-anim *, body.no-anim *::before, body.no-anim *::after{
-            animation: none !important;
-            transition: none !important;
-        }/* ═══ CLIMA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═ */
+body.font-sm{ font-size: 14px; }body.font-lg{ font-size: 18px; }/* ═══ CLIMA â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═ */
 #weather-section{
             background: linear-gradient(135deg, rgba(0,0,0,.6), rgba(26,26,46,.6));
             border: 2px solid rgba(34,197,94,.2);
@@ -3437,7 +3441,8 @@ header nav{ display: none !important; }/* Burger visible en todas las pantallas 
    border-beam (hover), sheen en barras de skill, text-reveal por
    palabras en h2, tilt 3D del hero-card y depth-lift de chips.
    Todo GPU-only (transform/opacity), gateado a dispositivos con
-   hover+puntero fino y desactivado con prefers-reduced-motion.
+   hover+puntero fino y apagable desde el panel de Configuración
+   (interruptor "Animaciones" → data-anim en <html>).
    ═══════════════════════════════════════════════════════════════ */
 @property --beam-angle{
     syntax: '<angle>';
@@ -3514,15 +3519,20 @@ header nav{ display: none !important; }/* Burger visible en todas las pantallas 
     }.hero-card.tilt-ready{
         animation: none;
         transition: transform .45s cubic-bezier(.22,1,.36,1);
-    }}/* ── Reduced motion: todo quieto, textos visibles ── */
-@media (prefers-reduced-motion: reduce){.skill-chip::after,
-    .game-card::after,
-    .service-card::after{ animation: none !important; }.sc-fill{ animation: none !important; }.skills-grid.in-view .sc-fill::after{ animation: none !important; }.tw-word{
+    }}/* ── Animaciones apagadas en la app: todo quieto, textos visibles ── */
+:root[data-anim="0"] .skill-chip::after,
+:root[data-anim="0"] .game-card::after,
+:root[data-anim="0"] .service-card::after{ animation: none !important; }
+:root[data-anim="0"] .sc-fill{ animation: none !important; }
+:root[data-anim="0"] .skills-grid.in-view .sc-fill::after{ animation: none !important; }
+:root[data-anim="0"] .tw-word{
         opacity: 1 !important;
         transform: none !important;
         filter: none !important;
-    }.skill-chip:hover,
-    .skill-chip{ transform: none !important; }.hero-card.tilt-ready{ transition: none !important; }}/* ------------------------------------------------------------
+    }
+:root[data-anim="0"] .skill-chip:hover,
+:root[data-anim="0"] .skill-chip{ transform: none !important; }
+:root[data-anim="0"] .hero-card.tilt-ready{ transition: none !important; }/* ------------------------------------------------------------
    CENTRO DE NOTIFICACIONES � campana + panel (PC y m�vil)
    Estructura: #notif-btn (header) ? #notif-panel
    ------------------------------------------------------------ */

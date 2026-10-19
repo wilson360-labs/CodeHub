@@ -359,11 +359,8 @@
     var words = [].slice.call(wrap.querySelectorAll('.tm-word'));
     if (words.length < 2) return;
 
-    // Sin animación si el usuario prefiere reducir movimiento
-    // NOTA: por decisión explícita del dueño del sitio (ver nota en
-    // index.css), las animaciones ya NO dependen de prefers-reduced-motion
-    // — se muestran siempre, en PC y en móvil. Guard desactivado.
-    // if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Las animaciones de CodeHub las gobierna el panel de Configuración
+    // (data-anim en <html>), nunca el ajuste de movimiento del sistema.
 
     var HOLD = 2400;      // ms que cada palabra queda visible
     var i = 0;
@@ -438,14 +435,16 @@
 
   // ── 8. TILT 3D DEL HERO-CARD ────────────────────────────────
   // La tarjeta del hero se inclina siguiendo el ratón (solo con
-  // puntero fino y sin reduced-motion). Se desactiva la animación
-  // de entrada antes de aplicar transform, porque su fill-mode
-  // pisaría los transform inline del JS.
+  // puntero fino). Las animaciones las gobierna la app — el atributo
+  // data-anim que escribe prefs.js en <html> — y no el ajuste de
+  // movimiento del sistema. Se desactiva la animación de entrada
+  // antes de aplicar transform, porque su fill-mode pisaría los
+  // transform inline del JS.
   function initHeroCardTilt() {
     var shell = document.querySelector('.hero-visual-shell');
     var card = shell && shell.querySelector('.hero-card');
     if (!shell || !card) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (document.documentElement.getAttribute('data-anim') === '0') return;
     if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     var DEG = 5;

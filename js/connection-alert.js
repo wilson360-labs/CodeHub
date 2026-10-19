@@ -35,8 +35,7 @@
     '#ch-conn-dismiss{flex:0 0 auto;background:none;border:none;color:rgba(255,255,255,.85);',
     '  font-size:1.05rem;line-height:1;cursor:pointer;padding:.1rem .35rem;border-radius:6px;}',
     '#ch-conn-dismiss:hover{color:#fff;background:rgba(255,255,255,.15);}',
-    '@media (max-width:640px){#ch-conn-inner{font-size:.76rem;padding:.55rem .9rem;gap:.5rem;}}',
-    '@media (prefers-reduced-motion:reduce){#ch-conn{transition:none;}}'
+    '@media (max-width:640px){#ch-conn-inner{font-size:.76rem;padding:.55rem .9rem;gap:.5rem;}}'
   ].join('\n');
 
   var styleEl = document.createElement('style');

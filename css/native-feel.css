@@ -76,12 +76,12 @@ html[data-vt="back"]::view-transition-new(root) {
 @keyframes vtOutRight { to { transform: translate3d(22%, 0, 0);    opacity: .35; } }
 @keyframes vtInRight  { from { transform: translate3d(-100%, 0, 0); } }
 
-/* A11y: usuarios con "less motion" → nada de slide, ida y vuelta limpio */
-@media (prefers-reduced-motion: reduce) {
-  html[data-vt]::view-transition-old(root),
-  html[data-vt]::view-transition-new(root),
-  ::view-transition-group(root) { animation: none !important; }
-}
+/* Animaciones apagadas en la app → nada de slide, ida y vuelta limpia.
+   La preferencia vive en el panel de Configuración (data-anim), no en
+   el ajuste de animaciones del sistema. */
+html[data-anim="0"][data-vt]::view-transition-old(root),
+html[data-anim="0"][data-vt]::view-transition-new(root),
+html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
 
 /* ── Polaco del tab activo del menú inferior (píldora sutil) ──────── */
 @media (max-width: 640px) {

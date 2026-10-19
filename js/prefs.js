@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════
-//  prefs.js — Personalización de estilos (sin animaciones)
+//  prefs.js — Personalización de estilos y animaciones
 //  Aplica preferencias de apariencia (acento, esquinas,
-//  densidad, contraste, fondo, kill-switches de widgets)
-//  como atributos de <html> (data-accent, data-radius, …).
+//  densidad, contraste, fondo, kill-switches de widgets e
+//  interruptor de animaciones) como atributos de <html>
+//  (data-accent, data-radius, data-anim, …).
 //  Se carga en <head> (síncrono, antes del render) para
 //  evitar flash de estilos. Persistencia: localStorage cfg_*
 //  igual que las demás preferencias del panel (setCfg).
@@ -10,8 +11,10 @@
 (function () {
   'use strict';
 
-  var KEYS = ['accent', 'radius', 'density', 'contrast', 'bg', 'wf', 'wh', 'ws', 'wk'];
-  var DEFAULTS = { accent: 'azul', radius: 'medio', density: 'normal', contrast: 'normal', bg: 'auto', wf: 'on', wh: 'on', ws: 'on', wk: 'on' };
+  // 'anim' es la única que vive como '1'/'0' (no 'on'/'off'): reutiliza la
+  // llave cfg_anim preexistente, que también sincroniza remote-config.
+  var KEYS = ['accent', 'radius', 'density', 'contrast', 'bg', 'wf', 'wh', 'ws', 'wk', 'anim'];
+  var DEFAULTS = { accent: 'azul', radius: 'medio', density: 'normal', contrast: 'normal', bg: 'auto', wf: 'on', wh: 'on', ws: 'on', wk: 'on', anim: '1' };
   var SWATCH_HEX = { azul: '#2f80ed', cian: '#0ea5e9', verde: '#16a34a', violeta: '#7c4dff', rosa: '#ec4899', rojo: '#ef4444', ambar: '#f59e0b' };
 
   function read(key) {
@@ -43,6 +46,7 @@
     el.dataset.wh = read('wh');
     el.dataset.ws = read('ws');
     el.dataset.wk = read('wk');
+    el.dataset.anim = read('anim');
 
     if (accent && accent.charAt(0) === '#') {
       el.style.setProperty('--accent', accent);

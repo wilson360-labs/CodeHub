@@ -186,7 +186,7 @@
   .st-btn { font-size: .68rem; padding: .36rem .55rem; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .st-highlight { animation: none; }
-  .st-card, .st-help-btn { transition: none; }
-}
+/* Animaciones apagadas en la app: resaltado y tarjeta del tour, quietos */
+:root[data-anim="0"] .st-highlight { animation: none !important; }
+:root[data-anim="0"] .st-card,
+:root[data-anim="0"] .st-help-btn { transition: none !important; }

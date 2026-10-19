@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.36';
+const VERSION = 'codehub-v7.37';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -109,8 +109,8 @@ const PRECACHE = [
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
   '/dist/assets/js/auth.14f7caec39.min.js',
   '/dist/assets/js/bug-reporter.fa420fbbab.min.js',
-  '/dist/assets/js/connection-alert.c76b7978b9.min.js',
-  '/dist/assets/js/consent-banner.b3efc7679a.min.js',
+  '/dist/assets/js/connection-alert.93f5557731.min.js',
+  '/dist/assets/js/consent-banner.65800153df.min.js',
   '/dist/assets/js/deep-search.0171f144d5.min.js',
   '/dist/assets/js/device-detect.4bdd073619.min.js',
   '/dist/assets/js/emi-voice.d7c975d11a.min.js',
@@ -123,7 +123,7 @@ const PRECACHE = [
   '/dist/assets/js/notifications.024f9d794c.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
   '/dist/assets/js/offline-queue.6b72f7a657.min.js',
-  '/dist/assets/js/prefs.759f7e9abd.min.js',
+  '/dist/assets/js/prefs.853367107e.min.js',
   '/dist/assets/js/remote-config.353c271f68.min.js',
   '/dist/assets/js/rewarded-ad.24a00c4021.min.js',
   '/dist/assets/js/script.40e4e0e08a.min.js',
@@ -132,10 +132,10 @@ const PRECACHE = [
   '/dist/assets/js/sw-update.4cda8937e9.min.js',
   '/dist/assets/js/sys-metrics.441cf23ca5.min.js',
   '/dist/assets/js/theme-switcher.87479ab399.min.js',
-  '/dist/assets/js/thinking-orb.2b4982d5a0.min.js',
+  '/dist/assets/js/thinking-orb.5580b30c93.min.js',
   '/dist/assets/js/unity-ads.17d13add03.min.js',
   '/dist/assets/js/updater.cdaf77f61c.min.js',
-  '/dist/assets/js/ux-animations.a8bd2381d0.min.js',
+  '/dist/assets/js/ux-animations.f3b47b32a4.min.js',
   '/dist/assets/widgets/weather/weather-widget.fd1d5d4d92.min.js',
   '/data/roadmap.json',
 ];

@@ -1022,21 +1022,6 @@ footer a:hover { text-decoration: underline; }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   REDUCED MOTION — todo quieto
-   ═══════════════════════════════════════════════════════════════ */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *,
-  *::before,
-  *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-  }
-  .app-card::after { animation: none !important; }
-}
-
-/* ═══════════════════════════════════════════════════════════════
    MODALES DE INSTRUCCIONES — Diálogos genéricos para apps avanzadas
    ═══════════════════════════════════════════════════════════════ */
 .how-to-modal {
@@ -1421,9 +1406,7 @@ footer a:hover { text-decoration: underline; }
 #device-apps-section {
   scroll-margin-top: 80px;
 }
-@media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
-}
+html { scroll-behavior: smooth; }
 
 /* ═══════════════════════════════════════════════════════
    Toast propio (OSToast) — feedback visual de esta página,
@@ -1725,7 +1708,4 @@ footer a:hover { text-decoration: underline; }
 @media (max-width: 380px) {
   .os-rw-card { padding: 1.25rem 1rem 1rem; }
   .os-rw-title { font-size: 1rem; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .os-rw-overlay, .os-rw-card { animation: none; }
 }

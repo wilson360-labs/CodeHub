@@ -6,9 +6,14 @@
 (function () {
   'use strict';
 
-  // Nota: antes se desactivaba con prefers-reduced-motion; por decisión
-  // del dueño del sitio, el orbe de "pensando" ahora siempre anima.
-  var reduceMotion = false;
+  // El ajuste de movimiento del sistema no interviene: decide la app
+  // (interruptor "Animaciones" → data-anim en <html>), y con él apagado
+  // el orbe se dibuja un solo frame estático en vez de animarse.
+  function motionOff() {
+    try {
+      return document.documentElement.getAttribute('data-anim') === '0';
+    } catch (e) { return false; }
+  }
 
   function withAlpha(rgbaStr, a) {
     return rgbaStr.replace(/[\d.]+\)\s*$/, a.toFixed(2) + ')');
@@ -103,7 +108,7 @@
       raf = null;
     }
 
-    if (reduceMotion) {
+    if (motionOff()) {
       // Un solo frame estático, sin animación continua
       t0 = 0;
       if (state === 'working') drawWorking(400); else drawComposing(400);

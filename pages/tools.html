@@ -79,7 +79,7 @@
 <link rel="apple-touch-icon" href="../splash/codehub.png">
 <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
 <link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
-<link rel="stylesheet" href="../css/site-tour.css?v=20260908a">
+<link rel="stylesheet" href="../css/site-tour.css?v=20261019a">
 <link rel="stylesheet" href="../css/optimizer.css?v=20260915a">
 <link rel="stylesheet" href="../css/xterm.css?v=20260914a">
 <link rel="stylesheet" href="../css/terminal.css?v=20260914a">
@@ -352,10 +352,6 @@ footer a{color:var(--p);text-decoration:none}
   .card:not(.hidden):hover{border-color:var(--border-h)}
   .card:not(.hidden):hover .ci{transform:translateY(-3px)}
 }
-@media(prefers-reduced-motion:reduce){
-  .card,.card.t-enter,.card.t-enter.t-in,.card.filter-in{opacity:1!important;transform:none!important;animation:none!important;transition:none!important}
-  .card .ci{transform:none!important}
-}
 /* FAVORITOS (Fase 1) — estrella por card */
 .card{position:relative}
 .fav{position:absolute;top:.85rem;right:2.3rem;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:.75rem;opacity:0;transition:opacity .2s,color .2s,border-color .2s,background .2s}
@@ -398,10 +394,9 @@ footer a{color:var(--p);text-decoration:none}
 @keyframes hubPulse{0%,100%{box-shadow:0 0 0 2px var(--a),0 0 34px rgba(56,189,248,.35)}50%{box-shadow:0 0 0 3px var(--a),0 0 46px rgba(56,189,248,.55)}}
 @media(max-width:768px){#hub-overlay{padding:6vh .75rem 1rem}.hub-panel{max-height:84vh}}
 @media(max-width:480px){.hub-panel{width:100%}.hub-foot{display:none}}
-@media(prefers-reduced-motion:reduce){.hub-panel{animation:none}.card.hub-flash{animation:none}}
 </style>
 
-<link rel="stylesheet" href="../css/viewport-guard.css?v=20260915a">
+<link rel="stylesheet" href="../css/viewport-guard.css?v=20261019a">
 
   <meta name="robots" content="index, follow">
   <meta name="theme-color" content="#2f80ed">
@@ -1896,19 +1891,17 @@ function applyFilter(q){
 }
 function animateShown(list){
   if(!list.length)return;
-  const rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   list.forEach((c,i)=>{
     c.classList.remove('filter-in');
     void c.offsetWidth;
-    c.style.animationDelay=rm?'0ms':(Math.min(i*22,330)+'ms');
+    c.style.animationDelay=(Math.min(i*22,330)+'ms');
     c.classList.add('filter-in');
   });
 }
-// Reveal con stagger al hacer scroll (solo si hay motion e IntersectionObserver)
+// Reveal con stagger al hacer scroll (si hay IntersectionObserver)
 (function(){
-  const rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const cards=Array.prototype.slice.call(document.querySelectorAll('.grid .card'));
-  if(!cards.length||rm||!('IntersectionObserver' in window))return;
+  if(!cards.length||!('IntersectionObserver' in window))return;
   cards.forEach(c=>c.classList.add('t-enter'));
   const io=new IntersectionObserver(es=>{
     es.forEach(e=>{

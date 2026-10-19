@@ -238,11 +238,6 @@
     }
     .note a { color: var(--primary); }
 
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation: none !important; transition: none !important; }
-      html { scroll-behavior: auto; }
-    }
-
     /* Colapso a una columna + botón "ver más" solo en móvil */
     @media (max-width: 640px) {
       .blogger-grid { grid-template-columns: 1fr; gap: .7rem; }

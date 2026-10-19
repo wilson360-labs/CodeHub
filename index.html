@@ -253,23 +253,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20260808f">
+    <link rel="stylesheet" href="css/index.css?v=20261019a">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20261014a">
+    <link rel="stylesheet" href="css/components.css?v=20261019a">
     <!-- Media queries responsive -->
     <link rel="stylesheet" href="css/index-responsive.css?v=20260809a">
-    <link rel="stylesheet" href="css/site-tour.css?v=20260808b">
+    <link rel="stylesheet" href="css/site-tour.css?v=20261019a">
     <!-- Widgets CodeHub (carpeta widgets/) — siempre entre site-tour y viewport-guard -->
     <link rel="stylesheet" href="widgets/weather/weather-widget.css?v=20260901b">
     <!-- VIEWPORT GUARD — última capa CSS: red de seguridad de responsividad
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
-<link rel="stylesheet" href="css/native-feel.css?v=20261016b">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261017d">
+<link rel="stylesheet" href="css/native-feel.css?v=20261019a">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261019a">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
-<link rel="stylesheet" href="css/prefs.css?v=20260920a">
+<link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
-    <script src="/dist/assets/js/prefs.759f7e9abd.min.js"></script>
+    <script src="/dist/assets/js/prefs.853367107e.min.js"></script>
 
 
 
@@ -662,6 +662,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <span class="cfg-slider"></span>
                         </label>
                     </div>
+                    <p class="cfg-note">Independiente del ajuste de animaciones del teléfono.</p>
                 </div>
 
                 <!-- Tema (retirado: CodeHub es oscuro por diseno, v1.4) -->
@@ -2374,8 +2375,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         let _resizeTimer;
         window.addEventListener('resize', () => { clearTimeout(_resizeTimer); _resizeTimer = setTimeout(init, 200); });
 
-        // Antes se ocultaba con prefers-reduced-motion; por decisión del
-        // dueño del sitio, esta animación ahora siempre se muestra.
+        // Esta animación la gobierna el interruptor "Animaciones" del
+        // panel de Configuración (data-anim), no el ajuste del sistema.
         init();
         nnSync();
 
@@ -3141,7 +3142,7 @@ DISPONIBILIDAD:
         // Ese daño quedaba oculto mientras una animación CSS de `transform`
         // siguiera en marcha, porque una declaración de animación tiene más
         // peso que un estilo inline. En cuanto se desactivan las animaciones
-        // (prefers-reduced-motion: reduce, que prefs.css aplica a *; o los
+        // (data-anim="0" en <html>, que prefs.css aplica a *; o los
         // kill-switches por widget) el transform inline tomaba el control y
         // el icono se descolocaba. Se acota además el offset a ±8 px para que
         // la misma clase de bug no pueda reaparecer en .skill-icon.
@@ -6363,8 +6364,10 @@ function setCfg(key, val, btn) {
 }
 
 function toggleAnim(chk) {
-    localStorage.setItem('cfg_anim', chk.checked ? '1' : '0');
-    document.body.classList.toggle('no-anim', !chk.checked);
+    // Única fuente de verdad: prefs.js (data-anim en <html>, llave cfg_anim).
+    // El ajuste de animaciones del sistema no participa.
+    if (window.Prefs) window.Prefs.set('anim', chk.checked ? '1' : '0');
+    else localStorage.setItem('cfg_anim', chk.checked ? '1' : '0');
 }
 function toggleNeural(chk) {
     localStorage.setItem('cfg_neural', chk.checked ? '1' : '0');
@@ -6379,7 +6382,7 @@ function resetCfg() {
     ['cfg_font','cfg_anim','cfg_neural','cfg_lang','theme'].forEach(k => localStorage.removeItem(k));
     if (window.Prefs) window.Prefs.reset();
     // Aplicar defaults
-    document.body.classList.remove('font-sm','font-lg','no-anim');
+    document.body.classList.remove('font-sm','font-lg');
     // Tema: siempre oscuro (el tema claro se retiro en v1.4)
     if (window.CodeHubTheme?.apply) {
         window.CodeHubTheme.apply('dark', false);
@@ -6419,8 +6422,7 @@ function loadCfg() {
     const neuralChk = document.getElementById('cfg-neural');
     if (neuralChk) neuralChk.checked = neural;
 
-    // Aplicar al cargar
-    document.body.classList.toggle('no-anim', !anim);
+    // Aplicar al cargar (prefs.js ya escribió data-anim al entrar)
     document.body.classList.remove('font-sm','font-lg');
     if (font !== 'md') document.body.classList.add('font-' + font);
     const canvas = document.getElementById('neural-network');
@@ -6430,10 +6432,8 @@ function loadCfg() {
 // Aplicar config guardada al cargar la página
 (function() {
     const font   = localStorage.getItem('cfg_font');
-    const anim   = localStorage.getItem('cfg_anim');
     const neural = localStorage.getItem('cfg_neural');
     if (font && font !== 'md') document.body.classList.add('font-' + font);
-    if (anim === '0') document.body.classList.add('no-anim');
     const canvas = document.getElementById('neural-network');
     if (canvas && neural !== '1') canvas.style.opacity = '0';
 })();
@@ -7911,11 +7911,14 @@ if (_defMood) setAIMood(_defMood);
     try { returning = !!localStorage.getItem('ch_splash_seen'); } catch (e) {}
     var isNative = typeof window.CodeHubNative !== 'undefined' || !!window.__apkNative ||
         !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-    var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    /* El ajuste de animaciones del teléfono no participa: solo cuenta la
+       preferencia de la app (cfg_anim = '0' → splash breve). */
+    var noMotion = false;
+    try { noMotion = localStorage.getItem('cfg_anim') === '0'; } catch (e) {}
 
     /* Tiempo mínimo visible: completo en la 1ª visita; compacto en APK,
-       visitante recurrente o movimiento reducido. MAX_MS = tope duro. */
-    var MIN_MS = reduceMotion ? 700 : isNative ? 900 : returning ? 1200 : 2000;
+       visitante recurrente o animaciones apagadas en la app. MAX_MS = tope duro. */
+    var MIN_MS = noMotion ? 700 : isNative ? 900 : returning ? 1200 : 2000;
     var MAX_MS = 3500;
 
     var h = new Date().getHours();
@@ -8165,8 +8168,8 @@ if (_defMood) setAIMood(_defMood);
     }
   }
 
-  /* ── 5. INIT ── (antes se ocultaba con prefers-reduced-motion; ahora
-     siempre se muestra, por decisión del dueño del sitio) ────────── */
+  /* ── 5. INIT ── (siempre se muestra; el ajuste de movimiento del
+     sistema ya no interviene, decide el panel de Configuración) ──── */
   resize();
   initParticles();
   heroSync();
@@ -8257,10 +8260,10 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/haptics.ee67eff258.min.js" defer></script>
 <script type="module" src="/dist/assets/js/morphicons-init.a38de871fc.min.js"></script>
 <script src="/dist/assets/js/device-detect.4bdd073619.min.js" defer></script>
-<script src="/dist/assets/js/thinking-orb.2b4982d5a0.min.js" defer></script>
+<script src="/dist/assets/js/thinking-orb.5580b30c93.min.js" defer></script>
 <script src="/dist/assets/js/deep-search.0171f144d5.min.js" defer></script>
 <script src="/dist/assets/js/office-generator.8d6cdf13ee.min.js" defer></script>
-<script src="/dist/assets/js/ux-animations.a8bd2381d0.min.js" defer></script>
+<script src="/dist/assets/js/ux-animations.f3b47b32a4.min.js" defer></script>
 <script src="/dist/assets/js/auth.14f7caec39.min.js" defer></script>
 <script src="/dist/assets/js/emi-voice.d7c975d11a.min.js" defer></script>
 <script src="/dist/assets/js/sys-metrics.441cf23ca5.min.js" defer></script>
@@ -8300,15 +8303,15 @@ if (_defMood) setAIMood(_defMood);
    para hacer scroll, la tarjeta se inclinaba siguiendo el dedo, de
    forma que el contenido temblaba durante el scroll en móvil. La
    elevación de la tarjeta se resuelve ahora con CSS puro
-   (translateY + un token de sombra), que además respeta
-   prefers-reduced-motion de forma automática. */
+   (translateY + un token de sombra), y su apagado lo gobierna el
+   interruptor "Animaciones" (data-anim) del panel de Configuración. */
 </script>
 
 
 <!-- anime.js v4 badge letter animation: REMOVIDO — reemplazado por textmorph (.tm-words) en ux-animations.js -->
 
-<script src="/dist/assets/js/consent-banner.b3efc7679a.min.js" defer></script>
-<script src="/dist/assets/js/connection-alert.c76b7978b9.min.js" defer></script>
+<script src="/dist/assets/js/consent-banner.65800153df.min.js" defer></script>
+<script src="/dist/assets/js/connection-alert.93f5557731.min.js" defer></script>
 <script src="/dist/assets/js/notifications.024f9d794c.min.js" defer></script>
 <script src="/dist/assets/js/rewarded-ad.24a00c4021.min.js" defer></script>
 <script>
@@ -8351,8 +8354,7 @@ if (_defMood) setAIMood(_defMood);
       });
     }
     if(s.cfg_lang&&typeof applyLang==='function'){localStorage.setItem('cfg_lang',s.cfg_lang);applyLang(s.cfg_lang);}
-    if(s.cfg_anim==='1'){localStorage.setItem('cfg_anim','1');document.body.classList.remove('no-anim');}
-    else if(s.cfg_anim==='0'){localStorage.setItem('cfg_anim','0');document.body.classList.add('no-anim');}
+    if(s.cfg_anim==='1'||s.cfg_anim==='0'){if(window.Prefs){Prefs.set('anim',s.cfg_anim);}else{localStorage.setItem('cfg_anim',s.cfg_anim);document.documentElement.setAttribute('data-anim',s.cfg_anim);}}
     if(s.ch_weather_alerts==='1'||s.ch_weather_alerts==='0'){
       localStorage.setItem('ch_weather_alerts',s.ch_weather_alerts);
       var wx=document.getElementById('wx-alerts-toggle');

@@ -74,8 +74,7 @@
     '  #ch-consent-btns{width:100%;}',
     '  #ch-consent-btn-ok{flex:1;}',
     '  #ch-consent-btn-no{flex:1;}',
-    '  #ch-consent-text{font-size:.78rem;}}',
-    '@media (prefers-reduced-motion:reduce){#ch-consent{transition:none;}}'
+    '  #ch-consent-text{font-size:.78rem;}}'
   ].join('\n');
 
   var styleEl = document.createElement('style');

@@ -1944,12 +1944,7 @@
         /* Font size cfg */
         body.font-sm { font-size: 14px; }
         body.font-lg { font-size: 18px; }
-        body.no-anim *, body.no-anim *::before, body.no-anim *::after {
-            animation: none !important;
-            transition: none !important;
-        }
 
-        
         /* ═══ CLIMA ═════════════════════════════════════════════ */
         #weather-section {
             background: linear-gradient(135deg, rgba(0,0,0,.6), rgba(26,26,46,.6));
@@ -2199,10 +2194,12 @@
    TODAS las animaciones del sitio (*, *::before,
    *::after con !important) cuando el sistema
    operativo del visitante tenía activado
-   "reducir movimiento". Por decisión explícita
-   del dueño del sitio, las animaciones de CodeHub
-   ya NO dependen de esa preferencia del SO — se
-   muestran siempre, en PC y en móvil.
+   "reducir movimiento". Esa regla se eliminó:
+   el ajuste del móvil ya no manda sobre CodeHub.
+   Quien quiera menos movimiento lo hace desde el
+   panel de Configuración → "Animaciones"
+   (prefs.css, data-anim en <html>): la misma
+   preferencia en web y en la APK.
 ═══════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════
