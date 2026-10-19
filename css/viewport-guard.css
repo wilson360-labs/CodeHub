@@ -702,6 +702,72 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .wx-big { font-size: 2.3rem; }
 }
 
+/* ── Estilo Breezy Weather (Material 3 Expressive) ─────
+   Fase 1: tema por condición + tarjeta expresiva. */
+.wx-card {
+  border-radius: 28px !important;
+  border: 1px solid color-mix(in srgb, var(--a, #22c55e) 18%, transparent) !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  transition: background .6s ease, box-shadow .3s ease;
+}
+.wx-card .wx-big {
+  font-size: 3.6rem; font-weight: 800; line-height: 1;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.4));
+}
+.wx-card .wx-temp {
+  font-size: 3.4rem; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,.75) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.wx-card .wx-city {
+  font-size: 1.35rem; font-weight: 700; color: #fff;
+  letter-spacing: -.01em;
+}
+.wx-card .wx-desc { font-size: .95rem; font-weight: 600; color: rgba(255,255,255,.85); }
+.wx-card .wx-feels { color: rgba(255,255,255,.7); }
+.wx-card .wx-stat {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  backdrop-filter: blur(6px);
+}
+.wx-card .wx-stat span { color: #fff; font-weight: 700; }
+.wx-card .wx-stat small { color: rgba(255,255,255,.65); }
+.wx-card .wx-stat i { color: rgba(255,255,255,.85); }
+
+/* Tema por condición (gradiente de fondo) */
+.wx-card[data-wx="clear"]   { background: linear-gradient(160deg, #1e40af 0%, #3b82f6 45%, #f59e0b 100%) !important; }
+.wx-card[data-wx="partly"]  { background: linear-gradient(160deg, #1e3a8a 0%, #3b82f6 50%, #93c5fd 100%) !important; }
+.wx-card[data-wx="cloudy"]  { background: linear-gradient(160deg, #334155 0%, #475569 50%, #64748b 100%) !important; }
+.wx-card[data-wx="rain"]    { background: linear-gradient(160deg, #1e3a5f 0%, #1e40af 50%, #3b82f6 100%) !important; }
+.wx-card[data-wx="storm"]   { background: linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important; }
+.wx-card[data-wx="snow"]    { background: linear-gradient(160deg, #1e3a5f 0%, #60a5fa 50%, #e0f2fe 100%) !important; }
+.wx-card[data-wx="fog"]     { background: linear-gradient(160deg, #374151 0%, #4b5563 50%, #6b7280 100%) !important; }
+
+/* Modo claro: suavizar el gradiente */
+[data-theme="light"] .wx-card[data-wx="clear"]  { background: linear-gradient(160deg, #60a5fa 0%, #93c5fd 50%, #fde68a 100%) !important; }
+[data-theme="light"] .wx-card[data-wx="partly"] { background: linear-gradient(160deg, #93c5fd 0%, #bfdbfe 50%, #e0f2fe 100%) !important; }
+[data-theme="light"] .wx-card[data-wx="cloudy"] { background: linear-gradient(160deg, #cbd5e1 0%, #e2e8f0 50%, #f1f5f9 100%) !important; color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx="rain"]   { background: linear-gradient(160deg, #93c5fd 0%, #bfdbfe 50%, #dbeafe 100%) !important; color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx="storm"]  { background: linear-gradient(160deg, #a5b4fc 0%, #c4b5fd 50%, #ddd6fe 100%) !important; color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx="snow"]   { background: linear-gradient(160deg, #bfdbfe 0%, #dbeafe 50%, #f0f9ff 100%) !important; color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx="fog"]    { background: linear-gradient(160deg, #d1d5db 0%, #e5e7eb 50%, #f3f4f6 100%) !important; color: #1e293b; }
+
+/* En modo claro, el texto del card debe ser oscuro */
+[data-theme="light"] .wx-card[data-wx] .wx-city,
+[data-theme="light"] .wx-card[data-wx] .wx-desc,
+[data-theme="light"] .wx-card[data-wx] .wx-feels { color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx] .wx-temp {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+[data-theme="light"] .wx-card[data-wx] .wx-stat span { color: #1e293b; }
+[data-theme="light"] .wx-card[data-wx] .wx-stat small { color: #475569; }
+[data-theme="light"] .wx-card[data-wx] .wx-stat i { color: #334155; }
+[data-theme="light"] .wx-card[data-wx] .wx-stat { background: rgba(255,255,255,.55); border-color: rgba(0,0,0,.08); }
+
 /* ── Selector de frecuencia de notificaciones ────────── */
 .wx-interval {
   margin-top: .7rem; padding: .7rem .8rem;

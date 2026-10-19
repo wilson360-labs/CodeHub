@@ -265,7 +265,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261019c">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261019d">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -1409,7 +1409,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Resultado clima -->
             <div id="wx-result" style="display:none">
-                <div class="wx-card">
+                <div class="wx-card" id="wx-card" data-wx="clear">
                     <div class="wx-main">
                         <div class="wx-big" id="wx-emoji-big">🌡️</div>
                         <div class="wx-hdr">
@@ -6520,6 +6520,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
 
       document.getElementById('wx-city').textContent   = city;
       document.getElementById('wx-desc').textContent   = capitalize(data.weather[0].description);
+      var _wxC1 = document.getElementById('wx-card'); if (_wxC1) _wxC1.setAttribute('data-wx', wxConditionBucket(data.weather[0].id));
       document.getElementById('wx-emoji-big').textContent = icon;
       document.getElementById('wx-temp').textContent   = `${Math.round(data.main.temp)}°`;
       document.getElementById('wx-feels').textContent  = `Sensación térmica: ${Math.round(data.main.feels_like)}°C · Máx ${Math.round(data.main.temp_max)}° / Mín ${Math.round(data.main.temp_min)}°`;
@@ -6562,6 +6563,7 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
       const dMin = d.daily?.temperature_2m_min?.[0];
       document.getElementById('wx-city').textContent   = cityName || 'Tu ubicación';
       document.getElementById('wx-desc').textContent   = WX[c.weather_code] || 'Variable';
+      var _wxC2 = document.getElementById('wx-card'); if (_wxC2) _wxC2.setAttribute('data-wx', wxConditionBucket(c.weather_code));
       document.getElementById('wx-emoji-big').textContent = WX_ICON[c.weather_code] || '🌡️';
       document.getElementById('wx-temp').textContent   = `${Math.round(c.temperature_2m)}°`;
       const extrema = (dMax != null && dMin != null) ? ` · ↑ ${Math.round(dMax)}° ↓ ${Math.round(dMin)}°` : '';
@@ -6611,6 +6613,32 @@ function getOWMIcon(id, icon) {
 }
 
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+/* Bucket de condición meteorológica para el tema visual del widget
+   (estilo Material 3 Expressive de Breezy Weather): clear / partly /
+   cloudy / rain / storm / snow / fog. Acepta códigos OWM (>=200) y
+   Open-Meteo (0-99). */
+function wxConditionBucket(code) {
+  code = +code;
+  if (code >= 200) { // OpenWeatherMap
+    if (code >= 200 && code < 300) return 'storm';
+    if (code >= 300 && code < 400) return 'rain';
+    if (code >= 500 && code < 600) return 'rain';
+    if (code >= 600 && code < 700) return 'snow';
+    if (code >= 700 && code < 800) return 'fog';
+    if (code === 800) return 'clear';
+    if (code <= 802) return 'partly';
+    return 'cloudy';
+  }
+  // Open-Meteo
+  if (code === 0) return 'clear';
+  if (code <= 3) return 'partly';
+  if (code === 45 || code === 48) return 'fog';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return 'snow';
+  if (code >= 95) return 'storm';
+  return 'cloudy';
+}
 
 /* Estado del permiso de geolocalización del navegador:
    'granted' | 'prompt' | 'denied' | 'unsupported'. */
