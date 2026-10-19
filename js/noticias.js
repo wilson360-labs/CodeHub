@@ -32,30 +32,54 @@
   }
 
   // ── PAÍS DEL USUARIO (IP) ────────────────────────────────────
-  // Se usa ipapi.co, que responde por HTTPS. ip-api.com se descartó:
-  // su plan gratuito solo permite HTTP y por HTTPS devuelve 403, así
-  // que el "respaldo" nunca podía funcionar y solo generaba ruido.
+  // Se consultan dos proveedores en paralelo y gana el primero que
+  // responda con un país válido. En serie, un proveedor caído sumaría
+  // su espera completa antes de pedir el feed; en paralelo el coste
+  // sigue siendo como mucho el del presupuesto (1,5 s).
   //
-  // Es un extra, no un requisito: su plan gratuito devuelve 503 cuando
-  // se agota la cuota. Por eso el presupuesto es de 1,5 s (no 4): si
-  // no responde a tiempo, se pide el feed sin país y el backend
-  // devuelve BBC Mundo. El resultado bueno se cachea en sesión.
+  // ipwho.is ya lo usa el widget de clima de la portada. ipapi.co se
+  // mantiene porque responde más rápido, pero su plan gratuito
+  // devuelve 503 al agotar la cuota diaria. ip-api.com se descartó:
+  // su plan gratuito solo permite HTTP y por HTTPS da 403.
+  //
+  // El país es un extra, no un requisito: si ninguno responde a
+  // tiempo se pide el feed sin país y el backend devuelve BBC Mundo.
+  // Solo se cachea el acierto.
   var GEO_TIMEOUT_MS = 1500;
+  var GEO_ENDPOINTS = [
+    { url: 'https://ipwho.is/', ok: function (j) { return j && j.success && j.country_code; } },
+    { url: 'https://ipapi.co/json/', ok: function (j) { return j && !j.error && j.country_code; } }
+  ];
 
   function detectNewsCountry() {
     var cached = sessionStorage.getItem('ch_news_country');
     if (cached) return Promise.resolve(cached);
 
-    return fetchWithTimeoutNT('https://ipapi.co/json/', {}, GEO_TIMEOUT_MS)
-      .then(function (r) { return r.json(); })
-      .then(function (geo) {
-        if (geo.country_code && !geo.error) {
-          sessionStorage.setItem('ch_news_country', geo.country_code);
-          return geo.country_code;
+    return new Promise(function (resolve) {
+      var settled = false;
+      var pending = GEO_ENDPOINTS.length;
+
+      function settle(country) {
+        if (settled) return;
+        if (country) {
+          settled = true;
+          try { sessionStorage.setItem('ch_news_country', country); } catch (e) {}
+          resolve(country);
+        } else if (--pending === 0) {
+          settled = true;
+          resolve(null);
         }
-        return null;
-      })
-      .catch(function () { return null; });
+      }
+
+      GEO_ENDPOINTS.forEach(function (endpoint) {
+        fetchWithTimeoutNT(endpoint.url, {}, GEO_TIMEOUT_MS)
+          .then(function (r) { return r.json(); })
+          .then(function (geo) {
+            settle(endpoint.ok(geo) ? geo.country_code : null);
+          })
+          .catch(function () { settle(null); });
+      });
+    });
   }
 
   function relativeTime(pub) {
