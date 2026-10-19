@@ -450,6 +450,30 @@ section, main, .container, .wrap, .inner, .section-wrap {
    varios intentos; permitir el corte evita desbordes en móvil. */
 #wx-error-msg { min-width: 0; overflow-wrap: anywhere; }
 
+/* Aviso de ubicación aproximada (IP) en el widget de clima */
+.wx-approx {
+  display: flex; flex-direction: column; gap: .5rem;
+  margin: .7rem 0 0; padding: .7rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--a, #fb923c) 40%, transparent);
+  border-radius: var(--radius-sm, 10px);
+  background: color-mix(in srgb, var(--a, #fb923c) 10%, transparent);
+  color: var(--text, rgba(242,245,249,.9)); font-size: .82rem;
+  line-height: 1.35;
+}
+.wx-approx-msg { display: flex; align-items: flex-start; gap: .5rem; }
+.wx-approx-msg i { color: var(--a, #fb923c); margin-top: .15rem; flex: 0 0 auto; }
+.wx-approx-msg span { min-width: 0; overflow-wrap: anywhere; }
+.wx-approx-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.wx-approx-btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .6rem !important; font-size: .78rem !important;
+  border: 1px solid color-mix(in srgb, var(--a, #fb923c) 45%, transparent) !important;
+  background: color-mix(in srgb, var(--a, #fb923c) 14%, transparent) !important;
+  border-radius: var(--radius-sm, 8px); color: var(--a, #fb923c) !important;
+  cursor: pointer; transition: all .2s;
+}
+.wx-approx-btn:hover { background: color-mix(in srgb, var(--a, #fb923c) 24%, transparent) !important; }
+
 /* ── Minimapa del clima (Leaflet) ─────────────────────── */
 .wx-map-box { display: block; margin-top: .5rem; }
 .wx-map-togglebtn {

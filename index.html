@@ -265,7 +265,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261019b">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261019c">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -1487,6 +1487,17 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                             <span id="wx-updated">—</span> <span class="wx-live-dot"></span>
                             <small>Actualizado</small>
                         </div>
+                    </div>
+                </div>
+                <!-- Aviso de ubicación aproximada (IP): invita a activar GPS o buscar la ciudad -->
+                <div id="wx-approx" class="wx-approx" style="display:none">
+                    <div class="wx-approx-msg">
+                        <i class="fas fa-location-crosshairs"></i>
+                        <span>Ubicación aproximada por IP. Para tu ubicación exacta, activa la ubicación o escribe tu ciudad.</span>
+                    </div>
+                    <div class="wx-approx-actions">
+                        <button class="wx-approx-btn" onclick="requestGeoLocation()"><i class="fas fa-location-dot"></i> Usar mi ubicación</button>
+                        <button class="wx-approx-btn" onclick="document.getElementById('wx-search-input')?.focus()"><i class="fas fa-keyboard"></i> Buscar ciudad</button>
                     </div>
                 </div>
                 <!-- Barra de búsqueda manual -->
@@ -6571,6 +6582,10 @@ async function fetchWeatherByCoords(lat, lon, cityName) {
     document.getElementById('wx-loading').style.display = 'none';
     document.getElementById('wx-result').style.display  = 'block';
     document.getElementById('wx-error').style.display   = 'none';
+    // Aviso de ubicación aproximada (IP): visible solo si el nombre
+    // contiene "(aprox.)", para invitar a activar GPS o buscar la ciudad.
+    var wxApproxEl = document.getElementById('wx-approx');
+    if (wxApproxEl) wxApproxEl.style.display = (cityName && /aprox/i.test(cityName)) ? 'flex' : 'none';
     var wxCityEl = document.getElementById('wx-city');
     if (wxCityEl && typeof toast === 'function') {
       toast('Clima actualizado · ' + wxCityEl.textContent, 'weather', 2600);
