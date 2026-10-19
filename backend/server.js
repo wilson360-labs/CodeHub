@@ -1159,21 +1159,32 @@ async function tgStatusReport() {
   const up = Math.floor(process.uptime());
   const dd = Math.floor(up / 86400), hh = Math.floor((up % 86400) / 3600), mm = Math.floor((up % 3600) / 60);
   const today = new Date().toISOString().slice(0, 10);
-  let daily = null;
-  if (supabase) {
-    try {
-      const { data } = await supabase.from('daily_stats').select('*').eq('date', today).single();
-      daily = data;
-    } catch {}
+
+  // Estado real de las stats del día. Antes se usaba .single() y se
+  // ignoraba el error, así que CUALQUIER fallo (fila de hoy aún sin
+  // crear, error de red, varias filas) se pintaba como "Supabase no
+  // configurado" aunque Supabase estuviera perfectamente configurado.
+  let daily = null, dailyNote = '';
+  if (!supabase) {
+    dailyNote = 'Stats diarias: sin datos (Supabase no configurado)';
+  } else {
+    const { data, error } = await supabase.from('daily_stats').select('*').eq('date', today).maybeSingle();
+    if (error) dailyNote = `Stats diarias: error de Supabase (${truncate(error.message, 120)})`;
+    else if (!data) dailyNote = 'Stats diarias: sin datos de hoy todavía';
+    else daily = data;
   }
+
   const msg =
     `📊 <b>CodeHub — Estado</b>\n` +
     `Uptime: ${dd}d ${hh}h ${mm}m · Mongo: ${dbConnected ? '✅' : '❌'} · Redis: ${redis ? '✅' : 'memoria'}\n` +
     `WS: ${wsClients.size} clientes\n\n` +
-    `👁️ Visitas hoy: ${visits.today} (total ${visits.total})\n` +
+    // La cifra persistida del día es la real; `visits` es en memoria y se
+    // reinicia en cada arranque (Render duerme el servicio), así que solo
+    // se usa como respaldo si no hay fila en Supabase.
+    `👁️ Visitas hoy: ${daily ? (daily.visits || 0) : visits.today}\n` +
     (daily
       ? `⬇️ Descargas: ${daily.downloads || 0}\n💬 Chats: ${daily.chat_msgs || 0}\n🛠️ Tools: ${daily.tool_uses || 0}\n📩 Contactos: ${daily.contacts || 0}`
-      : 'Stats diarias: sin datos (Supabase no configurado)') +
+      : dailyNote) +
     `\n\nhttps://wilson360-labs.vercel.app`;
   await tgSend(msg);
 }
