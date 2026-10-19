@@ -309,6 +309,31 @@
             --radius-pill: 999px;
             --radius-full: 50%;
 
+            /* ── Escala tipográfica ──
+               La escala canónica (--fs-2xs … --fs-3xl) está DECLARADA UNA
+               SOLA VEZ, más abajo, junto a los tokens de botón. No
+               redeclararla aquí: tener dos escalas en el mismo archivo es
+               exactamente el tipo de duplicación que causaba que cada
+               breakpoint redeclamara font-size a mano. */
+
+            /* ── Elevación (design tokens) ──
+               Una sola sombra por nivel, neutra. El acento vive en el
+               borde y en el texto, NUNCA en la sombra: el glow naranja
+               combinado con drop-shadow + box-shadow + radial-gradient
+               sobre el mismo elemento era lo que hacía la UI pesada. */
+            --shadow-1: 0 1px 2px rgba(0,0,0,.30);
+            --shadow-2: 0 8px 24px rgba(0,0,0,.38);
+            --shadow-3: 0 16px 48px rgba(0,0,0,.46);
+            --shadow-focus: 0 0 0 3px rgba(47,128,237,.28);
+
+            /* ── Ritmo de espaciado (design tokens) ── */
+            --sp-1: .35rem;
+            --sp-2: .6rem;
+            --sp-3: 1rem;
+            --sp-4: 1.6rem;
+            --sp-5: 2.5rem;
+            --sp-6: 4rem;
+
             /* ── Botones unificados (design tokens) ── */
             --btn-font: 'Space Grotesk', system-ui, sans-serif;
             --btn-radius: var(--radius-sm);
@@ -2293,28 +2318,15 @@
   transform: translateY(24px);
 }
 
-/* ── Service cards — elevated hover with glow ───────────────── */
+/* ── Service cards — elevación sobria ────────────────────────── */
+/* La definición base vive en components.css y el estado final en
+   index-responsive.css (que cargan después y ganan en cascada). Aquí
+   solo se fija el posicionamiento relativo del ::before. Se retiraron
+   preserve-3d/perspective: daban un "pop" 3D en hover que peleaba con
+   el resto de la interfaz. */
 .service-card {
-  transform-style: preserve-3d;
-  perspective: 800px;
-  transition: transform .25s cubic-bezier(.4,0,.2,1),
-              border-color .25s, box-shadow .25s;
   position: relative;
   overflow: hidden;
-}
-.service-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(47,128,237,.07) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity .3s;
-}
-.service-card:hover::before { opacity: 1; }
-.service-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(47,128,237,.38) !important;
-  box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(47,128,237,.1);
 }
 
 /* ── Cursor: se usa el puntero nativo del sistema (flecha / mano) ── */

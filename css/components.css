@@ -2801,33 +2801,23 @@ body.font-sm{ font-size: 14px; }body.font-lg{ font-size: 18px; }body.no-anim *, 
             gap: 2rem;
             margin: 2rem 0;
         }.service-card{
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 69, 0, 0.05));
-            border: 2px solid rgba(255, 69, 0, 0.3);
-            border-radius: var(--radius-xl, 22px);
-            padding: 2.5rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-xl);
+            padding: var(--sp-5);
             text-align: center;
-            transition: all 0.4s ease;
+            transition: transform .25s cubic-bezier(.4, 0, .2, 1),
+                        border-color .25s, box-shadow .25s;
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
-        }.service-card::before{
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 69, 0, 0.1) 0%, transparent 70%);
-            transform: scale(0);
-            transition: transform 0.6s ease;
-        }.service-card:hover::before{
-            transform: scale(1);
+            box-shadow: var(--shadow-1);
         }.service-card:hover{
-            transform: translateY(-15px);
-            box-shadow: 0 20px 50px rgba(255, 69, 0, 0.4);
-            border-color: var(--primary);
+            transform: translateY(-4px);
+            border-color: rgba(47, 128, 237, 0.38);
+            box-shadow: var(--shadow-2);
         }.service-icon{
             font-size: clamp(1.6rem, 6vw, 3.5rem);
             color: var(--primary);
@@ -2835,7 +2825,6 @@ body.font-sm{ font-size: 14px; }body.font-lg{ font-size: 18px; }body.no-anim *, 
             line-height: 1;
             display: inline-block;
             animation: iconFloat 3s ease-in-out infinite;
-            filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.5));
             position: relative;
             z-index: 1;
         }.service-card h3{
@@ -3245,9 +3234,12 @@ header nav{ display: none !important; }nav ul{ flex-wrap: wrap; gap: 0.3rem; }na
 }/* ═══ NEON CURSOR TRAIL ═══ */
 /* REMOVED: Custom cursor - using browser default for better performance */
 /* ═══ MAGNETIC CARD EFFECT ═══ */
+/* Se retiró transform-style: preserve-3d de estas tarjetas. Con cualquier
+   transform 3D en hover daba un "pop" que peleaba con el resto de la
+   interfaz; la elevación ahora se resuelve solo con translateY + una
+   sombra (tokens --shadow-*). */
 .stat-card, .service-card, .wm-card, .proj-card{
     transition: transform .4s cubic-bezier(.2,.9,.2,1), box-shadow .4s ease, border-color .3s;
-    transform-style: preserve-3d;
 }/* ═══ HERO NAME GLOW PULSE ═══ */
 .hero-name{
     position: relative;

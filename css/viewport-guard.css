@@ -1484,7 +1484,6 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   margin: 0 auto 0.9rem !important;
   padding: 0 !important;
   animation: serviceIconFloat 3s ease-in-out infinite !important;
-  filter: drop-shadow(0 5px 15px rgba(255, 69, 0, 0.4));
   position: relative;
   z-index: 1;
 }

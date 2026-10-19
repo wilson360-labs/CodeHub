@@ -868,17 +868,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         </div>
     </div>
 
-    <!-- Anti-DevTools Warning -->
-    <div id="devtools-warning">
-        <div style="font-size:3rem">🛡️</div>
-        <h2>Acceso Restringido</h2>
-        <p>Las herramientas de desarrollo están deshabilitadas en este sitio.<br>Por favor cierra DevTools para continuar.</p>
-        <button onclick="document.getElementById('devtools-warning').classList.remove('show')" 
-            style="padding:.5rem 1.5rem;background:var(--primary);border:none;border-radius:var(--radius-sm, 10px);color:#fff;cursor:pointer;font-size:.85rem">
-            Cerrar
-        </button>
-    </div>
-
     <main>
         <!-- ── HERO ── -->
         <section id="hero">
@@ -3189,37 +3178,6 @@ DISPONIBILIDAD:
         });
 
         // beforeunload removido — mejora señales de UX para Google
-
-        // Log de actividad del usuario
-        let activityLog = {
-            scrolls: 0,
-            clicks: 0,
-            timeSpent: 0
-        };
-
-        window.addEventListener('scroll', () => {
-            activityLog.scrolls++;
-        });
-
-        document.addEventListener('click', () => {
-            activityLog.clicks++;
-        });
-
-        setInterval(() => {
-            activityLog.timeSpent++;
-        }, 1000);
-
-        // Mostrar estadísticas al presionar Ctrl+Shift+S
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
-                e.preventDefault();
-                console.table(activityLog);
-                if (typeof toast === 'function') toast(
-                    `📊 Scrolls: ${activityLog.scrolls} · Clicks: ${activityLog.clicks} · Tiempo: ${Math.floor(activityLog.timeSpent/60)}m ${activityLog.timeSpent%60}s`,
-                    'info', 4000
-                );
-            }
-        });
 
         // Easter egg: escribir "dev" en cualquier parte
         let typedText = '';
@@ -8523,41 +8481,14 @@ if (_defMood) setAIMood(_defMood);
 </script>
 
 <script>
-/* ══ 3D TILT ON STAT CARDS — ahora con soporte táctil (móvil) ══ */
-(function() {
-    function applyTilt(card, clientX, clientY) {
-        var rect = card.getBoundingClientRect();
-        var x = (clientX - rect.left) / rect.width  - 0.5;
-        var y = (clientY - rect.top)  / rect.height - 0.5;
-        card.style.transform = 'perspective(600px) rotateY(' + (x * 10) + 'deg) rotateX(' + (-y * 8) + 'deg) translateZ(8px)';
-    }
-    function resetTilt(card) {
-        card.style.transform = '';
-    }
-
-    document.querySelectorAll('.service-card').forEach(function(card) {
-        // Escritorio: mousemove
-        card.addEventListener('mousemove', function(e) {
-            applyTilt(card, e.clientX, e.clientY);
-        });
-        card.addEventListener('mouseleave', function() {
-            resetTilt(card);
-        });
-
-        // Móvil / táctil: el dedo "inclina" la tarjeta mientras se desliza sobre ella
-        card.addEventListener('touchstart', function(e) {
-            var t = e.touches[0];
-            if (t) applyTilt(card, t.clientX, t.clientY);
-        }, { passive: true });
-        card.addEventListener('touchmove', function(e) {
-            var t = e.touches[0];
-            if (t) applyTilt(card, t.clientX, t.clientY);
-        }, { passive: true });
-        card.addEventListener('touchend', function() {
-            resetTilt(card);
-        }, { passive: true });
-    });
-})();
+/* El efecto de inclinación 3D de las tarjetas (.service-card) fue
+   retirado. Además de ser un detalle visual que envejeció mal, estaba
+   cableado a touchmove: mientras el dedo deslizaba sobre la tarjeta
+   para hacer scroll, la tarjeta se inclinaba siguiendo el dedo, de
+   forma que el contenido temblaba durante el scroll en móvil. La
+   elevación de la tarjeta se resuelve ahora con CSS puro
+   (translateY + un token de sombra), que además respeta
+   prefers-reduced-motion de forma automática. */
 </script>
 
 
