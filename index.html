@@ -591,7 +591,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
             <a class="side-link" href="#game" onclick="closeMobileNav()"><i class="fas fa-rocket"></i> Proyectos</a>
             <a class="side-link" href="#weather-section" onclick="closeMobileNav()"><i class="fas fa-cloud-sun"></i> Clima</a>
             <a class="side-link" href="#sismos-section" onclick="closeMobileNav()"><i class="fas fa-house-crack"></i> Sismos</a>
-            <a class="side-link" href="#news-section" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
+            <a class="side-link" href="/noticias" onclick="closeMobileNav()"><i class="fas fa-newspaper"></i> Noticias</a>
 <a class="side-link" href="#security-section" onclick="closeMobileNav()"><i class="fas fa-shield-halved"></i> Operaciones</a>
             <a class="side-link" href="#open-to-work" onclick="closeMobileNav()"><i class="fas fa-envelope"></i> Contacto</a>
         </div>
@@ -1596,27 +1596,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     <button type="button" id="sismos-sheet-close" aria-label="Cerrar lista de sismos" onclick="chSismosCloseSheet()"><i class="fas fa-xmark"></i></button>
                 </div>
                 <div class="sismos-sheet-body" id="sismos-sheet-body"></div>
-            </div>
-        </section>
-
-        <!-- ── NOTICIAS ── -->
-        <section id="news-section">
-            <div class="wx-header">
-                <div>
-                    <div class="wx-eyebrow">// mundo · en tiempo real</div>
-                    <h2 style="margin-bottom:0">Noticias del Mundo</h2>
-                    <span id="news-fresh-label" class="news-fresh-label"></span>
-                </div>
-                <a href="#" target="_blank" rel="noopener" class="blogger-view-btn" id="news-source-link" style="display:none">
-                    <i class="fas fa-globe"></i> <span id="news-source-text">Fuente</span>
-                </a>
-            </div>
-            <div id="news-real-out">
-                <div class="blogger-grid">
-                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
-                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
-                    <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
-                </div>
             </div>
         </section>
 
@@ -2880,7 +2859,7 @@ DISPONIBILIDAD:
             { name: 'Ir a Sobre Mí', icon: 'fa-user', action: () => scrollToSection('mi-pueblo') },
             { name: 'Ir a Clima', icon: 'fa-cloud-sun', action: () => scrollToSection('weather-section') },
             { name: 'Ir a Sismos', icon: 'fa-house-crack', action: () => scrollToSection('sismos-section') },
-            { name: 'Ir a Noticias', icon: 'fa-newspaper', action: () => scrollToSection('news-section') },
+            { name: 'Ir a Noticias', icon: 'fa-newspaper', action: () => { location.href = '/noticias'; } },
             { name: 'Ir a Operaciones', icon: 'fa-shield-halved', action: () => scrollToSection('security-section') },
             { name: 'Ir a Contacto', icon: 'fa-envelope', action: () => scrollToSection('open-to-work') },
             { name: 'Ir a Juegos', icon: 'fa-gamepad', action: () => scrollToSection('game') },
@@ -6733,177 +6712,11 @@ function showWeatherError(msg) {
   if (errMsg) errMsg.textContent = msg;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
-//  NOTICIAS EN EL INDEX
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•═══
-
-// ── NOTICIAS REALES (RSS) ──────────────────────────────────
-// Fuente: BBC Mundo. Primero se intenta vía backend propio (más fiable,
-// sin depender de un proxy CORS público de terceros); si el backend no
-// responde, se cae al proxy público como respaldo.
-const NEWS_RSS_URL   = 'https://feeds.bbci.co.uk/mundo/rss.xml';
-const NEWS_PROXY     = 'https://api.allorigins.win/raw?url=';
-const NEWS_BACKEND_URL = (typeof _CH_BACKEND !== 'undefined' ? _CH_BACKEND : 'https://codehub-98s6.onrender.com') + '/api/news';
-
 function fetchWithTimeout(url, opts = {}, ms = 8000) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), ms);
   return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(t));
 }
-
-// ── PAÍS DEL USUARIO (IP) — reutiliza el mismo patrón que el widget
-// de clima: intenta ipapi.co y cae a ip-api.com. Se guarda en sesión
-// para no golpear estos servicios en cada recarga de la página.
-async function detectNewsCountry() {
-  const cached = sessionStorage.getItem('ch_news_country');
-  if (cached) return cached;
-  try {
-    const r1 = await fetchWithTimeout('https://ipapi.co/json/', {}, 4000);
-    const g1 = await r1.json();
-    if (g1.country_code && !g1.error) {
-      sessionStorage.setItem('ch_news_country', g1.country_code);
-      return g1.country_code;
-    }
-  } catch (e) {}
-  try {
-    const r2 = await fetchWithTimeout('https://ip-api.com/json/?fields=countryCode,status', {}, 4000);
-    const g2 = await r2.json();
-    if (g2.status === 'success' && g2.countryCode) {
-      sessionStorage.setItem('ch_news_country', g2.countryCode);
-      return g2.countryCode;
-    }
-  } catch (e) {}
-  return null; // sin país detectado → el backend cae a BBC Mundo
-}
-
-async function loadRealNews() {
-  const out = document.getElementById('news-real-out');
-  if (!out) return;
-
-  // 1) Intento primario: backend propio (ya parseado y geolocalizado)
-  try {
-    const country = await detectNewsCountry();
-    const url = country ? `${NEWS_BACKEND_URL}?country=${encodeURIComponent(country)}` : NEWS_BACKEND_URL;
-    const res = await fetchWithTimeout(url, {}, 8000);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.items && data.items.length) {
-        updateNewsSourceBadge(data.source, data.country);
-        renderRealNews(data.items, data.fetchedAt, data.source);
-        return;
-      }
-    }
-  } catch (e) { /* seguimos al plan B */ }
-
-  // 2) Respaldo: proxy CORS público + parseo en el navegador
-  try {
-    const res = await fetchWithTimeout(NEWS_PROXY + encodeURIComponent(NEWS_RSS_URL), {}, 8000);
-    if (!res.ok) throw new Error('fetch fallido');
-    const xmlText = await res.text();
-    const xml = new DOMParser().parseFromString(xmlText, 'text/xml');
-    const items = Array.from(xml.querySelectorAll('item')).slice(0, 9).map(item => {
-      const title = item.querySelector('title')?.textContent || 'Sin título';
-      const url   = item.querySelector('link')?.textContent || NEWS_RSS_URL;
-      const pub   = item.querySelector('pubDate')?.textContent;
-      const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day:'numeric', month:'short', year:'numeric' }) : '';
-      let desc = item.querySelector('description')?.textContent || '';
-      desc = desc.replace(/<[^>]+>/g, '').slice(0, 130);
-      // Imagen real: RSS de BBC trae media:thumbnail / media:content / enclosure
-      const image = item.getElementsByTagName('media:thumbnail')[0]?.getAttribute('url')
-        || item.getElementsByTagName('media:content')[0]?.getAttribute('url')
-        || item.querySelector('enclosure[type^="image"]')?.getAttribute('url')
-        || '';
-      return { title, url, date, desc, image, pub };
-    });
-
-    if (!items.length) throw new Error('sin items');
-    updateNewsSourceBadge('BBC Mundo', null);
-    renderRealNews(items, new Date().toISOString(), 'BBC Mundo');
-  } catch (e) {
-    out.innerHTML = `<div class="blogger-error"><i class="fas fa-triangle-exclamation"></i>No se pudieron cargar las noticias en este momento.<br><small>Intenta recargar la página.</small></div>`;
-  }
-}
-
-// ── BADGE DE FUENTE (dinámico) ────────────────────────────────
-// Reemplaza el rótulo fijo "Fuente: BBC Mundo": ahora refleja la fuente
-// real que respondió (Google News del país detectado, o BBC Mundo si
-// Google News no estuvo disponible).
-function updateNewsSourceBadge(source, country) {
-  const link = document.getElementById('news-source-link');
-  const text = document.getElementById('news-source-text');
-  if (!link || !text) return;
-  if (!source) { link.style.display = 'none'; return; }
-  const isGoogle = source.startsWith('Google News');
-  text.textContent = isGoogle ? `Fuente: Google News${country ? ' · ' + country : ''}` : `Fuente: ${source}`;
-  link.href = isGoogle
-    ? `https://news.google.com/${country ? `?hl=es-419&gl=${encodeURIComponent(country)}&ceid=${encodeURIComponent(country)}:es-419` : ''}`
-    : NEWS_RSS_URL;
-  link.style.display = 'inline-flex';
-}
-
-function relativeTime(pub) {
-  if (!pub) return '';
-  const diffMin = Math.floor((Date.now() - new Date(pub).getTime()) / 60000);
-  if (diffMin < 1) return 'justo ahora';
-  if (diffMin < 60) return `hace ${diffMin} min`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `hace ${diffH} h`;
-  return `hace ${Math.floor(diffH / 24)} d`;
-}
-
-function renderRealNews(items, fetchedAt, sourceLabel) {
-  const out = document.getElementById('news-real-out');
-  const freshLabel = document.getElementById('news-fresh-label');
-  if (freshLabel) freshLabel.textContent = fetchedAt ? `Actualizado ${relativeTime(fetchedAt)}` : '';
-  // Sanitiza texto antes de inyectarlo en las tarjetas (las noticias no
-  // deben renderizar HTML ni código fuente crudo).
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const cardsHtml = items.map(n => `
-    <a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer" class="blogger-card">
-      <div class="blogger-card-thumb">
-        ${n.image
-          ? `<img src="${esc(n.image)}" alt="${esc(n.title)}" loading="lazy" onerror="this.remove();if(this.parentElement)this.parentElement.innerHTML='<i class=&quot;fas fa-earth-americas&quot;></i>'">`
-          : `<i class="fas fa-earth-americas"></i>`}
-      </div>
-      <div class="blogger-card-body">
-        <div class="blogger-card-label">// ${esc(n.source || sourceLabel || 'Noticias')}</div>
-        <div class="blogger-card-title">${esc(n.title)}</div>
-        <div class="blogger-card-desc">${esc(n.desc)}</div>
-        <div class="blogger-card-meta">
-          <i class="fas fa-calendar-days"></i>${esc(n.date)}
-          ${n.pub ? `<span class="blogger-card-relative"><i class="fas fa-clock"></i>${relativeTime(n.pub)}</span>` : ''}
-        </div>
-      </div>
-    </a>`).join('');
-
-  // El grid arranca colapsado (solo se ve en móvil vía CSS): en escritorio
-  // la clase no tiene efecto y se ven todas las tarjetas normalmente.
-  const toggleBtn = items.length > 3
-    ? `<div class="news-toggle-wrap">
-         <button class="news-toggle-btn" onclick="toggleNewsCollapse(this)">
-           <i class="fas fa-chevron-down"></i> Ver más noticias
-         </button>
-       </div>`
-    : '';
-
-  out.innerHTML = `<div class="blogger-grid is-collapsed">${cardsHtml}</div>${toggleBtn}`;
-}
-
-// ── DESPLEGAR / CONTRAER (solo aplica visualmente en móvil, ver CSS) ──
-function toggleNewsCollapse(btn) {
-  const grid = document.querySelector('#news-real-out .blogger-grid');
-  if (!grid) return;
-  const willExpand = grid.classList.contains('is-collapsed');
-  grid.classList.toggle('is-collapsed', !willExpand);
-  btn.classList.toggle('expanded', willExpand);
-  btn.innerHTML = willExpand
-    ? '<i class="fas fa-chevron-up"></i> Ver menos'
-    : '<i class="fas fa-chevron-down"></i> Ver más noticias';
-  if (!willExpand) grid.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-window.addEventListener('load', loadRealNews);
-
 // ── ROADMAP (trabajando en…) ──────────────────────────────────
 async function loadRoadmap() {
   const out = document.getElementById('roadmap-out');
@@ -8370,7 +8183,7 @@ if (_defMood) setAIMood(_defMood);
 // Añade .vp-off (animation-play-state: paused) cuando la sección no intersecta.
 (function () {
   if (!('IntersectionObserver' in window)) return;
-  var els = document.querySelectorAll('#weather-section, #sismos-section, #mi-pueblo, #news-section, #skills, #services, #open-to-work');
+  var els = document.querySelectorAll('#weather-section, #sismos-section, #mi-pueblo, #skills, #services, #open-to-work');
   if (!els.length) return;
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {

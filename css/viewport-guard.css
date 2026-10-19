@@ -104,9 +104,9 @@ input, select, textarea, button {
    encogerse con el texto largo. Solo en contenedores con ancho fluido. */
 .grid > *, .grid-2 > *, .grid-3 > *, .grid-4 > *,
 .flex-row > *, .flex-col > *, .services-grid > *, .stats-section > *,
-.wx-grid > *, .blogger-grid > *, .skills-grid > *, .hero-inner > *,
+.wx-grid > *, .skills-grid > *, .hero-inner > *,
 .otw-content > *, .otw-left > *, .otw-right > *,
-.hero-stack > *, .hero-ctas > *, .blogger-card > *, .game-grid > * {
+.hero-stack > *, .hero-ctas > *, .game-grid > * {
   min-width: 0;
 }
 
@@ -143,15 +143,12 @@ input, select, textarea, button {
   }
 }
 
-/* 420px — teléfonos medianos: reforzar header y grids */
+/* 420px - teléfonos medianos: reforzar header y grids */
 @media (max-width: 420px) {
   .header-logo-text { font-size: 1rem !important; }
   .header-logo-meta { flex-wrap: nowrap; min-width: 0; }
   .hero-inner { grid-template-columns: 1fr !important; }
   .hero-visual { display: none !important; }
-  .blogger-card { flex-direction: column !important; }
-  .blogger-card-thumb { width: 100% !important; height: auto !important; max-height: 170px; }
-  .blogger-card-desc { display: none !important; }
 }
 
 /* 480px — teléfonos grandes en vertical */
@@ -210,12 +207,6 @@ section, main, .container, .wrap, .inner, .section-wrap {
   max-width: 100%;
   min-width: 0;
 }
-
-/* Noticias: tarjetas en una columna, texto limitado */
-.blogger-grid { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
-.blogger-card { min-width: 0; overflow: hidden; }
-.blogger-card-title { overflow-wrap: break-word; }
-.blogger-card-body { min-width: 0; }
 
 /* Pueblo: paneles y video no desbordan */
 .pueblo-panels, .pueblo-video-wrap, .pueblo-iframe-wrap {

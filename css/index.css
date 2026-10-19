@@ -461,17 +461,6 @@
             background: rgba(15,23,42,.04);
             border-color: rgba(15,23,42,.08);
         }
-
-        [data-theme="light"] .news-idx-card {
-            background: rgba(15,23,42,.03);
-            border-color: rgba(15,23,42,.08);
-        }
-        [data-theme="light"] .news-idx-card:hover {
-            background: rgba(47,128,237,.08);
-            border-color: rgba(47,128,237,.35);
-        }
-        [data-theme="light"] .news-idx-title { color: #0c0c0c; }
-
         [data-theme="light"] .footer-content,
         [data-theme="light"] .footer-terminal { background: rgba(15,23,42,.03); border-color: rgba(15,23,42,.1); }
         [data-theme="light"] .footer-socials .social-link span { color: #334155; }
@@ -2078,54 +2067,6 @@
             padding: 1rem 0;
         }
         .wx-error i { color: var(--a); }
-
-        /* ═══ NOTICIAS INDEX ═════════════════════════════════════ */
-        #news-section {
-            background: linear-gradient(135deg, rgba(0,0,0,.5), rgba(20,20,38,.6));
-            border: 2px solid rgba(47,128,237,.2);
-        }
-        .news-tabs-index { display: flex; gap: .4rem; flex-wrap: wrap; }
-        .news-idx-tab {
-            padding: .3rem .75rem; border-radius: var(--radius-xl, 22px);
-            border: 1px solid rgba(47,128,237,.2);
-            background: transparent; color: var(--muted);
-            font-family: var(--font); font-size: .73rem; font-weight: 700;
-            cursor: pointer; transition: all .18s;
-        }
-        .news-idx-tab:hover, .news-idx-tab.active-idx {
-            border-color: var(--primary); color: var(--accent);
-            background: rgba(47,128,237,.1);
-        }
-        .news-index-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
-            gap: .7rem;
-        }
-        .news-idx-card {
-            display: flex; align-items: flex-start; gap: .7rem;
-            padding: .8rem 1rem;
-            background: rgba(255,255,255,.03);
-            border: 1px solid rgba(255,255,255,.07);
-            border-radius: var(--radius-md, 14px); cursor: pointer;
-            text-decoration: none;
-            transition: all .2s;
-        }
-        .news-idx-card:hover {
-            border-color: rgba(47,128,237,.35);
-            background: rgba(47,128,237,.05);
-            transform: translateY(-2px);
-        }
-        .news-idx-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: .1rem; }
-        .news-idx-title {
-            font-size: .82rem; font-weight: 600;
-            color: var(--text); line-height: 1.4; margin-bottom: .25rem;
-        }
-        .news-idx-meta {
-            font-size: .67rem; font-family: var(--mono); color: var(--muted);
-        }
-
-        
-
 
         /* ── EASTER EGG ──────────────────────────────────────── */
         .egg-counter {

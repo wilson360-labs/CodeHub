@@ -254,6 +254,10 @@
       "destination": "/pages/comunidad.html"
     },
     {
+      "source": "/noticias",
+      "destination": "/pages/noticias.html"
+    },
+    {
       "source": "/mines",
       "destination": "/games/mines.html"
     },

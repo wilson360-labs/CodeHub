@@ -205,7 +205,6 @@
       '#skills .skills-header',
       '#weather-section',
       '#sismos-section',
-      '#news-section',
       '#open-to-work .otw-info-card',
       '#open-to-work .contact-form-wrap'
     ].join(', '));

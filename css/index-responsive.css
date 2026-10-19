@@ -883,23 +883,6 @@
   .wx-input { min-height: 44px; font-size: 16px !important; border-radius: var(--radius-sm, 10px); }
   .wx-search-btn { min-width: 44px; min-height: 44px; }
 
-  /* ── BLOG / NOTICIAS ── */
-  #news-section { padding: 2rem 1rem; }
-  .blogger-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.5rem;
-  }
-  .blogger-card-thumb { height: 70px !important; font-size: 1.3rem; }
-  .blogger-card-body { padding: 0.55rem 0.5rem; gap: 0.2rem; }
-  .blogger-card-label { font-size: 0.55rem; }
-  .blogger-card-title { font-size: 0.68rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .blogger-card-desc { display: none; }
-  .blogger-card-meta { font-size: 0.56rem; flex-wrap: wrap; gap: 0.3rem; }
-  .blogger-card-relative { margin-left: 0; }
-  /* Colapsar a la primera fila (3 tarjetas) + mostrar botón desplegar/contraer */
-  .news-toggle-wrap { display: flex; }
-  .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
-
   /* ── CONTACTO ── */
   .contact-wrap { grid-template-columns: 1fr !important; gap: 1.5rem; }
   .contact-title { font-size: 1.4rem !important; }
@@ -1150,18 +1133,6 @@
   .otw-tags span { font-size: 0.65rem; padding: 0.2rem 0.5rem; }
   .otw-btn { font-size: 0.78rem; min-height: 42px; }
 
-  /* ── BLOG ── */
-  .blogger-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 0.45rem;
-  }
-  .blogger-card-thumb { height: 62px !important; font-size: 1.1rem; }
-  .blogger-card-title { font-size: 0.64rem; -webkit-line-clamp: 3; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; }
-  .blogger-card-desc { display: none; }
-  .blogger-card-body { padding: 0.5rem 0.45rem; gap: 0.2rem; }
-  .blogger-card-relative { margin-left: 0; }
-  .blogger-card-meta { font-size: 0.52rem; }
-
   /* ── CLIMA ── */
   .wx-temp { font-size: 2.5rem; }
   .wx-city { font-size: 1rem; }
@@ -1228,14 +1199,6 @@
   .wm-grid { grid-template-columns: 1fr !important; }
   .wm-card-desc { display: none; } /* solo muestra título e ícono */
 
-  /* ── BLOG ── */
-  .blogger-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 0.4rem; }
-  .blogger-card-thumb { height: 58px !important; font-size: 1rem; }
-  .blogger-card-title { font-size: 0.6rem; line-height: 1.25; }
-  .blogger-card-body { padding: 0.4rem 0.4rem; gap: 0.15rem; }
-  .blogger-card-desc { display: none; } /* prioriza título+imagen en pantallas muy angostas */
-  .blogger-card-meta { font-size: 0.5rem; }
-
   /* ── SKILLS ── */
   .sk-tools-grid {
     grid-template-columns: repeat(2, 1fr) !important;
@@ -1266,7 +1229,6 @@
   .service-card { border-radius: var(--radius-md, 14px); }
   .wm-card { border-radius: var(--radius-md, 14px); padding: 1rem; }
   .sk-tools-grid { gap: 0.5rem; }
-  .blogger-grid { gap: 0.4rem; }
    
   /* Panel IA optimizado para 390px */
   #ai-panel { height: min(88dvh, 750px) !important; }
@@ -1317,22 +1279,6 @@ html.is-mobile .dock-sep { height: 28px; margin: 0 1px 6px; }
   html.is-mobile .dock-label { font-size: .46rem; }
 }
 
-/* ── Noticias: cuadrícula real en móvil, nunca lista de 1 columna ── */
-html.is-mobile .blogger-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 0.5rem !important;
-}
-html.is-mobile .blogger-card-desc { display: none; }
-html.is-mobile .blogger-card-thumb { height: 76px !important; }
-html.is-mobile .news-toggle-wrap { display: flex; }
-html.is-mobile .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none !important; }
-@media (max-width: 380px) {
-  html.is-mobile .blogger-grid { grid-template-columns: 1fr !important; }
-  html.is-mobile .blogger-card { flex-direction: row; }
-  html.is-mobile .blogger-card-thumb { width: 96px; height: 96px !important; flex-shrink: 0; }
-}
-
 /* ── Panel WIL.E COPILOT: tamaño inteligente basado en el viewport real ──
    Usa --app-height/--app-width (calculadas en JS con visualViewport,
    se actualizan al aparecer el teclado, rotar o mostrarse/ocultarse la
@@ -1378,8 +1324,7 @@ html.is-touch .social-link:hover {
   transform: none;
   box-shadow: none;
 }
-html.is-touch .service-card:active,
-html.is-touch .blogger-card:active {
+html.is-touch .service-card:active {
   transform: scale(0.97) !important;
   transition: transform .15s ease;
 }

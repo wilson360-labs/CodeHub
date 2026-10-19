@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Consent Mode v2 — igual que en el resto del sitio. Esta página NO
+       lleva AdSense: es un widget funcional que muestra titulares
+       ajenos, no contenido editorial propio, y cargar anuncios ahí
+       sería justo el patrón que AdSense penaliza. Se conserva Consent
+       Mode para que la analítica respete la elección del usuario. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noticias del mundo - CodeHub</title>
+  <meta name="description" content="Titulares internacionales en español, actualizados desde Google News según tu país, con BBC Mundo como respaldo. Sin registro y sin publicidad.">
+  <!-- noindex deliberado: es un widget de datos en vivo, no contenido
+       editorial propio. Indexarlo como "contenido agregado" sería
+       precisamente el patrón que AdSense penaliza como contenido de bajo
+       valor. El valor de la página está en usarla, no en posicionarla. -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/noticias">
+  <meta name="author" content="Wilson.E - wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
+  <style>
+    :root {
+      --primary: #2f80ed;
+      --accent: #38bdf8;
+      --bg: #050510;
+      --surface: #0d0d1e;
+      --card: #141428;
+      --border: rgba(47,128,237,.18);
+      --success: #4ade80;
+      --text: #e8e8f0;
+      --text-secondary: rgba(232,232,240,.58);
+      --muted: rgba(232,232,240,.58);
+      --mono: 'JetBrains Mono', monospace;
+      --radius-md: 14px;
+      --radius-xs: 6px;
+      --shadow-1: 0 1px 2px rgba(0,0,0,.30);
+      --shadow-2: 0 8px 24px rgba(0,0,0,.38);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+    img, svg { max-width: 100%; }
+    a { color: var(--primary); }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .top-nav {
+      padding: .9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: .55rem; align-items: center;
+      background: rgba(5,5,16,.7);
+      font-size: .82rem;
+    }
+    .top-nav a { color: var(--primary); text-decoration: none; }
+    .top-nav a:hover { text-decoration: underline; }
+    .sep { color: var(--text-secondary); }
+
+    .hero {
+      padding: clamp(2.5rem, 5vw, 4rem) 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      max-width: 980px; margin: 0 auto;
+    }
+    .hero-eyebrow {
+      font-family: var(--mono); color: var(--primary);
+      font-size: .74rem; letter-spacing: .04em; margin-bottom: .55rem;
+    }
+    .hero h1 {
+      font-size: clamp(1.7rem, 4vw, 2.4rem);
+      line-height: 1.15; margin-bottom: .7rem;
+    }
+    .hero p { color: var(--text-secondary); max-width: 68ch; font-size: .95rem; }
+
+    .page-wrap {
+      max-width: 980px; margin: 0 auto;
+      padding: clamp(1.5rem, 3vw, 2.5rem) 1.25rem 5rem;
+    }
+
+    /* ── Cabecera del widget ───────────────────────────────────── */
+    .news-head {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.4rem;
+    }
+    .news-eyebrow {
+      font-family: var(--mono); font-size: .7rem;
+      color: var(--accent); opacity: .75; margin-bottom: .25rem;
+    }
+    .news-head h2 { font-size: 1.35rem; line-height: 1.2; }
+    .news-fresh-label {
+      display: inline-block; margin-top: .35rem;
+      font-family: var(--mono); font-size: .68rem;
+      color: rgba(56,189,248,.8);
+    }
+    .news-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .5rem 1rem; border-radius: 10px;
+      font-family: inherit; font-size: .78rem; font-weight: 700;
+      cursor: pointer; text-decoration: none; border: 1px solid transparent;
+      transition: background .18s, border-color .18s, transform .18s;
+    }
+    .btn-quiet {
+      background: rgba(255,255,255,.05);
+      border-color: rgba(255,255,255,.12);
+      color: var(--text);
+    }
+    .btn-quiet:hover { background: rgba(255,255,255,.1); }
+    .btn-brand {
+      background: var(--primary); color: #fff;
+    }
+    .btn-brand:hover { background: #2570d4; }
+    .btn:disabled { opacity: .55; cursor: default; }
+    .btn i { font-size: .78em; }
+
+    /* ── Tarjetas de noticia ───────────────────────────────────── */
+    .blogger-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+      gap: 1rem;
+    }
+    .blogger-card {
+      display: flex; flex-direction: column; min-width: 0;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius-md);
+      overflow: hidden; text-decoration: none;
+      box-shadow: var(--shadow-1);
+      transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
+    }
+    .blogger-card:hover {
+      border-color: rgba(47,128,237,.4);
+      background: rgba(47,128,237,.05);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-2);
+    }
+    .blogger-card-thumb {
+      width: 100%; height: 158px; flex-shrink: 0; overflow: hidden;
+      background: linear-gradient(135deg, rgba(47,128,237,.15), rgba(56,189,248,.1));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; color: rgba(255,255,255,.18);
+    }
+    .blogger-card-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .blogger-card-body {
+      padding: 1rem 1.05rem; display: flex; flex-direction: column;
+      gap: .4rem; flex: 1; min-width: 0;
+    }
+    .blogger-card-label {
+      font-family: var(--mono); font-size: .62rem;
+      color: var(--primary); text-transform: uppercase; letter-spacing: .07em;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .blogger-card-title {
+      font-size: .92rem; font-weight: 700; color: var(--text);
+      line-height: 1.4; overflow-wrap: break-word;
+    }
+    .blogger-card-desc {
+      font-size: .8rem; color: var(--text-secondary); line-height: 1.55; flex: 1;
+    }
+    .blogger-card-meta {
+      font-size: .67rem; font-family: var(--mono); color: var(--text-secondary);
+      display: flex; flex-wrap: wrap; gap: .3rem .6rem; align-items: center;
+      margin-top: .25rem;
+    }
+    .blogger-card-meta i { color: var(--primary); font-size: .9em; }
+    .blogger-card-relative {
+      display: inline-flex; align-items: center; gap: .3rem;
+      color: rgba(56,189,248,.85);
+    }
+
+    /* Botón desplegar — solo aparece por debajo de 640px */
+    .news-toggle-wrap { display: none; margin-top: 1.1rem; justify-content: center; }
+    .news-toggle-btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .55rem 1.2rem;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(47,128,237,.35);
+      color: var(--text); font-family: var(--mono);
+      font-size: .72rem; font-weight: 700;
+      border-radius: 999px; cursor: pointer;
+    }
+    .news-toggle-btn:hover { background: rgba(47,128,237,.14); }
+    .news-toggle-btn i { transition: transform .25s ease; }
+    .news-toggle-btn.expanded i { transform: rotate(180deg); }
+
+    /* ── Estados ───────────────────────────────────────────────── */
+    .blogger-card.skeleton-card { pointer-events: none; }
+    .blogger-card.skeleton-card .blogger-card-thumb,
+    .blogger-card.skeleton-card .sk-line {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,.05) 25%, rgba(255,255,255,.12) 37%, rgba(255,255,255,.05) 63%);
+      background-size: 400% 100%;
+      animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    }
+    .blogger-card.skeleton-card .sk-line {
+      height: 11px; border-radius: var(--radius-xs); margin: .25rem 0;
+    }
+    .blogger-card.skeleton-card .sk-line.w-40 { width: 40%; height: 9px; margin-top: .6rem; }
+    .blogger-card.skeleton-card .sk-line.w-70 { width: 70%; }
+    .blogger-card.skeleton-card .sk-line.w-90 { width: 90%; }
+    @keyframes skeleton-shimmer {
+      0%   { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .blogger-error {
+      text-align: center; padding: 2.5rem 1rem;
+      font-size: .85rem; color: var(--text-secondary);
+      border: 1px dashed rgba(255,255,255,.12); border-radius: var(--radius-md);
+    }
+    .blogger-error i { display: block; font-size: 1.6rem; color: rgba(47,128,237,.6); margin-bottom: .6rem; }
+    .blogger-error small { display: block; margin-top: .35rem; opacity: .7; }
+
+    .note {
+      margin-top: 2rem; padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      font-size: .75rem; color: var(--text-secondary); line-height: 1.65;
+    }
+    .note a { color: var(--primary); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      html { scroll-behavior: auto; }
+    }
+
+    /* Colapso a una columna + botón "ver más" solo en móvil */
+    @media (max-width: 640px) {
+      .blogger-grid { grid-template-columns: 1fr; gap: .7rem; }
+      .blogger-card { flex-direction: row; }
+      .blogger-card-thumb { width: 96px; height: 96px; flex-shrink: 0; }
+      .blogger-card-body { padding: .7rem .8rem; gap: .25rem; }
+      .blogger-card-desc { display: none; }
+      .blogger-card-title {
+        font-size: .85rem; line-height: 1.35;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .news-toggle-wrap { display: flex; }
+      .blogger-grid.is-collapsed .blogger-card:nth-child(n+4) { display: none; }
+      .news-actions { width: 100%; }
+    }
+
+    @media (max-width: 380px) {
+      .page-wrap { padding-left: .85rem; padding-right: .85rem; }
+      .blogger-card-thumb { width: 80px; height: 80px; }
+      .blogger-card-title { font-size: .8rem; }
+    }
+
+    footer {
+      padding: 2rem 1.25rem; text-align: center;
+      color: var(--text-secondary); font-size: .78rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <nav class="top-nav" aria-label="Migas de pan">
+    <a href="/">CodeHub</a><span class="sep">/</span>
+    <a href="/tools">Herramientas</a><span class="sep">/</span>
+    <a href="/guias">Guías</a><span class="sep">/</span>
+    <span aria-current="page">Noticias</span>
+  </nav>
+
+  <header class="hero">
+    <p class="hero-eyebrow">// mundo · en tiempo real</p>
+    <h1>Noticias del mundo, sin ruido</h1>
+    <p>
+      Titulares internacionales en español, ordenados por lo más reciente.
+      La fuente se detecta desde tu país cuando es posible; si no, se usa
+      BBC Mundo como respaldo. Sin registro, sin cookies de terceros y sin
+      publicidad.
+    </p>
+  </header>
+
+  <main class="page-wrap">
+    <section aria-labelledby="news-heading">
+      <div class="news-head">
+        <div>
+          <div class="news-eyebrow">// agregador en vivo</div>
+          <h2 id="news-heading">Última hora</h2>
+          <span id="news-fresh-label" class="news-fresh-label"></span>
+        </div>
+        <div class="news-actions">
+          <button type="button" class="btn btn-quiet" id="news-refresh-btn">
+            <i class="fas fa-rotate-right"></i> Actualizar
+          </button>
+          <a href="#" target="_blank" rel="noopener noreferrer"
+             class="btn btn-brand" id="news-source-link" style="display:none">
+            <i class="fas fa-globe"></i> <span id="news-source-text">Fuente</span>
+          </a>
+        </div>
+      </div>
+
+      <div id="news-real-out" aria-live="polite" aria-busy="true">
+        <div class="blogger-grid">
+          <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
+          <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
+          <a class="blogger-card skeleton-card"><div class="blogger-card-thumb"></div><div class="blogger-card-body"><div class="sk-line w-40"></div><div class="sk-line w-90"></div><div class="sk-line w-70"></div></div></a>
+        </div>
+      </div>
+
+      <p class="note">
+        Los titulares pertenecen a sus medios originales y enlazan siempre a
+        la fuente. CodeHub no reescribe ni aloja ese contenido. Si una noticia
+        no carga, prueba <a href="/noticias">recargar la página</a>; el
+        agregador depende de servicios externos que a veces limitan peticiones.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; 2026 Wilson.E · CodeHub</span>
+    &nbsp;·&nbsp;
+    <a href="/guias">Guías</a>
+    &nbsp;·&nbsp;
+    <a href="/opensource">Open Source</a>
+    &nbsp;·&nbsp;
+    <a href="/terms">Términos</a>
+    &nbsp;·&nbsp;
+    <a href="/privacy">Privacidad</a>
+    &nbsp;·&nbsp;
+    <a href="mailto:wilson.e360labs@gmail.com">Contacto</a>
+  </footer>
+
+  <script src="../js/noticias.js?v=20261019a" defer></script>
+  <script src="../js/unity-ads.js?v=20261015c" defer></script>
+  <script src="../js/consent-banner.js?v=20260810a" defer></script>
+  <script src="../js/connection-alert.js?v=20260810a" defer></script>
+  <script src="../js/sw-update.js?v=20261015a" defer></script>
+</body>
+</html>
