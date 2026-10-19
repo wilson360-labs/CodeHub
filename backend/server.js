@@ -2112,6 +2112,107 @@ app.get('/api/stats/live', (_, res) => {
 });
 
 
+// ── geoIp — Geolocalización por IP (solo servidor→servidor) ───
+// ip-api.com gratis responde solo por HTTP (mixed content en el
+// navegador) y limita el ritmo; por eso el cliente NUNCA la llama
+// directo: la consume el backend y el front pide el resultado a
+// GET /api/geo. Nunca lanza: devuelve { ok:false, reason }.
+function isPrivateIp(ip) {
+  const s = String(ip || '').trim();
+  if (!s || s === 'unknown' || s === 'localhost' || s === '::1') return true;
+  if (/^127\./.test(s)) return true;
+  if (/^10\./.test(s)) return true;
+  if (/^192\.168\./.test(s)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(s)) return true;
+  if (/^169\.254\./.test(s)) return true;            // link-local
+  if (/^f[cd][0-9a-f]{2}:/i.test(s) || /^fe80:/i.test(s)) return true; // ULA/link-local v6
+  return false;
+}
+
+async function geoIp(ip) {
+  if (isPrivateIp(ip)) return { ok: false, reason: 'private-ip' };
+
+  // Primario: ip-api.com (gratuito, sin key, HTTP servidor-a-servidor)
+  try {
+    const fields = 'status,message,country,countryCode,regionName,city,lat,lon,isp,org,proxy,hosting';
+    const r = await fetch(
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (r.ok) {
+      const d = await r.json();
+      if (d.status === 'success') {
+        return {
+          ok: true, source: 'ip-api.com',
+          lat: d.lat, lon: d.lon,
+          country: d.country || null, countryCode: d.countryCode || null,
+          region: d.regionName || null, city: d.city || null,
+          isp: d.isp || null, org: d.org || null,
+          proxy: !!d.proxy, hosting: !!d.hosting,
+        };
+      }
+      console.warn(`geoIp ip-api [${ip}]:`, d.message || d.status);
+    } else {
+      console.warn(`geoIp ip-api [${ip}]: HTTP ${r.status}`);
+    }
+  } catch (e) { console.warn('geoIp ip-api error:', e.message); }
+
+  // Fallback: ipwho.is (HTTPS, sin key)
+  try {
+    const r2 = await fetch(
+      `https://ipwho.is/${encodeURIComponent(ip)}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (r2.ok) {
+      const d2 = await r2.json();
+      if (d2.success && d2.latitude != null) {
+        return {
+          ok: true, source: 'ipwho.is',
+          lat: d2.latitude, lon: d2.longitude,
+          country: d2.country || null, countryCode: d2.country_code || null,
+          region: d2.region || null, city: d2.city || null,
+          isp: d2.connection?.isp || null, org: d2.connection?.org || null,
+          proxy: false, hosting: false,
+        };
+      }
+      console.warn(`geoIp ipwho.is [${ip}]:`, d2.message || 'sin datos');
+    } else {
+      console.warn(`geoIp ipwho.is [${ip}]: HTTP ${r2.status}`);
+    }
+  } catch (e2) { console.warn('geoIp ipwho.is error:', e2.message); }
+
+  return { ok: false, reason: 'lookup-failed' };
+}
+
+// ── GET /api/geo — Ubicación aproximada del visitante ─────────
+// Alimenta el widget de clima del front. Siempre responde 200: el
+// cliente distingue un fallo del servicio (`ok:false` + `reason`) de
+// un fallo de red, y conserva el diagnóstico (ruta + código) que
+// muestra en pantalla. Caché 30 min por IP para no saturar ip-api.com.
+app.get('/api/geo', async (req, res) => {
+  try {
+    const ip = clientIp(req);
+    const cacheKey = 'geo:ip:' + ip;
+
+    const cached = await cacheGet(cacheKey);
+    if (cached) return res.set('X-Cache', 'HIT').json(cached);
+
+    const geo = await geoIp(ip);
+    if (!geo.ok) return res.json({ ok: false, reason: geo.reason, ip });
+
+    const payload = {
+      ok: true, source: geo.source, ip,
+      lat: geo.lat, lon: geo.lon,
+      city: geo.city, country: geo.country, cc: geo.countryCode, region: geo.region,
+    };
+    await cacheSet(cacheKey, payload, 1800);
+    res.json(payload);
+  } catch (e) {
+    console.warn('geo error:', e.message);
+    res.json({ ok: false, reason: 'lookup-failed' });
+  }
+});
+
 // ── POST /api/visit — Registrar visita con IPQuery ───────────
 // Responde 201 de inmediato; el enriquecimiento geo-IP y el guardado
 // se hacen en segundo plano para no bloquear la petición hasta 12s.
@@ -2130,57 +2231,15 @@ app.post('/api/visit', (req, res) => {
 
     // ── Background: geo-IP + guardado en Supabase ──
     (async () => {
-      let geo = {};
-      if (!isLocal && finalIp !== 'unknown') {
-        // Primario: ip-api.com (gratuito, sin key, muy fiable)
-        try {
-          const fields = 'status,country,countryCode,regionName,city,isp,org,proxy,hosting';
-          const r = await fetch(
-            `http://ip-api.com/json/${encodeURIComponent(finalIp)}?fields=${fields}`,
-            { signal: AbortSignal.timeout(6000) }
-          );
-          if (r.ok) {
-            const d = await r.json();
-            if (d.status === 'success') {
-              geo = d;
-              console.log(`ip-api [${finalIp}]:`, d.country, d.city);
-            }
-          }
-        } catch (e) { console.warn('ip-api error:', e.message); }
-
-        // Fallback: ipwho.is (HTTPS, sin key)
-        if (!geo.country) {
-          try {
-            const r2 = await fetch(
-              `https://ipwho.is/${encodeURIComponent(finalIp)}`,
-              { signal: AbortSignal.timeout(6000) }
-            );
-            if (r2.ok) {
-              const d2 = await r2.json();
-              if (d2.success) {
-                geo = {
-                  country:     d2.country,
-                  countryCode: d2.country_code,
-                  regionName:  d2.region,
-                  city:        d2.city,
-                  isp:         d2.connection?.isp  || null,
-                  org:         d2.connection?.org  || null,
-                  proxy:       false,
-                  hosting:     false,
-                };
-                console.log(`ipwho.is [${finalIp}]:`, d2.country, d2.city);
-              }
-            }
-          } catch (e2) { console.warn('ipwho.is error:', e2.message); }
-        }
-      }
+      const g   = (isLocal || finalIp === 'unknown') ? { ok: false } : await geoIp(finalIp);
+      const geo = g.ok ? g : {};
 
       const record = {
         ip:           finalIp,
         country:      geo?.country      || null,
         country_code: geo?.countryCode  || null,
         city:         geo?.city         || null,
-        region:       geo?.regionName   || null,
+        region:       geo?.region       || null,
         isp:          geo?.isp          || null,
         org:          geo?.org          || null,
         is_vpn:       geo?.proxy        || false,

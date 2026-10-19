@@ -97,7 +97,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     })();
     </script>
     <!-- ✅ CSP corregida: incluye todos los dominios necesarios para Google AdSense -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.sheetjs.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://www.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; media-src 'self' https: blob:; img-src 'self' https: data: blob:; connect-src 'self' https://codehub-98s6.onrender.com wss://codehub-98s6.onrender.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com https://res.cloudinary.com https://*.supabase.co https://*.basemaps.cartocdn.com https://*.arcgisonline.com https://*.tile.openstreetmap.org https://api.maptiler.com https://mt0.google.com https://mt1.google.com https://api.ipify.org https://ipapi.co https://ipwho.is https://ip-api.com; frame-src https://challenges.cloudflare.com https://www.youtube.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.sheetjs.com https://cdnjs.cloudflare.com https://challenges.cloudflare.com https://www.googletagmanager.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com https://www.googleapis.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; media-src 'self' https: blob:; img-src 'self' https: data: blob:; connect-src 'self' https://codehub-98s6.onrender.com wss://codehub-98s6.onrender.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://api.openweathermap.org https://nominatim.openstreetmap.org https://maps.googleapis.com https://maps.gstatic.com https://www.google-analytics.com https://www.googletagmanager.com https://res.cloudinary.com https://*.supabase.co https://*.basemaps.cartocdn.com https://*.arcgisonline.com https://*.tile.openstreetmap.org https://api.maptiler.com https://mt0.google.com https://mt1.google.com https://api.ipify.org https://ipapi.co https://ipwho.is; frame-src https://challenges.cloudflare.com https://www.youtube.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Wilson.E — Desarrollador Web Full Stack | CodeHub Guatemala</title>
     <meta name="description" content="Wilson.E — Desarrollador Full Stack en Guatemala. Portfolio con herramientas web, apps Android y proyectos de código abierto.">
     <meta name="keywords" content="desarrollador web Guatemala, full stack developer, portfolio, CodeHub, Wilson.E, HTML CSS JavaScript Python Node.js MongoDB">
@@ -265,7 +265,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261019a">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261019b">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -6597,33 +6597,70 @@ function getOWMIcon(id, icon) {
 
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
+/* Estado del permiso de geolocalización del navegador:
+   'granted' | 'prompt' | 'denied' | 'unsupported'. */
+async function geolocationPermissionState() {
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      var st = await navigator.permissions.query({ name: 'geolocation' });
+      return st.state || 'prompt';
+    }
+  } catch (e) {}
+  return navigator.geolocation ? 'prompt' : 'unsupported';
+}
+
+/* Mensaje final del widget: conserva el diagnóstico de CADA intento
+   (ruta + código HTTP) y, si el GPS está bloqueado, da la instrucción
+   concreta para desbloquearlo en vez de un "no se pudo" a secas. */
+async function weatherGeoErrorMessage(tried) {
+  var perm = await geolocationPermissionState();
+  var detail = tried.length ? ' Intentos: ' + tried.join(' · ') + '.' : '';
+  if (perm === 'denied') {
+    return 'Tu navegador tiene la ubicación bloqueada. Toca el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página.' + detail;
+  }
+  return 'No se pudo detectar tu ubicación. Toca "Usar mi ubicación", escribe tu ciudad abajo o inténtalo de nuevo.' + detail;
+}
+
 async function detectWeatherByIP(updateWidget) {
   if (updateWidget === undefined) updateWidget = true;
   // ÚLTIMO RECURSO: la geolocalización por IP solo puede aproximar la
   // zona (normalmente el nodo de tu ISP), no tu ubicación real — por
   // eso siempre se marca como "aprox." en la UI. La ubicación exacta
   // requiere el permiso de GPS del dispositivo/navegador.
-  // Cadenas de detección con fallback: ipapi.co → ipwho.is → ip-api.com
+  //
+  // Prioridad 1: backend propio (/api/geo), que resuelve la geo-IP en
+  // servidor→servidor (ip-api.com por HTTP + fallback ipwho.is). El
+  // navegador NO puede llamar a ip-api.com: su plan gratuito es HTTP y
+  // el CSP lo bloquea. Prioridad 2/3: ipapi.co e ipwho.is en cliente.
   var attempts = [
-    async function() { // Prioridad 1: ipapi.co (datos completos)
-      const r = await fetch('https://ipapi.co/json/');
-      const g = await r.json();
-      if (g.latitude && !g.error) return { lat: g.latitude, lon: g.longitude, city: g.city, country: g.country_name, region: g.region, cc: g.country_code };
-    },
-    async function() { // Prioridad 2: ipwho.is
-      const r = await fetch('https://ipwho.is/');
-      const g = await r.json();
-      if (g.success && g.latitude) return { lat: g.latitude, lon: g.longitude, city: g.city, country: g.country, region: g.region, cc: g.country_code };
-    },
-    async function() { // Prioridad 3: ip-api.com
-      const r = await fetch('https://ip-api.com/json/?fields=lat,lon,city,country,countryCode,regionName,status');
-      const g = await r.json();
-      if (g.status === 'success' && g.lat) return { lat: g.lat, lon: g.lon, city: g.city, country: g.country, region: g.regionName, cc: g.countryCode };
-    },
+    { label: '/api/geo', fn: async function() { // Prioridad 1: backend
+      var r = await fetchWithTimeout(BACKEND_INDEX + '/api/geo', { cache: 'no-store' }, 9000);
+      var d = await r.json().catch(function() { return {}; });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!d.ok) throw new Error('200 · ' + (d.reason === 'private-ip' ? 'IP privada' : 'sin datos'));
+      if (!d.lat) throw new Error('200 · sin coordenadas');
+      return { lat: d.lat, lon: d.lon, city: d.city, country: d.country, region: d.region, cc: d.cc };
+    } },
+    { label: 'ipapi.co/json', fn: async function() { // Prioridad 2: ipapi.co
+      var r = await fetchWithTimeout('https://ipapi.co/json/', {}, 7000);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var g = await r.json();
+      if (!g.latitude || g.error) throw new Error('200 · ' + (g.reason || 'sin datos'));
+      return { lat: g.latitude, lon: g.longitude, city: g.city, country: g.country_name, region: g.region, cc: g.country_code };
+    } },
+    { label: 'ipwho.is', fn: async function() { // Prioridad 3: ipwho.is
+      var r = await fetchWithTimeout('https://ipwho.is/', {}, 7000);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var g = await r.json();
+      if (!g.success || !g.latitude) throw new Error('200 · ' + (g.message || 'sin datos'));
+      return { lat: g.latitude, lon: g.longitude, city: g.city, country: g.country, region: g.region, cc: g.country_code };
+    } },
   ];
+
+  var tried = [];
   for (var i = 0; i < attempts.length; i++) {
     try {
-      var loc = await attempts[i]();
+      var loc = await attempts[i].fn();
       if (loc && loc.lat) {
         var flag = loc.cc === 'GT' ? ' 🇬🇹' : '';
         var area = loc.region && loc.region !== loc.city ? ', ' + loc.region : '';
@@ -6631,11 +6668,14 @@ async function detectWeatherByIP(updateWidget) {
           await fetchWeatherByCoords(loc.lat, loc.lon, loc.city + area + ', ' + loc.country + ' (aprox.) 📶' + flag);
         }
         chSavePushLocation(loc.lat, loc.lon, loc.city, loc.country, 'ip');
-        return;
+        return true;
       }
-    } catch(e) {}
+    } catch (e) {
+      tried.push(attempts[i].label + ' ' + (e && e.message ? e.message : 'error'));
+    }
   }
-  if (updateWidget) showWeatherError('No se pudo detectar tu ubicación. Escribe tu ciudad abajo o toca "Usar mi ubicación" para GPS.');
+  if (updateWidget) showWeatherError(await weatherGeoErrorMessage(tried));
+  return false;
 }
 
 function requestGeoLocation() {

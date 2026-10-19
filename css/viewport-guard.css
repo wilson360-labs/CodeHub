@@ -446,6 +446,10 @@ section, main, .container, .wrap, .inner, .section-wrap {
 :root[data-anim="0"] .wx-live-dot { animation: none !important; }
 [data-theme="light"] .wx-live-dot { background: #16a34a; }
 
+/* Mensaje de error del clima: puede citar rutas y códigos HTTP de
+   varios intentos; permitir el corte evita desbordes en móvil. */
+#wx-error-msg { min-width: 0; overflow-wrap: anywhere; }
+
 /* ── Minimapa del clima (Leaflet) ─────────────────────── */
 .wx-map-box { display: block; margin-top: .5rem; }
 .wx-map-togglebtn {
