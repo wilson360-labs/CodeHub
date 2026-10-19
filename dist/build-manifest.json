@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19T16:04:35.425Z",
+  "generatedAt": "2026-10-19T16:08:38.479Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.ea5dfb60f2.min.js",
     "js/auth.js": "assets/js/auth.14f7caec39.min.js",
@@ -16,7 +16,7 @@
     "js/morphicons-init.js": "assets/js/morphicons-init.a38de871fc.min.js",
     "js/music-player.js": "assets/js/music-player.35668e7a10.min.js",
     "js/native-music.js": "assets/js/native-music.3a7a58cdbe.min.js",
-    "js/noticias.js": "assets/js/noticias.4c0bb41393.min.js",
+    "js/noticias.js": "assets/js/noticias.f46c7e4567.min.js",
     "js/notifications.js": "assets/js/notifications.024f9d794c.min.js",
     "js/office-generator.js": "assets/js/office-generator.8d6cdf13ee.min.js",
     "js/offline-queue.js": "assets/js/offline-queue.6b72f7a657.min.js",
