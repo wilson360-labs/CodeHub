@@ -1,14 +1,16 @@
 // ============================================================
-// CODEHUB — DETECCIÓN DE ACTUALIZACIÓN EN VIVO (sin versiones)
+// CODEHUB — DETECCIÓN DE ACTUALIZACIÓN EN VIVO (silenciosa)
 // ------------------------------------------------------------
 // No compara números de versión que alguien tiene que recordar
 // subir a mano. Compara el ETag / Last-Modified real que Vercel
 // pone en cada deploy nuevo (cambia automáticamente cada vez que
 // haces push a GitHub y Vercel termina de desplegar).
 //
-// Apenas detecta que ese valor cambió respecto al que tenía la
-// pestaña abierta, muestra el diálogo de actualización con el
-// changelog (en vez de recargar silenciosamente).
+// POLÍTICA: la web NO muestra diálogos de actualización. Al
+// detectar un deploy nuevo SOLO pide al Service Worker que revise
+// (reg.update()); el registro del SW en index.html ya hace
+// skipWaiting y recarga sola la pestaña. El usuario simplemente
+// nota el contenido fresco, sin interrupciones.
 //
 // Chequeo liviano (HEAD, sin descargar la página completa) cada
 // pocos segundos + siempre que la pestaña vuelve a estar visible,
@@ -32,36 +34,14 @@
     }
   }
 
-  function isUserTyping() {
-    const el = document.activeElement;
-    if (!el) return false;
-    const tag = el.tagName;
-    return tag === 'TEXTAREA' || (tag === 'INPUT' && el.value && el.value.length > 0);
-  }
-
-  function showUpdateNotification() {
-    // Si el usuario está escribiendo, esperar a que termine
-    if (isUserTyping()) {
-      const el = document.activeElement;
-      let done = false;
-      const finish = () => { if (!done) { done = true; doShow(); } };
-      el.addEventListener('blur', finish, { once: true });
-      setTimeout(finish, 20000);
-      return;
-    }
-    doShow();
-  }
-
-  function doShow() {
-    // Usar el nuevo diálogo con changelog si está disponible
-    if (typeof window.chCheckAndUpdate === 'function') {
-      window.chCheckAndUpdate(true);
-    } else {
-      // Fallback: recarga silenciosa si el diálogo aún no cargó
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(reg => reg && reg.update());
-      }
-      location.reload();
+  function applySilently() {
+    // Actualización silenciosa: sin diálogos en la web. El registro
+    // del SW (index.html) detección de reg.waiting → SKIP_WAITING →
+    // controllerchange → reload, es quien completa el cambio.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration()
+        .then(reg => { if (reg) return reg.update(); return null; })
+        .catch(() => {});
     }
   }
 
@@ -79,7 +59,7 @@
     }
     if (tag !== knownTag) {
       knownTag = tag;
-      showUpdateNotification();
+      applySilently();
     }
   }
 

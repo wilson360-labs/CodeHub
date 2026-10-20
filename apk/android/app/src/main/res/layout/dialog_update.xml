@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diálogo de actualización de CodeHub — estilo propio One UI.
+     Vive SOLO en la app nativa (AppUpdateChecker). La web no tiene
+     diálogos de actualización. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="18dp"
+    android:layout_marginEnd="18dp"
+    android:orientation="vertical"
+    android:background="@drawable/bg_update_dialog">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:background="@drawable/bg_update_topline" />
+
+    <!-- Cabecera: burbuja de icono + título + chip de versión -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp">
+
+        <TextView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_update_bubble"
+            android:gravity="center"
+            android:text="🚀"
+            android:textSize="19sp" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Actualización disponible"
+                android:textColor="#F2F5FA"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:lineSpacingExtra="1dp" />
+
+            <TextView
+                android:id="@+id/dialog_update_ver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="v—"
+                android:textColor="#8B93A7"
+                android:textSize="11sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:text="Descarga la nueva versión e instálala para tener las últimas mejoras. La instalación arranca sola al completar la descarga."
+        android:textColor="#AAB1C4"
+        android:textSize="12sp"
+        android:lineSpacingExtra="3dp" />
+
+    <!-- Qué hay de nuevo (visible solo si hay notas limpias) -->
+    <LinearLayout
+        android:id="@+id/dialog_update_notes_wrap"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_update_notes"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Qué hay de nuevo"
+            android:textColor="#4ADE80"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/dialog_update_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#C7CDDB"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp" />
+    </LinearLayout>
+
+    <!-- Acciones -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/dialog_update_later"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_marginEnd="10dp"
+            android:background="@drawable/bg_update_btn_ghost"
+            android:text="Más tarde"
+            android:textColor="#8B93A7"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/dialog_update_apply"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:background="@drawable/bg_update_btn"
+            android:text="Actualizar"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="14dp"
+        android:gravity="center"
+        android:text="Descarga oficial de CodeHub · instalación al terminar"
+        android:textColor="#666F82"
+        android:textSize="9sp" />
+</LinearLayout>
