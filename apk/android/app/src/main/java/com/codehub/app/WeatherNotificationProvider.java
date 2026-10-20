@@ -263,7 +263,7 @@ public class WeatherNotificationProvider {
             PendingIntent pi = PendingIntent.getActivity(context, 3002, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
-            NotificationManagerHelper.notifyQuake(context,
+            notifyQuake(context,
                 new NotificationCompat.Builder(context, CH_QUAKES)
                     .setSmallIcon(R.drawable.ic_stat_quake)
                     .setContentTitle(title)
