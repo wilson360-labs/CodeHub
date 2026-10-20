@@ -656,8 +656,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             Bundle o = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId);
             int h = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
             if (h <= 0) h = 250;
-            if (h >= 237) return MODE_FULL;
-            if (h >= 189) return MODE_MEDIUM;
+            if (h >= 238) return MODE_FULL;
+            if (h >= 192) return MODE_MEDIUM;
             return MODE_COMPACT;
         } catch (Exception e) {
             return MODE_FULL;

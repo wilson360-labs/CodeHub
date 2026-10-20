@@ -48,6 +48,7 @@
             android:gravity="center_vertical">
 
             <TextView
+                android:includeFontPadding="false"
                 android:id="@+id/widget_city"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -60,6 +61,7 @@
                 android:ellipsize="end" />
 
             <TextView
+                android:includeFontPadding="false"
                 android:id="@+id/widget_updated"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -80,14 +82,14 @@
             android:gravity="center_vertical">
 
             <TextView
+                android:includeFontPadding="false"
                 android:id="@+id/widget_temp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--°"
                 android:textColor="#0B2545"
-                android:textSize="46sp"
+                android:textSize="44sp"
                 android:fontFamily="sans-serif-light"
-                android:includeFontPadding="false"
                 android:maxLines="1" />
 
             <LinearLayout
@@ -98,6 +100,7 @@
                 android:gravity="center_vertical">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_condition"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -110,6 +113,7 @@
                     android:ellipsize="end" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_feels"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -126,7 +130,7 @@
             android:id="@+id/widget_hourly"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="3dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:background="@drawable/widget_glass"
@@ -143,6 +147,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h1_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -152,6 +157,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h1_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -160,6 +166,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h1_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -178,6 +185,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h2_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -187,6 +195,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h2_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -195,6 +204,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h2_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -213,6 +223,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h3_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -222,6 +233,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h3_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -230,6 +242,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h3_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -248,6 +261,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h4_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -257,6 +271,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h4_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -265,6 +280,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_h4_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -293,6 +309,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d1_day"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -302,6 +319,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d1_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -310,6 +328,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d1_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -328,6 +347,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d2_day"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -337,6 +357,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d2_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -345,6 +366,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d2_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -363,6 +385,7 @@
                 android:gravity="center">
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d3_day"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -372,6 +395,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d3_icon"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -380,6 +404,7 @@
                     android:maxLines="1" />
 
                 <TextView
+                    android:includeFontPadding="false"
                     android:id="@+id/widget_d3_temp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -393,6 +418,7 @@
 
         <!-- ── Detalles: humedad · viento · lluvia ── -->
         <TextView
+            android:includeFontPadding="false"
             android:id="@+id/widget_details"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -413,6 +439,7 @@
             android:gravity="center_vertical">
 
             <Chronometer
+                android:includeFontPadding="false"
                 android:id="@+id/widget_updated2"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -430,6 +457,7 @@
                 android:visibility="gone" />
 
             <TextView
+                android:includeFontPadding="false"
                 android:id="@+id/widget_refresh"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
