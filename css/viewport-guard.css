@@ -1347,17 +1347,22 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   border-color: rgba(47,128,237,.4); color: var(--text, #eee);
 }
 
-/* ── Cielo: gradiente por fase (amanecer → día → atardecer → noche) ── */
+/* ── Cielo: gradiente por fase (amanecer → día → atardecer → noche) ──
+   La geometría/base de .wx-sun-sky vive en su bloque de paleta
+   (más abajo), unificado con el resto del estilo One UI. */
 .wx-sun { margin: .8rem 0 .2rem; }
+/* ── Cielo del panel Sol/Luna: veladuras sutiles One UI ────
+   Ya no hay "mini-cielo" contrastado aparte: vetas translúcidas
+   que conviven con el vidrio de la tarjeta (azulado claro de día,
+   azulado profundo de noche, tibio en amanecer/atardecer). */
 .wx-sun-sky {
-  position: relative; height: 118px; border-radius: 16px; overflow: hidden;
+  position: relative; height: 100px; border-radius: 14px; overflow: hidden;
   transition: background 2.5s ease;
 }
-/* Paleta alineada a la escena One UI 8.5 (misma familia azul día/noche). */
-.wx-sun-sky[data-sky="day"]   { background: linear-gradient(180deg, #2f7bff, #5aa9ff 55%, #a9d8ff); }
-.wx-sun-sky[data-sky="dawn"]  { background: linear-gradient(180deg, #2b4a7c, #e88e5a 60%, #ffd98a); }
-.wx-sun-sky[data-sky="dusk"]  { background: linear-gradient(180deg, #1d2150, #7b2b6f 50%, #e8874a 85%, #ffca7a); }
-.wx-sun-sky[data-sky="night"] { background: linear-gradient(180deg, #070b1f, #14214f 60%, #2a3f7e); }
+.wx-sun-sky[data-sky="day"]   { background: linear-gradient(180deg, rgba(47,123,255,.14), rgba(90,169,255,.10) 55%, rgba(255,255,255,.24)); }
+.wx-sun-sky[data-sky="dawn"]  { background: linear-gradient(180deg, rgba(43,74,124,.22), rgba(232,142,90,.26) 60%, rgba(255,217,138,.34)); }
+.wx-sun-sky[data-sky="dusk"]  { background: linear-gradient(180deg, rgba(29,33,80,.30), rgba(123,43,111,.26) 50%, rgba(232,135,74,.28) 85%, rgba(255,202,122,.34)); }
+.wx-sun-sky[data-sky="night"] { background: linear-gradient(180deg, rgba(7,11,31,.50), rgba(20,33,79,.38) 60%, rgba(42,63,126,.32)); }
 
 .wx-sun-arc { position: absolute; inset: 0; }
 
@@ -1368,37 +1373,37 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 }
 .wx-sun-disc {
   left: var(--sun-x, 50%); top: var(--sun-y, 105%); z-index: 2;
-  width: 46px; height: 46px;
+  width: 42px; height: 42px;
 }
+/* Rayos: concepto limpio — escasa y lenta, más halo que "sol de dibujos". */
 .wx-sun-disc::before {
-  content: ''; position: absolute; inset: -15px; border-radius: 50%;
-  background: repeating-conic-gradient(rgba(255,200,60,.9) 0deg 14deg, transparent 14deg 36deg);
-  -webkit-mask: radial-gradient(circle, transparent 0 40%, #000 46%);
-  mask: radial-gradient(circle, transparent 0 40%, #000 46%);
-  animation: wx-sun-spin 30s linear infinite;
+  content: ''; position: absolute; inset: -14px; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255,205,95,.5) 0deg 11deg, transparent 11deg 34deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 44%, #000 62%);
+  mask: radial-gradient(circle, transparent 0 44%, #000 62%);
+  opacity: .5;
+  animation: wx-sun-spin 44s linear infinite;
 }
 .wx-sun-disc::after {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fff7cc, #ffd34d 45%, #ff9d2e 100%);
-  box-shadow: 0 0 24px 6px rgba(255,180,40,.55), 0 0 60px 18px rgba(255,160,40,.25);
-  animation: wx-sun-breath 4s ease-in-out infinite;
+  background: radial-gradient(circle at 35% 35%, #fff9e2, #ffd55e 48%, #ffaf4e 100%);
+  box-shadow: 0 0 18px 5px rgba(255,185,60,.42), 0 0 44px 13px rgba(255,170,50,.2);
+  animation: wx-sun-breath 4.5s ease-in-out infinite;
 }
+/* Luna: superficie limpia con sombreado lateral real (sin media luna
+   recortada ni máscara negra — eso era lo que se veía feo). */
 .wx-moon-disc {
   left: var(--moon-x, 50%); top: var(--moon-y, 105%); z-index: 2;
-  width: 38px; height: 38px; display: none;
+  width: 34px; height: 34px; display: none;
 }
 .wx-moon-disc::before {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(circle at 32% 30%, #fcfdfd, #cfd8e6 55%, #93a3bd);
-  box-shadow: 0 0 18px 5px rgba(200,215,255,.35);
-}
-.wx-moon-disc::after {
-  content: ''; position: absolute; inset: 0; border-radius: 50%;
-  transform: translate(7px, -5px);
-  background: #000;
-  -webkit-mask: radial-gradient(circle, transparent 0 58%, #000 62%);
-  mask: radial-gradient(circle, transparent 0 58%, #000 62%);
-  opacity: .6;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(96,110,150,.28) 0 13%, transparent 14%),
+    radial-gradient(circle at 62% 56%, rgba(96,110,150,.24) 0 9%, transparent 10%),
+    radial-gradient(circle at 44% 74%, rgba(96,110,150,.20) 0 6%, transparent 7%),
+    radial-gradient(circle at 34% 30%, #fdfdff, #eaeef5 55%, #c9d2e2 100%);
+  box-shadow: 0 0 16px 4px rgba(190,208,255,.30);
 }
 .wx-sun-sky[data-sky="night"] .wx-sun-disc { animation: none; opacity: 0; }
 .wx-sun-sky[data-sky="night"] .wx-moon-disc,
@@ -1409,32 +1414,35 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 
 @keyframes wx-sun-spin { to { transform: rotate(360deg); } }
 @keyframes wx-sun-breath {
-  0%, 100% { box-shadow: 0 0 24px 6px rgba(255,180,40,.55), 0 0 60px 18px rgba(255,160,40,.25); }
-  50%      { box-shadow: 0 0 30px 9px rgba(255,190,50,.75), 0 0 78px 26px rgba(255,170,45,.38); }
+  0%, 100% { box-shadow: 0 0 18px 5px rgba(255,185,60,.42), 0 0 44px 13px rgba(255,170,50,.2); }
+  50%      { box-shadow: 0 0 24px 8px rgba(255,195,70,.56), 0 0 60px 18px rgba(255,180,55,.32); }
 }
 
-/* ── Estrellas (parpadeo de noche) ───────────────────────── */
+/* ── Estrellas (parpadeo de noche, tenue en atardecer) ───── */
 .wx-star {
-  position: absolute; display: block; width: 5px; height: 5px; border-radius: 50%;
-  background: #fff; opacity: 0;
+  position: absolute; display: block; width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,.92); opacity: 0;
 }
 .wx-sun-sky[data-sky="night"] .wx-star,
-.wx-sun-sky[data-sky="dawn"] .wx-star,
-.wx-sun-sky[data-sky="dusk"] .wx-star {
-  opacity: 1;
+.wx-sun-sky[data-sky="dusk"] .wx-star,
+.wx-sun-sky[data-sky="dawn"] .wx-star {
   animation: wx-star-tw 2.6s ease-in-out infinite;
   animation-delay: var(--d, 0s);
 }
+.wx-sun-sky[data-sky="night"] .wx-star { opacity: .9; }
+.wx-sun-sky[data-sky="dusk"] .wx-star  { opacity: .5; }
+.wx-sun-sky[data-sky="dawn"] .wx-star  { opacity: .28; }
 @keyframes wx-star-tw { 0%, 100% { opacity: .9; } 50% { opacity: .15; } }
 
-/* ── Nube a la deriva (día) ──────────────────────────────── */
+/* ── Nube a la deriva (día, discreta) ────────────────────── */
 .wx-cloud {
-  position: absolute; left: -90px; top: 26px; width: 64px; height: 18px;
+  position: absolute; left: -90px; top: 26px; width: 60px; height: 16px;
   opacity: 0;
 }
-.wx-sun-sky[data-sky="day"] .wx-cloud { opacity: .65; animation: wx-cloud-drift 42s linear infinite; }
+.wx-sun-sky[data-sky="day"] .wx-cloud { opacity: .5; animation: wx-cloud-drift 46s linear infinite; }
 .wx-cloud span {
-  position: absolute; inset: 0; border-radius: 12px; background: rgba(255,255,255,.92);
+  position: absolute; inset: 0; border-radius: 12px; background: rgba(255,255,255,.82);
+  box-shadow: 0 1px 4px rgba(40,80,160,.16);
 }
 .wx-cloud span::before, .wx-cloud span::after {
   content: ''; position: absolute; border-radius: 50%; background: inherit;
@@ -1489,18 +1497,20 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
 
 /* ── Responsivo (solo breakpoints canónicos) ─────────────── */
 @media (max-width: 768px) {
-  .wx-sun-sky { height: 104px; }
+  .wx-sun-sky { height: 92px; }
+  .wx-cloud { top: 20px; }
 }
 @media (max-width: 480px) {
-  .wx-sun-sky { height: 92px; }
-  .wx-sun-disc { width: 38px; height: 38px; }
+  .wx-sun-sky { height: 84px; }
+  .wx-sun-disc { width: 36px; height: 36px; }
   .wx-sun-disc::before { inset: -12px; }
-  .wx-moon-disc { width: 32px; height: 32px; }
+  .wx-moon-disc { width: 30px; height: 30px; }
   .wx-sun-times { flex-wrap: wrap; }
   .wx-sun-dur { width: 100%; text-align: center; padding-top: .25rem; }
   .geo-dock-btn { font-size: .76rem; padding: .45rem .5rem; }
 }
 @media (max-width: 380px) {
+  .wx-sun-sky { height: 76px; }
   .wx-moon { width: 100%; }
   .wx-moon-illum { white-space: normal; text-align: center; }
 }
@@ -1957,39 +1967,40 @@ body.has-dock {
     radial-gradient(circle, #fffce8 0 10%, #ffe98c 24%, rgba(255,208,92,.62) 42%, rgba(255,196,66,.28) 55%, rgba(255,190,60,0) 72%);
   animation: wxs-pulse 7s ease-in-out infinite;
 }
-.wxs-rays { opacity: .8; animation-duration: 95s; }
+.wxs-rays { opacity: .6; }
 :is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wxs-rays,
 .wxs-on[data-day="1"] .wxs-rays {
-  background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.16) 0 5deg, transparent 5deg 21deg);
+  background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.11) 0 5deg, transparent 5deg 21deg);
+  animation-duration: 110s;
 }
 
-/* ── Luna con terminador más profundo y halo suave ── */
+/* ── Luna de la escena: halo delicado, terminador suave y
+   cráteres apenas insinuados (antes se veía "sucia"). ── */
 .wxs-moon {
   box-shadow:
-    0 0 44px 12px rgba(190,205,255,.26),
-    inset -13px -9px 20px rgba(96,110,158,.5);
+    0 0 30px 8px rgba(205,220,255,.22),
+    inset -8px -6px 16px rgba(112,124,168,.35);
   animation: wxs-pulse 9s ease-in-out infinite;
 }
 .wxs-moon::before {
   background:
-    radial-gradient(circle at 62% 38%, rgba(108,120,158,.30) 0 9%, transparent 10%),
-    radial-gradient(circle at 40% 66%, rgba(108,120,158,.24) 0 12%, transparent 13%),
-    radial-gradient(circle at 70% 70%, rgba(108,120,158,.22) 0 6%, transparent 7%),
-    radial-gradient(circle at 26% 34%, rgba(108,120,158,.16) 0 4%, transparent 5%);
+    radial-gradient(circle at 62% 38%, rgba(118,130,168,.18) 0 9%, transparent 10%),
+    radial-gradient(circle at 40% 66%, rgba(118,130,168,.15) 0 12%, transparent 13%),
+    radial-gradient(circle at 70% 70%, rgba(118,130,168,.13) 0 6%, transparent 7%);
 }
 
-/* ── Nubes con volumen: luz arriba, sombra abajo ── */
+/* ── Nubes con volumen: luz arriba, sombra abajo (sutil) ── */
 .wxs-cloud {
-  filter: blur(2.5px) drop-shadow(0 8px 16px rgba(24,44,84,.16));
+  filter: blur(2.5px) drop-shadow(0 8px 16px rgba(24,44,84,.14));
 }
 .wxs-on[data-day="1"] .wxs-cloud {
   background:
-    radial-gradient(ellipse closest-side at 30% 78%, rgba(90,108,142,.38) 45%, transparent 100%),
+    radial-gradient(ellipse closest-side at 30% 78%, rgba(90,108,142,.24) 45%, transparent 100%),
     radial-gradient(ellipse closest-side at 20% 66%, var(--cc) 55%, transparent 100%),
     radial-gradient(ellipse closest-side at 42% 46%, var(--cc) 55%, transparent 100%),
     radial-gradient(ellipse closest-side at 66% 54%, var(--cc) 55%, transparent 100%),
     radial-gradient(ellipse closest-side at 82% 68%, var(--cc) 55%, transparent 100%),
-    radial-gradient(ellipse closest-side at 44% 34%, rgba(255,255,255,.6) 30%, transparent 100%);
+    radial-gradient(ellipse closest-side at 44% 34%, rgba(255,255,255,.45) 30%, transparent 100%);
 }
 
 /* ── Lluvia: gota más fina con tinte nocturno frío ── */
