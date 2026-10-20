@@ -1867,3 +1867,44 @@ body.has-dock {
 .chw-panel.wxs-on .chw-hour-rain { color: #c9e8ff; }
 .chw-panel.wxs-on .chw-refresh-btn { background: rgba(255,255,255,.16); border-color: rgba(255,255,255,.3); color: #fff; }
 .chw-widget.wxs-on .chw-pill { background: var(--wxs-sky); color: #fff; border-color: rgba(255,255,255,.28); box-shadow: 0 8px 24px rgba(8,16,40,.35), inset 0 1px 0 rgba(255,255,255,.3); }
+
+/* ── Contraste por momento del día (escena One UI) ─────────────────────
+   La escena pinta el cielo de la tarjeta: de DÍA es claro (el texto
+   blanco se perdía) y de NOCHE es oscuro. Se replica la especificidad
+   de las reglas de cristal para ganar sin necesidad de !important. */
+/* Bruma clara arriba: sube la luminosidad del cielo bajo el header para que
+   la tinta oscura tenga contraste AA incluso en el azul más saturado. */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] {
+  background: linear-gradient(180deg, rgba(255,255,255,.34) 0%, rgba(255,255,255,.10) 26%, rgba(255,255,255,0) 48%), var(--wxs-sky) !important;
+}
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-city { color: #0b2545; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-desc { color: #0b2545; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-feels { color: #16324f; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-temp {
+  background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-stat { background: rgba(255,255,255,.5); border-color: rgba(255,255,255,.7); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-stat span  { color: #0b2545; text-shadow: none; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-stat small { color: #16324f; text-shadow: none; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-stat i     { color: #1e3a8a; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-hourly { background: rgba(255,255,255,.52); border-color: rgba(255,255,255,.72); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-hr { color: #0b2545; text-shadow: none; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-hr-r { color: #1d4ed8; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-hr.is-now { background: rgba(255,255,255,.72); }
+/* Sol/luna: horas y duración legibles sobre el cristal claro del día. */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-sun { background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.72); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-sun-time b { color: #0b2545; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-sun-time small,
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-sun-dur { color: #16324f; }
+
+/* Noche: texto claro garantizado aunque el tema sea claro. */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-city { color: #fff; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-desc { color: rgba(255,255,255,.9); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-feels { color: rgba(255,255,255,.74); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-stat span  { color: #fff; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-stat small { color: rgba(255,255,255,.76); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-stat i     { color: rgba(255,255,255,.94); }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-hr { color: #fff; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-hr-r { color: #c9e8ff; }
