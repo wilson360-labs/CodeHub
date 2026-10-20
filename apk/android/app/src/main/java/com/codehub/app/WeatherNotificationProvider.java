@@ -194,7 +194,7 @@ public class WeatherNotificationProvider {
                 float mag = (float) q.optDouble("mag", 0);
                 double dist = haversineKm(lat, lon, q.optDouble("lat", 0), q.optDouble("lon", 0));
                 String dir = bearingTo8(lat, lon, q.optDouble("lat", 0), q.optDouble("lon", 0));
-                String when = hourOf(q.optLong("time", 0), 0);
+                String when = localTime(q.optLong("time", 0));
                 String row = "⚠ Sismo M" + String.format(Locale.US, "%.1f", mag)
                     + " · " + Math.round(dist) + " km " + dir
                     + " · " + when
@@ -255,7 +255,7 @@ public class WeatherNotificationProvider {
             String title = "⚠ Sismo M" + String.format(Locale.US, "%.1f", mag)
                 + " a " + Math.round(dist) + " km " + dir + " de tu ubicación";
             String text = (place.isEmpty() ? "Sismo reciente" : place)
-                + " · hace " + (agoMin < 90 ? agoMin + " min" : hourOf(time, 0))
+                + " · hace " + (agoMin < 90 ? agoMin + " min" : localTime(time))
                 + " · profundidad " + Math.round(quake.optDouble("depth", 0)) + " km";
 
             Intent open = new Intent(context, MainActivity.class);
@@ -439,10 +439,11 @@ public class WeatherNotificationProvider {
         return dirs[(int) Math.round(brng / 45) % 8];
     }
 
-    private static String hourOf(long epochMs, long offsetSec) {
+    /** Hora local del dispositivo (los sismos llegan en epoch UTC). */
+    private static String localTime(long epochMs) {
         SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.US);
-        fmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-        return fmt.format(new Date(epochMs - offsetSec * 1000));
+        fmt.setTimeZone(java.util.TimeZone.getDefault());
+        return fmt.format(new Date(epochMs));
     }
 
     private static String describe(int code, boolean day) {
