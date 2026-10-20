@@ -1,5 +1,17 @@
 [
   {
+    "version": "v7.42",
+    "date": "2026-10-20",
+    "type": "release",
+    "title": "Single day/night style and elegant single update",
+    "changes": [
+      "Weather: single day/night style (One UI 8.5); realistic sky, sun, moon, clouds, rain, snow and fog",
+      "Weather: fixed moon phase text in day mode (white on light background)",
+      "Update: the old Android AlertDialog with repository links was removed",
+      "Update: new elegant single dialog, with version and cleaned release notes"
+    ]
+  },
+  {
     "version": "v7.34",
     "date": "2026-10-16",
     "type": "fix",

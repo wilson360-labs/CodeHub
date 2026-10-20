@@ -265,7 +265,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
          (evita roturas en 380–720px). SIEMPRE al final de la cadena. -->
 <link rel="stylesheet" href="css/sys-tools.css?v=20261016a">
 <link rel="stylesheet" href="css/native-feel.css?v=20261019a">
-<link rel="stylesheet" href="css/viewport-guard.css?v=20261019f">
+<link rel="stylesheet" href="css/viewport-guard.css?v=20261020a">
     <!-- Personalización de estilos (acento/esquinas/densidad/...). Última capa CSS -->
 <link rel="stylesheet" href="css/prefs.css?v=20261019a">
     <!-- prefs.js en head: aplica atributos de personalización antes del render -->
@@ -323,24 +323,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </div>
 </div>
 
-<!-- ── Diálogo de actualización del APK (sin versión ni changelog) ── -->
-<div id="apk-update-overlay" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1rem">
-  <div style="background:var(--card,#1a1a2e);border:1px solid rgba(34,197,94,.3);border-radius:var(--radius-lg,18px);max-width:400px;width:100%;padding:1.5rem;box-shadow:0 24px 64px rgba(0,0,0,.55);font-family:inherit;color:var(--text,#e0e0f0);position:relative;overflow:hidden">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#22c55e,#3b6dff,#a855f7)"></div>
-    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">
-      <div style="width:40px;height:40px;border-radius:12px;background:rgba(34,197,94,.12);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🚀</div>
-      <div style="font-weight:800;font-size:1rem">Actualización disponible</div>
+<!-- ── Diálogo de actualización del APK (único diálogo de actualización · One UI 8.5) ── -->
+<div id="apk-update-overlay" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(4,8,18,.62);backdrop-filter:blur(10px) saturate(140%);-webkit-backdrop-filter:blur(10px) saturate(140%);align-items:center;justify-content:center;padding:1rem">
+  <div style="background:var(--card,#161a26);border:1px solid rgba(255,255,255,.1);border-radius:24px;max-width:400px;width:100%;padding:1.4rem 1.3rem 1.1rem;box-shadow:0 28px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08);font-family:inherit;color:var(--text,#e6e9f2);position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3b82f6,#22c55e 60%,transparent 96%)"></div>
+    <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.15rem">
+      <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(34,197,94,.16));border:1px solid rgba(59,130,246,.25);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0">🚀</div>
+      <div style="min-width:0">
+        <div style="font-weight:800;font-size:1rem;letter-spacing:-.01em;line-height:1.25">Actualización disponible</div>
+        <div style="font-size:.72rem;color:var(--muted,#8b93a7);margin-top:.1rem">CodeHub <span id="apk-update-ver" style="color:#4ade80;font-weight:700;font-family:var(--mono,Consolas,monospace)"></span> ya está lista</div>
+      </div>
     </div>
-    <div style="font-size:.84rem;line-height:1.6;color:var(--text-soft,#aaa);margin-bottom:.9rem">Hay una actualización disponible para la app. Descárgala e instálala para tener las últimas mejoras.</div>
-    <div id="apk-update-notes-wrap" style="display:none;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:var(--radius-sm,10px);padding:.7rem .8rem;margin-bottom:1.1rem">
-      <div style="font-size:.72rem;font-weight:700;color:#22c55e;margin-bottom:.3rem">Qué hay de nuevo</div>
-      <div id="apk-update-notes" style="font-size:.8rem;line-height:1.55;color:var(--text-soft,#aaa)"></div>
+    <div style="font-size:.84rem;line-height:1.6;color:var(--text-soft,#aab1c4);margin:.85rem 0 .9rem">Descarga la nueva versión e instálala para tener las últimas mejoras. La instalación arranca sola al completar la descarga.</div>
+    <div id="apk-update-notes-wrap" style="display:none;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);border-radius:14px;padding:.75rem .85rem;margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:#4ade80;margin-bottom:.35rem;letter-spacing:.02em">Qué hay de nuevo</div>
+      <div id="apk-update-notes" style="font-size:.8rem;line-height:1.55;color:var(--text-soft,#aab1c4)"></div>
     </div>
     <div style="display:flex;gap:.5rem">
-      <button id="apk-update-apply" style="flex:1;padding:.6rem 1rem;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:var(--radius-sm,10px);font-weight:700;font-size:.82rem;cursor:pointer;transition:filter .15s">Actualizar</button>
-      <button id="apk-update-later" style="padding:.6rem 1rem;background:rgba(255,255,255,.06);color:var(--muted,#888);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm,10px);font-size:.82rem;cursor:pointer">Más tarde</button>
+      <button id="apk-update-apply" style="flex:1;padding:.68rem 1rem;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:.85rem;cursor:pointer;transition:filter .15s,transform .15s">Actualizar</button>
+      <button id="apk-update-later" style="padding:.68rem 1rem;background:rgba(255,255,255,.06);color:var(--muted,#8b93a7);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:.85rem;cursor:pointer;transition:background .15s">Más tarde</button>
     </div>
-    <div style="text-align:center;margin-top:.6rem;font-size:.65rem;color:var(--muted,#666)">La instalación se iniciará al terminar la descarga</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:.35rem;margin-top:.65rem;font-size:.64rem;color:var(--muted,#6d7488)">
+      <i class="fas fa-shield-halved" style="font-size:.6rem"></i> Descarga oficial de CodeHub · instalación al terminar
+    </div>
   </div>
 </div>
 
@@ -7645,9 +7650,28 @@ document.addEventListener('DOMContentLoaded', () => {
   window.chDismissUpdate = chDismissUpdate;
   window.chCheckAndUpdate = chCheckAndUpdate;
 
-  // ── Diálogo de actualización del APK (solo nativo, sin versión/changelog) ──
+  // ── Diálogo de actualización del APK (ÚNICO diálogo de actualización) ──
+  // Fuente de datos: GitHub Releases (tag apk-codehub-vX.Y con el APK
+  // firmado). Solo se acepta como "release de actualización" la que tiene
+  // el asset app-release-signed.apk, para que una release de extensión
+  // (ytm-*, etc.) jamás aparezca como actualización de CodeHub y jamás se
+  // muestre el repo. Si GitHub falla, respaldo: /api/config
+  // (apkLatestVersion/apkUpdateNotes, publicado por el CI).
+  // La versión instalada llega del puente nativo (window.__apkVersion).
+  // El diálogo de Android antiguo (AlertDialog en AppUpdateChecker) fue
+  // ELIMINADO: era el que mostraba el cuerpo del release con enlaces al repo.
   const APK_SKIP_PREFIX = '_apk_update_skip_';
+  const APK_ASSET_NAME = 'app-release-signed.apk';
+  const APK_GH_API = 'https://api.github.com/repos/wilson360-labs/CodeHub/releases/latest';
   let _apkLatest = null;
+
+  (function () {
+    try {
+      if (window.CodeHubNative && CodeHubNative.getVersionName) {
+        window.__apkVersion = String(CodeHubNative.getVersionName() || '').replace(/^v/i, '').trim();
+      }
+    } catch (e) {}
+  })();
 
   function _parseSemver(v) {
     const parts = String(v || '').replace(/^v/i, '').trim().split('.');
@@ -7669,6 +7693,27 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  function _normalizeApkTag(tag) {
+    return String(tag || '').trim()
+      .replace(/^apk-/, '')
+      .replace(/^codehub-/, '')
+      .replace(/^v/, '');
+  }
+
+  /* Notas limpias: sin enlaces al repo ni sintaxis Markdown. */
+  function _cleanApkNotes(body) {
+    const lines = String(body || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    const out = [];
+    for (let i = 0; i < lines.length && out.length < 6; i++) {
+      let l = lines[i];
+      /* Never show repository links (Full Changelog, compare, install guides). */
+      if (/https?:\/\/|github\.com/i.test(l)) continue;
+      l = l.replace(/^#{1,6}\s*/, '').replace(/\*\*/g, '').replace(/^[•\-\*]\s*/, '').trim();
+      if (l.length >= 3) out.push(l);
+    }
+    return out.join('\n');
+  }
+
   function _renderApkNotes(notes) {
     const wrap = document.getElementById('apk-update-notes-wrap');
     const el = document.getElementById('apk-update-notes');
@@ -7677,24 +7722,51 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!lines.length) return;
     el.innerHTML = lines.map(function(l) {
       var t = l.replace(/^[•\-\*]\s*/, '');
-      return '<div style="position:relative;padding-left:.9rem;margin-bottom:.3rem"><span style="position:absolute;left:0;color:#22c55e">›</span> ' + t + '</div>';
+      return '<div style="position:relative;padding-left:.9rem;margin-bottom:.3rem"><span style="position:absolute;left:0;color:#4ade80">›</span> ' + t + '</div>';
     }).join('');
     wrap.style.display = 'block';
   }
 
-  async function apkCheckUpdate() {
-    if (!window.__apkVersion) return;
+  function _showApkDialog(version, notes) {
+    _apkLatest = version;
+    if (localStorage.getItem(APK_SKIP_PREFIX + version) === '1') return;
+    if (!_semverGreater(version, window.__apkVersion)) return;
+    const chip = document.getElementById('apk-update-ver');
+    if (chip) chip.textContent = 'v' + version;
+    _renderApkNotes(notes || '');
+    const overlay = document.getElementById('apk-update-overlay');
+    if (overlay) overlay.style.display = 'flex';
+  }
+
+  async function _apkLatestFromGitHub() {
+    try {
+      const r = await fetch(APK_GH_API, { headers: { 'Accept': 'application/vnd.github+json' }, cache: 'no-store' });
+      if (!r.ok) return null;
+      const rel = await r.json();
+      if (!rel || !rel.tag_name) return null;
+      const hasApk = (rel.assets || []).some(function (a) { return a && a.name === APK_ASSET_NAME; });
+      if (!hasApk) return null; /* release ajena (extensión) → ignorar */
+      return { version: _normalizeApkTag(rel.tag_name), notes: _cleanApkNotes(rel.body) };
+    } catch (e) { return null; }
+  }
+
+  async function _apkLatestFromConfig() {
     try {
       const res = await fetch(BACKEND_URL + '/api/config', { cache: 'no-store' });
       const d = await res.json();
-      if (!d.ok || !d.config || !d.config.apkLatestVersion) return;
-      _apkLatest = String(d.config.apkLatestVersion);
-      if (localStorage.getItem(APK_SKIP_PREFIX + _apkLatest) === '1') return;
-      if (!_semverGreater(_apkLatest, window.__apkVersion)) return;
-      _renderApkNotes(d.config.apkUpdateNotes || '');
-      const overlay = document.getElementById('apk-update-overlay');
-      if (overlay) overlay.style.display = 'flex';
+      if (d.ok && d.config && d.config.apkLatestVersion) {
+        return { version: String(d.config.apkLatestVersion), notes: d.config.apkUpdateNotes || '' };
+      }
     } catch (e) {}
+    return null;
+  }
+
+  async function apkCheckUpdate() {
+    if (!window.__apkVersion) return; /* solo en la app nativa */
+    let src = await _apkLatestFromGitHub();
+    if (!src) src = await _apkLatestFromConfig();
+    if (!src || !src.version) return;
+    _showApkDialog(src.version, src.notes);
   }
 
   function apkApplyUpdate() {

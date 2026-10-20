@@ -702,12 +702,15 @@ section, main, .container, .wrap, .inner, .section-wrap {
   .wx-big { font-size: 2.3rem; }
 }
 
-/* ── Estilo Breezy Weather (Material 3 Expressive) ─────
-   Fase 1: tema por condición + tarjeta expresiva. */
+/* ── Tarjeta de clima (único estilo día/noche: One UI 8.5) ──
+   El estilo por condición + la escena viven en el bloque ".wxs-"
+   (más abajo). Este bloque es SOLO el respaldo estático que se ve
+   si el JS de escenas no carga: cielo neutro de noche (tema oscuro)
+   o cielo azul de día (tema claro), sin gradientes por condición. */
 .wx-card {
   border-radius: 28px !important;
-  border: 1px solid color-mix(in srgb, var(--a, #22c55e) 18%, transparent) !important;
-  box-shadow: 0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08) !important;
   transition: background .6s ease, box-shadow .3s ease;
 }
 .wx-card .wx-big {
@@ -736,37 +739,44 @@ section, main, .container, .wrap, .inner, .section-wrap {
 .wx-card .wx-stat small { color: rgba(255,255,255,.65); }
 .wx-card .wx-stat i { color: rgba(255,255,255,.85); }
 
-/* Tema por condición (gradiente de fondo) */
-.wx-card[data-wx="clear"]   { background: linear-gradient(160deg, #1e40af 0%, #3b82f6 45%, #f59e0b 100%) !important; }
-.wx-card[data-wx="partly"]  { background: linear-gradient(160deg, #1e3a8a 0%, #3b82f6 50%, #93c5fd 100%) !important; }
-.wx-card[data-wx="cloudy"]  { background: linear-gradient(160deg, #334155 0%, #475569 50%, #64748b 100%) !important; }
-.wx-card[data-wx="rain"]    { background: linear-gradient(160deg, #1e3a5f 0%, #1e40af 50%, #3b82f6 100%) !important; }
-.wx-card[data-wx="storm"]   { background: linear-gradient(160deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%) !important; }
-.wx-card[data-wx="snow"]    { background: linear-gradient(160deg, #1e3a5f 0%, #60a5fa 50%, #e0f2fe 100%) !important; }
-.wx-card[data-wx="fog"]     { background: linear-gradient(160deg, #374151 0%, #4b5563 50%, #6b7280 100%) !important; }
-
-/* Modo claro: suavizar el gradiente */
-[data-theme="light"] .wx-card[data-wx="clear"]  { background: linear-gradient(160deg, #60a5fa 0%, #93c5fd 50%, #fde68a 100%) !important; }
-[data-theme="light"] .wx-card[data-wx="partly"] { background: linear-gradient(160deg, #93c5fd 0%, #bfdbfe 50%, #e0f2fe 100%) !important; }
-[data-theme="light"] .wx-card[data-wx="cloudy"] { background: linear-gradient(160deg, #cbd5e1 0%, #e2e8f0 50%, #f1f5f9 100%) !important; color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx="rain"]   { background: linear-gradient(160deg, #93c5fd 0%, #bfdbfe 50%, #dbeafe 100%) !important; color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx="storm"]  { background: linear-gradient(160deg, #a5b4fc 0%, #c4b5fd 50%, #ddd6fe 100%) !important; color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx="snow"]   { background: linear-gradient(160deg, #bfdbfe 0%, #dbeafe 50%, #f0f9ff 100%) !important; color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx="fog"]    { background: linear-gradient(160deg, #d1d5db 0%, #e5e7eb 50%, #f3f4f6 100%) !important; color: #1e293b; }
-
-/* En modo claro, el texto del card debe ser oscuro */
-[data-theme="light"] .wx-card[data-wx] .wx-city,
-[data-theme="light"] .wx-card[data-wx] .wx-desc,
-[data-theme="light"] .wx-card[data-wx] .wx-feels { color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx] .wx-temp {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+/* Respaldo de día (tema claro, sin escena): mismo lenguaje One UI.
+   Nota: cuando la escena carga (.wxs-on) estas reglas quedan anuladas
+   por el bloque de escena, que tiene mayor especificidad. */
+html[data-theme="light"] #wx-card:not(.wxs-on) {
+  background: linear-gradient(170deg, #2f7bff 0%, #5aa9ff 55%, #a9d8ff 100%);
+  color: #0b2545;
+}
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-city,
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-desc,
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-feels { color: #0b2545; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-temp {
+  background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-[data-theme="light"] .wx-card[data-wx] .wx-stat span { color: #1e293b; }
-[data-theme="light"] .wx-card[data-wx] .wx-stat small { color: #475569; }
-[data-theme="light"] .wx-card[data-wx] .wx-stat i { color: #334155; }
-[data-theme="light"] .wx-card[data-wx] .wx-stat { background: rgba(255,255,255,.55); border-color: rgba(0,0,0,.08); }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-stat {
+  background: rgba(255,255,255,.5); border-color: rgba(255,255,255,.7);
+}
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-stat span { color: #0b2545; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-stat small { color: #16324f; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-stat i { color: #1e3a8a; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-hourly {
+  background: rgba(255,255,255,.52); border-color: rgba(255,255,255,.72);
+}
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-hr { color: #0b2545; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-hr-r { color: #1d4ed8; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-sun {
+  background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.72);
+}
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-sun-time b { color: #0b2545; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-sun-time small,
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-sun-dur { color: #16324f; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-moon {
+  background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.72);
+}
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-moon > i { color: #1e3a8a; }
+html[data-theme="light"] #wx-card:not(.wxs-on) #wx-moon-name { color: #0b2545; }
+html[data-theme="light"] #wx-card:not(.wxs-on) .wx-moon-illum { color: #16324f; }
 
 /* ── Selector de frecuencia de notificaciones ────────── */
 .wx-interval {
@@ -1343,10 +1353,11 @@ body.ch-sismos-sheet-locked { overflow: hidden; }
   position: relative; height: 118px; border-radius: 16px; overflow: hidden;
   transition: background 2.5s ease;
 }
-.wx-sun-sky[data-sky="day"]   { background: linear-gradient(180deg, #2f9bea, #7cc7ff 55%, #e3f4ff); }
+/* Paleta alineada a la escena One UI 8.5 (misma familia azul día/noche). */
+.wx-sun-sky[data-sky="day"]   { background: linear-gradient(180deg, #2f7bff, #5aa9ff 55%, #a9d8ff); }
 .wx-sun-sky[data-sky="dawn"]  { background: linear-gradient(180deg, #2b4a7c, #e88e5a 60%, #ffd98a); }
 .wx-sun-sky[data-sky="dusk"]  { background: linear-gradient(180deg, #1d2150, #7b2b6f 50%, #e8874a 85%, #ffca7a); }
-.wx-sun-sky[data-sky="night"] { background: linear-gradient(180deg, #070b1d, #152449 60%, #23375f); }
+.wx-sun-sky[data-sky="night"] { background: linear-gradient(180deg, #070b1f, #14214f 60%, #2a3f7e); }
 
 .wx-sun-arc { position: absolute; inset: 0; }
 
@@ -1908,3 +1919,100 @@ body.has-dock {
 :is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-stat i     { color: rgba(255,255,255,.94); }
 :is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-hr { color: #fff; }
 :is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-hr-r { color: #c9e8ff; }
+
+/* ═══════════════════════════════════════════════════════════
+   REFINADO ONE UI 8.5 — realismo de la escena + fase lunar
+   Única familia de estilos día/noche del clima (vía data-day).
+   breakpooints canónicos: 380 / 480 / 720.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── FASE LUNAR: antes quedaba con texto var(--text) y en el tema
+   oscuro se veía blanca sobre el cristal claro del día. Anton/
+   colores por momento del día, como los stats y el hourly. ── */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-moon {
+  background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4);
+}
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-moon > i { color: #1e3a8a; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] #wx-moon-name { color: #0b2545; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wx-moon-illum { color: #16324f; }
+
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-moon {
+  background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+}
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-moon > i { color: #93c5fd; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] #wx-moon-name { color: #fff; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-moon-illum { color: rgba(255,255,255,.72); }
+
+/* También el mini-cielo del panel Salida/Puesta hereda el oscuro
+   de noche dentro del tema claro (garantía de contraste). */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-sun-time b { color: #fff; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-sun-time small,
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="0"] .wx-sun-dur { color: rgba(255,255,255,.7); }
+
+/* ── Sol más limpio y cálido (núcleo pequeño, corona amplia) ── */
+.wxs-sun {
+  background:
+    radial-gradient(circle, #fffce8 0 10%, #ffe98c 24%, rgba(255,208,92,.62) 42%, rgba(255,196,66,.28) 55%, rgba(255,190,60,0) 72%);
+  animation: wxs-pulse 7s ease-in-out infinite;
+}
+.wxs-rays { opacity: .8; animation-duration: 95s; }
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx][data-day="1"] .wxs-rays,
+.wxs-on[data-day="1"] .wxs-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(255,255,255,.16) 0 5deg, transparent 5deg 21deg);
+}
+
+/* ── Luna con terminador más profundo y halo suave ── */
+.wxs-moon {
+  box-shadow:
+    0 0 44px 12px rgba(190,205,255,.26),
+    inset -13px -9px 20px rgba(96,110,158,.5);
+  animation: wxs-pulse 9s ease-in-out infinite;
+}
+.wxs-moon::before {
+  background:
+    radial-gradient(circle at 62% 38%, rgba(108,120,158,.30) 0 9%, transparent 10%),
+    radial-gradient(circle at 40% 66%, rgba(108,120,158,.24) 0 12%, transparent 13%),
+    radial-gradient(circle at 70% 70%, rgba(108,120,158,.22) 0 6%, transparent 7%),
+    radial-gradient(circle at 26% 34%, rgba(108,120,158,.16) 0 4%, transparent 5%);
+}
+
+/* ── Nubes con volumen: luz arriba, sombra abajo ── */
+.wxs-cloud {
+  filter: blur(2.5px) drop-shadow(0 8px 16px rgba(24,44,84,.16));
+}
+.wxs-on[data-day="1"] .wxs-cloud {
+  background:
+    radial-gradient(ellipse closest-side at 30% 78%, rgba(90,108,142,.38) 45%, transparent 100%),
+    radial-gradient(ellipse closest-side at 20% 66%, var(--cc) 55%, transparent 100%),
+    radial-gradient(ellipse closest-side at 42% 46%, var(--cc) 55%, transparent 100%),
+    radial-gradient(ellipse closest-side at 66% 54%, var(--cc) 55%, transparent 100%),
+    radial-gradient(ellipse closest-side at 82% 68%, var(--cc) 55%, transparent 100%),
+    radial-gradient(ellipse closest-side at 44% 34%, rgba(255,255,255,.6) 30%, transparent 100%);
+}
+
+/* ── Lluvia: gota más fina con tinte nocturno frío ── */
+.wxs-drop {
+  width: 1.2px; filter: blur(.2px);
+  background: linear-gradient(to bottom, rgba(200,220,255,0), rgba(255,255,255,.9));
+}
+.wxs-on[data-day="0"] .wxs-drop {
+  background: linear-gradient(to bottom, rgba(170,195,255,0), rgba(185,210,255,.78));
+}
+
+/* ── Nieve: copo luminoso con borde suave ── */
+.wxs-flake {
+  background: radial-gradient(circle, #fff 0 42%, rgba(255,255,255,.65) 68%, transparent 100%);
+  box-shadow: 0 0 6px rgba(255,255,255,.55);
+}
+
+/* ── Niebla: bandas más etéreas ── */
+.wxs-fog {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+}
+
+/* ── Manchas mesh One UI: deriva más lenta y soporte ── */
+.wxs-blob { filter: blur(44px); }
+.wxs-blob-a { animation-duration: 24s; opacity: .55; }
+.wxs-blob-b { animation-duration: 30s; opacity: .5; }

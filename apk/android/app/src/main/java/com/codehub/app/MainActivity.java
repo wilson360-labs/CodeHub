@@ -148,9 +148,12 @@ public class MainActivity extends Activity {
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
 
-        // Chequeo de actualización vía GitHub Releases (tag apk-codehub-vX.Y
-        // con el APK firmado). El repo es público y la API sirve el release.
-        try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheck", t); }
+        // NOTA: el diálogo nativo de actualización (AppUpdateChecker con
+        // AlertDialog) fue eliminado. Mostraba el cuerpo del release con
+        // enlaces al repo y duplicaba el diálogo elegante del WebView
+        // (#apk-update-overlay), que es ahora el único y consulta
+        // GitHub Releases (asset app-release-signed.apk) con respaldo
+        // en /api/config.
 
         // Sync en 2do plano vía WorkManager (token FCM + ubicación cada 15 min).
         // Ya NO se usa Foreground Service tipo dataSync: en Android 15/16 el
