@@ -2027,3 +2027,25 @@ body.has-dock {
 .wxs-blob { filter: blur(44px); }
 .wxs-blob-a { animation-duration: 24s; opacity: .55; }
 .wxs-blob-b { animation-duration: 30s; opacity: .5; }
+/* ═══════════════════════════════════════════════════════════
+   ASTRO ÚNICO — ni sol-emoji sobre el sol real, ni luna-emoji
+   sobre la luna real. Cuando la escena pinta el astro (clear/
+   partly, día y noche), el icono del texto/emoji desaparece y
+   el astro pintado ES el icono. Igual en tarjeta y flotante.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Aparece el emoji encima del sol/luna real de la escena: se quita. */
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx="clear"][data-day="1"] .wx-big,
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx="partly"][data-day="1"] .wx-big,
+:is(html, html[data-theme]) .wx-card.wxs-on[data-wx="partly"][data-day="0"] .wx-big {
+  opacity: 0;
+}
+/* clear + noche ya tenía opacity:0 (la luna hace de icono). */
+
+/* Mismo trabajo en el widget flotante (.chw-now-icon está sobre el astro). */
+.wxs-on[data-wx="clear"] .chw-now-icon,
+.wxs-on[data-wx="partly"] .chw-now-icon { opacity: 0; }
+
+/* Pero la información no se pierde: la condición viaja ya en el
+   subtítulo (.chw-now-sub) y en la línea de hora del panel. */
+

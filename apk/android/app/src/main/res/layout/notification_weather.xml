@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget del clima EN el panel de notificaciones (RemoteViews).
+  Tarjeta oscura pintada por bg_notif_weather: contraste garantizado
+  con el tema claro Y oscuro del sistema (colores fijos, sin atrs).
+  Filas: astro+ciudad+hora · temp grande+condición+feels · chips
+  (humedad · viento · lluvia) · fila roja de sismos (opcional).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="12dp"
+    android:background="@drawable/bg_notif_weather">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/n_w_icon"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:scaleType="centerInside" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:layout_marginStart="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/n_w_city"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/n_w_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textSize="10sp"
+            android:textColor="#FF6B7380" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/n_w_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textSize="26sp"
+            android:textColor="#FFFFFFFF" />
+
+        <TextView
+            android:id="@+id/n_w_desc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:textColor="#FFA7B0C4" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/n_w_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="2dp"
+        android:minWidth="0dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textSize="11sp"
+        android:textColor="#FF9AA3B8" />
+
+    <TextView
+        android:id="@+id/n_w_quake"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="4dp"
+        android:minWidth="0dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:visibility="gone"
+        android:textSize="11sp"
+        android:textColor="#FFFF9B8A" />
+</LinearLayout>

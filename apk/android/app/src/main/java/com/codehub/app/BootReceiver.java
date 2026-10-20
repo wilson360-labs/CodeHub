@@ -40,6 +40,10 @@ public class BootReceiver extends BroadcastReceiver {
             // su propio receiver; esto es redundancia defensiva) y una pasada ya.
             try { CodeHubSyncScheduler.schedule(context); } catch (Throwable ignored) {}
             try { CodeHubSyncScheduler.syncNow(context); } catch (Throwable ignored) {}
+
+            // Widget del clima en notificaciones: restaurarlo tuerto tras
+            // el reboot (las notificaciones no sobreviven; hilo propio).
+            try { WeatherNotificationProvider.refresh(context); } catch (Throwable ignored) {}
         }
     }
 }

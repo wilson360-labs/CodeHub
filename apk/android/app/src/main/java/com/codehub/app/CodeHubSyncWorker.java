@@ -70,6 +70,10 @@ public class CodeHubSyncWorker extends Worker {
                 WeatherWidgetProvider.requestRefresh(ctx);
             }
 
+            // Widget del clima en notificaciones: refrescar SIEMPRE en cada
+            // ciclo (aunque la ubicación no cambie, el clima sí cambia).
+            WeatherNotificationProvider.refresh(ctx);
+
             if (!token.isEmpty()) {
                 postSubscription(ctx, token, lat, lon);
             }

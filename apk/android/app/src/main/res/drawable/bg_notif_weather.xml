@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjeta del widget de clima en notificaciones: oscura con esquinas
+     suaves al estilo One UI (contraste fijo en tema claro y oscuro). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="14dp" />
+    <solid android:color="#F20D0D17" />
+</shape>

@@ -142,6 +142,7 @@ public class MainActivity extends Activity {
 
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
+        try { WeatherNotificationProvider.refresh(this); } catch (Throwable t) { crashLog("wxNotif", t); }
         try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
         try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
