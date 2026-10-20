@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cristal neutro de la franja horaria: negro muy tenue + borde blanco
+     sutil. De día el cielo claro lo deja gris-azulado (texto tinta),
+     de noche se funde con el cielo oscuro (texto blanco). Un solo
+     drawable evita cambiar recursos por reflexión en RemoteViews. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="18dp" />
+    <solid android:color="#26000000" />
+    <stroke
+        android:width="1dp"
+        android:color="#33FFFFFF" />
+</shape>

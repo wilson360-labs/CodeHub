@@ -11,8 +11,13 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.RadialGradient;
+import android.graphics.RectF;
+import android.graphics.Shader;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -26,22 +31,26 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Widget de clima de CodeHub para la pantalla de inicio (rediseñado).
+ * Widget de clima de CodeHub para el launcher — diseño One UI 8.5.
  *
- * Reutiliza la misma ubicación (lat/lon) que guarda CodeHubSyncWorker
- * en SharedPreferences("codehub") cada ~15 min, y consulta Open-Meteo
- * directamente (mismo proveedor que usa el backend). Muestra:
- * temperatura, condición, sensación térmica, humedad, viento, mini-
- * forecast de 3 días y hora de actualización, sobre un fondo con
- * gradiente dinámico según la condición y el momento del día.
+ * Reutiliza la ubicación (lat/lon) que guarda CodeHubSyncWorker en
+ * SharedPreferences("codehub") y consulta Open-Meteo directamente.
  *
- * Pinta primero con el último dato guardado en caché (instantáneo) y
- * dispara en background una consulta fresca que actualiza el
- * RemoteViews cuando llega. El botón de refrescar muestra un spinner
- * (animación) mientras se actualiza en segundo plano.
+ * Composición:
+ *  - Escena dibujada en Canvas (degradado + sol/luna + nubes + lluvia/
+ *    nieve/niebla/estrellas) adaptada al tamaño real del widget.
+ *  - Ciudad + hora, temperatura grande, condición y sensación.
+ *  - Franja de 4 horas y pronóstico de 3 días.
+ *  - Detalles (humedad · viento · lluvia) y "actualizado hace…".
+ *  - Texto tinta oscura de día y blanco de noche (contraste AA).
+ *
+ * El widget se adapta a su altura: COMPACTO (ciudad + hero + footer),
+ * MEDIO (+ franja horaria y detalles) o COMPLETO (+ 3 días). Pinta
+ * primero con la caché y luego refresca en segundo plano.
  */
 public class WeatherWidgetProvider extends AppWidgetProvider {
 
@@ -55,6 +64,29 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
      *  + alarma pueden dispararse casi a la vez y lanzar varias consultas HTTP). */
     private static final AtomicBoolean sRefreshing = new AtomicBoolean(false);
 
+    private static final int MODE_COMPACT = 0;
+    private static final int MODE_MEDIUM = 1;
+    private static final int MODE_FULL = 2;
+
+    private static final int[] H_TIME = {
+        R.id.widget_h1_time, R.id.widget_h2_time, R.id.widget_h3_time, R.id.widget_h4_time
+    };
+    private static final int[] H_ICON = {
+        R.id.widget_h1_icon, R.id.widget_h2_icon, R.id.widget_h3_icon, R.id.widget_h4_icon
+    };
+    private static final int[] H_TEMP = {
+        R.id.widget_h1_temp, R.id.widget_h2_temp, R.id.widget_h3_temp, R.id.widget_h4_temp
+    };
+    private static final int[] D_DAY = {
+        R.id.widget_d1_day, R.id.widget_d2_day, R.id.widget_d3_day
+    };
+    private static final int[] D_ICON = {
+        R.id.widget_d1_icon, R.id.widget_d2_icon, R.id.widget_d3_icon
+    };
+    private static final int[] D_TEMP = {
+        R.id.widget_d1_temp, R.id.widget_d2_temp, R.id.widget_d3_temp
+    };
+
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] appWidgetIds) {
         for (int id : appWidgetIds) {
@@ -63,6 +95,13 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         scheduleAlarm(context);
         scheduleClockTick(context);
         refreshAllInBackground(context);
+    }
+
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager mgr,
+                                          int appWidgetId, Bundle newOptions) {
+        // Al redimensionar cambia el modo (compacto/medio/completo).
+        paintFromCache(context, mgr, appWidgetId);
     }
 
     @Override
@@ -131,7 +170,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     // Reloj en vivo: alarm cada 60s (RTC, hora real del dispositivo) que
-    // solo repinta los labels de hora para que "corra" sin esperar al
+    // solo repinta el label de hora para que "corra" sin esperar al
     // refresh del clima (que es cada 30 min).
     private static void scheduleClockTick(Context context) {
         try {
@@ -159,6 +198,10 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static void paintClockOnly(Context context) {
+        // partiallyUpdateAppWidget solo existe desde API 31; en APIs viejas
+        // un RemoteViews parcial borraría el widget. Allí el reloj se
+        // actualiza con el refresco normal (cada 30 min).
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
         try {
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
             if (hasAnyWidget(context)) {
@@ -174,9 +217,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     // ── Pintado instantáneo con la última copia guardada ──
-    private void paintFromCache(Context context, AppWidgetManager mgr, int widgetId) {
+    private static void paintFromCache(Context context, AppWidgetManager mgr, int widgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        RemoteViews views = buildViews(context,
+        RemoteViews views = buildViews(context, widgetId, modeFor(context, widgetId),
             prefs.getString("widget_city", "CodeHub"),
             prefs.getFloat("widget_temp", Float.NaN),
             prefs.getInt("widget_wcode", -1),
@@ -192,14 +235,18 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
             prefs.getString("widget_fc1", ""),
             prefs.getString("widget_fc2", ""),
             prefs.getString("widget_fc3", ""),
+            prefs.getString("widget_hourly", ""),
             prefs.getLong("widget_updated_at", 0));
         mgr.updateAppWidget(widgetId, views);
     }
 
     // Muestra/oculta el spinner de "refrescando" en todos los widgets,
-    // para dar feedback visual de que el botón de refrescar funciona.
+    // para dar feedback visual de que el refresco está en curso.
     private static void showLoading(final Context context, final boolean loading) {
         if (!hasAnyWidget(context)) return;
+        // En APIs < 31 no hay partial update: un RemoteViews con solo el
+        // spinner borraría el resto del widget. Se omite el feedback.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
         try {
             AppWidgetManager mgr = AppWidgetManager.getInstance(context);
             int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
@@ -224,20 +271,19 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     // Sin ubicación guardada: pinta un estado informativo en lugar de quedarse
-    // con "--°" / spinner. El botón de refrescar vuelve a aparecer.
+    // con "--°" y la carga eterna. El botón de refrescar vuelve a aparecer.
     private static void paintNoLocation(Context context) {
         if (!hasAnyWidget(context)) return;
         try {
             AppWidgetManager mgr = AppWidgetManager.getInstance(context);
             int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-            String now = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
             for (int id : ids) {
-                RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
-                views.setTextViewText(R.id.widget_city, "Configura tu ciudad");
-                views.setTextViewText(R.id.widget_temp, "--°");
+                RemoteViews views = buildViews(context, id, modeFor(context, id),
+                    "Configura tu ciudad", Float.NaN, -1,
+                    Float.NaN, -1, Float.NaN, Float.NaN, Float.NaN,
+                    -1, Float.NaN, "", "", "", "", "", "", 0);
                 views.setTextViewText(R.id.widget_condition, "Abre CodeHub y añade tu ubicación");
-                views.setTextViewText(R.id.widget_updated, now);
-                safePartialUpdate(context, mgr, id, views);
+                mgr.updateAppWidget(id, views);
             }
         } catch (Exception ignored) {}
     }
@@ -267,7 +313,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat +
                         "&longitude=" + lon +
                         "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m,surface_pressure" +
-                        "&hourly=precipitation_probability,uv_index" +
+                        "&hourly=temperature_2m,weather_code,precipitation_probability,uv_index" +
                         "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset" +
                         "&forecast_days=3&timezone=auto");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -296,14 +342,17 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                     String city = prefs.getString("widget_city", "");
 
                     // Lluvia (%) y UV — Open-Meteo solo los da por hora, no en
-                    // "current" (mismo criterio que backend/clima/fetch.js): se
-                    // toma el valor de la primera hora >= ahora en vez del
-                    // máximo del día, para que suba/baje como el clima real.
+                    // "current": se toma la primera hora >= ahora (no el máximo
+                    // del día) para que suba/baje como el clima real. Del mismo
+                    // índice salen las 4 horas de la franja horaria.
                     int rainProb = -1;
                     float uv = Float.NaN;
+                    String hourlyStr = "";
                     JSONObject hourly = json.optJSONObject("hourly");
                     if (hourly != null) {
                         JSONArray hTimes = hourly.optJSONArray("time");
+                        JSONArray hTemps = hourly.optJSONArray("temperature_2m");
+                        JSONArray hCodes = hourly.optJSONArray("weather_code");
                         JSONArray hRain = hourly.optJSONArray("precipitation_probability");
                         JSONArray hUv = hourly.optJSONArray("uv_index");
                         if (hTimes != null) {
@@ -319,13 +368,13 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                             double utcOffset = json.optDouble("utc_offset_seconds", Double.NaN);
                             boolean hasOffset = !Double.isNaN(utcOffset);
                             if (hasOffset) {
-                                isoFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                                isoFmt.setTimeZone(TimeZone.getTimeZone("UTC"));
                             } else {
-                                isoFmt.setTimeZone(java.util.TimeZone.getDefault());
+                                isoFmt.setTimeZone(TimeZone.getDefault());
                             }
                             for (int i = 0; i < hTimes.length(); i++) {
                                 try {
-                                    Date t = isoFmt.parse(hTimes.optString(i, "") );
+                                    Date t = isoFmt.parse(hTimes.optString(i, ""));
                                     if (t == null) continue;
                                     long tMs = t.getTime() - (long) Math.round(hasOffset ? utcOffset * 1000.0 : 0.0);
                                     if (tMs >= now) { idx = i; break; }
@@ -335,6 +384,9 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                             if (idx >= 0) {
                                 if (hRain != null) rainProb = hRain.optInt(idx, -1);
                                 if (hUv != null) uv = (float) hUv.optDouble(idx, Double.NaN);
+                                if (hTemps != null && hCodes != null) {
+                                    hourlyStr = buildHourly(hTimes, hTemps, hCodes, idx);
+                                }
                             }
                         }
                     }
@@ -351,16 +403,16 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         sunset  = isoTime(dSunset != null ? dSunset.optString(0, "") : "");
                     }
 
-                    // Mini-forecast 3 días (Moon/Mar/Mie… / emoji / 19° / 26°).
+                    // Pronóstico de 3 días (Hoy/Mar/Mié… / emoji / 24° / 15°).
                     String fc1 = "", fc2 = "", fc3 = "";
                     if (daily != null) {
                         JSONArray dTempMax = daily.optJSONArray("temperature_2m_max");
                         JSONArray dTempMin = daily.optJSONArray("temperature_2m_min");
                         JSONArray dCode = daily.optJSONArray("weather_code");
                         if (dTempMax != null && dTempMin != null && dCode != null) {
-                            fc1 = forecastCell(context, dTempMax, dTempMin, dCode, 0);
-                            fc2 = forecastCell(context, dTempMax, dTempMin, dCode, 1);
-                            fc3 = forecastCell(context, dTempMax, dTempMin, dCode, 2);
+                            fc1 = forecastCell(dTempMax, dTempMin, dCode, 0);
+                            fc2 = forecastCell(dTempMax, dTempMin, dCode, 1);
+                            fc3 = forecastCell(dTempMax, dTempMin, dCode, 2);
                         }
                     }
 
@@ -380,20 +432,26 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
                         .putString("widget_fc1", fc1)
                         .putString("widget_fc2", fc2)
                         .putString("widget_fc3", fc3)
+                        .putString("widget_hourly", hourlyStr)
                         .putLong("widget_updated_at", now2)
                         .apply();
 
                     AppWidgetManager mgr = AppWidgetManager.getInstance(context);
                     int[] ids = mgr.getAppWidgetIds(new ComponentName(context, WeatherWidgetProvider.class));
-                    RemoteViews views = new WeatherWidgetProvider().buildViews(
-                        context, city, temp, wcode, feels, humidity, wind, gust, pressure,
-                        rainProb, uv, sunrise, sunset, fc1, fc2, fc3, now2);
-                    for (int id : ids) mgr.updateAppWidget(id, views);
+                    for (int id : ids) {
+                        RemoteViews views = buildViews(context, id, modeFor(context, id),
+                            city, temp, wcode, feels, humidity, wind, gust, pressure,
+                            rainProb, uv, sunrise, sunset, fc1, fc2, fc3, hourlyStr, now2);
+                        mgr.updateAppWidget(id, views);
+                    }
                 } catch (Exception ignored) {
                 } finally {
                     // Liberar single-flight + quitar el spinner al terminar.
                     sRefreshing.set(false);
                     showLoading(context, false);
+                    // Rearmar la alarma: setAndAllowWhileIdle es de un solo
+                    // disparo, así que se reprograma tras cada refresco.
+                    scheduleAlarm(context);
                 }
             }
         }).start();
@@ -413,7 +471,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     private static boolean isDaylightNow(String sunrise, String sunset) {
         int rise = parseHM(sunrise), set = parseHM(sunset);
         if (rise < 0 || set < 0) {
-            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
             return hour >= 6 && hour < 19;
         }
         int now = minutesNow();
@@ -422,8 +480,8 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
     }
 
     private static int minutesNow() {
-        java.util.Calendar c = java.util.Calendar.getInstance();
-        return c.get(java.util.Calendar.HOUR_OF_DAY) * 60 + c.get(java.util.Calendar.MINUTE);
+        Calendar c = Calendar.getInstance();
+        return c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE);
     }
 
     private static int parseHM(String s) {
@@ -433,106 +491,100 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         } catch (Exception e) { return -1; }
     }
 
-    // ── Fase lunar: mes sinódico (29.53058867 días) desde una Luna nueva
-    //    de referencia (2000-01-06 18:14 UTC). Devuelve [emoji, nombre, %].
-    private static final double SYNODIC_MS = 29.53058867 * 86400000.0;
-
-    private static String[] moonPhaseInfo() {
-        java.util.Calendar ref = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
-        ref.set(2000, java.util.Calendar.JANUARY, 6, 18, 14, 0);
-        ref.set(java.util.Calendar.MILLISECOND, 0);
-        double cycles = ((System.currentTimeMillis() - ref.getTimeInMillis()) / SYNODIC_MS) % 1.0;
-        if (cycles < 0) cycles += 1.0;
-        int illum = (int) Math.round((1 - Math.cos(2 * Math.PI * cycles)) / 2 * 100);
-        int idx = (int) Math.round(cycles * 8) % 8;
-        String[] icons = {"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"};
-        String[] names = {
-            "Luna nueva", "Creciente", "Cuarto creciente", "Gibosa creciente",
-            "Luna llena", "Gibosa menguante", "Cuarto menguante", "Menguante"
-        };
-        return new String[]{icons[idx], names[idx], illum + "%"};
+    // ── Franja horaria: "Ahora|24|1;17:00|23|2;…" (hora|temp|wcode). ──
+    private static String buildHourly(JSONArray times, JSONArray temps, JSONArray codes, int idx) {
+        StringBuilder sb = new StringBuilder();
+        for (int k = 0; k < 4; k++) {
+            int i = idx + k;
+            if (i < 0 || i >= times.length()) break;
+            String t = times.optString(i, "");
+            if (t.length() >= 16) t = t.substring(11, 16);
+            if (k == 0) t = "Ahora";
+            double tv = temps.optDouble(i, Double.NaN);
+            String temp = Double.isNaN(tv) ? "--" : String.valueOf(Math.round(tv));
+            int code = codes.optInt(i, -1);
+            if (sb.length() > 0) sb.append(';');
+            sb.append(t).append('|').append(temp).append('|').append(code);
+        }
+        return sb.toString();
     }
 
-    private static String forecastCell(Context context, JSONArray max, JSONArray min, JSONArray code, int idx) {
+    // ── Pronóstico de 3 días: "Hoy\n🌤️\n26° / 15°". ──
+    private static String forecastCell(JSONArray max, JSONArray min, JSONArray code, int idx) {
         try {
-            StringBuilder sb = new StringBuilder();
             Calendar c = Calendar.getInstance();
             c.add(Calendar.DAY_OF_YEAR, idx);
-            String day = new SimpleDateFormat("EEE", Locale.getDefault()).format(c.getTime());
+            String day = idx == 0
+                ? "Hoy"
+                : capitalize(new SimpleDateFormat("EEE", Locale.getDefault()).format(c.getTime()));
             float hi = (float) max.getDouble(idx);
             float lo = (float) min.getDouble(idx);
             String emoji = emojiFor(code.optInt(idx, -1));
-            sb.append(day).append('\n').append(emoji).append('\n')
-              .append(Math.round(lo)).append('°').append('/').append(Math.round(hi)).append('°');
-            return sb.toString();
+            return day + "\n" + emoji + "\n" + Math.round(hi) + "° / " + Math.round(lo) + "°";
         } catch (Exception e) { return "—"; }
     }
 
-    private RemoteViews buildViews(Context context, String city, float temp, int wcode,
-                                   float feels, int humidity, float wind, float gust, float pressure,
-                                   int rainProb, float uv, String sunrise, String sunset,
-                                   String fc1, String fc2, String fc3, long updatedAt) {
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    // ── Construcción del RemoteViews (una por widget, según su tamaño). ──
+    private static RemoteViews buildViews(Context context, int widgetId, int mode,
+                                          String city, float temp, int wcode,
+                                          float feels, int humidity, float wind, float gust, float pressure,
+                                          int rainProb, float uv, String sunrise, String sunset,
+                                          String fc1, String fc2, String fc3, String hourly,
+                                          long updatedAt) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_weather);
+
+        boolean hasData = !Float.isNaN(temp) && wcode >= 0;
+        boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
+        boolean night = !isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null);
 
         views.setTextViewText(R.id.widget_city, (city == null || city.isEmpty()) ? "CodeHub" : city);
         views.setTextViewText(R.id.widget_temp, Float.isNaN(temp) ? "--°" : Math.round(temp) + "°");
-        views.setTextViewText(R.id.widget_icon, emojiFor(wcode));
         views.setTextViewText(R.id.widget_condition, labelFor(wcode));
+        views.setTextViewText(R.id.widget_feels,
+            Float.isNaN(feels) ? " " : "Sensación " + Math.round(feels) + "°");
 
-        // Sensación térmica.
-        if (!Float.isNaN(feels)) {
-            views.setTextViewText(R.id.widget_feels, "Se siente como " + Math.round(feels) + "°");
-        } else {
-            views.setTextViewText(R.id.widget_feels, " ");
+        fillHourly(views, hourly);
+        fillDaily(views, fc1, fc2, fc3);
+
+        // Detalles: humedad · viento · lluvia (lo más útil, sin saturar).
+        StringBuilder det = new StringBuilder();
+        if (humidity >= 0) det.append("Humedad ").append(humidity).append('%');
+        if (!Float.isNaN(wind)) {
+            if (det.length() > 0) det.append("  ·  ");
+            det.append("Viento ").append(Math.round(wind)).append(" km/h");
         }
-
-        // Fila 1 de stats: humedad / viento / lluvia.
-        views.setTextViewText(R.id.widget_humidity, humidity >= 0 ? "💧 " + humidity + "%" : "💧 --%");
-        views.setTextViewText(R.id.widget_wind, !Float.isNaN(wind) ? "💨 " + Math.round(wind) + " km/h" : "💨 -- km/h");
-        views.setTextViewText(R.id.widget_rain, rainProb >= 0 ? "🌧️ " + rainProb + "%" : "🌧️ --%");
-
-        // Fila 2 de stats: ráfagas / presión / UV.
-        views.setTextViewText(R.id.widget_gust, !Float.isNaN(gust) ? "🌬️ " + Math.round(gust) + " km/h" : "🌬️ -- km/h");
-        views.setTextViewText(R.id.widget_pressure, !Float.isNaN(pressure) ? "📊 " + Math.round(pressure) + " hPa" : "📊 -- hPa");
-        views.setTextViewText(R.id.widget_uv, !Float.isNaN(uv) ? "☀️ UV " + Math.round(uv) : "☀️ UV --");
-
-        // Amanecer / atardecer + estado día/noche REAL (por salida/puesta,
-        // no por hora fija) y fase lunar del mes sinódico.
-        boolean hasSun = sunrise != null && !sunrise.isEmpty() && sunset != null && !sunset.isEmpty();
-        boolean night = !isDaylightNow(hasSun ? sunrise : null, hasSun ? sunset : null);
-        if (hasSun) {
-            views.setTextViewText(R.id.widget_sun,
-                (night ? "🌙  " : "☀️  ") + sunrise + "   " + sunset + "   ·   " + (night ? "Noche" : "Día"));
-        } else {
-            views.setTextViewText(R.id.widget_sun, night ? "🌙  Noche" : "☀️  Día");
+        if (rainProb >= 0) {
+            if (det.length() > 0) det.append("  ·  ");
+            det.append("Lluvia ").append(rainProb).append('%');
         }
-        views.setViewVisibility(R.id.widget_sun, View.VISIBLE);
+        views.setTextViewText(R.id.widget_details, det.length() == 0 ? " " : det.toString());
 
-        // Fase lunar: emoji + nombre + % iluminada (siempre presente).
-        String[] moon = moonPhaseInfo();
-        views.setTextViewText(R.id.widget_moon, moon[0] + " " + moon[1] + " · " + moon[2] + " iluminada");
-        views.setViewVisibility(R.id.widget_moon, View.VISIBLE);
-
-        // Mini-forecast 3 días.
-        views.setTextViewText(R.id.widget_forecast_d1, fc1 == null || fc1.isEmpty() ? "—" : fc1);
-        views.setTextViewText(R.id.widget_forecast_d2, fc2 == null || fc2.isEmpty() ? "—" : fc2);
-        views.setTextViewText(R.id.widget_forecast_d3, fc3 == null || fc3.isEmpty() ? "—" : fc3);
-
-        // Cronómetro EN VIVO del widget: "Actualizado hace mm:ss" desde
-        // la última actualización. La cuenta la anima el Chronometer del
-        // propio sistema (ticks cada segundo), sin alarmas de CodeHub.
+        // Footer: cronómetro vivo desde la última actualización.
         views.setChronometer(R.id.widget_updated2,
             SystemClock.elapsedRealtime() - Math.max(0, System.currentTimeMillis() - updatedAt),
             "Actualizado hace %s", updatedAt > 0);
-        // Reloj del widget: hora local ACTUAL (la mantiene al minuto el
-        // tick de AlarmManager — paintClockOnly). El header es el reloj,
-        // el footer es cuándo se actualizó el clima.
+        views.setViewVisibility(R.id.widget_updated2, updatedAt > 0 ? View.VISIBLE : View.GONE);
+        // Header: hora local actual (la mantiene el tick de AlarmManager).
         views.setTextViewText(R.id.widget_updated,
             new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(System.currentTimeMillis())));
 
-        // Fondo con gradiente dinámico según clima + momento del día
-        // (la paleta noche se decide por las horas reales de salida/puesta).
-        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(wcode, night));
+        applyTextColors(views, night);
+
+        // Modos: en compacto solo caben header + hero + footer.
+        boolean showHourly = hasData && mode >= MODE_MEDIUM;
+        boolean showDaily = hasData && mode >= MODE_FULL;
+        boolean showDetails = hasData && mode >= MODE_MEDIUM;
+        views.setViewVisibility(R.id.widget_hourly, showHourly ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_daily, showDaily ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_details, showDetails ? View.VISIBLE : View.GONE);
+
+        // Escena de fondo adaptada al tamaño real del widget.
+        views.setImageViewBitmap(R.id.widget_bg_image, backgroundBitmap(context, widgetId, wcode, night));
 
         // Tocar el widget abre la app en la sección de clima.
         Intent openIntent = new Intent(context, MainActivity.class);
@@ -543,71 +595,248 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         PendingIntent openPending = PendingIntent.getActivity(context, 100, openIntent, openFlags);
         views.setOnClickPendingIntent(R.id.widget_root, openPending);
 
-        // Botón de refrescar manual. Al presionarlo se dispara el refresh,
-        // que internamente muestra el spinner (animación de carga) y lo
-        // oculta al terminar.
+        // Botón de refrescar manual (glifo ↻ en el footer).
         views.setOnClickPendingIntent(R.id.widget_refresh, refreshPendingIntent(context));
-
-        // Emoji ANIMADO: el AdapterViewFlipper (wx_anim_emoji) rota entre
-        // los frames que construye WeatherWidgetAnimService (flip del
-        // sistema). widget_icon actúa como "empty view": si el launcher no
-        // puede enlazar el servicio, se queda el emoji estático y el
-        // widget sigue funcionando normal (nada se rompe).
-        try {
-            Intent animIntent = new Intent(context, WeatherWidgetAnimService.class);
-            animIntent.setData(android.net.Uri.parse(
-                "widget://weather/" + getClass().getSimpleName() + "/" + System.currentTimeMillis()));
-            views.setRemoteAdapter(R.id.wx_anim_emoji, animIntent);
-            views.setEmptyView(R.id.wx_anim_emoji, R.id.widget_icon);
-        } catch (Exception ignored) {}
 
         return views;
     }
 
-    // ── Fondo con gradiente según la condición meteorológica y el
-    //    momento del día (día/noche cambia la paleta). ──
-    private static Bitmap backgroundBitmap(int wcode, boolean night) {
-        int w = 4, h = 96;
-        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+    private static void applyTextColors(RemoteViews views, boolean night) {
+        int primary = night ? 0xFFFFFFFF : 0xFF0B2545;
+        int secondary = night ? 0xFFC7D6EA : 0xFF16324F;
+        int accent = night ? 0xFFC9E8FF : 0xFF1D4ED8;
+        views.setTextColor(R.id.widget_city, primary);
+        views.setTextColor(R.id.widget_updated, secondary);
+        views.setTextColor(R.id.widget_temp, primary);
+        views.setTextColor(R.id.widget_condition, primary);
+        views.setTextColor(R.id.widget_feels, secondary);
+        views.setTextColor(R.id.widget_details, secondary);
+        views.setTextColor(R.id.widget_updated2, secondary);
+        views.setTextColor(R.id.widget_refresh, accent);
+        for (int id : H_TIME) views.setTextColor(id, secondary);
+        for (int id : H_TEMP) views.setTextColor(id, primary);
+        for (int id : D_DAY) views.setTextColor(id, secondary);
+        for (int id : D_TEMP) views.setTextColor(id, primary);
+    }
+
+    private static void fillHourly(RemoteViews views, String hourly) {
+        String[] slots = (hourly == null || hourly.isEmpty()) ? new String[0] : hourly.split(";");
+        for (int k = 0; k < 4; k++) {
+            String t = "--:--", temp = "--", code = "-1";
+            if (k < slots.length) {
+                String[] p = slots[k].split("\\|");
+                if (p.length >= 3) { t = p[0]; temp = p[1]; code = p[2]; }
+            }
+            int codeInt = -1;
+            try { codeInt = Integer.parseInt(code); } catch (Exception ignored) {}
+            views.setTextViewText(H_TIME[k], t);
+            views.setTextViewText(H_ICON[k], emojiFor(codeInt));
+            views.setTextViewText(H_TEMP[k], "--".equals(temp) ? "--" : temp + "°");
+        }
+    }
+
+    private static void fillDaily(RemoteViews views, String fc1, String fc2, String fc3) {
+        String[] cells = {fc1, fc2, fc3};
+        for (int k = 0; k < 3; k++) {
+            String day = "--", icon = "—", temp = "--° / --°";
+            String cell = cells[k] == null ? "" : cells[k];
+            String[] lines = cell.split("\\n");
+            if (lines.length > 0 && !lines[0].isEmpty()) day = lines[0];
+            if (lines.length > 1 && !lines[1].isEmpty()) icon = lines[1];
+            if (lines.length > 2 && !lines[2].isEmpty()) temp = lines[2];
+            views.setTextViewText(D_DAY[k], day);
+            views.setTextViewText(D_ICON[k], icon);
+            views.setTextViewText(D_TEMP[k], temp);
+        }
+    }
+
+    // ── Modo según la altura real del widget (dp). ──
+    private static int modeFor(Context context, int widgetId) {
         try {
-            int[] colors = palette(wcode, night);
-            GradientDrawable grad = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM, colors);
-            grad.setCornerRadius(0);
-            grad.setBounds(0, 0, w, h);
-            grad.draw(new Canvas(bmp));
+            Bundle o = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId);
+            int h = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+            if (h <= 0) h = 250;
+            if (h >= 237) return MODE_FULL;
+            if (h >= 189) return MODE_MEDIUM;
+            return MODE_COMPACT;
         } catch (Exception e) {
-            bmp.eraseColor(Color.rgb(30, 50, 80));
+            return MODE_FULL;
+        }
+    }
+
+    // ── Escena de fondo: degradado + sol/luna + nubes + lluvia/nieve/niebla.
+    //    Se dibuja al tamaño real del widget (en px), con tope para no
+    //    rebasar el límite de transacción Binder (~1 MB): 512 px de lado
+    //    y 262 144 px totales en RGB_565 (≤ 524 KB). ──
+    private static Bitmap backgroundBitmap(Context context, int widgetId, int wcode, boolean night) {
+        int wDp = 0, hDp = 0;
+        try {
+            Bundle o = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId);
+            wDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+            hDp = o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+        } catch (Exception ignored) {}
+        if (wDp <= 0 || hDp <= 0) { wDp = 250; hDp = 250; }
+
+        float density = context.getResources().getDisplayMetrics().density;
+        int w = Math.max(96, Math.round(wDp * density));
+        int h = Math.max(96, Math.round(hDp * density));
+        double scale = Math.min(1.0, Math.min(512.0 / Math.max(w, h),
+            Math.sqrt(262144.0 / ((double) w * h))));
+        w = Math.max(64, (int) Math.round(w * scale));
+        h = Math.max(64, (int) Math.round(h * scale));
+
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+        try {
+            drawScene(new Canvas(bmp), w, h, wcode, night);
+        } catch (Exception e) {
+            bmp.eraseColor(palette(wcode, night)[1]);
         }
         return bmp;
     }
 
-    private static int[] palette(int wcode, boolean night) {
-        boolean rain = wcode >= 51 && wcode <= 67 || wcode >= 80 && wcode <= 82;
+    private static void drawScene(Canvas c, int w, int h, int wcode, boolean night) {
+        int[] colors = palette(wcode, night);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new LinearGradient(0, 0, 0, h, colors, null, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, p);
+        p.setShader(null);
+
         boolean storm = wcode >= 95;
-        boolean snow = wcode >= 71 && wcode <= 77 || wcode >= 85 && wcode <= 86;
+        boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
+        boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
+        boolean fog = wcode == 45 || wcode == 48;
+        boolean overcast = wcode == 3;
+        boolean partly = wcode >= 1 && wcode <= 2;
+        boolean clear = !storm && !rain && !snow && !fog && !overcast && !partly;
+
+        // Sol / luna con halo (solo despejado/parcial: con nubes densas,
+        // lluvia, nieve o niebla no se asoma un sol que no toca).
+        if (clear || partly) {
+            float cx = w * 0.82f;
+            float cy = h * 0.22f;
+            float r = Math.min(w, h) * 0.09f;
+
+            Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+            glow.setShader(new RadialGradient(cx, cy, r * 2.6f,
+                new int[]{night ? 0x66C9D8FF : 0x66FFF1B8, 0x00FFFFFF}, null, Shader.TileMode.CLAMP));
+            c.drawCircle(cx, cy, r * 2.6f, glow);
+            glow.setShader(null);
+
+            Paint disc = new Paint(Paint.ANTI_ALIAS_FLAG);
+            disc.setColor(night ? 0xFFF3F0DF : 0xFFFFE08A);
+            c.drawCircle(cx, cy, r, disc);
+
+            if (!night) {
+                Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+                halo.setColor(0x33FFFFFF);
+                c.drawCircle(cx, cy, r * 1.28f, halo);
+            } else {
+                Paint crater = new Paint(Paint.ANTI_ALIAS_FLAG);
+                crater.setColor(0x22000000);
+                c.drawCircle(cx - r * 0.26f, cy - r * 0.16f, r * 0.18f, crater);
+                c.drawCircle(cx + r * 0.22f, cy + r * 0.2f, r * 0.12f, crater);
+            }
+        }
+
+        // Nubes (translúcidas, más marcadas de día).
+        if (!clear) {
+            int cloudAlpha = night ? 46 : 150;
+            drawCloud(c, w * 0.64f, h * 0.34f, w * 0.15f, cloudAlpha, night);
+            drawCloud(c, w * 0.31f, h * 0.54f, w * 0.12f, Math.max(30, cloudAlpha - 30), night);
+            if (overcast || rain || storm || snow) {
+                drawCloud(c, w * 0.83f, h * 0.50f, w * 0.13f, Math.max(30, cloudAlpha - 20), night);
+            }
+        }
+
+        // Lluvia.
+        if (rain) {
+            Paint rainP = new Paint(Paint.ANTI_ALIAS_FLAG);
+            rainP.setColor(night ? 0x66BFD8FF : 0x7760A5FF);
+            rainP.setStrokeWidth(Math.max(1.5f, w * 0.004f));
+            for (int i = 0; i < 14; i++) {
+                float x = w * (0.56f + (i % 7) * 0.055f);
+                float y = h * (0.40f + (i / 7) * 0.12f + (i % 7) * 0.018f);
+                c.drawLine(x, y, x - w * 0.02f, y + h * 0.06f, rainP);
+            }
+        }
+
+        // Nieve.
+        if (snow) {
+            Paint snowP = new Paint(Paint.ANTI_ALIAS_FLAG);
+            snowP.setColor(0xCCFFFFFF);
+            for (int i = 0; i < 18; i++) {
+                float x = w * (0.54f + ((i * 37) % 42) / 100f);
+                float y = h * (0.30f + ((i * 53) % 46) / 100f);
+                c.drawCircle(x, y, Math.max(1.5f, w * 0.006f), snowP);
+            }
+        }
+
+        // Estrellas (noche despejada / parcial), solo mitad derecha.
+        if (night && (clear || partly)) {
+            Paint star = new Paint(Paint.ANTI_ALIAS_FLAG);
+            star.setColor(0xCCFFFFFF);
+            for (int i = 0; i < 12; i++) {
+                float x = w * (0.50f + ((i * 29) % 44) / 100f);
+                float y = h * (0.06f + ((i * 47) % 36) / 100f);
+                c.drawCircle(x, y, Math.max(1f, w * 0.0035f), star);
+            }
+        }
+
+        // Niebla.
+        if (fog) {
+            Paint fogP = new Paint(Paint.ANTI_ALIAS_FLAG);
+            fogP.setColor(night ? 0x1FFFFFFF : 0x4DFFFFFF);
+            for (int i = 0; i < 3; i++) {
+                float y = h * (0.36f + i * 0.11f);
+                c.drawRect(0, y, w, y + h * 0.05f, fogP);
+            }
+        }
+
+        // Bruma superior sutil (profundidad, no contraste).
+        Paint haze = new Paint(Paint.ANTI_ALIAS_FLAG);
+        haze.setShader(new LinearGradient(0, 0, 0, h * 0.42f,
+            night ? 0x14000000 : 0x1FFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h * 0.42f, haze);
+    }
+
+    private static void drawCloud(Canvas c, float cx, float cy, float r, int alpha, boolean night) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        int a = Math.max(0, Math.min(255, alpha));
+        p.setColor(night ? Color.argb(a, 210, 224, 244) : Color.argb(a, 255, 255, 255));
+        c.drawCircle(cx, cy, r, p);
+        c.drawCircle(cx - r * 0.78f, cy + r * 0.16f, r * 0.7f, p);
+        c.drawCircle(cx + r * 0.76f, cy + r * 0.2f, r * 0.62f, p);
+        c.drawRoundRect(new RectF(cx - r * 1.38f, cy + r * 0.1f, cx + r * 1.38f, cy + r * 0.86f),
+            r * 0.5f, r * 0.5f, p);
+    }
+
+    // Paletas One UI 8.5. Día: cielos claros y luminosos (texto tinta
+    // oscura, contraste AA). Noche: azules profundos (texto blanco).
+    private static int[] palette(int wcode, boolean night) {
+        boolean rain = (wcode >= 51 && wcode <= 67) || (wcode >= 80 && wcode <= 82);
+        boolean storm = wcode >= 95;
+        boolean snow = (wcode >= 71 && wcode <= 77) || (wcode >= 85 && wcode <= 86);
         boolean overcast = wcode == 3;
         boolean fog = wcode == 45 || wcode == 48;
         boolean partly = wcode >= 1 && wcode <= 2;
 
-        // Cielos estilo One UI 8.5: degradado de 3 paradas (arriba, medio, abajo).
         int top, mid, bottom;
         if (night) {
-            if (storm)         { top = Color.rgb(10, 10, 26);  mid = Color.rgb(28, 23, 54);  bottom = Color.rgb(51, 40, 79); }
-            else if (rain)     { top = Color.rgb(12, 18, 34);  mid = Color.rgb(28, 42, 68);  bottom = Color.rgb(44, 64, 96); }
-            else if (snow)     { top = Color.rgb(20, 28, 51);  mid = Color.rgb(43, 60, 96);  bottom = Color.rgb(89, 111, 148); }
-            else if (fog)      { top = Color.rgb(20, 26, 38);  mid = Color.rgb(42, 51, 66);  bottom = Color.rgb(71, 82, 98); }
-            else if (overcast) { top = Color.rgb(17, 23, 41);  mid = Color.rgb(34, 44, 66);  bottom = Color.rgb(58, 69, 87); }
-            else if (partly)   { top = Color.rgb(11, 17, 40);  mid = Color.rgb(26, 40, 80);  bottom = Color.rgb(52, 70, 111); }
-            else               { top = Color.rgb(7, 11, 31);   mid = Color.rgb(20, 33, 79);  bottom = Color.rgb(42, 63, 126); }
+            if (storm)         { top = 0xFF0A0A1A; mid = 0xFF1C1736; bottom = 0xFF33284F; }
+            else if (rain)     { top = 0xFF0C1222; mid = 0xFF1C2A44; bottom = 0xFF2C4060; }
+            else if (snow)     { top = 0xFF141C33; mid = 0xFF2B3C60; bottom = 0xFF596F94; }
+            else if (fog)      { top = 0xFF141A26; mid = 0xFF2A3342; bottom = 0xFF475262; }
+            else if (overcast) { top = 0xFF111729; mid = 0xFF222C42; bottom = 0xFF3A4557; }
+            else if (partly)   { top = 0xFF0B1128; mid = 0xFF1A2850; bottom = 0xFF34466F; }
+            else               { top = 0xFF070B1F; mid = 0xFF14214F; bottom = 0xFF2A3F7E; }
         } else {
-            if (storm)         { top = Color.rgb(39, 44, 71);   mid = Color.rgb(65, 63, 104);  bottom = Color.rgb(91, 86, 133); }
-            else if (rain)     { top = Color.rgb(57, 75, 105);  mid = Color.rgb(85, 112, 143); bottom = Color.rgb(123, 146, 174); }
-            else if (snow)     { top = Color.rgb(122, 153, 193); mid = Color.rgb(173, 197, 225); bottom = Color.rgb(228, 238, 250); }
-            else if (fog)      { top = Color.rgb(136, 148, 159); mid = Color.rgb(169, 179, 190); bottom = Color.rgb(205, 211, 219); }
-            else if (overcast) { top = Color.rgb(103, 118, 143); mid = Color.rgb(150, 163, 182); bottom = Color.rgb(196, 204, 216); }
-            else if (partly)   { top = Color.rgb(58, 127, 230);  mid = Color.rgb(116, 169, 236); bottom = Color.rgb(196, 219, 243); }
-            else               { top = Color.rgb(47, 123, 255);  mid = Color.rgb(90, 169, 255);  bottom = Color.rgb(169, 216, 255); }
+            if (storm)         { top = 0xFF8A8FB8; mid = 0xFFA9ADD0; bottom = 0xFFD9DBEC; }
+            else if (rain)     { top = 0xFF7E97B5; mid = 0xFF9DB4CC; bottom = 0xFFD6E1EC; }
+            else if (snow)     { top = 0xFFC2D5E8; mid = 0xFFDDEAF7; bottom = 0xFFF6FAFF; }
+            else if (fog)      { top = 0xFFC1CBD4; mid = 0xFFD8E0E7; bottom = 0xFFF0F4F7; }
+            else if (overcast) { top = 0xFFA6B4C4; mid = 0xFFC3CEDB; bottom = 0xFFE8EEF4; }
+            else if (partly)   { top = 0xFF7FB8F5; mid = 0xFFA9D2FA; bottom = 0xFFE6F3FF; }
+            else               { top = 0xFF6FB0FF; mid = 0xFFA5D4FF; bottom = 0xFFE9F7FF; }
         }
         return new int[]{top, mid, bottom};
     }
