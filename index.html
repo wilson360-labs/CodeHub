@@ -3429,8 +3429,7 @@ function chLocationIsFresh(maxAgeMs) {
 }
 
 /* Guardar ciudad/área del usuario para las notificaciones del clima.
-   source: 'gps' (navegador/GPS nativo, exacta) | 'ip' (aproximada) | 'search' (elegida manualmente) */
-async function chSavePushLocation(lat, lon, city, country, source) {
+   source: 'gps' (navegador/GPS nativo, exacta) | 'ip' (aproximada) | 'search' (elegida manualmente) */async function chSavePushLocation(lat, lon, city, country, source) {
   if (Number.isFinite(+lat)) localStorage.setItem('ch_user_lat', lat);
   if (Number.isFinite(+lon)) localStorage.setItem('ch_user_lon', lon);
   if (city) localStorage.setItem('ch_user_city', city);
@@ -3584,8 +3583,16 @@ async function chResolveAndShowWeather(lat, lon, source) {
 function chAutoDetectAndSave(updateWidget) {
   function onOk(lat, lon) {
     wxGpsDenied = false;
-    if (updateWidget) chResolveAndShowWeather(lat, lon, 'gps');
-    else chSavePushLocation(lat, lon, 'Tu ubicación', '', 'gps');
+    if (updateWidget) {
+      chResolveAndShowWeather(lat, lon, 'gps');
+    } else {
+      // Revalidación silenciosa: actualiza las coordenadas SIN borrar el
+      // nombre de ciudad elegido (o confirmado) por el usuario.
+      var prev = localStorage.getItem('ch_user_city') || '';
+      chSavePushLocation(lat, lon,
+        (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
+        localStorage.getItem('ch_user_country') || '', 'gps');
+    }
   }
   function onFail(err) {
     wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
@@ -3612,6 +3619,23 @@ function chAutoDetectAndSave(updateWidget) {
    revisitas si la ubicación guardada ya no está fresca), sin esperar
    a que el usuario toque el botón. Esto es lo que hace la detección
    realmente "automática" en vez de quedarse solo en el skeleton. */
+/* Pinta el clima con la última ubicación guardada (fresca o vieja).
+   Devuelve true si había coordenadas que pintar. La etiqueta es NEUTRA
+   cuando la fuente fue IP: jamás una ciudad inventada por geo-IP. */
+function chPaintSavedLocation() {
+  var lat = parseFloat(localStorage.getItem('ch_user_lat'));
+  var lon = parseFloat(localStorage.getItem('ch_user_lon'));
+  if (!(Number.isFinite(lat) && Number.isFinite(lon))) return false;
+  if (localStorage.getItem('ch_user_loc_src') === 'ip') {
+    fetchWeatherByCoords(lat, lon, 'Tu ubicación (aprox.) 📶');
+    return true;
+  }
+  var city = localStorage.getItem('ch_user_city') || 'Tu ubicación';
+  var country = localStorage.getItem('ch_user_country') || '';
+  fetchWeatherByCoords(lat, lon, (country ? `${city}, ${country}` : city) + ' 📍');
+  return true;
+}
+
 function chInitAutoWeather() {
   var el = document.getElementById('weather-section');
   if (!el) return;
@@ -3619,17 +3643,12 @@ function chInitAutoWeather() {
   function run() {
     if (ran) return;
     ran = true;
-    if (chLocationIsFresh()) {
-      var lat = parseFloat(localStorage.getItem('ch_user_lat'));
-      var lon = parseFloat(localStorage.getItem('ch_user_lon'));
-      var city = localStorage.getItem('ch_user_city') || 'Tu ubicación';
-      var country = localStorage.getItem('ch_user_country') || '';
-      var src = localStorage.getItem('ch_user_loc_src');
-      var suffix = src === 'ip' ? ' (aprox.) 📶' : ' 📍';
-      if (Number.isFinite(lat) && Number.isFinite(lon)) {
-        fetchWeatherByCoords(lat, lon, (country ? `${city}, ${country}` : city) + suffix);
-        return;
-      }
+    if (chPaintSavedLocation()) {
+      // Coordenadas guardadas (frescas o viejas): pintar YA. El widget
+      // nunca se queda mudo esperando la red; la revalidación corre en
+      // 2do plano y corrige cuando la detección acierte.
+      if (!chLocationIsFresh()) chAutoDetectAndSave(false);
+      return;
     }
     chAutoDetectAndSave(true);
   }
@@ -6664,7 +6683,11 @@ async function detectWeatherByIP(updateWidget) {
   // el CSP lo bloquea. Prioridad 2/3: ipapi.co e ipwho.is en cliente.
   var attempts = [
     { label: '/api/geo', fn: async function() { // Prioridad 1: backend
-      var r = await fetchWithTimeout(BACKEND_INDEX + '/api/geo', { cache: 'no-store' }, 9000);
+      // Timeout 25 s: Render (plan free) despierta frío y puede tardar
+      // 15-30 s; antes el timeout corto mataba el intento y todo el
+      // panel quedaba "No se pudo detectar tu ubicación" aunque solo
+      // fuera el despertar del servidor.
+      var r = await fetchWithTimeout(BACKEND_INDEX + '/api/geo', { cache: 'no-store' }, 25000);
       var d = await r.json().catch(function() { return {}; });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       if (!d.ok) throw new Error('200 · ' + (d.reason === 'private-ip' ? 'IP privada' : 'sin datos'));
@@ -6672,14 +6695,14 @@ async function detectWeatherByIP(updateWidget) {
       return { lat: d.lat, lon: d.lon, city: d.city, country: d.country, region: d.region, cc: d.cc };
     } },
     { label: 'ipapi.co/json', fn: async function() { // Prioridad 2: ipapi.co
-      var r = await fetchWithTimeout('https://ipapi.co/json/', {}, 7000);
+      var r = await fetchWithTimeout('https://ipapi.co/json/', {}, 12000);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       var g = await r.json();
       if (!g.latitude || g.error) throw new Error('200 · ' + (g.reason || 'sin datos'));
       return { lat: g.latitude, lon: g.longitude, city: g.city, country: g.country_name, region: g.region, cc: g.country_code };
     } },
     { label: 'ipwho.is', fn: async function() { // Prioridad 3: ipwho.is
-      var r = await fetchWithTimeout('https://ipwho.is/', {}, 7000);
+      var r = await fetchWithTimeout('https://ipwho.is/', {}, 12000);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       var g = await r.json();
       if (!g.success || !g.latitude) throw new Error('200 · ' + (g.message || 'sin datos'));
@@ -6706,7 +6729,14 @@ async function detectWeatherByIP(updateWidget) {
       tried.push(attempts[i].label + ' ' + (e && e.message ? e.message : 'error'));
     }
   }
-  if (updateWidget) showWeatherError(await weatherGeoErrorMessage(tried));
+  if (updateWidget) {
+    // Salvavidas: si toda la detección en vivo falló (backend dormido,
+    // cuotas de IP-API agotadas…), pintar con las coordenadas guardadas
+    // en vez del callejón "No se pudo detectar tu ubicación".
+    // chPaintSavedLocation mantiene la etiqueta neutra si la fuente era IP.
+    if (chPaintSavedLocation()) return true;
+    showWeatherError(await weatherGeoErrorMessage(tried));
+  }
   return false;
 }
 
