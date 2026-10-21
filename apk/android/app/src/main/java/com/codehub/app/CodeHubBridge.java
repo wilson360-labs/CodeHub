@@ -1,4 +1,4 @@
-﻿package com.codehub.app;
+package com.codehub.app;
 
 import android.app.Activity;
 import android.app.DownloadManager;
