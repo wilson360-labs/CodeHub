@@ -203,15 +203,11 @@
 .chw-hint b { color: var(--chw-accent); }
 .chw-widget[data-ready="0"] .chw-pill-temp { display: none; }
 
-/* ── Tema claro (prefers-color-scheme) ──────────────── */
-@media (prefers-color-scheme: light) {
-  :root {
-    --chw-surface: rgba(255, 255, 255, .94);
-    --chw-border: rgba(100, 116, 139, .28);
-    --chw-text: #0f172a;
-    --chw-text-dim: rgba(51, 65, 85, .78);
-  }
-}
+/* ── Tema ─────────────────────────────────────────────
+   SIEMPRE oscuro (vidrio oscuro): el sitio es dark-only (el tema claro
+   se retiró en v1.4) y seguir prefers-color-scheme del sistema hacía
+   que en teléfonos en modo día la pastilla quedara clara con texto
+   blanco ilegible. Un solo tema = cero sorpresas. */
 
 /* ── Responsividad (solo breakpoints canónicos) ─────── */
 @media (max-width: 380px) {

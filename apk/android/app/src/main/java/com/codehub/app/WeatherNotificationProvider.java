@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -64,7 +65,9 @@ public class WeatherNotificationProvider {
     private static final String PREF_QUAKE_LAST = "quake_last_alarm_id";
 
     private static final String CH_WIDGET = "codehub_weather_widget";
-    private static final String CH_QUAKES = "codehub_quakes";
+    private static final String CH_QUAKES = "codehub_quakes_v2";
+    /** Canal v1 (7.44–7.46): sonaba con el tono de notificación genérico. */
+    private static final String CH_QUAKES_LEGACY = "codehub_quakes";
 
     private static final int NOTIF_ID = 4242;       // widget de clima
     private static final int NOTIF_ID_QUAKE = 4243; // alarma de sismo
@@ -340,6 +343,7 @@ public class WeatherNotificationProvider {
                     .setOnlyAlertOnce(true)
                     .setContentIntent(pi)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
                     .build());
         } catch (Throwable t) {
             Log.e(TAG, "evalQuakeAlarm falló", t);
@@ -721,6 +725,14 @@ public class WeatherNotificationProvider {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         NotificationManager nm = ctx.getSystemService(NotificationManager.class);
         if (nm == null) return;
+        // Canal v1 (7.44–7.46): sus settings son inmutables una vez creado,
+        // así que no admite el sonido de alarma — se borra para que todos
+        // los usuarios queden en el v2 con la configuración completa.
+        try {
+            if (nm.getNotificationChannel(CH_QUAKES_LEGACY) != null) {
+                nm.deleteNotificationChannel(CH_QUAKES_LEGACY);
+            }
+        } catch (Throwable ignored) {}
         if (nm.getNotificationChannel(CH_WIDGET) == null) {
             NotificationChannel ch = new NotificationChannel(CH_WIDGET,
                 "Clima · widget", NotificationManager.IMPORTANCE_LOW);
@@ -731,10 +743,21 @@ public class WeatherNotificationProvider {
             nm.createNotificationChannel(ch);
         }
         if (nm.getNotificationChannel(CH_QUAKES) == null) {
+            // v2: suena en el stream de ALARMA (se escucha aunque el volumen
+            // de notificaciones esté bajo o el teléfono en silencio parcial),
+            // vibración fuerte y pedido de bypass a "No molestar" (el usuario
+            // manda en DND; los sistemas que permiten alarmas lo respetan).
             NotificationChannel ch = new NotificationChannel(CH_QUAKES,
                 "Sismos (alarma)", NotificationManager.IMPORTANCE_HIGH);
             ch.setDescription("Alertas de sismos cercanos a tu ubicación");
             ch.enableVibration(true);
+            ch.setVibrationPattern(new long[]{0, 500, 250, 500, 250, 900});
+            ch.setBypassDnd(true);
+            AudioAttributes alarm = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+            ch.setSound(android.provider.Settings.System.DEFAULT_ALARM_ALERT_URI, alarm);
             nm.createNotificationChannel(ch);
         }
     }
