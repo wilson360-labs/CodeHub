@@ -1381,12 +1381,20 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void triggerQuakeSimulation(final double mag, final double distKm,
                                       final String dir, final String place) {
+        triggerQuakeSimulation(mag, distKm, dir, place, "earthquake");
+    }
+
+    @JavascriptInterface
+    public void triggerQuakeSimulation(final double mag, final double distKm,
+                                      final String dir, final String place,
+                                      final String alertType) {
         activity.runOnUiThread(() -> {
             try {
                 EarthquakeAlertActivity.launch(activity,
                         (float) mag, distKm, dir != null ? dir : "N",
                         place != null ? place : "Simulacro",
-                        System.currentTimeMillis(), true);
+                        System.currentTimeMillis(), true,
+                        alertType != null ? alertType : "earthquake");
             } catch (Exception ignored) {}
         });
     }

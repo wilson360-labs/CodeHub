@@ -1,4 +1,4 @@
-﻿/* ═══════════════════════════════════════
+/* ═══════════════════════════════════════
    admin-hub.js — CodeHub by Wilson.E
    Backend: Render · DB: MongoDB + Supabase
 ═══════════════════════════════════════ */
@@ -3335,7 +3335,10 @@ async function sendQuakeSim() {
   const dir = document.getElementById('quake-sim-dir').value;
   const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
   const target = document.getElementById('quake-sim-target').value;
-  const isReal = document.getElementById('quake-sim-real').checked;
+  const alertType = document.getElementById('quake-sim-type') ? document.getElementById('quake-sim-type').value : 'earthquake';
+  const isSim = !(document.getElementById('quake-sim-mode') && document.getElementById('quake-sim-mode').value === 'real');
+  const btn = document.getElementById('quake-sim-send-btn');
+  const resultEl = document.getElementById('quake-sim-result');
   const btn = document.getElementById('quake-sim-send-btn');
   const resultEl = document.getElementById('quake-sim-result');
 
@@ -3349,12 +3352,12 @@ async function sendQuakeSim() {
       res = await fetch(BACKEND + '/api/admin/quake-test', {
         method: 'POST',
         headers: adminHeaders(),
-        body: JSON.stringify({ magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+        body: JSON.stringify({ magnitude: mag, distance: dist, direction: dir, place: place, simulate: isSim, alertType: alertType })
       });
       data = await res.json();
       if (data.ok) {
         resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado a ' + data.sent + ' dispositivo(s)</span>' + (data.failed > 0 ? ' · ' + data.failed + ' fallaron' : '');
-        addToQuakeHistory(mag, dist, dir, place, isReal, data.sent);
+        addToQuakeHistory(mag, dist, dir, place, !isSim, data.sent);
       } else {
         resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.error || 'desconocido') + '</span>';
       }
@@ -3362,12 +3365,12 @@ async function sendQuakeSim() {
       res = await fetch(BACKEND + '/api/admin/quake-test-single', {
         method: 'POST',
         headers: adminHeaders(),
-        body: JSON.stringify({ token: target, magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+        body: JSON.stringify({ token: target, magnitude: mag, distance: dist, direction: dir, place: place, simulate: isSim, alertType: alertType })
       });
       data = await res.json();
       if (data.ok) {
         resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado correctamente</span>';
-        addToQuakeHistory(mag, dist, dir, place, isReal, 1);
+        addToQuakeHistory(mag, dist, dir, place, !isSim, 1);
       } else {
         resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.reason || data.error || 'desconocido') + '</span>';
       }
@@ -3384,19 +3387,22 @@ async function sendQuakeSimSingle(token) {
   const dist = parseFloat(document.getElementById('quake-sim-dist').value) || 45;
   const dir = document.getElementById('quake-sim-dir').value;
   const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
-  const isReal = document.getElementById('quake-sim-real').checked;
+  const alertType = document.getElementById('quake-sim-type') ? document.getElementById('quake-sim-type').value : 'earthquake';
+  const isSim = !(document.getElementById('quake-sim-mode') && document.getElementById('quake-sim-mode').value === 'real');
+  const btn = document.getElementById('quake-sim-send-btn');
+  const resultEl = document.getElementById('quake-sim-result');
 
   try {
     const res = await fetch(BACKEND + '/api/admin/quake-test-single', {
       method: 'POST',
       headers: adminHeaders(),
-      body: JSON.stringify({ token: token, magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+      body: JSON.stringify({ token: token, magnitude: mag, distance: dist, direction: dir, place: place, simulate: isSim, alertType: alertType })
     });
     const data = await res.json();
     const resultEl = document.getElementById('quake-sim-result');
     if (data.ok) {
       if (resultEl) resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado al dispositivo</span>';
-      addToQuakeHistory(mag, dist, dir, place, isReal, 1);
+      addToQuakeHistory(mag, dist, dir, place, !isSim, 1);
     } else {
       if (resultEl) resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.reason || data.error || 'desconocido') + '</span>';
     }
@@ -3411,7 +3417,10 @@ function previewQuakeSim() {
   const dist = parseFloat(document.getElementById('quake-sim-dist').value) || 45;
   const dir = document.getElementById('quake-sim-dir').value;
   const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
-  const isReal = document.getElementById('quake-sim-real').checked;
+  const alertType = document.getElementById('quake-sim-type') ? document.getElementById('quake-sim-type').value : 'earthquake';
+  const isSim = !(document.getElementById('quake-sim-mode') && document.getElementById('quake-sim-mode').value === 'real');
+  const btn = document.getElementById('quake-sim-send-btn');
+  const resultEl = document.getElementById('quake-sim-result');
   // Show a preview overlay in the browser
   let overlay = document.getElementById('quake-preview-overlay');
   if (!overlay) {
@@ -3422,11 +3431,11 @@ function previewQuakeSim() {
   }
   overlay.innerHTML = '<div style="text-align:center;max-width:400px">' +
     '<div style="font-size:3rem;margin-bottom:1rem">⚠️</div>' +
-    '<div style="font-size:1.5rem;font-weight:800;color:#ff6b6b;margin-bottom:.5rem">' + (isReal ? 'ALERTA DE SISMO' : '🧪 SIMULACRO DE SISMO') + '</div>' +
+    '<div style="font-size:1.5rem;font-weight:800;color:#ff6b6b;margin-bottom:.5rem">' + (!isSim ? 'ALERTA DE SISMO' : '🧪 SIMULACRO DE SISMO') + '</div>' +
     '<div style="font-size:4rem;font-weight:800;font-family:monospace;color:#ff6b6b;margin:1rem 0">M ' + mag.toFixed(1) + '</div>' +
     '<div style="font-size:1.1rem;margin-bottom:.25rem">a ' + Math.round(dist) + ' km ' + dir + ' de tu ubicación</div>' +
     '<div style="font-size:.85rem;color:#8b93a7;margin-bottom:1.5rem">' + place + '</div>' +
-    (isReal ? '' : '<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:12px;padding:.75rem;margin-bottom:1.5rem;color:#ffd700;font-weight:700">⚠️ SIMULACRO — Esto es una prueba. No hay sismo real.</div>') +
+    (!isSim ? '' : '<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:12px;padding:.75rem;margin-bottom:1.5rem;color:#ffd700;font-weight:700">⚠️ SIMULACRO — Esto es una prueba. No hay sismo real.</div>') +
     '<div style="background:#14142a;border:1px solid #1a1a2e;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:left">' +
     '<div style="font-weight:700;margin-bottom:.5rem">Qué hacer ahora:</div>' +
     '<div style="margin-bottom:.4rem">1. <b>AGÁCHATE</b> — Ponte de rodillas</div>' +

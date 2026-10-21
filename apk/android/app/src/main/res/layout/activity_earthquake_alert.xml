@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <!-- Pantalla completa de alerta de sismo — estilo One UI de CodeHub.
      Se muestra encima de la app y del bloqueo cuando se detecta un sismo
      grande (o en modo simulacro). -->
@@ -26,6 +26,7 @@
             android:layout_marginBottom="24dp">
 
             <TextView
+                android:id="@+id/quake_alert_icon"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:gravity="center"

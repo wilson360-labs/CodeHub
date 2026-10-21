@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
@@ -2297,12 +2297,13 @@ app.get('/api/admin/quake-devices', requireAdmin, async (req, res) => {
 // ── POST /api/admin/quake-test - Enviar simulacro de sismo a dispositivos ──
 app.post('/api/admin/quake-test', requireAdmin, async (req, res) => {
   if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
-  const { magnitude, distance, direction, place, tokens, simulate } = req.body || {};
+  const { magnitude, distance, direction, place, tokens, simulate, alertType } = req.body || {};
   const mag = parseFloat(magnitude) || 5.5;
   const dist = parseFloat(distance) || 50;
   const dir = direction || 'N';
   const pl = place || 'Simulacro de sismo - CodeHub';
   const isSim = simulate !== false;
+  const type = alertType || 'earthquake';
 
   try {
     let targetTokens = [];
@@ -2323,6 +2324,7 @@ app.post('/api/admin/quake-test', requireAdmin, async (req, res) => {
         title: isSim ? '🧪 SIMULACRO DE SISMO' : '⚠️ ALERTA DE SISMO',
         body: `M ${mag.toFixed(1)} a ${Math.round(dist)} km ${dir} de tu ubicación`,
         type: isSim ? 'quake_sim' : 'quake_alert',
+        alertType: type,
         mag: mag,
         dist: dist,
         dir: dir,
@@ -2359,8 +2361,8 @@ app.post('/api/admin/quake-test-single', requireAdmin, async (req, res) => {
     dist: dist,
     dir: dir,
     place: pl,
+    alertType: type,
     time: Date.now(),
-  };
   const r = await sendFCM(token, payload);
   res.json({ ok: r.ok, reason: r.reason || r.code || null, message: r.message || null });
 });
@@ -5917,6 +5919,7 @@ async function sendFCM(token, payload) {
           dir: payload.dir || 'N',
           place: payload.place || '',
           time: String(payload.time || Date.now()),
+          alertType: payload.alertType || 'earthquake',
         } : {}),
       android: {
         // priority: 'high' — despierta el dispositivo incluso en Doze

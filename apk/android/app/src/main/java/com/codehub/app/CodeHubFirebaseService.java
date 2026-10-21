@@ -53,9 +53,61 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
                 String place = message.getData().getOrDefault("place", "Sismo detectado");
                 long time = Long.parseLong(message.getData().getOrDefault("time", String.valueOf(System.currentTimeMillis())));
                 boolean sim = type.equals("quake_sim");
-                EarthquakeAlertActivity.launch(getApplicationContext(), mag, dist, dir, place, time, sim);
+                String alertType = message.getData().getOrDefault("alertType", "earthquake");
+
+                // Intent para la pantalla completa
+                Intent fullScreenIntent = new Intent(ctx, EarthquakeAlertActivity.class);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_MAG, mag);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_DIST, dist);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_DIR, dir);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_PLACE, place);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_TIME, time);
+                fullScreenIntent.putExtra(EarthquakeAlertActivity.EXTRA_SIM, sim);
+                fullScreenIntent.putExtra("alertType", alertType);
+                fullScreenIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+
+                PendingIntent fullScreenPi = PendingIntent.getActivity(ctx, 4243, fullScreenIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+                // Notificación de alta prioridad con full-screen intent
+                // (esto es lo que permite mostrar la alerta incluso con la app cerrada
+                // y con la pantalla bloqueada, como las llamadas entrantes)
+                NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) {
+                    // Asegurar canal
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        NotificationChannel ch = nm.getNotificationChannel("codehub_quakes");
+                        if (ch == null) {
+                            ch = new NotificationChannel("codehub_quakes", "Sismos (alarma)",
+                                    NotificationManager.IMPORTANCE_HIGH);
+                            ch.setDescription("Alertas de sismos cercanos a tu ubicación");
+                            ch.enableVibration(true);
+                            nm.createNotificationChannel(ch);
+                        }
+                    }
+
+                    Notification notif = new NotificationCompat.Builder(ctx, "codehub_quakes")
+                            .setSmallIcon(R.drawable.ic_stat_quake)
+                            .setContentTitle(sim ? "🧪 SIMULACRO DE SISMO" : "⚠️ ALERTA DE SISMO")
+                            .setContentText("M " + String.format(java.util.Locale.US, "%.1f", mag)
+                                    + " a " + Math.round(dist) + " km " + dir + " de tu ubicación")
+                            .setPriority(NotificationCompat.PRIORITY_MAX)
+                            .setCategory(NotificationCompat.CATEGORY_ALARM)
+                            .setFullScreenIntent(fullScreenPi, true)
+                            .setAutoCancel(true)
+                            .setOngoing(true)
+                            .build();
+
+                    nm.notify(4243, notif);
+                }
+
+                // También intentar lanzar directamente (funciona si la app está en primer plano)
+                try {
+                    EarthquakeAlertActivity.launch(ctx, mag, dist, dir, place, time, sim);
+                } catch (Exception ignored) {}
             } catch (Exception ignored) {}
-            return; // no mostrar notificación normal, la pantalla completa es la alerta
+            return;
         }
 
         String channelId;

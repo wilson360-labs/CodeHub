@@ -30,11 +30,17 @@ public class EarthquakeAlertActivity extends Activity {
     public static final String EXTRA_PLACE   = "place";
     public static final String EXTRA_TIME    = "time";
     public static final String EXTRA_SIM     = "sim";
+    public static final String EXTRA_TYPE    = "alertType";
 
     private PowerManager.WakeLock wakeLock;
 
     public static void launch(Context ctx, float mag, double distKm, String dir,
                               String place, long timeMs, boolean isSim) {
+        launch(ctx, mag, distKm, dir, place, timeMs, isSim, "earthquake");
+    }
+
+    public static void launch(Context ctx, float mag, double distKm, String dir,
+                              String place, long timeMs, boolean isSim, String alertType) {
         Intent i = new Intent(ctx, EarthquakeAlertActivity.class);
         i.putExtra(EXTRA_MAG, mag);
         i.putExtra(EXTRA_DIST, distKm);
@@ -42,6 +48,7 @@ public class EarthquakeAlertActivity extends Activity {
         i.putExtra(EXTRA_PLACE, place);
         i.putExtra(EXTRA_TIME, timeMs);
         i.putExtra(EXTRA_SIM, isSim);
+        i.putExtra(EXTRA_TYPE, alertType != null ? alertType : "earthquake");
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
                 | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
         ctx.startActivity(i);
@@ -78,6 +85,8 @@ public class EarthquakeAlertActivity extends Activity {
         String place = getIntent().getStringExtra(EXTRA_PLACE);
         long time = getIntent().getLongExtra(EXTRA_TIME, System.currentTimeMillis());
         boolean sim = getIntent().getBooleanExtra(EXTRA_SIM, false);
+        String alertType = getIntent().getStringExtra(EXTRA_TYPE);
+        if (alertType == null) alertType = "earthquake";
 
         TextView title = findViewById(R.id.quake_alert_title);
         TextView subtitle = findViewById(R.id.quake_alert_subtitle);
@@ -88,17 +97,61 @@ public class EarthquakeAlertActivity extends Activity {
         TextView safeBtn = findViewById(R.id.quake_alert_safe);
         TextView sourceTv = findViewById(R.id.quake_alert_source);
 
-        magTv.setText(String.format(Locale.US, "M %.1f", mag));
+        // Ajustar UI según tipo de alerta
+        boolean isHurricane = "hurricane".equals(alertType) || "cyclone".equals(alertType);
+        boolean isTsunami = "tsunami".equals(alertType);
+        boolean isFlood = "flood".equals(alertType);
 
-        if (mag >= 7.0) {
+        String alertIcon = "⚠️";
+        String alertTitle = "ALERTA DE SISMO";
+        int alertColor = 0xFFFF6B6B;
+        String subtitleText = "Sismo detectado cerca de tu ubicación";
+        String sourceText = sim ? "Simulacro · CodeHub" : "Fuente: USGS · CodeHub";
+
+        if (isHurricane) {
+            alertIcon = "🌀";
+            alertTitle = "ALERTA DE HURACÁN";
+            alertColor = 0xFF38BDF8;
+            subtitleText = "Huracán detectado en tu zona";
+            sourceText = sim ? "Simulacro · CodeHub" : "Fuente: NHC/NOAA · CodeHub";
+        } else if (isTsunami) {
+            alertIcon = "🌊";
+            alertTitle = "ALERTA DE TSUNAMI";
+            alertColor = 0xFF38BDF8;
+            subtitleText = "Tsunami detectado - busca altura";
+            sourceText = sim ? "Simulacro · CodeHub" : "Fuente: PTWC · CodeHub";
+        } else if (isFlood) {
+            alertIcon = "💧";
+            alertTitle = "ALERTA DE INUNDACIÓN";
+            alertColor = 0xFF60A5FA;
+            subtitleText = "Riesgo de inundación en tu zona";
+            sourceText = sim ? "Simulacro · CodeHub" : "Fuente: NOAA · CodeHub";
+        }
+
+        // Actualizar icono de la barra de alerta
+        TextView iconBubble = findViewById(R.id.quake_alert_icon);
+        if (iconBubble != null) iconBubble.setText(alertIcon);
+
+        title.setText(alertTitle);
+        title.setTextColor(alertColor);
+        subtitle.setText(subtitleText);
+        magTv.setTextColor(alertColor);
+
+        if (isHurricane || isTsunami || isFlood) {
+            // Para huracanes/tsunamis/inundaciones, la magnitud muestra categoría o nivel
+            magTv.setText(String.format(java.util.Locale.US, "%.0f", mag));
+            magTv.setTextSize(48);
+        } else {
+            magTv.setText(String.format(java.util.Locale.US, "M %.1f", mag));
+        }
+
+        if (mag >= 7.0 && !isHurricane) {
             title.setText("⚠️ SISMO MAYOR");
             title.setTextColor(0xFFFF3B3B);
             magTv.setTextColor(0xFFFF3B3B);
-        } else if (mag >= 6.0) {
+        } else if (mag >= 6.0 && !isHurricane) {
             title.setText("⚠️ SISMO FUERTE");
             title.setTextColor(0xFFFF6B6B);
-        } else {
-            title.setText("⚠️ ALERTA DE SISMO");
         }
 
         if (dir != null && !dir.isEmpty()) {
@@ -118,13 +171,13 @@ public class EarthquakeAlertActivity extends Activity {
 
         if (sim) {
             simTv.setVisibility(View.VISIBLE);
-            title.setText("🧪 SIMULACRO DE SISMO");
+            title.setText("SIMULACRO: " + alertTitle);
             title.setTextColor(0xFFFFD700);
             magTv.setTextColor(0xFFFFD700);
-            subtitle.setText("Esto es una prueba. No hay sismo real.");
+            subtitle.setText("Esto es una prueba. No hay " + (isHurricane ? "huracan" : isTsunami ? "tsunami" : isFlood ? "inundacion" : "sismo") + " real.");
         }
 
-        sourceTv.setText(sim ? "Simulacro · CodeHub" : "Fuente: USGS · CodeHub");
+        sourceTv.setText(sourceText);
 
         safeBtn.setOnClickListener(v -> finish());
 
