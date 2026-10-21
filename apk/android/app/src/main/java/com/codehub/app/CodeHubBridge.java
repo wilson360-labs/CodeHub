@@ -1440,4 +1440,12 @@ public class CodeHubBridge {
             prefs.edit().putFloat("quake_fullscreen_mag", (float) mag).apply();
         } catch (Exception ignored) {}
     }
+
+    /** Pasa un JSON crudo al callback global. Escapa \ y ' para JS. */
+    private void notifyOptimizer(final String cb, final String payload) {
+        final String safe = (payload == null ? "{}" : payload)
+                .replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+        activity.runOnUiThread(() -> webView.loadUrl(
+            "javascript:try{if(window." + cb + ")window." + cb + "('" + safe + "');}catch(e){}"));
+    }
 }
