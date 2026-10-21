@@ -51,7 +51,7 @@ import java.util.List;
  * - Al confirmar, descarga vía DownloadManager y InstallReceiver lanza
  *   el instalador del sistema (mismo flujo del catálogo Open Source).
  *
- * Uso: AppUpdateChecker.checkIfDue(activity);  // en MainActivity.onCreate
+ * Uso: AppUpdateChecker.checkIfDue(activity);  // en MainActivity.onCreate Y onResume
  */
 public class AppUpdateChecker {
 
@@ -65,15 +65,30 @@ public class AppUpdateChecker {
 
     private static final String PREFS = "codehub";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
+    private static final String PREF_LAST_ATTEMPT = "update_last_attempt_ts";
     private static final String PREF_SKIP = "update_skip_version";
-    private static final long CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000; // 1 vez al día
+    private static final long CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000; // éxito: 1 vez al día
+    // Fallo de red: reintentar en 30 min. Antes la marca de último chequeo se
+    // guardaba ANTES de consultar, así que una consulta fallida (GitHub
+    // inalcanzable) dejaba el diálogo bloqueado 24 horas — ese era el bug
+    // por el que "el update no llega".
+    private static final long CHECK_RETRY_MS = 30L * 60 * 1000;
 
-    /** Chequea solo si ya pasó CHECK_INTERVAL_MS desde el último chequeo. */
+    /**
+     * Chequeo con gating por RESULTADO: se llama en onCreate y onResume.
+     * - Chequeo OK   → espera CHECK_INTERVAL_MS antes del siguiente.
+     * - Chequeo FALLIDO (red/servidor) → reintenta en CHECK_RETRY_MS.
+     * La marca del INTENTO se guarda antes de consultar; la del ÉXITO solo
+     * cuando GitHub contestó de verdad (checkNow).
+     */
     public static void checkIfDue(final MainActivity activity) {
         SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        long last = prefs.getLong(PREF_LAST_CHECK, 0);
-        if (System.currentTimeMillis() - last < CHECK_INTERVAL_MS) return;
-        prefs.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
+        long now = System.currentTimeMillis();
+        long lastSuccess = prefs.getLong(PREF_LAST_CHECK, 0);
+        long lastAttempt = prefs.getLong(PREF_LAST_ATTEMPT, 0);
+        if (now - lastSuccess < CHECK_INTERVAL_MS) return; // chequeado OK hace <24h
+        if (now - lastAttempt < CHECK_RETRY_MS) return;    // falló hace <30min: esperar
+        prefs.edit().putLong(PREF_LAST_ATTEMPT, now).apply();
         checkNow(activity);
     }
 
@@ -82,12 +97,21 @@ public class AppUpdateChecker {
         new Thread(() -> {
             try {
                 JSONObject release = fetchLatestRelease();
-                if (release == null) return;
+                if (release == null) {
+                    Log.i(TAG, "GitHub no contestó; reintento automático en " + (CHECK_RETRY_MS / 60000) + " min");
+                    return;
+                }
+                // GitHub contestó: recién aquí arranca la ventana de 24h.
+                SharedPreferences sp = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+                sp.edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply();
 
                 String tag = release.optString("tag_name", "");
                 String remoteVersion = normalizeVersion(tag);
                 if (remoteVersion.isEmpty()) return;
-                if (!isCodeHubUpdateRelease(release)) return;
+                if (!isCodeHubUpdateRelease(release)) {
+                    Log.i(TAG, "release " + tag + " descartada: no trae " + APK_ASSET_NAME);
+                    return;
+                }
 
                 String localVersion = "0";
                 try {
@@ -95,7 +119,10 @@ public class AppUpdateChecker {
                         .getPackageInfo(activity.getPackageName(), 0).versionName;
                 } catch (Exception ignored) {}
 
-                if (!isNewer(remoteVersion, localVersion)) return;
+                if (!isNewer(remoteVersion, localVersion)) {
+                    Log.i(TAG, "sin actualización (local " + localVersion + ", remota " + remoteVersion + ")");
+                    return;
+                }
 
                 String apkUrl = findApkAssetUrl(release);
                 if (apkUrl == null) return;
@@ -116,8 +143,8 @@ public class AppUpdateChecker {
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/vnd.github+json");
             conn.setRequestProperty("User-Agent", "CodeHub-Android");
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(8000);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
 
             int code = conn.getResponseCode();
             if (code != 200) return null;
@@ -233,7 +260,10 @@ public class AppUpdateChecker {
             if (activity.isFinishing()) return;
 
             SharedPreferences prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (version.equals(prefs.getString(PREF_SKIP, null))) return;
+            if (version.equals(prefs.getString(PREF_SKIP, null))) {
+                Log.i(TAG, "v" + version + " no se muestra: el usuario eligió 'Más tarde' para ella");
+                return;
+            }
 
             try {
                 final Dialog dialog = new Dialog(activity);

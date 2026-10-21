@@ -807,6 +807,10 @@ public class MainActivity extends Activity {
         // Control de música flotante: escuchar la sesión de medios solo
         // mientras la WebView está en pantalla.
         try { if (bridge != null) bridge.musicAttach(); } catch (Throwable ignored) {}
+        // Chequeo de actualización también al volver del segundo plano (el
+        // cold-start de.onCreate no ocurre si la app sigue viva en recientes):
+        // AppUpdateChecker tiene throttle interno y decide si toca chequear.
+        try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheckResume", t); }
     }
 
     @Override
