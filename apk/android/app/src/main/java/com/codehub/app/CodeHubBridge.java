@@ -1373,10 +1373,71 @@ public class CodeHubBridge {
     }
 
     /** Pasa un JSON crudo al callback global. Escapa \ y ' para JS (mismo patrón que el resto). */
-    private void notifyOptimizer(final String cb, final String payload) {
-        final String safe = (payload == null ? "{}" : payload)
-                .replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
-        activity.runOnUiThread(() -> webView.loadUrl(
-            "javascript:try{if(window." + cb + ")window." + cb + "('" + safe + "');}catch(e){}"));
+    // �� ALERTA DE SISMO (pantalla completa) ��������������������������
+    // Lanza la pantalla completa de alerta de sismo. Se usa tanto para
+    // simulacros (desde el panel admin o la app) como para alertas reales
+    // cuando se detecta un sismo grande (M≥5.0).
+
+    @JavascriptInterface
+    public void triggerQuakeSimulation(final double mag, final double distKm,
+                                      final String dir, final String place) {
+        activity.runOnUiThread(() -> {
+            try {
+                EarthquakeAlertActivity.launch(activity,
+                        (float) mag, distKm, dir != null ? dir : "N",
+                        place != null ? place : "Simulacro",
+                        System.currentTimeMillis(), true);
+            } catch (Exception ignored) {}
+        });
+    }
+
+    @JavascriptInterface
+    public void triggerQuakeAlert(final double mag, final double distKm,
+                                 final String dir, final String place, final long timeMs) {
+        activity.runOnUiThread(() -> {
+            try {
+                EarthquakeAlertActivity.launch(activity,
+                        (float) mag, distKm, dir != null ? dir : "N",
+                        place != null ? place : "Sismo detectado",
+                        timeMs > 0 ? timeMs : System.currentTimeMillis(), false);
+            } catch (Exception ignored) {}
+        });
+    }
+
+    @JavascriptInterface
+    public boolean isQuakeAlertEnabled() {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            return prefs.getBoolean("quake_alert_enabled", true);
+        } catch (Exception e) { return true; }
+    }
+
+    @JavascriptInterface
+    public void setQuakeAlertEnabled(final boolean enabled) {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("quake_alert_enabled", enabled).apply();
+        } catch (Exception ignored) {}
+    }
+
+    @JavascriptInterface
+    public String getQuakeAlertConfig() {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            JSONObject o = new JSONObject();
+            o.put("enabled", prefs.getBoolean("quake_alert_enabled", true));
+            o.put("fullScreenThreshold", prefs.getFloat("quake_fullscreen_mag", 5.0f));
+            o.put("minMagnitude", 4.5);
+            o.put("radiusKm", 1200);
+            return o.toString();
+        } catch (Exception e) { return "{\"enabled\":true,\"fullScreenThreshold\":5.0,\"minMagnitude\":4.5,\"radiusKm\":1200}"; }
+    }
+
+    @JavascriptInterface
+    public void setQuakeFullScreenThreshold(final double mag) {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            prefs.edit().putFloat("quake_fullscreen_mag", (float) mag).apply();
+        } catch (Exception ignored) {}
     }
 }

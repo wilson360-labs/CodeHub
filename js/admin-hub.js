@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════
+﻿/* ═══════════════════════════════════════
    admin-hub.js — CodeHub by Wilson.E
    Backend: Render · DB: MongoDB + Supabase
 ═══════════════════════════════════════ */
@@ -208,7 +208,7 @@ function previewLink(input, spanId) {
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
-function _adminHeaders() {
+function adminHeaders() {
   const h = { 'Content-Type': 'application/json' };
   if (ADMIN_SESSION) h['x-admin-session'] = ADMIN_SESSION;
   else if (ADMIN_KEY) h['x-admin-key'] = ADMIN_KEY;
@@ -256,7 +256,7 @@ async function checkLogin() {
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-wrap').style.display = 'flex';
       document.getElementById('admin-wrap').style.flexDirection = 'column';
-      const appsRes = await fetch(`${BACKEND}/api/admin/apps`, { headers: _adminHeaders() });
+      const appsRes = await fetch(`${BACKEND}/api/admin/apps`, { headers: adminHeaders() });
       if (appsRes.ok) {
         const appsData = await appsRes.json();
         initAdmin(appsData.apps);
@@ -351,7 +351,7 @@ async function sendAdminBroadcast() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/push/broadcast`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ title, body, url, type })
     });
     const data = await res.json().catch(() => ({}));
@@ -426,7 +426,7 @@ async function publishRelease() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/releases`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ title, body, version, url, type }),
     });
     const data = await res.json().catch(() => ({}));
@@ -538,7 +538,7 @@ async function loadGhAutomation() {
   listEl.innerHTML = '<div style="color:var(--muted);font-size:.72rem">Cargando workflows…</div>';
   let workflows = [];
   try {
-    const res = await fetch(`${BACKEND}/api/admin/github/workflows`, { headers: _adminHeaders() });
+    const res = await fetch(`${BACKEND}/api/admin/github/workflows`, { headers: adminHeaders() });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       listEl.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${escapeHtml(data.error || 'Error cargando workflows')}</div>`;
@@ -556,7 +556,7 @@ async function loadGhAutomation() {
   }
   let runs = {};
   try {
-    const r = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: _adminHeaders() });
+    const r = await fetch(`${BACKEND}/api/admin/github/runs`, { headers: adminHeaders() });
     if (r.ok) ({ runs } = await r.json());
   } catch {}
   listEl.innerHTML = workflows.map(w => {
@@ -604,7 +604,7 @@ async function dispatchWorkflow(file, btn) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ workflow: file, inputs }),
     });
     const data = await res.json().catch(() => ({}));
@@ -644,7 +644,7 @@ async function loadGhJobs() {
   if (!el) return;
   el.innerHTML = '<div style="color:var(--muted);font-size:.72rem">Cargando tareas programadas…</div>';
   try {
-    const res = await fetch(`${BACKEND}/api/admin/jobs`, { headers: _adminHeaders() });
+    const res = await fetch(`${BACKEND}/api/admin/jobs`, { headers: adminHeaders() });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { el.innerHTML = `<div style="color:var(--muted);font-size:.72rem">${escapeHtml(data.error || 'Error cargando cron jobs')}</div>`; return; }
     const jobs = data.jobs || [];
@@ -886,7 +886,7 @@ async function runLogosDetected() {
   try {
     const r = await fetch(`${BACKEND}/api/admin/github/dispatch`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ workflow: 'enrich-app-logos.yml', inputs: dry ? { dry_run: true } : {} }),
     });
     const data = await r.json().catch(() => ({}));
@@ -911,7 +911,7 @@ function quickDispatch(file, btn) {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> …';
   fetch(`${BACKEND}/api/admin/github/dispatch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
     body: JSON.stringify({ workflow: file }),
   })
     .then(r => r.json().catch(() => ({})))
@@ -956,7 +956,7 @@ async function saveGhSecret() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/secrets`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ name, value }),
     });
     const data = await res.json();
@@ -1020,7 +1020,7 @@ async function saveGhVariable() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/github/variables`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ name, value }),
     });
     const data = await res.json();
@@ -1066,7 +1066,7 @@ let _ghIssState = 'open';
 
 async function ghApi(path, opts) {
   const res = await fetch(BACKEND + path, Object.assign({
-    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
   }, opts || {}));
   let data = {};
   try { data = await res.json(); } catch (e) { data = {}; }
@@ -1937,7 +1937,7 @@ async function extractIcon(appId) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ sourceUrl, filename: appId }),
     });
     const d = await res.json();
@@ -1995,7 +1995,7 @@ async function saveRow(appId) {
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps/${appId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
@@ -2045,7 +2045,7 @@ async function sendAppUpdatePush(app, body) {
     // /api/push/notify requiere un endpoint único y no sirve aquí).
     const res = await fetch(BACKEND + '/api/admin/push/broadcast', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body:    JSON.stringify(payload),
     });
 
@@ -2477,7 +2477,7 @@ async function extractIconNew() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/extract-icon`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ sourceUrl, filename: appIdVal }),
     });
     const d = await res.json();
@@ -2518,7 +2518,7 @@ async function createApp() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/apps`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error((await res.json()).error);
@@ -2546,7 +2546,7 @@ async function safeJson(res) {
 async function postAdminSeed(apps, isRetry) {
   const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
     body: JSON.stringify({ apps }),
   });
   const data = await safeJson(seedRes);
@@ -2619,7 +2619,7 @@ async function markRequest(id, status) {
   try {
     await fetch(`${BACKEND}/api/requests/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ status }),
     });
     toast(status === 'done' ? '✅ Marcada como agregada' : '🗑️ Rechazada');
@@ -2841,7 +2841,7 @@ async function runDbScript() {
   try {
     const res = await fetch(`${BACKEND}/api/admin/db/run`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ..._adminHeaders() },
+      headers: { 'Content-Type': 'application/json', ...adminHeaders() },
       body: JSON.stringify({ target: dbTarget, content }),
     });
     const data = await res.json();
@@ -3265,3 +3265,216 @@ function toast(m) {
       if (status) status.textContent = 'Error: ' + e.message;
     });
   }
+// ═══════════════════════════════════════════════════════════
+// MONITOREO Y SIMULACROS DE SISMO (admin-hub)
+// ═══════════════════════════════════════════════════════════
+
+let _quakeDevices = [];
+
+async function loadQuakeDevices() {
+  const listEl = document.getElementById('quake-devices-list');
+  const summaryEl = document.getElementById('quake-devices-summary');
+  const targetSel = document.getElementById('quake-sim-target');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:1rem">Cargando dispositivos...</div>';
+  try {
+    const res = await fetch(BACKEND + '/api/admin/quake-devices', { headers: adminHeaders() });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Error');
+    _quakeDevices = data.devices || [];
+    renderQuakeDevices(_quakeDevices);
+    if (summaryEl) summaryEl.textContent = _quakeDevices.length + ' dispositivo(s) registrado(s)';
+    // Update target selector
+    if (targetSel) {
+      targetSel.innerHTML = '<option value="all">Todos los dispositivos (' + _quakeDevices.length + ')</option>';
+      _quakeDevices.forEach(function(d, i) {
+        const label = (d.city || 'Sin ciudad') + ' · v' + (d.app_version || '?') + ' · ' + (d.platform || 'android');
+        const opt = document.createElement('option');
+        opt.value = d.token;
+        opt.textContent = label;
+        targetSel.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    listEl.innerHTML = '<div style="color:#ff6b6b;font-size:.78rem;text-align:center;padding:1rem">Error: ' + e.message + '</div>';
+    if (summaryEl) summaryEl.textContent = 'Error cargando dispositivos';
+  }
+}
+
+function renderQuakeDevices(devices) {
+  const listEl = document.getElementById('quake-devices-list');
+  if (!listEl) return;
+  if (devices.length === 0) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:1rem">No hay dispositivos registrados</div>';
+    return;
+  }
+  let html = '';
+  devices.forEach(function(d) {
+    const city = d.city || 'Sin ubicación';
+    const country = d.country || '';
+    const ver = d.app_version || '?';
+    const plat = d.platform || 'android';
+    const updated = d.updated_at ? new Date(d.updated_at).toLocaleString('es') : '—';
+    const coords = (d.lat && d.lon) ? d.lat.toFixed(2) + ', ' + d.lon.toFixed(2) : 'Sin coords';
+    html += '<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border-bottom:1px solid var(--border);font-size:.78rem">';
+    html += '<div style="width:36px;height:36px;border-radius:10px;background:rgba(255,107,107,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas fa-mobile-screen" style="color:#ff6b6b"></i></div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:600;color:var(--text)">' + city + (country ? ', ' + country : '') + '</div>';
+    html += '<div style="font-size:.68rem;color:var(--muted);font-family:var(--mono)">' + coords + ' · v' + ver + ' · ' + plat + '</div>';
+    html += '<div style="font-size:.65rem;color:var(--muted)">Actualizado: ' + updated + '</div>';
+    html += '</div>';
+    html += '<button class="blog-btn-sec" style="padding:.3rem .6rem;font-size:.68rem" onclick="sendQuakeSimSingle(\'' + d.token + '\')"><i class="fas fa-bolt"></i> Test</button>';
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+}
+
+async function sendQuakeSim() {
+  const mag = parseFloat(document.getElementById('quake-sim-mag').value) || 5.5;
+  const dist = parseFloat(document.getElementById('quake-sim-dist').value) || 45;
+  const dir = document.getElementById('quake-sim-dir').value;
+  const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
+  const target = document.getElementById('quake-sim-target').value;
+  const isReal = document.getElementById('quake-sim-real').checked;
+  const btn = document.getElementById('quake-sim-send-btn');
+  const resultEl = document.getElementById('quake-sim-result');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+  resultEl.textContent = '';
+
+  try {
+    let res, data;
+    if (target === 'all') {
+      res = await fetch(BACKEND + '/api/admin/quake-test', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+      });
+      data = await res.json();
+      if (data.ok) {
+        resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado a ' + data.sent + ' dispositivo(s)</span>' + (data.failed > 0 ? ' · ' + data.failed + ' fallaron' : '');
+        addToQuakeHistory(mag, dist, dir, place, isReal, data.sent);
+      } else {
+        resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.error || 'desconocido') + '</span>';
+      }
+    } else {
+      res = await fetch(BACKEND + '/api/admin/quake-test-single', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ token: target, magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+      });
+      data = await res.json();
+      if (data.ok) {
+        resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado correctamente</span>';
+        addToQuakeHistory(mag, dist, dir, place, isReal, 1);
+      } else {
+        resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.reason || data.error || 'desconocido') + '</span>';
+      }
+    }
+  } catch (e) {
+    resultEl.innerHTML = '<span style="color:#ff6b6b">Error de red: ' + e.message + '</span>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-bolt"></i> Enviar simulacro';
+}
+
+async function sendQuakeSimSingle(token) {
+  const mag = parseFloat(document.getElementById('quake-sim-mag').value) || 5.5;
+  const dist = parseFloat(document.getElementById('quake-sim-dist').value) || 45;
+  const dir = document.getElementById('quake-sim-dir').value;
+  const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
+  const isReal = document.getElementById('quake-sim-real').checked;
+
+  try {
+    const res = await fetch(BACKEND + '/api/admin/quake-test-single', {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({ token: token, magnitude: mag, distance: dist, direction: dir, place: place, simulate: !isReal })
+    });
+    const data = await res.json();
+    const resultEl = document.getElementById('quake-sim-result');
+    if (data.ok) {
+      if (resultEl) resultEl.innerHTML = '<span style="color:var(--g)">✓ Enviado al dispositivo</span>';
+      addToQuakeHistory(mag, dist, dir, place, isReal, 1);
+    } else {
+      if (resultEl) resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + (data.reason || data.error || 'desconocido') + '</span>';
+    }
+  } catch (e) {
+    const resultEl = document.getElementById('quake-sim-result');
+    if (resultEl) resultEl.innerHTML = '<span style="color:#ff6b6b">Error: ' + e.message + '</span>';
+  }
+}
+
+function previewQuakeSim() {
+  const mag = parseFloat(document.getElementById('quake-sim-mag').value) || 5.5;
+  const dist = parseFloat(document.getElementById('quake-sim-dist').value) || 45;
+  const dir = document.getElementById('quake-sim-dir').value;
+  const place = document.getElementById('quake-sim-place').value || 'Simulacro - CodeHub';
+  const isReal = document.getElementById('quake-sim-real').checked;
+  // Show a preview overlay in the browser
+  let overlay = document.getElementById('quake-preview-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'quake-preview-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a14;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;font-family:system-ui,sans-serif;color:#f2f5fa';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = '<div style="text-align:center;max-width:400px">' +
+    '<div style="font-size:3rem;margin-bottom:1rem">⚠️</div>' +
+    '<div style="font-size:1.5rem;font-weight:800;color:#ff6b6b;margin-bottom:.5rem">' + (isReal ? 'ALERTA DE SISMO' : '🧪 SIMULACRO DE SISMO') + '</div>' +
+    '<div style="font-size:4rem;font-weight:800;font-family:monospace;color:#ff6b6b;margin:1rem 0">M ' + mag.toFixed(1) + '</div>' +
+    '<div style="font-size:1.1rem;margin-bottom:.25rem">a ' + Math.round(dist) + ' km ' + dir + ' de tu ubicación</div>' +
+    '<div style="font-size:.85rem;color:#8b93a7;margin-bottom:1.5rem">' + place + '</div>' +
+    (isReal ? '' : '<div style="background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);border-radius:12px;padding:.75rem;margin-bottom:1.5rem;color:#ffd700;font-weight:700">⚠️ SIMULACRO — Esto es una prueba. No hay sismo real.</div>') +
+    '<div style="background:#14142a;border:1px solid #1a1a2e;border-radius:12px;padding:1rem;margin-bottom:1rem;text-align:left">' +
+    '<div style="font-weight:700;margin-bottom:.5rem">Qué hacer ahora:</div>' +
+    '<div style="margin-bottom:.4rem">1. <b>AGÁCHATE</b> — Ponte de rodillas</div>' +
+    '<div style="margin-bottom:.4rem">2. <b>CÚBRETE</b> — Protege cabeza y cuello</div>' +
+    '<div>3. <b>AGÁRRATE</b> — Sujétate firmemente</div>' +
+    '</div>' +
+    '<button onclick="document.getElementById(\'quake-preview-overlay\').remove()" style="padding:.75rem 2rem;background:#ff6b6b;border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer">Cerrar vista previa</button>' +
+    '</div>';
+  overlay.style.display = 'flex';
+}
+
+function addToQuakeHistory(mag, dist, dir, place, isReal, count) {
+  const listEl = document.getElementById('quake-history-list');
+  if (!listEl) return;
+  const now = new Date().toLocaleString('es');
+  const entry = document.createElement('div');
+  entry.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-bottom:1px solid var(--border);font-size:.75rem';
+  entry.innerHTML = '<div style="width:32px;height:32px;border-radius:8px;background:' + (isReal ? 'rgba(255,107,107,.15)' : 'rgba(255,215,0,.15)') + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><i class="fas ' + (isReal ? 'fa-triangle-exclamation' : 'fa-flask') + '" style="color:' + (isReal ? '#ff6b6b' : '#ffd700') + '"></i></div>' +
+    '<div style="flex:1;min-width:0">' +
+    '<div style="font-weight:600">' + (isReal ? 'Alerta real' : 'Simulacro') + ' M' + mag.toFixed(1) + ' · ' + Math.round(dist) + 'km ' + dir + '</div>' +
+    '<div style="font-size:.65rem;color:var(--muted)">' + place + ' · ' + count + ' dispositivo(s) · ' + now + '</div>' +
+    '</div>';
+  if (listEl.firstChild && listEl.firstChild.textContent.includes('Sin alertas')) listEl.innerHTML = '';
+  listEl.insertBefore(entry, listEl.firstChild);
+}
+
+function exportQuakeDevices() {
+  if (_quakeDevices.length === 0) { alert('No hay dispositivos para exportar'); return; }
+  const csv = 'Ciudad,País,Coords,Versión,Plataforma,Actualizado\n' +
+    _quakeDevices.map(function(d) {
+      return (d.city||'') + ',' + (d.country||'') + ',' + (d.lat||'') + ',' + (d.lon||'') + ',' + (d.app_version||'') + ',' + (d.platform||'') + ',' + (d.updated_at||'');
+    }).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'quake-devices.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Auto-load devices when quake tab is activated
+const _origSwitchTab = (typeof switchTab === 'function') ? switchTab : null;
+if (_origSwitchTab) {
+  // Wrap to auto-load quake devices
+  const _wrappedSwitchTab = function(tab, btn) {
+    _origSwitchTab(tab, btn);
+    if (tab === 'quake') setTimeout(loadQuakeDevices, 100);
+  };
+  // Replace globally
+  window.switchTab = _wrappedSwitchTab;
+}
+

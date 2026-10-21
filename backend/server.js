@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CodeHub Backend v3.1 — Wilson.E 2026
  * ─────────────────────────────────────────────────────────────
  * ✅ WebSockets — notificaciones en tiempo real
@@ -2279,6 +2279,91 @@ app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
   }
 });
 
+// ── GET /api/admin/quake-devices - Dispositivos con alerta de sismo ──
+app.get('/api/admin/quake-devices', requireAdmin, async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
+  try {
+    const { data, error } = await supabase
+      .from('fcm_tokens')
+      .select('token, lat, lon, city, country, app_name, app_version, platform, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    res.json({ ok: true, devices: data || [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── POST /api/admin/quake-test - Enviar simulacro de sismo a dispositivos ──
+app.post('/api/admin/quake-test', requireAdmin, async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
+  const { magnitude, distance, direction, place, tokens, simulate } = req.body || {};
+  const mag = parseFloat(magnitude) || 5.5;
+  const dist = parseFloat(distance) || 50;
+  const dir = direction || 'N';
+  const pl = place || 'Simulacro de sismo - CodeHub';
+  const isSim = simulate !== false;
+
+  try {
+    let targetTokens = [];
+    if (Array.isArray(tokens) && tokens.length > 0) {
+      targetTokens = tokens;
+    } else {
+      const { data } = await supabase.from('fcm_tokens').select('token');
+      targetTokens = (data || []).map(r => r.token).filter(Boolean);
+    }
+
+    if (targetTokens.length === 0) {
+      return res.json({ ok: true, sent: 0, message: 'No hay dispositivos registrados' });
+    }
+
+    const results = [];
+    for (const token of targetTokens) {
+      const payload = {
+        title: isSim ? '🧪 SIMULACRO DE SISMO' : '⚠️ ALERTA DE SISMO',
+        body: `M ${mag.toFixed(1)} a ${Math.round(dist)} km ${dir} de tu ubicación`,
+        type: isSim ? 'quake_sim' : 'quake_alert',
+        mag: mag,
+        dist: dist,
+        dir: dir,
+        place: pl,
+        time: Date.now(),
+      };
+      const r = await sendFCM(token, payload);
+      results.push({ token: token.slice(0, 12) + '...', ok: r.ok, reason: r.reason || r.code || null });
+    }
+
+    const sent = results.filter(r => r.ok).length;
+    const failed = results.filter(r => !r.ok).length;
+    res.json({ ok: true, sent, failed, total: targetTokens.length, results });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ── POST /api/admin/quake-test-single - Enviar a un solo dispositivo ──
+app.post('/api/admin/quake-test-single', requireAdmin, async (req, res) => {
+  const { token, magnitude, distance, direction, place, simulate } = req.body || {};
+  if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
+  const mag = parseFloat(magnitude) || 5.5;
+  const dist = parseFloat(distance) || 50;
+  const dir = direction || 'N';
+  const pl = place || 'Simulacro de sismo - CodeHub';
+  const isSim = simulate !== false;
+
+  const payload = {
+    title: isSim ? '🧪 SIMULACRO DE SISMO' : '⚠️ ALERTA DE SISMO',
+    body: `M ${mag.toFixed(1)} a ${Math.round(dist)} km ${dir} de tu ubicación`,
+    type: isSim ? 'quake_sim' : 'quake_alert',
+    mag: mag,
+    dist: dist,
+    dir: dir,
+    place: pl,
+    time: Date.now(),
+  };
+  const r = await sendFCM(token, payload);
+  res.json({ ok: r.ok, reason: r.reason || r.code || null, message: r.message || null });
+});
 // Info WebSocket para el frontend
 app.get('/api/ws-info', (_, res) => res.json({
   clients: wsClients.size,
@@ -5825,7 +5910,14 @@ async function sendFCM(token, payload) {
     await (adminMessagingRef || admin.messaging()).send({
       token: token,
       notification: { title: payload.title, body: payload.body },
-      data: { type: payload.type || 'general', url: payload.url || '/' },
+      data: Object.assign({ type: payload.type || 'general', url: payload.url || '/' },
+        payload.type && payload.type.startsWith('quake') ? {
+          mag: String(payload.mag || 0),
+          dist: String(payload.dist || 0),
+          dir: payload.dir || 'N',
+          place: payload.place || '',
+          time: String(payload.time || Date.now()),
+        } : {}),
       android: {
         // priority: 'high' — despierta el dispositivo incluso en Doze
         // profundo. Sin esto Android puede demorar la entrega hasta
@@ -5833,7 +5925,8 @@ async function sendFCM(token, payload) {
         // tiempo, dando la falsa impresión de que "no está despierta".
         priority: 'high',
         notification: {
-          channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
+          channelId: payload.type === 'weather' ? 'codehub_weather'
+            : (payload.type && payload.type.startsWith('quake') ? 'codehub_quakes' : 'codehub_updates'),
           icon: 'ic_launcher_real',
           color: '#00ff88',
         },

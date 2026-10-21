@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -90,6 +90,20 @@
                 <data android:scheme="https" android:host="wilson360-labs.vercel.app" />
                 <data android:scheme="http" android:host="wilson360-labs.vercel.app" />
             </intent-filter>
+        </activity>
+
+
+        <!-- Pantalla completa de alerta de sismo (real o simulacro).
+             Se muestra encima del bloqueo y despierta la pantalla. -->
+        <activity
+            android:name=".EarthquakeAlertActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.CodeHub"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="stateHidden">
         </activity>
 
         <!-- Historial y gestión de descargas (abierto desde el panel de

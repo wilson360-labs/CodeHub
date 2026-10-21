@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
@@ -544,6 +544,7 @@
     <button class="admin-tab" onclick="switchTab('status',this)"><i class="fas fa-signal"></i> <span>Status</span></button>
     <button class="admin-tab" onclick="switchTab('live',this)"><i class="fas fa-broadcast-tower"></i> <span>En Vivo</span></button>
     <button class="admin-tab" onclick="switchTab('push',this)"><i class="fas fa-bell"></i> <span>Push</span></button>
+    <button class="admin-tab" onclick="switchTab('quake',this)"><i class="fas fa-house-crack"></i> <span>Sismos</span></button>
     <button class="admin-tab" onclick="switchTab('dbrun',this)"><i class="fas fa-server"></i> <span>Base de Datos</span></button>
     <button class="admin-tab" onclick="switchTab('github',this)"><i class="fas fa-brands fa-github"></i> <span>GitHub</span></button>
     <button class="admin-tab" onclick="switchTab('config',this)"><i class="fas fa-gear"></i> <span>Config</span></button>
@@ -762,6 +763,82 @@
           <button class="blog-btn-sec" type="button" onclick="loadReleasesList()"><i class="fas fa-clock-rotate-left"></i> Ver publicados</button>
         </div>
         <div id="release-list" style="margin-top:1rem"></div>
+      </div>
+    </div>
+
+    <!-- TAB: SISMOS (MONITOREO + SIMULACROS) -->
+    <div class="tab-panel" id="tab-quake">
+      <div class="section-title"><i class="fas fa-house-crack"></i> Monitoreo de Alertas de Sismo</div>
+
+      <!-- Dispositivos registrados -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="blog-tip"><i class="fas fa-circle-info"></i><span>Dispositivos con CodeHub instalado y token FCM registrado. Cada uno recibe alertas de sismo (M≥4.5 a ≤1200 km) y puede recibir simulacros desde aquí.</span></div>
+        <div class="blog-actions" style="margin-bottom:.75rem">
+          <button class="blog-btn-primary" type="button" onclick="loadQuakeDevices()"><i class="fas fa-rotate"></i> Actualizar lista</button>
+          <button class="blog-btn-sec" type="button" onclick="exportQuakeDevices()"><i class="fas fa-download"></i> Exportar</button>
+        </div>
+        <div id="quake-devices-summary" style="font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:.75rem">Cargando...</div>
+        <div id="quake-devices-list" style="max-height:400px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Enviar simulacro / alerta de prueba -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="section-title" style="margin-bottom:.75rem"><i class="fas fa-flask"></i> Enviar Simulacro de Sismo</div>
+        <div class="blog-tip"><i class="fas fa-triangle-exclamation"></i><span>Envía una alerta de prueba a los dispositivos seleccionados. En el dispositivo se muestra la pantalla completa de alerta de sismo (igual que en un evento real) con el banner "SIMULACRO". No afecta alertas reales.</span></div>
+        <div class="blog-grid-2">
+          <div>
+            <div class="blog-label">Magnitud (M)</div>
+            <input class="blog-input" id="quake-sim-mag" type="number" step="0.1" min="3.0" max="9.0" value="5.5" placeholder="5.5">
+          </div>
+          <div>
+            <div class="blog-label">Distancia (km)</div>
+            <input class="blog-input" id="quake-sim-dist" type="number" step="1" min="1" max="1200" value="45" placeholder="45">
+          </div>
+        </div>
+        <div class="blog-grid-2" style="margin-top:.75rem">
+          <div>
+            <div class="blog-label">Dirección</div>
+            <select class="blog-input" id="quake-sim-dir" style="appearance:auto">
+              <option value="N">Norte</option>
+              <option value="NE">Noreste</option>
+              <option value="E">Este</option>
+              <option value="SE">Sureste</option>
+              <option value="S">Sur</option>
+              <option value="SO">Suroeste</option>
+              <option value="O">Oeste</option>
+              <option value="NO">Noroeste</option>
+            </select>
+          </div>
+          <div>
+            <div class="blog-label">Lugar</div>
+            <input class="blog-input" id="quake-sim-place" type="text" value="Simulacro - CodeHub" placeholder="Ej: Cerca de Lima, Perú">
+          </div>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="blog-label">Destino</div>
+          <select class="blog-input" id="quake-sim-target" style="appearance:auto">
+            <option value="all">Todos los dispositivos</option>
+          </select>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer">
+            <input type="checkbox" id="quake-sim-real" style="accent-color:var(--p)">
+            <span>Modo alerta real (sin banner de simulacro)</span>
+          </label>
+        </div>
+        <div class="blog-actions" style="margin-top:.75rem">
+          <button class="blog-btn-primary" id="quake-sim-send-btn" type="button" onclick="sendQuakeSim()"><i class="fas fa-bolt"></i> Enviar simulacro</button>
+          <button class="blog-btn-sec" type="button" onclick="previewQuakeSim()"><i class="fas fa-eye"></i> Vista previa (solo web)</button>
+        </div>
+        <div id="quake-sim-result" style="margin-top:.9rem;font-size:.72rem;color:var(--muted);font-family:var(--mono)"></div>
+      </div>
+
+      <!-- Historial de alertas enviadas -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:.75rem"><i class="fas fa-clock-rotate-left"></i> Historial de Alertas</div>
+        <div id="quake-history-list" style="max-height:300px;overflow-y:auto">
+          <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:1rem">Sin alertas enviadas aún</div>
+        </div>
       </div>
     </div>
 

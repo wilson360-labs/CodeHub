@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pantalla completa de alerta de sismo — estilo One UI de CodeHub.
+     Se muestra encima de la app y del bloqueo cuando se detecta un sismo
+     grande (o en modo simulacro). -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0A14"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- Barra de alerta superior -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_quake_alert_bar"
+            android:padding="16dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:gravity="center"
+                android:text="⚠️"
+                android:textSize="28sp"
+                android:background="@drawable/bg_quake_icon_bubble" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:id="@+id/quake_alert_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ALERTA DE SISMO"
+                    android:textColor="#FF6B6B"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.05" />
+
+                <TextView
+                    android:id="@+id/quake_alert_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sismo detectado cerca de tu ubicación"
+                    android:textColor="#AAB1C4"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Magnitud grande -->
+        <TextView
+            android:id="@+id/quake_alert_mag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="M 5.2"
+            android:textColor="#FF6B6B"
+            android:textSize="64sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Distancia y dirección -->
+        <TextView
+            android:id="@+id/quake_alert_distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="a 45 km al noroeste de tu ubicación"
+            android:textColor="#F2F5FA"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
+
+        <!-- Lugar y hora -->
+        <TextView
+            android:id="@+id/quake_alert_place"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cerca de Lima, Perú · hace 2 min"
+            android:textColor="#8B93A7"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Separador -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#1AFFFFFF"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Instrucciones de seguridad -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Qué hacer ahora"
+            android:textColor="#F2F5FA"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Paso 1: Agacharse -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_quake_step"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="#FF6B6B"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_quake_step_num" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AGÁCHATE"
+                    android:textColor="#F2F5FA"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Ponte de rodillas o cuclillas para evitar caídas"
+                    android:textColor="#8B93A7"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Paso 2: Cubrirse -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_quake_step"
+            android:padding="14dp"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="2"
+                android:textColor="#FF6B6B"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_quake_step_num" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CÚBRETE"
+                    android:textColor="#F2F5FA"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Protege cabeza y cuello con brazos. Busca mesa o escritorio"
+                    android:textColor="#8B93A7"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Paso 3: Agarrarse -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_quake_step"
+            android:padding="14dp"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="#FF6B6B"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_quake_step_num" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AGÁRRATE"
+                    android:textColor="#F2F5FA"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Sujétate firmemente hasta que termine el movimiento"
+                    android:textColor="#8B93A7"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Advertencia si es simulacro -->
+        <TextView
+            android:id="@+id/quake_alert_sim"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="⚠️ SIMULACRO — Esto es una prueba. No hay sismo real."
+            android:textColor="#FFD700"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/bg_quake_sim_banner"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone" />
+
+        <!-- Botón "Estoy bien" -->
+        <TextView
+            android:id="@+id/quake_alert_safe"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:text="Estoy bien — cerrar alerta"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_quake_safe_btn"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Contactos de emergencia -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Contactos de emergencia: 115 (INDECI) · 105 (Policía) · 116 (Bomberos)"
+            android:textColor="#666F82"
+            android:textSize="10sp"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Fuente -->
+        <TextView
+            android:id="@+id/quake_alert_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fuente: USGS · CodeHub"
+            android:textColor="#444F62"
+            android:textSize="9sp"
+            android:gravity="center" />
+
+    </LinearLayout>
+</ScrollView>

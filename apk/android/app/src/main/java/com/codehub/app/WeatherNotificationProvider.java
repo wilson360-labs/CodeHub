@@ -328,6 +328,18 @@ public class WeatherNotificationProvider {
                 + " · hace " + (agoMin < 90 ? agoMin + " min" : localTime(time))
                 + " · profundidad " + Math.round(quake.optDouble("depth", 0)) + " km";
 
+            // Pantalla completa para sismos grandes (M≥ umbral configurable, default 5.0)
+            float threshold = 5.0f;
+            try {
+                threshold = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                        .getFloat("quake_fullscreen_mag", 5.0f);
+            } catch (Exception ignored) {}
+            if (mag >= threshold) {
+                try {
+                    EarthquakeAlertActivity.launch(context, mag, dist, dir, place, time, false);
+                } catch (Exception ignored) {}
+            }
+
             Intent open = new Intent(context, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             PendingIntent pi = PendingIntent.getActivity(context, 3002, open,

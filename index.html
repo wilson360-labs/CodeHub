@@ -1528,6 +1528,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                 </div>
                 <div class="sismos-alerts-hint">Alertas inteligentes por país: usa tu ubicación precisa para avisarte sismos ≥ el umbral en tu país (o dentro de un radio de 300 km), con consejos de seguridad.</div>
             </div>
+            </div>
+
+            <!-- Simulacro de sismo (solo en la app nativa) -->
+            <div class="sismos-alerts" id="sismos-sim-box" style="margin-top:.5rem">
+                <div class="sismos-alerts-row">
+                    <div class="wx-alerts-toggle" id="sismos-sim-toggle" onclick="chTriggerQuakeSim()" title="Lanza una pantalla completa de alerta de sismo para probar el sistema">
+                        <span class="wx-alerts-icon"><i class="fas fa-flask" data-fa-wx-icon></i></span>
+                        <span class="wx-alerts-text">Simulacro de sismo (prueba)</span>
+                        <span class="wx-switch"><span class="wx-switch-knob"></span></span>
+                    </div>
+                </div>
+                <div class="sismos-alerts-hint">Disponible solo en la app Android. Lanza la pantalla completa de alerta de sismo con recomendaciones de seguridad para que veas como se veria una alerta real.</div>
+            </div>
 
             <div class="sismos-summary" id="sismos-summary">
                 <span id="sismos-count-chip">Cargando sismos…</span>
@@ -3406,6 +3419,21 @@ function chSetSeismicMag(m, btn) {
   });
   chSeismicPushSettings();
   if (typeof toast === 'function') toast('Te avisará de sismos M' + m + '+ cerca de ti', 'seismic', 2400);
+}
+
+/* Simulacro de sismo - lanza la pantalla completa de alerta en la app nativa */
+function chTriggerQuakeSim() {
+  var mag = 5.5, dist = 45, dir = 'NO', place = 'Simulacro - CodeHub';
+  try {
+    if (window.CodeHubNative && typeof window.CodeHubNative.triggerQuakeSimulation === 'function') {
+      window.CodeHubNative.triggerQuakeSimulation(mag, dist, dir, place);
+      if (typeof toast === 'function') toast('Simulacro enviado a la app', 'seismic', 2000);
+    } else {
+      if (typeof toast === 'function') toast('Solo disponible en la app Android', 'info', 2500);
+    }
+  } catch (e) {
+    if (typeof toast === 'function') toast('No se pudo lanzar el simulacro', 'error', 2000);
+  }
 }
 
 /* Reflejar el estado guardado del toggle/umbral sísmico en la UI */

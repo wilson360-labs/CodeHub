@@ -44,6 +44,20 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
         if (title == null || title.isEmpty()) title = "CodeHub";
         if (body == null) body = "";
 
+        // Alerta de sismo (real o simulacro): lanzar pantalla completa
+        if (type.equals("quake_alert") || type.equals("quake_sim")) {
+            try {
+                float mag = Float.parseFloat(message.getData().getOrDefault("mag", "5.0"));
+                double dist = Double.parseDouble(message.getData().getOrDefault("dist", "50"));
+                String dir = message.getData().getOrDefault("dir", "N");
+                String place = message.getData().getOrDefault("place", "Sismo detectado");
+                long time = Long.parseLong(message.getData().getOrDefault("time", String.valueOf(System.currentTimeMillis())));
+                boolean sim = type.equals("quake_sim");
+                EarthquakeAlertActivity.launch(getApplicationContext(), mag, dist, dir, place, time, sim);
+            } catch (Exception ignored) {}
+            return; // no mostrar notificación normal, la pantalla completa es la alerta
+        }
+
         String channelId;
         int notifId;
         switch (type) {
