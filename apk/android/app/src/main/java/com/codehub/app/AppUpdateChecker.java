@@ -96,7 +96,7 @@ public class AppUpdateChecker {
      * Chequeo de diagnostico: devuelve un JSON con el estado (sin throttle,
      * sin dialogo). Usado por el boton "Verificar actualizacion".
      */
-    public static String checkStatus(final MainActivity activity) {
+    public static String checkStatus(final Context context) {
         org.json.JSONObject out = new org.json.JSONObject();
         try {
             org.json.JSONObject release = fetchLatestRelease();
@@ -122,8 +122,8 @@ public class AppUpdateChecker {
             }
             String local = "0";
             try {
-                local = activity.getPackageManager()
-                        .getPackageInfo(activity.getPackageName(), 0).versionName;
+                local = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0).versionName;
             } catch (Exception ignored) {}
             boolean hasUpdate = isNewer(remote, local);
             out.put("ok", true);
