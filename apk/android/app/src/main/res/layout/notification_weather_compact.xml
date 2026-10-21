@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget del clima en notificaciones — vista COMPACTA (colapsada):
+  una sola fila pro: astro pintado + "17° Nublado · Sens. 19°" + ciudad.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="9dp"
+    android:paddingBottom="9dp"
+    android:background="@drawable/bg_notif_weather">
+
+    <ImageView
+        android:id="@+id/n_c_icon"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:scaleType="centerInside" />
+
+    <TextView
+        android:id="@+id/n_c_main"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:minWidth="0dp"
+        android:layout_marginStart="10dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF" />
+
+    <TextView
+        android:id="@+id/n_c_side"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:maxWidth="120dp"
+        android:textSize="10sp"
+        android:textColor="#FF8892A4" />
+</LinearLayout>

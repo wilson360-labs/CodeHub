@@ -37,22 +37,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Widget de clima DENTRO del panel de notificaciones (Android).
  *
- * Es la notificación persistente elegante de CodeHub:
- * - Estilo propio (RemoteViews con layout notification_weather.xml):
- *   astro pintado en canvas (sol/luna/nube/lluvia/ tormenta/nieve/niebla —
- *   la misma familia del widget del launcher), ciudad, temperatura, marcante
- *   condición + sensación, chips (humedad · viento · lluvia) y fila de
- *   SISMOS con magnitud, distancia y rumbo DESDE tu ubicación (haversine).
- * - La ubicación se toma EXACTAMENTE de donde el app guarda la real
- *   (prefs "codehub": lat_bits / lon_bits / widget_city — lo mismo que
- *   escribe el puente saveLocation y CodeHubSyncWorker cada 15 min).
- *   Sin ubicación: no se publica nada (nunca datos falsos).
- * - ALARMA de sismos: si aparece un M≥4.5 a ≤1200 km que no sonó antes,
- *   dispara una notificación aparte (canal heads-up) con la distancia.
- * - Vive en canal IMPORTANCE_LOW: sin sonido, sin badge, ongoing.
+ * La notificación persistente elegante de CodeHub — dos vistas:
+ * - COMPACTA (colapsada): astro pintado + "17° Nublado · Sens. 19°" + ciudad.
+ * - EXPANDIDA (grande): header astro+ciudad+hora, temperatura 34sp,
+ *   condición + sensación, PRONÓSTICO POR HORAS (4 slots con astritos
+ *   pintados vía canvas) y fila de SISMOS con magnitud, distancia y
+ *   rumbo (haversine) desde la ubicación guardada.
+ * - Fuente de datos: Open-Meteo (current + hourly + daily sunrise/sunset);
+ *   sismos: USGS (público, sin key).
+ * - La ubicación viene de las prefs "codehub" (lat_bits/lon_bits — lo que
+ *   escribe chSavePushLocation → CodeHubNative.saveLocation y el sync).
+ *   Sin ubicación real: no se publica nada (nunca datos falsos).
+ * - ALARMA de sismos: M ≥ 4.5 a ≤1200 km no vista antes → heads-up aparte.
  *
- * Se refresca: en cada arranque (MainActivity), en cada ciclo del sync
- * (CodeHubSyncWorker) y tras reiniciar el equipo (BootReceiver).
+ * CADENCIA de refresco: al abrir la app (MainActivity.onCreate), en cada
+ * ciclo del sync nativo (CodeHubSyncWorker — WorkManager, ~15 min) y tras
+ * reiniciar (BootReceiver). El HH:mm mostrado es la marca "actualizado":
+ * Android limita los ciclos periódicos a un mínimo de 15 minutos.
  */
 public class WeatherNotificationProvider {
 
@@ -72,6 +73,8 @@ public class WeatherNotificationProvider {
     private static final int ALERT_RADIUS_KM = 1200;
     private static final long ALERT_WINDOW_MS = 24L * 60 * 60 * 1000;
     private static final double ROW_MAG_MIN = 3.5;  // fila informativa
+
+    private static final int HOUR_SLOTS = 4;
 
     private static final AtomicBoolean sRefreshing = new AtomicBoolean(false);
 
@@ -118,29 +121,40 @@ public class WeatherNotificationProvider {
         // 2) Clima en vivo (Open-Meteo; misma fuente que la tarjeta web).
         JSONObject payload = fetchWeather(lat, lon);
         if (payload != null) {
+            // Conservar el sismo visto en la caché previa hasta que llegue
+            // uno nuevo del refresh (la fila no "destella" a vacío).
+            if (cache != null) {
+                try {
+                    JSONObject oldQ = new JSONObject(cache).optJSONObject("quake");
+                    if (oldQ != null && !payload.has("quake")) payload.put("quake", oldQ);
+                } catch (Throwable ignored) {}
+            }
             prefs.edit().putString(PREF_CACHE, payload.toString()).apply();
             paintFromPayload(context, payload, lat, lon, city, false);
-            if (payload.has("quake")) { /* fila ya integrada si viene */ }
         }
 
         // 3) Sismos: la fila del widget Y la alarma se evalúan aunque el
         //    clima haya fallado (no se pierde un sismo grande por un 500).
         JSONObject quake = fetchQuake(lat, lon);
         if (quake != null) {
+            boolean painted = false;
             if (payload == null && cache != null) {
-                // Repintar la fila de sismos sobre la caché del clima.
                 try {
                     JSONObject cached = new JSONObject(cache);
                     cached.put("quake", quake);
                     prefs.edit().putString(PREF_CACHE, cached.toString()).apply();
                     paintFromPayload(context, cached, lat, lon, city, true);
+                    painted = true;
                 } catch (Throwable ignored) {}
-            } else if (payload == null) {
+            }
+            if (!painted && payload == null) {
                 try {
-                    JSONObject solo = new JSONObject();
-                    solo.put("at", System.currentTimeMillis());
-                    solo.put("quake", quake);
-                    paintFromPayload(context, solo, lat, lon, city, true);
+                    JSONObject merged = (cache != null && new JSONObject(cache).has("code"))
+                        ? new JSONObject(cache) : new JSONObject();
+                    merged.put("at", System.currentTimeMillis());
+                    merged.put("quake", quake);
+                    prefs.edit().putString(PREF_CACHE, merged.toString()).apply();
+                    paintFromPayload(context, merged, lat, lon, city, true);
                 } catch (Throwable ignored) {}
             }
             evalQuakeAlarm(context, quake, lat, lon);
@@ -163,21 +177,18 @@ public class WeatherNotificationProvider {
             long at = payload.optLong("at", System.currentTimeMillis());
 
             JSONObject q = payload.optJSONObject("quake");
-
-            RemoteViews views = new RemoteViews(context.getPackageName(),
-                R.layout.notification_weather);
+            JSONArray hours = payload.optJSONArray("hours");
 
             Bitmap astro = paintAstro(code, day);
-            if (astro != null) views.setImageViewBitmap(R.id.n_w_icon, astro);
-
-            views.setTextViewText(R.id.n_w_city,
-                (city != null && !city.isEmpty()) ? city : "Mi ubicación");
             SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            views.setTextViewText(R.id.n_w_time, fmt.format(new Date(at)));
-            views.setTextViewText(R.id.n_w_temp, Float.isNaN(temp) ? "--°" : Math.round(temp) + "°");
-            views.setTextViewText(R.id.n_w_desc, describe(code, day)
-                + (Float.isNaN(feels) ? "" : " · " + Math.round(feels) + "°"));
+            String timeStr = fmt.format(new Date(at));
+            String cityStr = (city != null && !city.isEmpty()) ? city : "Mi ubicación";
 
+            String tempStr = Float.isNaN(temp) ? "--°" : Math.round(temp) + "°";
+            String condStr = describe(code, day);
+            String feelsStr = Float.isNaN(feels) ? "" : " · Sens. " + Math.round(feels) + "°";
+
+            // Chips: humedad · viento · lluvia %
             StringBuilder data = new StringBuilder();
             if (humidity >= 0) data.append("💧 ").append(humidity).append('%');
             if (!Float.isNaN(wind)) {
@@ -188,7 +199,28 @@ public class WeatherNotificationProvider {
                 if (data.length() > 0) data.append("  ·  ");
                 data.append("☔ ").append(rain).append('%');
             }
-            views.setTextViewText(R.id.n_w_data, data.toString());
+
+            /* ── COMPACTA ── */
+            RemoteViews compact = new RemoteViews(context.getPackageName(),
+                R.layout.notification_weather_compact);
+            if (astro != null) compact.setImageViewBitmap(R.id.n_c_icon, astro);
+            compact.setTextViewText(R.id.n_c_main, condStr.isEmpty()
+                ? tempStr + " · " + cityStr
+                : tempStr + " " + condStr + feelsStr);
+            compact.setTextViewText(R.id.n_c_side, cityStr + " · " + timeStr);
+
+            /* ── EXPANDIDA ── */
+            RemoteViews big = new RemoteViews(context.getPackageName(),
+                R.layout.notification_weather);
+            if (astro != null) big.setImageViewBitmap(R.id.n_w_icon, astro);
+            big.setTextViewText(R.id.n_w_city, cityStr);
+            big.setTextViewText(R.id.n_w_time, cached ? timeStr + " · caché" : timeStr);
+            big.setTextViewText(R.id.n_w_temp, tempStr);
+            big.setTextViewText(R.id.n_w_desc,
+                condStr + (condStr.isEmpty() ? "" : feelsStr));
+            big.setTextViewText(R.id.n_w_data, data.toString());
+
+            fillHourSlots(big, hours);
 
             if (q != null && q.optDouble("mag", -1) > 0) {
                 float mag = (float) q.optDouble("mag", 0);
@@ -199,20 +231,54 @@ public class WeatherNotificationProvider {
                     + " · " + Math.round(dist) + " km " + dir
                     + " · " + when
                     + " · prof. " + Math.round(q.optDouble("depth", 0)) + " km";
-                views.setTextViewText(R.id.n_w_quake, row);
-                views.setViewVisibility(R.id.n_w_quake,
+                big.setTextViewText(R.id.n_w_quake, row);
+                big.setViewVisibility(R.id.n_w_quake,
                     dist <= ALERT_RADIUS_KM ? View.VISIBLE : View.GONE);
             } else {
-                views.setViewVisibility(R.id.n_w_quake, View.GONE);
+                big.setViewVisibility(R.id.n_w_quake, View.GONE);
             }
 
-            notifyWidget(context, buildWidgetNotification(context, views));
+            notifyWidget(context, buildWidgetNotification(context, compact, big));
         } catch (Throwable t) {
             Log.e(TAG, "paintFromPayload falló", t);
         }
     }
 
-    private static Notification buildWidgetNotification(Context context, RemoteViews views) {
+    /** Llena los 4 slots horarios; esconde la fila si no hay datos. */
+    private static void fillHourSlots(RemoteViews big, JSONArray hours) {
+        boolean show = hours != null && hours.length() >= 2;
+        big.setViewVisibility(R.id.n_w_hours, show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        int[][] ids = {
+            {R.id.n_w_h1_icon, R.id.n_w_h1_temp, R.id.n_w_h1_hour},
+            {R.id.n_w_h2_icon, R.id.n_w_h2_temp, R.id.n_w_h2_hour},
+            {R.id.n_w_h3_icon, R.id.n_w_h3_temp, R.id.n_w_h3_hour},
+            {R.id.n_w_h4_icon, R.id.n_w_h4_temp, R.id.n_w_h4_hour},
+        };
+        for (int i = 0; i < HOUR_SLOTS; i++) {
+            JSONObject h = hours.optJSONObject(i);
+            if (h == null) {
+                big.setViewVisibility(ids[i][0], View.INVISIBLE);
+                big.setTextViewText(ids[i][1], "");
+                big.setTextViewText(ids[i][2], "");
+                continue;
+            }
+            Bitmap mini = paintAstro(h.optInt("code", -1), h.optBoolean("day", true));
+            if (mini != null) {
+                big.setImageViewBitmap(ids[i][0], mini);
+                big.setViewVisibility(ids[i][0], View.VISIBLE);
+            } else {
+                big.setViewVisibility(ids[i][0], View.INVISIBLE);
+            }
+            float t = (float) h.optDouble("temp", Double.NaN);
+            big.setTextViewText(ids[i][1], Float.isNaN(t) ? "—" : Math.round(t) + "°");
+            big.setTextViewText(ids[i][2], h.optString("h", ""));
+        }
+    }
+
+    private static Notification buildWidgetNotification(Context context,
+                                                        RemoteViews compact,
+                                                        RemoteViews big) {
         Intent open = new Intent(context, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(context, 2001, open,
@@ -222,7 +288,8 @@ public class WeatherNotificationProvider {
             .setSmallIcon(R.drawable.ic_stat_weather)
             .setContentTitle("Clima · CodeHub")
             .setContentText("Widget del clima en el panel de notificaciones")
-            .setCustomContentView(views)
+            .setCustomContentView(compact)
+            .setCustomBigContentView(big)
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -281,15 +348,19 @@ public class WeatherNotificationProvider {
 
     /* ════════════════════════ DATOS ════════════════════════ */
 
-    /** Payload del widget: "current" de Open-Meteo (con is_day). */
+    /**
+     * Payload del widget: "current" + próximas horas (Open-Meteo) para el
+     * pronóstico, sunrise/sunset del día para saber si cada hora es de día.
+     */
     private static JSONObject fetchWeather(double lat, double lon) {
         HttpURLConnection conn = null;
         try {
             URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat
                 + "&longitude=" + lon
                 + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day"
-                + "&hourly=precipitation_probability"
-                + "&forecast_hours=6&timezone=auto");
+                + "&hourly=temperature_2m,weather_code,precipitation_probability&forecast_hours=6"
+                + "&daily=sunrise,sunset"
+                + "&timezone=auto");
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(9000);
             conn.setReadTimeout(9000);
@@ -312,6 +383,9 @@ public class WeatherNotificationProvider {
             out.put("humidity", cur.optInt("relative_humidity_2m", -1));
             out.put("rain", nextRainProb(json));
             out.put("at", System.currentTimeMillis());
+
+            JSONArray hours = buildHourSlots(json);
+            if (hours != null) out.put("hours", hours);
             return out;
         } catch (Throwable t) {
             Log.e(TAG, "fetchWeather falló", t);
@@ -324,6 +398,68 @@ public class WeatherNotificationProvider {
     /** org.json rechaza NaN: se guarda JSONObject.NULL y optDouble trae el default. */
     private static void putNaNable(JSONObject o, String key, double v) throws Exception {
         o.put(key, Double.isNaN(v) ? JSONObject.NULL : v);
+    }
+
+    /**
+     * Las próximas HORAS_SLOTS horas [{h: "21h", code, temp, day}].
+     * Los times de Open-Meteo (timezone=auto) son HORA LOCAL de la
+     * ubicación: se convierten a epoch restando utc_offset_seconds para
+     * compararlas con "ahora", y el label se saca del propio string.
+     */
+    private static JSONArray buildHourSlots(JSONObject json) {
+        try {
+            JSONObject hourly = json.optJSONObject("hourly");
+            if (hourly == null) return null;
+            JSONArray times = hourly.optJSONArray("time");
+            JSONArray temps = hourly.optJSONArray("temperature_2m");
+            JSONArray codes = hourly.optJSONArray("weather_code");
+            if (times == null || temps == null || codes == null) return null;
+
+            double offsetMs = json.optDouble("utc_offset_seconds", 0) * 1000.0;
+            long now = System.currentTimeMillis();
+            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
+            iso.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+
+            double sunUp = sunHour(json, "sunrise", 6.0);
+            double sunDown = sunHour(json, "sunset", 18.5);
+
+            JSONArray out = new JSONArray();
+            for (int i = 0; i < times.length() && out.length() < HOUR_SLOTS; i++) {
+                String t = times.optString(i, "");
+                if (t.length() < 13) continue;
+                try {
+                    Date d = iso.parse(t);
+                    if (d == null) continue;
+                    if (d.getTime() - offsetMs < now) continue;   // pasada: saltar
+                    JSONObject slot = new JSONObject();
+                    slot.put("h", t.substring(11, 13) + "h");
+                    double ht = temps.optDouble(i, Double.NaN);
+                    slot.put("temp", Double.isNaN(ht) ? JSONObject.NULL : ht);
+                    slot.put("code", codes.optInt(i, -1));
+                    double hd = Integer.parseInt(t.substring(11, 13))
+                        + Integer.parseInt(t.length() >= 16 ? t.substring(14, 16) : "0") / 60.0;
+                    slot.put("day", hd >= sunUp && hd <= sunDown);
+                    out.put(slot);
+                } catch (Exception ignored) {}
+            }
+            return out.length() > 0 ? out : null;
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
+    /** Hora decimal (0-24) del sunrise/sunset del día 1 en hora local. */
+    private static double sunHour(JSONObject json, String which, double fallback) {
+        try {
+            JSONObject daily = json.optJSONObject("daily");
+            if (daily == null) return fallback;
+            JSONArray arr = daily.optJSONArray(which);
+            if (arr == null) return fallback;
+            String t = arr.optString(0, "");
+            if (t.length() < 16) return fallback;
+            return Integer.parseInt(t.substring(11, 13))
+                + Integer.parseInt(t.substring(14, 16)) / 60.0;
+        } catch (Throwable ignored) {}
+        return fallback;
     }
 
     /** Lluvia % de la próxima hora (igual criterio que el widget launcher). */
@@ -351,15 +487,15 @@ public class WeatherNotificationProvider {
     }
 
     /**
-     * Sismo del día: el más STRONG en 24 h a ≤1200 km (USGS, público).
+     * Sismo del día: el más fuerte en 24 h a ≤1200 km (USGS, público).
      * Decide la fila del widget y la alarma.
      */
     private static JSONObject fetchQuake(double lat, double lon) {
         HttpURLConnection conn = null;
         try {
-            SimpleDateFormat day = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
-            day.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
-            String since = day.format(new Date(System.currentTimeMillis() - ALERT_WINDOW_MS));
+            SimpleDateFormat dayF = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+            dayF.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            String since = dayF.format(new Date(System.currentTimeMillis() - ALERT_WINDOW_MS));
             URL url = new URL("https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson"
                 + "&latitude=" + lat + "&longitude=" + lon + "&maxradiuskm=" + ALERT_RADIUS_KM
                 + "&starttime=" + since + "&minmagnitude=3.5&orderby=time");
@@ -372,7 +508,7 @@ public class WeatherNotificationProvider {
             String body = sc.hasNext() ? sc.next() : "{}";
             sc.close();
 
-            org.json.JSONObject json = new org.json.JSONObject(body);
+            JSONObject json = new JSONObject(body);
             JSONArray features = json.optJSONArray("features");
             if (features == null || features.length() == 0) return null;
 
@@ -455,7 +591,7 @@ public class WeatherNotificationProvider {
             case 4: return "Lluvia";
             case 5: return "Tormenta";
             case 6: return "Nieve";
-            default: return "—";
+            default: return "";
         }
     }
 
@@ -476,7 +612,8 @@ public class WeatherNotificationProvider {
     /**
      * Icono del widget: sol con halo / luna con terminador / nube con
      * volumen / lluvia / tormenta con rayo / nieve / niebla — la misma
-     * familia de color del widget del launcher.
+     * familia de color del widget del launcher. Se reusa en los slots
+     * horarios (el ImageView los escala a 22dp).
      */
     static Bitmap paintAstro(int code, boolean day) {
         int b = bucket(code);
