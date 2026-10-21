@@ -1,4 +1,4 @@
-package com.codehub.app;
+﻿package com.codehub.app;
 
 import android.app.Dialog;
 import android.app.DownloadManager;
@@ -90,6 +90,54 @@ public class AppUpdateChecker {
         if (now - lastAttempt < CHECK_RETRY_MS) return;    // falló hace <30min: esperar
         prefs.edit().putLong(PREF_LAST_ATTEMPT, now).apply();
         checkNow(activity);
+    }
+
+    /**
+     * Chequeo de diagnostico: devuelve un JSON con el estado (sin throttle,
+     * sin dialogo). Usado por el boton "Verificar actualizacion".
+     */
+    public static String checkStatus(final MainActivity activity) {
+        org.json.JSONObject out = new org.json.JSONObject();
+        try {
+            org.json.JSONObject release = fetchLatestRelease();
+            if (release == null) {
+                out.put("ok", false);
+                out.put("reason", "network");
+                out.put("message", "No se pudo conectar a GitHub (red o bloqueo)");
+                return out.toString();
+            }
+            String tag = release.optString("tag_name", "");
+            String remote = normalizeVersion(tag);
+            if (remote.isEmpty()) {
+                out.put("ok", false);
+                out.put("reason", "parse");
+                out.put("message", "No se pudo leer la version remota: " + tag);
+                return out.toString();
+            }
+            if (!isCodeHubUpdateRelease(release)) {
+                out.put("ok", false);
+                out.put("reason", "no_asset");
+                out.put("message", "La release " + tag + " no trae " + APK_ASSET_NAME);
+                return out.toString();
+            }
+            String local = "0";
+            try {
+                local = activity.getPackageManager()
+                        .getPackageInfo(activity.getPackageName(), 0).versionName;
+            } catch (Exception ignored) {}
+            boolean hasUpdate = isNewer(remote, local);
+            out.put("ok", true);
+            out.put("remote", remote);
+            out.put("local", local);
+            out.put("hasUpdate", hasUpdate);
+            out.put("message", hasUpdate
+                    ? ("Actualizacion disponible: v" + remote + " (tienes v" + local + ")")
+                    : ("Ya tienes la ultima version (v" + local + ")"));
+            return out.toString();
+        } catch (Throwable t) {
+            try { out.put("ok", false); out.put("reason", "error"); out.put("message", String.valueOf(t.getMessage())); } catch (Exception ignored) {}
+            return out.toString();
+        }
     }
 
     /** Chequeo inmediato (queda disponible para futuros usos en ajustes). */

@@ -1,4 +1,43 @@
 ﻿<!DOCTYPE html>
+</html>
+</body>
+function chCheckUpdate() {
+  var resultEl = document.getElementById('update-check-result');
+  if (resultEl) resultEl.textContent = 'Consultando GitHub...';
+  try {
+    if (window.CodeHubNative && typeof window.CodeHubNative.checkUpdateStatus === 'function') {
+      window.CodeHubNative.checkUpdateStatus('chUpdateStatusCallback');
+    } else {
+      if (resultEl) resultEl.textContent = 'Solo disponible en la app Android';
+    }
+  } catch (e) {
+    if (resultEl) resultEl.textContent = 'Error: ' + e.message;
+  }
+}
+window.chUpdateStatusCallback = function (json) {
+  var resultEl = document.getElementById('update-check-result');
+  if (!resultEl) return;
+  try {
+    var d = JSON.parse(json);
+    if (d.ok) {
+      if (d.hasUpdate) {
+        resultEl.innerHTML = '<span style="color:#4ade80">Actualizacion disponible: v' + d.remote + ' (tienes v' + d.local + ')</span>';
+        if (typeof toast === 'function') toast('Actualizacion disponible: v' + d.remote, 'success', 3000);
+      } else {
+        resultEl.innerHTML = '<span style="color:var(--g)">Ya tienes la ultima version (v' + d.local + ')</span>';
+        if (typeof toast === 'function') toast('Ya tienes la ultima version', 'info', 2000);
+      }
+    } else {
+      resultEl.innerHTML = '<span style="color:#ff6b6b">' + (d.message || 'Error desconocido') + '</span>';
+      if (typeof toast === 'function') toast(d.message || 'Error', 'error', 3000);
+    }
+  } catch (e) {
+    resultEl.textContent = 'Error al procesar respuesta';
+  }
+};
+
+</html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <!-- Polyfill de window.Notification — el WebView de la app nativa
@@ -1540,6 +1579,19 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                     </div>
                 </div>
                 <div class="sismos-alerts-hint">Disponible solo en la app Android. Lanza la pantalla completa de alerta de sismo con recomendaciones de seguridad para que veas como se veria una alerta real.</div>
+            </div>
+
+            <!-- Verificar actualizacion (diagnostico del updater) -->
+            <div class="sismos-alerts" id="update-check-box" style="margin-top:.5rem">
+                <div class="sismos-alerts-row">
+                    <div class="wx-alerts-toggle" id="update-check-toggle" onclick="chCheckUpdate()" title="Consulta a GitHub si hay una version mas nueva de la app">
+                        <span class="wx-alerts-icon"><i class="fas fa-rotate" data-fa-wx-icon></i></span>
+                        <span class="wx-alerts-text">Verificar actualizacion</span>
+                        <span class="wx-switch"><span class="wx-switch-knob"></span></span>
+                    </div>
+                </div>
+                <div class="sismos-alerts-hint" id="update-check-result">Consulta a GitHub si hay una version mas nueva de CodeHub instalada en tu dispositivo.</div>
+            </div>
             </div>
 
             <div class="sismos-summary" id="sismos-summary">

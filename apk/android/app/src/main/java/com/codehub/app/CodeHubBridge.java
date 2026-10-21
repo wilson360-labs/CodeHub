@@ -1,4 +1,4 @@
-package com.codehub.app;
+﻿package com.codehub.app;
 
 import android.app.Activity;
 import android.app.DownloadManager;
@@ -1431,6 +1431,17 @@ public class CodeHubBridge {
             o.put("radiusKm", 1200);
             return o.toString();
         } catch (Exception e) { return "{\"enabled\":true,\"fullScreenThreshold\":5.0,\"minMagnitude\":4.5,\"radiusKm\":1200}"; }
+    }
+
+    @JavascriptInterface
+    public void checkUpdateStatus(final String cb) {
+        new Thread(() -> {
+            String res = AppUpdateChecker.checkStatus(activity);
+            final String safe = (res == null ? "{}" : res)
+                    .replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ");
+            activity.runOnUiThread(() -> webView.loadUrl(
+                    "javascript:try{if(window." + cb + ")window." + cb + "('" + safe + "');}catch(e){}"));
+        }).start();
     }
 
     @JavascriptInterface
