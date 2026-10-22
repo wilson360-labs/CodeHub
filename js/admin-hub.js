@@ -3339,8 +3339,6 @@ async function sendQuakeSim() {
   const isSim = !(document.getElementById('quake-sim-mode') && document.getElementById('quake-sim-mode').value === 'real');
   const btn = document.getElementById('quake-sim-send-btn');
   const resultEl = document.getElementById('quake-sim-result');
-  const btn = document.getElementById('quake-sim-send-btn');
-  const resultEl = document.getElementById('quake-sim-result');
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
