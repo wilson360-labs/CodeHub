@@ -99,6 +99,8 @@
         <activity
             android:name=".EarthquakeAlertActivity"
             android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.CodeHub"

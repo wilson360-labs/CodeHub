@@ -11,12 +11,22 @@ const { wxLabel, normalizeWeatherInterval } = require('./wx');
 // Categorías de alerta rápida (umbrales). "critical" marca transiciones
 // que se notifican de inmediato (inicio de lluvia/tormenta/viento fuerte).
 const WX_ALERTS = [
-  { cond: 'storm', critical: true, test: c => c.weather_code >= 95 || (c.precipitation > 8 && c.wind_speed_10m > 35),
+  { cond: 'storm', critical: true,
+    test: c => c.weather_code >= 95 || (Number(c.cape || 0) >= 1800 && Number(c.precipitation_probability || 0) >= 50) ||
+               (c.precipitation > 8 && c.wind_speed_10m > 35),
     msg: c => '⛈️ Tormenta eléctrica en tu zona — evita zonas abiertas, desconecta aparatos y no te refugies bajo árboles' },
-  { cond: 'rain',  critical: true, test: c => (c.weather_code >= 61 && c.weather_code <= 67) || Number(c.precipitation_probability || 0) >= 70,
-    msg: c => '🌧️ Probabilidad alta de lluvia (' + Math.round(Number(c.precipitation_probability || 0)) + '%) — lleva paraguas y revisa el pronóstico por horas antes de salir' },
-  { cond: 'wind',  critical: true, test: c => c.wind_speed_10m > 50,
-    msg: c => '💨 Viento fuerte (' + Math.round(c.wind_speed_10m) + ' km/h) — precaución al manejar y asegura objetos sueltos' },
+  { cond: 'heavy_rain', critical: true,
+    test: c => Number(c.rain_rate_mmh || 0) >= 7.5 || Number(c.precipitation || 0) >= 7.5,
+    msg: c => '🌊 Lluvia intensa (~' + Math.round(Math.max(Number(c.rain_rate_mmh || 0), Number(c.precipitation || 0))) + ' mm/h) — riesgo de inundación y deslaves; evita cauces y zonas bajas' },
+  { cond: 'wind',  critical: true,
+    test: c => c.wind_speed_10m > 50 || Number(c.gust_next3h || 0) >= 70,
+    msg: c => '💨 Viento fuerte (' + Math.round(Math.max(c.wind_speed_10m, Number(c.gust_next3h || 0))) + ' km/h en ráfagas) — precaución al manejar y asegura objetos sueltos' },
+  { cond: 'rain_soon', critical: true,
+    test: c => !c.raining && c.rain_in_min != null && c.rain_in_min > 0 && c.rain_in_min <= 45,
+    msg: c => '🌧️ Lluvia en ~' + Math.max(5, Math.round(c.rain_in_min / 5) * 5) + ' min en tu ubicación — ponte a cubierto o lleva paraguas' },
+  { cond: 'rain',  critical: true,
+    test: c => (c.weather_code >= 61 && c.weather_code <= 67) || c.raining === true,
+    msg: c => '🌧️ Está lloviendo en tu zona' + (Number(c.rain_rate_mmh || 0) >= 2.5 ? ' (moderada–fuerte)' : '') + ' — maneja con precaución' },
   { cond: 'radiation', critical: false, test: c => c.is_day && Number(c.uv_current || 0) >= 7,
     msg: c => '☀️ Radiación UV alta (' + Number(c.uv_current || 0).toFixed(1) + ') — usa bloqueador SPF 50+ y evita el sol de 11 a 15h' },
   { cond: 'heat',  critical: false, test: c => c.temperature_2m > 33 || c.apparent_temperature > 38,
@@ -56,6 +66,7 @@ function weatherSnapshot(current) {
     uv: current.uv_current != null ? Number(current.uv_current) : (current.is_day ? 0 : null),
     uvLevel: current.uv_current != null ? uvLevel(current.uv_current) : null,
     isDay: !!(current.is_day),
+    raining: !!current.raining,
   };
 }
 
@@ -78,6 +89,9 @@ function diffWeatherChange(prev, cur) {
 
   if (cur.isDay !== prev.isDay) {
     parts.push(cur.isDay ? '🌞 amaneció' : '🌙 anocheció');
+  }
+  if (cur.raining !== undefined && prev.raining !== undefined && cur.raining !== prev.raining) {
+    parts.push(cur.raining ? '🌧️ empezó a llover' : '🌤️ dejó de llover');
   }
   if (cur.wcode !== prev.wcode && Math.abs(cur.wcode - prev.wcode) >= T.wcode) {
     if (wxLabel(cur.wcode, cur.isDay) !== wxLabel(prev.wcode, prev.isDay)) {
@@ -112,7 +126,7 @@ function diffWeatherChange(prev, cur) {
 // ── Resumen diario inteligente del clima ────────────────────
 function dailyBriefing(current) {
   const slots = current.slots;
-  const nowH = new Date().getHours();
+  const nowH = Number.isFinite(current.local_hour) ? current.local_hour : new Date().getHours();
   const parts = [];
 
   const period = nowH < 6 ? 'madrugada' : nowH < 12 ? 'mañana' : nowH < 18 ? 'tarde' : 'noche';
@@ -145,8 +159,8 @@ function dailyBriefing(current) {
   }
 
   // Amanecer / atardecer
-  if (current.sunrise && current.sunset) {
-    parts.push(`🌅 Amanecer ${String(new Date(current.sunrise + 'Z').getHours()).padStart(2, '0')}:00 · 🌇 Atardecer ${String(new Date(current.sunset + 'Z').getHours()).padStart(2, '0')}:00`);
+  if (current.sunrise_hour != null && current.sunset_hour != null) {
+    parts.push(`🌅 Amanecer ${String(current.sunrise_hour).padStart(2, '0')}:00 · 🌇 Atardecer ${String(current.sunset_hour).padStart(2, '0')}:00`);
   }
 
   return parts.join('\n');

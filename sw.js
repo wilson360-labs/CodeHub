@@ -409,7 +409,7 @@ self.addEventListener('push', e => {
   try { payload = e.data.json(); }
   catch { payload = { title: 'CodeHub', body: e.data.text(), type: 'general' }; }
 
-  const { title, body, type, appId, icon, url } = payload;
+  const { title, body, type, appId, icon, url, tag: payloadTag, level } = payload;
 
   const options = {
     body: body || '',
@@ -446,9 +446,14 @@ self.addEventListener('push', e => {
     ];
     options.data.url = url || '/';
   } else if (type === 'seismic') {
-    options.tag      = 'codehub-seismic';
+    options.tag      = payloadTag || 'codehub-seismic';
     options.renotify = true;
-    options.vibrate  = [120, 60, 120, 60, 240];
+    // Alerta de sismo: no desaparece sola, vibración larga tipo alarma
+    options.requireInteraction = true;
+    options.silent   = false;
+    options.vibrate  = level === 'alarm'
+      ? [400, 150, 400, 150, 400, 150, 800]
+      : [120, 60, 120, 60, 240];
     options.actions  = [
       { action: 'open_map', title: '🗺 Ver en el mapa' },
       { action: 'dismiss',  title: 'Cerrar' },

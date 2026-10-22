@@ -31,6 +31,8 @@ public class EarthquakeAlertActivity extends Activity {
     public static final String EXTRA_TIME    = "time";
     public static final String EXTRA_SIM     = "sim";
     public static final String EXTRA_TYPE    = "alertType";
+    /** Llegada estimada de la onda S a tu ubicación (epoch ms; 0 = desconocida). */
+    public static final String EXTRA_ETA     = "eta";
 
     private PowerManager.WakeLock wakeLock;
 
@@ -41,7 +43,13 @@ public class EarthquakeAlertActivity extends Activity {
 
     public static void launch(Context ctx, float mag, double distKm, String dir,
                               String place, long timeMs, boolean isSim, String alertType) {
+        launch(ctx, mag, distKm, dir, place, timeMs, isSim, alertType, 0L);
+    }
+
+    public static void launch(Context ctx, float mag, double distKm, String dir,
+                              String place, long timeMs, boolean isSim, String alertType, long etaMs) {
         Intent i = new Intent(ctx, EarthquakeAlertActivity.class);
+        i.putExtra(EXTRA_ETA, etaMs);
         i.putExtra(EXTRA_MAG, mag);
         i.putExtra(EXTRA_DIST, distKm);
         i.putExtra(EXTRA_DIR, dir);
@@ -106,7 +114,7 @@ public class EarthquakeAlertActivity extends Activity {
         String alertTitle = "ALERTA DE SISMO";
         int alertColor = 0xFFFF6B6B;
         String subtitleText = "Sismo detectado cerca de tu ubicación";
-        String sourceText = sim ? "Simulacro · CodeHub" : "Fuente: USGS · CodeHub";
+        String sourceText = sim ? "Simulacro · CodeHub" : "Fuente: EMSC / USGS · CodeHub";
 
         if (isHurricane) {
             alertIcon = "🌀";
@@ -179,10 +187,38 @@ public class EarthquakeAlertActivity extends Activity {
 
         sourceTv.setText(sourceText);
 
+        // Cuenta regresiva de la onda S (solo sismos reales/simulacro con ETA)
+        final long etaMs = getIntent().getLongExtra(EXTRA_ETA, 0L);
+        if (etaMs > 0 && !isHurricane && !isTsunami && !isFlood) {
+            final TextView sub = subtitle;
+            final boolean simulated = sim;
+            final Handler h = new Handler(Looper.getMainLooper());
+            h.post(new Runnable() {
+                @Override public void run() {
+                    if (isFinishing() || isDestroyed()) return;
+                    long left = Math.round((etaMs - System.currentTimeMillis()) / 1000.0);
+                    if (left > 0) {
+                        sub.setText((simulated ? "Simulacro · " : "") + "Onda S en ~" + left + " s — agáchate, cúbrete y sujétate");
+                        h.postDelayed(this, 1000);
+                    } else {
+                        sub.setText((simulated ? "Simulacro · " : "") + "La onda sísmica ya debería sentirse — protégete y espera réplicas");
+                    }
+                }
+            });
+        }
+
         safeBtn.setOnClickListener(v -> finish());
 
         // Auto-cerrar después de 5 min si el usuario no interactúa
         new Handler(Looper.getMainLooper()).postDelayed(this::finish, 5 * 60 * 1000L);
+    }
+
+    /** singleTask: una alerta nueva mientras hay otra en pantalla debe reemplazarla. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        recreate();
     }
 
     @Override

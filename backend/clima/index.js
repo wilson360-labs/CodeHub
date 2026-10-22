@@ -23,7 +23,10 @@ const { wxLabel, hourlyLabel } = require('./wx');
 
 // Cooldown mínimo entre notificaciones de ALERTA por usuario (ms).
 // Evita avisar "lluvia↑" cada 30 min mientras dure una misma condición.
-const ALERT_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h entre alertas
+const ALERT_COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2h entre alertas NO críticas
+// Cooldown de re-aviso de una MISMA alerta crítica (ya notificada y sin
+// haberse despejado) — evita repetir cada pasada de 10 min.
+const CRITICAL_REPEAT_MS = 3 * 60 * 60 * 1000;
 // Cooldown mínimo entre resúmenes de CAMBIO (ms).
 const CHANGE_COOLDOWN_MS = 30 * 60 * 1000;     // 30 min entre diffs
 
@@ -37,6 +40,26 @@ module.exports = function createWeatherEngine(deps) {
     pushList = async () => [],
     pushSave = async () => {},
   } = deps || {};
+
+  // Estado por dispositivo FCM. La tabla fcm_tokens no guarda el último
+  // estado del clima, así que antes CADA pasada reenviaba la misma alerta a
+  // todos los teléfonos. Ahora se recuerda en memoria por token.
+  const fcmState = new Map();
+  function hydrate(s) {
+    if (!s._isFCM) return;
+    const st = fcmState.get(s.token);
+    if (st) Object.assign(s, st);
+  }
+  function persist(s) {
+    if (s._isFCM) {
+      fcmState.set(s.token, {
+        last_alert_condition: s.last_alert_condition || null,
+        last_alert_at: s.last_alert_at || null,
+        last_weather_snapshot: s.last_weather_snapshot || null,
+        last_brief_at: s.last_brief_at || null,
+      });
+    }
+  }
 
   async function weatherPushPass() {
     let subs;
@@ -81,6 +104,7 @@ module.exports = function createWeatherEngine(deps) {
       const curSnap = weatherSnapshot(current);
 
       for (const s of group) {
+        hydrate(s);
         const prevSnap = (() => {
           try { return s.last_weather_snapshot ? JSON.parse(s.last_weather_snapshot) : null; }
           catch (e) { return null; }
@@ -93,7 +117,8 @@ module.exports = function createWeatherEngine(deps) {
         // "critical" (lluvia/tormenta/viento) cruza cooldowns; radiación/calor
         // respeta el cooldown y se limpia al bajar la condición.
         if (alert) {
-          const isNew = s.last_alert_condition !== alert.cond;
+          const isNew = s.last_alert_condition !== alert.cond ||
+            (alert.critical && (now - lastAlertAt) >= CRITICAL_REPEAT_MS);
           const allowed = alert.critical ? true : (now - lastAlertAt) >= ALERT_COOLDOWN_MS;
           if (isNew && allowed) {
             const bodyExtra = alert.body;
@@ -104,6 +129,9 @@ module.exports = function createWeatherEngine(deps) {
                 body: bodyExtra,
                 type: 'weather',
                 url: '/#weather-section',
+                // Aviso crítico: entrega inmediata o descartar (no llegar tarde)
+                dataOnly: alert.critical, priority: alert.critical ? 'high' : 'normal',
+                ttl: alert.critical ? 20 * 60 : 3600,
               });
             } else {
               r = await sendPush(s, {
@@ -112,6 +140,8 @@ module.exports = function createWeatherEngine(deps) {
                 type: 'weather',
                 icon: '/splash/codehub.png',
                 url: '/#weather-section',
+                ttl: alert.critical ? 20 * 60 : 3600,
+                urgency: alert.critical ? 'high' : 'normal',
               });
             }
             if (r.ok) {
@@ -160,6 +190,7 @@ module.exports = function createWeatherEngine(deps) {
 
         // ── 3) Guardar snapshot siempre (para el próximo diff) ──
         s.last_weather_snapshot = JSON.stringify(curSnap);
+        persist(s);
         if (!s._isFCM) await pushSave(s);
       }
     }
@@ -175,10 +206,10 @@ module.exports = function createWeatherEngine(deps) {
     }
   }
 
-  // Scheduler — revisa cada 30 min; solo envía cuando cambia la condición
+  // Scheduler — revisa cada 10 min (mínimo 5); solo envía cuando cambia la condición
   let timer = null;
   function startScheduler(ms) {
-    const interval = Math.max(5 * 60 * 1000, Number(ms) || 30 * 60 * 1000);
+    const interval = Math.max(5 * 60 * 1000, Number(ms) || 10 * 60 * 1000);
     if (timer) clearInterval(timer);
     timer = setInterval(() => {
       weatherPushPass()
