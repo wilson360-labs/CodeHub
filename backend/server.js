@@ -215,6 +215,9 @@ const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeade
 // App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
 // crash reales) sin abrir la puerta a flood del endpoint público.
 const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
+// Push geo: limiter propio — antes compartía chatLimiter con el chat, así
+// que un IP parlanchín en el chat podía frenar el registro de ubicación.
+const fcmLimiter   = rateLimit({ windowMs: 15*60*1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de ubicación. Espera un momento.', code: 'FCM_GEO_RATE_LIMIT' }, handler: rateLimitHandler });
 // Imágenes: límite separado para que generar imágenes no agote el cupo del chat.
 const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Límite de generación de imágenes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
 // Mejora/edición de imágenes (Autoenhance·Gemini): cuota propia más agresiva,
@@ -2361,8 +2364,9 @@ app.post('/api/admin/quake-test-single', requireAdmin, async (req, res) => {
     dist: dist,
     dir: dir,
     place: pl,
-    alertType: type,
+    alertType: payload.type,
     time: Date.now(),
+  };
   const r = await sendFCM(token, payload);
   res.json({ ok: r.ok, reason: r.reason || r.code || null, message: r.message || null });
 });
