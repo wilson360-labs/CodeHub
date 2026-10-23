@@ -1070,6 +1070,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                        data-sitekey="0x4AAAAAAClKd5T1R81GltW_"
                        data-theme="dark"
                        data-language="es"
+                       data-error-callback="tsContactError"
                        style="margin-bottom:.8rem"
                        id="turnstile-contact">
                   </div>
@@ -2092,7 +2093,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
     <!-- ==================== JAVASCRIPT COMPLETO ==================== -->
 <script src="/dist/assets/js/remote-config.45cfc79a3f.min.js"></script>
-<script src="/dist/assets/js/bug-reporter.36559939c5.min.js"></script>
+<script src="/dist/assets/js/bug-reporter.9570ed6f8a.min.js"></script>
 <script src="/dist/assets/js/updater.cdaf77f61c.min.js" defer></script>
     <script>
         // Gate de debug: activa con localStorage.setItem('ch_debug','1')
@@ -4169,7 +4170,25 @@ function validateForm() {
     return valid;
 }
 
-async function sendEmail(e) {
+    // Error del widget Turnstile (p. ej. 110200 = dominio preview no
+    // autorizado en el panel de Cloudflare): mensaje amable en el feedback,
+    // sin excepción sin capturar que dispare el bot de crashes.
+    window.tsContactError = function (code) {
+      try {
+        window.__tsContactError = code || true;
+        const detail = code === 110200
+          ? '— el dominio de este entorno (preview/local) no está autorizado en el panel de Cloudflare.'
+          : '(revisa tu conexión o inténtalo desde el sitio principal).';
+        const fb = document.getElementById('form-feedback');
+        if (fb) {
+          fb.textContent = '⚠️ Verificación (no soy un robot) no disponible ' + detail + ' Puedes escribirme por WhatsApp o email directo.';
+          fb.className = 'form-feedback error';
+        }
+        return true;
+      } catch (e) { return true; }
+    };
+
+  async function sendEmail(e) {
     e.preventDefault();
     if (!validateForm()) return;
     // Verificar Turnstile (solo bloquea si el widget cargó y no fue completado)
@@ -4181,6 +4200,13 @@ async function sendEmail(e) {
         const fb = document.getElementById('form-feedback');
         fb.textContent = '⚠️ Completa la verificación (no soy un robot) antes de enviar.';
         fb.className = 'form-feedback error';
+        return;
+    }
+    if (!tsToken && window.__tsContactError) {
+        // Widget caído (p. ej. dominio preview): feedback directo, sin POST.
+        const fb2 = document.getElementById('form-feedback');
+        fb2.textContent = '⚠️ La verificación (no soy un robot) no está disponible en este entorno (preview/local). Escríbeme por WhatsApp o email directo.';
+        fb2.className = 'form-feedback error';
         return;
     }
 
@@ -8234,7 +8260,7 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/deep-search.0171f144d5.min.js" defer></script>
 <script src="/dist/assets/js/office-generator.8d6cdf13ee.min.js" defer></script>
 <script src="/dist/assets/js/ux-animations.f3b47b32a4.min.js" defer></script>
-<script src="/dist/assets/js/auth.14f7caec39.min.js" defer></script>
+<script src="/dist/assets/js/auth.f8b782ad93.min.js" defer></script>
 <script src="/dist/assets/js/emi-voice.d7c975d11a.min.js" defer></script>
 <script src="/dist/assets/js/sys-metrics.441cf23ca5.min.js" defer></script>
 <script src="/dist/assets/js/security-scan.5a8b5156fe.min.js" defer></script>

@@ -8,6 +8,7 @@ const BACKEND = 'https://codehub-98s6.onrender.com';
 let ADMIN_KEY = '';
 let ADMIN_SESSION = '';
 let _turnstileWidgetId = null;
+let _tsAdminError = null; // código del último fallo del widget (p. ej. dominio preview)
 
 // ── VALIDADOR DE LINKS DE IMAGEN ──────────────────────────────
 // Mismo criterio de aceptación que usa Orion Store para sus
@@ -227,6 +228,15 @@ function _renderTurnstile() {
       sitekey: '0x4AAAAAAClKd5T1R81GltW_',
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
       size: 'normal',
+      'error-callback': function (code) {
+        // p. ej. 110200 = dominio no autorizado (previews/local). Sin
+        // excepción sin capturar; el logout de guardia sigue en checkLogin.
+        _tsAdminError = code || 'error';
+        console.warn('Turnstile error:', code);
+        const le = document.getElementById('login-err');
+        if (le) le.textContent = '⚠️ Verificación no disponible en este entorno (preview/local). Entra desde el sitio principal.';
+        return true;
+      },
     });
   } catch (e) { console.warn('Turnstile render failed:', e); }
 }
@@ -239,6 +249,12 @@ async function checkLogin() {
   const tsLoaded = document.querySelector('#ts-admin iframe');
   if (tsLoaded && !tsToken) {
     document.getElementById('login-err').textContent = '⚠️ Completa la verificación de seguridad';
+    return;
+  }
+  if (!tsToken && _tsAdminError) {
+    // Widget caído (p. ej. dominio preview): no enviar token vacío — evita el
+    // rechazo server-side y la alerta "TURNSTILE FALLO ADMIN" en Telegram.
+    document.getElementById('login-err').textContent = '⚠️ Verificación no disponible en este entorno (preview/local). Entra desde el sitio principal.';
     return;
   }
   const btn = document.querySelector('.login-btn');

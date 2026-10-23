@@ -87,12 +87,27 @@
   }
 
   // ── Dedupe en cliente (no spamear Telegram) ────────────────
+  // Persistente: la recarga de página NO reinicia el cooldown (los
+  // crawlers/previews reabren la página y antes inundaban el bot).
+  var SEEN_KEY = 'ch_bug_seen_v1';
+  var SEEN_TTL = 6 * 60 * 60 * 1000; // la huella vive 6 h en localStorage
   var seen = {};
+  try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}'); } catch (e) { seen = {}; }
+
   function shouldSend(key) {
     var now = Date.now();
-    var prev = seen[key];
-    if (prev && now - prev < 60000) return false; // mismo error < 1 min
+    var prev = seen[key] || 0;
+    if (prev && now - prev < 60000) return false; // ráfaga < 1 min
+    if (prev && now - prev < 3600000) {
+      // Misma huella ya avisada hace < 1 h → callar sin gastar el envío
+      try { seen[key] = now; localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); } catch (e) {}
+      return false;
+    }
     seen[key] = now;
+    try {
+      for (var k in seen) { if (now - (seen[k] || 0) > SEEN_TTL) delete seen[k]; }
+      localStorage.setItem(SEEN_KEY, JSON.stringify(seen));
+    } catch (e) {}
     return true;
   }
 
@@ -156,6 +171,16 @@
 
   // ── Capturadores ────────────────────────────────────────────
   function handleError(msg, url, line, col, errorObj) {
+    // Ruido de terceros: el widget Cloudflare Turnstile lanza errores de
+    // configuración (p. ej. 110200 = dominio preview/local no autorizado) o
+    // de un bot bloqueado — nunca un bug de la app. Se silencian en el
+    // reportador y cada widget los gestiona con su error-callback.
+    try {
+      var errCls = (errorObj && errorObj.name) || '';
+      if (errCls === 'TurnstileError'
+        || /Challenges?\.cloudflare\.com/i.test(url || '')
+        || /Cloudflare Turnstile/i.test(msg || '')) return;
+    } catch (e) {}
     var key = (url || '') + ':' + (line || '') + ':' + (col || '') + ':' + (msg || '');
     if (!shouldSend(key)) return;
     var stack = errorObj && errorObj.stack ? errorObj.stack : msg + ' (en ' + url + ':' + line + ':' + col + ')';

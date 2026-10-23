@@ -254,6 +254,7 @@
   var TURNSTILE_SITEKEY = '0x4AAAAAAClKd5T1R81GltW_';
   var tsWidgetId = null;
   var tsTokenValue = '';
+  var tsWidgetError = null; // código del último fallo del widget (p. ej. preview/local)
 
   function tsContainer() {
     var p = ensurePanel();
@@ -283,6 +284,13 @@
         language: (typeof currentLang !== 'undefined' && currentLang === 'es') ? 'es' : 'en',
         callback: function (token) { tsTokenValue = token || ''; },
         'expired-callback': function () { tsTokenValue = ''; },
+        'error-callback': function (code) {
+          // p. ej. 110200 = dominio no autorizado (previews de Vercel / local).
+          // Mensaje amable en el panel; sin excepción sin capturar.
+          tsWidgetError = code || 'error';
+          try { setStatus('La verificación anti-bots no está disponible en este entorno (preview/local). Entra desde el sitio principal.', true); } catch (e) {}
+          return true;
+        },
       });
     } catch (e) {}
   }
@@ -316,7 +324,14 @@
     var pass  = getField('#auth-login-pass');
     if (!email || !pass) { setStatus('Completa email y contraseña', true); return; }
     var ts = getTurnstileToken();
-    if (!ts) { setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return; }
+    if (!ts) {
+      if (tsWidgetError) {
+        // El widget falló (p. ej. dominio preview): no reintentar ni spamear
+        setStatus('La verificación anti-bots no está disponible en este entorno (preview/local). Entra desde el sitio principal.', true);
+        return;
+      }
+      setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return;
+    }
     setStatus('Verificando…');
     _api('/api/auth/login', { email: email, password: pass, turnstileToken: ts }).then(function (r) {
       var remember = !!(document.getElementById('auth-remember-me') && document.getElementById('auth-remember-me').checked);
@@ -339,7 +354,13 @@
     if (pass.length < 8) { setStatus('La contraseña debe tener al menos 8 caracteres', true); return; }
     if (pass !== pass2) { setStatus('Las contraseñas no coinciden', true); return; }
     var ts = getTurnstileToken();
-    if (!ts) { setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return; }
+    if (!ts) {
+      if (tsWidgetError) {
+        setStatus('La verificación anti-bots no está disponible en este entorno (preview/local). Entra desde el sitio principal.', true);
+        return;
+      }
+      setStatus('Completa la verificación anti-bots', true); renderTurnstile(); return;
+    }
     setStatus('Creando cuenta…');
     _api('/api/auth/register', { email: email, password: pass, device_id: deviceId(), turnstileToken: ts }).then(function (r) {
       if (r.needsConfirmation) {

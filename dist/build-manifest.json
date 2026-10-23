@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-10-22T23:58:30.668Z",
+  "generatedAt": "2026-10-23T03:53:10.941Z",
   "bundles": {
-    "js/admin-hub.js": "assets/js/admin-hub.b201cf387f.min.js",
-    "js/auth.js": "assets/js/auth.14f7caec39.min.js",
-    "js/bug-reporter.js": "assets/js/bug-reporter.36559939c5.min.js",
+    "js/admin-hub.js": "assets/js/admin-hub.132c0ed63c.min.js",
+    "js/auth.js": "assets/js/auth.f8b782ad93.min.js",
+    "js/bug-reporter.js": "assets/js/bug-reporter.9570ed6f8a.min.js",
     "js/ch-geo.js": "assets/js/ch-geo.5216946b16.min.js",
     "js/connection-alert.js": "assets/js/connection-alert.93f5557731.min.js",
     "js/consent-banner.js": "assets/js/consent-banner.65800153df.min.js",

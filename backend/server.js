@@ -5985,6 +5985,20 @@ app.post('/api/crash-report', crashLimiter, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Reporte vacío' });
     }
 
+    // Silencio de ruido de terceros: TurnstileError es un error de configuración
+    // del widget (p. ej. 110200 = dominio preview/local no autorizado en el
+    // panel de Cloudflare) o de un bot bloqueado — nunca un bug de la app.
+    // Filtrado server-side: cubre también clientes viejos con la JS cacheada
+    // por el service worker hasta que se renueven.
+    const cls0 = String(exceptionClass || '');
+    const msg0 = String(message || '');
+    const tr0  = String(stackTrace || '');
+    if (/^TurnstileError$/i.test(cls0)
+      || /challenges?\.cloudflare\.com/i.test(tr0)
+      || /^.*cloudflare turnstile.*$/i.test(msg0)) {
+      return res.json({ ok: true, muted: 'turnstile-noise' });
+    }
+
     const when  = timestamp ? new Date(Number(timestamp) || timestamp) : new Date();
     const trace = String(stackTrace || '').slice(0, 3200); // margen para el límite de 4096 de Telegram
     const key   = `crash:${fatal ? 'fatal' : 'caught'}:${tag || ''}:${exceptionClass || ''}`;
