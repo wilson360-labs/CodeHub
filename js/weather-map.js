@@ -429,6 +429,10 @@
   }
 
   function readSavedLoc() {
+    // Coordenada de geo-IP (ch_user_loc_src === 'ip'): no centrar el
+    // minimapa en la POP del carrier (p. ej. "Seattle") — equivale a no
+    // tener ubicación guardada; el overlay pide habilitarla.
+    if ((localStorage.getItem('ch_user_loc_src') || '') === 'ip') return null;
     var lat = parseFloat(localStorage.getItem('ch_user_lat'));
     var lon = parseFloat(localStorage.getItem('ch_user_lon'));
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
@@ -664,6 +668,11 @@
       localStorage.setItem('ch_user_lat', lat);
       localStorage.setItem('ch_user_lon', lon);
       localStorage.setItem('ch_user_city', city);
+      // Marcar la fuente: ciudad elegida manualmente. Sin esto, una
+      // geo-IP previa (src='ip') seguiría "ensuciando" la ubicación
+      // elegida y el clima la escondería por ser de IP.
+      localStorage.setItem('ch_user_loc_src', 'search');
+      localStorage.setItem('ch_user_loc_ts', String(Date.now()));
     } catch (e) {}
 
     var label = city + ' 📍';

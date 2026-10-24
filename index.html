@@ -3599,7 +3599,16 @@ function chAutoDetectAndSave(updateWidget) {
   }
   function onFail(err) {
     wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
-    detectWeatherByIP(updateWidget);
+    if (updateWidget) {
+      // Ubicación del dispositivo apagada/denegada: NUNCA "adivinar" una
+      // ciudad por geo-IP (resolvería la POP del carrier, p. ej.
+      // "Seattle"). Se pide habilitar la ubicación o elegir ciudad.
+      showWeatherError('Habilita la ubicación en tu dispositivo para ver el clima real de tu zona 📍 También puedes elegir tu ciudad en el mapa.');
+    } else {
+      // Revalidación silenciosa: la geo-IP queda SOLO para las alertas
+      // push en background; jamás pinta en pantalla.
+      detectWeatherByIP(false);
+    }
   }
 
   // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, alta precisión)
@@ -3610,12 +3619,33 @@ function chAutoDetectAndSave(updateWidget) {
     };
     CodeHubNative.requestLocationPermission('_chAutoLocCb');
   } else if (navigator.geolocation) {
+    // Fase 1: fix rápido de red/WiFi (~1-3 s) → pinta/guarda YA. Antes,
+    // enableHighAccuracy:true con 8 s dejaba el panel esperando el fix
+    // GPS frío (10-30 s en móviles). La fase 2 refina en background.
     navigator.geolocation.getCurrentPosition(function(pos) {
       onOk(pos.coords.latitude, pos.coords.longitude);
-    }, onFail, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      chGeoRefineBackground(pos.coords && pos.coords.accuracy);
+    }, onFail, { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 });
   } else {
     onFail();
   }
+}
+
+/* Fase 2 de la geolocalización en dos tiempos: fix GPS de alta precisión
+   en background que REFINA la coordenada guardada por el fix rápido de
+   red (alertas push, minimapa, widget flotante). No re-pinta la sección
+   de clima: el usuario ya la vio con la fase 1. maximumAge:0 exige un
+   fix nuevo de verdad, no una copia cacheada del de red. */
+function chGeoRefineBackground(prevAcc) {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(function(p) {
+    if (!p || !p.coords) return;
+    if (p.coords.accuracy != null && prevAcc != null && p.coords.accuracy >= prevAcc) return;
+    var prev = localStorage.getItem('ch_user_city') || '';
+    chSavePushLocation(p.coords.latitude, p.coords.longitude,
+      (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
+      localStorage.getItem('ch_user_country') || '', 'gps');
+  }, function() {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
 }
 
 /* Se auto-ejecuta cuando la sección de clima entra en pantalla (y en
@@ -3623,15 +3653,18 @@ function chAutoDetectAndSave(updateWidget) {
    a que el usuario toque el botón. Esto es lo que hace la detección
    realmente "automática" en vez de quedarse solo en el skeleton. */
 /* Pinta el clima con la última ubicación guardada (fresca o vieja).
-   Devuelve true si había coordenadas que pintar. La etiqueta es NEUTRA
-   cuando la fuente fue IP: jamás una ciudad inventada por geo-IP. */
+   Devuelve true si había coordenadas que pintar. Si la fuente fue IP NO
+   pinta: la geo-IP da la POP de salida del carrier (p. ej. "Seattle"),
+   nunca la ciudad real del usuario. */
 function chPaintSavedLocation() {
   var lat = parseFloat(localStorage.getItem('ch_user_lat'));
   var lon = parseFloat(localStorage.getItem('ch_user_lon'));
   if (!(Number.isFinite(lat) && Number.isFinite(lon))) return false;
   if (localStorage.getItem('ch_user_loc_src') === 'ip') {
-    fetchWeatherByCoords(lat, lon, 'Tu ubicación (aprox.) 📶');
-    return true;
+    // Coordenada de geo-IP: queda SOLO para las alertas push. Al volver,
+    // la detección con GPS real se re-dispara (chInitAutoWeather) en vez
+    // de exhibir una ciudad inventada.
+    return false;
   }
   var city = localStorage.getItem('ch_user_city') || 'Tu ubicación';
   var country = localStorage.getItem('ch_user_country') || '';
@@ -6781,10 +6814,14 @@ function requestGeoLocation() {
     btn.disabled = false;
   }
 
+  const MSG_NO_LOC = 'Habilita la ubicación en tu dispositivo para ver el clima real de tu zona 📍 También puedes elegir tu ciudad en el mapa.';
+
   // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, ~alta precisión)
   if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
     window._chGeoLocCb = async function(lat, lon) {
-      if (lat == null || lon == null) { await detectWeatherByIP(true); done(false); return; }
+      // Ubicación del dispositivo apagada: NUNCA inventar ciudad por
+      // geo-IP (saldría la POP del carrier, p. ej. "Seattle").
+      if (lat == null || lon == null) { showWeatherError(MSG_NO_LOC); done(false); return; }
       await chResolveAndShowWeather(lat, lon, 'gps');
       done(true);
     };
@@ -6794,21 +6831,41 @@ function requestGeoLocation() {
 
   if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
 
+  // Detección en DOS fases: rápida Y precisa a la vez.
+  //   Fase 1: fix de red/WiFi (~1-3 s, permite caché de 2 min) que pinta
+  //           el clima YA. maximumAge:0 + alta precisión forzaba un fix
+  //           GPS frío de 10-30 s con la pantalla congelada.
+  //   Fase 2 (background): fix GPS de alta precisión que refina la
+  //           coordenada guardada sin re-pintar nada.
   navigator.geolocation.getCurrentPosition(
     async (pos) => {
       wxGpsDenied = false;
       await chResolveAndShowWeather(pos.coords.latitude, pos.coords.longitude, 'gps');
       done(true);
+      chGeoRefineBackground(pos.coords.accuracy);
     },
     async (err) => {
-      // PERMISSION_DENIED (1): el navegador bloqueó la ubicación; el
-      // aviso de "aproximada" explicará cómo activarla en vez de
-      // mostrar otra ciudad en silencio.
-      wxGpsDenied = !!(err && err.code === 1);
-      await detectWeatherByIP(true);
-      done(false);
+      wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
+      if (err && err.code === 1) {
+        // Bloqueado en el navegador: instrucción concreta. Sin geo-IP:
+        // mostrar una ciudad equivocada es peor que no mostrar nada.
+        showWeatherError('Tu navegador tiene la ubicación bloqueada. Toca el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página, o escribe tu ciudad abajo.');
+        done(false);
+        return;
+      }
+      // TIMEOUT/indisponible (ubicación apagada en el dispositivo): un
+      // reintento de alta precisión (9 s) y luego pedir habilitarla.
+      navigator.geolocation.getCurrentPosition(
+        async (pos2) => {
+          wxGpsDenied = false;
+          await chResolveAndShowWeather(pos2.coords.latitude, pos2.coords.longitude, 'gps');
+          done(true);
+        },
+        async () => { showWeatherError(MSG_NO_LOC); done(false); },
+        { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 }
+      );
     },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 }
   );
 }
 
@@ -8267,7 +8324,7 @@ if (_defMood) setAIMood(_defMood);
 <script src="/dist/assets/js/lazy-features.8633234919.min.js" defer></script>
   <script src="/dist/assets/js/offline-queue.6b72f7a657.min.js" defer></script>
 <script src="/dist/assets/js/wx-oneui.c2b4bef30e.min.js" defer></script>
-<script src="/dist/assets/widgets/weather/weather-widget.990a34537c.min.js" defer></script>
+<script src="/dist/assets/widgets/weather/weather-widget.8fe54c33b3.min.js" defer></script>
 
 <!-- Mobile Bottom Navigation Bar -->
 <nav id="mobile-nav-bar" aria-label="Navegación móvil" style="display:none !important; visibility:hidden; pointer-events:none;">

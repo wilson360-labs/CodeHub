@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.52';
+const VERSION = 'codehub-v7.53';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -137,7 +137,7 @@ const PRECACHE = [
   '/dist/assets/js/updater.cdaf77f61c.min.js',
   '/dist/assets/js/ux-animations.f3b47b32a4.min.js',
   '/dist/assets/js/wx-oneui.c2b4bef30e.min.js',
-  '/dist/assets/widgets/weather/weather-widget.990a34537c.min.js',
+  '/dist/assets/widgets/weather/weather-widget.8fe54c33b3.min.js',
   '/data/roadmap.json',
 ];
 

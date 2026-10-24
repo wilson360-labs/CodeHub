@@ -472,8 +472,9 @@ window.chSismosSetMag = function (mag, btn) {
     }
     var btn = document.getElementById('sismos-loc-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Localizando…'; }
-    navigator.geolocation.getCurrentPosition(function (pos) {
-      _center = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+
+    function plot(lat, lon) {
+      _center = { lat: lat, lon: lon };
       if (_map) {
         _map.setView([_center.lat, _center.lon], 8);
         var L = window.L;
@@ -484,11 +485,32 @@ window.chSismosSetMag = function (mag, btn) {
         buildMap();
         renderCarousel();
       }
+    }
+    function finish() {
       if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-location-dot"></i> Mi zona'; }
-    }, function () {
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-location-dot"></i> Mi zona'; }
-      if (window.toast) toast('No se pudo obtener tu ubicación', 'sismos', 2500);
-    }, { enableHighAccuracy: true, timeout: 10000 });
+    }
+    function fail(err) {
+      finish();
+      // code 1 = permiso denegado → ubicación apagada en el dispositivo.
+      if (window.toast) toast(err && err.code === 1
+        ? 'Habilita la ubicación en tu dispositivo para ver sismos cerca de ti'
+        : 'No se pudo obtener tu ubicación', 'sismos', 3000);
+    }
+
+    // DOS fases: fix rápido de red/WiFi (~1-3 s) que centra el mapa YA, y
+    // un fix GPS de alta precisión en background que refina el punto sin
+    // volver a molestar al usuario. El fix único anterior (alta precisión,
+    // 10 s) era lento y dejaba el botón girando demasiado tiempo.
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      plot(pos.coords.latitude, pos.coords.longitude);
+      finish();
+      navigator.geolocation.getCurrentPosition(function (p2) {
+        if (p2 && p2.coords && p2.coords.accuracy < (pos.coords.accuracy || 1e9)) {
+          _center = { lat: p2.coords.latitude, lon: p2.coords.longitude };
+          if (_map) _map.setView([_center.lat, _center.lon], Math.max(_map.getZoom(), 8));
+        }
+      }, function () {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+    }, fail, { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 });
   };
 
   window.chSismosReload = function () {

@@ -29,6 +29,15 @@
   }
 
   function readLocation() {
+    // Coordenada de geo-IP (ch_user_loc_src === 'ip'): NO usarla para
+    // pintar — centraría el mapa de sismos en la POP de salida del
+    // carrier (p. ej. "Seattle"), no en la zona del usuario. Queda solo
+    // para las alertas push; para display se exige GPS o ciudad elegida.
+    try {
+      if ((win.localStorage.getItem('ch_user_loc_src') || '') === 'ip') {
+        return { lat: null, lon: null, city: '' };
+      }
+    } catch (e) {}
     if (typeof win.chReadLocation === 'function') {
       try {
         var l = win.chReadLocation();

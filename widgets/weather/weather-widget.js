@@ -72,6 +72,13 @@
   }
 
   function readLocation() {
+    // Coordenada derivada de geo-IP: NO mostrarla. La geo-IP resuelve la
+    // POP de salida del carrier (p. ej. "Seattle" en líneas LATAM) y esa
+    // ciudad falsa es justo lo que no debe verse. Sirve solo para las
+    // alertas push; el widget exige GPS o ciudad elegida.
+    if ((localStorage.getItem('ch_user_loc_src') || '') === 'ip') {
+      return { lat: null, lon: null, city: '' };
+    }
     if (typeof chReadLocation === 'function') return chReadLocation();
     var lat = parseFloat(localStorage.getItem('ch_user_lat'));
     var lon = parseFloat(localStorage.getItem('ch_user_lon'));
@@ -229,10 +236,10 @@
 
   function renderEmpty() {
     if (q('.chw-pill-icon')) q('.chw-pill-icon').textContent = '🌡️';
-    if (q('.chw-pill-city')) q('.chw-pill-city').textContent = 'Elegir ciudad';
+    if (q('.chw-pill-city')) q('.chw-pill-city').textContent = 'Sin ubicación';
     if (q('.chw-now-temp')) q('.chw-now-temp').textContent = '--';
-    if (q('.chw-now-sub')) q('.chw-now-sub').textContent = 'Configura tu ubicación';
-    if (q('.chw-tip')) q('.chw-tip').innerHTML = '<i>📍</i><span>Toca <b>“Elegir mi ciudad en el mapa”</b> para activar el widget del clima.</span>';
+    if (q('.chw-now-sub')) q('.chw-now-sub').textContent = 'Habilita la ubicación en tu dispositivo';
+    if (q('.chw-tip')) q('.chw-tip').innerHTML = '<i>📍</i><span>Habilita la ubicación en tu dispositivo, o toca <b>“Elegir mi ciudad en el mapa”</b> para ver el clima real de tu zona.</span>';
     if (q('.chw-strip')) q('.chw-strip').innerHTML = '';
     _lastUpdateTs = null;
     setUpdatedText(null);
