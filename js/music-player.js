@@ -193,9 +193,9 @@
         '<p class="chmp__status" id="chmpStatus">Atajos: Espacio=play · ←/→=seek · ↑/↓=volumen</p>' +
         '<audio id="chmpAudio" preload="metadata" playsinline></audio>' +
         '<div class="chmp__controls">' +
-          '<button class="chmp__btn" data-role="prev" title="Anterior" aria-label="Anterior"><i class="fas fa-backward-step"></i></button>' +
+          '<button class="chmp__btn" data-role="prev" title="Anterior" aria-label="Anterior"><i class="fas fa-angle-right" style="transform:rotate(180deg)"></i></button>' +
           '<button class="chmp__btn chmp__btn--primary" data-role="play" title="Play/Pause" aria-label="Reproducir"><i class="fas fa-play"></i></button>' +
-          '<button class="chmp__btn" data-role="next" title="Siguiente" aria-label="Siguiente"><i class="fas fa-forward-step"></i></button>' +
+          '<button class="chmp__btn" data-role="next" title="Siguiente" aria-label="Siguiente"><i class="fas fa-angle-right"></i></button>' +
         '</div>' +
         '<input class="chmp__progress" data-role="seek" type="range" min="0" max="100" value="0" step="0.1" aria-label="Progreso">' +
         '<div class="chmp__meta"><span id="chmpTime">0:00 / 0:00</span><span id="chmpVolLabel">Vol 70%</span></div>' +

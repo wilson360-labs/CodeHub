@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.51';
+const VERSION = 'codehub-v7.52';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -118,7 +118,7 @@ const PRECACHE = [
   '/dist/assets/js/lazy-features.8633234919.min.js',
   '/dist/assets/js/live-update-check.a5e996838d.min.js',
   '/dist/assets/js/morphicons-init.a38de871fc.min.js',
-  '/dist/assets/js/music-player.35668e7a10.min.js',
+  '/dist/assets/js/music-player.bd0493cf5a.min.js',
   '/dist/assets/js/native-music.3a7a58cdbe.min.js',
   '/dist/assets/js/notifications.024f9d794c.min.js',
   '/dist/assets/js/office-generator.8d6cdf13ee.min.js',
@@ -137,7 +137,7 @@ const PRECACHE = [
   '/dist/assets/js/updater.cdaf77f61c.min.js',
   '/dist/assets/js/ux-animations.f3b47b32a4.min.js',
   '/dist/assets/js/wx-oneui.c2b4bef30e.min.js',
-  '/dist/assets/widgets/weather/weather-widget.34b062ad94.min.js',
+  '/dist/assets/widgets/weather/weather-widget.990a34537c.min.js',
   '/data/roadmap.json',
 ];
 

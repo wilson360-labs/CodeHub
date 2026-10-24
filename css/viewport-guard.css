@@ -1878,6 +1878,16 @@ body.has-dock {
 .chw-panel.wxs-on .chw-now-sub, .chw-panel.wxs-on .chw-now-city, .chw-panel.wxs-on .chw-updated { color: rgba(255,255,255,.85); }
 .chw-panel.wxs-on .chw-now-temp { font-weight: 200; font-size: 3rem; letter-spacing: -.04em; text-shadow: 0 3px 16px rgba(0,0,0,.22); }
 .chw-panel.wxs-on .chw-now-icon { animation: wxs-float 6s ease-in-out infinite; filter: drop-shadow(0 6px 12px rgba(0,0,0,.25)); }
+/* En modo día con cielo claro/nublado/sin lluvia, el texto blanco pierde contraste */
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) { color: #1a1a2e; }
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-now-sub,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-now-city,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-updated,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-tip,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-hour-time,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-pill-city,
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-head-city { color: rgba(26,26,46,.72); }
+.chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-now-temp { text-shadow: none; }
 .chw-panel.wxs-on .chw-tip,
 .chw-panel.wxs-on .chw-hour {
   background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22);

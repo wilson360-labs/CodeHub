@@ -503,6 +503,10 @@ window.chSismosSetMag = function (mag, btn) {
     var sheet = document.getElementById('sismos-sheet');
     var backdrop = document.getElementById('sismos-sheet-backdrop');
     var close = document.getElementById('sismos-sheet-close');
+    try {
+      if (sheet && sheet.parentElement !== document.body) document.body.appendChild(sheet);
+      if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
+    } catch (e) {}
     if (sheet) { sheet.classList.add('open'); sheet.setAttribute('aria-hidden', 'false'); }
     if (backdrop) backdrop.classList.add('open');
     document.body.classList.add('ch-sismos-sheet-locked');
