@@ -5948,19 +5948,32 @@ async function sendFCM(token, payload) {
   }
 }
 
-app.post('/api/push/fcm-subscribe', chatLimiter, async (req, res) => {
+// Validación de coordenadas para endpoints FCM.
+function validCoordsGeo(lat, lon, strictZero) {
+  // Ambas ausentes = sin ubicación (permitido en subscribe).
+  if (lat == null && lon == null) return true;
+  if (lat == null || lon == null) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return false;
+  if (strictZero && lat === 0 && lon === 0) return false;
+  return true;
+}
+
+app.post('/api/push/fcm-subscribe', fcmLimiter, async (req, res) => {
   try {
     const { token, lat, lon, appName, appVersion, platform, userAgent } = req.body || {};
     if (!token) return res.status(400).json({ ok: false, error: 'Falta token FCM' });
+    if (!validCoordsGeo(lat, lon, false)) return res.status(400).json({ ok: false, error: 'Coordenadas inválidas' });
     await fcmSaveToken({ token, lat, lon, appName, appVersion, platform, userAgent });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.post('/api/push/fcm-location', chatLimiter, async (req, res) => {
+app.post('/api/push/fcm-location', fcmLimiter, async (req, res) => {
   try {
     const { token, lat, lon } = req.body || {};
     if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
+    if (!validCoordsGeo(lat, lon, true)) return res.status(400).json({ ok: false, error: 'Coordenadas inválidas' });
     await fcmUpdateLocation(token, lat, lon);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }

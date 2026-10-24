@@ -194,8 +194,8 @@
       var el = document.getElementById('wx-minimap');
       if (!el) return;
       el.innerHTML = '';
-      var lat = initialLat || 14.6349;
-      var lon = initialLon || -90.5069;
+      var lat = initialLat || 0;
+      var lon = initialLon || 0;
       if (isGoogleMode()) buildGoogleMap(el, lat, lon);
       else buildLeafletMap(el, lat, lon);
 
@@ -401,7 +401,13 @@
     if (box) box.classList.remove('closed');
     var caret = document.getElementById('wx-map-caret');
     if (caret) caret.className = 'fas fa-chevron-up wx-map-caret';
-    initMap(null, null);
+    var _saved = readSavedLoc();
+    if (!_saved) {
+      var _el = document.getElementById('wx-minimap');
+      if (_el) _el.innerHTML = '<div class="wx-map-fail">Habilita la ubicación en tu dispositivo<br><small>Usa la señal del móvil o la ubicación de tu dispositivo.</small></div>';
+      return;
+    }
+    initMap(_saved.lat, _saved.lon);
     if (_googleMap) setTimeout(function () { google.maps.event.trigger(_googleMap, 'resize'); }, 60);
     if (_map) {
       setTimeout(function () { _map.invalidateSize(); }, 60);
