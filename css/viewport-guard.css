@@ -1908,21 +1908,148 @@ body.has-dock {
 }
 
 /* Barra/panel de notificaciones / update-notification: icono más compacto */
+.update-notification .toast-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+  vertical-align: middle !important;
+}
+.update-notification .toast-icon > *,
+.update-notification .toast-icon .chw-now-icon,
+.update-notification .toast-icon .chw-pill-icon,
+.update-notification .toast-icon svg,
+.update-notification .toast-icon img,
+.update-notification .toast-icon i {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  font-size: inherit !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
 .update-notification .chw-now-icon,
 .update-notification.weather .chw-now-icon,
 #notifications-panel .chw-now-icon,
 .ch-notif .chw-now-icon,
-.toast .chw-now-icon {
+.toast .chw-now-icon,
+.notification-item .chw-now-icon {
   width: 18px !important;
   height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
   font-size: 14px !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
 }
 .update-notification .chw-pill-icon,
 #notifications-panel .chw-pill-icon,
-.ch-notif .chw-pill-icon {
+.ch-notif .chw-pill-icon,
+.notification-item .chw-pill-icon {
   width: 16px !important;
   height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
   font-size: 13px !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+}
+
+/* Móvil: forzar compacto en barra de notificaciones/panel */
+@media (max-width: 720px) {
+  .update-notification .toast-icon {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+    font-size: 12px !important;
+  }
+  .update-notification .chw-now-icon,
+  .update-notification.weather .chw-now-icon,
+  #notifications-panel .chw-now-icon,
+  .ch-notif .chw-now-icon,
+  .toast .chw-now-icon,
+  .notification-item .chw-now-icon {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+    min-height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+    font-size: 12px !important;
+    line-height: 1 !important;
+    overflow: hidden !important;
+  }
+  .update-notification .chw-pill-icon,
+  #notifications-panel .chw-pill-icon,
+  .ch-notif .chw-pill-icon,
+  .notification-item .chw-pill-icon {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    overflow: hidden !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .update-notification .toast-icon {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    font-size: 11px !important;
+  }
+  .update-notification .chw-now-icon,
+  .update-notification.weather .chw-now-icon,
+  #notifications-panel .chw-now-icon,
+  .ch-notif .chw-now-icon,
+  .toast .chw-now-icon,
+  .notification-item .chw-now-icon {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    overflow: hidden !important;
+  }
 }
 /* En modo día con cielo claro/nublado/sin lluvia, el texto blanco pierde contraste */
 .chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) { color: #1a1a2e; }
