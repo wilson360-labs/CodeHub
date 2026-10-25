@@ -1879,31 +1879,50 @@ body.has-dock {
 .chw-panel.wxs-on .chw-now-temp { font-weight: 200; font-size: 3rem; letter-spacing: -.04em; text-shadow: 0 3px 16px rgba(0,0,0,.22); }
 /* Icono clima flotante/panel: evita recorte en notificación/panel */
 .chw-now-right { display: flex; align-items: center; gap: 8px; }
+.chw-now-icon,
+.chw-pill-icon,
+.chw-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+  vertical-align: middle !important;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
 .chw-now-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: clamp(44px, 8vw, 56px);
-  height: clamp(44px, 8vw, 56px);
-  line-height: 1;
-  font-size: clamp(28px, 6vw, 38px);
-  overflow: visible;
-  flex: 0 0 auto;
+  width: clamp(38px, 7vw, 48px);
+  height: clamp(38px, 7vw, 48px);
+  font-size: clamp(24px, 5.2vw, 32px);
 }
 .chw-pill-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  line-height: 1;
+  width: 20px;
+  height: 20px;
   font-size: 16px;
-  overflow: visible;
-  flex: 0 0 auto;
 }
 .chw-panel.wxs-on .chw-now-icon,
 .chw-widget.wxs-on .chw-pill-icon {
   filter: drop-shadow(0 6px 14px rgba(0,0,0,.25));
+}
+
+/* Barra/panel de notificaciones / update-notification: icono más compacto */
+.update-notification .chw-now-icon,
+.update-notification.weather .chw-now-icon,
+#notifications-panel .chw-now-icon,
+.ch-notif .chw-now-icon,
+.toast .chw-now-icon {
+  width: 18px !important;
+  height: 18px !important;
+  font-size: 14px !important;
+}
+.update-notification .chw-pill-icon,
+#notifications-panel .chw-pill-icon,
+.ch-notif .chw-pill-icon {
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 13px !important;
 }
 /* En modo día con cielo claro/nublado/sin lluvia, el texto blanco pierde contraste */
 .chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) { color: #1a1a2e; }
