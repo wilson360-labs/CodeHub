@@ -1877,7 +1877,34 @@ body.has-dock {
 .chw-panel.wxs-on > *:not(.wxs) { position: relative; z-index: 1; }
 .chw-panel.wxs-on .chw-now-sub, .chw-panel.wxs-on .chw-now-city, .chw-panel.wxs-on .chw-updated { color: rgba(255,255,255,.85); }
 .chw-panel.wxs-on .chw-now-temp { font-weight: 200; font-size: 3rem; letter-spacing: -.04em; text-shadow: 0 3px 16px rgba(0,0,0,.22); }
-.chw-panel.wxs-on .chw-now-icon { animation: wxs-float 6s ease-in-out infinite; filter: drop-shadow(0 6px 12px rgba(0,0,0,.25)); }
+/* Icono clima flotante/panel: evita recorte en notificación/panel */
+.chw-now-right { display: flex; align-items: center; gap: 8px; }
+.chw-now-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(44px, 8vw, 56px);
+  height: clamp(44px, 8vw, 56px);
+  line-height: 1;
+  font-size: clamp(28px, 6vw, 38px);
+  overflow: visible;
+  flex: 0 0 auto;
+}
+.chw-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 16px;
+  overflow: visible;
+  flex: 0 0 auto;
+}
+.chw-panel.wxs-on .chw-now-icon,
+.chw-widget.wxs-on .chw-pill-icon {
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.25));
+}
 /* En modo día con cielo claro/nublado/sin lluvia, el texto blanco pierde contraste */
 .chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) { color: #1a1a2e; }
 .chw-panel.wxs-on[data-day="1"]:not([data-wx="rain"]):not([data-wx="storm"]):not([data-wx="snow"]) .chw-now-sub,

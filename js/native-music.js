@@ -255,9 +255,9 @@
     root = el;
   }
 
-  // Sin posición guardada queda justo encima del dock flotante, midiendo su
-  // alto real en cada breakpoint (no hay que replicar aquí la tabla de
-  // breakpoints). Si el usuario ya lo movió, manda su posición.
+  // Sin posición guardada queda justo encima del flotante de clima
+  // (o del dock si no existe). Así no queda escondido y deja ver bien
+  // ambos controles. Si el usuario ya lo movió, manda su posición.
   function layout() {
     if (!root) return;
     if (drag.active) { // resize a mitad de arrastre: solo re-clampear
@@ -270,13 +270,43 @@
       applyPos(savedPos.l, savedPos.t);
       return;
     }
-    var dock = document.getElementById('hub-dock');
-    var px = 116; // dock por defecto (desktop): bottom 28 + alto ~88
-    if (dock && dock.getClientRects().length) {
-      var gap = window.innerHeight - dock.getBoundingClientRect().top;
-      if (gap > 0) px = Math.max(72, Math.round(gap) + 8);
+    var px = 116;
+    // Prioridad: widget de clima flotante (.chw-widget / .chw-panel)
+    var wx = document.querySelector('.chw-widget, #chw-widget, .chw-panel');
+    if (wx && wx.getClientRects().length) {
+      var wr = wx.getBoundingClientRect();
+      if (wr.top > 0) {
+        var gapWx = window.innerHeight - wr.top;
+        if (gapWx > 0) px = Math.max(92, Math.round(gapWx) + 14);
+      }
     }
+    // Fallback: hub-dock
+    if (px === 116) {
+      var dock = document.getElementById('hub-dock');
+      if (dock && dock.getClientRects().length) {
+        var gap = window.innerHeight - dock.getBoundingClientRect().top;
+        if (gap > 0) px = Math.max(92, Math.round(gap) + 14);
+      }
+    }
+    root.style.left = '';
+    root.style.right = 'auto';
+    root.style.transform = '';
     root.style.bottom = px + 'px';
+  }
+
+  function showMoveTipOnce() {
+    try {
+      if (localStorage.getItem('ch:nm-move-tip-shown')) return;
+      localStorage.setItem('ch:nm-move-tip-shown', '1');
+    } catch (e) {}
+    if (!document.body) return;
+    var tip = document.createElement('div');
+    tip.className = 'ch-nm-tip';
+    tip.textContent = 'Mantén presionado el reproductor para moverlo de posición';
+    document.body.appendChild(tip);
+    setTimeout(function () {
+      if (tip && tip.parentNode) tip.parentNode.removeChild(tip);
+    }, 3200);
   }
 
   function progressPct() {
@@ -301,12 +331,33 @@
     if (refs.fill) refs.fill.style.width = progressPct().toFixed(2) + '%';
   }
 
+  function showMoveDialogOnce() {
+    try {
+      if (localStorage.getItem('ch:nm-move-dialog-shown')) return;
+      localStorage.setItem('ch:nm-move-dialog-shown', '1');
+    } catch (e) {}
+    if (!document.body) return;
+    var ov = document.createElement('div');
+    ov.className = 'ch-nm-move-dlg';
+    ov.innerHTML = '<div class="ch-nm-move-dlg__card"><div class="ch-nm-move-dlg__icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a1 1 0 0 1 .894.553l2 4A1 1 0 0 1 14 8H10a1 1 0 0 1-.894-1.447l2-4A1 1 0 0 1 12 2zm-4.447 9.553a1 1 0 0 1 1.447.894v4a1 1 0 0 1-1.447.894l-4-2A1 1 0 0 1 3 14v-4a1 1 0 0 1 .553-.894l4-2zm8.894 0 4 2A1 1 0 0 1 21 12v4a1 1 0 0 1-.553.894l-4 2A1 1 0 0 1 15 18v-4a1 1 0 0 1 .447-1.447zM12 22a1 1 0 0 1-.894-.553l-2-4A1 1 0 0 1 10 16h4a1 1 0 0 1 .894 1.447l-2 4A1 1 0 0 1 12 22z"/></svg></div><div class="ch-nm-move-dlg__text"><strong>Reproductor movible</strong><small>Mantén presionado el reproductor para cambiarlo de posición.</small></div><button class="ch-nm-move-dlg__btn" type="button">Entendido</button></div>';
+    document.body.appendChild(ov);
+    function close() {
+      if (!ov || !ov.parentNode) return;
+      ov.classList.add('is-hide');
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 220);
+    }
+    ov.querySelector('.ch-nm-move-dlg__btn').addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    setTimeout(close, 3800);
+  }
+
   function show() {
     if (!root) build();
     if (root.hidden) {
       root.hidden = false;
       layout();
       window.addEventListener('resize', layout);
+      showMoveDialogOnce();
     }
     if (!ticker) {
       // Solo mientras se ve y hay pista: la barra avanza sola sin pedirle
