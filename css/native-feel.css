@@ -158,11 +158,11 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   box-shadow: 0 24px 80px rgba(15, 23, 42, .35);
 }
 
-/* Progreso: 2px pegados al borde superior */
+/* Progreso: 3px pegados al borde superior, relleno con la marca CodeBeat */
 .ch-nm__bar {
   display: block;
-  height: 2px;
-  border-radius: 2px;
+  height: 3px;
+  border-radius: 3px;
   background: rgba(255, 255, 255, .12);
   overflow: hidden;
 }
@@ -171,8 +171,27 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   height: 100%;
   width: 0;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--primary, #2f80ed), var(--accent, #00d4ff));
+  background: linear-gradient(90deg, #f97316, #ef4444 55%, #7c4dff);
+  box-shadow: 0 0 8px rgba(239, 68, 68, .45);
   transition: width .3s linear;
+}
+
+/* Entrada: slide-up solo si el usuario aún no lo colocó; si ya tiene
+   posición guardada, fade simple para no saltar de sitio. Sin fill-mode:
+   al terminar, el transform inline (colocado) vuelve a mandar. */
+#chNativeMusic:not([hidden]):not(.ch-nm--placed) {
+  animation: ch-nm-in .28s cubic-bezier(.2, .9, .3, 1.12);
+}
+#chNativeMusic.ch-nm--placed:not([hidden]) {
+  animation: ch-nm-fade .2s ease-out;
+}
+@keyframes ch-nm-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px) scale(.96); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes ch-nm-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .ch-nm__row {
@@ -182,13 +201,14 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   min-width: 0;
 }
 
-/* Metadatos = botón "abrir reproductor" */
+/* Metadatos = botón "abrir reproductor": portada + textos en fila */
 .ch-nm__meta {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   padding: 2px 6px 2px 2px;
   margin: 0;
   border: 0;
@@ -198,6 +218,66 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   font: inherit;
   cursor: pointer;
 }
+
+/* Portada: tile con la marca CodeBeat + ecualizador vivo al reproducir */
+.ch-nm__cover {
+  position: relative;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #fff;
+  background: linear-gradient(140deg, #f97316 0%, #ef4444 55%, #7c4dff 100%);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, .28), inset 0 1px 0 rgba(255, 255, 255, .32);
+  transition: box-shadow .3s ease;
+}
+.ch-nm__cover svg { position: relative; z-index: 1; opacity: .95; }
+#chNativeMusic[data-playing="1"] .ch-nm__cover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, .45), inset 0 1px 0 rgba(255, 255, 255, .35);
+}
+.ch-nm__eq {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+  z-index: 2;
+}
+.ch-nm__eq i {
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, .95);
+  transform-origin: bottom;
+  transform: scaleY(.35);
+  opacity: .55;
+  animation: ch-nm-eq 1.1s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.ch-nm__eq i:nth-child(1) { animation-delay: 0s; }
+.ch-nm__eq i:nth-child(2) { animation-delay: .16s; }
+.ch-nm__eq i:nth-child(3) { animation-delay: .32s; }
+.ch-nm__eq i:nth-child(4) { animation-delay: .48s; }
+#chNativeMusic[data-playing="1"] .ch-nm__eq i {
+  animation-play-state: running;
+  opacity: 1;
+}
+@keyframes ch-nm-eq {
+  0%, 100% { transform: scaleY(.3); }
+  50%      { transform: scaleY(1); }
+}
+
+.ch-nm__txt {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .ch-nm__title,
 .ch-nm__sub {
   display: block;
@@ -206,8 +286,8 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ch-nm__title { font-size: .82rem; font-weight: 600; line-height: 1.25; }
-.ch-nm__sub   { font-size: .68rem; line-height: 1.3; opacity: .65; }
+.ch-nm__title { font-size: .84rem; font-weight: 600; line-height: 1.25; letter-spacing: -.01em; }
+.ch-nm__sub   { font-size: .68rem; line-height: 1.3; opacity: .62; }
 
 .ch-nm__btn {
   flex: 0 0 auto;
@@ -229,20 +309,22 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
 .ch-nm__btn:active { transform: scale(.94); }
 .ch-nm__btn:hover  { background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .18); }
 .ch-nm__meta:focus-visible,
-.ch-nm__btn:focus-visible { outline: 2px solid var(--primary, #2f80ed); outline-offset: 2px; }
+.ch-nm__btn:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
+/* Play/pausa: gradiente CodeBeat (coherente con la tarjeta del index) */
 .ch-nm__play {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   border-color: transparent;
-  background: linear-gradient(150deg, var(--primary, #2f80ed), var(--accent, #1b6ef3));
+  background: linear-gradient(140deg, #f97316, #ef4444 70%, #e11d48);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, .4), inset 0 1px 0 rgba(255, 255, 255, .28);
   color: #fff;
   font-size: 1rem;
 }
 .ch-nm__play:hover {
-  background: linear-gradient(150deg, var(--primary, #2f80ed), var(--accent, #1b6ef3));
+  background: linear-gradient(140deg, #fb8438, #f04d4d 70%, #e5305a);
   border-color: transparent;
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 /* Teléfonos: mismo lenguaje que #hub-dock a ≤480px (dock a ~14px + 74px) */
@@ -251,6 +333,8 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
   .ch-nm__title { font-size: .78rem; }
   .ch-nm__sub   { font-size: .64rem; }
   .ch-nm__row   { gap: 6px; }
+  .ch-nm__meta  { gap: 8px; }
+  .ch-nm__cover { width: 38px; height: 38px; border-radius: 12px; }
   .ch-nm__btn   { width: 36px; height: 36px; font-size: .82rem; }
   .ch-nm__play  { width: 40px; height: 40px; font-size: .95rem; }
 }
@@ -258,6 +342,7 @@ html[data-anim="0"]::view-transition-group(root) { animation: none !important; }
 /* Mínimo soportado (380px): nada puede desbordar */
 @media (max-width: 380px) {
   #chNativeMusic { width: calc(100vw - 16px); }
+  .ch-nm__cover { width: 36px; height: 36px; border-radius: 11px; }
   .ch-nm__btn  { width: 34px; height: 34px; }
   .ch-nm__play { width: 38px; height: 38px; }
 }

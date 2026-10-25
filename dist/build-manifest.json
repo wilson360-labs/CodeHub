@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T14:33:18.052Z",
+  "generatedAt": "2026-10-25T17:54:19.664Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.132c0ed63c.min.js",
     "js/auth.js": "assets/js/auth.f8b782ad93.min.js",
@@ -15,7 +15,7 @@
     "js/live-update-check.js": "assets/js/live-update-check.a5e996838d.min.js",
     "js/morphicons-init.js": "assets/js/morphicons-init.a38de871fc.min.js",
     "js/music-player.js": "assets/js/music-player.bd0493cf5a.min.js",
-    "js/native-music.js": "assets/js/native-music.6f12e5fa05.min.js",
+    "js/native-music.js": "assets/js/native-music.2ea1a418b9.min.js",
     "js/noticias.js": "assets/js/noticias.f46c7e4567.min.js",
     "js/notifications.js": "assets/js/notifications.024f9d794c.min.js",
     "js/office-generator.js": "assets/js/office-generator.8d6cdf13ee.min.js",

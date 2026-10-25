@@ -434,6 +434,30 @@
 .dev-card-music h3 { display: flex; align-items: center; gap: .28rem; }
 .dev-card-music .cb-flame { font-size: .82rem; line-height: 1; }
 
+/* Distintivo PRO + descripción para visitantes */
+.dev-card-music .cb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .1rem .42rem;
+  border-radius: 999px;
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #fff;
+  background: linear-gradient(140deg, #f97316, #ef4444 60%, #7c4dff);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, .35);
+}
+.dev-card-music .cb-desc {
+  position: relative;
+  margin: .7rem 0 0;
+  max-width: 60ch;
+  min-width: 0;
+  font-size: .8rem;
+  line-height: 1.55;
+  color: var(--sys-muted);
+}
+.dev-card-music .cb-desc b { color: var(--sys-text, #e8ecf5); font-weight: 600; }
+
 /* Chips de fuentes compatibles */
 .dev-card-music .cb-chips {
   position: relative;
@@ -496,6 +520,7 @@
   /* CodeBeat: el logo no se encoge y las chips siguen cabiendo */
   .dev-card-music { padding: .95rem 1rem; }
   .dev-card-music .cb-logo { width: 42px; height: 42px; }
+  .dev-card-music .cb-desc { font-size: .74rem; line-height: 1.5; }
 }
 @media (max-width: 380px) {
   .dev-card-music .cb-chip { font-size: .6rem; padding: .2rem .45rem; }

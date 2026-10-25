@@ -201,8 +201,14 @@
       '<span class="ch-nm__live" aria-live="polite" aria-atomic="true"></span>' +
       '<span class="ch-nm__row">' +
         '<button type="button" class="ch-nm__meta" data-act="open" aria-label="Abrir reproductor" title="Abrir reproductor">' +
-          '<strong class="ch-nm__title"></strong>' +
-          '<small class="ch-nm__sub"></small>' +
+          '<span class="ch-nm__cover" aria-hidden="true">' +
+            '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9 3 L9 17.5 A3 3 0 1 1 7 14.5 L7 7 L17 5 L17 15.5 A3 3 0 1 1 15 12.5 L15 3 z"/></svg>' +
+            '<span class="ch-nm__eq"><i></i><i></i><i></i><i></i></span>' +
+          '</span>' +
+          '<span class="ch-nm__txt">' +
+            '<strong class="ch-nm__title"></strong>' +
+            '<small class="ch-nm__sub"></small>' +
+          '</span>' +
         '</button>' +
         '<button type="button" class="ch-nm__btn" data-act="prev" aria-label="Anterior" title="Anterior">' +
           '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M18 5 L10 12 L18 19 Z M6 5 h2 v14 h-2 z"/></svg></button>' +
@@ -321,6 +327,7 @@
   function render() {
     if (!root) return;
     // textContent, nunca innerHTML: el título/artista vienen del nativo.
+    root.setAttribute('data-playing', state.playing ? '1' : '0');
     refs.title.textContent = state.title || 'Pista en reproducción';
     refs.sub.textContent = state.artist || '';
     refs.play.innerHTML = state.playing
