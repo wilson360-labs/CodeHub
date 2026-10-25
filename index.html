@@ -6822,8 +6822,11 @@ function requestGeoLocation() {
       // Ubicación del dispositivo apagada: NUNCA inventar ciudad por
       // geo-IP (saldría la POP del carrier, p. ej. "Seattle").
       if (lat == null || lon == null) { showWeatherError(MSG_NO_LOC); done(false); return; }
-      await chResolveAndShowWeather(lat, lon, 'gps');
+      wxGpsDenied = false;
+      // Pintar YA con coords para respuesta inmediata; nombre/city en background
+      if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
       done(true);
+      chResolveAndShowWeather(lat, lon, 'gps').catch(function(){});
     };
     CodeHubNative.requestLocationPermission('_chGeoLocCb');
     return;
@@ -6831,41 +6834,44 @@ function requestGeoLocation() {
 
   if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
 
-  // Detección en DOS fases: rápida Y precisa a la vez.
-  //   Fase 1: fix de red/WiFi (~1-3 s, permite caché de 2 min) que pinta
-  //           el clima YA. maximumAge:0 + alta precisión forzaba un fix
-  //           GPS frío de 10-30 s con la pantalla congelada.
-  //   Fase 2 (background): fix GPS de alta precisión que refina la
-  //           coordenada guardada sin re-pintar nada.
+  // Detección en DOS fases: rápida Y precisa.
+  //   Fase 1: fix de red/WiFi agresivo (cache 5 min) → pinta clima YA,
+  //           marca botón verde al instante sin esperar reverse geocode.
+  //   Fase 2 (background): fix GPS de alta precisión que refina coords.
   navigator.geolocation.getCurrentPosition(
-    async (pos) => {
+    function (pos) {
       wxGpsDenied = false;
-      await chResolveAndShowWeather(pos.coords.latitude, pos.coords.longitude, 'gps');
+      var lat = pos.coords.latitude, lon = pos.coords.longitude;
+      // Pintado inmediato con coords. chResolveAndShowWeather actualiza
+      // nombre/guardado en background sin bloquear UI.
+      if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
       done(true);
+      chResolveAndShowWeather(lat, lon, 'gps').catch(function(){});
       chGeoRefineBackground(pos.coords.accuracy);
     },
     async (err) => {
       wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
       if (err && err.code === 1) {
-        // Bloqueado en el navegador: instrucción concreta. Sin geo-IP:
-        // mostrar una ciudad equivocada es peor que no mostrar nada.
+        // Bloqueado en el navegador: instrucción concreta. Sin geo-IP.
         showWeatherError('Tu navegador tiene la ubicación bloqueada. Toca el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página, o escribe tu ciudad abajo.');
         done(false);
         return;
       }
-      // TIMEOUT/indisponible (ubicación apagada en el dispositivo): un
-      // reintento de alta precisión (9 s) y luego pedir habilitarla.
+      // TIMEOUT/indisponible (ubicación apagada en el dispositivo): reintento
+      // con alta precisión pero corto, luego pedir habilitarla.
       navigator.geolocation.getCurrentPosition(
-        async (pos2) => {
+        function (pos2) {
           wxGpsDenied = false;
-          await chResolveAndShowWeather(pos2.coords.latitude, pos2.coords.longitude, 'gps');
+          var lat2 = pos2.coords.latitude, lon2 = pos2.coords.longitude;
+          if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat2, lon2, 'Tu ubicación 📍');
           done(true);
+          chResolveAndShowWeather(lat2, lon2, 'gps').catch(function(){});
         },
         async () => { showWeatherError(MSG_NO_LOC); done(false); },
-        { enableHighAccuracy: true, timeout: 9000, maximumAge: 30000 }
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
       );
     },
-    { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 }
+    { enableHighAccuracy: false, timeout: 3000, maximumAge: 300000 }
   );
 }
 
