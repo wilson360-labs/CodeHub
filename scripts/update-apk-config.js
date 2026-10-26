@@ -131,12 +131,38 @@ async function main() {
     process.exit(1);
   }
 
+  // 1) Auth CI → sessionToken vía /api/admin/auth/bot (POST x-admin-key).
+  //    El backend moderno SOLO acepta sesiones en requireAdmin (el login
+  //    humano lleva Turnstile, imposible desde CI). Si el endpoint no existe
+  //    todavía (404, backend desplegándose), se usa la vía clásica
+  //    x-admin-key directa en el PATCH.
+  let sessionToken = null;
+  try {
+    const authRes = await fetch(backend + '/api/admin/auth/bot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+    });
+    const authText = await authRes.text();
+    let authData = null;
+    try { authData = JSON.parse(authText); } catch (e) {}
+    if (authRes.ok && authData && authData.sessionToken) {
+      sessionToken = authData.sessionToken;
+    } else if (authRes.status !== 404) {
+      console.error(`✖ Auth CI falló (HTTP ${authRes.status}): ${authText.slice(0, 300)}`);
+      process.exit(1);
+    }
+  } catch (e) {
+    console.error('✖ Auth CI falló:', e.message);
+    process.exit(1);
+  }
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (sessionToken) headers['x-admin-session'] = sessionToken;
+  else headers['x-admin-key'] = key; // backend sin /auth/bot (transición)
+
   const res = await fetch(backend + '/api/admin/config', {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-key': key,
-    },
+    headers,
     body: JSON.stringify({ config: { apkLatestVersion: version, apkUpdateNotes: notes } }),
   });
   const text = await res.text();

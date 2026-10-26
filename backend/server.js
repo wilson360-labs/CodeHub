@@ -821,6 +821,38 @@ app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
   res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
 });
 
+// POST /api/admin/auth/bot — autenticación máquina-a-máquina (CI/CD rollout).
+// El login humano exige Turnstile (fail-closed); un runner de CI no puede
+// pasarlo. La key viaja en el header x-admin-key (HTTPS) y se compara en
+// tiempo constante; a cambio se emite el MISMO sessionToken HMAC. Misma
+// política anti brute-force (_recordAdminFail → ban por IP).
+app.post('/api/admin/auth/bot', adminAuthLimiter, (req, res) => {
+  const ip = clientIp(req);
+  const ua = (req.headers['user-agent'] || 'CI').slice(0, 100).replace(/[<>]/g, '');
+
+  const validKey = process.env.ADMIN_KEY;
+  if (!validKey) {
+    console.error('⚠️  ADMIN_KEY no configurada en variables de entorno de Render');
+    return res.status(503).json({ error: 'Servidor no configurado — falta ADMIN_KEY en Render' });
+  }
+
+  const given = String(req.headers['x-admin-key'] || '');
+  const a = Buffer.from(given);
+  const b = Buffer.from(validKey);
+  const keyOk = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!keyOk) {
+    _recordAdminFail(ip, ua);
+    tgAlert('adminfail', () => {
+      return `🔐 <b>INTENTO FALLIDO ADMIN (bot)</b>\nIP: <code>${ip}</code>\nKey: ${given.slice(0, 6)}…\nUA: ${ua}`;
+    }, { windowMs: 15000 });
+    return res.status(403).json({ error: 'Credenciales incorrectas' });
+  }
+
+  const now = Date.now();
+  const token = _signSession({ admin: true, bot: true, iat: now, exp: now + SESSION_TTL_MS });
+  res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
+});
+
 // ── AUTH ADMIN ────────────────────────────────────────────────
 function requireAdmin(req, res, next) {
   const ip       = clientIp(req);

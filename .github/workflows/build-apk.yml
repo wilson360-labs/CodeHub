@@ -505,9 +505,10 @@ jobs:
           # Activa el diálogo "Actualización disponible" del APK publicando
           # apkLatestVersion + apkUpdateNotes en /api/admin/config (Render).
           # Se usa --fallback con el mensaje del commit para que el CI nunca
-          # publique vacío; si no hay ADMIN_KEY en secrets, se advierte y el
-          # release ya quedó publicado (el job se marca con advertencia).
-          MSG="${CH_MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
+          # publique vacío: solo el SUBJECT (primera línea), nunca el body —
+          # ese texto lo leen usuarios finales en el diálogo de la app.
+          MSG="${CH_MSG%%$'\n'*}"
+          MSG="${MSG:-Nueva versión de CodeHub con mejoras y correcciones}"
           node scripts/update-apk-config.js --fallback "$MSG"
 
       - name: Limpiar keystore local del runner

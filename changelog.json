@@ -1,5 +1,19 @@
 [
   {
+    "version": "v7.55",
+    "date": "2026-10-26",
+    "type": "feat",
+    "title": "CodeBeat rediseñada y deteccion de ubicacion mas rapida",
+    "changes": [
+      "CodeBeat: tarjeta del reproductor renovada con descripcion y distintivo PRO",
+      "CodeBeat: control flotante con portada animada al reproducir y colores de marca",
+      "Boton Detectar ubicacion: pinta el clima al instante y refina por GPS en segundo plano",
+      "El clima ya nunca muestra una ciudad ajena cuando la ubicacion esta apagada",
+      "Iconos del clima compactos en la barra y el panel de notificaciones",
+      "Compilacion de la app nativa mas ligera y estable en CI"
+    ]
+  },
+  {
     "version": "v7.34",
     "date": "2026-10-16",
     "type": "fix",
