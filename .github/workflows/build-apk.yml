@@ -305,7 +305,9 @@ jobs:
           exit $rc
 
       - name: Publicar error de release como Issue (diagnostico)
-        if: always() && steps.release-build.conclusion == 'failure'
+        # `conclusion` es SIEMPRE 'success' bajo continue-on-error; el fallo
+        # real queda en `outcome` (run #423: el issue no se publicó por esto).
+        if: always() && steps.release-build.outcome == 'failure'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

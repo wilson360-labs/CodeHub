@@ -21,6 +21,14 @@ android {
         versionName "7.17"
     }
 
+    lint {
+        // lintVital* (release) moría por OutOfMemoryError en el runner al
+        // analizar :echo (build #423). No aporta a un APK auto-publicado:
+        // la calidad la cubre assembleDebug (paso CI) sin gastar ~3GB extra
+        // de heap durante el firmado.
+        checkReleaseBuilds false
+    }
+
     signingConfigs {
         release {
             def ksPath = project.hasProperty('KEYSTORE_PATH') ? project.property('KEYSTORE_PATH') : 'release.jks'

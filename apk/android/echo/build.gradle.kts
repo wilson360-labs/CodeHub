@@ -45,6 +45,12 @@ android {
         // minSdk 24 < 26: mismas APIs java.time que el resto de CodeHub.
         isCoreLibraryDesugaringEnabled = true
     }
+
+    lint {
+        // lintVital de la librería fue el que disparó OutOfMemoryError en el
+        // runner de CI (task :echo:lintVitalAnalyzeRelease, build #423).
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {
