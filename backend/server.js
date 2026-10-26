@@ -6566,6 +6566,57 @@ app.get('/api/push/seismic/check', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// Endpoint de reporte de sismo por dispositivo (capa C de alerta temprana).
+// Un dispositivo que detecta un pico STA/LTA reporta su ubicación; el
+// backend hace fanout FCM high-priority a los dispositivos cercanos.
+// Rate-limited (fcmLimiter) + dedupe regional 60s para evitar flood.
+app.post('/api/quake/report', fcmLimiter, async (req, res) => {
+  try {
+    const { lat, lon, mag, deviceId } = req.body || {};
+    const L = +lat, Lo = +lon;
+    if (!Number.isFinite(L) || !Number.isFinite(Lo) || L < -90 || L > 90 || Lo < -180 || Lo > 180) {
+      return res.status(400).json({ ok: false, error: 'coords' });
+    }
+    const estMag = Number.isFinite(+mag) ? Math.max(3.5, Math.min(8.5, +mag)) : 4.5;
+    // Dedupe regional: redondeo 0.5° (~55 km) + ventana 60 s.
+    const key = Math.round(L * 2) / 2 + ',' + Math.round(Lo * 2) / 2;
+    const now = Date.now();
+    if (quakeReportRecent.has(key) && now - quakeReportRecent.get(key) < 60000) {
+      return res.json({ ok: true, deduped: true });
+    }
+    quakeReportRecent.set(key, now);
+    for (const [k, t] of quakeReportRecent) if (now - t > 5 * 60 * 1000) quakeReportRecent.delete(k);
+
+    const tokens = await fcmListTokens();
+    const targets = tokens.filter(t => Number.isFinite(+t.lat) && Number.isFinite(+t.lon));
+    const radiusKm = 80;
+    const strong = estMag >= 5;
+    const type = strong ? 'quake_alert' : 'quake_info';
+    const title = strong ? '🚨 ALERTA SÍSMICA' : '🌋 Actividad sísmica';
+    const body = 'Sismo detectado por dispositivos cercanos · M~' + estMag.toFixed(1) + '\n📍 Tu zona';
+    let sent = 0;
+    for (const t of targets) {
+      const dist = haversineKm(L, Lo, +t.lat, +t.lon);
+      if (dist > radiusKm) continue;
+      if (deviceId && t.device_id === deviceId) continue;
+      const r = await sendFCM(t.token, {
+        title, body, type, url: '/#sismos-section',
+        mag: estMag, dist: Math.round(dist),
+        dir: compassDirKm(L, Lo, +t.lat, +t.lon),
+        place: 'cerca de tu zona', time: now, alertType: 'earthquake',
+      });
+      if (r.ok) sent++;
+    }
+    console.log('🚨 Quake report fanout:', sent, 'devices, M~' + estMag.toFixed(1));
+    res.json({ ok: true, sent });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Dedupe en memoria para reportes de sismo (capa C).
+const quakeReportRecent = new Map();
+
 // Endpoint PÚBLICO de sismos para la sección "Sismos" del frontend.
 // Hace de PROXY hacia USGS (sin tocar CSP del navegador) y devuelve una
 // lista limpia y filtrable:

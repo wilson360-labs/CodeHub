@@ -207,6 +207,14 @@
                 android:resource="@xml/quick_access_widget_info" />
         </receiver>
 
+        <!-- Detector de sismos por acelerómetro (capa C de alerta temprana).
+             Foreground dataSync: mantiene el sensor activo mientras la app
+             corre. Android 14+ exige foregroundServiceType declarado. -->
+        <service
+            android:name=".QuakeDetectorService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Servicio del emoji animado del widget (AdapterViewFlipper).
              Obligatorio: permission BIND_REMOTEVIEWS para que el launcher
              enlace la factory de frames. -->

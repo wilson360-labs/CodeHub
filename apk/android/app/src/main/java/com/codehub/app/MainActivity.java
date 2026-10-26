@@ -288,6 +288,18 @@ public class MainActivity extends Activity {
         }
         requestIgnoreBattery();
         promptSystemEarthquakeAlerts();
+        startQuakeDetector();
+    }
+
+    private void startQuakeDetector() {
+        try {
+            Intent i = new Intent(this, QuakeDetectorService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(i);
+            } else {
+                startService(i);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void requestIgnoreBattery() {
