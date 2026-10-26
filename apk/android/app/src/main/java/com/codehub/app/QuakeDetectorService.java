@@ -196,6 +196,7 @@ public class QuakeDetectorService extends Service implements SensorEventListener
                 : "CodeHub — MODO USO (no alerta mientras usas el móvil)";
         nm.notify(NOTIF_ID, buildNotif(text));
     }
+    private void createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
