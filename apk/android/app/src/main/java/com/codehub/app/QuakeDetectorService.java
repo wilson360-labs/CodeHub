@@ -50,6 +50,12 @@ public class QuakeDetectorService extends Service implements SensorEventListener
     private static final long STATIONARY_REQUIRED_MS = 5 * 60 * 1000L;
     private static final long MOTION_GRACE_MS = 30 * 1000L;
     private static final double MOTION_THRESHOLD_G = 0.05;
+    // Dos modos bien diferenciados (UX): el usuario ve en la notificación
+    // persistente en cuál está. HUMAN_USE = ignorando (no alerta);
+    // AT_REST = protegiendo (alerta activa).
+    private static final int MODE_HUMAN_USE = 0;
+    private static final int MODE_AT_REST = 1;
+    private int currentMode = MODE_HUMAN_USE;
 
     @Override
     public void onCreate() {
@@ -83,20 +89,28 @@ public class QuakeDetectorService extends Service implements SensorEventListener
         double dev = Math.abs(mag - 9.81);
         long now = System.currentTimeMillis();
         // Inteligencia de contexto: ¿el teléfono se está usando/moviendo?
+        boolean wasHumanUse = (currentMode == MODE_HUMAN_USE);
         if (dev / 9.81 >= MOTION_THRESHOLD_G) {
             lastMotionTime = now;
             stationarySince = 0; // estaba quieto, ahora se mueve
         } else if (stationarySince == 0) {
             stationarySince = now; // acaba de quedar quieto
         }
+        // Determinar modo actual
+        boolean atRest = (stationarySince != 0)
+                && (now - stationarySince) >= STATIONARY_REQUIRED_MS
+                && (now - lastMotionTime) >= MOTION_GRACE_MS;
+        int newMode = atRest ? MODE_AT_REST : MODE_HUMAN_USE;
+        if (newMode != currentMode) {
+            currentMode = newMode;
+            refreshModeNotification();
+        }
         sta = sta + STA_ALPHA * (dev - sta);
         lta = lta + LTA_ALPHA * (dev - lta);
         double ratio = (lta > 0.001) ? (sta / lta) : 0;
         if (!cooldown.get() && ratio >= TRIGGER && dev >= PEAK_G * 9.81
                 && (now - lastTrigger) > 30000L
-                && stationarySince != 0
-                && (now - stationarySince) >= STATIONARY_REQUIRED_MS
-                && (now - lastMotionTime) >= MOTION_GRACE_MS) {
+                && currentMode == MODE_AT_REST) {
             lastTrigger = now;
             cooldown.set(true);
             new Handler(Looper.getMainLooper()).postDelayed(() -> cooldown.set(false), 30000);
@@ -174,7 +188,14 @@ public class QuakeDetectorService extends Service implements SensorEventListener
         }).start();
     }
 
-    private void createChannel() {
+    private void refreshModeNotification() {
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        String text = (currentMode == MODE_AT_REST)
+                ? "CodeHub protegiendo sismos — EN REPOSO (alerta activa)"
+                : "CodeHub — MODO USO (no alerta mientras usas el móvil)";
+        nm.notify(NOTIF_ID, buildNotif(text));
+    }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null && nm.getNotificationChannel(CHANNEL) == null) {
