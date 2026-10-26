@@ -41,6 +41,15 @@ public class QuakeDetectorService extends Service implements SensorEventListener
     private double sta = 0, lta = 0;
     private long lastTrigger = 0;
     private final AtomicBoolean cooldown = new AtomicBoolean(false);
+    // Inteligencia anti-falsos-positivos: solo se considera "sismo" si el
+    // dispositivo lleva >= STATIONARY_REQUIRED_MS sin movimiento significativo
+    // (usuario no lo está usando ni colocando). Si se movió en los últimos
+    // MOTION_GRACE_MS, se ignora (intercepta tomar/colocar el teléfono).
+    private long lastMotionTime = 0;
+    private long stationarySince = 0;
+    private static final long STATIONARY_REQUIRED_MS = 5 * 60 * 1000L;
+    private static final long MOTION_GRACE_MS = 30 * 1000L;
+    private static final double MOTION_THRESHOLD_G = 0.05;
 
     @Override
     public void onCreate() {
@@ -72,12 +81,22 @@ public class QuakeDetectorService extends Service implements SensorEventListener
         double x = e.values[0], y = e.values[1], z = e.values[2];
         double mag = Math.sqrt(x * x + y * y + z * z);
         double dev = Math.abs(mag - 9.81);
+        long now = System.currentTimeMillis();
+        // Inteligencia de contexto: ¿el teléfono se está usando/moviendo?
+        if (dev / 9.81 >= MOTION_THRESHOLD_G) {
+            lastMotionTime = now;
+            stationarySince = 0; // estaba quieto, ahora se mueve
+        } else if (stationarySince == 0) {
+            stationarySince = now; // acaba de quedar quieto
+        }
         sta = sta + STA_ALPHA * (dev - sta);
         lta = lta + LTA_ALPHA * (dev - lta);
         double ratio = (lta > 0.001) ? (sta / lta) : 0;
-        long now = System.currentTimeMillis();
         if (!cooldown.get() && ratio >= TRIGGER && dev >= PEAK_G * 9.81
-                && (now - lastTrigger) > 30000L) {
+                && (now - lastTrigger) > 30000L
+                && stationarySince != 0
+                && (now - stationarySince) >= STATIONARY_REQUIRED_MS
+                && (now - lastMotionTime) >= MOTION_GRACE_MS) {
             lastTrigger = now;
             cooldown.set(true);
             new Handler(Looper.getMainLooper()).postDelayed(() -> cooldown.set(false), 30000);
