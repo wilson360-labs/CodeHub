@@ -287,6 +287,7 @@ public class MainActivity extends Activity {
             }, PERMISSION_REQUEST_CODE);
         }
         requestIgnoreBattery();
+        promptSystemEarthquakeAlerts();
     }
 
     private void requestIgnoreBattery() {
@@ -300,6 +301,38 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception ignored) {}
         }
+    }
+
+    private void promptSystemEarthquakeAlerts() {
+        // Onboarding a las alertas sísmicas NATIVAS de Android (Google
+        // Earthquake Alerts). El SO detecta la onda P vía acelerómetros de
+        // la red y avisa con sirena en SEGUNDOS — mucho antes que cualquier
+        // feed de catálogo (USGS publica minutos después del evento).
+        // CodeHub no puede reemplazar eso; solo invitar al usuario a
+        // activarlo. Una vez por instalación.
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+            SharedPreferences sp = getSharedPreferences("ch_prefs", MODE_PRIVATE);
+            if (sp.getBoolean("ch_sys_quake_prompted", false)) return;
+
+            Intent ei = new Intent("com.google.android.gms.settings.EARTHQUAKE_ALERTS_SETTINGS");
+            if (ei.resolveActivity(getPackageManager()) == null) {
+                ei = new Intent(Settings.ACTION_SECURITY_SETTINGS);
+                if (ei.resolveActivity(getPackageManager()) == null) return;
+            }
+
+            sp.edit().putBoolean("ch_sys_quake_prompted", true).apply();
+            final Intent launchIntent = ei;
+            new AlertDialog.Builder(this)
+                .setTitle("Alertas sísmicas del sistema")
+                .setMessage("Para avisos en SEGUNDOS (ondas P) activa las alertas sísmicas de Android. "
+                    + "Google detecta el sismo antes de que llegue la onda destructiva y te avisa con sirena.")
+                .setPositiveButton("Activar", (d, w) -> {
+                    try { startActivity(launchIntent); } catch (Exception ignored) {}
+                })
+                .setNegativeButton("Más tarde", null)
+                .show();
+        } catch (Exception ignored) {}
     }
 
     @Override

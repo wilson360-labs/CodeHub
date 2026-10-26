@@ -34,6 +34,10 @@
 
     <uses-permission android:name="android.permission.DETECT_SCREEN_CAPTURE" />
 
+    <queries>
+        <package android:name="com.google.android.gms" />
+    </queries>
+
     <application
         android:name=".CodeHubApp"
         android:allowBackup="true"
