@@ -18,6 +18,7 @@ import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -322,7 +323,11 @@ public class WeatherNotificationProvider {
             if (astro != null) big.setImageViewBitmap(R.id.n_w_icon, astro);
             big.setInt(R.id.n_w_root, "setBackgroundResource", bg);
             big.setTextViewText(R.id.n_w_city, cityStr);
-            big.setTextViewText(R.id.n_w_time, timeStr);
+            if (stale) {
+                big.setTextViewText(R.id.n_w_time, ago(age));
+            } else {
+                big.setChronometer(R.id.n_w_time, SystemClock.elapsedRealtime(), "Actualizado hace %s", true);
+            }
             big.setTextColor(R.id.n_w_time, stale ? 0xFFFFC46B : 0xFFB4BED0);
             big.setTextViewText(R.id.n_w_temp, tempStr);
             big.setTextViewText(R.id.n_w_desc, condStr.isEmpty() ? cityStr : condStr);
@@ -359,7 +364,7 @@ public class WeatherNotificationProvider {
                 big.setTextColor(R.id.n_w_quake, 0xFF8FD3A8);
             }
 
-            notifyWidget(context, buildWidgetNotification(context, compact, big));
+            notifyWidget(context, buildWidgetNotification(context, compact, big, at));
         } catch (Throwable t) {
             Log.e(TAG, "paintFromPayload falló", t);
         }
@@ -547,7 +552,8 @@ public class WeatherNotificationProvider {
 
     private static Notification buildWidgetNotification(Context context,
                                                         RemoteViews compact,
-                                                        RemoteViews big) {
+                                                        RemoteViews big,
+                                                        long at) {
         Intent open = new Intent(context, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(context, 2001, open,
@@ -562,7 +568,8 @@ public class WeatherNotificationProvider {
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setShowWhen(false)
+            .setShowWhen(true)
+            .setWhen(at)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pi)
             .build();

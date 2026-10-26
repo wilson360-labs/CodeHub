@@ -37,7 +37,7 @@
             android:textStyle="bold"
             android:textColor="#FFFFFFFF" />
 
-        <TextView
+        <Chronometer
             android:id="@+id/n_w_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
