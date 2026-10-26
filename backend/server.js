@@ -5944,33 +5944,56 @@ async function fcmDeleteToken(token) {
 // Enviar vía FCM a un token específico
 async function sendFCM(token, payload) {
   if (!fcmEnabled || !admin) return { ok: false, reason: 'fcm_disabled' };
+  // quake_* viaja DATA-ONLY (alto-priority): Android despierta
+  // onMessageReceived SIEMPRE, incluso app cerrada/Doze, y el APK arma su
+  // propia notificación de pantalla completa + alarma. Enviar bloque
+  // `notification` haría entrega híbrida: FCM puede mostrar la notificación
+  // del tray y NO ejecutar el servicio cuando la app está en background —
+  // la alarma de emergencia se pierde. Soloquake data-only de alta prioridad.
+  const isQuake = payload.type && payload.type.startsWith('quake');
   try {
-    await (adminMessagingRef || admin.messaging()).send({
+    const msg = {
       token: token,
-      notification: { title: payload.title, body: payload.body },
-      data: Object.assign({ type: payload.type || 'general', url: payload.url || '/' },
-        payload.type && payload.type.startsWith('quake') ? {
-          mag: String(payload.mag || 0),
-          dist: String(payload.dist || 0),
-          dir: payload.dir || 'N',
-          place: payload.place || '',
-          time: String(payload.time || Date.now()),
-          alertType: payload.alertType || 'earthquake',
-        } : {}),
+      data: Object.assign(
+        payload.type && payload.type.startsWith('quake')
+          ? {
+              // Data-only: title/body viajan en la data porque el APK los
+              // lee desde getData() cuando no hay bloque notification.
+              title: payload.title || '🚨 ALERTA SÍSMICA',
+              body: payload.body || '',
+              type: payload.type || 'quake_info',
+              url: payload.url || '/',
+              mag: String(payload.mag || 0),
+              dist: String(payload.dist || 0),
+              dir: payload.dir || 'N',
+              place: payload.place || '',
+              time: String(payload.time || Date.now()),
+              alertType: payload.alertType || 'earthquake',
+            }
+          : {
+              title: payload.title,
+              body: payload.body,
+              type: payload.type || 'general',
+              url: payload.url || '/',
+            }),
       android: {
         // priority: 'high' — despierta el dispositivo incluso en Doze
         // profundo. Sin esto Android puede demorar la entrega hasta
         // la próxima ventana de mantenimiento si la app no se usa hace
         // tiempo, dando la falsa impresión de que "no está despierta".
         priority: 'high',
-        notification: {
-          channelId: payload.type === 'weather' ? 'codehub_weather'
-            : (payload.type && payload.type.startsWith('quake') ? 'codehub_quakes' : 'codehub_updates'),
-          icon: 'ic_launcher_real',
-          color: '#00ff88',
-        },
       },
-    });
+    };
+    if (!isQuake) {
+      // No-quake: notificación estándar del tray con los campos visuales.
+      msg.notification = { title: payload.title, body: payload.body };
+      msg.android.notification = {
+        channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
+        icon: 'ic_launcher_real',
+        color: '#00ff88',
+      };
+    }
+    await (adminMessagingRef || admin.messaging()).send(msg);
     return { ok: true };
   } catch (e) {
     if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-registration-token') {
@@ -6297,18 +6320,43 @@ climaEngine.startScheduler(30 * 60 * 1000);
 // Google EEWS no llega (la mayoría de LatAm, incluida Guatemala) esto
 // sigue dando valor real: enterarse de un sismo cercano + cómo actuar.
 
+// Feed de LISTA web (sección Sismos): día completo, con caché en el cliente.
 const USGS_FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+// Feed de PASS de alertas push: solo la última hora — payload mucho más
+// pequeño y máxima frescura en el camino de emergencia. El corte interno
+// de 3h del pass siempre alcanza el feed de hora.
+const USGS_FEED_HOUR = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
 
 // Umbrales configurables por magnitud (pueden editarse en admin config)
 function seismicThreshold() {
   return 4.5; // bajo este nivel no se molesta al usuario
 }
 function seismicRadiusKm() {
-  return 300; // distancia máx. para considerar "cercano"
+  return 300; // distancia máx. para considerar "cercano" (fallback web push)
 }
+// Radio escalado por magnitud/profundidad (idea del estándar CAP de
+// Google Public Alerts: "radios predeterminados según magnitud o
+// profundidad"). Un M7 se siente a 500 km; un M4 apenas a 50 — un radio
+// único no es honesto. Techo duro de 800 km por sismos oceánicos.
+function quakeRadiusForMag(mag, depthKm) {
+  let r;
+  if (mag >= 7) r = 500;
+  else if (mag >= 6) r = 200;
+  else if (mag >= 5) r = 100;
+  else if (mag >= 4) r = 50;
+  else r = 25;
+  // Profundo (>250 km) se percibe más débil en superficie.
+  if (depthKm > 250) r *= 0.6;
+  return Math.min(r, 800);
+}
+// Dedupe en memoria para FCM (no hay columna last_quake en la tabla
+// fcm_tokens): evita re-enviar la MISMA alerta cada pass. Se pierde al
+// reiniciar el backend (raro) — aceptable para la vía de emergencia.
+const fcmLastQuakeKey = new Map();
 
-async function fetchRecentEarthquakes() {
-  const r = await fetch(USGS_FEED, { headers: { 'User-Agent': 'CodeHub-Seismic' } });
+async function fetchRecentEarthquakes(feedUrl) {
+  const url = feedUrl || USGS_FEED;
+  const r = await fetch(url, { headers: { 'User-Agent': 'CodeHub-Seismic' } });
   if (!r.ok) throw new Error('USGS ' + r.status);
   const data = await r.json();
   return data.features || [];
@@ -6321,6 +6369,18 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const a = Math.sin(dLat / 2) ** 2 +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// Rumbo cardinal del epicentro respecto al dispositivo (para el campo
+// "dir" del payload quake_*; sin acentos, mismo estilo que el backend).
+function compassDirKm(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const dLon = (lon2 - lon1) * rad;
+  const y = Math.sin(dLon) * Math.cos(lat2 * rad);
+  const x = Math.cos(lat1 * rad) * Math.sin(lat2 * rad) - Math.sin(lat1 * rad) * Math.cos(lat2 * rad) * Math.cos(dLon);
+  const b = (Math.atan2(y, x) / rad + 360) % 360;
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+  return dirs[Math.round(b / 45) % 8];
 }
 
 function describeMagnitude(mag, distKm) {
@@ -6387,9 +6447,8 @@ async function seismicPushPass() {
   if (!targets.length) return { earthquakes: 0 };
 
   let quakes;
-  try { quakes = await fetchRecentEarthquakes(); } catch (e) { return { earthquakes: 0 }; }
+  try { quakes = await fetchRecentEarthquakes(USGS_FEED_HOUR); } catch (e) { return { earthquakes: 0 }; }
   const threshold = seismicThreshold();
-  const radius = seismicRadiusKm();
   const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo últimos 3h
 
   let sent = 0;
@@ -6406,8 +6465,10 @@ async function seismicPushPass() {
       const time = q.properties && q.properties.time;
       if (typeof mag !== 'number' || !time || time < cutoff) return false;
       if (mag < tThr) return false;
+      const depth = Math.abs(geo[2] || 0);
       const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
-      if (dist <= radius) return true; // cerca del usuario (radio)
+      // Radio escalado por magnitud/profundidad, no un radio fijo (CAP).
+      if (dist <= quakeRadiusForMag(mag, depth)) return true; // cerca del usuario
       // Alertas inteligentes: también cuenta cualquier sismo dentro de
       // tu país, basado en la ubicación precisa guardada del dispositivo.
       if (t.country) {
@@ -6428,11 +6489,15 @@ async function seismicPushPass() {
     const qc = countryFromUSGSPlace(placeRaw);
     const inCountry = qc ? sameCountry(t.country, qc) : false;
     // Mensaje adaptado al motivo: cerca (radio) o dentro de tu país.
-    const locDesc = dist <= radius
+    const locDesc = dist <= quakeRadiusForMag(mag, Math.abs(latest.geometry.coordinates[2] || 0))
       ? describeMagnitude(mag, dist)
       : '🌋 Sismo M' + mag.toFixed(1) + ' en tu país' + (inCountry && qc ? ' (' + qc + ')' : '');
     const key = latest.properties.id;
-    const prev = lastKey[subKey] || (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null);
+    const prev = lastKey[subKey] || (
+      t._isFCM
+        ? fcmLastQuakeKey.get(t.token) || null
+        : (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null)
+    );
     const cacheKey = 'EQ:' + key;
 
     // No repetir si ya se avisó de este mismo sismo
@@ -6445,11 +6510,24 @@ async function seismicPushPass() {
 
     let r;
     if (t._isFCM) {
+      // Enrutado por severidad (APK): dentro del radio escalado y M>=5 →
+      // quake_alert (data-only de alta prioridad → pantalla completa +
+      // alarma). Otro sismo perceptible → quake_info (heads-up). El tipo
+      // 'seismic' queda SOLO para la vía web-push: el servicio nativo no
+      // lo procesa como sismo (CodeHubFirebaseService solo matches quake_*).
+      const depth = Math.abs(latest.geometry.coordinates[2] || 0);
+      const strongNear = dist <= quakeRadiusForMag(mag, depth) && mag >= 5;
       r = await sendFCM(t.token, {
-        title: '🌋 Actividad sísmica',
+        title: strongNear ? '🚨 ALERTA SÍSMICA' : '🌋 Actividad sísmica',
         body: body + '\n📍 ' + (t.city || 'Tu zona'),
-        type: 'seismic',
+        type: strongNear ? 'quake_alert' : 'quake_info',
         url: '/#sismos-section',
+        mag: mag,
+        dist: Math.round(dist),
+        dir: compassDirKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]),
+        place: placeRaw,
+        time: latest.properties.time,
+        alertType: 'earthquake',
       });
     } else {
       r = await sendPush(t, {
@@ -6462,7 +6540,8 @@ async function seismicPushPass() {
     }
     if (r.ok) {
       lastKey[subKey] = cacheKey;
-      if (!t._isFCM) { t.last_alert_condition = cacheKey; t.last_alert_at = new Date().toISOString(); await pushSave(t); }
+      if (t._isFCM) fcmLastQuakeKey.set(t.token, cacheKey);
+      else { t.last_alert_condition = cacheKey; t.last_alert_at = new Date().toISOString(); await pushSave(t); }
       sent++;
     }
     void today;
@@ -6470,12 +6549,15 @@ async function seismicPushPass() {
   return { earthquakes: sent };
 }
 
-// Scheduler sísmico — cada 10 min
+// Scheduler sísmico — cada 2 MINUTOS en la vía de emergencia. Con el feed
+// de hora + FCM high-priority el objetivo real es ~1-3 min desde el evento
+// (el latido de USGS + nuestro pass dominate la latencia; el push entra al
+// servicio siempre). 2 min es barato para Render e irrelevante para USGS.
 setInterval(() => {
   seismicPushPass()
     .then(o => { if (o.earthquakes) console.log('🌋 Push sísmico enviado:', o.earthquakes); })
     .catch(e => console.warn('⚠️  Push sísmico error:', e.message));
-}, 10 * 60 * 1000);
+}, 2 * 60 * 1000);
 
 app.get('/api/push/seismic/check', async (req, res) => {
   try {
