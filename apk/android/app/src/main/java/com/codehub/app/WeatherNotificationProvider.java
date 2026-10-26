@@ -11,9 +11,11 @@ import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
+import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.Build;
 import android.util.Log;
@@ -38,23 +40,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Widget de clima DENTRO del panel de notificaciones (Android).
  *
- * La notificación persistente elegante de CodeHub — dos vistas:
- * - COMPACTA (colapsada): astro pintado + "17° Nublado · Sens. 19°" + ciudad.
- * - EXPANDIDA (grande): header astro+ciudad+hora, temperatura 34sp,
- *   condición + sensación, PRONÓSTICO POR HORAS (4 slots con astritos
- *   pintados vía canvas) y fila de SISMOS con magnitud, distancia y
- *   rumbo (haversine) desde la ubicación guardada.
- * - Fuente de datos: Open-Meteo (current + hourly + daily sunrise/sunset);
- *   sismos: USGS (público, sin key).
- * - La ubicación viene de las prefs "codehub" (lat_bits/lon_bits — lo que
- *   escribe chSavePushLocation → CodeHubNative.saveLocation y el sync).
- *   Sin ubicación real: no se publica nada (nunca datos falsos).
+ * - COMPACTA: ícono + "13° Nublado" + RESUMEN INTELIGENTE + ciudad.
+ * - EXPANDIDA: ciudad real, temperatura, condición, sensación/máx/mín,
+ *   resumen inteligente ("Lluvia probable a las 17h · lleva paraguas"),
+ *   chips (humedad, viento, lluvia, próximo sol), pronóstico
+ *   "Ahora + 3 horas" con % de lluvia por hora y fila de sismos (siempre
+ *   visible: con sismo, o "sin actividad relevante").
+ * - El fondo cambia según condición/hora (día, noche, nublado, lluvia,
+ *   tormenta) y la pastilla de resumen según severidad.
+ * - Ciudad: la elegida por el usuario; si no hay, geocodificación inversa
+ *   (Nominatim → BigDataCloud) cacheada por celda de ~1 km.
+ * - Datos: Open-Meteo (current + hourly + daily) y USGS para sismos.
+ * - Sin ubicación real: no se publica nada (nunca datos falsos).
  * - ALARMA de sismos: M ≥ 4.5 a ≤1200 km no vista antes → heads-up aparte.
+ *   Se evalúa PRIMERO (antes del clima) para no retrasarla.
  *
- * CADENCIA de refresco: al abrir la app (MainActivity.onCreate), en cada
- * ciclo del sync nativo (CodeHubSyncWorker — WorkManager, ~15 min) y tras
- * reiniciar (BootReceiver). El HH:mm mostrado es la marca "actualizado":
- * Android limita los ciclos periódicos a un mínimo de 15 minutos.
+ * CADENCIA: al abrir la app, en cada ciclo del sync nativo (~15 min),
+ * tras reiniciar y cada vez que cambia la ubicación guardada.
  */
 public class WeatherNotificationProvider {
 
@@ -63,6 +65,8 @@ public class WeatherNotificationProvider {
     private static final String PREFS = "codehub";
     private static final String PREF_CACHE = "wx_notif_cache";
     private static final String PREF_QUAKE_LAST = "quake_last_alarm_id";
+    private static final String PREF_GEO_KEY = "notif_geo_key";
+    private static final String PREF_GEO_CITY = "notif_geo_city";
 
     private static final String CH_WIDGET = "codehub_weather_widget";
     private static final String CH_QUAKES = "codehub_quakes_v2";
@@ -77,23 +81,34 @@ public class WeatherNotificationProvider {
     private static final long ALERT_WINDOW_MS = 24L * 60 * 60 * 1000;
     private static final double ROW_MAG_MIN = 3.5;  // fila informativa
 
-    private static final int HOUR_SLOTS = 4;
+    private static final int HOUR_SLOTS = 4;        // "Ahora" + 3 horas
+    private static final int HOURS_KEEP = 12;       // horas guardadas para el resumen
+    private static final double CACHE_MAX_KM = 15;  // caché de otra ciudad → se descarta
+    private static final long STALE_MS = 20L * 60 * 1000;
 
     private static final AtomicBoolean sRefreshing = new AtomicBoolean(false);
+    private static final AtomicBoolean sRerun = new AtomicBoolean(false);
 
     private WeatherNotificationProvider() {}
 
     /* ════════════════════════ API PÚBLICA ════════════════════════ */
 
-    /** Refresca en segundo plano (hilo corto con single-flight). */
+    /**
+     * Refresca en segundo plano (hilo corto con single-flight). Si llega
+     * una petición mientras hay otra en curso (p. ej. cambió la ubicación)
+     * se encola UNA repetición en vez de descartarla.
+     */
     public static void refresh(final Context context) {
         final Context app = context.getApplicationContext();
-        if (!sRefreshing.compareAndSet(false, true)) return; // descarta ticks coincidentes
+        if (!sRefreshing.compareAndSet(false, true)) { sRerun.set(true); return; }
         new Thread(new Runnable() {
             @Override public void run() {
                 try { update(app); }
                 catch (Throwable t) { Log.e(TAG, "refresh falló", t); }
-                finally { sRefreshing.set(false); }
+                finally {
+                    sRefreshing.set(false);
+                    if (sRerun.getAndSet(false)) refresh(app);
+                }
             }
         }).start();
     }
@@ -105,7 +120,6 @@ public class WeatherNotificationProvider {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         double lat = Double.longBitsToDouble(prefs.getLong("lat_bits", 0));
         double lon = Double.longBitsToDouble(prefs.getLong("lon_bits", 0));
-        String city = prefs.getString("widget_city", "");
 
         if (lat == 0 && lon == 0) {
             // Sin ubicación real guardada: nada se publica (política "en
@@ -114,53 +128,134 @@ public class WeatherNotificationProvider {
             return;
         }
 
+        String city = cityFromPrefs(prefs, lat, lon);
+
         // 1) Pintar YA con la caché (instantáneo al arrancar; luego red).
+        //    Una caché de OTRA zona (>15 km) se descarta: nunca mostrar el
+        //    clima de la ciudad anterior con la ubicación nueva.
         String cache = prefs.getString(PREF_CACHE, null);
+        JSONObject cacheObj = null;
         if (cache != null) {
-            try { paintFromPayload(context, new JSONObject(cache), lat, lon, city, true); }
-            catch (Throwable ignored) {}
+            try {
+                cacheObj = new JSONObject(cache);
+                if (cacheObj.has("lat") && cacheObj.has("lon")
+                    && haversineKm(lat, lon, cacheObj.optDouble("lat"), cacheObj.optDouble("lon")) > CACHE_MAX_KM) {
+                    cacheObj = null;
+                }
+            } catch (Throwable t) { cacheObj = null; }
+        }
+        if (cacheObj != null && cacheObj.has("code")) {
+            paintFromPayload(context, cacheObj, lat, lon, city, true);
         }
 
-        // 2) Clima en vivo (Open-Meteo; misma fuente que la tarjeta web).
-        JSONObject payload = fetchWeather(lat, lon);
-        if (payload != null) {
-            // Conservar el sismo visto en la caché previa hasta que llegue
-            // uno nuevo del refresh (la fila no "destella" a vacío).
-            if (cache != null) {
-                try {
-                    JSONObject oldQ = new JSONObject(cache).optJSONObject("quake");
-                    if (oldQ != null && !payload.has("quake")) payload.put("quake", oldQ);
-                } catch (Throwable ignored) {}
+        // 2) Ciudad real (si el usuario no eligió una): geocodificación inversa.
+        if (city.isEmpty()) {
+            String g = reverseCity(prefs, lat, lon);
+            if (!g.isEmpty()) {
+                city = g;
+                if (cacheObj != null && cacheObj.has("code")) {
+                    paintFromPayload(context, cacheObj, lat, lon, city, true);
+                }
             }
-            prefs.edit().putString(PREF_CACHE, payload.toString()).apply();
-            paintFromPayload(context, payload, lat, lon, city, false);
         }
 
-        // 3) Sismos: la fila del widget Y la alarma se evalúan aunque el
-        //    clima haya fallado (no se pierde un sismo grande por un 500).
+        // 3) Sismos PRIMERO: la alarma no debe esperar al clima (ni
+        //    perderse por un 500 de Open-Meteo).
         JSONObject quake = fetchQuake(lat, lon);
-        if (quake != null) {
-            boolean painted = false;
-            if (payload == null && cache != null) {
-                try {
-                    JSONObject cached = new JSONObject(cache);
-                    cached.put("quake", quake);
-                    prefs.edit().putString(PREF_CACHE, cached.toString()).apply();
-                    paintFromPayload(context, cached, lat, lon, city, true);
-                    painted = true;
-                } catch (Throwable ignored) {}
+        if (quake != null) evalQuakeAlarm(context, quake, lat, lon);
+
+        // 4) Clima en vivo (Open-Meteo; misma fuente que la tarjeta web).
+        JSONObject payload = fetchWeather(lat, lon);
+        boolean live = payload != null;
+        JSONObject base = live ? payload : cacheObj;
+        if (base == null || !base.has("code")) return;      // sin datos de clima: no pintar
+
+        try {
+            if (quake != null) {
+                base.put("quake", quake);
+            } else if (live && cacheObj != null && cacheObj.has("quake") && !base.has("quake")) {
+                base.put("quake", cacheObj.optJSONObject("quake")); // no "destella" a vacío
             }
-            if (!painted && payload == null) {
-                try {
-                    JSONObject merged = (cache != null && new JSONObject(cache).has("code"))
-                        ? new JSONObject(cache) : new JSONObject();
-                    merged.put("at", System.currentTimeMillis());
-                    merged.put("quake", quake);
-                    prefs.edit().putString(PREF_CACHE, merged.toString()).apply();
-                    paintFromPayload(context, merged, lat, lon, city, true);
-                } catch (Throwable ignored) {}
+            prefs.edit().putString(PREF_CACHE, base.toString()).apply();
+        } catch (Throwable ignored) {}
+        paintFromPayload(context, base, lat, lon, city, !live);
+    }
+
+    /* ════════════════════════ CIUDAD ════════════════════════ */
+
+    private static boolean genericCity(String c) {
+        if (c == null) return true;
+        String s = c.trim();
+        return s.isEmpty() || s.equalsIgnoreCase("GPS") || s.equalsIgnoreCase("CodeHub")
+            || s.equalsIgnoreCase("Tu ubicación") || s.equalsIgnoreCase("Mi ubicación");
+    }
+
+    private static String geoKey(double lat, double lon) {
+        return String.format(Locale.US, "%.2f,%.2f", lat, lon); // celda ~1 km
+    }
+
+    /** Ciudad sin red: la elegida por el usuario o la geocodificada en caché. */
+    private static String cityFromPrefs(SharedPreferences prefs, double lat, double lon) {
+        String chosen = prefs.getString("widget_city", "");
+        if (!genericCity(chosen)) return chosen.trim();
+        if (geoKey(lat, lon).equals(prefs.getString(PREF_GEO_KEY, ""))) {
+            String c = prefs.getString(PREF_GEO_CITY, "");
+            if (!genericCity(c)) return c;
+        }
+        return "";
+    }
+
+    /** Geocodificación inversa (con red): Nominatim, y BigDataCloud de respaldo. */
+    private static String reverseCity(SharedPreferences prefs, double lat, double lon) {
+        String name = "";
+        try {
+            JSONObject j = getJson("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12"
+                + "&accept-language=es&lat=" + lat + "&lon=" + lon);
+            JSONObject a = j == null ? null : j.optJSONObject("address");
+            if (a != null) {
+                String[] keys = {"city", "town", "village", "municipality", "suburb", "city_district", "county", "state"};
+                for (String k : keys) {
+                    String v = a.optString(k, "");
+                    if (!v.isEmpty()) { name = v; break; }
+                }
             }
-            evalQuakeAlarm(context, quake, lat, lon);
+        } catch (Throwable ignored) {}
+        if (name.isEmpty()) {
+            try {
+                JSONObject j = getJson("https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="
+                    + lat + "&longitude=" + lon + "&localityLanguage=es");
+                if (j != null) {
+                    name = j.optString("city", "");
+                    if (name.isEmpty()) name = j.optString("locality", "");
+                    if (name.isEmpty()) name = j.optString("principalSubdivision", "");
+                }
+            } catch (Throwable ignored) {}
+        }
+        if (!genericCity(name)) {
+            prefs.edit().putString(PREF_GEO_KEY, geoKey(lat, lon)).putString(PREF_GEO_CITY, name).apply();
+            return name;
+        }
+        return "";
+    }
+
+    private static JSONObject getJson(String u) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(u).openConnection();
+            conn.setConnectTimeout(7000);
+            conn.setReadTimeout(7000);
+            conn.setRequestProperty("User-Agent", "CodeHub-Android/1.0");
+            conn.setRequestProperty("Accept", "application/json");
+            if (conn.getResponseCode() != 200) return null;
+            InputStream is = conn.getInputStream();
+            Scanner sc = new Scanner(is, "UTF-8").useDelimiter("\\A");
+            String body = sc.hasNext() ? sc.next() : "{}";
+            sc.close();
+            return new JSONObject(body);
+        } catch (Throwable t) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
 
@@ -170,6 +265,7 @@ public class WeatherNotificationProvider {
                                          double lat, double lon,
                                          String city, boolean cached) {
         try {
+            long now = System.currentTimeMillis();
             int code = payload.optInt("code", -1);
             boolean day = payload.optBoolean("day", true);
             float temp  = (float) payload.optDouble("temp", Double.NaN);
@@ -177,68 +273,90 @@ public class WeatherNotificationProvider {
             int humidity = payload.optInt("humidity", -1);
             float wind = (float) payload.optDouble("wind", Double.NaN);
             int rain = payload.optInt("rain", -1);
-            long at = payload.optLong("at", System.currentTimeMillis());
+            float tmax = (float) payload.optDouble("tmax", Double.NaN);
+            float tmin = (float) payload.optDouble("tmin", Double.NaN);
+            long at = payload.optLong("at", now);
 
             JSONObject q = payload.optJSONObject("quake");
-            JSONArray hours = payload.optJSONArray("hours");
+            JSONArray future = futureHours(payload.optJSONArray("hours"), now);
 
             Bitmap astro = paintAstro(code, day);
             SimpleDateFormat fmt = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            String timeStr = fmt.format(new Date(at));
-            String cityStr = (city != null && !city.isEmpty()) ? city : "Mi ubicación";
+            String cityStr = (city != null && !city.isEmpty()) ? city : "Tu ubicación";
+
+            long age = Math.max(0, now - at);
+            boolean stale = age >= STALE_MS;
+            String timeStr = stale ? ago(age) : fmt.format(new Date(at));
 
             String tempStr = Float.isNaN(temp) ? "--°" : Math.round(temp) + "°";
             String condStr = describe(code, day);
-            String feelsStr = Float.isNaN(feels) ? "" : " · Sens. " + Math.round(feels) + "°";
 
-            // Chips: humedad · viento · lluvia %
-            StringBuilder data = new StringBuilder();
-            if (humidity >= 0) data.append("💧 ").append(humidity).append('%');
-            if (!Float.isNaN(wind)) {
-                if (data.length() > 0) data.append("  ·  ");
-                data.append("🌬 ").append(Math.round(wind)).append(" km/h");
+            StringBuilder sub = new StringBuilder();
+            if (!Float.isNaN(feels)) sub.append("Sens. ").append(Math.round(feels)).append('°');
+            if (!Float.isNaN(tmax)) {
+                if (sub.length() > 0) sub.append("  ·  ");
+                sub.append("Máx ").append(Math.round(tmax)).append('°');
             }
-            if (rain >= 0) {
-                if (data.length() > 0) data.append("  ·  ");
-                data.append("☔ ").append(rain).append('%');
+            if (!Float.isNaN(tmin)) {
+                if (sub.length() > 0) sub.append("  ·  ");
+                sub.append("Mín ").append(Math.round(tmin)).append('°');
             }
+
+            int[] sev = new int[1];
+            String smart = smartLine(code, temp, feels, future, now, sev);
+
+            int bg = backgroundFor(code, day);
 
             /* ── COMPACTA ── */
             RemoteViews compact = new RemoteViews(context.getPackageName(),
                 R.layout.notification_weather_compact);
             if (astro != null) compact.setImageViewBitmap(R.id.n_c_icon, astro);
-            compact.setTextViewText(R.id.n_c_main, condStr.isEmpty()
-                ? tempStr + " · " + cityStr
-                : tempStr + " " + condStr + feelsStr);
-            compact.setTextViewText(R.id.n_c_side, cityStr + " · " + timeStr);
+            compact.setInt(R.id.n_c_root, "setBackgroundResource", bg);
+            compact.setTextViewText(R.id.n_c_main, condStr.isEmpty() ? tempStr : tempStr + "  " + condStr);
+            compact.setTextViewText(R.id.n_c_smart, smart);
+            compact.setTextViewText(R.id.n_c_side, stale ? cityStr + " · " + timeStr : cityStr);
 
             /* ── EXPANDIDA ── */
             RemoteViews big = new RemoteViews(context.getPackageName(),
                 R.layout.notification_weather);
             if (astro != null) big.setImageViewBitmap(R.id.n_w_icon, astro);
+            big.setInt(R.id.n_w_root, "setBackgroundResource", bg);
             big.setTextViewText(R.id.n_w_city, cityStr);
-            big.setTextViewText(R.id.n_w_time, cached ? timeStr + " · caché" : timeStr);
+            big.setTextViewText(R.id.n_w_time, timeStr);
+            big.setTextColor(R.id.n_w_time, stale ? 0xFFFFC46B : 0xFFB4BED0);
             big.setTextViewText(R.id.n_w_temp, tempStr);
-            big.setTextViewText(R.id.n_w_desc,
-                condStr + (condStr.isEmpty() ? "" : feelsStr));
-            big.setTextViewText(R.id.n_w_data, data.toString());
+            big.setTextViewText(R.id.n_w_desc, condStr.isEmpty() ? cityStr : condStr);
+            big.setTextViewText(R.id.n_w_sub, sub.toString());
 
-            fillHourSlots(big, hours);
+            big.setTextViewText(R.id.n_w_smart, smart);
+            big.setInt(R.id.n_w_smart, "setBackgroundResource",
+                sev[0] >= 2 ? R.drawable.bg_pill_alert
+                    : sev[0] == 1 ? R.drawable.bg_pill_warn : R.drawable.bg_pill_info);
 
-            if (q != null && q.optDouble("mag", -1) > 0) {
+            big.setTextViewText(R.id.n_w_hum, humidity >= 0 ? humidity + "%" : "--");
+            big.setTextViewText(R.id.n_w_wind, Float.isNaN(wind) ? "--" : Math.round(wind) + " km/h");
+            big.setTextViewText(R.id.n_w_rain, rain >= 0 ? rain + "%" : "--");
+            big.setTextViewText(R.id.n_w_sun, sunText(payload, now));
+
+            fillHourSlots(big, temp, code, day, rain, future);
+
+            /* Fila de sismos: SIEMPRE visible (con sismo o "sin actividad"). */
+            boolean showQuake = q != null && q.optDouble("mag", -1) > 0
+                && (now - q.optLong("time", 0)) <= ALERT_WINDOW_MS;
+            if (showQuake) {
                 float mag = (float) q.optDouble("mag", 0);
                 double dist = haversineKm(lat, lon, q.optDouble("lat", 0), q.optDouble("lon", 0));
                 String dir = bearingTo8(lat, lon, q.optDouble("lat", 0), q.optDouble("lon", 0));
-                String when = localTime(q.optLong("time", 0));
-                String row = "⚠ Sismo M" + String.format(Locale.US, "%.1f", mag)
+                String row = "Sismo M" + String.format(Locale.US, "%.1f", mag)
                     + " · " + Math.round(dist) + " km " + dir
-                    + " · " + when
+                    + " · " + localTime(q.optLong("time", 0))
                     + " · prof. " + Math.round(q.optDouble("depth", 0)) + " km";
                 big.setTextViewText(R.id.n_w_quake, row);
-                big.setViewVisibility(R.id.n_w_quake,
-                    dist <= ALERT_RADIUS_KM ? View.VISIBLE : View.GONE);
+                big.setTextColor(R.id.n_w_quake,
+                    mag >= 4.5f ? 0xFFFF9B8A : 0xFFFFD27A);
             } else {
-                big.setViewVisibility(R.id.n_w_quake, View.GONE);
+                big.setTextViewText(R.id.n_w_quake, "Sismos: sin actividad relevante (M3.5+ · 24 h)");
+                big.setTextColor(R.id.n_w_quake, 0xFF8FD3A8);
             }
 
             notifyWidget(context, buildWidgetNotification(context, compact, big));
@@ -247,36 +365,184 @@ public class WeatherNotificationProvider {
         }
     }
 
-    /** Llena los 4 slots horarios; esconde la fila si no hay datos. */
-    private static void fillHourSlots(RemoteViews big, JSONArray hours) {
-        boolean show = hours != null && hours.length() >= 2;
+    private static String ago(long ageMs) {
+        long min = ageMs / 60000L;
+        if (min < 90) return "hace " + Math.max(1, min) + " min";
+        return "hace " + (min / 60) + " h";
+    }
+
+    /** Fondo según condición y hora (día/noche/nublado/lluvia/tormenta). */
+    private static int backgroundFor(int code, boolean day) {
+        switch (bucket(code)) {
+            case 5: return R.drawable.bg_notif_storm;
+            case 4: case 6: return R.drawable.bg_notif_rain;
+            case 2: case 3: return day ? R.drawable.bg_notif_cloud : R.drawable.bg_notif_night;
+            default: return day ? R.drawable.bg_notif_clear_day : R.drawable.bg_notif_night;
+        }
+    }
+
+    /** Horas futuras guardadas (ts > ahora), en orden. */
+    private static JSONArray futureHours(JSONArray hours, long now) {
+        JSONArray out = new JSONArray();
+        if (hours == null) return out;
+        for (int i = 0; i < hours.length(); i++) {
+            JSONObject h = hours.optJSONObject(i);
+            if (h == null) continue;
+            if (h.optLong("ts", 0) > now) out.put(h);
+        }
+        return out;
+    }
+
+    /** "Ahora" + las 3 próximas horas, con temperatura, ícono y % de lluvia. */
+    private static void fillHourSlots(RemoteViews big, float tNow, int codeNow, boolean dayNow,
+                                      int rainNow, JSONArray future) {
+        int[][] ids = {
+            {R.id.n_w_h1_icon, R.id.n_w_h1_temp, R.id.n_w_h1_hour, R.id.n_w_h1_rain},
+            {R.id.n_w_h2_icon, R.id.n_w_h2_temp, R.id.n_w_h2_hour, R.id.n_w_h2_rain},
+            {R.id.n_w_h3_icon, R.id.n_w_h3_temp, R.id.n_w_h3_hour, R.id.n_w_h3_rain},
+            {R.id.n_w_h4_icon, R.id.n_w_h4_temp, R.id.n_w_h4_hour, R.id.n_w_h4_rain},
+        };
+        boolean show = future.length() >= 1;
         big.setViewVisibility(R.id.n_w_hours, show ? View.VISIBLE : View.GONE);
         if (!show) return;
-        int[][] ids = {
-            {R.id.n_w_h1_icon, R.id.n_w_h1_temp, R.id.n_w_h1_hour},
-            {R.id.n_w_h2_icon, R.id.n_w_h2_temp, R.id.n_w_h2_hour},
-            {R.id.n_w_h3_icon, R.id.n_w_h3_temp, R.id.n_w_h3_hour},
-            {R.id.n_w_h4_icon, R.id.n_w_h4_temp, R.id.n_w_h4_hour},
-        };
         for (int i = 0; i < HOUR_SLOTS; i++) {
-            JSONObject h = hours.optJSONObject(i);
-            if (h == null) {
-                big.setViewVisibility(ids[i][0], View.INVISIBLE);
-                big.setTextViewText(ids[i][1], "");
-                big.setTextViewText(ids[i][2], "");
-                continue;
+            int icoCode; boolean icoDay; float t; String label; int rain;
+            if (i == 0) {
+                icoCode = codeNow; icoDay = dayNow; t = tNow; label = "Ahora"; rain = rainNow;
+            } else {
+                JSONObject h = future.optJSONObject(i - 1);
+                if (h == null) {
+                    big.setViewVisibility(ids[i][0], View.INVISIBLE);
+                    big.setTextViewText(ids[i][1], "");
+                    big.setTextViewText(ids[i][2], "");
+                    big.setTextViewText(ids[i][3], "");
+                    continue;
+                }
+                icoCode = h.optInt("code", -1); icoDay = h.optBoolean("day", true);
+                t = (float) h.optDouble("temp", Double.NaN);
+                label = h.optString("h", ""); rain = h.optInt("rain", -1);
             }
-            Bitmap mini = paintAstro(h.optInt("code", -1), h.optBoolean("day", true));
+            Bitmap mini = paintAstro(icoCode, icoDay);
             if (mini != null) {
                 big.setImageViewBitmap(ids[i][0], mini);
                 big.setViewVisibility(ids[i][0], View.VISIBLE);
-            } else {
-                big.setViewVisibility(ids[i][0], View.INVISIBLE);
             }
-            float t = (float) h.optDouble("temp", Double.NaN);
             big.setTextViewText(ids[i][1], Float.isNaN(t) ? "—" : Math.round(t) + "°");
-            big.setTextViewText(ids[i][2], h.optString("h", ""));
+            big.setTextViewText(ids[i][2], label);
+            big.setTextViewText(ids[i][3], rain >= 20 ? rain + "%" : "");
         }
+    }
+
+    /** "Atardece 17:32" / "Amanece 05:48" según lo próximo que ocurra. */
+    private static String sunText(JSONObject p, long now) {
+        try {
+            JSONArray sr = p.optJSONArray("sr"), ss = p.optJSONArray("ss");
+            JSONArray srl = p.optJSONArray("srl"), ssl = p.optJSONArray("ssl");
+            if (sr == null || ss == null || srl == null || ssl == null) return "";
+            long sr0 = sr.optLong(0, 0), ss0 = ss.optLong(0, 0), sr1 = sr.optLong(1, 0);
+            if (sr0 > 0 && now < sr0) return "Amanece " + srl.optString(0, "");
+            if (ss0 > 0 && now < ss0) return "Atardece " + ssl.optString(0, "");
+            if (sr1 > 0) return "Amanece " + srl.optString(1, "");
+        } catch (Throwable ignored) {}
+        return "";
+    }
+
+    /* ═══════════════════ RESUMEN INTELIGENTE ═══════════════════ */
+
+    private static boolean wet(int b) { return b == 4 || b == 5 || b == 6; }
+
+    /**
+     * Una frase útil a partir de lo que viene en las próximas horas.
+     * sev[0]: 0 = informativo, 1 = precaución (ámbar), 2 = alerta (rojo).
+     */
+    private static String smartLine(int codeNow, float temp, float feels,
+                                    JSONArray fut, long now, int[] sev) {
+        sev[0] = 0;
+        int bNow = bucket(codeNow);
+        int n = Math.min(fut.length(), 8);
+
+        // Tormenta ahora o en ≤3 h
+        if (bNow == 5) { sev[0] = 2; return "Tormenta eléctrica ahora · evita zonas abiertas"; }
+        for (int i = 0; i < n && i < 3; i++) {
+            JSONObject h = fut.optJSONObject(i);
+            if (h != null && bucket(h.optInt("code", -1)) == 5) {
+                sev[0] = 2;
+                return "Tormenta eléctrica " + inHours(h, now) + " · evita zonas abiertas";
+            }
+        }
+
+        // Lloviendo / nevando ahora: ¿cuándo mejora?
+        if (wet(bNow)) {
+            sev[0] = 1;
+            String what = bNow == 6 ? "Nieve" : "Lluvia";
+            for (int i = 0; i < n; i++) {
+                JSONObject h = fut.optJSONObject(i);
+                if (h == null) continue;
+                if (!wet(bucket(h.optInt("code", -1))) && h.optInt("rain", 0) < 40) {
+                    return what + " ahora · mejora hacia las " + h.optString("h", "");
+                }
+            }
+            return what + " ahora · sin mejora en las próximas horas";
+        }
+
+        // Lluvia próxima (código mojado o probabilidad alta)
+        for (int i = 0; i < n; i++) {
+            JSONObject h = fut.optJSONObject(i);
+            if (h == null) continue;
+            int r = h.optInt("rain", 0);
+            if (wet(bucket(h.optInt("code", -1))) || r >= 55) {
+                sev[0] = 1;
+                int hrs = hoursAhead(h, now);
+                String pct = r > 0 ? " (" + r + "%)" : "";
+                return hrs <= 1
+                    ? "Lluvia inminente" + pct + " · lleva paraguas"
+                    : "Lluvia probable a las " + h.optString("h", "") + pct + " · lleva paraguas";
+            }
+        }
+
+        // Cambios de cielo
+        if (bNow == 2 || bNow == 3) {
+            for (int i = 0; i < n && i < 6; i++) {
+                JSONObject h = fut.optJSONObject(i);
+                if (h != null && bucket(h.optInt("code", -1)) <= 1 && h.optBoolean("day", true)) {
+                    return "Se despeja hacia las " + h.optString("h", "");
+                }
+            }
+        }
+
+        // Tendencia de temperatura (próximas 6 h)
+        if (!Float.isNaN(temp)) {
+            double lo = temp, hi = temp; String loH = "", hiH = "";
+            for (int i = 0; i < n && i < 6; i++) {
+                JSONObject h = fut.optJSONObject(i);
+                if (h == null) continue;
+                double t = h.optDouble("temp", Double.NaN);
+                if (Double.isNaN(t)) continue;
+                if (t < lo) { lo = t; loH = h.optString("h", ""); }
+                if (t > hi) { hi = t; hiH = h.optString("h", ""); }
+            }
+            if (temp - lo >= 4) return "Baja a " + Math.round(lo) + "° hacia las " + loH;
+            if (hi - temp >= 4) return "Sube a " + Math.round(hi) + "° hacia las " + hiH;
+        }
+
+        // Confort
+        float ref = !Float.isNaN(feels) ? Math.max(feels, Float.isNaN(temp) ? feels : temp) : temp;
+        if (!Float.isNaN(ref)) {
+            if (ref >= 33) { sev[0] = 1; return "Calor intenso · hidrátate y evita el sol directo"; }
+            if (ref >= 28) return "Cálido · usa protector solar";
+            if (ref <= 8)  { sev[0] = 1; return "Mucho frío · abrígate bien"; }
+            if (ref <= 14) return "Fresco · lleva una chaqueta";
+        }
+        return "Sin cambios importantes en las próximas horas";
+    }
+
+    private static int hoursAhead(JSONObject h, long now) {
+        return (int) Math.max(1, Math.round((h.optLong("ts", now) - now) / 3600000.0));
+    }
+
+    private static String inHours(JSONObject h, long now) {
+        int n = hoursAhead(h, now);
+        return n <= 1 ? "en ~1 h" : "en ~" + n + " h";
     }
 
     private static Notification buildWidgetNotification(Context context,
@@ -296,6 +562,7 @@ public class WeatherNotificationProvider {
             .setStyle(new NotificationCompat.DecoratedCustomViewStyle())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(pi)
             .build();
@@ -365,8 +632,8 @@ public class WeatherNotificationProvider {
     /* ════════════════════════ DATOS ════════════════════════ */
 
     /**
-     * Payload del widget: "current" + próximas horas (Open-Meteo) para el
-     * pronóstico, sunrise/sunset del día para saber si cada hora es de día.
+     * Payload del widget: "current" + próximas horas (Open-Meteo: temp,
+     * código, prob. de lluvia), máx/mín del día y sol de hoy y mañana.
      */
     private static JSONObject fetchWeather(double lat, double lon) {
         HttpURLConnection conn = null;
@@ -374,8 +641,8 @@ public class WeatherNotificationProvider {
             URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=" + lat
                 + "&longitude=" + lon
                 + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day"
-                + "&hourly=temperature_2m,weather_code,precipitation_probability&forecast_hours=6"
-                + "&daily=sunrise,sunset"
+                + "&hourly=temperature_2m,weather_code,precipitation_probability&forecast_hours=" + (HOURS_KEEP + 2)
+                + "&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min&forecast_days=2"
                 + "&timezone=auto");
             conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(9000);
@@ -399,8 +666,19 @@ public class WeatherNotificationProvider {
             out.put("humidity", cur.optInt("relative_humidity_2m", -1));
             out.put("rain", nextRainProb(json));
             out.put("at", System.currentTimeMillis());
+            out.put("lat", lat);
+            out.put("lon", lon);
 
-            JSONArray hours = buildHourSlots(json);
+            JSONObject daily = json.optJSONObject("daily");
+            if (daily != null) {
+                JSONArray mx = daily.optJSONArray("temperature_2m_max");
+                JSONArray mn = daily.optJSONArray("temperature_2m_min");
+                if (mx != null) putNaNable(out, "tmax", mx.optDouble(0, Double.NaN));
+                if (mn != null) putNaNable(out, "tmin", mn.optDouble(0, Double.NaN));
+                putSun(out, json, daily);
+            }
+
+            JSONArray hours = buildHours(json);
             if (hours != null) out.put("hours", hours);
             return out;
         } catch (Throwable t) {
@@ -416,66 +694,104 @@ public class WeatherNotificationProvider {
         o.put(key, Double.isNaN(v) ? JSONObject.NULL : v);
     }
 
+    private static SimpleDateFormat isoUtc() {
+        SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
+        iso.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return iso;
+    }
+
+    /** Epoch real de un "yyyy-MM-ddTHH:mm" local de la ubicación. */
+    private static long localToEpoch(SimpleDateFormat iso, String t, double offsetMs) {
+        try {
+            Date d = iso.parse(t);
+            return d == null ? 0 : Math.round(d.getTime() - offsetMs);
+        } catch (Throwable e) { return 0; }
+    }
+
+    /** sunrise/sunset de hoy y mañana: epoch + etiqueta HH:mm local. */
+    private static void putSun(JSONObject out, JSONObject json, JSONObject daily) {
+        try {
+            double offsetMs = json.optDouble("utc_offset_seconds", 0) * 1000.0;
+            SimpleDateFormat iso = isoUtc();
+            JSONArray rise = daily.optJSONArray("sunrise"), set = daily.optJSONArray("sunset");
+            if (rise == null || set == null) return;
+            JSONArray sr = new JSONArray(), ss = new JSONArray(), srl = new JSONArray(), ssl = new JSONArray();
+            for (int i = 0; i < 2; i++) {
+                String a = rise.optString(i, ""), b = set.optString(i, "");
+                sr.put(a.length() >= 16 ? localToEpoch(iso, a, offsetMs) : 0);
+                ss.put(b.length() >= 16 ? localToEpoch(iso, b, offsetMs) : 0);
+                srl.put(a.length() >= 16 ? a.substring(11, 16) : "");
+                ssl.put(b.length() >= 16 ? b.substring(11, 16) : "");
+            }
+            out.put("sr", sr); out.put("ss", ss); out.put("srl", srl); out.put("ssl", ssl);
+        } catch (Throwable ignored) {}
+    }
+
     /**
-     * Las próximas HORAS_SLOTS horas [{h: "21h", code, temp, day}].
-     * Los times de Open-Meteo (timezone=auto) son HORA LOCAL de la
-     * ubicación: se convierten a epoch restando utc_offset_seconds para
-     * compararlas con "ahora", y el label se saca del propio string.
+     * Próximas horas [{ts, h:"21h", code, temp, day, rain}]. Los times de
+     * Open-Meteo (timezone=auto) son HORA LOCAL de la ubicación: se pasan a
+     * epoch restando utc_offset_seconds. "day" usa el sunrise/sunset DEL DÍA
+     * de cada hora (no solo el de hoy).
      */
-    private static JSONArray buildHourSlots(JSONObject json) {
+    private static JSONArray buildHours(JSONObject json) {
         try {
             JSONObject hourly = json.optJSONObject("hourly");
             if (hourly == null) return null;
             JSONArray times = hourly.optJSONArray("time");
             JSONArray temps = hourly.optJSONArray("temperature_2m");
             JSONArray codes = hourly.optJSONArray("weather_code");
+            JSONArray rains = hourly.optJSONArray("precipitation_probability");
             if (times == null || temps == null || codes == null) return null;
 
             double offsetMs = json.optDouble("utc_offset_seconds", 0) * 1000.0;
             long now = System.currentTimeMillis();
-            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
-            iso.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            SimpleDateFormat iso = isoUtc();
 
-            double sunUp = sunHour(json, "sunrise", 6.0);
-            double sunDown = sunHour(json, "sunset", 18.5);
+            JSONObject daily = json.optJSONObject("daily");
+            JSONArray dTimes = daily == null ? null : daily.optJSONArray("time");
+            JSONArray rise = daily == null ? null : daily.optJSONArray("sunrise");
+            JSONArray set = daily == null ? null : daily.optJSONArray("sunset");
 
             JSONArray out = new JSONArray();
-            for (int i = 0; i < times.length() && out.length() < HOUR_SLOTS; i++) {
+            for (int i = 0; i < times.length() && out.length() < HOURS_KEEP; i++) {
                 String t = times.optString(i, "");
                 if (t.length() < 13) continue;
-                try {
-                    Date d = iso.parse(t);
-                    if (d == null) continue;
-                    if (d.getTime() - offsetMs < now) continue;   // pasada: saltar
-                    JSONObject slot = new JSONObject();
-                    slot.put("h", t.substring(11, 13) + "h");
-                    double ht = temps.optDouble(i, Double.NaN);
-                    slot.put("temp", Double.isNaN(ht) ? JSONObject.NULL : ht);
-                    slot.put("code", codes.optInt(i, -1));
-                    double hd = Integer.parseInt(t.substring(11, 13))
-                        + Integer.parseInt(t.length() >= 16 ? t.substring(14, 16) : "0") / 60.0;
-                    slot.put("day", hd >= sunUp && hd <= sunDown);
-                    out.put(slot);
-                } catch (Exception ignored) {}
+                long ts = localToEpoch(iso, t, offsetMs);
+                if (ts <= now) continue;                       // pasada: saltar
+                JSONObject slot = new JSONObject();
+                slot.put("ts", ts);
+                slot.put("h", t.substring(11, 13) + "h");
+                double ht = temps.optDouble(i, Double.NaN);
+                slot.put("temp", Double.isNaN(ht) ? JSONObject.NULL : ht);
+                slot.put("code", codes.optInt(i, -1));
+                slot.put("rain", rains == null ? -1 : rains.optInt(i, -1));
+                slot.put("day", isDayAt(t, dTimes, rise, set));
+                out.put(slot);
             }
             return out.length() > 0 ? out : null;
         } catch (Throwable ignored) {}
         return null;
     }
 
-    /** Hora decimal (0-24) del sunrise/sunset del día 1 en hora local. */
-    private static double sunHour(JSONObject json, String which, double fallback) {
+    /** ¿La hora local t ("yyyy-MM-ddTHH:mm") cae entre sunrise y sunset de su día? */
+    private static boolean isDayAt(String t, JSONArray dTimes, JSONArray rise, JSONArray set) {
         try {
-            JSONObject daily = json.optJSONObject("daily");
-            if (daily == null) return fallback;
-            JSONArray arr = daily.optJSONArray(which);
-            if (arr == null) return fallback;
-            String t = arr.optString(0, "");
-            if (t.length() < 16) return fallback;
-            return Integer.parseInt(t.substring(11, 13))
-                + Integer.parseInt(t.substring(14, 16)) / 60.0;
-        } catch (Throwable ignored) {}
-        return fallback;
+            double hd = Integer.parseInt(t.substring(11, 13))
+                + (t.length() >= 16 ? Integer.parseInt(t.substring(14, 16)) : 0) / 60.0;
+            double up = 6.0, down = 18.5;
+            if (dTimes != null && rise != null && set != null) {
+                String date = t.substring(0, 10);
+                for (int i = 0; i < dTimes.length(); i++) {
+                    if (date.equals(dTimes.optString(i, ""))) {
+                        String a = rise.optString(i, ""), b = set.optString(i, "");
+                        if (a.length() >= 16) up = Integer.parseInt(a.substring(11, 13)) + Integer.parseInt(a.substring(14, 16)) / 60.0;
+                        if (b.length() >= 16) down = Integer.parseInt(b.substring(11, 13)) + Integer.parseInt(b.substring(14, 16)) / 60.0;
+                        break;
+                    }
+                }
+            }
+            return hd >= up && hd <= down;
+        } catch (Throwable e) { return true; }
     }
 
     /** Lluvia % de la próxima hora (igual criterio que el widget launcher). */
@@ -487,24 +803,22 @@ public class WeatherNotificationProvider {
             JSONArray rain = hourly.optJSONArray("precipitation_probability");
             if (times == null || rain == null) return -1;
             long now = System.currentTimeMillis();
-            double offsetSec = json.optDouble("utc_offset_seconds", 0);
-            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US);
-            iso.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            double offsetMs = json.optDouble("utc_offset_seconds", 0) * 1000.0;
+            SimpleDateFormat iso = isoUtc();
             for (int i = 0; i < times.length(); i++) {
-                try {
-                    Date t = iso.parse(times.optString(i, ""));
-                    if (t == null) continue;
-                    long ms = t.getTime() - Math.round(offsetSec * 1000.0);
-                    if (ms >= now) return rain.optInt(i, -1);
-                } catch (Exception ignored) {}
+                long ms = localToEpoch(iso, times.optString(i, ""), offsetMs);
+                if (ms >= now) return rain.optInt(i, -1);
             }
+            // todas las horas son anteriores: usar la última disponible
+            return rain.optInt(rain.length() - 1, -1);
         } catch (Throwable ignored) {}
         return -1;
     }
 
     /**
      * Sismo del día: el más fuerte en 24 h a ≤1200 km (USGS, público).
-     * Decide la fila del widget y la alarma.
+     * Devuelve {"none":true} si la consulta funcionó pero no hubo sismos
+     * relevantes (así la fila muestra "sin actividad"), y null si falló la red.
      */
     private static JSONObject fetchQuake(double lat, double lon) {
         HttpURLConnection conn = null;
@@ -526,7 +840,9 @@ public class WeatherNotificationProvider {
 
             JSONObject json = new JSONObject(body);
             JSONArray features = json.optJSONArray("features");
-            if (features == null || features.length() == 0) return null;
+            JSONObject none = new JSONObject();
+            none.put("none", true);
+            if (features == null || features.length() == 0) return none;
 
             JSONObject best = null;
             double bestMag = -1;
@@ -538,7 +854,7 @@ public class WeatherNotificationProvider {
                 double mag = p.optDouble("mag", -1);
                 if (mag > bestMag) { bestMag = mag; best = f; }
             }
-            if (best == null || bestMag < ROW_MAG_MIN) return null;
+            if (best == null || bestMag < ROW_MAG_MIN) return none;
 
             JSONObject p = best.optJSONObject("properties");
             JSONObject g = best.optJSONObject("geometry");
@@ -626,107 +942,188 @@ public class WeatherNotificationProvider {
     /* ═══════════════════ ASTRO PINTADO (canvas, sin emojis) ═══════════════════ */
 
     /**
-     * Icono del widget: sol con halo / luna con terminador / nube con
-     * volumen / lluvia / tormenta con rayo / nieve / niebla — la misma
-     * familia de color del widget del launcher. Se reusa en los slots
-     * horarios (el ImageView los escala a 22dp).
+     * Íconos del clima dibujados en un lienzo lógico de 96×96 y escalados a
+     * 192 px. TODA la geometría queda dentro de márgenes de ~6 u, así nada
+     * se recorta (la nube anterior se salía por arriba y por la derecha y
+     * quedaba pegada arriba). La nube es una sola silueta con degradado
+     * vertical, y la nublada lleva una nube trasera para dar volumen.
+     * Se reutiliza en los slots horarios.
      */
     static Bitmap paintAstro(int code, boolean day) {
         int b = bucket(code);
-        int S = 96;
+        final int S = 192;
         Bitmap bmp = Bitmap.createBitmap(S, S, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(bmp);
-        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        c.scale(S / 96f, S / 96f);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
 
-        if (b == 0 || b == 1) {
-            if (day) drawSun(c, p, S * .38f, S * .30f, S * .16f);
-            else     drawMoon(c, p, S * .40f, S * .30f, S * .15f);
-        }
+        int front = day ? TONE_FRONT_DAY : TONE_FRONT_NIGHT;
+        int back = day ? TONE_BACK_DAY : TONE_BACK_NIGHT;
+
         switch (b) {
-            case 1: drawCloud(c, p, S * .34f, S * .62f, S * .46f, day); break;
-            case 2: drawCloud(c, p, S * .52f, S * .50f, S * .90f, day); break;
-            case 3: drawFog(c, p, S); break;
-            case 4: drawCloud(c, p, S * .50f, S * .40f, S * .92f, day);
-                    drawRain(c, p, S, day); break;
-            case 5: drawCloud(c, p, S * .50f, S * .38f, S * .92f, false);
-                    drawBolt(c, p, S); break;
-            case 6: drawCloud(c, p, S * .50f, S * .40f, S * .88f, day);
-                    drawSnow(c, p, S); break;
-            default: break;
+            case 0:
+                if (day) drawSun(c, p, 48, 48, 19, true);
+                else     drawMoon(c, p, 44, 50, 23, true);
+                break;
+            case 1:
+                if (day) drawSun(c, p, 35, 34, 14, false);
+                else     drawMoon(c, p, 34, 33, 15, false);
+                drawCloud(c, p, 22, 38, 68, front);          // x 22..90 · y 38..82
+                break;
+            case 2:
+                drawCloud(c, p, 40, 14, 48, back);           // x 40..88 · y 14..45
+                drawCloud(c, p, 8, 34, 74, front);           // x 8..82  · y 34..82
+                break;
+            case 3:
+                drawCloud(c, p, 18, 10, 60, back);           // x 18..78 · y 10..49
+                drawFog(c, p);
+                break;
+            case 4:
+                drawCloud(c, p, 10, 8, 76, front);           // x 10..86 · y 8..57
+                drawRain(c, p);
+                break;
+            case 5:
+                drawCloud(c, p, 10, 6, 76, TONE_STORM);      // x 10..86 · y 6..55
+                drawBolt(c, p);
+                break;
+            case 6:
+                drawCloud(c, p, 10, 8, 76, front);
+                drawSnow(c, p);
+                break;
+            default:
+                drawCloud(c, p, 8, 24, 80, front);
+                break;
         }
         return bmp;
     }
 
-    private static void drawSun(Canvas c, Paint p, float cx, float cy, float r) {
-        p.setShader(new RadialGradient(cx, cy, r * 2.4f,
-            new int[]{0x66FFD75E, 0x00FFD75E}, new float[]{0.25f, 1f},
-            Shader.TileMode.CLAMP));
-        c.drawCircle(cx, cy, r * 2.4f, p);
+    // Tonos de nube: {color arriba, color abajo}
+    private static final int TONE_FRONT_DAY   = 0;
+    private static final int TONE_BACK_DAY    = 1;
+    private static final int TONE_FRONT_NIGHT = 2;
+    private static final int TONE_BACK_NIGHT  = 3;
+    private static final int TONE_STORM       = 4;
+    private static final int[][] TONES = {
+        {0xFFFFFFFF, 0xFFC3CFE6},   // frontal día
+        {0xFFA9B6D2, 0xFF8997B8},   // trasera día
+        {0xFFC4CDE4, 0xFF8190B2},   // frontal noche
+        {0xFF7482A6, 0xFF5D6A8F},   // trasera noche
+        {0xFF8890AC, 0xFF4B536F},   // tormenta
+    };
+
+    /**
+     * Nube: silueta única (3 círculos + base redondeada) dentro de un cuadro
+     * de 90×58 u normalizado. (x, y) = esquina superior izquierda real y w =
+     * ancho final; el alto es w·58/90. Nada sale de ese cuadro.
+     */
+    private static void drawCloud(Canvas c, Paint p, float x, float y, float w, int tone) {
+        float k = w / 90f;
+        float h = 58f * k;
+        p.setShader(new LinearGradient(0, y, 0, y + h, TONES[tone][0], TONES[tone][1], Shader.TileMode.CLAMP));
+        p.setStyle(Paint.Style.FILL);
+        // coordenadas del molde → reales: px = x + (ux - 6)·k ; py = y + (uy - 2)·k
+        c.drawCircle(x + (28 - 6) * k, y + (38 - 2) * k, 20 * k, p);
+        c.drawCircle(x + (52 - 6) * k, y + (30 - 2) * k, 28 * k, p);
+        c.drawCircle(x + (76 - 6) * k, y + (40 - 2) * k, 18 * k, p);
+        c.drawRoundRect(new RectF(x, y + (36 - 2) * k, x + 90 * k, y + h), 12 * k, 12 * k, p);
         p.setShader(null);
-        p.setColor(0xFFFFE07A); c.drawCircle(cx, cy, r, p);
-        p.setColor(0xFFFFF3C4); c.drawCircle(cx - r * .18f, cy - r * .18f, r * .55f, p);
     }
 
-    private static void drawMoon(Canvas c, Paint p, float cx, float cy, float r) {
-        p.setColor(0x26C8D5FF); c.drawCircle(cx, cy, r * 1.9f, p);
-        p.setColor(0xFFEDF0FA); c.drawCircle(cx, cy, r, p);
-        p.setColor(0xFFC7CFE2); c.drawCircle(cx + r * .32f, cy + r * .18f, r * .92f, p);
-        p.setColor(0x335A6591);
-        c.drawCircle(cx - r * .24f, cy - r * .12f, r * .22f, p);
-        c.drawCircle(cx + r * .18f, cy - r * .34f, r * .14f, p);
+    private static void drawSun(Canvas c, Paint p, float cx, float cy, float r, boolean rays) {
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx, cy, r * 2.2f,
+            new int[]{0x66FFD75E, 0x00FFD75E}, new float[]{0.3f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, r * 2.2f, p);
+        if (rays) {
+            p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeWidth(r * 0.17f);
+            p.setColor(0xFFFFD24D);
+            for (int i = 0; i < 8; i++) {
+                double a = Math.toRadians(i * 45);
+                float cs = (float) Math.cos(a), sn = (float) Math.sin(a);
+                c.drawLine(cx + cs * r * 1.38f, cy + sn * r * 1.38f,
+                           cx + cs * r * 1.78f, cy + sn * r * 1.78f, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+        }
+        p.setShader(new RadialGradient(cx - r * .25f, cy - r * .25f, r * 1.35f,
+            new int[]{0xFFFFF4C2, 0xFFFFD24D, 0xFFFFB92E}, new float[]{0f, .6f, 1f},
+            Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, r, p);
+        p.setShader(null);
     }
 
-    private static void drawCloud(Canvas c, Paint p, float cx, float cy, float w, boolean day) {
-        p.setColor(day ? 0xFFD9E1F0 : 0xFF9AA6C2);
-        float h = w * .52f;
-        c.drawCircle(cx - w * .24f, cy - h * .12f, h * .58f, p);
-        c.drawCircle(cx + w * .10f, cy - h * .30f, h * .72f, p);
-        c.drawCircle(cx + w * .34f, cy - h * .08f, h * .50f, p);
-        c.drawRoundRect(cx - w * .46f, cy - h * .30f, cx + w * .46f, cy + h * .28f,
-            h * .30f, h * .30f, p);
-        p.setColor(day ? 0x24000000 : 0x2A000000);
-        c.drawRoundRect(cx - w * .44f, cy + h * .06f, cx + w * .44f, cy + h * .28f,
-            h * .24f, h * .24f, p);
-    }
+    private static void drawMoon(Canvas c, Paint p, float cx, float cy, float r, boolean stars) {
+        p.setStyle(Paint.Style.FILL);
+        p.setShader(new RadialGradient(cx, cy, r * 1.9f,
+            new int[]{0x40C8D5FF, 0x00C8D5FF}, new float[]{0.35f, 1f}, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, r * 1.9f, p);
+        p.setShader(null);
 
-    private static void drawRain(Canvas c, Paint p, int S, boolean day) {
-        p.setColor(day ? 0xA9BDC8FF : 0x80A9C4FF);
-        p.setStrokeWidth(S * .024f);
-        float y0 = S * .62f;
-        for (int i = 0; i < 4; i++) {
-            float x = S * (.30f + i * .13f);
-            c.drawLine(x, y0, x - S * .05f, y0 + S * .14f, p);
+        Path outer = new Path(); outer.addCircle(cx, cy, r, Path.Direction.CW);
+        Path cut = new Path();   cut.addCircle(cx + r * .50f, cy - r * .22f, r * .86f, Path.Direction.CW);
+        Path crescent = new Path();
+        boolean ok = false;
+        try { ok = crescent.op(outer, cut, Path.Op.DIFFERENCE); } catch (Throwable ignored) {}
+        p.setShader(new LinearGradient(cx - r, cy - r, cx + r, cy + r,
+            0xFFFFF6D6, 0xFFE8D8A4, Shader.TileMode.CLAMP));
+        c.drawPath(ok ? crescent : outer, p);
+        p.setShader(null);
+
+        if (stars) {
+            p.setColor(0xCCFFFFFF);
+            c.drawCircle(76, 24, 2.3f, p);
+            c.drawCircle(82, 48, 1.7f, p);
+            c.drawCircle(68, 74, 1.9f, p);
         }
     }
 
-    private static void drawSnow(Canvas c, Paint p, int S) {
-        p.setColor(0xF2FFFFFF);
-        for (int i = 0; i < 5; i++) {
-            float x = S * (.26f + i * .12f);
-            float y = S * (.64f + (i % 2) * .08f);
-            c.drawCircle(x, y, S * (.020f + (i % 3) * .006f), p);
+    private static void drawRain(Canvas c, Paint p) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeWidth(4.6f);
+        p.setColor(0xFF6DB4FF);
+        float[] xs = {27, 41, 55, 69};
+        for (int i = 0; i < xs.length; i++) {
+            float y0 = 65 + (i % 2) * 4;
+            c.drawLine(xs[i], y0, xs[i] - 5, y0 + 15, p);
+        }
+        p.setStyle(Paint.Style.FILL);
+    }
+
+    private static void drawSnow(Canvas c, Paint p) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(0xFFFFFFFF);
+        float[] xs = {24, 37, 50, 63, 76};
+        for (int i = 0; i < xs.length; i++) {
+            c.drawCircle(xs[i], 68 + (i % 2) * 10, 3.4f, p);
         }
     }
 
-    private static void drawFog(Canvas c, Paint p, int S) {
-        p.setColor(0x82E4E9F2);
-        p.setStrokeWidth(S * .045f);
-        for (int i = 0; i < 3; i++) {
-            float y = S * (.52f + i * .13f);
-            c.drawLine(S * .22f, y, S * .78f - i * S * .06f, y, p);
-        }
+    private static void drawFog(Canvas c, Paint p) {
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeWidth(5f);
+        p.setColor(0xD9E4EBF6);
+        c.drawLine(16, 60, 80, 60, p);
+        c.drawLine(24, 72, 84, 72, p);
+        c.drawLine(16, 84, 70, 84, p);
+        p.setStyle(Paint.Style.FILL);
     }
 
-    private static void drawBolt(Canvas c, Paint p, int S) {
+    private static void drawBolt(Canvas c, Paint p) {
         Path path = new Path();
-        path.moveTo(S * .46f, S * .52f);
-        path.lineTo(S * .34f, S * .70f);
-        path.lineTo(S * .44f, S * .70f);
-        path.lineTo(S * .34f, S * .88f);
-        path.lineTo(S * .58f, S * .64f);
-        path.lineTo(S * .46f, S * .64f);
-        path.lineTo(S * .56f, S * .52f);
+        path.moveTo(51, 48);
+        path.lineTo(37, 69);
+        path.lineTo(47, 69);
+        path.lineTo(40, 90);
+        path.lineTo(63, 62);
+        path.lineTo(52, 62);
+        path.lineTo(61, 48);
         path.close();
+        p.setStyle(Paint.Style.FILL);
         p.setColor(0xFFFFE16D);
         c.drawPath(path, p);
     }

@@ -422,6 +422,7 @@ public class MainActivity extends Activity {
             .putLong("lat_bits", Double.doubleToRawLongBits(lat))
             .putLong("lon_bits", Double.doubleToRawLongBits(lon))
             .apply();
+        try { WeatherNotificationProvider.refresh(this); } catch (Throwable ignored) {}
         runOnUiThread(new Runnable() {
             @Override
             public void run() {

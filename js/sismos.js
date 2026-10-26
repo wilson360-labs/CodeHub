@@ -466,7 +466,7 @@ window.chSismosSetMag = function (mag, btn) {
   };
 
   window.chSismosUseMyLocation = function () {
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation && typeof CodeHubNative === 'undefined') {
       if (window.toast) toast('Tu navegador no permite geolocalización', 'sismos', 2500);
       return;
     }
@@ -497,10 +497,22 @@ window.chSismosSetMag = function (mag, btn) {
         : 'No se pudo obtener tu ubicación', 'sismos', 3000);
     }
 
-    // DOS fases: fix rápido de red/WiFi (~1-3 s) que centra el mapa YA, y
-    // un fix GPS de alta precisión en background que refina el punto sin
-    // volver a molestar al usuario. El fix único anterior (alta precisión,
-    // 10 s) era lento y dejaba el botón girando demasiado tiempo.
+    // Motor único de ubicación (chLocateBest, en index.html): fix rápido que
+    // centra el mapa YA + GPS de alta precisión en paralelo que lo refina.
+    // En la APK usa el GPS nativo (Fused) en vez del navigator.geolocation
+    // del WebView, que es lento y puede fallar sin permiso del WebView.
+    if (typeof window.chLocateBest === 'function') {
+      var _plotted = false;
+      window.chLocateBest({
+        onFix: function (lat, lon, acc, refined) {
+          if (!_plotted) { _plotted = true; plot(lat, lon); finish(); return; }
+          _center = { lat: lat, lon: lon };
+          if (_map) _map.setView([lat, lon], Math.max(_map.getZoom(), 8));
+        },
+        onFail: fail
+      });
+      return;
+    }
     navigator.geolocation.getCurrentPosition(function (pos) {
       plot(pos.coords.latitude, pos.coords.longitude);
       finish();
@@ -510,7 +522,7 @@ window.chSismosSetMag = function (mag, btn) {
           if (_map) _map.setView([_center.lat, _center.lon], Math.max(_map.getZoom(), 8));
         }
       }, function () {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
-    }, fail, { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 });
+    }, fail, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
   };
 
   window.chSismosReload = function () {

@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Widget del clima EN el panel de notificaciones — vista EXPANDIDA (grande).
-  Estilo One UI: tarjeta oscura con esquinas suaves (bg_notif_weather),
-  header astro+ciudad+hora, temperatura grande, condición + sensación,
-  pronóstico por horas (4 slots, astritos pintados) y fila de sismos.
-  Colores fijos para contraste en tema claro y oscuro del sistema.
+  Notificación de clima — vista EXPANDIDA.
+  Cabecera (ciudad + actualizado) · ícono grande + temperatura + condición ·
+  RESUMEN INTELIGENTE (pastilla que cambia de color según severidad) ·
+  chips con íconos vectoriales (humedad, viento, lluvia, sol) ·
+  pronóstico por horas ("Ahora" + 3) con % de lluvia · fila de sismos.
+  El fondo (@drawable/bg_notif_*) lo cambia WeatherNotificationProvider
+  según la condición y la hora (día/noche/nublado/lluvia/tormenta).
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/n_w_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
     android:paddingTop="12dp"
     android:paddingBottom="12dp"
     android:background="@drawable/bg_notif_weather">
@@ -22,86 +25,169 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <ImageView
-            android:id="@+id/n_w_icon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:scaleType="centerInside" />
-
-        <LinearLayout
+        <TextView
+            android:id="@+id/n_w_city"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:minWidth="0dp"
-            android:layout_marginStart="9dp"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/n_w_city"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minWidth="0dp"
-                android:singleLine="true"
-                android:ellipsize="end"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFFFF" />
-        </LinearLayout>
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFFFF" />
 
         <TextView
             android:id="@+id/n_w_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textSize="10sp"
-            android:textColor="#FF6B7380" />
+            android:singleLine="true"
+            android:textSize="11sp"
+            android:textColor="#FFB4BED0" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="4dp">
+        android:gravity="center_vertical"
+        android:layout_marginTop="2dp">
+
+        <ImageView
+            android:id="@+id/n_w_icon"
+            android:layout_width="58dp"
+            android:layout_height="58dp"
+            android:scaleType="fitCenter" />
 
         <TextView
             android:id="@+id/n_w_temp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
             android:singleLine="true"
-            android:paddingEnd="2dp"
-            android:textSize="34sp"
+            android:fontFamily="sans-serif-light"
+            android:textSize="42sp"
             android:textColor="#FFFFFFFF" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:layout_marginStart="12dp"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/n_w_desc"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
                 android:ellipsize="end"
-                android:maxWidth="200dp"
-                android:textSize="12sp"
-                android:textColor="#FFC6CFE0" />
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
 
             <TextView
-                android:id="@+id/n_w_data"
-                android:layout_width="wrap_content"
+                android:id="@+id/n_w_sub"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:singleLine="true"
                 android:ellipsize="end"
-                android:maxWidth="220dp"
-                android:minWidth="0dp"
-                android:textSize="10sp"
-                android:textColor="#FF94A0B4" />
+                android:textSize="12sp"
+                android:textColor="#FFD3DBE8" />
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/n_w_smart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF"
+        android:background="@drawable/bg_pill_info" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="9dp">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/ic_wx_drop" />
+        <TextView
+            android:id="@+id/n_w_hum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="12dp"
+            android:singleLine="true"
+            android:textSize="12sp"
+            android:textColor="#FFD3DBE8" />
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/ic_wx_wind" />
+        <TextView
+            android:id="@+id/n_w_wind"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="12dp"
+            android:singleLine="true"
+            android:textSize="12sp"
+            android:textColor="#FFD3DBE8" />
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="center_vertical"
+            android:src="@drawable/ic_wx_umbrella" />
+        <TextView
+            android:id="@+id/n_w_rain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="12dp"
+            android:singleLine="true"
+            android:textSize="12sp"
+            android:textColor="#FFD3DBE8" />
+        <TextView
+            android:id="@+id/n_w_sun"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:layout_gravity="center_vertical"
+            android:gravity="end"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textSize="12sp"
+            android:textColor="#FFFFD58A" />
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="9dp"
+        android:background="#26FFFFFF" />
 
     <LinearLayout
         android:id="@+id/n_w_hours"
@@ -118,27 +204,38 @@
             android:orientation="vertical"
             android:gravity="center_horizontal">
 
+            <TextView
+                android:id="@+id/n_w_h1_hour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textSize="11sp"
+                android:textColor="#FFB4BED0" />
+
             <ImageView
                 android:id="@+id/n_w_h1_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerInside" />
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginTop="1dp"
+                android:scaleType="fitCenter" />
 
             <TextView
                 android:id="@+id/n_w_h1_temp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
-                android:textSize="11sp"
-                android:textColor="#FFE6EBF5" />
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
 
             <TextView
-                android:id="@+id/n_w_h1_hour"
+                android:id="@+id/n_w_h1_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minHeight="13dp"
                 android:singleLine="true"
-                android:textSize="9sp"
-                android:textColor="#FF6B7380" />
+                android:textSize="11sp"
+                android:textColor="#FF8CC8FF" />
         </LinearLayout>
 
         <LinearLayout
@@ -147,28 +244,39 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center_horizontal">
-
-            <ImageView
-                android:id="@+id/n_w_h2_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerInside" />
-
-            <TextView
-                android:id="@+id/n_w_h2_temp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textSize="11sp"
-                android:textColor="#FFE6EBF5" />
 
             <TextView
                 android:id="@+id/n_w_h2_hour"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
-                android:textSize="9sp"
-                android:textColor="#FF6B7380" />
+                android:textSize="11sp"
+                android:textColor="#FFB4BED0" />
+
+            <ImageView
+                android:id="@+id/n_w_h2_icon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginTop="1dp"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/n_w_h2_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
+
+            <TextView
+                android:id="@+id/n_w_h2_rain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="13dp"
+                android:singleLine="true"
+                android:textSize="11sp"
+                android:textColor="#FF8CC8FF" />
         </LinearLayout>
 
         <LinearLayout
@@ -177,28 +285,39 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center_horizontal">
-
-            <ImageView
-                android:id="@+id/n_w_h3_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerInside" />
-
-            <TextView
-                android:id="@+id/n_w_h3_temp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:textSize="11sp"
-                android:textColor="#FFE6EBF5" />
 
             <TextView
                 android:id="@+id/n_w_h3_hour"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
-                android:textSize="9sp"
-                android:textColor="#FF6B7380" />
+                android:textSize="11sp"
+                android:textColor="#FFB4BED0" />
+
+            <ImageView
+                android:id="@+id/n_w_h3_icon"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginTop="1dp"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/n_w_h3_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
+
+            <TextView
+                android:id="@+id/n_w_h3_rain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="13dp"
+                android:singleLine="true"
+                android:textSize="11sp"
+                android:textColor="#FF8CC8FF" />
         </LinearLayout>
 
         <LinearLayout
@@ -208,27 +327,38 @@
             android:orientation="vertical"
             android:gravity="center_horizontal">
 
+            <TextView
+                android:id="@+id/n_w_h4_hour"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textSize="11sp"
+                android:textColor="#FFB4BED0" />
+
             <ImageView
                 android:id="@+id/n_w_h4_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:scaleType="centerInside" />
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginTop="1dp"
+                android:scaleType="fitCenter" />
 
             <TextView
                 android:id="@+id/n_w_h4_temp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
-                android:textSize="11sp"
-                android:textColor="#FFE6EBF5" />
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFFFF" />
 
             <TextView
-                android:id="@+id/n_w_h4_hour"
+                android:id="@+id/n_w_h4_rain"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:minHeight="13dp"
                 android:singleLine="true"
-                android:textSize="9sp"
-                android:textColor="#FF6B7380" />
+                android:textSize="11sp"
+                android:textColor="#FF8CC8FF" />
         </LinearLayout>
     </LinearLayout>
 
@@ -236,12 +366,10 @@
         android:id="@+id/n_w_quake"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="48dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:minWidth="0dp"
         android:singleLine="true"
         android:ellipsize="end"
-        android:visibility="gone"
-        android:textSize="11sp"
-        android:textColor="#FFFF9B8A" />
+        android:textSize="12sp"
+        android:textColor="#FF8FD3A8" />
 </LinearLayout>

@@ -236,11 +236,30 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void saveLocation(double lat, double lon) {
         SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
-        prefs.edit()
-            .putLong("lat_bits", Double.doubleToRawLongBits(lat))
-            .putLong("lon_bits", Double.doubleToRawLongBits(lon))
-            .apply();
+        SharedPreferences.Editor ed = prefs.edit();
+        // Si la ubicación cambió > 25 km, el nombre de ciudad guardado ya no
+        // corresponde: se borra para que se vuelva a resolver (notificación
+        // y widget) en vez de mostrar la ciudad anterior.
+        try {
+            double oLat = Double.longBitsToDouble(prefs.getLong("lat_bits", 0));
+            double oLon = Double.longBitsToDouble(prefs.getLong("lon_bits", 0));
+            if ((oLat != 0 || oLon != 0) && distKm(oLat, oLon, lat, lon) > 25.0) {
+                ed.remove("widget_city");
+            }
+        } catch (Throwable ignored) {}
+        ed.putLong("lat_bits", Double.doubleToRawLongBits(lat))
+          .putLong("lon_bits", Double.doubleToRawLongBits(lon))
+          .apply();
         WeatherWidgetProvider.requestRefresh(activity);
+        try { WeatherNotificationProvider.refresh(activity); } catch (Throwable ignored) {}
+    }
+
+    private static double distKm(double lat1, double lon1, double lat2, double lon2) {
+        double dLat = Math.toRadians(lat2 - lat1), dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        return 2 * 6371.0 * Math.asin(Math.min(1, Math.sqrt(a)));
     }
 
     /**
@@ -263,6 +282,7 @@ public class CodeHubBridge {
             .putString("widget_city", city == null ? "" : city)
             .apply();
         WeatherWidgetProvider.requestRefresh(activity);
+        try { WeatherNotificationProvider.refresh(activity); } catch (Throwable ignored) {}
     }
 
     /**
@@ -343,52 +363,131 @@ public class CodeHubBridge {
     }
 
     /**
-     * doGetLocation(callbackName) — Uses Google Play Services'
-     * FusedLocationProviderClient, which fuses GPS + WiFi + cell signals
-     * via Google's positioning backend. This is materially more accurate
-     * than reading raw LocationManager.NETWORK_PROVIDER fixes directly
-     * (that provider's self-reported accuracy is frequently optimistic
-     * and can be off by kilometers — the previous cause of "wrong city"
-     * reports on the APK). Falls back to getLastLocation() if a fresh
-     * fix can't be obtained in time.
+     * doGetLocation(callbackName) — ubicación en DOS fases y en paralelo.
+     *
+     * Antes se exigía UN fix fresco de alta precisión (maxUpdateAge 0): con
+     * el GPS en frío eso tarda 10-30 s y el botón verde "Usar mi ubicación"
+     * se quedaba esperando. Ahora se lanzan a la vez:
+     *   A) último conocido (instantáneo) — vale si tiene ≤ 2 min y ≤ 500 m;
+     *   B) fix equilibrado (WiFi/red, caché del SO ≤ 30 s) — 1-3 s;
+     *   C) fix de ALTA precisión (GPS) fresco — hasta 14 s.
+     * El PRIMER fix válido se entrega YA (refined=false, la UI pinta el
+     * clima), y si luego llega uno claramente más preciso se entrega otra
+     * vez (refined=true) para corregir la coordenada guardada sin parpadeos.
+     * Si nada responde: último conocido viejo → LocationManager de red.
+     * Callback: callbackName(lat, lon, accuracyM, refined) o callbackName(null)
      */
+    private static final class LocSession {
+        boolean delivered = false;
+        boolean fellBack = false;
+        float bestAcc = Float.MAX_VALUE;
+        int pending = 3;
+        Location stale = null;
+    }
+
+    private static long fixAgeMs(Location l) {
+        try {
+            return Math.max(0L, (android.os.SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos()) / 1000000L);
+        } catch (Throwable t) {
+            return Math.max(0L, System.currentTimeMillis() - l.getTime());
+        }
+    }
+
+    /** Entrega el fix si es el primero o si mejora claramente la precisión. */
+    private void offerFix(final String cb, final LocSession ses, Location loc) {
+        if (loc == null) return;
+        boolean refined;
+        synchronized (ses) {
+            float acc = loc.hasAccuracy() ? loc.getAccuracy() : 99999f;
+            if (!ses.delivered) {
+                ses.delivered = true;
+                ses.bestAcc = acc;
+                refined = false;
+            } else if (acc < ses.bestAcc * 0.7f && ses.bestAcc - acc >= 10f) {
+                ses.bestAcc = acc;
+                refined = true;
+            } else {
+                return;
+            }
+        }
+        returnLocation(cb, loc, refined);
+    }
+
+    /** Una de las 3 consultas terminó: si ya no queda ninguna y no hubo fix → respaldo. */
+    private void locStepDone(final String cb, final LocSession ses) {
+        boolean doFallback = false;
+        Location stale = null;
+        synchronized (ses) {
+            ses.pending--;
+            if (ses.pending <= 0 && !ses.delivered && !ses.fellBack) {
+                ses.fellBack = true;
+                doFallback = true;
+                stale = ses.stale;
+            }
+        }
+        if (!doFallback) return;
+        if (stale != null) { offerFix(cb, ses, stale); return; }
+        fallbackNetworkLocation(cb);
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
     private void doGetLocation(final String callbackName) {
         try {
-            FusedLocationProviderClient fused = LocationServices.getFusedLocationProviderClient(activity);
-            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
-                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
-                    .setMaxUpdateAgeMillis(0) // exigir un fix fresco, no uno viejo cacheado por el SO
-                    .build();
-            CancellationTokenSource cts = new CancellationTokenSource();
+            final FusedLocationProviderClient fused = LocationServices.getFusedLocationProviderClient(activity);
+            final LocSession ses = new LocSession();
 
-            fused.getCurrentLocation(request, cts.getToken())
-                .addOnSuccessListener(activity, loc -> {
-                    if (loc != null) {
-                        returnLocation(callbackName, loc);
-                    } else {
-                        // Sin fix fresco disponible (p. ej. GPS apagado) — usar el último conocido
-                        fused.getLastLocation()
-                            .addOnSuccessListener(activity, last -> {
-                                if (last != null) returnLocation(callbackName, last);
-                                else fallbackNetworkLocation(callbackName);
-                            })
-                            .addOnFailureListener(activity, e -> fallbackNetworkLocation(callbackName));
+            // A) último conocido
+            fused.getLastLocation().addOnCompleteListener(activity, task -> {
+                try {
+                    Location last = task.isSuccessful() ? task.getResult() : null;
+                    if (last != null) {
+                        if (fixAgeMs(last) <= 120000L && (!last.hasAccuracy() || last.getAccuracy() <= 500f)) {
+                            offerFix(callbackName, ses, last);
+                        } else {
+                            synchronized (ses) { ses.stale = last; }
+                        }
                     }
-                })
-                .addOnFailureListener(activity, e -> {
-                    // getCurrentLocation falló (permisos, Play Services, etc.) — intentar el último conocido
-                    fused.getLastLocation()
-                        .addOnSuccessListener(activity, last -> {
-                            if (last != null) returnLocation(callbackName, last);
-                            else fallbackNetworkLocation(callbackName);
-                        })
-                        .addOnFailureListener(activity, e2 -> fallbackNetworkLocation(callbackName));
+                } catch (Throwable ignored) {}
+                locStepDone(callbackName, ses);
+            });
+
+            // B) equilibrado: WiFi/red, rápido
+            CurrentLocationRequest fast = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setMaxUpdateAgeMillis(30000)
+                    .setDurationMillis(5000)
+                    .build();
+            fused.getCurrentLocation(fast, new CancellationTokenSource().getToken())
+                .addOnCompleteListener(activity, task -> {
+                    try { if (task.isSuccessful()) offerFix(callbackName, ses, task.getResult()); }
+                    catch (Throwable ignored) {}
+                    locStepDone(callbackName, ses);
                 });
 
-            // 15s hard timeout — si Fused nunca responde, no dejar el JS colgado
+            // C) alta precisión (GPS), fresco — refina en segundo plano
+            CurrentLocationRequest precise = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(0)
+                    .setDurationMillis(14000)
+                    .build();
+            fused.getCurrentLocation(precise, new CancellationTokenSource().getToken())
+                .addOnCompleteListener(activity, task -> {
+                    try { if (task.isSuccessful()) offerFix(callbackName, ses, task.getResult()); }
+                    catch (Throwable ignored) {}
+                    locStepDone(callbackName, ses);
+                });
+
+            // Seguro: si Fused nunca responde, no dejar el JS colgado.
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                cts.cancel();
-            }, 15000);
+                boolean fb = false;
+                synchronized (ses) {
+                    if (!ses.delivered && !ses.fellBack) { ses.fellBack = true; fb = true; }
+                }
+                if (fb) {
+                    if (ses.stale != null) offerFix(callbackName, ses, ses.stale);
+                    else fallbackNetworkLocation(callbackName);
+                }
+            }, 16000);
 
         } catch (SecurityException se) {
             fallbackNetworkLocation(callbackName);
@@ -438,13 +537,19 @@ public class CodeHubBridge {
     }
 
     private void returnLocation(String callbackName, Location loc) {
+        returnLocation(callbackName, loc, false);
+    }
+
+    private void returnLocation(String callbackName, Location loc, boolean refined) {
         saveLocation(loc.getLatitude(), loc.getLongitude());
         final double lat = loc.getLatitude();
         final double lon = loc.getLongitude();
-        final float acc = loc.getAccuracy();
+        final float acc = loc.hasAccuracy() ? loc.getAccuracy() : -1f;
+        final String cb = callbackName;
+        final boolean ref = refined;
         activity.runOnUiThread(() -> webView.loadUrl(
-            "javascript:try{if(window." + callbackName + ")window." + callbackName +
-            "(" + lat + "," + lon + "," + acc + ");}catch(e){}"));
+            "javascript:try{if(window." + cb + ")window." + cb +
+            "(" + lat + "," + lon + "," + acc + "," + ref + ");}catch(e){}"));
     }
 
     private void callbackNull(String callbackName) {

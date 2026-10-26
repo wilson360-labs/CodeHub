@@ -3579,75 +3579,146 @@ async function chResolveAndShowWeather(lat, lon, source) {
   }
 }
 
+/* ── Motor ÚNICO de ubicación (APK + web) ─────────────────────────────
+   Problema anterior: un primer intento con timeout de 3-4.5 s (en
+   Firefox/Safari el timeout cuenta DESDE que se muestra el aviso de
+   permiso), un reintento secuencial de 6 s y GPS en frío de 10-30 s →
+   el botón verde "Usar mi ubicación" tardaba mucho o fallaba.
+   Ahora, en PARALELO:
+     · fix rápido (red/WiFi/caché ≤ 5 min)  → onFix(..., refined=false) YA
+     · GPS de alta precisión con watchPosition (hasta 20 s) → si mejora la
+       precisión ≥ 30 % llega onFix(..., refined=true); se detiene solo al
+       lograr ≤ 25 m.
+   En la APK delega en CodeHubNative (Fused: último conocido + equilibrado +
+   alta precisión en paralelo), que llama al callback 1-2 veces.
+   cb = { onFix(lat, lon, accuracyM, refined), onFail(err) }. Devuelve stop(). */
+var _chLocSeq = 0;
+function chLocateBest(cb) {
+  cb = cb || {};
+  var got = false, done = false, bestAcc = Infinity, failed = 0, wid = null, tEnd = null;
+
+  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
+    var name = '_chLocBest' + (++_chLocSeq);
+    window[name] = function (lat, lon, acc, refined) {
+      if (done) return;
+      if (lat == null || lon == null) {
+        if (!got && cb.onFail) { done = true; cb.onFail({ code: 2 }); }
+        return;
+      }
+      got = true;
+      if (cb.onFix) cb.onFix(+lat, +lon, acc > 0 ? +acc : 99999, !!refined);
+    };
+    setTimeout(function () { try { delete window[name]; } catch (e) { window[name] = null; } }, 90000);
+    try { CodeHubNative.requestLocationPermission(name); }
+    catch (e) { if (cb.onFail) cb.onFail({ code: 2 }); }
+    return function () { done = true; };
+  }
+
+  if (!navigator.geolocation) {
+    if (cb.onFail) cb.onFail({ code: 0 });
+    return function () {};
+  }
+
+  function stop() {
+    done = true;
+    if (wid != null) { try { navigator.geolocation.clearWatch(wid); } catch (e) {} wid = null; }
+    if (tEnd) { clearTimeout(tEnd); tEnd = null; }
+  }
+  function good(pos) {
+    if (done || !pos || !pos.coords) return;
+    var acc = pos.coords.accuracy > 0 ? pos.coords.accuracy : 99999;
+    if (!got) {
+      got = true; bestAcc = acc;
+      if (cb.onFix) cb.onFix(pos.coords.latitude, pos.coords.longitude, acc, false);
+    } else if (acc < bestAcc * 0.7 && bestAcc - acc >= 10) {
+      bestAcc = acc;
+      if (cb.onFix) cb.onFix(pos.coords.latitude, pos.coords.longitude, acc, true);
+    }
+    if (acc <= 25) stop();   // precisión de GPS lograda
+  }
+  function bad(err) {
+    if (done) return;
+    if (err && err.code === 1) {            // permiso denegado: no tiene sentido seguir
+      var had = got; stop();
+      if (!had && cb.onFail) cb.onFail(err);
+      return;
+    }
+    failed++;
+    if (failed >= 2 && !got) { stop(); if (cb.onFail) cb.onFail(err); }
+  }
+
+  try { navigator.geolocation.getCurrentPosition(good, bad, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }); } catch (e) { bad(e); }
+  try { wid = navigator.geolocation.watchPosition(good, bad, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }); } catch (e) { bad(e); }
+  tEnd = setTimeout(function () {
+    if (done) return;
+    var had = got; stop();
+    if (!had && cb.onFail) cb.onFail({ code: 3 });
+  }, 20000);
+  return stop;
+}
+
+/* Distancia en km entre dos coordenadas (haversine). */
+function chDistKm(lat1, lon1, lat2, lon2) {
+  var R = 6371, rad = Math.PI / 180;
+  var dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/* Fix REFINADO (más preciso que el primero): guarda siempre la coordenada
+   mejor; solo vuelve a pintar el clima/nombre si se movió > 300 m y se
+   pidió repintar. No pisa el nombre de ciudad elegido por el usuario. */
+function chApplyRefinedFix(lat, lon, repaint) {
+  var pLat = parseFloat(localStorage.getItem('ch_user_lat'));
+  var pLon = parseFloat(localStorage.getItem('ch_user_lon'));
+  var moved = !(Number.isFinite(pLat) && Number.isFinite(pLon)) || chDistKm(pLat, pLon, lat, lon) > 0.3;
+  if (repaint && moved) { chResolveAndShowWeather(lat, lon, 'gps').catch(function () {}); return; }
+  var prev = localStorage.getItem('ch_user_city') || '';
+  chSavePushLocation(lat, lon,
+    (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
+    localStorage.getItem('ch_user_country') || '', 'gps');
+}
+
 /* Detectar ubicación REAL (GPS nativo/navegador → IP solo como último
    recurso) y guardarla para las alertas de clima. Si updateWidget es
    true, además pinta el resultado en la sección de clima visible, para
    que la detección "automática" y las alertas push usen siempre la
    MISMA coordenada — nunca una desincronizada de la otra. */
 function chAutoDetectAndSave(updateWidget) {
-  function onOk(lat, lon) {
-    wxGpsDenied = false;
-    if (updateWidget) {
-      chResolveAndShowWeather(lat, lon, 'gps');
-    } else {
-      // Revalidación silenciosa: actualiza las coordenadas SIN borrar el
-      // nombre de ciudad elegido (o confirmado) por el usuario.
-      var prev = localStorage.getItem('ch_user_city') || '';
-      chSavePushLocation(lat, lon,
-        (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
-        localStorage.getItem('ch_user_country') || '', 'gps');
+  chLocateBest({
+    onFix: function (lat, lon, acc, refined) {
+      wxGpsDenied = false;
+      if (refined) { chApplyRefinedFix(lat, lon, !!updateWidget); return; }
+      if (updateWidget) {
+        chResolveAndShowWeather(lat, lon, 'gps');
+      } else {
+        // Revalidación silenciosa: actualiza las coordenadas SIN borrar el
+        // nombre de ciudad elegido (o confirmado) por el usuario.
+        var prev = localStorage.getItem('ch_user_city') || '';
+        chSavePushLocation(lat, lon,
+          (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
+          localStorage.getItem('ch_user_country') || '', 'gps');
+      }
+    },
+    onFail: function (err) {
+      wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
+      if (updateWidget) {
+        // Ubicación del dispositivo apagada/denegada: NUNCA "adivinar" una
+        // ciudad por geo-IP (resolvería la POP del carrier, p. ej.
+        // "Seattle"). Se pide habilitar la ubicación o elegir ciudad.
+        showWeatherError('Habilita la ubicación en tu dispositivo para ver el clima real de tu zona 📍 También puedes elegir tu ciudad en el mapa.');
+      } else {
+        // Revalidación silenciosa: la geo-IP queda SOLO para las alertas
+        // push en background; jamás pinta en pantalla.
+        detectWeatherByIP(false);
+      }
     }
-  }
-  function onFail(err) {
-    wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
-    if (updateWidget) {
-      // Ubicación del dispositivo apagada/denegada: NUNCA "adivinar" una
-      // ciudad por geo-IP (resolvería la POP del carrier, p. ej.
-      // "Seattle"). Se pide habilitar la ubicación o elegir ciudad.
-      showWeatherError('Habilita la ubicación en tu dispositivo para ver el clima real de tu zona 📍 También puedes elegir tu ciudad en el mapa.');
-    } else {
-      // Revalidación silenciosa: la geo-IP queda SOLO para las alertas
-      // push en background; jamás pinta en pantalla.
-      detectWeatherByIP(false);
-    }
-  }
-
-  // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, alta precisión)
-  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
-    window._chAutoLocCb = function(lat, lon) {
-      if (lat != null && lon != null) onOk(lat, lon);
-      else onFail();
-    };
-    CodeHubNative.requestLocationPermission('_chAutoLocCb');
-  } else if (navigator.geolocation) {
-    // Fase 1: fix rápido de red/WiFi (~1-3 s) → pinta/guarda YA. Antes,
-    // enableHighAccuracy:true con 8 s dejaba el panel esperando el fix
-    // GPS frío (10-30 s en móviles). La fase 2 refina en background.
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      onOk(pos.coords.latitude, pos.coords.longitude);
-      chGeoRefineBackground(pos.coords && pos.coords.accuracy);
-    }, onFail, { enableHighAccuracy: false, timeout: 4500, maximumAge: 120000 });
-  } else {
-    onFail();
-  }
+  });
 }
 
-/* Fase 2 de la geolocalización en dos tiempos: fix GPS de alta precisión
-   en background que REFINA la coordenada guardada por el fix rápido de
-   red (alertas push, minimapa, widget flotante). No re-pinta la sección
-   de clima: el usuario ya la vio con la fase 1. maximumAge:0 exige un
-   fix nuevo de verdad, no una copia cacheada del de red. */
-function chGeoRefineBackground(prevAcc) {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(function(p) {
-    if (!p || !p.coords) return;
-    if (p.coords.accuracy != null && prevAcc != null && p.coords.accuracy >= prevAcc) return;
-    var prev = localStorage.getItem('ch_user_city') || '';
-    chSavePushLocation(p.coords.latitude, p.coords.longitude,
-      (prev && prev !== 'Tu ubicación') ? prev : 'Tu ubicación',
-      localStorage.getItem('ch_user_country') || '', 'gps');
-  }, function() {}, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
-}
+/* (Compat) La fase 2 de refinado ahora vive dentro de chLocateBest. */
+function chGeoRefineBackground() {}
 
 /* Se auto-ejecuta cuando la sección de clima entra en pantalla (y en
    revisitas si la ubicación guardada ya no está fresca), sin esperar
@@ -4049,14 +4120,13 @@ function showIndexNotifBanner() {
         chSavePushLocation(lat, lon, 'Tu ubicación', '', 'gps');
         chNotifWeatherCheck(lat, lon);
       }
-      if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
-        window._chNotifGeoCb = function(lat, lon) { if (lat != null) _saveGeoWeather(lat, lon); };
-        CodeHubNative.requestLocationPermission('_chNotifGeoCb');
-      } else if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(pos) {
-          _saveGeoWeather(pos.coords.latitude, pos.coords.longitude);
-        }, function(){});
-      }
+      chLocateBest({
+        onFix: function(lat, lon, acc, refined) {
+          if (refined) { chApplyRefinedFix(lat, lon, false); return; }
+          _saveGeoWeather(lat, lon);
+        },
+        onFail: function() {}
+      });
     } else {
       localStorage.setItem('ch_notif_dismissed', Date.now());
     }
@@ -6816,64 +6886,30 @@ function requestGeoLocation() {
   }
 
   const MSG_NO_LOC = 'Habilita la ubicación en tu dispositivo para ver el clima real de tu zona 📍 También puedes elegir tu ciudad en el mapa.';
+  const MSG_BLOCKED = 'Tu navegador tiene la ubicación bloqueada. Toca el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página, o escribe tu ciudad abajo.';
+  var firstPainted = false;
 
-  // En APK nativa: FusedLocationProviderClient (GPS + WiFi + red, ~alta precisión)
-  if (typeof CodeHubNative !== 'undefined' && CodeHubNative.requestLocationPermission) {
-    window._chGeoLocCb = async function(lat, lon) {
-      // Ubicación del dispositivo apagada: NUNCA inventar ciudad por
-      // geo-IP (saldría la POP del carrier, p. ej. "Seattle").
-      if (lat == null || lon == null) { showWeatherError(MSG_NO_LOC); done(false); return; }
+  // Un solo motor para APK y web (ver chLocateBest): el primer fix válido
+  // pinta el clima y marca el botón verde YA; si luego llega un fix GPS más
+  // preciso, se corrige la coordenada guardada (y se repinta solo si te
+  // moviste > 300 m).
+  chLocateBest({
+    onFix: function (lat, lon, acc, refined) {
       wxGpsDenied = false;
-      // Pintar YA con coords para respuesta inmediata; nombre/city en background
+      if (refined && firstPainted) { chApplyRefinedFix(lat, lon, true); return; }
+      firstPainted = true;
+      // Pintado inmediato con coords; nombre/ciudad en background sin bloquear la UI.
       if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
       done(true);
-      chResolveAndShowWeather(lat, lon, 'gps').catch(function(){});
-    };
-    CodeHubNative.requestLocationPermission('_chGeoLocCb');
-    return;
-  }
-
-  if (!navigator.geolocation) { showWeatherError('Tu navegador no soporta geolocalización.'); return; }
-
-  // Detección en DOS fases: rápida Y precisa.
-  //   Fase 1: fix de red/WiFi agresivo (cache 5 min) → pinta clima YA,
-  //           marca botón verde al instante sin esperar reverse geocode.
-  //   Fase 2 (background): fix GPS de alta precisión que refina coords.
-  navigator.geolocation.getCurrentPosition(
-    function (pos) {
-      wxGpsDenied = false;
-      var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      // Pintado inmediato con coords. chResolveAndShowWeather actualiza
-      // nombre/guardado en background sin bloquear UI.
-      if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat, lon, 'Tu ubicación 📍');
-      done(true);
-      chResolveAndShowWeather(lat, lon, 'gps').catch(function(){});
-      chGeoRefineBackground(pos.coords.accuracy);
+      chResolveAndShowWeather(lat, lon, 'gps').catch(function () {});
     },
-    async (err) => {
+    onFail: function (err) {
       wxGpsDenied = !!(err && err.code === 1); // PERMISSION_DENIED
-      if (err && err.code === 1) {
-        // Bloqueado en el navegador: instrucción concreta. Sin geo-IP.
-        showWeatherError('Tu navegador tiene la ubicación bloqueada. Toca el candado 🔒 de la barra de direcciones → Ubicación → Permitir y recarga la página, o escribe tu ciudad abajo.');
-        done(false);
-        return;
-      }
-      // TIMEOUT/indisponible (ubicación apagada en el dispositivo): reintento
-      // con alta precisión pero corto, luego pedir habilitarla.
-      navigator.geolocation.getCurrentPosition(
-        function (pos2) {
-          wxGpsDenied = false;
-          var lat2 = pos2.coords.latitude, lon2 = pos2.coords.longitude;
-          if (typeof fetchWeatherByCoords === 'function') fetchWeatherByCoords(lat2, lon2, 'Tu ubicación 📍');
-          done(true);
-          chResolveAndShowWeather(lat2, lon2, 'gps').catch(function(){});
-        },
-        async () => { showWeatherError(MSG_NO_LOC); done(false); },
-        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
-      );
-    },
-    { enableHighAccuracy: false, timeout: 3000, maximumAge: 300000 }
-  );
+      // Sin geo-IP: saldría la POP del carrier (p. ej. "Seattle").
+      showWeatherError(err && err.code === 1 ? MSG_BLOCKED : MSG_NO_LOC);
+      done(false);
+    }
+  });
 }
 
 async function searchWeatherCity() {

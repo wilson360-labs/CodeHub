@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo dinámico de la notificación de clima (bg_notif_cloud). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="16dp" />
+    <gradient android:angle="315" android:startColor="#F23A4A66" android:endColor="#F2192230" android:type="linear" />
+</shape>
