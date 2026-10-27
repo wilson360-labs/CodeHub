@@ -15,6 +15,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Usado por el DownloadWorker del reproductor (:echo) para descargas en
          curso vía WorkManager (SystemForegroundService, tipo dataSync). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -208,12 +209,18 @@
         </receiver>
 
         <!-- Detector de sismos por acelerómetro (capa C de alerta temprana).
-             Foreground dataSync: mantiene el sensor activo mientras la app
-             corre. Android 14+ exige foregroundServiceType declarado. -->
+             Foreground specialUse (NO dataSync): Android 15+ impone timeout
+             de 6 h a dataSync y lanza ForegroundServiceDidNotStopInTimeException
+             (crash del CodeHubSyncService antiguo). specialUse no tiene ese
+             límite y es el tipo correcto para monitoreo persistente. -->
         <service
             android:name=".QuakeDetectorService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="earthquakeDetection" />
+        </service>
 
         <!-- Servicio del emoji animado del widget (AdapterViewFlipper).
              Obligatorio: permission BIND_REMOTEVIEWS para que el launcher
