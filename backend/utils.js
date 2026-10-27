@@ -92,13 +92,19 @@ function clientIp(req) {
     if (!isPrivateIp(chainIps[i])) return chainIps[i];
   }
 
-  // Respaldo: cabeceras/socket que no controla el proxy.
-  const tail = [req?.headers?.['x-real-ip'], req?.socket?.remoteAddress]
-    .map(norm).filter(isIp);
-  for (const c of tail) if (!isPrivateIp(c)) return c;
+  // Cabeceras de confianza del proxy/CDN (Cloudflare, Akamai, etc.) que
+  // entregan la IP real del cliente SIN pasar por XFF. Tienen prioridad
+  // sobre XFF porque XFF puede estar contaminado por el cliente.
+  const trusted = [
+    req?.headers?.['cf-connecting-ip'],
+    req?.headers?.['true-client-ip'],
+    req?.headers?.['x-real-ip'],
+    req?.socket?.remoteAddress,
+  ].map(norm).filter(isIp);
+  for (const c of trusted) if (!isPrivateIp(c)) return c;
 
   // Sin IP pública (red local/dev): primera válida para no quedarnos en 'unknown'.
-  return chainIps[0] || tail[0] || 'unknown';
+  return chainIps[0] || trusted[0] || 'unknown';
 }
 
 function truncate(text, max = 400) {

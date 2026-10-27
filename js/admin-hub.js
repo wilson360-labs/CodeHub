@@ -2983,7 +2983,7 @@ function exportVisitors() {
     v.risk_score, v.page, v.visited_at
   ].map(x => `"${String(x ?? '').replace(/"/g,'""')}"`).join(','));
   const csv  = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const a    = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(blob),
     download: `visitantes_${new Date().toISOString().slice(0,10)}.csv`
