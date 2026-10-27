@@ -7703,6 +7703,42 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {}
   })();
   </script>
+
+  <!-- Diálogo de rescate: solo para APKs viejos (< 7.50) que crashean en
+       Android 15 y no pueden ver el diálogo nativo de actualización.
+       Las versiones nuevas (>= 7.50) lo saltan: tienen su propio diálogo. -->
+  <script>
+  (function () {
+    try {
+      var isNative = (typeof CodeHubNative !== 'undefined') || !!window.__apkNative;
+      if (!isNative) return;
+      var v = window.__apkVersion || '';
+      var parts = v.split('.').map(function (x) { return parseInt(x, 10) || 0; });
+      var major = parts[0] || 0, minor = parts[1] || 0;
+      var isOld = !v || major < 7 || (major === 7 && minor < 50);
+      if (!isOld) return;
+      if (localStorage.getItem('ch:rescue-dismissed')) return;
+      var link = 'https://github.com/wilson360-labs/CodeHub/releases/download/apk-codehub-v7.55/app-release-signed.apk';
+      setTimeout(function () {
+        var overlay = document.createElement('div');
+        overlay.id = 'ch-rescue-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+        var box = document.createElement('div');
+        box.style.cssText = 'background:#1a1a2e;color:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;text-align:center;font-family:system-ui,sans-serif;box-shadow:0 8px 32px rgba(0,0,0,.5);';
+        box.innerHTML = '<h2 style="margin:0 0 8px;font-size:18px;">⚠️ Actualización disponible</h2>'
+          + '<p style="margin:0 0 16px;font-size:14px;opacity:.85;">Tu versión ' + (v || 'antigua') + ' tiene un bug en Android 15. Descarga la nueva versión para evitar crashes.</p>'
+          + '<a href="' + link + '" style="display:inline-block;background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-bottom:8px;">Descargar actualización</a>'
+          + '<br><button id="ch-rescue-dismiss" style="background:none;border:none;color:#888;cursor:pointer;margin-top:10px;font-size:13px;">Más tarde</button>';
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        document.getElementById('ch-rescue-dismiss').onclick = function () {
+          localStorage.setItem('ch:rescue-dismissed', '1');
+          overlay.remove();
+        };
+      }, 1500);
+    } catch (e) {}
+  })();
+  </script>
   <script src="/dist/assets/js/live-update-check.a5e996838d.min.js" defer></script>
 
   <script>
