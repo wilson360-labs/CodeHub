@@ -7489,6 +7489,30 @@ app.use((err, req, res, next) => {
   await ensurePushTable();
   await ensureFCMTable();
   await ensureStatsTables();
+
+  // Limpieza periódica de visitor_logs (cada 24 h): borra registros de
+  // más de 3 días para que la tabla no crezca sin límite y el listado del
+  // admin-hub se mantenga rápido. Mantiene los últimos 3 días (útil para
+  // detectar patrones de visita recientes).
+  setInterval(async () => {
+    if (!supabase) return;
+    try {
+      const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase.from('visitor_logs').delete().lt('visited_at', cutoff);
+      if (error) console.warn('⚠️  visitor_logs cleanup error:', error.message);
+      else console.log('🧹 visitor_logs: registros >3 días eliminados');
+    } catch (e) { console.warn('⚠️  visitor_logs cleanup error:', e.message); }
+  }, 24 * 60 * 60 * 1000);
+  // Primera limpieza 5 min después del arranque (no bloquear el boot).
+  setTimeout(async () => {
+    if (!supabase) return;
+    try {
+      const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      const { error } = await supabase.from('visitor_logs').delete().lt('visited_at', cutoff);
+      if (error) console.warn('⚠️  visitor_logs cleanup error:', error.message);
+      else console.log('🧹 visitor_logs: limpieza inicial >3 días');
+    } catch (e) { console.warn('⚠️  visitor_logs cleanup error:', e.message); }
+  }, 5 * 60 * 1000);
   await ensureCommunityTables(supabase, splitSqlStatements);
   await ensureUserDataTables(supabase, splitSqlStatements);
 
