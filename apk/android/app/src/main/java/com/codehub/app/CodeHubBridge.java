@@ -1534,6 +1534,32 @@ public class CodeHubBridge {
     }
 
     @JavascriptInterface
+    public boolean isQuakeDetectorEnabled() {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            return prefs.getBoolean("quake_detector_enabled", true);
+        } catch (Exception e) { return true; }
+    }
+
+    @JavascriptInterface
+    public void setQuakeDetectorEnabled(final boolean enabled) {
+        try {
+            SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            prefs.edit().putBoolean("quake_detector_enabled", enabled).apply();
+            // Si se desactiva, detener el servicio ya en ejecución.
+            if (!enabled) {
+                try { activity.stopService(new Intent(activity, QuakeDetectorService.class)); } catch (Exception ignored) {}
+            } else {
+                try {
+                    Intent i = new Intent(activity, QuakeDetectorService.class);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) activity.startForegroundService(i);
+                    else activity.startService(i);
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+    }
+
+    @JavascriptInterface
     public String getQuakeAlertConfig() {
         try {
             SharedPreferences prefs = activity.getSharedPreferences("codehub", Context.MODE_PRIVATE);

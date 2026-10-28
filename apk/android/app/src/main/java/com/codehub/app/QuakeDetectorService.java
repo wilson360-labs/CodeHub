@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -60,6 +61,14 @@ public class QuakeDetectorService extends Service implements SensorEventListener
     @Override
     public void onCreate() {
         super.onCreate();
+        // Respeta el toggle del usuario (preferencias "codehub").
+        try {
+            SharedPreferences p = getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            if (!p.getBoolean("quake_detector_enabled", true)) {
+                stopSelf();
+                return;
+            }
+        } catch (Exception ignored) {}
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accel = sm != null ? sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) : null;
         createChannel();

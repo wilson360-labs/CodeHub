@@ -293,6 +293,8 @@ public class MainActivity extends Activity {
 
     private void startQuakeDetector() {
         try {
+            SharedPreferences p = getSharedPreferences("codehub", MODE_PRIVATE);
+            if (!p.getBoolean("quake_detector_enabled", true)) return;
             Intent i = new Intent(this, QuakeDetectorService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(i);
