@@ -432,7 +432,9 @@
     // Coordenada de geo-IP (ch_user_loc_src === 'ip'): no centrar el
     // minimapa en la POP del carrier (p. ej. "Seattle") — equivale a no
     // tener ubicación guardada; el overlay pide habilitarla.
-    if ((localStorage.getItem('ch_user_loc_src') || '') === 'ip') return null;
+    var _msrc = (localStorage.getItem('ch_user_loc_src') || '');
+    var _mreal = (_msrc === 'gps' || _msrc === 'search' || _msrc === 'manual' || _msrc === 'map');
+    if (!_mreal) return null;
     var lat = parseFloat(localStorage.getItem('ch_user_lat'));
     var lon = parseFloat(localStorage.getItem('ch_user_lon'));
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;

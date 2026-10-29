@@ -2078,7 +2078,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
             <!-- Bottom bar -->
             <div class="footer-bottom">
-                <span>&copy; 2024–2026 <strong>Wilson.E</strong> · <span data-i18n="footerRights">Todos los derechos reservados</span></span>
+                <span>&copy; 2024—2026 <strong><a href="/acerca" style="color:inherit;text-decoration:none">Wilson.E</a></strong> · Diseñado y desarrollado desde cero · Guatemala · <span data-i18n="footerRights">Todos los derechos reservados</span></span>
                 <span style="display:flex;gap:1rem;flex-wrap:wrap;justify-content:center;">
                     <a href="/acerca" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'">Acerca de</a>
                     <a href="/guias" style="color:var(--text-secondary,#888);font-size:.75rem;text-decoration:none;transition:color .2s" onmouseover="this.style.color='var(--primary,#2f80ed)'" onmouseout="this.style.color='var(--text-secondary,#888)'">Guías</a>
@@ -2113,20 +2113,20 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         const typingPhrases = function () {
             return currentLang === 'en'
                 ? [
-                    'Full Stack Web Developer 💻',
-                    'Python Specialist 🐍',
-                    'Creator of Digital Experiences ✨',
-                    'From Guatemala to the World 🇬🇹',
-                    'Passionate Programmer 🚀',
-                    'Problem Solver 🧠'
+                    'Ingeniero Web & UI/UX Designer 💻',
+                    'Full Stack Web Developer',
+                    'Crafting fast, clean & human web experiences',
+                    'Designed & built from scratch — Guatemala 🇬🇹',
+                    'Pragmatic problem solver 🚀',
+                    'Open Source & Privacy-focused'
                   ]
                 : [
-                    'Desarrollador Web Full Stack 💻',
-                    'Especialista en Python 🐍',
-                    'Creador de Experiencias Digitales ✨',
-                    'De Guatemala para el Mundo 🇬🇹',
-                    'Programador Apasionado 🚀',
-                    'Problem Solver 🧠'
+                    'Ingeniero Web & Diseñador UI/UX 💻',
+                    'Desarrollador Web Full Stack',
+                    'Sitios rápidos, claros y pensados para convertir',
+                    'Diseñado y programado desde cero — Guatemala 🇬🇹',
+                    'Soluciones prácticas sin rodeos 🚀',
+                    'Código abierto, privacidad por diseño'
                   ];
         };
         let phraseIndex = 0;
@@ -3326,6 +3326,11 @@ async function chPushRegister(sub) {
 }
 
 function chReadLocation() {
+  var src = localStorage.getItem('ch_user_loc_src') || '';
+  var isReal = (src === 'gps' || src === 'search' || src === 'manual' || src === 'map');
+  if (!isReal) {
+    return { lat: null, lon: null, city: '', country: '', timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone) || '' };
+  }
   var lat = parseFloat(localStorage.getItem('ch_user_lat'));
   var lon = parseFloat(localStorage.getItem('ch_user_lon'));
   return {
@@ -3732,7 +3737,9 @@ function chPaintSavedLocation() {
   var lat = parseFloat(localStorage.getItem('ch_user_lat'));
   var lon = parseFloat(localStorage.getItem('ch_user_lon'));
   if (!(Number.isFinite(lat) && Number.isFinite(lon))) return false;
-  if (localStorage.getItem('ch_user_loc_src') === 'ip') {
+  var _src = localStorage.getItem('ch_user_loc_src') || '';
+  var _real = (_src === 'gps' || _src === 'search' || _src === 'manual' || _src === 'map');
+  if (!_real) {
     // Coordenada de geo-IP: queda SOLO para las alertas push. Al volver,
     // la detección con GPS real se re-dispara (chInitAutoWeather) en vez
     // de exhibir una ciudad inventada.

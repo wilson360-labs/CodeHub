@@ -76,7 +76,9 @@
     // POP de salida del carrier (p. ej. "Seattle" en líneas LATAM) y esa
     // ciudad falsa es justo lo que no debe verse. Sirve solo para las
     // alertas push; el widget exige GPS o ciudad elegida.
-    if ((localStorage.getItem('ch_user_loc_src') || '') === 'ip') {
+    var _wsrc = (localStorage.getItem('ch_user_loc_src') || '');
+    var _wreal = (_wsrc === 'gps' || _wsrc === 'search' || _wsrc === 'manual' || _wsrc === 'map');
+    if (!_wreal) {
       return { lat: null, lon: null, city: '' };
     }
     if (typeof chReadLocation === 'function') return chReadLocation();

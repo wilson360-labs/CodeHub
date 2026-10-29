@@ -34,7 +34,9 @@
     // carrier (p. ej. "Seattle"), no en la zona del usuario. Queda solo
     // para las alertas push; para display se exige GPS o ciudad elegida.
     try {
-      if ((win.localStorage.getItem('ch_user_loc_src') || '') === 'ip') {
+      var _src = (win.localStorage.getItem('ch_user_loc_src') || '');
+      var _real = (_src === 'gps' || _src === 'search' || _src === 'manual' || _src === 'map');
+      if (!_real) {
         return { lat: null, lon: null, city: '' };
       }
     } catch (e) {}
