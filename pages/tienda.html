@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Consent Mode v2 — defaults GDPR/CCPA (antes de cargar gtag/GTM/AdSense) -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    (function () {
+      var granted = false;
+      try { granted = localStorage.getItem('ch_consent') === 'accepted'; } catch (e) {}
+      gtag('consent', 'default', {
+        'ad_storage': granted ? 'granted' : 'denied',
+        'ad_user_data': granted ? 'granted' : 'denied',
+        'ad_personalization': granted ? 'granted' : 'denied',
+        'analytics_storage': granted ? 'granted' : 'denied',
+        'wait_for_update': 500
+      });
+    })();
+  </script>
+  <!-- Google AdSense — Auto Ads vía gtag (respeta Consent Mode v2; no se carga en WebView/APK) -->
+  <script>
+    (function () {
+      if (typeof window.CodeHubNative !== 'undefined' || window.__apkNative) return;
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('config', 'ca-pub-3780093322926832');
+    })();
+  </script>
+  <meta name="google-adsense-account" content="ca-pub-3780093322926832">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-205F26ETCC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-205F26ETCC');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://www.googletagmanager.com https://www.googletagservices.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' data: https: blob:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://cdnjs.cloudflare.com https://codehub-98s6.onrender.com wss://codehub-98s6.onrender.com ws://localhost:3000 ws://127.0.0.1:3000;">
+  <title>Catálogo Open Source para Android — CodeHub by Wilson.E</title>
+  <meta name="description" content="80 apps de código abierto para Android, verificadas contra su repositorio oficial en GitHub: música, video, VPN, productividad, lectura y más. Sin mods, sin anuncios ocultos, sin cuentas obligatorias.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://wilson360-labs.vercel.app/opensource">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://wilson360-labs.vercel.app/opensource">
+  <meta property="og:title" content="Catálogo Open Source para Android — CodeHub">
+  <meta property="og:description" content="80 apps de código abierto para Android, verificadas en GitHub. Sin mods, sin anuncios.">
+  <meta property="og:image" content="https://res.cloudinary.com/drlufmqes/image/upload/v1774497527/codehub_goecyh.png">
+  <meta name="author" content="Wilson.E — wilson.e360labs@gmail.com">
+  <link rel="icon" type="image/png" href="../splash/codehub.png">
+  <link rel="stylesheet" href="../fonts/codehub-fonts.css?v=20260906">
+<link rel="stylesheet" href="/css/fontawesome/all.min.css?v=20260908b" crossorigin="anonymous">
+  <link rel="stylesheet" href="../css/native-feel.css?v=20261019a">
+  <link rel="stylesheet" href="../css/opensource.css?v=20261019a">
+<link rel="stylesheet" href="../css/site-tour.css?v=20261019a">
+  <link rel="stylesheet" href="../css/viewport-guard.css?v=20261019a">
+  <link rel="stylesheet" href="../css/orion-store.css?v=20261029a">
+</head>
+<body class="orion-store">
+
+<div id="pbar"></div>
+
+<header class="hdr">
+  <a class="logo-link" href="/">
+    <span class="logo-t"><span class="br">&lt;</span>Wilson.E<span class="br">/&gt;</span></span>
+    <span class="logo-b">CodeHub</span>
+  </a>
+  <a class="back-link" href="/"><i class="fas fa-arrow-left"></i> Volver al inicio</a>
+</header>
+
+<section class="hero">
+  <div class="hero-tag"><span class="hero-dot"></span> <span id="os-hero-count">Cargando…</span> · Verificadas contra GitHub · Solo Android</div>
+  <h1>Catálogo<br>Open Source</h1>
+  <p>Apps Android con código abierto, verificadas contra sus repositorios oficiales. Nada de mods, nada de versiones reempaquetadas: proyectos independientes que resuelven lo mismo que las alternativas comerciales, sin anuncios ocultos, sin cuentas obligatorias y con el código a la vista para quien quiera auditarlo.</p>
+</section>
+
+<div class="os-intro">
+  <p>Este catálogo sigue un criterio estricto: solo incluyo apps cuyo <strong>APK provenga directamente de GitHub Releases</strong> del proyecto original. Cada ficha enlaza al repositorio para que puedas revisarlo antes de instalar. Si una app te resulta útil, considera darle una estrella o aportar al proyecto: lo mantienen desarrolladores independientes, no grandes corporaciones.</p>
+  <p>CodeHub no aloja APKs ni distribuye "mods". Si algún enlace apunta a un repositorio distinto al que esperas, desconfía y no lo instales. La categoría de VPN incluye únicamente clientes FOSS; no se venden VPN ni se promete anonimato. Puedes leer más sobre el proceso en <a href="/guias#android-foss">Guías: cómo elijo apps Android de GitHub Releases</a> o en <a href="/comunidad">la sección Comunidad</a>.</p>
+</div>
+
+<div class="os-tools" id="os-tools" role="search">
+  <div class="os-search">
+    <i class="fa-solid fa-magnifying-glass os-search-icon"></i>
+    <input id="os-search-input" type="search" placeholder="Buscar apps por nombre, categoría o repo…" autocomplete="off" aria-label="Buscar aplicaciones del catálogo">
+    <button id="os-search-clear" class="os-search-clear" aria-label="Borrar búsqueda" hidden><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="os-filter-bar">
+    <div class="os-chips" id="os-chips" aria-label="Filtrar por categoría"></div>
+    <label class="os-sort">
+      <i class="fa-solid fa-arrow-down-wide-short"></i>
+      <select id="os-sort-select" aria-label="Ordenar resultados">
+        <option value="catalog">Orden del catálogo</option>
+        <option value="rating">Mejor valoradas</option>
+        <option value="name">Nombre A–Z</option>
+        <option value="updated">Actualizado recientemente</option>
+      </select>
+    </label>
+  </div>
+</div>
+
+<div class="os-results-wrap" id="os-results-wrap" hidden>
+  <div class="os-results-bar">
+    <span id="os-results-info"></span>
+    <button id="os-results-clear" class="os-results-clear" type="button"><i class="fa-solid fa-filter-circle-xmark"></i> Limpiar filtros</button>
+  </div>
+  <div class="app-grid" id="os-results-grid"></div>
+  <div class="os-results-empty" id="os-results-empty" hidden>
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <p>No encontramos apps para este filtro.</p>
+    <button class="os-results-clear" type="button" data-clear>Mostrar todo el catálogo</button>
+  </div>
+</div>
+
+<button class="we-trigger" id="we-trigger" type="button" aria-haspopup="dialog" aria-controls="we-drawer" aria-expanded="false">
+  <span class="we-trigger-icon"><i class="fa-brands fa-windows"></i></span>
+  <span class="we-trigger-body">
+    <strong>Windows Enhance <span class="we-tag">PC · Windows</span></strong>
+    <span>Recuperación y optimización de Windows: las mejores herramientas con enlaces directos y guías de uso paso a paso — USB de arranque, reparación del sistema y limpieza.</span>
+  </span>
+  <span class="we-trigger-cta"><i class="fa-solid fa-angles-right"></i></span>
+</button>
+
+<div class="os-toc">
+  <a href="#my-apps-section" id="my-apps-toc-link" style="display:none">📦 Mis apps</a>
+  <a href="#device-apps-section" id="device-apps-toc-link" style="display:none">📲 En tu dispositivo</a>
+  <a href="#cat-root-y-sistema">🛠️ Root y Sistema</a>
+  <a href="#cat-música">🎵 Música</a>
+  <a href="#cat-video">📺 Video</a>
+  <a href="#cat-vpn-y-privacidad">🔒 VPN y Privacidad</a>
+  <a href="#cat-productividad">✅ Productividad</a>
+  <a href="#cat-lectura">📖 Lectura</a>
+  <a href="#cat-mensajería">💬 Mensajería</a>
+  <a href="#cat-fotografía">📸 Fotografía</a>
+  <a href="#cat-utilidades">🧰 Utilidades</a>
+</div>
+
+<section class="os-category os-my-apps-section" id="my-apps-section" style="display:none">
+  <div class="os-cat-header">
+    <h2>📦 Mis apps</h2>
+    <p>Apps que guardaste. Se verifican actualizaciones automáticamente cada vez que abres esta página.</p>
+  </div>
+  <div class="app-grid" id="my-apps-grid"></div>
+</section>
+
+<section class="os-category os-device-apps-section" id="device-apps-section" style="display:none">
+  <div class="os-cat-header">
+    <h2>📲 Instaladas en tu dispositivo</h2>
+    <p id="device-apps-desc">Apps del catálogo que ya tenés instaladas, detectadas automáticamente.</p>
+  </div>
+  <div id="device-apps-shizuku-banner" class="device-shizuku-banner" style="display:none"></div>
+  <div class="app-grid" id="device-apps-grid"></div>
+</section>
+
+<section class="os-category" id="cat-root-y-sistema">
+  <div class="os-cat-header">
+    <h2>🛠️ Root y Sistema</h2>
+    <p>Herramientas para quienes quieren control real sobre su Android: gestión de permisos, root, módulos y automatización, todas con el código disponible para revisión pública.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-root-y-sistema">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-música">
+  <div class="os-cat-header">
+    <h2>🎵 Música</h2>
+    <p>Reproductores y clientes que evitan las limitaciones de las apps oficiales gratuitas (anuncios, saltos limitados, reproducción en segundo plano bloqueada) sin recurrir a versiones modificadas de apps de pago.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-música">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-video">
+  <div class="os-cat-header">
+    <h2>📺 Video</h2>
+    <p>Formas legítimas de ver o descargar video sin depender del cliente oficial, usando frontends alternativos o reproductores universales de código abierto.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-video">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-vpn-y-privacidad">
+  <div class="os-cat-header">
+    <h2>🔒 VPN y Privacidad</h2>
+    <p>Apps de seguridad y anonimato con código auditable, en lugar de confiar a ciegas en una VPN gratuita de origen desconocido.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-vpn-y-privacidad">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-productividad">
+  <div class="os-cat-header">
+    <h2>✅ Productividad</h2>
+    <p>Alternativas a servicios de nube y gestión que no dependen de una cuenta comercial ni monetizan tus datos.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-productividad">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-lectura">
+  <div class="os-cat-header">
+    <h2>📖 Lectura</h2>
+    <p>Lectores de EPUB, PDF y manga/cómics sin anuncios ni cuentas obligatorias.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-lectura">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-mensajería">
+  <div class="os-cat-header">
+    <h2>💬 Mensajería</h2>
+    <p>Clientes de mensajería y correo con cifrado y protocolos abiertos, verificables por cualquiera.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-mensajería">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-fotografía">
+  <div class="os-cat-header">
+    <h2>📸 Fotografía</h2>
+    <p>Gestión de galería sin telemetría ni anuncios integrados.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-fotografía">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+<section class="os-category" id="cat-utilidades">
+  <div class="os-cat-header">
+    <h2>🧰 Utilidades</h2>
+    <p>Pequeñas herramientas del día a día que resuelven una tarea puntual sin pedir permisos de más.</p>
+  </div>
+  <div class="app-grid" id="grid-cat-utilidades">
+    <div class="os-cat-loading" style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted,#8a8a9a);font-size:.82rem"><i class="fas fa-circle-notch fa-spin"></i> Cargando…</div>
+  </div>
+</section>
+
+<div class="we-backdrop" id="we-backdrop"></div>
+<div class="we-drawer" id="we-drawer" role="dialog" aria-modal="true" aria-label="Windows Enhance — recuperación y optimización de Windows" inert>
+  <div class="we-drawer-head">
+    <div class="we-drawer-title"><i class="fa-brands fa-windows"></i> Windows Enhance</div>
+    <button class="we-drawer-close" id="we-close" type="button" aria-label="Cerrar Windows Enhance"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="we-tabs" role="tablist" aria-label="Secciones">
+    <button class="we-tab on" id="we-tab-recuperacion" type="button" role="tab" data-tab="recuperacion" aria-selected="true" aria-controls="we-panel-recuperacion">🛟 Recuperación</button>
+    <button class="we-tab" id="we-tab-optimizacion" type="button" role="tab" data-tab="optimizacion" aria-selected="false" aria-controls="we-panel-optimizacion">🚀 Optimización</button>
+    <button class="we-tab" id="we-tab-activacion" type="button" role="tab" data-tab="activacion" aria-selected="false" aria-controls="we-panel-activacion">⚡ Activación</button>
+  </div>
+  <div class="we-drawer-body">
+    <section class="we-panel on" id="we-panel-recuperacion" role="tabpanel" aria-labelledby="we-tab-recuperacion" data-panel="recuperacion"></section>
+    <section class="we-panel" id="we-panel-optimizacion" role="tabpanel" aria-labelledby="we-tab-optimizacion" data-panel="optimizacion"></section>
+    <section class="we-panel" id="we-panel-activacion" role="tabpanel" aria-labelledby="we-tab-activacion" data-panel="activacion"></section>
+  </div>
+</div>
+
+<footer>
+  <p>Catálogo mantenido por CodeHub · Wilson.E. Los enlaces de descarga apuntan al repositorio oficial de cada proyecto en GitHub — CodeHub no aloja ni modifica ninguno de estos APKs.
+    <span style="display:block;margin-top:.55rem"><a href="/acerca">Acerca de</a> · <a href="/comunidad">Comunidad</a> · <a href="/privacy">Privacidad</a> · <a href="/terms">Términos</a> · <a href="/guias">Guías</a></span>
+  </p>
+</footer>
+
+<button id="to-top-btn" class="to-top-btn" aria-label="Subir arriba" type="button">
+  <i class="fas fa-arrow-up"></i>
+</button>
+
+<div class="app-detail-overlay" id="app-detail-overlay" hidden>
+  <div class="app-detail-modal" role="dialog" aria-modal="true" aria-labelledby="app-detail-title">
+    <button type="button" class="app-detail-close" id="app-detail-close" aria-label="Cerrar detalles"><i class="fa-solid fa-xmark"></i></button>
+    <div class="app-detail-body" id="app-detail-body"></div>
+  </div>
+</div>
+
+<script src="../js/haptics.js?v=20260905c" defer></script>
+<script src="../js/unity-ads.js?v=20261015c" defer></script>
+<script src="../js/rewarded-ad.js?v=20261014a" defer></script>
+<script src="../js/opensource.js?v=20261014a"></script>
+<script src="../js/windows-enhance.js?v=20260908a"></script>
+<script src="../js/site-tour.js?v=20260911b"></script>
+<script src="../js/consent-banner.js?v=20260810a" defer></script>
+  <script src="../js/connection-alert.js?v=20260810a" defer></script>
+  <script src="../js/offline-queue.js?v=20260907a" defer></script>
+  <script src="../js/sw-update.js?v=20261015a" defer></script>
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CUENTA (Fase 1) — favoritos de apps en la nube (MyApps sync)
+//  "Mis apps" vive en localStorage (ch_my_apps). Con sesión de
+//  js/auth.js (ch_auth_session), se importa la nube al local y cada
+//  toggle sincroniza el namespace "app:" de /api/user/data sin pisar
+//  los favoritos de tools (merge read-modify-write).
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+  var SKEY='ch_auth_session', MY='ch_my_apps';
+  var API=(typeof _CH_BACKEND!=='undefined'?_CH_BACKEND:'https://codehub-98s6.onrender.com')+'/api/user/data';
+  function readSession(){try{var raw=localStorage.getItem(SKEY)||sessionStorage.getItem(SKEY);if(!raw)return null;var s=JSON.parse(raw);return(s&&s.token&&s.id)?s:null;}catch(e){return null;}}
+  function auth(){var s=readSession();return {Authorization:'Bearer '+(s?s.token:''),'Content-Type':'application/json'};}
+  function cloudGet(){var s=readSession();if(!s)return Promise.resolve(null);return fetch(API,{headers:auth()}).then(function(r){return r.json().catch(function(){return{ok:false};});}).catch(function(){return null;});}
+  function cloudPut(payload){var s=readSession();if(!s)return Promise.resolve();return fetch(API,{method:'PUT',headers:auth(),body:JSON.stringify(payload)}).catch(function(){});}
+  function appList(){var a=[];try{var r=localStorage.getItem(MY);var o=r?JSON.parse(r):[];a=Array.isArray(o)?o:[];}catch(e){}return a;}
+  function cloudToLocal(){
+    cloudGet().then(function(body){
+      if(!body||!body.ok||!body.data)return;
+      var f=body.data.favorites||{},ids=[],k;
+      for(k in f)if(k.indexOf('app:')===0&&f[k])ids.push(k.slice(4));
+      if(ids.length&&window.MyApps&&MyApps.importIds)MyApps.importIds(ids);
+    });
+  }
+  function cloudSyncApps(){
+    var s=readSession();if(!s)return;
+    cloudGet().then(function(body){
+      var cur=(body&&body.ok&&body.data&&body.data.favorites)?body.data.favorites:{};
+      var next={},k;
+      for(k in cur)if(k.indexOf('app:')!==0&&cur[k])next[k]=true;
+      appList().forEach(function(app){next['app:'+app.appId]=true;});
+      return cloudPut({favorites:next});
+    }).catch(function(){});
+  }
+  if(window.MyApps&&MyApps.toggle&&!MyApps._chSynced){
+    var _t=MyApps.toggle;
+    MyApps.toggle=function(id){var r=_t(id);cloudSyncApps();return r;};
+    try{MyApps._chSynced=true;}catch(e){}
+  }
+  var wasLogged=!!readSession();
+  function syncDown(){if(readSession())cloudToLocal();}
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',syncDown);
+  }else syncDown();
+  document.addEventListener('os:catalog-loaded',syncDown);
+  window.addEventListener('storage',function(e){
+    if(e.key!==SKEY)return;
+    var now=!!readSession();
+    if(now&&!wasLogged)syncDown();
+    wasLogged=now;
+  });
+})();
+</script>
+<script>
+// ── SCROLL PROGRESS ─────────────────────────────────────────────
+(function () {
+  var bar = document.getElementById('pbar');
+  if (!bar) return;
+  function onScroll() {
+    var s = document.documentElement.scrollTop;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (s / h * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+// ── TOUR GUIADO — presenta el catálogo Open Source. Se espera al
+// evento 'os:catalog-loaded' para que el paso del botón de descarga
+// apunte a una tarjeta real, no al placeholder "Cargando…"; un timeout
+// de respaldo evita que el tour se quede esperando si el evento no llega.
+(function () {
+  var started = false;
+  function launchTour() {
+    if (started) return;
+    started = true;
+    startTour('opensource', [
+      {
+        selector: '.we-trigger',
+        icon: 'fa-brands fa-windows',
+        title: 'Windows Enhance',
+        text: 'Herramientas profesionales para recuperación y optimización de Windows. Incluye guías paso a paso, USB de arranque, reparación del sistema y limpieza avanzada.'
+      },
+      {
+        selector: '.os-toc',
+        icon: 'fa-solid fa-list-check',
+        title: 'Categorías de Android',
+        text: 'Salta directo a la categoría que buscas: Música, Video, VPN, Productividad, Root y más. Todas las apps tienen código abierto verificado.'
+      },
+      {
+        selector: '.app-grid .how-to-btn',
+        icon: 'fa-solid fa-book',
+        title: '¿Cómo usar?',
+        text: 'Apps avanzadas (Magisk, Shizuku, etc.) tienen diálogos con instrucciones paso a paso y recomendaciones de seguridad. Toca el botón azul para ver los pasos.',
+        optional: true
+      },
+      {
+        selector: '.app-grid .dl-btn',
+        icon: 'fa-solid fa-download',
+        title: 'Descarga verificada',
+        text: 'El botón descarga el APK directamente desde GitHub. CodeHub no aloja ni modifica ninguno de estos APKs. Código abierto al 100%.'
+      }
+    ], {
+      delay: 0,
+      helpBtn: { title: '¿Necesitas ayuda?', sub: 'Ver guía del catálogo' }
+    });
+  }
+  document.addEventListener('os:catalog-loaded', launchTour, { once: true });
+  // Respaldo: si por lo que sea el evento no llega, igual se muestra el tour.
+  setTimeout(launchTour, 4000);
+})();
+</script>
+
+<!-- DIÁLOGOS DE INSTRUCCIONES PARA APPS AVANZADAS -->
+
+<!-- Shizuku -->
+<div id="how-to-os-shizuku-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-shizuku')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar Shizuku?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-shizuku')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Instala Shizuku:</strong> Descarga el APK desde el enlace de descarga y sigue el asistente de instalación.</li>
+        <li><strong>Abre la aplicación:</strong> Ejecuta Shizuku en tu dispositivo Android.</li>
+        <li><strong>Sigue las instrucciones:</strong> La app te guiará para conectar mediante ADB (Android Debug Bridge). Si no tienes experiencia, la interfaz tiene guías visuales paso a paso.</li>
+        <li><strong>Otorga permisos:</strong> Una vez conectado, dale permisos de sistema a las apps que quieras usar (gestor de aplicaciones, utilidades, módulos, etc.).</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>💡 ¿Para qué sirve?</strong>
+        <p>Shizuku permite a apps acceder a APIs de sistema de Android sin necesidad de root. Es la base de muchas herramientas avanzadas: debloat, control de sistema, automation, limpieza y optimización.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Importante:</strong> Requiere conectar el teléfono a una computadora con ADB instalado para la configuración inicial. Una vez activado, no necesita la computadora.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Magisk -->
+<div id="how-to-os-magisk-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-magisk')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar Magisk?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-magisk')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Descargar APK:</strong> Descarga el archivo Magisk.apk desde el enlace en la tarjeta.</li>
+        <li><strong>Instalar:</strong> Abre el APK e instala la aplicación en tu dispositivo.</li>
+        <li><strong>Primer inicio:</strong> Magisk te pedirá confirmar la instalación del binario de root. Toca "Instalar" y espera a que reinicie el dispositivo.</li>
+        <li><strong>Verificar instalación:</strong> Una vez reiniciado, abre Magisk nuevamente. Si ves "Instalado" en la tarjeta de versión, ¡listo! Tienes root.</li>
+        <li><strong>Instalar módulos:</strong> Descarga módulos desde repositorios conocidos (Magisk Modules Repository) e instálalos desde Magisk. Algunos requieren reinicio.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🔓 ¿Qué es root?</strong>
+        <p>Root es acceso administrativo total a tu dispositivo Android. Con Magisk, obtienes root de forma "systemless" (sin modificar el sistema), lo que te permite personalizar tu dispositivo, realizar copias de seguridad completas y instalar herramientas avanzadas de automatización.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Riesgos:</strong> Root puede romper apps, vulnerar seguridad bancaria o dañar el sistema. Instala solo módulos de fuentes confiables.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- KernelSU -->
+<div id="how-to-os-kernelsu-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-kernelsu')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar KernelSU?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-kernelsu')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Requisitos:</strong> Tu dispositivo debe tener un kernel compatible con GKI (Generic Kernel Image). Verifica en la documentación oficial de KernelSU.</li>
+        <li><strong>Descarga APK:</strong> Obtén la app desde el enlace en la tarjeta.</li>
+        <li><strong>Instala:</strong> Abre el APK e instala KernelSU.</li>
+        <li><strong>Primera vez:</strong> La app te guiará para reemplazar el kernel. Esto puede requerir acceso de root previo o instalador personalizado.</li>
+        <li><strong>Verifica estado:</strong> Abre KernelSU. Si aparece "Sudomod instalado", tienes root activo.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>⚡ ¿Diferencia con Magisk?</strong>
+        <p>KernelSU opera a nivel de kernel, lo que reduce huellas detectables en apps bancarias. Es más moderno pero requiere kernel compatible. Magisk es más universal.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Compatibilidad:</strong> No todos los dispositivos soportan KernelSU. Verifica antes de intentar instalar.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LSPosed -->
+<div id="how-to-os-lsposed-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-lsposed')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar LSPosed?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-lsposed')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Requisitos previos:</strong> Necesitas root activo (Magisk o KernelSU) instalado en tu dispositivo.</li>
+        <li><strong>Descarga LSPosed:</strong> Obtén el archivo de módulo de Magisk desde el enlace en la tarjeta.</li>
+        <li><strong>Instala como módulo:</strong> Abre Magisk → Módulos → (+) → Selecciona el archivo de LSPosed → Instala.</li>
+        <li><strong>Reinicia:</strong> Después de instalar, reinicia el dispositivo.</li>
+        <li><strong>Abre LSPosed:</strong> Una vez reiniciado, busca "LSPosed" en tus apps. Aparecerá en el menú como una nueva aplicación.</li>
+        <li><strong>Descarga módulos Xposed:</strong> En LSPosed, descarga módulos desde el mercado integrado e actívalos en sus apps correspondientes.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🧩 ¿Qué es Xposed?</strong>
+        <p>Xposed es un framework que permite módulos modificar el comportamiento de otras apps sin tocar archivos del sistema. LSPosed es la versión moderna para Android actual.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Importante:</strong> Requiere root y Magisk/KernelSU. Módulos malos pueden romper el sistema. Instala solo desde fuentes confiables.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App Manager -->
+<div id="how-to-os-app-manager-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-app-manager')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar App Manager?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-app-manager')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Instala la app:</strong> Descarga desde el enlace y abre el APK.</li>
+        <li><strong>Primer inicio:</strong> App Manager pedirá permisos. Dale acceso de "Uso especial" en Ajustes → Permisos especiales → Acceso especial de app (en cada Android es diferente).</li>
+        <li><strong>Opcional - Shizuku:</strong> Para funciones avanzadas (debloat, backup), conecta con Shizuku siguiendo sus instrucciones.</li>
+        <li><strong>Navega la interfaz:</strong> Verás todas las apps instaladas. Toca cualquiera para ver permisos, componentes, tamaño, versión y firma.</li>
+        <li><strong>Usa funciones:</strong> Puedes desinstalar, congelar, eliminar datos, hacer backups y revisar permisos peligrosos.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🔍 ¿Qué puedes hacer?</strong>
+        <p>Ver permisos que cada app solicita, identificar apps del sistema innecesarias, hacer backup de APKs, analizar firmas y componentes exportados, debloat seguro con Shizuku.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>⚠️ Ten cuidado:</strong> No desinstales apps del sistema a menos que sepas qué hacen. Mejor congelarlas primero.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CodeHub Player (Nightly) -->
+<div id="how-to-os-echo-nightly-modal" class="how-to-modal">
+  <div class="how-to-modal-overlay" onclick="closeHowToDialog('os-echo-nightly')"></div>
+  <div class="how-to-modal-content">
+    <div class="how-to-modal-header">
+      <h2>¿Cómo usar CodeHub Player?</h2>
+      <button class="how-to-modal-close" onclick="closeHowToDialog('os-echo-nightly')">✕</button>
+    </div>
+    <div class="how-to-modal-body">
+      <ol class="how-to-instructions">
+        <li><strong>Descarga e instala:</strong> Obtén el APK desde el enlace en la tarjeta. Es una build nightly (experimental).</li>
+        <li><strong>Abre Echo:</strong> Al iniciar, añade fuentes de música. Puedes usar Spotify, YouTube Music, streaming local, etc.</li>
+        <li><strong>Instala extensiones:</strong> Ve a Ajustes → Extensiones → (+) → Pega el raw de extensiones o URL JSON.</li>
+        <li><strong>Usa el botón en la tarjeta:</strong> Toca "Copiar extension de pluhings" para copiar la URL oficial de extensiones Echo.</li>
+        <li><strong>Disfruta:</strong> Una vez activas las extensiones, reproducemusica libremente.</li>
+      </ol>
+      <div class="how-to-info-box">
+        <strong>🎵 ¿Qué son las extensiones?</strong>
+        <p>Las extensiones agregan nuevas fuentes de música a Echo. Pueden ser plugins para Spotify, YouTube, SoundCloud, etc. Cada extensión amplía lo que puede reproducir.</p>
+      </div>
+      <div class="how-to-warning">
+        <strong>ℹ️ Nota:</strong> CodeHub Player es experimental. Puede tener bugs. Si quieres estabilidad, usa la versión estable en Google Play.
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
