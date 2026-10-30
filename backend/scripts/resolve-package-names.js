@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /*
- * Resuelve el packageName real (applicationId) de cada app del catálogo
- * Open Source leyendo el build.gradle(.kts) de su repo en GitHub — NO
- * adivina IDs, los lee del código fuente real. Necesario para poder
- * detectar en el dispositivo si una app del catálogo está instalada
+ * Resuelve el packageName real (applicationId) de cada app del catÃ¡logo
+ * Open Source leyendo el build.gradle(.kts) de su repo en GitHub â€” NO
+ * adivina IDs, los lee del cÃ³digo fuente real. Necesario para poder
+ * detectar en el dispositivo si una app del catÃ¡logo estÃ¡ instalada
  * (PackageManager.getPackageInfo requiere el packageName exacto).
  *
  * Uso:
  *   GITHUB_TOKEN=ghp_xxx node resolve-package-names.js
- * Sin GITHUB_TOKEN funciona igual pero con el límite de 60 req/hora de
- * GitHub (sin auth), así que con ~50 repos puede no alcanzar para
- * terminar en una sola corrida — volvé a correrlo, ya resueltos se
+ * Sin GITHUB_TOKEN funciona igual pero con el lÃ­mite de 60 req/hora de
+ * GitHub (sin auth), asÃ­ que con ~50 repos puede no alcanzar para
+ * terminar en una sola corrida â€” volvÃ© a correrlo, ya resueltos se
  * saltan.
  *
  * Actualiza in-place:
@@ -90,95 +90,84 @@ async function resolveGradleExpression(expression, sourceRepo, branch, tree, mod
 }
 
 // Busca el archivo build.gradle/build.gradle.kts de la app (no el de
-// librerías) recorriendo el árbol del repo, y extrae applicationId.
+// librerÃ­as) recorriendo el Ã¡rbol del repo, y extrae applicationId.
 async function findPackageName(sourceRepo) {
-  const repoInfo = await gh(`https://api.github.com/repos/${sourceRepo}`);
+  const repoInfo = await gh('https://api.github.com/repos/' + sourceRepo);
   if (!repoInfo) return null;
   const branch = repoInfo.default_branch || 'main';
-
-  const treeRes = await gh(`https://api.github.com/repos/${sourceRepo}/git/trees/${branch}?recursive=1`);
+  const treeRes = await gh('https://api.github.com/repos/' + sourceRepo + '/git/trees/' + branch + '?recursive=1');
   if (!treeRes || !Array.isArray(treeRes.tree)) return null;
-
-  const candidates = treeRes.tree
-    .filter(f => f.type === 'blob' && /(^|\/)build\.gradle(\.kts)?$/.test(f.path))
-    // Preferir app/build.gradle o mobile/build.gradle sobre build.gradle raíz
+  const tree = treeRes.tree;
+  const candidates = tree.filter(f => f.type === 'blob' && /(^|\/)build\.gradle(\.kts)?$/.test(f.path))
     .sort((a, b) => {
       const score = p => /(^|\/)app\/build\.gradle/.test(p) ? 0
         : /(^|\/)mobile\/build\.gradle/.test(p) ? 1
           : /(^|\/)android\/app\/build\.gradle/.test(p) ? 2 : 3;
       return score(a.path) - score(b.path);
     });
-
+  const applicationModules = [];
   for (const file of candidates) {
-    const raw = await fetch(`https://raw.githubusercontent.com/${sourceRepo}/${branch}/${file.path}`, {
-      headers: HEADERS, signal: AbortSignal.timeout(15000),
-    });
-    if (!raw.ok) continue;
-    const text = await raw.text();
-    const appId = text.match(/applicationId\s*[=(]?\s*["']([a-zA-Z0-9_.]+)["']/);
-    if (appId) return appId[1];
-    // En AGP, applicationId toma namespace como valor predeterminado cuando
-    // el módulo no declara un ID distinto.
-    const namespace = text.match(/namespace\s*[=(]?\s*["']([a-zA-Z0-9_.]+)["']/);
-    if (namespace) return namespace[1];
-
+    const text = await rawText(sourceRepo, branch, file.path);
+    if (!text) continue;
     const moduleDir = file.path.replace(/\/build\.gradle(?:\.kts)?$/, '');
-    const declaredId = text.match(/^\s*(?:applicationId|namespace)\s*(?:=\s*)?(.+)$/m)?.[1]
+    const appId = text.match(/^\s*applicationId\s*(?:=\s*)?(.+)$/m)?.[1]
       ?.split('//')[0].trim().replace(/[,;]+$/, '');
-    if (declaredId) {
-      const resolved = await resolveGradleExpression(declaredId, sourceRepo, branch, treeRes.tree, moduleDir, text);
+    if (appId) {
+      const literal = appId.match(/^["']([A-Za-z0-9_.]+)["']$/)?.[1];
+      const resolved = literal || await resolveGradleExpression(appId, sourceRepo, branch, tree, moduleDir, text);
       if (resolved && /^[A-Za-z0-9_.]+$/.test(resolved)) return resolved;
     }
-    const manifestPath = `${moduleDir}/src/main/AndroidManifest.xml`;
-    if (treeRes.tree.some(entry => entry.type === 'blob' && entry.path === manifestPath)) {
-      const manifest = await fetch(`https://raw.githubusercontent.com/${sourceRepo}/${branch}/${manifestPath}`, {
-        headers: HEADERS, signal: AbortSignal.timeout(15000),
-      });
-      if (manifest.ok) {
-        const xml = (await manifest.text()).replace(/<!--[\s\S]*?-->/g, '');
-        const pkg = xml.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([a-zA-Z0-9_.]+)["']/);
-        if (pkg) return pkg[1];
-      }
-    }
+    const hasAppPlugin = /com\.android\.application/.test(text) ||
+      (/alias\s*\(\s*libs\.plugins\./.test(text) && /(^|\/)(app|mobile|androidApp)\/build\.gradle/.test(file.path));
+    if (hasAppPlugin) applicationModules.push({ moduleDir, text });
   }
-
-  // Older Android projects (for example Ant/Eclipse repositories) may expose
-  // the app ID only in a manifest and have no Gradle build file.
-  const manifests = treeRes.tree
-    .filter(file => file.type === 'blob' && /(^|\/)AndroidManifest\.xml$/.test(file.path))
-    .sort((a, b) => {
-      const score = p => /(^|\/)app\/src\/main\/AndroidManifest\.xml$/.test(p) ? 0
-        : /(^|\/)src\/main\/AndroidManifest\.xml$/.test(p) ? 1
-          : p === 'AndroidManifest.xml' ? 2 : 3;
-      return score(a.path) - score(b.path);
-    });
+  for (const { moduleDir, text } of applicationModules) {
+    const value = text.match(/^\s*namespace\s*(?:=\s*)?(.+)$/m)?.[1]
+      ?.split('//')[0].trim().replace(/[,;]+$/, '');
+    if (value) {
+      const literal = value.match(/^["']([A-Za-z0-9_.]+)["']$/)?.[1];
+      const resolved = literal || await resolveGradleExpression(value, sourceRepo, branch, tree, moduleDir, text);
+      if (resolved && /^[A-Za-z0-9_.]+$/.test(resolved)) return resolved;
+    }
+    const manifestPath = moduleDir + '/src/main/AndroidManifest.xml';
+    if (!tree.some(entry => entry.type === 'blob' && entry.path === manifestPath)) continue;
+    const xml = (await rawText(sourceRepo, branch, manifestPath) || '').replace(/<!--[\s\S]*?-->/g, '');
+    const pkg = xml.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([A-Za-z0-9_.]+)["']/);
+    if (pkg) return pkg[1];
+  }
+  const manifests = tree.filter(file => file.type === 'blob' &&
+    (file.path === 'AndroidManifest.xml' || /(^|\/)app\/src\/main\/AndroidManifest\.xml$/.test(file.path)));
   for (const file of manifests) {
-    const text = await rawText(sourceRepo, branch, file.path);
-    const xml = text?.replace(/<!--[\s\S]*?-->/g, '');
-    const pkg = xml?.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([a-zA-Z0-9_.]+)["']/);
+    const xml = (await rawText(sourceRepo, branch, file.path) || '').replace(/<!--[\s\S]*?-->/g, '');
+    const pkg = xml.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([A-Za-z0-9_.]+)["']/);
     if (pkg) return pkg[1];
   }
   return null;
 }
-
 async function main() {
   const documents = [];
   for (const seedPath of SEED_FILES) {
-    if (!fs.existsSync(seedPath)) { console.warn('⚠️  no existe:', seedPath); continue; }
+    if (!fs.existsSync(seedPath)) { console.warn('âš ï¸  no existe:', seedPath); continue; }
     const raw = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
     const apps = Array.isArray(raw) ? raw : raw.apps;
     if (Array.isArray(apps)) documents.push({ seedPath, raw, apps, changed: false });
   }
 
-  // Resolver una sola vez por repositorio aunque el mismo catálogo esté
+  // Resolver una sola vez por repositorio aunque el mismo catÃ¡logo estÃ©
   // duplicado en opensource_seed.json y foss-catalog-seed.json.
   const byRepo = new Map();
+  const forceResolve = process.env.FORCE_PACKAGE_RESOLVE === 'true';
   const knownByRepo = new Map();
-  for (const doc of documents) for (const app of doc.apps) {
+  if (!forceResolve) for (const doc of documents) for (const app of doc.apps) {
     if (app.source_repo && app.packageName) knownByRepo.set(app.source_repo, app.packageName);
   }
   for (const doc of documents) for (const app of doc.apps) {
-    if (app.source_repo && !app.packageName && knownByRepo.has(app.source_repo)) {
+    if (forceResolve && app.source_repo) {
+      app.packageName = null;
+      doc.changed = true;
+      if (!byRepo.has(app.source_repo)) byRepo.set(app.source_repo, []);
+      byRepo.get(app.source_repo).push({ doc, app });
+    } else if (app.source_repo && !app.packageName && knownByRepo.has(app.source_repo)) {
       app.packageName = knownByRepo.get(app.source_repo);
       doc.changed = true;
     } else if (app.source_repo && !app.packageName) {
@@ -208,8 +197,9 @@ async function main() {
 
   for (const doc of documents) if (doc.changed) {
     fs.writeFileSync(doc.seedPath, JSON.stringify(doc.raw, null, 2) + '\n');
-    console.log('✅ Guardado:', doc.seedPath);
+    console.log('âœ… Guardado:', doc.seedPath);
   }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
+
