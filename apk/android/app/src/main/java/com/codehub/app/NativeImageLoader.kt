@@ -17,9 +17,7 @@ fun ImageView.loadCodeHubImage(path: String?) {
         setImageDrawable(ColorDrawable(0xFF1D2C2A.toInt()))
         return
     }
-    load(url) {
-        crossfade(true)
-        placeholder(ColorDrawable(0xFF1D2C2A.toInt()))
-        error(ColorDrawable(0xFF1D2C2A.toInt()))
-    }
+    // Coil 3's Android request extensions are separate APIs; the view background
+    // remains visible while loading and when a catalog image cannot be fetched.
+    load(url)
 }
