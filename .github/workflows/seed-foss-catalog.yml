@@ -1,6 +1,6 @@
-name: ðŸŒ± CodeHub CatÃ¡logo Open Source â€” Siembra inicial
+name: 🌱 CodeHub Catálogo Open Source — Siembra inicial
 
-# Se puede ejecutar manualmente o al cambiar el catÃ¡logo Android en main.
+# Se puede ejecutar manualmente o al cambiar el catálogo Android en main.
 # Antes de sembrar, resuelve los applicationId reales desde los repos fuente
 # para que el APK pueda detectar instalaciones y ofrecer actualizaciones.
 on:
@@ -18,40 +18,39 @@ permissions:
 
 jobs:
   seed-catalog:
-    name: Sembrar catÃ¡logo Open Source en MongoDB
+    name: Sembrar catálogo Open Source en MongoDB
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: ðŸ“¥ Checkout repositorio
+      - name: 📥 Checkout repositorio
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: âš™ï¸ Setup Node.js 20
+      - name: ⚙️ Setup Node.js 20
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '20'
 
-      - name: ðŸ”Ž Resolver packageName reales de Android
+      - name: 🔎 Resolver packageName reales de Android
         working-directory: ./backend
         env:
           GITHUB_TOKEN: ${{ github.token }}
           FORCE_PACKAGE_RESOLVE: 'true'
         run: node scripts/resolve-package-names.js
 
-      - name: ðŸ“¦ Instalar dependencias (mongoose)
+      - name: 📦 Instalar dependencias (mongoose)
         working-directory: ./backend
         run: npm install mongoose --no-save
 
-      - name: ðŸŒ± Sembrar catÃ¡logo
+      - name: 🌱 Sembrar catálogo
         working-directory: ./backend
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: node scripts/seed-foss-catalog.js
 
-      - name: ðŸ”Ž Revisar versiones/enlaces reciÃ©n sembrados
+      - name: 🔎 Revisar versiones/enlaces recién sembrados
         working-directory: ./backend
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/check-app-updates.js
-
