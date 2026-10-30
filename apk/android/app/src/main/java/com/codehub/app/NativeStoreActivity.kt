@@ -35,6 +35,7 @@ class NativeStoreActivity : Activity() {
         const val EXTRA_APK_URL = "native_store_apk_url"
         const val EXTRA_APP_ID = "native_store_app_id"
         private const val API = "https://codehub-98s6.onrender.com/api/apps"
+        private const val MY_APPS_REQUEST = 301
     }
 
     private val executor = Executors.newSingleThreadExecutor()
@@ -64,6 +65,13 @@ class NativeStoreActivity : Activity() {
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         top.addView(label("Orion eStore", 26f, 0xFFFFFFFF.toInt(), true),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val myApps = Button(this).apply {
+            text = "Mis apps"
+            textSize = 12f
+            isAllCaps = false
+            setOnClickListener { startActivityForResult(Intent(this@NativeStoreActivity, NativeMyAppsActivity::class.java), MY_APPS_REQUEST) }
+        }
+        top.addView(myApps, LinearLayout.LayoutParams(-2, dp(44)))
         val refresh = Button(this).apply {
             text = "⟳"
             textSize = 22f
@@ -291,6 +299,15 @@ class NativeStoreActivity : Activity() {
     override fun onDestroy() {
         executor.shutdownNow()
         super.onDestroy()
+    }
+
+    @Deprecated("Activity result is relayed to MainActivity for the shared APK installer")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == MY_APPS_REQUEST && resultCode == RESULT_OK && data != null) {
+            setResult(RESULT_OK, data)
+            finish()
+        }
     }
 
     private data class AppEntry(

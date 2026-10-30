@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST   = 100;
     static final int BACKUP_IMPORT_REQUEST  = 101;
     private static final int NATIVE_STORE_REQUEST = 102;
+    private static final int NATIVE_MY_APPS_REQUEST = 103;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
@@ -557,9 +558,10 @@ public class MainActivity extends Activity {
                     path = path.substring(0, path.length() - 1);
                 }
                 if ("wilson360-labs.vercel.app".equalsIgnoreCase(uri.getHost())
-                        && ("/tienda".equals(path) || "/opensource".equals(path)
+                        && ("/mis-apps".equals(path) || "/tienda".equals(path) || "/opensource".equals(path)
                             || "/pages/tienda.html".equals(path) || "/pages/opensource.html".equals(path))) {
-                    openNativeStore();
+                    if ("/mis-apps".equals(path)) openNativeMyApps();
+                    else openNativeStore();
                     return true;
                 }
                 // Validación por HOST EXACTO (no contains): "wilson360-labs.
@@ -836,11 +838,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == NATIVE_STORE_REQUEST && resultCode == RESULT_OK && data != null) {
+        if ((requestCode == NATIVE_STORE_REQUEST || requestCode == NATIVE_MY_APPS_REQUEST)
+                && resultCode == RESULT_OK && data != null) {
             String apkUrl = data.getStringExtra(NativeStoreActivity.EXTRA_APK_URL);
             String appId = data.getStringExtra(NativeStoreActivity.EXTRA_APP_ID);
             if (bridge != null && apkUrl != null && appId != null) {
-                bridge.downloadAndInstallApk(apkUrl, appId, true, "CodeHubNativeStoreInstallResult");
+                boolean preferSilent = data.getBooleanExtra(NativeMyAppsActivity.EXTRA_PREFER_SILENT, true);
+                bridge.downloadAndInstallApk(apkUrl, appId, preferSilent, "CodeHubNativeStoreInstallResult");
                 Toast.makeText(this, "Descargando " + appId + "…", Toast.LENGTH_SHORT).show();
             }
             return;
@@ -869,6 +873,14 @@ public class MainActivity extends Activity {
             startActivityForResult(new Intent(this, NativeStoreActivity.class), NATIVE_STORE_REQUEST);
         } catch (Exception e) {
             if (webView != null) webView.loadUrl(APP_URL + "/pages/tienda.html");
+        }
+    }
+
+    private void openNativeMyApps() {
+        try {
+            startActivityForResult(new Intent(this, NativeMyAppsActivity.class), NATIVE_MY_APPS_REQUEST);
+        } catch (Exception e) {
+            if (webView != null) webView.loadUrl(APP_URL + "/opensource#my-apps-section");
         }
     }
 
