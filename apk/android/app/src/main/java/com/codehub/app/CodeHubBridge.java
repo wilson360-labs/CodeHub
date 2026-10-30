@@ -781,6 +781,78 @@ public class CodeHubBridge {
         }).start();
     }
 
+    /** Native catalog installer: restricts download origins and verifies the APK package before install. */
+    public void downloadAndInstallStoreApk(final String apkUrl, final String appId, final String expectedPackage,
+                                           final boolean preferSilent, final String callbackName) {
+        new Thread(() -> {
+            File dest = null;
+            try {
+                URL source = new URL(apkUrl);
+                if (!"https".equalsIgnoreCase(source.getProtocol()) || !isTrustedStoreHost(source.getHost()))
+                    throw new Exception("Origen de descarga no permitido");
+                String safeId = appId == null ? "app" : appId.replaceAll("[^A-Za-z0-9._-]", "_");
+                File dir = activity.getExternalFilesDir(null);
+                if (dir == null) dir = activity.getFilesDir();
+                dest = new File(dir, "store_" + safeId + ".apk");
+                HttpURLConnection conn = (HttpURLConnection) source.openConnection();
+                conn.setInstanceFollowRedirects(true);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(60000);
+                conn.connect();
+                URL finalUrl = conn.getURL();
+                if (!"https".equalsIgnoreCase(finalUrl.getProtocol()) || !isTrustedStoreHost(finalUrl.getHost())) {
+                    conn.disconnect();
+                    throw new Exception("Redirección a un origen no permitido");
+                }
+                if (conn.getResponseCode() < 200 || conn.getResponseCode() >= 300) {
+                    int code = conn.getResponseCode();
+                    conn.disconnect();
+                    throw new Exception("HTTP " + code + " descargando APK");
+                }
+                try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(dest)) {
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                } finally { conn.disconnect(); }
+
+                PackageInfo archive = activity.getPackageManager().getPackageArchiveInfo(dest.getAbsolutePath(), 0);
+                if (archive == null || archive.packageName == null)
+                    throw new Exception("El archivo descargado no es un APK válido");
+                if (expectedPackage != null && !expectedPackage.trim().isEmpty()
+                        && !expectedPackage.trim().equals(archive.packageName))
+                    throw new Exception("El paquete APK no coincide con la app seleccionada");
+
+                boolean installedSilently = false;
+                if (preferSilent && ShizukuInstaller.isReady()) {
+                    try {
+                        ShizukuInstaller.installSilently(dest.getAbsolutePath());
+                        installedSilently = true;
+                    } catch (Exception ignored) { /* Fall back to Android's installer UI. */ }
+                }
+                if (installedSilently) {
+                    notifyInstallResult(callbackName, "installed", "");
+                } else {
+                    final File apk = dest;
+                    activity.runOnUiThread(() -> installViaSystemDialog(apk));
+                    notifyInstallResult(callbackName, "prompted", "");
+                }
+            } catch (Exception e) {
+                if (dest != null) dest.delete();
+                notifyInstallResult(callbackName, "error", e.getMessage() != null ? e.getMessage() : "error desconocido");
+            }
+        }).start();
+    }
+
+    private boolean isTrustedStoreHost(String host) {
+        if (host == null) return false;
+        String value = host.toLowerCase(Locale.ROOT);
+        return value.equals("codehub-98s6.onrender.com") || value.equals("github.com")
+            || value.endsWith(".github.com") || value.equals("githubusercontent.com")
+            || value.endsWith(".githubusercontent.com") || value.equals("github.io")
+            || value.endsWith(".github.io") || value.equals("jsdelivr.net")
+            || value.endsWith(".jsdelivr.net");
+    }
+
     private void downloadToFile(String url, File dest) throws Exception {
         HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
         conn.setInstanceFollowRedirects(true);

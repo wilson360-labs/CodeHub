@@ -125,18 +125,12 @@ class NativeMyAppsActivity : Activity() {
         status.text = "Buscando actualizaciones…"
         executor.execute {
             try {
-                val all = fetchCatalog()
-                val packages = packageManager
-                val local = all.mapNotNull { app ->
-                    val pkg = app.packageName ?: return@mapNotNull null
-                    val version = try {
-                        @Suppress("DEPRECATION")
-                        packages.getPackageInfo(pkg, 0).versionName ?: "desconocida"
-                    } catch (_: Exception) { null }
-                    if (version == null) null else app.copy(installedVersion = version)
-                }
                 var failedUpdates = false
-                val updates = try { fetchUpdates(local) } catch (_: Exception) {
+                val catalog = try { fetchCatalog() } catch (_: Exception) { failedUpdates = true; emptyList() }
+                val byPackage = catalog.mapNotNull { app -> app.packageName?.let { it to app } }.toMap()
+                val local = fetchInstalledApps(byPackage)
+                val managed = local.filter { it.repo.isNotBlank() && !it.id.startsWith("local:") }
+                val updates = try { fetchUpdates(managed) } catch (_: Exception) {
                     failedUpdates = true
                     emptyMap()
                 }
@@ -160,6 +154,33 @@ class NativeMyAppsActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun fetchInstalledApps(catalog: Map<String, AppEntry>): List<AppEntry> {
+        @Suppress("DEPRECATION")
+        val installedApps = packageManager.getInstalledApplications(0)
+        return installedApps.asSequence()
+            .filter { info -> info.packageName != packageName && (info.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+            .mapNotNull { info ->
+                val version = try {
+                    @Suppress("DEPRECATION")
+                    packageManager.getPackageInfo(info.packageName, 0).versionName ?: "desconocida"
+                } catch (_: Exception) { return@mapNotNull null }
+                val managed = catalog[info.packageName]
+                if (managed != null) managed.copy(installedVersion = version)
+                else AppEntry(
+                    id = "local:${info.packageName}",
+                    name = packageManager.getApplicationLabel(info).toString(),
+                    description = "Aplicación instalada en este dispositivo.",
+                    category = "Instalada local",
+                    repo = "",
+                    imageUrl = "",
+                    packageName = info.packageName,
+                    installedVersion = version,
+                )
+            }
+            .sortedBy { it.name.lowercase(Locale.ROOT) }
+            .toList()
     }
 
     private fun fetchCatalog(): List<AppEntry> {
@@ -278,7 +299,7 @@ class NativeMyAppsActivity : Activity() {
         card.addView(icon, LinearLayout.LayoutParams(dp(50), dp(50)))
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(11), 0, dp(8), 0) }
         info.addView(label(app.name, 15f, 0xFFFFFFFF.toInt(), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
-        val versionLine = if (app.hasUpdate) "v${app.installedVersion}  →  v${app.latestVersion}" else "v${app.installedVersion} · Al día"
+        val versionLine = if (app.hasUpdate) "v${app.installedVersion}  →  v${app.latestVersion}" else "v${app.installedVersion} · ${if (app.repo.isBlank()) "Local" else "Al día"}"
         val shownVersion = if (updateCheckFailed && !app.hasUpdate) "v${app.installedVersion} · sin verificar" else versionLine
         info.addView(label(shownVersion, 12f, if (app.hasUpdate) 0xFFFFC857.toInt() else 0xFF38EF7D.toInt()))
         info.addView(label(app.category, 11f, 0xFF9AA0B8.toInt()))
@@ -308,12 +329,15 @@ class NativeMyAppsActivity : Activity() {
             .setMessage("Versión instalada: ${app.installedVersion}\nNueva versión: ${app.latestVersion}")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Continuar") { _, _ ->
-                setResult(RESULT_OK, Intent().apply {
-                    putExtra(EXTRA_APK_URL, url)
-                    putExtra(EXTRA_APP_ID, app.id)
-                    putExtra(EXTRA_PREFER_SILENT, ShizukuInstaller.isReady())
-                })
-                finish()
+                NativeStoreInstallFlow.request(this) { preferSilent ->
+                    setResult(RESULT_OK, Intent().apply {
+                        putExtra(EXTRA_APK_URL, url)
+                        putExtra(EXTRA_APP_ID, app.id)
+                        putExtra(NativeStoreActivity.EXTRA_PACKAGE_NAME, app.packageName.orEmpty())
+                        putExtra(EXTRA_PREFER_SILENT, preferSilent)
+                    })
+                    finish()
+                }
             }
             .show()
     }
@@ -329,9 +353,11 @@ class NativeMyAppsActivity : Activity() {
 
     private fun showAppActions(app: AppEntry) {
         val pkg = app.packageName ?: return
+        val actions = mutableListOf("Abrir", "Desinstalar")
+        if (app.repo.isNotBlank()) actions.add("Ver código fuente")
         AlertDialog.Builder(this)
             .setTitle(app.name)
-            .setItems(arrayOf("Abrir", "Desinstalar", "Ver código fuente")) { _, which ->
+            .setItems(actions.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> {
                         val launch = packageManager.getLaunchIntentForPackage(pkg)

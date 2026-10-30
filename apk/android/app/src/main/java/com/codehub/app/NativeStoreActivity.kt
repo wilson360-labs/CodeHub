@@ -34,7 +34,9 @@ class NativeStoreActivity : Activity() {
     companion object {
         const val EXTRA_APK_URL = "native_store_apk_url"
         const val EXTRA_APP_ID = "native_store_app_id"
+        const val EXTRA_PACKAGE_NAME = "native_store_package_name"
         private const val API = "https://codehub-98s6.onrender.com/api/apps"
+        private const val RATINGS_API = "https://codehub-98s6.onrender.com/api/ratings"
         private val WINDOWS_APIS = listOf(
             "https://raw.githubusercontent.com/RookieEnough/Orion-Data/main/apps.json",
             "https://cdn.jsdelivr.net/gh/RookieEnough/Orion-Data@main/apps.json",
@@ -42,6 +44,8 @@ class NativeStoreActivity : Activity() {
         )
         private const val MY_APPS_REQUEST = 301
     }
+
+    private enum class StoreSort(val label: String) { HOME("Inicio"), NAME("A–Z"), RATING("Mejor valoradas"), UPDATED("Novedades") }
 
     private val executor = Executors.newSingleThreadExecutor()
     private val apps = mutableListOf<AppEntry>()
@@ -51,14 +55,20 @@ class NativeStoreActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var platformDock: LinearLayout
     private lateinit var subtitle: TextView
+    private lateinit var favoritesButton: Button
+    private lateinit var sortButton: Button
     private var category = "Todas"
     private var selectedPlatform = "Android"
+    private var sort = StoreSort.HOME
+    private var favoritesOnly = false
+    private val favoriteIds = mutableSetOf<String>()
     private var windowsCatalogFailed = false
     private var windowsCatalogLoading = true
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         SystemBars.fit(this)
+        favoriteIds.addAll(getSharedPreferences("codehub_store", MODE_PRIVATE).getStringSet("favorites", emptySet()).orEmpty())
         buildScreen()
         loadCatalog()
     }
@@ -118,6 +128,17 @@ class NativeStoreActivity : Activity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = render()
             override fun afterTextChanged(editable: Editable?) = Unit
         })
+
+        val browseControls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        favoritesButton = Button(this).apply {
+            isAllCaps = false
+            setOnClickListener { favoritesOnly = !favoritesOnly; renderControls(); render() }
+        }
+        browseControls.addView(favoritesButton, LinearLayout.LayoutParams(0, dp(44), 1f).apply { rightMargin = dp(8) })
+        sortButton = Button(this).apply { isAllCaps = false; setOnClickListener { showSortOptions() } }
+        browseControls.addView(sortButton, LinearLayout.LayoutParams(0, dp(44), 1f))
+        root.addView(browseControls, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+        renderControls()
 
         val chipScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
         chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -207,10 +228,13 @@ class NativeStoreActivity : Activity() {
                     val app = AppEntry.from(row)
                     if (app.id.isNotEmpty()) loaded.add(app)
                 }
+                val ratings = fetchRatings()
+                loaded.replaceAll { app -> ratings[app.id]?.let { app.copy(ratingAverage = it.first, ratingCount = it.second) } ?: app }
                 loaded.sortBy { it.name.lowercase(Locale.ROOT) }
                 runOnUiThread {
                     apps.clear()
                     apps.addAll(loaded)
+                    renderControls()
                     if (apps.none { it.category == category } && category != "Todas") category = "Todas"
                     renderChips()
                     render()
@@ -266,6 +290,25 @@ class NativeStoreActivity : Activity() {
         return null
     }
 
+    private fun fetchRatings(): Map<String, Pair<Double, Int>> = runCatching {
+        val connection = URL(RATINGS_API).openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 12_000
+            if (connection.responseCode !in 200..299) return@runCatching emptyMap()
+            val body = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() }
+            val source = JSONObject(body).optJSONObject("ratings") ?: return@runCatching emptyMap()
+            buildMap {
+                val keys = source.keys()
+                while (keys.hasNext()) {
+                    val id = keys.next()
+                    val rating = source.optJSONObject(id) ?: continue
+                    put(id, rating.optDouble("avg") to rating.optInt("count"))
+                }
+            }
+        } finally { connection.disconnect() }
+    }.getOrDefault(emptyMap())
+
     private fun renderChips() {
         chips.removeAllViews()
         val categories = linkedSetOf("Todas")
@@ -289,13 +332,48 @@ class NativeStoreActivity : Activity() {
         }
     }
 
+    private fun renderControls() {
+        if (!::favoritesButton.isInitialized) return
+        val count = apps.count { it.platform == selectedPlatform && it.id in favoriteIds }
+        favoritesButton.text = (if (favoritesOnly) "♥" else "♡") + " Favoritos ($count)"
+        sortButton.text = "Ordenar · ${sort.label}"
+    }
+
+    private fun showSortOptions() {
+        val options = StoreSort.values()
+        AlertDialog.Builder(this)
+            .setTitle("Ordenar catálogo")
+            .setSingleChoiceItems(options.map { it.label }.toTypedArray(), options.indexOf(sort)) { dialog, which ->
+                sort = options[which]
+                dialog.dismiss()
+                renderControls()
+                render()
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
+    }
+
+    private fun toggleFavorite(app: AppEntry) {
+        if (!favoriteIds.add(app.id)) favoriteIds.remove(app.id)
+        getSharedPreferences("codehub_store", MODE_PRIVATE).edit().putStringSet("favorites", favoriteIds.toSet()).apply()
+        renderControls()
+        render()
+    }
+
     private fun render() {
         if (!::appList.isInitialized) return
         appList.removeAllViews()
         val query = if (::search.isInitialized) search.text.toString().trim().lowercase(Locale.ROOT) else ""
-        val filtered = apps.filter { app ->
+        val matches = apps.filter { app ->
             app.platform == selectedPlatform && (category == "Todas" || app.category == category) &&
+                (!favoritesOnly || app.id in favoriteIds) &&
                 ("${app.name} ${app.description} ${app.category} ${app.repo}".lowercase(Locale.ROOT).contains(query))
+        }
+        val filtered = when (sort) {
+            StoreSort.HOME -> matches
+            StoreSort.NAME -> matches.sortedBy { it.name.lowercase(Locale.ROOT) }
+            StoreSort.RATING -> matches.sortedWith(compareByDescending<AppEntry> { it.ratingAverage }.thenByDescending { it.ratingCount }.thenBy { it.name })
+            StoreSort.UPDATED -> matches.sortedWith(compareByDescending<AppEntry> { it.tag.contains("Actualizada", true) }.thenByDescending { it.updatedAt })
         }
         status.text = when {
             apps.none { it.platform == selectedPlatform } && selectedPlatform == "Windows" && windowsCatalogLoading -> "Cargando catálogo de Windows…"
@@ -304,7 +382,18 @@ class NativeStoreActivity : Activity() {
             else -> "${filtered.size} aplicaciones disponibles"
         }
         val updatedApps = filtered.filter { it.platform == "Android" && it.tag.contains("Actualizada", ignoreCase = true) }
-        if (selectedPlatform == "Android" && category == "Todas" && query.isBlank() && updatedApps.isNotEmpty()) {
+        val home = selectedPlatform == "Android" && category == "Todas" && query.isBlank() && !favoritesOnly && sort == StoreSort.HOME
+        val topRated = filtered.filter { it.ratingCount > 0 }
+            .sortedWith(compareByDescending<AppEntry> { it.ratingAverage }.thenByDescending { it.ratingCount }).take(8)
+        if (home && topRated.isNotEmpty()) {
+            appList.addView(label("Mejor valoradas", 18f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(8), 0, dp(10)) })
+            val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            topRated.forEach { row.addView(updateCard(it, true), LinearLayout.LayoutParams(dp(230), -2).apply { rightMargin = dp(10) }) }
+            rail.addView(row)
+            appList.addView(rail, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+        }
+        if (home && updatedApps.isNotEmpty()) {
             appList.addView(label("Con nueva versión", 18f, 0xFFFFFFFF.toInt(), true).apply {
                 setPadding(0, dp(8), 0, dp(10))
             })
@@ -332,7 +421,7 @@ class NativeStoreActivity : Activity() {
         }
     }
 
-    private fun updateCard(app: AppEntry): View {
+    private fun updateCard(app: AppEntry, showRating: Boolean = false): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -352,11 +441,13 @@ class NativeStoreActivity : Activity() {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        info.addView(label("Nueva versión · ${app.version}", 11f, 0xFF68F0A9.toInt()).apply {
+        val supporting = if (showRating) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} reseñas" else "Nueva versión · ${app.version}"
+        info.addView(label(supporting, 11f, 0xFF68F0A9.toInt()).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+        card.addView(favoriteControl(app))
         return card
     }
 
@@ -392,10 +483,17 @@ class NativeStoreActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+        card.addView(favoriteControl(app))
         card.addView(label("›", 28f, 0xFF9AA0B8.toInt()))
         return card.apply {
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
         }
+    }
+
+    private fun favoriteControl(app: AppEntry): TextView = label(if (app.id in favoriteIds) "♥" else "♡", 23f, 0xFFFF6B9A.toInt(), true).apply {
+        contentDescription = if (app.id in favoriteIds) "Quitar de favoritos" else "Añadir a favoritos"
+        setPadding(dp(8), dp(8), dp(8), dp(8))
+        setOnClickListener { toggleFavorite(app) }
     }
 
     private fun showDetails(app: AppEntry) {
@@ -412,6 +510,12 @@ class NativeStoreActivity : Activity() {
         content.addView(icon, LinearLayout.LayoutParams(dp(72), dp(72)).apply { bottomMargin = dp(12) })
         content.addView(label(app.category.uppercase(Locale.ROOT), 12f, 0xFF38EF7D.toInt(), true))
         content.addView(label(app.name, 23f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(7), 0, dp(8)) })
+        content.addView(label(if (app.ratingCount > 0) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} valoraciones" else "Aún sin valoraciones", 13f, 0xFFFFC857.toInt(), true))
+        content.addView(Button(this).apply {
+            text = "Ver reseñas y valorar"
+            isAllCaps = false
+            setOnClickListener { showReviews(app) }
+        }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
         content.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         })
@@ -464,15 +568,108 @@ class NativeStoreActivity : Activity() {
 
     private fun startInstall(app: AppEntry) {
         if (app.platform != "Android") return
-        try {
-            val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
-            setResult(RESULT_OK, Intent().apply {
-                putExtra(EXTRA_APK_URL, url)
-                putExtra(EXTRA_APP_ID, app.id)
-            })
-            finish()
-        } catch (_: Exception) {
-            Toast.makeText(this, "No se pudo preparar la instalación", Toast.LENGTH_SHORT).show()
+        NativeStoreInstallFlow.request(this) { preferSilent ->
+            try {
+                val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
+                setResult(RESULT_OK, Intent().apply {
+                    putExtra(EXTRA_APK_URL, url)
+                    putExtra(EXTRA_APP_ID, app.id)
+                    putExtra(EXTRA_PACKAGE_NAME, app.packageName.orEmpty())
+                    putExtra(NativeMyAppsActivity.EXTRA_PREFER_SILENT, preferSilent)
+                })
+                finish()
+            } catch (_: Exception) {
+                Toast.makeText(this, "No se pudo preparar la instalación", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showReviews(app: AppEntry) {
+        val loading = AlertDialog.Builder(this).setMessage("Cargando reseñas…").setNegativeButton("Cerrar", null).create()
+        loading.show()
+        executor.execute {
+            val reviews = runCatching {
+                val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/reviews"
+                val connection = URL(url).openConnection() as HttpURLConnection
+                try {
+                    connection.connectTimeout = 8_000
+                    connection.readTimeout = 12_000
+                    val body = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() }
+                    JSONObject(body).optJSONArray("reviews") ?: JSONArray()
+                } finally { connection.disconnect() }
+            }.getOrDefault(JSONArray())
+            runOnUiThread {
+                loading.dismiss()
+                val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(10), dp(20), dp(10)) }
+                if (reviews.length() == 0) content.addView(label("Todavía no hay reseñas. Puedes ser la primera persona en valorar esta app.", 14f, 0xFFB7B8C8.toInt()))
+                for (i in 0 until reviews.length()) {
+                    val review = reviews.optJSONObject(i) ?: continue
+                    content.addView(label("${"★".repeat(review.optInt("stars").coerceIn(1, 5))}  ${review.optString("autor", "Anónimo")}", 13f, 0xFFFFC857.toInt(), true).apply { setPadding(0, dp(12), 0, dp(4)) })
+                    content.addView(label(review.optString("texto"), 13f, 0xFFD0D0DE.toInt()))
+                }
+                val scroll = ScrollView(this).apply { addView(content) }
+                AlertDialog.Builder(this)
+                    .setTitle("Reseñas · ${app.name}")
+                    .setView(scroll)
+                    .setNeutralButton("Valorar") { _, _ -> showRatingDialog(app) }
+                    .setPositiveButton("Listo", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showRatingDialog(app: AppEntry) {
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(22), dp(8), dp(22), 0) }
+        val stars = android.widget.NumberPicker(this).apply { minValue = 1; maxValue = 5; value = 5; wrapSelectorWheel = false }
+        content.addView(label("Puntuación (1–5 estrellas)", 13f, 0xFFB7B8C8.toInt()))
+        content.addView(stars, LinearLayout.LayoutParams(-1, dp(76)))
+        val author = EditText(this).apply { hint = "Nombre (opcional)"; setSingleLine(true) }
+        content.addView(author, LinearLayout.LayoutParams(-1, dp(48)))
+        val text = EditText(this).apply { hint = "Cuéntale a la comunidad (opcional)"; minLines = 3; maxLines = 5; gravity = Gravity.TOP; inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE; filters = arrayOf(android.text.InputFilter.LengthFilter(600)) }
+        content.addView(text, LinearLayout.LayoutParams(-1, dp(112)))
+        AlertDialog.Builder(this)
+            .setTitle("Valorar ${app.name}")
+            .setView(content)
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Enviar", null)
+            .create().also { dialog ->
+                dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    submitRating(app, stars.value, author.text.toString().trim(), text.text.toString().trim(), dialog)
+                } }
+                dialog.show()
+            }
+    }
+
+    private fun submitRating(app: AppEntry, stars: Int, author: String, text: String, dialog: AlertDialog) {
+        executor.execute {
+            val result = runCatching {
+                val connection = URL(RATINGS_API).openConnection() as HttpURLConnection
+                try {
+                    connection.connectTimeout = 8_000
+                    connection.readTimeout = 12_000
+                    connection.requestMethod = "POST"
+                    connection.doOutput = true
+                    connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    val payload = JSONObject().put("appId", app.id).put("appName", app.name).put("stars", stars).put("autor", author).put("texto", text)
+                    connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+                    val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
+                    val body = BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+                    connection.responseCode to JSONObject(body)
+                } finally { connection.disconnect() }
+            }
+            runOnUiThread {
+                val (code, body) = result.getOrElse { 0 to JSONObject() }
+                if (code in 200..299) {
+                    val updated = app.copy(ratingAverage = body.optDouble("avg", app.ratingAverage), ratingCount = body.optInt("count", app.ratingCount))
+                    val index = apps.indexOfFirst { it.id == app.id }
+                    if (index >= 0) apps[index] = updated
+                    render()
+                    dialog.dismiss()
+                    Toast.makeText(this, "Gracias por valorar ${app.name}", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, body.optString("error", "No se pudo guardar la valoración"), Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -529,6 +726,10 @@ class NativeStoreActivity : Activity() {
         val tag: String,
         val platform: String,
         val downloadUrl: String,
+        val packageName: String? = null,
+        val updatedAt: String = "",
+        val ratingAverage: Double = 0.0,
+        val ratingCount: Int = 0,
     ) {
         companion object {
             fun from(row: JSONObject) = AppEntry(
@@ -544,6 +745,8 @@ class NativeStoreActivity : Activity() {
                 tag = row.optString("tag"),
                 platform = "Android",
                 downloadUrl = row.optString("enlace"),
+                packageName = row.optString("packageName").takeIf { it.isNotBlank() },
+                updatedAt = row.optString("updatedAt"),
             )
 
             fun fromWindows(row: JSONObject): AppEntry? {

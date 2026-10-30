@@ -843,8 +843,9 @@ public class MainActivity extends Activity {
             String apkUrl = data.getStringExtra(NativeStoreActivity.EXTRA_APK_URL);
             String appId = data.getStringExtra(NativeStoreActivity.EXTRA_APP_ID);
             if (bridge != null && apkUrl != null && appId != null) {
-                boolean preferSilent = data.getBooleanExtra(NativeMyAppsActivity.EXTRA_PREFER_SILENT, true);
-                bridge.downloadAndInstallApk(apkUrl, appId, preferSilent, "CodeHubNativeStoreInstallResult");
+                String packageName = data.getStringExtra(NativeStoreActivity.EXTRA_PACKAGE_NAME);
+                boolean preferSilent = data.getBooleanExtra(NativeMyAppsActivity.EXTRA_PREFER_SILENT, false);
+                bridge.downloadAndInstallStoreApk(apkUrl, appId, packageName, preferSilent, "CodeHubNativeStoreInstallResult");
                 Toast.makeText(this, "Descargando " + appId + "…", Toast.LENGTH_SHORT).show();
             }
             return;
