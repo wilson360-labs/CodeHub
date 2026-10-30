@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
     private static final String CHANNEL_DEFAULT = "codehub_default";
     private static final int FILE_CHOOSER_REQUEST   = 100;
     static final int BACKUP_IMPORT_REQUEST  = 101;
+    private static final int NATIVE_STORE_REQUEST = 102;
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
@@ -550,6 +551,13 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
+                Uri uri = request.getUrl();
+                if ("wilson360-labs.vercel.app".equalsIgnoreCase(uri.getHost())
+                        && uri.getPath() != null
+                        && (uri.getPath().equals("/pages/tienda.html") || uri.getPath().equals("/pages/opensource.html"))) {
+                    openNativeStore();
+                    return true;
+                }
                 // Validación por HOST EXACTO (no contains): "wilson360-labs.
                 // vercel.app.evil.com" no debe quedarse dentro del WebView.
                 // about/data/blob: se dejan pasar (recursos internos).
@@ -824,6 +832,15 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == NATIVE_STORE_REQUEST && resultCode == RESULT_OK && data != null) {
+            String apkUrl = data.getStringExtra(NativeStoreActivity.EXTRA_APK_URL);
+            String appId = data.getStringExtra(NativeStoreActivity.EXTRA_APP_ID);
+            if (bridge != null && apkUrl != null && appId != null) {
+                bridge.downloadAndInstallApk(apkUrl, appId, true, "CodeHubNativeStoreInstallResult");
+                Toast.makeText(this, "Descargando " + appId + "…", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         // Respaldo 1-tap — archivo JSON de configuración elegido con
         // ACTION_OPEN_DOCUMENT (CodeHubBridge.pickBackupFile).
         if (requestCode == BACKUP_IMPORT_REQUEST) {
@@ -840,6 +857,14 @@ public class MainActivity extends Activity {
             }
             fileUploadCallback.onReceiveValue(results);
             fileUploadCallback = null;
+        }
+    }
+
+    private void openNativeStore() {
+        try {
+            startActivityForResult(new Intent(this, NativeStoreActivity.class), NATIVE_STORE_REQUEST);
+        } catch (Exception e) {
+            if (webView != null) webView.loadUrl(APP_URL + "/pages/tienda.html");
         }
     }
 
