@@ -48,6 +48,47 @@ async function gh(url) {
   return null;
 }
 
+async function rawText(sourceRepo, branch, filePath) {
+  const response = await fetch(`https://raw.githubusercontent.com/${sourceRepo}/${branch}/${filePath}`, {
+    headers: HEADERS, signal: AbortSignal.timeout(15000),
+  });
+  return response.ok ? response.text() : null;
+}
+
+async function resolveGradleExpression(expression, sourceRepo, branch, tree, moduleDir, moduleText) {
+  const property = expression.match(/(?:project\.)?property\(\s*["']([A-Za-z0-9_.-]+)["']\s*\)/);
+  if (property) {
+    const propertyFiles = [...new Set(['gradle.properties', `${moduleDir}/gradle.properties`])];
+    for (const filePath of propertyFiles) {
+      if (!tree.some(entry => entry.type === 'blob' && entry.path === filePath)) continue;
+      const contents = await rawText(sourceRepo, branch, filePath);
+      const value = contents?.match(new RegExp(`^\\s*${property[1]}\\s*=\\s*["']?([A-Za-z0-9_.]+)`, 'm'));
+      if (value) return value[1];
+    }
+  }
+
+  const variable = expression.match(/(?:\$\{)?([A-Za-z_][A-Za-z0-9_]*)(?:\})?\s*$/);
+  if (!variable) return null;
+  const escaped = variable[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const configFiles = tree
+    .filter(entry => entry.type === 'blob' && (
+      /(^|\/)gradle\.properties$/.test(entry.path) ||
+      /(^|\/)buildSrc\/.*(?:ProjectConfig|projectconfig).*(?:\.kt|\.java|\.gradle|\.groovy)$/.test(entry.path)
+    ))
+    .map(entry => entry.path);
+  const contents = [moduleText];
+  for (const filePath of configFiles) {
+    const text = await rawText(sourceRepo, branch, filePath);
+    if (text) contents.push(text);
+  }
+  const declaration = new RegExp(`(?:const\\s+val|val|var|def)?\\s*${escaped}\\s*=\\s*["']([A-Za-z0-9_.]+)["']`);
+  for (const text of contents) {
+    const value = text.match(declaration);
+    if (value) return value[1];
+  }
+  return null;
+}
+
 // Busca el archivo build.gradle/build.gradle.kts de la app (no el de
 // librerías) recorriendo el árbol del repo, y extrae applicationId.
 async function findPackageName(sourceRepo) {
@@ -82,17 +123,40 @@ async function findPackageName(sourceRepo) {
     if (namespace) return namespace[1];
 
     const moduleDir = file.path.replace(/\/build\.gradle(?:\.kts)?$/, '');
+    const declaredId = text.match(/^\s*(?:applicationId|namespace)\s*(?:=\s*)?(.+)$/m)?.[1]
+      ?.split('//')[0].trim().replace(/[,;]+$/, '');
+    if (declaredId) {
+      const resolved = await resolveGradleExpression(declaredId, sourceRepo, branch, treeRes.tree, moduleDir, text);
+      if (resolved && /^[A-Za-z0-9_.]+$/.test(resolved)) return resolved;
+    }
     const manifestPath = `${moduleDir}/src/main/AndroidManifest.xml`;
     if (treeRes.tree.some(entry => entry.type === 'blob' && entry.path === manifestPath)) {
       const manifest = await fetch(`https://raw.githubusercontent.com/${sourceRepo}/${branch}/${manifestPath}`, {
         headers: HEADERS, signal: AbortSignal.timeout(15000),
       });
       if (manifest.ok) {
-        const xml = await manifest.text();
+        const xml = (await manifest.text()).replace(/<!--[\s\S]*?-->/g, '');
         const pkg = xml.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([a-zA-Z0-9_.]+)["']/);
         if (pkg) return pkg[1];
       }
     }
+  }
+
+  // Older Android projects (for example Ant/Eclipse repositories) may expose
+  // the app ID only in a manifest and have no Gradle build file.
+  const manifests = treeRes.tree
+    .filter(file => file.type === 'blob' && /(^|\/)AndroidManifest\.xml$/.test(file.path))
+    .sort((a, b) => {
+      const score = p => /(^|\/)app\/src\/main\/AndroidManifest\.xml$/.test(p) ? 0
+        : /(^|\/)src\/main\/AndroidManifest\.xml$/.test(p) ? 1
+          : p === 'AndroidManifest.xml' ? 2 : 3;
+      return score(a.path) - score(b.path);
+    });
+  for (const file of manifests) {
+    const text = await rawText(sourceRepo, branch, file.path);
+    const xml = text?.replace(/<!--[\s\S]*?-->/g, '');
+    const pkg = xml?.match(/<manifest\b[^>]*\bpackage\s*=\s*["']([a-zA-Z0-9_.]+)["']/);
+    if (pkg) return pkg[1];
   }
   return null;
 }

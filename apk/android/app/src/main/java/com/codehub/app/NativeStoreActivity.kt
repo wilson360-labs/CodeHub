@@ -271,7 +271,8 @@ class NativeStoreActivity : Activity() {
         val categories = linkedSetOf("Todas")
         apps.filter { it.platform == selectedPlatform }.forEach { categories.add(it.category) }
         categories.forEach { value ->
-            val chip = label(value, 13f, if (category == value) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
+            val count = apps.count { it.platform == selectedPlatform && (value == "Todas" || it.category == value) }
+            val chip = label("$value · $count", 13f, if (category == value) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(15), 0, dp(15), 0)
                 setBackground(roundRect(if (category == value) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), 0, dp(22)))
@@ -302,6 +303,17 @@ class NativeStoreActivity : Activity() {
             apps.none { it.platform == selectedPlatform } -> status.text
             else -> "${filtered.size} aplicaciones disponibles"
         }
+        val updatedApps = filtered.filter { it.platform == "Android" && it.tag.contains("Actualizada", ignoreCase = true) }
+        if (selectedPlatform == "Android" && category == "Todas" && query.isBlank() && updatedApps.isNotEmpty()) {
+            appList.addView(label("Con nueva versión", 18f, 0xFFFFFFFF.toInt(), true).apply {
+                setPadding(0, dp(8), 0, dp(10))
+            })
+            val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            updatedApps.forEach { row.addView(updateCard(it), LinearLayout.LayoutParams(dp(210), -2).apply { rightMargin = dp(10) }) }
+            rail.addView(row)
+            appList.addView(rail, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+        }
         filtered.forEach { appList.addView(appCard(it)) }
         if (filtered.isEmpty() && selectedPlatform == "Windows" && apps.none { it.platform == "Windows" }) {
             val message = when {
@@ -318,6 +330,34 @@ class NativeStoreActivity : Activity() {
                 gravity = Gravity.CENTER
             }, LinearLayout.LayoutParams(-1, dp(120)))
         }
+    }
+
+    private fun updateCard(app: AppEntry): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackground(roundRect(0xFF121E1A.toInt(), 0xFF285541.toInt(), dp(17)))
+            setOnClickListener { showDetails(app) }
+        }
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(13))
+            clipToOutline = true
+            loadCodeHubImage(app.imageUrl)
+        }
+        card.addView(icon, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0) }
+        info.addView(label(app.name, 14f, 0xFFFFFFFF.toInt(), true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        info.addView(label("Nueva versión · ${app.version}", 11f, 0xFF68F0A9.toInt()).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+        return card
     }
 
     private fun appCard(app: AppEntry): View {
@@ -486,6 +526,7 @@ class NativeStoreActivity : Activity() {
         val imageUrl: String,
         val changelog: String,
         val verified: Boolean,
+        val tag: String,
         val platform: String,
         val downloadUrl: String,
     ) {
@@ -500,6 +541,7 @@ class NativeStoreActivity : Activity() {
                 imageUrl = row.optString("imagen"),
                 changelog = row.optString("changelog"),
                 verified = row.optBoolean("verified", true),
+                tag = row.optString("tag"),
                 platform = "Android",
                 downloadUrl = row.optString("enlace"),
             )
@@ -521,6 +563,7 @@ class NativeStoreActivity : Activity() {
                     imageUrl = row.optString("icon"),
                     changelog = "",
                     verified = false,
+                    tag = "",
                     platform = "Windows",
                     downloadUrl = row.optString("downloadUrl"),
                 )
