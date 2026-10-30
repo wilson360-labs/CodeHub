@@ -2545,65 +2545,46 @@ async function createApp() {
 }
 
 // ── SEED ──────────────────────────────────────────────────────
-async function seedFromJSON() {
-  toast('ℹ️ apps_data.json fue eliminado por políticas de contenido. Usa el panel de admin para agregar apps manualmente.');
-}
-
-// Parsea una Response como JSON de forma segura — si el body no es JSON
-// (ej. una página de error HTML del hosting/proxy), devuelve null en vez
-// de tronar con "Unexpected token '<'". Así el mensaje de error que ve
-// el admin siempre explica qué pasó de verdad.
-async function safeJson(res) {
-  const text = await res.text();
-  try { return JSON.parse(text); }
-  catch { return null; }
-}
-
-async function postAdminSeed(apps, isRetry) {
-  const seedRes = await fetch(`${BACKEND}/api/admin/seed`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...adminHeaders() },
-    body: JSON.stringify({ apps }),
-  });
-  const data = await safeJson(seedRes);
-
-  if (!seedRes.ok || !data) {
-    // El backend en Render (free tier) se duerme tras inactividad — la
-    // primera petición tras despertar puede tardar y el proxy devuelve
-    // una página HTML de error en vez de JSON. Se reintenta una vez.
-    if (!isRetry) {
-      toast('⏳ El backend se está despertando (cold-start de Render), reintentando en 6s…');
-      await new Promise(r => setTimeout(r, 6000));
-      return postAdminSeed(apps, true);
-    }
-    throw new Error(
-      data?.error ||
-      `El backend respondió HTTP ${seedRes.status} sin JSON válido — puede seguir despertando, probá de nuevo en unos segundos, o revisa que ${BACKEND} esté arriba.`
-    );
-  }
-  return data;
-}
-
-// Siembra las 48 apps del catálogo Open Source (con su source_repo)
-// desde opensource_seed.json — activa el monitor automático de
-// GitHub Releases para todas de una vez. Correr una sola vez;
-// vuelve a correrse sin duplicar (usa appId como clave de upsert).
-async function seedOpenSourceFromJSON() {
-  if (!confirm('Importar las 48 apps Open Source a MongoDB (con source_repo). ¿Continuar?')) return;
+async function replaceLocalOpenSourceCatalog() {
+  const button = document.getElementById('sync-open-source-btn');
+  const original = button?.innerHTML;
+  if (button) { button.disabled = true; button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Revisando lista…'; }
   try {
-    // cache:'no-store' + query de cache-busting: evita que el navegador
-    // reuse una respuesta 404 vieja de intentos anteriores a que el
-    // archivo existiera en el deploy.
-    const res = await fetch(`/opensource_seed.json?v=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`No se pudo leer opensource_seed.json (HTTP ${res.status}) — confirma que esté en la raíz del repo y que el deploy ya lo tenga publicado`);
-    const ct = res.headers.get('content-type') || '';
-    if (!ct.includes('json')) throw new Error(`opensource_seed.json respondió con Content-Type "${ct}" en vez de JSON — probablemente es una página de error del hosting, no el archivo`);
-    const apps = await res.json();
+    const previewRes = await fetch(`${BACKEND}/api/admin/apps/catalog-sync-preview`, { headers: adminHeaders() });
+    const preview = await previewRes.json().catch(() => null);
+    if (!previewRes.ok || !preview?.ok) throw new Error(preview?.error || `No se pudo leer la vista previa (HTTP ${previewRes.status})`);
 
-    const d = await postAdminSeed(apps, false);
-    toast(`✅ Seed Open Source: ${d.created} creadas, ${d.updated} actualizadas`);
+    const additions = preview.create.map(app => `• ${app.nombre} (${app.appId})`).join('\n') || '• Ninguna';
+    const removals = preview.remove.map(app => `• ${app.nombre} (${app.appId})`).join('\n') || '• Ninguna';
+    const message = [
+      `Fuente local: ${preview.source}`,
+      `Base de apps actual: ${preview.database}`,
+      `Apps Open Source en DB: ${preview.currentTotal} → ${preview.sourceTotal}`,
+      `Se actualizarán: ${preview.updateCount}`,
+      `Se agregarán:\n${additions}`,
+      `Se retirarán del catálogo:\n${removals}`,
+      '',
+      'Solo reemplaza registros Open Source. Las demás apps se conservan y los APK/archivos almacenados no se borran. Las apps Open Source agregadas manualmente y ausentes del seed local también se retirarán.',
+      '',
+      '¿Continuar con el reemplazo?'
+    ].join('\n');
+    if (!confirm(message)) return;
+
+    if (button) button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando catálogo…';
+    const resultRes = await fetch(`${BACKEND}/api/admin/apps/replace-local-catalog`, {
+      method: 'POST',
+      headers: adminHeaders(),
+    });
+    const result = await resultRes.json().catch(() => null);
+    if (!resultRes.ok || !result?.ok) throw new Error(result?.error || `Falló la sincronización (HTTP ${resultRes.status})`);
+
+    toast(`✅ Catálogo reemplazado: ${result.created} agregadas, ${result.updated} actualizadas y ${result.removed} retiradas`);
     await refreshApps();
-  } catch (e) { toast('❌ Error en seed Open Source: ' + e.message); }
+  } catch (e) {
+    toast('❌ No se pudo actualizar la lista Open Source: ' + e.message);
+  } finally {
+    if (button) { button.disabled = false; button.innerHTML = original; }
+  }
 }
 
 // ── SOLICITUDES ───────────────────────────────────────────────

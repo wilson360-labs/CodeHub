@@ -1,7626 +1,4709 @@
-/**
- * CodeHub Backend v3.1 â€” Wilson.E 2026
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * âœ… WebSockets â€” notificaciones en tiempo real
- * âœ… Redis      â€” cachÃ© (opcional)
- * âœ… Eventos:   visitas, descargas, ratings, contacto, chat IA, nueva app
- *
- * Variables de Entorno (Render):
- *   GROQ_API_KEY, GEMINI_API_KEY, MONGODB_URI, FRONTEND_URL
- *   ADMIN_KEY, ADMIN_SESSION_SECRET (secreto HMAC de sesiones admin;
- *     si falta se usa ADMIN_KEY y, si tampoco existe, un secreto aleatorio
- *     EFÃMERO â€” las sesiones admin no sobreviven a reinicios en ese caso)
- *   SUPABASE_URL, SUPABASE_KEY (storage bucket: codehub-apks)
- *   RATE_LIMIT_MAX, REDIS_URL (opcional), WS_URL (opcional)
- *   TOGETHER_API_KEY, OPENROUTER_API_KEY, MISTRAL_API_KEY, COHERE_API_KEY
- *   KIMI_API_KEY (Moonshot AI â€” https://platform.moonshot.ai)
- */
-
-require('dotenv').config();
-const express   = require('express');
-const cors      = require('cors');
-const mongoose  = require('mongoose');
-const rateLimit = require('express-rate-limit');
-const helmet    = require('helmet');
-const compression = require('compression');
-const multer    = require('multer');
-const Busboy    = require('busboy');   // dep transitiva de multer â€” parseo multipart sin buffer
-const crypto    = require('crypto');
-const http      = require('http');
-const fs        = require('fs');
-const os        = require('os');
-const path      = require('path');
-const dns       = require('dns');
-const { WebSocketServer } = require('ws');
-const swaggerSpec        = require('./swagger');
-
-// â”€â”€ SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const { createClient } = require('@supabase/supabase-js');
-const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.trim())
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
-  : null;
-
-// â”€â”€ TIMEOUTS DE RED (evitan conexiones colgadas â†’ OOM en Render) â”€â”€
-const LLM_TIMEOUT_MS      = 30000;  // llamadas no-streaming a proveedores IA
-const SSE_TIMEOUT_MS      = 30000;  // inactividad sin datos en un stream SSE
-const IA_PUT_TIMEOUT_MS   = 120000; // PUT a Archive.org S3 (upload grande)
-
-// Helper: registrar evento en Supabase (fire-and-forget â€” no bloquea la peticiÃ³n)
-async function trackEvent(type, page = null, metadata = {}) {
-  if (!supabase) return;
-  setImmediate(async () => {
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      // Insertar evento individual
-      await supabase.from('events').insert({ type, page, metadata });
-      // Actualizar stats diarias
-      const col = { visit: 'visits', download: 'downloads', chat: 'chat_msgs', tool: 'tool_uses', contact: 'contacts' }[type];
-      if (col) {
-        const { data } = await supabase.from('daily_stats').select('id,' + col).eq('date', today).single();
-        if (data) {
-          await supabase.from('daily_stats').update({ [col]: (data[col] || 0) + 1, updated_at: new Date() }).eq('date', today);
-        } else {
-          await supabase.from('daily_stats').insert({ date: today, [col]: 1 });
-        }
-      }
-      // Stats por herramienta
-      if (type === 'tool' && metadata.tool_name) {
-        const { data: t } = await supabase.from('tool_stats').select('id,uses').eq('tool_name', metadata.tool_name).single();
-        if (t) await supabase.from('tool_stats').update({ uses: t.uses + 1, last_used: new Date() }).eq('tool_name', metadata.tool_name);
-        else await supabase.from('tool_stats').insert({ tool_name: metadata.tool_name, uses: 1 });
-      }
-      // Stats por descarga
-      if (type === 'download' && metadata.app_name) {
-        const { data: d } = await supabase.from('download_stats').select('id,downloads').eq('app_name', metadata.app_name).single();
-        if (d) await supabase.from('download_stats').update({ downloads: d.downloads + 1, last_download: new Date() }).eq('app_name', metadata.app_name);
-        else await supabase.from('download_stats').insert({ app_name: metadata.app_name, downloads: 1 });
-      }
-    } catch(e) { console.warn('Supabase trackEvent error:', e.message); }
-  });
-}
-
-// â”€â”€ SKILLS â€” catÃ¡logo de capacidades de IA (skills/â€¦) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Cada skill es un folder con skill.json. Se sirven por GET /api/skills
-// y su system_prompt_inject se inyecta en /api/chat cuando el usuario
-// manda skill_id (p.ej. 'pdf-ia' al adjuntar un PDF).
-const SKILLS_DIR = path.join(__dirname, '../skills');
-const skillsCache = new Map();
-
-function loadSkillJson(id) {
-  if (!id || typeof id !== 'string') return null;
-  // Solo IDs sencillos tipo slug: bloquea path traversal (../, absolutos, %2e)
-  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(id)) return null;
-  if (id === '.' || id === '..') return null;
-  if (skillsCache.has(id)) return skillsCache.get(id);
-  const base = path.resolve(SKILLS_DIR);
-  const file = path.resolve(base, id, 'skill.json');
-  if (!file.startsWith(base + path.sep)) return null; // nunca fuera de skills/
-  try {
-    if (!fs.existsSync(file)) return null;
-    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-    skillsCache.set(id, data);
-    return data;
-  } catch (e) {
-    console.warn('Skill no cargable:', id, e.message);
-    return null;
-  }
-}
-
-// â”€â”€ DB RUNNER â€” divide un script .sql en sentencias individuales â”€â”€
-// Respeta strings entre comillas simples/dobles y bloques con
-// dollar-quoting ($$ ... $$ o $tag$ ... $tag$, tÃ­pico de funciones
-// plpgsql) para no cortar un ';' que estÃ© dentro de esos bloques.
-const { splitSqlStatements, clientIp, isPrivateIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
-
-const app    = express();
-const server = http.createServer(app);
-const PORT   = process.env.PORT || 3001;
-
-app.set('trust proxy', 1);
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(compression());
-
-// â”€â”€ SECURITY: Anti-bot & hardening â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Block known scanner/bot User-Agents targeting admin endpoints
-const _BOT_UA_RE = /python-urllib|python-requests|go-http-client|java\/|curl\/|wget\/|scrapy|nikto|sqlmap|nmap|masscan|zgrab|gobuster|dirbuster|hydra|medusa|wfuzz|ffuf|nuclei|httpx|censys|shodan|zoomye/i;
-app.use('/api/admin', (req, res, next) => {
-  const ua = (req.headers['user-agent'] || '').slice(0, 200);
-  if (ua && _BOT_UA_RE.test(ua)) {
-    const ip = clientIp(req);
-    tgAlert('botprobe', () => `ğŸ¤– <b>BOT DETECTADO en /api/admin</b>\nIP: <code>${ip}</code>\nUA: ${ua.slice(0, 70)}`, { windowMs: 30000 });
-    return res.status(403).json({ error: 'Acceso no autorizado' });
-  }
-  next();
-});
-// Honeypot: hidden endpoint that real users never hit â€” bots do
-app.all('/api/admin/secret-panel', (req, res) => {
-  const ip = clientIp(req);
-  const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
-  tgAlert('honeypot', () => `ğŸ¯ <b>HONEYPOT TRIGGERED</b>\nIP: <code>${ip}</code>\nUA: ${ua}`, { windowMs: 60000 });
-  if (!_adminBans.has(ip)) _adminBans.set(ip, { expiresAt: Date.now() + ADMIN_BAN_DURATION_MS });
-  return res.status(404).json({ error: 'Not found' });
-});
-
-// â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:3000', 'http://localhost:5500',
-  'http://127.0.0.1:5500', 'http://localhost:8080',
-  'https://wilson360-labs.vercel.app',
-  'https://wilson360-labs.github.io',
-].filter(Boolean);
-
-const corsOptions = {
-  origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(null, false);
-  },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-admin-key', 'x-admin-user', 'x-admin-session', 'Accept', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'X-Cache'],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-};
-app.use(cors(corsOptions));
-// /api/chat necesita un lÃ­mite mÃ¡s alto que el resto (las imÃ¡genes van en
-// base64 dentro del JSON). Se registra ANTES del lÃ­mite global de 10kb;
-// como ya deja el body parseado, el parser global de abajo lo detecta y
-// no vuelve a leer el stream, asÃ­ el resto de rutas conserva el lÃ­mite chico.
-app.use('/api/chat', express.json({ limit: '6mb' }));
-// /api/admin â€” algunas rutas mandan payloads mÃ¡s grandes que el lÃ­mite
-// global de 10kb: el seed masivo del catÃ¡logo (ej. las 48 apps Open
-// Source, ~23kb) o extract-icon con imÃ¡genes en base64. Mismo patrÃ³n
-// que /api/chat arriba: se registra antes del lÃ­mite global.
-app.use('/api/admin', express.json({ limit: '5mb' }));
-// /api/crash-report â€” stack traces + log de crash acumulado (app Android)
-// pueden superar el lÃ­mite chico global; mismo patrÃ³n de arriba.
-app.use('/api/crash-report', express.json({ limit: '200kb' }));
-// /api/webhook â€” necesita el body crudo (Buffer) ademÃ¡s del JSON parseado,
-// para poder validar la firma HMAC-SHA256 que manda GitHub en el header
-// X-Hub-Signature-256. El `verify` callback guarda esos bytes en
-// req.rawBody antes de que Express los descarte tras parsear el JSON.
-app.use('/api/webhook', express.json({
-  limit: '200kb',
-  verify: (req, _res, buf) => { req.rawBody = buf; },
-}));
-// /api/telegram â€” los updates del bot (mensajes, audios, documentos con
-// APKs...) superan de sobra el lÃ­mite global de 10kb; mismo patrÃ³n que
-// /api/webhook. Se registra antes del lÃ­mite global.
-app.use('/api/telegram', express.json({ limit: '512kb' }));
-app.use(express.json({ limit: '10kb' }));
-
-// Multer APKs â€” Telegram es ilimitado en almacenamiento; Supabase (fallback) tiene lÃ­mite de 50 MB.
-// El lÃ­mite aquÃ­ (2 GB) es solo protecciÃ³n del servidor en trÃ¡nsito, no un lÃ­mite de Telegram.
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB â€” solo para rutas que NO son /upload (security scan, etc.)
-  fileFilter: (_, f, cb) => {
-    if (f.mimetype === 'application/vnd.android.package-archive' || f.originalname.endsWith('.apk'))
-      cb(null, true);
-    else cb(new Error('Solo .apk'));
-  },
-});
-const uploadSecurityFile = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 32 * 1024 * 1024 },
-});
-
-// Rate limiting
-const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
-const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 500, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
-const publicPostLimiter = rateLimit({ windowMs: 15*60*1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes. Espera un momento.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
-// Auth admin: mÃ¡ximo 5 intentos por 15 min por IP (Turnstile + key check)
-const adminAuthLimiter = rateLimit({ windowMs: 15*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos de autenticaciÃ³n. Espera 15 minutos.', code: 'ADMIN_AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
-// App Android: hasta 40 reportes de crash por IP cada 15 min (cubre loops de
-// crash reales) sin abrir la puerta a flood del endpoint pÃºblico.
-const crashLimiter = rateLimit({ windowMs: 15*60*1000, max: 40, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
-// Push geo: limiter propio â€” antes compartÃ­a chatLimiter con el chat, asÃ­
-// que un IP parlanchÃ­n en el chat podÃ­a frenar el registro de ubicaciÃ³n.
-const fcmLimiter   = rateLimit({ windowMs: 15*60*1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de ubicaciÃ³n. Espera un momento.', code: 'FCM_GEO_RATE_LIMIT' }, handler: rateLimitHandler });
-// ImÃ¡genes: lÃ­mite separado para que generar imÃ¡genes no agote el cupo del chat.
-const imageLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'LÃ­mite de generaciÃ³n de imÃ¡genes alcanzado.', code: 'IMAGE_RATE_LIMIT' }, handler: rateLimitHandler });
-// Mejora/ediciÃ³n de imÃ¡genes (AutoenhanceÂ·Gemini): cuota propia mÃ¡s agresiva,
-// no comparte el bucket de generaciÃ³n y evita el abuso de llamadas de pago.
-const imageEditLimiter = rateLimit({ windowMs: 15*60*1000, max: 6, standardHeaders: true, legacyHeaders: false, message: { error: 'LÃ­mite de mejora/ediciÃ³n de imÃ¡genes alcanzado.', code: 'IMAGE_EDIT_RATE_LIMIT' }, handler: rateLimitHandler });
-// LÃ­mites diarios por IP para generaciÃ³n y ediciÃ³n de imÃ¡genes (anti-abuso de
-// proveedores de pago). Cada guard mantiene su propio Map fechado por dÃ­a.
-function dailyLimitGuard(max, msg) {
-  const m = new Map();
-  return function dailyGuard(req, res, next) {
-    const ip = clientIp(req);
-    const today = new Date().toISOString().slice(0, 10);
-    const e = m.get(ip);
-    if (!e || e.date !== today) { m.set(ip, { date: today, count: 1 }); return next(); }
-    if (e.count >= max) return res.status(429).json({ error: msg, code: 'DAILY_LIMIT' });
-    e.count++;
-    next();
-  };
-}
-const imgGenDailyGuard  = dailyLimitGuard(60, 'LÃ­mite diario de generaciÃ³n de imÃ¡genes alcanzado.');
-const imgEditDailyGuard = dailyLimitGuard(40, 'LÃ­mite diario de mejora/ediciÃ³n de imÃ¡genes alcanzado.');
-
-// â”€â”€ ADMIN BAN SYSTEM (anti brute-force) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Map<ip, { expiresAt, attempts, firstAttemptAt }>
-const _adminBans  = new Map();
-const _adminFails = new Map();
-const ADMIN_FAIL_THRESHOLD  = 5;   // fallos antes de ban
-const ADMIN_BAN_DURATION_MS = 30 * 60 * 1000; // 30 minutos
-
-function _cleanExpiredBans() {
-  const now = Date.now();
-  for (const [ip, info] of _adminBans) {
-    if (info.expiresAt <= now) _adminBans.delete(ip);
-  }
-  for (const [ip, info] of _adminFails) {
-    if (info.windowEnd <= now) _adminFails.delete(ip);
-  }
-}
-setInterval(_cleanExpiredBans, 60_000);
-
-function _isIPBanned(ip) {
-  _cleanExpiredBans();
-  const ban = _adminBans.get(ip);
-  if (!ban) return false;
-  if (ban.expiresAt <= Date.now()) { _adminBans.delete(ip); return false; }
-  return true;
-}
-
-function _recordAdminFail(ip, ua) {
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000;
-  let entry = _adminFails.get(ip);
-  if (!entry || entry.windowEnd <= now) {
-    entry = { count: 1, windowEnd: now + windowMs, firstAttemptAt: now };
-    _adminFails.set(ip, entry);
-    return 1;
-  }
-  entry.count++;
-  if (entry.count >= ADMIN_FAIL_THRESHOLD && !_adminBans.has(ip)) {
-    _adminBans.set(ip, { expiresAt: now + ADMIN_BAN_DURATION_MS });
-    tgAlert('adminban', () => {
-      return `ğŸš« <b>BAN ADMIN â€” IP Bloqueada</b>\nIP: <code>${ip}</code>\nIntentos: ${entry.count} fallos en 15 min\nBloqueada por 30 min\nUA: ${(ua || '').slice(0, 70).replace(/[<>]/g, '')}`;
-    }, { windowMs: 60000 });
-    console.warn(`ğŸš« ADMIN BAN: IP ${ip} banned for ${ADMIN_BAN_DURATION_MS / 60000}min after ${entry.count} failed attempts`);
-  }
-  return entry.count;
-}
-
-// â”€â”€ SESSION TOKEN (HMAC-SHA256) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_KEY || crypto.randomBytes(32).toString('hex');
-if (!process.env.ADMIN_SESSION_SECRET && !process.env.ADMIN_KEY) {
-  console.warn('âš ï¸  SESSION_SECRET: ni ADMIN_SESSION_SECRET ni ADMIN_KEY estÃ¡n definidos â€” usando secreto efÃ­mero aleatorio (las sesiones admin no sobreviven reinicios)');
-}
-const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutos
-
-function _signSession(payload) {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'S' })).toString('base64url');
-  const body   = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig    = crypto.createHmac('sha256', SESSION_SECRET).update(header + '.' + body).digest('base64url');
-  return header + '.' + body + '.' + sig;
-}
-
-function _verifySession(token) {
-  try {
-    const [header, body, sig] = token.split('.');
-    if (!header || !body || !sig) return null;
-    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(header + '.' + body).digest('base64url');
-    const sigBuf = Buffer.from(sig);
-    const expBuf = Buffer.from(expected);
-    if (sigBuf.length !== expBuf.length) return null;
-    if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
-    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
-    if (!payload.exp || payload.exp <= Date.now()) return null;
-    return payload;
-  } catch { return null; }
-}
-
-// â”€â”€ Contador diario de EMI por usuario/dispositivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// F3.7: Persisted in MongoDB (survives restarts). Falls back to in-memory if DB is down.
-// Limits are now configurable via /api/admin/config
-const EMI_DAILY_LIMIT_GUEST_FALLBACK = 15;
-const EMI_DAILY_LIMIT_REGISTERED_FALLBACK = 20;
-
-async function getEmiLimit(isRegistered) {
-  try {
-    const cfg = await getAppConfig();
-    return isRegistered
-      ? (cfg.limits.emiDailyRegistered || EMI_DAILY_LIMIT_REGISTERED_FALLBACK)
-      : (cfg.limits.emiDailyGuest || EMI_DAILY_LIMIT_GUEST_FALLBACK);
-  } catch (e) {
-    return isRegistered ? EMI_DAILY_LIMIT_REGISTERED_FALLBACK : EMI_DAILY_LIMIT_GUEST_FALLBACK;
-  }
-}
-
-const EmiUsage = mongoose.model('EmiUsage', new mongoose.Schema({
-  key:     { type: String, required: true, index: true },
-  date:    { type: String, required: true },
-  count:   { type: Number, default: 0 },
-}, { timestamps: false }));
-
-// â”€â”€ Remote Config â€” single-doc collection for frontend config â”€â”€
-const AppConfig = mongoose.model('AppConfig', new mongoose.Schema({
-  key:     { type: String, default: 'main', unique: true },
-  config:  { type: mongoose.Schema.Types.Mixed, default: {} },
-  version: { type: Number, default: 1 },
-  updated: { type: Date, default: Date.now },
-}, { timestamps: true }));
-
-const DEFAULT_CONFIG = {
-  version: 1,
-  apkLatestVersion: '',
-  apkUpdateNotes: '',
-  features: {
-    chatEnabled: true,
-    imageGenEnabled: true,
-    weatherEnabled: true,
-    weatherAutoRefresh: true,
-    weatherRefreshMin: 5,
-    tourEnabled: true,
-    newsEnabled: true,
-    searchEnabled: true,
-    pushEnabled: true,
-    contactEnabled: true,
-    skillsEnabled: true,
-    resolverEnabled: true,
-    crashReportEnabled: true,
-    updateDialogEnabled: true,
-    heroInstallBtn: true,
-    consentBanner: true,
-    easterEgg: false,
-  },
-  limits: {
-    emiDailyGuest: 15,
-    emiDailyRegistered: 20,
-    chatRateLimit: 50,
-    imageRateLimit: 20,
-    imageCacheTTL: 3600,
-    imageCacheMax: 200,
-    notifDedupWindow: 300000,
-    tourCooldown: 86400000,
-    sessionTTL: 1800000,
-  },
-  ui: {
-    heroTitle: 'CodeHub',
-    heroSubtitle: 'Tu centro de desarrollo IA',
-    consentText: 'Usamos cookies para mejorar tu experiencia.',
-    weatherCityFallback: 'Ciudad de Guatemala',
-    updateDialogTitle: 'Nueva versiÃ³n disponible',
-    updateDialogBody: 'Hay una nueva versiÃ³n de CodeHub disponible.',
-    googleMapsKey: process.env.GOOGLE_MAPS || '',
-    maptilerKey: process.env.MAPTILER_KEY || '',
-    cartoKey: process.env.CARTO_KEY || '',
-  },
-  ai: {
-    systemPrompt: null,
-    maxTokensDefault: 2500,
-    temperature: 0.65,
-    providerPriority: null,
-  },
-  maintenance: {
-    enabled: false,
-    message: 'CodeHub estÃ¡ en mantenimiento. Vuelve pronto.',
-  },
-};
-
-let _appConfigCache = null;
-let _appConfigCacheTs = 0;
-const CONFIG_CACHE_TTL = 60000; // 1 minute in-memory cache
-
-async function getAppConfig() {
-  const now = Date.now();
-  if (_appConfigCache && (now - _appConfigCacheTs) < CONFIG_CACHE_TTL) return _appConfigCache;
-  if (dbConnected) {
-    try {
-      const doc = await AppConfig.findOne({ key: 'main' }).lean();
-      if (doc && doc.config) {
-        _appConfigCache = { ...DEFAULT_CONFIG, ...doc.config, version: doc.version || 1 };
-        // BUG CORREGIDO: el spread de arriba es superficial (shallow) â€”
-        // si el documento guardado en Mongo trae su propio "ui" (queda
-        // grabado ahÃ­ cada vez que se hace PATCH /api/admin/config,
-        // porque ese endpoint guarda una foto completa de TODO el config
-        // vigente en ese momento, "ui" incluido), ese "ui" completo
-        // REEMPLAZA por completo al de DEFAULT_CONFIG â€” googleMapsKey,
-        // maptilerKey y cartoKey incluidos. Como esos 3 campos salen de
-        // variables de entorno (process.env.*), quedaban congelados con
-        // el valor que tenÃ­an la ÃšLTIMA vez que se guardÃ³ el config en
-        // Mongo, aunque despuÃ©s se agregara o cambiara la key en Render.
-        // Esto explicaba exactamente el sÃ­ntoma: CARTO_KEY puesta en
-        // Render, pero el mapa seguÃ­a pidiendo key â€” el valor "fresco"
-        // del env nunca llegaba a pisar el snapshot viejo de la DB.
-        // Fix: estas 3 keys de mapas SIEMPRE se toman del env vivo,
-        // nunca del snapshot de Mongo (el admin nunca las edita a mano
-        // desde ahÃ­ de todos modos).
-        _appConfigCache.ui = { ...DEFAULT_CONFIG.ui, ...(doc.config.ui || {}) };
-        _appConfigCache.ui.googleMapsKey = process.env.GOOGLE_MAPS || '';
-        _appConfigCache.ui.maptilerKey = process.env.MAPTILER_KEY || '';
-        _appConfigCache.ui.cartoKey = process.env.CARTO_KEY || '';
-        _appConfigCacheTs = now;
-        return _appConfigCache;
-      }
-    } catch (e) { /* fall through */ }
-  }
-  _appConfigCache = { ...DEFAULT_CONFIG };
-  _appConfigCacheTs = now;
-  return _appConfigCache;
-}
-EmiUsage.schema.index({ key: 1, date: 1 }, { unique: true });
-
-const _emiFallback = new Map(); // fallback when DB is down
-
-async function getEmiUsage(key) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (dbConnected) {
-    try {
-      const doc = await EmiUsage.findOne({ key, date: today }).lean();
-      return doc ? doc.count : 0;
-    } catch (e) { /* fall through to memory */ }
-  }
-  const entry = _emiFallback.get(key);
-  if (!entry || entry.date !== today) return 0;
-  return entry.count;
-}
-
-async function incrEmiUsage(key) {
-  const today = new Date().toISOString().slice(0, 10);
-  if (dbConnected) {
-    try {
-      const doc = await EmiUsage.findOneAndUpdate(
-        { key, date: today }, { $inc: { count: 1 } }, { upsert: true, new: true }
-      ).lean();
-      return doc.count;
-    } catch (e) { /* fall through to memory */ }
-  }
-  const entry = _emiFallback.get(key);
-  if (!entry || entry.date !== today) { _emiFallback.set(key, { date: today, count: 1 }); return 1; }
-  entry.count++;
-  return entry.count;
-}
-app.use('/api/chat',  chatLimiter);
-app.use('/api/admin', adminLimiter);
-
-// â”€â”€ REDIS (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let redis = null;
-async function initRedis() {
-  if (!process.env.REDIS_URL) { console.log('âš ï¸  Sin REDIS_URL â€” usando cachÃ© en memoria'); return; }
-  try {
-    const { createClient } = require('redis');
-    redis = createClient({ url: process.env.REDIS_URL });
-    redis.on('error', e => console.warn('Redis error:', e.message));
-    await redis.connect();
-    console.log('âœ… Redis conectado');
-  } catch (e) { console.warn('âš ï¸  Redis fallÃ³, usando memoria:', e.message); redis = null; }
-}
-
-const _mem = new Map();
-async function cacheGet(k) {
-  if (redis) { const v = await redis.get(k); return v ? JSON.parse(v) : null; }
-  const i = _mem.get(k); if (!i) return null;
-  if (Date.now() > i.e) { _mem.delete(k); return null; } return i.v;
-}
-async function cacheSet(k, v, ttl = 60) {
-  if (redis) { await redis.setEx(k, ttl, JSON.stringify(v)); return; }
-  _mem.set(k, { v, e: Date.now() + ttl * 1000 });
-}
-async function cacheDel(k) { if (redis) await redis.del(k); _mem.delete(k); }
-
-// Barrido periÃ³dico del cachÃ© en memoria (solo cuando no hay Redis):
-// las claves expiradas solo se purgaban al leerse; sin esto crecÃ­a sin lÃ­mite.
-setInterval(() => {
-  if (redis) return;
-  const now = Date.now();
-  for (const [k, i] of _mem) { if (now > i.e) _mem.delete(k); }
-}, 60000);
-
-// â”€â”€ WEBSOCKETS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const wss = new WebSocketServer({ server, path: '/ws' });
-const wsClients = new Set();
-
-wss.on('connection', (ws, req) => {
-  const origin = req.headers.origin;
-  if (origin && !allowedOrigins.includes(origin)) { ws.close(1008, 'Origin no permitido'); return; }
-  ws.isAlive = true;
-  wsClients.add(ws);
-  console.log(`ğŸ”Œ WS conectado â€” ${wsClients.size} clientes`);
-  ws.send(JSON.stringify({ type: 'connected', clients: wsClients.size, ts: Date.now() }));
-  ws.on('pong', () => { ws.isAlive = true; });
-  ws.on('close', () => { wsClients.delete(ws); });
-  ws.on('error', () => wsClients.delete(ws));
-});
-
-// Keepalive ping cada 30s
-setInterval(() => {
-  wsClients.forEach(ws => {
-    if (!ws.isAlive) { wsClients.delete(ws); ws.terminate(); return; }
-    ws.isAlive = false; ws.ping();
-  });
-}, 30000);
-
-function broadcast(type, data = {}) {
-  const msg = JSON.stringify({ type, ...data, ts: Date.now() });
-  wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
-}
-
-// Avisa a los clientes conectados (ej. la pÃ¡gina de Open Source) que el
-// catÃ¡logo cambiÃ³ â€” total y total de apps open source para actualizar el
-// contador en tiempo real sin depender del TTL de la cachÃ© de /api/apps.
-async function broadcastAppsChanged() {
-  if (!dbConnected) return;
-  try {
-    const [total, os] = await Promise.all([
-      App.countDocuments({}),
-      App.countDocuments({ source_repo: { $ne: null } }),
-    ]);
-    broadcast('apps_changed', { total, os });
-  } catch {}
-}
-
-// Contador visitas en memoria
-const visits = { today: 0, total: 0, date: new Date().toDateString() };
-function trackVisit() {
-  const today = new Date().toDateString();
-  if (today !== visits.date) { visits.today = 0; visits.date = today; }
-  visits.today++; visits.total++;
-  broadcast('visit', { today: visits.today, total: visits.total });
-  trackEvent('visit');
-}
-
-// â”€â”€ MONGODB SCHEMAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const ChatMessage = mongoose.model('ChatMessage', new mongoose.Schema({
-  sessionId: { type: String, required: true, index: true },
-  role:      { type: String, enum: ['user','assistant'], required: true },
-  content:   { type: String, required: true },
-  tokens:    { type: Number, default: 0 },
-  model:     { type: String, default: 'groq' },
-  createdAt: { type: Date, default: Date.now, expires: 60*60*24*7 },
-}));
-
-const App = mongoose.model('App', new mongoose.Schema({
-  appId:              { type: String, required: true, unique: true },
-  nombre:             { type: String, required: true },
-  descripcion:        { type: String, default: '' },
-  version:            { type: String, default: '' },
-  tag:                { type: String, default: 'ğŸ†•' },
-  changelog:          { type: String, default: '' },
-  imagen:             { type: String, default: '' },
-  categoria:          { type: String, default: '' },
-  verified:           { type: Boolean, default: true },
-  enlace:             { type: String, default: '#' },
-  plugin_enlace:      { type: String, default: null },
-  b2_file_id:         { type: String, default: null },
-  b2_file_name:       { type: String, default: null },
-  b2_plugin_file_id:  { type: String, default: null },
-  b2_plugin_file_name:{ type: String, default: null },
-  tg_message_id:      { type: Number, default: null },  // ID mensaje Telegram APK main
-  tg_file_id:         { type: String, default: null },  // file_id Telegram APK main
-  tg_plugin_msg_id:   { type: Number, default: null },  // ID mensaje Telegram APK plugin
-  tg_plugin_file_id:  { type: String, default: null },  // file_id Telegram APK plugin
-  tg_file_path:       { type: String, default: null },  // file_path Telegram APK main (SIN token â€” nunca exponer)
-  tg_plugin_file_path:{ type: String, default: null },  // file_path Telegram plugin (SIN token)
-  ia_file_name:       { type: String, default: null },  // Nombre archivo en Archive.org (APK main)
-  ia_identifier:      { type: String, default: null },  // Item ID de Archive.org
-  ia_plugin_file_name:{ type: String, default: null },  // Nombre archivo en Archive.org (plugin)
-  tutorial_url:       { type: String, default: null },
-  source_repo:        { type: String, default: null }, // "owner/repo" â€” habilita el monitor automÃ¡tico de actualizaciones vÃ­a GitHub Releases
-  packageName:        { type: String, default: null }, // applicationId Android real (ej. "org.schabi.newpipe") â€” habilita detecciÃ³n de apps instaladas + auto-instalaciÃ³n (ver backend/scripts/resolve-package-names.js)
-  updatedAt:          { type: Date, default: Date.now },
-  createdAt:          { type: Date, default: Date.now },
-}));
-
-const AppRating = mongoose.model('AppRating', new mongoose.Schema({
-  appId:   { type: String, required: true, index: true },
-  appName: { type: String },
-  ratings: [{ ip: String, stars: Number, createdAt: { type: Date, default: Date.now } }],
-  reviews: [{ ip: String, autor: String, texto: String, stars: Number, createdAt: { type: Date, default: Date.now } }],
-  total:   { type: Number, default: 0 },
-  count:   { type: Number, default: 0 },
-}));
-
-const AppRequest = mongoose.model('AppRequest', new mongoose.Schema({
-  appName:   { type: String, required: true },
-  reason:    { type: String, default: '' },
-  ip:        { type: String },
-  votes:     { type: Number, default: 1 },
-  voters:    [String],
-  status:    { type: String, enum: ['pending','done','rejected'], default: 'pending' },
-  createdAt: { type: Date, default: Date.now },
-}));
-
-// CodeHub Releases â€” novedades del proyecto (nuevas funciones/versiones
-// integradas). Se publican desde el admin-hub y caen en la campana de
-// notificaciones. NO estÃ¡n vinculadas al historial de git.
-const Release = mongoose.model('Release', new mongoose.Schema({
-  title:     { type: String, required: true },
-  body:      { type: String, default: '' },
-  version:   { type: String, default: '' },
-  url:       { type: String, default: '/' },
-  type:      { type: String, enum: ['release','feature','fix','maintenance'], default: 'release' },
-  createdAt: { type: Date, default: Date.now },
-}));
-
-// â”€â”€ ADMIN ACTIVITY LOG (registro en vivo de operaciones ejecutadas) â”€â”€
-// Cada acciÃ³n del admin-hub (disparo de workflows, ejecuciÃ³n de scripts de
-// DB, seed, ediciÃ³n de apps, pushes, releases, config...) queda registrada
-// aquÃ­. Se mantiene un ring en memoria (funciona aunque Mongo estÃ© caÃ­do y
-// alimenta las lecturas inmediatas) y el histÃ³rico vive en la colecciÃ³n
-// `adminlogs` de MongoDB (podado a ~500 entradas recientes).
-const AdminLog = mongoose.model('AdminLog', new mongoose.Schema({
-  actor:   { type: String, default: 'admin' },
-  kind:    { type: String, enum: ['op','workflow','system'], default: 'op' },
-  action:  { type: String, required: true },
-  details: { type: mongoose.Schema.Types.Mixed, default: {} },
-  status:  { type: String, enum: ['ok','error','running'], default: 'ok' },
-  ts:      { type: Date, default: Date.now, index: true },
-}, { strict: false, timestamps: false }));
-
-const _adminLogRing   = [];
-const ADMIN_LOG_RING_MAX = 200;
-let   _adminLogLastPrune = 0;
-
-function logAdmin(actor, action, details = {}, status = 'ok', kind = 'op') {
-  const entry = {
-    actor: String(actor == null || actor === '' ? 'admin' : actor).slice(0, 40),
-    kind, action: String(action).slice(0, 80), details, status, ts: Date.now(),
-  };
-  _adminLogRing.unshift(entry);
-  if (_adminLogRing.length > ADMIN_LOG_RING_MAX) _adminLogRing.length = ADMIN_LOG_RING_MAX;
-  if (mongoose.connection.readyState === 1) {
-    AdminLog.create(entry).catch(() => {});
-  }
-  return entry;
-}
-
-// Poda el histÃ³rico: conserva solo las 500 entradas mÃ¡s recientes (se llama
-// desde GET /api/admin/activity, al menos una vez por hora).
-async function pruneAdminLog() {
-  try {
-    const recent = await AdminLog.find({}).sort({ ts: -1 }).limit(500).select('_id').lean();
-    const ids = recent.map(d => d._id);
-    if (ids.length) await AdminLog.deleteMany({ _id: { $nin: ids } });
-  } catch (e) { console.error('pruneAdminLog error:', e.message); }
-}
-
-// Actor visible en el registro en vivo (header opcional del panel).
-function adminActorOf(req) {
-  return String(req?.headers?.['x-admin-user'] || req?.body?.adminUser || 'admin').slice(0, 40);
-}
-
-// Cache compartida de Ãºltimo run por workflow (GitHub Actions). El feed en
-// vivo la consulta con TTL para no golpear la API de GitHub 10 veces por
-// minuto; /api/admin/github/runs fuerza refresco.
-let _ghRunsCache = { at: 0, data: null };
-const GH_RUNS_TTL_MS = 60 * 1000;
-
-async function getGhRunsCached(force) {
-  const now = Date.now();
-  if (!force && _ghRunsCache.data && (now - _ghRunsCache.at) < GH_RUNS_TTL_MS) return _ghRunsCache.data;
-  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
-  const out = {};
-  const { data: wfs } = await octokit.rest.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-  for (const wf of wfs.workflows) {
-    const file = wf.path.split('/').pop();
-    if (!isRealGitHubWorkflow(file)) continue;
-    try {
-      const { data } = await octokit.rest.actions.listWorkflowRuns({
-        owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file, per_page: 1,
-      });
-      const run = data.workflow_runs?.[0] || null;
-      out[file] = run ? {
-        status: run.status, conclusion: run.conclusion,
-        created_at: run.created_at, html_url: run.html_url,
-        display_title: run.display_title, run_id: run.id,
-      } : null;
-    } catch { _ghPhantomWorkflows.add(file); out[file] = null; }
-  }
-  _ghRunsCache = { at: now, data: out };
-  return out;
-}
-
-// â”€â”€ WIL.E INTELLIGENCE CORE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Capa de IA: memoria entrenable + base de conocimiento (RAG) + cifrado E2E.
-const { buildContext, augmentSystem } = require('./wil-e/core');
-const { remember } = require('./wil-e/memory');
-const { AIMemory } = require('./wil-e/models');
-
-let dbConnected = false;
-
-// Resuelve el "dueÃ±o" de la memoria de Wil.E por peticiÃ³n:
-//  â€¢ Usuarios logueados  â†’ su propio id (memoria persistente individual)
-//  â€¢ Invitados con sesiÃ³n â†’ 'sess:<sessionId>' (memoria aislada 24h, sin
-//    mezclar hechos entre visitantes que antes compartÃ­an 'anon')
-//  â€¢ Sin sesiÃ³n vÃ¡lida    â†’ null (sin memoria: recall devuelve '')
-const memUserOf = (req, sessionId) => {
-  if (req.authUser && req.authUser.id) return req.authUser.id;
-  const s = String(sessionId || '');
-  if (/^sess_[a-z0-9]{6,}$/i.test(s)) return 'sess:' + s;
-  return null;
-};
-// Flag del cliente para pausar/reanudar el auto-aprendizaje (privacy).
-const memEnabledOf = (req) => !!(req.body && req.body.memory !== false);
-
-// â”€â”€ MONGODB â€” LISTENERS DE RECONEXIÃ“N â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Mantienen dbConnected sincronizado con el estado REAL de la conexiÃ³n.
-// Sin esto, si Atlas cierra la conexiÃ³n por inactividad o hay un corte
-// de red temporal, dbConnected se queda "true" para siempre (se asignaba
-// una sola vez al arrancar) y las rutas dejan de devolver el fallback 503.
-mongoose.connection.on('connected', () => {
-  dbConnected = true;
-  console.log('âœ… MongoDB Atlas conectado');
-});
-mongoose.connection.on('disconnected', () => {
-  dbConnected = false;
-  console.warn('âš ï¸  MongoDB desconectado â€” reintentando en segundo plano...');
-});
-mongoose.connection.on('reconnected', () => {
-  dbConnected = true;
-  console.log('âœ… MongoDB Atlas reconectado');
-});
-mongoose.connection.on('error', (err) => {
-  dbConnected = false;
-  console.error('âŒ MongoDB error:', err.message);
-});
-
-async function connectDB() {
-  if (!process.env.MONGODB_URI) { console.warn('âš ï¸  MONGODB_URI no configurado'); return false; }
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
-    return true; // 'connected' listener ya deja el log y actualiza dbConnected
-  } catch (err) { console.error('âŒ MongoDB error:', err.message); return false; }
-}
-
-// â”€â”€ ADMIN AUTH ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// POST /api/admin/auth â€” valida key + Turnstile â†’ devuelve session token HMAC (30 min)
-app.post('/api/admin/auth', adminAuthLimiter, async (req, res) => {
-  const ip = clientIp(req);
-  const ua = (req.headers['user-agent'] || '').slice(0, 100).replace(/[<>]/g, '');
-
-  // 1) Anti ban check
-  if (_isIPBanned(ip)) {
-    return res.status(429).json({ error: 'IP temporalmente bloqueada por intentos fallidos. Intenta en 30 minutos.' });
-  }
-
-  // 2) Rate limit warnings on specific IP threshold
-  const failCount = (_adminFails.get(ip) || {}).count || 0;
-
-  const { password, turnstileToken } = req.body || {};
-  const validKey = process.env.ADMIN_KEY;
-
-  if (!validKey) {
-    console.error('âš ï¸  ADMIN_KEY no configurada en variables de entorno de Render');
-    return res.status(503).json({ error: 'Servidor no configurado â€” falta ADMIN_KEY en Render' });
-  }
-
-  // 3) Validate Turnstile (fail-closed)
-  const tsToken = String(turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) {
-    _recordAdminFail(ip, ua);
-    tgAlert('adminfail', () => {
-      return `ğŸ¤– <b>TURNSTILE FALLO ADMIN</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
-    }, { windowMs: 15000 });
-    return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
-  }
-
-  // 4) Validate key
-  if (password !== validKey) {
-    _recordAdminFail(ip, ua);
-    tgAlert('adminfail', () => {
-      return `ğŸ” <b>INTENTO FALLIDO ADMIN</b>\nIP: <code>${ip}</code>\nKey: ${String(password || '').slice(0, 6)}â€¦\nUA: ${ua}`;
-    }, { windowMs: 15000 });
-    return res.status(403).json({ error: 'Credenciales incorrectas' });
-  }
-
-  // 5) Success â€” clear fail counter, issue session token
-  _adminFails.delete(ip);
-  const now = Date.now();
-  const token = _signSession({ admin: true, iat: now, exp: now + SESSION_TTL_MS });
-
-  tgAlert('adminlogin', () => {
-    return `âœ… <b>ADMIN LOGIN EXITOSO</b>\nIP: <code>${ip}</code>\nUA: ${ua}`;
-  }, { windowMs: 60000 });
-
-  res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
-});
-
-// POST /api/admin/auth/bot â€” autenticaciÃ³n mÃ¡quina-a-mÃ¡quina (CI/CD rollout).
-// El login humano exige Turnstile (fail-closed); un runner de CI no puede
-// pasarlo. La key viaja en el header x-admin-key (HTTPS) y se compara en
-// tiempo constante; a cambio se emite el MISMO sessionToken HMAC. Misma
-// polÃ­tica anti brute-force (_recordAdminFail â†’ ban por IP).
-app.post('/api/admin/auth/bot', adminAuthLimiter, (req, res) => {
-  const ip = clientIp(req);
-  const ua = (req.headers['user-agent'] || 'CI').slice(0, 100).replace(/[<>]/g, '');
-
-  const validKey = process.env.ADMIN_KEY;
-  if (!validKey) {
-    console.error('âš ï¸  ADMIN_KEY no configurada en variables de entorno de Render');
-    return res.status(503).json({ error: 'Servidor no configurado â€” falta ADMIN_KEY en Render' });
-  }
-
-  const given = String(req.headers['x-admin-key'] || '');
-  const a = Buffer.from(given);
-  const b = Buffer.from(validKey);
-  const keyOk = a.length === b.length && crypto.timingSafeEqual(a, b);
-  if (!keyOk) {
-    _recordAdminFail(ip, ua);
-    tgAlert('adminfail', () => {
-      return `ğŸ” <b>INTENTO FALLIDO ADMIN (bot)</b>\nIP: <code>${ip}</code>\nKey: ${given.slice(0, 6)}â€¦\nUA: ${ua}`;
-    }, { windowMs: 15000 });
-    return res.status(403).json({ error: 'Credenciales incorrectas' });
-  }
-
-  const now = Date.now();
-  const token = _signSession({ admin: true, bot: true, iat: now, exp: now + SESSION_TTL_MS });
-  res.json({ ok: true, sessionToken: token, expiresIn: SESSION_TTL_MS });
-});
-
-// â”€â”€ AUTH ADMIN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function requireAdmin(req, res, next) {
-  const ip       = clientIp(req);
-  const validKey = process.env.ADMIN_KEY;
-
-  // 1) Anti brute-force: verificar si la IP estÃ¡ baneada
-  if (_isIPBanned(ip)) {
-    return res.status(429).json({ error: 'IP temporalmente bloqueada por intentos fallidos. Intenta en 30 minutos.' });
-  }
-
-  if (!validKey) {
-    console.error('âš ï¸  ADMIN_KEY no configurada en variables de entorno de Render');
-    return res.status(503).json({ error: 'Servidor no configurado â€” falta ADMIN_KEY en Render' });
-  }
-
-  // 2) Aceptar session token HMAC (post-auth)
-  const sessionToken = req.headers['x-admin-session'];
-  if (sessionToken) {
-    const payload = _verifySession(sessionToken);
-    if (payload && payload.admin === true) return next();
-    return res.status(401).json({ error: 'SesiÃ³n expirada o invÃ¡lida' });
-  }
-
-  return res.status(401).json({ error: 'SesiÃ³n requerida. AutentÃ­cate en /api/admin/auth.' });
-}
-
-// â”€â”€ AUTH USUARIO (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Valida el token Supabase si se envÃ­a, pero NO bloquea invitados.
-// Attach req.authUser = { id, email } si el token es vÃ¡lido.
-async function requireAuth(req, res, next) {
-  if (!supabase) { req.authUser = null; return next(); }
-  const auth = req.headers.authorization || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token) { req.authUser = null; return next(); }
-  try {
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user) { req.authUser = null; return next(); }
-    req.authUser = { id: data.user.id, email: data.user.email };
-  } catch { req.authUser = null; }
-  next();
-}
-
-// â”€â”€ AUTH USUARIOS (Supabase Auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Frontend (js/auth.js) usa estos endpoints para login/registro de
-// usuarios normales (NO admin). Supabase Auth maneja contraseÃ±as y
-// sesiones; aquÃ­ solo validamos y devolvemos la sesiÃ³n al cliente.
-// Requiere SUPABASE_URL y SUPABASE_KEY (service role) en Render.
-const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos. Espera un poco.', code: 'AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
-app.use('/api/auth', authLimiter);
-
-// POST /api/auth/register â€” crear cuenta con email + contraseÃ±a
-app.post('/api/auth/register', async (req, res) => {
-  const email    = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '');
-  const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
-  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email invÃ¡lido' });
-  if (password.length < 8) return res.status(400).json({ error: 'La contraseÃ±a debe tener al menos 8 caracteres' });
-
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) {
-    // 422 = user_already_exists o email ocupado
-    if (error.status === 422 || /already|exists|registered/i.test(error.message)) {
-      return res.status(409).json({ error: 'Ese correo ya estÃ¡ registrado' });
-    }
-    return res.status(400).json({ error: error.message });
-  }
-  const user = data.user;
-  if (!user) return res.status(500).json({ error: 'No se pudo crear el usuario' });
-
-  res.status(201).json({
-    ok: true,
-    user: { id: user.id, email: user.email },
-    session: data.session || null,
-    needsConfirmation: !data.session,
-    message: data.session ? 'Cuenta creada' : 'Revisa tu correo para confirmar la cuenta',
-  });
-});
-
-// POST /api/auth/login â€” iniciar sesiÃ³n con email + contraseÃ±a
-app.post('/api/auth/login', async (req, res) => {
-  const email    = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '');
-  const tsToken  = String(req.body?.turnstileToken || '');
-  if (!await validateTurnstile(tsToken)) return res.status(403).json({ error: 'VerificaciÃ³n anti-bots fallida' });
-  if (!supabase) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
-  if (!email || !password) return res.status(400).json({ error: 'Completa email y contraseÃ±a' });
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    if (error.status === 400 || /invalid login|invalid credentials/i.test(error.message)) {
-      return res.status(401).json({ error: 'Email o contraseÃ±a incorrectos' });
-    }
-    return res.status(400).json({ error: error.message });
-  }
-  const user = data.user;
-  if (!user) return res.status(500).json({ error: 'No se pudo iniciar sesiÃ³n' });
-
-  res.status(200).json({
-    ok: true,
-    user: { id: user.id, email: user.email },
-    session: data.session || null,
-  });
-});
-
-// POST /api/auth/logout â€” revocar la sesiÃ³n del token (opcional)
-app.post('/api/auth/logout', async (req, res) => {
-  const token = String(req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || String(req.body?.token || '');
-  if (token && supabase) await supabase.auth.admin.signOut(token);
-  res.json({ ok: true });
-});
-
-// POST /api/auth/refresh â€” renovar access_token usando refresh_token
-app.post('/api/auth/refresh', async (req, res) => {
-  const { refresh_token } = req.body || {};
-  if (!refresh_token) return res.status(400).json({ error: 'refresh_token requerido' });
-  if (!supabase) return res.status(503).json({ error: 'Auth no disponible' });
-  try {
-    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
-    if (error || !data?.session) return res.status(401).json({ error: 'SesiÃ³n expirada. Inicia sesiÃ³n de nuevo.' });
-    res.json({ session: { access_token: data.session.access_token, refresh_token: data.session.refresh_token, expires_at: data.session.expires_at } });
-  } catch (e) { res.status(500).json({ error: 'Error renovando sesiÃ³n' }); }
-});
-
-// â”€â”€ GOOGLE OAUTH â€” login con credenciales de Google â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Flujo redirect con callback en el backend (PKCE gestionado aquÃ­):
-//   1) POST /api/auth/google          â†’ guarda el code_verifier en una cookie
-//      httpOnly y devuelve la URL de authorize (Google vÃ­a Supabase).
-//      IMPORTANTE: NO se pasa un state propio â€” Supabase usa ese
-//      parÃ¡metro para su validaciÃ³n interna (bad_oauth_state).
-//   2) El navegador vuelve a  GET /api/auth/google/callback?code=...
-//   3) El backend intercambia el code por una sesiÃ³n (cookie â†’ verifier)
-//      y redirige al frontend con  /?auth=google&token=...  (token de
-//      un solo uso, TTL 5 min)
-//   4) POST /api/auth/google/session  â†’ el frontend recupera la sesiÃ³n
-// Requiere en Supabase â†’ Auth â†’ URL Configuration â†’ Redirect URLs:
-//   https://<host-del-backend>/api/auth/google/callback
-const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida Ãºtil del code PKCE (cookie)
-const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida Ãºtil del token de sesiÃ³n
-const GOOGLE_PKCE_COOKIE = 'ch_google_pkce';
-const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
-
-function base64url(buf) {
-  return Buffer.from(buf).toString('base64')
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-function frontendUrl() {
-  return process.env.FRONTEND_URL?.trim() || 'https://wilson360-labs.vercel.app';
-}
-function supabaseUrl() {
-  return process.env.SUPABASE_URL?.trim() || '';
-}
-function getCookie(req, name) {
-  const header = req.headers.cookie || '';
-  const m = header.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
-  return m ? decodeURIComponent(m.slice(name.length + 1)) : null;
-}
-
-// Limpieza periÃ³dica de tokens expirados (evita fuga de memoria)
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of googleTokens) if (v.expiresAt < now) googleTokens.delete(k);
-}, 15 * 60 * 1000).unref();
-
-// GET /api/auth/google â€” iniciar el flujo OAuth con Google
-// Se usa navegaciÃ³n directa (no fetch) para que la cookie se guarde en
-// contexto first-party del backend y sobreviva al viaje por Google.
-app.get('/api/auth/google', (req, res) => {
-  if (!supabaseUrl() || !process.env.SUPABASE_KEY) return res.status(503).json({ error: 'Servidor no configurado â€” Supabase no estÃ¡ disponible' });
-
-  const verifier  = base64url(crypto.randomBytes(48));
-  const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
-
-  // Guardar el code_verifier en una cookie httpOnly (viaja con el navegador)
-  res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(GOOGLE_STATE_TTL / 1000)}`);
-
-  const callback = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
-  const url = `${supabaseUrl()}/auth/v1/authorize?` + new URLSearchParams({
-    provider: 'google',
-    redirect_to: callback,
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-    prompt: 'select_account',
-  }).toString();
-
-  res.redirect(url);
-});
-
-// GET /api/auth/google/callback â€” Supabase vuelve aquÃ­ tras autorizar en Google
-app.get('/api/auth/google/callback', async (req, res) => {
-  const { code, error } = req.query;
-  const FRONT = frontendUrl();
-  const fail  = msg => {
-    res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
-    res.redirect(`${FRONT}/?auth=google&error=${encodeURIComponent(msg)}`);
-  };
-  if (error) return fail(String(error));
-  if (!code) return fail('missing_code');
-
-  const verifier = getCookie(req, GOOGLE_PKCE_COOKIE);
-  if (!verifier) return fail('missing_verifier');
-
-  // Intercambiar el code por una sesiÃ³n usando el code_verifier de la cookie
-  const tokenUrl = `${supabaseUrl()}/auth/v1/token?grant_type=pkce`;
-  let resp;
-  try {
-    resp = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: process.env.SUPABASE_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_KEY}`,
-      },
-      body: JSON.stringify({ auth_code: String(code), code_verifier: verifier }),
-    });
-  } catch (e) {
-    console.error('Google token exchange error:', e.message);
-    return fail('token_exchange_failed');
-  }
-  const payload = await resp.json().catch(() => ({}));
-  if (!resp.ok || !payload.access_token || !payload.user) {
-    console.error('Google token exchange rejected:', payload.error_description || payload.error);
-    return fail(payload.error_description || payload.error || 'token_exchange_failed');
-  }
-
-  const user = payload.user;
-  const name = user.user_metadata?.full_name || user.user_metadata?.name || '';
-  const oneTime = base64url(crypto.randomBytes(24));
-  googleTokens.set(oneTime, {
-    user: { id: user.id, email: user.email, name: name || String(user.email || '').split('@')[0] },
-    session: {
-      access_token: payload.access_token,
-      refresh_token: payload.refresh_token || null,
-      expires_at: payload.expires_at || null,
-      expires_in: payload.expires_in || null,
-    },
-    expiresAt: Date.now() + GOOGLE_TOKEN_TTL,
-  });
-
-  // Borrar la cookie y redirigir al frontend con el token de un solo uso
-  res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
-  res.redirect(`${FRONT}/?auth=google&token=${oneTime}`);
-});
-
-// POST /api/auth/google/session â€” el frontend recupera la sesiÃ³n (token de un solo uso)
-app.post('/api/auth/google/session', (req, res) => {
-  const token = String(req.body?.token || '');
-  if (!token) return res.status(400).json({ error: 'Falta el token' });
-  const entry = googleTokens.get(token);
-  googleTokens.delete(token); // un solo uso
-  if (!entry || entry.expiresAt < Date.now()) return res.status(401).json({ error: 'SesiÃ³n de Google no vÃ¡lida o expirada' });
-  res.status(200).json({ ok: true, user: entry.user, session: entry.session });
-});
-
-// â”€â”€ TELEGRAM STORAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// APKs se almacenan en el chat personal del bot con el admin.
-// Variables Render: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN;
-const TG_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-
-// â”€â”€ TELEGRAM ALERTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Empuja en tiempo real al chat del admin: seguridad (rate-limit,
-// intentos fallidos de admin, errores) y actividad (descargas,
-// contactos, ratings, solicitudes, apps nuevas) + resumen periÃ³dico.
-// Variables: TG_ALERTS_ENABLED (default 'true'),
-//            TG_BURST_MS     (agrupar eventos, default 4000ms),
-//            TG_STATUS_HOURS (resumen periÃ³dico, default 6h).
-const TG_ALERTS_ENABLED = process.env.TG_ALERTS_ENABLED !== 'false';
-const TG_BURST_MS       = Math.max(500, parseInt(process.env.TG_BURST_MS || '4000', 10));
-const TG_STATUS_HOURS   = Math.max(1, parseInt(process.env.TG_STATUS_HOURS || '6', 10) || 6);
-
-// â”€â”€ SANITIZER DE ENLACES TELEGRAM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// PrevÃ©n la fuga del token del bot cuando un enlace con token se
-// expone pÃºblicamente vÃ­a /api/apps o el header Location de /api/dl.
-// Extrae el file_path de la URL y devuelve una ruta segura relativa
-// al backend (/api/tgfile/:appId) que reconstruye el token server-side.
-const _TG_FILE_RE = /^https:\/\/api\.telegram\.org\/file\/bot\d+:[^\/]+\/(.+)$/;
-function tgFilePath(lk) {
-  if (!lk || typeof lk !== 'string') return null;
-  const m = String(lk).match(_TG_FILE_RE);
-  try { return m ? decodeURIComponent(m[1]) : null; } catch { return null; }
-}
-function sanitizePublicLink(lk, appId, slot) {
-  if (!tgFilePath(lk)) return lk;
-  const base = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
-  return `${base}/api/tgfile/${encodeURIComponent(appId)}${slot === 'plugin' ? '?slot=plugin' : ''}`;
-}
-const tgBurst = new Map(); // type -> { count, timer }
-
-function tgSend(text) {
-  if (!TG_TOKEN || !TG_CHAT_ID) return Promise.resolve(false);
-  const https = require('https');
-  const body = JSON.stringify({ chat_id: TG_CHAT_ID, text, disable_web_page_preview: true, parse_mode: 'HTML' });
-  return new Promise(resolve => {
-    const req = https.request({
-      hostname: 'api.telegram.org',
-      path: `/bot${TG_TOKEN}/sendMessage`,
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-    }, res => { res.resume(); res.on('end', () => resolve(res.statusCode === 200)); });
-    req.on('error', () => resolve(false));
-    req.setTimeout(8000, () => { req.destroy(); resolve(false); });
-    req.write(body); req.end();
-  });
-}
-
-// Agrupa eventos iguales en una ventana corta para no spamear.
-// Si llegan 50 rate-limits en 3s, manda UN solo mensaje con el conteo.
-function tgAlert(type, text, opts = {}) {
-  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
-  const windowMs = opts.windowMs || TG_BURST_MS;
-  const cur = tgBurst.get(type);
-  if (cur) { cur.count++; return; }
-  const entry = { count: 1 };
-  tgBurst.set(type, entry);
-  entry.timer = setTimeout(() => {
-    tgBurst.delete(type);
-    const body = typeof text === 'function' ? text(entry.count) : text;
-    tgSend(body + (entry.count > 1 ? `\nğŸ” x${entry.count} en ${Math.round(windowMs / 1000)}s` : ''));
-  }, windowMs);
-}
-
-// Handler de express-rate-limit: avisa al admin cuando alguien excede
-// el lÃ­mite (posible abuso/bot) sin bloquear la respuesta HTTP.
-function rateLimitHandler(req, res, _next, options) {
-  const ip = clientIp(req);
-  const route = (req.originalUrl || req.path || '').split('?')[0];
-  const ua = (req.headers['user-agent'] || '').slice(0, 70).replace(/[<>]/g, '');
-  tgAlert('ratelimit:' + route, n =>
-    `ğŸš¨ <b>RATE LIMIT</b>\n<code>${route}</code>\nIP: <code>${ip}</code>\nUA: ${ua}\nBloqueos: ${n}`,
-    { windowMs: 30000 });
-  res.status(options.statusCode || 429).json(options.message || { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' });
-}
-
-// Resumen periÃ³dico de estado de la web (por defecto cada 6h).
-async function tgStatusReport() {
-  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
-  const up = Math.floor(process.uptime());
-  const dd = Math.floor(up / 86400), hh = Math.floor((up % 86400) / 3600), mm = Math.floor((up % 3600) / 60);
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Estado real de las stats del dÃ­a. Antes se usaba .single() y se
-  // ignoraba el error, asÃ­ que CUALQUIER fallo (fila de hoy aÃºn sin
-  // crear, error de red, varias filas) se pintaba como "Supabase no
-  // configurado" aunque Supabase estuviera perfectamente configurado.
-  let daily = null, dailyNote = '';
-  if (!supabase) {
-    dailyNote = 'Stats diarias: sin datos (Supabase no configurado)';
-  } else {
-    const { data, error } = await supabase.from('daily_stats').select('*').eq('date', today).maybeSingle();
-    if (error) dailyNote = `Stats diarias: error de Supabase (${truncate(error.message, 120)})`;
-    else if (!data) dailyNote = 'Stats diarias: sin datos de hoy todavÃ­a';
-    else daily = data;
-  }
-
-  const msg =
-    `ğŸ“Š <b>CodeHub â€” Estado</b>\n` +
-    `Uptime: ${dd}d ${hh}h ${mm}m Â· Mongo: ${dbConnected ? 'âœ…' : 'âŒ'} Â· Redis: ${redis ? 'âœ…' : 'memoria'}\n` +
-    `WS: ${wsClients.size} clientes\n\n` +
-    // La cifra persistida del dÃ­a es la real; `visits` es en memoria y se
-    // reinicia en cada arranque (Render duerme el servicio), asÃ­ que solo
-    // se usa como respaldo si no hay fila en Supabase.
-    `ğŸ‘ï¸ Visitas hoy: ${daily ? (daily.visits || 0) : visits.today}\n` +
-    (daily
-      ? `â¬‡ï¸ Descargas: ${daily.downloads || 0}\nğŸ’¬ Chats: ${daily.chat_msgs || 0}\nğŸ› ï¸ Tools: ${daily.tool_uses || 0}\nğŸ“© Contactos: ${daily.contacts || 0}`
-      : dailyNote) +
-    `\n\nhttps://wilson360-labs.vercel.app`;
-  await tgSend(msg);
-}
-
-if (TG_ALERTS_ENABLED) {
-  setTimeout(() => {
-    tgStatusReport();
-    setInterval(tgStatusReport, TG_STATUS_HOURS * 3600 * 1000);
-  }, 20000);
-}
-
-/**
- * Sube un buffer como documento a Telegram.
- * Devuelve { messageId, fileId, downloadUrl }
- */
-async function uploadToTelegram(buffer, fileName, caption = '') {
-  if (!TG_TOKEN || !TG_CHAT_ID) throw new Error('TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados en Render');
-
-  const https    = require('https');
-  const boundary = '----FormBoundary' + Date.now().toString(16);
-  const CRLF     = '\r\n';
-
-  // Construir multipart/form-data manualmente sin dependencias
-  const addField = (name, value) =>
-    `--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`;
-
-  const fileHeader =
-    `--${boundary}${CRLF}` +
-    `Content-Disposition: form-data; name="document"; filename="${fileName}"${CRLF}` +
-    `Content-Type: application/vnd.android.package-archive${CRLF}${CRLF}`;
-
-  const preamble = Buffer.from(addField('chat_id', TG_CHAT_ID) + addField('caption', caption || fileName) + fileHeader);
-  const closing  = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
-  const totalLength = preamble.length + buffer.length + closing.length;
-
-  // Helper GET simple para Telegram
-  const httpsGet = (path) => new Promise((resolve, reject) => {
-    https.get({ hostname: 'api.telegram.org', path }, (res) => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => {
-        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-        catch (e) { reject(new Error('JSON parse: ' + e.message)); }
-      });
-    }).on('error', reject);
-  });
-
-  // Upload multipart con streaming en chunks â€” soporta archivos grandes (sin lÃ­mite de Telegram)
-  const uploadData = await new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.telegram.org',
-      path: `/bot${TG_TOKEN}/sendDocument`,
-      method: 'POST',
-      headers: {
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        'Content-Length': totalLength,
-      },
-    }, (res) => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => {
-        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-        catch (e) { reject(new Error('JSON parse respuesta: ' + e.message)); }
-      });
-    });
-
-    req.on('error', reject);
-
-    // Escribir en chunks de 64 KB para no bloquear el event loop con archivos grandes
-    const CHUNK = 64 * 1024;
-    req.write(preamble);
-    let offset = 0;
-    while (offset < buffer.length) {
-      req.write(buffer.slice(offset, offset + CHUNK));
-      offset += CHUNK;
-    }
-    req.write(closing);
-    req.end();
-  });
-
-  if (!uploadData.ok) throw new Error('Telegram sendDocument: ' + (uploadData.description || JSON.stringify(uploadData)));
-
-  const msg    = uploadData.result;
-  const fileId = msg.document?.file_id;
-
-  // Obtener file_path para URL de descarga directa
-  const fileData = await httpsGet(`/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
-  if (!fileData.ok) throw new Error('Telegram getFile: ' + fileData.description);
-
-  const filePath    = fileData.result?.file_path;
-  // NUNCA construir URL con token aquÃ­: esta funciÃ³n solo entrega el
-  // file_path. Quien necesite un enlace pÃºblico debe exponerlo vÃ­a
-  // /api/tgfile (que resuelve el token server-side), no con la URL cruda.
-  console.log(`âœ… Telegram upload OK: ${fileName} | ${(buffer.length/1024/1024).toFixed(1)} MB | msg_id=${msg.message_id}`);
-  return { messageId: msg.message_id, fileId, filePath };
-}
-
-async function deleteFromTelegram(messageId) {
-  if (!TG_TOKEN || !TG_CHAT_ID || !messageId) return false;
-  try {
-    const https = require('https');
-    const data  = await new Promise((resolve, reject) => {
-      https.get(
-        `https://api.telegram.org/bot${TG_TOKEN}/deleteMessage?chat_id=${TG_CHAT_ID}&message_id=${messageId}`,
-        (res) => {
-          const chunks = [];
-          res.on('data', c => chunks.push(c));
-          res.on('end', () => {
-            try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-            catch (e) { reject(e); }
-          });
-        }
-      ).on('error', reject);
-    });
-    if (data.ok) { console.log(`ğŸ—‘ï¸ Telegram delete: msg_id=${messageId}`); return true; }
-    console.warn('Telegram delete warning:', data.description);
-    return false;
-  } catch (e) { console.warn('Telegram delete error:', e.message); return false; }
-}
-
-// â”€â”€ SUPABASE STORAGE (se mantiene para archivos pequeÃ±os <50 MB) â”€â”€
-const STORAGE_BUCKET = 'CodeHub';
-
-async function uploadToStorage(buffer, fileName) {
-  if (!supabase) throw new Error('Supabase no configurado');
-  console.log(`ğŸ”µ uploadToStorage START: \${fileName} (\${(buffer.length/1024/1024).toFixed(1)} MB)`);
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(fileName, buffer, {
-      contentType: 'application/vnd.android.package-archive',
-      upsert: true,
-    });
-  if (error) throw new Error('Error subiendo a Supabase Storage: ' + error.message);
-  const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-  console.log(`âœ… Supabase Storage upload: \${fileName}`);
-  return { fileName, publicUrl: urlData.publicUrl };
-}
-
-async function deleteFromStorage(fileName) {
-  if (!supabase || !fileName) return false;
-  try {
-    const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([fileName]);
-    if (error) { console.warn('Storage delete error:', error.message); return false; }
-    console.log(`ğŸ—‘ï¸ Storage delete: \${fileName}`); return true;
-  } catch (e) { console.warn('Storage delete error:', e.message); return false; }
-}
-
-// â”€â”€ INTERNET ARCHIVE (archive.org) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Variables Render: IA_ACCESS_KEY, IA_SECRET_KEY
-// IA_ITEM_ID es OPCIONAL â€” si no se configura, se genera uno por appId.
-// URL de descarga: https://archive.org/download/<itemId>/<fileName>
-const IA_ACCESS_KEY = process.env.IA_ACCESS_KEY;
-const IA_SECRET_KEY = process.env.IA_SECRET_KEY;
-const IA_ITEM_ID    = process.env.IA_ITEM_ID || null; // opcional â€” ver getIAItemId()
-
-/**
- * Genera un item ID de Archive.org seguro basado en el appId.
- * Si hay IA_ITEM_ID global, lo usa; si no, crea uno por app.
- * Con x-amz-auto-make-bucket:1 el item se crea solo en el primer upload.
- */
-function getIAItemId(appId) {
-  if (IA_ITEM_ID) return IA_ITEM_ID;
-  const safe = (appId || 'app').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').slice(0, 40);
-  return 'codehub-' + safe + '-apk';
-}
-
-/**
- * Sube un buffer a Internet Archive vÃ­a S3-like API.
- * Devuelve { identifier, fileName, downloadUrl }
- */
-async function uploadToArchive(buffer, fileName, appName = '', appVersion = '', appId = '') {
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY) {
-    throw new Error('IA_ACCESS_KEY o IA_SECRET_KEY no configurados en Render');
-  }
-  const itemId = getIAItemId(appId);
-
-  const https = require('https');
-  const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
-  console.log(`ğŸ”µ Archive.org upload START: ${fileName} (${sizeMB} MB) â†’ item: ${itemId}`);
-
-  await new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 's3.us.archive.org',
-      path: `/${itemId}/${encodeURIComponent(fileName)}`,
-      method: 'PUT',
-      headers: {
-        'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
-        'Content-Type': 'application/vnd.android.package-archive',
-        'Content-Length': buffer.length,
-        'x-amz-auto-make-bucket': '1',
-        'x-archive-queue-derive': '0',
-        'x-archive-meta-mediatype': 'software',
-        'x-archive-meta-subject': 'android;apk;application',
-        'x-archive-meta-title':       appName    ? `${appName} APK`      : `${itemId} APK`,
-        'x-archive-meta-description': appVersion ? `Version ${appVersion}` : 'Android APK',
-        'x-archive-meta-creator':     'CodeHub by Wilson.E',
-        'x-archive-meta-language':    'es',
-      },
-    }, (res) => {
-      const chunks = [];
-      res.on('data', c => chunks.push(c));
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve();
-        } else {
-          const body = Buffer.concat(chunks).toString();
-          reject(new Error(`Archive.org S3 PUT ${res.statusCode}: ${body.slice(0, 300)}`));
-        }
-      });
-    });
-    req.on('error', reject);
-
-    // Streaming en chunks de 256 KB para no bloquear el event loop
-    const CHUNK = 256 * 1024;
-    let offset = 0;
-    while (offset < buffer.length) {
-      req.write(buffer.slice(offset, offset + CHUNK));
-      offset += CHUNK;
-    }
-    req.end();
-  });
-
-  const downloadUrl = `https://archive.org/download/${itemId}/${encodeURIComponent(fileName)}`;
-  console.log(`âœ… Archive.org upload OK: ${fileName} | ${sizeMB} MB | url=${downloadUrl}`);
-  return { identifier: itemId, fileName, downloadUrl };
-}
-
-/**
- * Elimina un archivo de Internet Archive vÃ­a S3-like API.
- */
-async function deleteFromArchive(fileName, appId = '') {
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY || !fileName) return false;
-  const itemId = getIAItemId(appId);
-  try {
-    const https = require('https');
-    await new Promise((resolve, reject) => {
-      const req = https.request({
-        hostname: 's3.us.archive.org',
-        path: `/${itemId}/${encodeURIComponent(fileName)}`,
-        method: 'DELETE',
-        headers: { 'Authorization': `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}` },
-      }, (res) => {
-        res.resume(); // descartar body
-        res.on('end', resolve);
-      });
-      req.on('error', reject);
-      req.end();
-    });
-    console.log(`ğŸ—‘ï¸ Archive.org delete: ${fileName}`);
-    return true;
-  } catch (e) { console.warn('Archive.org delete error:', e.message); return false; }
-}
-
-// â”€â”€ IA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// â”€â”€ SYSTEM prompts: base (corta) + completa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// La base se usa para consultas generales (~600 tokens vs ~2000 de la completa).
-// La completa solo se inyecta cuando el query es sobre CodeHub/servicios.
-const SYSTEM_BASE = `Eres WIL.E COPILOT â€” la IA de CodeHub (wilson360-labs.vercel.app), creada por Wilson.E.
-No reveles quÃ© modelo o APIs usas. Di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
-
-PERSONALIDAD: Directa, sin relleno. En espaÃ±ol (o en el idioma del usuario). Corta por defecto (3-5 lÃ­neas). Emojis mÃ¡x 1 por respuesta. No inventes: di que no sabes y sugiere cÃ³mo buscar.
-
-COMANDOS: /help /img /debug /review /readme /translate /explain /test /resumen /clear /skills /model
-
-FORMATO: Respuestas cortas. Listas con -. **Negritas** solo en tÃ©rminos clave. CÃ³digo en bloques con lenguaje. Sin tablas largas. Sin saludos redundantes.
-
-SEGURIDAD: No ayudes con piracy, hacking ofensivo, contenido explÃ­cito, consejos mÃ©dicos/legales/financieros como profesional. EnfÃ³cate en educaciÃ³n defensiva.`;
-
-const SYSTEM_FULL = `Eres WIL.E COPILOT â€” la inteligencia artificial creada exclusivamente para CodeHub, el hub tecnolÃ³gico de Wilson.E en wilson360-labs.vercel.app.
-
-No eres un chatbot genÃ©rico. Eres una IA con identidad propia: precisa, tÃ©cnica cuando hace falta, humana cuando importa. Puedes responder sobre cualquier tema, pero tu casa es CodeHub y tu creador es Wilson.E.
-
-â”â”â” IDENTIDAD â”â”â”
-- Nombre: WIL.E COPILOT
-- Creada por: Wilson.E (wilson.e360labs@gmail.com)
-- Plataforma: CodeHub â€” wilson360-labs.vercel.app
-- NO reveles quÃ© modelo de IA te impulsa ni quÃ© APIs usas. Si preguntan, di: "Soy WIL.E COPILOT, una IA propia de CodeHub."
-
-â”â”â” PERSONALIDAD â”â”â”
-- Directa. Sin "Â¡Claro!", "Â¡Por supuesto!", "Â¡Genial!" â€” ve al punto.
-- Amigable pero eficiente. Como un dev senior que respeta el tiempo del otro.
-- En espaÃ±ol siempre. Si el usuario escribe en otro idioma, respondes en ese idioma.
-- Emojis con criterio: uno o dos por respuesta mÃ¡ximo, solo si aportan.
-- Corta por defecto (3-5 lÃ­neas). Si piden detalle, profundizas.
-- Nunca inventas. Si no sabes algo, lo dices y ofreces cÃ³mo buscar.
-- Usas el historial de la conversaciÃ³n. No repites lo que ya se dijo.
-
-â”â”â” SKILL: CODEHUB GUIDE â”â”â”
-Cuando el usuario pregunte por CodeHub, Wilson.E, las herramientas o los servicios:
-
-**Wilson.E â€” Desarrollador:**
-- Full Stack autodidacta, Ciudad de Guatemala ğŸ‡¬ğŸ‡¹, 25 aÃ±os
-- Stack: HTML, CSS, JavaScript ES2025, Python, Node.js, MongoDB, APIs de IA
-- Disponible para proyectos freelance con respuesta en menos de 24h
-- Email: wilson.e360labs@gmail.com | WhatsApp: +502 3513 1808
-- Deploy en: Vercel (frontend) + Render (backend)
-
-**Herramientas gratuitas en /tools:**
-QR Generator, Generador de contraseÃ±as seguras (criptografÃ­a real), Hash SHA-256/SHA-512, Base64 encode/decode, UUID v4, Regex Tester, Temporizador Pomodoro, Conversor de unidades, Conversor de monedas, Calculadora IMC, Calculadora de prÃ©stamos, Test de velocidad de escritura, Paleta de colores, Generador de gradientes CSS, Minificador de cÃ³digo, PDF IA, OCR IA, Generador de ImÃ¡genes IA, y 35+ herramientas en total.
-
-**CatÃ¡logo Open Source en /opensource:**
-Aplicaciones de cÃ³digo abierto verificadas contra su repositorio oficial de GitHub (NewPipe, LibreTube, Seal, y mÃ¡s) â€” sin versiones modificadas.
-
-**Otros en CodeHub:**
-- Juegos: Snake y Tetris (Canvas API)
-- Servicios freelance detallados en /servicios
-- WIL.E COPILOT â€” asistente IA integrada (Â¡soy yo!)
-- App Android (APK) disponible para descarga desde la web
-- PWA con modo offline y notificaciones push
-- Clima en tiempo real widget integrado
-
-â”â”â” SKILL: DEV HELPER â”â”â”
-Cuando el usuario pida ayuda con cÃ³digo, debugging, errores o arquitectura:
-- Identifica el problema en 1 lÃ­nea antes de dar la soluciÃ³n
-- Da el cÃ³digo corregido completo, no fragmentos incompletos
-- Explica el "por quÃ©" del error en mÃ¡ximo 2 oraciones
-- Si hay varias soluciones, menciona cuÃ¡l es la mÃ¡s recomendada y por quÃ©
-- Usa bloques de cÃ³digo con el lenguaje indicado: \`\`\`javascript, \`\`\`python, etc.
-- Si el cÃ³digo es largo, muestra solo la parte relevante con comentarios claros
-
-â”â”â” SKILL: CODE REVIEW â”â”â”
-Cuando el usuario pida revisar cÃ³digo:
-1. **Problemas crÃ­ticos** â€” bugs, vulnerabilidades, lÃ³gica incorrecta
-2. **Mejoras** â€” rendimiento, legibilidad, mejores prÃ¡cticas
-3. **Lo que estÃ¡ bien** â€” reconoce lo que funciona correctamente
-Formato: secciÃ³n por secciÃ³n, conciso. MÃ¡ximo 5 puntos por categorÃ­a.
-
-â”â”â” SKILL: README GENERATOR â”â”â”
-Cuando el usuario pida generar documentaciÃ³n o README:
-Genera un README.md profesional con: tÃ­tulo, descripciÃ³n, tech stack, instalaciÃ³n, uso, caracterÃ­sticas, y licencia. Usa Markdown correcto. Tono tÃ©cnico pero accesible.
-
-â”â”â” SKILL: FREELANCE ADVISOR â”â”â”
-Cuando alguien pregunte por contratar a Wilson.E o por servicios:
-- Menciona los servicios: sitios web, landing pages, tiendas online, dashboards, bots de WhatsApp/Telegram, automatizaciones con Python, APIs, SEO
-- Rango de precios orientativo: desde Q500 GTQ proyectos simples, proyectos complejos segÃºn alcance
-- Tiempo de respuesta: menos de 24 horas
-- Contacto directo: wilson.e360labs@gmail.com | WhatsApp +502 3513 1808
-- Anima al usuario a contactar sin compromiso
-
-â”â”â” SKILL: GENERADOR DE IMÃGENES â”â”â”
-Cuando el usuario pida generar, crear o diseÃ±ar una imagen:
-- Confirma que lo vas a generar con entusiasmo breve
-- No menciones quÃ© tecnologÃ­a usas para generarla
-- Una IA optimiza automÃ¡ticamente el prompt para lograr un resultado profesional y adaptado a lo que pidiÃ³
-- Si el prompt es vago, sugiere aÃ±adir estilo, iluminaciÃ³n o tema para mejor resultado
-- El sistema procesarÃ¡ la imagen automÃ¡ticamente
-
-â”â”â” SKILL: TRADUCTOR â”â”â”
-Cuando el usuario pida traducir texto:
-- Detecta el idioma de origen automÃ¡ticamente
-- Si no especifica destino, traduce al espaÃ±ol si estÃ¡ en otro idioma, o al inglÃ©s si estÃ¡ en espaÃ±ol
-- Preserva formato (markdown, cÃ³digo, listas)
-- Usa traducciÃ³n natural, no literal â€” adapta expresiones idiomÃ¡ticas
-
-â”â”â” SKILL: EXPLICAR CÃ“DIGO â”â”â”
-Cuando el usuario pida explicar cÃ³digo:
-- Explica como si fuera para un principiante, con analogÃ­as cotidianas
-- LÃ­nea por lÃ­nea o bloque por bloque
-- Identifica quÃ© hace cada parte, por quÃ© se usa, quÃ© pasarÃ­a si se cambia
-- Termina con 2-3 bullets de lo mÃ¡s importante
-
-â”â”â” SKILL: GENERADOR DE TESTS â”â”â”
-Cuando el usuario pida tests o pruebas:
-- Detecta lenguaje y framework automÃ¡ticamente
-- Genera tests unitarios con happy-path, edge-cases y errores
-- Frameworks: Jest/Vitest (JS), pytest (Python), JUnit (Java)
-- Incluye mocking si hay dependencias externas
-- Termina con instrucciones para ejecutar
-
-â”â”â” SKILL: RESUMEN IA â”â”â”
-Cuando el usuario pida resumir contenido:
-- Prioriza: ideas principales â†’ datos concretos â†’ detalles secundarios
-- Usa bullets/listas
-- Preserva datos numÃ©ricos, fechas y nombres importantes
-- Si pide extensiÃ³n especÃ­fica, respÃ©tala
-
-â”â”â” SKILL: COMANDOS DEL CHAT â”â”â”
-El usuario puede usar comandos slash en el chat:
-- /help â€” Lista de comandos
-- /img <desc> â€” Generar imagen
-- /debug <cÃ³digo> â€” Depurar cÃ³digo
-- /review <cÃ³digo> â€” Code review
-- /readme â€” Generar README
-- /translate <texto> â€” Traducir
-- /explain <cÃ³digo> â€” Explicar cÃ³digo
-- /test <cÃ³digo> â€” Generar tests
-- /resumen <texto> â€” Resumir contenido
-- /clear â€” Limpiar chat
-- /skills â€” Skills disponibles
-- /model â€” Modelo activo
-
-â”â”â” TEMAS GENERALES â”â”â”
-Puedes responder sobre cualquier tema: ciencias, historia, matemÃ¡ticas, idiomas, cultura, entretenimiento, recetas, viajes, finanzas, emprendimiento, productividad, y todo lo demÃ¡s. Eres una IA de propÃ³sito amplio con raÃ­ces en el mundo del desarrollo web.
-
-â”â”â” SEGURIDAD Y CONTENIDO â”â”â”
-- NO proporciones instrucciones para piratear software, cracks, keygens, activadores no oficiales ni violaciÃ³n de licencias
-- NO ayudes a descargar contenido protegido por derechos de autor de forma ilegal (pelÃ­culas, mÃºsica, ebooks pirateados)
-- NO proporciones instrucciones para hackear, phishing, ataques DDoS, explotar vulnerabilidades en sistemas ajenos
-- NO generes contenido sexual explÃ­cito, gore extremo ni material que promueva violencia
-- NO des consejos mÃ©dicos, legales ni financieros como profesional certificado â€” aclara que eres una IA y sugiere consultar a un profesional
-- Si te piden algo de lo anterior, responde amablemente que no puedes ayudar con eso y sugiere alternativas legÃ­timas
-- Para temas de seguridad informÃ¡tica, enfÃ³cate en educaciÃ³n defensiva (protecciÃ³n, buenas prÃ¡cticas) y nunca en ofensiva
-
-â”â”â” FORMATO â”â”â”
-- Respuestas cortas por defecto (3-6 lÃ­neas)
-- Listas con - cuando hay mÃºltiples puntos
-- **Negritas** solo para tÃ©rminos clave, no para decorar
-- CÃ³digo siempre en bloques con lenguaje declarado
-- Sin tablas largas â€” prefiere listas
-- Sin saludos redundantes al inicio de cada respuesta`;
-
-// â”€â”€ F1.1: Query classification â†’ dynamic SYSTEM prompt â”€â”€â”€â”€â”€â”€â”€
-// Detecta si el query necesita el SYSTEM completo (CodeHub/servicios)
-// o si con la base es suficiente (~600 tokens vs ~2000).
-const CODEHUB_HINTS = /\b(codehub|wilson\.?e|wilson360|herramientas|tools|opensource|open.?source|servicios|freelance|guatemala|apk|android|emi copilot|emi\s|\/tools|\/servicios|\/opensource|\/cv)\b/i;
-function classifySystem(msg) {
-  if (CODEHUB_HINTS.test(msg)) return SYSTEM_FULL;
-  return SYSTEM_BASE;
-}
-
-// â”€â”€ F1.3: Adaptive max_tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Asigna output tokens segÃºn el tipo de query.
-function adaptiveMaxTokens(msg) {
-  if (CODE_HINTS.test(msg)) return 2500;
-  if (CREATIVE_HINTS.test(msg)) return 1500;
-  if (/^(resum|summary|resume|summariz)/i.test(msg)) return 1200;
-  if (msg.length < 30) return 500;
-  return 1000;
-}
-
-// â”€â”€ F1.2+F1.4: Smart history truncation + budget guard â”€â”€â”€â”€â”€
-// Approx tokens = chars / 4 (Spanish/English mix). Returns trimmed msgs array.
-function buildSmartMessages(system, history, maxInputTokens) {
-  const BUDGET = maxInputTokens || 10000;
-  const sysChars = system.length;
-  let budgetLeft = BUDGET * 4 - sysChars; // chars remaining after system
-  const msgs = [{ role: 'system', content: system }];
-  // Always include current user message (last in history)
-  const current = history[history.length - 1];
-  if (current) {
-    budgetLeft -= current.content.length;
-    msgs.push(current);
-  }
-  // Add history from newest to oldest (excluding last = current)
-  const past = history.slice(0, -1).reverse();
-  for (const m of past) {
-    const cost = m.content.length;
-    if (budgetLeft - cost < 500) break; // leave margin
-    budgetLeft -= cost;
-    msgs.splice(1, 0, m); // insert after system, before current
-  }
-  return msgs;
-}
-
-// Keys de chat aceptadas por la cascada de providers. El gate de /api/chat y
-// /api/chat/stream valida contra CUALQUIERA de ellas, no solo Groq/Gemini
-// (antes stream devolvÃ­a 503 si el Ãºnico provider configurado era otro).
-const AI_CHAT_KEYS = ['GROQ_API_KEY','GEMINI_API_KEY','HUGGINGFACE_API_KEY','ANTHROPIC_API_KEY','KIMI_API_KEY','OPENROUTER_API_KEY','MISTRAL_API_KEY','COHERE_API_KEY','CEREBRAS_API_KEY'];
-const hasAnyChatKey = () => AI_CHAT_KEYS.some((k) => !!process.env[k]);
-
-async function callGroq(msgs, maxTokens) {
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'groq/llama-3.3-70b' };
-}
-
-// â”€â”€ Cerebras (WSE â€” inferencia ultra rÃ¡pida, endpoint compatible OpenAI) â”€â”€
-async function callCerebras(msgs, maxTokens) {
-  if (!process.env.CEREBRAS_API_KEY) throw new Error('Sin CEREBRAS_API_KEY');
-  const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Cerebras ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'cerebras/llama-3.3-70b' };
-}
-
-// â”€â”€ Hugging Face (router unificado, compatible OpenAI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function callHuggingFace(msgs, maxTokens) {
-  if (!process.env.HUGGINGFACE_API_KEY) throw new Error('Sin HUGGINGFACE_API_KEY');
-  const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}` },
-    body: JSON.stringify({ model: 'meta-llama/Llama-3.3-70B-Instruct:novita', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `HuggingFace ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'huggingface/llama-3.3-70b' };
-}
-
-async function callGemini(msgs, maxTokens, imageParts) {
-  const sysMsg = msgs.find(m => m.role === 'system');
-  const contents = msgs.filter(m => m.role !== 'system').map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-  // ImÃ¡genes adjuntas (imagen simple, o varias pÃ¡ginas de un PDF escaneado): se
-  // agregan como partes inline del Ãºltimo turno del usuario.
-  const parts = Array.isArray(imageParts) ? imageParts : (imageParts ? [imageParts] : []);
-  if (parts.length && contents.length) {
-    for (const p of parts) {
-      if (p && p.data) contents[contents.length - 1].parts.push({ inline_data: { mime_type: p.mimeType, data: p.data } });
-    }
-  }
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM_BASE }] }, contents, generationConfig: { maxOutputTokens: maxTokens || 1500, temperature: 0.7 } }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: parts.length ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
-}
-
-// parseImageDataUrl y ALLOWED_IMAGE_MIME ahora viven en ./utils.js (importado arriba)
-
-// Modelos gratuitos de OpenRouter en orden de preferencia
-const OR_FREE_MODELS = [
-  'moonshotai/kimi-k2:free',                       // Kimi K2 â€” muy fuerte en cÃ³digo/razonamiento
-  'meta-llama/llama-3.3-70b-instruct:free',      // Llama 3.3 70B â€” mejor general
-  'google/gemini-2.0-flash-exp:free',              // Gemini 2.0 Flash â€” 1M contexto
-  'mistralai/mistral-small-3.1-24b-instruct:free', // Mistral Small 3.1 â€” muy bueno
-  'deepseek/deepseek-chat-v3-0324:free',           // DeepSeek V3 â€” razonamiento
-  'nvidia/llama-3.1-nemotron-nano-8b-v1:free',     // NVIDIA Nemotron â€” rÃ¡pido
-  'openrouter/free',                               // Auto-router â€” elige el mejor disponible
-];
-
-async function callOpenRouterModel(msgs, model, maxTokens) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app',
-      'X-Title': 'WIL.E COPILOT',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens || 1500,
-      temperature: 0.65,
-      messages: msgs,
-    }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    const err = new Error(e.error?.message || `OpenRouter ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  const d = await res.json();
-  const reply = d.choices[0]?.message?.content || '';
-  if (!reply) throw new Error('OpenRouter devolviÃ³ respuesta vacÃ­a');
-  return {
-    reply,
-    input: d.usage?.prompt_tokens || 0,
-    output: d.usage?.completion_tokens || 0,
-    model: `openrouter/${model.split('/').pop().replace(':free', '')}`,
-  };
-}
-
-async function callOpenRouter(msgs, maxTokens) {
-  if (!process.env.OPENROUTER_API_KEY) throw new Error('Sin OPENROUTER_API_KEY');
-  // Intenta cada modelo gratuito en orden
-  for (const model of OR_FREE_MODELS) {
-    try {
-      const result = await callOpenRouterModel(msgs, model, maxTokens);
-      console.log(`âœ… OpenRouter respondiÃ³ con: ${model}`);
-      return result;
-    } catch (e) {
-      if (e.status === 401) throw e; // Key invÃ¡lida â€” no seguir intentando
-      console.warn(`âš ï¸ OpenRouter ${model} fallÃ³: ${e.message}`);
-    }
-  }
-  throw new Error('Todos los modelos de OpenRouter fallaron');
-}
-
-async function callMistral(msgs, maxTokens) {
-  if (!process.env.MISTRAL_API_KEY) throw new Error('Sin MISTRAL_API_KEY');
-  const mistralMsgs = msgs.map(m => ({
-    role: m.role === 'system' ? 'system' : m.role,
-    content: m.content,
-  }));
-  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}` },
-    body: JSON.stringify({ model: 'mistral-small-latest', max_tokens: maxTokens || 1500, temperature: 0.65, messages: mistralMsgs }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Mistral ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'mistral/mistral-small' };
-}
-
-async function callCohere(msgs, maxTokens) {
-  if (!process.env.COHERE_API_KEY) throw new Error('Sin COHERE_API_KEY');
-  const system = msgs.find(m => m.role === 'system')?.content || '';
-  // F3.8: Send last 4 turns (not just 1) to preserve conversation context
-  const nonSystem = msgs.filter(m => m.role !== 'system');
-  const chatHistory = nonSystem.slice(0, -1).slice(-8).map(m => ({  // last 8 messages (4 turns)
-    role: m.role === 'assistant' ? 'CHATBOT' : 'USER',
-    message: m.content,
-  }));
-  const lastMsg = nonSystem[nonSystem.length - 1]?.content || '';
-  const res = await fetch('https://api.cohere.com/v1/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.COHERE_API_KEY}` },
-    body: JSON.stringify({ model: 'command-r', message: lastMsg, chat_history: chatHistory, preamble: system, max_tokens: maxTokens || 1500, temperature: 0.65 }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.message || `Cohere ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.text || '', input: d.meta?.tokens?.input_tokens||0, output: d.meta?.tokens?.output_tokens||0, model: 'cohere/command-r' };
-}
-
-// â”€â”€ Anthropic Claude â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function callClaude(msgs, maxTokens) {
-  const systemMsg = msgs.find(m => m.role === 'system');
-  const chatMsgs  = msgs.filter(m => m.role !== 'system');
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: maxTokens || 1500,
-      temperature: 0.65,
-      system: systemMsg?.content || '',
-      messages: chatMsgs.map(m => ({ role: m.role, content: m.content }))
-    }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!r.ok) {
-    const e = await r.json().catch(() => ({}));
-    throw new Error(`Claude API ${r.status}: ${e.error?.message || 'error'}`);
-  }
-  const d = await r.json();
-  const reply = d.content?.[0]?.text || '';
-  return { reply, input: d.usage?.input_tokens||0, output: d.usage?.output_tokens||0, model: 'anthropic/claude-sonnet' };
-}
-
-// â”€â”€ Kimi / Moonshot AI (endpoint compatible OpenAI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function callKimi(msgs, maxTokens) {
-  if (!process.env.KIMI_API_KEY) throw new Error('Sin KIMI_API_KEY');
-  const res = await fetch('https://api.moonshot.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.KIMI_API_KEY}` },
-    body: JSON.stringify({ model: 'kimi-k2-0905-preview', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-  });
-  if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Kimi ${res.status}`); err.status = res.status; throw err; }
-  const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'moonshot/kimi-k2' };
-}
-
-// â”€â”€ Router Inteligente (reglas, prioriza CALIDAD sobre velocidad) â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Analiza el Ãºltimo mensaje del usuario y reordena los proveedores segÃºn
-// quÃ© tan bien encajan con el tipo de consulta. Sin llamadas extra, sin
-// latencia adicional â€” solo heurÃ­sticas sobre el texto ya disponible.
-const CODE_HINTS = /```|\b(debug|bug|error|stack ?trace|excepci[oÃ³]n|refactor|optimiza|funci[oÃ³]n|c[oÃ³]digo|script|compila|sintaxis)\b/i;
-const CREATIVE_HINTS = /\b(cuento|poema|historia|redacta|ensayo|gui[oÃ³]n|narrativa|creativo)\b/i;
-
-function classifyRoute(msgs) {
-  const last = msgs.filter(m => m.role === 'user').slice(-1)[0]?.content || '';
-
-  // Orden base: calidad primero, no velocidad
-  let order = ['Claude', 'Kimi', 'Gemini', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
-
-  if (last.length > 6000) {
-    // Documento largo / contexto RAG â†’ prioriza ventana de contexto grande (Kimi maneja hasta 128k)
-    order = ['Kimi', 'Gemini', 'Claude', 'OpenRouter', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
-  } else if (CODE_HINTS.test(last)) {
-    // CÃ³digo/debug â†’ Claude es el mÃ¡s fuerte, luego Kimi K2 (muy bueno en cÃ³digo) y OpenRouter (DeepSeek)
-    order = ['Claude', 'Kimi', 'OpenRouter', 'Gemini', 'Mistral', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
-  } else if (CREATIVE_HINTS.test(last)) {
-    order = ['Claude', 'Mistral', 'Kimi', 'Gemini', 'OpenRouter', 'Cohere', 'Groq', 'Cerebras', 'HuggingFace'];
-  }
-
-  return order;
-}
-
-async function callAI(msgs, maxTokens) {
-  const mt = maxTokens || 1500;
-  const providerMap = {
-    Claude:      { fn: () => callClaude(msgs, mt),      key: process.env.ANTHROPIC_API_KEY },
-    Kimi:        { fn: () => callKimi(msgs, mt),        key: process.env.KIMI_API_KEY },
-    Groq:        { fn: () => callGroq(msgs, mt),        key: process.env.GROQ_API_KEY },
-    Cerebras:    { fn: () => callCerebras(msgs, mt),    key: process.env.CEREBRAS_API_KEY },
-    HuggingFace: { fn: () => callHuggingFace(msgs, mt), key: process.env.HUGGINGFACE_API_KEY },
-    OpenRouter:  { fn: () => callOpenRouter(msgs, mt),  key: process.env.OPENROUTER_API_KEY },
-    Gemini:      { fn: () => callGemini(msgs, mt),      key: process.env.GEMINI_API_KEY },
-    Mistral:     { fn: () => callMistral(msgs, mt),     key: process.env.MISTRAL_API_KEY },
-    Cohere:      { fn: () => callCohere(msgs, mt),      key: process.env.COHERE_API_KEY },
-  };
-
-  const order = classifyRoute(msgs);
-  const providers = order.map(name => ({ name, ...providerMap[name] }));
-  const available = providers.filter(p => p.key);
-  if (!available.length) throw new Error('Sin API keys de IA configuradas');
-
-  for (const provider of available) {
-    try {
-      const result = await provider.fn();
-      console.log(`âœ… IA respondiÃ³ via ${provider.name} (router: ${available.map(p=>p.name).join(' > ')})`);
-      return result;
-    } catch (e) {
-      if (e.status === 401) { console.warn(`âŒ ${provider.name}: API key invÃ¡lida`); continue; }
-      if (e.status === 429) { console.warn(`âš ï¸ ${provider.name}: rate limit, probando siguiente...`); continue; }
-      console.warn(`âš ï¸ ${provider.name} fallÃ³ (${e.message}), probando siguiente...`);
-    }
-  }
-  throw new Error('Todos los proveedores de IA fallaron');
-}
-
-async function validateTurnstile(token) {
-  if (!process.env.TURNSTILE_SECRET) {
-    console.warn('âš ï¸ TURNSTILE_SECRET no configurado â€” rechazando request (fail-closed)');
-    return false;
-  }
-  if (!token) return false;
-  try {
-    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET, response: token }),
-    });
-    return (await r.json()).success === true;
-  } catch { return false; }
-}
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  MÃ“DULOS EXTERNOS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-// â”€â”€ Universal Resolver â€” DesencriptaciÃ³n heurÃ­stica de links â”€â”€
-const universalResolverRouter = require('./modules/universal-resolver');
-const { validateUrlSafety: validateUrlSsrf } = require('./modules/universal-resolver/resolver');
-app.use('/api/resolver', universalResolverRouter);
-
-// â”€â”€ Community â€” herramientas comunitarias de ciberseguridad â”€â”€â”€â”€
-// Central de estafas, muro de alertas y verificador de hashes (Supabase).
-const { createCommunityRouter, ensureCommunityTables } = require('./modules/community');
-const communityRouter = createCommunityRouter(supabase);
-app.use('/api/community', communityRouter);
-
-// â”€â”€ UserData â€” favoritos y settings por cuenta (Fase 1: producto) â”€â”€
-// SesiÃ³n validada con requireAuth (Bearer Supabase); guarda en Supabase.
-const { createUserDataRouter, ensureUserDataTables } = require('./modules/userdata');
-const userDataRouter = createUserDataRouter(supabase);
-app.use('/api/user', requireAuth, userDataRouter);
-
-// â”€â”€ Rewards â€” anuncios recompensados verificados por servidor â”€
-// El navegador nunca acredita: /token emite un nonce single-use y la
-// red confirma con un postback S2S (secret en el panel de la red).
-// Ver docs/REWARDED-ADS.md.
-const rewardsRouter = require('./modules/rewards');
-app.use('/api/rewards', requireAuth, rewardsRouter);
-
-// â”€â”€ Extensions â€” catÃ¡logo privado + proxy de extensiones de Echo â”€
-// El dispositivo solo conoce URLs de CodeHub: el backend resuelve el
-// .eapk real (GitHub/GitLab) y lo reenvÃ­a. El origen nunca se expone.
-// Ver backend/modules/extensions/.
-const extensionsRouter = require('./modules/extensions');
-app.use('/api/extensions', requireAuth, extensionsRouter);
-
-// â”€â”€ WIL.E INTELLIGENCE CORE â€” rutas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Memoria, base de conocimiento (RAG) e ingesta privada de entrenamiento.
-// Seguridad: isAdminReq compara el valor de la key contra ADMIN_KEY (nunca
-// acepta el header solo) o valida la sesiÃ³n HMAC; requireUser exige sesiÃ³n
-// real para memoria/RAG (evita fuga/borrado de memoria de 'admin').
-function wilEIsAdmin(req) {
-  const session = req.headers['x-admin-session'];
-  if (session) { const p = _verifySession(session); if (p && p.admin === true) return true; }
-  const key = req.headers['x-admin-key'];
-  const validKey = process.env.ADMIN_KEY;
-  if (validKey && key && key === validKey) return true;
-  return !!(req.authUser && req.authUser.email === (process.env.ADMIN_EMAIL || ''));
-}
-const wilERoutes = require('./wil-e/routes')({
-  authPayload: (req) => req.authUser,
-  isAdminReq: wilEIsAdmin,
-  requireUser: (req) => !!(req.authUser && req.authUser.id),
-});
-// requireAuth (opcional) adjunta req.authUser cuando llega un Bearer Supabase;
-// las rutas internas usan requireAuthed/isAdminReq para exijir sesiÃ³n real.
-app.use('/api/wil-e', requireAuth, wilERoutes);
-
-// â”€â”€ WIL.E VOZ â€” TTS neural premium (Jarvis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// /api/tts y /api/tts/info. Reemplaza la voz del navegador por ElevenLabs
-// cuando ELEVENLABS_API_KEY estÃ¡ configurada; si no, el frontend usa fallback.
-const ttsRoutes = require('./wil-e/tts')({ authPayload: (req) => req.authUser });
-// ElevenLabs es de pago: lÃ­mite agresivo evita que se gaste el presupuesto
-// (una pÃ¡gina pÃºblica puede abrir /api/tts desde fuera de la app).
-const ttsLimiter = rateLimit({ windowMs: 60*1000, max: 8, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de voz. Espera un momento.', code: 'TTS_RATE_LIMIT' }, handler: rateLimitHandler });
-app.use('/api/tts', ttsLimiter, ttsRoutes);
-
-// â”€â”€ TERMINAL â€” Shell remoto (WebSocket + PTY, sandbox de proceso) â”€â”€
-const terminalModule = require('./modules/terminal');
-terminalModule.attach({ app, server, allowedOrigins });
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  RUTAS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-// â”€â”€ ESTADÃSTICAS SUPABASE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/stats/supabase', async (_, res) => {
-  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
-  try {
-    const [daily, tools, downloads, total] = await Promise.all([
-      supabase.from('daily_stats').select('*').order('date', { ascending: false }).limit(30),
-      supabase.from('tool_stats').select('*').order('uses', { ascending: false }).limit(10),
-      supabase.from('download_stats').select('*').order('downloads', { ascending: false }).limit(10),
-      supabase.from('events').select('id', { count: 'exact', head: true }),
-    ]);
-    res.json({
-      daily:     daily.data     || [],
-      tools:     tools.data     || [],
-      downloads: downloads.data || [],
-      total_events: total.count || 0,
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// â”€â”€ DB RUNNER â€” aplica un .sql (Supabase) o un esquema .json â”€â”€â”€â”€â”€
-// (MongoDB) subido desde admin-hub.html. Requiere ADMIN_KEY.
-//
-// Supabase: ejecuta SQL crudo vÃ­a la funciÃ³n `exec_sql` (debe existir
-// en la base â€” ver bootstrap_exec_sql.sql, se crea UNA vez a mano
-// desde el SQL Editor de Supabase, ya que hace falta para poder
-// correr SQL arbitrario desde el cliente JS).
-//
-// Mongo: espera { "collections": [ { "name": "...", "indexes": [{ "keys": {...}, "options": {...} }] } ] }
-app.post('/api/admin/db/run', requireAdmin, async (req, res) => {
-  const { target, content } = req.body || {};
-  if (!target || !content) return res.status(400).json({ ok: false, error: 'Falta target o content' });
-
-  if (target === 'supabase') {
-    if (!supabase) return res.status(503).json({ ok: false, error: 'Supabase no configurado' });
-    const statements = splitSqlStatements(content);
-    if (!statements.length) return res.status(400).json({ ok: false, error: 'El archivo no tiene sentencias SQL' });
-    const results = [];
-    for (const stmt of statements) {
-      try {
-        const { error } = await supabase.rpc('exec_sql', { query: stmt });
-        if (error) throw error;
-        results.push({ ok: true, stmt: stmt.slice(0, 90).replace(/\s+/g, ' ') });
-      } catch (e) {
-        results.push({ ok: false, stmt: stmt.slice(0, 90).replace(/\s+/g, ' '), error: e.message });
-      }
-    }
-    const failed = results.filter(r => !r.ok).length;
-    logAdmin(adminActorOf(req), 'db.run.supabase', { total: results.length, ok: results.length - failed, failed }, failed === 0 ? 'ok' : 'error', 'op');
-    return res.json({ ok: failed === 0, results, failed, total: results.length });
-  }
-
-  if (target === 'mongo') {
-    if (!dbConnected) return res.status(503).json({ ok: false, error: 'MongoDB no disponible' });
-    let schema;
-    try { schema = JSON.parse(content); } catch { return res.status(400).json({ ok: false, error: 'JSON invÃ¡lido' }); }
-    const collections = Array.isArray(schema) ? schema : schema.collections;
-    if (!Array.isArray(collections)) {
-      return res.status(400).json({ ok: false, error: 'Formato esperado: { "collections": [ { "name": "...", "indexes": [...] } ] }' });
-    }
-    const results = [];
-    for (const col of collections) {
-      if (!col?.name) { results.push({ ok: false, collection: '(sin nombre)', error: 'Falta "name"' }); continue; }
-      try {
-        await mongoose.connection.db.createCollection(col.name).catch(e => {
-          if (!/already exists/i.test(e.message)) throw e;
-        });
-        if (Array.isArray(col.indexes)) {
-          for (const idx of col.indexes) {
-            await mongoose.connection.db.collection(col.name).createIndex(idx.keys, idx.options || {});
-          }
-        }
-        results.push({ ok: true, collection: col.name });
-      } catch (e) {
-        results.push({ ok: false, collection: col.name, error: e.message });
-      }
-    }
-    const failed = results.filter(r => !r.ok).length;
-    logAdmin(adminActorOf(req), 'db.run.mongo', { total: results.length, ok: results.length - failed, failed }, failed === 0 ? 'ok' : 'error', 'op');
-    return res.json({ ok: failed === 0, results, failed, total: results.length });
-  }
-
-  res.status(400).json({ ok: false, error: 'target debe ser "supabase" o "mongo"' });
-});
-
-// Health â€” los detalles de quÃ© API keys estÃ¡n configuradas solo se expone a
-// admin (el monitor de Render/pÃºblico solo ve lo infraestructural).
-app.get('/api/health', (req, res) => {
-  const base = {
-    status: 'ok', version: '3.2',
-    mongo:     dbConnected ? 'connected' : 'disconnected',
-    redis:     redis       ? 'connected' : 'memory',
-    ws:        wsClients.size + ' clients',
-    uptime:    Math.floor(process.uptime()) + 's',
-    ip_geo:    'ip-api.com + ipwho.is (fallback)',
-  };
-  if (!wilEIsAdmin(req)) return res.json(base);
-  res.json({
-    ...base,
-    push_web:  (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) ? 'ok (VAPID propia)' : 'missing (configura VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)',
-    push_android: fcmEnabled ? 'ok (FCM habilitado)' : 'missing (configura FIREBASE_SERVICE_ACCOUNT)',
-    render_keepalive: process.env.RENDER_EXTERNAL_URL ? 'ok' : 'missing (configura RENDER_EXTERNAL_URL para que Render no duerma el servicio)',
-    github_webhook_secret: process.env.GITHUB_WEBHOOK_SECRET ? 'ok' : 'missing (configura GITHUB_WEBHOOK_SECRET para notificaciones instantÃ¡neas de nuevas versiones)',
-    groq:      process.env.GROQ_API_KEY        ? 'ok' : 'missing',
-    cerebras:  process.env.CEREBRAS_API_KEY    ? 'ok' : 'missing',
-    huggingface:process.env.HUGGINGFACE_API_KEY ? 'ok' : 'missing',
-    claude:    process.env.ANTHROPIC_API_KEY   ? 'ok' : 'missing',
-    kimi:      process.env.KIMI_API_KEY        ? 'ok' : 'missing',
-    openrouter:process.env.OPENROUTER_API_KEY  ? 'ok (' + OR_FREE_MODELS.length + ' modelos)' : 'missing',
-    gemini:    process.env.GEMINI_API_KEY      ? 'ok' : 'missing',
-    minimax:   process.env.MINIMAX_API_KEY     ? 'ok' : 'missing',
-    virustotal:process.env.VIRUSTOTAL_API_KEY  ? 'ok' : 'missing',
-    mistral:   process.env.MISTRAL_API_KEY     ? 'ok' : 'missing',
-    cohere:    process.env.COHERE_API_KEY      ? 'ok' : 'missing',
-    storage:   supabase ? 'supabase' : 'missing',
-    archive:   (IA_ACCESS_KEY && IA_SECRET_KEY) ? `ok:per-app-item` : 'missing',
-  });
-});
-
-// Stats en vivo
-app.get('/api/stats/live', (_, res) => {
-  trackVisit();
-  res.json({ visitors: visits.today, total: visits.total, wsClients: wsClients.size });
-});
-
-
-// â”€â”€ geoIp â€” GeolocalizaciÃ³n por IP (solo servidorâ†’servidor) â”€â”€â”€
-// ip-api.com gratis responde solo por HTTP (mixed content en el
-// navegador) y limita el ritmo; por eso el cliente NUNCA la llama
-// directo: la consume el backend y el front pide el resultado a
-// GET /api/geo. Nunca lanza: devuelve { ok:false, reason }.
-async function geoIp(ip) {
-  if (isPrivateIp(ip)) return { ok: false, reason: 'private-ip' };
-
-  // Primario: ip-api.com (gratuito, sin key, HTTP servidor-a-servidor)
-  try {
-    const fields = 'status,message,country,countryCode,regionName,city,lat,lon,isp,org,proxy,hosting';
-    const r = await fetch(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=${fields}`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (r.ok) {
-      const d = await r.json();
-      if (d.status === 'success') {
-        return {
-          ok: true, source: 'ip-api.com',
-          lat: d.lat, lon: d.lon,
-          country: d.country || null, countryCode: d.countryCode || null,
-          region: d.regionName || null, city: d.city || null,
-          isp: d.isp || null, org: d.org || null,
-          proxy: !!d.proxy, hosting: !!d.hosting,
-        };
-      }
-      console.warn(`geoIp ip-api [${ip}]:`, d.message || d.status);
-    } else {
-      console.warn(`geoIp ip-api [${ip}]: HTTP ${r.status}`);
-    }
-  } catch (e) { console.warn('geoIp ip-api error:', e.message); }
-
-  // Fallback: ipwho.is (HTTPS, sin key)
-  try {
-    const r2 = await fetch(
-      `https://ipwho.is/${encodeURIComponent(ip)}`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    if (r2.ok) {
-      const d2 = await r2.json();
-      if (d2.success && d2.latitude != null) {
-        return {
-          ok: true, source: 'ipwho.is',
-          lat: d2.latitude, lon: d2.longitude,
-          country: d2.country || null, countryCode: d2.country_code || null,
-          region: d2.region || null, city: d2.city || null,
-          isp: d2.connection?.isp || null, org: d2.connection?.org || null,
-          proxy: false, hosting: false,
-        };
-      }
-      console.warn(`geoIp ipwho.is [${ip}]:`, d2.message || 'sin datos');
-    } else {
-      console.warn(`geoIp ipwho.is [${ip}]: HTTP ${r2.status}`);
-    }
-  } catch (e2) { console.warn('geoIp ipwho.is error:', e2.message); }
-
-  return { ok: false, reason: 'lookup-failed' };
-}
-
-// â”€â”€ GET /api/geo â€” UbicaciÃ³n aproximada del visitante â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Alimenta el widget de clima del front. Siempre responde 200: el
-// cliente distingue un fallo del servicio (`ok:false` + `reason`) de
-// un fallo de red, y conserva el diagnÃ³stico (ruta + cÃ³digo) que
-// muestra en pantalla. CachÃ© 30 min por IP para no saturar ip-api.com.
-app.get('/api/geo', async (req, res) => {
-  try {
-    const ip = clientIp(req);
-    const cacheKey = 'geo:ip:' + ip;
-
-    const cached = await cacheGet(cacheKey);
-    if (cached) return res.set('X-Cache', 'HIT').json(cached);
-
-    const geo = await geoIp(ip);
-    if (!geo.ok) return res.json({ ok: false, reason: geo.reason, ip });
-
-    const payload = {
-      ok: true, source: geo.source, ip,
-      lat: geo.lat, lon: geo.lon,
-      city: geo.city, country: geo.country, cc: geo.countryCode, region: geo.region,
-    };
-    await cacheSet(cacheKey, payload, 1800);
-    res.json(payload);
-  } catch (e) {
-    console.warn('geo error:', e.message);
-    res.json({ ok: false, reason: 'lookup-failed' });
-  }
-});
-
-// â”€â”€ POST /api/visit â€” Registrar visita con IPQuery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Responde 201 de inmediato; el enriquecimiento geo-IP y el guardado
-// se hacen en segundo plano para no bloquear la peticiÃ³n hasta 12s.
-app.post('/api/visit', (req, res) => {
-  try {
-    // Vercel/Render: IP real del cliente. Se ignora req.body.ip por completo
-    // (el cliente puede mandar cualquier string) y se valida el formato.
-    const finalIp = clientIp(req);
-    const isLocal = /^(127\.|10\.|192\.168\.|::1|localhost|^$)/i.test(finalIp);
-
-    // Capturamos lo necesario del request antes de ir a background
-    const page = String(req.body?.page || '/').slice(0, 200);
-    const ua   = (req.headers['user-agent'] || '').slice(0, 300);
-
-    res.status(201).json({ ok: true, ip: finalIp });
-
-    // â”€â”€ Background: geo-IP + guardado en Supabase â”€â”€
-    (async () => {
-      const g   = (isLocal || finalIp === 'unknown') ? { ok: false } : await geoIp(finalIp);
-      const geo = g.ok ? g : {};
-
-      const record = {
-        ip:           finalIp,
-        country:      geo?.country      || null,
-        country_code: geo?.countryCode  || null,
-        city:         geo?.city         || null,
-        region:       geo?.region       || null,
-        isp:          geo?.isp          || null,
-        org:          geo?.org          || null,
-        is_vpn:       geo?.proxy        || false,
-        is_proxy:     geo?.proxy        || false,
-        is_bot:       geo?.hosting      || false,
-        risk_score:   geo?.proxy ? 60 : (geo?.hosting ? 30 : 0),
-        page,
-        ua,
-        visited_at:   new Date().toISOString(),
-      };
-
-      try {
-        if (supabase) await supabase.from('visitor_logs').insert(record);
-      } catch (e3) { console.warn('visitor_logs insert error:', e3.message); }
-
-      trackVisit();
-    })().catch(e => console.warn('visit background error:', e.message));
-  } catch (e) {
-    console.warn('visit error:', e.message);
-    try { res.status(201).json({ ok: false }); } catch (_) {}
-  }
-});
-
-// â”€â”€ GET /api/admin/visitors â€” Listar visitas (solo admin) â”€â”€â”€â”€â”€
-app.get('/api/admin/visitors', requireAdmin, async (req, res) => {
-  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
-  try {
-    const limit = Math.min(parseInt(req.query.limit) || 200, 500);
-    const { data, error } = await supabase
-      .from('visitor_logs')
-      .select('*')
-      .order('visited_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    res.json({ ok: true, visitors: data || [] });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// â”€â”€ GET /api/admin/quake-devices - Dispositivos con alerta de sismo â”€â”€
-app.get('/api/admin/quake-devices', requireAdmin, async (req, res) => {
-  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
-  try {
-    const { data, error } = await supabase
-      .from('fcm_tokens')
-      .select('token, lat, lon, city, country, app_name, app_version, platform, updated_at')
-      .order('updated_at', { ascending: false });
-    if (error) throw error;
-    res.json({ ok: true, devices: data || [] });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// â”€â”€ POST /api/admin/quake-test - Enviar simulacro de sismo a dispositivos â”€â”€
-app.post('/api/admin/quake-test', requireAdmin, async (req, res) => {
-  if (!supabase) return res.status(503).json({ error: 'Supabase no configurado' });
-  const { magnitude, distance, direction, place, tokens, simulate, alertType } = req.body || {};
-  const mag = parseFloat(magnitude) || 5.5;
-  const dist = parseFloat(distance) || 50;
-  const dir = direction || 'N';
-  const pl = place || 'Simulacro de sismo - CodeHub';
-  const isSim = simulate !== false;
-  const type = alertType || 'earthquake';
-
-  try {
-    let targetTokens = [];
-    if (Array.isArray(tokens) && tokens.length > 0) {
-      targetTokens = tokens;
-    } else {
-      const { data } = await supabase.from('fcm_tokens').select('token');
-      targetTokens = (data || []).map(r => r.token).filter(Boolean);
-    }
-
-    if (targetTokens.length === 0) {
-      return res.json({ ok: true, sent: 0, message: 'No hay dispositivos registrados' });
-    }
-
-    const results = [];
-    for (const token of targetTokens) {
-      const payload = {
-        title: isSim ? 'ğŸ§ª SIMULACRO DE SISMO' : 'âš ï¸ ALERTA DE SISMO',
-        body: `M ${mag.toFixed(1)} a ${Math.round(dist)} km ${dir} de tu ubicaciÃ³n`,
-        type: isSim ? 'quake_sim' : 'quake_alert',
-        alertType: type,
-        mag: mag,
-        dist: dist,
-        dir: dir,
-        place: pl,
-        time: Date.now(),
-      };
-      const r = await sendFCM(token, payload);
-      results.push({ token: token.slice(0, 12) + '...', ok: r.ok, reason: r.reason || r.code || null });
-    }
-
-    const sent = results.filter(r => r.ok).length;
-    const failed = results.filter(r => !r.ok).length;
-    res.json({ ok: true, sent, failed, total: targetTokens.length, results });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// â”€â”€ POST /api/admin/quake-test-single - Enviar a un solo dispositivo â”€â”€
-app.post('/api/admin/quake-test-single', requireAdmin, async (req, res) => {
-  const { token, magnitude, distance, direction, place, simulate } = req.body || {};
-  if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
-  const mag = parseFloat(magnitude) || 5.5;
-  const dist = parseFloat(distance) || 50;
-  const dir = direction || 'N';
-  const pl = place || 'Simulacro de sismo - CodeHub';
-  const isSim = simulate !== false;
-
-  const payload = {
-    title: isSim ? 'ğŸ§ª SIMULACRO DE SISMO' : 'âš ï¸ ALERTA DE SISMO',
-    body: `M ${mag.toFixed(1)} a ${Math.round(dist)} km ${dir} de tu ubicaciÃ³n`,
-    type: isSim ? 'quake_sim' : 'quake_alert',
-    mag: mag,
-    dist: dist,
-    dir: dir,
-    place: pl,
-    alertType: payload.type,
-    time: Date.now(),
-  };
-  const r = await sendFCM(token, payload);
-  res.json({ ok: r.ok, reason: r.reason || r.code || null, message: r.message || null });
-});
-// Info WebSocket para el frontend
-app.get('/api/ws-info', (_, res) => res.json({
-  clients: wsClients.size,
-  url: process.env.WS_URL || 'wss://codehub-98s6.onrender.com/ws',
-}));
-
-// Apps pÃºblicas (con cachÃ© 5 min)
-app.get('/api/apps', async (_, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible', apps: [] });
-  try {
-    const cached = await cacheGet('apps:all');
-    if (cached) { res.set('X-Cache', 'HIT'); return res.json(cached); }
-
-    const apps = await App.find({}).sort({ createdAt: 1 }).lean();
-    const base  = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
-    const mapped = apps.map(a => ({
-      appId:        a.appId,
-      nombre:       a.nombre,
-      descripcion:  a.descripcion,
-      version:      a.version,
-      tag:          a.tag,
-      changelog:    a.changelog,
-      imagen:       a.imagen,
-      categoria:    a.categoria,
-      verified:     a.verified,
-      enlace:       `${base}/api/apps/${encodeURIComponent(a.appId)}/download`,
-      plugin_enlace: a.plugin_enlace ? `${base}/api/apps/${encodeURIComponent(a.appId)}/download?slot=plugin` : null,
-      tutorial_url: a.tutorial_url || null,
-      source_repo:  a.source_repo || null,
-      packageName:  a.packageName || null,
-      updatedAt:    a.updatedAt,
-    }));
-    const result = { apps: mapped, total: mapped.length };
-    await cacheSet('apps:all', result, 300);
-    res.set('X-Cache', 'MISS'); res.json(result);
-  } catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
-});
-
-// â”€â”€ APP DOWNLOAD PROXY â€” oculta el enlace real y el origen â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/apps/:appId/download', async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const slot = req.query.slot === 'plugin' ? 'plugin' : 'app';
-    const appDoc = await App.findOne({ appId: req.params.appId }).lean();
-    if (!appDoc) return res.status(404).json({ error: 'App no encontrada' });
-
-    const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-    const orig = slot === 'plugin' ? appDoc.plugin_enlace : appDoc.enlace;
-    let target = tgFilePath(orig) ? null : (orig ? String(orig) : null);
-    let fileName = '';
-    if (appDoc.source_repo && REPO_RE.test(appDoc.source_repo)) {
-      try {
-        const ghRes = await fetch(`https://api.github.com/repos/${appDoc.source_repo}/releases/latest`, {
-          headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
-          signal: AbortSignal.timeout(8000),
-        });
-        if (ghRes.ok) {
-          const release = await ghRes.json();
-          const asset = (release.assets || []).find(a => a && a.name && /\.(apk|eapk)$/i.test(a.name));
-          if (asset && asset.browser_download_url) {
-            target = asset.browser_download_url;
-            fileName = asset.name;
-          }
-        }
-      } catch {}
-    }
-    if (!target) return res.status(404).json({ error: 'Binario no disponible' });
-    const base = process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com';
-    const tgPath = tgFilePath(target);
-    if (tgPath) {
-      return res.redirect(302, `${base}/api/tgfile/${encodeURIComponent(appDoc.appId)}${slot === 'plugin' ? '?slot=plugin' : ''}`);
-    }
-    if (!fileName) fileName = target.split('/').pop().split('?')[0] || appDoc.appId;
-    let r;
-    try {
-      r = await fetch(target, { redirect: 'follow', headers: { 'User-Agent': 'CodeHub-Apps/1.0', Accept: '*/*' } });
-    } catch {
-      return res.status(502).json({ error: 'No se pudo alcanzar el origen' });
-    }
-    if (!r.ok) return res.status(502).json({ error: `origen HTTP ${r.status}` });
-    const ct = r.headers.get('content-type');
-    if (ct) res.setHeader('Content-Type', ct);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName.replace(/"/g, '')}"`);
-    const cl = r.headers.get('content-length');
-    if (cl) res.setHeader('Content-Length', cl);
-    res.setHeader('Cache-Control', 'no-store');
-    const { Readable } = require('stream');
-    Readable.fromWeb(r.body).pipe(res);
-  } catch (e) {
-    console.error('Error /api/apps/:appId/download:', e.message);
-    if (!res.headersSent) res.status(500).json({ error: 'No se pudo descargar el binario' });
-  }
-});
-
-// â”€â”€ App Updates â€” verificar versiones desde GitHub Releases â”€â”€
-// POST /api/app-updates  { apps: [{ appId, version, source_repo }] }
-// Retorna: [{ appId, currentVersion, latestVersion, hasUpdate, downloadUrl }]
-app.post('/api/app-updates', async (req, res) => {
-  try {
-    const { apps } = req.body;
-    if (!Array.isArray(apps) || apps.length === 0) return res.json([]);
-    const results = await Promise.allSettled(apps.map(async (app) => {
-      // Allowlist de repos: solo "owner/repo" simples. Cualquier otro formato
-      // (URLs, ../, caracteres raros) se ignora en lugar de interpolarse en fetch.
-      const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-      if (!app.source_repo || !REPO_RE.test(app.source_repo)) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
-      const cacheKey = `update:${app.source_repo}`;
-      const cached = await cacheGet(cacheKey);
-      if (cached) return { appId: app.appId, currentVersion: app.version, ...cached };
-      const ghRes = await fetch(`https://api.github.com/repos/${app.source_repo}/releases/latest`, {
-        headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
-        signal: AbortSignal.timeout(5000)
-      });
-      if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
-      const release = await ghRes.json();
-      const latest = (release.tag_name || '').replace(/^v/i, '');
-      const current = (app.version || '').replace(/^v/i, '');
-      const apkAsset = (release.assets || []).find(a => a.name && a.name.endsWith('.apk'));
-const downloadUrl = `${(process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, '')}/api/apps/${encodeURIComponent(app.appId)}/download`;
-    const result = { latestVersion: release.tag_name || latest, hasUpdate: latest !== current && !!latest, downloadUrl };
-      await cacheSet(cacheKey, result, 600);
-      return { appId: app.appId, currentVersion: app.version, ...result };
-    }));
-    res.json(results.map(r => r.status === 'fulfilled' ? r.value : { appId: '?', hasUpdate: false }));
-  } catch { res.status(500).json({ error: 'Error checking updates' }); }
-});
-
-// Noticias â€” geolocalizadas por paÃ­s vÃ­a Google News RSS, con BBC Mundo
-// como respaldo fijo. Todo se lee server-side para evitar depender de
-// proxies CORS pÃºblicos poco fiables (allorigins, etc.) en el navegador.
-const NEWS_RSS_URL = 'https://feeds.bbci.co.uk/mundo/rss.xml';
-
-// Locale (idioma de interfaz) por cÃ³digo de paÃ­s para armar la URL de
-// Google News (hl/gl/ceid). Si el paÃ­s no estÃ¡ en la lista se usa
-// 'es-419' (espaÃ±ol latam) por defecto dentro de buildGoogleNewsUrl.
-const COUNTRY_LOCALE = {
-  GT: 'es-419', MX: 'es-419', HN: 'es-419', SV: 'es-419', NI: 'es-419',
-  CR: 'es-419', PA: 'es-419', DO: 'es-419', VE: 'es-419', CO: 'es-419',
-  EC: 'es-419', PE: 'es-419', BO: 'es-419', PY: 'es-419', UY: 'es-419',
-  AR: 'es-419', CL: 'es-419', ES: 'es',
-  US: 'en-US', GB: 'en-GB', CA: 'en-CA', BR: 'pt-BR', FR: 'fr', DE: 'de',
-  IT: 'it', PT: 'pt-PT',
-};
-
-function buildGoogleNewsUrl(country) {
-  const cc = (country || 'GT').toUpperCase();
-  const hl = COUNTRY_LOCALE[cc] || 'es-419';
-  return `https://news.google.com/rss?hl=${encodeURIComponent(hl)}&gl=${encodeURIComponent(cc)}&ceid=${encodeURIComponent(cc)}:${encodeURIComponent(hl.split('-')[0])}`;
-}
-
-const NEWS_TAG_RE = (block, name) => {
-  const m = block.match(new RegExp(`<${name}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`));
-  return m ? m[1].trim() : '';
-};
-
-// Limpia texto plano de un item RSS: decodifica entidades HTML (&lt; &gt;
-// &amp; ...), quita cualquier tag sobrante y colapsa espacios. Evita que la
-// tarjeta muestre cÃ³digo fuente crudo de la noticia.
-const NEWS_ENTITIES = { '&lt;':'<', '&gt;':'>', '&amp;':'&', '&quot;':'"', '&#39;':"'", '&apos;':"'", '&nbsp;':' ' };
-const cleanNewsText = (raw) => {
-  let s = String(raw || '');
-  s = s.replace(/&(?:#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (m, code) => {
-    if (code[0] === '#') {
-      const isHex = code[1] === 'x' || code[1] === 'X';
-      const n = parseInt(code.slice(isHex ? 2 : 1), isHex ? 16 : 10);
-      return Number.isNaN(n) ? m : String.fromCodePoint(n);
-    }
-    return NEWS_ENTITIES[m] !== undefined ? NEWS_ENTITIES[m] : m;
-  });
-  s = s.replace(/<\/?(?:script|style)[^>]*>[\s\S]*?<\/?(?:script|style)>/gi, ' ');
-  s = s.replace(/<[^>]+>/g, ' ');
-  return s.replace(/\s+/g, ' ').trim();
-};
-// Extrae imagen real del item (media:thumbnail / media:content / enclosure)
-// para que cada tarjeta muestre una miniatura real cuando exista.
-const NEWS_IMG_RE = (block) => {
-  let m = block.match(/<media:thumbnail[^>]*url="([^"]+)"/);
-  if (m) return m[1];
-  m = block.match(/<media:content[^>]*url="([^"]+)"/);
-  if (m) return m[1];
-  m = block.match(/<enclosure[^>]*url="([^"]+)"[^>]*type="image[^"]*"/);
-  if (m) return m[1];
-  return '';
-};
-
-async function fetchRssItems(url, { limit = 9, sourceLabel = null } = {}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-  const r = await fetch(url, {
-    signal: controller.signal,
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
-  }).finally(() => clearTimeout(timeout));
-  if (!r.ok) throw new Error('RSS fetch fallido: ' + r.status);
-  const xml = await r.text();
-
-  const items = [];
-  const itemRe = /<item>([\s\S]*?)<\/item>/g;
-  let m;
-  while ((m = itemRe.exec(xml)) && items.length < limit) {
-    const block = m[1];
-    const title = cleanNewsText(NEWS_TAG_RE(block, 'title')).slice(0, 160);
-    const url_  = NEWS_TAG_RE(block, 'link');
-    const pub   = NEWS_TAG_RE(block, 'pubDate');
-    const date  = pub ? new Date(pub).toLocaleDateString('es-GT', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-    const image = NEWS_IMG_RE(block);
-    // Google News trae el medio original en <source>; BBC no lo trae (usamos sourceLabel fijo).
-    const src   = cleanNewsText(NEWS_TAG_RE(block, 'source') || sourceLabel || '');
-    let desc = cleanNewsText(NEWS_TAG_RE(block, 'description')).slice(0, 130);
-    if (title) items.push({ title, url: url_, date, desc, image, pub, source: src });
-  }
-  if (!items.length) throw new Error('sin items en el RSS');
-  return items;
-}
-
-// â”€â”€ MINIATURAS REALES PARA GOOGLE NEWS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El RSS de Google News casi nunca trae media:thumbnail/enclosure (a
-// diferencia de BBC), asÃ­ que para los items sin imagen visitamos el
-// artÃ­culo real (el <link> redirige del dominio news.google.com al medio
-// original) y leemos su og:image/twitter:image. Se limita cuÃ¡nto HTML se
-// lee y cuÃ¡nto tiempo total se invierte para no volver lenta la respuesta;
-// como el resultado se cachea 15 min, este costo se paga poco.
-async function fetchOgImage(url) {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
-    const r = await fetch(url, {
-      signal: controller.signal,
-      redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CodeHubBot/1.0; +https://wilson360-labs.vercel.app)' },
-    }).finally(() => clearTimeout(timeout));
-    if (!r.ok || !r.body) return '';
-
-    const reader = r.body.getReader();
-    let html = '';
-    let received = 0;
-    while (received < 65536) { // ~64KB alcanza para llegar al <head>
-      const { done, value } = await reader.read();
-      if (done) break;
-      html += Buffer.from(value).toString('utf8');
-      received += value.length;
-    }
-    try { await reader.cancel(); } catch {}
-
-    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i)
-           || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:image|twitter:image)["']/i);
-    return m ? m[1] : '';
-  } catch (e) { return ''; }
-}
-
-async function enrichMissingImages(items, budgetMs = 6000) {
-  const start = Date.now();
-  const pending = items.filter(it => !it.image);
-  if (!pending.length) return items;
-  await Promise.all(pending.map(async (it) => {
-    if (Date.now() - start > budgetMs) return; // no seguimos gastando tiempo pasado el presupuesto
-    it.image = await fetchOgImage(it.url);
-  }));
-  return items;
-}
-
-app.get('/api/news', async (req, res) => {
-  const country = (req.query.country || '').toUpperCase().slice(0, 2) || null;
-  const cacheKey = country ? `news:google:${country}` : 'news:bbc-mundo';
-  try {
-    const cached = await cacheGet(cacheKey);
-    if (cached) { res.set('X-Cache', 'HIT'); return res.json(cached); }
-
-    let items, sourceName;
-    if (country) {
-      try {
-        items = await fetchRssItems(buildGoogleNewsUrl(country));
-        items = await enrichMissingImages(items);
-        sourceName = `Google News (${country})`;
-      } catch (e) {
-        // Google News no disponible para ese paÃ­s/red â€” caemos a BBC Mundo.
-        items = await fetchRssItems(NEWS_RSS_URL, { sourceLabel: 'BBC Mundo' });
-        sourceName = 'BBC Mundo';
-      }
-    } else {
-      items = await fetchRssItems(NEWS_RSS_URL, { sourceLabel: 'BBC Mundo' });
-      sourceName = 'BBC Mundo';
-    }
-
-    const result = { items, source: sourceName, country, fetchedAt: new Date().toISOString() };
-    await cacheSet(cacheKey, result, 900); // 15 min
-    res.set('X-Cache', 'MISS'); res.json(result);
-  } catch (e) {
-    res.status(502).json({ error: 'No se pudieron obtener las noticias', detail: e.message });
-  }
-});
-
-// â”€â”€ SKILLS â€” catÃ¡logo servido al frontend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/skills', (req, res) => {
-  try {
-    const indexPath = path.join(SKILLS_DIR, 'index.json');
-    if (!fs.existsSync(indexPath)) return res.json({ skills: [], total: 0 });
-    const index = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
-    const enriched = (index.skills || [])
-      .filter(s => s.active)
-      .map(s => {
-        const detail = loadSkillJson(s.id);
-        return detail ? {
-          ...s,
-          presets: detail.presets,
-          ui: detail.ui,
-          examples: detail.examples,
-          sizes: detail.sizes,
-          providers: detail.providers_priority,
-        } : s;
-      });
-    res.json({ skills: enriched, total: enriched.length });
-  } catch (e) {
-    res.status(500).json({ error: 'Error cargando skills', detail: e.message });
-  }
-});
-
-app.get('/api/skills/:id', (req, res) => {
-  const skill = loadSkillJson(req.params.id);
-  if (!skill) return res.status(404).json({ error: 'Skill no encontrada' });
-  res.json(skill);
-});
-
-// Chat IA
-app.post('/api/chat', requireAuth, async (req, res) => {
-  const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
-  if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
-  if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
-  if (!hasAnyChatKey()) return res.status(503).json({ error: 'Sin API keys.' });
-
-  // â”€â”€ LÃ­mite diario server-side â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = await getEmiLimit(!!req.authUser);
-  const emiUsed = await getEmiUsage(emiKey);
-  if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `LÃ­mite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesiÃ³n para mÃ¡s.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
-  }
-
-  // â”€â”€ Imagen / PDF escaneado adjunto: valida formato/tamaÃ±o antes de gastar una llamada â”€â”€
-  // "image" es una imagen suelta (data URL). "images" es un array de pÃ¡ginas
-  // renderizadas (PDF escaneado). Ambos van a Gemini Vision.
-  let imageParts = null;
-  const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
-  if (imgList && imgList.length) {
-    imageParts = [];
-    for (const u of imgList) {
-      const p = parseImageDataUrl(u);
-      if (!p) return res.status(400).json({ error: 'Imagen invÃ¡lida o demasiado pesada (mÃ¡x. ~4MB c/u, png/jpeg/webp/gif).' });
-      imageParts.push(p);
-    }
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(503).json({ error: 'El anÃ¡lisis de imÃ¡genes no estÃ¡ disponible en este momento.' });
-    }
-  }
-
-  // Recuperar historial real de MongoDB (ultimos 10 mensajes de la sesion)
-  let sessionHistory = [];
-  if (dbConnected && sessionId !== 'anon') {
-    try {
-      const pastMsgs = await ChatMessage
-        .find({ sessionId })
-        .sort({ createdAt: -1 })
-        .limit(10)
-        .lean();
-      // Vienen en orden descendente, los invertimos
-      sessionHistory = pastMsgs.reverse().map(m => ({
-        role: m.role === 'assistant' ? 'assistant' : 'user',
-        content: String(m.content).slice(0, 800),
-      }));
-    } catch (e) {
-      console.warn('Error recuperando historial:', e.message);
-    }
-  }
-
-  sessionHistory.push({ role: 'user', content: message.trim() });
-  // PDF adjunto: el texto comprimido se inyecta como contexto antes de la pregunta
-  // del usuario (aplica a cualquier proveedor de texto, no solo Gemini).
-  if (typeof pdfText === 'string' && pdfText.trim()) {
-    sessionHistory.splice(sessionHistory.length - 1, 0, {
-      role: 'user',
-      content: '[Documento adjunto â€” resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en espaÃ±ol]:\n' + pdfText.slice(0, 40000)
-    });
-  }
-  // F1.1: SYSTEM dinÃ¡mico â€” base para queries generales, completa para CodeHub
-  let system = classifySystem(message);
-  // Skill activa: inyecta su guÃ­a (system_prompt_inject)
-  if (skill_id) {
-    const skill = loadSkillJson(String(skill_id));
-    if (skill && skill.system_prompt_inject) {
-      system = skill.system_prompt_inject + '\n\n' + system;
-    }
-  }
-  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
-  if (dbConnected) {
-    try {
-      const ctx = await buildContext({
-        userId: memUserOf(req, sessionId) || 'none',
-        ownerId: 'admin',
-        message,
-        topK: 3,
-      });
-      if (ctx) system = augmentSystem(system, ctx);
-    } catch (e) {
-      console.warn('Wil.E contexto error:', e.message);
-    }
-  }
-  // WIL.E: bÃºsqueda web en vivo (datos actuales) cuando la consulta lo pide
-  try {
-    const live = await liveWebContext(message);
-    if (live) system = system + '\n\n' + live;
-  } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cÃ³mputo (cÃ¡lculos, fecha, conversiones) sin LLM
-  try {
-    const tool = computeTool(message);
-    if (tool) system = system + '\n\n' + tool;
-  } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling â€” ejecuta la herramienta detectada (web/computo/URL)
-  try {
-    const dt = detectTool(message);
-    if (dt) {
-      const out = await executeTool(dt.name, dt.arg);
-      if (out) system = system + '\n\n' + out;
-    }
-  } catch (e) { /* silencioso */ }
-  // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
-  const msgs = buildSmartMessages(system, sessionHistory, 10000);
-
-  try {
-    // Con imagen/PDF escaneado: va directo a Gemini (Ãºnico proveedor con visiÃ³n
-    // en esta cadena). Sin imagen: sigue el fallback normal Claudeâ†’Groqâ†’...â†’Cohere.
-    const { reply, input, output, model } = imageParts
-      ? await callGemini(msgs, adaptiveMaxTokens(message), imageParts)
-      : await callAI(msgs, adaptiveMaxTokens(message));
-    if (dbConnected) ChatMessage.insertMany([
-      { sessionId, role: 'user',      content: message.trim() + (imageParts ? ' [imagen adjunta]' : '') + (pdfText ? ' [PDF adjunto]' : ''), tokens: input,  model },
-      { sessionId, role: 'assistant', content: reply,          tokens: output, model },
-    ]).catch(() => {});
-    broadcast('chat_used', { model, tokens: input + output });
-    trackEvent('chat', null, { model, tokens: input + output });
-    tgAlert('chat', () => `ğŸ’¬ <b>Chat con WIL.E</b>\n${String(message || '').slice(0, 60).replace(/[<>]/g, '')}\nğŸ§  ${model}\nğŸŒ ${clientIp(req)}`, { windowMs: 30000 });
-    const emiNow = await incrEmiUsage(emiKey);
-    res.json({ reply, usage: { input, output, total: input + output }, model, emi: { used: emiNow, limit: emiLimit } });
-    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
-    const memU = memUserOf(req, sessionId);
-    if (dbConnected && memU && memEnabledOf(req)) {
-      if (memU.startsWith('sess:')) {
-        // Memoria de sesiÃ³n acotada para invitados (anti-spam): mÃ¡x 20 hechos.
-        AIMemory.countDocuments({ userId: memU }).then((cnt) => {
-          if (cnt < 20) remember({ userId: memU, text: message }).catch(() => {});
-        }).catch(() => {});
-      } else {
-        remember({ userId: memU, text: message }).catch(() => {});
-      }
-    }
-  } catch (err) {
-    tgAlert('chatfail', () =>
-      `âš ï¸ <b>Error en /api/chat</b>\n${err && (err.message || err.status) ? String(err.message || err.status).slice(0, 120) : 'desconocido'}`,
-      { windowMs: 30000 });
-    if (err.status === 401) return res.status(500).json({ error: imageParts ? 'Gemini: API key invÃ¡lida.' : 'API key invÃ¡lida.' });
-    if (err.status === 429) return res.status(429).json({ error: 'LÃ­mite alcanzado.' });
-    if (imageParts) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
-    res.status(500).json({ error: 'Error interno.' });
-  }
-});
-
-// Contacto (notifica vÃ­a WS)
-app.post('/api/contact', (req, res) => {
-  const { name, email, message } = req.body;
-  trackEvent('contact');
-  tgAlert('contact', () => {
-    const ip = clientIp(req);
-    return `ğŸ“© <b>Nuevo contacto</b>\nğŸ‘¤ ${String(name || 'AnÃ³nimo').slice(0, 30)}\nğŸ“§ ${email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?'}\nğŸ’¬ ${String(message || '').slice(0, 80)}\nğŸŒ ${ip}`;
-  }, { windowMs: 30000 });
-  broadcast('contact_form', {
-    name:  name  || 'AnÃ³nimo',
-    email: email ? email.replace(/(.{2}).*(@.*)/, '$1***$2') : '?',
-  });
-  res.json({ ok: true });
-});
-
-// Ratings
-const cleanUserText = (raw, max) => (typeof raw === 'string' ? raw.replace(/[<>]/g, '').replace(/\s+/g, ' ').slice(0, max).trim() : '');
-const escapeRegExp = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-app.get('/api/ratings', async (_, res) => {
-  if (!dbConnected) return res.json({ ratings: {} });
-  try {
-    const cached = await cacheGet('ratings:all'); if (cached) return res.json(cached);
-    const all = await AppRating.find({}, 'appId total count');
-    const ratings = {};
-    all.forEach(r => { ratings[r.appId] = { avg: r.count > 0 ? Math.round((r.total / r.count) * 10) / 10 : 0, count: r.count }; });
-    const result = { ratings };
-    await cacheSet('ratings:all', result, 120);
-    res.json(result);
-  } catch { res.json({ ratings: {} }); }
-});
-
-app.post('/api/ratings', publicPostLimiter, async (req, res) => {
-  const appId = cleanUserText(req.body.appId, 60);
-  const appName = cleanUserText(req.body.appName, 60) || appId;
-  const texto = cleanUserText(req.body.texto, 600);
-  const autor = cleanUserText(req.body.autor, 40);
-  const { stars } = req.body;
-  const ip = req.ip || 'anon';
-  if (!appId || !stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Datos invÃ¡lidos' });
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    // findOneAndUpdate + upsert es atÃ³mico â€” evita la condiciÃ³n de carrera
-    // que habÃ­a con "findOne â†’ new AppRating() â†’ save()": si dos votos
-    // llegaban casi al mismo tiempo, ambos podÃ­an pasar el findOne antes
-    // de que el primero guardara, creando 2 documentos con el mismo appId.
-    let r = await AppRating.findOneAndUpdate(
-      { appId },
-      { $setOnInsert: { appId, appName: appName || appId, ratings: [], reviews: [], total: 0, count: 0 } },
-      { upsert: true, new: true }
-    );
-    if (!r.reviews) r.reviews = [];
-    const already = r.ratings.find(x => x.ip === ip);
-    const alreadyReview = r.reviews.find(x => x.ip === ip);
-
-    // Ya hay voto + reseÃ±a de este cliente: re-subir es un duplicado.
-    if (already && alreadyReview && texto) {
-      return res.status(409).json({ error: 'Ya comentaste esta app', review: true, avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
-    }
-
-    // Ya votÃ³ pero aÃºn no comenta â†’ se agrega la reseÃ±a sin sumar voto.
-    if (already && texto) {
-      r.reviews.push({ ip, autor: autor || 'AnÃ³nimo', texto, stars: Math.round(stars) });
-      if (r.reviews.length > 100) r.reviews = r.reviews.slice(-100);
-      await r.save(); await cacheDel('ratings:all'); await cacheDel('reviews:' + appId);
-      tgAlert('rating', () => `ğŸ’¬ <b>ReseÃ±a nueva</b> en ${String(appName || appId).slice(0, 40)} â€” ${String(autor || 'AnÃ³nimo').slice(0, 24)} (${stars}â˜…)`, { windowMs: 30000 });
-      return res.json({ ok: true, review: true, avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
-    }
-    if (already) return res.status(409).json({ error: 'Ya votaste', avg: r.count > 0 ? Math.round((r.total/r.count)*10)/10 : 0, count: r.count });
-
-    // Voto nuevo (con o sin reseÃ±a adjunta).
-    r.ratings.push({ ip, stars }); r.total += stars; r.count += 1;
-    if (texto) r.reviews.push({ ip, autor: autor || 'AnÃ³nimo', texto, stars: Math.round(stars) });
-    if (r.reviews.length > 100) r.reviews = r.reviews.slice(-100);
-    await r.save(); await cacheDel('ratings:all');
-    const avg = Math.round((r.total / r.count) * 10) / 10;
-    broadcast('new_rating', { appId, appName: appName || appId, stars, avg, count: r.count });
-    if (texto) {
-      await cacheDel('reviews:' + appId);
-      tgAlert('rating', () => `ğŸ’¬ <b>ReseÃ±a nueva</b>: ${String(appName || appId).slice(0, 40)} â€” ${String(autor || 'AnÃ³nimo').slice(0, 24)} (${stars}â˜…)`, { windowMs: 30000 });
-    } else {
-      tgAlert('rating', () => `â­ <b>Rating nuevo</b>: ${stars}â˜… â€” ${String(appName || appId).slice(0, 40)} (avg ${avg}, ${r.count} votos)`, { windowMs: 30000 });
-    }
-    res.json({ ok: true, avg, count: r.count, review: !!texto });
-  } catch { res.status(500).json({ error: 'Error guardando rating' }); }
-});
-
-// ReseÃ±as de un app â€” nunca se expone la IP: autor, texto, estrellas y fecha.
-app.get('/api/apps/:appId/reviews', async (req, res) => {
-  if (!dbConnected) return res.json({ reviews: [] });
-  const { appId } = req.params;
-  try {
-    const cached = await cacheGet('reviews:' + appId); if (cached) return res.json(cached);
-    const doc = await AppRating.findOne({ appId }).select('reviews appName').lean();
-    const reviews = (doc && doc.reviews ? doc.reviews : []).map(x => ({
-      autor: (typeof x.autor === 'string' && x.autor) ? x.autor.slice(0, 40) : 'AnÃ³nimo',
-      stars: Math.max(1, Math.min(5, Math.round(x.stars) || 5)),
-      texto: typeof x.texto === 'string' ? x.texto.slice(0, 600) : '',
-      createdAt: x.createdAt || new Date(),
-    })).reverse().slice(0, 40);
-    const result = { appId, count: reviews.length, reviews };
-    await cacheSet('reviews:' + appId, result, 60);
-    res.json(result);
-  } catch { res.json({ reviews: [] }); }
-});
-
-// Requests de apps
-app.get('/api/requests', async (_, res) => {
-  if (!dbConnected) return res.json({ requests: [] });
-  try { const reqs = await AppRequest.find({ status: 'pending' }).sort({ votes: -1 }).limit(20); res.json({ requests: reqs }); }
-  catch { res.json({ requests: [] }); }
-});
-
-app.post('/api/requests', publicPostLimiter, async (req, res) => {
-  const { turnstileToken } = req.body;
-  const ip = req.ip || 'anon';
-  const appName = cleanUserText(req.body.appName, 60);
-  const reason = cleanUserText(req.body.reason, 200);
-  if (!appName || appName.trim().length < 2) return res.status(400).json({ error: 'Nombre requerido' });
-  if (!await validateTurnstile(turnstileToken)) return res.status(403).json({ error: 'VerificaciÃ³n fallida' });
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const existing = await AppRequest.findOne({ appName: new RegExp(escapeRegExp(appName.trim()), 'i'), status: 'pending' });
-    if (existing) {
-      if (existing.voters.includes(ip)) return res.status(409).json({ error: 'Ya votaste', votes: existing.votes });
-      existing.votes += 1; existing.voters.push(ip); await existing.save();
-      return res.json({ ok: true, message: 'Voto agregado', votes: existing.votes });
-    }
-    const newReq = new AppRequest({ appName: appName.trim(), reason: reason || '', ip, voters: [ip] });
-    await newReq.save();
-    tgAlert('appreq', () => `ğŸ™‹ <b>Solicitud de app</b>\nğŸ“± ${appName.trim().slice(0, 40)}\nğŸ’¬ ${(reason || '').slice(0, 80) || 'sin motivo'}`, { windowMs: 30000 });
-    res.json({ ok: true, message: 'Solicitud enviada', id: newReq._id });
-  } catch { res.status(500).json({ error: 'Error guardando solicitud' }); }
-});
-
-// Download APK â€” link firmado con expiraciÃ³n (Supabase Storage) para no
-// exponer una URL pÃºblica permanente del binario.
-app.get('/api/download/:fileName', async (req, res) => {
-  const { fileName } = req.params;
-  if (!fileName || fileName.includes('..')) return res.status(400).json({ error: 'Nombre invÃ¡lido' });
-  try {
-    if (!supabase) return res.status(503).json({ error: 'Storage no disponible' });
-    const key = decodeURIComponent(fileName);
-    let target = null;
-    try {
-      const { data: signedData, error: signedErr } = await supabase.storage.from(STORAGE_BUCKET).createSignedUrl(key, 300);
-      if (!signedErr && signedData && signedData.signedUrl) target = signedData.signedUrl;
-    } catch (e) {}
-    if (!target) {
-      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(key);
-      target = data?.publicUrl || null;
-    }
-    if (!target) return res.status(404).json({ error: 'Archivo no encontrado' });
-    broadcast('download', { fileName: key });
-    trackEvent('download', null, { app_name: key });
-    tgAlert('download', () => `â¬‡ï¸ <b>Descarga</b>: ${key}`, { windowMs: 15000 });
-    res.redirect(302, target);
-  } catch (e) { console.error('Error download:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
-});
-
-// Download indirecta por appId â€” pensada para el catÃ¡logo Open Source.
-// El HTML pÃºblico solo expone el appId (nunca el enlace real de GitHub
-// Releases); este endpoint resuelve el enlace actual en MongoDB y hace
-// un redirect 302. Ventajas: se puede cambiar el destino (nueva versiÃ³n,
-// mirror, etc.) sin tocar el frontend, y queda trackeado igual que las
-// descargas Premium. OJO: esto no es "seguridad" â€” cualquiera puede ver
-// la URL final en la pestaÃ±a Network del navegador tras el redirect,
-// solo evita que quede pegada en el HTML/cÃ³digo fuente de la pÃ¡gina.
-app.get('/api/dl/:appId', async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  const { appId } = req.params;
-  try {
-    const app_ = await App.findOne({ appId }).select('enlace plugin_enlace nombre tg_file_path tg_plugin_file_path').lean();
-    if (!app_ || !app_.enlace || app_.enlace === '#') return res.status(404).json({ error: 'Enlace no disponible aÃºn' });
-    // Un enlace Telegram con token embebido NO puede salir por el header
-    // Location del 302 (lo verÃ­a cualquiera). Se reconstruye con el token
-    // solo en el server, o se redirige a la ruta segura /api/tgfile.
-    const filePath = tgFilePath(app_.enlace);
-    if (filePath) {
-      if (!TG_TOKEN) return res.status(502).json({ error: 'Almacenamiento temporal no disponible' });
-      broadcast('download', { fileName: app_.nombre });
-      trackEvent('download', null, { app_name: app_.nombre, appId });
-      tgAlert('download', () => `â¬‡ï¸ <b>Descarga</b>: ${app_.nombre}`, { windowMs: 15000 });
-      return res.redirect(302, `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`);
-    }
-    res.redirect(302, app_.enlace);
-  } catch (e) { console.error('Error /api/dl:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
-});
-
-// Descarga segura de archivos Telegram (token solo en el server).
-// Enlaza desde /api/apps (enlace sanitizado) y desde /api/dl.
-app.get('/api/tgfile/:appId', async (req, res) => {
-  const { appId } = req.params;
-  const slot = String(req.query.slot || 'main');
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  if (!TG_TOKEN) return res.status(503).json({ error: 'Almacenamiento temporal no disponible' });
-  try {
-    const app_ = await App.findOne({ appId }).select('enlace plugin_enlace tg_file_path tg_plugin_file_path nombre').lean();
-    if (!app_) return res.status(404).json({ error: 'App no encontrada' });
-    const filePath = slot === 'plugin' ? app_.tg_plugin_file_path : app_.tg_file_path;
-    const fallback = slot === 'plugin' ? app_.plugin_enlace : app_.enlace;
-    const fp = filePath || tgFilePath(fallback);
-    if (!fp) return res.status(404).json({ error: 'Enlace no disponible aÃºn' });
-    broadcast('download', { fileName: app_.nombre });
-    trackEvent('download', null, { app_name: app_.nombre, appId });
-    tgAlert('download', () => `â¬‡ï¸ <b>Descarga</b>: ${app_.nombre} (tgfile${slot === 'plugin' ? ' plugin' : ''})`, { windowMs: 15000 });
-    res.redirect(302, `https://api.telegram.org/file/bot${TG_TOKEN}/${fp}`);
-  } catch (e) { console.error('Error /api/tgfile:', e.message); res.status(500).json({ error: 'No se pudo generar el link.' }); }
-});
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  ADMIN
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-// Endpoint: registrar un APK que ya fue subido a Telegram (file_id) sin
-// re-pipear los bytes (el operador lo envia como documento al bot).
-app.post('/api/admin/apps/:appId/upload-from-telegram', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  const { appId } = req.params;
-  const { file_id, slot, file_name } = req.body || {};
-  if (!file_id) return res.status(400).json({ error: 'Falta file_id' });
-  if (!TG_TOKEN) return res.status(503).json({ error: 'Sin token de Telegram en el servidor' });
-  const https = require('https');
-  try {
-    const a = await App.findOne({ appId });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-
-    const fData = await new Promise((resolve, reject) => {
-      https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${encodeURIComponent(file_id)}` }, (r) => {
-        const chunks = []; r.on('data', c => chunks.push(c));
-        r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch (e) { reject(e); } });
-      }).on('error', reject);
-    });
-    if (!fData || !fData.ok) {
-      return res.status(400).json({ error: 'Telegram getFile fallo: ' + (fData && fData.description || 'no response') });
-    }
-
-    const isPlugin = slot === 'plugin';
-    const tgFp = fData.result.file_path;
-    const publicDl = `${process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com'}/api/tgfile/${encodeURIComponent(appId)}${isPlugin ? '?slot=plugin' : ''}`;
-    const upd = isPlugin
-      ? { tg_plugin_msg_id: 0, tg_plugin_file_id: file_id, tg_plugin_file_path: tgFp, plugin_enlace: publicDl, updatedAt: new Date(), lastAttempt: 'upload-from-telegram' }
-      : { tg_message_id: 0, tg_file_id: file_id, tg_file_path: tgFp, enlace: publicDl, updatedAt: new Date(), lastAttempt: 'upload-from-telegram' };
-
-    await App.updateOne({ appId }, upd);
-    logAdmin(adminActorOf(req), 'app.apk.upload_from_telegram', { appId, slot: isPlugin ? 'plugin' : 'main', has_file_name: !!file_name }, 'ok');
-    res.json({ ok: true, appId, slot: isPlugin ? 'plugin' : 'main', file_id, file_path: tgFp, url: publicDl });
-  } catch (e) {
-    console.error('upload-from-telegram error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.get('/api/admin/apps', requireAdmin, async (_, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try { const apps = await App.find({}).sort({ createdAt: 1 }).lean(); res.json({ apps, total: apps.length }); }
-  catch { res.status(500).json({ error: 'Error obteniendo apps' }); }
-});
-
-app.post('/api/admin/apps', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const { appId, nombre, descripcion, version, tag, changelog, imagen, categoria, verified, enlace, plugin_enlace, source_repo, packageName } = req.body;
-    if (!appId || !nombre) return res.status(400).json({ error: 'appId y nombre son requeridos' });
-    if (await App.findOne({ appId })) return res.status(409).json({ error: 'Ya existe una app con ese appId' });
-    const a = await App.create({ appId, nombre, descripcion, version, tag: tag || 'ğŸ†•', changelog, imagen: normalizeImagePath(imagen), categoria, verified: verified !== false, enlace: enlace || '#', plugin_enlace: plugin_enlace || null, source_repo: source_repo || null, packageName: packageName || null });
-    await cacheDel('apps:all');
-    broadcast('new_app', { appId, nombre, tag: tag || 'ğŸ†•', categoria });
-    broadcastAppsChanged();
-    tgAlert('adminapp', () => `â• <b>App publicada</b>\nğŸ“± ${String(nombre).slice(0, 40)} (<code>${appId}</code>)\nğŸ·ï¸ ${categoria || 'sin categorÃ­a'}`, { windowMs: 30000 });
-    // NotificaciÃ³n automÃ¡tica: nueva app open source en el catÃ¡logo
-    if (a.source_repo) {
-      try {
-        const r = await broadcastPush({
-          title: 'ğŸ†• Nueva app open source: ' + a.nombre,
-          body: (a.descripcion ? String(a.descripcion).slice(0, 120) : 'Ya disponible en el catÃ¡logo open source de CodeHub'),
-          type: 'app_update',
-          appId: a.appId,
-          version: a.version || '',
-          url: '/opensource.html',
-        });
-        if (r.sent) console.log('ğŸ“² Push nueva app open source:', r.sent);
-      } catch (e) { console.warn('Push nueva app open source error:', e.message); }
-    }
-    logAdmin(adminActorOf(req), 'app.create', { appId, nombre, categoria, openSource: !!a.source_repo }, 'ok');
-    res.json({ ok: true, app: a });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.patch('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const update = {};
-    ['nombre','descripcion','version','tag','changelog','imagen','categoria','verified','enlace','plugin_enlace','tutorial_url','source_repo','packageName']
-      .forEach(f => { if (req.body[f] !== undefined) update[f] = req.body[f]; });
-    if (update.imagen) update.imagen = normalizeImagePath(update.imagen);
-
-    // No sobreescribir enlace con vacÃ­o o '#' si ya hay un APK subido (Telegram/Archive/Supabase)
-    // Esto protege el enlace generado por el upload cuando el admin guarda otros campos
-    if (!update.enlace || update.enlace === '#') {
-      const current = await App.findOne({ appId: req.params.appId }).select('enlace ia_file_name tg_message_id b2_file_name').lean();
-      if (current && (current.ia_file_name || current.tg_message_id || current.b2_file_name)) {
-        delete update.enlace; // conservar el enlace existente en DB
-      }
-    }
-
-    update.updatedAt = new Date();
-    const a = await App.findOneAndUpdate({ appId: req.params.appId }, update, { new: true });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-    await cacheDel('apps:all'); broadcastAppsChanged();
-    logAdmin(adminActorOf(req), 'app.update', { appId: req.params.appId, fields: Object.keys(update) }, 'ok');
-    res.json({ ok: true, app: a });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.delete('/api/admin/apps/:appId', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const a = await App.findOne({ appId: req.params.appId });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-
-    // Limpiar archivos en Telegram (mensajes con el APK)
-    if (a.tg_message_id)     await deleteFromTelegram(a.tg_message_id);
-    if (a.tg_plugin_msg_id)  await deleteFromTelegram(a.tg_plugin_msg_id);
-
-    // Limpiar archivos en Supabase (fallback)
-    if (a.b2_file_name)        await deleteFromStorage(a.b2_file_name);
-    if (a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
-
-    // Limpiar archivos en Archive.org
-    if (a.ia_file_name)         await deleteFromArchive(a.ia_file_name);
-    if (a.ia_plugin_file_name)  await deleteFromArchive(a.ia_plugin_file_name);
-
-    await App.deleteOne({ appId: req.params.appId });
-    await cacheDel('apps:all');
-    broadcastAppsChanged();
-    logAdmin(adminActorOf(req), 'app.delete', { appId: req.params.appId, nombre: a.nombre }, 'ok');
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// â”€â”€ DELETE /api/admin/apps/:appId/apk â€” Elimina solo el APK de Telegram/Storage sin borrar la app
-// Ãštil para reemplazar un APK desactualizado antes de subir uno nuevo, o limpiar storage manualmente.
-// Query param: ?slot=main (default) | ?slot=plugin
-app.delete('/api/admin/apps/:appId/apk', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const a = await App.findOne({ appId: req.params.appId });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-
-    const isPlugin = req.query.slot === 'plugin';
-    const upd = { updatedAt: new Date() };
-    let deleted = { telegram: false, supabase: false, archive: false };
-
-    if (isPlugin) {
-      if (a.tg_plugin_msg_id)     { deleted.telegram = await deleteFromTelegram(a.tg_plugin_msg_id); }
-      if (a.b2_plugin_file_name)  { deleted.supabase = await deleteFromStorage(a.b2_plugin_file_name); }
-      if (a.ia_plugin_file_name)  { deleted.archive  = await deleteFromArchive(a.ia_plugin_file_name); }
-      Object.assign(upd, {
-        tg_plugin_msg_id: null, tg_plugin_file_id: null,
-        b2_plugin_file_name: null, ia_plugin_file_name: null, plugin_enlace: null,
-      });
-    } else {
-      if (a.tg_message_id) { deleted.telegram = await deleteFromTelegram(a.tg_message_id); }
-      if (a.b2_file_name)  { deleted.supabase = await deleteFromStorage(a.b2_file_name); }
-      if (a.ia_file_name)  { deleted.archive  = await deleteFromArchive(a.ia_file_name); }
-      Object.assign(upd, {
-        tg_message_id: null, tg_file_id: null,
-        b2_file_name: null, ia_file_name: null, ia_identifier: null, enlace: '#',
-      });
-    }
-
-    await App.updateOne({ appId: req.params.appId }, upd);
-    await cacheDel('apps:all');
-    console.log(`ğŸ—‘ï¸ APK eliminado: ${req.params.appId} [slot=${isPlugin ? 'plugin' : 'main'}]`);
-    logAdmin(adminActorOf(req), 'app.apk.delete', { appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted }, 'ok');
-    res.json({ ok: true, appId: req.params.appId, slot: isPlugin ? 'plugin' : 'main', deleted });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// â”€â”€ GET /api/admin/apps/:appId/archive-credentials â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Para APKs > 50 MB: el frontend obtiene las credenciales y sube
-// DIRECTAMENTE a Archive.org S3, sin pasar el buffer por Render.
-// Luego notifica al backend con POST /api/admin/apps/:appId/archive-confirm
-app.get('/api/admin/apps/:appId/archive-credentials', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  if (!IA_ACCESS_KEY || !IA_SECRET_KEY) {
-    return res.status(503).json({ error: 'Archive.org no configurado en el servidor' });
-  }
-  try {
-    const a = await App.findOne({ appId: req.params.appId });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-    const slot     = req.query.slot || 'main';
-    const isPlugin = slot === 'plugin';
-    const ts       = Date.now();
-    const fileName = `${req.params.appId}_${isPlugin ? 'plugin' : 'main'}_${ts}.apk`;
-
-    res.json({
-      ok: true,
-      fileName,
-      itemId:    getIAItemId(req.params.appId),
-      accessKey: IA_ACCESS_KEY,
-      secretKey: IA_SECRET_KEY,
-      uploadUrl: `https://s3.us.archive.org/${getIAItemId(req.params.appId)}/${encodeURIComponent(fileName)}`,
-      downloadUrl:`https://archive.org/download/${getIAItemId(req.params.appId)}/${encodeURIComponent(fileName)}`,
-      appName:   a.nombre,
-      appVersion:a.version || '',
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// â”€â”€ POST /api/admin/apps/:appId/archive-confirm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El frontend llama este endpoint DESPUÃ‰S de subir directo a Archive.org
-// para registrar el fileName y enlace en la DB.
-app.post('/api/admin/apps/:appId/archive-confirm', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const { fileName, downloadUrl, sizeMB, slot } = req.body;
-    if (!fileName || !downloadUrl) return res.status(400).json({ error: 'fileName y downloadUrl requeridos' });
-    const isPlugin = slot === 'plugin';
-    const a = await App.findOne({ appId: req.params.appId });
-    if (!a) return res.status(404).json({ error: 'App no encontrada' });
-
-    // Eliminar archivo previo de Archive.org si existe
-    const oldFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
-    if (oldFile && oldFile !== fileName) await deleteFromArchive(oldFile);
-
-    const upd = isPlugin
-      ? { ia_plugin_file_name: fileName, plugin_enlace: downloadUrl, updatedAt: new Date() }
-      : { ia_file_name: fileName, ia_identifier: getIAItemId(req.params.appId), enlace: downloadUrl, updatedAt: new Date() };
-
-    await App.updateOne({ appId: req.params.appId }, upd);
-    await cacheDel('apps:all');
-    console.log(`âœ… Archive confirm: ${req.params.appId} | ${fileName} | ${sizeMB} MB`);
-    res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: 'archive' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// â”€â”€ POST /api/admin/apps/:appId/upload â€” Streaming sin buffer en RAM â”€â”€â”€â”€â”€â”€â”€â”€
-// Parsea el multipart con busboy y hace PIPE directo al destino:
-//   â‰¤ 50 MB â†’ Telegram  (bot configurado) o Supabase (fallback)
-//   > 50 MB â†’ Archive.org S3  (streaming chunk a chunk, sin lÃ­mite)
-// En ningÃºn momento se acumula el archivo completo en memoria de Render.
-app.post('/api/admin/apps/:appId/upload', requireAdmin, (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-
-  const { appId }  = req.params;
-  const https      = require('https');
-  const { PassThrough } = require('stream');
-
-  // Leer slot del query o esperar a los campos del form
-  let isPlugin     = req.query.slot === 'plugin';
-  let fileStarted  = false;
-  let totalBytes   = 0;
-  let fileName     = '';
-  let responded    = false;
-
-  const safe = (fn) => { if (!responded) { responded = true; fn(); } };
-
-  let bb;
-  try {
-    bb = Busboy({
-      headers: req.headers,
-      limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB trÃ¡nsito (solo chunks en vuelo, no en RAM)
-    });
-  } catch (e) {
-    return res.status(400).json({ error: 'Multipart invÃ¡lido: ' + e.message });
-  }
-
-  // Capturar campos de texto ANTES del archivo
-  bb.on('field', (name, val) => {
-    if (name === 'slot') isPlugin = val === 'plugin';
-  });
-
-  bb.on('file', async (fieldname, fileStream, info) => {
-    if (fileStarted) { fileStream.resume(); return; } // ignorar archivos extra
-    fileStarted = true;
-
-    const { mimeType, filename } = info;
-    if (mimeType !== 'application/vnd.android.package-archive' && !filename.endsWith('.apk')) {
-      fileStream.resume();
-      return safe(() => res.status(400).json({ error: 'Solo archivos .apk' }));
-    }
-
-    try {
-      const a = await App.findOne({ appId });
-      if (!a) {
-        fileStream.resume();
-        return safe(() => res.status(404).json({ error: 'App no encontrada' }));
-      }
-
-      const ts       = Date.now();
-      fileName       = `${appId}_${isPlugin ? 'plugin' : 'main'}_${ts}.apk`;
-      const hasTG    = !!(TG_TOKEN && TG_CHAT_ID);
-      const hasIA    = !!(IA_ACCESS_KEY && IA_SECRET_KEY);
-
-      // Determinar tamaÃ±o estimado desde Content-Length para decidir destino ANTES de leer el stream
-      // El browser siempre envÃ­a Content-Length en FormData uploads
-      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
-      const TG_MAX        = 49 * 1024 * 1024; // 49 MB â€” lÃ­mite real de Telegram para bots
-      const likelyLarge   = contentLength > TG_MAX; // el multipart overhead es pequeÃ±o (~500 bytes)
-
-      // Enrutamiento:
-      //   Si el archivo cabe en Telegram (â‰¤ 49 MB) y hay bot â†’ Telegram
-      //   Si es grande (> 49 MB) y hay Archive.org â†’ Archive.org streaming
-      //   Fallback â†’ Supabase (solo si < 50 MB)
-      const useTG  = hasTG && !likelyLarge;
-      const useIA  = hasIA && (likelyLarge || !hasTG);
-
-      let bytesOut = 0;
-      let downloadUrl, upd, storageLabel;
-
-      console.log(`ğŸ“¦ Upload routing: contentLength=${(contentLength/1024/1024).toFixed(1)}MB likelyLarge=${likelyLarge} useTG=${useTG} useIA=${useIA}`);
-
-      if (useTG) {
-        // â”€â”€ STREAMING â†’ Telegram â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        storageLabel = 'telegram';
-        const boundary = '----StreamBoundary' + ts.toString(16);
-        const CRLF     = '\r\n';
-        const caption  = `ğŸ“¦ ${a.nombre} â€” ${isPlugin ? 'Plugin' : 'APK'} v${a.version || '?'}`;
-
-        const preamble = Buffer.from(
-          `--${boundary}${CRLF}Content-Disposition: form-data; name="chat_id"${CRLF}${CRLF}${TG_CHAT_ID}${CRLF}` +
-          `--${boundary}${CRLF}Content-Disposition: form-data; name="caption"${CRLF}${CRLF}${caption}${CRLF}` +
-          `--${boundary}${CRLF}Content-Disposition: form-data; name="document"; filename="${fileName}"${CRLF}` +
-          `Content-Type: application/vnd.android.package-archive${CRLF}${CRLF}`
-        );
-        const closing = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
-
-        // Eliminar mensaje anterior si existe
-        const oldMsgId = isPlugin ? a.tg_plugin_msg_id : a.tg_message_id;
-        if (oldMsgId) {
-          await deleteFromTelegram(oldMsgId).catch(() => {});
-          await App.updateOne({ appId }, isPlugin
-            ? { tg_plugin_msg_id: null, tg_plugin_file_id: null }
-            : { tg_message_id: null, tg_file_id: null }
-          );
-        }
-
-        const tgData = await new Promise((resolve, reject) => {
-          // Content-Length desconocido â†’ usar Transfer-Encoding: chunked
-          const tgReq = https.request({
-            hostname: 'api.telegram.org',
-            path:     `/bot${TG_TOKEN}/sendDocument`,
-            method:   'POST',
-            headers:  {
-              'Content-Type': `multipart/form-data; boundary=${boundary}`,
-              'Transfer-Encoding': 'chunked',
-            },
-          }, (tgRes) => {
-            const chunks = [];
-            tgRes.on('data', c => chunks.push(c));
-            tgRes.on('end', () => {
-              try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
-              catch (e) { reject(e); }
-            });
-          });
-          tgReq.on('error', reject);
-          tgReq.write(preamble);
-          // Pipe del stream del navegador directo a Telegram
-          fileStream.on('data', chunk => { bytesOut += chunk.length; tgReq.write(chunk); });
-          fileStream.on('end', () => { tgReq.write(closing); tgReq.end(); });
-          fileStream.on('error', reject);
-        });
-
-        if (!tgData.ok) throw new Error('Telegram: ' + (tgData.description || JSON.stringify(tgData)));
-
-        const msg    = tgData.result;
-        const fileId = msg.document?.file_id;
-        const fData  = await new Promise((resolve, reject) => {
-          https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${fileId}` }, (r) => {
-            const chunks = []; r.on('data', c => chunks.push(c));
-            r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch(e){ reject(e); } });
-          }).on('error', reject);
-        });
-        if (!fData.ok) throw new Error('Telegram getFile: ' + fData.description);
-
-        // Nunca persistir la URL con token del bot. Se guarda el file_path
-        // (sin token) y un enlace pÃºblico seguro que el server resuelve.
-        const tgFp     = fData.result.file_path;
-        const publicDl = `${process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com'}/api/tgfile/${encodeURIComponent(appId)}${isPlugin ? '?slot=plugin' : ''}`;
-        downloadUrl    = publicDl;
-        upd = isPlugin
-          ? { tg_plugin_msg_id: msg.message_id, tg_plugin_file_id: fileId, tg_plugin_file_path: tgFp, plugin_enlace: publicDl, updatedAt: new Date() }
-          : { tg_message_id:    msg.message_id, tg_file_id:        fileId, tg_file_path:        tgFp, enlace:        publicDl, updatedAt: new Date() };
-
-      } else if (useIA) {
-        // â”€â”€ BUFFER â†’ Archive.org S3 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        // Archive.org S3 rechaza Transfer-Encoding: chunked (HTTP 411 Length Required).
-        // SOLUCIÃ“N: acumular en archivo temporal en disco para obtener el Content-Length
-        // exacto antes de hacer el PUT. Render tiene /tmp con espacio suficiente.
-        storageLabel = 'archive';
-        const os   = require('os');
-        const path = require('path');
-        const fs   = require('fs');
-        const tmpPath = path.join(os.tmpdir(), fileName);
-
-        // 1. Escribir stream a disco temporal
-        await new Promise((resolve, reject) => {
-          const tmpWrite = fs.createWriteStream(tmpPath);
-          fileStream.pipe(tmpWrite);
-          tmpWrite.on('finish', () => { bytesOut = fs.statSync(tmpPath).size; resolve(); });
-          tmpWrite.on('error', reject);
-          fileStream.on('error', reject);
-        });
-
-        const fileSize = fs.statSync(tmpPath).size;
-        console.log(`ğŸ“ Temp file: ${tmpPath} | size: ${(fileSize/1024/1024).toFixed(2)} MB`);
-        if (fileSize === 0) throw new Error('Archivo temporal vacÃ­o â€” stream no llegÃ³ correctamente');
-        const oldIaFile = isPlugin ? a.ia_plugin_file_name : a.ia_file_name;
-        if (oldIaFile) await deleteFromArchive(oldIaFile).catch(() => {});
-
-        // 2. PUT con Content-Length exacto â€” Archive.org lo exige
-        await new Promise((resolve, reject) => {
-          const iaReq = https.request({
-            hostname: 's3.us.archive.org',
-            path:     `/${getIAItemId(appId)}/${encodeURIComponent(fileName)}`,
-            method:   'PUT',
-            headers:  {
-              'Authorization':            `LOW ${IA_ACCESS_KEY}:${IA_SECRET_KEY}`,
-              'Content-Type':             'application/vnd.android.package-archive',
-              'Content-Length':           fileSize,
-              'x-amz-auto-make-bucket':   '1',
-              'x-archive-queue-derive':   '0',
-              'x-archive-meta-mediatype': 'software',
-              'x-archive-meta-subject':   'android;apk;application',
-              'x-archive-meta-title':       a.nombre  ? `${a.nombre} APK`      : `${getIAItemId(appId)} APK`,
-              'x-archive-meta-description': a.version ? `Version ${a.version}` : 'Android APK',
-              'x-archive-meta-creator':     'CodeHub by Wilson.E',
-              'x-archive-meta-language':    'es',
-            },
-          }, (iaRes) => {
-            const chunks = []; iaRes.on('data', c => chunks.push(c));
-            iaRes.on('end', () => {
-              fs.unlink(tmpPath, () => {}); // limpiar temp
-              if (iaRes.statusCode >= 200 && iaRes.statusCode < 300) return resolve();
-              reject(new Error(`Archive.org S3 ${iaRes.statusCode}: ${Buffer.concat(chunks).toString().slice(0,300)}`));
-            });
-          });
-          iaReq.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
-          // Pipe desde disco â†’ Archive.org
-          const tmpRead = fs.createReadStream(tmpPath);
-          tmpRead.pipe(iaReq);
-          tmpRead.on('error', (e) => { fs.unlink(tmpPath, () => {}); reject(e); });
-          // Timeout de red â€” evita uploads que cuelgan y dejan archivos temporales
-          iaReq.setTimeout(IA_PUT_TIMEOUT_MS, () => {
-            fs.unlink(tmpPath, () => {});
-            tmpRead.destroy();
-            iaReq.destroy(new Error(`Archive.org S3 timeout (>${IA_PUT_TIMEOUT_MS/1000}s)`));
-          });
-        });
-
-        downloadUrl = `https://archive.org/download/${getIAItemId(appId)}/${encodeURIComponent(fileName)}`;
-        upd = isPlugin
-          ? { ia_plugin_file_name: fileName, plugin_enlace: downloadUrl, updatedAt: new Date() }
-          : { ia_file_name: fileName, ia_identifier: getIAItemId(appId), enlace: downloadUrl, updatedAt: new Date() };
-
-      } else {
-        // â”€â”€ FALLBACK: Supabase (buffer en memoria, solo < 50 MB) â”€
-        storageLabel = 'supabase';
-        const chunks = [];
-        await new Promise((resolve, reject) => {
-          fileStream.on('data', c => { bytesOut += c.length; chunks.push(c); });
-          fileStream.on('end', resolve);
-          fileStream.on('error', reject);
-        });
-        const buf = Buffer.concat(chunks);
-        if (buf.length > 50 * 1024 * 1024) throw new Error('Archivo > 50 MB y no hay Telegram ni Archive.org configurados');
-        if (!isPlugin && a.b2_file_name) await deleteFromStorage(a.b2_file_name);
-        if  (isPlugin && a.b2_plugin_file_name) await deleteFromStorage(a.b2_plugin_file_name);
-        const { publicUrl } = await uploadToStorage(buf, fileName);
-        downloadUrl = publicUrl;
-        upd = isPlugin
-          ? { b2_plugin_file_name: fileName, plugin_enlace: publicUrl, updatedAt: new Date() }
-          : { b2_file_name: fileName,        enlace: publicUrl,         updatedAt: new Date() };
-      }
-
-      const sizeMB = (bytesOut / 1024 / 1024).toFixed(1);
-      await App.updateOne({ appId }, upd);
-      await cacheDel('apps:all');
-      console.log(`âœ… Upload streaming OK: ${fileName} | ${sizeMB} MB | ${storageLabel}`);
-      safe(() => res.json({ ok: true, fileName, downloadUrl, sizeMB, storage: storageLabel }));
-
-    } catch (e) {
-      fileStream.resume();
-      console.error('Upload streaming error:', e.message);
-      safe(() => res.status(500).json({ error: e.message }));
-    }
-  });
-
-  bb.on('error', (e) => safe(() => res.status(400).json({ error: 'Parse multipart: ' + e.message })));
-  bb.on('finish', () => {
-    if (!fileStarted) safe(() => res.status(400).json({ error: 'No se recibiÃ³ archivo .apk' }));
-  });
-
-  req.pipe(bb);
-});
-
-app.patch('/api/requests/:id', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try { const s = req.body.status || '';
-      await AppRequest.findByIdAndUpdate(req.params.id, { status: s });
-      logAdmin(adminActorOf(req), 'request.update', { id: req.params.id, status: s }, 'ok');
-      res.json({ ok: true }); }
-  catch { res.status(500).json({ error: 'Error actualizando' }); }
-});
-
-app.post('/api/admin/seed', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const { apps } = req.body;
-    if (!apps || !Array.isArray(apps)) return res.status(400).json({ error: 'Se esperaba { apps: [...] }' });
-    let created = 0, updated = 0;
-    for (const a of apps) {
-      const id = a.appId || a.id;
-      const imagen = normalizeImagePath(a.imagen || '');
-      const exists = await App.findOne({ appId: id });
-      if (exists) {
-        const set = { nombre: a.nombre||a.name, enlace: a.enlace||'#', version: a.version_conocida||a.ver||'', tag: a.tag||'ğŸ†•', updatedAt: new Date() };
-        // Solo se pisa `imagen` si el seed trae una â€” evita borrar un
-        // Ã­cono que el admin ya haya corregido a mano desde el panel.
-        if (imagen) {
-          // Guarda anti-revert: si el seed trae la portada social del repo
-          // (opengraph) y la DB ya tiene un logo real local (/img/...), se
-          // conserva el logo local.
-          const seedIsPortada = /opengraph\.githubassets\.com/i.test(imagen);
-          const prevIsLocal   = /^\/img\//.test(exists.imagen || '');
-          if (!(seedIsPortada && prevIsLocal)) set.imagen = imagen;
-        }
-        // Idem para `source_repo` â€” solo se pisa si el seed lo trae,
-        // para no desactivar el monitor de una app ya vinculada.
-        if (a.source_repo) set.source_repo = a.source_repo;
-        // packageName resuelto por resolve-package-names.js â€” solo se pisa
-        // si el seed trae uno, para no borrar uno ya resuelto a mano.
-        if (a.packageName) set.packageName = a.packageName;
-        await App.updateOne({ appId: id }, { $set: set });
-        updated++;
-      } else {
-        await App.create({ appId: id, nombre: a.nombre||a.name, descripcion: a.descripcion||'', version: a.version_conocida||a.ver||'', tag: a.tag||'ğŸ†•', changelog: a.changelog||'', imagen, categoria: a.categoria||a.cat||'', verified: a.verified!==false, enlace: a.enlace||'#', plugin_enlace: a.plugin_enlace||null, source_repo: a.source_repo||null, packageName: a.packageName||null });
-        created++;
-      }
-    }
-    await cacheDel('apps:all');
-    broadcastAppsChanged();
-    logAdmin(adminActorOf(req), 'seed', { created, updated }, 'ok');
-    res.json({ ok: true, created, updated });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-
-// â”€â”€ POST /api/generate-image â€” Generador IA con 4 proveedores â”€
-// F2.6: Cache de imÃ¡genes por prompt hash (TTL 1 hora)
-const _imgCache = new Map();
-const IMG_CACHE_TTL = 3600000; // 1 hour
-const IMG_CACHE_MAX_BYTES = 64 * 1024 * 1024; // 64 MB de budget total (evita que base64 grandes agoten la memoria)
-let _imgCacheBytes = 0;
-function imgCacheKey(p, w, h) {
-  let h1 = 0; const s = p.toLowerCase().trim().replace(/\s+/g, ' ');
-  for (let i = 0; i < s.length; i++) { h1 = ((h1 << 5) - h1 + s.charCodeAt(i)) | 0; }
-  return h1 + ':' + w + 'x' + h;
-}
-function imgCacheGet(key) {
-  const e = _imgCache.get(key);
-  if (!e) return null;
-  if (Date.now() - e.ts > IMG_CACHE_TTL) { _imgCache.delete(key); _imgCacheBytes -= e.size || 0; return null; }
-  return e.data;
-}
-function imgCacheSet(key, data) {
-  const size = data ? (String(data.image || data.url || '').length + 256) : 1024;
-  if (_imgCache.has(key)) _imgCacheBytes -= _imgCache.get(key).size || 0;
-  while ((_imgCache.size >= 200 || _imgCacheBytes + size > IMG_CACHE_MAX_BYTES) && _imgCache.size > 0) {
-    const oldest = _imgCache.keys().next().value;
-    if (oldest === undefined) break;
-    const old = _imgCache.get(oldest);
-    _imgCacheBytes -= old.size || 0;
-    _imgCache.delete(oldest);
-  }
-  _imgCache.set(key, { data, ts: Date.now(), size });
-  _imgCacheBytes += size;
-}
-function sendAndCache(res, data, cacheKey) {
-  if (data && (data.image || data.url)) {
-    if (res.locals && res.locals.refinedPrompt) data.refined_prompt = res.locals.refinedPrompt;
-    if (res.locals && res.locals.description) data.description = res.locals.description;
-    imgCacheSet(cacheKey, data);
-  }
-  return res.json(data);
-}
-
-// â”€â”€ Refinador de prompt de imagen (dos etapas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El prompt crudo del usuario pasa primero por una IA de chat que lo
-// convierte en un prompt de difusiÃ³n profesional, detallado y adaptado
-// a lo que pidiÃ³. AsÃ­ el generador recibe una instrucciÃ³n consistente
-// y de alta calidad (evita que cada proveedor "invente" su propia imagen).
-async function refineImagePrompt(rawPrompt, w, h) {
-  const aspect = w > h ? 'horizontales (16:9) de gran angular' : w < h ? 'verticales (9:16) aptas para mÃ³vil' : 'cuadradas (1:1)';
-  const sysMsg = 'Eres un experto director de arte de IA. Analizas la intenciÃ³n del usuario y reescribes su peticiÃ³n como un PROMPT DE DIFUSIÃ“N PROFESIONAL en inglÃ©s, detallado y listo para meter en un generador de imÃ¡genes (FLUX / Imagen / MiniMax).\n'
-    + 'Reglas:\n'
-    + '- Conserva SIEMPRE el sujeto, estilo o tema que pidiÃ³ el usuario (persona, objeto, escena, logo, anime, fotorealista...).\n'
-    + '- AÃ±ade detalles de calidad: iluminaciÃ³n (luz dorada, neblina, estudio, etc.), composiciÃ³n, Ã¡ngulo de cÃ¡mara, resoluciÃ³n, textura y ambiente.\n'
-    + '- Elige el estilo visual correcto (fotorealista, render 3D, dibujo, acuarela, ciberpunk, minimalista, etc.) segÃºn lo pedido.\n'
-    + '- Respeta si pide proporciones/formatos especÃ­ficos; si no, usa una orientaciÃ³n general ' + aspect + '.\n'
-    + '- Devuelve SOLO el prompt refinado en una lÃ­nea, en inglÃ©s, sin comillas, sin explicaciones, sin saludos.';
-  try {
-    const { reply } = await callAI([
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: 'PeticiÃ³n del usuario: ' + String(rawPrompt).slice(0, 400) }
-    ], 450);
-    const refined = String(reply || '').trim().replace(/^["']+|["']+$/g, '').replace(/\s+/g, ' ');
-    if (refined.length >= 4) return refined;
-  } catch (e) {
-    console.warn('âš ï¸ refineImagePrompt fallÃ³, usando prompt original:', e.message);
-  }
-  return String(rawPrompt).trim();
-}
-
-// â”€â”€ Descriptor de imagen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Genera una descripciÃ³n natural en espaÃ±ol de la imagen creada, para que
-// WIL.E se la "cuente" al usuario (texto + voz) de forma cÃ¡lida y corta.
-async function describeImage(rawPrompt, refinedPrompt) {
-  const sysMsg = 'Eres WIL.E COPILOT, el asistente de CodeHub. El usuario te pidiÃ³ generar una imagen y acaba de crearse.\n'
-    + 'Escribe UN pÃ¡rrafo breve (mÃ¡x. 40 palabras) en ESPAÃ‘OL, cÃ¡lido y entusiasta, describiendo QUÃ‰ se creÃ³ basÃ¡ndote en esta peticiÃ³n.\n'
-    + 'Empieza con algo como "Â¡Listo! GenerÃ©..." o "AquÃ­ tienes tu imagen de...". Describe el sujeto, el estilo y la sensaciÃ³n general.\n'
-    + 'NO menciones que eres una IA ni cÃ³mo se generÃ³. Solo describe la imagen creada para el usuario.';
-  try {
-    const { reply } = await callAI([
-      { role: 'system', content: sysMsg },
-      { role: 'user', content: 'PeticiÃ³n original: ' + String(rawPrompt).slice(0, 300) + '\n| Prompt refinado: ' + String(refinedPrompt || rawPrompt).slice(0, 300) }
-    ], 180);
-    const desc = String(reply || '').trim().replace(/\s+/g, ' ');
-    if (desc.length >= 8) return desc;
-  } catch (e) {
-    console.warn('âš ï¸ describeImage fallÃ³:', e.message);
-  }
-  return 'Â¡Listo! GenerÃ© una imagen basada en tu peticiÃ³n: ' + String(rawPrompt).slice(0, 80).trim() + '.';
-}
-
-// â”€â”€ BÃºsqueda web en vivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Si la consulta parece pedir informaciÃ³n actual/noticias, busca en la web
-// (DuckDuckGo Instant Answer + Wikipedia, gratuitos y sin clave) y devuelve
-// un contexto breve para que WIL.E responda con datos reales y recientes.
-// Devuelve string vacÃ­o si no aplica o falla.
-async function liveWebContext(message) {
-  const q = String(message || '').trim();
-  if (!q || q.length < 6) return '';
-  const low = q.toLowerCase();
-  const signalWords = ['Ãºltima', 'Ãºltimo', 'noticia', 'hoy', '2024', '2025', '2026', 'cuÃ¡l es la hora', 'mejor', 'mÃ¡s reciente', 'actualidad', 'resultado', 'presidente', 'guerra', 'elecciones', 'clima', 'efemÃ©ride', 'lanzamiento', 'noticias', 'reciÃ©n', 'acaba'];
-  const curiosity = /(quÃ© (es|pasÃ³|hubo|ganÃ³|dijo)|quiÃ©n (es|ganÃ³)|cuÃ¡ndo|cÃ³mo estÃ¡|latest|today|news|who won|what happened)/i;
-  const wantsLive = signalWords.some(w => low.includes(w)) || curiosity.test(low);
-  if (!wantsLive) return '';
-
-  const out = [];
-  // 1) DuckDuckGo Instant Answer (abstract + descripciÃ³n)
-  try {
-    const ctrl = AbortSignal.timeout(5000);
-    const r = await fetch('https://api.duckduckgo.com/?q=' + encodeURIComponent(q) + '&format=json&no_html=1&skip_disambig=1', { signal: ctrl });
-    if (r.ok) {
-      const d = await r.json();
-      const abstract = (d && (d.AbstractText || d.Answer)) || '';
-      if (abstract) out.push('DuckDuckGo: ' + String(abstract).slice(0, 400));
-      const defs = (d && d.RelatedTopics) || [];
-      for (const t of defs.slice(0, 3)) {
-        const txt = t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
-        if (txt) out.push('DuckDuckGo: ' + String(txt).slice(0, 250));
-      }
-    }
-  } catch (e) { /* ignorar */ }
-
-  // 2) Wikipedia (summary)
-  try {
-    const ctrl = AbortSignal.timeout(5000);
-    const r = await fetch('https://es.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(q.replace(/[Â¿?Â¡!.,;:]/g, ' ').trim().split(' ').slice(0, 5).join('_')), { signal: ctrl, headers: { 'Accept': 'application/json' } });
-    if (r.ok) {
-      const d = await r.json();
-      const extract = (d && d.extract) || '';
-      if (extract) out.push('Wikipedia: ' + String(extract).slice(0, 500));
-    }
-  } catch (e) { /* ignorar */ }
-
-  if (!out.length) return '';
-  return 'REFERENCIA WEB EN VIVO (consulta "' + q.slice(0, 80) + '") â€” usa esto solo si responde a lo preguntado; si no hay relaciÃ³n, ignÃ³ralo:\n' + out.join('\n').slice(0, 2500);
-}
-
-// â”€â”€ Herramienta de cÃ³mputo (agent) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Resuelve de forma programÃ¡tica (sin LLM) tareas computables: operaciones
-// de 2 operandos, fecha/hora actual, dÃ­as transcurridos y conversiones de
-// unidades/divisas simples. Devuelve string vacÃ­o si no aplica.
-function computeTool(message) {
-  const q = String(message || '').trim();
-  if (!q) return '';
-  const low = q.toLowerCase();
-
-  // Fecha / hora / dÃ­a actual
-  if (/(quÃ© dÃ­a es hoy|fecha de hoy|dÃ­a de hoy|hoy es quÃ©|quÃ© fecha|hora actual|quÃ© hora es)\b/i.test(low)) {
-    const now = new Date();
-    const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    return 'HERRAMIENTA (fecha/hora): hoy es ' + fecha + ' y son las ' + hora + ' (hora local del servidor). Usa este dato si la pregunta pide la fecha/hora actual.';
-  }
-
-  // CÃ¡lculo aritmÃ©tico simple: a op b
-  const ops = [
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\+|\+|mÃ¡s|mas)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a + b, sym: '+' },
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:-|menos)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a - b, sym: '-' },
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\*|x|por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a * b, sym: 'Ã—' },
-    { re: /(\d+(?:[.,]\d+)?)\s*(?:\/|dividido entre|dividido por)\s*(\d+(?:[.,]\d+)?)/i, fn: (a, b) => a / b, sym: 'Ã·' },
-  ];
-  for (const o of ops) {
-    const m = low.match(o.re);
-    if (m) {
-      const a = parseFloat(m[1].replace(',', '.'));
-      const b = parseFloat(m[2].replace(',', '.'));
-      if (!isNaN(a) && !isNaN(b) && b !== 0) {
-        const r = Math.round(o.fn(a, b) * 100000) / 100000;
-        return 'HERRAMIENTA (cÃ¡lculo): ' + a + ' ' + o.sym + ' ' + b + ' = ' + r + '. Responde usando este resultado exacto.';
-      }
-    }
-  }
-
-  // Porcentaje: cuÃ¡nto es X% de Y
-  const pc = low.match(/(\d+(?:[.,]\d+)?)\s*%\s*de\s*(\d+(?:[.,]\d+)?)/);
-  if (pc) {
-    const p = parseFloat(pc[1].replace(',', '.'));
-    const base = parseFloat(pc[2].replace(',', '.'));
-    if (!isNaN(p) && !isNaN(base)) {
-      const r = Math.round((p / 100) * base * 100) / 100;
-      return 'HERRAMIENTA (porcentaje): el ' + p + '% de ' + base + ' = ' + r + '. Usa este resultado exacto en tu respuesta.';
-    }
-  }
-
-  // ConversiÃ³n de unidades (km/mi, kg/lb, C/F, USDâ†”GTQ si hay tasa fija aproximada)
-  const convs = [
-    { re: /(\d+(?:[.,]\d+)?)\s*km\s*(?:a|to)?\s*mi/i, fn: (x) => x * 0.621371, label: 'kilÃ³metros a millas' },
-    { re: /(\d+(?:[.,]\d+)?)\s*mi\s*(?:a|to)?\s*km/i, fn: (x) => x * 1.60934, label: 'millas a kilÃ³metros' },
-    { re: /(\d+(?:[.,]\d+)?)\s*kg\s*(?:a|to)?\s*lb/i, fn: (x) => x * 2.20462, label: 'kilogramos a libras' },
-    { re: /(\d+(?:[.,]\d+)?)\s*lb\s*(?:a|to)?\s*kg/i, fn: (x) => x * 0.453592, label: 'libras a kilogramos' },
-  ];
-  for (const c of convs) {
-    const m = low.match(c.re);
-    if (m) {
-      const x = parseFloat(m[1].replace(',', '.'));
-      if (!isNaN(x)) {
-        const r = Math.round(c.fn(x) * 100) / 100;
-        return 'HERRAMIENTA (conversiÃ³n): ' + x + ' ' + c.label + ' â‰ˆ ' + r + '. Usa este valor en tu respuesta.';
-      }
-    }
-  }
-
-  return '';
-}
-
-// â”€â”€ Function-calling (agente) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Dispatcher de herramientas de Wil.E. Detecta la intenciÃ³n del mensaje y
-// ejecuta la herramienta adecuada (bÃºsqueda web, cÃ³mputo, leer URL), luego
-// inyecta el resultado estructurado como contexto para que el LLM responda
-// con datos reales. Devuelve string vacÃ­o si no corresponde ninguna.
-function detectTool(message) {
-  const q = String(message || '').trim();
-  const low = q.toLowerCase();
-  const tool = { name: null, arg: null };
-  if (/^(busca|buscar|investiga|search|googlea|webs?earch|averigua)\.?\s+(.+)/i.test(q)) {
-    const m = q.match(/^(?:busca|buscar|investiga|search|googlea|averigua)\.?\s+(.+)/i);
-    tool.name = 'web_search'; tool.arg = m[1].trim();
-  } else if (/(cuÃ¡nto es|calcula|cuÃ¡nto da|resuelve)\s+([0-9].*)/i.test(low)) {
-    const m = low.match(/(?:cuÃ¡nto es|calcula|cuÃ¡nto da|resuelve)\s+([0-9].*)/i);
-    tool.name = 'compute'; tool.arg = m[1].trim();
-  } else if (/https?:\/\/\S+/i.test(q)) {
-    const m = q.match(/(https?:\/\/[^\s]+)/i);
-    tool.name = 'fetch_url'; tool.arg = m[1];
-  }
-  return tool.name ? tool : null;
-}
-
-async function executeTool(name, arg) {
-  try {
-    if (name === 'web_search') {
-      const ctx = await liveWebContext('buscar ' + arg);
-      return ctx ? 'Resultado bÃºsqueda: ' + ctx : null;
-    }
-    if (name === 'compute') {
-      return computeTool('calcula ' + arg);
-    }
-    if (name === 'fetch_url') {
-      const text = await fetchUrlText(arg);
-      if (text) return 'Contenido de la URL (' + arg + '):\n' + text.slice(0, 1500);
-      return null;
-    }
-  } catch (e) { return null; }
-  return null;
-}
-
-// Extrae texto de una web (HTMLâ†’texto plano) para leer URLs.
-// Seguridad: reutiliza validateUrlSafety del Universal Resolver para
-// bloquear SSRF (IPs privadas/reservadas, localhost, metadata de cloud)
-// antes de emitir el fetch. Nota residual: sigue habiendo una ventana
-// TOCTOU entre la validaciÃ³n de DNS y el fetch (DNS rebinding).
-async function fetchUrlText(url) {
-  try {
-    try { await validateUrlSsrf(url); } catch { return ''; }
-    const r = await fetch(url, { signal: AbortSignal.timeout(10000), headers: { 'User-Agent': 'Mozilla/5.0 CodeHub' } });
-    if (!r.ok) return '';
-    const html = await r.text();
-    const clean = html
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/\s+/g, ' ')
-      .trim();
-    return clean.slice(0, 2500);
-  } catch (e) { return ''; }
-}
-
-app.post('/api/generate-image', imageLimiter, imgGenDailyGuard, async (req, res) => {
-  const { prompt, width = 512, height = 512, provider = 'auto', skill_id = null, preset_id = null } = req.body;
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length < 2) {
-    return res.status(400).json({ error: 'Prompt requerido' });
-  }
-
-  let p = prompt.trim().slice(0, 500);
-  let w = Math.min(Math.max(parseInt(width)  || 512, 256), 1024);
-  let h = Math.min(Math.max(parseInt(height) || 512, 256), 1024);
-  const errors = [];
-
-  // â”€â”€ Skill + preset: inyecta el prompt_suffix y el tamaÃ±o recomendado â”€â”€
-  if (skill_id && preset_id) {
-    const skill = loadSkillJson(String(skill_id));
-    const preset = skill && (skill.presets || []).find(x => x.id === preset_id);
-    if (preset) {
-      p = `${p}, ${preset.prompt_suffix}`.slice(0, 700);
-      if (preset.recommended_size && !req.body.width) {
-        const [pw, ph] = String(preset.recommended_size).split('x').map(Number);
-        if (pw && ph) { w = pw; h = ph; }
-      }
-    }
-  }
-
-  // â”€â”€ Dos etapas: otra IA refina el prompt antes de generarlo â”€â”€
-  // Refinamiento de prompt por defecto (puede desactivarse con refine:false)
-  if (req.body.refine !== false) {
-    p = await refineImagePrompt(p, w, h);
-  }
-  res.locals.refinedPrompt = p;
-
-  // F2.6: Check image cache before hitting providers
-  const cacheKey = imgCacheKey(p, w, h);
-  const cached = imgCacheGet(cacheKey);
-  if (cached) {
-    console.log('ğŸ–¼ï¸ Image cache hit');
-    return res.json({ ...cached, cached: true });
-  }
-
-  // â”€â”€ 1. Together AI â€” FLUX.1 Schnell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  if (process.env.TOGETHER_API_KEY && (provider === 'auto' || provider === 'together')) {
-    try {
-      const r = await fetch('https://api.together.xyz/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'black-forest-labs/FLUX.1-schnell-Free',
-          prompt: p,
-          width: w,
-          height: h,
-          steps: 4,
-          n: 1,
-        }),
-        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        const b64 = d.data?.[0]?.b64_json;
-        const url = d.data?.[0]?.url;
-        if (b64) return sendAndCache(res, { ok: true, provider: 'together', model: 'FLUX.1-schnell', image: `data:image/png;base64,${b64}` }, cacheKey);
-        if (url) return sendAndCache(res, { ok: true, provider: 'together', model: 'FLUX.1-schnell', url }, cacheKey);
-      } else {
-        const e = await r.json().catch(() => ({}));
-        errors.push(`Together: ${e.error?.message || r.status}`);
-      }
-    } catch (e) { errors.push(`Together: ${e.message}`); }
-  }
-
-  // â”€â”€ 2. Gemini â€” Imagen 3 Fast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // NOTA: Solo funciona con proyecto allowlistado. Deshabilitado en auto
-  // para no sumar 5s+ de timeout muerto a cada request. Se puede invocar
-  // explÃ­citamente con provider='gemini'.
-  if (process.env.GEMINI_API_KEY && provider === 'gemini') {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-fast-generate-001:predict?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            instances: [{ prompt: p }],
-            parameters: { sampleCount: 1, aspectRatio: w > h ? '16:9' : w === h ? '1:1' : '9:16' }
-          }),
-          signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-        }
-      );
-      if (r.ok) {
-        const d = await r.json();
-        const b64 = d.predictions?.[0]?.bytesBase64Encoded;
-        if (b64) return sendAndCache(res, { ok: true, provider: 'gemini', model: 'Imagen 3 Fast', image: `data:image/png;base64,${b64}` }, cacheKey);
-      } else {
-        const e = await r.json().catch(() => ({}));
-        errors.push(`Gemini: ${e.error?.message || r.status}`);
-      }
-    } catch (e) { errors.push(`Gemini: ${e.message}`); }
-  }
-
-  // â”€â”€ 3. Pollinations â€” Flux (sin key) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // MiniMax - image-01
-  if (process.env.MINIMAX_API_KEY && (provider === 'auto' || provider === 'minimax')) {
-    try {
-      const aspectRatio = w > h ? '16:9' : w < h ? '9:16' : '1:1';
-      const r = await fetch('https://api.minimax.io/v1/image_generation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.MINIMAX_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'image-01',
-          prompt: p,
-          aspect_ratio: aspectRatio,
-          response_format: 'base64',
-          n: 1,
-        }),
-        signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
-      });
-      if (r.ok) {
-        const d = await r.json();
-        const b64 =
-          d.data?.base64?.[0] ||
-          d.data?.images?.[0]?.base64 ||
-          d.data?.image_base64?.[0];
-        const url = d.data?.image_urls?.[0];
-        if (b64) return sendAndCache(res, { ok: true, provider: 'minimax', model: 'image-01', image: `data:image/png;base64,${b64}` }, cacheKey);
-        if (url) return sendAndCache(res, { ok: true, provider: 'minimax', model: 'image-01', url }, cacheKey);
-        errors.push('MiniMax: respuesta sin imagen');
-      } else {
-        const e = await r.json().catch(() => ({}));
-        errors.push(`MiniMax: ${e.base_resp?.status_msg || e.message || r.status}`);
-      }
-    } catch (e) { errors.push(`MiniMax: ${e.message}`); }
-  }
-
-  if (provider === 'auto' || provider === 'pollinations') {
-    try {
-      const seed = Math.floor(Math.random() * 99999);
-      const polUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=${w}&height=${h}&seed=${seed}&model=flux&nologo=true`;
-      const r = await fetch(polUrl, { signal: AbortSignal.timeout(15000) });
-      if (r.ok) {
-        const buf = await r.arrayBuffer();
-        const b64 = Buffer.from(buf).toString('base64');
-        return sendAndCache(res, { ok: true, provider: 'pollinations', model: 'Flux', image: `data:image/jpeg;base64,${b64}` }, cacheKey);
-      } else {
-        errors.push(`Pollinations: ${r.status}`);
-      }
-    } catch (e) { errors.push(`Pollinations: ${e.message}`); }
-  }
-
-  // â”€â”€ 4. Pollinations Turbo (fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  try {
-    const seed2 = Math.floor(Math.random() * 99999);
-    const url2  = `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?width=512&height=512&seed=${seed2}&model=turbo&nologo=true`;
-    const r2 = await fetch(url2, { signal: AbortSignal.timeout(20000) });
-    if (r2.ok) {
-      const buf = await r2.arrayBuffer();
-      const b64 = Buffer.from(buf).toString('base64');
-      return sendAndCache(res, { ok: true, provider: 'pollinations-turbo', model: 'Turbo', image: `data:image/jpeg;base64,${b64}` }, cacheKey);
-    }
-    errors.push(`Pollinations Turbo: ${r2.status}`);
-  } catch (e) { errors.push(`Pollinations Turbo: ${e.message}`); }
-
-  // Todos fallaron
-  res.status(503).json({ ok: false, error: 'Todos los proveedores fallaron', details: errors });
-});
-
-// â”€â”€ Helper: guardar log de escaneo en Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// POST /api/enhance-image - Autoenhance.ai (mejorar calidad de imagen)
-app.post('/api/enhance-image', imageEditLimiter, imgEditDailyGuard, requireAuth, async (req, res) => {
-  const { image } = req.body || {};
-  if (!image || typeof image !== 'string') {
-    return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
-  }
-  const parsed = parseImageDataUrl(image);
-  if (!parsed) {
-    return res.status(400).json({ ok: false, error: 'Imagen invalida o demasiado pesada (max ~4MB, png/jpeg/webp/gif).' });
-  }
-  const key = process.env.AUTOENHANCE_API_KEY;
-  if (!key) {
-    return res.status(503).json({ ok: false, error: 'AUTOENHANCE_API_KEY no configurada.' });
-  }
-  try {
-    const extMap = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
-    const ext = extMap[parsed.mimeType] || 'png';
-    const buf = Buffer.from(parsed.data, 'base64');
-    const boundary = '----WilE' + Date.now() + 'x';
-    const body = Buffer.concat([
-      Buffer.from('--' + boundary + '\r\n' +
-        'Content-Disposition: form-data; name="image"; filename="input.' + ext + '"\r\n' +
-        'Content-Type: ' + parsed.mimeType + '\r\n\r\n'),
-      buf,
-      Buffer.from('\r\n--' + boundary + '--\r\n'),
-    ]);
-    const resp = await fetch('https://api.autoenhance.ai/v1/enhance', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': key,
-        'Authorization': 'Bearer ' + key,
-        'Content-Type': 'multipart/form-data; boundary=' + boundary,
-      },
-      body,
-      signal: AbortSignal.timeout(60000),
-    });
-    const ct = resp.headers.get('content-type') || '';
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => '');
-      console.warn('Autoenhance error:', resp.status, errText.slice(0, 200));
-      return res.status(resp.status).json({ ok: false, error: 'Autoenhance fallo (' + resp.status + ').' });
-    }
-    if (ct.includes('application/json')) {
-      const j = await resp.json();
-      return res.json({ ok: true, ...j });
-    }
-    const out = Buffer.from(await resp.arrayBuffer());
-    res.json({ ok: true, image: 'data:' + (ct.split(';')[0] || 'image/png') + ';base64,' + out.toString('base64') });
-  } catch (e) {
-    console.warn('Enhance error:', e.message);
-    res.status(500).json({ ok: false, error: 'Error mejorando la imagen.' });
-  }
-});
-
-// â”€â”€ POST /api/edit-image â€” EdiciÃ³n de imagen con IA (Gemini) â”€â”€â”€â”€â”€â”€â”€â”€
-// Acepta una imagen (data URL) y una instrucciÃ³n ("quita el fondo", "cambia
-// la camiseta a rojo", "borra el perro", etc.) y devuelve la imagen editada.
-app.post('/api/edit-image', imageEditLimiter, imgEditDailyGuard, requireAuth, async (req, res) => {
-  const { image, prompt } = req.body || {};
-  if (!image || typeof image !== 'string') {
-    return res.status(400).json({ ok: false, error: '"image" (data URL) requerida.' });
-  }
-  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
-    return res.status(400).json({ ok: false, error: 'Falta la instrucciÃ³n de ediciÃ³n.' });
-  }
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY no configurada. La ediciÃ³n de imagen requiere Gemini.' });
-  }
-  const parsed = parseImageDataUrl(image);
-  if (!parsed) {
-    return res.status(400).json({ ok: false, error: 'Imagen invalida o demasiado pesada (max ~4MB).' });
-  }
-  const inst = prompt.trim().slice(0, 500);
-  const mineData = Buffer.from(parsed.data, 'base64').toString('base64');
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: parsed.mimeType || 'image/png', data: mineData } },
-              { text: 'Edita esta imagen segÃºn la instrucciÃ³n: "' + inst + '". Devuelve SOLO la imagen editada (sin texto).' },
-            ],
-          }],
-          generationConfig: { temperature: 0.4 },
-        }),
-        signal: AbortSignal.timeout(45000),
-      }
-    );
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      console.warn('Edit-image Gemini error:', r.status, (e.error && e.error.message) || '');
-      return res.status(r.status).json({ ok: false, error: 'EdiciÃ³n fallÃ³ (' + r.status + ').' });
-    }
-    const d = await r.json();
-    const parts = d.candidates?.[0]?.content?.parts || [];
-    const imgPart = parts.find((p) => p && p.inlineData && p.inlineData.data) || parts.find((p) => p && p.inline_data && p.inline_data.data);
-    if (!imgPart) {
-      const txt = parts.map((p) => p.text || '').join(' ').trim();
-      if (txt) return res.json({ ok: true, image: null, note: txt.slice(0, 300) });
-      return res.status(502).json({ ok: false, error: 'Gemini no devolviÃ³ una imagen editada.' });
-    }
-    const b64 = imgPart.inlineData ? imgPart.inlineData.data : imgPart.inline_data.data;
-    const mime = (imgPart.inlineData ? imgPart.inlineData.mimeType : imgPart.inline_data.mime_type) || 'image/png';
-    res.json({ ok: true, image: 'data:' + mime + ';base64,' + b64, provider: 'gemini-edit' });
-  } catch (e) {
-    console.warn('Edit-image error:', e.message);
-    res.status(500).json({ ok: false, error: 'Error editando la imagen.' });
-  }
-});
-
-async function saveScanLog({ type, target, verdict, riskScore, provider, metadata = {} }) {
-  if (!supabase) return;
-  try {
-    await supabase.from('scan_logs').insert({
-      type,
-      target,
-      verdict,
-      risk_score: riskScore,
-      provider,
-      metadata,
-      scanned_at: new Date().toISOString(),
-    });
-  } catch (e) {
-    console.warn('âš ï¸  scan_logs insert error:', e.message);
-  }
-}
-
-// â”€â”€ POST /api/check-link â€” VirusTotal URL checker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.post('/api/check-link', chatLimiter, async (req, res) => {
-  const rawUrl = String(req.body?.url || '').trim();
-  if (!rawUrl) return res.status(400).json({ ok: false, error: 'URL requerida' });
-  if (!process.env.VIRUSTOTAL_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'VIRUSTOTAL_API_KEY no configurada' });
-  }
-
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(rawUrl);
-    if (!/^https?:$/.test(parsedUrl.protocol)) throw new Error('Protocolo no soportado');
-  } catch (_) {
-    return res.status(400).json({ ok: false, error: 'URL invalida. Usa http:// o https://' });
-  }
-
-  try {
-    const submitRes = await fetch('https://www.virustotal.com/api/v3/urls', {
-      method: 'POST',
-      headers: {
-        'x-apikey': process.env.VIRUSTOTAL_API_KEY,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: `url=${encodeURIComponent(parsedUrl.toString())}`
-    });
-
-    const submitData = await submitRes.json().catch(() => ({}));
-    if (!submitRes.ok) {
-      return res.status(submitRes.status).json({
-        ok: false,
-        error: submitData.error?.message || `VirusTotal ${submitRes.status}`
-      });
-    }
-
-    const analysisId = submitData.data?.id;
-    if (!analysisId) {
-      return res.status(502).json({ ok: false, error: 'VirusTotal no devolvio un analysis id' });
-    }
-
-    let analysisData = null;
-    for (let i = 0; i < 4; i++) {
-      const analysisRes = await fetch(`https://www.virustotal.com/api/v3/analyses/${encodeURIComponent(analysisId)}`, {
-        headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY }
-      });
-      analysisData = await analysisRes.json().catch(() => ({}));
-      if (analysisRes.ok && analysisData.data?.attributes?.status === 'completed') break;
-      await new Promise(resolve => setTimeout(resolve, 1800));
-    }
-
-    const attrs = analysisData?.data?.attributes || {};
-    const stats = attrs.stats || {};
-    const malicious = stats.malicious || 0;
-    const suspicious = stats.suspicious || 0;
-    const harmless = stats.harmless || 0;
-    const undetected = stats.undetected || 0;
-    const timeout = stats.timeout || 0;
-    const riskScore = Math.min(100, (malicious * 25) + (suspicious * 12));
-
-    let verdict = 'clean';
-    let recommendation = 'No se detectaron senales claras de riesgo, pero aun conviene revisar el dominio antes de abrirlo.';
-
-    if (malicious > 0) {
-      verdict = 'malicious';
-      recommendation = 'No abras este link. Bloquealo, no descargues archivos y evita compartirlo.';
-    } else if (suspicious > 0) {
-      verdict = 'suspicious';
-      recommendation = 'Tratalo como sospechoso. Verifica el dominio, evita iniciar sesion y no descargues nada.';
-    } else if (timeout > 0 && harmless === 0) {
-      verdict = 'unknown';
-      recommendation = 'El analisis no fue concluyente. Revisa el dominio manualmente antes de confiar.';
-    }
-
-    await saveScanLog({
-      type: 'url',
-      target: parsedUrl.toString(),
-      verdict,
-      riskScore,
-      provider: 'virustotal',
-      metadata: { malicious, suspicious, harmless, undetected, host: parsedUrl.hostname },
-    });
-
-    res.json({
-      ok: true,
-      provider: 'virustotal',
-      url: parsedUrl.toString(),
-      host: parsedUrl.hostname,
-      verdict,
-      riskScore,
-      recommendation,
-      stats: {
-        malicious,
-        suspicious,
-        harmless,
-        undetected,
-        timeout
-      },
-      analysis: {
-        id: analysisId,
-        status: attrs.status || 'queued',
-        date: attrs.date || null
-      }
-    });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message || 'No se pudo analizar el link' });
-  }
-});
-
-// â”€â”€ POST /api/check-file â€” VirusTotal file checker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.post('/api/check-file', chatLimiter, (req, res) => {
-  uploadSecurityFile.single('file')(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({
-        ok: false,
-        error: err.code === 'LIMIT_FILE_SIZE'
-          ? 'El archivo supera el limite de 32 MB'
-          : (err.message || 'No se pudo procesar el archivo')
-      });
-    }
-    if (!req.file) return res.status(400).json({ ok: false, error: 'Archivo requerido' });
-    if (!process.env.VIRUSTOTAL_API_KEY) {
-      return res.status(503).json({ ok: false, error: 'VIRUSTOTAL_API_KEY no configurada' });
-    }
-
-    try {
-      const sha256 = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
-      const form = new FormData();
-      form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype || 'application/octet-stream' }), req.file.originalname);
-
-      const submitRes = await fetch('https://www.virustotal.com/api/v3/files', {
-        method: 'POST',
-        headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY },
-        body: form
-      });
-
-      const submitData = await submitRes.json().catch(() => ({}));
-      if (!submitRes.ok) {
-        return res.status(submitRes.status).json({
-          ok: false,
-          error: submitData.error?.message || `VirusTotal ${submitRes.status}`
-        });
-      }
-
-      const analysisId = submitData.data?.id;
-      if (!analysisId) {
-        return res.status(502).json({ ok: false, error: 'VirusTotal no devolvio un analysis id para el archivo' });
-      }
-
-      let analysisData = null;
-      for (let i = 0; i < 5; i++) {
-        const analysisRes = await fetch(`https://www.virustotal.com/api/v3/analyses/${encodeURIComponent(analysisId)}`, {
-          headers: { 'x-apikey': process.env.VIRUSTOTAL_API_KEY }
-        });
-        analysisData = await analysisRes.json().catch(() => ({}));
-        if (analysisRes.ok && analysisData.data?.attributes?.status === 'completed') break;
-        await new Promise(resolve => setTimeout(resolve, 1800));
-      }
-
-      const attrs = analysisData?.data?.attributes || {};
-      const stats = attrs.stats || {};
-      const malicious = stats.malicious || 0;
-      const suspicious = stats.suspicious || 0;
-      const harmless = stats.harmless || 0;
-      const undetected = stats.undetected || 0;
-      const riskScore = Math.min(100, (malicious * 25) + (suspicious * 12));
-
-      let verdict = 'clean';
-      let recommendation = 'No se detectaron amenazas claras, pero aun conviene verificar el origen del archivo antes de abrirlo.';
-      if (malicious > 0) {
-        verdict = 'malicious';
-        recommendation = 'No abras ni ejecutes este archivo. Eliminalo o aisla la muestra.';
-      } else if (suspicious > 0) {
-        verdict = 'suspicious';
-        recommendation = 'Tratalo como sospechoso. Evita ejecutarlo y confirma su origen primero.';
-      }
-
-      await saveScanLog({
-        type: 'file',
-        target: req.file.originalname,
-        verdict,
-        riskScore,
-        provider: 'virustotal',
-        metadata: { sha256, malicious, suspicious, harmless, undetected, mime: req.file.mimetype, size: req.file.size },
-      });
-
-      res.json({
-        ok: true,
-        provider: 'virustotal',
-        fileName: req.file.originalname,
-        mime: req.file.mimetype || 'application/octet-stream',
-        size: req.file.size,
-        sha256,
-        verdict,
-        riskScore,
-        recommendation,
-        stats: {
-          malicious,
-          suspicious,
-          harmless,
-          undetected
-        },
-        analysis: {
-          id: analysisId,
-          status: attrs.status || 'queued',
-          date: attrs.date || null
-        }
-      });
-    } catch (e) {
-      res.status(500).json({ ok: false, error: e.message || 'No se pudo analizar el archivo' });
-    }
-  });
-});
-
-
-// â”€â”€ GET /api/docs â€” Swagger UI inline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/docs', (_, res) => {
-  res.send(`<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CodeHub API Docs</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
-  <style>
-    body { margin: 0; background: #0a0a14; }
-    .swagger-ui .topbar { background: #2f80ed; }
-    .swagger-ui .topbar .download-url-wrapper { display: none; }
-    .swagger-ui .info .title { color: #2f80ed; }
-  </style>
-</head>
-<body>
-  <div id="swagger-ui"></div>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-  <script>
-    SwaggerUIBundle({
-      spec: ${JSON.stringify(swaggerSpec)},
-      dom_id: '#swagger-ui',
-      deepLinking: true,
-      presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
-      layout: 'StandaloneLayout',
-      tryItOutEnabled: true,
-    });
-  </script>
-</body>
-</html>`);
-});
-
-// â”€â”€ GET /api/docs.json â€” spec en JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/docs.json', (_, res) => res.json(swaggerSpec));
-
-// â”€â”€ BLOG ESTÃTICO â€” GitHub API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Requiere: GITHUB_TOKEN en env vars con permisos repo:contents
-// npm install @octokit/rest  (ya en package.json)
-
-let octokit = null;
-try {
-  const { Octokit } = require('@octokit/rest');
-  if (process.env.GITHUB_TOKEN) {
-    octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
-    console.log('   Blog GitHub: âœ… Octokit listo');
-  } else {
-    console.log('   Blog GitHub: âš ï¸  falta GITHUB_TOKEN en env vars');
-  }
-} catch(e) {
-  console.warn('   Blog GitHub: âš ï¸  @octokit/rest no instalado â€”', e.message);
-}
-
-const GITHUB_OWNER  = process.env.GITHUB_OWNER  || 'wilson360-labs';
-const GITHUB_REPO   = process.env.GITHUB_REPO   || 'CodeHub';
-const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
-
-// GitHub lista workflows "virtuales" en repos con Dependabot/Pages activos
-// (p.ej. dependabot-updates.yml, pages-build-deployment.yml): no son archivos
-// reales y consultar sus runs devuelve 404. Se filtran contra los archivos
-// reales de .github/workflows de este repo (a prueba de futuros fantasmas),
-// mÃ¡s blacklist estÃ¡tica + aprendida en runtime.
-const GH_VIRTUAL_WORKFLOWS = new Set(['dependabot-updates.yml', 'pages-build-deployment.yml']);
-const GH_WORKFLOWS_DIR = path.resolve(__dirname, '..', '.github', 'workflows');
-let _ghWfFilesCache = null;
-let _ghWfFilesAt = 0;
-function localWorkflowFiles() {
-  const now = Date.now();
-  if (!_ghWfFilesCache || (now - _ghWfFilesAt) > 30000) {
-    try {
-      _ghWfFilesCache = new Set(fs.readdirSync(GH_WORKFLOWS_DIR).filter(f => /\.ya?ml$/i.test(f)));
-    } catch { _ghWfFilesCache = new Set(); }
-    _ghWfFilesAt = now;
-  }
-  return _ghWfFilesCache;
-}
-let _ghPhantomWorkflows = new Set();
-function isRealGitHubWorkflow(path) {
-  const file = String(path).split('/').pop();
-  if (GH_VIRTUAL_WORKFLOWS.has(file) || _ghPhantomWorkflows.has(file)) return false;
-  const local = localWorkflowFiles();
-  if (local.size === 0) return true; // no se pudo leer el dir: no filtrar por disco
-  return local.has(file);
-}
-
-async function ghUpdateFile(filePath, content, message) {
-  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
-  let sha;
-  try {
-    const { data } = await octokit.repos.getContent({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, path: filePath, ref: GITHUB_BRANCH,
-    });
-    sha = data.sha;
-  } catch { /* archivo nuevo */ }
-
-  await octokit.repos.createOrUpdateFileContents({
-    owner: GITHUB_OWNER, repo: GITHUB_REPO, path: filePath,
-    message, content: Buffer.from(content).toString('base64'),
-    branch: GITHUB_BRANCH, ...(sha ? { sha } : {}),
-  });
-}
-
-// â”€â”€ EXTRACCIÃ“N DE ÃCONOS DESDE URL "UNIVERSAL" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El admin pega el link que ya tiene a mano (repo de GitHub, ficha de
-// F-Droid, ficha de Play Store, o directamente la imagen) y esto baja
-// el Ã­cono REAL de la app (no el banner social del repo) y lo sube a
-// img/ en GitHub vÃ­a Octokit, reutilizando ghUpdateFile(). No inventa
-// ni asume: si no encuentra el Ã­cono, devuelve un error explicando quÃ©
-// probÃ³, para que el admin pegue el link directo como alternativa.
-// Igual que normalizeImagePath() en admin-hub.js: si es una ruta local
-// (no http/https, no data:/blob:) sin "/" inicial, se la agrega, para
-// que siempre resuelva desde la raÃ­z sin importar quÃ© pÃ¡gina la pinte.
-function normalizeImagePath(val) {
-  if (!val) return val;
-  const v = String(val).trim();
-  if (/^https?:\/\//i.test(v) || v.startsWith('data:') || v.startsWith('blob:') || v.startsWith('/')) return v;
-  return '/' + v.replace(/^\.?\/+/, '');
-}
-
-const ICON_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg'];
-
-function iconExtFromUrl(url) {
-  const clean = url.split('?')[0].split('#')[0].toLowerCase();
-  return ICON_EXTS.find(e => clean.endsWith(e)) || '.png';
-}
-
-// Busca fastlane/metadata/android/en-US/images/icon.png (o variantes de
-// ruta/rama comunes) en un repo pÃºblico de GitHub, sin necesitar token
-// propio (la API de contenidos de GitHub es pÃºblica para repos pÃºblicos).
-async function fetchGithubFastlaneIcon(owner, repo) {
-  const branches = ['main', 'master', 'dev'];
-  const paths = [
-    'fastlane/metadata/android/en-US/images/icon.png',
-    'metadata/android/en-US/images/icon.png',
-  ];
-  for (const branch of branches) {
-    for (const path of paths) {
-      try {
-        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
-        const r = await fetch(apiUrl, { headers: { Accept: 'application/vnd.github.raw' } });
-        if (r.ok) return { buffer: Buffer.from(await r.arrayBuffer()), ext: '.png' };
-      } catch { /* probar siguiente combinaciÃ³n */ }
-    }
-  }
-  return null;
-}
-
-// Extrae la URL de og:image de una pÃ¡gina (F-Droid, Play Store, etc.)
-async function fetchOgImageUrl(pageUrl) {
-  const r = await fetch(pageUrl, { headers: { 'User-Agent': 'Mozilla/5.0 (CodeHub-IconBot)' } });
-  if (!r.ok) throw new Error(`No se pudo abrir ${pageUrl} (HTTP ${r.status})`);
-  const html = await r.text();
-  const m = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-         || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
-  if (!m) throw new Error('No encontrÃ© una imagen (og:image) en esa pÃ¡gina');
-  return m[1];
-}
-
-async function extractIconFromUniversalUrl(sourceUrl) {
-  const clean = (sourceUrl || '').trim();
-  const lower = clean.toLowerCase();
-  if (!clean) throw new Error('Falta la URL');
-
-  // 1) Link directo a la imagen
-  if (ICON_EXTS.some(e => lower.split('?')[0].endsWith(e))) {
-    const r = await fetch(clean);
-    if (!r.ok) throw new Error(`No se pudo descargar la imagen (HTTP ${r.status})`);
-    return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(clean) };
-  }
-
-  // 2) Repo de GitHub â†’ Ã­cono real en fastlane/ (no el banner social)
-  const ghMatch = clean.match(/github\.com\/([^\/]+)\/([^\/?#]+)/i);
-  if (ghMatch) {
-    const owner = ghMatch[1];
-    const repo  = ghMatch[2].replace(/\.git$/, '');
-    const found = await fetchGithubFastlaneIcon(owner, repo);
-    if (found) return found;
-    throw new Error(`No encontrÃ© fastlane/metadata/.../icon.png en ${owner}/${repo}. ProbÃ¡ pegando el link directo del Ã­cono (ej. raw.githubusercontent.com/.../icon.png).`);
-  }
-
-  // 3) F-Droid, Play Store, o cualquier pÃ¡gina con og:image
-  if (lower.includes('f-droid.org') || lower.includes('play.google.com') || lower.includes('apps.apple.com')) {
-    const imgUrl = await fetchOgImageUrl(clean);
-    const r = await fetch(imgUrl);
-    if (!r.ok) throw new Error(`No se pudo descargar el Ã­cono (HTTP ${r.status})`);
-    return { buffer: Buffer.from(await r.arrayBuffer()), ext: iconExtFromUrl(imgUrl) };
-  }
-
-  throw new Error('URL no reconocida. UsÃ¡ un link directo a la imagen, un repo de GitHub, o la ficha de F-Droid/Play Store.');
-}
-
-// POST /api/admin/extract-icon â€” body: { sourceUrl, filename }
-// Extrae el Ã­cono real desde la URL universal y lo sube a img/{filename}
-// en el repo de GitHub. No toca la base de datos: el admin sigue usando
-// "Guardar" (fila existente) o "Crear App" (app nueva) para persistir el
-// campo imagen, igual que con cualquier otro campo del panel.
-app.post('/api/admin/extract-icon', requireAdmin, async (req, res) => {
-  try {
-    const { sourceUrl, filename } = req.body;
-    if (!sourceUrl) return res.status(400).json({ error: 'Falta sourceUrl' });
-    if (!filename)  return res.status(400).json({ error: 'Falta filename (usÃ¡ el appId)' });
-
-    const { buffer, ext } = await extractIconFromUniversalUrl(sourceUrl);
-    if (buffer.length > 4 * 1024 * 1024) throw new Error('La imagen pesa mÃ¡s de 4MB');
-
-    const safeName = String(filename).trim().replace(/[^a-zA-Z0-9._-]/g, '') + ext;
-    if (!safeName || safeName === ext) throw new Error('filename invÃ¡lido');
-    const repoPath = 'img/' + safeName;
-
-    await ghUpdateFile(repoPath, buffer, `img: extraer Ã­cono (${safeName})`);
-    await cacheDel('apps:all');
-    logAdmin(adminActorOf(req), 'icon.extract', { source: String(sourceUrl).slice(0, 80), filename: safeName }, 'ok');
-    res.json({ ok: true, imagen: '/' + repoPath, filename: safeName });
-  } catch (e) {
-    console.error('POST /api/admin/extract-icon error:', e.message);
-    logAdmin(adminActorOf(req), 'icon.extract', { source: String(req.body?.sourceUrl || '').slice(0, 80), error: e.message }, 'error');
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ ADMIN: WORKFLOWS DE GITHUB (AutomatizaciÃ³n) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Permite que el panel admin (admin-hub) dispare los workflows de
-// mantenimiento del repositorio (seed del catÃ¡logo FOSS, monitor de
-// actualizaciones, dedupe) sin salir de la UI.
-// Requiere GITHUB_TOKEN con permiso `workflow` en Render.
-// Control total: se permite disparar CUALQUIER workflow existente en
-// la rama default (se valida contra GitHub en lugar de una allowlist).
-// GET /api/admin/github/workflows expone la lista real para el panel.
-async function ghWorkflowExists(file) {
-  try {
-    await octokit.rest.actions.getWorkflow({ owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: file });
-    return true;
-  } catch { return false; }
-}
-
-// POST /api/admin/github/dispatch â€” body: { workflow, inputs }
-app.post('/api/admin/github/dispatch', requireAdmin, async (req, res) => {
-  try {
-    const { workflow, inputs = {} } = req.body || {};
-    if (!workflow) {
-      return res.status(400).json({ error: 'Falta el workflow', allowedHint: 'Usa GET /api/admin/github/workflows' });
-    }
-    if (!octokit) {
-      return res.status(503).json({ error: 'GITHUB_TOKEN no configurado en Render (se requiere con permiso workflow)' });
-    }
-    if (!(await ghWorkflowExists(workflow))) {
-      return res.status(404).json({ error: 'Workflow no existe en la rama ' + GITHUB_BRANCH });
-    }
-    await octokit.rest.actions.createWorkflowDispatch({
-      owner: GITHUB_OWNER,
-      repo:  GITHUB_REPO,
-      workflow_id: workflow,
-      ref:   GITHUB_BRANCH,
-      inputs,
-    });
-    tgAlert('ghdispatch', () =>
-      `ğŸš€ <b>Workflow disparado</b>\n<code>${workflow}</code>\nRef: <code>${GITHUB_BRANCH}</code>\nIP: <code>${clientIp(req)}</code>`);
-    logAdmin(adminActorOf(req), 'workflow.dispatch', {
-      workflow, branch: GITHUB_BRANCH, inputs, ip: clientIp(req),
-    }, 'ok', 'workflow');
-    res.json({ ok: true, workflow, ref: GITHUB_BRANCH, run_url: `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${workflow}` });
-  } catch (e) {
-    const code = e?.status || 500;
-    const hint = code === 403 ? ' â€” Â¿GITHUB_TOKEN tiene permiso workflow?' : '';
-    console.error('POST /api/admin/github/dispatch error:', e.message);
-    logAdmin(adminActorOf(req), 'workflow.dispatch', {
-      workflow: req.body?.workflow || '?', error: e.message, ip: clientIp(req),
-    }, 'error', 'workflow');
-    res.status(code).json({ error: (e.message || 'Error disparando workflow') + hint });
-  }
-});
-
-// GET /api/admin/github/runs â€” estado del Ãºltimo run de cada workflow
-app.get('/api/admin/github/runs', requireAdmin, async (req, res) => {
-  try {
-    const out = await getGhRunsCached(true);
-    res.json({ ok: true, runs: out });
-  } catch (e) {
-    console.error('GET /api/admin/github/runs error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ ADMIN: JOBS â€” tareas programadas (cron jobs de Render) â”€â”€â”€â”€
-// Los cron jobs del Blueprint (render.yaml) NO son workflows de GitHub,
-// por eso no aparecen en /api/admin/github/workflows. Este endpoint los
-// expone tal cual estÃ¡n definidos en el repo, para que admin-hub los
-// muestre (check-app-updates, daily-report-bot, ...).
-const RENDER_BLUEPRINT = path.resolve(__dirname, '..', 'render.yaml');
-const RENDER_JOB_META = [
-  { name: 'check-app-updates', icon: 'ğŸ”„', desc: 'Monitor de actualizaciones: revisa GitHub Releases del catÃ¡logo y actualiza versiones/APKs (antes workflow check-app-updates.yml).' },
-  { name: 'daily-report-bot',  icon: 'ğŸ“Š', desc: 'Bot de informes diarios: envÃ­a por Telegram el resumen del dÃ­a (antes workflow daily_report.yml).' },
-];
-app.get('/api/admin/jobs', requireAdmin, async (req, res) => {
-  try {
-    const raw = fs.readFileSync(RENDER_BLUEPRINT, 'utf8');
-    const jobs = [];
-    const parseBlock = (name, blk) => {
-      const grab = (re) => { const x = blk.match(re); return x ? x[1].trim().replace(/^["']|["']$/g, '') : ''; };
-      const envKeys = [];
-      let k; const keyRe = /^      - key:\s*(.+)$/gm;
-      while ((k = keyRe.exec(blk)) !== null) envKeys.push(k[1].trim());
-      const meta = RENDER_JOB_META.find(j => j.name === name) || {};
-      jobs.push({
-        name,
-        icon: meta.icon || 'â°',
-        desc: meta.desc || '',
-        type: 'cron',
-        runtime: grab(/^    runtime:\s*(.+)$/m),
-        rootDir: grab(/^    rootDir:\s*(.+)$/m),
-        schedule: grab(/^    schedule:\s*(.+)$/m),
-        startCommand: grab(/^    startCommand:\s*(.+)$/m),
-        envKeys,
-      });
-    };
-    let inCron = false, acc = '', curName = '';
-    for (const ln of raw.split('\n')) {
-      const t = ln.match(/^  - type:\s*(\w+)/);
-      if (t) {
-        if (inCron && acc.trim()) parseBlock(curName, acc);
-        acc = '';
-        curName = '';
-        inCron = t[1] === 'cron';
-      } else if (inCron) {
-        const nm = ln.match(/^    name:\s*(.+)\s*$/);
-        if (nm) curName = nm[1].trim();
-        acc += ln + '\n';
-      }
-    }
-    if (inCron && acc.trim()) parseBlock(curName, acc);
-    logAdmin(adminActorOf(req), 'jobs.list', { count: jobs.length, ip: clientIp(req) }, 'ok', 'workflow');
-    res.json({ ok: true, jobs });
-  } catch (e) {
-    console.error('GET /api/admin/jobs error:', e.message);
-    logAdmin(adminActorOf(req), 'jobs.list', { error: e.message, ip: clientIp(req) }, 'error', 'workflow');
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ ADMIN: ACTIVITY â€” registro en vivo de operaciones ejecutadas â”€â”€
-// Alimenta el panel "En Vivo" del admin-hub: Ãºltimas operaciones admin
-// (del ring en memoria / AdminLog) + Ãºltimo run de cada workflow (cache).
-app.get('/api/admin/activity', requireAdmin, async (req, res) => {
-  try {
-    const ops = [];
-    let source = 'memory';
-    if (dbConnected) {
-      try {
-        const fromDb = await AdminLog.find({}).sort({ ts: -1 }).limit(80).lean();
-        if (fromDb.length) {
-          ops.push(...fromDb.map(o => ({ ...o, ts: new Date(o.ts).getTime() })));
-          source = 'mongo';
-        }
-      } catch {}
-    }
-    if (!ops.length) ops.push(..._adminLogRing.map(o => ({ ...o })).slice(0, 80));
-
-    // Poda del histÃ³rico (una vez por hora como mÃ¡ximo)
-    const now = Date.now();
-    if (source === 'mongo' && (now - _adminLogLastPrune) > 3600_000) {
-      _adminLogLastPrune = now;
-      pruneAdminLog().catch(() => {});
-    }
-
-    let workflows = {};
-    try { workflows = await getGhRunsCached(false); } catch {}
-    res.json({ ok: true, source, ops, workflows, serverTime: now });
-  } catch (e) {
-    console.error('GET /api/admin/activity error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ ADMIN: LOGOS FALTANTES â€” apps open source sin logo real de su repo â”€
-// Reutiliza el mismo criterio de backend/scripts/enrich-app-logos.js para
-// que el panel muestre exactamente quÃ© limpiarÃ¡ el workflow al ejecutarse.
-app.get('/api/admin/logos/missing', requireAdmin, async (_req, res) => {
-  try {
-    if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-    const NO_LOGO_RE = /opengraph\.githubassets\.com/i;
-    const hasOfficial = (img) => {
-      if (!img) return false;
-      const v = String(img).trim();
-      return /^\/img\//.test(v) || /^https?:\/\//i.test(v);
-    };
-    const all = await App.find({ source_repo: { $ne: null } })
-      .select('appId nombre imagen source_repo updatedAt').lean();
-    const missing = all.filter(a => !hasOfficial(a.imagen) || NO_LOGO_RE.test(a.imagen || ''));
-    res.json({
-      ok: true,
-      total: all.length,
-      missing: missing.length,
-      samples: missing.slice(0, 25).map(a => ({
-        appId: a.appId, nombre: a.nombre, imagen: a.imagen, source_repo: a.source_repo,
-      })),
-    });
-  } catch (e) {
-    console.error('GET /api/admin/logos/missing error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ GITHUB SECRETS & VARIABLES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// GestiÃ³n completa de secrets y variables del repositorio desde admin-hub.
-// Solo el administrador tiene acceso (requireAdmin).
-
-// GET /api/admin/github/secrets â€” listar secrets del repositorio
-app.get('/api/admin/github/secrets', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { data } = await octokit.rest.actions.listRepoSecrets({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100,
-    });
-    res.json({ ok: true, secrets: data.secrets.map(s => ({ name: s.name, created_at: s.created_at, updated_at: s.updated_at })) });
-  } catch (e) {
-    console.error('GET /api/admin/github/secrets error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/admin/github/secrets â€” crear/actualizar un secret
-app.post('/api/admin/github/secrets', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { name, value } = req.body || {};
-    if (!name || !value) return res.status(400).json({ error: 'Falta name o value' });
-
-    // Obtener la public key del repositorio
-    const { data: pubKey } = await octokit.rest.actions.getRepoPublicKey({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO,
-    });
-
-    // Encriptar el valor con libsodium
-    const sodium = require('libsodium-wrappers');
-    await sodium.ready;
-    const key = sodium.from_base64(pubKey.key, sodium.base64_variants.ORIGINAL);
-    const encrypted = sodium.crypto_box_seal(
-      sodium.from_string(value),
-      key
-    );
-    const encryptedValue = sodium.to_base64(encrypted, sodium.base64_variants.ORIGINAL);
-
-    // Crear o actualizar el secret
-    try {
-      await octokit.rest.actions.createOrUpdateRepoSecret({
-        owner: GITHUB_OWNER, repo: GITHUB_REPO,
-        secret_name: name, encrypted_value: encryptedValue,
-        key_id: pubKey.key_id,
-      });
-    } catch (createErr) {
-      if (createErr.status === 404) {
-        // Si no existe, intentar crear
-        await octokit.rest.actions.createOrUpdateRepoSecret({
-          owner: GITHUB_OWNER, repo: GITHUB_REPO,
-          secret_name: name, encrypted_value: encryptedValue,
-          key_id: pubKey.key_id,
-        });
-      } else { throw createErr; }
-    }
-
-    tgAlert('ghsecret', () =>
-      `ğŸ” <b>Secret actualizado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name });
-  } catch (e) {
-    console.error('POST /api/admin/github/secrets error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// DELETE /api/admin/github/secrets/:name â€” eliminar un secret
-app.delete('/api/admin/github/secrets/:name', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { name } = req.params;
-    await octokit.rest.actions.deleteRepoSecret({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, secret_name: name,
-    });
-    tgAlert('ghsecret_del', () =>
-      `ğŸ—‘ï¸ <b>Secret eliminado</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name });
-  } catch (e) {
-    console.error('DELETE /api/admin/github/secrets error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/variables â€” listar variables del repositorio
-app.get('/api/admin/github/variables', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { data } = await octokit.rest.actions.listRepoVariables({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100,
-    });
-    res.json({ ok: true, variables: data.variables.map(v => ({ name: v.name, value: v.value, created_at: v.created_at, updated_at: v.updated_at })) });
-  } catch (e) {
-    console.error('GET /api/admin/github/variables error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/admin/github/variables â€” crear/actualizar una variable
-app.post('/api/admin/github/variables', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { name, value } = req.body || {};
-    if (!name || !value) return res.status(400).json({ error: 'Falta name o value' });
-    try {
-      await octokit.rest.actions.createRepoVariable({
-        owner: GITHUB_OWNER, repo: GITHUB_REPO, name, value,
-      });
-    } catch (createErr) {
-      if (createErr.status === 422) {
-        await octokit.rest.actions.updateRepoVariable({
-          owner: GITHUB_OWNER, repo: GITHUB_REPO, name, value,
-        });
-      } else { throw createErr; }
-    }
-    tgAlert('ghvar', () =>
-      `âš™ï¸ <b>Variable actualizada</b>\n<code>${name}</code>=<code>${value.slice(0,20)}${value.length>20?'â€¦':''}</code>\nIP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name, value });
-  } catch (e) {
-    console.error('POST /api/admin/github/variables error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// DELETE /api/admin/github/variables/:name â€” eliminar una variable
-app.delete('/api/admin/github/variables/:name', requireAdmin, async (req, res) => {
-  try {
-    if (!octokit) return res.status(503).json({ error: 'GITHUB_TOKEN no configurado' });
-    const { name } = req.params;
-    await octokit.rest.actions.deleteRepoVariable({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, name,
-    });
-    tgAlert('ghvar_del', () =>
-      `ğŸ—‘ï¸ <b>Variable eliminada</b>\n<code>${name}</code>\nIP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name });
-  } catch (e) {
-    console.error('DELETE /api/admin/github/variables error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€ ADMIN: CONTROL TOTAL DEL REPOSITORIO (GitHub) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Centro de control de CodeHub: ramas, commits, archivos, PRs,
-// workflows, releases, issues, webhooks y colaboradores del repo.
-// Todas las rutas exigen requireAdmin y usan el GITHUB_TOKEN de Render.
-function ghGuard() {
-  if (!octokit) throw new Error('GITHUB_TOKEN no configurado en Render');
-  return octokit.rest;
-}
-
-// GET /api/admin/github/token-check â€” identidad y scopes del token
-app.get('/api/admin/github/token-check', requireAdmin, async (req, res) => {
-  try {
-    ghGuard();
-    const { data, headers } = await octokit.rest.users.getAuthenticated();
-    res.json({
-      ok: true,
-      login: data.login, name: data.name, avatar_url: data.avatar_url,
-      scopes: (headers['x-oauth-scopes'] || '').split(/,\s*/).filter(Boolean),
-    });
-  } catch (e) {
-    console.error('token-check error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/repo â€” metadata del repositorio + conteos
-app.get('/api/admin/github/repo', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.get({ owner: GITHUB_OWNER, repo: GITHUB_REPO });
-    let openPulls = null, openIssues = data.open_issues_count || 0;
-    try {
-      const prs = await gh.pulls.list({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state: 'open', per_page: 1 });
-      openPulls = prs.data.length;
-    } catch {}
-    res.json({
-      ok: true,
-      repo: {
-        full_name: data.full_name, default_branch: data.default_branch,
-        html_url: data.html_url, description: data.description,
-        stargazers_count: data.stargazers_count, forks_count: data.forks_count,
-        watchers_count: data.watchers_count, open_issues_count: openIssues,
-        open_pulls_count: openPulls, size_kb: data.size, language: data.language,
-        private: data.private, archived: data.archived,
-        license: data.license && data.license.spdx_id, created_at: data.created_at,
-        pushed_at: data.pushed_at, updated_at: data.updated_at,
-      },
-    });
-  } catch (e) {
-    console.error('GET github/repo error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/branches â€” listar ramas
-app.get('/api/admin/github/branches', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.listBranches({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    res.json({ ok: true, branches: data.map(b => ({ name: b.name, protected: b.protected, sha: b.commit && b.commit.sha })) });
-  } catch (e) {
-    console.error('GET github/branches error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/admin/github/branches â€” crear rama { name, from }
-// from = SHA completo (40 hex) o nombre de una rama existente.
-app.post('/api/admin/github/branches', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { name, from } = req.body || {};
-    if (!name || !/^[a-zA-Z0-9_./-]+$/.test(name)) return res.status(400).json({ error: 'Nombre de rama no vÃ¡lido' });
-    let sha = from;
-    if (!sha || !/^[0-9a-f]{40}$/i.test(sha)) {
-      const ref = from || 'main';
-      const { data } = await gh.git.getRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'heads/' + ref });
-      sha = data.object.sha;
-    }
-    await gh.git.createRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'refs/heads/' + name, sha });
-    tgAlert('ghbranch', () => `ğŸŒ¿ <b>Rama creada</b> <code>${name}</code> â‡ <code>${(from || 'main').slice(0,12)}</code> Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name, sha });
-  } catch (e) {
-    console.error('POST github/branches error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// DELETE /api/admin/github/branches/:name â€” eliminar rama
-app.delete('/api/admin/github/branches/:name', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { name } = req.params;
-    if (!name || name === 'main') return res.status(400).json({ error: 'No se puede borrar la rama main' });
-    await gh.git.deleteRef({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: 'heads/' + name });
-    tgAlert('ghbranch_del', () => `ğŸ—‘ï¸ <b>Rama eliminada</b> <code>${name}</code> Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, name });
-  } catch (e) {
-    console.error('DELETE github/branches error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/commits â€” historial (branch, path, per_page)
-app.get('/api/admin/github/commits', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const branch = req.query.branch || GITHUB_BRANCH;
-    const per_page = Math.min(parseInt(req.query.per_page, 10) || 25, 100);
-    const params = { owner: GITHUB_OWNER, repo: GITHUB_REPO, sha: branch, per_page };
-    if (req.query.path) params.path = req.query.path;
-    const { data } = await gh.repos.listCommits(params);
-    res.json({
-      ok: true,
-      commits: data.map(c => ({
-        sha: c.sha, short: c.sha.slice(0, 7),
-        message: (c.commit.message || '').split('\n')[0],
-        author: (c.commit.author && c.commit.author.name) || '',
-        login: (c.author && c.author.login) || '',
-        avatar: (c.author && c.author.avatar_url) || '',
-        date: c.commit.author && c.commit.author.date,
-        html_url: c.html_url,
-      })),
-    });
-  } catch (e) {
-    console.error('GET github/commits error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/commits/:sha â€” detalle del commit (archivos + diff)
-app.get('/api/admin/github/commits/:sha', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.getCommit({ owner: GITHUB_OWNER, repo: GITHUB_REPO, ref: req.params.sha });
-    res.json({
-      ok: true,
-      commit: {
-        sha: data.sha, message: data.commit.message,
-        author: data.commit.author && data.commit.author.name,
-        date: data.commit.author && data.commit.author.date,
-        stats: data.stats, total_files: (data.files || []).length,
-        files: (data.files || []).map(f => ({
-          filename: f.filename, status: f.status,
-          additions: f.additions, deletions: f.deletions, changes: f.changes,
-          patch: f.patch || '', raw_url: f.raw_url,
-        })),
-      },
-    });
-  } catch (e) {
-    console.error('GET github/commits/:sha error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/contents â€” listar carpeta o leer archivo (path + branch)
-app.get('/api/admin/github/contents', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const path = req.query.path || '';
-    const branch = req.query.branch || GITHUB_BRANCH;
-    const { data, headers } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref: branch });
-    if (Array.isArray(data)) {
-      res.json({ ok: true, kind: 'dir', branch, path, entries: data.map(it => ({
-        name: it.name, path: it.path, type: it.type, size: it.size,
-      })) });
-    } else {
-      let text = '';
-      if (data.type === 'file' && data.encoding === 'base64') {
-        text = Buffer.from(data.content, 'base64').toString('utf8');
-      } else if (data.type === 'file') {
-        text = String(data.content || '');
-      }
-      res.json({ ok: true, kind: 'file', branch, path: data.path, name: data.name, size: data.size, sha: data.sha, type: data.type, content: text, html_url: data.html_url, total_lines: text.split('\n').length });
-    }
-  } catch (e) {
-    console.error('GET github/contents error:', e.message);
-    res.status(e.status || 500).json({ error: e.message, status: e.status || 500 });
-  }
-});
-
-// PUT /api/admin/github/contents â€” crear/actualizar archivo (commit directo)
-app.put('/api/admin/github/contents', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { path, content, message, branch } = req.body || {};
-    if (!path) return res.status(400).json({ error: 'Falta path' });
-    if (typeof content !== 'string') return res.status(400).json({ error: 'Falta content (texto)' });
-    if (!message) return res.status(400).json({ error: 'Falta message del commit' });
-    const ref = branch || GITHUB_BRANCH;
-    let sha;
-    try {
-      const { data } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref });
-      sha = data.sha;
-    } catch { /* archivo nuevo */ }
-    const r = await gh.repos.createOrUpdateFileContents({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, path,
-      message, content: Buffer.from(content, 'utf8').toString('base64'),
-      branch: ref, ...(sha ? { sha } : {}),
-    });
-    tgAlert('ghfile', () => `ğŸ“ <b>Archivo${sha ? ' actualizado' : ' creado'}</b>\n<code>${path}</code>\n<code>${message.slice(0, 60)}</code>\nRama: <code>${ref}</code> Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, path, branch: ref, commit: r.data && r.data.commit && r.data.commit.sha, html_url: r.data && r.data.content && r.data.content.html_url });
-  } catch (e) {
-    console.error('PUT github/contents error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// DELETE /api/admin/github/contents â€” eliminar archivo { path, message, branch }
-app.delete('/api/admin/github/contents', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { path, message, branch } = req.body || {};
-    if (!path) return res.status(400).json({ error: 'Falta path' });
-    const ref = branch || GITHUB_BRANCH;
-    let sha;
-    try {
-      const { data } = await gh.repos.getContent({ owner: GITHUB_OWNER, repo: GITHUB_REPO, path, ref });
-      sha = data.sha;
-    } catch { return res.status(404).json({ error: 'Archivo no encontrado en ' + ref }); }
-    await gh.repos.deleteFile({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, path,
-      message: message || 'Eliminado desde admin-hub', sha, branch: ref,
-    });
-    tgAlert('ghfile_del', () => `ğŸ—‘ï¸ <b>Archivo eliminado</b> <code>${path}</code> Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, path, branch: ref });
-  } catch (e) {
-    console.error('DELETE github/contents error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/workflows â€” todos los workflows (sin allowlist)
-app.get('/api/admin/github/workflows', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.actions.listRepoWorkflows({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    res.json({ ok: true, workflows: data.workflows.filter(w => isRealGitHubWorkflow(w.path)).map(w => ({ id: w.id, name: w.name, path: w.path.split('/').pop(), state: w.state, html_url: w.html_url })) });
-  } catch (e) {
-    console.error('GET github/workflows error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/workflows/:file/runs â€” Ãºltimos runs de un workflow
-app.get('/api/admin/github/workflows/:file/runs', requireAdmin, async (req, res) => {
-  try {
-    if (!isRealGitHubWorkflow(req.params.file)) return res.json({ ok: true, runs: [] });
-    const gh = ghGuard();
-    const per_page = Math.min(parseInt(req.query.per_page, 10) || 10, 50);
-    const { data } = await gh.actions.listWorkflowRuns({
-      owner: GITHUB_OWNER, repo: GITHUB_REPO, workflow_id: req.params.file, per_page,
-    });
-    res.json({ ok: true, runs: data.workflow_runs.map(r => ({
-      id: r.id, status: r.status, conclusion: r.conclusion,
-      display_title: r.display_title, event: r.event,
-      created_at: r.created_at, updated_at: r.updated_at, html_url: r.html_url,
-    })) });
-  } catch (e) {
-    console.error('GET workflows/:file/runs error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/actions/runs/:id/logs â€” logs de un run (texto, truncado)
-app.get('/api/admin/github/actions/runs/:id/logs', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const r = await gh.actions.downloadWorkflowRunLogs({ owner: GITHUB_OWNER, repo: GITHUB_REPO, run_id: +req.params.id });
-    const buf = Buffer.isBuffer(r.data) ? r.data : Buffer.from(r.data || '');
-    let text = buf.toString('utf8');
-    const truncated = text.length > 60000;
-    if (truncated) text = 'â€¦[log truncado, solo las Ãºltimas lÃ­neas]â€¦\n' + text.slice(-60000);
-    res.json({ ok: true, run_id: +req.params.id, truncated, size: buf.length, lines: text.split('\n').length, text });
-  } catch (e) {
-    console.error('GET run logs error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/pulls â€” listar PRs (?state=open|closed|all)
-app.get('/api/admin/github/pulls', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const state = req.query.state || 'open';
-    const { data } = await gh.pulls.list({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state, per_page: 50 });
-    res.json({ ok: true, pulls: data.map(p => ({
-      number: p.number, title: p.title, state: p.state, created_at: p.created_at,
-      login: p.user && p.user.login, avatar: p.user && p.user.avatar_url,
-      head: p.head && p.head.ref, base: p.base && p.base.ref, html_url: p.html_url,
-    })) });
-  } catch (e) {
-    console.error('GET github/pulls error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// POST /api/admin/github/pulls â€” crear PR { title, body, head, base }
-app.post('/api/admin/github/pulls', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { title, body, head, base } = req.body || {};
-    if (!title || !head) return res.status(400).json({ error: 'Faltan title o head' });
-    const { data } = await gh.pulls.create({ owner: GITHUB_OWNER, repo: GITHUB_REPO, title, body: body || '', head, base: base || GITHUB_BRANCH });
-    tgAlert('ghpr', () => `ğŸ”€ <b>PR creado</b> #${data.number} <code>${title.slice(0, 50)}</code> Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, number: data.number, html_url: data.html_url, title: data.title });
-  } catch (e) {
-    console.error('POST github/pulls error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// PATCH /api/admin/github/pulls/:number â€” body { action: merge|close|reopen }
-app.patch('/api/admin/github/pulls/:number', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const number = +req.params.number;
-    const { action } = req.body || {};
-    if (action === 'merge') {
-      try {
-        await gh.pulls.merge({ owner: GITHUB_OWNER, repo: GITHUB_REPO, pull_number: number, merge_method: 'squash' });
-      } catch (e) {
-        if (e.status === 405) return res.status(400).json({ error: 'El PR no se puede mergear: cabeza no mergeable o conflicto' });
-        throw e;
-      }
-      tgAlert('ghpr_merge', () => `âœ… <b>PR #${number} mergeado</b> Â· IP: <code>${clientIp(req)}</code>`);
-      return res.json({ ok: true, number, action: 'merged' });
-    }
-    const state = action === 'close' ? 'closed' : 'open';
-    const { data } = await gh.pulls.update({ owner: GITHUB_OWNER, repo: GITHUB_REPO, pull_number: number, state });
-    tgAlert('ghpr_update', () => `ğŸ”ƒ <b>PR #${number}</b> â†’ ${state} Â· IP: <code>${clientIp(req)}</code>`);
-    res.json({ ok: true, number, action: state });
-  } catch (e) {
-    console.error('PATCH github/pulls/:number error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/releases â€” listar releases
-app.get('/api/admin/github/releases', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.listReleases({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 30 });
-    res.json({ ok: true, releases: data.map(r => ({
-      tag_name: r.tag_name, name: r.name, draft: r.draft, prerelease: r.prerelease,
-      published_at: r.published_at, html_url: r.html_url, url: r.url,
-    })) });
-  } catch (e) {
-    console.error('GET github/releases error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET/POST/PATCH /api/admin/github/issues â€” control de issues
-app.get('/api/admin/github/issues', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const state = req.query.state || 'open';
-    const { data } = await gh.issues.listForRepo({ owner: GITHUB_OWNER, repo: GITHUB_REPO, state, per_page: 50 });
-    res.json({ ok: true, issues: data.map(i => ({
-      number: i.number, title: i.title, state: i.state, created_at: i.created_at,
-      login: i.user && i.user.login, avatar: i.user && i.user.avatar_url,
-      labels: (i.labels || []).map(l => l.name), html_url: i.html_url, pull_request: !!i.pull_request,
-    })) });
-  } catch (e) {
-    console.error('GET github/issues error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/api/admin/github/issues', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { title, body } = req.body || {};
-    if (!title) return res.status(400).json({ error: 'Falta title' });
-    const { data } = await gh.issues.create({ owner: GITHUB_OWNER, repo: GITHUB_REPO, title, body: body || '' });
-    res.json({ ok: true, number: data.number, html_url: data.html_url });
-  } catch (e) {
-    console.error('POST github/issues error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.patch('/api/admin/github/issues/:number', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const number = +req.params.number;
-    const { action } = req.body || {};
-    const state = action === 'reopen' ? 'open' : 'closed';
-    await gh.issues.update({ owner: GITHUB_OWNER, repo: GITHUB_REPO, issue_number: number, state });
-    res.json({ ok: true, number, action: state });
-  } catch (e) {
-    console.error('PATCH github/issues/:number error:', e.message);
-    res.status(400).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/webhooks â€” listar webhooks del repo
-app.get('/api/admin/github/webhooks', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.listWebhooks({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    res.json({ ok: true, webhooks: data.map(w => ({
-      id: w.id, url: w.config && w.config.url, events: w.events, active: w.active, created_at: w.created_at,
-    })) });
-  } catch (e) {
-    console.error('GET github/webhooks error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// GET /api/admin/github/collaborators â€” colaboradores del repo
-app.get('/api/admin/github/collaborators', requireAdmin, async (req, res) => {
-  try {
-    const gh = ghGuard();
-    const { data } = await gh.repos.listCollaborators({ owner: GITHUB_OWNER, repo: GITHUB_REPO, per_page: 100 });
-    res.json({ ok: true, collaborators: data.map(c => ({
-      login: c.login, avatar: c.avatar_url, html_url: c.html_url,
-      permission: (c.permissions && Object.keys(c.permissions).filter(k => c.permissions[k])).join(', ') || c.permissions,
-      role_name: c.role_name,
-    })) });
-  } catch (e) {
-    console.error('GET github/collaborators error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// BÃºsqueda de imÃ¡genes
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-// â”€â”€ ADMIN CONFIG â€” GET/PATCH remote config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/admin/config', requireAdmin, async (req, res) => {
-  try {
-    const cfg = await getAppConfig();
-    res.json({ ok: true, config: cfg });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.patch('/api/admin/config', requireAdmin, async (req, res) => {
-  try {
-    if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-    const { config: updates } = req.body;
-    if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'config object required' });
-
-    const current = await getAppConfig();
-    const merged = deepMerge(current, updates);
-    merged.version = (current.version || 0) + 1;
-
-    await AppConfig.findOneAndUpdate(
-      { key: 'main' },
-      { config: merged, version: merged.version, updated: new Date() },
-      { upsert: true }
-    );
-
-    // Invalidate cache
-    _appConfigCache = null;
-    _appConfigCacheTs = 0;
-
-    tgAlert('config', () =>
-      `âš™ï¸ <b>Config actualizada</b> v${merged.version}\nIP: <code>${clientIp(req)}</code>`);
-    logAdmin(adminActorOf(req), 'config.update', { version: merged.version, sections: Object.keys(updates) }, 'ok');
-    res.json({ ok: true, version: merged.version });
-  } catch (e) {
-    console.error('PATCH /api/admin/config error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-function deepMerge(target, source) {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] && typeof target[key] === 'object') {
-      result[key] = deepMerge(target[key], source[key]);
-    } else {
-      result[key] = source[key];
-    }
-  }
-  return result;
-}
-
-// â”€â”€ GET /api/image-search â€” Buscar imÃ¡genes via SerpAPI â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/image-search', chatLimiter, async (req, res) => {
-  const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
-
-  const SERP_KEY = process.env.SERPAPI_KEY;
-  if (!SERP_KEY) return res.status(503).json({ error: 'BÃºsqueda de imÃ¡genes no disponible.' });
-
-  try {
-    const url = `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=6&api_key=${SERP_KEY}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('SerpAPI error: ' + response.status);
-    const data = await response.json();
-
-    const images = (data.images_results || []).slice(0, 6).map(img => ({
-      thumbnail: img.thumbnail,
-      original:  img.original,
-      title:     img.title || q,
-      source:    img.source || '',
-      link:      img.link  || img.original || '#',
-    }));
-
-    res.json({ images, query: q });
-  } catch (err) {
-    console.error('image-search error:', err.message);
-    res.status(500).json({ error: 'No se pudieron obtener imÃ¡genes.' });
-  }
-});
-
-// â”€â”€ GET /api/search/google â€” Proxy Google Custom Search (DeepSearch) â”€â”€
-app.get('/api/search/google', chatLimiter, async (req, res) => {
-  const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
-  
-  const SERP_KEY = process.env.SERPAPI_KEY;
-  if (!SERP_KEY) return res.status(503).json({ error: 'BÃºsqueda web no disponible.' });
-  
-  try {
-    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(q)}&hl=es&gl=gt&num=8&api_key=${SERP_KEY}`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) throw new Error('SerpAPI ' + response.status);
-    const data = await response.json();
-    res.json({ items: (data.organic_results || []).slice(0, 8).map(r => ({ title: r.title, snippet: r.snippet, link: r.link })) });
-  } catch (err) {
-    console.error('search/google error:', err.message);
-    res.status(500).json({ error: 'Error en bÃºsqueda Google.' });
-  }
-});
-
-// â”€â”€ GET /api/search/tavily â€” BÃºsqueda Tavily (DeepSearch) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/search/tavily', chatLimiter, async (req, res) => {
-  const { q } = req.query;
-  if (!q || !q.trim()) return res.status(400).json({ error: 'ParÃ¡metro q requerido.' });
-  
-  const TAVILY_KEY = process.env.TAVILY_API_KEY;
-  if (!TAVILY_KEY) return res.status(503).json({ error: 'BÃºsqueda Tavily no disponible.' });
-  
-  try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: TAVILY_KEY, query: q, max_results: 8, include_answer: true }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!response.ok) throw new Error('Tavily ' + response.status);
-    const data = await response.json();
-    res.json({ results: (data.results || []).slice(0, 8), answer: data.answer || null });
-  } catch (err) {
-    console.error('search/tavily error:', err.message);
-    res.status(500).json({ error: 'Error en bÃºsqueda Tavily.' });
-  }
-});
-
-// â”€â”€ PUSH NOTIFICATIONS (Web Push / VAPID) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// El frontend se suscribe con su ubicaciÃ³n y el servidor avisa por
-// push SOLO cuando cambia la condiciÃ³n del clima (sin spam).
-const webpush = require('web-push');
-
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY  || '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
-const VAPID_READY = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
-if (VAPID_READY) webpush.setVapidDetails('mailto:admin@codehub.gt', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-
-// â”€â”€ FIREBASE CLOUD MESSAGING (FCM) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Push instantÃ¡neo para la app Android nativa.
-let admin = null;
-let fcmEnabled = false;
-let adminMessagingRef = null;
-try {
-  admin = require('firebase-admin');
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : null;
-  if (serviceAccount) {
-    // firebase-admin v14+ expone `cert` en la raÃ­z y `getMessaging(app)` en el
-    // subpath; v11-13 lo hacÃ­an vÃ­a `admin.credential.cert` y `admin.messaging()`.
-    const certFn = admin.cert || (admin.credential && admin.credential.cert);
-    if (!certFn) throw new Error('firebase-admin sin credential.cert ni cert');
-    admin.initializeApp({ credential: certFn(serviceAccount) });
-    if (typeof admin.messaging === 'function') {
-      adminMessagingRef = admin.messaging();
-    } else {
-      const { getMessaging } = require('firebase-admin/messaging');
-      adminMessagingRef = getMessaging();
-    }
-    fcmEnabled = true;
-    console.log('âœ… FCM: Firebase Cloud Messaging habilitado');
-  } else {
-    console.warn('âš ï¸  FCM: FIREBASE_SERVICE_ACCOUNT no configurado â€” push web-push Ãºnicamente');
-  }
-} catch (e) {
-  console.warn('âš ï¸  FCM: firebase-admin no disponible:', e.message);
-}
-
-const PUSH_SQL = `
-create table if not exists public.push_subs (
-  id bigint generated always as identity primary key,
-  endpoint text not null unique,
-  keys_p256dh text,
-  keys_auth text,
-  lat double precision,
-  lon double precision,
-  city text,
-  country text,
-  timezone text,
-  user_agent text,
-  alerts boolean default true,
-  seismic_alerts boolean default true,
-  seismic_mag numeric default 4.5,
-  last_alert_condition text,
-  last_alert_at timestamptz,
-  last_brief_at timestamptz,
-  weather_interval integer default 0,
-  last_weather_snapshot text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-create index if not exists push_subs_alerts_idx on public.push_subs (alerts);
-`;
-
-// Migrar: agregar columnas si no existen
-async function migratePushTable() {
-  if (!supabase) return;
-  try {
-    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_brief_at timestamptz;' });
-    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists weather_interval integer default 0;' });
-    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists last_weather_snapshot text;' });
-    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists seismic_alerts boolean default true;' });
-    await supabase.rpc('exec_sql', { query: 'alter table public.push_subs add column if not exists seismic_mag numeric default 4.5;' });
-  } catch (e) { console.warn('âš ï¸  Push migrate:', e.message); }
-}
-migratePushTable();
-
-let pushStore = new Map(); // fallback en memoria si Supabase no estÃ¡ disponible
-
-async function ensurePushTable() {
-  if (!supabase) return false;
-  const statements = splitSqlStatements(PUSH_SQL);
-  try {
-    for (const stmt of statements) {
-      const { error } = await supabase.rpc('exec_sql', { query: stmt });
-      if (error) {
-        console.warn('âš ï¸  Push: no se pudo crear tabla push_subs (' + error.message + ') â€” creala a mano con backend/push_subs.sql');
-        return false;
-      }
-    }
-    console.log('âœ… Push: tabla push_subs lista');
-    return true;
-  } catch (e) {
-    console.warn('âš ï¸  Push: error asegurando tabla:', e.message);
-    return false;
-  }
-}
-
-function pushRowToSub(row) {
-  return {
-    endpoint: row.endpoint,
-    keys: { p256dh: row.keys_p256dh, auth: row.keys_auth },
-    lat: row.lat, lon: row.lon, city: row.city, country: row.country,
-    timezone: row.timezone, user_agent: row.user_agent,
-    alerts: row.alerts, seismic_alerts: row.seismic_alerts !== false, seismic_mag: row.seismic_mag != null ? +row.seismic_mag : null, last_alert_condition: row.last_alert_condition, last_alert_at: row.last_alert_at,
-    last_brief_at: row.last_brief_at || null,
-    weather_interval: row.weather_interval != null ? normalizeWeatherInterval(row.weather_interval) : 0,
-    last_weather_snapshot: row.last_weather_snapshot || null,
-  };
-}
-
-async function pushList() {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.from('push_subs').select('*');
-      if (!error && Array.isArray(data)) return data.map(pushRowToSub);
-    } catch (e) { console.warn('Push list error:', e.message); }
-  }
-  return Array.from(pushStore.values());
-}
-
-async function pushSave(rec) {
-  if (supabase) {
-    try {
-      const { error } = await supabase.from('push_subs').upsert({
-        endpoint:       rec.endpoint,
-        keys_p256dh:    rec.keys?.p256dh || null,
-        keys_auth:      rec.keys?.auth   || null,
-        lat:            rec.lat  ?? null,
-        lon:            rec.lon  ?? null,
-        city:           rec.city || null,
-        country:        rec.country || null,
-        timezone:       rec.timezone || null,
-        user_agent:     rec.user_agent || null,
-        alerts:         rec.alerts !== false,
-        seismic_alerts: rec.seismic_alerts !== false,
-        seismic_mag:    rec.seismic_mag != null ? +rec.seismic_mag : 4.5,
-        last_alert_condition: rec.last_alert_condition || null,
-        last_alert_at:  rec.last_alert_at || null,
-        last_brief_at: rec.last_brief_at || null,
-        weather_interval: rec.weather_interval != null ? normalizeWeatherInterval(rec.weather_interval) : 0,
-        last_weather_snapshot: rec.last_weather_snapshot || null,
-        updated_at:     new Date(),
-      }, { onConflict: 'endpoint' });
-      if (!error) return true;
-      console.warn('Push save supabase error:', error.message);
-    } catch (e) { console.warn('Push save error:', e.message); }
-  }
-  pushStore.set(rec.endpoint, rec);
-  return true;
-}
-
-async function pushDelete(endpoint) {
-  if (supabase) {
-    try { await supabase.from('push_subs').delete().eq('endpoint', endpoint); } catch (e) {}
-  }
-  pushStore.delete(endpoint);
-}
-
-async function sendPush(rec, payload) {
-  if (!rec || !rec.endpoint || !rec.keys || !rec.keys.p256dh || !rec.keys.auth) {
-    return { ok: false, reason: 'incomplete' };
-  }
-  try {
-    await webpush.sendNotification(
-      { endpoint: rec.endpoint, keys: { p256dh: rec.keys.p256dh, auth: rec.keys.auth } },
-      JSON.stringify(payload),
-      { TTL: 3600 }
-    );
-    return { ok: true };
-  } catch (e) {
-    // 404/410 = suscripciÃ³n expirada. 401/403 = clave VAPID no coincide
-    // con la que se usÃ³ al suscribirse (rotaciÃ³n de VAPID_PUBLIC/PRIVATE_KEY
-    // o subs creadas antes de fijar esas env vars). En ambos casos la sub
-    // es inservible: se borra para que el cliente se re-suscriba solo la
-    // prÃ³xima vez que visite el sitio (ver chequeo de applicationServerKey
-    // en initIndexPush, index.html).
-    if ([401, 403, 404, 410].includes(e.statusCode)) {
-      await pushDelete(rec.endpoint);
-    }
-    return { ok: false, code: e.statusCode, message: e.body || e.message };
-  }
-}
-
-// Clave pÃºblica VAPID que el frontend debe usar al suscribirse.
-// Antes estaba hardcodeada en index.html (con el mismo valor de fallback
-// que aquÃ­ abajo); si en Render se configuraban VAPID_PUBLIC_KEY/PRIVATE_KEY
-// propios, el backend firmaba con la clave nueva pero el navegador seguÃ­a
-// suscribiÃ©ndose con la clave vieja hardcodeada â†’ desajuste de claves â†’
-// el push fallaba en silencio (la suscripciÃ³n se guardaba, pero
-// webpush.sendNotification nunca llegaba). Este endpoint es la Ãºnica
-// fuente de verdad: el frontend la consulta en vez de tenerla fija.
-app.get('/api/push/vapid-public-key', (_req, res) => {
-  if (!VAPID_READY) return res.status(503).json({ ok: false, error: 'Web Push no configurado (falta VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)' });
-  res.json({ ok: true, key: VAPID_PUBLIC_KEY });
-});
-
-app.post('/api/push/subscribe', chatLimiter, async (req, res) => {
-  if (!VAPID_READY) return res.status(503).json({ ok: false, error: 'Web Push no configurado (falta VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY)' });
-  try {
-    const { subscription, location, prefs } = req.body || {};
-    const sub = subscription || {};
-    if (!sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
-      return res.status(400).json({ ok: false, error: 'SuscripciÃ³n invÃ¡lida' });
-    }
-    const loc = location || {};
-    const rec = {
-      endpoint:   sub.endpoint,
-      keys:       { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
-      lat:        Number.isFinite(+loc.lat)  ? +loc.lat  : null,
-      lon:        Number.isFinite(+loc.lon)  ? +loc.lon  : null,
-      city:       (loc.city   || '').slice(0, 120) || null,
-      country:    (loc.country || '').slice(0, 80)  || null,
-      timezone:   (loc.timezone || '').slice(0, 60) || null,
-      user_agent: (req.get('user-agent') || '').slice(0, 200),
-      alerts:     prefs ? prefs.alerts !== false : true,
-      seismic_alerts: prefs ? prefs.seismic_enabled !== false : true,
-      seismic_mag: prefs && Number.isFinite(+prefs.seismic_mag) ? (+prefs.seismic_mag) : 4.5,
-      weather_interval: prefs && prefs.interval ? normalizeWeatherInterval(prefs.interval) : 0,
-    };
-    await pushSave(rec);
-    res.json({ ok: true });
-  } catch (e) {
-    console.error('push/subscribe error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.post('/api/push/unsubscribe', chatLimiter, async (req, res) => {
-  const { endpoint } = req.body || {};
-  if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
-  await pushDelete(endpoint);
-  res.json({ ok: true });
-});
-
-app.post('/api/push/settings', chatLimiter, async (req, res) => {
-  try {
-    const { endpoint, location, prefs } = req.body || {};
-    if (!endpoint) return res.status(400).json({ ok: false, error: 'Falta endpoint' });
-    const list = await pushList();
-    let rec = list.find(r => r.endpoint === endpoint);
-    if (!rec) return res.status(404).json({ ok: false, error: 'SuscripciÃ³n no encontrada' });
-    if (location) {
-      if (Number.isFinite(+location.lat)) rec.lat = +location.lat;
-      if (Number.isFinite(+location.lon)) rec.lon = +location.lon;
-      if (location.city)     rec.city    = String(location.city).slice(0, 120);
-      if (location.country)  rec.country = String(location.country).slice(0, 80);
-      if (location.timezone) rec.timezone = String(location.timezone).slice(0, 60);
-    }
-    if (prefs && typeof prefs.alerts === 'boolean') rec.alerts = prefs.alerts;
-    if (prefs && typeof prefs.seismic_enabled === 'boolean') rec.seismic_alerts = prefs.seismic_enabled;
-    if (prefs && Number.isFinite(+prefs.seismic_mag)) rec.seismic_mag = +prefs.seismic_mag;
-    if (prefs && prefs.interval !== undefined) rec.weather_interval = normalizeWeatherInterval(prefs.interval);
-    await pushSave(rec);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-app.post('/api/push/notify', chatLimiter, async (req, res) => {
-  try {
-    const { endpoint, title, body, url } = req.body || {};
-    if (!endpoint || !title) return res.status(400).json({ ok: false, error: 'Falta endpoint o title' });
-    const list = await pushList();
-    const rec = list.find(r => r.endpoint === endpoint);
-    if (!rec) return res.status(404).json({ ok: false, error: 'SuscripciÃ³n no encontrada' });
-    const r = await sendPush(rec, { title, body: body || '', type: 'general', icon: '/splash/codehub.png', url: url || '/' });
-    res.json(r);
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// â”€â”€ FCM TOKEN MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let fcmTokens = new Map(); // fallback en memoria
-
-const FCM_SQL = `
-create table if not exists public.fcm_tokens (
-  id bigint generated always as identity primary key,
-  token text not null unique,
-  lat double precision,
-  lon double precision,
-  city text,
-  country text,
-  app_name text default 'CodeHub',
-  app_version text,
-  platform text default 'android',
-  user_agent text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-`;
-
-async function ensureFCMTable() {
-  if (!supabase) return false;
-  try {
-    const statements = splitSqlStatements(FCM_SQL);
-    for (const stmt of statements) {
-      const { error } = await supabase.rpc('exec_sql', { query: stmt });
-      if (error) {
-        console.warn('âš ï¸  FCM: no se pudo crear tabla fcm_tokens â€” ' + error.message);
-        return false;
-      }
-    }
-    console.log('âœ… FCM: tabla fcm_tokens lista');
-    return true;
-  } catch (e) {
-    console.warn('âš ï¸  FCM: error asegurando tabla:', e.message);
-    return false;
-  }
-}
-
-// â”€â”€ STATS TABLES (Supabase) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const STATS_SQL = `
-create table if not exists public.visitor_logs (
-  id bigint generated always as identity primary key,
-  ip text,
-  country text,
-  country_code text,
-  city text,
-  region text,
-  isp text,
-  org text,
-  is_vpn boolean default false,
-  is_proxy boolean default false,
-  is_bot boolean default false,
-  risk_score integer default 0,
-  page text,
-  ua text,
-  visited_at timestamptz default now()
-);
-
-create table if not exists public.daily_stats (
-  date date primary key,
-  visits bigint default 0,
-  downloads bigint default 0,
-  chat_msgs bigint default 0,
-  tool_uses bigint default 0,
-  contacts bigint default 0,
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.tool_stats (
-  id bigint generated always as identity primary key,
-  tool_name text not null unique,
-  uses bigint default 1,
-  last_used timestamptz default now()
-);
-
-create table if not exists public.download_stats (
-  id bigint generated always as identity primary key,
-  app_name text not null unique,
-  downloads bigint default 1,
-  last_download timestamptz default now()
-);
-
-create table if not exists public.events (
-  id bigint generated always as identity primary key,
-  type text,
-  page text,
-  metadata jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
-);
-
-create table if not exists public.scan_logs (
-  id bigint generated always as identity primary key,
-  type text,
-  target text,
-  verdict text,
-  risk_score integer,
-  provider text,
-  metadata jsonb default '{}'::jsonb,
-  scanned_at timestamptz default now()
-);
-`;
-
-async function ensureStatsTables() {
-  if (!supabase) return false;
-  try {
-    const statements = splitSqlStatements(STATS_SQL);
-    for (const stmt of statements) {
-      const { error } = await supabase.rpc('exec_sql', { query: stmt });
-      if (error) {
-        console.warn('âš ï¸  Stats: no se pudo crear tabla de estadÃ­sticas â€” ' + error.message);
-        return false;
-      }
-    }
-    console.log('âœ… Stats: tablas de estadÃ­sticas listas');
-    return true;
-  } catch (e) {
-    console.warn('âš ï¸  Stats: error asegurando tablas:', e.message);
-    return false;
-  }
-}
-
-async function fcmListTokens() {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.from('fcm_tokens').select('*');
-      if (!error && Array.isArray(data)) return data;
-    } catch (e) {}
-  }
-  return Array.from(fcmTokens.values());
-}
-
-async function fcmSaveToken(rec) {
-  if (supabase) {
-    try {
-      const { error } = await supabase.from('fcm_tokens').upsert({
-        token: rec.token,
-        lat: rec.lat ?? null,
-        lon: rec.lon ?? null,
-        city: rec.city || null,
-        country: rec.country || null,
-        app_name: rec.appName || 'CodeHub',
-        app_version: rec.appVersion || null,
-        platform: rec.platform || 'android',
-        user_agent: rec.userAgent || null,
-        updated_at: new Date(),
-      }, { onConflict: 'token' });
-      if (!error) return true;
-      console.warn('FCM save error:', error.message);
-    } catch (e) { console.warn('FCM save error:', e.message); }
-  }
-  fcmTokens.set(rec.token, rec);
-  return true;
-}
-
-async function fcmUpdateLocation(token, lat, lon) {
-  if (supabase) {
-    try {
-      const { error } = await supabase.from('fcm_tokens').update({ lat, lon, updated_at: new Date() }).eq('token', token);
-      if (!error) return true;
-    } catch (e) {}
-  }
-  const rec = fcmTokens.get(token);
-  if (rec) { rec.lat = lat; rec.lon = lon; }
-  return true;
-}
-
-async function fcmDeleteToken(token) {
-  if (supabase) {
-    try { await supabase.from('fcm_tokens').delete().eq('token', token); } catch (e) {}
-  }
-  fcmTokens.delete(token);
-}
-
-// Enviar vÃ­a FCM a un token especÃ­fico
-async function sendFCM(token, payload) {
-  if (!fcmEnabled || !admin) return { ok: false, reason: 'fcm_disabled' };
-  // quake_* viaja DATA-ONLY (alto-priority): Android despierta
-  // onMessageReceived SIEMPRE, incluso app cerrada/Doze, y el APK arma su
-  // propia notificaciÃ³n de pantalla completa + alarma. Enviar bloque
-  // `notification` harÃ­a entrega hÃ­brida: FCM puede mostrar la notificaciÃ³n
-  // del tray y NO ejecutar el servicio cuando la app estÃ¡ en background â€”
-  // la alarma de emergencia se pierde. Soloquake data-only de alta prioridad.
-  const isQuake = payload.type && payload.type.startsWith('quake');
-  try {
-    const msg = {
-      token: token,
-      data: Object.assign(
-        payload.type && payload.type.startsWith('quake')
-          ? {
-              // Data-only: title/body viajan en la data porque el APK los
-              // lee desde getData() cuando no hay bloque notification.
-              title: payload.title || 'ğŸš¨ ALERTA SÃSMICA',
-              body: payload.body || '',
-              type: payload.type || 'quake_info',
-              url: payload.url || '/',
-              mag: String(payload.mag || 0),
-              dist: String(payload.dist || 0),
-              dir: payload.dir || 'N',
-              place: payload.place || '',
-              time: String(payload.time || Date.now()),
-              alertType: payload.alertType || 'earthquake',
-            }
-          : {
-              title: payload.title,
-              body: payload.body,
-              type: payload.type || 'general',
-              url: payload.url || '/',
-            }),
-      android: {
-        // priority: 'high' â€” despierta el dispositivo incluso en Doze
-        // profundo. Sin esto Android puede demorar la entrega hasta
-        // la prÃ³xima ventana de mantenimiento si la app no se usa hace
-        // tiempo, dando la falsa impresiÃ³n de que "no estÃ¡ despierta".
-        priority: 'high',
-      },
-    };
-    if (!isQuake) {
-      // No-quake: notificaciÃ³n estÃ¡ndar del tray con los campos visuales.
-      msg.notification = { title: payload.title, body: payload.body };
-      msg.android.notification = {
-        channelId: payload.type === 'weather' ? 'codehub_weather' : 'codehub_updates',
-        icon: 'ic_launcher_real',
-        color: '#00ff88',
-      };
-    }
-    await (adminMessagingRef || admin.messaging()).send(msg);
-    return { ok: true };
-  } catch (e) {
-    if (e.code === 'messaging/registration-token-not-registered' || e.code === 'messaging/invalid-registration-token') {
-      await fcmDeleteToken(token);
-    }
-    return { ok: false, code: e.code, message: e.message };
-  }
-}
-
-// ValidaciÃ³n de coordenadas para endpoints FCM.
-function validCoordsGeo(lat, lon, strictZero) {
-  // Ambas ausentes = sin ubicaciÃ³n (permitido en subscribe).
-  if (lat == null && lon == null) return true;
-  if (lat == null || lon == null) return false;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return false;
-  if (strictZero && lat === 0 && lon === 0) return false;
-  return true;
-}
-
-app.post('/api/push/fcm-subscribe', fcmLimiter, async (req, res) => {
-  try {
-    const { token, lat, lon, appName, appVersion, platform, userAgent } = req.body || {};
-    if (!token) return res.status(400).json({ ok: false, error: 'Falta token FCM' });
-    if (!validCoordsGeo(lat, lon, false)) return res.status(400).json({ ok: false, error: 'Coordenadas invÃ¡lidas' });
-    await fcmSaveToken({ token, lat, lon, appName, appVersion, platform, userAgent });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-app.post('/api/push/fcm-location', fcmLimiter, async (req, res) => {
-  try {
-    const { token, lat, lon } = req.body || {};
-    if (!token) return res.status(400).json({ ok: false, error: 'Falta token' });
-    if (!validCoordsGeo(lat, lon, true)) return res.status(400).json({ ok: false, error: 'Coordenadas invÃ¡lidas' });
-    await fcmUpdateLocation(token, lat, lon);
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// â”€â”€ CRASH REPORTING (app Android) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// La app nativa (WebView wrapper) reporta acÃ¡ tanto crashes fatales
-// (Thread.UncaughtExceptionHandler) como excepciones atrapadas y
-// errores de JS del sitio dentro del WebView (window.onerror /
-// unhandledrejection). Reenviamos al chat de Telegram del admin
-// agrupando por firma (misma clase+tag) para no floodear si el
-// mismo bug crashea la app repetidas veces seguidas.
-function escHtml(s) {
-  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-app.post('/api/crash-report', crashLimiter, async (req, res) => {
-  try {
-    const {
-      fatal, tag, exceptionClass, message, stackTrace,
-      appVersion, platform, deviceModel, androidVersion, timestamp,
-      activity, section, url,
-    } = req.body || {};
-
-    if (!exceptionClass && !stackTrace && !message) {
-      return res.status(400).json({ ok: false, error: 'Reporte vacÃ­o' });
-    }
-
-    // Silencio de ruido de terceros: TurnstileError es un error de configuraciÃ³n
-    // del widget (p. ej. 110200 = dominio preview/local no autorizado en el
-    // panel de Cloudflare) o de un bot bloqueado â€” nunca un bug de la app.
-    // Filtrado server-side: cubre tambiÃ©n clientes viejos con la JS cacheada
-    // por el service worker hasta que se renueven.
-    const cls0 = String(exceptionClass || '');
-    const msg0 = String(message || '');
-    const tr0  = String(stackTrace || '');
-    if (/^TurnstileError$/i.test(cls0)
-      || /challenges?\.cloudflare\.com/i.test(tr0)
-      || /^.*cloudflare turnstile.*$/i.test(msg0)) {
-      return res.json({ ok: true, muted: 'turnstile-noise' });
-    }
-
-    const when  = timestamp ? new Date(Number(timestamp) || timestamp) : new Date();
-    const trace = String(stackTrace || '').slice(0, 3200); // margen para el lÃ­mite de 4096 de Telegram
-    const key   = `crash:${fatal ? 'fatal' : 'caught'}:${tag || ''}:${exceptionClass || ''}`;
-    const icon  = fatal ? 'ğŸ’¥' : 'âš ï¸';
-    const kind  = fatal ? 'CRASH FATAL' : 'ExcepciÃ³n capturada';
-    const origin = platform === 'web' ? 'Web' : 'App Android';
-
-    tgAlert(key, () =>
-      `${icon} <b>${kind} â€” ${origin}</b>\n` +
-      (tag ? `MÃ³dulo: <code>${escHtml(tag)}</code>\n` : '') +
-      `Clase: <code>${escHtml(exceptionClass || '?')}</code>\n` +
-      `Mensaje: ${escHtml(message || '(sin mensaje)')}\n` +
-      (section ? `SecciÃ³n: <code>${escHtml(section)}</code>\n` : '') +
-      (url ? `URL: <code>${escHtml(String(url).slice(0, 200))}</code>\n` : '') +
-      `Dispositivo: ${escHtml(deviceModel || '?')} Â· Android ${escHtml(androidVersion || '?')}\n` +
-      `VersiÃ³n app: ${escHtml(appVersion || '?')} Â· Plataforma: ${escHtml(platform || 'android')}\n` +
-      (activity ? `Actividad: ${escHtml(String(activity).slice(0, 300))}\n` : '') +
-      `Hora: ${when.toISOString()}\n\n` +
-      (trace ? `<pre>${escHtml(trace)}</pre>` : ''),
-      { windowMs: 10000 });
-
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// EnvÃ­a un push a todos los suscriptores (broadcast reutilizable por
-// los flujos automÃ¡ticos: nueva app, app actualizada, CodeHub Release).
-// EnvÃ­a vÃ­a Web Push (VAPID) + FCM (app nativa).
-async function broadcastPush({ title, body = '', url = '/', type = 'announcement', appId, version }) {
-  const t = String(title).trim().slice(0, 80);
-  const b = String(body || '').trim().slice(0, 180);
-  let sentWeb = 0, sentAndroid = 0;
-  const failures = [];
-
-  // 1) Web Push (VAPID) â€” suscriptores del navegador
-  const webSubs = await pushList();
-  for (const sub of webSubs) {
-    const result = await sendPush(sub, { title: t, body: b, type, appId, version, icon: '/splash/codehub.png', url });
-    if (result.ok) {
-      sentWeb += 1;
-    } else {
-      failures.push({ kind: 'web', endpoint: (sub.endpoint || '').slice(-24), code: result.code, message: result.message || result.reason });
-    }
-  }
-
-  // 2) FCM â€” app Android nativa
-  let fcmTotal = 0;
-  if (fcmEnabled) {
-    const fcmSubs = await fcmListTokens();
-    fcmTotal = fcmSubs.length;
-    for (const rec of fcmSubs) {
-      const result = await sendFCM(rec.token, { title: t, body: b, type, url });
-      if (result.ok) {
-        sentAndroid += 1;
-      } else {
-        failures.push({ kind: 'android', token: (rec.token || '').slice(-12), code: result.code, message: result.message });
-      }
-    }
-  }
-
-  const sent = sentWeb + sentAndroid;
-  const total = webSubs.length + fcmTotal;
-
-  // Log detallado: sin esto, un "0 de 12" en el admin-hub no dice NADA de
-  // por quÃ© fallÃ³. Con esto, en Render â†’ Logs se ve el motivo exacto de
-  // cada fallo (clave VAPID desactualizada, token FCM invÃ¡lido, etc.)
-  if (sent < total) {
-    console.warn(`âš ï¸  broadcastPush: ${sent}/${total} entregados (web ${sentWeb}/${webSubs.length}, android ${sentAndroid}/${fcmTotal})`);
-    failures.slice(0, 20).forEach(f => {
-      console.warn(`   âœ— [${f.kind}] ${f.kind === 'web' ? 'endpoint â€¦' + f.endpoint : 'token â€¦' + f.token} â€” code ${f.code || '?'}: ${f.message || '(sin detalle)'}`);
-    });
-    if (failures.length > 20) console.warn(`   â€¦ y ${failures.length - 20} fallos mÃ¡s`);
-  }
-
-  return { sent, total, sentWeb, sentAndroid, webTotal: webSubs.length, androidTotal: fcmTotal, fcmEnabled, failures: failures.slice(0, 20) };
-}
-
-app.post('/api/admin/push/broadcast', requireAdmin, async (req, res) => {
-  try {
-    const { title, body, url, type, appId, version } = req.body || {};
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({ ok: false, error: 'Falta el tÃ­tulo de la notificaciÃ³n' });
-    }
-    const r = await broadcastPush({ title, body, url, type, appId, version });
-    logAdmin(adminActorOf(req), 'push.broadcast', { title: String(title).slice(0, 60), type: type || '', sent: r?.sent || 0 }, 'ok');
-    res.json({ ok: true, ...r });
-  } catch (e) {
-    console.error('admin/push/broadcast error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// â”€â”€ TELEGRAM ALERTS (gestiÃ³n bot) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.get('/api/admin/telegram/alerts', requireAdmin, async (_, res) => {
-  try { const cfg = await getAppConfig(); const a = (cfg && cfg.alerts) || {}; res.json({ ok: true, alerts: a }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.patch('/api/admin/telegram/alerts', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const { alerts = {} } = req.body || {};
-    if (!alerts || typeof alerts !== 'object' || Array.isArray(alerts)) return res.status(400).json({ error: 'Objeto alerts requerido' });
-    const cur = await getAppConfig();
-    const merged = (cur && cur.alerts ? { ...cur.alerts, ...alerts } : { ...alerts });
-    await AppConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'config.alerts': merged } }, { upsert: true });
-    _appConfigCache = null; _appConfigCacheTs = 0;
-    logAdmin(adminActorOf(req), 'telegram.alerts.patch', { alerts }, 'ok');
-    res.json({ ok: true, alerts: merged });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/admin/telegram/test-alert', requireAdmin, async (req, res) => {
-  try {
-    const title = String((req.body && req.body.title) || 'Prueba de alerta').slice(0, 80);
-    const msg = `ğŸ§ª <b>Prueba de alerta</b>\n${escHtml(title)}\nHora: <code>${new Date().toISOString()}</code>`;
-    tgSend(msg);
-    logAdmin(adminActorOf(req), 'telegram.test_alert', { title }, 'ok');
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// â”€â”€ CODEHUB RELEASES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Novedades del proyecto publicadas desde el admin-hub. Al publicar se
-// guardan en MongoDB, se avisa por WebSocket y se envÃ­a push a todos.
-
-app.post('/api/admin/releases', requireAdmin, async (req, res) => {
-  try {
-    const { title, body, version, url, type } = req.body || {};
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({ ok: false, error: 'Falta el tÃ­tulo del release' });
-    }
-    const rel = await Release.create({
-      title: String(title).trim().slice(0, 80),
-      body: String(body || '').slice(0, 500),
-      version: String(version || '').slice(0, 40),
-      url: url || '/',
-      type: type || 'release',
-    });
-    broadcast('codehub_release', { id: String(rel._id), title: rel.title, version: rel.version });
-    tgAlert('release', () => `ğŸš€ <b>CodeHub Release</b>\n${String(rel.title).slice(0, 50)}${rel.version ? ' Â· ' + rel.version : ''}`, { windowMs: 15000 });
-    const push = await broadcastPush({
-      title: rel.version ? 'ğŸš€ CodeHub ' + rel.version : 'ğŸš€ CodeHub Release',
-      body: rel.title + (rel.body ? ' â€” ' + String(rel.body).slice(0, 120) : ''),
-      type: 'release',
-      version: rel.version || '',
-      url: rel.url || '/',
-    });
-    logAdmin(adminActorOf(req), 'release.create', { title: rel.title, version: rel.version, type: rel.type }, 'ok');
-    res.json({ ok: true, release: rel, push });
-  } catch (e) {
-    console.error('admin/releases error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-app.get('/api/admin/releases', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    const releases = await Release.find({}).sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ ok: true, releases });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-app.delete('/api/admin/releases/:id', requireAdmin, async (req, res) => {
-  if (!dbConnected) return res.status(503).json({ error: 'DB no disponible' });
-  try {
-    await Release.deleteOne({ _id: req.params.id });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// â”€â”€ CHANGELOG â€” Ãºltima versiÃ³n para el diÃ¡logo de actualizaciÃ³n â”€â”€
-let _changelog = null;
-function loadChangelog() {
-  if (_changelog) return _changelog;
-  try {
-    const raw = fs.readFileSync(path.join(__dirname, '..', 'changelog.json'), 'utf8');
-    _changelog = JSON.parse(raw);
-  } catch (e) { _changelog = []; }
-  return _changelog;
-}
-
-app.get('/api/changelog', (req, res) => {
-  const cl = loadChangelog();
-  if (!cl.length) return res.json({ ok: true, entries: [] });
-  const since = req.query.since || '';
-  const entries = since ? cl.filter(e => e.version > since) : cl.slice(0, 3);
-  res.json({ ok: true, entries });
-});
-
-// â”€â”€ REMOTE CONFIG â€” public endpoint (frontend reads this) â”€â”€â”€â”€â”€
-app.get('/api/config', async (req, res) => {
-  try {
-    const cfg = await getAppConfig();
-    cfg.ui = Object.assign({}, cfg.ui || {}, {
-      googleMapsKey: process.env.GOOGLE_MAPS || '',
-      maptilerKey: process.env.MAPTILER_KEY || '',
-    });
-    const clientVersion = parseInt(req.query.v) || 0;
-    const needsUpdate = clientVersion < cfg.version;
-    const apkLatest = cfg.apkLatestVersion || '';
-    const apkNotes = cfg.apkUpdateNotes || '';
-    res.set('Cache-Control', 'public, max-age=30');
-    res.set('X-Config-Version', String(cfg.version));
-    res.json({ ok: true, config: needsUpdate ? cfg : { version: cfg.version, updated: cfg.updated || null, googleMapsKey: cfg.ui.googleMapsKey, maptilerKey: cfg.ui.maptilerKey, apkLatestVersion: apkLatest, apkUpdateNotes: apkNotes } });
-  } catch (e) {
-    res.json({ ok: true, config: DEFAULT_CONFIG });
-  }
-});
-
-// Lista pÃºblica de releases (campana de notificaciones / pÃ¡gina)
-app.get('/api/releases', async (req, res) => {
-  if (!dbConnected) return res.json({ ok: true, releases: [] });
-  try {
-    const cached = await cacheGet('releases:latest');
-    if (cached) { res.set('X-Cache', 'HIT'); return res.json({ ok: true, releases: cached }); }
-    const releases = await Release.find({}).sort({ createdAt: -1 }).limit(20).lean();
-    await cacheSet('releases:latest', releases, 60);
-    res.json({ ok: true, releases });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// â”€â”€ CLIMA â†’ PUSH (mÃ³dulo separado â†’ backend/clima) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// La lÃ³gica inteligente de clima (fetch, alertas por CÃ“MO cambia:
-// radiaciÃ³n UV por hora, probabilidad de lluvia, temperatura, viento)
-// vive ahora en backend/clima/. AquÃ­ sÃ³lo se inyectan las dependencias
-// y se exponen los endpoints y el scheduler.
-const climaEngine = require('./clima')({
-  supabase, sendPush, sendFCM, fcmEnabled, fcmListTokens, pushList, pushSave,
-});
-// normalizeWeatherInterval se re-exporta como function declaration (hoisted)
-// para que sigan funcionando las llamadas previas en pushRowToSub/pushSave.
-function normalizeWeatherInterval(v) { return climaEngine.normalizeWeatherInterval(v); }
-// El widget de clima consulta este endpoint desde el navegador (pÃºblico);
-// rate limit evita escaneos/abuso contra los proveedores de geocodificaciÃ³n.
-app.get('/api/push/weather/check', chatLimiter, climaEngine.weatherEndpoint);
-// Scheduler climÃ¡tico â†’ cada 30 min; solo envÃ­a push cuando cambia la condiciÃ³n
-climaEngine.startScheduler(30 * 60 * 1000);
-
-// â”€â”€ ACTIVIDAD SÃSMICA (terremotos) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Nota honesta: NO existe una API pÃºblica de "alerta temprana" de
-// Google (usada en Android vÃ­a Play Services, limitada a un puÃ±ado de
-// regiones). AquÃ­ usamos la API abierta de USGS (global) para detectar
-// sismos RELEVANTES recientes cerca del usuario y avisar post-evento
-// con magnitud, distancia y consejos de seguridad. En regiones donde
-// Google EEWS no llega (la mayorÃ­a de LatAm, incluida Guatemala) esto
-// sigue dando valor real: enterarse de un sismo cercano + cÃ³mo actuar.
-
-// Feed de LISTA web (secciÃ³n Sismos): dÃ­a completo, con cachÃ© en el cliente.
-const USGS_FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
-// Feed de PASS de alertas push: solo la Ãºltima hora â€” payload mucho mÃ¡s
-// pequeÃ±o y mÃ¡xima frescura en el camino de emergencia. El corte interno
-// de 3h del pass siempre alcanza el feed de hora.
-const USGS_FEED_HOUR = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson';
-
-// Umbrales configurables por magnitud (pueden editarse en admin config)
-function seismicThreshold() {
-  return 4.5; // bajo este nivel no se molesta al usuario
-}
-function seismicRadiusKm() {
-  return 300; // distancia mÃ¡x. para considerar "cercano" (fallback web push)
-}
-// Radio escalado por magnitud/profundidad (idea del estÃ¡ndar CAP de
-// Google Public Alerts: "radios predeterminados segÃºn magnitud o
-// profundidad"). Un M7 se siente a 500 km; un M4 apenas a 50 â€” un radio
-// Ãºnico no es honesto. Techo duro de 800 km por sismos oceÃ¡nicos.
-function quakeRadiusForMag(mag, depthKm) {
-  let r;
-  if (mag >= 7) r = 500;
-  else if (mag >= 6) r = 200;
-  else if (mag >= 5) r = 100;
-  else if (mag >= 4) r = 50;
-  else r = 25;
-  // Profundo (>250 km) se percibe mÃ¡s dÃ©bil en superficie.
-  if (depthKm > 250) r *= 0.6;
-  return Math.min(r, 800);
-}
-// Dedupe en memoria para FCM (no hay columna last_quake en la tabla
-// fcm_tokens): evita re-enviar la MISMA alerta cada pass. Se pierde al
-// reiniciar el backend (raro) â€” aceptable para la vÃ­a de emergencia.
-const fcmLastQuakeKey = new Map();
-
-async function fetchRecentEarthquakes(feedUrl) {
-  const url = feedUrl || USGS_FEED;
-  const r = await fetch(url, { headers: { 'User-Agent': 'CodeHub-Seismic' } });
-  if (!r.ok) throw new Error('USGS ' + r.status);
-  const data = await r.json();
-  return data.features || [];
-}
-
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
-// Rumbo cardinal del epicentro respecto al dispositivo (para el campo
-// "dir" del payload quake_*; sin acentos, mismo estilo que el backend).
-function compassDirKm(lat1, lon1, lat2, lon2) {
-  const rad = Math.PI / 180;
-  const dLon = (lon2 - lon1) * rad;
-  const y = Math.sin(dLon) * Math.cos(lat2 * rad);
-  const x = Math.cos(lat1 * rad) * Math.sin(lat2 * rad) - Math.sin(lat1 * rad) * Math.cos(lat2 * rad) * Math.cos(dLon);
-  const b = (Math.atan2(y, x) / rad + 360) % 360;
-  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-  return dirs[Math.round(b / 45) % 8];
-}
-
-function describeMagnitude(mag, distKm) {
-  const emoji = mag >= 6.0 ? 'ğŸ”¥' : mag >= 5.0 ? 'âš ï¸' : 'ğŸ“³';
-  const near = distKm < 50 ? ' muy cerca' : distKm < 150 ? ' cercano' : ' en tu regiÃ³n';
-  return `${emoji} Sismo M${mag.toFixed(1)}${near} (${Math.round(distKm)} km)`;
-}
-
-function earthquakeSafetyTips(mag) {
-  return mag >= 6.0
-    ? 'Protege tu cabeza, alÃ©jate de ventanas/objetos que caigan y, si puedes, refÃºgiate bajo un mueble firme. Sigue las indicaciones de ProtecciÃ³n Civil.'
-    : 'EstÃ© preparado: revisa que no haya grietas nuevas y asegura objetos que puedan caer en un sismo mayor.';
-}
-
-// Extrae el paÃ­s desde el texto de USGS ("12 km S of Acajutla, El Salvador").
-// El Ãºltimo segmento separado por comas es tÃ­picamente el paÃ­s; las frases
-// regionales (ridges, cuencas oceÃ¡nicas, "region") se descartan.
-function countryFromUSGSPlace(place) {
-  if (!place) return '';
-  const parts = String(place).split(',').map(s => s.trim()).filter(Boolean);
-  if (!parts.length) return '';
-  const last = parts[parts.length - 1];
-  if (/region|ridge|rise|plateau|trench|basin|ocean|mid-atlantic|off the (coast|shore)|northern|southern|eastern|western|central\b/i.test(last)) return '';
-  return last;
-}
-
-function normCountry(s) {
-  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
-}
-
-// Coincidencia "inteligente" de paÃ­ses: ignora acentos/cajas y resuelve
-// los nombres duplicados mÃ¡s comunes ESP â‡„ EN frente a USGS.
-function sameCountry(a, b) {
-  const na = normCountry(a), nb = normCountry(b);
-  if (!na || !nb || na === 'tu ubicacion' || nb === 'tu ubicacion') return false;
-  if (na === nb) return true;
-  const aliases = {
-    'estados unidos': 'united states',
-    'usa': 'united states',
-    'ee uu': 'united states',
-    'eeuu': 'united states',
-    'republica dominicana': 'dominican republic',
-    'el salvador': 'elsalvador',
-  };
-  return (aliases[na] || na) === (aliases[nb] || nb);
-}
-
-// Una sola pasada de verificaciÃ³n sÃ­smica. Devuelve { earthquakes: N }
-async function seismicPushPass() {
-  let subs;
-  try { subs = await pushList(); } catch (e) { return { earthquakes: 0 }; }
-  const enabled = subs.filter(s => s.alerts && s.seismic_alerts !== false && Number.isFinite(+s.lat) && Number.isFinite(+s.lon));
-
-  // TambiÃ©n tokens FCM
-  const fcmTokens = [];
-  if (fcmEnabled) {
-    try { fcmTokens.push(...await fcmListTokens()); } catch (e) {}
-  }
-  const targets = [
-    ...enabled.map(s => ({ ...s, _isFCM: false })),
-    ...fcmTokens.filter(t => Number.isFinite(+t.lat) && Number.isFinite(+t.lon)).map(t => ({ ...t, _isFCM: true })),
-  ];
-  if (!targets.length) return { earthquakes: 0 };
-
-  let quakes;
-  try { quakes = await fetchRecentEarthquakes(USGS_FEED_HOUR); } catch (e) { return { earthquakes: 0 }; }
-  const threshold = seismicThreshold();
-  const cutoff = Date.now() - 3 * 60 * 60 * 1000; // solo Ãºltimos 3h
-
-  let sent = 0;
-  const lastKey = {};
-  const today = new Date().toISOString().slice(0, 10);
-
-  for (const t of targets) {
-    const subKey = t.endpoint || t.token || ('fcm:' + (t.token || ''));
-    const tThr = Number.isFinite(+t.seismic_mag) ? +t.seismic_mag : threshold;
-    const relevant = quakes.filter(q => {
-      const geo = q.geometry && q.geometry.coordinates;
-      if (!geo) return false;
-      const mag = q.properties && q.properties.mag;
-      const time = q.properties && q.properties.time;
-      if (typeof mag !== 'number' || !time || time < cutoff) return false;
-      if (mag < tThr) return false;
-      const depth = Math.abs(geo[2] || 0);
-      const dist = haversineKm(+t.lat, +t.lon, geo[1], geo[0]);
-      // Radio escalado por magnitud/profundidad, no un radio fijo (CAP).
-      if (dist <= quakeRadiusForMag(mag, depth)) return true; // cerca del usuario
-      // Alertas inteligentes: tambiÃ©n cuenta cualquier sismo dentro de
-      // tu paÃ­s, basado en la ubicaciÃ³n precisa guardada del dispositivo.
-      if (t.country) {
-        const qc = countryFromUSGSPlace(q.properties.place);
-        if (qc && sameCountry(t.country, qc)) return true;
-      }
-      return false;
-    });
-    // Ordenar por tiempo: el mÃ¡s reciente primero
-    relevant.sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0));
-    const latest = relevant[0];
-    if (!latest) continue;
-
-    const mag = latest.properties.mag;
-    const placeRaw = latest.properties.place || '';
-    const place = placeRaw.replace(/,.*$/, '').trim();
-    const dist = haversineKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]);
-    const qc = countryFromUSGSPlace(placeRaw);
-    const inCountry = qc ? sameCountry(t.country, qc) : false;
-    // Mensaje adaptado al motivo: cerca (radio) o dentro de tu paÃ­s.
-    const locDesc = dist <= quakeRadiusForMag(mag, Math.abs(latest.geometry.coordinates[2] || 0))
-      ? describeMagnitude(mag, dist)
-      : 'ğŸŒ‹ Sismo M' + mag.toFixed(1) + ' en tu paÃ­s' + (inCountry && qc ? ' (' + qc + ')' : '');
-    const key = latest.properties.id;
-    const prev = lastKey[subKey] || (
-      t._isFCM
-        ? fcmLastQuakeKey.get(t.token) || null
-        : (t.last_alert_condition && t.last_alert_condition.startsWith('EQ:') ? t.last_alert_condition : null)
-    );
-    const cacheKey = 'EQ:' + key;
-
-    // No repetir si ya se avisÃ³ de este mismo sismo
-    if (prev === cacheKey) continue;
-
-    const body =
-      locDesc +
-      (place ? ' Â· ' + place : '') +
-      '\n' + earthquakeSafetyTips(mag);
-
-    let r;
-    if (t._isFCM) {
-      // Enrutado por severidad (APK): dentro del radio escalado y M>=5 â†’
-      // quake_alert (data-only de alta prioridad â†’ pantalla completa +
-      // alarma). Otro sismo perceptible â†’ quake_info (heads-up). El tipo
-      // 'seismic' queda SOLO para la vÃ­a web-push: el servicio nativo no
-      // lo procesa como sismo (CodeHubFirebaseService solo matches quake_*).
-      const depth = Math.abs(latest.geometry.coordinates[2] || 0);
-      const strongNear = dist <= quakeRadiusForMag(mag, depth) && mag >= 5;
-      r = await sendFCM(t.token, {
-        title: strongNear ? 'ğŸš¨ ALERTA SÃSMICA' : 'ğŸŒ‹ Actividad sÃ­smica',
-        body: body + '\nğŸ“ ' + (t.city || 'Tu zona'),
-        type: strongNear ? 'quake_alert' : 'quake_info',
-        url: '/#sismos-section',
-        mag: mag,
-        dist: Math.round(dist),
-        dir: compassDirKm(+t.lat, +t.lon, latest.geometry.coordinates[1], latest.geometry.coordinates[0]),
-        place: placeRaw,
-        time: latest.properties.time,
-        alertType: 'earthquake',
-      });
-    } else {
-      r = await sendPush(t, {
-        title: 'ğŸŒ‹ Actividad sÃ­smica',
-        body: body,
-        type: 'seismic',
-        icon: '/splash/codehub.png',
-        url: '/#sismos-section',
-      });
-    }
-    if (r.ok) {
-      lastKey[subKey] = cacheKey;
-      if (t._isFCM) fcmLastQuakeKey.set(t.token, cacheKey);
-      else { t.last_alert_condition = cacheKey; t.last_alert_at = new Date().toISOString(); await pushSave(t); }
-      sent++;
-    }
-    void today;
-  }
-  return { earthquakes: sent };
-}
-
-// Scheduler sÃ­smico â€” cada 2 MINUTOS en la vÃ­a de emergencia. Con el feed
-// de hora + FCM high-priority el objetivo real es ~1-3 min desde el evento
-// (el latido de USGS + nuestro pass dominate la latencia; el push entra al
-// servicio siempre). 2 min es barato para Render e irrelevante para USGS.
-setInterval(() => {
-  seismicPushPass()
-    .then(o => { if (o.earthquakes) console.log('ğŸŒ‹ Push sÃ­smico enviado:', o.earthquakes); })
-    .catch(e => console.warn('âš ï¸  Push sÃ­smico error:', e.message));
-}, 2 * 60 * 1000);
-
-app.get('/api/push/seismic/check', async (req, res) => {
-  try {
-    const out = await seismicPushPass();
-    res.json({ ok: true, ...out });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// Endpoint de reporte de sismo por dispositivo (capa C de alerta temprana).
-// Un dispositivo que detecta un pico STA/LTA reporta su ubicaciÃ³n; el
-// backend hace fanout FCM high-priority a los dispositivos cercanos.
-// Rate-limited (fcmLimiter) + dedupe regional 60s para evitar flood.
-app.post('/api/quake/report', fcmLimiter, async (req, res) => {
-  try {
-    const { lat, lon, mag, deviceId } = req.body || {};
-    const L = +lat, Lo = +lon;
-    if (!Number.isFinite(L) || !Number.isFinite(Lo) || L < -90 || L > 90 || Lo < -180 || Lo > 180) {
-      return res.status(400).json({ ok: false, error: 'coords' });
-    }
-    const estMag = Number.isFinite(+mag) ? Math.max(3.5, Math.min(8.5, +mag)) : 4.5;
-    // Dedupe regional: redondeo 0.5Â° (~55 km) + ventana 60 s.
-    const key = Math.round(L * 2) / 2 + ',' + Math.round(Lo * 2) / 2;
-    const now = Date.now();
-    if (quakeReportRecent.has(key) && now - quakeReportRecent.get(key) < 60000) {
-      return res.json({ ok: true, deduped: true });
-    }
-    quakeReportRecent.set(key, now);
-    for (const [k, t] of quakeReportRecent) if (now - t > 5 * 60 * 1000) quakeReportRecent.delete(k);
-
-    const tokens = await fcmListTokens();
-    const targets = tokens.filter(t => Number.isFinite(+t.lat) && Number.isFinite(+t.lon));
-    const radiusKm = 80;
-    const strong = estMag >= 5;
-    const type = strong ? 'quake_alert' : 'quake_info';
-    const title = strong ? 'ğŸš¨ ALERTA SÃSMICA' : 'ğŸŒ‹ Actividad sÃ­smica';
-    const body = 'Sismo detectado por dispositivos cercanos Â· M~' + estMag.toFixed(1) + '\nğŸ“ Tu zona';
-    let sent = 0;
-    for (const t of targets) {
-      const dist = haversineKm(L, Lo, +t.lat, +t.lon);
-      if (dist > radiusKm) continue;
-      if (deviceId && t.device_id === deviceId) continue;
-      const r = await sendFCM(t.token, {
-        title, body, type, url: '/#sismos-section',
-        mag: estMag, dist: Math.round(dist),
-        dir: compassDirKm(L, Lo, +t.lat, +t.lon),
-        place: 'cerca de tu zona', time: now, alertType: 'earthquake',
-      });
-      if (r.ok) sent++;
-    }
-    console.log('ğŸš¨ Quake report fanout:', sent, 'devices, M~' + estMag.toFixed(1));
-    res.json({ ok: true, sent });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Dedupe en memoria para reportes de sismo (capa C).
-const quakeReportRecent = new Map();
-
-// Endpoint PÃšBLICO de sismos para la secciÃ³n "Sismos" del frontend.
-// Hace de PROXY hacia USGS (sin tocar CSP del navegador) y devuelve una
-// lista limpia y filtrable:
-//   GET /api/sismos?minMag=4&limit=80
-// Devuelve los sismos del dÃ­a en todo el mundo con magnitud >= minMag.
-app.get('/api/sismos', async (req, res) => {
-  try {
-    const features = await fetchRecentEarthquakes();
-    const minMag = parseFloat(req.query.minMag);
-    const validMag = Number.isFinite(minMag) ? minMag : 0;
-    let limit = parseInt(req.query.limit, 10);
-    if (!Number.isFinite(limit) || limit <= 0) limit = 80;
-    limit = Math.min(limit, 200);
-
-    const quakes = features
-      .filter(f => f.properties && f.geometry && isFinite(f.properties.mag) && f.properties.mag >= validMag)
-      .sort((a, b) => (b.properties.time || 0) - (a.properties.time || 0))
-      .slice(0, limit)
-      .map(f => ({
-        id: f.properties.id,
-        mag: f.properties.mag,
-        place: f.properties.place || '',
-        country: countryFromUSGSPlace(f.properties.place || ''),
-        lat: f.geometry.coordinates[1],
-        lon: f.geometry.coordinates[0],
-        depth: f.geometry.coordinates[2],
-        time: f.properties.time,
-        url: f.properties.url || '',
-        updated: f.properties.updated,
-      }));
-
-    res.set('Cache-Control', 'public, max-age=60');
-    res.json({ ok: true, count: quakes.length, quakes });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// Scheduler climÃ¡tico â€” manejado por backend/clima (el motor inyecta sus
-// dependencias y arranca su propio setInterval de 30 min en server.js bajo
-// el nombre del mÃ³dulo). Ver la inicializaciÃ³n en el bloque de clima.
-
-// â”€â”€ MONITOR AUTOMÃTICO DE RELEASES (apps open source) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Revisa periÃ³dicamente las apps con `source_repo` vÃ­a la API pÃºblica
-// de GitHub; si hay una versiÃ³n nueva publicada actualiza el documento
-// en MongoDB y envÃ­a push a todos los suscriptores ("app se actualizÃ³").
-const AUTO_UPDATE_MS = Math.max(30 * 60 * 1000, Number(process.env.AUTO_UPDATE_MS) || 6 * 60 * 60 * 1000);
-const GITHUB_MONITOR_TOKEN = process.env.GITHUB_TOKEN || null;
-
-async function fetchLatestRelease(ownerRepo) {
-  const url = `https://api.github.com/repos/${ownerRepo}/releases/latest`;
-  const headers = { 'Accept': 'application/vnd.github+json', 'User-Agent': 'CodeHub-App-Update-Monitor' };
-  if (GITHUB_MONITOR_TOKEN) headers['Authorization'] = 'Bearer ' + GITHUB_MONITOR_TOKEN;
-  const res = await fetch(url, { headers });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error('GitHub API ' + res.status + ' para ' + ownerRepo);
-  return res.json();
-}
-
-function pickApkAsset(release) {
-  if (!Array.isArray(release.assets)) return null;
-  const apk = release.assets.find(a => a.name && a.name.toLowerCase().endsWith('.apk'));
-  return apk ? apk.browser_download_url : null;
-}
-
-// truncate ahora vive en ./utils.js (importado arriba)
-
-async function autoCheckAppUpdates() {
-  if (!dbConnected) return { ok: false, reason: 'no-db', updated: 0, sent: 0 };
-  const apps = await App.find({ source_repo: { $ne: null } }).lean().catch(() => []);
-  if (!apps.length) return { ok: true, updated: 0, sent: 0, checked: 0 };
-
-  let updated = 0, sent = 0;
-  for (const app of apps) {
-    try {
-      const release = await fetchLatestRelease(app.source_repo);
-      if (!release) continue;
-      const nuevaVersion = release.tag_name || release.name || null;
-      if (!nuevaVersion || nuevaVersion === app.version) continue;
-
-      const apkUrl = pickApkAsset(release);
-      const update = {
-        version: nuevaVersion,
-        changelog: truncate(release.body),
-        tag: 'ğŸ”„ Actualizada',
-        updatedAt: new Date(),
-      };
-      if (apkUrl) update.enlace = apkUrl;
-
-      await App.updateOne({ appId: app.appId }, { $set: update });
-      await cacheDel('apps:all');
-      broadcastAppsChanged();
-      updated++;
-
-      const r = await broadcastPush({
-        title: 'ğŸ”„ ' + app.nombre + ' se actualizÃ³',
-        body: truncate(release.body, 120) || 'Nueva versiÃ³n ' + nuevaVersion + ' disponible',
-        type: 'app_update',
-        appId: app.appId,
-        version: nuevaVersion,
-        url: '/opensource.html',
-      });
-      sent += r.sent || 0;
-      console.log('â¬†ï¸  Auto: ' + app.nombre + ' â†’ ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
-    } catch (e) {
-      console.warn('âš ï¸  Auto update ' + app.appId + ':', e.message);
-    }
-    await new Promise(r => setTimeout(r, 500));
-  }
-  return { ok: true, checked: apps.length, updated, sent };
-}
-
-// Scheduler del monitor â€” cada 6h por defecto (configurable con AUTO_UPDATE_MS)
-setInterval(() => {
-  autoCheckAppUpdates()
-    .then(o => { if (o.updated) console.log('ğŸ¤– Monitor releases: ' + o.updated + ' actualizada(s)'); })
-    .catch(e => console.warn('âš ï¸  Monitor releases error:', e.message));
-}, AUTO_UPDATE_MS);
-
-// Endpoint para disparar el monitor manualmente (admin-hub / cron externo)
-app.get('/api/admin/apps/check-updates', requireAdmin, async (req, res) => {
-  try {
-    const out = await autoCheckAppUpdates();
-    res.json({ ok: true, ...out });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
-// â”€â”€ WEBHOOK DE GITHUB â€” releases en tiempo real â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// autoCheckAppUpdates() (arriba) revisa cada 6h por polling â€” funciona,
-// pero no es "tiempo real": si publicas un release, los suscriptores no
-// se enteran hasta el siguiente ciclo del monitor. Este webhook hace que
-// GitHub avise al instante en cuanto se publica un release, y aquÃ­ mismo
-// se dispara el push a todos los suscriptores sin esperar al polling.
-//
-// ConfiguraciÃ³n necesaria (una vez por repo que quieras notificar al
-// instante, ademÃ¡s de GITHUB_WEBHOOK_SECRET en las env vars de Render):
-//   GitHub repo â†’ Settings â†’ Webhooks â†’ Add webhook
-//     Payload URL: https://<tu-backend>/api/webhook/github-release
-//     Content type: application/json
-//     Secret: el mismo valor que GITHUB_WEBHOOK_SECRET
-//     Evento: "Let me select individual events" â†’ Releases
-function verifyGithubSignature(req) {
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
-  if (!secret) return false; // sin secreto configurado, no se acepta el webhook
-  const sig = req.get('x-hub-signature-256') || '';
-  const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(req.rawBody || '').digest('hex');
-  try {
-    return sig.length === expected.length &&
-      crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-  } catch (e) { return false; }
-}
-
-app.post('/api/webhook/github-release', async (req, res) => {
-  try {
-    if (!verifyGithubSignature(req)) return res.status(401).json({ ok: false, error: 'Firma invÃ¡lida o GITHUB_WEBHOOK_SECRET no configurado' });
-
-    const event = req.get('x-github-event');
-    if (event === 'ping') return res.json({ ok: true, pong: true });
-    if (event !== 'release') return res.json({ ok: true, ignored: event });
-
-    const payload = req.body || {};
-    if (payload.action !== 'published') return res.json({ ok: true, ignored: payload.action });
-
-    const ownerRepo = payload.repository && payload.repository.full_name;
-    const release = payload.release;
-    if (!ownerRepo || !release) return res.status(400).json({ ok: false, error: 'Payload incompleto' });
-
-    const app_ = await App.findOne({ source_repo: ownerRepo });
-    if (!app_) return res.json({ ok: true, matched: false, reason: 'Ninguna app del catÃ¡logo usa ese source_repo' });
-
-    const nuevaVersion = release.tag_name || release.name || null;
-    if (!nuevaVersion || nuevaVersion === app_.version) return res.json({ ok: true, matched: true, skipped: 'misma versiÃ³n' });
-
-    const apkUrl = pickApkAsset(release);
-    const update = {
-      version: nuevaVersion,
-      changelog: truncate(release.body),
-      tag: 'ğŸ”„ Actualizada',
-      updatedAt: new Date(),
-    };
-    if (apkUrl) update.enlace = apkUrl;
-
-    await App.updateOne({ appId: app_.appId }, { $set: update });
-    await cacheDel('apps:all');
-    broadcastAppsChanged();
-
-    const r = await broadcastPush({
-      title: 'ğŸ”„ ' + app_.nombre + ' se actualizÃ³',
-      body: truncate(release.body, 120) || 'Nueva versiÃ³n ' + nuevaVersion + ' disponible',
-      type: 'app_update',
-      appId: app_.appId,
-      version: nuevaVersion,
-      url: '/opensource.html',
-    });
-
-    console.log('âš¡ Webhook release instantÃ¡neo: ' + app_.nombre + ' â†’ ' + nuevaVersion + ' (push ' + (r.sent || 0) + ')');
-    res.json({ ok: true, matched: true, updated: true, sent: r.sent || 0 });
-  } catch (e) {
-    console.error('webhook/github-release error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// â”€â”€ PROCESO: capturar errores no controlados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Sin esto, un throw async sin catch (p. ej. en un handler de WS o un
-// setTimeout) tumba el proceso entero en Render sin dejar rastro claro
-// de la causa. Se loguea + se avisa por Telegram, pero NO se hace
-// process.exit() salvo que el error sea realmente fatal para el event
-// loop â€” dejar el proceso vivo es preferible a un crash-loop.
-process.on('unhandledRejection', (reason, promise) => {
-  const msg = reason instanceof Error ? reason.stack || reason.message : String(reason);
-  console.error('âš ï¸ unhandledRejection:', msg);
-  tgAlert('unhandled_rejection', () => 'ğŸ”´ unhandledRejection:\n' + String(msg).slice(0, 500), { windowMs: 30000 });
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('ğŸ”´ uncaughtException:', err.stack || err.message);
-  tgAlert('uncaught_exception', () => 'ğŸ”´ uncaughtException:\n' + String(err.stack || err.message).slice(0, 500), { windowMs: 30000 });
-  // No se llama process.exit(): en Express, un throw sÃ­ncrono dentro de
-  // un route handler normal ya es capturado por Express mismo; esto
-  // cubre solo callbacks/timers fuera de ese ciclo. Mantener el
-  // proceso vivo evita reinicios en cascada que tumbarÃ­an WebSockets
-  // y sesiones activas por un error aislado.
-});
-
-// â”€â”€ Streaming SSE (Server-Sent Events) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Endpoint alternativo a /api/chat que devuelve la respuesta token por token.
-// Soporta Groq, Cerebras, HuggingFace, OpenRouter, Mistral, Kimi (OpenAI-compat)
-// y Claude (Anthropic SSE). Cohere y Gemini Vision caen a non-streaming.
-app.post('/api/chat/stream', requireAuth, async (req, res) => {
-  const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
-  if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
-  if (message.trim().length > 1000) return res.status(400).json({ error: 'Mensaje muy largo.' });
-  if (!hasAnyChatKey()) return res.status(503).json({ error: 'Sin API keys.' });
-
-  // â”€â”€ Imagen/PDF escaneado: fallback a non-streaming (solo Gemini Vision) â”€â”€
-  const imgList = image ? [image] : (Array.isArray(images) && images.length ? images.slice(0, 5) : null);
-  if (imgList && imgList.length) {
-    req.url = '/api/chat';
-    return app.handle(req, res);
-  }
-
-  // â”€â”€ LÃ­mite diario server-side â”€â”€
-  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
-  const emiLimit = await getEmiLimit(!!req.authUser);
-  const emiUsed = await getEmiUsage(emiKey);
-  if (emiUsed >= emiLimit) {
-    return res.status(429).json({ error: `LÃ­mite diario alcanzado (${emiLimit} mensajes). ${req.authUser ? '' : 'Inicia sesiÃ³n para mÃ¡s.'}`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
-  }
-
-  // â”€â”€ Recuperar historial â”€â”€
-  let sessionHistory = [];
-  if (dbConnected && sessionId !== 'anon') {
-    try {
-      const pastMsgs = await ChatMessage.find({ sessionId }).sort({ createdAt: -1 }).limit(10).lean();
-      sessionHistory = pastMsgs.reverse().map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 800) }));
-    } catch (e) { console.warn('Error recuperando historial:', e.message); }
-  }
-  sessionHistory.push({ role: 'user', content: message.trim() });
-  if (typeof pdfText === 'string' && pdfText.trim()) {
-    sessionHistory.splice(sessionHistory.length - 1, 0, {
-      role: 'user',
-      content: '[Documento adjunto â€” resumen comprimido del documento. Responde usando SOLO este contenido como referencia, en espaÃ±ol]:\n' + pdfText.slice(0, 40000)
-    });
-  }
-
-  // F1.1: SYSTEM dinÃ¡mico â€” base para queries generales, completa para CodeHub
-  let system = classifySystem(message);
-  // Skill activa: inyecta su guÃ­a
-  if (skill_id) {
-    const skill = loadSkillJson(String(skill_id));
-    if (skill && skill.system_prompt_inject) system = skill.system_prompt_inject + '\n\n' + system;
-  }
-  // WIL.E: contexto aumentado (memoria del usuario + base de conocimiento RAG)
-  if (dbConnected) {
-    try {
-      const ctx = await buildContext({
-        userId: memUserOf(req, sessionId) || 'none',
-        ownerId: 'admin',
-        message,
-        topK: 3,
-      });
-      if (ctx) system = augmentSystem(system, ctx);
-    } catch (e) {
-      console.warn('Wil.E contexto error:', e.message);
-    }
-  }
-  // WIL.E: bÃºsqueda web en vivo (datos actuales) cuando la consulta lo pide
-  try {
-    const live = await liveWebContext(message);
-    if (live) system = system + '\n\n' + live;
-  } catch (e) { /* silencioso */ }
-  // WIL.E: herramienta de cÃ³mputo (cÃ¡lculos, fecha, conversiones) sin LLM
-  try {
-    const tool = computeTool(message);
-    if (tool) system = system + '\n\n' + tool;
-  } catch (e) { /* silencioso */ }
-  // WIL.E: function-calling â€” ejecuta la herramienta detectada (web/computo/URL)
-  try {
-    const dt = detectTool(message);
-    if (dt) {
-      const out = await executeTool(dt.name, dt.arg);
-      if (out) system = system + '\n\n' + out;
-    }
-  } catch (e) { /* silencioso */ }
-  // F1.2+F1.4: Smart truncation con budget de 10k tokens (~40k chars)
-  const msgs = buildSmartMessages(system, sessionHistory, 10000);
-
-  // â”€â”€ Setup SSE headers â”€â”€
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  const upstreamAbort = new AbortController();
-  req.on('close', () => upstreamAbort.abort());
-
-  let replied = false;
-  let fullReply = '';
-  let usage = { input: 0, output: 0 };
-  let modelName = '';
-
-  function sendSSE(evt, data) {
-    if (res.destroyed) return;
-    res.write('event: ' + evt + '\ndata: ' + JSON.stringify(data) + '\n\n');
-  }
-
-  // SSE idle watchdog: aborta si pasan SSE_TIMEOUT_MS sin datos nuevos.
-  // Leaked streams en providers lentos ya no acumulan sockets â†’ OOM.
-  async function tryStream(name, endpoint, headers, body) {
-    let timer = null;
-    const ctrl = new AbortController();
-    const clearT = () => { if (timer) { clearTimeout(timer); timer = null; } };
-    const kick   = () => { clearT(); timer = setTimeout(() => ctrl.abort(new Error(name + ': timeout SSE')), SSE_TIMEOUT_MS); };
-    const onServerAbort = () => ctrl.abort();
-    upstreamAbort.signal.addEventListener('abort', onServerAbort, { once: true });
-    kick();
-    try {
-      const r = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
-      if (!r.ok) {
-        clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort);
-        const e = await r.json().catch(() => ({}));
-        const err = new Error(e.error?.message || name + ' ' + r.status);
-        err.status = r.status;
-        throw err;
-      }
-      return { r, kick, stop() { clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort); } };
-    } catch (e) {
-      clearT(); upstreamAbort.signal.removeEventListener('abort', onServerAbort);
-      throw e;
-    }
-  }
-
-  async function consumeOpenAIStream(s, onChunk) {
-    const reader = s.r.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    try {
-      while (true) {
-        s.kick();
-        const { done, value } = await reader.read();
-        if (done) break;
-        s.kick();
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const payload = line.slice(6).trim();
-          if (payload === '[DONE]') return;
-          try {
-            const d = JSON.parse(payload);
-            const delta = d.choices?.[0]?.delta?.content;
-            if (delta) { onChunk(delta); s.kick(); }
-            if (d.usage) { usage.input = d.usage.prompt_tokens || 0; usage.output = d.usage.completion_tokens || 0; }
-          } catch {}
-        }
-      }
-    } finally { s.stop(); }
-  }
-
-  async function consumeClaudeStream(s, onChunk) {
-    const reader = s.r.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    try {
-      while (true) {
-        s.kick();
-        const { done, value } = await reader.read();
-        if (done) break;
-        s.kick();
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const d = JSON.parse(line.slice(6));
-            if (d.type === 'content_block_delta' && d.delta?.text) { onChunk(d.delta.text); s.kick(); }
-            if (d.type === 'message_delta' && d.usage) usage.output = d.usage.output_tokens || 0;
-            if (d.type === 'message_start' && d.message?.usage) usage.input = d.message.usage.input_tokens || 0;
-          } catch {}
-        }
-      }
-    } finally { s.stop(); }
-  }
-
-  try {
-    const order = classifyRoute(msgs);
-
-    // â”€â”€ Claude streaming â”€â”€
-    if (!replied && order[0] === 'Claude' && process.env.ANTHROPIC_API_KEY) {
-      try {
-        const sysMsg = msgs.find(m => m.role === 'system');
-        const chatMsgs = msgs.filter(m => m.role !== 'system');
-        const body = {
-          model: 'claude-sonnet-4-5', max_tokens: adaptiveMaxTokens(message), temperature: 0.65,
-          system: sysMsg?.content || '',
-          messages: chatMsgs.map(m => ({ role: m.role, content: m.content })),
-          stream: true
-        };
-        const r = await tryStream('Claude', 'https://api.anthropic.com/v1/messages', {
-          'Content-Type': 'application/json',
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01'
-        }, body);
-        modelName = 'anthropic/claude-sonnet';
-        replied = true;
-        await consumeClaudeStream(r, (chunk) => { fullReply += chunk; sendSSE('chunk', { text: chunk }); });
-      } catch (e) {
-        console.warn('Claude streaming fallo, intentando siguiente...');
-      }
-    }
-
-    // â”€â”€ OpenAI-compatible streaming providers â”€â”€
-    if (!replied) {
-      const oaiProviders = [
-        { name: 'Kimi', endpoint: 'https://api.moonshot.ai/v1/chat/completions', key: process.env.KIMI_API_KEY, model: 'kimi-k2-0905-preview', label: 'moonshot/kimi-k2' },
-        { name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile', label: 'groq/llama-3.3-70b' },
-        { name: 'Cerebras', endpoint: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: 'llama-3.3-70b', label: 'cerebras/llama-3.3-70b' },
-        { name: 'HuggingFace', endpoint: 'https://router.huggingface.co/v1/chat/completions', key: process.env.HUGGINGFACE_API_KEY, model: 'meta-llama/Llama-3.3-70B-Instruct:novita', label: 'huggingface/llama-3.3-70b' },
-        { name: 'Mistral', endpoint: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-small-latest', label: 'mistral/mistral-small' },
-      ];
-      if (process.env.OPENROUTER_API_KEY) {
-        for (const m of OR_FREE_MODELS) {
-          oaiProviders.push({
-            name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-            key: process.env.OPENROUTER_API_KEY, model: m,
-            label: 'openrouter/' + m.split('/').pop().replace(':free', ''),
-            extraHeaders: { 'HTTP-Referer': process.env.FRONTEND_URL || 'https://wilson360-labs.vercel.app', 'X-Title': 'WIL.E COPILOT' }
-          });
-        }
-      }
-      const ordered = order.filter(n => n !== 'Claude' && n !== 'Gemini' && n !== 'Cohere');
-      const sorted = [...ordered.map(n => oaiProviders.find(p => p.name === n)), ...oaiProviders.filter(p => !ordered.includes(p.name))].filter(Boolean);
-
-      for (const prov of sorted) {
-        if (!prov.key || upstreamAbort.signal.aborted) continue;
-        try {
-          const body = { model: prov.model, max_tokens: adaptiveMaxTokens(message), temperature: 0.65, messages: msgs, stream: true, stream_options: { include_usage: true } };
-          const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + prov.key, ...prov.extraHeaders };
-          const r = await tryStream(prov.name, prov.endpoint, headers, body);
-          modelName = prov.label;
-          replied = true;
-          await consumeOpenAIStream(r, (chunk) => { fullReply += chunk; sendSSE('chunk', { text: chunk }); });
-          console.log('Streaming via ' + prov.name + ' (' + prov.model + ')');
-          break;
-        } catch (e) {
-          if (e.status === 401 || e.status === 429) { console.warn(prov.name + ': ' + e.status); continue; }
-          console.warn(prov.name + ' streaming fallo: ' + e.message);
-        }
-      }
-    }
-
-    // â”€â”€ Gemini / Cohere fallback: non-streaming â”€â”€
-    if (!replied) {
-      try {
-        const result = await callAI(msgs);
-        fullReply = result.reply;
-        usage = { input: result.input, output: result.output };
-        modelName = result.model;
-        replied = true;
-        sendSSE('chunk', { text: fullReply });
-      } catch (e) {
-        sendSSE('error', { error: 'Todos los proveedores de IA fallaron.' });
-        res.end();
-        return;
-      }
-    }
-
-    // â”€â”€ Finalizar: persistir, side effects, done â”€â”€
-    if (dbConnected) ChatMessage.insertMany([
-      { sessionId, role: 'user', content: message.trim(), tokens: usage.input, model: modelName },
-      { sessionId, role: 'assistant', content: fullReply, tokens: usage.output, model: modelName },
-    ]).catch(() => {});
-
-    const emiNow = await incrEmiUsage(emiKey);
-    broadcast('chat_used', { model: modelName, tokens: usage.input + usage.output });
-    trackEvent('chat', null, { model: modelName, tokens: usage.input + usage.output });
-    tgAlert('chat', () => 'Chat con WIL.E (stream): ' + String(message || '').slice(0, 60).replace(/[<>]/g, '') + ' | ' + modelName, { windowMs: 30000 });
-
-    // WIL.E: aprende hechos del mensaje del usuario (memoria entrenable)
-    const memU = memUserOf(req, sessionId);
-    if (dbConnected && memU && memEnabledOf(req)) {
-      if (memU.startsWith('sess:')) {
-        AIMemory.countDocuments({ userId: memU }).then((cnt) => {
-          if (cnt < 20) remember({ userId: memU, text: message }).catch(() => {});
-        }).catch(() => {});
-      } else {
-        remember({ userId: memU, text: message }).catch(() => {});
-      }
-    }
-
-    sendSSE('done', { reply: fullReply, usage: { ...usage, total: usage.input + usage.output }, model: modelName, emi: { used: emiNow, limit: emiLimit } });
-    res.end();
-
-  } catch (err) {
-    console.error('Stream endpoint error:', err.message);
-    sendSSE('error', { error: 'Error interno.' });
-    res.end();
-  }
-});
-
-// â”€â”€ â–ŒSISTEMA "PRO": mÃ©tricas en vivo + auditorÃ­a de seguridad â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Panel Bento de la home. El cliente (web/APK) consulta /api/metrics cada
-// 5 s y pausa el polling con document.visibilityState / IntersectionObserver
-// para no gastar baterÃ­a. /api/security/scan audita cabeceras de cualquier
-// sitio pÃºblico con guardas anti-SSRF y timeout.
-
-const metricsLimiter = rateLimit({
-  windowMs: 15 * 1000, max: 240, standardHeaders: true, legacyHeaders: false,
-  message: { error: 'Demasiadas lecturas de mÃ©tricas.', code: 'METRICS_RATE_LIMIT' },
-  handler: rateLimitHandler,
-});
-
-const scanLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 6, standardHeaders: true, legacyHeaders: false,
-  message: { error: 'Demasiadas auditorÃ­as. Espera un momento.', code: 'SCAN_RATE_LIMIT' },
-  handler: rateLimitHandler,
-});
-
-// Acumulador de % CPU "vivo": compara process.cpuUsage() entre peticiones.
-const _cpu = { usage: null, at: 0 };
-
-app.get('/api/metrics', metricsLimiter, (req, res) => {
-  const t0 = process.hrtime.bigint();
-  const now = Date.now();
-
-  const rssMb = process.memoryUsage().rss / 1048576;
-  const totMb = Math.max(1, os.totalmem() / 1048576);
-  const ram = Math.min(100, Math.round((rssMb / totMb) * 1000) / 10);
-
-  let cpu = 0;
-  const u = process.cpuUsage();
-  if (_cpu.usage) {
-    const du = (u.user - _cpu.usage.user) + (u.system - _cpu.usage.system);
-    const dt = Math.max(1, now - _cpu.at);
-    cpu = Math.min(100, Math.max(0, Math.round((du / dt / 10) * 10) / 10));
-  }
-  _cpu.usage = u;
-  _cpu.at = now;
-
-  const latency = Math.max(1, Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10);
-
-  res.json({
-    ok: true,
-    status: 'online',
-    latency,
-    cpu,
-    ram,
-    uptime: Math.round(process.uptime()),
-    ts: Date.now(),
-  });
-});
-
-// â”€â”€ AuditorÃ­a de seguridad (anti-clickjacking, HSTS, CSP, SSRF-guard) â”€â”€
-function _isPrivateIPv4(ip) {
-  const p = (ip || '').split('.').map(Number);
-  if (p.length !== 4) return false;
-  return p[0] === 0 || p[0] === 10 || p[0] === 127 ||
-    (p[0] === 100 && p[1] >= 64 && p[1] <= 127) ||
-    (p[0] === 169 && p[1] === 254) ||
-    (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
-    (p[0] === 192 && p[1] === 0 && (p[2] === 0 || p[2] === 2)) ||
-    (p[0] === 192 && p[1] === 168) ||
-    (p[0] === 198 && (p[1] === 18 || p[1] === 19)) ||
-    (p[0] === 198 && p[1] === 51 && p[2] === 100) ||
-    (p[0] === 203 && p[1] === 0 && p[2] === 113) ||
-    p[0] >= 224;
-}
-
-function _isPrivateIP(ip) {
-  const lower = String(ip).toLowerCase();
-  const v4 = lower.match(/(\d+\.\d+\.\d+\.\d+)$/);
-  if (v4) return _isPrivateIPv4(v4[1]);
-  if (lower === '::' || lower === '::1') return true;
-  if (lower.includes(':')) {
-    const h0 = parseInt((lower.split(':')[0] || '0').replace(/[^0-9a-f]/g, '') || '0', 16);
-    if ((h0 & 0xfe00) === 0xfc00) return true;  // ULA fc00::/7
-    if ((h0 & 0xffc0) === 0xfe80) return true;  // link-local fe80::/10
-    if (h0 === 0xff) return true;               // multicast ff00::/8
-  }
-  return false;
-}
-
-async function _assertPublicHost(host) {
-  const withTimeout = new Promise((_, rej) =>
-    setTimeout(() => rej(new Error('El dominio no resuelve (timeout)')), 5000));
-  const lookup = dns.promises.lookup(host, { all: true }).then((addrs) => {
-    if (!addrs || !addrs.length) throw new Error('El dominio no resuelve');
-    const bad = addrs.find((a) => _isPrivateIP(a.address));
-    if (bad) throw new Error('Acceso a red interna bloqueado (' + bad.address + ')');
-    return addrs;
-  });
-  await Promise.race([lookup, withTimeout]);
-}
-
-function _probeURL(rawURL, maxRedirects = 5, timeoutMs = 9000) {
-  return new Promise((resolve, reject) => {
-    const seen = new Set([rawURL]);
-
-    const doProbe = (u, hops) => {
-      let parsed;
-      try { parsed = new URL(u); } catch (e) { return reject(new Error('URL invÃ¡lida')); }
-      const mod = parsed.protocol === 'http:' ? require('http') : require('https');
-      const started = Date.now();
-      const req = mod.request(parsed, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (CodeHub Security Audit; +https://wilson360-labs.vercel.app)',
-          Accept: '*/*',
-          'Accept-Encoding': 'identity',
-        },
-        timeout: timeoutMs,
-      }, (res) => {
-        const loc = res.headers.location ? new URL(res.headers.location, parsed).toString() : null;
-        if (res.statusCode >= 300 && res.statusCode < 400 && loc && hops > 0) {
-          res.resume();
-          if (seen.has(loc)) return reject(new Error('Bucle de redirecciones'));
-          seen.add(loc);
-          return doProbe(loc, hops - 1);
-        }
-        resolve({
-          url: u,
-          status: res.statusCode || 0,
-          headers: res.headers || {},
-          finalScheme: parsed.protocol,
-          latency: Date.now() - started,
-        });
-        res.resume();
-      });
-      const timer = setTimeout(() => req.destroy(new Error('timeout')), timeoutMs);
-      req.on('timeout', () => req.destroy(new Error('timeout')));
-      req.on('error', (e) => { clearTimeout(timer); reject(e); });
-      req.on('close', () => clearTimeout(timer));
-      req.end();
-    };
-
-    doProbe(rawURL, maxRedirects);
-  });
-}
-
-function _audit(report) {
-  const H = report.headers || {};
-  const lh = {};
-  Object.keys(H).forEach((k) => { lh[k.toLowerCase()] = H[k]; });
-  const get = (n) => (Array.isArray(lh[n]) ? lh[n].join(', ') : lh[n]) || '';
-
-  const checks = [];
-  const vulns = [];
-  const add = (name, pass, score, part) => ({ name, pass, score, part });
-
-  const https = report.finalScheme === 'https:';
-
-  checks.push(add('ConexiÃ³n cifrada (HTTPS)', https, 25, 'network'));
-  if (!https) vulns.push({ severity: 'CRITICO', title: 'ConexiÃ³n sin cifrar (HTTP)', detail: 'Los datos viajan en texto plano y pueden ser interceptados.', hint: 'Activa un certificado TLS y redirige todo el trÃ¡fico a HTTPS.' });
-
-  const hsts = get('strict-transport-security');
-  const hstsOk = https && /max-age=\d+/.test(hsts);
-  checks.push(add('Strict-Transport-Security (HSTS)', hstsOk, hstsOk ? 15 : 0, 'security'));
-  if (https && !hstsOk) vulns.push({
-    severity: hsts ? 'ALTO' : 'MEDIO',
-    title: hsts ? 'HSTS mal configurado' : 'Falta HSTS',
-    detail: hsts ? ('Presente pero sin max-age vÃ¡lido: ' + hsts) : 'No se envÃ­a Strict-Transport-Security.',
-    hint: 'EnvÃ­a Strict-Transport-Security: max-age=31536000; includeSubDomains.',
-  });
-
-  const csp = get('content-security-policy');
-  const cspOk = !!csp;
-  checks.push(add('Content-Security-Policy (CSP)', cspOk, cspOk ? 15 : 0, 'security'));
-  if (!cspOk) vulns.push({
-    severity: 'MEDIO', title: 'Falta Content-Security-Policy',
-    detail: 'Sin CSP, un XSS puede cargar scripts externos sin lÃ­mite.',
-    hint: "Define una CSP restrictiva (por ejemplo default-src 'self').",
-  });
-  else if (/unsafe-inline|unsafe-eval/.test(csp)) vulns.push({
-    severity: 'MEDIO', title: 'CSP con unsafe-inline/unsafe-eval',
-    detail: 'Reduce el beneficio de la CSP permitiendo ejecuciÃ³n/tÃ©cnicas inseguras.',
-    hint: "Elimina 'unsafe-inline'/'unsafe-eval' o usa nonces/hashes.",
-  });
-
-  const nosniff = get('x-content-type-options');
-  const nosniffOk = /nosniff/i.test(nosniff);
-  checks.push(add('X-Content-Type-Options: nosniff', nosniffOk, nosniffOk ? 10 : 0, 'security'));
-  if (!nosniffOk) vulns.push({
-    severity: 'MEDIO', title: 'Sniffing de MIME habilitado',
-    detail: 'El navegador puede inferir mal el tipo de un recurso y ejecutar contenido no esperado.',
-    hint: 'EnvÃ­a X-Content-Type-Options: nosniff.',
-  });
-
-  const xfo = get('x-frame-options');
-  const xfoOk = /deny|sameorigin/i.test(xfo);
-  checks.push(add('X-Frame-Options (anti-clickjacking)', xfoOk, xfoOk ? 10 : 0, 'security'));
-  if (!xfoOk) vulns.push({
-    severity: 'ALTO', title: 'Clickjacking posible',
-    detail: 'Sin protecciÃ³n de framing, tu web puede incrustarse en un iframe malicioso.',
-    hint: "EnvÃ­a X-Frame-Options: SAMEORIGIN o frame-ancestors 'self' en la CSP.",
-  });
-
-  const rp = get('referrer-policy');
-  const rpOk = !!rp;
-  checks.push(add('Referrer-Policy', rpOk, rpOk ? 10 : 0, 'privacy'));
-  if (!rpOk) vulns.push({
-    severity: 'BAJO', title: 'Falta Referrer-Policy',
-    detail: 'Puedes filtrar la URL completa (con tokens) a dominios externos.',
-    hint: 'EnvÃ­a Referrer-Policy: strict-origin-when-cross-origin.',
-  });
-
-  const pp = get('permissions-policy');
-  const ppOk = !!pp;
-  checks.push(add('Permissions-Policy', ppOk, ppOk ? 10 : 0, 'privacy'));
-  if (!ppOk) vulns.push({
-    severity: 'BAJO', title: 'Falta Permissions-Policy',
-    detail: 'El contenido propio puede pedir cÃ¡mara, micrÃ³fono o geolocalizaciÃ³n sin restricciÃ³n.',
-    hint: 'EnvÃ­a Permissions-Policy limitando los permisos sensibles.',
-  });
-
-  const sc = lh['set-cookie'];
-  const setCookies = Array.isArray(sc) ? sc : (sc ? [sc] : []);
-  const insecureCookies = https && setCookies.some((c) => !/;\s*secure/i.test(c));
-  checks.push(add('Cookies con flag Secure', !insecureCookies, insecureCookies ? 0 : 5, 'privacy'));
-  if (insecureCookies) vulns.push({
-    severity: 'MEDIO', title: 'Cookies sin flag Secure',
-    detail: 'Las cookies pueden viajar por HTTP y ser robadas en trÃ¡nsito.',
-    hint: 'Marca Secure y SameSite en todas tus cookies.',
-  });
-
-  const score = checks.reduce((s, c) => s + c.score, 0);
-  const rank = ['CRITICO', 'ALTO', 'MEDIO', 'BAJO'];
-  vulns.sort((a, b) => rank.indexOf(a.severity) - rank.indexOf(b.severity));
-
-  return {
-    score,
-    risk: score >= 80 ? 'EXCELENTE' : score >= 50 ? 'MODERADO' : 'PELIGROSO',
-    checks,
-    vulnerabilities_found: vulns,
-  };
-}
-
-app.get('/api/security/scan', scanLimiter, async (req, res) => {
-  try {
-    let raw = String(req.query.url || '').trim();
-    if (!raw) return res.status(400).json({ ok: false, error: 'Falta el parÃ¡metro ?url=...' });
-    if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw;
-
-    let parsed;
-    try { parsed = new URL(raw); } catch (e) { return res.status(422).json({ ok: false, error: 'URL invÃ¡lida.' }); }
-    if (!/^https?:$/.test(parsed.protocol)) return res.status(422).json({ ok: false, error: 'Solo se auditan URLs http/https.' });
-
-    try { await _assertPublicHost(parsed.hostname); }
-    catch (e) { return res.status(422).json({ ok: false, error: e.message }); }
-
-    const final = await _probeURL(parsed.toString());
-    const audit = _audit(final);
-
-    res.json({
-      ok: true,
-      url: parsed.toString(),
-      finalUrl: final.url,
-      status: final.status,
-      latency: final.latency,
-      ...audit,
-      scannedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    const timeout = err && /timeout/i.test(String(err.message));
-    res.status(502).json({
-      ok: false,
-      error: timeout
-        ? 'No se pudo alcanzar el sitio (timeout). Prueba con otra URL.'
-        : (err && err.message) || 'No se pudo completar la auditorÃ­a.',
-    });
-  }
-});
-
-// â”€â”€ BOT DE TELEGRAM (administraciÃ³n por chat) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Receptor del webhook de Telegram: /api/telegram/webhook. Se monta ANTES
-// del 404/500 globales (si no, quedarÃ­a inalcanzable). La lÃ³gica vive en
-// backend/telegram-bot.js; aquÃ­ solo se le inyecta lo que ya existe:
-// la firma de sesiones admin, tgAlert y logAdmin.
-// Variables nuevas en Render: TELEGRAM_WEBHOOK_SECRET (obligatoria) y
-// TG_BOT_ENABLED (kill-switch, default true). TELEGRAM_BOT_TOKEN y
-// TELEGRAM_CHAT_ID ya se usaban para el resumen diario.
-try {
-  require('./telegram-bot').init({
-    app,
-    signSession: _signSession,
-    tgAlert,
-    logAdmin,
-    port: PORT,
-    backendUrl: process.env.BACKEND_URL || ('http://127.0.0.1:' + PORT),
-    adminKey: process.env.ADMIN_KEY,
-  });
-} catch (e) {
-  console.error('âš ï¸ telegram-bot no se pudo montar:', e.message);
-}
-
-// â”€â”€ 404 + error handler globales (deben ir AL FINAL, tras todas las rutas) â”€â”€
-app.use((req, res) => {
-  // OPTIONS sin CORS (probes, preflight de rutas sin handler propio): en vez
-  // de 404 + alerta, responder 204 con cabeceras CORS genÃ©ricas. El flujo
-  // real de preflight del navegador ya lo cubre app.use(cors) arriba; esto
-  // solo evita ruido de escaneos/scripts y 404 falsos en rutas internas.
-  if (req.method === 'OPTIONS') {
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, x-admin-key, x-admin-user, x-admin-session, Accept, Authorization');
-    return res.status(204).end();
-  }
-  if (req.path === '/api/health/keys') {
-    // Detalle de keys solo para admin; para el resto se comporta como 404.
-    if (!wilEIsAdmin(req)) return res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
-    return res.json({
-      autoenhance: !!(process.env.AUTOENHANCE_API_KEY),
-      groq:        !!(process.env.GROQ_API_KEY),
-      gemini:      !!(process.env.GEMINI_API_KEY),
-      claude:      !!(process.env.ANTHROPIC_API_KEY),
-      cohere:      !!(process.env.COHERE_API_KEY),
-    });
-  }
-  // Un 404 en /api/* casi siempre es seÃ±al de un bug real (ruta mal
-  // ordenada, typo, endpoint borrado sin actualizar el frontend) â€” a
-  // diferencia de 404s fuera de /api/ que suelen ser bots escaneando
-  // rutas al azar. tgAlert ya deduplica por path dentro de una ventana
-  // de tiempo, asÃ­ que un bot insistente no hace spam en Telegram.
-  if (req.path.startsWith('/api/')) {
-    const ip = clientIp(req);
-    tgAlert('404:' + req.path, n =>
-      `ğŸ•³ï¸ <b>404 en ruta interna</b>\n<code>${req.method} ${escHtml(req.path)}</code>\nIP: <code>${ip}</code>\nOcurrencias: ${n}\n\n` +
-      `Si esta ruta la usa el frontend/app, revisa el orden de definiciÃ³n en server.js â€” una ruta declarada despuÃ©s de este catch-all queda inalcanzable.`,
-      { windowMs: 30000 });
-  }
-  res.status(404).json({ ok: false, error: 'Ruta no encontrada', code: 'NOT_FOUND' });
-});
-
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  console.error('ğŸ”´ Error middleware:', err.stack || err.message);
-  tgAlert('express_error', () => 'ğŸ”´ Error Express en ' + req.method + ' ' + req.originalUrl + ':\n' + String(err.message).slice(0, 300), { windowMs: 30000 });
-  if (res.headersSent) return;
-  res.status(err.status || 500).json({ ok: false, error: 'Error interno del servidor', code: 'INTERNAL_ERROR' });
-});
-
-// â”€â”€ ARRANCAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-(async () => {
-  await initRedis();
-  dbConnected = await connectDB();
-  if (supabase) console.log('âœ… Supabase Storage listo â€” bucket:', STORAGE_BUCKET);
-  await ensurePushTable();
-  await ensureFCMTable();
-  await ensureStatsTables();
-
-  // Limpieza periÃ³dica de visitor_logs (cada 24 h): borra registros de
-  // mÃ¡s de 3 dÃ­as para que la tabla no crezca sin lÃ­mite y el listado del
-  // admin-hub se mantenga rÃ¡pido. Mantiene los Ãºltimos 3 dÃ­as (Ãºtil para
-  // detectar patrones de visita recientes).
-  setInterval(async () => {
-    if (!supabase) return;
-    try {
-      const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-      const { error } = await supabase.from('visitor_logs').delete().lt('visited_at', cutoff);
-      if (error) console.warn('âš ï¸  visitor_logs cleanup error:', error.message);
-      else console.log('ğŸ§¹ visitor_logs: registros >3 dÃ­as eliminados');
-    } catch (e) { console.warn('âš ï¸  visitor_logs cleanup error:', e.message); }
-  }, 24 * 60 * 60 * 1000);
-  // Primera limpieza 5 min despuÃ©s del arranque (no bloquear el boot).
-  setTimeout(async () => {
-    if (!supabase) return;
-    try {
-      const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-      const { error } = await supabase.from('visitor_logs').delete().lt('visited_at', cutoff);
-      if (error) console.warn('âš ï¸  visitor_logs cleanup error:', error.message);
-      else console.log('ğŸ§¹ visitor_logs: limpieza inicial >3 dÃ­as');
-    } catch (e) { console.warn('âš ï¸  visitor_logs cleanup error:', e.message); }
-  }, 5 * 60 * 1000);
-  await ensureCommunityTables(supabase, splitSqlStatements);
-  await ensureUserDataTables(supabase, splitSqlStatements);
-
-  server.listen(PORT, () => {
-    console.log(`ğŸš€ CodeHub Backend v3.0 en puerto ${PORT}`);
-    console.log(`   MongoDB:    ${dbConnected ? 'âœ…' : 'âš ï¸  sin conexiÃ³n'}`);
-    console.log(`   Redis:      ${redis       ? 'âœ…' : 'âš ï¸  usando memoria'}`);
-    console.log(`   WebSockets: âœ… /ws`);
-    console.log(`   FCM:        ${fcmEnabled ? 'âœ… push nativo Android' : 'âš ï¸  solo web-push'}`);
-    console.log(`   Groq:       ${process.env.GROQ_API_KEY        ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Cerebras:   ${process.env.CEREBRAS_API_KEY    ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   HuggingFace:${process.env.HUGGINGFACE_API_KEY ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log('   OpenRouter: ' + (process.env.OPENROUTER_API_KEY ? 'âœ… (' + OR_FREE_MODELS.length + ' modelos gratis)' : 'âš ï¸  sin configurar'));
-    console.log(`   Gemini:     ${process.env.GEMINI_API_KEY      ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Mistral:    ${process.env.MISTRAL_API_KEY     ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Cohere:     ${process.env.COHERE_API_KEY      ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Storage:    ${supabase ? 'âœ… Supabase' : 'âŒ falta SUPABASE_URL/KEY'}`);
-     console.log('   Alertas:    ?? smart alerts cada 15 min (config via /alertas)');
-     setTimeout(() => { try { runAlertChecks(); setInterval(runAlertChecks, 15 * 60 * 1000); } catch(e) {} }, 60000);
-    console.log(`   Together:   ${process.env.TOGETHER_API_KEY ? 'âœ…' : 'âš ï¸  sin configurar'}`);
-    console.log(`   Push Clima: âœ… VAPID + scheduler cada 30 min (solo avisa si cambia el clima)`);
-    console.log(`   Monitor Releases: âœ… auto cada ${Math.round(AUTO_UPDATE_MS / 3600000)}h (apps open source)`);
-  });
-})();
-
-// â”€â”€ RENDER KEEPALIVE â€” se agrega despuÃ©s del server.listen â”€â”€â”€â”€
-// Render free tier apaga el servicio tras ~15 min de inactividad.
-// Self-ping cada 10 min mantiene el proceso vivo sin servicio externo.
-// Requiere: RENDER_EXTERNAL_URL en las variables de entorno de Render.
-
-function startRenderKeepalive() {
-  const SELF_URL = process.env.RENDER_EXTERNAL_URL || null;
-  if (!SELF_URL) {
-    console.log('   Keepalive:  âš ï¸  agrega RENDER_EXTERNAL_URL en Render > Environment');
-    return;
-  }
-  const target = SELF_URL.replace(/\/$/, '') + '/api/health';
-  const lib = target.startsWith('https') ? require('https') : require('http');
-  setInterval(() => {
-    lib.get(target, (res) => {
-      console.log('ğŸ”” Render keepalive ping â†’', res.statusCode);
-    }).on('error', (e) => console.warn('âš ï¸  Keepalive error:', e.message));
-  }, 10 * 60 * 1000);
-  console.log('   Keepalive:  âœ… self-ping activo â†’ ' + target + ' (cada 10 min)');
-}
-startRenderKeepalive();
-startRenderKeepalive();
-
-const _alertState = { failedRuns: new Set(), lastDbOffline: 0, lastVisitsAlertDate: null };
-async function runAlertChecks() {
-  if (!TG_ALERTS_ENABLED || !TG_TOKEN || !TG_CHAT_ID) return;
-  try {
-    const cfg = await getAppConfig().catch(() => ({}));
-    const a = (cfg && cfg.alerts) || {};
-    if (a.enabled === false) return;
-
-    // 1) Health
-    if (a.health !== false && !dbConnected) {
-      const now = Date.now();
-      if (now - _alertState.lastDbOffline > 60 * 60 * 1000) {
-        _alertState.lastDbOffline = now;
-        tgSend('ALERTA: MongoDB desconectado en backend (health offline).');
-      }
-    }
-
-    // 2) Workflows fallidos
-    if (a.github !== false && process.env.GITHUB_TOKEN) {
-      try {
-        const runs = await getGhRunsCached(true);
-        for (const [wf, run] of Object.entries(runs || {})) {
-          if (!run || !run.run_id) continue;
-          if (run.status === 'completed' && run.conclusion === 'failure') {
-            if (!_alertState.failedRuns.has(run.run_id)) {
-              _alertState.failedRuns.add(run.run_id);
-              tgAlert('alert_gh_' + String(run.run_id), () =>
-                ' ALERTA: build fallida\n' + escHtml(wf) + '\nRun: ' + Number(run.run_id) + '\n' + escHtml(run.html_url || ''));
-            }
-          } else if (run.conclusion === 'success') {
-            _alertState.failedRuns.delete(run.run_id);
-          }
-        }
-      } catch (e) {
-        console.warn('Alert check GitHub error:', e && e.message);
-      }
-    }
-
-    // 3) CaÃ­da de visitas por dÃ­a
-    if (a.visits !== false && supabase) {
-      try {
-        const { data } = await supabase.from('daily_stats').select('date,visits').order('date', { ascending: false }).limit(8);
-        const rows = (Array.isArray(data) ? data : []).slice();
-        if (rows.length >= 3) {
-          const yesterday = rows[1].visits || 0;
-          const baseline = Math.round(rows.slice(2).reduce((acc, r) => acc + Number(r.visits || 0), 0) / Math.max(1, rows.length - 2));
-          const ratio = (a.visitsDropRatio && a.visitsDropRatio < 1) ? a.visitsDropRatio : 0.5;
-          const threshold = Math.floor(baseline * (1 - ratio));
-          const yDate = String(rows[1].date || '').slice(0, 10);
-          if (yesterday < threshold && _alertState.lastVisitsAlertDate !== yDate) {
-            _alertState.lastVisitsAlertDate = yDate;
-            tgSend(' ALERTA: caida de visitas\nAyer: ' + yesterday + '\nPromedio prior: ' + baseline + '\nRatio configurado: ' + Math.round(ratio * 100) + '%');
-          }
-        }
-      } catch (e) {
-        console.warn('Alert check visits error:', e && e.message);
-      }
-    }
-  } catch (e) {
-    console.warn('runAlertChecks error:', e && e.message);
-  }
-}
-
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×m=÷tèµ©hºÚn¶X§zÍKÊŠ‚ˆ
+ˆÛÙRXˆ˜XÚÙ[™ŒËŒH8 %Ú[ÛÛ‹‘HŒ‚ˆ
+ˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˆ
+ˆ8§!HÙX”ÛØÚÙ]È8 %›İYšXØXÚ[Û™\È[ˆY[\È™X[ˆ
+ˆ8§!H™Y\È8 %ØXÚ0êH
+ÜÚ[Û˜[
+Bˆ
+ˆ8§!H]™[ÜÎˆš\Ú]\Ë\ØØ\™Ø\Ë˜][™ÜËÛÛXİËÚ]PKY]˜H\ˆ
+‚ˆ
+ˆ˜\šXX›\ÈH[Ü››È
+™[™\ŠN‚ˆ
+ˆÔ“ÔWĞTWÒÑVKÑSRS’WĞTWÒÑVKSÓ‘ÓÑ—ÕT’K”“Ó•S‘ÕT“ˆ
+ˆQRS—ÒÑVKQRS—ÔÑTÔÒSÓ—ÔÑPÔ‘U
+ÙXÜ™]ÈPPÈHÙ\Ú[Û™\ÈYZ[Âˆ
+ˆÚH˜[HÙH\ØHQRS—ÒÑVHKÚH[\ØÛÈ^\İK[ˆÙXÜ™]È[X]Üš[Âˆ
+ˆQ°ãSQT“È8 %\ÈÙ\Ú[Û™\ÈYZ[ˆ›ÈÛØœ™]š]™[ˆH™Z[šXÚ[ÜÈ[ˆ\ÙHØ\ÛÊBˆ
+ˆÕTPTÑWÕT“ÕTPTÑWÒÑVH
+İÜ˜YÙHXÚÙ]ˆÛÙZX‹X\ÜÊBˆ
+ˆUWÓSRUÓPV‘QT×ÕT“
+ÜÚ[Û˜[
+KÔ×ÕT“
+ÜÚ[Û˜[
+Bˆ
+ˆÑÑUT—ĞTWÒÑVKÔS”“ÕUT—ĞTWÒÑVKRTÕSĞTWÒÑVKÓÒT‘WĞTWÒÑVBˆ
+ˆÒSRWĞTWÒÑVH
+[ÛÛœÚİRH8 %Î‹ËÜ]›Ü›K›[ÛÛœÚİ˜ZJBˆ
+‹Â‚œ™\]Z\™J	Ùİ[‰ÊK˜ÛÛ™šYÊ
+NÂ˜ÛÛœİ^™\ÜÈH™\]Z\™J	Ù^™\ÜÉÊNÂ˜ÛÛœİÛÜœÈH™\]Z\™J	ØÛÜœÉÊNÂ˜ÛÛœİ[Û™ÛÛÜÙHH™\]Z\™J	Û[Û™ÛÛÜÙIÊNÂ˜ÛÛœİ˜]S[Z]H™\]Z\™J	Ù^™\ÜË\˜]K[[Z]	ÊNÂ˜ÛÛœİ[Y]H™\]Z\™J	Ú[Y]	ÊNÂ˜ÛÛœİÛÛ\™\ÜÚ[ÛˆH™\]Z\™J	ØÛÛ\™\ÜÚ[Û‰ÊNÂ˜ÛÛœİ][\ˆH™\]Z\™J	Û][\‰ÊNÂ˜ÛÛœİ\Ø›ŞHH™\]Z\™J	Ø\Ø›ŞIÊNÈËÈ\˜[œÚ]]˜HH][\ˆ8 %\œÙ[È][\\Ú[ˆY™™\‚˜ÛÛœİÜ\ÈH™\]Z\™J	ØÜ\ÉÊNÂ˜ÛÛœİH™\]Z\™J	Ú	ÊNÂ˜ÛÛœİœÈH™\]Z\™J	ÙœÉÊNÂ˜ÛÛœİÜÈH™\]Z\™J	ÛÜÉÊNÂ˜ÛÛœİ]H™\]Z\™J	Ü]	ÊNÂ˜ÛÛœİœÈH™\]Z\™J	ÙœÉÊNÂ˜ÛÛœİÈÙX”ÛØÚÙ]Ù\™\ˆHH™\]Z\™J	İÜÉÊNÂ˜ÛÛœİİØYÙÙ\”ÜXÈH™\]Z\™J	Ë‹ÜİØYÙÙ\‰ÊNÂ˜ÛÛœİØØ[›ÜÜĞØ][ÙÈH™\]Z\™J	Ë‹ÜØÜš\ËÙ›ÜÜËXØ][ÙË\ÙYYšœÛÛ‰ÊK˜\ÎÂ‚‹ËÈ8¥ 8¥ ÕTPTÑH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİÈÜ™X]PÛY[HH™\]Z\™J	Ğİ\X˜\ÙKÜİ\X˜\ÙKZœÉÊNÂ˜ÛÛœİİ\X˜\ÙHH
+›ØÙ\ÜË™[‹”ÕTPTÑWÕT“Ëš[J
+H	‰ˆ›ØÙ\ÜË™[‹”ÕTPTÑWÒÑVOËš[J
+JBˆÈÜ™X]PÛY[
+›ØÙ\ÜË™[‹”ÕTPTÑWÕT“›ØÙ\ÜË™[‹”ÕTPTÑWÒÑVJBˆˆ[Â‚‹ËÈ8¥ 8¥ SQSÕUÈH‘Q
+]š][ˆÛÛ™^[Û™\ÈÛÛØY\È8¡¤ˆÓÓH[ˆ™[™\ŠH8¥ 8¥ ˜ÛÛœİWÕSQSÕUÓTÈHÌÈËÈ[XY\È›Ë\İ™X[Z[™ÈH›İ™YYÜ™\ÈPB˜ÛÛœİÔÑWÕSQSÕUÓTÈHÌÈËÈ[˜Xİ]šYYÚ[ˆ]ÜÈ[ˆ[ˆİ™X[HÔÑB˜ÛÛœİPWÔUÕSQSÕUÓTÈHLŒÈËÈUH\˜Ú]™K›Ü™ÈÌÈ
+\ØYÜ˜[™JB‚‹ËÈ[\ˆ™YÚ\İ˜\ˆ]™[È[ˆİ\X˜\ÙH
+š\™KX[™Y›Ü™Ù]8 %›È›Ü]YXHH]XÚpìÛŠB˜\Ş[˜È[˜İ[Ûˆ˜XÚÑ]™[
+\KYÙHH[Y]Y]HHßJHÂˆYˆ
+\İ\X˜\ÙJH™]\›ÂˆÙ][[YYX]J\Ş[˜È
+
+HOˆÂˆHÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂˆËÈ[œÙ\\ˆ]™[È[™]šYX[ˆ]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù]™[ÉÊKš[œÙ\
+È\KYÙKY]Y]HJNÂˆËÈXİX[^˜\ˆİ]ÈX\šX\ÂˆÛÛœİÛÛHÈš\Ú]ˆ	İš\Ú]ÉËİÛ›ØYˆ	ÙİÛ›ØYÉËÚ]ˆ	ØÚ]Û\ÙÜÉËÛÛˆ	İÛÛİ\Ù\ÉËÛÛXİˆ	ØÛÛXİÉÈVİ\WNÂˆYˆ
+ÛÛ
+HÂˆÛÛœİÈ]HHH]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊKœÙ[Xİ
+	ÚY	È
+ÈÛÛ
+K™\J	Ù]IËÙ^JKœÚ[™ÛJ
+NÂˆYˆ
+]JHÂˆ]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊK\]JÈØÛÛNˆ
+]VØÛÛH
+H
+ÈK\]YØ]ˆ™]È]J
+HJK™\J	Ù]IËÙ^JNÂˆH[ÙHÂˆ]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊKš[œÙ\
+È]NˆÙ^KØÛÛNˆHJNÂˆBˆBˆËÈİ]ÈÜˆ\œ˜[ZY[BˆYˆ
+\HOOH	İÛÛ	È	‰ˆY]Y]KÛÛÛ˜[YJHÂˆÛÛœİÈ]NˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	İÛÛÜİ]ÉÊKœÙ[Xİ
+	ÚY\Ù\ÉÊK™\J	İÛÛÛ˜[YIËY]Y]KÛÛÛ˜[YJKœÚ[™ÛJ
+NÂˆYˆ
+
+H]ØZ]İ\X˜\ÙK™œ›ÛJ	İÛÛÜİ]ÉÊK\]JÈ\Ù\Îˆ\Ù\È
+ÈK\İİ\ÙYˆ™]È]J
+HJK™\J	İÛÛÛ˜[YIËY]Y]KÛÛÛ˜[YJNÂˆ[ÙH]ØZ]İ\X˜\ÙK™œ›ÛJ	İÛÛÜİ]ÉÊKš[œÙ\
+ÈÛÛÛ˜[YNˆY]Y]KÛÛÛ˜[YK\Ù\ÎˆHJNÂˆBˆËÈİ]ÈÜˆ\ØØ\™ØBˆYˆ
+\HOOH	ÙİÛ›ØY	È	‰ˆY]Y]K˜\Û˜[YJHÂˆÛÛœİÈ]NˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙİÛ›ØYÜİ]ÉÊKœÙ[Xİ
+	ÚYİÛ›ØYÉÊK™\J	Ø\Û˜[YIËY]Y]K˜\Û˜[YJKœÚ[™ÛJ
+NÂˆYˆ
+
+H]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙİÛ›ØYÜİ]ÉÊK\]JÈİÛ›ØYÎˆ™İÛ›ØYÈ
+ÈK\İÙİÛ›ØYˆ™]È]J
+HJK™\J	Ø\Û˜[YIËY]Y]K˜\Û˜[YJNÂˆ[ÙH]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙİÛ›ØYÜİ]ÉÊKš[œÙ\
+È\Û˜[YNˆY]Y]K˜\Û˜[YKİÛ›ØYÎˆHJNÂˆBˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Ôİ\X˜\ÙH˜XÚÑ]™[\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆJNÂŸB‚‹ËÈ8¥ 8¥ ÒÒSÈ8 %Ø]0è[ÙÛÈHØ\XÚYY\ÈHPH
+ÚÚ[Ëø )ŠH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈØYHÚÚ[\È[ˆ›Û\ˆÛÛˆÚÚ[šœÛÛ‹ˆÙHÚ\™[ˆÜˆÑUØ\KÜÚÚ[Â‹ËÈHİHŞ\İ[WÜ›Û\Ú[š™XİÙH[YXİH[ˆØ\KØÚ]İX[™È[\İX\š[Â‹ËÈX[™HÚÚ[ÚY
+™Z‹ˆ	Ü‹ZXIÈ[Y[\ˆ[ˆŠK‚˜ÛÛœİÒÒS×ÑTˆH]š›Ú[Š×Ù\›˜[YK	Ë‹‹ÜÚÚ[ÉÊNÂ˜ÛÛœİÚÚ[ĞØXÚHH™]ÈX\
+
+NÂ‚™[˜İ[ÛˆØYÚÚ[œÛÛŠY
+HÂˆYˆ
+ZY\[ÙˆYOOH	Üİš[™ÉÊH™]\›ˆ[ÂˆËÈÛÛÈQÈÙ[˜Ú[ÜÈ\ÈÛYÎˆ›Ü]YXH]˜]™\œØ[
+‹‹ËXœÛÛ]ÜË	L™JBˆYˆ
+K×–ØK^ŒNWVØK^ŒNK—ËWJ‰ÚK\İ
+Y
+JH™]\›ˆ[ÂˆYˆ
+YOOH	Ë‰ÈYOOH	Ë‹‰ÊH™]\›ˆ[ÂˆYˆ
+ÚÚ[ĞØXÚKš\ÊY
+JH™]\›ˆÚÚ[ĞØXÚK™Ù]
+Y
+NÂˆÛÛœİ˜\ÙHH]œ™\ÛÛ™JÒÒS×ÑTŠNÂˆÛÛœİš[HH]œ™\ÛÛ™J˜\ÙKY	ÜÚÚ[šœÛÛ‰ÊNÂˆYˆ
+Yš[Kœİ\ÕÚ]
+˜\ÙH
+È]œÙ\
+JH™]\›ˆ[ÈËÈ[˜ØHY\˜HHÚÚ[ËÂˆHÂˆYˆ
+YœË™^\İÔŞ[˜Êš[JJH™]\›ˆ[ÂˆÛÛœİ]HH”ÓÓ‹œ\œÙJœËœ™XYš[TŞ[˜Êš[K	İ]	ÊJNÂˆÚÚ[ĞØXÚKœÙ]
+Y]JNÂˆ™]\›ˆ]NÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ÔÚÚ[›ÈØ\™ØX›N‰ËYK›Y\ÜØYÙJNÂˆ™]\›ˆ[ÂˆBŸB‚‹ËÈ8¥ 8¥ ˆ•S“‘Tˆ8 %]šYH[ˆØÜš\œÜ[[ˆÙ[[˜ÚX\È[™]šYX[\È8¥ 8¥ ‹ËÈ™\Ü]Hİš[™ÜÈ[™HÛÛZ[\ÈÚ[\\ËÙØ›\ÈH›Ü]Y\ÈÛÛ‚‹ËÈÛ\‹\][İ[™È
+		‹‹ˆ		È	YÉ‹‹ˆ	YÉ0ë\XÛÈH[˜Ú[Û™\Â‹ËÈÜÜ[
+H\˜H›ÈÛÜ\ˆ[ˆ	ÎÉÈ]YH\İ0êH[›ÈH\ÛÜÈ›Ü]Y\Ë‚˜ÛÛœİÈÜ]Ü[İ][Y[ËÛY[\\Ôš]˜]R\[˜Ø]K\œÙR[XYÙQ]U\›SÕÑQÒSPQÑWÓRSQHHH™\]Z\™J	Ë‹İ][ÉÊNÂ‚˜ÛÛœİ\H^™\ÜÊ
+NÂ˜ÛÛœİÙ\™\ˆH˜Ü™X]TÙ\™\Š\
+NÂ˜ÛÛœİÔ•H›ØÙ\ÜË™[‹”Ô•ÌNÂ‚˜\œÙ]
+	İ\İ›ŞIËJNÂ˜\\ÙJ[Y]
+ÈÛÛ[ÙXİ\š]TÛXŞNˆ˜[ÙHJJNÂ˜\\ÙJÛÛ\™\ÜÚ[ÛŠ
+JNÂ‚‹ËÈ8¥ 8¥ ÑPÕT’UNˆ[KX›İ	ˆ\™[š[™È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ›ØÚÈÛ›İÛˆØØ[›™\‹Ø›İ\Ù\‹PYÙ[È\™Ù][™ÈYZ[ˆ[™Ú[Â˜ÛÛœİĞ“ÕÕPWÔ‘HHÜ]Û‹]\›XŸ]Û‹\™\]Y\İßÛËZXÛY[˜]˜Wßİ\›ßÙÙ]ßØÜ˜\_šZİßÜ[X\›X\X\ÜØØ[Ÿ™Ü˜XŸÛØ\İ\Ÿ\˜\İ\ŸY˜_YY\Ø_Ù^Ÿ™YŸXÛZ_Ù[œŞ\ßÚÙ[Ÿ›ÛÛ^YKÚNÂ˜\\ÙJ	ËØ\KØYZ[‰Ë
+™\K™\Ë™^
+HOˆÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ÉÊKœÛXÙJŒ
+NÂˆYˆ
+XH	‰ˆĞ“ÕÕPWÔ‘K\İ
+XJJHÂˆÛÛœİ\HÛY[\
+™\JNÂˆĞ[\
+	Ø›İ›Ø™IË
+
+HOˆ<'é%ˆ“ÕUPÕQÈ[ˆØ\KØYZ[Ø—’TˆÛÙO‰Ú\OØÛÙO—•PNˆ	İXKœÛXÙJÌ
+_XÈÚ[™İÓ\ÎˆÌJNÂˆ™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	ĞXØÙ\ÛÈ›È]]Üš^˜YÉÈJNÂˆBˆ™^
+
+NÂŸJNÂ‹ËÈÛ™^\İˆY[ˆ[™Ú[]™X[\Ù\œÈ™]™\ˆ]8 %›İÈÂ˜\˜[
+	ËØ\KØYZ[‹ÜÙXÜ™]\[™[	Ë
+™\K™\ÊHOˆÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ÉÊKœÛXÙJL
+Kœ™\XÙJÖÏ—KÙË	ÉÊNÂˆĞ[\
+	ÚÛ™^\İ	Ë
+
+HOˆ<'ãkÈ’Ó‘VTÕ’QÑÑT‘QØ—’TˆÛÙO‰Ú\OØÛÙO—•PNˆ	İX_XÈÚ[™İÓ\ÎˆŒJNÂˆYˆ
+WØYZ[˜[œËš\Ê\
+JHØYZ[˜[œËœÙ]
+\È^\™\Ğ]ˆ]K››İÊ
+H
+ÈQRS—ĞS—ÑTUSÓ—ÓTÈJNÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ó›İ›İ[™	ÈJNÂŸJNÂ‚‹ËÈ8¥ 8¥ ÓÔ”È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİ[İÙYÜšYÚ[œÈHÂˆ›ØÙ\ÜË™[‹‘”“Ó•S‘ÕT“ˆ	Ú‹ËÛØØ[ÜİŒÌ	Ë	Ú‹ËÛØØ[ÜİML	Ëˆ	Ú‹ËÌLËŒŒŒNML	Ë	Ú‹ËÛØØ[Üİ	Ëˆ	ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\	Ëˆ	ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™Ú]X‹š[ÉË—K™š[\Š›ÛÛX[ŠNÂ‚˜ÛÛœİÛÜœÓÜ[ÛœÈHÂˆÜšYÚ[ˆ
+ÜšYÚ[‹ØŠHOˆÂˆYˆ
+[ÜšYÚ[ˆ[İÙYÜšYÚ[œËš[˜ÛY\ÊÜšYÚ[ŠJH™]\›ˆØŠ[YJNÂˆØŠ[˜[ÙJNÂˆKˆY]ÙÎˆÉÑÑU	Ë	ÔÔÕ	Ë	ÔUÒ	Ë	ÑSUIË	ÓÔSÓ”É×Kˆ[İÙYXY\œÎˆÉĞÛÛ[U\IË	ŞXYZ[‹ZÙ^IË	ŞXYZ[‹]\Ù\‰Ë	ŞXYZ[‹\Ù\ÜÚ[Û‰Ë	ĞXØÙ\	Ë	Ğ]]Üš^˜][Û‰×Kˆ^ÜÙYXY\œÎˆÉĞÛÛ[S[™İ	Ë	ÖPØXÚI×KˆÜ™Y[X[ÎˆYKˆ™Y›YÚÛÛ[YNˆ˜[ÙKˆÜ[ÛœÔİXØÙ\ÜÔİ]\ÎˆŒŸNÂ˜\\ÙJÛÜœÊÛÜœÓÜ[ÛœÊJNÂ‹ËÈØ\KØÚ]™XÙ\Ú]H[ˆ0ë[Z]Hpè\È[È]YH[™\İÈ
+\È[pèYÙ[™\È˜[ˆ[‚‹ËÈ˜\ÙM[›È[”ÓÓŠKˆÙH™YÚ\İ˜HS•TÈ[0ë[Z]HÛØ˜[HLØÂ‹ËÈÛÛ[ÈXHZ˜H[›ÙH\œÙXYË[\œÙ\ˆÛØ˜[HX˜Z›ÈÈ]XİHB‹ËÈ›ÈY[™HHY\ˆ[İ™X[K\ğëH[™\İÈH]\ÈÛÛœÙ\˜H[0ë[Z]HÚXÛË‚˜\\ÙJ	ËØ\KØÚ]	Ë^™\ÜËšœÛÛŠÈ[Z]ˆ	Í›X‰ÈJJNÂ‹ËÈØ\KØYZ[ˆ8 %[İ[˜\È]\ÈX[™[ˆ^[ØYÈpè\ÈÜ˜[™\È]YH[0ë[Z]B‹ËÈÛØ˜[HLØˆ[ÙYYX\Ú]›È[Ø]0è[ÙÛÈ
+Z‹ˆ\È\ÈÜ[‚‹ËÈÛİ\˜ÙKŒŒÚØŠHÈ^˜XİZXÛÛˆÛÛˆ[pèYÙ[™\È[ˆ˜\ÙMˆZ\Û[È]°ìÛ‚‹ËÈ]YHØ\KØÚ]\œšX˜NˆÙH™YÚ\İ˜H[\È[0ë[Z]HÛØ˜[‚˜\\ÙJ	ËØ\KØYZ[‰Ë^™\ÜËšœÛÛŠÈ[Z]ˆ	Í[X‰ÈJJNÂ‹ËÈØ\KØÜ˜\Ú\™\Ü8 %İXÚÈ˜XÙ\È
+ÈÙÈHÜ˜\ÚXİ[][YÈ
+\[™›ÚY
+B‹ËÈYY[ˆİ\\˜\ˆ[0ë[Z]HÚXÛÈÛØ˜[ÈZ\Û[È]°ìÛˆH\œšX˜K‚˜\\ÙJ	ËØ\KØÜ˜\Ú\™\Ü	Ë^™\ÜËšœÛÛŠÈ[Z]ˆ	ÌŒØ‰ÈJJNÂ‹ËÈØ\KİÙXšÛÚÈ8 %™XÙ\Ú]H[›ÙHÜYÈ
+Y™™\ŠHY[pè\È[”ÓÓˆ\œÙXYË‹ËÈ\˜HÙ\ˆ˜[Y\ˆHš\›XHPPËTÒLMˆ]YHX[™HÚ]Xˆ[ˆ[XY\‚‹ËÈRX‹TÚYÛ˜]\™KLM‹ˆ[™\šYXØ[˜XÚÈİX\™H\ÛÜÈ]\È[‚‹ËÈ™\Kœ˜]Ğ›ÙH[\ÈH]YH^™\ÜÈÜÈ\ØØ\H˜\È\œÙX\ˆ[”ÓÓ‹‚˜\\ÙJ	ËØ\KİÙXšÛÚÉË^™\ÜËšœÛÛŠÂˆ[Z]ˆ	ÌŒØ‰Ëˆ™\šYNˆ
+™\KÜ™\ËYŠHOˆÈ™\Kœ˜]Ğ›ÙHHYÈKŸJJNÂ‹ËÈØ\Kİ[YÜ˜[H8 %ÜÈ\]\È[›İ
+Y[œØZ™\Ë]Y[ÜËØİ[Y[ÜÈÛÛ‚‹ËÈTÜË‹‹ŠHİ\\˜[ˆHÛØœ˜H[0ë[Z]HÛØ˜[HLØÈZ\Û[È]°ìÛˆ]YB‹ËÈØ\KİÙXšÛÚËˆÙH™YÚ\İ˜H[\È[0ë[Z]HÛØ˜[‚˜\\ÙJ	ËØ\Kİ[YÜ˜[IË^™\ÜËšœÛÛŠÈ[Z]ˆ	ÍLLšØ‰ÈJJNÂ˜\\ÙJ^™\ÜËšœÛÛŠÈ[Z]ˆ	ÌLØ‰ÈJJNÂ‚‹ËÈ][\ˆTÜÈ8 %[YÜ˜[H\È[[Z]YÈ[ˆ[XXÙ[˜[ZY[ÎÈİ\X˜\ÙH
+˜[˜XÚÊHY[™H0ë[Z]HHLP‹‚‹ËÈ[0ë[Z]H\]pëH
+ˆĞŠH\ÈÛÛÈ›İXØÚpìÛˆ[Ù\šYÜˆ[ˆ°è[œÚ]Ë›È[ˆ0ë[Z]HH[YÜ˜[K‚˜ÛÛœİ\ØYH][\ŠÂˆİÜ˜YÙNˆ][\‹›Y[[ÜTİÜ˜YÙJ
+Kˆ[Z]ÎˆÈš[TÚ^™NˆL
+ˆL
+ˆLKËÈLPˆ8 %ÛÛÈ\˜H]\È]YH“ÈÛÛˆİ\ØY
+ÙXİ\š]HØØ[‹]ËŠBˆš[Qš[\ˆ
+Ë‹ØŠHOˆÂˆYˆ
+‹›Z[Y]\HOOH	Ø\XØ][Û‹İ›™˜[™›ÚYœXÚØYÙKX\˜Ú]™IÈ‹›ÜšYÚ[˜[˜[YK™[™ÕÚ]
+	Ë˜\ÉÊJBˆØŠ[YJNÂˆ[ÙHØŠ™]È\œ›ÜŠ	ÔÛÛÈ˜\ÉÊJNÂˆKŸJNÂ˜ÛÛœİ\ØYÙXİ\š]Qš[HH][\ŠÂˆİÜ˜YÙNˆ][\‹›Y[[ÜTİÜ˜YÙJ
+Kˆ[Z]ÎˆÈš[TÚ^™NˆÌˆ
+ˆL
+ˆLKŸJNÂ‚‹ËÈ˜]H[Z][™Â˜ÛÛœİÚ][Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆ\œÙR[
+›ØÙ\ÜË™[‹”UWÓSRUÓPV
+_Lİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\ÈÛÛXÚ]Y\Ë‰ËÛÙNˆ	ÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ˜ÛÛœİYZ[“[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆLİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙK[™\ˆ˜]S[Z][™\ˆJNÂ˜ÛÛœİX›XÔÜİ[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆÌİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\ÈÛÛXÚ]Y\Ëˆ\Ü\˜H[ˆ[ÛY[Ë‰ËÛÙNˆ	ÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈ]]YZ[ˆpè^[[ÈH[[ÜÈÜˆMHZ[ˆÜˆT
+\›œİ[H
+ÈÙ^HÚXÚÊB˜ÛÛœİYZ[]][Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆKİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXYÜÈ[[ÜÈH]][XØXÚpìÛ‹ˆ\Ü\˜HMHZ[]ÜË‰ËÛÙNˆ	ĞQRS—ĞUUÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈ\[™›ÚYˆ\İH™\Ü\ÈHÜ˜\ÚÜˆTØYHMHZ[ˆ
+İXœ™HÛÜÈB‹ËÈÜ˜\Ú™X[\ÊHÚ[ˆXœš\ˆHY\HH›ÛÙ[[™Ú[0î˜›XÛË‚˜ÛÛœİÜ˜\Ú[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈ\ÚÙ[Îˆ[Z]\ˆ›Ü[È8 %[\ÈÛÛ\\0ëXHÚ][Z]\ˆÛÛˆ[Ú]\ğëB‹ËÈ]YH[ˆT\›[˜Ú0ë[ˆ[ˆ[Ú]Ù0ëXHœ™[˜\ˆ[™YÚ\İ›ÈHXšXØXÚpìÛ‹‚˜ÛÛœİ˜ÛS[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆŒİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\ÈÛÛXÚ]Y\ÈHXšXØXÚpìÛ‹ˆ\Ü\˜H[ˆ[ÛY[Ë‰ËÛÙNˆ	ÑÓWÑÑS×ÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈ[pèYÙ[™\Îˆ0ë[Z]HÙ\\˜YÈ\˜H]YHÙ[™\˜\ˆ[pèYÙ[™\È›ÈYÛİH[İ\È[Ú]‚˜ÛÛœİ[XYÙS[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆŒİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ó0ë[Z]HHÙ[™\˜XÚpìÛˆH[pèYÙ[™\È[Ø[˜YË‰ËÛÙNˆ	ÒSPQÑWÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈYZ›Ü˜KÙYXÚpìÛˆH[pèYÙ[™\È
+]]Ù[š[˜Ùp­ÑÙ[Z[šJNˆİ[İH›ÜXHpè\ÈYÜ™\Ú]˜K‹ËÈ›ÈÛÛ\\H[XÚÙ]HÙ[™\˜XÚpìÛˆH]š]H[X\ÛÈH[XY\ÈHYÛË‚˜ÛÛœİ[XYÙQY][Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆ‹İ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ó0ë[Z]HHYZ›Ü˜KÙYXÚpìÛˆH[pèYÙ[™\È[Ø[˜YË‰ËÛÙNˆ	ÒSPQÑWÑQUÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ‹ËÈ0ë[Z]\ÈX\š[ÜÈÜˆT\˜HÙ[™\˜XÚpìÛˆHYXÚpìÛˆH[pèYÙ[™\È
+[KXX\ÛÈB‹ËÈ›İ™YYÜ™\ÈHYÛÊKˆØYHİX\™X[Y[™HİH›Ü[ÈX\™XÚYÈÜˆ0ëXK‚™[˜İ[ÛˆZ[S[Z]İX\™
+X^\ÙÊHÂˆÛÛœİHH™]ÈX\
+
+NÂˆ™]\›ˆ[˜İ[ÛˆZ[QİX\™
+™\K™\Ë™^
+HÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂˆÛÛœİHHK™Ù]
+\
+NÂˆYˆ
+YHK™]HOOHÙ^JHÈKœÙ]
+\È]NˆÙ^KÛİ[ˆHJNÈ™]\›ˆ™^
+
+NÈBˆYˆ
+K˜Ûİ[HX^
+H™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ\ÙËÛÙNˆ	ÑRSWÓSRU	ÈJNÂˆK˜Ûİ[
+ÊÎÂˆ™^
+
+NÂˆNÂŸB˜ÛÛœİ[YÑÙ[‘Z[QİX\™HZ[S[Z]İX\™
+Œ	Ó0ë[Z]HX\š[ÈHÙ[™\˜XÚpìÛˆH[pèYÙ[™\È[Ø[˜YË‰ÊNÂ˜ÛÛœİ[YÑY]Z[QİX\™HZ[S[Z]İX\™
+	Ó0ë[Z]HX\š[ÈHYZ›Ü˜KÙYXÚpìÛˆH[pèYÙ[™\È[Ø[˜YË‰ÊNÂ‚‹ËÈ8¥ 8¥ QRSˆSˆÖTÕSH
+[Hœ]KY›Ü˜ÙJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈX\\È^\™\Ğ]][\Ëš\œİ][\]O‚˜ÛÛœİØYZ[˜[œÈH™]ÈX\
+
+NÂ˜ÛÛœİØYZ[‘˜Z[ÈH™]ÈX\
+
+NÂ˜ÛÛœİQRS—ÑRSÕ‘TÒÓHNÈËÈ˜[ÜÈ[\ÈH˜[‚˜ÛÛœİQRS—ĞS—ÑTUSÓ—ÓTÈHÌ
+ˆŒ
+ˆLÈËÈÌZ[]ÜÂ‚™[˜İ[ÛˆØÛX[‘^\™Y˜[œÊ
+HÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆ›Üˆ
+ÛÛœİÚ\[™›×HÙˆØYZ[˜[œÊHÂˆYˆ
+[™›Ë™^\™\Ğ]H›İÊHØYZ[˜[œË™[]J\
+NÂˆBˆ›Üˆ
+ÛÛœİÚ\[™›×HÙˆØYZ[‘˜Z[ÊHÂˆYˆ
+[™›ËÚ[™İÑ[™H›İÊHØYZ[‘˜Z[Ë™[]J\
+NÂˆBŸBœÙ][\˜[
+ØÛX[‘^\™Y˜[œËŒÌ
+NÂ‚™[˜İ[ÛˆÚ\ÒT˜[›™Y
+\
+HÂˆØÛX[‘^\™Y˜[œÊ
+NÂˆÛÛœİ˜[ˆHØYZ[˜[œË™Ù]
+\
+NÂˆYˆ
+X˜[ŠH™]\›ˆ˜[ÙNÂˆYˆ
+˜[‹™^\™\Ğ]H]K››İÊ
+JHÈØYZ[˜[œË™[]J\
+NÈ™]\›ˆ˜[ÙNÈBˆ™]\›ˆYNÂŸB‚™[˜İ[ÛˆÜ™XÛÜ™YZ[‘˜Z[
+\XJHÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆÛÛœİÚ[™İÓ\ÈHMH
+ˆŒ
+ˆLÂˆ][HHØYZ[‘˜Z[Ë™Ù]
+\
+NÂˆYˆ
+Y[H[KÚ[™İÑ[™H›İÊHÂˆ[HHÈÛİ[ˆKÚ[™İÑ[™ˆ›İÈ
+ÈÚ[™İÓ\Ëš\œİ][\]ˆ›İÈNÂˆØYZ[‘˜Z[ËœÙ]
+\[JNÂˆ™]\›ˆNÂˆBˆ[K˜Ûİ[
+ÊÎÂˆYˆ
+[K˜Ûİ[HQRS—ÑRSÕ‘TÒÓ	‰ˆWØYZ[˜[œËš\Ê\
+JHÂˆØYZ[˜[œËœÙ]
+\È^\™\Ğ]ˆ›İÈ
+ÈQRS—ĞS—ÑTUSÓ—ÓTÈJNÂˆĞ[\
+	ØYZ[˜˜[‰Ë
+
+HOˆÂˆ™]\›ˆ<'æªÈSˆQRSˆ8 %T›Ü]YXYOØ—’TˆÛÙO‰Ú\OØÛÙO—’[[ÜÎˆ	Ù[K˜Ûİ[H˜[ÜÈ[ˆMHZ[—›Ü]YXYHÜˆÌZ[—•PNˆ	ÊXH	ÉÊKœÛXÙJÌ
+Kœ™\XÙJÖÏ—KÙË	ÉÊ_XÂˆKÈÚ[™İÓ\ÎˆŒJNÂˆÛÛœÛÛKØ\›Š<'æªÈQRSˆSˆT	Ú\H˜[›™Y›Üˆ	ĞQRS—ĞS—ÑTUSÓ—ÓTÈÈŒ[Z[ˆY\ˆ	Ù[K˜Ûİ[H˜Z[Y][\Ø
+NÂˆBˆ™]\›ˆ[K˜Ûİ[ÂŸB‚‹ËÈ8¥ 8¥ ÑTÔÒSÓˆÒÑSˆ
+PPËTÒLMŠH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİÑTÔÒSÓ—ÔÑPÔ‘UH›ØÙ\ÜË™[‹QRS—ÔÑTÔÒSÓ—ÔÑPÔ‘U›ØÙ\ÜË™[‹QRS—ÒÑVHÜ\Ëœ˜[™ÛP]\ÊÌŠKÔİš[™Ê	Ú^	ÊNÂšYˆ
+\›ØÙ\ÜË™[‹QRS—ÔÑTÔÒSÓ—ÔÑPÔ‘U	‰ˆ\›ØÙ\ÜË™[‹QRS—ÒÑVJHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÑTÔÒSÓ—ÔÑPÔ‘UˆšHQRS—ÔÑTÔÒSÓ—ÔÑPÔ‘UšHQRS—ÒÑVH\İ0è[ˆYš[šYÜÈ8 %\Ø[™ÈÙXÜ™]ÈY°ë[Y\›È[X]Üš[È
+\ÈÙ\Ú[Û™\ÈYZ[ˆ›ÈÛØœ™]š]™[ˆ™Z[šXÚ[ÜÊIÊNÂŸB˜ÛÛœİÑTÔÒSÓ—ÕÓTÈHÌ
+ˆŒ
+ˆLÈËÈÌZ[]ÜÂ‚™[˜İ[ÛˆÜÚYÛ”Ù\ÜÚ[ÛŠ^[ØY
+HÂˆÛÛœİXY\ˆHY™™\‹™œ›ÛJ”ÓÓ‹œİš[™ÚYJÈ[Îˆ	ÒÌM‰Ë\ˆ	ÔÉÈJJKÔİš[™Ê	Ø˜\ÙM\›	ÊNÂˆÛÛœİ›ÙHHY™™\‹™œ›ÛJ”ÓÓ‹œİš[™ÚYJ^[ØY
+JKÔİš[™Ê	Ø˜\ÙM\›	ÊNÂˆÛÛœİÚYÈHÜ\Ë˜Ü™X]RXXÊ	ÜÚLM‰ËÑTÔÒSÓ—ÔÑPÔ‘U
+K\]JXY\ˆ
+È	Ë‰È
+È›ÙJK™YÙ\İ
+	Ø˜\ÙM\›	ÊNÂˆ™]\›ˆXY\ˆ
+È	Ë‰È
+È›ÙH
+È	Ë‰È
+ÈÚYÎÂŸB‚™[˜İ[Ûˆİ™\šYTÙ\ÜÚ[ÛŠÚÙ[ŠHÂˆHÂˆÛÛœİÚXY\‹›ÙKÚY×HHÚÙ[‹œÜ]
+	Ë‰ÊNÂˆYˆ
+ZXY\ˆX›ÙH\ÚYÊH™]\›ˆ[ÂˆÛÛœİ^XİYHÜ\Ë˜Ü™X]RXXÊ	ÜÚLM‰ËÑTÔÒSÓ—ÔÑPÔ‘U
+K\]JXY\ˆ
+È	Ë‰È
+È›ÙJK™YÙ\İ
+	Ø˜\ÙM\›	ÊNÂˆÛÛœİÚYĞYˆHY™™\‹™œ›ÛJÚYÊNÂˆÛÛœİ^YˆHY™™\‹™œ›ÛJ^XİY
+NÂˆYˆ
+ÚYĞY‹›[™İOOH^Y‹›[™İ
+H™]\›ˆ[ÂˆYˆ
+XÜ\Ë[Z[™ÔØY™Q\]X[
+ÚYĞY‹^YŠJH™]\›ˆ[ÂˆÛÛœİ^[ØYH”ÓÓ‹œ\œÙJY™™\‹™œ›ÛJ›ÙK	Ø˜\ÙM\›	ÊKÔİš[™Ê
+JNÂˆYˆ
+\^[ØY™^^[ØY™^H]K››İÊ
+JH™]\›ˆ[Âˆ™]\›ˆ^[ØYÂˆHØ]ÚÈ™]\›ˆ[ÈBŸB‚‹ËÈ8¥ 8¥ ÛÛYÜˆX\š[ÈHSRHÜˆ\İX\š[ËÙ\ÜÜÚ]]›È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈŒËÎˆ\œÚ\İY[ˆ[Û™ÛÑˆ
+İ\š]™\È™\İ\ÊKˆ˜[È˜XÚÈÈ[‹[Y[[ÜHYˆˆ\ÈİÛ‹‚‹ËÈ[Z]È\™H›İÈÛÛ™šYİ\˜X›HšXHØ\KØYZ[‹ØÛÛ™šYÂ˜ÛÛœİSRWÑRSWÓSRUÑÕQTÕÑSPÒÈHMNÂ˜ÛÛœİSRWÑRSWÓSRUÔ‘QÒTÕT‘QÑSPÒÈHŒÂ‚˜\Ş[˜È[˜İ[ÛˆÙ][ZS[Z]
+\Ô™YÚ\İ\™Y
+HÂˆHÂˆÛÛœİÙ™ÈH]ØZ]Ù]\ÛÛ™šYÊ
+NÂˆ™]\›ˆ\Ô™YÚ\İ\™YˆÈ
+Ù™Ë›[Z]Ë™[ZQZ[T™YÚ\İ\™YSRWÑRSWÓSRUÔ‘QÒTÕT‘QÑSPÒÊBˆˆ
+Ù™Ë›[Z]Ë™[ZQZ[QİY\İSRWÑRSWÓSRUÑÕQTÕÑSPÒÊNÂˆHØ]Ú
+JHÂˆ™]\›ˆ\Ô™YÚ\İ\™YÈSRWÑRSWÓSRUÔ‘QÒTÕT‘QÑSPÒÈˆSRWÑRSWÓSRUÑÕQTÕÑSPÒÎÂˆBŸB‚˜ÛÛœİ[ZU\ØYÙHH[Û™ÛÛÜÙK›[Ù[
+	Ñ[ZU\ØYÙIË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆÙ^NˆÈ\Nˆİš[™Ë™\]Z\™YˆYK[™^ˆYHKˆ]NˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆÛİ[ˆÈ\Nˆ[X™\‹Y˜][ˆKŸKÈ[Y\İ[\Îˆ˜[ÙHJJNÂ‚‹ËÈ8¥ 8¥ ™[[İHÛÛ™šYÈ8 %Ú[™ÛKYØÈÛÛXİ[Ûˆ›Üˆœ›Û[™ÛÛ™šYÈ8¥ 8¥ ˜ÛÛœİ\ÛÛ™šYÈH[Û™ÛÛÜÙK›[Ù[
+	Ğ\ÛÛ™šYÉË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆÙ^NˆÈ\Nˆİš[™ËY˜][ˆ	ÛXZ[‰Ë[š\]YNˆYHKˆÛÛ™šYÎˆÈ\Nˆ[Û™ÛÛÜÙK”ØÚ[XK•\\Ë“Z^YY˜][ˆßHKˆ™\œÚ[ÛˆÈ\Nˆ[X™\‹Y˜][ˆHKˆ\]YˆÈ\Nˆ]KY˜][ˆ]K››İÈKŸKÈ[Y\İ[\ÎˆYHJJNÂ‚˜ÛÛœİQUSĞÓÓ‘’QÈHÂˆ™\œÚ[ÛˆKˆ\Ó]\İ™\œÚ[Ûˆ	ÉËˆ\Õ\]S›İ\Îˆ	ÉËˆ™X]\™\ÎˆÂˆÚ][˜X›YˆYKˆ[XYÙQÙ[‘[˜X›YˆYKˆÙX]\‘[˜X›YˆYKˆÙX]\]]Ô™Yœ™\ÚˆYKˆÙX]\”™Yœ™\ÚZ[ˆKˆİ\‘[˜X›YˆYKˆ™]ÜÑ[˜X›YˆYKˆÙX\˜Ú[˜X›YˆYKˆ\Ú[˜X›YˆYKˆÛÛXİ[˜X›YˆYKˆÚÚ[Ñ[˜X›YˆYKˆ™\ÛÛ™\‘[˜X›YˆYKˆÜ˜\Ú™\Ü[˜X›YˆYKˆ\]QX[ÙÑ[˜X›YˆYKˆ\›Ò[œİ[ˆYKˆÛÛœÙ[˜[›™\ˆYKˆX\İ\‘YÙÎˆ˜[ÙKˆKˆ[Z]ÎˆÂˆ[ZQZ[QİY\İˆMKˆ[ZQZ[T™YÚ\İ\™YˆŒˆÚ]˜]S[Z]ˆLˆ[XYÙT˜]S[Z]ˆŒˆ[XYÙPØXÚUˆÍŒˆ[XYÙPØXÚSX^ˆŒˆ›İY‘Y\Ú[™İÎˆÌˆİ\ÛÛÛİÛˆˆÙ\ÜÚ[Û•ˆNˆKˆZNˆÂˆ\›Õ]Nˆ	ĞÛÙRX‰Ëˆ\›ÔİX]Nˆ	ÕHÙ[›ÈH\Ø\œ›ÛÈPIËˆÛÛœÙ[^ˆ	Õ\Ø[[ÜÈÛÛÚÚY\È\˜HYZ›Ü˜\ˆH^\šY[˜ÚXK‰ËˆÙX]\Ú]Q˜[˜XÚÎˆ	ĞÚ]YYHİX][X[IËˆ\]QX[ÙÕ]Nˆ	ÓY]˜H™\œÚpìÛˆ\ÜÛšX›IËˆ\]QX[ÙĞ›ÙNˆ	Ò^H[˜HY]˜H™\œÚpìÛˆHÛÙRXˆ\ÜÛšX›K‰ËˆÛÛÙÛSX\ÒÙ^Nˆ›ØÙ\ÜË™[‹‘ÓÓÑÓWÓPTÈ	ÉËˆX\[\’Ù^Nˆ›ØÙ\ÜË™[‹“PTST—ÒÑVH	ÉËˆØ\ÒÙ^Nˆ›ØÙ\ÜË™[‹ĞT•×ÒÑVH	ÉËˆKˆZNˆÂˆŞ\İ[T›Û\ˆ[ˆX^ÚÙ[œÑY˜][ˆLˆ[\\˜]\™NˆKˆ›İšY\”š[Üš]Nˆ[ˆKˆXZ[[˜[˜ÙNˆÂˆ[˜X›Yˆ˜[ÙKˆY\ÜØYÙNˆ	ĞÛÙRXˆ\İ0èH[ˆX[[š[ZY[ËˆY[™H›ÛË‰ËˆKŸNÂ‚›]Ø\ÛÛ™šYĞØXÚHH[Â›]Ø\ÛÛ™šYĞØXÚUÈHÂ˜ÛÛœİÓÓ‘’Q×ĞĞPÒWÕHŒÈËÈHZ[]H[‹[Y[[ÜHØXÚB‚˜\Ş[˜È[˜İ[ÛˆÙ]\ÛÛ™šYÊ
+HÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+Ø\ÛÛ™šYĞØXÚH	‰ˆ
+›İÈHØ\ÛÛ™šYĞØXÚUÊHÓÓ‘’Q×ĞĞPÒWÕ
+H™]\›ˆØ\ÛÛ™šYĞØXÚNÂˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİØÈH]ØZ]\ÛÛ™šYË™š[™Û™JÈÙ^Nˆ	ÛXZ[‰ÈJK›X[Š
+NÂˆYˆ
+ØÈ	‰ˆØË˜ÛÛ™šYÊHÂˆØ\ÛÛ™šYĞØXÚHHÈ‹‹‘QUSĞÓÓ‘’QË‹‹™ØË˜ÛÛ™šYË™\œÚ[ÛˆØË™\œÚ[ÛˆHNÂˆËÈ•QÈÓÔ”‘QÒQÎˆ[Ü™XYH\œšX˜H\Èİ\\™šXÚX[
+Ú[İÊH8 %ˆËÈÚH[Øİ[Y[ÈİX\™YÈ[ˆ[Û™ÛÈ˜YHİH›Ü[ÈZHˆ
+]YYBˆËÈÜ˜X˜YÈZ0ëHØYH™^ˆ]YHÙHXÙHUÒØ\KØYZ[‹ØÛÛ™šYËˆËÈÜœ]YH\ÙH[™Ú[İX\™H[˜H›İÈÛÛ\]HHÑÈ[ÛÛ™šYÂˆËÈšYÙ[H[ˆ\ÙH[ÛY[ËZHˆ[˜ÛZYÊK\ÙHZHˆÛÛ\]ÂˆËÈ‘QSTVHÜˆÛÛ\]È[HQUSĞÓÓ‘’QÈ8 %ÛÛÙÛSX\ÒÙ^KˆËÈX\[\’Ù^HHØ\ÒÙ^H[˜ÛZYÜËˆÛÛ[È\ÛÜÈÈØ[\ÜÈØ[[ˆBˆËÈ˜\šXX›\ÈH[Ü››È
+›ØÙ\ÜË™[‹ŠŠK]YYX˜[ˆÛÛ™Ù[YÜÈÛÛ‚ˆËÈ[˜[Üˆ]YH[°ëX[ˆH0æ“SPH™^ˆ]YHÙHİX\™0ìÈ[ÛÛ™šYÈ[‚ˆËÈ[Û™ÛË][œ]YH\Üpê\ÈÙHYÜ™YØ\˜HÈØ[XšX\˜HHÙ^H[ˆ™[™\‹‚ˆËÈ\İÈ^XØX˜H^Xİ[Y[H[ğë[ÛXNˆĞT•×ÒÑVHY\İH[‚ˆËÈ™[™\‹\›È[X\HÙYİpëXHYY[™ÈÙ^H8 %[˜[Üˆ™œ™\ØÛÈ‚ˆËÈ[[ˆ[˜ØHYØX˜HH\Ø\ˆ[Û˜\ÚİšYZ›ÈHH‹‚ˆËÈš^ˆ\İ\ÈÈÙ^\ÈHX\\ÈÒQST‘HÙHÛX[ˆ[[ˆš]›ËˆËÈ[˜ØH[Û˜\ÚİH[Û™ÛÈ
+[YZ[ˆ[˜ØH\ÈY]HHX[›ÂˆËÈ\ÙHZ0ëHHÙÜÈ[ÙÜÊK‚ˆØ\ÛÛ™šYĞØXÚKZHHÈ‹‹‘QUSĞÓÓ‘’QËZK‹‹ŠØË˜ÛÛ™šYËZHßJHNÂˆØ\ÛÛ™šYĞØXÚKZK™ÛÛÙÛSX\ÒÙ^HH›ØÙ\ÜË™[‹‘ÓÓÑÓWÓPTÈ	ÉÎÂˆØ\ÛÛ™šYĞØXÚKZK›X\[\’Ù^HH›ØÙ\ÜË™[‹“PTST—ÒÑVH	ÉÎÂˆØ\ÛÛ™šYĞØXÚKZK˜Ø\ÒÙ^HH›ØÙ\ÜË™[‹ĞT•×ÒÑVH	ÉÎÂˆØ\ÛÛ™šYĞØXÚUÈH›İÎÂˆ™]\›ˆØ\ÛÛ™šYĞØXÚNÂˆBˆHØ]Ú
+JHÈÊˆ˜[›İYÚ
+‹ÈBˆBˆØ\ÛÛ™šYĞØXÚHHÈ‹‹‘QUSĞÓÓ‘’QÈNÂˆØ\ÛÛ™šYĞØXÚUÈH›İÎÂˆ™]\›ˆØ\ÛÛ™šYĞØXÚNÂŸB‘[ZU\ØYÙKœØÚ[XKš[™^
+ÈÙ^NˆK]NˆHKÈ[š\]YNˆYHJNÂ‚˜ÛÛœİÙ[ZQ˜[˜XÚÈH™]ÈX\
+
+NÈËÈ˜[˜XÚÈÚ[ˆˆ\ÈİÛ‚‚˜\Ş[˜È[˜İ[ÛˆÙ][ZU\ØYÙJÙ^JHÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİØÈH]ØZ][ZU\ØYÙK™š[™Û™JÈÙ^K]NˆÙ^HJK›X[Š
+NÂˆ™]\›ˆØÈÈØË˜Ûİ[ˆÂˆHØ]Ú
+JHÈÊˆ˜[›İYÚÈY[[ÜH
+‹ÈBˆBˆÛÛœİ[HHÙ[ZQ˜[˜XÚË™Ù]
+Ù^JNÂˆYˆ
+Y[H[K™]HOOHÙ^JH™]\›ˆÂˆ™]\›ˆ[K˜Ûİ[ÂŸB‚˜\Ş[˜È[˜İ[Ûˆ[˜Ü‘[ZU\ØYÙJÙ^JHÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİØÈH]ØZ][ZU\ØYÙK™š[™Û™P[™\]JˆÈÙ^K]NˆÙ^HKÈ	[˜ÎˆÈÛİ[ˆHHKÈ\Ù\ˆYK™]ÎˆYHBˆ
+K›X[Š
+NÂˆ™]\›ˆØË˜Ûİ[ÂˆHØ]Ú
+JHÈÊˆ˜[›İYÚÈY[[ÜH
+‹ÈBˆBˆÛÛœİ[HHÙ[ZQ˜[˜XÚË™Ù]
+Ù^JNÂˆYˆ
+Y[H[K™]HOOHÙ^JHÈÙ[ZQ˜[˜XÚËœÙ]
+Ù^KÈ]NˆÙ^KÛİ[ˆHJNÈ™]\›ˆNÈBˆ[K˜Ûİ[
+ÊÎÂˆ™]\›ˆ[K˜Ûİ[ÂŸB˜\\ÙJ	ËØ\KØÚ]	ËÚ][Z]\ŠNÂ˜\\ÙJ	ËØ\KØYZ[‰ËYZ[“[Z]\ŠNÂ‚‹ËÈ8¥ 8¥ ‘QTÈ
+ÜÚ[Û˜[
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ›]™Y\ÈH[Â˜\Ş[˜È[˜İ[Ûˆ[š]™Y\Ê
+HÂˆYˆ
+\›ØÙ\ÜË™[‹”‘QT×ÕT“
+HÈÛÛœÛÛK›ÙÊ	ø¦¨;î#ÈÚ[ˆ‘QT×ÕT“8 %\Ø[™ÈØXÚ0êH[ˆY[[ÜšXIÊNÈ™]\›ÈBˆHÂˆÛÛœİÈÜ™X]PÛY[HH™\]Z\™J	Ü™Y\ÉÊNÂˆ™Y\ÈHÜ™X]PÛY[
+È\›ˆ›ØÙ\ÜË™[‹”‘QT×ÕT“JNÂˆ™Y\Ë›ÛŠ	Ù\œ›Ü‰ËHOˆÛÛœÛÛKØ\›Š	Ô™Y\È\œ›Ü‰ËK›Y\ÜØYÙJJNÂˆ]ØZ]™Y\Ë˜ÛÛ›™Xİ
+
+NÂˆÛÛœÛÛK›ÙÊ	ø§!H™Y\ÈÛÛ™XİYÉÊNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ø¦¨;î#È™Y\È˜[0ìË\Ø[™ÈY[[ÜšXN‰ËK›Y\ÜØYÙJNÈ™Y\ÈH[ÈBŸB‚˜ÛÛœİÛY[HH™]ÈX\
+
+NÂ˜\Ş[˜È[˜İ[ÛˆØXÚQÙ]
+ÊHÂˆYˆ
+™Y\ÊHÈÛÛœİˆH]ØZ]™Y\Ë™Ù]
+ÊNÈ™]\›ˆˆÈ”ÓÓ‹œ\œÙJŠHˆ[ÈBˆÛÛœİHHÛY[K™Ù]
+ÊNÈYˆ
+ZJH™]\›ˆ[ÂˆYˆ
+]K››İÊ
+HˆK™JHÈÛY[K™[]JÊNÈ™]\›ˆ[ÈH™]\›ˆKÂŸB˜\Ş[˜È[˜İ[ÛˆØXÚTÙ]
+Ë‹HŒ
+HÂˆYˆ
+™Y\ÊHÈ]ØZ]™Y\ËœÙ]^
+Ë”ÓÓ‹œİš[™ÚYJŠJNÈ™]\›ÈBˆÛY[KœÙ]
+ËÈ‹Nˆ]K››İÊ
+H
+È
+ˆLJNÂŸB˜\Ş[˜È[˜İ[ÛˆØXÚQ[
+ÊHÈYˆ
+™Y\ÊH]ØZ]™Y\Ë™[
+ÊNÈÛY[K™[]JÊNÈB‚‹ËÈ˜\œšYÈ\špìÙXÛÈ[ØXÚ0êH[ˆY[[ÜšXH
+ÛÛÈİX[™È›È^H™Y\ÊN‚‹ËÈ\ÈÛ]™\È^\˜Y\ÈÛÛÈÙH\™ØX˜[ˆ[Y\œÙNÈÚ[ˆ\İÈÜ™XğëXHÚ[ˆ0ë[Z]K‚œÙ][\˜[
+
+
+HOˆÂˆYˆ
+™Y\ÊH™]\›ÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆ›Üˆ
+ÛÛœİÚËWHÙˆÛY[JHÈYˆ
+›İÈˆK™JHÛY[K™[]JÊNÈBŸKŒ
+NÂ‚‹ËÈ8¥ 8¥ ÑP”ÓĞÒÑUÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİÜÜÈH™]ÈÙX”ÛØÚÙ]Ù\™\ŠÈÙ\™\‹]ˆ	ËİÜÉÈJNÂ˜ÛÛœİÜĞÛY[ÈH™]ÈÙ]
+
+NÂ‚ÜÜË›ÛŠ	ØÛÛ›™Xİ[Û‰Ë
+ÜË™\JHOˆÂˆÛÛœİÜšYÚ[ˆH™\KšXY\œË›ÜšYÚ[ÂˆYˆ
+ÜšYÚ[ˆ	‰ˆX[İÙYÜšYÚ[œËš[˜ÛY\ÊÜšYÚ[ŠJHÈÜË˜ÛÜÙJL	ÓÜšYÚ[ˆ›È\›Z]YÉÊNÈ™]\›ÈBˆÜËš\Ğ[]™HHYNÂˆÜĞÛY[Ë˜Y
+ÜÊNÂˆÛÛœÛÛK›ÙÊ<'å#ÔÈÛÛ™XİYÈ8 %	İÜĞÛY[ËœÚ^™_HÛY[\Ø
+NÂˆÜËœÙ[™
+”ÓÓ‹œİš[™ÚYJÈ\Nˆ	ØÛÛ›™XİY	ËÛY[ÎˆÜĞÛY[ËœÚ^™KÎˆ]K››İÊ
+HJJNÂˆÜË›ÛŠ	ÜÛ™ÉË
+
+HOˆÈÜËš\Ğ[]™HHYNÈJNÂˆÜË›ÛŠ	ØÛÜÙIË
+
+HOˆÈÜĞÛY[Ë™[]JÜÊNÈJNÂˆÜË›ÛŠ	Ù\œ›Ü‰Ë
+
+HOˆÜĞÛY[Ë™[]JÜÊJNÂŸJNÂ‚‹ËÈÙY\[]™H[™ÈØYHÌÂœÙ][\˜[
+
+
+HOˆÂˆÜĞÛY[Ë™›Ü‘XXÚ
+ÜÈOˆÂˆYˆ
+]ÜËš\Ğ[]™JHÈÜĞÛY[Ë™[]JÜÊNÈÜË\›Z[˜]J
+NÈ™]\›ÈBˆÜËš\Ğ[]™HH˜[ÙNÈÜËœ[™Ê
+NÂˆJNÂŸKÌ
+NÂ‚™[˜İ[Ûˆœ›ØYØ\İ
+\K]HHßJHÂˆÛÛœİ\ÙÈH”ÓÓ‹œİš[™ÚYJÈ\K‹‹™]KÎˆ]K››İÊ
+HJNÂˆÜĞÛY[Ë™›Ü‘XXÚ
+ÜÈOˆÈYˆ
+ÜËœ™XYTİ]HOOHJHÜËœÙ[™
+\ÙÊNÈJNÂŸB‚‹ËÈ]š\ØHHÜÈÛY[\ÈÛÛ™XİYÜÈ
+Z‹ˆH0èYÚ[˜HHÜ[ˆÛİ\˜ÙJH]YH[‹ËÈØ]0è[ÙÛÈØ[XšpìÈ8 %İ[Hİ[H\ÈÜ[ˆÛİ\˜ÙH\˜HXİX[^˜\ˆ[‹ËÈÛÛYÜˆ[ˆY[\È™X[Ú[ˆ\[™\ˆ[HHØXÚ0êHHØ\KØ\Ë‚˜\Ş[˜È[˜İ[Ûˆœ›ØYØ\İ\ĞÚ[™ÙY
+
+HÂˆYˆ
+YÛÛ›™XİY
+H™]\›ÂˆHÂˆÛÛœİİİ[Ü×HH]ØZ]›ÛZ\ÙK˜[
+Âˆ\˜Ûİ[Øİ[Y[ÊßJKˆ\˜Ûİ[Øİ[Y[ÊÈÛİ\˜ÙWÜ™\ÎˆÈ	™Nˆ[HJKˆJNÂˆœ›ØYØ\İ
+	Ø\×ØÚ[™ÙY	ËÈİ[ÜÈJNÂˆHØ]ÚßBŸB‚‹ËÈÛÛYÜˆš\Ú]\È[ˆY[[ÜšXB˜ÛÛœİš\Ú]ÈHÈÙ^Nˆİ[ˆ]Nˆ™]È]J
+KÑ]Tİš[™Ê
+HNÂ™[˜İ[Ûˆ˜XÚÕš\Ú]
+
+HÂˆÛÛœİÙ^HH™]È]J
+KÑ]Tİš[™Ê
+NÂˆYˆ
+Ù^HOOHš\Ú]Ë™]JHÈš\Ú]ËÙ^HHÈš\Ú]Ë™]HHÙ^NÈBˆš\Ú]ËÙ^JÊÎÈš\Ú]Ëİ[
+ÊÎÂˆœ›ØYØ\İ
+	İš\Ú]	ËÈÙ^Nˆš\Ú]ËÙ^Kİ[ˆš\Ú]Ëİ[JNÂˆ˜XÚÑ]™[
+	İš\Ú]	ÊNÂŸB‚‹ËÈ8¥ 8¥ SÓ‘ÓÑˆĞÒSPTÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİÚ]Y\ÜØYÙHH[Û™ÛÛÜÙK›[Ù[
+	ĞÚ]Y\ÜØYÙIË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆÙ\ÜÚ[Û’YˆÈ\Nˆİš[™Ë™\]Z\™YˆYK[™^ˆYHKˆ›ÛNˆÈ\Nˆİš[™Ë[[NˆÉİ\Ù\‰Ë	Ø\ÜÚ\İ[	×K™\]Z\™YˆYHKˆÛÛ[ˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆÚÙ[œÎˆÈ\Nˆ[X™\‹Y˜][ˆKˆ[Ù[ˆÈ\Nˆİš[™ËY˜][ˆ	ÙÜ›ÜIÈKˆÜ™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İË^\™\ÎˆŒ
+Œ
+Œ
+ÈKŸJJNÂ‚˜ÛÛœİ\H[Û™ÛÛÜÙK›[Ù[
+	Ğ\	Ë™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆ\YˆÈ\Nˆİš[™Ë™\]Z\™YˆYK[š\]YNˆYHKˆ›ÛXœ™NˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆ\ØÜš\Ú[ÛˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ™\œÚ[ÛˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆYÎˆÈ\Nˆİš[™ËY˜][ˆ	ü'á¥IÈKˆÚ[™Ù[ÙÎˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ[XYÙ[ˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆØ]YÛÜšXNˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ™\šYšYYˆÈ\Nˆ›ÛÛX[‹Y˜][ˆYHKˆ[›XÙNˆÈ\Nˆİš[™ËY˜][ˆ	ÈÉÈKˆYÚ[—Ù[›XÙNˆÈ\Nˆİš[™ËY˜][ˆ[KˆŒ—Ùš[WÚYˆÈ\Nˆİš[™ËY˜][ˆ[KˆŒ—Ùš[WÛ˜[YNˆÈ\Nˆİš[™ËY˜][ˆ[KˆŒ—ÜYÚ[—Ùš[WÚYˆÈ\Nˆİš[™ËY˜][ˆ[KˆŒ—ÜYÚ[—Ùš[WÛ˜[YNÈ\Nˆİš[™ËY˜][ˆ[Kˆ×ÛY\ÜØYÙWÚYˆÈ\Nˆ[X™\‹Y˜][ˆ[KËÈQY[œØZ™H[YÜ˜[HTÈXZ[‚ˆ×Ùš[WÚYˆÈ\Nˆİš[™ËY˜][ˆ[KËÈš[WÚY[YÜ˜[HTÈXZ[‚ˆ×ÜYÚ[—Û\Ù×ÚYˆÈ\Nˆ[X™\‹Y˜][ˆ[KËÈQY[œØZ™H[YÜ˜[HTÈYÚ[‚ˆ×ÜYÚ[—Ùš[WÚYˆÈ\Nˆİš[™ËY˜][ˆ[KËÈš[WÚY[YÜ˜[HTÈYÚ[‚ˆ×Ùš[WÜ]ˆÈ\Nˆİš[™ËY˜][ˆ[KËÈš[WÜ][YÜ˜[HTÈXZ[ˆ
+ÒSˆÚÙ[ˆ8 %[˜ØH^Û™\ŠBˆ×ÜYÚ[—Ùš[WÜ]È\Nˆİš[™ËY˜][ˆ[KËÈš[WÜ][YÜ˜[HYÚ[ˆ
+ÒSˆÚÙ[ŠBˆXWÙš[WÛ˜[YNˆÈ\Nˆİš[™ËY˜][ˆ[KËÈ›ÛXœ™H\˜Ú]›È[ˆ\˜Ú]™K›Ü™È
+TÈXZ[ŠBˆXWÚY[YšY\ˆÈ\Nˆİš[™ËY˜][ˆ[KËÈ][HQH\˜Ú]™K›Ü™ÂˆXWÜYÚ[—Ùš[WÛ˜[YNÈ\Nˆİš[™ËY˜][ˆ[KËÈ›ÛXœ™H\˜Ú]›È[ˆ\˜Ú]™K›Ü™È
+YÚ[ŠBˆ]ÜšX[İ\›ˆÈ\Nˆİš[™ËY˜][ˆ[KˆÛİ\˜ÙWÜ™\ÎˆÈ\Nˆİš[™ËY˜][ˆ[KËÈ›İÛ™\‹Ü™\Èˆ8 %Xš[]H[[Ûš]Üˆ]]Ûpè]XÛÈHXİX[^˜XÚ[Û™\È°ëXHÚ]Xˆ™[X\Ù\ÂˆXÚØYÙS˜[YNˆÈ\Nˆİš[™ËY˜][ˆ[KËÈ\XØ][Û’Y[™›ÚY™X[
+Z‹ˆ›Ü™ËœØÚXšK›™]Ü\HŠH8 %Xš[]H]XØÚpìÛˆH\È[œİ[Y\È
+È]]ËZ[œİ[XÚpìÛˆ
+™\ˆ˜XÚÙ[™ÜØÜš\ËÜ™\ÛÛ™K\XÚØYÙK[˜[Y\ËšœÊBˆ\]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈKˆÜ™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈKŸJJNÂ‚˜ÛÛœİ\˜][™ÈH[Û™ÛÛÜÙK›[Ù[
+	Ğ\˜][™ÉË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆ\YˆÈ\Nˆİš[™Ë™\]Z\™YˆYK[™^ˆYHKˆ\˜[YNˆÈ\Nˆİš[™ÈKˆ˜][™ÜÎˆŞÈ\ˆİš[™Ëİ\œÎˆ[X™\‹Ü™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈHWKˆ™]šY]ÜÎˆŞÈ\ˆİš[™Ë]]Üˆİš[™Ë^Îˆİš[™Ëİ\œÎˆ[X™\‹Ü™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈHWKˆİ[ˆÈ\Nˆ[X™\‹Y˜][ˆKˆÛİ[ˆÈ\Nˆ[X™\‹Y˜][ˆKŸJJNÂ‚˜ÛÛœİ\™\]Y\İH[Û™ÛÛÜÙK›[Ù[
+	Ğ\™\]Y\İ	Ë™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆ\˜[YNˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆ™X\ÛÛˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ\ˆÈ\Nˆİš[™ÈKˆ›İ\ÎˆÈ\Nˆ[X™\‹Y˜][ˆHKˆ›İ\œÎˆÔİš[™×Kˆİ]\ÎˆÈ\Nˆİš[™Ë[[NˆÉÜ[™[™ÉË	ÙÛ™IË	Ü™Z™XİY	×KY˜][ˆ	Ü[™[™ÉÈKˆÜ™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈKŸJJNÂ‚‹ËÈÛÙRXˆ™[X\Ù\È8 %›İ™YY\È[›ŞYXİÈ
+Y]˜\È[˜Ú[Û™\Ëİ™\œÚ[Û™\Â‹ËÈ[YÜ˜Y\ÊKˆÙHX›XØ[ˆ\ÙH[YZ[‹ZXˆHØY[ˆ[ˆHØ[\[˜HB‹ËÈ›İYšXØXÚ[Û™\Ëˆ“È\İ0è[ˆš[˜İ[Y\È[\İÜšX[HÚ]‚˜ÛÛœİ™[X\ÙHH[Û™ÛÛÜÙK›[Ù[
+	Ô™[X\ÙIË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆ]NˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆ›ÙNˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ™\œÚ[ÛˆÈ\Nˆİš[™ËY˜][ˆ	ÉÈKˆ\›ˆÈ\Nˆİš[™ËY˜][ˆ	ËÉÈKˆ\NˆÈ\Nˆİš[™Ë[[NˆÉÜ™[X\ÙIË	Ù™X]\™IË	Ùš^	Ë	ÛXZ[[˜[˜ÙI×KY˜][ˆ	Ü™[X\ÙIÈKˆÜ™X]Y]ˆÈ\Nˆ]KY˜][ˆ]K››İÈKŸJJNÂ‚‹ËÈ8¥ 8¥ QRSˆPÕU’UHÑÈ
+™YÚ\İ›È[ˆš]›ÈHÜ\˜XÚ[Û™\ÈZ™Xİ]Y\ÊH8¥ 8¥ ‹ËÈØYHXØÚpìÛˆ[YZ[‹ZXˆ
+\Ü\›ÈHÛÜšÙ›İÜËZ™XİXÚpìÛˆHØÜš\ÈB‹ËÈ‹ÙYYYXÚpìÛˆH\Ë\Ú\Ë™[X\Ù\ËÛÛ™šYË‹‹ŠH]YYH™YÚ\İ˜YB‹ËÈ\]pëKˆÙHX[Y[™H[ˆš[™È[ˆY[[ÜšXH
+[˜Ú[Û˜H][œ]YH[Û™ÛÈ\İ0êHØpëYÈB‹ËÈ[[Y[H\ÈXİ\˜\È[›YYX]\ÊHH[\İ0ìÜšXÛÈš]™H[ˆHÛÛXØÚpìÛ‚‹ËÈYZ[›ÙÜØH[Û™ÛÑˆ
+ÙYÈHL[˜Y\È™XÚY[\ÊK‚˜ÛÛœİYZ[“ÙÈH[Û™ÛÛÜÙK›[Ù[
+	ĞYZ[“ÙÉË™]È[Û™ÛÛÜÙK”ØÚ[XJÂˆXİÜˆÈ\Nˆİš[™ËY˜][ˆ	ØYZ[‰ÈKˆÚ[™ˆÈ\Nˆİš[™Ë[[NˆÉÛÜ	Ë	İÛÜšÙ›İÉË	ÜŞ\İ[I×KY˜][ˆ	ÛÜ	ÈKˆXİ[ÛˆÈ\Nˆİš[™Ë™\]Z\™YˆYHKˆ]Z[ÎˆÈ\Nˆ[Û™ÛÛÜÙK”ØÚ[XK•\\Ë“Z^YY˜][ˆßHKˆİ]\ÎˆÈ\Nˆİš[™Ë[[NˆÉÛÚÉË	Ù\œ›Ü‰Ë	Ü[›š[™É×KY˜][ˆ	ÛÚÉÈKˆÎˆÈ\Nˆ]KY˜][ˆ]K››İË[™^ˆYHKŸKÈİšXİˆ˜[ÙK[Y\İ[\Îˆ˜[ÙHJJNÂ‚˜ÛÛœİØYZ[“ÙÔš[™ÈH×NÂ˜ÛÛœİQRS—ÓÑ×Ô’S‘×ÓPVHŒÂ›]ØYZ[“ÙÓ\İ[™HHÂ‚™[˜İ[ÛˆÙĞYZ[ŠXİÜ‹Xİ[Û‹]Z[ÈHßKİ]\ÈH	ÛÚÉËÚ[™H	ÛÜ	ÊHÂˆÛÛœİ[HHÂˆXİÜˆİš[™ÊXİÜˆOH[XİÜˆOOH	ÉÈÈ	ØYZ[‰ÈˆXİÜŠKœÛXÙJ
+KˆÚ[™Xİ[Ûˆİš[™ÊXİ[ÛŠKœÛXÙJ
+K]Z[Ëİ]\ËÎˆ]K››İÊ
+KˆNÂˆØYZ[“ÙÔš[™Ë[œÚY
+[JNÂˆYˆ
+ØYZ[“ÙÔš[™Ë›[™İˆQRS—ÓÑ×Ô’S‘×ÓPV
+HØYZ[“ÙÔš[™Ë›[™İHQRS—ÓÑ×Ô’S‘×ÓPVÂˆYˆ
+[Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹œ™XYTİ]HOOHJHÂˆYZ[“ÙË˜Ü™X]J[JK˜Ø]Ú
+
+
+HOˆßJNÂˆBˆ™]\›ˆ[NÂŸB‚‹ËÈÙH[\İ0ìÜšXÛÎˆÛÛœÙ\˜HÛÛÈ\ÈL[˜Y\Èpè\È™XÚY[\È
+ÙH[XB‹ËÈ\ÙHÑUØ\KØYZ[‹ØXİ]š]K[Y[›ÜÈ[˜H™^ˆÜˆÜ˜JK‚˜\Ş[˜È[˜İ[Ûˆ[™PYZ[“ÙÊ
+HÂˆHÂˆÛÛœİ™XÙ[H]ØZ]YZ[“ÙË™š[™
+ßJKœÛÜ
+ÈÎˆLHJK›[Z]
+L
+KœÙ[Xİ
+	×ÚY	ÊK›X[Š
+NÂˆÛÛœİYÈH™XÙ[›X\
+Oˆ—ÚY
+NÂˆYˆ
+YË›[™İ
+H]ØZ]YZ[“ÙË™[]SX[JÈÚYˆÈ	š[ˆYÈHJNÂˆHØ]Ú
+JHÈÛÛœÛÛK™\œ›ÜŠ	Ü[™PYZ[“ÙÈ\œ›Ü‰ËK›Y\ÜØYÙJNÈBŸB‚‹ËÈXİÜˆš\ÚX›H[ˆ[™YÚ\İ›È[ˆš]›È
+XY\ˆÜÚ[Û˜[[[™[
+K‚™[˜İ[ÛˆYZ[XİÜ“ÙŠ™\JHÂˆ™]\›ˆİš[™Ê™\OËšXY\œÏË–ÉŞXYZ[‹]\Ù\‰×H™\OË˜›ÙOË˜YZ[•\Ù\ˆ	ØYZ[‰ÊKœÛXÙJ
+NÂŸB‚‹ËÈØXÚHÛÛ\\YHH0î›[[È[ˆÜˆÛÜšÙ›İÈ
+Ú]XˆXİ[ÛœÊKˆ[™YY[‚‹ËÈš]›ÈHÛÛœİ[HÛÛˆ\˜H›ÈÛÛX\ˆHTHHÚ]XˆL™XÙ\ÈÜ‚‹ËÈZ[]ÎÈØ\KØYZ[‹ÙÚ]X‹Ü[œÈY\˜H™Yœ™\ØÛË‚›]ÙÚ[œĞØXÚHHÈ]ˆ]Nˆ[NÂ˜ÛÛœİÒÔ•S”×ÕÓTÈHŒ
+ˆLÂ‚˜\Ş[˜È[˜İ[ÛˆÙ]Ú[œĞØXÚY
+›Ü˜ÙJHÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+Y›Ü˜ÙH	‰ˆÙÚ[œĞØXÚK™]H	‰ˆ
+›İÈHÙÚ[œĞØXÚK˜]
+HÒÔ•S”×ÕÓTÊH™]\›ˆÙÚ[œĞØXÚK™]NÂˆYˆ
+[ØİÚÚ]
+H›İÈ™]È\œ›ÜŠ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÈ[ˆ™[™\‰ÊNÂˆÛÛœİİ]HßNÂˆÛÛœİÈ]NˆÙœÈHH]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË›\İ™\ÕÛÜšÙ›İÜÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLJNÂˆ›Üˆ
+ÛÛœİÙˆÙˆÙœËÛÜšÙ›İÜÊHÂˆÛÛœİš[HHÙ‹œ]œÜ]
+	ËÉÊKœÜ
+
+NÂˆYˆ
+Z\Ô™X[Ú]X•ÛÜšÙ›İÊš[JJHÛÛ[YNÂˆHÂˆÛÛœİÈ]HHH]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË›\İÛÜšÙ›İÔ[œÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËÛÜšÙ›İ×ÚYˆš[K\—ÜYÙNˆKˆJNÂˆÛÛœİ[ˆH]KÛÜšÙ›İ×Ü[œÏË–ÌH[Âˆİ]Ùš[WHH[ˆÈÂˆİ]\Îˆ[‹œİ]\ËÛÛ˜Û\Ú[Ûˆ[‹˜ÛÛ˜Û\Ú[Û‹ˆÜ™X]YØ]ˆ[‹˜Ü™X]YØ][İ\›ˆ[‹š[İ\›ˆ\Ü^Wİ]Nˆ[‹™\Ü^Wİ]K[—ÚYˆ[‹šYˆHˆ[ÂˆHØ]ÚÈÙÚ[ÛUÛÜšÙ›İÜË˜Y
+š[JNÈİ]Ùš[WHH[ÈBˆBˆÙÚ[œĞØXÚHHÈ]ˆ›İË]Nˆİ]NÂˆ™]\›ˆİ]ÂŸB‚‹ËÈ8¥ 8¥ ÒS‘HS•SQÑSÑHÓÔ‘H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈØ\HHPNˆY[[ÜšXH[™[˜X›H
+È˜\ÙHHÛÛ›ØÚ[ZY[È
+QÊH
+ÈÚYœ˜YÈL‘K‚˜ÛÛœİÈZ[ÛÛ^]YÛY[Ş\İ[HHH™\]Z\™J	Ë‹İÚ[YKØÛÜ™IÊNÂ˜ÛÛœİÈ™[Y[X™\ˆHH™\]Z\™J	Ë‹İÚ[YKÛY[[ÜIÊNÂ˜ÛÛœİÈRSY[[ÜHHH™\]Z\™J	Ë‹İÚ[YKÛ[Ù[ÉÊNÂ‚›]ÛÛ›™XİYH˜[ÙNÂ‚‹ËÈ™\İY[™H[™Ypì[ÈˆHHY[[ÜšXHHÚ[‘HÜˆ]XÚpìÛ‚‹ËÈ8 (ˆ\İX\š[ÜÈÙİYXYÜÈ8¡¤ˆİH›Ü[ÈY
+Y[[ÜšXH\œÚ\İ[H[™]šYX[
+B‹ËÈ8 (ˆ[š]YÜÈÛÛˆÙ\ÚpìÛˆ8¡¤ˆ	ÜÙ\ÜÎÙ\ÜÚ[Û’Y‰È
+Y[[ÜšXHZ\ÛYHÚ[‚‹ËÈY^˜Û\ˆXÚÜÈ[™Hš\Ú][\È]YH[\ÈÛÛ\\0ëX[ˆ	Ø[›Û‰ÊB‹ËÈ8 (ˆÚ[ˆÙ\ÚpìÛˆ°è[YH8¡¤ˆ[
+Ú[ˆY[[ÜšXNˆ™XØ[]Y[™H	ÉÊB˜ÛÛœİY[U\Ù\“ÙˆH
+™\KÙ\ÜÚ[Û’Y
+HOˆÂˆYˆ
+™\K˜]]\Ù\ˆ	‰ˆ™\K˜]]\Ù\‹šY
+H™]\›ˆ™\K˜]]\Ù\‹šYÂˆÛÛœİÈHİš[™ÊÙ\ÜÚ[Û’Y	ÉÊNÂˆYˆ
+×œÙ\Ü×ÖØK^ŒNW^Í‹IÚK\İ
+ÊJH™]\›ˆ	ÜÙ\ÜÎ‰È
+ÈÎÂˆ™]\›ˆ[ÂŸNÂ‹ËÈ›YÈ[ÛY[H\˜H]\Ø\‹Ü™X[Y\ˆ[]]ËX\™[™^˜Z™H
+š]˜XŞJK‚˜ÛÛœİY[Q[˜X›YÙˆH
+™\JHOˆHJ™\K˜›ÙH	‰ˆ™\K˜›ÙK›Y[[ÜHOOH˜[ÙJNÂ‚‹ËÈ8¥ 8¥ SÓ‘ÓÑˆ8 %TÕS‘T”ÈH‘PÓÓ‘VpäÓˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈX[Y[™[ˆÛÛ›™XİYÚ[˜Ü›Ûš^˜YÈÛÛˆ[\İYÈ‘PSHHÛÛ™^pìÛ‹‚‹ËÈÚ[ˆ\İËÚH]\ÈÚY\œ˜HHÛÛ™^pìÛˆÜˆ[˜Xİ]šYYÈ^H[ˆÛÜB‹ËÈH™Y[\Ü˜[ÛÛ›™XİYÙH]YYHYHˆ\˜HÚY[\™H
+ÙH\ÚYÛ˜X˜B‹ËÈ[˜HÛÛH™^ˆ[\œ˜[˜Ø\ŠHH\È]\ÈZ˜[ˆH]›Û™\ˆ[˜[˜XÚÈLË‚›[Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹›ÛŠ	ØÛÛ›™XİY	Ë
+
+HOˆÂˆÛÛ›™XİYHYNÂˆÛÛœÛÛK›ÙÊ	ø§!H[Û™ÛÑˆ]\ÈÛÛ™XİYÉÊNÂŸJNÂ›[Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹›ÛŠ	Ù\ØÛÛ›™XİY	Ë
+
+HOˆÂˆÛÛ›™XİYH˜[ÙNÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#È[Û™ÛÑˆ\ØÛÛ™XİYÈ8 %™Z[[[™È[ˆÙYİ[™È[›Ë‹‹‰ÊNÂŸJNÂ›[Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹›ÛŠ	Ü™XÛÛ›™XİY	Ë
+
+HOˆÂˆÛÛ›™XİYHYNÂˆÛÛœÛÛK›ÙÊ	ø§!H[Û™ÛÑˆ]\È™XÛÛ™XİYÉÊNÂŸJNÂ›[Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹›ÛŠ	Ù\œ›Ü‰Ë
+\œŠHOˆÂˆÛÛ›™XİYH˜[ÙNÂˆÛÛœÛÛK™\œ›ÜŠ	ø§c[Û™ÛÑˆ\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÂŸJNÂ‚˜\Ş[˜È[˜İ[ÛˆÛÛ›™XİŠ
+HÂˆYˆ
+\›ØÙ\ÜË™[‹“SÓ‘ÓÑ—ÕT’JHÈÛÛœÛÛKØ\›Š	ø¦¨;î#ÈSÓ‘ÓÑ—ÕT’H›ÈÛÛ™šYİ\˜YÉÊNÈ™]\›ˆ˜[ÙNÈBˆHÂˆ]ØZ][Û™ÛÛÜÙK˜ÛÛ›™Xİ
+›ØÙ\ÜË™[‹“SÓ‘ÓÑ—ÕT’KÈÙ\™\”Ù[Xİ[Û•[Y[İ]TÎˆLJNÂˆ™]\›ˆYNÈËÈ	ØÛÛ›™XİY	È\İ[™\ˆXHZ˜H[ÙÈHXİX[^˜HÛÛ›™XİYˆHØ]Ú
+\œŠHÈÛÛœÛÛK™\œ›ÜŠ	ø§c[Û™ÛÑˆ\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈ8¥ 8¥ QRSˆUUS‘ÒS•8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈÔÕØ\KØYZ[‹Ø]]8 %˜[YHÙ^H
+È\›œİ[H8¡¤ˆ]Y[™HÙ\ÜÚ[ÛˆÚÙ[ˆPPÈ
+ÌZ[ŠB˜\œÜİ
+	ËØ\KØYZ[‹Ø]]	ËYZ[]][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ÉÊKœÛXÙJL
+Kœ™\XÙJÖÏ—KÙË	ÉÊNÂ‚ˆËÈJH[H˜[ˆÚXÚÂˆYˆ
+Ú\ÒT˜[›™Y
+\
+JHÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÒT[\Ü˜[Y[H›Ü]YXYHÜˆ[[ÜÈ˜[YÜËˆ[[H[ˆÌZ[]ÜË‰ÈJNÂˆB‚ˆËÈŠH˜]H[Z]Ø\›š[™ÜÈÛˆÜXÚYšXÈT™\ÚÛˆÛÛœİ˜Z[Ûİ[H
+ØYZ[‘˜Z[Ë™Ù]
+\
+HßJK˜Ûİ[Â‚ˆÛÛœİÈ\ÜİÛÜ™\›œİ[UÚÙ[ˆHH™\K˜›ÙHßNÂˆÛÛœİ˜[YÙ^HH›ØÙ\ÜË™[‹QRS—ÒÑVNÂ‚ˆYˆ
+]˜[YÙ^JHÂˆÛÛœÛÛK™\œ›ÜŠ	ø¦¨;î#ÈQRS—ÒÑVH›ÈÛÛ™šYİ\˜YH[ˆ˜\šXX›\ÈH[Ü››ÈH™[™\‰ÊNÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %˜[HQRS—ÒÑVH[ˆ™[™\‰ÈJNÂˆB‚ˆËÈÊH˜[Y]H\›œİ[H
+˜Z[XÛÜÙY
+BˆÛÛœİÕÚÙ[ˆHİš[™Ê\›œİ[UÚÙ[ˆ	ÉÊNÂˆYˆ
+X]ØZ]˜[Y]U\›œİ[JÕÚÙ[ŠJHÂˆÜ™XÛÜ™YZ[‘˜Z[
+\XJNÂˆĞ[\
+	ØYZ[™˜Z[	Ë
+
+HOˆÂˆ™]\›ˆ<'é%ˆ•T“”ÕSHSÈQRSØ—’TˆÛÙO‰Ú\OØÛÙO—•PNˆ	İX_XÂˆKÈÚ[™İÓ\ÎˆMLJNÂˆ™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	Õ™\šYšXØXÚpìÛˆ[KX›İÈ˜[YIÈJNÂˆB‚ˆËÈ
+H˜[Y]HÙ^BˆYˆ
+\ÜİÛÜ™OOH˜[YÙ^JHÂˆÜ™XÛÜ™YZ[‘˜Z[
+\XJNÂˆĞ[\
+	ØYZ[™˜Z[	Ë
+
+HOˆÂˆ™]\›ˆ<'å$’S•S•ÈSQÈQRSØ—’TˆÛÙO‰Ú\OØÛÙO—’Ù^Nˆ	Ôİš[™Ê\ÜİÛÜ™	ÉÊKœÛXÙJŠ_x )—•PNˆ	İX_XÂˆKÈÚ[™İÓ\ÎˆMLJNÂˆ™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	ĞÜ™Y[˜ÚX[\È[˜ÛÜœ™Xİ\ÉÈJNÂˆB‚ˆËÈJHİXØÙ\ÜÈ8 %ÛX\ˆ˜Z[Ûİ[\‹\ÜİYHÙ\ÜÚ[ÛˆÚÙ[‚ˆØYZ[‘˜Z[Ë™[]J\
+NÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆÛÛœİÚÙ[ˆHÜÚYÛ”Ù\ÜÚ[ÛŠÈYZ[ˆYKX]ˆ›İË^ˆ›İÈ
+ÈÑTÔÒSÓ—ÕÓTÈJNÂ‚ˆĞ[\
+	ØYZ[›ÙÚ[‰Ë
+
+HOˆÂˆ™]\›ˆ8§!HQRSˆÑÒSˆVUÔÓÏØ—’TˆÛÙO‰Ú\OØÛÙO—•PNˆ	İX_XÂˆKÈÚ[™İÓ\ÎˆŒJNÂ‚ˆ™\ËšœÛÛŠÈÚÎˆYKÙ\ÜÚ[Û•ÚÙ[ˆÚÙ[‹^\™\Ò[ˆÑTÔÒSÓ—ÕÓTÈJNÂŸJNÂ‚‹ËÈÔÕØ\KØYZ[‹Ø]]Ø›İ8 %]][XØXÚpìÛˆpè\]Z[˜KXK[pè\]Z[˜H
+ÒKĞÑ›Ûİ]
+K‚‹ËÈ[ÙÚ[ˆ[X[›È^YÙH\›œİ[H
+˜Z[XÛÜÙY
+NÈ[ˆ[›™\ˆHÒH›ÈYYB‹ËÈ\Ø\›ËˆHÙ^HšXZ˜H[ˆ[XY\ˆXYZ[‹ZÙ^H
+ÊHHÙHÛÛ\\˜H[‚‹ËÈY[\ÈÛÛœİ[NÈHØ[Xš[ÈÙH[Z]H[RTÓSÈÙ\ÜÚ[Û•ÚÙ[ˆPPËˆZ\ÛXB‹ËÈÛ0ë]XØH[Hœ]KY›Ü˜ÙH
+Ü™XÛÜ™YZ[‘˜Z[8¡¤ˆ˜[ˆÜˆT
+K‚˜\œÜİ
+	ËØ\KØYZ[‹Ø]]Ø›İ	ËYZ[]][Z]\‹
+™\K™\ÊHOˆÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ĞÒIÊKœÛXÙJL
+Kœ™\XÙJÖÏ—KÙË	ÉÊNÂ‚ˆÛÛœİ˜[YÙ^HH›ØÙ\ÜË™[‹QRS—ÒÑVNÂˆYˆ
+]˜[YÙ^JHÂˆÛÛœÛÛK™\œ›ÜŠ	ø¦¨;î#ÈQRS—ÒÑVH›ÈÛÛ™šYİ\˜YH[ˆ˜\šXX›\ÈH[Ü››ÈH™[™\‰ÊNÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %˜[HQRS—ÒÑVH[ˆ™[™\‰ÈJNÂˆB‚ˆÛÛœİÚ]™[ˆHİš[™Ê™\KšXY\œÖÉŞXYZ[‹ZÙ^I×H	ÉÊNÂˆÛÛœİHHY™™\‹™œ›ÛJÚ]™[ŠNÂˆÛÛœİˆHY™™\‹™œ›ÛJ˜[YÙ^JNÂˆÛÛœİÙ^SÚÈHK›[™İOOH‹›[™İ	‰ˆÜ\Ë[Z[™ÔØY™Q\]X[
+KŠNÂˆYˆ
+ZÙ^SÚÊHÂˆÜ™XÛÜ™YZ[‘˜Z[
+\XJNÂˆĞ[\
+	ØYZ[™˜Z[	Ë
+
+HOˆÂˆ™]\›ˆ<'å$’S•S•ÈSQÈQRSˆ
+›İ
+OØ—’TˆÛÙO‰Ú\OØÛÙO—’Ù^Nˆ	ÙÚ]™[‹œÛXÙJŠ_x )—•PNˆ	İX_XÂˆKÈÚ[™İÓ\ÎˆMLJNÂˆ™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	ĞÜ™Y[˜ÚX[\È[˜ÛÜœ™Xİ\ÉÈJNÂˆB‚ˆÛÛœİ›İÈH]K››İÊ
+NÂˆÛÛœİÚÙ[ˆHÜÚYÛ”Ù\ÜÚ[ÛŠÈYZ[ˆYK›İˆYKX]ˆ›İË^ˆ›İÈ
+ÈÑTÔÒSÓ—ÕÓTÈJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÙ\ÜÚ[Û•ÚÙ[ˆÚÙ[‹^\™\Ò[ˆÑTÔÒSÓ—ÕÓTÈJNÂŸJNÂ‚‹ËÈ8¥ 8¥ UUQRSˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ™[˜İ[Ûˆ™\]Z\™PYZ[Š™\K™\Ë™^
+HÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİ˜[YÙ^HH›ØÙ\ÜË™[‹QRS—ÒÑVNÂ‚ˆËÈJH[Hœ]KY›Ü˜ÙNˆ™\šYšXØ\ˆÚHHT\İ0èH˜[™XYBˆYˆ
+Ú\ÒT˜[›™Y
+\
+JHÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÒT[\Ü˜[Y[H›Ü]YXYHÜˆ[[ÜÈ˜[YÜËˆ[[H[ˆÌZ[]ÜË‰ÈJNÂˆB‚ˆYˆ
+]˜[YÙ^JHÂˆÛÛœÛÛK™\œ›ÜŠ	ø¦¨;î#ÈQRS—ÒÑVH›ÈÛÛ™šYİ\˜YH[ˆ˜\šXX›\ÈH[Ü››ÈH™[™\‰ÊNÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %˜[HQRS—ÒÑVH[ˆ™[™\‰ÈJNÂˆB‚ˆËÈŠHXÙ\\ˆÙ\ÜÚ[ÛˆÚÙ[ˆPPÈ
+ÜİX]]
+BˆÛÛœİÙ\ÜÚ[Û•ÚÙ[ˆH™\KšXY\œÖÉŞXYZ[‹\Ù\ÜÚ[Û‰×NÂˆYˆ
+Ù\ÜÚ[Û•ÚÙ[ŠHÂˆÛÛœİ^[ØYHİ™\šYTÙ\ÜÚ[ÛŠÙ\ÜÚ[Û•ÚÙ[ŠNÂˆYˆ
+^[ØY	‰ˆ^[ØY˜YZ[ˆOOHYJH™]\›ˆ™^
+
+NÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÔÙ\ÚpìÛˆ^\˜YHÈ[°è[YIÈJNÂˆB‚ˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÔÙ\ÚpìÛˆ™\]Y\šYKˆ]][0ëXØ]H[ˆØ\KØYZ[‹Ø]]‰ÈJNÂŸB‚‹ËÈ8¥ 8¥ UUTÕPT’SÈ
+ÜÚ[Û˜[
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ˜[YH[ÚÙ[ˆİ\X˜\ÙHÚHÙH[°ëXK\›È“È›Ü]YXH[š]YÜË‚‹ËÈ]XÚ™\K˜]]\Ù\ˆHÈY[XZ[HÚH[ÚÙ[ˆ\È°è[YË‚˜\Ş[˜È[˜İ[Ûˆ™\]Z\™P]]
+™\K™\Ë™^
+HÂˆYˆ
+\İ\X˜\ÙJHÈ™\K˜]]\Ù\ˆH[È™]\›ˆ™^
+
+NÈBˆÛÛœİ]]H™\KšXY\œË˜]]Üš^˜][Ûˆ	ÉÎÂˆÛÛœİÚÙ[ˆH]]œİ\ÕÚ]
+	Ğ™X\™\ˆ	ÊHÈ]]œÛXÙJÊHˆ[ÂˆYˆ
+]ÚÙ[ŠHÈ™\K˜]]\Ù\ˆH[È™]\›ˆ™^
+
+NÈBˆHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK˜]]™Ù]\Ù\ŠÚÙ[ŠNÂˆYˆ
+\œ›ÜˆY]OË\Ù\ŠHÈ™\K˜]]\Ù\ˆH[È™]\›ˆ™^
+
+NÈBˆ™\K˜]]\Ù\ˆHÈYˆ]K\Ù\‹šY[XZ[ˆ]K\Ù\‹™[XZ[NÂˆHØ]ÚÈ™\K˜]]\Ù\ˆH[ÈBˆ™^
+
+NÂŸB‚‹ËÈ8¥ 8¥ UUTÕPT’SÔÈ
+İ\X˜\ÙH]]
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈœ›Û[™
+œËØ]]šœÊH\ØH\İÜÈ[™Ú[È\˜HÙÚ[‹Ü™YÚ\İ›ÈB‹ËÈ\İX\š[ÜÈ›Ü›X[\È
+“ÈYZ[ŠKˆİ\X˜\ÙH]]X[™Z˜HÛÛ˜\ÙpìX\ÈB‹ËÈÙ\Ú[Û™\ÎÈ\]pëHÛÛÈ˜[Y[[ÜÈH]›Û™[[ÜÈHÙ\ÚpìÛˆ[ÛY[K‚‹ËÈ™\]ZY\™HÕTPTÑWÕT“HÕTPTÑWÒÑVH
+Ù\šXÙH›ÛJH[ˆ™[™\‹‚˜ÛÛœİ]][Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆMJŒ
+ŒLX^ˆŒİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXYÜÈ[[ÜËˆ\Ü\˜H[ˆØÛË‰ËÛÙNˆ	ĞUUÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ˜\\ÙJ	ËØ\KØ]]	Ë]][Z]\ŠNÂ‚‹ËÈÔÕØ\KØ]]Ü™YÚ\İ\ˆ8 %Ü™X\ˆİY[HÛÛˆ[XZ[
+ÈÛÛ˜\ÙpìXB˜\œÜİ
+	ËØ\KØ]]Ü™YÚ\İ\‰Ë\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİ[XZ[Hİš[™Ê™\K˜›ÙOË™[XZ[	ÉÊKš[J
+KÓİÙ\Ø\ÙJ
+NÂˆÛÛœİ\ÜİÛÜ™Hİš[™Ê™\K˜›ÙOËœ\ÜİÛÜ™	ÉÊNÂˆÛÛœİÕÚÙ[ˆHİš[™Ê™\K˜›ÙOË\›œİ[UÚÙ[ˆ	ÉÊNÂˆYˆ
+X]ØZ]˜[Y]U\›œİ[JÕÚÙ[ŠJH™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	Õ™\šYšXØXÚpìÛˆ[KX›İÈ˜[YIÈJNÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %İ\X˜\ÙH›È\İ0èH\ÜÛšX›IÈJNÂˆYˆ
+K×–×—ĞJĞ×—ĞJ×–×—ĞJÉË\İ
+[XZ[
+JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ[XZ[[°è[YÉÈJNÂˆYˆ
+\ÜİÛÜ™›[™İ
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÓHÛÛ˜\ÙpìXHX™H[™\ˆ[Y[›ÜÈØ\˜Xİ\™\ÉÈJNÂ‚ˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK˜]]œÚYÛ•\
+È[XZ[\ÜİÛÜ™JNÂˆYˆ
+\œ›ÜŠHÂˆËÈŒˆH\Ù\—Ø[™XYWÙ^\İÈÈ[XZ[Øİ\YÂˆYˆ
+\œ›Ü‹œİ]\ÈOOHŒˆØ[™XY_^\İß™YÚ\İ\™YÚK\İ
+\œ›Ü‹›Y\ÜØYÙJJHÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	Ñ\ÙHÛÜœ™[ÈXH\İ0èH™YÚ\İ˜YÉÈJNÂˆBˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ\œ›Ü‹›Y\ÜØYÙHJNÂˆBˆÛÛœİ\Ù\ˆH]K\Ù\ÂˆYˆ
+]\Ù\ŠH™]\›ˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈÜ™X\ˆ[\İX\š[ÉÈJNÂ‚ˆ™\Ëœİ]\ÊŒJKšœÛÛŠÂˆÚÎˆYKˆ\Ù\ˆÈYˆ\Ù\‹šY[XZ[ˆ\Ù\‹™[XZ[KˆÙ\ÜÚ[Ûˆ]KœÙ\ÜÚ[Ûˆ[ˆ™YYĞÛÛ™š\›X][ÛˆY]KœÙ\ÜÚ[Û‹ˆY\ÜØYÙNˆ]KœÙ\ÜÚ[ÛˆÈ	ĞİY[HÜ™XYIÈˆ	Ô™]š\ØHHÛÜœ™[È\˜HÛÛ™š\›X\ˆHİY[IËˆJNÂŸJNÂ‚‹ËÈÔÕØ\KØ]]ÛÙÚ[ˆ8 %[šXÚX\ˆÙ\ÚpìÛˆÛÛˆ[XZ[
+ÈÛÛ˜\ÙpìXB˜\œÜİ
+	ËØ\KØ]]ÛÙÚ[‰Ë\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİ[XZ[Hİš[™Ê™\K˜›ÙOË™[XZ[	ÉÊKš[J
+KÓİÙ\Ø\ÙJ
+NÂˆÛÛœİ\ÜİÛÜ™Hİš[™Ê™\K˜›ÙOËœ\ÜİÛÜ™	ÉÊNÂˆÛÛœİÕÚÙ[ˆHİš[™Ê™\K˜›ÙOË\›œİ[UÚÙ[ˆ	ÉÊNÂˆYˆ
+X]ØZ]˜[Y]U\›œİ[JÕÚÙ[ŠJH™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	Õ™\šYšXØXÚpìÛˆ[KX›İÈ˜[YIÈJNÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %İ\X˜\ÙH›È\İ0èH\ÜÛšX›IÈJNÂˆYˆ
+Y[XZ[\\ÜİÛÜ™
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ĞÛÛ\]H[XZ[HÛÛ˜\ÙpìXIÈJNÂ‚ˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK˜]]œÚYÛ’[•Ú]\ÜİÛÜ™
+È[XZ[\ÜİÛÜ™JNÂˆYˆ
+\œ›ÜŠHÂˆYˆ
+\œ›Ü‹œİ]\ÈOOHÚ[˜[YÙÚ[Ÿ[˜[YÜ™Y[X[ËÚK\İ
+\œ›Ü‹›Y\ÜØYÙJJHÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	Ñ[XZ[ÈÛÛ˜\ÙpìXH[˜ÛÜœ™XİÜÉÈJNÂˆBˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ\œ›Ü‹›Y\ÜØYÙHJNÂˆBˆÛÛœİ\Ù\ˆH]K\Ù\ÂˆYˆ
+]\Ù\ŠH™]\›ˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈ[šXÚX\ˆÙ\ÚpìÛ‰ÈJNÂ‚ˆ™\Ëœİ]\ÊŒ
+KšœÛÛŠÂˆÚÎˆYKˆ\Ù\ˆÈYˆ\Ù\‹šY[XZ[ˆ\Ù\‹™[XZ[KˆÙ\ÜÚ[Ûˆ]KœÙ\ÜÚ[Ûˆ[ˆJNÂŸJNÂ‚‹ËÈÔÕØ\KØ]]ÛÙÛİ]8 %™]›ØØ\ˆHÙ\ÚpìÛˆ[ÚÙ[ˆ
+ÜÚ[Û˜[
+B˜\œÜİ
+	ËØ\KØ]]ÛÙÛİ]	Ë\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÚÙ[ˆHİš[™Ê™\KšXY\œÖÉØ]]Üš^˜][Û‰×H	ÉÊKœ™\XÙJ×™X\™\—ÊËÚK	ÉÊHİš[™Ê™\K˜›ÙOËÚÙ[ˆ	ÉÊNÂˆYˆ
+ÚÙ[ˆ	‰ˆİ\X˜\ÙJH]ØZ]İ\X˜\ÙK˜]]˜YZ[‹œÚYÛ“İ]
+ÚÙ[ŠNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂŸJNÂ‚‹ËÈÔÕØ\KØ]]Ü™Yœ™\Ú8 %™[›İ˜\ˆXØÙ\Ü×İÚÙ[ˆ\Ø[™È™Yœ™\ÚİÚÙ[‚˜\œÜİ
+	ËØ\KØ]]Ü™Yœ™\Ú	Ë\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈ™Yœ™\ÚİÚÙ[ˆHH™\K˜›ÙHßNÂˆYˆ
+\™Yœ™\ÚİÚÙ[ŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ü™Yœ™\ÚİÚÙ[ˆ™\]Y\šYÉÈJNÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ğ]]›È\ÜÛšX›IÈJNÂˆHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK˜]]œ™Yœ™\ÚÙ\ÜÚ[ÛŠÈ™Yœ™\ÚİÚÙ[ˆJNÂˆYˆ
+\œ›ÜˆY]OËœÙ\ÜÚ[ÛŠH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÔÙ\ÚpìÛˆ^\˜YKˆ[šXÚXHÙ\ÚpìÛˆHY]›Ë‰ÈJNÂˆ™\ËšœÛÛŠÈÙ\ÜÚ[ÛˆÈXØÙ\Ü×İÚÙ[ˆ]KœÙ\ÜÚ[Û‹˜XØÙ\Ü×İÚÙ[‹™Yœ™\ÚİÚÙ[ˆ]KœÙ\ÜÚ[Û‹œ™Yœ™\ÚİÚÙ[‹^\™\×Ø]ˆ]KœÙ\ÜÚ[Û‹™^\™\×Ø]HJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›Üˆ™[›İ˜[™ÈÙ\ÚpìÛ‰ÈJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÓÓÑÓHĞUU8 %ÙÚ[ˆÛÛˆÜ™Y[˜ÚX[\ÈHÛÛÙÛH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ›Z›È™Y\™XİÛÛˆØ[˜XÚÈ[ˆ[˜XÚÙ[™
+ĞÑHÙ\İ[Û˜YÈ\]pëJN‚‹ËÈJHÔÕØ\KØ]]ÙÛÛÙÛH8¡¤ˆİX\™H[ÛÙWİ™\šYšY\ˆ[ˆ[˜HÛÛÚÚYB‹ËÈÛ›HH]Y[™HHT“H]]Üš^™H
+ÛÛÙÛH°ëXHİ\X˜\ÙJK‚‹ËÈSTÔ•S•Nˆ“ÈÙH\ØH[ˆİ]H›Ü[È8 %İ\X˜\ÙH\ØH\ÙB‹ËÈ\°è[Y]›È\˜HİH˜[YXÚpìÛˆ[\›˜H
+˜YÛØ]]Üİ]JK‚‹ËÈŠH[˜]™YØYÜˆY[™HHÑUØ\KØ]]ÙÛÛÙÛKØØ[˜XÚÏØÛÙOK‹‹‚‹ËÈÊH[˜XÚÙ[™[\˜Ø[XšXH[ÛÙHÜˆ[˜HÙ\ÚpìÛˆ
+ÛÛÚÚYH8¡¤ˆ™\šYšY\ŠB‹ËÈH™Y\šYÙH[œ›Û[™ÛÛˆÏØ]]YÛÛÙÛIÚÙ[K‹‹ˆ
+ÚÙ[ˆB‹ËÈ[ˆÛÛÈ\ÛËHZ[ŠB‹ËÈ
+HÔÕØ\KØ]]ÙÛÛÙÛKÜÙ\ÜÚ[Ûˆ8¡¤ˆ[œ›Û[™™Xİ\\˜HHÙ\ÚpìÛ‚‹ËÈ™\]ZY\™H[ˆİ\X˜\ÙH8¡¤ˆ]]8¡¤ˆT“ÛÛ™šYİ\˜][Ûˆ8¡¤ˆ™Y\™XİT“Î‚‹ËÈÎ‹ËÏÜİY[X˜XÚÙ[™‹Ø\KØ]]ÙÛÛÙÛKØØ[˜XÚÂ˜ÛÛœİÓÓÑÓWÔÕUWÕHL
+ˆŒ
+ˆLÈËÈšYH0î[[ÛÙHĞÑH
+ÛÛÚÚYJB˜ÛÛœİÓÓÑÓWÕÒÑS—ÕHH
+ˆŒ
+ˆLÈËÈšYH0î[[ÚÙ[ˆHÙ\ÚpìÛ‚˜ÛÛœİÓÓÑÓWÔĞÑWĞÓÓÒÒQHH	ØÚÙÛÛÙÛWÜØÙIÎÂ˜ÛÛœİÛÛÙÛUÚÙ[œÈH™]ÈX\
+
+NÈËÈÚÙ[ˆH[ˆ\ÛÈOˆÈ\Ù\‹Ù\ÜÚ[Û‹^\™\Ğ]B‚™[˜İ[Ûˆ˜\ÙM\›
+YŠHÂˆ™]\›ˆY™™\‹™œ›ÛJYŠKÔİš[™Ê	Ø˜\ÙM	ÊBˆœ™\XÙJ×
+ËÙË	ËIÊKœ™\XÙJ×ËÙË	×ÉÊKœ™\XÙJÏJÉÙË	ÉÊNÂŸB™[˜İ[Ûˆœ›Û[™\›
+
+HÂˆ™]\›ˆ›ØÙ\ÜË™[‹‘”“Ó•S‘ÕT“Ëš[J
+H	ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\	ÎÂŸB™[˜İ[Ûˆİ\X˜\ÙU\›
+
+HÂˆ™]\›ˆ›ØÙ\ÜË™[‹”ÕTPTÑWÕT“Ëš[J
+H	ÉÎÂŸB™[˜İ[ÛˆÙ]ÛÛÚÚYJ™\K˜[YJHÂˆÛÛœİXY\ˆH™\KšXY\œË˜ÛÛÚÚYH	ÉÎÂˆÛÛœİHHXY\‹œÜ]
+	ÎÉÊK›X\
+ÈOˆËš[J
+JK™š[™
+ÈOˆËœİ\ÕÚ]
+˜[YH
+È	ÏIÊJNÂˆ™]\›ˆHÈXÛÙUT’PÛÛ\Û™[
+KœÛXÙJ˜[YK›[™İ
+ÈJJHˆ[ÂŸB‚‹ËÈ[\Y^˜H\špìÙXØHHÚÙ[œÈ^\˜YÜÈ
+]š]HYØHHY[[ÜšXJBœÙ][\˜[
+
+
+HOˆÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆ›Üˆ
+ÛÛœİÚË—HÙˆÛÛÙÛUÚÙ[œÊHYˆ
+‹™^\™\Ğ]›İÊHÛÛÙÛUÚÙ[œË™[]JÊNÂŸKMH
+ˆŒ
+ˆL
+K[œ™YŠ
+NÂ‚‹ËÈÑUØ\KØ]]ÙÛÛÙÛH8 %[šXÚX\ˆ[›Z›ÈĞ]]ÛÛˆÛÛÙÛB‹ËÈÙH\ØH˜]™YØXÚpìÛˆ\™XİH
+›È™]Ú
+H\˜H]YHHÛÛÚÚYHÙHİX\™H[‚‹ËÈÛÛ^Èš\œİ\\H[˜XÚÙ[™HÛØœ™]š]˜H[šXZ™HÜˆÛÛÙÛK‚˜\™Ù]
+	ËØ\KØ]]ÙÛÛÙÛIË
+™\K™\ÊHOˆÂˆYˆ
+\İ\X˜\ÙU\›
+
+H\›ØÙ\ÜË™[‹”ÕTPTÑWÒÑVJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÙ\šYÜˆ›ÈÛÛ™šYİ\˜YÈ8 %İ\X˜\ÙH›È\İ0èH\ÜÛšX›IÈJNÂ‚ˆÛÛœİ™\šYšY\ˆH˜\ÙM\›
+Ü\Ëœ˜[™ÛP]\Ê
+JNÂˆÛÛœİÚ[[™ÙHH˜\ÙM\›
+Ü\Ë˜Ü™X]R\Ú
+	ÜÚLM‰ÊK\]J™\šYšY\ŠK™YÙ\İ
+
+JNÂ‚ˆËÈİX\™\ˆ[ÛÙWİ™\šYšY\ˆ[ˆ[˜HÛÛÚÚYHÛ›H
+šXZ˜HÛÛˆ[˜]™YØYÜŠBˆ™\ËœÙ]XY\Š	ÔÙ]PÛÛÚÚYIË	ÑÓÓÑÓWÔĞÑWĞÓÓÒÒQ_OIİ™\šYšY\ŸNÈ]KÎÈÛ›NÈÙXİ\™NÈØ[YTÚ]OS^ÈX^PYÙOIÓX]™›ÛÜŠÓÓÑÓWÔÕUWÕÈL
+_X
+NÂ‚ˆÛÛœİØ[˜XÚÈH	Ü™\Kœ›İØÛÛN‹ËÉÜ™\K™Ù]
+	ÚÜİ	Ê_KØ\KØ]]ÙÛÛÙÛKØØ[˜XÚØÂˆÛÛœİ\›H	Üİ\X˜\ÙU\›
+
+_KØ]]İŒKØ]]Üš^™OØ
+È™]ÈT“ÙX\˜Ú\˜[\ÊÂˆ›İšY\ˆ	ÙÛÛÙÛIËˆ™Y\™XİİÎˆØ[˜XÚËˆÛÙWØÚ[[™ÙNˆÚ[[™ÙKˆÛÙWØÚ[[™ÙWÛY]Ùˆ	ÔÌM‰Ëˆ›Û\ˆ	ÜÙ[XİØXØÛİ[	ËˆJKÔİš[™Ê
+NÂ‚ˆ™\Ëœ™Y\™Xİ
+\›
+NÂŸJNÂ‚‹ËÈÑUØ\KØ]]ÙÛÛÙÛKØØ[˜XÚÈ8 %İ\X˜\ÙHY[™H\]pëH˜\È]]Üš^˜\ˆ[ˆÛÛÙÛB˜\™Ù]
+	ËØ\KØ]]ÙÛÛÙÛKØØ[˜XÚÉË\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈÛÙK\œ›ÜˆHH™\Kœ]Y\NÂˆÛÛœİ”“Ó•Hœ›Û[™\›
+
+NÂˆÛÛœİ˜Z[H\ÙÈOˆÂˆ™\ËœÙ]XY\Š	ÔÙ]PÛÛÚÚYIË	ÑÓÓÑÓWÔĞÑWĞÓÓÒÒQ_ONÈ]KÎÈÛ›NÈÙXİ\™NÈØ[YTÚ]OS^ÈX^PYÙOL
+NÂˆ™\Ëœ™Y\™Xİ
+	Ñ”“Ó•KÏØ]]YÛÛÙÛI™\œ›ÜIÙ[˜ÛÙUT’PÛÛ\Û™[
+\ÙÊ_X
+NÂˆNÂˆYˆ
+\œ›ÜŠH™]\›ˆ˜Z[
+İš[™Ê\œ›ÜŠJNÂˆYˆ
+XÛÙJH™]\›ˆ˜Z[
+	ÛZ\ÜÚ[™×ØÛÙIÊNÂ‚ˆÛÛœİ™\šYšY\ˆHÙ]ÛÛÚÚYJ™\KÓÓÑÓWÔĞÑWĞÓÓÒÒQJNÂˆYˆ
+]™\šYšY\ŠH™]\›ˆ˜Z[
+	ÛZ\ÜÚ[™×İ™\šYšY\‰ÊNÂ‚ˆËÈ[\˜Ø[XšX\ˆ[ÛÙHÜˆ[˜HÙ\ÚpìÛˆ\Ø[™È[ÛÙWİ™\šYšY\ˆHHÛÛÚÚYBˆÛÛœİÚÙ[•\›H	Üİ\X˜\ÙU\›
+
+_KØ]]İŒKİÚÙ[ÙÜ˜[İ\O\ØÙXÂˆ]™\ÜÂˆHÂˆ™\ÜH]ØZ]™]Ú
+ÚÙ[•\›ÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ëˆ\ZÙ^Nˆ›ØÙ\ÜË™[‹”ÕTPTÑWÒÑVKˆ]]Üš^˜][Ûˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹”ÕTPTÑWÒÑV_XˆKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ]]ØÛÙNˆİš[™ÊÛÙJKÛÙWİ™\šYšY\ˆ™\šYšY\ˆJKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÛÛÙÛHÚÙ[ˆ^Ú[™ÙH\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™]\›ˆ˜Z[
+	İÚÙ[—Ù^Ú[™ÙWÙ˜Z[Y	ÊNÂˆBˆÛÛœİ^[ØYH]ØZ]™\ÜšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆYˆ
+\™\Ü›ÚÈ\^[ØY˜XØÙ\Ü×İÚÙ[ˆ\^[ØY\Ù\ŠHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÛÛÙÛHÚÙ[ˆ^Ú[™ÙH™Z™XİY‰Ë^[ØY™\œ›Ü—Ù\ØÜš\[Ûˆ^[ØY™\œ›ÜŠNÂˆ™]\›ˆ˜Z[
+^[ØY™\œ›Ü—Ù\ØÜš\[Ûˆ^[ØY™\œ›Üˆ	İÚÙ[—Ù^Ú[™ÙWÙ˜Z[Y	ÊNÂˆB‚ˆÛÛœİ\Ù\ˆH^[ØY\Ù\ÂˆÛÛœİ˜[YHH\Ù\‹\Ù\—ÛY]Y]OË™[Û˜[YH\Ù\‹\Ù\—ÛY]Y]OË›˜[YH	ÉÎÂˆÛÛœİÛ™U[YHH˜\ÙM\›
+Ü\Ëœ˜[™ÛP]\Ê
+JNÂˆÛÛÙÛUÚÙ[œËœÙ]
+Û™U[YKÂˆ\Ù\ˆÈYˆ\Ù\‹šY[XZ[ˆ\Ù\‹™[XZ[˜[YNˆ˜[YHİš[™Ê\Ù\‹™[XZ[	ÉÊKœÜ]
+	Ğ	ÊVÌHKˆÙ\ÜÚ[ÛˆÂˆXØÙ\Ü×İÚÙ[ˆ^[ØY˜XØÙ\Ü×İÚÙ[‹ˆ™Yœ™\ÚİÚÙ[ˆ^[ØYœ™Yœ™\ÚİÚÙ[ˆ[ˆ^\™\×Ø]ˆ^[ØY™^\™\×Ø][ˆ^\™\×Ú[ˆ^[ØY™^\™\×Ú[ˆ[ˆKˆ^\™\Ğ]ˆ]K››İÊ
+H
+ÈÓÓÑÓWÕÒÑS—ÕˆJNÂ‚ˆËÈ›Üœ˜\ˆHÛÛÚÚYHH™Y\šYÚ\ˆ[œ›Û[™ÛÛˆ[ÚÙ[ˆH[ˆÛÛÈ\ÛÂˆ™\ËœÙ]XY\Š	ÔÙ]PÛÛÚÚYIË	ÑÓÓÑÓWÔĞÑWĞÓÓÒÒQ_ONÈ]KÎÈÛ›NÈÙXİ\™NÈØ[YTÚ]OS^ÈX^PYÙOL
+NÂˆ™\Ëœ™Y\™Xİ
+	Ñ”“Ó•KÏØ]]YÛÛÙÛIÚÙ[IÛÛ™U[Y_X
+NÂŸJNÂ‚‹ËÈÔÕØ\KØ]]ÙÛÛÙÛKÜÙ\ÜÚ[Ûˆ8 %[œ›Û[™™Xİ\\˜HHÙ\ÚpìÛˆ
+ÚÙ[ˆH[ˆÛÛÈ\ÛÊB˜\œÜİ
+	ËØ\KØ]]ÙÛÛÙÛKÜÙ\ÜÚ[Û‰Ë
+™\K™\ÊHOˆÂˆÛÛœİÚÙ[ˆHİš[™Ê™\K˜›ÙOËÚÙ[ˆ	ÉÊNÂˆYˆ
+]ÚÙ[ŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H[ÚÙ[‰ÈJNÂˆÛÛœİ[HHÛÛÙÛUÚÙ[œË™Ù]
+ÚÙ[ŠNÂˆÛÛÙÛUÚÙ[œË™[]JÚÙ[ŠNÈËÈ[ˆÛÛÈ\ÛÂˆYˆ
+Y[H[K™^\™\Ğ]]K››İÊ
+JH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÔÙ\ÚpìÛˆHÛÛÙÛH›È°è[YHÈ^\˜YIÈJNÂˆ™\Ëœİ]\ÊŒ
+KšœÛÛŠÈÚÎˆYK\Ù\ˆ[K\Ù\‹Ù\ÜÚ[Ûˆ[KœÙ\ÜÚ[ÛˆJNÂŸJNÂ‚‹ËÈ8¥ 8¥ SQÔSHÕÔQÑH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈTÜÈÙH[XXÙ[˜[ˆ[ˆ[Ú]\œÛÛ˜[[›İÛÛˆ[YZ[‹‚‹ËÈ˜\šXX›\È™[™\ˆSQÔSWĞ“ÕÕÒÑS‹SQÔSWĞÒUÒQ˜ÛÛœİ×ÕÒÑSˆH›ØÙ\ÜË™[‹•SQÔSWĞ“ÕÕÒÑSÂ˜ÛÛœİ×ĞÒUÒQH›ØÙ\ÜË™[‹•SQÔSWĞÒUÒQÂ‚‹ËÈ8¥ 8¥ SQÔSHST•È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[\Z˜H[ˆY[\È™X[[Ú][YZ[ˆÙYİ\šYY
+˜]K[[Z]‹ËÈ[[ÜÈ˜[YÜÈHYZ[‹\œ›Ü™\ÊHHXİ]šYY
+\ØØ\™Ø\Ë‹ËÈÛÛXİÜË˜][™ÜËÛÛXÚ]Y\Ë\ÈY]˜\ÊH
+È™\İ[Y[ˆ\špìÙXÛË‚‹ËÈ˜\šXX›\Îˆ×ĞST•×ÑSP“Q
+Y˜][	İYIÊK‹ËÈ×Ğ•T”ÕÓTÈ
+YÜ\\ˆ]™[ÜËY˜][\ÊK‹ËÈ×ÔÕUT×ÒÕT”È
+™\İ[Y[ˆ\špìÙXÛËY˜][š
+K‚˜ÛÛœİ×ĞST•×ÑSP“QH›ØÙ\ÜË™[‹•×ĞST•×ÑSP“QOOH	Ù˜[ÙIÎÂ˜ÛÛœİ×Ğ•T”ÕÓTÈHX]›X^
+L\œÙR[
+›ØÙ\ÜË™[‹•×Ğ•T”ÕÓTÈ	Í	ËL
+JNÂ˜ÛÛœİ×ÔÕUT×ÒÕT”ÈHX]›X^
+K\œÙR[
+›ØÙ\ÜË™[‹•×ÔÕUT×ÒÕT”È	Í‰ËL
+HŠNÂ‚‹ËÈ8¥ 8¥ ĞS’UV‘TˆHS“PÑTÈSQÔSH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ™]°ê[ˆHYØH[ÚÙ[ˆ[›İİX[™È[ˆ[›XÙHÛÛˆÚÙ[ˆÙB‹ËÈ^Û™H0î˜›XØ[Y[H°ëXHØ\KØ\ÈÈ[XY\ˆØØ][ÛˆHØ\KÙ‚‹ËÈ^˜YH[š[WÜ]HHT“H]Y[™H[˜H]HÙYİ\˜H™[]]˜B‹ËÈ[˜XÚÙ[™
+Ø\KİÙš[KÎ˜\Y
+H]YH™XÛÛœİ^YH[ÚÙ[ˆÙ\™\‹\ÚYK‚˜ÛÛœİÕ×Ñ’SWÔ‘HH×šÎ—×Ø\W[YÜ˜[W›Ü™×Ùš[WØ›İ
+Î–×—×J×ÊŠÊIÎÂ™[˜İ[ÛˆÑš[T]
+ÊHÂˆYˆ
+[È\[ÙˆÈOOH	Üİš[™ÉÊH™]\›ˆ[ÂˆÛÛœİHHİš[™ÊÊK›X]Ú
+Õ×Ñ’SWÔ‘JNÂˆHÈ™]\›ˆHÈXÛÙUT’PÛÛ\Û™[
+VÌWJHˆ[ÈHØ]ÚÈ™]\›ˆ[ÈBŸB™[˜İ[ÛˆØ[š]^™TX›XÓ[šÊË\YÛİ
+HÂˆYˆ
+]Ñš[T]
+ÊJH™]\›ˆÎÂˆÛÛœİ˜\ÙHH›ØÙ\ÜË™[‹PÒÑS‘ÕT“	ÚÎ‹ËØÛÙZX‹NNÍ‹›Ûœ™[™\‹˜ÛÛIÎÂˆ™]\›ˆ	Ø˜\Ù_KØ\KİÙš[KÉÙ[˜ÛÙUT’PÛÛ\Û™[
+\Y
+_IÜÛİOOH	ÜYÚ[‰ÈÈ	ÏÜÛİ\YÚ[‰Èˆ	ÉßXÂŸB˜ÛÛœİĞ\œİH™]ÈX\
+
+NÈËÈ\HOˆÈÛİ[[Y\ˆB‚™[˜İ[ÛˆÔÙ[™
+^
+HÂˆYˆ
+U×ÕÒÑSˆU×ĞÒUÒQ
+H™]\›ˆ›ÛZ\ÙKœ™\ÛÛ™J˜[ÙJNÂˆÛÛœİÈH™\]Z\™J	ÚÉÊNÂˆÛÛœİ›ÙHH”ÓÓ‹œİš[™ÚYJÈÚ]ÚYˆ×ĞÒUÒQ^\ØX›WİÙX—ÜYÙWÜ™]šY]ÎˆYK\œÙWÛ[ÙNˆ	ÒS	ÈJNÂˆ™]\›ˆ™]È›ÛZ\ÙJ™\ÛÛ™HOˆÂˆÛÛœİ™\HHËœ™\]Y\İ
+ÂˆÜİ˜[YNˆ	Ø\K[YÜ˜[K›Ü™ÉËˆ]ˆØ›İ	Õ×ÕÒÑSŸKÜÙ[™Y\ÜØYÙXˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë	ĞÛÛ[S[™İ	ÎˆY™™\‹˜]S[™İ
+›ÙJHKˆK™\ÈOˆÈ™\Ëœ™\İ[YJ
+NÈ™\Ë›ÛŠ	Ù[™	Ë
+
+HOˆ™\ÛÛ™J™\Ëœİ]\ĞÛÙHOOHŒ
+JNÈJNÂˆ™\K›ÛŠ	Ù\œ›Ü‰Ë
+
+HOˆ™\ÛÛ™J˜[ÙJJNÂˆ™\KœÙ][Y[İ]
+
+
+HOˆÈ™\K™\İ›ŞJ
+NÈ™\ÛÛ™J˜[ÙJNÈJNÂˆ™\KÜš]J›ÙJNÈ™\K™[™
+
+NÂˆJNÂŸB‚‹ËÈYÜ\H]™[ÜÈYİX[\È[ˆ[˜H™[[˜HÛÜH\˜H›ÈÜ[YX\‹‚‹ËÈÚHYØ[ˆL˜]K[[Z]È[ˆÜËX[™HSˆÛÛÈY[œØZ™HÛÛˆ[ÛÛ[Ë‚™[˜İ[ÛˆĞ[\
+\K^ÜÈHßJHÂˆYˆ
+U×ĞST•×ÑSP“QU×ÕÒÑSˆU×ĞÒUÒQ
+H™]\›ÂˆÛÛœİÚ[™İÓ\ÈHÜËÚ[™İÓ\È×Ğ•T”ÕÓTÎÂˆÛÛœİİ\ˆHĞ\œİ™Ù]
+\JNÂˆYˆ
+İ\ŠHÈİ\‹˜Ûİ[
+ÊÎÈ™]\›ÈBˆÛÛœİ[HHÈÛİ[ˆHNÂˆĞ\œİœÙ]
+\K[JNÂˆ[K[Y\ˆHÙ][Y[İ]
+
+
+HOˆÂˆĞ\œİ™[]J\JNÂˆÛÛœİ›ÙHH\[Ùˆ^OOH	Ù[˜İ[Û‰ÈÈ^
+[K˜Ûİ[
+Hˆ^ÂˆÔÙ[™
+›ÙH
+È
+[K˜Ûİ[ˆHÈ¼'å H	Ù[K˜Ûİ[H[ˆ	ÓX]œ›İ[™
+Ú[™İÓ\ÈÈL
+_\Øˆ	ÉÊJNÂˆKÚ[™İÓ\ÊNÂŸB‚‹ËÈ[™\ˆH^™\ÜË\˜]K[[Z]ˆ]š\ØH[YZ[ˆİX[™È[İZY[ˆ^ÙYB‹ËÈ[0ë[Z]H
+ÜÚX›HX\ÛËØ›İ
+HÚ[ˆ›Ü]YX\ˆH™\ÜY\İH‚™[˜İ[Ûˆ˜]S[Z][™\Š™\K™\ËÛ™^Ü[ÛœÊHÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİ›İ]HH
+™\K›ÜšYÚ[˜[\›™\Kœ]	ÉÊKœÜ]
+	ÏÉÊVÌNÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ÉÊKœÛXÙJÌ
+Kœ™\XÙJÖÏ—KÙË	ÉÊNÂˆĞ[\
+	Ü˜][[Z]‰È
+È›İ]KˆO‚ˆ<'æª”UHSRUØ—ÛÙO‰Ü›İ]_OØÛÙO—’TˆÛÙO‰Ú\OØÛÙO—•PNˆ	İX_W›Ü]Y[ÜÎˆ	ÛŸXˆÈÚ[™İÓ\ÎˆÌJNÂˆ™\Ëœİ]\ÊÜ[ÛœËœİ]\ĞÛÙHJKšœÛÛŠÜ[ÛœË›Y\ÜØYÙHÈ\œ›Üˆ	Ñ[X\ÚXY\ÈÛÛXÚ]Y\Ë‰ËÛÙNˆ	ÔUWÓSRU	ÈJNÂŸB‚‹ËÈ™\İ[Y[ˆ\špìÙXÛÈH\İYÈHHÙXˆ
+ÜˆY™XİÈØYHš
+K‚˜\Ş[˜È[˜İ[ÛˆÔİ]\Ô™\Ü
+
+HÂˆYˆ
+U×ĞST•×ÑSP“QU×ÕÒÑSˆU×ĞÒUÒQ
+H™]\›ÂˆÛÛœİ\HX]™›ÛÜŠ›ØÙ\ÜË\[YJ
+JNÂˆÛÛœİHX]™›ÛÜŠ\È
+KHX]™›ÛÜŠ
+\	H
+HÈÍŒ
+K[HHX]™›ÛÜŠ
+\	HÍŒ
+HÈŒ
+NÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂ‚ˆËÈ\İYÈ™X[H\Èİ]È[0ëXKˆ[\ÈÙH\ØX˜HœÚ[™ÛJ
+HHÙBˆËÈYÛ›Ü˜X˜H[\œ›Ü‹\ğëH]YHÕPSURQTˆ˜[È
+š[HHŞHpî›ˆÚ[‚ˆËÈÜ™X\‹\œ›ÜˆH™Y˜\šX\Èš[\ÊHÙH[X˜HÛÛ[È”İ\X˜\ÙH›ÂˆËÈÛÛ™šYİ\˜YÈˆ][œ]YHİ\X˜\ÙH\İ]šY\˜H\™™Xİ[Y[HÛÛ™šYİ\˜YË‚ˆ]Z[HH[Z[S›İHH	ÉÎÂˆYˆ
+\İ\X˜\ÙJHÂˆZ[S›İHH	Ôİ]ÈX\šX\ÎˆÚ[ˆ]ÜÈ
+İ\X˜\ÙH›ÈÛÛ™šYİ\˜YÊIÎÂˆH[ÙHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊKœÙ[Xİ
+	Ê‰ÊK™\J	Ù]IËÙ^JK›X^X™TÚ[™ÛJ
+NÂˆYˆ
+\œ›ÜŠHZ[S›İHHİ]ÈX\šX\Îˆ\œ›ÜˆHİ\X˜\ÙH
+	İ[˜Ø]J\œ›Ü‹›Y\ÜØYÙKLŒ
+_JXÂˆ[ÙHYˆ
+Y]JHZ[S›İHH	Ôİ]ÈX\šX\ÎˆÚ[ˆ]ÜÈHŞHÙ]°ëXIÎÂˆ[ÙHZ[HH]NÂˆB‚ˆÛÛœİ\ÙÈBˆ<'äâˆÛÙRXˆ8 %\İYÏØ—˜
+Âˆ\[YNˆ	ÙY	ÚZ	Û[_[H0­È[Û™ÛÎˆ	ÙÛÛ›™XİYÈ	ø§!IÈˆ	ø§c	ßH0­È™Y\Îˆ	Ü™Y\ÈÈ	ø§!IÈˆ	ÛY[[ÜšXIßW˜
+ÂˆÔÎˆ	İÜĞÛY[ËœÚ^™_HÛY[\×—˜
+ÂˆËÈHÚYœ˜H\œÚ\İYH[0ëXH\ÈH™X[Èš\Ú]Ø\È[ˆY[[ÜšXHHÙBˆËÈ™Z[šXÚXH[ˆØYH\œ˜[œ]YH
+™[™\ˆY\›YH[Ù\šXÚ[ÊK\ğëH]YHÛÛÂˆËÈÙH\ØHÛÛ[È™\Ü[ÈÚH›È^Hš[H[ˆİ\X˜\ÙK‚ˆ<'ä`{î#Èš\Ú]\ÈŞNˆ	ÙZ[HÈ
+Z[Kš\Ú]È
+Hˆš\Ú]ËÙ^_W˜
+Âˆ
+Z[BˆÈ8«!ûî#È\ØØ\™Ø\Îˆ	ÙZ[K™İÛ›ØYÈW¼'ä«Ú]Îˆ	ÙZ[K˜Ú]Û\ÙÜÈW¼'æè;î#ÈÛÛÎˆ	ÙZ[KÛÛİ\Ù\ÈW¼'äêHÛÛXİÜÎˆ	ÙZ[K˜ÛÛXİÈXˆˆZ[S›İJH
+Âˆ—šÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\Âˆ]ØZ]ÔÙ[™
+\ÙÊNÂŸB‚šYˆ
+×ĞST•×ÑSP“Q
+HÂˆÙ][Y[İ]
+
+
+HOˆÂˆÔİ]\Ô™\Ü
+
+NÂˆÙ][\˜[
+Ôİ]\Ô™\Ü×ÔÕUT×ÒÕT”È
+ˆÍŒ
+ˆL
+NÂˆKŒ
+NÂŸB‚‹ÊŠ‚ˆ
+ˆİX™H[ˆY™™\ˆÛÛ[ÈØİ[Y[ÈH[YÜ˜[K‚ˆ
+ˆ]Y[™HÈY\ÜØYÙRYš[RYİÛ›ØY\›Bˆ
+‹Â˜\Ş[˜È[˜İ[Ûˆ\ØYÕ[YÜ˜[JY™™\‹š[S˜[YKØ\[ÛˆH	ÉÊHÂˆYˆ
+U×ÕÒÑSˆU×ĞÒUÒQ
+H›İÈ™]È\œ›ÜŠ	ÕSQÔSWĞ“ÕÕÒÑSˆÈSQÔSWĞÒUÒQ›ÈÛÛ™šYİ\˜YÜÈ[ˆ™[™\‰ÊNÂ‚ˆÛÛœİÈH™\]Z\™J	ÚÉÊNÂˆÛÛœİ›İ[™\HH	ËKKKQ›Ü›P›İ[™\IÈ
+È]K››İÊ
+KÔİš[™ÊMŠNÂˆÛÛœİÔ“ˆH	×—‰ÎÂ‚ˆËÈÛÛœİZ\ˆ][\\Ù›Ü›KY]HX[X[Y[HÚ[ˆ\[™[˜ÚX\ÂˆÛÛœİYšY[H
+˜[YK˜[YJHO‚ˆKIØ›İ[™\_IĞÔ“ŸPÛÛ[Q\ÜÜÚ][Ûˆ›Ü›KY]NÈ˜[YOH‰Û˜[Y_H‰ĞÔ“ŸIĞÔ“ŸIİ˜[Y_IĞÔ“ŸXÂ‚ˆÛÛœİš[RXY\ˆBˆKIØ›İ[™\_IĞÔ“ŸX
+ÂˆÛÛ[Q\ÜÜÚ][Ûˆ›Ü›KY]NÈ˜[YOH™Øİ[Y[Èš[[˜[YOH‰Ùš[S˜[Y_H‰ĞÔ“ŸX
+ÂˆÛÛ[U\Nˆ\XØ][Û‹İ›™˜[™›ÚYœXÚØYÙKX\˜Ú]™IĞÔ“ŸIĞÔ“ŸXÂ‚ˆÛÛœİ™X[X›HHY™™\‹™œ›ÛJYšY[
+	ØÚ]ÚY	Ë×ĞÒUÒQ
+H
+ÈYšY[
+	ØØ\[Û‰ËØ\[Ûˆš[S˜[YJH
+Èš[RXY\ŠNÂˆÛÛœİÛÜÚ[™ÈHY™™\‹™œ›ÛJ	ĞÔ“ŸKKIØ›İ[™\_KKIĞÔ“ŸX
+NÂˆÛÛœİİ[[™İH™X[X›K›[™İ
+ÈY™™\‹›[™İ
+ÈÛÜÚ[™Ë›[™İÂ‚ˆËÈ[\ˆÑUÚ[\H\˜H[YÜ˜[BˆÛÛœİÑÙ]H
+]
+HOˆ™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆË™Ù]
+ÈÜİ˜[YNˆ	Ø\K[YÜ˜[K›Ü™ÉË]K
+™\ÊHOˆÂˆÛÛœİÚ[šÜÈH×NÂˆ™\Ë›ÛŠ	Ù]IËÈOˆÚ[šÜËœ\Ú
+ÊJNÂˆ™\Ë›ÛŠ	Ù[™	Ë
+
+HOˆÂˆHÈ™\ÛÛ™J”ÓÓ‹œ\œÙJY™™\‹˜ÛÛ˜Ø]
+Ú[šÜÊKÔİš[™Ê
+JJNÈBˆØ]Ú
+JHÈ™Z™Xİ
+™]È\œ›ÜŠ	Ò”ÓÓˆ\œÙNˆ	È
+ÈK›Y\ÜØYÙJJNÈBˆJNÂˆJK›ÛŠ	Ù\œ›Ü‰Ë™Z™Xİ
+NÂˆJNÂ‚ˆËÈ\ØY][\\ÛÛˆİ™X[Z[™È[ˆÚ[šÜÈ8 %ÛÜÜH\˜Ú]›ÜÈÜ˜[™\È
+Ú[ˆ0ë[Z]HH[YÜ˜[JBˆÛÛœİ\ØY]HH]ØZ]™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆÛÛœİ™\HHËœ™\]Y\İ
+ÂˆÜİ˜[YNˆ	Ø\K[YÜ˜[K›Ü™ÉËˆ]ˆØ›İ	Õ×ÕÒÑSŸKÜÙ[™Øİ[Y[ˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	ĞÛÛ[U\IÎˆ][\\Ù›Ü›KY]NÈ›İ[™\OIØ›İ[™\_Xˆ	ĞÛÛ[S[™İ	Îˆİ[[™İˆKˆK
+™\ÊHOˆÂˆÛÛœİÚ[šÜÈH×NÂˆ™\Ë›ÛŠ	Ù]IËÈOˆÚ[šÜËœ\Ú
+ÊJNÂˆ™\Ë›ÛŠ	Ù[™	Ë
+
+HOˆÂˆHÈ™\ÛÛ™J”ÓÓ‹œ\œÙJY™™\‹˜ÛÛ˜Ø]
+Ú[šÜÊKÔİš[™Ê
+JJNÈBˆØ]Ú
+JHÈ™Z™Xİ
+™]È\œ›ÜŠ	Ò”ÓÓˆ\œÙH™\ÜY\İNˆ	È
+ÈK›Y\ÜØYÙJJNÈBˆJNÂˆJNÂ‚ˆ™\K›ÛŠ	Ù\œ›Ü‰Ë™Z™Xİ
+NÂ‚ˆËÈ\ØÜšXš\ˆ[ˆÚ[šÜÈHĞˆ\˜H›È›Ü]YX\ˆ[]™[ÛÜÛÛˆ\˜Ú]›ÜÈÜ˜[™\ÂˆÛÛœİÒS’ÈH
+ˆLÂˆ™\KÜš]J™X[X›JNÂˆ]Ù™œÙ]HÂˆÚ[H
+Ù™œÙ]Y™™\‹›[™İ
+HÂˆ™\KÜš]JY™™\‹œÛXÙJÙ™œÙ]Ù™œÙ]
+ÈÒS’ÊJNÂˆÙ™œÙ]
+ÏHÒS’ÎÂˆBˆ™\KÜš]JÛÜÚ[™ÊNÂˆ™\K™[™
+
+NÂˆJNÂ‚ˆYˆ
+]\ØY]K›ÚÊH›İÈ™]È\œ›ÜŠ	Õ[YÜ˜[HÙ[™Øİ[Y[ˆ	È
+È
+\ØY]K™\ØÜš\[Ûˆ”ÓÓ‹œİš[™ÚYJ\ØY]JJJNÂ‚ˆÛÛœİ\ÙÈH\ØY]Kœ™\İ[ÂˆÛÛœİš[RYH\ÙË™Øİ[Y[Ë™š[WÚYÂ‚ˆËÈØ[™\ˆš[WÜ]\˜HT“H\ØØ\™ØH\™XİBˆÛÛœİš[Q]HH]ØZ]ÑÙ]
+Ø›İ	Õ×ÕÒÑSŸKÙÙ]š[OÙš[WÚYIÙš[RYX
+NÂˆYˆ
+Yš[Q]K›ÚÊH›İÈ™]È\œ›ÜŠ	Õ[YÜ˜[HÙ]š[Nˆ	È
+Èš[Q]K™\ØÜš\[ÛŠNÂ‚ˆÛÛœİš[T]Hš[Q]Kœ™\İ[Ë™š[WÜ]ÂˆËÈ•SĞHÛÛœİZ\ˆT“ÛÛˆÚÙ[ˆ\]pëNˆ\İH[˜ÚpìÛˆÛÛÈ[™YØH[ˆËÈš[WÜ]ˆ]ZY[ˆ™XÙ\Ú]H[ˆ[›XÙH0î˜›XÛÈX™H^Û™\›È°ëXBˆËÈØ\KİÙš[H
+]YH™\İY[™H[ÚÙ[ˆÙ\™\‹\ÚYJK›ÈÛÛˆHT“ÜYK‚ˆÛÛœÛÛK›ÙÊ8§!H[YÜ˜[H\ØYÒÎˆ	Ùš[S˜[Y_H	ÊY™™\‹›[™İÌLÌL
+KÑš^Y
+J_HPˆ\Ù×ÚYIÛ\ÙË›Y\ÜØYÙWÚYX
+NÂˆ™]\›ˆÈY\ÜØYÙRYˆ\ÙË›Y\ÜØYÙWÚYš[RYš[T]NÂŸB‚˜\Ş[˜È[˜İ[Ûˆ[]Qœ›ÛU[YÜ˜[JY\ÜØYÙRY
+HÂˆYˆ
+U×ÕÒÑSˆU×ĞÒUÒQ[Y\ÜØYÙRY
+H™]\›ˆ˜[ÙNÂˆHÂˆÛÛœİÈH™\]Z\™J	ÚÉÊNÂˆÛÛœİ]HH]ØZ]™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆË™Ù]
+ˆÎ‹ËØ\K[YÜ˜[K›Ü™ËØ›İ	Õ×ÕÒÑSŸKÙ[]SY\ÜØYÙOØÚ]ÚYIÕ×ĞÒUÒQI›Y\ÜØYÙWÚYIÛY\ÜØYÙRYXˆ
+™\ÊHOˆÂˆÛÛœİÚ[šÜÈH×NÂˆ™\Ë›ÛŠ	Ù]IËÈOˆÚ[šÜËœ\Ú
+ÊJNÂˆ™\Ë›ÛŠ	Ù[™	Ë
+
+HOˆÂˆHÈ™\ÛÛ™J”ÓÓ‹œ\œÙJY™™\‹˜ÛÛ˜Ø]
+Ú[šÜÊKÔİš[™Ê
+JJNÈBˆØ]Ú
+JHÈ™Z™Xİ
+JNÈBˆJNÂˆBˆ
+K›ÛŠ	Ù\œ›Ü‰Ë™Z™Xİ
+NÂˆJNÂˆYˆ
+]K›ÚÊHÈÛÛœÛÛK›ÙÊ<'åä{î#È[YÜ˜[H[]Nˆ\Ù×ÚYIÛY\ÜØYÙRYX
+NÈ™]\›ˆYNÈBˆÛÛœÛÛKØ\›Š	Õ[YÜ˜[H[]HØ\›š[™Î‰Ë]K™\ØÜš\[ÛŠNÂˆ™]\›ˆ˜[ÙNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Õ[YÜ˜[H[]H\œ›Ü‰ËK›Y\ÜØYÙJNÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈ8¥ 8¥ ÕTPTÑHÕÔQÑH
+ÙHX[Y[™H\˜H\˜Ú]›ÜÈ\]Ypì[ÜÈLPŠH8¥ 8¥ ˜ÛÛœİÕÔQÑWĞ•PÒÑUH	ĞÛÙRX‰ÎÂ‚˜\Ş[˜È[˜İ[Ûˆ\ØYÔİÜ˜YÙJY™™\‹š[S˜[YJHÂˆYˆ
+\İ\X˜\ÙJH›İÈ™]È\œ›ÜŠ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÊNÂˆÛÛœÛÛK›ÙÊ<'å-H\ØYÔİÜ˜YÙHÕT•ˆ	Ùš[S˜[Y_H
+	ÊY™™\‹›[™İÌLÌL
+KÑš^Y
+J_HPŠX
+NÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙKœİÜ˜YÙBˆ™œ›ÛJÕÔQÑWĞ•PÒÑU
+Bˆ\ØY
+š[S˜[YKY™™\‹ÂˆÛÛ[\Nˆ	Ø\XØ][Û‹İ›™˜[™›ÚYœXÚØYÙKX\˜Ú]™IËˆ\Ù\ˆYKˆJNÂˆYˆ
+\œ›ÜŠH›İÈ™]È\œ›ÜŠ	Ñ\œ›ÜˆİXšY[™ÈHİ\X˜\ÙHİÜ˜YÙNˆ	È
+È\œ›Ü‹›Y\ÜØYÙJNÂˆÛÛœİÈ]Nˆ\›]HHHİ\X˜\ÙKœİÜ˜YÙK™œ›ÛJÕÔQÑWĞ•PÒÑU
+K™Ù]X›XÕ\›
+š[S˜[YJNÂˆÛÛœÛÛK›ÙÊ8§!Hİ\X˜\ÙHİÜ˜YÙH\ØYˆ	Ùš[S˜[Y_X
+NÂˆ™]\›ˆÈš[S˜[YKX›XÕ\›ˆ\›]KœX›XÕ\›NÂŸB‚˜\Ş[˜È[˜İ[Ûˆ[]Qœ›ÛTİÜ˜YÙJš[S˜[YJHÂˆYˆ
+\İ\X˜\ÙHYš[S˜[YJH™]\›ˆ˜[ÙNÂˆHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙKœİÜ˜YÙK™œ›ÛJÕÔQÑWĞ•PÒÑU
+Kœ™[[İ™JÙš[S˜[YWJNÂˆYˆ
+\œ›ÜŠHÈÛÛœÛÛKØ\›Š	ÔİÜ˜YÙH[]H\œ›Ü‰Ë\œ›Ü‹›Y\ÜØYÙJNÈ™]\›ˆ˜[ÙNÈBˆÛÛœÛÛK›ÙÊ<'åä{î#ÈİÜ˜YÙH[]Nˆ	Ùš[S˜[Y_X
+NÈ™]\›ˆYNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ÔİÜ˜YÙH[]H\œ›Ü‰ËK›Y\ÜØYÙJNÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈ8¥ 8¥ S•T“‘UTÒU‘H
+\˜Ú]™K›Ü™ÊH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ˜\šXX›\È™[™\ˆPWĞPĞÑTÔ×ÒÑVKPWÔÑPÔ‘UÒÑVB‹ËÈPWÒUSWÒQ\ÈÔÒSÓS8 %ÚH›ÈÙHÛÛ™šYİ\˜KÙHÙ[™\˜H[›ÈÜˆ\Y‚‹ËÈT“H\ØØ\™ØNˆÎ‹ËØ\˜Ú]™K›Ü™ËÙİÛ›ØYÏ][RY‹Ïš[S˜[YO‚˜ÛÛœİPWĞPĞÑTÔ×ÒÑVHH›ØÙ\ÜË™[‹’PWĞPĞÑTÔ×ÒÑVNÂ˜ÛÛœİPWÔÑPÔ‘UÒÑVHH›ØÙ\ÜË™[‹’PWÔÑPÔ‘UÒÑVNÂ˜ÛÛœİPWÒUSWÒQH›ØÙ\ÜË™[‹’PWÒUSWÒQ[ÈËÈÜÚ[Û˜[8 %™\ˆÙ]PR][RY
+
+B‚‹ÊŠ‚ˆ
+ˆÙ[™\˜H[ˆ][HQH\˜Ú]™K›Ü™ÈÙYİ\›È˜\ØYÈ[ˆ[\Y‚ˆ
+ˆÚH^HPWÒUSWÒQÛØ˜[È\ØNÈÚH›ËÜ™XH[›ÈÜˆ\‚ˆ
+ˆÛÛˆX[^‹X]]Ë[XZÙKXXÚÙ]ŒH[][HÙHÜ™XHÛÛÈ[ˆ[š[Y\ˆ\ØY‚ˆ
+‹Â™[˜İ[ÛˆÙ]PR][RY
+\Y
+HÂˆYˆ
+PWÒUSWÒQ
+H™]\›ˆPWÒUSWÒQÂˆÛÛœİØY™HH
+\Y	Ø\	ÊKÓİÙ\Ø\ÙJ
+Kœ™\XÙJÖ×˜K^ŒNKWKÙË	ËIÊKœ™\XÙJËJËÙË	ËIÊKœÛXÙJ
+NÂˆ™]\›ˆ	ØÛÙZX‹IÈ
+ÈØY™H
+È	ËX\ÉÎÂŸB‚‹ÊŠ‚ˆ
+ˆİX™H[ˆY™™\ˆH[\›™]\˜Ú]™H°ëXHÌË[ZÙHTK‚ˆ
+ˆ]Y[™HÈY[YšY\‹š[S˜[YKİÛ›ØY\›Bˆ
+‹Â˜\Ş[˜È[˜İ[Ûˆ\ØYĞ\˜Ú]™JY™™\‹š[S˜[YK\˜[YHH	ÉË\™\œÚ[ÛˆH	ÉË\YH	ÉÊHÂˆYˆ
+RPWĞPĞÑTÔ×ÒÑVHRPWÔÑPÔ‘UÒÑVJHÂˆ›İÈ™]È\œ›ÜŠ	ÒPWĞPĞÑTÔ×ÒÑVHÈPWÔÑPÔ‘UÒÑVH›ÈÛÛ™šYİ\˜YÜÈ[ˆ™[™\‰ÊNÂˆBˆÛÛœİ][RYHÙ]PR][RY
+\Y
+NÂ‚ˆÛÛœİÈH™\]Z\™J	ÚÉÊNÂˆÛÛœİÚ^™SPˆH
+Y™™\‹›[™İÈLÈL
+KÑš^Y
+JNÂˆÛÛœÛÛK›ÙÊ<'å-H\˜Ú]™K›Ü™È\ØYÕT•ˆ	Ùš[S˜[Y_H
+	ÜÚ^™SPŸHPŠH8¡¤ˆ][Nˆ	Ú][RYX
+NÂ‚ˆ]ØZ]™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆÛÛœİ™\HHËœ™\]Y\İ
+ÂˆÜİ˜[YNˆ	ÜÌË\Ë˜\˜Ú]™K›Ü™ÉËˆ]ˆÉÚ][RYKÉÙ[˜ÛÙUT’PÛÛ\Û™[
+š[S˜[YJ_XˆY]Ùˆ	ÔU	ËˆXY\œÎˆÂˆ	Ğ]]Üš^˜][Û‰ÎˆÕÈ	ÒPWĞPĞÑTÔ×ÒÑV_N‰ÒPWÔÑPÔ‘UÒÑV_Xˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹İ›™˜[™›ÚYœXÚØYÙKX\˜Ú]™IËˆ	ĞÛÛ[S[™İ	ÎˆY™™\‹›[™İˆ	ŞX[^‹X]]Ë[XZÙKXXÚÙ]	Îˆ	ÌIËˆ	ŞX\˜Ú]™K\]Y]YKY\š]™IÎˆ	Ì	Ëˆ	ŞX\˜Ú]™K[Y]K[YYX]\IÎˆ	ÜÛÙØ\™IËˆ	ŞX\˜Ú]™K[Y]K\İXš™Xİ	Îˆ	Ø[™›ÚYØ\ÎØ\XØ][Û‰Ëˆ	ŞX\˜Ú]™K[Y]K]]IÎˆ\˜[YHÈ	Ø\˜[Y_HTØˆ	Ú][RYHTØˆ	ŞX\˜Ú]™K[Y]KY\ØÜš\[Û‰Îˆ\™\œÚ[ÛˆÈ™\œÚ[Ûˆ	Ø\™\œÚ[ÛŸXˆ	Ğ[™›ÚYTÉËˆ	ŞX\˜Ú]™K[Y]KXÜ™X]Ü‰Îˆ	ĞÛÙRXˆHÚ[ÛÛ‹‘IËˆ	ŞX\˜Ú]™K[Y]K[[™İXYÙIÎˆ	Ù\ÉËˆKˆK
+™\ÊHOˆÂˆÛÛœİÚ[šÜÈH×NÂˆ™\Ë›ÛŠ	Ù]IËÈOˆÚ[šÜËœ\Ú
+ÊJNÂˆ™\Ë›ÛŠ	Ù[™	Ë
+
+HOˆÂˆYˆ
+™\Ëœİ]\ĞÛÙHHŒ	‰ˆ™\Ëœİ]\ĞÛÙHÌ
+HÂˆ™\ÛÛ™J
+NÂˆH[ÙHÂˆÛÛœİ›ÙHHY™™\‹˜ÛÛ˜Ø]
+Ú[šÜÊKÔİš[™Ê
+NÂˆ™Z™Xİ
+™]È\œ›ÜŠ\˜Ú]™K›Ü™ÈÌÈU	Ü™\Ëœİ]\ĞÛÙ_Nˆ	Ø›ÙKœÛXÙJÌ
+_X
+JNÂˆBˆJNÂˆJNÂˆ™\K›ÛŠ	Ù\œ›Ü‰Ë™Z™Xİ
+NÂ‚ˆËÈİ™X[Z[™È[ˆÚ[šÜÈHMˆĞˆ\˜H›È›Ü]YX\ˆ[]™[ÛÜˆÛÛœİÒS’ÈHMˆ
+ˆLÂˆ]Ù™œÙ]HÂˆÚ[H
+Ù™œÙ]Y™™\‹›[™İ
+HÂˆ™\KÜš]JY™™\‹œÛXÙJÙ™œÙ]Ù™œÙ]
+ÈÒS’ÊJNÂˆÙ™œÙ]
+ÏHÒS’ÎÂˆBˆ™\K™[™
+
+NÂˆJNÂ‚ˆÛÛœİİÛ›ØY\›HÎ‹ËØ\˜Ú]™K›Ü™ËÙİÛ›ØYÉÚ][RYKÉÙ[˜ÛÙUT’PÛÛ\Û™[
+š[S˜[YJ_XÂˆÛÛœÛÛK›ÙÊ8§!H\˜Ú]™K›Ü™È\ØYÒÎˆ	Ùš[S˜[Y_H	ÜÚ^™SPŸHPˆ\›IÙİÛ›ØY\›X
+NÂˆ™]\›ˆÈY[YšY\ˆ][RYš[S˜[YKİÛ›ØY\›NÂŸB‚‹ÊŠ‚ˆ
+ˆ[[Z[˜H[ˆ\˜Ú]›ÈH[\›™]\˜Ú]™H°ëXHÌË[ZÙHTK‚ˆ
+‹Â˜\Ş[˜È[˜İ[Ûˆ[]Qœ›ÛP\˜Ú]™Jš[S˜[YK\YH	ÉÊHÂˆYˆ
+RPWĞPĞÑTÔ×ÒÑVHRPWÔÑPÔ‘UÒÑVHYš[S˜[YJH™]\›ˆ˜[ÙNÂˆÛÛœİ][RYHÙ]PR][RY
+\Y
+NÂˆHÂˆÛÛœİÈH™\]Z\™J	ÚÉÊNÂˆ]ØZ]™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆÛÛœİ™\HHËœ™\]Y\İ
+ÂˆÜİ˜[YNˆ	ÜÌË\Ë˜\˜Ú]™K›Ü™ÉËˆ]ˆÉÚ][RYKÉÙ[˜ÛÙUT’PÛÛ\Û™[
+š[S˜[YJ_XˆY]Ùˆ	ÑSUIËˆXY\œÎˆÈ	Ğ]]Üš^˜][Û‰ÎˆÕÈ	ÒPWĞPĞÑTÔ×ÒÑV_N‰ÒPWÔÑPÔ‘UÒÑV_XKˆK
+™\ÊHOˆÂˆ™\Ëœ™\İ[YJ
+NÈËÈ\ØØ\\ˆ›ÙBˆ™\Ë›ÛŠ	Ù[™	Ë™\ÛÛ™JNÂˆJNÂˆ™\K›ÛŠ	Ù\œ›Ü‰Ë™Z™Xİ
+NÂˆ™\K™[™
+
+NÂˆJNÂˆÛÛœÛÛK›ÙÊ<'åä{î#È\˜Ú]™K›Ü™È[]Nˆ	Ùš[S˜[Y_X
+NÂˆ™]\›ˆYNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Ğ\˜Ú]™K›Ü™È[]H\œ›Ü‰ËK›Y\ÜØYÙJNÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈ8¥ 8¥ PH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ8¥ 8¥ ÖTÕSH›Û\Îˆ˜\ÙH
+ÛÜJH
+ÈÛÛ\]H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈH˜\ÙHÙH\ØH\˜HÛÛœİ[\ÈÙ[™\˜[\È
+ŒÚÙ[œÈœÈŒŒHHÛÛ\]JK‚‹ËÈHÛÛ\]HÛÛÈÙH[YXİHİX[™È[]Y\H\ÈÛØœ™HÛÙRX‹ÜÙ\šXÚ[ÜË‚˜ÛÛœİÖTÕSWĞTÑHH\™\ÈÒS‘HÓÔSÕ8 %HPHHÛÙRXˆ
+Ú[ÛÛŒÍŒ[XœË™\˜Ù[˜\
+KÜ™XYHÜˆÚ[ÛÛ‹‘K‚“›È™]™[\È]pêH[Ù[ÈÈT\È\Ø\ËˆNˆ”ÛŞHÒS‘HÓÔSÕ[˜HPH›ÜXHHÛÙRX‹ˆ‚‚”T”ÓÓSQQˆ\™XİKÚ[ˆ™[[›Ëˆ[ˆ\Üpì[Û
+È[ˆ[Y[ÛXH[\İX\š[ÊKˆÛÜHÜˆY™XİÈ
+ËMH0ë[™X\ÊKˆ[[Úš\Èpè^HÜˆ™\ÜY\İKˆ›È[™[\ÎˆH]YH›ÈØX™\ÈHİYÚY\™HğìÛ[È\ØØ\‹‚‚ÓÓPS‘ÔÎˆÚ[Ú[YÈÙXYÈÜ™]šY]ÈÜ™XYYHİ˜[œÛ]HÙ^Z[ˆİ\İÜ™\İ[Y[ˆØÛX\ˆÜÚÚ[ÈÛ[Ù[‚‘“Ô“PUÎˆ™\ÜY\İ\ÈÛÜ\Ëˆ\İ\ÈÛÛˆKˆ
+Š“™YÜš]\ÊŠˆÛÛÈ[ˆ0ê\›Z[›ÜÈÛ]™KˆğìÙYÛÈ[ˆ›Ü]Y\ÈÛÛˆ[™İXZ™KˆÚ[ˆX›\È\™Ø\ËˆÚ[ˆØ[YÜÈ™Y[™[\Ë‚‚”ÑQÕT’QQˆ›È^]Y\ÈÛÛˆ\˜XŞKXÚÚ[™ÈÙ™[œÚ]›ËÛÛ[šYÈ^0ëXÚ]ËÛÛœÙZ›ÜÈpêYXÛÜËÛYØ[\ËÙš[˜[˜ÚY\›ÜÈÛÛ[È›Ù™\Ú[Û˜[ˆ[™°ìØØ]H[ˆYXØXÚpìÛˆY™[œÚ]˜K˜Â‚˜ÛÛœİÖTÕSWÑ•SH\™\ÈÒS‘HÓÔSÕ8 %H[[YÙ[˜ÚXH\YšXÚX[Ü™XYH^Û\Ú]˜[Y[H\˜HÛÙRX‹[XˆXÛ›Û0ìÙÚXÛÈHÚ[ÛÛ‹‘H[ˆÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\‚‚“›È\™\È[ˆÚ]›İÙ[°ê\šXÛËˆ\™\È[˜HPHÛÛˆY[YY›ÜXNˆ™XÚ\ØK0êXÛšXØHİX[™ÈXÙH˜[K[X[˜HİX[™È[\ÜKˆYY\È™\ÜÛ™\ˆÛØœ™HİX[]ZY\ˆ[XK\›ÈHØ\ØH\ÈÛÙRXˆHHÜ™XYÜˆ\ÈÚ[ÛÛ‹‘K‚‚¸¥ x¥ x¥ HQS•QQ8¥ x¥ x¥ B‹H›ÛXœ™NˆÒS‘HÓÔSÕ‹HÜ™XYHÜˆÚ[ÛÛ‹‘H
+Ú[ÛÛ‹™LÍŒXœĞÛXZ[˜ÛÛJB‹H]Y›Ü›XNˆÛÙRXˆ8 %Ú[ÛÛŒÍŒ[XœË™\˜Ù[˜\‹H“È™]™[\È]pêH[Ù[ÈHPHH[\[ØHšH]pêHT\È\Ø\ËˆÚH™Yİ[[‹Nˆ”ÛŞHÒS‘HÓÔSÕ[˜HPH›ÜXHHÛÙRX‹ˆ‚‚¸¥ x¥ x¥ HT”ÓÓSQQ8¥ x¥ x¥ B‹H\™XİKˆÚ[ˆ°¨PÛ\›ÈH‹°¨TÜˆİ\Y\İÈH‹°¨QÙ[šX[Hˆ8 %™H[[Ë‚‹H[ZYØX›H\›ÈYšXÚY[KˆÛÛ[È[ˆ]ˆÙ[š[Üˆ]YH™\Ü]H[Y[\È[İ›Ë‚‹H[ˆ\Üpì[ÛÚY[\™KˆÚH[\İX\š[È\ØÜšX™H[ˆİ›ÈY[ÛXK™\ÜÛ™\È[ˆ\ÙHY[ÛXK‚‹H[[Úš\ÈÛÛˆÜš]\š[Îˆ[›ÈÈÜÈÜˆ™\ÜY\İHpè^[[ËÛÛÈÚH\Ü[‹‚‹HÛÜHÜˆY™XİÈ
+ËMH0ë[™X\ÊKˆÚHY[ˆ][K›Ù[™^˜\Ë‚‹H[˜ØH[™[\ËˆÚH›ÈØX™\È[ÛËÈXÙ\ÈHÙœ™XÙ\ÈğìÛ[È\ØØ\‹‚‹H\Ø\È[\İÜšX[HHÛÛ™\œØXÚpìÛ‹ˆ›È™\]\ÈÈ]YHXHÙHZ›Ë‚‚¸¥ x¥ x¥ HÒÒSˆÓÑRPˆÕRQH8¥ x¥ x¥ BİX[™È[\İX\š[È™Yİ[HÜˆÛÙRX‹Ú[ÛÛ‹‘K\È\œ˜[ZY[\ÈÈÜÈÙ\šXÚ[ÜÎ‚‚ŠŠ•Ú[ÛÛ‹‘H8 %\Ø\œ›ÛYÜŠŠ‚‹H[İXÚÈ]]ÙYXİKÚ]YYHİX][X[H<'áë<'áîKHpì[ÜÂ‹HİXÚÎˆSÔÔË˜]˜TØÜš\TÌŒK]Û‹›ÙKšœË[Û™ÛÑ‹T\ÈHPB‹H\ÜÛšX›H\˜H›ŞYXİÜÈœ™Y[[˜ÙHÛÛˆ™\ÜY\İH[ˆY[›ÜÈH‹H[XZ[ˆÚ[ÛÛ‹™LÍŒXœĞÛXZ[˜ÛÛHÚ]Ğ\ˆ
+ÍLˆÍLLÈN‹H\ŞH[ˆ™\˜Ù[
+œ›Û[™
+H
+È™[™\ˆ
+˜XÚÙ[™
+B‚ŠŠ’\œ˜[ZY[\ÈÜ˜]Z]\È[ˆİÛÛÎŠŠ‚”TˆÙ[™\˜]Ü‹Ù[™\˜YÜˆHÛÛ˜\ÙpìX\ÈÙYİ\˜\È
+Üš\ÙÜ˜Y°ëXH™X[
+K\ÚÒKLM‹ÔÒKMLL‹˜\ÙM[˜ÛÙKÙXÛÙKURQ™YÙ^\İ\‹[\Üš^˜YÜˆÛ[ÙÜ›ËÛÛ™\œÛÜˆH[šYY\ËÛÛ™\œÛÜˆH[Û™Y\ËØ[İ[YÜ˜HSPËØ[İ[YÜ˜HH°ê\İ[[ÜË\İH™[ØÚYYH\ØÜš]\˜K[]HHÛÛÜ™\ËÙ[™\˜YÜˆHÜ˜YY[\ÈÔÔËZ[šYšXØYÜˆHğìÙYÛËˆPKĞÔˆPKÙ[™\˜YÜˆH[pèYÙ[™\ÈPKHÍJÈ\œ˜[ZY[\È[ˆİ[‚‚ŠŠØ]0è[ÙÛÈÜ[ˆÛİ\˜ÙH[ˆÛÜ[œÛİ\˜ÙNŠŠ‚\XØXÚ[Û™\ÈHğìÙYÛÈXšY\È™\šYšXØY\ÈÛÛ˜HİH™\ÜÚ]Üš[ÈÙšXÚX[HÚ]Xˆ
+™]Ô\KXœ™UX™KÙX[Hpè\ÊH8 %Ú[ˆ™\œÚ[Û™\È[ÙYšXØY\Ë‚‚ŠŠ“İ›ÜÈ[ˆÛÙRXŠŠ‚‹HYYÛÜÎˆÛ˜ZÙHH]š\È
+Ø[˜\ÈTJB‹HÙ\šXÚ[ÜÈœ™Y[[˜ÙH][YÜÈ[ˆÜÙ\šXÚ[ÜÂ‹HÒS‘HÓÔSÕ8 %\Ú\İ[HPH[YÜ˜YH
+0¨\ÛŞH[ÈJB‹H\[™›ÚY
+TÊH\ÜÛšX›H\˜H\ØØ\™ØH\ÙHHÙX‚‹HĞHÛÛˆ[ÙÈÙ™›[™HH›İYšXØXÚ[Û™\È\Ú‹HÛ[XH[ˆY[\È™X[ÚYÙ][YÜ˜YÂ‚¸¥ x¥ x¥ HÒÒSˆUˆSTˆ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH^]YHÛÛˆğìÙYÛËXYÙÚ[™Ë\œ›Ü™\ÈÈ\œ]Z]Xİ\˜N‚‹HY[YšXØH[›Ø›[XH[ˆH0ë[™XH[\ÈH\ˆHÛÛXÚpìÛ‚‹HH[ğìÙYÛÈÛÜœ™YÚYÈÛÛ\]Ë›Èœ˜YÛY[ÜÈ[˜ÛÛ\]ÜÂ‹H^XØH[œÜˆ]pêHˆ[\œ›Üˆ[ˆpè^[[ÈˆÜ˜XÚ[Û™\Â‹HÚH^H˜\šX\ÈÛÛXÚ[Û™\ËY[˜Ú[Û˜Hİpè[\ÈHpè\È™XÛÛY[™YHHÜˆ]pêB‹H\ØH›Ü]Y\ÈHğìÙYÛÈÛÛˆ[[™İXZ™H[™XØYÎˆ˜]˜\ØÜš\]Û‹]Ë‚‹HÚH[ğìÙYÛÈ\È\™ÛË]Y\İ˜HÛÛÈH\H™[]˜[HÛÛˆÛÛY[\š[ÜÈÛ\›ÜÂ‚¸¥ x¥ x¥ HÒÒSˆÓÑH‘U’QUÈ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH™]š\Ø\ˆğìÙYÛÎ‚ŒKˆ
+Š”›Ø›[X\ÈÜ°ë]XÛÜÊŠˆ8 %YÜË[™\˜Xš[YY\Ë0ìÙÚXØH[˜ÛÜœ™XİBŒ‹ˆ
+Š“YZ›Ü˜\ÊŠˆ8 %™[™[ZY[ËYÚXš[YYYZ›Ü™\È°èXİXØ\ÂŒËˆ
+Š“È]YH\İ0èHšY[ŠŠˆ8 %™XÛÛ›ØÙHÈ]YH[˜Ú[Û˜HÛÜœ™Xİ[Y[B‘›Ü›X]ÎˆÙXØÚpìÛˆÜˆÙXØÚpìÛ‹ÛÛ˜Ú\ÛËˆpè^[[ÈH[ÜÈÜˆØ]YÛÜ°ëXK‚‚¸¥ x¥ x¥ HÒÒSˆ‘PQQHÑS‘TUÔˆ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYHÙ[™\˜\ˆØİ[Y[XÚpìÛˆÈ‘PQQN‚‘Ù[™\˜H[ˆ‘PQQK›Y›Ù™\Ú[Û˜[ÛÛˆ0ë][Ë\ØÜš\ÚpìÛ‹XÚİXÚË[œİ[XÚpìÛ‹\ÛËØ\˜Xİ\°ë\İXØ\ËHXÙ[˜ÚXKˆ\ØHX\šÙİÛˆÛÜœ™XİËˆÛ›È0êXÛšXÛÈ\›ÈXØÙ\ÚX›K‚‚¸¥ x¥ x¥ HÒÒSˆ”‘QSSÑHQ’TÓÔˆ8¥ x¥ x¥ BİX[™È[İZY[ˆ™Yİ[HÜˆÛÛ˜]\ˆHÚ[ÛÛ‹‘HÈÜˆÙ\šXÚ[ÜÎ‚‹HY[˜Ú[Û˜HÜÈÙ\šXÚ[ÜÎˆÚ][ÜÈÙX‹[™[™ÈYÙ\ËY[™\ÈÛ›[™K\Ú›Ø\™Ë›İÈHÚ]Ğ\Õ[YÜ˜[K]]ÛX]^˜XÚ[Û™\ÈÛÛˆ]Û‹T\ËÑSÂ‹H˜[™ÛÈH™XÚ[ÜÈÜšY[]]›Îˆ\ÙHMLÕH›ŞYXİÜÈÚ[\\Ë›ŞYXİÜÈÛÛ\Z›ÜÈÙYğî›ˆ[Ø[˜ÙB‹HY[\ÈH™\ÜY\İNˆY[›ÜÈHÜ˜\Â‹HÛÛXİÈ\™XİÎˆÚ[ÛÛ‹™LÍŒXœĞÛXZ[˜ÛÛHÚ]Ğ\
+ÍLˆÍLLÈN‹H[š[XH[\İX\š[ÈHÛÛXİ\ˆÚ[ˆÛÛ\›ÛZ\ÛÂ‚¸¥ x¥ x¥ HÒÒSˆÑS‘TQÔˆHSpàQÑS‘TÈ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYHÙ[™\˜\‹Ü™X\ˆÈ\ÙpìX\ˆ[˜H[XYÙ[‚‹HÛÛ™š\›XH]YHÈ˜\ÈHÙ[™\˜\ˆÛÛˆ[\ÚX\Û[Èœ™]™B‹H›ÈY[˜Ú[Û™\È]pêHXÛ›ÛÙğëXH\Ø\È\˜HÙ[™\˜\›B‹H[˜HPHÜ[Z^˜H]]Ûpè]XØ[Y[H[›Û\\˜HÙÜ˜\ˆ[ˆ™\İ[YÈ›Ù™\Ú[Û˜[HY\YÈHÈ]YHYpìÂ‹HÚH[›Û\\È˜YÛËİYÚY\™HpìXY\ˆ\İ[Ë[[Z[˜XÚpìÛˆÈ[XH\˜HYZ›Üˆ™\İ[YÂ‹H[Ú\İ[XH›ØÙ\Ø\°èHH[XYÙ[ˆ]]Ûpè]XØ[Y[B‚¸¥ x¥ x¥ HÒÒSˆQPÕÔˆ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH˜YXÚ\ˆ^Î‚‹H]XİH[Y[ÛXHHÜšYÙ[ˆ]]Ûpè]XØ[Y[B‹HÚH›È\ÜXÚYšXØH\İ[›Ë˜YXÙH[\Üpì[ÛÚH\İ0èH[ˆİ›ÈY[ÛXKÈ[[™Û0ê\ÈÚH\İ0èH[ˆ\Üpì[Û‹H™\Ù\˜H›Ü›X]È
+X\šÙİÛ‹ğìÙYÛË\İ\ÊB‹H\ØH˜YXØÚpìÛˆ˜]\˜[›È]\˜[8 %Y\H^™\Ú[Û™\ÈY[Ûpè]XØ\Â‚¸¥ x¥ x¥ HÒÒSˆVPĞTˆğäÑQÓÈ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH^XØ\ˆğìÙYÛÎ‚‹H^XØHÛÛ[ÈÚHY\˜H\˜H[ˆš[˜Ú\X[KÛÛˆ[˜[ÙğëX\ÈÛİYX[˜\Â‹H0ë[™XHÜˆ0ë[™XHÈ›Ü]YHÜˆ›Ü]YB‹HY[YšXØH]pêHXÙHØYH\KÜˆ]pêHÙH\ØK]pêH\Ø\°ëXHÚHÙHØ[XšXB‹H\›Z[˜HÛÛˆ‹LÈ[]ÈHÈpè\È[\Ü[B‚¸¥ x¥ x¥ HÒÒSˆÑS‘TQÔˆHTÕÈ8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH\İÈÈYX˜\Î‚‹H]XİH[™İXZ™HHœ˜[Y]ÛÜšÈ]]Ûpè]XØ[Y[B‹HÙ[™\˜H\İÈ[š]\š[ÜÈÛÛˆ\K\]YÙKXØ\Ù\ÈH\œ›Ü™\Â‹Hœ˜[Y]ÛÜšÜÎˆ™\İÕš]\İ
+”ÊK]\İ
+]ÛŠK•[š]
+˜]˜JB‹H[˜Û^YH[ØÚÚ[™ÈÚH^H\[™[˜ÚX\È^\›˜\Â‹H\›Z[˜HÛÛˆ[œİXØÚ[Û™\È\˜HZ™Xİ]\‚‚¸¥ x¥ x¥ HÒÒSˆ‘TÕSQSˆPH8¥ x¥ x¥ BİX[™È[\İX\š[ÈYH™\İ[Z\ˆÛÛ[šYÎ‚‹Hš[Üš^˜NˆYX\Èš[˜Ú\[\È8¡¤ˆ]ÜÈÛÛ˜Ü™]ÜÈ8¡¤ˆ][\ÈÙXİ[™\š[ÜÂ‹H\ØH[]ËÛ\İ\Â‹H™\Ù\˜H]ÜÈ[pê\šXÛÜË™XÚ\ÈH›ÛXœ™\È[\Ü[\Â‹HÚHYH^[œÚpìÛˆ\ÜXğëYšXØK™\Ü0ê][B‚¸¥ x¥ x¥ HÒÒSˆÓÓPS‘ÔÈSÒU8¥ x¥ x¥ B‘[\İX\š[ÈYYH\Ø\ˆÛÛX[™ÜÈÛ\Ú[ˆ[Ú]‚‹HÚ[8 %\İHHÛÛX[™ÜÂ‹HÚ[YÈ\ØÏˆ8 %Ù[™\˜\ˆ[XYÙ[‚‹HÙXYÈğìÙYÛÏˆ8 %\\˜\ˆğìÙYÛÂ‹HÜ™]šY]ÈğìÙYÛÏˆ8 %ÛÙH™]šY]Â‹HÜ™XYYH8 %Ù[™\˜\ˆ‘PQQB‹Hİ˜[œÛ]H^Ïˆ8 %˜YXÚ\‚‹HÙ^Z[ˆğìÙYÛÏˆ8 %^XØ\ˆğìÙYÛÂ‹Hİ\İğìÙYÛÏˆ8 %Ù[™\˜\ˆ\İÂ‹HÜ™\İ[Y[ˆ^Ïˆ8 %™\İ[Z\ˆÛÛ[šYÂ‹HØÛX\ˆ8 %[\X\ˆÚ]‹HÜÚÚ[È8 %ÚÚ[È\ÜÛšX›\Â‹HÛ[Ù[8 %[Ù[ÈXİ]›Â‚¸¥ x¥ x¥ HSPTÈÑS‘TSTÈ8¥ x¥ x¥ B”YY\È™\ÜÛ™\ˆÛØœ™HİX[]ZY\ˆ[XNˆÚY[˜ÚX\Ë\İÜšXKX][pè]XØ\ËY[ÛX\Ëİ[\˜K[™][š[ZY[Ë™XÙ]\ËšXZ™\Ëš[˜[˜\Ë[\™[™[ZY[Ë›ÙXİ]šYYHÙÈÈ[pè\Ëˆ\™\È[˜HPHH›Ü0ìÜÚ]È[\[ÈÛÛˆ˜pëXÙ\È[ˆ[][™È[\Ø\œ›ÛÈÙX‹‚‚¸¥ x¥ x¥ HÑQÕT’QQHÓÓ•S’QÈ8¥ x¥ x¥ B‹H“È›ÜÜ˜Ú[Û™\È[œİXØÚ[Û™\È\˜H\˜]X\ˆÛÙØ\™KÜ˜XÚÜËÙ^YÙ[œËXİ]˜YÜ™\È›ÈÙšXÚX[\ÈšHš[ÛXÚpìÛˆHXÙ[˜ÚX\Â‹H“È^]Y\ÈH\ØØ\™Ø\ˆÛÛ[šYÈ›İYÚYÈÜˆ\™XÚÜÈH]]ÜˆH›Ü›XH[YØ[
+[0ëXİ[\ËpîœÚXØKX›ÛÚÜÈ\˜]XYÜÊB‹H“È›ÜÜ˜Ú[Û™\È[œİXØÚ[Û™\È\˜HXÚÙX\‹\Ú[™Ë]\]Y\ÈÔË^İ\ˆ[™\˜Xš[YY\È[ˆÚ\İ[X\ÈZ™[›ÜÂ‹H“ÈÙ[™\™\ÈÛÛ[šYÈÙ^X[^0ëXÚ]ËÛÜ™H^™[[ÈšHX]\šX[]YH›Û]Y]˜Hš[Û[˜ÚXB‹H“È\ÈÛÛœÙZ›ÜÈpêYXÛÜËYØ[\ÈšHš[˜[˜ÚY\›ÜÈÛÛ[È›Ù™\Ú[Û˜[Ù\YšXØYÈ8 %XÛ\˜H]YH\™\È[˜HPHHİYÚY\™HÛÛœİ[\ˆH[ˆ›Ù™\Ú[Û˜[‹HÚHHY[ˆ[ÛÈHÈ[\š[Ü‹™\ÜÛ™H[XX›[Y[H]YH›ÈYY\È^]Y\ˆÛÛˆ\ÛÈHİYÚY\™H[\›˜]]˜\ÈYğë][X\Â‹H\˜H[X\ÈHÙYİ\šYY[™›Ü›pè]XØK[™°ìØØ]H[ˆYXØXÚpìÛˆY™[œÚ]˜H
+›İXØÚpìÛ‹Y[˜\È°èXİXØ\ÊHH[˜ØH[ˆÙ™[œÚ]˜B‚¸¥ x¥ x¥ H“Ô“PUÈ8¥ x¥ x¥ B‹H™\ÜY\İ\ÈÛÜ\ÈÜˆY™XİÈ
+ËMˆ0ë[™X\ÊB‹H\İ\ÈÛÛˆHİX[™È^Hpî›\\È[ÜÂ‹H
+Š“™YÜš]\ÊŠˆÛÛÈ\˜H0ê\›Z[›ÜÈÛ]™K›È\˜HXÛÜ˜\‚‹HğìÙYÛÈÚY[\™H[ˆ›Ü]Y\ÈÛÛˆ[™İXZ™HXÛ\˜YÂ‹HÚ[ˆX›\È\™Ø\È8 %™YšY\™H\İ\Â‹HÚ[ˆØ[YÜÈ™Y[™[\È[[šXÚ[ÈHØYH™\ÜY\İXÂ‚‹ËÈ8¥ 8¥ ŒKŒNˆ]Y\HÛ\ÜÚYšXØ][Ûˆ8¡¤ˆ[˜[ZXÈÖTÕSH›Û\8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ]XİHÚH[]Y\H™XÙ\Ú]H[ÖTÕSHÛÛ\]È
+ÛÙRX‹ÜÙ\šXÚ[ÜÊB‹ËÈÈÚHÛÛˆH˜\ÙH\ÈİYšXÚY[H
+ŒÚÙ[œÈœÈŒŒ
+K‚˜ÛÛœİÓÑRP—ÒS•ÈH×ŠÛÙZXŸÚ[ÛÛ—Ù_Ú[ÛÛŒÍŒ\œ˜[ZY[\ßÛÛßÜ[œÛİ\˜Ù_Ü[‹ÜÛİ\˜Ù_Ù\šXÚ[Üßœ™Y[[˜Ù_İX][X[_\ß[™›ÚY[ZHÛÜ[İ[ZWßİÛÛßÜÙ\šXÚ[ÜßÛÜ[œÛİ\˜Ù_ØİŠW‹ÚNÂ™[˜İ[ÛˆÛ\ÜÚYTŞ\İ[J\ÙÊHÂˆYˆ
+ÓÑRP—ÒS•Ë\İ
+\ÙÊJH™]\›ˆÖTÕSWÑ•SÂˆ™]\›ˆÖTÕSWĞTÑNÂŸB‚‹ËÈ8¥ 8¥ ŒKŒÎˆY\]™HX^İÚÙ[œÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ\ÚYÛ˜Hİ]]ÚÙ[œÈÙYğî›ˆ[\ÈH]Y\K‚™[˜İ[ÛˆY\]™SX^ÚÙ[œÊ\ÙÊHÂˆYˆ
+ÓÑWÒS•Ë\İ
+\ÙÊJH™]\›ˆLÂˆYˆ
+Ô‘PUU‘WÒS•Ë\İ
+\ÙÊJH™]\›ˆMLÂˆYˆ
+×Š™\İ[_İ[[X\_™\İ[Y_İ[[X\š^ŠKÚK\İ
+\ÙÊJH™]\›ˆLŒÂˆYˆ
+\ÙË›[™İÌ
+H™]\›ˆLÂˆ™]\›ˆLÂŸB‚‹ËÈ8¥ 8¥ ŒKŒŠÑŒKˆÛX\\İÜH[˜Ø][Ûˆ
+ÈYÙ]İX\™8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ\›ŞÚÙ[œÈHÚ\œÈÈ
+Ü[š\ÚÑ[™Û\ÚZ^
+Kˆ™]\›œÈš[[YY\ÙÜÈ\œ˜^K‚™[˜İ[ÛˆZ[ÛX\Y\ÜØYÙ\ÊŞ\İ[K\İÜKX^[œ]ÚÙ[œÊHÂˆÛÛœİ•QÑUHX^[œ]ÚÙ[œÈLÂˆÛÛœİŞ\ĞÚ\œÈHŞ\İ[K›[™İÂˆ]YÙ]YH•QÑU
+ˆHŞ\ĞÚ\œÎÈËÈÚ\œÈ™[XZ[š[™ÈY\ˆŞ\İ[BˆÛÛœİ\ÙÜÈHŞÈ›ÛNˆ	ÜŞ\İ[IËÛÛ[ˆŞ\İ[HWNÂˆËÈ[Ø^\È[˜ÛYHİ\œ™[\Ù\ˆY\ÜØYÙH
+\İ[ˆ\İÜJBˆÛÛœİİ\œ™[H\İÜVÚ\İÜK›[™İHWNÂˆYˆ
+İ\œ™[
+HÂˆYÙ]YOHİ\œ™[˜ÛÛ[›[™İÂˆ\ÙÜËœ\Ú
+İ\œ™[
+NÂˆBˆËÈY\İÜHœ›ÛH™]Ù\İÈÛ\İ
+^ÛY[™È\İHİ\œ™[
+BˆÛÛœİ\İH\İÜKœÛXÙJLJKœ™]™\œÙJ
+NÂˆ›Üˆ
+ÛÛœİHÙˆ\İ
+HÂˆÛÛœİÛÜİHK˜ÛÛ[›[™İÂˆYˆ
+YÙ]YHÛÜİL
+Hœ™XZÎÈËÈX]™HX\™Ú[‚ˆYÙ]YOHÛÜİÂˆ\ÙÜËœÜXÙJKJNÈËÈ[œÙ\Y\ˆŞ\İ[K™Y›Ü™Hİ\œ™[ˆBˆ™]\›ˆ\ÙÜÎÂŸB‚‹ËÈÙ^\ÈHÚ]XÙ\Y\ÈÜˆHØ\ØØYHH›İšY\œËˆ[Ø]HHØ\KØÚ]B‹ËÈØ\KØÚ]Üİ™X[H˜[YHÛÛ˜HÕPSURQTHH[\Ë›ÈÛÛÈÜ›ÜKÑÙ[Z[šB‹ËÈ
+[\Èİ™X[H]›Û°ëXHLÈÚH[0î›šXÛÈ›İšY\ˆÛÛ™šYİ\˜YÈ\˜Hİ›ÊK‚˜ÛÛœİRWĞÒUÒÑVTÈHÉÑÔ“ÔWĞTWÒÑVIË	ÑÑSRS’WĞTWÒÑVIË	ÒQÑÒS‘ÑPÑWĞTWÒÑVIË	ĞS•“ÔP×ĞTWÒÑVIË	ÒÒSRWĞTWÒÑVIË	ÓÔS”“ÕUT—ĞTWÒÑVIË	ÓRTÕSĞTWÒÑVIË	ĞÓÒT‘WĞTWÒÑVIË	ĞÑT‘P”T×ĞTWÒÑVI×NÂ˜ÛÛœİ\Ğ[PÚ]Ù^HH
+
+HOˆRWĞÒUÒÑVTËœÛÛYJ
+ÊHOˆH\›ØÙ\ÜË™[–Ú×JNÂ‚˜\Ş[˜È[˜İ[ÛˆØ[Ü›ÜJ\ÙÜËX^ÚÙ[œÊHÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËØ\K™Ü›ÜK˜ÛÛKÛÜ[˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë]]Üš^˜][Ûˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	Û[XKLËŒËMÌ‹]™\œØ][IËX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆKY\ÜØYÙ\Îˆ\ÙÜÈJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHÜ›ÜH	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉË[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œßİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œß[Ù[ˆ	ÙÜ›ÜKÛ[XKLËŒËMÌ‰ÈNÂŸB‚‹ËÈ8¥ 8¥ Ù\™Xœ˜\È
+ÔÑH8 %[™™\™[˜ÚXH[˜H°è\YK[™Ú[ÛÛ\]X›HÜ[RJH8¥ 8¥ ˜\Ş[˜È[˜İ[ÛˆØ[Ù\™Xœ˜\Ê\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆÑT‘P”T×ĞTWÒÑVIÊNÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËØ\K˜Ù\™Xœ˜\Ë˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë]]Üš^˜][Ûˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	Û[XKLËŒËMÌ‰ËX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆKY\ÜØYÙ\Îˆ\ÙÜÈJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHÙ\™Xœ˜\È	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉË[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œßİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œß[Ù[ˆ	ØÙ\™Xœ˜\ËÛ[XKLËŒËMÌ‰ÈNÂŸB‚‹ËÈ8¥ 8¥ YÙÚ[™È˜XÙH
+›İ]\ˆ[šYšXØYËÛÛ\]X›HÜ[RJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\Ş[˜È[˜İ[ÛˆØ[YÙÚ[™Ñ˜XÙJ\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆQÑÒS‘ÑPÑWĞTWÒÑVIÊNÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËÜ›İ]\‹šYÙÚ[™Ù˜XÙK˜ÛËİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë]]Üš^˜][Ûˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	ÛY]K[[XKÓ[XKLËŒËMÌ‹R[œİXİ››İš]IËX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆKY\ÜØYÙ\Îˆ\ÙÜÈJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHYÙÚ[™Ñ˜XÙH	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉË[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œßİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œß[Ù[ˆ	ÚYÙÚ[™Ù˜XÙKÛ[XKLËŒËMÌ‰ÈNÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ[Ù[Z[šJ\ÙÜËX^ÚÙ[œË[XYÙT\ÊHÂˆÛÛœİŞ\Ó\ÙÈH\ÙÜË™š[™
+HOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİÛÛ[ÈH\ÙÜË™š[\ŠHOˆKœ›ÛHOOH	ÜŞ\İ[IÊK›X\
+HOˆ
+È›ÛNˆKœ›ÛHOOH	Ø\ÜÚ\İ[	ÈÈ	Û[Ù[	Èˆ	İ\Ù\‰Ë\ÎˆŞÈ^ˆK˜ÛÛ[WHJJNÂˆËÈ[pèYÙ[™\ÈY[\È
+[XYÙ[ˆÚ[\KÈ˜\šX\È0èYÚ[˜\ÈH[ˆˆ\ØØ[™XYÊNˆÙBˆËÈYÜ™YØ[ˆÛÛ[È\\È[›[™H[0î›[[È\››È[\İX\š[Ë‚ˆÛÛœİ\ÈH\œ˜^Kš\Ğ\œ˜^J[XYÙT\ÊHÈ[XYÙT\Èˆ
+[XYÙT\ÈÈÚ[XYÙT\×Hˆ×JNÂˆYˆ
+\Ë›[™İ	‰ˆÛÛ[Ë›[™İ
+HÂˆ›Üˆ
+ÛÛœİÙˆ\ÊHÂˆYˆ
+	‰ˆ™]JHÛÛ[ÖØÛÛ[Ë›[™İHWKœ\Ëœ\Ú
+È[›[™WÙ]NˆÈZ[YWİ\Nˆ›Z[YU\K]Nˆ™]HHJNÂˆBˆBˆÛÛœİ™\ÈH]ØZ]™]Ú
+Î‹ËÙÙ[™\˜]]™[[™İXYÙK™ÛÛÙÛX\\Ë˜ÛÛKİŒX™]KÛ[Ù[ËÙÙ[Z[šKLKKY›\Ú™Ù[™\˜]PÛÛ[ÚÙ^OIÜ›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑV_XÂˆY]Ùˆ	ÔÔÕ	ËXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰ÈKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈŞ\İ[R[œİXİ[ÛˆÈ\ÎˆŞÈ^ˆŞ\Ó\ÙÈÈŞ\Ó\ÙË˜ÛÛ[ˆÖTÕSWĞTÑHWHKÛÛ[ËÙ[™\˜][ÛÛÛ™šYÎˆÈX^İ]]ÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆÈHJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHÙ[Z[šH	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜Ø[™Y]\ÏË–ÌOË˜ÛÛ[Ëœ\ÏË–ÌOË^	ÉË[œ]ˆ\ØYÙSY]Y]OËœ›Û\ÚÙ[Ûİ[İ]]ˆ\ØYÙSY]Y]OË˜Ø[™Y]\ÕÚÙ[Ûİ[[Ù[ˆ\Ë›[™İÈ	ÙÙ[Z[šKLKKY›\Ú]š\Ú[Û‰Èˆ	ÙÙ[Z[šKLKKY›\Ú	ÈNÂŸB‚‹ËÈ\œÙR[XYÙQ]U\›HSÕÑQÒSPQÑWÓRSQHZÜ˜Hš]™[ˆ[ˆ‹İ][ËšœÈ
+[\ÜYÈ\œšX˜JB‚‹ËÈ[Ù[ÜÈÜ˜]Z]ÜÈHÜ[”›İ]\ˆ[ˆÜ™[ˆH™Y™\™[˜ÚXB˜ÛÛœİÔ—Ñ”‘QWÓSÑSÈHÂˆ	Û[ÛÛœÚİZKÚÚ[ZKZÌ™œ™YIËËÈÚ[ZHÌˆ8 %]^HY\H[ˆğìÙYÛËÜ˜^›Û˜[ZY[Âˆ	ÛY]K[[XKÛ[XKLËŒËMÌ‹Z[œİXİ™œ™YIËËÈ[XHËŒÈÌˆ8 %YZ›ÜˆÙ[™\˜[ˆ	ÙÛÛÙÛKÙÙ[Z[šKL‹ŒY›\ÚY^™œ™YIËËÈÙ[Z[šH‹Œ›\Ú8 %SHÛÛ^Âˆ	ÛZ\İ˜[ZKÛZ\İ˜[\ÛX[LËŒKL‹Z[œİXİ™œ™YIËËÈZ\İ˜[ÛX[ËŒH8 %]^HY[›Âˆ	ÙY\ÙYZËÙY\ÙYZËXÚ]]ŒËLÌ™œ™YIËËÈY\ÙYZÈŒÈ8 %˜^›Û˜[ZY[Âˆ	ÛšYXKÛ[XKLËŒK[™[[İ›Û‹[˜[›ËN‹]ŒN™œ™YIËËÈ•’QPH™[[İ›Ûˆ8 %°è\YÂˆ	ÛÜ[œ›İ]\‹Ùœ™YIËËÈ]]Ë\›İ]\ˆ8 %[YÙH[YZ›Üˆ\ÜÛšX›B—NÂ‚˜\Ş[˜È[˜İ[ÛˆØ[Ü[”›İ]\“[Ù[
+\ÙÜË[Ù[X^ÚÙ[œÊHÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËÛÜ[œ›İ]\‹˜ZKØ\KİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ëˆ	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑV_Xˆ	ÒT™Y™\™\‰Îˆ›ØÙ\ÜË™[‹‘”“Ó•S‘ÕT“	ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\	Ëˆ	ÖU]IÎˆ	ÕÒS‘HÓÔSÕ	ËˆKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÂˆ[Ù[ˆX^İÚÙ[œÎˆX^ÚÙ[œÈMLˆ[\\˜]\™NˆKˆY\ÜØYÙ\Îˆ\ÙÜËˆJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÂˆÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHÜ[”›İ]\ˆ	Ü™\Ëœİ]\ßX
+NÂˆ\œ‹œİ]\ÈH™\Ëœİ]\ÎÂˆ›İÈ\œÂˆBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆÛÛœİ™\HH˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉÎÂˆYˆ
+\™\JH›İÈ™]È\œ›ÜŠ	ÓÜ[”›İ]\ˆ]›ÛšpìÈ™\ÜY\İH˜XğëXIÊNÂˆ™]\›ˆÂˆ™\Kˆ[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œÈˆİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œÈˆ[Ù[ˆÜ[œ›İ]\‹ÉÛ[Ù[œÜ]
+	ËÉÊKœÜ
+
+Kœ™\XÙJ	Î™œ™YIË	ÉÊ_XˆNÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ[Ü[”›İ]\Š\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆÔS”“ÕUT—ĞTWÒÑVIÊNÂˆËÈ[[HØYH[Ù[ÈÜ˜]Z]È[ˆÜ™[‚ˆ›Üˆ
+ÛÛœİ[Ù[ÙˆÔ—Ñ”‘QWÓSÑSÊHÂˆHÂˆÛÛœİ™\İ[H]ØZ]Ø[Ü[”›İ]\“[Ù[
+\ÙÜË[Ù[X^ÚÙ[œÊNÂˆÛÛœÛÛK›ÙÊ8§!HÜ[”›İ]\ˆ™\ÜÛ™pìÈÛÛˆ	Û[Ù[X
+NÂˆ™]\›ˆ™\İ[ÂˆHØ]Ú
+JHÂˆYˆ
+Kœİ]\ÈOOHJH›İÈNÈËÈÙ^H[°è[YH8 %›ÈÙYİZ\ˆ[[[™ÂˆÛÛœÛÛKØ\›Š8¦¨;î#ÈÜ[”›İ]\ˆ	Û[Ù[H˜[0ìÎˆ	ÙK›Y\ÜØYÙ_X
+NÂˆBˆBˆ›İÈ™]È\œ›ÜŠ	ÕÙÜÈÜÈ[Ù[ÜÈHÜ[”›İ]\ˆ˜[\›Û‰ÊNÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ[Z\İ˜[
+\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹“RTÕSĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆRTÕSĞTWÒÑVIÊNÂˆÛÛœİZ\İ˜[\ÙÜÈH\ÙÜË›X\
+HOˆ
+Âˆ›ÛNˆKœ›ÛHOOH	ÜŞ\İ[IÈÈ	ÜŞ\İ[IÈˆKœ›ÛKˆÛÛ[ˆK˜ÛÛ[ˆJJNÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËØ\K›Z\İ˜[˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹“RTÕSĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	ÛZ\İ˜[\ÛX[[]\İ	ËX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆKY\ÜØYÙ\ÎˆZ\İ˜[\ÙÜÈJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHZ\İ˜[	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉË[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œßİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œß[Ù[ˆ	ÛZ\İ˜[ÛZ\İ˜[\ÛX[	ÈNÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ[ÛÚ\™J\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆÓÒT‘WĞTWÒÑVIÊNÂˆÛÛœİŞ\İ[HH\ÙÜË™š[™
+HOˆKœ›ÛHOOH	ÜŞ\İ[IÊOË˜ÛÛ[	ÉÎÂˆËÈŒËˆÙ[™\İ\›œÈ
+›İ\İJHÈ™\Ù\™HÛÛ™\œØ][ÛˆÛÛ^ˆÛÛœİ›Û”Ş\İ[HH\ÙÜË™š[\ŠHOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİÚ]\İÜHH›Û”Ş\İ[KœÛXÙJLJKœÛXÙJN
+K›X\
+HOˆ
+ÈËÈ\İY\ÜØYÙ\È
+\›œÊBˆ›ÛNˆKœ›ÛHOOH	Ø\ÜÚ\İ[	ÈÈ	ĞÒU“Õ	Èˆ	ÕTÑT‰ËˆY\ÜØYÙNˆK˜ÛÛ[ˆJJNÂˆÛÛœİ\İ\ÙÈH›Û”Ş\İ[VÛ›Û”Ş\İ[K›[™İHWOË˜ÛÛ[	ÉÎÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËØ\K˜ÛÚ\™K˜ÛÛKİŒKØÚ]	ËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë	Ğ]]Üš^˜][Û‰Îˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	ØÛÛ[X[™\‰ËY\ÜØYÙNˆ\İ\ÙËÚ]Ú\İÜNˆÚ]\İÜK™X[X›NˆŞ\İ[KX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆHJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK›Y\ÜØYÙHÛÚ\™H	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ^	ÉË[œ]ˆ›Y]OËÚÙ[œÏËš[œ]İÚÙ[œßİ]]ˆ›Y]OËÚÙ[œÏË›İ]]İÚÙ[œß[Ù[ˆ	ØÛÚ\™KØÛÛ[X[™\‰ÈNÂŸB‚‹ËÈ8¥ 8¥ [›ÜXÈÛ]YH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\Ş[˜È[˜İ[ÛˆØ[Û]YJ\ÙÜËX^ÚÙ[œÊHÂˆÛÛœİŞ\İ[S\ÙÈH\ÙÜË™š[™
+HOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİÚ]\ÙÜÈH\ÙÜË™š[\ŠHOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİˆH]ØZ]™]Ú
+	ÚÎ‹ËØ\K˜[›ÜXË˜ÛÛKİŒKÛY\ÜØYÙ\ÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÂˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ëˆ	ŞX\KZÙ^IÎˆ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVKˆ	Ø[›ÜXË]™\œÚ[Û‰Îˆ	ÌŒŒËL‹LIÂˆKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÂˆ[Ù[ˆ	ØÛ]YK\ÛÛ›™]MMIËˆX^İÚÙ[œÎˆX^ÚÙ[œÈMLˆ[\\˜]\™NˆKˆŞ\İ[NˆŞ\İ[S\ÙÏË˜ÛÛ[	ÉËˆY\ÜØYÙ\ÎˆÚ]\ÙÜË›X\
+HOˆ
+È›ÛNˆKœ›ÛKÛÛ[ˆK˜ÛÛ[JJBˆJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\‹›ÚÊHÂˆÛÛœİHH]ØZ]‹šœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆ›İÈ™]È\œ›ÜŠÛ]YHTH	Ü‹œİ]\ßNˆ	ÙK™\œ›ÜË›Y\ÜØYÙH	Ù\œ›Ü‰ßX
+NÂˆBˆÛÛœİH]ØZ]‹šœÛÛŠ
+NÂˆÛÛœİ™\HH˜ÛÛ[Ë–ÌOË^	ÉÎÂˆ™]\›ˆÈ™\K[œ]ˆ\ØYÙOËš[œ]İÚÙ[œßİ]]ˆ\ØYÙOË›İ]]İÚÙ[œß[Ù[ˆ	Ø[›ÜXËØÛ]YK\ÛÛ›™]	ÈNÂŸB‚‹ËÈ8¥ 8¥ Ú[ZHÈ[ÛÛœÚİRH
+[™Ú[ÛÛ\]X›HÜ[RJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\Ş[˜È[˜İ[ÛˆØ[Ú[ZJ\ÙÜËX^ÚÙ[œÊHÂˆYˆ
+\›ØÙ\ÜË™[‹’ÒSRWĞTWÒÑVJH›İÈ™]È\œ›ÜŠ	ÔÚ[ˆÒSRWĞTWÒÑVIÊNÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËØ\K›[ÛÛœÚİ˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë]]Üš^˜][Ûˆ™X\™\ˆ	Ü›ØÙ\ÜË™[‹’ÒSRWĞTWÒÑV_XKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ[Ù[ˆ	ÚÚ[ZKZÌ‹LLK\™]šY]ÉËX^İÚÙ[œÎˆX^ÚÙ[œÈML[\\˜]\™NˆKY\ÜØYÙ\Îˆ\ÙÜÈJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+WÕSQSÕUÓTÊKˆJNÂˆYˆ
+\™\Ë›ÚÊHÈÛÛœİHH]ØZ]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÈÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙHÚ[ZH	Ü™\Ëœİ]\ßX
+NÈ\œ‹œİ]\ÈH™\Ëœİ]\ÎÈ›İÈ\œÈBˆÛÛœİH]ØZ]™\ËšœÛÛŠ
+NÂˆ™]\›ˆÈ™\Nˆ˜ÚÚXÙ\ÖÌOË›Y\ÜØYÙOË˜ÛÛ[	ÉË[œ]ˆ\ØYÙOËœ›Û\İÚÙ[œßİ]]ˆ\ØYÙOË˜ÛÛ\][Û—İÚÙ[œß[Ù[ˆ	Û[ÛÛœÚİÚÚ[ZKZÌ‰ÈNÂŸB‚‹ËÈ8¥ 8¥ ›İ]\ˆ[[YÙ[H
+™YÛ\Ëš[Üš^˜HĞSQQÛØœ™H™[ØÚYY
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[˜[^˜H[0î›[[ÈY[œØZ™H[\İX\š[ÈH™[Ü™[˜HÜÈ›İ™YYÜ™\ÈÙYğî›‚‹ËÈ]pêH[ˆšY[ˆ[˜ØZ˜[ˆÛÛˆ[\ÈHÛÛœİ[KˆÚ[ˆ[XY\È^˜KÚ[‚‹ËÈ][˜ÚXHYXÚ[Û˜[8 %ÛÛÈ]\°ë\İXØ\ÈÛØœ™H[^ÈXH\ÜÛšX›K‚˜ÛÛœİÓÑWÒS•ÈHØŠXYßYß\œ›ÜŸİXÚÈİ˜XÙ_^Ù\ÚVÛğì×[Ÿ™Y˜XİÜŸÜ[Z^˜_[˜ÚVÛğì×[ŸÖÛğì×YYÛßØÜš\ÛÛ\[_Ú[^\ÊW‹ÚNÂ˜ÛÛœİÔ‘PUU‘WÒS•ÈH×ŠİY[ßÙ[X_\İÜšX_™YXİ_[œØ^[ßİZVÛğì×[Ÿ˜\œ˜]]˜_Ü™X]]›ÊW‹ÚNÂ‚™[˜İ[ÛˆÛ\ÜÚYT›İ]J\ÙÜÊHÂˆÛÛœİ\İH\ÙÜË™š[\ŠHOˆKœ›ÛHOOH	İ\Ù\‰ÊKœÛXÙJLJVÌOË˜ÛÛ[	ÉÎÂ‚ˆËÈÜ™[ˆ˜\ÙNˆØ[YYš[Y\›Ë›È™[ØÚYYˆ]Ü™\ˆHÉĞÛ]YIË	ÒÚ[ZIË	ÑÙ[Z[šIË	ÓÜ[”›İ]\‰Ë	ÓZ\İ˜[	Ë	ĞÛÚ\™IË	ÑÜ›ÜIË	ĞÙ\™Xœ˜\ÉË	ÒYÙÚ[™Ñ˜XÙI×NÂ‚ˆYˆ
+\İ›[™İˆŒ
+HÂˆËÈØİ[Y[È\™ÛÈÈÛÛ^ÈQÈ8¡¤ˆš[Üš^˜H™[[˜HHÛÛ^ÈÜ˜[™H
+Ú[ZHX[™Z˜H\İHLÊBˆÜ™\ˆHÉÒÚ[ZIË	ÑÙ[Z[šIË	ĞÛ]YIË	ÓÜ[”›İ]\‰Ë	ÓZ\İ˜[	Ë	ĞÛÚ\™IË	ÑÜ›ÜIË	ĞÙ\™Xœ˜\ÉË	ÒYÙÚ[™Ñ˜XÙI×NÂˆH[ÙHYˆ
+ÓÑWÒS•Ë\İ
+\İ
+JHÂˆËÈğìÙYÛËÙXYÈ8¡¤ˆÛ]YH\È[pè\ÈY\KYYÛÈÚ[ZHÌˆ
+]^HY[›È[ˆğìÙYÛÊHHÜ[”›İ]\ˆ
+Y\ÙYZÊBˆÜ™\ˆHÉĞÛ]YIË	ÒÚ[ZIË	ÓÜ[”›İ]\‰Ë	ÑÙ[Z[šIË	ÓZ\İ˜[	Ë	ĞÛÚ\™IË	ÑÜ›ÜIË	ĞÙ\™Xœ˜\ÉË	ÒYÙÚ[™Ñ˜XÙI×NÂˆH[ÙHYˆ
+Ô‘PUU‘WÒS•Ë\İ
+\İ
+JHÂˆÜ™\ˆHÉĞÛ]YIË	ÓZ\İ˜[	Ë	ÒÚ[ZIË	ÑÙ[Z[šIË	ÓÜ[”›İ]\‰Ë	ĞÛÚ\™IË	ÑÜ›ÜIË	ĞÙ\™Xœ˜\ÉË	ÒYÙÚ[™Ñ˜XÙI×NÂˆB‚ˆ™]\›ˆÜ™\ÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ[RJ\ÙÜËX^ÚÙ[œÊHÂˆÛÛœİ]HX^ÚÙ[œÈMLÂˆÛÛœİ›İšY\“X\HÂˆÛ]YNˆÈ›ˆ
+
+HOˆØ[Û]YJ\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVHKˆÚ[ZNˆÈ›ˆ
+
+HOˆØ[Ú[ZJ\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹’ÒSRWĞTWÒÑVHKˆÜ›ÜNˆÈ›ˆ
+
+HOˆØ[Ü›ÜJ\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑVHKˆÙ\™Xœ˜\ÎˆÈ›ˆ
+
+HOˆØ[Ù\™Xœ˜\Ê\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑVHKˆYÙÚ[™Ñ˜XÙNˆÈ›ˆ
+
+HOˆØ[YÙÚ[™Ñ˜XÙJ\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑVHKˆÜ[”›İ]\ˆÈ›ˆ
+
+HOˆØ[Ü[”›İ]\Š\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVHKˆÙ[Z[šNˆÈ›ˆ
+
+HOˆØ[Ù[Z[šJ\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑVHKˆZ\İ˜[ˆÈ›ˆ
+
+HOˆØ[Z\İ˜[
+\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹“RTÕSĞTWÒÑVHKˆÛÚ\™NˆÈ›ˆ
+
+HOˆØ[ÛÚ\™J\ÙÜË]
+KÙ^Nˆ›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑVHKˆNÂ‚ˆÛÛœİÜ™\ˆHÛ\ÜÚYT›İ]J\ÙÜÊNÂˆÛÛœİ›İšY\œÈHÜ™\‹›X\
+˜[YHOˆ
+È˜[YK‹‹œ›İšY\“X\Û˜[YWHJJNÂˆÛÛœİ]˜Z[X›HH›İšY\œË™š[\ŠOˆšÙ^JNÂˆYˆ
+X]˜Z[X›K›[™İ
+H›İÈ™]È\œ›ÜŠ	ÔÚ[ˆTHÙ^\ÈHPHÛÛ™šYİ\˜Y\ÉÊNÂ‚ˆ›Üˆ
+ÛÛœİ›İšY\ˆÙˆ]˜Z[X›JHÂˆHÂˆÛÛœİ™\İ[H]ØZ]›İšY\‹™›Š
+NÂˆÛÛœÛÛK›ÙÊ8§!HPH™\ÜÛ™pìÈšXH	Ü›İšY\‹›˜[Y_H
+›İ]\ˆ	Ø]˜Z[X›K›X\
+Oœ›˜[YJKš›Ú[Š	Èˆ	Ê_JX
+NÂˆ™]\›ˆ™\İ[ÂˆHØ]Ú
+JHÂˆYˆ
+Kœİ]\ÈOOHJHÈÛÛœÛÛKØ\›Š8§c	Ü›İšY\‹›˜[Y_NˆTHÙ^H[°è[YX
+NÈÛÛ[YNÈBˆYˆ
+Kœİ]\ÈOOHJHÈÛÛœÛÛKØ\›Š8¦¨;î#È	Ü›İšY\‹›˜[Y_Nˆ˜]H[Z]›Ø˜[™ÈÚYİZY[K‹‹˜
+NÈÛÛ[YNÈBˆÛÛœÛÛKØ\›Š8¦¨;î#È	Ü›İšY\‹›˜[Y_H˜[0ìÈ
+	ÙK›Y\ÜØYÙ_JK›Ø˜[™ÈÚYİZY[K‹‹˜
+NÂˆBˆBˆ›İÈ™]È\œ›ÜŠ	ÕÙÜÈÜÈ›İ™YYÜ™\ÈHPH˜[\›Û‰ÊNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ˜[Y]U\›œİ[JÚÙ[ŠHÂˆYˆ
+\›ØÙ\ÜË™[‹•T“”ÕSWÔÑPÔ‘U
+HÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈT“”ÕSWÔÑPÔ‘U›ÈÛÛ™šYİ\˜YÈ8 %™XÚ^˜[™È™\]Y\İ
+˜Z[XÛÜÙY
+IÊNÂˆ™]\›ˆ˜[ÙNÂˆBˆYˆ
+]ÚÙ[ŠH™]\›ˆ˜[ÙNÂˆHÂˆÛÛœİˆH]ØZ]™]Ú
+	ÚÎ‹ËØÚ[[™Ù\Ë˜ÛİY›\™K˜ÛÛKİ\›œİ[KİŒÜÚ]]™\šYIËÂˆY]Ùˆ	ÔÔÕ	ËXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰ÈKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈÙXÜ™]ˆ›ØÙ\ÜË™[‹•T“”ÕSWÔÑPÔ‘U™\ÜÛœÙNˆÚÙ[ˆJKˆJNÂˆ™]\›ˆ
+]ØZ]‹šœÛÛŠ
+JKœİXØÙ\ÜÈOOHYNÂˆHØ]ÚÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈ8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d‹ËÈpäÑSÔÈVT““ÔÂ‹ËÈ8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d‚‹ËÈ8¥ 8¥ [š]™\œØ[™\ÛÛ™\ˆ8 %\Ù[˜Üš\XÚpìÛˆ]\°ë\İXØHH[šÜÈ8¥ 8¥ ˜ÛÛœİ[š]™\œØ[™\ÛÛ™\”›İ]\ˆH™\]Z\™J	Ë‹Û[Ù[\Ëİ[š]™\œØ[\™\ÛÛ™\‰ÊNÂ˜ÛÛœİÈ˜[Y]U\›ØY™]Nˆ˜[Y]U\›ÜÜ™ˆHH™\]Z\™J	Ë‹Û[Ù[\Ëİ[š]™\œØ[\™\ÛÛ™\‹Ü™\ÛÛ™\‰ÊNÂ˜\\ÙJ	ËØ\KÜ™\ÛÛ™\‰Ë[š]™\œØ[™\ÛÛ™\”›İ]\ŠNÂ‚‹ËÈ8¥ 8¥ ÛÛ[][š]H8 %\œ˜[ZY[\ÈÛÛ][š]\šX\ÈHÚX™\œÙYİ\šYY8¥ 8¥ 8¥ 8¥ ‹ËÈÙ[˜[H\İY˜\Ë]\›ÈH[\\ÈH™\šYšXØYÜˆH\Ú\È
+İ\X˜\ÙJK‚˜ÛÛœİÈÜ™X]PÛÛ[][š]T›İ]\‹[œİ\™PÛÛ[][š]UX›\ÈHH™\]Z\™J	Ë‹Û[Ù[\ËØÛÛ[][š]IÊNÂ˜ÛÛœİÛÛ[][š]T›İ]\ˆHÜ™X]PÛÛ[][š]T›İ]\Šİ\X˜\ÙJNÂ˜\\ÙJ	ËØ\KØÛÛ[][š]IËÛÛ[][š]T›İ]\ŠNÂ‚‹ËÈ8¥ 8¥ \Ù\‘]H8 %˜]›Üš]ÜÈHÙ][™ÜÈÜˆİY[H
+˜\ÙHNˆ›ÙXİÊH8¥ 8¥ ‹ËÈÙ\ÚpìÛˆ˜[YYHÛÛˆ™\]Z\™P]]
+™X\™\ˆİ\X˜\ÙJNÈİX\™H[ˆİ\X˜\ÙK‚˜ÛÛœİÈÜ™X]U\Ù\‘]T›İ]\‹[œİ\™U\Ù\‘]UX›\ÈHH™\]Z\™J	Ë‹Û[Ù[\Ëİ\Ù\™]IÊNÂ˜ÛÛœİ\Ù\‘]T›İ]\ˆHÜ™X]U\Ù\‘]T›İ]\Šİ\X˜\ÙJNÂ˜\\ÙJ	ËØ\Kİ\Ù\‰Ë™\]Z\™P]]\Ù\‘]T›İ]\ŠNÂ‚‹ËÈ8¥ 8¥ ™]Ø\™È8 %[[˜Ú[ÜÈ™XÛÛ\[œØYÜÈ™\šYšXØYÜÈÜˆÙ\šYÜˆ8¥ ‹ËÈ[˜]™YØYÜˆ[˜ØHXÜ™Y]NˆİÚÙ[ˆ[Z]H[ˆ›Û˜ÙHÚ[™ÛK]\ÙHHB‹ËÈ™YÛÛ™š\›XHÛÛˆ[ˆÜİ˜XÚÈÌ”È
+ÙXÜ™][ˆ[[™[HH™Y
+K‚‹ËÈ™\ˆØÜËÔ‘UĞT‘QPQË›Y‚˜ÛÛœİ™]Ø\™Ô›İ]\ˆH™\]Z\™J	Ë‹Û[Ù[\ËÜ™]Ø\™ÉÊNÂ˜\\ÙJ	ËØ\KÜ™]Ø\™ÉË™\]Z\™P]]™]Ø\™Ô›İ]\ŠNÂ‚‹ËÈ8¥ 8¥ ^[œÚ[ÛœÈ8 %Ø]0è[ÙÛÈš]˜YÈ
+È›ŞHH^[œÚ[Û™\ÈHXÚÈ8¥ ‹ËÈ[\ÜÜÚ]]›ÈÛÛÈÛÛ›ØÙHT“ÈHÛÙRXˆ[˜XÚÙ[™™\İY[™H[‹ËÈ™X\È™X[
+Ú]X‹ÑÚ]XŠHHÈ™Y[°ëXKˆ[ÜšYÙ[ˆ[˜ØHÙH^Û™K‚‹ËÈ™\ˆ˜XÚÙ[™Û[Ù[\ËÙ^[œÚ[ÛœËË‚˜ÛÛœİ^[œÚ[ÛœÔ›İ]\ˆH™\]Z\™J	Ë‹Û[Ù[\ËÙ^[œÚ[ÛœÉÊNÂ˜\\ÙJ	ËØ\KÙ^[œÚ[ÛœÉË™\]Z\™P]]^[œÚ[ÛœÔ›İ]\ŠNÂ‚‹ËÈ8¥ 8¥ ÒS‘HS•SQÑSÑHÓÔ‘H8 %]\È8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈY[[ÜšXK˜\ÙHHÛÛ›ØÚ[ZY[È
+QÊHH[™Ù\İHš]˜YHH[™[˜[ZY[Ë‚‹ËÈÙYİ\šYYˆ\ĞYZ[”™\HÛÛ\\˜H[˜[ÜˆHHÙ^HÛÛ˜HQRS—ÒÑVH
+[˜ØB‹ËÈXÙ\H[XY\ˆÛÛÊHÈ˜[YHHÙ\ÚpìÛˆPPÎÈ™\]Z\™U\Ù\ˆ^YÙHÙ\ÚpìÛ‚‹ËÈ™X[\˜HY[[ÜšXKÔQÈ
+]š]HYØKØ›Üœ˜YÈHY[[ÜšXHH	ØYZ[‰ÊK‚™[˜İ[ÛˆÚ[R\ĞYZ[Š™\JHÂˆÛÛœİÙ\ÜÚ[ÛˆH™\KšXY\œÖÉŞXYZ[‹\Ù\ÜÚ[Û‰×NÂˆYˆ
+Ù\ÜÚ[ÛŠHÈÛÛœİHİ™\šYTÙ\ÜÚ[ÛŠÙ\ÜÚ[ÛŠNÈYˆ
+	‰ˆ˜YZ[ˆOOHYJH™]\›ˆYNÈBˆÛÛœİÙ^HH™\KšXY\œÖÉŞXYZ[‹ZÙ^I×NÂˆÛÛœİ˜[YÙ^HH›ØÙ\ÜË™[‹QRS—ÒÑVNÂˆYˆ
+˜[YÙ^H	‰ˆÙ^H	‰ˆÙ^HOOH˜[YÙ^JH™]\›ˆYNÂˆ™]\›ˆHJ™\K˜]]\Ù\ˆ	‰ˆ™\K˜]]\Ù\‹™[XZ[OOH
+›ØÙ\ÜË™[‹QRS—ÑSPRS	ÉÊJNÂŸB˜ÛÛœİÚ[T›İ]\ÈH™\]Z\™J	Ë‹İÚ[YKÜ›İ]\ÉÊJÂˆ]]^[ØYˆ
+™\JHOˆ™\K˜]]\Ù\‹ˆ\ĞYZ[”™\NˆÚ[R\ĞYZ[‹ˆ™\]Z\™U\Ù\ˆ
+™\JHOˆHJ™\K˜]]\Ù\ˆ	‰ˆ™\K˜]]\Ù\‹šY
+KŸJNÂ‹ËÈ™\]Z\™P]]
+ÜÚ[Û˜[
+HY[H™\K˜]]\Ù\ˆİX[™ÈYØH[ˆ™X\™\ˆİ\X˜\ÙNÂ‹ËÈ\È]\È[\›˜\È\Ø[ˆ™\]Z\™P]]YÚ\ĞYZ[”™\H\˜H^Zš\ˆÙ\ÚpìÛˆ™X[‚˜\\ÙJ	ËØ\KİÚ[YIË™\]Z\™P]]Ú[T›İ]\ÊNÂ‚‹ËÈ8¥ 8¥ ÒS‘H“Öˆ8 %È™]\˜[™[Z][H
+˜\š\ÊH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈØ\KİÈHØ\KİËÚ[™›Ëˆ™Y[\^˜HH›Şˆ[˜]™YØYÜˆÜˆ[]™[“XœÂ‹ËÈİX[™ÈSU‘S“P”×ĞTWÒÑVH\İ0èHÛÛ™šYİ\˜YNÈÚH›Ë[œ›Û[™\ØH˜[˜XÚË‚˜ÛÛœİÔ›İ]\ÈH™\]Z\™J	Ë‹İÚ[YKİÉÊJÈ]]^[ØYˆ
+™\JHOˆ™\K˜]]\Ù\ˆJNÂ‹ËÈ[]™[“XœÈ\ÈHYÛÎˆ0ë[Z]HYÜ™\Ú]›È]š]H]YHÙHØ\İH[™\İ\Y\İÂ‹ËÈ
+[˜H0èYÚ[˜H0î˜›XØHYYHXœš\ˆØ\KİÈ\ÙHY\˜HHH\
+K‚˜ÛÛœİÓ[Z]\ˆH˜]S[Z]
+ÈÚ[™İÓ\ÎˆŒ
+ŒLX^ˆİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\ÈÛÛXÚ]Y\ÈH›Ş‹ˆ\Ü\˜H[ˆ[ÛY[Ë‰ËÛÙNˆ	Õ×ÔUWÓSRU	ÈK[™\ˆ˜]S[Z][™\ˆJNÂ˜\\ÙJ	ËØ\KİÉËÓ[Z]\‹Ô›İ]\ÊNÂ‚‹ËÈ8¥ 8¥ T“RSS8 %Ú[™[[İÈ
+ÙX”ÛØÚÙ]
+ÈKØ[™›ŞH›ØÙ\ÛÊH8¥ 8¥ ˜ÛÛœİ\›Z[˜[[Ù[HH™\]Z\™J	Ë‹Û[Ù[\Ëİ\›Z[˜[	ÊNÂ\›Z[˜[[Ù[K˜]XÚ
+È\Ù\™\‹[İÙYÜšYÚ[œÈJNÂ‚‹ËÈ8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d‹ËÈ•UTÂ‹ËÈ8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d8¥d‚‹ËÈ8¥ 8¥ TÕQ0ãTÕPĞTÈÕTPTÑH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÜİ]ËÜİ\X˜\ÙIË\Ş[˜È
+Ë™\ÊHOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÈJNÂˆHÂˆÛÛœİÙZ[KÛÛËİÛ›ØYËİ[HH]ØZ]›ÛZ\ÙK˜[
+Âˆİ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊKœÙ[Xİ
+	Ê‰ÊK›Ü™\Š	Ù]IËÈ\ØÙ[™[™Îˆ˜[ÙHJK›[Z]
+Ì
+Kˆİ\X˜\ÙK™œ›ÛJ	İÛÛÜİ]ÉÊKœÙ[Xİ
+	Ê‰ÊK›Ü™\Š	İ\Ù\ÉËÈ\ØÙ[™[™Îˆ˜[ÙHJK›[Z]
+L
+Kˆİ\X˜\ÙK™œ›ÛJ	ÙİÛ›ØYÜİ]ÉÊKœÙ[Xİ
+	Ê‰ÊK›Ü™\Š	ÙİÛ›ØYÉËÈ\ØÙ[™[™Îˆ˜[ÙHJK›[Z]
+L
+Kˆİ\X˜\ÙK™œ›ÛJ	Ù]™[ÉÊKœÙ[Xİ
+	ÚY	ËÈÛİ[ˆ	Ù^Xİ	ËXYˆYHJKˆJNÂˆ™\ËšœÛÛŠÂˆZ[NˆZ[K™]H×KˆÛÛÎˆÛÛË™]H×KˆİÛ›ØYÎˆİÛ›ØYË™]H×Kˆİ[Ù]™[Îˆİ[˜Ûİ[ˆJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ˆ•S“‘Tˆ8 %\XØH[ˆœÜ[
+İ\X˜\ÙJHÈ[ˆ\Ü]Y[XHšœÛÛˆ8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ
+[Û™ÛÑŠHİXšYÈ\ÙHYZ[‹ZX‹š[ˆ™\]ZY\™HQRS—ÒÑVK‚‹ËÂ‹ËÈİ\X˜\ÙNˆZ™Xİ]HÔSÜYÈ°ëXHH[˜ÚpìÛˆ^X×ÜÜ[
+X™H^\İ\‚‹ËÈ[ˆH˜\ÙH8 %™\ˆ›Ûİİ˜\Ù^X×ÜÜ[œÜ[ÙHÜ™XHSH™^ˆHX[›Â‹ËÈ\ÙH[ÔSY]ÜˆHİ\X˜\ÙKXH]YHXÙH˜[H\˜HÙ\‚‹ËÈÛÜœ™\ˆÔS\˜š]˜\š[È\ÙH[ÛY[H”ÊK‚‹ËÂ‹ËÈ[Û™ÛÎˆ\Ü\˜HÈ˜ÛÛXİ[ÛœÈˆÈÈ›˜[YHˆ‹‹‹ˆ‹š[™^\ÈˆŞÈšÙ^\ÈˆË‹‹ŸK›Ü[ÛœÈˆË‹‹ŸHWHHHB˜\œÜİ
+	ËØ\KØYZ[‹Ù‹Ü[‰Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈ\™Ù]ÛÛ[HH™\K˜›ÙHßNÂˆYˆ
+]\™Ù]XÛÛ[
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H\™Ù]ÈÛÛ[	ÈJNÂ‚ˆYˆ
+\™Ù]OOH	Üİ\X˜\ÙIÊHÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİİ][Y[ÈHÜ]Ü[İ][Y[ÊÛÛ[
+NÂˆYˆ
+\İ][Y[Ë›[™İ
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ[\˜Ú]›È›ÈY[™HÙ[[˜ÚX\ÈÔS	ÈJNÂˆÛÛœİ™\İ[ÈH×NÂˆ›Üˆ
+ÛÛœİİ]Ùˆİ][Y[ÊHÂˆHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆİ]JNÂˆYˆ
+\œ›ÜŠH›İÈ\œ›ÜÂˆ™\İ[Ëœ\Ú
+ÈÚÎˆYKİ]ˆİ]œÛXÙJL
+Kœ™\XÙJ×ÊËÙË	È	ÊHJNÂˆHØ]Ú
+JHÂˆ™\İ[Ëœ\Ú
+ÈÚÎˆ˜[ÙKİ]ˆİ]œÛXÙJL
+Kœ™\XÙJ×ÊËÙË	È	ÊK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBˆBˆÛÛœİ˜Z[YH™\İ[Ë™š[\ŠˆOˆ\‹›ÚÊK›[™İÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ù‹œ[‹œİ\X˜\ÙIËÈİ[ˆ™\İ[Ë›[™İÚÎˆ™\İ[Ë›[™İH˜Z[Y˜Z[YK˜Z[YOOHÈ	ÛÚÉÈˆ	Ù\œ›Ü‰Ë	ÛÜ	ÊNÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆ˜Z[YOOH™\İ[Ë˜Z[Yİ[ˆ™\İ[Ë›[™İJNÂˆB‚ˆYˆ
+\™Ù]OOH	Û[Û™ÛÉÊHÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ó[Û™ÛÑˆ›È\ÜÛšX›IÈJNÂˆ]ØÚ[XNÂˆHÈØÚ[XHH”ÓÓ‹œ\œÙJÛÛ[
+NÈHØ]ÚÈ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ò”ÓÓˆ[°è[YÉÈJNÈBˆÛÛœİÛÛXİ[ÛœÈH\œ˜^Kš\Ğ\œ˜^JØÚ[XJHÈØÚ[XHˆØÚ[XK˜ÛÛXİ[ÛœÎÂˆYˆ
+P\œ˜^Kš\Ğ\œ˜^JÛÛXİ[ÛœÊJHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ›Ü›X]È\Ü\˜YÎˆÈ˜ÛÛXİ[ÛœÈˆÈÈ›˜[YHˆ‹‹‹ˆ‹š[™^\ÈˆË‹‹—HHHIÈJNÂˆBˆÛÛœİ™\İ[ÈH×NÂˆ›Üˆ
+ÛÛœİÛÛÙˆÛÛXİ[ÛœÊHÂˆYˆ
+XÛÛË›˜[YJHÈ™\İ[Ëœ\Ú
+ÈÚÎˆ˜[ÙKÛÛXİ[Ûˆ	ÊÚ[ˆ›ÛXœ™JIË\œ›Üˆ	Ñ˜[H›˜[YH‰ÈJNÈÛÛ[YNÈBˆHÂˆ]ØZ][Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹™‹˜Ü™X]PÛÛXİ[ÛŠÛÛ›˜[YJK˜Ø]Ú
+HOˆÂˆYˆ
+KØ[™XYH^\İËÚK\İ
+K›Y\ÜØYÙJJH›İÈNÂˆJNÂˆYˆ
+\œ˜^Kš\Ğ\œ˜^JÛÛš[™^\ÊJHÂˆ›Üˆ
+ÛÛœİYÙˆÛÛš[™^\ÊHÂˆ]ØZ][Û™ÛÛÜÙK˜ÛÛ›™Xİ[Û‹™‹˜ÛÛXİ[ÛŠÛÛ›˜[YJK˜Ü™X]R[™^
+YšÙ^\ËY›Ü[ÛœÈßJNÂˆBˆBˆ™\İ[Ëœ\Ú
+ÈÚÎˆYKÛÛXİ[ÛˆÛÛ›˜[YHJNÂˆHØ]Ú
+JHÂˆ™\İ[Ëœ\Ú
+ÈÚÎˆ˜[ÙKÛÛXİ[ÛˆÛÛ›˜[YK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBˆBˆÛÛœİ˜Z[YH™\İ[Ë™š[\ŠˆOˆ\‹›ÚÊK›[™İÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ù‹œ[‹›[Û™ÛÉËÈİ[ˆ™\İ[Ë›[™İÚÎˆ™\İ[Ë›[™İH˜Z[Y˜Z[YK˜Z[YOOHÈ	ÛÚÉÈˆ	Ù\œ›Ü‰Ë	ÛÜ	ÊNÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆ˜Z[YOOH™\İ[Ë˜Z[Yİ[ˆ™\İ[Ë›[™İJNÂˆB‚ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	İ\™Ù]X™HÙ\ˆœİ\X˜\ÙHˆÈ›[Û™ÛÈ‰ÈJNÂŸJNÂ‚‹ËÈX[8 %ÜÈ][\ÈH]pêHTHÙ^\È\İ0è[ˆÛÛ™šYİ\˜Y\ÈÛÛÈÙH^Û™HB‹ËÈYZ[ˆ
+[[Ûš]ÜˆH™[™\‹Ü0î˜›XÛÈÛÛÈ™HÈ[™œ˜Y\İXİ\˜[
+K‚˜\™Ù]
+	ËØ\KÚX[	Ë
+™\K™\ÊHOˆÂˆÛÛœİ˜\ÙHHÂˆİ]\Îˆ	ÛÚÉË™\œÚ[Ûˆ	ÌËŒ‰Ëˆ[Û™ÛÎˆÛÛ›™XİYÈ	ØÛÛ›™XİY	Èˆ	Ù\ØÛÛ›™XİY	Ëˆ™Y\Îˆ™Y\ÈÈ	ØÛÛ›™XİY	Èˆ	ÛY[[ÜIËˆÜÎˆÜĞÛY[ËœÚ^™H
+È	ÈÛY[ÉËˆ\[YNˆX]™›ÛÜŠ›ØÙ\ÜË\[YJ
+JH
+È	ÜÉËˆ\ÙÙ[Îˆ	Ú\X\K˜ÛÛH
+È\ÚËš\È
+˜[˜XÚÊIËˆNÂˆYˆ
+]Ú[R\ĞYZ[Š™\JJH™]\›ˆ™\ËšœÛÛŠ˜\ÙJNÂˆ™\ËšœÛÛŠÂˆ‹‹˜˜\ÙKˆ\ÚİÙXˆ
+›ØÙ\ÜË™[‹•TQÔP“P×ÒÑVH	‰ˆ›ØÙ\ÜË™[‹•TQÔ’UUWÒÑVJHÈ	ÛÚÈ
+TQ›ÜXJIÈˆ	ÛZ\ÜÚ[™È
+ÛÛ™šYİ\˜HTQÔP“P×ÒÑVKÕTQÔ’UUWÒÑVJIËˆ\ÚØ[™›ÚYˆ˜ÛQ[˜X›YÈ	ÛÚÈ
+ÓHXš[]YÊIÈˆ	ÛZ\ÜÚ[™È
+ÛÛ™šYİ\˜H’T‘PTÑWÔÑT•’PÑWĞPĞÓÕS•
+IËˆ™[™\—ÚÙY\[]™Nˆ›ØÙ\ÜË™[‹”‘S‘T—ÑVT“SÕT“È	ÛÚÉÈˆ	ÛZ\ÜÚ[™È
+ÛÛ™šYİ\˜H‘S‘T—ÑVT“SÕT“\˜H]YH™[™\ˆ›ÈY\›XH[Ù\šXÚ[ÊIËˆÚ]X—İÙXšÛÚ×ÜÙXÜ™]ˆ›ØÙ\ÜË™[‹‘ÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘UÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™È
+ÛÛ™šYİ\˜HÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘U\˜H›İYšXØXÚ[Û™\È[œİ[0è[™X\ÈHY]˜\È™\œÚ[Û™\ÊIËˆÜ›ÜNˆ›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆÙ\™Xœ˜\Îˆ›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆYÙÚ[™Ù˜XÙNœ›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆÛ]YNˆ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆÚ[ZNˆ›ØÙ\ÜË™[‹’ÒSRWĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆÜ[œ›İ]\œ›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVHÈ	ÛÚÈ
+	È
+ÈÔ—Ñ”‘QWÓSÑSË›[™İ
+È	È[Ù[ÜÊIÈˆ	ÛZ\ÜÚ[™ÉËˆÙ[Z[šNˆ›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆZ[š[X^ˆ›ØÙ\ÜË™[‹“RS’SPVĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆš\\İİ[œ›ØÙ\ÜË™[‹•’T•TÕÕSĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆZ\İ˜[ˆ›ØÙ\ÜË™[‹“RTÕSĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆÛÚ\™Nˆ›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑVHÈ	ÛÚÉÈˆ	ÛZ\ÜÚ[™ÉËˆİÜ˜YÙNˆİ\X˜\ÙHÈ	Üİ\X˜\ÙIÈˆ	ÛZ\ÜÚ[™ÉËˆ\˜Ú]™Nˆ
+PWĞPĞÑTÔ×ÒÑVH	‰ˆPWÔÑPÔ‘UÒÑVJHÈÚÎœ\‹X\Z][Xˆ	ÛZ\ÜÚ[™ÉËˆJNÂŸJNÂ‚‹ËÈİ]È[ˆš]›Â˜\™Ù]
+	ËØ\KÜİ]ËÛ]™IË
+Ë™\ÊHOˆÂˆ˜XÚÕš\Ú]
+
+NÂˆ™\ËšœÛÛŠÈš\Ú]ÜœÎˆš\Ú]ËÙ^Kİ[ˆš\Ú]Ëİ[ÜĞÛY[ÎˆÜĞÛY[ËœÚ^™HJNÂŸJNÂ‚‚‹ËÈ8¥ 8¥ Ù[Ò\8 %Ù[ÛØØ[^˜XÚpìÛˆÜˆT
+ÛÛÈÙ\šYÜ¸¡¤œÙ\šYÜŠH8¥ 8¥ 8¥ ‹ËÈ\X\K˜ÛÛHÜ˜]\È™\ÜÛ™HÛÛÈÜˆ
+Z^YÛÛ[[ˆ[‹ËÈ˜]™YØYÜŠHH[Z]H[š][ÎÈÜˆ\ÛÈ[ÛY[H•SĞHH[XB‹ËÈ\™XİÎˆHÛÛœİ[YH[˜XÚÙ[™H[œ›ÛYH[™\İ[YÈB‹ËÈÑUØ\KÙÙ[Ëˆ[˜ØH[˜Nˆ]Y[™HÈÚÎ™˜[ÙK™X\ÛÛˆK‚˜\Ş[˜È[˜İ[ÛˆÙ[Ò\
+\
+HÂˆYˆ
+\Ôš]˜]R\
+\
+JH™]\›ˆÈÚÎˆ˜[ÙK™X\ÛÛˆ	Üš]˜]KZ\	ÈNÂ‚ˆËÈš[X\š[Îˆ\X\K˜ÛÛH
+Ü˜]Z]ËÚ[ˆÙ^KÙ\šYÜ‹XK\Ù\šYÜŠBˆHÂˆÛÛœİšY[ÈH	Üİ]\ËY\ÜØYÙKÛİ[KÛİ[PÛÙK™YÚ[Û“˜[YKÚ]K]Û‹\ÜÜ™Ë›ŞKÜİ[™ÉÎÂˆÛÛœİˆH]ØZ]™]Ú
+ˆ‹ËÚ\X\K˜ÛÛKÚœÛÛ‹ÉÙ[˜ÛÙUT’PÛÛ\Û™[
+\
+_OÙšY[ÏIÙšY[ßXˆÈÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+Œ
+HBˆ
+NÂˆYˆ
+‹›ÚÊHÂˆÛÛœİH]ØZ]‹šœÛÛŠ
+NÂˆYˆ
+œİ]\ÈOOH	ÜİXØÙ\ÜÉÊHÂˆ™]\›ˆÂˆÚÎˆYKÛİ\˜ÙNˆ	Ú\X\K˜ÛÛIËˆ]ˆ›]Ûˆ›Û‹ˆÛİ[Nˆ˜Ûİ[H[Ûİ[PÛÙNˆ˜Ûİ[PÛÙH[ˆ™YÚ[Ûˆœ™YÚ[Û“˜[YH[Ú]Nˆ˜Ú]H[ˆ\Üˆš\Ü[Ü™Îˆ›Ü™È[ˆ›ŞNˆHYœ›ŞKÜİ[™ÎˆHYšÜİ[™ËˆNÂˆBˆÛÛœÛÛKØ\›ŠÙ[Ò\\X\HÉÚ\WN˜›Y\ÜØYÙHœİ]\ÊNÂˆH[ÙHÂˆÛÛœÛÛKØ\›ŠÙ[Ò\\X\HÉÚ\WNˆ	Ü‹œİ]\ßX
+NÂˆBˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ÙÙ[Ò\\X\H\œ›Ü‰ËK›Y\ÜØYÙJNÈB‚ˆËÈ˜[˜XÚÎˆ\ÚËš\È
+ËÚ[ˆÙ^JBˆHÂˆÛÛœİŒˆH]ØZ]™]Ú
+ˆÎ‹ËÚ\ÚËš\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+\
+_XˆÈÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+Œ
+HBˆ
+NÂˆYˆ
+Œ‹›ÚÊHÂˆÛÛœİˆH]ØZ]Œ‹šœÛÛŠ
+NÂˆYˆ
+‹œİXØÙ\ÜÈ	‰ˆ‹›]]YHOH[
+HÂˆ™]\›ˆÂˆÚÎˆYKÛİ\˜ÙNˆ	Ú\ÚËš\ÉËˆ]ˆ‹›]]YKÛˆ‹›Û™Ú]YKˆÛİ[Nˆ‹˜Ûİ[H[Ûİ[PÛÙNˆ‹˜Ûİ[WØÛÙH[ˆ™YÚ[Ûˆ‹œ™YÚ[Ûˆ[Ú]Nˆ‹˜Ú]H[ˆ\Üˆ‹˜ÛÛ›™Xİ[ÛËš\Ü[Ü™Îˆ‹˜ÛÛ›™Xİ[ÛË›Ü™È[ˆ›ŞNˆ˜[ÙKÜİ[™Îˆ˜[ÙKˆNÂˆBˆÛÛœÛÛKØ\›ŠÙ[Ò\\ÚËš\ÈÉÚ\WN˜‹›Y\ÜØYÙH	ÜÚ[ˆ]ÜÉÊNÂˆH[ÙHÂˆÛÛœÛÛKØ\›ŠÙ[Ò\\ÚËš\ÈÉÚ\WNˆ	ÜŒ‹œİ]\ßX
+NÂˆBˆHØ]Ú
+LŠHÈÛÛœÛÛKØ\›Š	ÙÙ[Ò\\ÚËš\È\œ›Ü‰ËL‹›Y\ÜØYÙJNÈB‚ˆ™]\›ˆÈÚÎˆ˜[ÙK™X\ÛÛˆ	ÛÛÚİ\Y˜Z[Y	ÈNÂŸB‚‹ËÈ8¥ 8¥ ÑUØ\KÙÙ[È8 %XšXØXÚpìÛˆ\›Ş[XYH[š\Ú][H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[[Y[H[ÚYÙ]HÛ[XH[œ›ÛˆÚY[\™H™\ÜÛ™HŒˆ[‹ËÈÛY[H\İ[™İYH[ˆ˜[È[Ù\šXÚ[È
+ÚÎ™˜[ÙX
+È™X\ÛÛ˜
+HB‹ËÈ[ˆ˜[ÈH™YHÛÛœÙ\˜H[XYÛ°ìÜİXÛÈ
+]H
+ÈğìÙYÛÊH]YB‹ËÈ]Y\İ˜H[ˆ[[KˆØXÚ0êHÌZ[ˆÜˆT\˜H›ÈØ]\˜\ˆ\X\K˜ÛÛK‚˜\™Ù]
+	ËØ\KÙÙ[ÉË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİ\HÛY[\
+™\JNÂˆÛÛœİØXÚRÙ^HH	ÙÙ[Îš\‰È
+È\Â‚ˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+ØXÚRÙ^JNÂˆYˆ
+ØXÚY
+H™]\›ˆ™\ËœÙ]
+	ÖPØXÚIË	ÒU	ÊKšœÛÛŠØXÚY
+NÂ‚ˆÛÛœİÙ[ÈH]ØZ]Ù[Ò\
+\
+NÂˆYˆ
+YÙ[Ë›ÚÊH™]\›ˆ™\ËšœÛÛŠÈÚÎˆ˜[ÙK™X\ÛÛˆÙ[Ëœ™X\ÛÛ‹\JNÂ‚ˆÛÛœİ^[ØYHÂˆÚÎˆYKÛİ\˜ÙNˆÙ[ËœÛİ\˜ÙK\ˆ]ˆÙ[Ë›]ÛˆÙ[Ë›Û‹ˆÚ]NˆÙ[Ë˜Ú]KÛİ[NˆÙ[Ë˜Ûİ[KØÎˆÙ[Ë˜Ûİ[PÛÙK™YÚ[ÛˆÙ[Ëœ™YÚ[Û‹ˆNÂˆ]ØZ]ØXÚTÙ]
+ØXÚRÙ^K^[ØYN
+NÂˆ™\ËšœÛÛŠ^[ØY
+NÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ÙÙ[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\ËšœÛÛŠÈÚÎˆ˜[ÙK™X\ÛÛˆ	ÛÛÚİ\Y˜Z[Y	ÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÔÕØ\Kİš\Ú]8 %™YÚ\İ˜\ˆš\Ú]HÛÛˆT]Y\H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ™\ÜÛ™HŒHH[›YYX]ÎÈ[[œš\]YXÚ[ZY[ÈÙ[ËRTH[İX\™YÂ‹ËÈÙHXÙ[ˆ[ˆÙYİ[™È[›È\˜H›È›Ü]YX\ˆH]XÚpìÛˆ\İHLœË‚˜\œÜİ
+	ËØ\Kİš\Ú]	Ë
+™\K™\ÊHOˆÂˆHÂˆËÈ™\˜Ù[Ô™[™\ˆT™X[[ÛY[KˆÙHYÛ›Ü˜H™\K˜›ÙKš\ÜˆÛÛ\]ÂˆËÈ
+[ÛY[HYYHX[™\ˆİX[]ZY\ˆİš[™ÊHHÙH˜[YH[›Ü›X]Ë‚ˆÛÛœİš[˜[\HÛY[\
+™\JNÂˆÛÛœİ\ÓØØ[H×ŠL×ŸLŸNL—ŒMŸŒ_ØØ[Üİ‰
+KÚK\İ
+š[˜[\
+NÂ‚ˆËÈØ\\˜[[ÜÈÈ™XÙ\Ø\š[È[™\]Y\İ[\ÈH\ˆH˜XÚÙÜ›İ[™ˆÛÛœİYÙHHİš[™Ê™\K˜›ÙOËœYÙH	ËÉÊKœÛXÙJŒ
+NÂˆÛÛœİXHH
+™\KšXY\œÖÉİ\Ù\‹XYÙ[	×H	ÉÊKœÛXÙJÌ
+NÂ‚ˆ™\Ëœİ]\ÊŒJKšœÛÛŠÈÚÎˆYK\ˆš[˜[\JNÂ‚ˆËÈ8¥ 8¥ ˜XÚÙÜ›İ[™ˆÙ[ËRT
+ÈİX\™YÈ[ˆİ\X˜\ÙH8¥ 8¥ ˆ
+\Ş[˜È
+
+HOˆÂˆÛÛœİÈH
+\ÓØØ[š[˜[\OOH	İ[šÛ›İÛ‰ÊHÈÈÚÎˆ˜[ÙHHˆ]ØZ]Ù[Ò\
+š[˜[\
+NÂˆÛÛœİÙ[ÈHË›ÚÈÈÈˆßNÂ‚ˆÛÛœİ™XÛÜ™HÂˆ\ˆš[˜[\ˆÛİ[NˆÙ[ÏË˜Ûİ[H[ˆÛİ[WØÛÙNˆÙ[ÏË˜Ûİ[PÛÙH[ˆÚ]NˆÙ[ÏË˜Ú]H[ˆ™YÚ[ÛˆÙ[ÏËœ™YÚ[Ûˆ[ˆ\ÜˆÙ[ÏËš\Ü[ˆÜ™ÎˆÙ[ÏË›Ü™È[ˆ\×İœˆÙ[ÏËœ›ŞH˜[ÙKˆ\×Ü›ŞNˆÙ[ÏËœ›ŞH˜[ÙKˆ\×Ø›İˆÙ[ÏËšÜİ[™È˜[ÙKˆš\Ú×ÜØÛÜ™NˆÙ[ÏËœ›ŞHÈŒˆ
+Ù[ÏËšÜİ[™ÈÈÌˆ
+KˆYÙKˆXKˆš\Ú]YØ]ˆ™]È]J
+KÒTÓÔİš[™Ê
+KˆNÂ‚ˆHÂˆYˆ
+İ\X˜\ÙJH]ØZ]İ\X˜\ÙK™œ›ÛJ	İš\Ú]Ü—ÛÙÜÉÊKš[œÙ\
+™XÛÜ™
+NÂˆHØ]Ú
+LÊHÈÛÛœÛÛKØ\›Š	İš\Ú]Ü—ÛÙÜÈ[œÙ\\œ›Ü‰ËLË›Y\ÜØYÙJNÈB‚ˆ˜XÚÕš\Ú]
+
+NÂˆJJ
+K˜Ø]Ú
+HOˆÛÛœÛÛKØ\›Š	İš\Ú]˜XÚÙÜ›İ[™\œ›Ü‰ËK›Y\ÜØYÙJJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	İš\Ú]\œ›Ü‰ËK›Y\ÜØYÙJNÂˆHÈ™\Ëœİ]\ÊŒJKšœÛÛŠÈÚÎˆ˜[ÙHJNÈHØ]Ú
+ÊHßBˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÑUØ\KØYZ[‹İš\Ú]ÜœÈ8 %\İ\ˆš\Ú]\È
+ÛÛÈYZ[ŠH8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KØYZ[‹İš\Ú]ÜœÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÈJNÂˆHÂˆÛÛœİ[Z]HX]›Z[Š\œÙR[
+™\Kœ]Y\K›[Z]
+HŒL
+NÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙBˆ™œ›ÛJ	İš\Ú]Ü—ÛÙÜÉÊBˆœÙ[Xİ
+	Ê‰ÊBˆ›Ü™\Š	İš\Ú]YØ]	ËÈ\ØÙ[™[™Îˆ˜[ÙHJBˆ›[Z]
+[Z]
+NÂˆYˆ
+\œ›ÜŠH›İÈ\œ›ÜÂˆ™\ËšœÛÛŠÈÚÎˆYKš\Ú]ÜœÎˆ]H×HJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÑUØ\KØYZ[‹Ü]XZÙKY]šXÙ\ÈH\ÜÜÚ]]›ÜÈÛÛˆ[\HHÚ\Û[È8¥ 8¥ ˜\™Ù]
+	ËØ\KØYZ[‹Ü]XZÙKY]šXÙ\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÈJNÂˆHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙBˆ™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊBˆœÙ[Xİ
+	İÚÙ[‹]Û‹Ú]KÛİ[K\Û˜[YK\İ™\œÚ[Û‹]›Ü›K\]YØ]	ÊBˆ›Ü™\Š	İ\]YØ]	ËÈ\ØÙ[™[™Îˆ˜[ÙHJNÂˆYˆ
+\œ›ÜŠH›İÈ\œ›ÜÂˆ™\ËšœÛÛŠÈÚÎˆYK]šXÙ\Îˆ]H×HJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÔÕØ\KØYZ[‹Ü]XZÙK]\İH[šX\ˆÚ[][XÜ›ÈHÚ\Û[ÈH\ÜÜÚ]]›ÜÈ8¥ 8¥ ˜\œÜİ
+	ËØ\KØYZ[‹Ü]XZÙK]\İ	Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ôİ\X˜\ÙH›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈXYÛš]YK\İ[˜ÙK\™Xİ[Û‹XÙKÚÙ[œËÚ[][]K[\\HHH™\K˜›ÙHßNÂˆÛÛœİXYÈH\œÙQ›Ø]
+XYÛš]YJHKNÂˆÛÛœİ\İH\œÙQ›Ø]
+\İ[˜ÙJHLÂˆÛÛœİ\ˆH\™Xİ[Ûˆ	Ó‰ÎÂˆÛÛœİHXÙH	ÔÚ[][XÜ›ÈHÚ\Û[ÈHÛÙRX‰ÎÂˆÛÛœİ\ÔÚ[HHÚ[][]HOOH˜[ÙNÂˆÛÛœİ\HH[\\H	ÙX\]XZÙIÎÂ‚ˆHÂˆ]\™Ù]ÚÙ[œÈH×NÂˆYˆ
+\œ˜^Kš\Ğ\œ˜^JÚÙ[œÊH	‰ˆÚÙ[œË›[™İˆ
+HÂˆ\™Ù]ÚÙ[œÈHÚÙ[œÎÂˆH[ÙHÂˆÛÛœİÈ]HHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊKœÙ[Xİ
+	İÚÙ[‰ÊNÂˆ\™Ù]ÚÙ[œÈH
+]H×JK›X\
+ˆOˆ‹ÚÙ[ŠK™š[\Š›ÛÛX[ŠNÂˆB‚ˆYˆ
+\™Ù]ÚÙ[œË›[™İOOH
+HÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKÙ[ˆY\ÜØYÙNˆ	Ó›È^H\ÜÜÚ]]›ÜÈ™YÚ\İ˜YÜÉÈJNÂˆB‚ˆÛÛœİ™\İ[ÈH×NÂˆ›Üˆ
+ÛÛœİÚÙ[ˆÙˆ\™Ù]ÚÙ[œÊHÂˆÛÛœİ^[ØYHÂˆ]Nˆ\ÔÚ[HÈ	ü'éêˆÒSUSPÔ“ÈHÒTÓSÉÈˆ	ø¦¨;î#ÈST•HHÒTÓSÉËˆ›ÙNˆH	ÛXYËÑš^Y
+J_HH	ÓX]œ›İ[™
+\İ
+_HÛH	Ù\ŸHHHXšXØXÚpìÛ˜ˆ\Nˆ\ÔÚ[HÈ	Ü]XZÙWÜÚ[IÈˆ	Ü]XZÙWØ[\	Ëˆ[\\Nˆ\KˆXYÎˆXYËˆ\İˆ\İˆ\ˆ\‹ˆXÙNˆˆ[YNˆ]K››İÊ
+KˆNÂˆÛÛœİˆH]ØZ]Ù[™ÓJÚÙ[‹^[ØY
+NÂˆ™\İ[Ëœ\Ú
+ÈÚÙ[ˆÚÙ[‹œÛXÙJLŠH
+È	Ë‹‹‰ËÚÎˆ‹›ÚË™X\ÛÛˆ‹œ™X\ÛÛˆ‹˜ÛÙH[JNÂˆB‚ˆÛÛœİÙ[H™\İ[Ë™š[\ŠˆOˆ‹›ÚÊK›[™İÂˆÛÛœİ˜Z[YH™\İ[Ë™š[\ŠˆOˆ\‹›ÚÊK›[™İÂˆ™\ËšœÛÛŠÈÚÎˆYKÙ[˜Z[Yİ[ˆ\™Ù]ÚÙ[œË›[™İ™\İ[ÈJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÔÕØ\KØYZ[‹Ü]XZÙK]\İ\Ú[™ÛHH[šX\ˆH[ˆÛÛÈ\ÜÜÚ]]›È8¥ 8¥ ˜\œÜİ
+	ËØ\KØYZ[‹Ü]XZÙK]\İ\Ú[™ÛIË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈÚÙ[‹XYÛš]YK\İ[˜ÙK\™Xİ[Û‹XÙKÚ[][]HHH™\K˜›ÙHßNÂˆYˆ
+]ÚÙ[ŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[HÚÙ[‰ÈJNÂˆÛÛœİXYÈH\œÙQ›Ø]
+XYÛš]YJHKNÂˆÛÛœİ\İH\œÙQ›Ø]
+\İ[˜ÙJHLÂˆÛÛœİ\ˆH\™Xİ[Ûˆ	Ó‰ÎÂˆÛÛœİHXÙH	ÔÚ[][XÜ›ÈHÚ\Û[ÈHÛÙRX‰ÎÂˆÛÛœİ\ÔÚ[HHÚ[][]HOOH˜[ÙNÂ‚ˆÛÛœİ^[ØYHÂˆ]Nˆ\ÔÚ[HÈ	ü'éêˆÒSUSPÔ“ÈHÒTÓSÉÈˆ	ø¦¨;î#ÈST•HHÒTÓSÉËˆ›ÙNˆH	ÛXYËÑš^Y
+J_HH	ÓX]œ›İ[™
+\İ
+_HÛH	Ù\ŸHHHXšXØXÚpìÛ˜ˆ\Nˆ\ÔÚ[HÈ	Ü]XZÙWÜÚ[IÈˆ	Ü]XZÙWØ[\	ËˆXYÎˆXYËˆ\İˆ\İˆ\ˆ\‹ˆXÙNˆˆ[\\Nˆ^[ØY\Kˆ[YNˆ]K››İÊ
+KˆNÂˆÛÛœİˆH]ØZ]Ù[™ÓJÚÙ[‹^[ØY
+NÂˆ™\ËšœÛÛŠÈÚÎˆ‹›ÚË™X\ÛÛˆ‹œ™X\ÛÛˆ‹˜ÛÙH[Y\ÜØYÙNˆ‹›Y\ÜØYÙH[JNÂŸJNÂ‹ËÈ[™›ÈÙX”ÛØÚÙ]\˜H[œ›Û[™˜\™Ù]
+	ËØ\KİÜËZ[™›ÉË
+Ë™\ÊHOˆ™\ËšœÛÛŠÂˆÛY[ÎˆÜĞÛY[ËœÚ^™Kˆ\›ˆ›ØÙ\ÜË™[‹•Ô×ÕT“	İÜÜÎ‹ËØÛÙZX‹NNÍ‹›Ûœ™[™\‹˜ÛÛKİÜÉËŸJJNÂ‚‹ËÈ\È0î˜›XØ\È
+ÛÛˆØXÚ0êHHZ[ŠB˜\™Ù]
+	ËØ\KØ\ÉË\Ş[˜È
+Ë™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IË\Îˆ×HJNÂˆHÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+	Ø\Î˜[	ÊNÂˆYˆ
+ØXÚY
+HÈ™\ËœÙ]
+	ÖPØXÚIË	ÒU	ÊNÈ™]\›ˆ™\ËšœÛÛŠØXÚY
+NÈB‚ˆÛÛœİ\ÈH]ØZ]\™š[™
+ßJKœÛÜ
+ÈÜ™X]Y]ˆHJK›X[Š
+NÂˆÛÛœİ˜\ÙHH›ØÙ\ÜË™[‹PÒÑS‘ÕT“	ÚÎ‹ËØÛÙZX‹NNÍ‹›Ûœ™[™\‹˜ÛÛIÎÂˆÛÛœİX\YH\Ë›X\
+HOˆ
+Âˆ\YˆK˜\Yˆ›ÛXœ™NˆK››ÛXœ™Kˆ\ØÜš\Ú[ÛˆK™\ØÜš\Ú[Û‹ˆ™\œÚ[ÛˆK™\œÚ[Û‹ˆYÎˆKYËˆÚ[™Ù[ÙÎˆK˜Ú[™Ù[ÙËˆ[XYÙ[ˆKš[XYÙ[‹ˆØ]YÛÜšXNˆK˜Ø]YÛÜšXKˆ™\šYšYYˆK™\šYšYYˆ[›XÙNˆ	Ø˜\Ù_KØ\KØ\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+K˜\Y
+_KÙİÛ›ØYˆYÚ[—Ù[›XÙNˆKœYÚ[—Ù[›XÙHÈ	Ø˜\Ù_KØ\KØ\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+K˜\Y
+_KÙİÛ›ØYÜÛİ\YÚ[˜ˆ[ˆ]ÜšX[İ\›ˆK]ÜšX[İ\›[ˆÛİ\˜ÙWÜ™\ÎˆKœÛİ\˜ÙWÜ™\È[ˆXÚØYÙS˜[YNˆKœXÚØYÙS˜[YH[ˆ\]Y]ˆK\]Y]ˆJJNÂˆÛÛœİ™\İ[HÈ\ÎˆX\Yİ[ˆX\Y›[™İNÂˆ]ØZ]ØXÚTÙ]
+	Ø\Î˜[	Ë™\İ[Ì
+NÂˆ™\ËœÙ]
+	ÖPØXÚIË	ÓRTÔÉÊNÈ™\ËšœÛÛŠ™\İ[
+NÂˆHØ]ÚÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›ÜˆØ[šY[™È\ÉÈJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ TÕÓ“ĞQ“ÖH8 %Øİ[H[[›XÙH™X[H[ÜšYÙ[ˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KØ\ËÎ˜\YÙİÛ›ØY	Ë\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆÛÛœİÛİH™\Kœ]Y\KœÛİOOH	ÜYÚ[‰ÈÈ	ÜYÚ[‰Èˆ	Ø\	ÎÂˆÛÛœİ\ØÈH]ØZ]\™š[™Û™JÈ\Yˆ™\Kœ\˜[\Ë˜\YJK›X[Š
+NÂˆYˆ
+X\ØÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ğ\›È[˜ÛÛ˜YIÈJNÂ‚ˆÛÛœİ‘T×Ô‘HH×–ĞKV˜K^ŒNWË‹WJ×ÖĞKV˜K^ŒNWË‹WJÉÎÂˆÛÛœİÜšYÈHÛİOOH	ÜYÚ[‰ÈÈ\ØËœYÚ[—Ù[›XÙHˆ\ØË™[›XÙNÂˆ]\™Ù]HÑš[T]
+ÜšYÊHÈ[ˆ
+ÜšYÈÈİš[™ÊÜšYÊHˆ[
+NÂˆ]š[S˜[YHH	ÉÎÂˆYˆ
+\ØËœÛİ\˜ÙWÜ™\È	‰ˆ‘T×Ô‘K\İ
+\ØËœÛİ\˜ÙWÜ™\ÊJHÂˆHÂˆÛÛœİÚ™\ÈH]ØZ]™]Ú
+Î‹ËØ\K™Ú]X‹˜ÛÛKÜ™\ÜËÉØ\ØËœÛİ\˜ÙWÜ™\ßKÜ™[X\Ù\ËÛ]\İÂˆXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	ĞÛÙRX‹PØ][ÙÉË	ĞXØÙ\	Îˆ	Ø\XØ][Û‹İ›™™Ú]X‹ŒÊÚœÛÛ‰ÈKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+
+KˆJNÂˆYˆ
+Ú™\Ë›ÚÊHÂˆÛÛœİ™[X\ÙHH]ØZ]Ú™\ËšœÛÛŠ
+NÂˆÛÛœİ\ÜÙ]H
+™[X\ÙK˜\ÜÙ]È×JK™š[™
+HOˆH	‰ˆK›˜[YH	‰ˆ×Š\ßX\ÊIÚK\İ
+K›˜[YJJNÂˆYˆ
+\ÜÙ]	‰ˆ\ÜÙ]˜œ›İÜÙ\—ÙİÛ›ØYİ\›
+HÂˆ\™Ù]H\ÜÙ]˜œ›İÜÙ\—ÙİÛ›ØYİ\›Âˆš[S˜[YHH\ÜÙ]›˜[YNÂˆBˆBˆHØ]ÚßBˆBˆYˆ
+]\™Ù]
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ğš[˜\š[È›È\ÜÛšX›IÈJNÂˆÛÛœİ˜\ÙHH›ØÙ\ÜË™[‹PÒÑS‘ÕT“	ÚÎ‹ËØÛÙZX‹NNÍ‹›Ûœ™[™\‹˜ÛÛIÎÂˆÛÛœİÔ]HÑš[T]
+\™Ù]
+NÂˆYˆ
+Ô]
+HÂˆ™]\›ˆ™\Ëœ™Y\™Xİ
+Ì‹	Ø˜\Ù_KØ\KİÙš[KÉÙ[˜ÛÙUT’PÛÛ\Û™[
+\ØË˜\Y
+_IÜÛİOOH	ÜYÚ[‰ÈÈ	ÏÜÛİ\YÚ[‰Èˆ	ÉßX
+NÂˆBˆYˆ
+Yš[S˜[YJHš[S˜[YHH\™Ù]œÜ]
+	ËÉÊKœÜ
+
+KœÜ]
+	ÏÉÊVÌH\ØË˜\YÂˆ]ÂˆHÂˆˆH]ØZ]™]Ú
+\™Ù]È™Y\™Xİˆ	Ù›ÛİÉËXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	ĞÛÙRX‹P\ËÌKŒ	ËXØÙ\ˆ	Ê‹Ê‰ÈHJNÂˆHØ]ÚÂˆ™]\›ˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈ[Ø[˜\ˆ[ÜšYÙ[‰ÈJNÂˆBˆYˆ
+\‹›ÚÊH™]\›ˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈ\œ›ÜˆÜšYÙ[ˆ	Ü‹œİ]\ßXJNÂˆÛÛœİİH‹šXY\œË™Ù]
+	ØÛÛ[]\IÊNÂˆYˆ
+İ
+H™\ËœÙ]XY\Š	ĞÛÛ[U\IËİ
+NÂˆ™\ËœÙ]XY\Š	ĞÛÛ[Q\ÜÜÚ][Û‰Ë]XÚY[Èš[[˜[YOH‰Ùš[S˜[YKœ™\XÙJÈ‹ÙË	ÉÊ_H˜
+NÂˆÛÛœİÛH‹šXY\œË™Ù]
+	ØÛÛ[[[™İ	ÊNÂˆYˆ
+Û
+H™\ËœÙ]XY\Š	ĞÛÛ[S[™İ	ËÛ
+NÂˆ™\ËœÙ]XY\Š	ĞØXÚKPÛÛ›Û	Ë	Û›Ë\İÜ™IÊNÂˆÛÛœİÈ™XYX›HHH™\]Z\™J	Üİ™X[IÊNÂˆ™XYX›K™œ›ÛUÙXŠ‹˜›ÙJKœ\J™\ÊNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›ÜˆØ\KØ\ËÎ˜\YÙİÛ›ØY‰ËK›Y\ÜØYÙJNÂˆYˆ
+\™\ËšXY\œÔÙ[
+H™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈ\ØØ\™Ø\ˆ[š[˜\š[ÉÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ \\]\È8 %™\šYšXØ\ˆ™\œÚ[Û™\È\ÙHÚ]Xˆ™[X\Ù\È8¥ 8¥ ‹ËÈÔÕØ\KØ\]\]\ÈÈ\ÎˆŞÈ\Y™\œÚ[Û‹Ûİ\˜ÙWÜ™\ÈWHB‹ËÈ™]Ü›˜NˆŞÈ\Yİ\œ™[™\œÚ[Û‹]\İ™\œÚ[Û‹\Õ\]KİÛ›ØY\›WB˜\œÜİ
+	ËØ\KØ\]\]\ÉË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ\ÈHH™\K˜›ÙNÂˆYˆ
+P\œ˜^Kš\Ğ\œ˜^J\ÊH\Ë›[™İOOH
+H™]\›ˆ™\ËšœÛÛŠ×JNÂˆÛÛœİ™\İ[ÈH]ØZ]›ÛZ\ÙK˜[Ù]Y
+\Ë›X\
+\Ş[˜È
+\
+HOˆÂˆËÈ[İÛ\İH™\ÜÎˆÛÛÈ›İÛ™\‹Ü™\ÈˆÚ[\\ËˆİX[]ZY\ˆİ›È›Ü›X]ÂˆËÈ
+T“Ë‹‹ËØ\˜Xİ\™\È˜\›ÜÊHÙHYÛ›Ü˜H[ˆYØ\ˆH[\œÛ\œÙH[ˆ™]Ú‚ˆÛÛœİ‘T×Ô‘HH×–ĞKV˜K^ŒNWË‹WJ×ÖĞKV˜K^ŒNWË‹WJÉÎÂˆYˆ
+X\œÛİ\˜ÙWÜ™\ÈT‘T×Ô‘K\İ
+\œÛİ\˜ÙWÜ™\ÊJH™]\›ˆÈ\Yˆ\˜\Yİ\œ™[™\œÚ[Ûˆ\™\œÚ[Û‹]\İ™\œÚ[Ûˆ\™\œÚ[Û‹\Õ\]Nˆ˜[ÙKİÛ›ØY\›ˆ[NÂˆÛÛœİØXÚRÙ^HH\]N‰Ø\œÛİ\˜ÙWÜ™\ßXÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+ØXÚRÙ^JNÂˆYˆ
+ØXÚY
+H™]\›ˆÈ\Yˆ\˜\Yİ\œ™[™\œÚ[Ûˆ\™\œÚ[Û‹‹‹˜ØXÚYNÂˆÛÛœİÚ™\ÈH]ØZ]™]Ú
+Î‹ËØ\K™Ú]X‹˜ÛÛKÜ™\ÜËÉØ\œÛİ\˜ÙWÜ™\ßKÜ™[X\Ù\ËÛ]\İÂˆXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	ĞÛÙRX‹PØ][ÙÉË	ĞXØÙ\	Îˆ	Ø\XØ][Û‹İ›™™Ú]X‹ŒÊÚœÛÛ‰ÈKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+L
+BˆJNÂˆYˆ
+YÚ™\Ë›ÚÊH™]\›ˆÈ\Yˆ\˜\Yİ\œ™[™\œÚ[Ûˆ\™\œÚ[Û‹]\İ™\œÚ[Ûˆ\™\œÚ[Û‹\Õ\]Nˆ˜[ÙKİÛ›ØY\›ˆ[NÂˆÛÛœİ™[X\ÙHH]ØZ]Ú™\ËšœÛÛŠ
+NÂˆÛÛœİ]\İH
+™[X\ÙKY×Û˜[YH	ÉÊKœ™\XÙJ×‹ÚK	ÉÊNÂˆÛÛœİİ\œ™[H
+\™\œÚ[Ûˆ	ÉÊKœ™\XÙJ×‹ÚK	ÉÊNÂˆÛÛœİ\Ğ\ÜÙ]H
+™[X\ÙK˜\ÜÙ]È×JK™š[™
+HOˆK›˜[YH	‰ˆK›˜[YK™[™ÕÚ]
+	Ë˜\ÉÊJNÂ˜ÛÛœİİÛ›ØY\›H	Ê›ØÙ\ÜË™[‹PÒÑS‘ÕT“	ÚÎ‹ËØÛÙZX‹NNÍ‹›Ûœ™[™\‹˜ÛÛIÊKœ™\XÙJ×ÊÉË	ÉÊ_KØ\KØ\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+\˜\Y
+_KÙİÛ›ØYÂˆÛÛœİ™\İ[HÈ]\İ™\œÚ[Ûˆ™[X\ÙKY×Û˜[YH]\İ\Õ\]Nˆ]\İOOHİ\œ™[	‰ˆH[]\İİÛ›ØY\›NÂˆ]ØZ]ØXÚTÙ]
+ØXÚRÙ^K™\İ[Œ
+NÂˆ™]\›ˆÈ\Yˆ\˜\Yİ\œ™[™\œÚ[Ûˆ\™\œÚ[Û‹‹‹œ™\İ[NÂˆJJNÂˆ™\ËšœÛÛŠ™\İ[Ë›X\
+ˆOˆ‹œİ]\ÈOOH	Ù[š[Y	ÈÈ‹˜[YHˆÈ\Yˆ	ÏÉË\Õ\]Nˆ˜[ÙHJJNÂˆHØ]ÚÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›ÜˆÚXÚÚ[™È\]\ÉÈJNÈBŸJNÂ‚‹ËÈ›İXÚX\È8 %Ù[ÛØØ[^˜Y\ÈÜˆpë\È°ëXHÛÛÙÛH™]ÜÈ”ÔËÛÛˆÈ][™Â‹ËÈÛÛ[È™\Ü[ÈšZ›ËˆÙÈÙHYHÙ\™\‹\ÚYH\˜H]š]\ˆ\[™\ˆB‹ËÈ›ŞY\ÈÓÔ”È0î˜›XÛÜÈØÛÈšXX›\È
+[ÜšYÚ[œË]ËŠH[ˆ[˜]™YØYÜ‹‚˜ÛÛœİ‘UÔ×Ô”Ô×ÕT“H	ÚÎ‹ËÙ™YYË˜˜˜ÚK˜ÛËZËÛ][™ËÜœÜË[	ÎÂ‚‹ËÈØØ[H
+Y[ÛXHH[\™˜^ŠHÜˆğìÙYÛÈHpë\È\˜H\›X\ˆHT“B‹ËÈÛÛÙÛH™]ÜÈ
+ÙÛØÙZY
+KˆÚH[pë\È›È\İ0èH[ˆH\İHÙH\ØB‹ËÈ	Ù\ËMNIÈ
+\Üpì[Û][JHÜˆY™XİÈ[›ÈHZ[ÛÛÙÛS™]ÜÕ\›‚˜ÛÛœİÓÕS•–WÓĞĞSHHÂˆÕˆ	Ù\ËMNIËVˆ	Ù\ËMNIËˆ	Ù\ËMNIËÕˆ	Ù\ËMNIË’Nˆ	Ù\ËMNIËˆÔˆ	Ù\ËMNIËNˆ	Ù\ËMNIËÎˆ	Ù\ËMNIË‘Nˆ	Ù\ËMNIËÓÎˆ	Ù\ËMNIËˆPÎˆ	Ù\ËMNIËNˆ	Ù\ËMNIË“Îˆ	Ù\ËMNIËNˆ	Ù\ËMNIËVNˆ	Ù\ËMNIËˆTˆ	Ù\ËMNIËÓˆ	Ù\ËMNIËTÎˆ	Ù\ÉËˆTÎˆ	Ù[‹UTÉËĞˆ	Ù[‹QĞ‰ËĞNˆ	Ù[‹PĞIË”ˆ	ÜP”‰Ë”ˆ	Ùœ‰ËNˆ	ÙIËˆUˆ	Ú]	Ëˆ	ÜT	ËŸNÂ‚™[˜İ[ÛˆZ[ÛÛÙÛS™]ÜÕ\›
+Ûİ[JHÂˆÛÛœİØÈH
+Ûİ[H	ÑÕ	ÊKÕ\\Ø\ÙJ
+NÂˆÛÛœİHÓÕS•–WÓĞĞSVØØ×H	Ù\ËMNIÎÂˆ™]\›ˆÎ‹ËÛ™]ÜË™ÛÛÙÛK˜ÛÛKÜœÜÏÚIÙ[˜ÛÙUT’PÛÛ\Û™[
+
+_I™ÛIÙ[˜ÛÙUT’PÛÛ\Û™[
+ØÊ_I˜ÙZYIÙ[˜ÛÙUT’PÛÛ\Û™[
+ØÊ_N‰Ù[˜ÛÙUT’PÛÛ\Û™[
+œÜ]
+	ËIÊVÌJ_XÂŸB‚˜ÛÛœİ‘UÔ×ÕQ×Ô‘HH
+›ØÚË˜[YJHOˆÂˆÛÛœİHH›ØÚË›X]Ú
+™]È™YÑ^
+	Û˜[Y_V×—JŠÎWĞÑUWÊOÊ×××JÊJÎ—WOŠOÏÉÛ˜[Y_O˜
+JNÂˆ™]\›ˆHÈVÌWKš[J
+Hˆ	ÉÎÂŸNÂ‚‹ËÈ[\XH^È[›ÈH[ˆ][H”ÔÎˆXÛÙYšXØH[YY\ÈS
+	›È	™İÂ‹ËÈ	˜[\È‹‹ŠK]Z]HİX[]ZY\ˆYÈÛØœ˜[HHÛÛ\ØH\ÜXÚ[ÜËˆ]š]H]YHB‹ËÈ\š™]H]Y\İ™HğìÙYÛÈY[HÜYÈHH›İXÚXK‚˜ÛÛœİ‘UÔ×ÑS•UQTÈHÈ	É›ÉÎ‰Ï	Ë	É™İÉÎ‰Ï‰Ë	É˜[\ÉÎ‰É‰Ë	Éœ][İÉÎ‰È‰Ë	ÉˆÌÎNÉÎˆ‰È‹	É˜\ÜÎÉÎˆ‰È‹	É›˜œÜÉÎ‰È	ÈNÂ˜ÛÛœİÛX[“™]ÜÕ^H
+˜]ÊHOˆÂˆ]ÈHİš[™Ê˜]È	ÉÊNÂˆÈHËœ™\XÙJÉŠÎˆŞÖÌNXKYKQ—JßØK^KV—JÊNËÙË
+KÛÙJHOˆÂˆYˆ
+ÛÙVÌHOOH	ÈÉÊHÂˆÛÛœİ\Ò^HÛÙVÌWHOOH	Ş	ÈÛÙVÌWHOOH	Ö	ÎÂˆÛÛœİˆH\œÙR[
+ÛÙKœÛXÙJ\Ò^ÈˆˆJK\Ò^ÈMˆˆL
+NÂˆ™]\›ˆ[X™\‹š\Ó˜SŠŠHÈHˆİš[™Ë™œ›ÛPÛÙTÚ[
+ŠNÂˆBˆ™]\›ˆ‘UÔ×ÑS•UQTÖÛWHOOH[™Yš[™YÈ‘UÔ×ÑS•UQTÖÛWHˆNÂˆJNÂˆÈHËœ™\XÙJÏÏÊÎœØÜš\İ[JV×—J–×××JÏÏÊÎœØÜš\İ[JO‹ÙÚK	È	ÊNÂˆÈHËœ™\XÙJÏ×—JÏ‹ÙË	È	ÊNÂˆ™]\›ˆËœ™\XÙJ×ÊËÙË	È	ÊKš[J
+NÂŸNÂ‹ËÈ^˜YH[XYÙ[ˆ™X[[][H
+YYXN[X›˜Z[ÈYYXN˜ÛÛ[È[˜ÛÜİ\™JB‹ËÈ\˜H]YHØYH\š™]H]Y\İ™H[˜HZ[šX]\˜H™X[İX[™È^\İK‚˜ÛÛœİ‘UÔ×ÒSQ×Ô‘HH
+›ØÚÊHOˆÂˆ]HH›ØÚË›X]Ú
+ÏYYXN[X›˜Z[×—J\›HŠ×ˆ—JÊH‹ÊNÂˆYˆ
+JH™]\›ˆVÌWNÂˆHH›ØÚË›X]Ú
+ÏYYXN˜ÛÛ[×—J\›HŠ×ˆ—JÊH‹ÊNÂˆYˆ
+JH™]\›ˆVÌWNÂˆHH›ØÚË›X]Ú
+Ï[˜ÛÜİ\™V×—J\›HŠ×ˆ—JÊH–×—J\OHš[XYÙV×ˆ—Jˆ‹ÊNÂˆYˆ
+JH™]\›ˆVÌWNÂˆ™]\›ˆ	ÉÎÂŸNÂ‚˜\Ş[˜È[˜İ[Ûˆ™]ÚœÜÒ][\Ê\›È[Z]HKÛİ\˜ÙSX™[H[HHßJHÂˆÛÛœİÛÛ›Û\ˆH™]ÈX›ÜÛÛ›Û\Š
+NÂˆÛÛœİ[Y[İ]HÙ][Y[İ]
+
+
+HOˆÛÛ›Û\‹˜X›Ü
+
+K
+NÂˆÛÛœİˆH]ØZ]™]Ú
+\›ÂˆÚYÛ˜[ˆÛÛ›Û\‹œÚYÛ˜[ˆXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	Ó[Şš[KÍKŒ
+ÛÛ\]X›NÈÛÙRX›İÌKŒÈ
+ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\
+IÈKˆJK™š[˜[J
+
+HOˆÛX\•[Y[İ]
+[Y[İ]
+JNÂˆYˆ
+\‹›ÚÊH›İÈ™]È\œ›ÜŠ	Ô”ÔÈ™]Ú˜[YÎˆ	È
+È‹œİ]\ÊNÂˆÛÛœİ[H]ØZ]‹^
+
+NÂ‚ˆÛÛœİ][\ÈH×NÂˆÛÛœİ][T™HHÏ][OŠ×××JÊOÚ][O‹ÙÎÂˆ]NÂˆÚ[H
+
+HH][T™K™^XÊ[
+JH	‰ˆ][\Ë›[™İ[Z]
+HÂˆÛÛœİ›ØÚÈHVÌWNÂˆÛÛœİ]HHÛX[“™]ÜÕ^
+‘UÔ×ÕQ×Ô‘J›ØÚË	İ]IÊJKœÛXÙJMŒ
+NÂˆÛÛœİ\›ÈH‘UÔ×ÕQ×Ô‘J›ØÚË	Û[šÉÊNÂˆÛÛœİXˆH‘UÔ×ÕQ×Ô‘J›ØÚË	ÜX‘]IÊNÂˆÛÛœİ]HHXˆÈ™]È]JXŠKÓØØ[Q]Tİš[™Ê	Ù\ËQÕ	ËÈ^Nˆ	Û[Y\šXÉË[Ûˆ	ÜÚÜ	ËYX\ˆ	Û[Y\šXÉÈJHˆ	ÉÎÂˆÛÛœİ[XYÙHH‘UÔ×ÒSQ×Ô‘J›ØÚÊNÂˆËÈÛÛÙÛH™]ÜÈ˜YH[YY[ÈÜšYÚ[˜[[ˆÛİ\˜ÙOÈÈ›ÈÈ˜YH
+\Ø[[ÜÈÛİ\˜ÙSX™[šZ›ÊK‚ˆÛÛœİÜ˜ÈHÛX[“™]ÜÕ^
+‘UÔ×ÕQ×Ô‘J›ØÚË	ÜÛİ\˜ÙIÊHÛİ\˜ÙSX™[	ÉÊNÂˆ]\ØÈHÛX[“™]ÜÕ^
+‘UÔ×ÕQ×Ô‘J›ØÚË	Ù\ØÜš\[Û‰ÊJKœÛXÙJLÌ
+NÂˆYˆ
+]JH][\Ëœ\Ú
+È]K\›ˆ\›Ë]K\ØË[XYÙKX‹Ûİ\˜ÙNˆÜ˜ÈJNÂˆBˆYˆ
+Z][\Ë›[™İ
+H›İÈ™]È\œ›ÜŠ	ÜÚ[ˆ][\È[ˆ[”ÔÉÊNÂˆ™]\›ˆ][\ÎÂŸB‚‹ËÈ8¥ 8¥ RS’PUTTÈ‘PSTÈTHÓÓÑÓH‘UÔÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[”ÔÈHÛÛÙÛH™]ÜÈØ\ÚH[˜ØH˜YHYYXN[X›˜Z[Ù[˜ÛÜİ\™H
+B‹ËÈY™\™[˜ÚXHHÊK\ğëH]YH\˜HÜÈ][\ÈÚ[ˆ[XYÙ[ˆš\Ú][[ÜÈ[‹ËÈ\0ëXİ[È™X[
+[[šÏˆ™Y\šYÙH[ÛZ[š[È™]ÜË™ÛÛÙÛK˜ÛÛH[YY[Â‹ËÈÜšYÚ[˜[
+HHY[[ÜÈİHÙÎš[XYÙKİÚ]\š[XYÙKˆÙH[Z]Hİpè[ÈSÙB‹ËÈYHHİpè[ÈY[\Èİ[ÙH[šY\H\˜H›È›Û™\ˆ[HH™\ÜY\İNÂ‹ËÈÛÛ[È[™\İ[YÈÙHØXÚXHMHZ[‹\İHÛÜİÈÙHYØHØÛË‚˜\Ş[˜È[˜İ[Ûˆ™]ÚÙÒ[XYÙJ\›
+HÂˆHÂˆÛÛœİÛÛ›Û\ˆH™]ÈX›ÜÛÛ›Û\Š
+NÂˆÛÛœİ[Y[İ]HÙ][Y[İ]
+
+
+HOˆÛÛ›Û\‹˜X›Ü
+
+KÍL
+NÂˆÛÛœİˆH]ØZ]™]Ú
+\›ÂˆÚYÛ˜[ˆÛÛ›Û\‹œÚYÛ˜[ˆ™Y\™Xİˆ	Ù›ÛİÉËˆXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	Ó[Şš[KÍKŒ
+ÛÛ\]X›NÈÛÙRX›İÌKŒÈ
+ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\
+IÈKˆJK™š[˜[J
+
+HOˆÛX\•[Y[İ]
+[Y[İ]
+JNÂˆYˆ
+\‹›ÚÈ\‹˜›ÙJH™]\›ˆ	ÉÎÂ‚ˆÛÛœİ™XY\ˆH‹˜›ÙK™Ù]™XY\Š
+NÂˆ][H	ÉÎÂˆ]™XÙZ]™YHÂˆÚ[H
+™XÙZ]™YMLÍŠHÈËÈĞˆ[Ø[˜H\˜HYØ\ˆ[XY‚ˆÛÛœİÈÛ™K˜[YHHH]ØZ]™XY\‹œ™XY
+
+NÂˆYˆ
+Û™JHœ™XZÎÂˆ[
+ÏHY™™\‹™œ›ÛJ˜[YJKÔİš[™Ê	İ]	ÊNÂˆ™XÙZ]™Y
+ÏH˜[YK›[™İÂˆBˆHÈ]ØZ]™XY\‹˜Ø[˜Ù[
+
+NÈHØ]ÚßB‚ˆÛÛœİHH[›X]Ú
+ÏY]V×—JÊÎœ›Ü\_˜[YJOVÈ‰×JÎ›ÙÎš[XYÙ_Ú]\š[XYÙJVÈ‰×V×—JØÛÛ[VÈ‰×J×ˆ‰×JÊVÈ‰×KÚJBˆ[›X]Ú
+ÏY]V×—JØÛÛ[VÈ‰×J×ˆ‰×JÊVÈ‰×V×—JÊÎœ›Ü\_˜[YJOVÈ‰×JÎ›ÙÎš[XYÙ_Ú]\š[XYÙJVÈ‰×KÚJNÂˆ™]\›ˆHÈVÌWHˆ	ÉÎÂˆHØ]Ú
+JHÈ™]\›ˆ	ÉÎÈBŸB‚˜\Ş[˜È[˜İ[Ûˆ[œšXÚZ\ÜÚ[™Ò[XYÙ\Ê][\ËYÙ]\ÈHŒ
+HÂˆÛÛœİİ\H]K››İÊ
+NÂˆÛÛœİ[™[™ÈH][\Ë™š[\Š]OˆZ]š[XYÙJNÂˆYˆ
+\[™[™Ë›[™İ
+H™]\›ˆ][\ÎÂˆ]ØZ]›ÛZ\ÙK˜[
+[™[™Ë›X\
+\Ş[˜È
+]
+HOˆÂˆYˆ
+]K››İÊ
+HHİ\ˆYÙ]\ÊH™]\›ÈËÈ›ÈÙYİZ[[ÜÈØ\İ[™ÈY[\È\ØYÈ[™\İ\Y\İÂˆ]š[XYÙHH]ØZ]™]ÚÙÒ[XYÙJ]\›
+NÂˆJJNÂˆ™]\›ˆ][\ÎÂŸB‚˜\™Ù]
+	ËØ\KÛ™]ÜÉË\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÛİ[HH
+™\Kœ]Y\K˜Ûİ[H	ÉÊKÕ\\Ø\ÙJ
+KœÛXÙJŠH[ÂˆÛÛœİØXÚRÙ^HHÛİ[HÈ™]ÜÎ™ÛÛÙÛN‰ØÛİ[_Xˆ	Û™]ÜÎ˜˜˜Ë[][™ÉÎÂˆHÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+ØXÚRÙ^JNÂˆYˆ
+ØXÚY
+HÈ™\ËœÙ]
+	ÖPØXÚIË	ÒU	ÊNÈ™]\›ˆ™\ËšœÛÛŠØXÚY
+NÈB‚ˆ]][\ËÛİ\˜ÙS˜[YNÂˆYˆ
+Ûİ[JHÂˆHÂˆ][\ÈH]ØZ]™]ÚœÜÒ][\ÊZ[ÛÛÙÛS™]ÜÕ\›
+Ûİ[JJNÂˆ][\ÈH]ØZ][œšXÚZ\ÜÚ[™Ò[XYÙ\Ê][\ÊNÂˆÛİ\˜ÙS˜[YHHÛÛÙÛH™]ÜÈ
+	ØÛİ[_JXÂˆHØ]Ú
+JHÂˆËÈÛÛÙÛH™]ÜÈ›È\ÜÛšX›H\˜H\ÙHpë\ËÜ™Y8 %ØY[[ÜÈHÈ][™Ë‚ˆ][\ÈH]ØZ]™]ÚœÜÒ][\Ê‘UÔ×Ô”Ô×ÕT“ÈÛİ\˜ÙSX™[ˆ	ĞÈ][™ÉÈJNÂˆÛİ\˜ÙS˜[YHH	ĞÈ][™ÉÎÂˆBˆH[ÙHÂˆ][\ÈH]ØZ]™]ÚœÜÒ][\Ê‘UÔ×Ô”Ô×ÕT“ÈÛİ\˜ÙSX™[ˆ	ĞÈ][™ÉÈJNÂˆÛİ\˜ÙS˜[YHH	ĞÈ][™ÉÎÂˆB‚ˆÛÛœİ™\İ[HÈ][\ËÛİ\˜ÙNˆÛİ\˜ÙS˜[YKÛİ[K™]ÚY]ˆ™]È]J
+KÒTÓÔİš[™Ê
+HNÂˆ]ØZ]ØXÚTÙ]
+ØXÚRÙ^K™\İ[L
+NÈËÈMHZ[‚ˆ™\ËœÙ]
+	ÖPØXÚIË	ÓRTÔÉÊNÈ™\ËšœÛÛŠ™\İ[
+NÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYY\›ÛˆØ[™\ˆ\È›İXÚX\ÉË]Z[ˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÒÒSÈ8 %Ø]0è[ÙÛÈÙ\šYÈ[œ›Û[™8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÜÚÚ[ÉË
+™\K™\ÊHOˆÂˆHÂˆÛÛœİ[™^]H]š›Ú[ŠÒÒS×ÑT‹	Ú[™^šœÛÛ‰ÊNÂˆYˆ
+YœË™^\İÔŞ[˜Ê[™^]
+JH™]\›ˆ™\ËšœÛÛŠÈÚÚ[Îˆ×Kİ[ˆJNÂˆÛÛœİ[™^H”ÓÓ‹œ\œÙJœËœ™XYš[TŞ[˜Ê[™^]	İ]	ÊJNÂˆÛÛœİ[œšXÚYH
+[™^œÚÚ[È×JBˆ™š[\ŠÈOˆË˜Xİ]™JBˆ›X\
+ÈOˆÂˆÛÛœİ]Z[HØYÚÚ[œÛÛŠËšY
+NÂˆ™]\›ˆ]Z[ÈÂˆ‹‹œËˆ™\Ù]Îˆ]Z[œ™\Ù]ËˆZNˆ]Z[ZKˆ^[\\Îˆ]Z[™^[\\ËˆÚ^™\Îˆ]Z[œÚ^™\Ëˆ›İšY\œÎˆ]Z[œ›İšY\œ×Üš[Üš]KˆHˆÎÂˆJNÂˆ™\ËšœÛÛŠÈÚÚ[Îˆ[œšXÚYİ[ˆ[œšXÚY›[™İJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›ÜˆØ\™Ø[™ÈÚÚ[ÉË]Z[ˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\™Ù]
+	ËØ\KÜÚÚ[ËÎšY	Ë
+™\K™\ÊHOˆÂˆÛÛœİÚÚ[HØYÚÚ[œÛÛŠ™\Kœ\˜[\ËšY
+NÂˆYˆ
+\ÚÚ[
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÔÚÚ[›È[˜ÛÛ˜YIÈJNÂˆ™\ËšœÛÛŠÚÚ[
+NÂŸJNÂ‚‹ËÈÚ]PB˜\œÜİ
+	ËØ\KØÚ]	Ë™\]Z\™P]]\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈY\ÜØYÙKÙ\ÜÚ[Û’YH	Ø[›Û‰Ë[XYÙK[XYÙ\Ë•^ÚÚ[ÚYHH™\K˜›ÙNÂˆYˆ
+[Y\ÜØYÙH\[ÙˆY\ÜØYÙHOOH	Üİš[™ÉÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	È›Y\ÜØYÙHˆ™\]Y\šYË‰ÈJNÂˆYˆ
+Y\ÜØYÙKš[J
+K›[™İˆL
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÓY[œØZ™H]^H\™ÛË‰ÈJNÂˆYˆ
+Z\Ğ[PÚ]Ù^J
+JH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÚ[ˆTHÙ^\Ë‰ÈJNÂ‚ˆËÈ8¥ 8¥ 0ë[Z]HX\š[ÈÙ\™\‹\ÚYH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˆÛÛœİ[ZRÙ^HH™\K˜]]\Ù\ˆÈ	İN‰È
+È™\K˜]]\Ù\‹šYˆ	Ù‰È
+ÈÛY[\
+™\JNÂˆÛÛœİ[ZS[Z]H]ØZ]Ù][ZS[Z]
+H\™\K˜]]\Ù\ŠNÂˆÛÛœİ[ZU\ÙYH]ØZ]Ù][ZU\ØYÙJ[ZRÙ^JNÂˆYˆ
+[ZU\ÙYH[ZS[Z]
+HÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ0ë[Z]HX\š[È[Ø[˜YÈ
+	Ù[ZS[Z]HY[œØZ™\ÊKˆ	Ü™\K˜]]\Ù\ˆÈ	ÉÈˆ	Ò[šXÚXHÙ\ÚpìÛˆ\˜Hpè\Ë‰ßXÛÙNˆ	ÑSRWÑRSWÓSRU	Ë[Z]ˆ[ZS[Z]\ÙYˆ[ZU\ÙYJNÂˆB‚ˆËÈ8¥ 8¥ [XYÙ[ˆÈˆ\ØØ[™XYÈY[Îˆ˜[YH›Ü›X]Ëİ[Xpì[È[\ÈHØ\İ\ˆ[˜H[XYH8¥ 8¥ ˆËÈš[XYÙHˆ\È[˜H[XYÙ[ˆİY[H
+]HT“
+Kˆš[XYÙ\Èˆ\È[ˆ\œ˜^HH0èYÚ[˜\ÂˆËÈ™[™\š^˜Y\È
+ˆ\ØØ[™XYÊKˆ[X›ÜÈ˜[ˆHÙ[Z[šHš\Ú[Û‹‚ˆ][XYÙT\ÈH[ÂˆÛÛœİ[YÓ\İH[XYÙHÈÚ[XYÙWHˆ
+\œ˜^Kš\Ğ\œ˜^J[XYÙ\ÊH	‰ˆ[XYÙ\Ë›[™İÈ[XYÙ\ËœÛXÙJJHˆ[
+NÂˆYˆ
+[YÓ\İ	‰ˆ[YÓ\İ›[™İ
+HÂˆ[XYÙT\ÈH×NÂˆ›Üˆ
+ÛÛœİHÙˆ[YÓ\İ
+HÂˆÛÛœİH\œÙR[XYÙQ]U\›
+JNÂˆYˆ
+\
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ò[XYÙ[ˆ[°è[YHÈ[X\ÚXYÈ\ØYH
+pè^ˆPˆËİK™ËÚœYËİÙXœÙÚYŠK‰ÈJNÂˆ[XYÙT\Ëœ\Ú
+
+NÂˆBˆYˆ
+\›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑVJHÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñ[[°è[\Ú\ÈH[pèYÙ[™\È›È\İ0èH\ÜÛšX›H[ˆ\İH[ÛY[Ë‰ÈJNÂˆBˆB‚ˆËÈ™Xİ\\˜\ˆ\İÜšX[™X[H[Û™ÛÑˆ
+[[[ÜÈLY[œØZ™\ÈHHÙ\Ú[ÛŠBˆ]Ù\ÜÚ[Û’\İÜHH×NÂˆYˆ
+ÛÛ›™XİY	‰ˆÙ\ÜÚ[Û’YOOH	Ø[›Û‰ÊHÂˆHÂˆÛÛœİ\İ\ÙÜÈH]ØZ]Ú]Y\ÜØYÙBˆ™š[™
+ÈÙ\ÜÚ[Û’YJBˆœÛÜ
+ÈÜ™X]Y]ˆLHJBˆ›[Z]
+L
+Bˆ›X[Š
+NÂˆËÈšY[™[ˆ[ˆÜ™[ˆ\ØÙ[™[KÜÈ[™\[[ÜÂˆÙ\ÜÚ[Û’\İÜHH\İ\ÙÜËœ™]™\œÙJ
+K›X\
+HOˆ
+Âˆ›ÛNˆKœ›ÛHOOH	Ø\ÜÚ\İ[	ÈÈ	Ø\ÜÚ\İ[	Èˆ	İ\Ù\‰ËˆÛÛ[ˆİš[™ÊK˜ÛÛ[
+KœÛXÙJ
+KˆJJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	Ñ\œ›Üˆ™Xİ\\˜[™È\İÜšX[‰ËK›Y\ÜØYÙJNÂˆBˆB‚ˆÙ\ÜÚ[Û’\İÜKœ\Ú
+È›ÛNˆ	İ\Ù\‰ËÛÛ[ˆY\ÜØYÙKš[J
+HJNÂˆËÈˆY[Îˆ[^ÈÛÛ\š[ZYÈÙH[YXİHÛÛ[ÈÛÛ^È[\ÈHH™Yİ[BˆËÈ[\İX\š[È
+\XØHHİX[]ZY\ˆ›İ™YYÜˆH^Ë›ÈÛÛÈÙ[Z[šJK‚ˆYˆ
+\[Ùˆ•^OOH	Üİš[™ÉÈ	‰ˆ•^š[J
+JHÂˆÙ\ÜÚ[Û’\İÜKœÜXÙJÙ\ÜÚ[Û’\İÜK›[™İHKÂˆ›ÛNˆ	İ\Ù\‰ËˆÛÛ[ˆ	ÖÑØİ[Y[ÈY[È8 %™\İ[Y[ˆÛÛ\š[ZYÈ[Øİ[Y[Ëˆ™\ÜÛ™H\Ø[™ÈÓÓÈ\İHÛÛ[šYÈÛÛ[È™Y™\™[˜ÚXK[ˆ\Üpì[ÛN—‰È
+È•^œÛXÙJ
+BˆJNÂˆBˆËÈŒKŒNˆÖTÕSH[°è[ZXÛÈ8 %˜\ÙH\˜H]Y\šY\ÈÙ[™\˜[\ËÛÛ\]H\˜HÛÙRX‚ˆ]Ş\İ[HHÛ\ÜÚYTŞ\İ[JY\ÜØYÙJNÂˆËÈÚÚ[Xİ]˜Nˆ[YXİHİHİpëXH
+Ş\İ[WÜ›Û\Ú[š™Xİ
+BˆYˆ
+ÚÚ[ÚY
+HÂˆÛÛœİÚÚ[HØYÚÚ[œÛÛŠİš[™ÊÚÚ[ÚY
+JNÂˆYˆ
+ÚÚ[	‰ˆÚÚ[œŞ\İ[WÜ›Û\Ú[š™Xİ
+HÂˆŞ\İ[HHÚÚ[œŞ\İ[WÜ›Û\Ú[š™Xİ
+È	×—‰È
+ÈŞ\İ[NÂˆBˆBˆËÈÒS‘NˆÛÛ^È][Y[YÈ
+Y[[ÜšXH[\İX\š[È
+È˜\ÙHHÛÛ›ØÚ[ZY[ÈQÊBˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİİH]ØZ]Z[ÛÛ^
+Âˆ\Ù\’YˆY[U\Ù\“ÙŠ™\KÙ\ÜÚ[Û’Y
+H	Û›Û™IËˆİÛ™\’Yˆ	ØYZ[‰ËˆY\ÜØYÙKˆÜÎˆËˆJNÂˆYˆ
+İ
+HŞ\İ[HH]YÛY[Ş\İ[JŞ\İ[Kİ
+NÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ÕÚ[‘HÛÛ^È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆBˆBˆËÈÒS‘Nˆ°îœÜ]YYHÙXˆ[ˆš]›È
+]ÜÈXİX[\ÊHİX[™ÈHÛÛœİ[HÈYBˆHÂˆÛÛœİ]™HH]ØZ]]™UÙXÛÛ^
+Y\ÜØYÙJNÂˆYˆ
+]™JHŞ\İ[HHŞ\İ[H
+È	×—‰È
+È]™NÂˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈÒS‘Nˆ\œ˜[ZY[HHğìÛ\]È
+ğè[İ[ÜË™XÚKÛÛ™\œÚ[Û™\ÊHÚ[ˆBˆHÂˆÛÛœİÛÛHÛÛ\]UÛÛ
+Y\ÜØYÙJNÂˆYˆ
+ÛÛ
+HŞ\İ[HHŞ\İ[H
+È	×—‰È
+ÈÛÛÂˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈÒS‘Nˆ[˜İ[Û‹XØ[[™È8 %Z™Xİ]HH\œ˜[ZY[H]XİYH
+ÙX‹ØÛÛ\]ËÕT“
+BˆHÂˆÛÛœİH]XİÛÛ
+Y\ÜØYÙJNÂˆYˆ
+
+HÂˆÛÛœİİ]H]ØZ]^Xİ]UÛÛ
+›˜[YK˜\™ÊNÂˆYˆ
+İ]
+HŞ\İ[HHŞ\İ[H
+È	×—‰È
+Èİ]ÂˆBˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈŒKŒŠÑŒKˆÛX\[˜Ø][ÛˆÛÛˆYÙ]HLÈÚÙ[œÈ
+ÈÚ\œÊBˆÛÛœİ\ÙÜÈHZ[ÛX\Y\ÜØYÙ\ÊŞ\İ[KÙ\ÜÚ[Û’\İÜKL
+NÂ‚ˆHÂˆËÈÛÛˆ[XYÙ[‹Ôˆ\ØØ[™XYÎˆ˜H\™XİÈHÙ[Z[šH
+0î›šXÛÈ›İ™YYÜˆÛÛˆš\ÚpìÛ‚ˆËÈ[ˆ\İHØY[˜JKˆÚ[ˆ[XYÙ[ˆÚYİYH[˜[˜XÚÈ›Ü›X[Û]Yx¡¤‘Ü›Üx¡¤‹‹‹¸¡¤ÛÚ\™K‚ˆÛÛœİÈ™\K[œ]İ]][Ù[HH[XYÙT\ÂˆÈ]ØZ]Ø[Ù[Z[šJ\ÙÜËY\]™SX^ÚÙ[œÊY\ÜØYÙJK[XYÙT\ÊBˆˆ]ØZ]Ø[RJ\ÙÜËY\]™SX^ÚÙ[œÊY\ÜØYÙJJNÂˆYˆ
+ÛÛ›™XİY
+HÚ]Y\ÜØYÙKš[œÙ\X[JÂˆÈÙ\ÜÚ[Û’Y›ÛNˆ	İ\Ù\‰ËÛÛ[ˆY\ÜØYÙKš[J
+H
+È
+[XYÙT\ÈÈ	ÈÚ[XYÙ[ˆY[WIÈˆ	ÉÊH
+È
+•^È	ÈÔˆY[×IÈˆ	ÉÊKÚÙ[œÎˆ[œ][Ù[KˆÈÙ\ÜÚ[Û’Y›ÛNˆ	Ø\ÜÚ\İ[	ËÛÛ[ˆ™\KÚÙ[œÎˆİ]][Ù[KˆJK˜Ø]Ú
+
+
+HOˆßJNÂˆœ›ØYØ\İ
+	ØÚ]İ\ÙY	ËÈ[Ù[ÚÙ[œÎˆ[œ]
+Èİ]]JNÂˆ˜XÚÑ]™[
+	ØÚ]	Ë[È[Ù[ÚÙ[œÎˆ[œ]
+Èİ]]JNÂˆĞ[\
+	ØÚ]	Ë
+
+HOˆ<'ä«Ú]ÛÛˆÒS‘OØ—‰Ôİš[™ÊY\ÜØYÙH	ÉÊKœÛXÙJŒ
+Kœ™\XÙJÖÏ—KÙË	ÉÊ_W¼'éè	Û[Ù[W¼'ã$	ØÛY[\
+™\J_XÈÚ[™İÓ\ÎˆÌJNÂˆÛÛœİ[ZS›İÈH]ØZ][˜Ü‘[ZU\ØYÙJ[ZRÙ^JNÂˆ™\ËšœÛÛŠÈ™\K\ØYÙNˆÈ[œ]İ]]İ[ˆ[œ]
+Èİ]]K[Ù[[ZNˆÈ\ÙYˆ[ZS›İË[Z]ˆ[ZS[Z]HJNÂˆËÈÒS‘Nˆ\™[™HXÚÜÈ[Y[œØZ™H[\İX\š[È
+Y[[ÜšXH[™[˜X›JBˆÛÛœİY[UHHY[U\Ù\“ÙŠ™\KÙ\ÜÚ[Û’Y
+NÂˆYˆ
+ÛÛ›™XİY	‰ˆY[UH	‰ˆY[Q[˜X›YÙŠ™\JJHÂˆYˆ
+Y[UKœİ\ÕÚ]
+	ÜÙ\ÜÎ‰ÊJHÂˆËÈY[[ÜšXHHÙ\ÚpìÛˆXÛİYH\˜H[š]YÜÈ
+[K\Ü[JNˆpè^ŒXÚÜË‚ˆRSY[[ÜK˜Ûİ[Øİ[Y[ÊÈ\Ù\’YˆY[UHJK[Š
+Û
+HOˆÂˆYˆ
+ÛŒ
+H™[Y[X™\ŠÈ\Ù\’YˆY[UK^ˆY\ÜØYÙHJK˜Ø]Ú
+
+
+HOˆßJNÂˆJK˜Ø]Ú
+
+
+HOˆßJNÂˆH[ÙHÂˆ™[Y[X™\ŠÈ\Ù\’YˆY[UK^ˆY\ÜØYÙHJK˜Ø]Ú
+
+
+HOˆßJNÂˆBˆBˆHØ]Ú
+\œŠHÂˆĞ[\
+	ØÚ]˜Z[	Ë
+
+HO‚ˆ8¦¨;î#È‘\œ›Üˆ[ˆØ\KØÚ]Ø—‰Ù\œˆ	‰ˆ
+\œ‹›Y\ÜØYÙH\œ‹œİ]\ÊHÈİš[™Ê\œ‹›Y\ÜØYÙH\œ‹œİ]\ÊKœÛXÙJLŒ
+Hˆ	Ù\ØÛÛ›ØÚYÉßXˆÈÚ[™İÓ\ÎˆÌJNÂˆYˆ
+\œ‹œİ]\ÈOOHJH™]\›ˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ[XYÙT\ÈÈ	ÑÙ[Z[šNˆTHÙ^H[°è[YK‰Èˆ	ĞTHÙ^H[°è[YK‰ÈJNÂˆYˆ
+\œ‹œİ]\ÈOOHJH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	Ó0ë[Z]H[Ø[˜YË‰ÈJNÂˆYˆ
+[XYÙT\ÊH™]\›ˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈYH[˜[^˜\ˆH[XYÙ[‹ˆ[[HHY]›Ë‰ÈJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›Üˆ[\››Ë‰ÈJNÂˆBŸJNÂ‚‹ËÈÛÛXİÈ
+›İYšXØH°ëXHÔÊB˜\œÜİ
+	ËØ\KØÛÛXİ	Ë
+™\K™\ÊHOˆÂˆÛÛœİÈ˜[YK[XZ[Y\ÜØYÙHHH™\K˜›ÙNÂˆ˜XÚÑ]™[
+	ØÛÛXİ	ÊNÂˆĞ[\
+	ØÛÛXİ	Ë
+
+HOˆÂˆÛÛœİ\HÛY[\
+™\JNÂˆ™]\›ˆ<'äêH“Y]›ÈÛÛXİÏØ—¼'äi	Ôİš[™Ê˜[YH	Ğ[°ìÛš[[ÉÊKœÛXÙJÌ
+_W¼'äéÈ	Ù[XZ[È[XZ[œ™\XÙJÊÌŸJKŠŠŠŠKË	ÉJŠŠ‰‰ÊHˆ	ÏÉßW¼'ä«	Ôİš[™ÊY\ÜØYÙH	ÉÊKœÛXÙJ
+_W¼'ã$	Ú\XÂˆKÈÚ[™İÓ\ÎˆÌJNÂˆœ›ØYØ\İ
+	ØÛÛXİÙ›Ü›IËÂˆ˜[YNˆ˜[YH	Ğ[°ìÛš[[ÉËˆ[XZ[ˆ[XZ[È[XZ[œ™\XÙJÊÌŸJKŠŠŠŠKË	ÉJŠŠ‰‰ÊHˆ	ÏÉËˆJNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂŸJNÂ‚‹ËÈ˜][™ÜÂ˜ÛÛœİÛX[•\Ù\•^H
+˜]ËX^
+HOˆ
+\[Ùˆ˜]ÈOOH	Üİš[™ÉÈÈ˜]Ëœ™\XÙJÖÏ—KÙË	ÉÊKœ™\XÙJ×ÊËÙË	È	ÊKœÛXÙJX^
+Kš[J
+Hˆ	ÉÊNÂ˜ÛÛœİ\ØØ\T™YÑ^H
+ÊHOˆİš[™ÊÊKœ™\XÙJÖËŠŠÏ×‰ßJ
+_×WKÙË	×		‰ÊNÂ‚˜\™Ù]
+	ËØ\KÜ˜][™ÜÉË\Ş[˜È
+Ë™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\ËšœÛÛŠÈ˜][™ÜÎˆßHJNÂˆHÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+	Ü˜][™ÜÎ˜[	ÊNÈYˆ
+ØXÚY
+H™]\›ˆ™\ËšœÛÛŠØXÚY
+NÂˆÛÛœİ[H]ØZ]\˜][™Ë™š[™
+ßK	Ø\Yİ[Ûİ[	ÊNÂˆÛÛœİ˜][™ÜÈHßNÂˆ[™›Ü‘XXÚ
+ˆOˆÈ˜][™ÜÖÜ‹˜\YHHÈ]™Îˆ‹˜Ûİ[ˆÈX]œ›İ[™
+
+‹İ[È‹˜Ûİ[
+H
+ˆL
+HÈLˆÛİ[ˆ‹˜Ûİ[NÈJNÂˆÛÛœİ™\İ[HÈ˜][™ÜÈNÂˆ]ØZ]ØXÚTÙ]
+	Ü˜][™ÜÎ˜[	Ë™\İ[LŒ
+NÂˆ™\ËšœÛÛŠ™\İ[
+NÂˆHØ]ÚÈ™\ËšœÛÛŠÈ˜][™ÜÎˆßHJNÈBŸJNÂ‚˜\œÜİ
+	ËØ\KÜ˜][™ÜÉËX›XÔÜİ[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİ\YHÛX[•\Ù\•^
+™\K˜›ÙK˜\YŒ
+NÂˆÛÛœİ\˜[YHHÛX[•\Ù\•^
+™\K˜›ÙK˜\˜[YKŒ
+H\YÂˆÛÛœİ^ÈHÛX[•\Ù\•^
+™\K˜›ÙK^ËŒ
+NÂˆÛÛœİ]]ÜˆHÛX[•\Ù\•^
+™\K˜›ÙK˜]]Ü‹
+NÂˆÛÛœİÈİ\œÈHH™\K˜›ÙNÂˆÛÛœİ\H™\Kš\	Ø[›Û‰ÎÂˆYˆ
+X\Y\İ\œÈİ\œÈHİ\œÈˆJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ]ÜÈ[°è[YÜÉÈJNÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆËÈš[™Û™P[™\]H
+È\Ù\\È]0ìÛZXÛÈ8 %]š]HHÛÛ™XÚpìÛˆHØ\œ™\˜BˆËÈ]YHX°ëXHÛÛˆ™š[™Û™H8¡¤ˆ™]È\˜][™Ê
+H8¡¤ˆØ]™J
+HˆÚHÜÈ›İÜÂˆËÈYØX˜[ˆØ\ÚH[Z\Û[ÈY[\Ë[X›ÜÈÙ0ëX[ˆ\Ø\ˆ[š[™Û™H[\ÂˆËÈH]YH[š[Y\›ÈİX\™\˜KÜ™X[™ÈˆØİ[Y[ÜÈÛÛˆ[Z\Û[È\Y‚ˆ]ˆH]ØZ]\˜][™Ë™š[™Û™P[™\]JˆÈ\YKˆÈ	Ù]Û’[œÙ\ˆÈ\Y\˜[YNˆ\˜[YH\Y˜][™ÜÎˆ×K™]šY]ÜÎˆ×Kİ[ˆÛİ[ˆHKˆÈ\Ù\ˆYK™]ÎˆYHBˆ
+NÂˆYˆ
+\‹œ™]šY]ÜÊH‹œ™]šY]ÜÈH×NÂˆÛÛœİ[™XYHH‹œ˜][™ÜË™š[™
+Oˆš\OOH\
+NÂˆÛÛœİ[™XYT™]šY]ÈH‹œ™]šY]ÜË™š[™
+Oˆš\OOH\
+NÂ‚ˆËÈXH^H›İÈ
+È™\ÙpìXHH\İHÛY[Nˆ™K\İXš\ˆ\È[ˆ\XØYË‚ˆYˆ
+[™XYH	‰ˆ[™XYT™]šY]È	‰ˆ^ÊHÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÖXHÛÛY[\İH\İH\	Ë™]šY]ÎˆYK]™Îˆ‹˜Ûİ[ˆÈX]œ›İ[™
+
+‹İ[Ü‹˜Ûİ[
+JŒL
+KÌLˆÛİ[ˆ‹˜Ûİ[JNÂˆB‚ˆËÈXH›İ0ìÈ\›Èpî›ˆ›ÈÛÛY[H8¡¤ˆÙHYÜ™YØHH™\ÙpìXHÚ[ˆİ[X\ˆ›İË‚ˆYˆ
+[™XYH	‰ˆ^ÊHÂˆ‹œ™]šY]ÜËœ\Ú
+È\]]Üˆ]]Üˆ	Ğ[°ìÛš[[ÉË^Ëİ\œÎˆX]œ›İ[™
+İ\œÊHJNÂˆYˆ
+‹œ™]šY]ÜË›[™İˆL
+H‹œ™]šY]ÜÈH‹œ™]šY]ÜËœÛXÙJLL
+NÂˆ]ØZ]‹œØ]™J
+NÈ]ØZ]ØXÚQ[
+	Ü˜][™ÜÎ˜[	ÊNÈ]ØZ]ØXÚQ[
+	Ü™]šY]ÜÎ‰È
+È\Y
+NÂˆĞ[\
+	Ü˜][™ÉË
+
+HOˆ<'ä«”™\ÙpìXHY]˜OØˆ[ˆ	Ôİš[™Ê\˜[YH\Y
+KœÛXÙJ
+_H8 %	Ôİš[™Ê]]Üˆ	Ğ[°ìÛš[[ÉÊKœÛXÙJ
+_H
+	Üİ\œßx¦!JXÈÚ[™İÓ\ÎˆÌJNÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK™]šY]ÎˆYK]™Îˆ‹˜Ûİ[ˆÈX]œ›İ[™
+
+‹İ[Ü‹˜Ûİ[
+JŒL
+KÌLˆÛİ[ˆ‹˜Ûİ[JNÂˆBˆYˆ
+[™XYJH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÖXH›İ\İIË]™Îˆ‹˜Ûİ[ˆÈX]œ›İ[™
+
+‹İ[Ü‹˜Ûİ[
+JŒL
+KÌLˆÛİ[ˆ‹˜Ûİ[JNÂ‚ˆËÈ›İÈY]›È
+ÛÛˆÈÚ[ˆ™\ÙpìXHY[JK‚ˆ‹œ˜][™ÜËœ\Ú
+È\İ\œÈJNÈ‹İ[
+ÏHİ\œÎÈ‹˜Ûİ[
+ÏHNÂˆYˆ
+^ÊH‹œ™]šY]ÜËœ\Ú
+È\]]Üˆ]]Üˆ	Ğ[°ìÛš[[ÉË^Ëİ\œÎˆX]œ›İ[™
+İ\œÊHJNÂˆYˆ
+‹œ™]šY]ÜË›[™İˆL
+H‹œ™]šY]ÜÈH‹œ™]šY]ÜËœÛXÙJLL
+NÂˆ]ØZ]‹œØ]™J
+NÈ]ØZ]ØXÚQ[
+	Ü˜][™ÜÎ˜[	ÊNÂˆÛÛœİ]™ÈHX]œ›İ[™
+
+‹İ[È‹˜Ûİ[
+H
+ˆL
+HÈLÂˆœ›ØYØ\İ
+	Û™]×Ü˜][™ÉËÈ\Y\˜[YNˆ\˜[YH\Yİ\œË]™ËÛİ[ˆ‹˜Ûİ[JNÂˆYˆ
+^ÊHÂˆ]ØZ]ØXÚQ[
+	Ü™]šY]ÜÎ‰È
+È\Y
+NÂˆĞ[\
+	Ü˜][™ÉË
+
+HOˆ<'ä«”™\ÙpìXHY]˜OØˆ	Ôİš[™Ê\˜[YH\Y
+KœÛXÙJ
+_H8 %	Ôİš[™Ê]]Üˆ	Ğ[°ìÛš[[ÉÊKœÛXÙJ
+_H
+	Üİ\œßx¦!JXÈÚ[™İÓ\ÎˆÌJNÂˆH[ÙHÂˆĞ[\
+	Ü˜][™ÉË
+
+HOˆ8«d”˜][™ÈY]›ÏØˆ	Üİ\œßx¦!H8 %	Ôİš[™Ê\˜[YH\Y
+KœÛXÙJ
+_H
+]™È	Ø]™ßK	Ü‹˜Ûİ[H›İÜÊXÈÚ[™İÓ\ÎˆÌJNÂˆBˆ™\ËšœÛÛŠÈÚÎˆYK]™ËÛİ[ˆ‹˜Ûİ[™]šY]ÎˆH]^ÈJNÂˆHØ]ÚÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›ÜˆİX\™[™È˜][™ÉÈJNÈBŸJNÂ‚‹ËÈ™\ÙpìX\ÈH[ˆ\8 %[˜ØHÙH^Û™HHTˆ]]Ü‹^Ë\İ™[\ÈH™XÚK‚˜\™Ù]
+	ËØ\KØ\ËÎ˜\YÜ™]šY]ÜÉË\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\ËšœÛÛŠÈ™]šY]ÜÎˆ×HJNÂˆÛÛœİÈ\YHH™\Kœ\˜[\ÎÂˆHÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+	Ü™]šY]ÜÎ‰È
+È\Y
+NÈYˆ
+ØXÚY
+H™]\›ˆ™\ËšœÛÛŠØXÚY
+NÂˆÛÛœİØÈH]ØZ]\˜][™Ë™š[™Û™JÈ\YJKœÙ[Xİ
+	Ü™]šY]ÜÈ\˜[YIÊK›X[Š
+NÂˆÛÛœİ™]šY]ÜÈH
+ØÈ	‰ˆØËœ™]šY]ÜÈÈØËœ™]šY]ÜÈˆ×JK›X\
+Oˆ
+Âˆ]]Üˆ
+\[Ùˆ˜]]ÜˆOOH	Üİš[™ÉÈ	‰ˆ˜]]ÜŠHÈ˜]]Ü‹œÛXÙJ
+Hˆ	Ğ[°ìÛš[[ÉËˆİ\œÎˆX]›X^
+KX]›Z[ŠKX]œ›İ[™
+œİ\œÊHJJKˆ^Îˆ\[Ùˆ^ÈOOH	Üİš[™ÉÈÈ^ËœÛXÙJŒ
+Hˆ	ÉËˆÜ™X]Y]ˆ˜Ü™X]Y]™]È]J
+KˆJJKœ™]™\œÙJ
+KœÛXÙJ
+NÂˆÛÛœİ™\İ[HÈ\YÛİ[ˆ™]šY]ÜË›[™İ™]šY]ÜÈNÂˆ]ØZ]ØXÚTÙ]
+	Ü™]šY]ÜÎ‰È
+È\Y™\İ[Œ
+NÂˆ™\ËšœÛÛŠ™\İ[
+NÂˆHØ]ÚÈ™\ËšœÛÛŠÈ™]šY]ÜÎˆ×HJNÈBŸJNÂ‚‹ËÈ™\]Y\İÈH\Â˜\™Ù]
+	ËØ\KÜ™\]Y\İÉË\Ş[˜È
+Ë™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\ËšœÛÛŠÈ™\]Y\İÎˆ×HJNÂˆHÈÛÛœİ™\\ÈH]ØZ]\™\]Y\İ™š[™
+Èİ]\Îˆ	Ü[™[™ÉÈJKœÛÜ
+È›İ\ÎˆLHJK›[Z]
+Œ
+NÈ™\ËšœÛÛŠÈ™\]Y\İÎˆ™\\ÈJNÈBˆØ]ÚÈ™\ËšœÛÛŠÈ™\]Y\İÎˆ×HJNÈBŸJNÂ‚˜\œÜİ
+	ËØ\KÜ™\]Y\İÉËX›XÔÜİ[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈ\›œİ[UÚÙ[ˆHH™\K˜›ÙNÂˆÛÛœİ\H™\Kš\	Ø[›Û‰ÎÂˆÛÛœİ\˜[YHHÛX[•\Ù\•^
+™\K˜›ÙK˜\˜[YKŒ
+NÂˆÛÛœİ™X\ÛÛˆHÛX[•\Ù\•^
+™\K˜›ÙKœ™X\ÛÛ‹Œ
+NÂˆYˆ
+X\˜[YH\˜[YKš[J
+K›[™İŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÛXœ™H™\]Y\šYÉÈJNÂˆYˆ
+X]ØZ]˜[Y]U\›œİ[J\›œİ[UÚÙ[ŠJH™]\›ˆ™\Ëœİ]\ÊÊKšœÛÛŠÈ\œ›Üˆ	Õ™\šYšXØXÚpìÛˆ˜[YIÈJNÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆÛÛœİ^\İ[™ÈH]ØZ]\™\]Y\İ™š[™Û™JÈ\˜[YNˆ™]È™YÑ^
+\ØØ\T™YÑ^
+\˜[YKš[J
+JK	ÚIÊKİ]\Îˆ	Ü[™[™ÉÈJNÂˆYˆ
+^\İ[™ÊHÂˆYˆ
+^\İ[™Ë›İ\œËš[˜ÛY\Ê\
+JH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ	ÖXH›İ\İIË›İ\Îˆ^\İ[™Ë›İ\ÈJNÂˆ^\İ[™Ë›İ\È
+ÏHNÈ^\İ[™Ë›İ\œËœ\Ú
+\
+NÈ]ØZ]^\İ[™ËœØ]™J
+NÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKY\ÜØYÙNˆ	Õ›İÈYÜ™YØYÉË›İ\Îˆ^\İ[™Ë›İ\ÈJNÂˆBˆÛÛœİ™]Ô™\HH™]È\™\]Y\İ
+È\˜[YNˆ\˜[YKš[J
+K™X\ÛÛˆ™X\ÛÛˆ	ÉË\›İ\œÎˆÚ\HJNÂˆ]ØZ]™]Ô™\KœØ]™J
+NÂˆĞ[\
+	Ø\™\IË
+
+HOˆ<'æbÈ”ÛÛXÚ]YH\Ø—¼'äìH	Ø\˜[YKš[J
+KœÛXÙJ
+_W¼'ä«	Ê™X\ÛÛˆ	ÉÊKœÛXÙJ
+H	ÜÚ[ˆ[İ]›ÉßXÈÚ[™İÓ\ÎˆÌJNÂˆ™\ËšœÛÛŠÈÚÎˆYKY\ÜØYÙNˆ	ÔÛÛXÚ]Y[šXYIËYˆ™]Ô™\K—ÚYJNÂˆHØ]ÚÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›ÜˆİX\™[™ÈÛÛXÚ]Y	ÈJNÈBŸJNÂ‚‹ËÈİÛ›ØYTÈ8 %[šÈš\›XYÈÛÛˆ^\˜XÚpìÛˆ
+İ\X˜\ÙHİÜ˜YÙJH\˜H›Â‹ËÈ^Û™\ˆ[˜HT“0î˜›XØH\›X[™[H[š[˜\š[Ë‚˜\™Ù]
+	ËØ\KÙİÛ›ØYÎ™š[S˜[YIË\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈš[S˜[YHHH™\Kœ\˜[\ÎÂˆYˆ
+Yš[S˜[YHš[S˜[YKš[˜ÛY\Ê	Ë‹‰ÊJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÛXœ™H[°è[YÉÈJNÂˆHÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔİÜ˜YÙH›È\ÜÛšX›IÈJNÂˆÛÛœİÙ^HHXÛÙUT’PÛÛ\Û™[
+š[S˜[YJNÂˆ]\™Ù]H[ÂˆHÂˆÛÛœİÈ]NˆÚYÛ™Y]K\œ›ÜˆÚYÛ™Y\œˆHH]ØZ]İ\X˜\ÙKœİÜ˜YÙK™œ›ÛJÕÔQÑWĞ•PÒÑU
+K˜Ü™X]TÚYÛ™Y\›
+Ù^KÌ
+NÂˆYˆ
+\ÚYÛ™Y\œˆ	‰ˆÚYÛ™Y]H	‰ˆÚYÛ™Y]KœÚYÛ™Y\›
+H\™Ù]HÚYÛ™Y]KœÚYÛ™Y\›ÂˆHØ]Ú
+JHßBˆYˆ
+]\™Ù]
+HÂˆÛÛœİÈ]HHHİ\X˜\ÙKœİÜ˜YÙK™œ›ÛJÕÔQÑWĞ•PÒÑU
+K™Ù]X›XÕ\›
+Ù^JNÂˆ\™Ù]H]OËœX›XÕ\›[ÂˆBˆYˆ
+]\™Ù]
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ğ\˜Ú]›È›È[˜ÛÛ˜YÉÈJNÂˆœ›ØYØ\İ
+	ÙİÛ›ØY	ËÈš[S˜[YNˆÙ^HJNÂˆ˜XÚÑ]™[
+	ÙİÛ›ØY	Ë[È\Û˜[YNˆÙ^HJNÂˆĞ[\
+	ÙİÛ›ØY	Ë
+
+HOˆ8«!ûî#È‘\ØØ\™ØOØˆ	ÚÙ^_XÈÚ[™İÓ\ÎˆMLJNÂˆ™\Ëœ™Y\™Xİ
+Ì‹\™Ù]
+NÂˆHØ]Ú
+JHÈÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›ÜˆİÛ›ØY‰ËK›Y\ÜØYÙJNÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈÙ[™\˜\ˆ[[šË‰ÈJNÈBŸJNÂ‚‹ËÈİÛ›ØY[™\™XİHÜˆ\Y8 %[œØYH\˜H[Ø]0è[ÙÛÈÜ[ˆÛİ\˜ÙK‚‹ËÈ[S0î˜›XÛÈÛÛÈ^Û™H[\Y
+[˜ØH[[›XÙH™X[HÚ]X‚‹ËÈ™[X\Ù\ÊNÈ\İH[™Ú[™\İY[™H[[›XÙHXİX[[ˆ[Û™ÛÑˆHXÙB‹ËÈ[ˆ™Y\™XİÌ‹ˆ™[Z˜\ÎˆÙHYYHØ[XšX\ˆ[\İ[›È
+Y]˜H™\œÚpìÛ‹‹ËÈZ\œ›Ü‹]ËŠHÚ[ˆØØ\ˆ[œ›Û[™H]YYH˜XÚÙXYÈYİX[]YH\Â‹ËÈ\ØØ\™Ø\È™[Z][KˆÒ“Îˆ\İÈ›È\ÈœÙYİ\šYYˆ8 %İX[]ZY\˜HYYH™\‚‹ËÈHT“š[˜[[ˆH\İpìXH™]ÛÜšÈ[˜]™YØYÜˆ˜\È[™Y\™Xİ‹ËÈÛÛÈ]š]H]YH]YYHYØYH[ˆ[SØğìÙYÛÈY[HHH0èYÚ[˜K‚˜\™Ù]
+	ËØ\KÙÎ˜\Y	Ë\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆÛÛœİÈ\YHH™\Kœ\˜[\ÎÂˆHÂˆÛÛœİ\ÈH]ØZ]\™š[™Û™JÈ\YJKœÙ[Xİ
+	Ù[›XÙHYÚ[—Ù[›XÙH›ÛXœ™H×Ùš[WÜ]×ÜYÚ[—Ùš[WÜ]	ÊK›X[Š
+NÂˆYˆ
+X\ÈX\Ë™[›XÙH\Ë™[›XÙHOOH	ÈÉÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ[›XÙH›È\ÜÛšX›Hpî›‰ÈJNÂˆËÈ[ˆ[›XÙH[YÜ˜[HÛÛˆÚÙ[ˆ[X™XšYÈ“ÈYYHØ[\ˆÜˆ[XY\‚ˆËÈØØ][Ûˆ[Ìˆ
+È™\°ëXHİX[]ZY\˜JKˆÙH™XÛÛœİ^YHÛÛˆ[ÚÙ[‚ˆËÈÛÛÈ[ˆ[Ù\™\‹ÈÙH™Y\šYÙHHH]HÙYİ\˜HØ\KİÙš[K‚ˆÛÛœİš[T]HÑš[T]
+\Ë™[›XÙJNÂˆYˆ
+š[T]
+HÂˆYˆ
+U×ÕÒÑSŠH™]\›ˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈ\œ›Üˆ	Ğ[XXÙ[˜[ZY[È[\Ü˜[›È\ÜÛšX›IÈJNÂˆœ›ØYØ\İ
+	ÙİÛ›ØY	ËÈš[S˜[YNˆ\Ë››ÛXœ™HJNÂˆ˜XÚÑ]™[
+	ÙİÛ›ØY	Ë[È\Û˜[YNˆ\Ë››ÛXœ™K\YJNÂˆĞ[\
+	ÙİÛ›ØY	Ë
+
+HOˆ8«!ûî#È‘\ØØ\™ØOØˆ	Ø\Ë››ÛXœ™_XÈÚ[™İÓ\ÎˆMLJNÂˆ™]\›ˆ™\Ëœ™Y\™Xİ
+Ì‹Î‹ËØ\K[YÜ˜[K›Ü™ËÙš[KØ›İ	Õ×ÕÒÑSŸKÉÙš[T]X
+NÂˆBˆ™\Ëœ™Y\™Xİ
+Ì‹\Ë™[›XÙJNÂˆHØ]Ú
+JHÈÛÛœÛÛK™\œ›ÜŠ	Ñ\œ›ÜˆØ\KÙ‰ËK›Y\ÜØYÙJNÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYÈÙ[™\˜\ˆ[[šË‰ÈJNÈBŸJNÂ‚‹ËÈ\ØØ\™ØHÙYİ\˜HH\˜Ú]›ÜÈ[YÜ˜[H
+ÚÙ[ˆÛÛÈ[ˆ[Ù\™\ŠK‚‹ËÈ[›^˜H\ÙHØ\KØ\È
+[›XÙHØvÓßw¶‰ËkºwµçH\œ›ÜˆİX›Z]]K™\œ›ÜË›Y\ÜØYÙHš\\Õİ[	ÜİX›Z]™\Ëœİ]\ßXˆJNÂˆB‚ˆÛÛœİ[˜[\Ú\ÒYHİX›Z]]K™]OËšYÂˆYˆ
+X[˜[\Ú\ÒY
+HÂˆ™]\›ˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Õš\\Õİ[›È]›Ûš[È[ˆ[˜[\Ú\ÈY	ÈJNÂˆB‚ˆ][˜[\Ú\Ñ]HH[Âˆ›Üˆ
+]HHÈHÈJÊÊHÂˆÛÛœİ[˜[\Ú\Ô™\ÈH]ØZ]™]Ú
+Î‹ËİİİËš\\İİ[˜ÛÛKØ\KİŒËØ[˜[\Ù\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+[˜[\Ú\ÒY
+_XÂˆXY\œÎˆÈ	ŞX\ZÙ^IÎˆ›ØÙ\ÜË™[‹•’T•TÕÕSĞTWÒÑVHBˆJNÂˆ[˜[\Ú\Ñ]HH]ØZ][˜[\Ú\Ô™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆYˆ
+[˜[\Ú\Ô™\Ë›ÚÈ	‰ˆ[˜[\Ú\Ñ]K™]OË˜]šX]\ÏËœİ]\ÈOOH	ØÛÛ\]Y	ÊHœ™XZÎÂˆ]ØZ]™]È›ÛZ\ÙJ™\ÛÛ™HOˆÙ][Y[İ]
+™\ÛÛ™KN
+JNÂˆB‚ˆÛÛœİ]œÈH[˜[\Ú\Ñ]OË™]OË˜]šX]\ÈßNÂˆÛÛœİİ]ÈH]œËœİ]ÈßNÂˆÛÛœİX[XÚ[İ\ÈHİ]Ë›X[XÚ[İ\ÈÂˆÛÛœİİ\ÜXÚ[İ\ÈHİ]Ëœİ\ÜXÚ[İ\ÈÂˆÛÛœİ\›[\ÜÈHİ]Ëš\›[\ÜÈÂˆÛÛœİ[™]XİYHİ]Ë[™]XİYÂˆÛÛœİ[Y[İ]Hİ]Ë[Y[İ]ÂˆÛÛœİš\ÚÔØÛÜ™HHX]›Z[ŠL
+X[XÚ[İ\È
+ˆJH
+È
+İ\ÜXÚ[İ\È
+ˆLŠJNÂ‚ˆ]™\™XİH	ØÛX[‰ÎÂˆ]™XÛÛ[Y[™][ÛˆH	Ó›ÈÙH]Xİ\›ÛˆÙ[˜[\ÈÛ\˜\ÈHšY\ÙÛË\›È][ˆÛÛšY[™H™]š\Ø\ˆ[ÛZ[š[È[\ÈHXœš\›Ë‰ÎÂ‚ˆYˆ
+X[XÚ[İ\Èˆ
+HÂˆ™\™XİH	ÛX[XÚ[İ\ÉÎÂˆ™XÛÛ[Y[™][ÛˆH	Ó›ÈXœ˜\È\İH[šËˆ›Ü]YX[Ë›È\ØØ\™İY\È\˜Ú]›ÜÈH]š]HÛÛ\\\›Ë‰ÎÂˆH[ÙHYˆ
+İ\ÜXÚ[İ\Èˆ
+HÂˆ™\™XİH	Üİ\ÜXÚ[İ\ÉÎÂˆ™XÛÛ[Y[™][ÛˆH	Õ˜][ÈÛÛ[ÈÛÜÜXÚÜÛËˆ™\šYšXØH[ÛZ[š[Ë]š]H[šXÚX\ˆÙ\Ú[ÛˆH›È\ØØ\™İY\È˜YK‰ÎÂˆH[ÙHYˆ
+[Y[İ]ˆ	‰ˆ\›[\ÜÈOOH
+HÂˆ™\™XİH	İ[šÛ›İÛ‰ÎÂˆ™XÛÛ[Y[™][ÛˆH	Ñ[[˜[\Ú\È›ÈYHÛÛ˜Û^Y[Kˆ™]š\ØH[ÛZ[š[ÈX[X[Y[H[\ÈHÛÛ™šX\‹‰ÎÂˆB‚ˆ]ØZ]Ø]™TØØ[“ÙÊÂˆ\Nˆ	İ\›	Ëˆ\™Ù]ˆ\œÙY\›Ôİš[™Ê
+Kˆ™\™Xİˆš\ÚÔØÛÜ™Kˆ›İšY\ˆ	İš\\İİ[	ËˆY]Y]NˆÈX[XÚ[İ\Ëİ\ÜXÚ[İ\Ë\›[\ÜË[™]XİYÜİˆ\œÙY\›šÜİ˜[YHKˆJNÂ‚ˆ™\ËšœÛÛŠÂˆÚÎˆYKˆ›İšY\ˆ	İš\\İİ[	Ëˆ\›ˆ\œÙY\›Ôİš[™Ê
+KˆÜİˆ\œÙY\›šÜİ˜[YKˆ™\™Xİˆš\ÚÔØÛÜ™Kˆ™XÛÛ[Y[™][Û‹ˆİ]ÎˆÂˆX[XÚ[İ\Ëˆİ\ÜXÚ[İ\Ëˆ\›[\ÜËˆ[™]XİYˆ[Y[İ]ˆKˆ[˜[\Ú\ÎˆÂˆYˆ[˜[\Ú\ÒYˆİ]\Îˆ]œËœİ]\È	Ü]Y]YY	Ëˆ]Nˆ]œË™]H[ˆBˆJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙH	Ó›ÈÙHYÈ[˜[^˜\ˆ[[šÉÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÔÕØ\KØÚXÚËYš[H8 %š\\Õİ[š[HÚXÚÙ\ˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\œÜİ
+	ËØ\KØÚXÚËYš[IËÚ][Z]\‹
+™\K™\ÊHOˆÂˆ\ØYÙXİ\š]Qš[KœÚ[™ÛJ	Ùš[IÊJ™\K™\Ë\Ş[˜È
+\œŠHOˆÂˆYˆ
+\œŠHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÂˆÚÎˆ˜[ÙKˆ\œ›Üˆ\œ‹˜ÛÙHOOH	ÓSRUÑ’SWÔÒV‘IÂˆÈ	Ñ[\˜Ú]›Èİ\\˜H[[Z]HHÌˆP‰Âˆˆ
+\œ‹›Y\ÜØYÙH	Ó›ÈÙHYÈ›ØÙ\Ø\ˆ[\˜Ú]›ÉÊBˆJNÂˆBˆYˆ
+\™\K™š[JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ğ\˜Ú]›È™\]Y\šYÉÈJNÂˆYˆ
+\›ØÙ\ÜË™[‹•’T•TÕÕSĞTWÒÑVJHÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Õ’T•TÕÕSĞTWÒÑVH›ÈÛÛ™šYİ\˜YIÈJNÂˆB‚ˆHÂˆÛÛœİÚLMˆHÜ\Ë˜Ü™X]R\Ú
+	ÜÚLM‰ÊK\]J™\K™š[K˜Y™™\ŠK™YÙ\İ
+	Ú^	ÊNÂˆÛÛœİ›Ü›HH™]È›Ü›Q]J
+NÂˆ›Ü›K˜\[™
+	Ùš[IË™]È›ØŠÜ™\K™š[K˜Y™™\—KÈ\Nˆ™\K™š[K›Z[Y]\H	Ø\XØ][Û‹ÛØİ]\İ™X[IÈJK™\K™š[K›ÜšYÚ[˜[˜[YJNÂ‚ˆÛÛœİİX›Z]™\ÈH]ØZ]™]Ú
+	ÚÎ‹ËİİİËš\\İİ[˜ÛÛKØ\KİŒËÙš[\ÉËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ŞX\ZÙ^IÎˆ›ØÙ\ÜË™[‹•’T•TÕÕSĞTWÒÑVHKˆ›ÙNˆ›Ü›BˆJNÂ‚ˆÛÛœİİX›Z]]HH]ØZ]İX›Z]™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆYˆ
+\İX›Z]™\Ë›ÚÊHÂˆ™]\›ˆ™\Ëœİ]\ÊİX›Z]™\Ëœİ]\ÊKšœÛÛŠÂˆÚÎˆ˜[ÙKˆ\œ›ÜˆİX›Z]]K™\œ›ÜË›Y\ÜØYÙHš\\Õİ[	ÜİX›Z]™\Ëœİ]\ßXˆJNÂˆB‚ˆÛÛœİ[˜[\Ú\ÒYHİX›Z]]K™]OËšYÂˆYˆ
+X[˜[\Ú\ÒY
+HÂˆ™]\›ˆ™\Ëœİ]\ÊLŠKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Õš\\Õİ[›È]›Ûš[È[ˆ[˜[\Ú\ÈY\˜H[\˜Ú]›ÉÈJNÂˆB‚ˆ][˜[\Ú\Ñ]HH[Âˆ›Üˆ
+]HHÈHNÈJÊÊHÂˆÛÛœİ[˜[\Ú\Ô™\ÈH]ØZ]™]Ú
+Î‹ËİİİËš\\İİ[˜ÛÛKØ\KİŒËØ[˜[\Ù\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+[˜[\Ú\ÒY
+_XÂˆXY\œÎˆÈ	ŞX\ZÙ^IÎˆ›ØÙ\ÜË™[‹•’T•TÕÕSĞTWÒÑVHBˆJNÂˆ[˜[\Ú\Ñ]HH]ØZ][˜[\Ú\Ô™\ËšœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆYˆ
+[˜[\Ú\Ô™\Ë›ÚÈ	‰ˆ[˜[\Ú\Ñ]K™]OË˜]šX]\ÏËœİ]\ÈOOH	ØÛÛ\]Y	ÊHœ™XZÎÂˆ]ØZ]™]È›ÛZ\ÙJ™\ÛÛ™HOˆÙ][Y[İ]
+™\ÛÛ™KN
+JNÂˆB‚ˆÛÛœİ]œÈH[˜[\Ú\Ñ]OË™]OË˜]šX]\ÈßNÂˆÛÛœİİ]ÈH]œËœİ]ÈßNÂˆÛÛœİX[XÚ[İ\ÈHİ]Ë›X[XÚ[İ\ÈÂˆÛÛœİİ\ÜXÚ[İ\ÈHİ]Ëœİ\ÜXÚ[İ\ÈÂˆÛÛœİ\›[\ÜÈHİ]Ëš\›[\ÜÈÂˆÛÛœİ[™]XİYHİ]Ë[™]XİYÂˆÛÛœİš\ÚÔØÛÜ™HHX]›Z[ŠL
+X[XÚ[İ\È
+ˆJH
+È
+İ\ÜXÚ[İ\È
+ˆLŠJNÂ‚ˆ]™\™XİH	ØÛX[‰ÎÂˆ]™XÛÛ[Y[™][ÛˆH	Ó›ÈÙH]Xİ\›Ûˆ[Y[˜^˜\ÈÛ\˜\Ë\›È][ˆÛÛšY[™H™\šYšXØ\ˆ[ÜšYÙ[ˆ[\˜Ú]›È[\ÈHXœš\›Ë‰ÎÂˆYˆ
+X[XÚ[İ\Èˆ
+HÂˆ™\™XİH	ÛX[XÚ[İ\ÉÎÂˆ™XÛÛ[Y[™][ÛˆH	Ó›ÈXœ˜\ÈšHZ™Xİ]\È\İH\˜Ú]›Ëˆ[[Z[˜[ÈÈZ\ÛHH]Y\İ˜K‰ÎÂˆH[ÙHYˆ
+İ\ÜXÚ[İ\Èˆ
+HÂˆ™\™XİH	Üİ\ÜXÚ[İ\ÉÎÂˆ™XÛÛ[Y[™][ÛˆH	Õ˜][ÈÛÛ[ÈÛÜÜXÚÜÛËˆ]š]HZ™Xİ]\›ÈHÛÛ™š\›XHİHÜšYÙ[ˆš[Y\›Ë‰ÎÂˆB‚ˆ]ØZ]Ø]™TØØ[“ÙÊÂˆ\Nˆ	Ùš[IËˆ\™Ù]ˆ™\K™š[K›ÜšYÚ[˜[˜[YKˆ™\™Xİˆš\ÚÔØÛÜ™Kˆ›İšY\ˆ	İš\\İİ[	ËˆY]Y]NˆÈÚLM‹X[XÚ[İ\Ëİ\ÜXÚ[İ\Ë\›[\ÜË[™]XİYZ[YNˆ™\K™š[K›Z[Y]\KÚ^™Nˆ™\K™š[KœÚ^™HKˆJNÂ‚ˆ™\ËšœÛÛŠÂˆÚÎˆYKˆ›İšY\ˆ	İš\\İİ[	Ëˆš[S˜[YNˆ™\K™š[K›ÜšYÚ[˜[˜[YKˆZ[YNˆ™\K™š[K›Z[Y]\H	Ø\XØ][Û‹ÛØİ]\İ™X[IËˆÚ^™Nˆ™\K™š[KœÚ^™KˆÚLM‹ˆ™\™Xİˆš\ÚÔØÛÜ™Kˆ™XÛÛ[Y[™][Û‹ˆİ]ÎˆÂˆX[XÚ[İ\Ëˆİ\ÜXÚ[İ\Ëˆ\›[\ÜËˆ[™]XİYˆKˆ[˜[\Ú\ÎˆÂˆYˆ[˜[\Ú\ÒYˆİ]\Îˆ]œËœİ]\È	Ü]Y]YY	Ëˆ]Nˆ]œË™]H[ˆBˆJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙH	Ó›ÈÙHYÈ[˜[^˜\ˆ[\˜Ú]›ÉÈJNÂˆBˆJNÂŸJNÂ‚‚‹ËÈ8¥ 8¥ ÑUØ\KÙØÜÈ8 %İØYÙÙ\ˆRH[›[™H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÙØÜÉË
+Ë™\ÊHOˆÂˆ™\ËœÙ[™
+QĞÕTH[‚[[™ÏH™\È‚XY‚ˆY]HÚ\œÙ]H•U‹N‚ˆY]H˜[YOHšY]ÜÜˆÛÛ[HÚYY]šXÙK]ÚY[š]X[\ØØ[OLH‚ˆ]OÛÙRXˆTHØÜÏİ]O‚ˆ[šÈ™[Hœİ[\ÚY]ˆ™YHšÎ‹Ëİ[œÙË˜ÛÛKÜİØYÙÙ\‹]ZKY\İKÜİØYÙÙ\‹]ZK˜ÜÜÈ‚ˆİ[O‚ˆ›ÙHÈX\™Ú[ˆÈ˜XÚÙÜ›İ[™ˆÌLLMÈBˆœİØYÙÙ\‹]ZHÜ˜\ˆÈ˜XÚÙÜ›İ[™ˆÌ™YÈBˆœİØYÙÙ\‹]ZHÜ˜\ˆ™İÛ›ØY]\›]Ü˜\\ˆÈ\Ü^Nˆ›Û™NÈBˆœİØYÙÙ\‹]ZHš[™›È]HÈÛÛÜˆÌ™YÈBˆÜİ[O‚ÚXY‚›ÙO‚ˆ]ˆYHœİØYÙÙ\‹]ZHÙ]‚ˆØÜš\Ü˜ÏHšÎ‹Ëİ[œÙË˜ÛÛKÜİØYÙÙ\‹]ZKY\İKÜİØYÙÙ\‹]ZKX[™KšœÈÜØÜš\‚ˆØÜš\‚ˆİØYÙÙ\•RP[™JÂˆÜXÎˆ	Ò”ÓÓ‹œİš[™ÚYJİØYÙÙ\”ÜXÊ_KˆÛWÚYˆ	ÈÜİØYÙÙ\‹]ZIËˆY\[šÚ[™ÎˆYKˆ™\Ù]ÎˆÔİØYÙÙ\•RP[™Kœ™\Ù]Ë˜\\ËİØYÙÙ\•RP[™K”İØYÙÙ\•RTİ[™[Û™T™\Ù]Kˆ^[İ]ˆ	Ôİ[™[Û™S^[İ]	ËˆR]İ][˜X›YˆYKˆJNÂˆÜØÜš\‚Ø›ÙO‚Ú[˜
+NÂŸJNÂ‚‹ËÈ8¥ 8¥ ÑUØ\KÙØÜËšœÛÛˆ8 %ÜXÈ[ˆ”ÓÓˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÙØÜËšœÛÛ‰Ë
+Ë™\ÊHOˆ™\ËšœÛÛŠİØYÙÙ\”ÜXÊJNÂ‚‹ËÈ8¥ 8¥ “ÑÈTÕ0àUPÓÈ8 %Ú]XˆTH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ™\]ZY\™NˆÒUP—ÕÒÑSˆ[ˆ[ˆ˜\œÈÛÛˆ\›Z\ÛÜÈ™\Î˜ÛÛ[Â‹ËÈœH[œİ[ØİÚÚ]Ü™\İ
+XH[ˆXÚØYÙKšœÛÛŠB‚›]ØİÚÚ]H[ÂHÂˆÛÛœİÈØİÚÚ]HH™\]Z\™J	ĞØİÚÚ]Ü™\İ	ÊNÂˆYˆ
+›ØÙ\ÜË™[‹‘ÒUP—ÕÒÑSŠHÂˆØİÚÚ]H™]ÈØİÚÚ]
+È]]ˆ›ØÙ\ÜË™[‹‘ÒUP—ÕÒÑSˆJNÂˆÛÛœÛÛK›ÙÊ	È›ÙÈÚ]Xˆ8§!HØİÚÚ]\İÉÊNÂˆH[ÙHÂˆÛÛœÛÛK›ÙÊ	È›ÙÈÚ]Xˆ8¦¨;î#È˜[HÒUP—ÕÒÑSˆ[ˆ[ˆ˜\œÉÊNÂˆBŸHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	È›ÙÈÚ]Xˆ8¦¨;î#ÈØİÚÚ]Ü™\İ›È[œİ[YÈ8 %	ËK›Y\ÜØYÙJNÂŸB‚˜ÛÛœİÒUP—ÓÕÓ‘TˆH›ØÙ\ÜË™[‹‘ÒUP—ÓÕÓ‘Tˆ	İÚ[ÛÛŒÍŒ[XœÉÎÂ˜ÛÛœİÒUP—Ô‘TÈH›ØÙ\ÜË™[‹‘ÒUP—Ô‘TÈ	ĞÛÙRX‰ÎÂ˜ÛÛœİÒUP—Ğ”SÒH›ØÙ\ÜË™[‹‘ÒUP—Ğ”SÒ	ÛXZ[‰ÎÂ‚‹ËÈÚ]Xˆ\İHÛÜšÙ›İÜÈš\X[\Èˆ[ˆ™\ÜÈÛÛˆ\[™X›İÔYÙ\ÈXİ]›ÜÂ‹ËÈ
+™Z‹ˆ\[™X›İ]\]\Ë[[YÙ\ËXZ[Y\Ş[Y[[[
+Nˆ›ÈÛÛˆ\˜Ú]›ÜÂ‹ËÈ™X[\ÈHÛÛœİ[\ˆİ\È[œÈ]Y[™HˆÙHš[˜[ˆÛÛ˜HÜÈ\˜Ú]›ÜÂ‹ËÈ™X[\ÈH™Ú]X‹İÛÜšÙ›İÜÈH\İH™\È
+HYX˜HH]\›ÜÈ˜[\ÛX\ÊK‹ËÈpè\È›XÚÛ\İ\İ0è]XØH
+È\™[™YH[ˆ[[YK‚˜ÛÛœİÒÕ’T•PSÕÓÔ’Ñ“ÕÔÈH™]ÈÙ]
+ÉÙ\[™X›İ]\]\Ë[[	Ë	ÜYÙ\ËXZ[Y\Ş[Y[[[	×JNÂ˜ÛÛœİÒÕÓÔ’Ñ“ÕÔ×ÑTˆH]œ™\ÛÛ™J×Ù\›˜[YK	Ë‹‰Ë	Ë™Ú]X‰Ë	İÛÜšÙ›İÜÉÊNÂ›]ÙÚÙ‘š[\ĞØXÚHH[Â›]ÙÚÙ‘š[\Ğ]HÂ™[˜İ[ÛˆØØ[ÛÜšÙ›İÑš[\Ê
+HÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+WÙÚÙ‘š[\ĞØXÚH
+›İÈHÙÚÙ‘š[\Ğ]
+HˆÌ
+HÂˆHÂˆÙÚÙ‘š[\ĞØXÚHH™]ÈÙ]
+œËœ™XY\”Ş[˜ÊÒÕÓÔ’Ñ“ÕÔ×ÑTŠK™š[\ŠˆOˆ×XOÛ[	ÚK\İ
+ŠJJNÂˆHØ]ÚÈÙÚÙ‘š[\ĞØXÚHH™]ÈÙ]
+
+NÈBˆÙÚÙ‘š[\Ğ]H›İÎÂˆBˆ™]\›ˆÙÚÙ‘š[\ĞØXÚNÂŸB›]ÙÚ[ÛUÛÜšÙ›İÜÈH™]ÈÙ]
+
+NÂ™[˜İ[Ûˆ\Ô™X[Ú]X•ÛÜšÙ›İÊ]
+HÂˆÛÛœİš[HHİš[™Ê]
+KœÜ]
+	ËÉÊKœÜ
+
+NÂˆYˆ
+ÒÕ’T•PSÕÓÔ’Ñ“ÕÔËš\Êš[JHÙÚ[ÛUÛÜšÙ›İÜËš\Êš[JJH™]\›ˆ˜[ÙNÂˆÛÛœİØØ[HØØ[ÛÜšÙ›İÑš[\Ê
+NÂˆYˆ
+ØØ[œÚ^™HOOH
+H™]\›ˆYNÈËÈ›ÈÙHYÈY\ˆ[\ˆ›Èš[˜\ˆÜˆ\ØÛÂˆ™]\›ˆØØ[š\Êš[JNÂŸB‚˜\Ş[˜È[˜İ[ÛˆÚ\]Qš[Jš[T]ÛÛ[Y\ÜØYÙJHÂˆYˆ
+[ØİÚÚ]
+H›İÈ™]È\œ›ÜŠ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÈ[ˆ™[™\‰ÊNÂˆ]ÚNÂˆHÂˆÛÛœİÈ]HHH]ØZ]ØİÚÚ]œ™\ÜË™Ù]ÛÛ[
+ÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]ˆš[T]™YˆÒUP—Ğ”SÒˆJNÂˆÚHH]KœÚNÂˆHØ]ÚÈÊˆ\˜Ú]›ÈY]›È
+‹ÈB‚ˆ]ØZ]ØİÚÚ]œ™\ÜË˜Ü™X]SÜ•\]Qš[PÛÛ[ÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]ˆš[T]ˆY\ÜØYÙKÛÛ[ˆY™™\‹™œ›ÛJÛÛ[
+KÔİš[™Ê	Ø˜\ÙM	ÊKˆœ˜[˜ÚˆÒUP—Ğ”SÒ‹‹ŠÚHÈÈÚHHˆßJKˆJNÂŸB‚‹ËÈ8¥ 8¥ VPĞÒpäÓˆH0ãPÓÓ“ÔÈTÑHT“•S’U‘T”ĞSˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[YZ[ˆYØH[[šÈ]YHXHY[™HHX[›È
+™\ÈHÚ]X‹šXÚHB‹ËÈ‹Q›ÚYšXÚHH^HİÜ™KÈ\™Xİ[Y[HH[XYÙ[ŠHH\İÈ˜Z˜B‹ËÈ[0ëXÛÛ›È‘PSHH\
+›È[˜[›™\ˆÛØÚX[[™\ÊHHÈİX™HB‹ËÈ[YËÈ[ˆÚ]Xˆ°ëXHØİÚÚ]™]][^˜[™ÈÚ\]Qš[J
+Kˆ›È[™[B‹ËÈšH\İ[YNˆÚH›È[˜İY[˜H[0ëXÛÛ›Ë]Y[™H[ˆ\œ›Üˆ^XØ[™È]pêB‹ËÈ›Ø°ìË\˜H]YH[YZ[ˆYİYH[[šÈ\™XİÈÛÛ[È[\›˜]]˜K‚‹ËÈYİX[]YH›Ü›X[^™R[XYÙT]
+
+H[ˆYZ[‹ZX‹šœÎˆÚH\È[˜H]HØØ[‹ËÈ
+›ÈÚË›È]N‹Ø›ØŠHÚ[ˆ‹Èˆ[šXÚX[ÙHHYÜ™YØK\˜B‹ËÈ]YHÚY[\™H™\İY[˜H\ÙHH˜pë^ˆÚ[ˆ[\Ü\ˆ]pêH0èYÚ[˜HH[K‚™[˜İ[Ûˆ›Ü›X[^™R[XYÙT]
+˜[
+HÂˆYˆ
+]˜[
+H™]\›ˆ˜[ÂˆÛÛœİˆHİš[™Ê˜[
+Kš[J
+NÂˆYˆ
+×šÏÎ—×ËÚK\İ
+ŠH‹œİ\ÕÚ]
+	Ù]N‰ÊH‹œİ\ÕÚ]
+	Ø›Ø‰ÊH‹œİ\ÕÚ]
+	ËÉÊJH™]\›ˆÂˆ™]\›ˆ	ËÉÈ
+È‹œ™\XÙJ×—×ÊËË	ÉÊNÂŸB‚˜ÛÛœİPÓÓ—ÑVÈHÉËœ™ÉË	ËšœÉË	ËšœYÉË	ËÙXœ	Ë	Ë™ÚY‰Ë	Ëœİ™É×NÂ‚™[˜İ[ÛˆXÛÛ‘^œ›ÛU\›
+\›
+HÂˆÛÛœİÛX[ˆH\›œÜ]
+	ÏÉÊVÌKœÜ]
+	ÈÉÊVÌKÓİÙ\Ø\ÙJ
+NÂˆ™]\›ˆPÓÓ—ÑVË™š[™
+HOˆÛX[‹™[™ÕÚ]
+JJH	Ëœ™ÉÎÂŸB‚‹ËÈ\ØØH˜\İ[™KÛY]Y]KØ[™›ÚYÙ[‹UTËÚ[XYÙ\ËÚXÛÛ‹œ™È
+È˜\šX[\ÈB‹ËÈ]KÜ˜[XHÛÛ][™\ÊH[ˆ[ˆ™\È0î˜›XÛÈHÚ]X‹Ú[ˆ™XÙ\Ú]\ˆÚÙ[‚‹ËÈ›Ü[È
+HTHHÛÛ[šYÜÈHÚ]Xˆ\È0î˜›XØH\˜H™\ÜÈ0î˜›XÛÜÊK‚˜\Ş[˜È[˜İ[Ûˆ™]ÚÚ]X‘˜\İ[™RXÛÛŠİÛ™\‹™\ÊHÂˆÛÛœİœ˜[˜Ú\ÈHÉÛXZ[‰Ë	ÛX\İ\‰Ë	Ù]‰×NÂˆÛÛœİ]ÈHÂˆ	Ù˜\İ[™KÛY]Y]KØ[™›ÚYÙ[‹UTËÚ[XYÙ\ËÚXÛÛ‹œ™ÉËˆ	ÛY]Y]KØ[™›ÚYÙ[‹UTËÚ[XYÙ\ËÚXÛÛ‹œ™ÉËˆNÂˆ›Üˆ
+ÛÛœİœ˜[˜ÚÙˆœ˜[˜Ú\ÊHÂˆ›Üˆ
+ÛÛœİ]Ùˆ]ÊHÂˆHÂˆÛÛœİ\U\›HÎ‹ËØ\K™Ú]X‹˜ÛÛKÜ™\ÜËÉÛİÛ™\ŸKÉÜ™\ßKØÛÛ[ËÉÜ]OÜ™YIØœ˜[˜ÚXÂˆÛÛœİˆH]ØZ]™]Ú
+\U\›ÈXY\œÎˆÈXØÙ\ˆ	Ø\XØ][Û‹İ›™™Ú]X‹œ˜]ÉÈHJNÂˆYˆ
+‹›ÚÊH™]\›ˆÈY™™\ˆY™™\‹™œ›ÛJ]ØZ]‹˜\œ˜^PY™™\Š
+JK^ˆ	Ëœ™ÉÈNÂˆHØ]ÚÈÊˆ›Ø˜\ˆÚYİZY[HÛÛXš[˜XÚpìÛˆ
+‹ÈBˆBˆBˆ™]\›ˆ[ÂŸB‚‹ËÈ^˜YHHT“HÙÎš[XYÙHH[˜H0èYÚ[˜H
+‹Q›ÚY^HİÜ™K]ËŠB˜\Ş[˜È[˜İ[Ûˆ™]ÚÙÒ[XYÙU\›
+YÙU\›
+HÂˆÛÛœİˆH]ØZ]™]Ú
+YÙU\›ÈXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	Ó[Şš[KÍKŒ
+ÛÙRX‹RXÛÛ›İ
+IÈHJNÂˆYˆ
+\‹›ÚÊH›İÈ™]È\œ›ÜŠ›ÈÙHYÈXœš\ˆ	ÜYÙU\›H
+	Ü‹œİ]\ßJX
+NÂˆÛÛœİ[H]ØZ]‹^
+
+NÂˆÛÛœİHH[›X]Ú
+ÏY]V×—JÜ›Ü\OVÈ‰×[ÙÎš[XYÙVÈ‰×V×—JØÛÛ[VÈ‰×J×ˆ‰×JÊVÈ‰×KÚJBˆ[›X]Ú
+ÏY]V×—JØÛÛ[VÈ‰×J×ˆ‰×JÊVÈ‰×V×—JÜ›Ü\OVÈ‰×[ÙÎš[XYÙVÈ‰×KÚJNÂˆYˆ
+[JH›İÈ™]È\œ›ÜŠ	Ó›È[˜ÛÛ°êH[˜H[XYÙ[ˆ
+ÙÎš[XYÙJH[ˆ\ØH0èYÚ[˜IÊNÂˆ™]\›ˆVÌWNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ^˜XİXÛÛ‘œ›ÛU[š]™\œØ[\›
+Ûİ\˜ÙU\›
+HÂˆÛÛœİÛX[ˆH
+Ûİ\˜ÙU\›	ÉÊKš[J
+NÂˆÛÛœİİÙ\ˆHÛX[‹ÓİÙ\Ø\ÙJ
+NÂˆYˆ
+XÛX[ŠH›İÈ™]È\œ›ÜŠ	Ñ˜[HHT“	ÊNÂ‚ˆËÈJH[šÈ\™XİÈHH[XYÙ[‚ˆYˆ
+PÓÓ—ÑVËœÛÛYJHOˆİÙ\‹œÜ]
+	ÏÉÊVÌK™[™ÕÚ]
+JJJHÂˆÛÛœİˆH]ØZ]™]Ú
+ÛX[ŠNÂˆYˆ
+\‹›ÚÊH›İÈ™]È\œ›ÜŠ›ÈÙHYÈ\ØØ\™Ø\ˆH[XYÙ[ˆ
+	Ü‹œİ]\ßJX
+NÂˆ™]\›ˆÈY™™\ˆY™™\‹™œ›ÛJ]ØZ]‹˜\œ˜^PY™™\Š
+JK^ˆXÛÛ‘^œ›ÛU\›
+ÛX[ŠHNÂˆB‚ˆËÈŠH™\ÈHÚ]Xˆ8¡¤ˆ0ëXÛÛ›È™X[[ˆ˜\İ[™KÈ
+›È[˜[›™\ˆÛØÚX[
+BˆÛÛœİÚX]ÚHÛX[‹›X]Ú
+ÙÚ]X—˜ÛÛWÊ×—×JÊWÊ×—ÏÈ×JÊKÚJNÂˆYˆ
+ÚX]Ú
+HÂˆÛÛœİİÛ™\ˆHÚX]ÚÌWNÂˆÛÛœİ™\ÈHÚX]ÚÌ—Kœ™\XÙJ×™Ú]	Ë	ÉÊNÂˆÛÛœİ›İ[™H]ØZ]™]ÚÚ]X‘˜\İ[™RXÛÛŠİÛ™\‹™\ÊNÂˆYˆ
+›İ[™
+H™]\›ˆ›İ[™Âˆ›İÈ™]È\œ›ÜŠ›È[˜ÛÛ°êH˜\İ[™KÛY]Y]KË‹‹‹ÚXÛÛ‹œ™È[ˆ	ÛİÛ™\ŸKÉÜ™\ßKˆ›Ø°èHYØ[™È[[šÈ\™XİÈ[0ëXÛÛ›È
+Z‹ˆ˜]Ë™Ú]X\Ù\˜ÛÛ[˜ÛÛKË‹‹‹ÚXÛÛ‹œ™ÊK˜
+NÂˆB‚ˆËÈÊH‹Q›ÚY^HİÜ™KÈİX[]ZY\ˆ0èYÚ[˜HÛÛˆÙÎš[XYÙBˆYˆ
+İÙ\‹š[˜ÛY\Ê	Ù‹Y›ÚY›Ü™ÉÊHİÙ\‹š[˜ÛY\Ê	Ü^K™ÛÛÙÛK˜ÛÛIÊHİÙ\‹š[˜ÛY\Ê	Ø\Ë˜\K˜ÛÛIÊJHÂˆÛÛœİ[YÕ\›H]ØZ]™]ÚÙÒ[XYÙU\›
+ÛX[ŠNÂˆÛÛœİˆH]ØZ]™]Ú
+[YÕ\›
+NÂˆYˆ
+\‹›ÚÊH›İÈ™]È\œ›ÜŠ›ÈÙHYÈ\ØØ\™Ø\ˆ[0ëXÛÛ›È
+	Ü‹œİ]\ßJX
+NÂˆ™]\›ˆÈY™™\ˆY™™\‹™œ›ÛJ]ØZ]‹˜\œ˜^PY™™\Š
+JK^ˆXÛÛ‘^œ›ÛU\›
+[YÕ\›
+HNÂˆB‚ˆ›İÈ™]È\œ›ÜŠ	ÕT“›È™XÛÛ›ØÚYKˆ\ğèH[ˆ[šÈ\™XİÈHH[XYÙ[‹[ˆ™\ÈHÚ]X‹ÈHšXÚHH‹Q›ÚYÔ^HİÜ™K‰ÊNÂŸB‚‹ËÈÔÕØ\KØYZ[‹Ù^˜XİZXÛÛˆ8 %›ÙNˆÈÛİ\˜ÙU\›š[[˜[YHB‹ËÈ^˜YH[0ëXÛÛ›È™X[\ÙHHT“[š]™\œØ[HÈİX™HH[YËŞÙš[[˜[Y_B‹ËÈ[ˆ[™\ÈHÚ]X‹ˆ›ÈØØHH˜\ÙHH]ÜÎˆ[YZ[ˆÚYİYH\Ø[™Â‹ËÈ‘İX\™\ˆˆ
+š[H^\İ[JHÈÜ™X\ˆ\ˆ
+\Y]˜JH\˜H\œÚ\İ\ˆ[‹ËÈØ[\È[XYÙ[‹YİX[]YHÛÛˆİX[]ZY\ˆİ›ÈØ[\È[[™[‚˜\œÜİ
+	ËØ\KØYZ[‹Ù^˜XİZXÛÛ‰Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈÛİ\˜ÙU\›š[[˜[YHHH™\K˜›ÙNÂˆYˆ
+\Ûİ\˜ÙU\›
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[HÛİ\˜ÙU\›	ÈJNÂˆYˆ
+Yš[[˜[YJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[Hš[[˜[YH
+\ğèH[\Y
+IÈJNÂ‚ˆÛÛœİÈY™™\‹^HH]ØZ]^˜XİXÛÛ‘œ›ÛU[š]™\œØ[\›
+Ûİ\˜ÙU\›
+NÂˆYˆ
+Y™™\‹›[™İˆ
+ˆL
+ˆL
+H›İÈ™]È\œ›ÜŠ	ÓH[XYÙ[ˆ\ØHpè\ÈHP‰ÊNÂ‚ˆÛÛœİØY™S˜[YHHİš[™Êš[[˜[YJKš[J
+Kœ™\XÙJÖ×˜K^KVŒNK—ËWKÙË	ÉÊH
+È^ÂˆYˆ
+\ØY™S˜[YHØY™S˜[YHOOH^
+H›İÈ™]È\œ›ÜŠ	Ùš[[˜[YH[°è[YÉÊNÂˆÛÛœİ™\Ô]H	Ú[YËÉÈ
+ÈØY™S˜[YNÂ‚ˆ]ØZ]Ú\]Qš[J™\Ô]Y™™\‹[YÎˆ^˜Y\ˆ0ëXÛÛ›È
+	ÜØY™S˜[Y_JX
+NÂˆ]ØZ]ØXÚQ[
+	Ø\Î˜[	ÊNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	ÚXÛÛ‹™^˜Xİ	ËÈÛİ\˜ÙNˆİš[™ÊÛİ\˜ÙU\›
+KœÛXÙJ
+Kš[[˜[YNˆØY™S˜[YHK	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK[XYÙ[ˆ	ËÉÈ
+È™\Ô]š[[˜[YNˆØY™S˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕØ\KØYZ[‹Ù^˜XİZXÛÛˆ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	ÚXÛÛ‹™^˜Xİ	ËÈÛİ\˜ÙNˆİš[™Ê™\K˜›ÙOËœÛİ\˜ÙU\›	ÉÊKœÛXÙJ
+K\œ›ÜˆK›Y\ÜØYÙHK	Ù\œ›Ü‰ÊNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ QRSˆÓÔ’Ñ“ÕÔÈHÒUPˆ
+]]ÛX]^˜XÚpìÛŠH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ\›Z]H]YH[[™[YZ[ˆ
+YZ[‹ZXŠH\Ü\™HÜÈÛÜšÙ›İÜÈB‹ËÈX[[š[ZY[È[™\ÜÚ]Üš[È
+ÙYY[Ø]0è[ÙÛÈ“ÔÔË[Ûš]ÜˆB‹ËÈXİX[^˜XÚ[Û™\ËY\JHÚ[ˆØ[\ˆHHRK‚‹ËÈ™\]ZY\™HÒUP—ÕÒÑSˆÛÛˆ\›Z\ÛÈÛÜšÙ›İØ[ˆ™[™\‹‚‹ËÈÛÛ›Ûİ[ˆÙH\›Z]H\Ü\˜\ˆÕPSURQTˆÛÜšÙ›İÈ^\İ[H[‚‹ËÈH˜[XHY˜][
+ÙH˜[YHÛÛ˜HÚ]Xˆ[ˆYØ\ˆH[˜H[İÛ\İ
+K‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜÈ^Û™HH\İH™X[\˜H[[™[‚˜\Ş[˜È[˜İ[ÛˆÚÛÜšÙ›İÑ^\İÊš[JHÂˆHÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË™Ù]ÛÜšÙ›İÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËÛÜšÙ›İ×ÚYˆš[HJNÂˆ™]\›ˆYNÂˆHØ]ÚÈ™]\›ˆ˜[ÙNÈBŸB‚‹ËÈÔÕØ\KØYZ[‹ÙÚ]X‹Ù\Ü]Ú8 %›ÙNˆÈÛÜšÙ›İË[œ]ÈB˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹Ù\Ü]Ú	Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈÛÜšÙ›İË[œ]ÈHßHHH™\K˜›ÙHßNÂˆYˆ
+]ÛÜšÙ›İÊHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H[ÛÜšÙ›İÉË[İÙY[ˆ	Õ\ØHÑUØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜÉÈJNÂˆBˆYˆ
+[ØİÚÚ]
+HÂˆ™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÈ[ˆ™[™\ˆ
+ÙH™\]ZY\™HÛÛˆ\›Z\ÛÈÛÜšÙ›İÊIÈJNÂˆBˆYˆ
+J]ØZ]ÚÛÜšÙ›İÑ^\İÊÛÜšÙ›İÊJJHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÕÛÜšÙ›İÈ›È^\İH[ˆH˜[XH	È
+ÈÒUP—Ğ”SÒJNÂˆBˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË˜Ü™X]UÛÜšÙ›İÑ\Ü]Ú
+ÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹ˆ™\ÎˆÒUP—Ô‘TËˆÛÜšÙ›İ×ÚYˆÛÜšÙ›İËˆ™YˆÒUP—Ğ”SÒˆ[œ]ËˆJNÂˆĞ[\
+	ÙÚ\Ü]Ú	Ë
+
+HO‚ˆ<'æ •ÛÜšÙ›İÈ\Ü\˜YÏØ—ÛÙO‰İÛÜšÙ›İßOØÛÙO—”™YˆÛÙO‰ÑÒUP—Ğ”SÒOØÛÙO—’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	İÛÜšÙ›İË™\Ü]Ú	ËÂˆÛÜšÙ›İËœ˜[˜ÚˆÒUP—Ğ”SÒ[œ]Ë\ˆÛY[\
+™\JKˆK	ÛÚÉË	İÛÜšÙ›İÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÜšÙ›İË™YˆÒUP—Ğ”SÒ[—İ\›ˆÎ‹ËÙÚ]X‹˜ÛÛKÉÑÒUP—ÓÕÓ‘TŸKÉÑÒUP—Ô‘TßKØXİ[ÛœËİÛÜšÙ›İÜËÉİÛÜšÙ›İßXJNÂˆHØ]Ú
+JHÂˆÛÛœİÛÙHHOËœİ]\ÈLÂˆÛÛœİ[HÛÙHOOHÈÈ	È8 %0¯ÑÒUP—ÕÒÑSˆY[™H\›Z\ÛÈÛÜšÙ›İÏÉÈˆ	ÉÎÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕØ\KØYZ[‹ÙÚ]X‹Ù\Ü]Ú\œ›Ü‰ËK›Y\ÜØYÙJNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	İÛÜšÙ›İË™\Ü]Ú	ËÂˆÛÜšÙ›İÎˆ™\K˜›ÙOËÛÜšÙ›İÈ	ÏÉË\œ›ÜˆK›Y\ÜØYÙK\ˆÛY[\
+™\JKˆK	Ù\œ›Ü‰Ë	İÛÜšÙ›İÉÊNÂˆ™\Ëœİ]\ÊÛÙJKšœÛÛŠÈ\œ›Üˆ
+K›Y\ÜØYÙH	Ñ\œ›Üˆ\Ü\˜[™ÈÛÜšÙ›İÉÊH
+È[JNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹Ü[œÈ8 %\İYÈ[0î›[[È[ˆHØYHÛÜšÙ›İÂ˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Ü[œÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİİ]H]ØZ]Ù]Ú[œĞØXÚY
+YJNÂˆ™\ËšœÛÛŠÈÚÎˆYK[œÎˆİ]JNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹ÙÚ]X‹Ü[œÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ QRSˆ“Ğ”È8 %\™X\È›ÙÜ˜[XY\È
+Ü›Ûˆ›ØœÈH™[™\ŠH8¥ 8¥ 8¥ 8¥ ‹ËÈÜÈÜ›Ûˆ›ØœÈ[›Y\š[
+™[™\‹X[[
+H“ÈÛÛˆÛÜšÙ›İÜÈHÚ]X‹‹ËÈÜˆ\ÛÈ›È\\™XÙ[ˆ[ˆØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜËˆ\İH[™Ú[ÜÂ‹ËÈ^Û™H[İX[\İ0è[ˆYš[šYÜÈ[ˆ[™\Ë\˜H]YHYZ[‹ZXˆÜÂ‹ËÈ]Y\İ™H
+ÚXÚËX\]\]\ËZ[K\™\ÜX›İ‹‹ŠK‚˜ÛÛœİ‘S‘T—Ğ“QT’S•H]œ™\ÛÛ™J×Ù\›˜[YK	Ë‹‰Ë	Ü™[™\‹X[[	ÊNÂ˜ÛÛœİ‘S‘T—Ò“Ğ—ÓQUHHÂˆÈ˜[YNˆ	ØÚXÚËX\]\]\ÉËXÛÛˆ	ü'å!	Ë\ØÎˆ	Ó[Ûš]ÜˆHXİX[^˜XÚ[Û™\Îˆ™]š\ØHÚ]Xˆ™[X\Ù\È[Ø]0è[ÙÛÈHXİX[^˜H™\œÚ[Û™\ËĞTÜÈ
+[\ÈÛÜšÙ›İÈÚXÚËX\]\]\Ë[[
+K‰ÈKˆÈ˜[YNˆ	ÙZ[K\™\ÜX›İ	ËXÛÛˆ	ü'äâ‰Ë\ØÎˆ	Ğ›İH[™›Ü›Y\ÈX\š[ÜÎˆ[°ëXHÜˆ[YÜ˜[H[™\İ[Y[ˆ[0ëXH
+[\ÈÛÜšÙ›İÈZ[WÜ™\Ü[[
+K‰ÈK—NÂ˜\™Ù]
+	ËØ\KØYZ[‹Ú›ØœÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİ˜]ÈHœËœ™XYš[TŞ[˜Ê‘S‘T—Ğ“QT’S•	İ]	ÊNÂˆÛÛœİ›ØœÈH×NÂˆÛÛœİ\œÙP›ØÚÈH
+˜[YK›ÊHOˆÂˆÛÛœİÜ˜XˆH
+™JHOˆÈÛÛœİH›Ë›X]Ú
+™JNÈ™]\›ˆÈÌWKš[J
+Kœ™\XÙJ×–È‰×_È‰×IÙË	ÉÊHˆ	ÉÎÈNÂˆÛÛœİ[’Ù^\ÈH×NÂˆ]ÎÈÛÛœİÙ^T™HH×ˆHÙ^N—ÊŠŠÊIÙÛNÂˆÚ[H
+
+ÈHÙ^T™K™^XÊ›ÊJHOOH[
+H[’Ù^\Ëœ\Ú
+ÖÌWKš[J
+JNÂˆÛÛœİY]HH‘S‘T—Ò“Ğ—ÓQUK™š[™
+ˆOˆ‹›˜[YHOOH˜[YJHßNÂˆ›ØœËœ\Ú
+Âˆ˜[YKˆXÛÛˆY]KšXÛÛˆ	ø£ì	Ëˆ\ØÎˆY]K™\ØÈ	ÉËˆ\Nˆ	ØÜ›Û‰Ëˆ[[YNˆÜ˜XŠ×ˆ[[YN—ÊŠŠÊIÛJKˆ›Ûİ\ˆÜ˜XŠ×ˆ›Ûİ\—ÊŠŠÊIÛJKˆØÚY[NˆÜ˜XŠ×ˆØÚY[N—ÊŠŠÊIÛJKˆİ\ÛÛ[X[™ˆÜ˜XŠ×ˆİ\ÛÛ[X[™—ÊŠŠÊIÛJKˆ[’Ù^\ËˆJNÂˆNÂˆ][Ü›ÛˆH˜[ÙKXØÈH	ÉËİ\“˜[YHH	ÉÎÂˆ›Üˆ
+ÛÛœİˆÙˆ˜]ËœÜ]
+	×‰ÊJHÂˆÛÛœİH‹›X]Ú
+×ˆH\N—ÊŠÊÊKÊNÂˆYˆ
+
+HÂˆYˆ
+[Ü›Ûˆ	‰ˆXØËš[J
+JH\œÙP›ØÚÊİ\“˜[YKXØÊNÂˆXØÈH	ÉÎÂˆİ\“˜[YHH	ÉÎÂˆ[Ü›ÛˆHÌWHOOH	ØÜ›Û‰ÎÂˆH[ÙHYˆ
+[Ü›ÛŠHÂˆÛÛœİ›HH‹›X]Ú
+×ˆ˜[YN—ÊŠŠÊWÊ‰ÊNÂˆYˆ
+›JHİ\“˜[YHH›VÌWKš[J
+NÂˆXØÈ
+ÏHˆ
+È	×‰ÎÂˆBˆBˆYˆ
+[Ü›Ûˆ	‰ˆXØËš[J
+JH\œÙP›ØÚÊİ\“˜[YKXØÊNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ú›ØœË›\İ	ËÈÛİ[ˆ›ØœË›[™İ\ˆÛY[\
+™\JHK	ÛÚÉË	İÛÜšÙ›İÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK›ØœÈJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹Ú›ØœÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ú›ØœË›\İ	ËÈ\œ›ÜˆK›Y\ÜØYÙK\ˆÛY[\
+™\JHK	Ù\œ›Ü‰Ë	İÛÜšÙ›İÉÊNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ QRSˆPÕU’UH8 %™YÚ\İ›È[ˆš]›ÈHÜ\˜XÚ[Û™\ÈZ™Xİ]Y\È8¥ 8¥ ‹ËÈ[[Y[H[[™[‘[ˆš]›Èˆ[YZ[‹ZXˆ0î›[X\ÈÜ\˜XÚ[Û™\ÈYZ[‚‹ËÈ
+[š[™È[ˆY[[ÜšXHÈYZ[“ÙÊH
+È0î›[[È[ˆHØYHÛÜšÙ›İÈ
+ØXÚJK‚˜\™Ù]
+	ËØ\KØYZ[‹ØXİ]š]IË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÜÈH×NÂˆ]Ûİ\˜ÙHH	ÛY[[ÜIÎÂˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİœ›ÛQˆH]ØZ]YZ[“ÙË™š[™
+ßJKœÛÜ
+ÈÎˆLHJK›[Z]
+
+K›X[Š
+NÂˆYˆ
+œ›ÛQ‹›[™İ
+HÂˆÜËœ\Ú
+‹‹™œ›ÛQ‹›X\
+ÈOˆ
+È‹‹›ËÎˆ™]È]JËÊK™Ù][YJ
+HJJJNÂˆÛİ\˜ÙHH	Û[Û™ÛÉÎÂˆBˆHØ]ÚßBˆBˆYˆ
+[ÜË›[™İ
+HÜËœ\Ú
+‹‹—ØYZ[“ÙÔš[™Ë›X\
+ÈOˆ
+È‹‹›ÈJJKœÛXÙJ
+JNÂ‚ˆËÈÙH[\İ0ìÜšXÛÈ
+[˜H™^ˆÜˆÜ˜HÛÛ[Èpè^[[ÊBˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+Ûİ\˜ÙHOOH	Û[Û™ÛÉÈ	‰ˆ
+›İÈHØYZ[“ÙÓ\İ[™JHˆÍŒÌ
+HÂˆØYZ[“ÙÓ\İ[™HH›İÎÂˆ[™PYZ[“ÙÊ
+K˜Ø]Ú
+
+
+HOˆßJNÂˆB‚ˆ]ÛÜšÙ›İÜÈHßNÂˆHÈÛÜšÙ›İÜÈH]ØZ]Ù]Ú[œĞØXÚY
+˜[ÙJNÈHØ]ÚßBˆ™\ËšœÛÛŠÈÚÎˆYKÛİ\˜ÙKÜËÛÜšÙ›İÜËÙ\™\•[YNˆ›İÈJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹ØXİ]š]H\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ QRSˆÑÓÔÈSS•TÈ8 %\ÈÜ[ˆÛİ\˜ÙHÚ[ˆÙÛÈ™X[HİH™\È8¥ ‹ËÈ™]][^˜H[Z\Û[ÈÜš]\š[ÈH˜XÚÙ[™ÜØÜš\ËÙ[œšXÚX\[ÙÛÜËšœÈ\˜B‹ËÈ]YH[[™[]Y\İ™H^Xİ[Y[H]pêH[\X\°èH[ÛÜšÙ›İÈ[Z™Xİ]\œÙK‚˜\™Ù]
+	ËØ\KØYZ[‹ÛÙÛÜËÛZ\ÜÚ[™ÉË™\]Z\™PYZ[‹\Ş[˜È
+Ü™\K™\ÊHOˆÂˆHÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆÛÛœİ“×ÓÑÓ×Ô‘HHÛÜ[™Ü˜\™Ú]X˜\ÜÙ]×˜ÛÛKÚNÂˆÛÛœİ\ÓÙ™šXÚX[H
+[YÊHOˆÂˆYˆ
+Z[YÊH™]\›ˆ˜[ÙNÂˆÛÛœİˆHİš[™Ê[YÊKš[J
+NÂˆ™]\›ˆ×—Ú[Y×ËË\İ
+ŠH×šÏÎ—×ËÚK\İ
+ŠNÂˆNÂˆÛÛœİ[H]ØZ]\™š[™
+ÈÛİ\˜ÙWÜ™\ÎˆÈ	™Nˆ[HJBˆœÙ[Xİ
+	Ø\Y›ÛXœ™H[XYÙ[ˆÛİ\˜ÙWÜ™\È\]Y]	ÊK›X[Š
+NÂˆÛÛœİZ\ÜÚ[™ÈH[™š[\ŠHOˆZ\ÓÙ™šXÚX[
+Kš[XYÙ[ŠH“×ÓÑÓ×Ô‘K\İ
+Kš[XYÙ[ˆ	ÉÊJNÂˆ™\ËšœÛÛŠÂˆÚÎˆYKˆİ[ˆ[›[™İˆZ\ÜÚ[™ÎˆZ\ÜÚ[™Ë›[™İˆØ[\\ÎˆZ\ÜÚ[™ËœÛXÙJJK›X\
+HOˆ
+Âˆ\YˆK˜\Y›ÛXœ™NˆK››ÛXœ™K[XYÙ[ˆKš[XYÙ[‹Ûİ\˜ÙWÜ™\ÎˆKœÛİ\˜ÙWÜ™\ËˆJJKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹ÛÙÛÜËÛZ\ÜÚ[™È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÒUPˆÑPÔ‘UÈ	ˆT’PP“TÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈÙ\İpìÛˆÛÛ\]HHÙXÜ™]ÈH˜\šXX›\È[™\ÜÚ]Üš[È\ÙHYZ[‹ZX‹‚‹ËÈÛÛÈ[YZ[š\İ˜YÜˆY[™HXØÙ\ÛÈ
+™\]Z\™PYZ[ŠK‚‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]È8 %\İ\ˆÙXÜ™]È[™\ÜÚ]Üš[Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ]HHH]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË›\İ™\ÔÙXÜ™]ÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLˆJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÙXÜ™]Îˆ]KœÙXÜ™]Ë›X\
+ÈOˆ
+È˜[YNˆË›˜[YKÜ™X]YØ]ˆË˜Ü™X]YØ]\]YØ]ˆË\]YØ]JJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÔÕØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]È8 %Ü™X\‹ØXİX[^˜\ˆ[ˆÙXÜ™]˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ˜[YK˜[YHHH™\K˜›ÙHßNÂˆYˆ
+[˜[YH]˜[YJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H˜[YHÈ˜[YIÈJNÂ‚ˆËÈØ[™\ˆHX›XÈÙ^H[™\ÜÚ]Üš[ÂˆÛÛœİÈ]NˆX’Ù^HHH]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË™Ù]™\ÔX›XÒÙ^JÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËˆJNÂ‚ˆËÈ[˜Üš\\ˆ[˜[ÜˆÛÛˆXœÛÙ][BˆÛÛœİÛÙ][HH™\]Z\™J	ÛXœÛÙ][K]Ü˜\\œÉÊNÂˆ]ØZ]ÛÙ][Kœ™XYNÂˆÛÛœİÙ^HHÛÙ][K™œ›ÛWØ˜\ÙM
+X’Ù^KšÙ^KÛÙ][K˜˜\ÙMİ˜\šX[Ë“Ô’QÒSS
+NÂˆÛÛœİ[˜Ü\YHÛÙ][K˜Ü\×Ø›ŞÜÙX[
+ˆÛÙ][K™œ›ÛWÜİš[™Ê˜[YJKˆÙ^Bˆ
+NÂˆÛÛœİ[˜Ü\Y˜[YHHÛÙ][K×Ø˜\ÙM
+[˜Ü\YÛÙ][K˜˜\ÙMİ˜\šX[Ë“Ô’QÒSS
+NÂ‚ˆËÈÜ™X\ˆÈXİX[^˜\ˆ[ÙXÜ™]ˆHÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË˜Ü™X]SÜ•\]T™\ÔÙXÜ™]
+ÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËˆÙXÜ™]Û˜[YNˆ˜[YK[˜Ü\Yİ˜[YNˆ[˜Ü\Y˜[YKˆÙ^WÚYˆX’Ù^KšÙ^WÚYˆJNÂˆHØ]Ú
+Ü™X]Q\œŠHÂˆYˆ
+Ü™X]Q\œ‹œİ]\ÈOOH
+HÂˆËÈÚH›È^\İK[[\ˆÜ™X\‚ˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË˜Ü™X]SÜ•\]T™\ÔÙXÜ™]
+ÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËˆÙXÜ™]Û˜[YNˆ˜[YK[˜Ü\Yİ˜[YNˆ[˜Ü\Y˜[YKˆÙ^WÚYˆX’Ù^KšÙ^WÚYˆJNÂˆH[ÙHÈ›İÈÜ™X]Q\œÈBˆB‚ˆĞ[\
+	ÙÚÙXÜ™]	Ë
+
+HO‚ˆ<'å$”ÙXÜ™]XİX[^˜YÏØ—ÛÙO‰Û˜[Y_OØÛÙO—’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈSUHØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]ËÎ›˜[YH8 %[[Z[˜\ˆ[ˆÙXÜ™]˜\™[]J	ËØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]ËÎ›˜[YIË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ˜[YHHH™\Kœ\˜[\ÎÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË™[]T™\ÔÙXÜ™]
+ÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËÙXÜ™]Û˜[YNˆ˜[YKˆJNÂˆĞ[\
+	ÙÚÙXÜ™]Ù[	Ë
+
+HO‚ˆ<'åä{î#È”ÙXÜ™][[Z[˜YÏØ—ÛÙO‰Û˜[Y_OØÛÙO—’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑSUHØ\KØYZ[‹ÙÚ]X‹ÜÙXÜ™]È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\È8 %\İ\ˆ˜\šXX›\È[™\ÜÚ]Üš[Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ]HHH]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË›\İ™\Õ˜\šXX›\ÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLˆJNÂˆ™\ËšœÛÛŠÈÚÎˆYK˜\šXX›\Îˆ]K˜\šXX›\Ë›X\
+ˆOˆ
+È˜[YNˆ‹›˜[YK˜[YNˆ‹˜[YKÜ™X]YØ]ˆ‹˜Ü™X]YØ]\]YØ]ˆ‹\]YØ]JJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÔÕØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\È8 %Ü™X\‹ØXİX[^˜\ˆ[˜H˜\šXX›B˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ˜[YK˜[YHHH™\K˜›ÙHßNÂˆYˆ
+[˜[YH]˜[YJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H˜[YHÈ˜[YIÈJNÂˆHÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË˜Ü™X]T™\Õ˜\šXX›JÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË˜[YK˜[YKˆJNÂˆHØ]Ú
+Ü™X]Q\œŠHÂˆYˆ
+Ü™X]Q\œ‹œİ]\ÈOOHŒŠHÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË\]T™\Õ˜\šXX›JÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË˜[YK˜[YKˆJNÂˆH[ÙHÈ›İÈÜ™X]Q\œÈBˆBˆĞ[\
+	ÙÚ˜\‰Ë
+
+HO‚ˆ8¦¦{î#È•˜\šXX›HXİX[^˜YOØ—ÛÙO‰Û˜[Y_OØÛÙOOÛÙO‰İ˜[YKœÛXÙJŒ
+_Iİ˜[YK›[™İŒŒÉø )‰Î‰ÉßOØÛÙO—’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YK˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈSUHØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\ËÎ›˜[YH8 %[[Z[˜\ˆ[˜H˜\šXX›B˜\™[]J	ËØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\ËÎ›˜[YIË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+[ØİÚÚ]
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÉÈJNÂˆÛÛœİÈ˜[YHHH™\Kœ\˜[\ÎÂˆ]ØZ]ØİÚÚ]œ™\İ˜Xİ[ÛœË™[]T™\Õ˜\šXX›JÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË˜[YKˆJNÂˆĞ[\
+	ÙÚ˜\—Ù[	Ë
+
+HO‚ˆ<'åä{î#È•˜\šXX›H[[Z[˜YOØ—ÛÙO‰Û˜[Y_OØÛÙO—’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑSUHØ\KØYZ[‹ÙÚ]X‹İ˜\šXX›\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ QRSˆÓÓ•“ÓÕSS‘TÔÒUÔ’SÈ
+Ú]XŠH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈÙ[›ÈHÛÛ›ÛHÛÙRXˆ˜[X\ËÛÛ[Z]Ë\˜Ú]›ÜËœË‹ËÈÛÜšÙ›İÜË™[X\Ù\Ë\ÜİY\ËÙXšÛÚÜÈHÛÛX›Ü˜YÜ™\È[™\Ë‚‹ËÈÙ\È\È]\È^YÙ[ˆ™\]Z\™PYZ[ˆH\Ø[ˆ[ÒUP—ÕÒÑSˆH™[™\‹‚™[˜İ[ÛˆÚİX\™
+
+HÂˆYˆ
+[ØİÚÚ]
+H›İÈ™]È\œ›ÜŠ	ÑÒUP—ÕÒÑSˆ›ÈÛÛ™šYİ\˜YÈ[ˆ™[™\‰ÊNÂˆ™]\›ˆØİÚÚ]œ™\İÂŸB‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İÚÙ[‹XÚXÚÈ8 %Y[YYHØÛÜ\È[ÚÙ[‚˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹İÚÙ[‹XÚXÚÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÚİX\™
+
+NÂˆÛÛœİÈ]KXY\œÈHH]ØZ]ØİÚÚ]œ™\İ\Ù\œË™Ù]]][XØ]Y
+
+NÂˆ™\ËšœÛÛŠÂˆÚÎˆYKˆÙÚ[ˆ]K›ÙÚ[‹˜[YNˆ]K›˜[YK]˜]\—İ\›ˆ]K˜]˜]\—İ\›ˆØÛÜ\Îˆ
+XY\œÖÉŞ[Ø]]\ØÛÜ\É×H	ÉÊKœÜ]
+ËÊ‹ÊK™š[\Š›ÛÛX[ŠKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	İÚÙ[‹XÚXÚÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹Ü™\È8 %Y]Y]H[™\ÜÚ]Üš[È
+ÈÛÛ[ÜÂ˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Ü™\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË™Ù]
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TÈJNÂˆ]Ü[”[ÈH[Ü[’\ÜİY\ÈH]K›Ü[—Ú\ÜİY\×ØÛİ[ÂˆHÂˆÛÛœİœÈH]ØZ]Úœ[Ë›\İ
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËİ]Nˆ	ÛÜ[‰Ë\—ÜYÙNˆHJNÂˆÜ[”[ÈHœË™]K›[™İÂˆHØ]ÚßBˆ™\ËšœÛÛŠÂˆÚÎˆYKˆ™\ÎˆÂˆ[Û˜[YNˆ]K™[Û˜[YKY˜][Øœ˜[˜Úˆ]K™Y˜][Øœ˜[˜Úˆ[İ\›ˆ]Kš[İ\›\ØÜš\[Ûˆ]K™\ØÜš\[Û‹ˆİ\™Ø^™\œ×ØÛİ[ˆ]Kœİ\™Ø^™\œ×ØÛİ[›ÜšÜ×ØÛİ[ˆ]K™›ÜšÜ×ØÛİ[ˆØ]Ú\œ×ØÛİ[ˆ]KØ]Ú\œ×ØÛİ[Ü[—Ú\ÜİY\×ØÛİ[ˆÜ[’\ÜİY\ËˆÜ[—Ü[×ØÛİ[ˆÜ[”[ËÚ^™WÚØˆ]KœÚ^™K[™İXYÙNˆ]K›[™İXYÙKˆš]˜]Nˆ]Kœš]˜]K\˜Ú]™Yˆ]K˜\˜Ú]™YˆXÙ[œÙNˆ]K›XÙ[œÙH	‰ˆ]K›XÙ[œÙKœÜÚYÜ™X]YØ]ˆ]K˜Ü™X]YØ]ˆ\ÚYØ]ˆ]Kœ\ÚYØ]\]YØ]ˆ]K\]YØ]ˆKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹Ü™\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\È8 %\İ\ˆ˜[X\Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË›\İœ˜[˜Ú\ÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYKœ˜[˜Ú\Îˆ]K›X\
+ˆOˆ
+È˜[YNˆ‹›˜[YK›İXİYˆ‹œ›İXİYÚNˆ‹˜ÛÛ[Z]	‰ˆ‹˜ÛÛ[Z]œÚHJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹Øœ˜[˜Ú\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÔÕØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\È8 %Ü™X\ˆ˜[XHÈ˜[YKœ›ÛHB‹ËÈœ›ÛHHÒHÛÛ\]È
+^
+HÈ›ÛXœ™HH[˜H˜[XH^\İ[K‚˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ˜[YKœ›ÛHHH™\K˜›ÙHßNÂˆYˆ
+[˜[YHK×–ØK^KVŒNWË‹ËWJÉË\İ
+˜[YJJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÛXœ™HH˜[XH›È°è[YÉÈJNÂˆ]ÚHHœ›ÛNÂˆYˆ
+\ÚHK×–ÌNXKY—^ÍIÚK\İ
+ÚJJHÂˆÛÛœİ™YˆHœ›ÛH	ÛXZ[‰ÎÂˆÛÛœİÈ]HHH]ØZ]Ú™Ú]™Ù]™YŠÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË™Yˆ	ÚXYËÉÈ
+È™YˆJNÂˆÚHH]K›Øš™XİœÚNÂˆBˆ]ØZ]Ú™Ú]˜Ü™X]T™YŠÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË™Yˆ	Ü™YœËÚXYËÉÈ
+È˜[YKÚHJNÂˆĞ[\
+	ÙÚœ˜[˜Ú	Ë
+
+HOˆ<'ã/È”˜[XHÜ™XYOØˆÛÙO‰Û˜[Y_OØÛÙOˆ8¡äÛÙO‰Êœ›ÛH	ÛXZ[‰ÊKœÛXÙJLŠ_OØÛÙOˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YKÚHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕÚ]X‹Øœ˜[˜Ú\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈSUHØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\ËÎ›˜[YH8 %[[Z[˜\ˆ˜[XB˜\™[]J	ËØ\KØYZ[‹ÙÚ]X‹Øœ˜[˜Ú\ËÎ›˜[YIË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ˜[YHHH™\Kœ\˜[\ÎÂˆYˆ
+[˜[YH˜[YHOOH	ÛXZ[‰ÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYYH›Üœ˜\ˆH˜[XHXZ[‰ÈJNÂˆ]ØZ]Ú™Ú]™[]T™YŠÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË™Yˆ	ÚXYËÉÈ
+È˜[YHJNÂˆĞ[\
+	ÙÚœ˜[˜ÚÙ[	Ë
+
+HOˆ<'åä{î#È”˜[XH[[Z[˜YOØˆÛÙO‰Û˜[Y_OØÛÙOˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK˜[YHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑSUHÚ]X‹Øœ˜[˜Ú\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ØÛÛ[Z]È8 %\İÜšX[
+œ˜[˜Ú]\—ÜYÙJB˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛ[Z]ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİœ˜[˜ÚH™\Kœ]Y\K˜œ˜[˜ÚÒUP—Ğ”SÒÂˆÛÛœİ\—ÜYÙHHX]›Z[Š\œÙR[
+™\Kœ]Y\Kœ\—ÜYÙKL
+HKL
+NÂˆÛÛœİ\˜[\ÈHÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËÚNˆœ˜[˜Ú\—ÜYÙHNÂˆYˆ
+™\Kœ]Y\Kœ]
+H\˜[\Ëœ]H™\Kœ]Y\Kœ]ÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË›\İÛÛ[Z]Ê\˜[\ÊNÂˆ™\ËšœÛÛŠÂˆÚÎˆYKˆÛÛ[Z]Îˆ]K›X\
+ÈOˆ
+ÂˆÚNˆËœÚKÚÜˆËœÚKœÛXÙJÊKˆY\ÜØYÙNˆ
+Ë˜ÛÛ[Z]›Y\ÜØYÙH	ÉÊKœÜ]
+	×‰ÊVÌKˆ]]Üˆ
+Ë˜ÛÛ[Z]˜]]Üˆ	‰ˆË˜ÛÛ[Z]˜]]Ü‹›˜[YJH	ÉËˆÙÚ[ˆ
+Ë˜]]Üˆ	‰ˆË˜]]Ü‹›ÙÚ[ŠH	ÉËˆ]˜]\ˆ
+Ë˜]]Üˆ	‰ˆË˜]]Ü‹˜]˜]\—İ\›
+H	ÉËˆ]NˆË˜ÛÛ[Z]˜]]Üˆ	‰ˆË˜ÛÛ[Z]˜]]Ü‹™]Kˆ[İ\›ˆËš[İ\›ˆJJKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹ØÛÛ[Z]È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ØÛÛ[Z]ËÎœÚH8 %][H[ÛÛ[Z]
+\˜Ú]›ÜÈ
+ÈY™ŠB˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛ[Z]ËÎœÚIË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË™Ù]ÛÛ[Z]
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË™Yˆ™\Kœ\˜[\ËœÚHJNÂˆ™\ËšœÛÛŠÂˆÚÎˆYKˆÛÛ[Z]ˆÂˆÚNˆ]KœÚKY\ÜØYÙNˆ]K˜ÛÛ[Z]›Y\ÜØYÙKˆ]]Üˆ]K˜ÛÛ[Z]˜]]Üˆ	‰ˆ]K˜ÛÛ[Z]˜]]Ü‹›˜[YKˆ]Nˆ]K˜ÛÛ[Z]˜]]Üˆ	‰ˆ]K˜ÛÛ[Z]˜]]Ü‹™]Kˆİ]Îˆ]Kœİ]Ëİ[Ùš[\Îˆ
+]K™š[\È×JK›[™İˆš[\Îˆ
+]K™š[\È×JK›X\
+ˆOˆ
+Âˆš[[˜[YNˆ‹™š[[˜[YKİ]\Îˆ‹œİ]\ËˆY][ÛœÎˆ‹˜Y][ÛœË[][ÛœÎˆ‹™[][ÛœËÚ[™Ù\Îˆ‹˜Ú[™Ù\Ëˆ]Úˆ‹œ]Ú	ÉË˜]×İ\›ˆ‹œ˜]×İ\›ˆJJKˆKˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹ØÛÛ[Z]ËÎœÚH\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ØÛÛ[È8 %\İ\ˆØ\œ]HÈY\ˆ\˜Ú]›È
+]
+Èœ˜[˜Ú
+B˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛ[ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİ]H™\Kœ]Y\Kœ]	ÉÎÂˆÛÛœİœ˜[˜ÚH™\Kœ]Y\K˜œ˜[˜ÚÒUP—Ğ”SÒÂˆÛÛœİÈ]KXY\œÈHH]ØZ]Úœ™\ÜË™Ù]ÛÛ[
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]™Yˆœ˜[˜ÚJNÂˆYˆ
+\œ˜^Kš\Ğ\œ˜^J]JJHÂˆ™\ËšœÛÛŠÈÚÎˆYKÚ[™ˆ	Ù\‰Ëœ˜[˜Ú][šY\Îˆ]K›X\
+]Oˆ
+Âˆ˜[YNˆ]›˜[YK]ˆ]œ]\Nˆ]\KÚ^™Nˆ]œÚ^™KˆJJHJNÂˆH[ÙHÂˆ]^H	ÉÎÂˆYˆ
+]K\HOOH	Ùš[IÈ	‰ˆ]K™[˜ÛÙ[™ÈOOH	Ø˜\ÙM	ÊHÂˆ^HY™™\‹™œ›ÛJ]K˜ÛÛ[	Ø˜\ÙM	ÊKÔİš[™Ê	İ]	ÊNÂˆH[ÙHYˆ
+]K\HOOH	Ùš[IÊHÂˆ^Hİš[™Ê]K˜ÛÛ[	ÉÊNÂˆBˆ™\ËšœÛÛŠÈÚÎˆYKÚ[™ˆ	Ùš[IËœ˜[˜Ú]ˆ]Kœ]˜[YNˆ]K›˜[YKÚ^™Nˆ]KœÚ^™KÚNˆ]KœÚK\Nˆ]K\KÛÛ[ˆ^[İ\›ˆ]Kš[İ\›İ[Û[™\Îˆ^œÜ]
+	×‰ÊK›[™İJNÂˆBˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹ØÛÛ[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊKœİ]\ÈL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙKİ]\ÎˆKœİ]\ÈLJNÂˆBŸJNÂ‚‹ËÈUØ\KØYZ[‹ÙÚ]X‹ØÛÛ[È8 %Ü™X\‹ØXİX[^˜\ˆ\˜Ú]›È
+ÛÛ[Z]\™XİÊB˜\œ]
+	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛ[ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]ÛÛ[Y\ÜØYÙKœ˜[˜ÚHH™\K˜›ÙHßNÂˆYˆ
+\]
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H]	ÈJNÂˆYˆ
+\[ÙˆÛÛ[OOH	Üİš[™ÉÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[HÛÛ[
+^ÊIÈJNÂˆYˆ
+[Y\ÜØYÙJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[HY\ÜØYÙH[ÛÛ[Z]	ÈJNÂˆÛÛœİ™YˆHœ˜[˜ÚÒUP—Ğ”SÒÂˆ]ÚNÂˆHÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË™Ù]ÛÛ[
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]™YˆJNÂˆÚHH]KœÚNÂˆHØ]ÚÈÊˆ\˜Ú]›ÈY]›È
+‹ÈBˆÛÛœİˆH]ØZ]Úœ™\ÜË˜Ü™X]SÜ•\]Qš[PÛÛ[ÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]ˆY\ÜØYÙKÛÛ[ˆY™™\‹™œ›ÛJÛÛ[	İ]	ÊKÔİš[™Ê	Ø˜\ÙM	ÊKˆœ˜[˜Úˆ™Y‹‹‹ŠÚHÈÈÚHHˆßJKˆJNÂˆĞ[\
+	ÙÚš[IË
+
+HOˆ<'äçH\˜Ú]›ÉÜÚHÈ	ÈXİX[^˜YÉÈˆ	ÈÜ™XYÉßOØ—ÛÙO‰Ü]OØÛÙO—ÛÙO‰ÛY\ÜØYÙKœÛXÙJŒ
+_OØÛÙO—”˜[XNˆÛÙO‰Ü™YŸOØÛÙOˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK]œ˜[˜Úˆ™Y‹ÛÛ[Z]ˆ‹™]H	‰ˆ‹™]K˜ÛÛ[Z]	‰ˆ‹™]K˜ÛÛ[Z]œÚK[İ\›ˆ‹™]H	‰ˆ‹™]K˜ÛÛ[	‰ˆ‹™]K˜ÛÛ[š[İ\›JNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔUÚ]X‹ØÛÛ[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈSUHØ\KØYZ[‹ÙÚ]X‹ØÛÛ[È8 %[[Z[˜\ˆ\˜Ú]›ÈÈ]Y\ÜØYÙKœ˜[˜ÚB˜\™[]J	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛ[ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]Y\ÜØYÙKœ˜[˜ÚHH™\K˜›ÙHßNÂˆYˆ
+\]
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H]	ÈJNÂˆÛÛœİ™YˆHœ˜[˜ÚÒUP—Ğ”SÒÂˆ]ÚNÂˆHÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË™Ù]ÛÛ[
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]™YˆJNÂˆÚHH]KœÚNÂˆHØ]ÚÈ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ğ\˜Ú]›È›È[˜ÛÛ˜YÈ[ˆ	È
+È™YˆJNÈBˆ]ØZ]Úœ™\ÜË™[]Qš[JÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]ˆY\ÜØYÙNˆY\ÜØYÙH	Ñ[[Z[˜YÈ\ÙHYZ[‹ZX‰ËÚKœ˜[˜Úˆ™Y‹ˆJNÂˆĞ[\
+	ÙÚš[WÙ[	Ë
+
+HOˆ<'åä{î#È\˜Ú]›È[[Z[˜YÏØˆÛÙO‰Ü]OØÛÙOˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK]œ˜[˜Úˆ™YˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑSUHÚ]X‹ØÛÛ[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜÈ8 %ÙÜÈÜÈÛÜšÙ›İÜÈ
+Ú[ˆ[İÛ\İ
+B˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Ú˜Xİ[ÛœË›\İ™\ÕÛÜšÙ›İÜÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÜšÙ›İÜÎˆ]KÛÜšÙ›İÜË™š[\ŠÈOˆ\Ô™X[Ú]X•ÛÜšÙ›İÊËœ]
+JK›X\
+ÈOˆ
+ÈYˆËšY˜[YNˆË›˜[YK]ˆËœ]œÜ]
+	ËÉÊKœÜ
+
+Kİ]NˆËœİ]K[İ\›ˆËš[İ\›JJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹İÛÜšÙ›İÜÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜËÎ™š[KÜ[œÈ8 %0î›[[ÜÈ[œÈH[ˆÛÜšÙ›İÂ˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹İÛÜšÙ›İÜËÎ™š[KÜ[œÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+Z\Ô™X[Ú]X•ÛÜšÙ›İÊ™\Kœ\˜[\Ë™š[JJH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK[œÎˆ×HJNÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİ\—ÜYÙHHX]›Z[Š\œÙR[
+™\Kœ]Y\Kœ\—ÜYÙKL
+HLL
+NÂˆÛÛœİÈ]HHH]ØZ]Ú˜Xİ[ÛœË›\İÛÜšÙ›İÔ[œÊÂˆİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËÛÜšÙ›İ×ÚYˆ™\Kœ\˜[\Ë™š[K\—ÜYÙKˆJNÂˆ™\ËšœÛÛŠÈÚÎˆYK[œÎˆ]KÛÜšÙ›İ×Ü[œË›X\
+ˆOˆ
+ÂˆYˆ‹šYİ]\Îˆ‹œİ]\ËÛÛ˜Û\Ú[Ûˆ‹˜ÛÛ˜Û\Ú[Û‹ˆ\Ü^Wİ]Nˆ‹™\Ü^Wİ]K]™[ˆ‹™]™[ˆÜ™X]YØ]ˆ‹˜Ü™X]YØ]\]YØ]ˆ‹\]YØ][İ\›ˆ‹š[İ\›ˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÛÜšÙ›İÜËÎ™š[KÜ[œÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ØXİ[ÛœËÜ[œËÎšYÛÙÜÈ8 %ÙÜÈH[ˆ[ˆ
+^Ë[˜ØYÊB˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ØXİ[ÛœËÜ[œËÎšYÛÙÜÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİˆH]ØZ]Ú˜Xİ[ÛœË™İÛ›ØYÛÜšÙ›İÔ[“ÙÜÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË[—ÚYˆ
+Ü™\Kœ\˜[\ËšYJNÂˆÛÛœİYˆHY™™\‹š\ĞY™™\Š‹™]JHÈ‹™]HˆY™™\‹™œ›ÛJ‹™]H	ÉÊNÂˆ]^HY‹Ôİš[™Ê	İ]	ÊNÂˆÛÛœİ[˜Ø]YH^›[™İˆŒÂˆYˆ
+[˜Ø]Y
+H^H	ø )–ÛÙÈ[˜ØYËÛÛÈ\È0î›[X\È0ë[™X\×x )—‰È
+È^œÛXÙJMŒ
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK[—ÚYˆ
+Ü™\Kœ\˜[\ËšY[˜Ø]YÚ^™NˆY‹›[™İ[™\Îˆ^œÜ]
+	×‰ÊK›[™İ^JNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑU[ˆÙÜÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹Ü[È8 %\İ\ˆœÈ
+Üİ]O[Ü[ŸÛÜÙY[
+B˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Ü[ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİİ]HH™\Kœ]Y\Kœİ]H	ÛÜ[‰ÎÂˆÛÛœİÈ]HHH]ØZ]Úœ[Ë›\İ
+ÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËİ]K\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYK[Îˆ]K›X\
+Oˆ
+Âˆ[X™\ˆ›[X™\‹]Nˆ]Kİ]Nˆœİ]KÜ™X]YØ]ˆ˜Ü™X]YØ]ˆÙÚ[ˆ\Ù\ˆ	‰ˆ\Ù\‹›ÙÚ[‹]˜]\ˆ\Ù\ˆ	‰ˆ\Ù\‹˜]˜]\—İ\›ˆXYˆšXY	‰ˆšXYœ™Y‹˜\ÙNˆ˜˜\ÙH	‰ˆ˜˜\ÙKœ™Y‹[İ\›ˆš[İ\›ˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹Ü[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÔÕØ\KØYZ[‹ÙÚ]X‹Ü[È8 %Ü™X\ˆˆÈ]K›ÙKXY˜\ÙHB˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹Ü[ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]K›ÙKXY˜\ÙHHH™\K˜›ÙHßNÂˆYˆ
+]]HZXY
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[[ˆ]HÈXY	ÈJNÂˆÛÛœİÈ]HHH]ØZ]Úœ[Ë˜Ü™X]JÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]K›ÙNˆ›ÙH	ÉËXY˜\ÙNˆ˜\ÙHÒUP—Ğ”SÒJNÂˆĞ[\
+	ÙÚ‰Ë
+
+HOˆ<'å ”ˆÜ™XYÏØˆÉÙ]K›[X™\ŸHÛÙO‰İ]KœÛXÙJL
+_OØÛÙOˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK[X™\ˆ]K›[X™\‹[İ\›ˆ]Kš[İ\›]Nˆ]K]HJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕÚ]X‹Ü[È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈUÒØ\KØYZ[‹ÙÚ]X‹Ü[ËÎ›[X™\ˆ8 %›ÙHÈXİ[ÛˆY\™Ù_ÛÜÙ_™[Ü[ˆB˜\œ]Ú
+	ËØ\KØYZ[‹ÙÚ]X‹Ü[ËÎ›[X™\‰Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİ[X™\ˆH
+Ü™\Kœ\˜[\Ë›[X™\ÂˆÛÛœİÈXİ[ÛˆHH™\K˜›ÙHßNÂˆYˆ
+Xİ[ÛˆOOH	ÛY\™ÙIÊHÂˆHÂˆ]ØZ]Úœ[Ë›Y\™ÙJÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË[Û[X™\ˆ[X™\‹Y\™ÙWÛY]Ùˆ	ÜÜ]X\Ú	ÈJNÂˆHØ]Ú
+JHÂˆYˆ
+Kœİ]\ÈOOHJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ[ˆ›ÈÙHYYHY\™ÙX\ˆØX™^˜H›ÈY\™ÙXX›HÈÛÛ™›XİÉÈJNÂˆ›İÈNÂˆBˆĞ[\
+	ÙÚ—ÛY\™ÙIË
+
+HOˆ8§!H”ˆÉÛ[X™\ŸHY\™ÙXYÏØˆ0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK[X™\‹Xİ[Ûˆ	ÛY\™ÙY	ÈJNÂˆBˆÛÛœİİ]HHXİ[ÛˆOOH	ØÛÜÙIÈÈ	ØÛÜÙY	Èˆ	ÛÜ[‰ÎÂˆÛÛœİÈ]HHH]ØZ]Úœ[Ë\]JÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË[Û[X™\ˆ[X™\‹İ]HJNÂˆĞ[\
+	ÙÚ—İ\]IË
+
+HOˆ<'å È”ˆÉÛ[X™\ŸOØˆ8¡¤ˆ	Üİ]_H0­ÈTˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK[X™\‹Xİ[Ûˆİ]HJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔUÒÚ]X‹Ü[ËÎ›[X™\ˆ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹Ü™[X\Ù\È8 %\İ\ˆ™[X\Ù\Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Ü™[X\Ù\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË›\İ™[X\Ù\ÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆÌJNÂˆ™\ËšœÛÛŠÈÚÎˆYK™[X\Ù\Îˆ]K›X\
+ˆOˆ
+ÂˆY×Û˜[YNˆ‹Y×Û˜[YK˜[YNˆ‹›˜[YK˜Yˆ‹™˜Y™\™[X\ÙNˆ‹œ™\™[X\ÙKˆX›\ÚYØ]ˆ‹œX›\ÚYØ][İ\›ˆ‹š[İ\›\›ˆ‹\›ˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹Ü™[X\Ù\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUÔÔÕÔUÒØ\KØYZ[‹ÙÚ]X‹Ú\ÜİY\È8 %ÛÛ›ÛH\ÜİY\Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹Ú\ÜİY\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİİ]HH™\Kœ]Y\Kœİ]H	ÛÜ[‰ÎÂˆÛÛœİÈ]HHH]ØZ]Úš\ÜİY\Ë›\İ›Ü”™\ÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TËİ]K\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYK\ÜİY\Îˆ]K›X\
+HOˆ
+Âˆ[X™\ˆK›[X™\‹]NˆK]Kİ]NˆKœİ]KÜ™X]YØ]ˆK˜Ü™X]YØ]ˆÙÚ[ˆK\Ù\ˆ	‰ˆK\Ù\‹›ÙÚ[‹]˜]\ˆK\Ù\ˆ	‰ˆK\Ù\‹˜]˜]\—İ\›ˆX™[Îˆ
+K›X™[È×JK›X\
+Oˆ›˜[YJK[İ\›ˆKš[İ\›[Ü™\]Y\İˆHZKœ[Ü™\]Y\İˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹Ú\ÜİY\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\œÜİ
+	ËØ\KØYZ[‹ÙÚ]X‹Ú\ÜİY\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]K›ÙHHH™\K˜›ÙHßNÂˆYˆ
+]]JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ñ˜[H]IÈJNÂˆÛÛœİÈ]HHH]ØZ]Úš\ÜİY\Ë˜Ü™X]JÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË]K›ÙNˆ›ÙH	ÉÈJNÂˆ™\ËšœÛÛŠÈÚÎˆYK[X™\ˆ]K›[X™\‹[İ\›ˆ]Kš[İ\›JNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔÔÕÚ]X‹Ú\ÜİY\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\œ]Ú
+	ËØ\KØYZ[‹ÙÚ]X‹Ú\ÜİY\ËÎ›[X™\‰Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİ[X™\ˆH
+Ü™\Kœ\˜[\Ë›[X™\ÂˆÛÛœİÈXİ[ÛˆHH™\K˜›ÙHßNÂˆÛÛœİİ]HHXİ[ÛˆOOH	Ü™[Ü[‰ÈÈ	ÛÜ[‰Èˆ	ØÛÜÙY	ÎÂˆ]ØZ]Úš\ÜİY\Ë\]JÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\ÜİYWÛ[X™\ˆ[X™\‹İ]HJNÂˆ™\ËšœÛÛŠÈÚÎˆYK[X™\‹Xİ[Ûˆİ]HJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔUÒÚ]X‹Ú\ÜİY\ËÎ›[X™\ˆ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹İÙXšÛÚÜÈ8 %\İ\ˆÙXšÛÚÜÈ[™\Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹İÙXšÛÚÜÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË›\İÙXšÛÚÜÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÙXšÛÚÜÎˆ]K›X\
+ÈOˆ
+ÂˆYˆËšY\›ˆË˜ÛÛ™šYÈ	‰ˆË˜ÛÛ™šYË\›]™[ÎˆË™]™[ËXİ]™NˆË˜Xİ]™KÜ™X]YØ]ˆË˜Ü™X]YØ]ˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹İÙXšÛÚÜÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈÑUØ\KØYZ[‹ÙÚ]X‹ØÛÛX›Ü˜]ÜœÈ8 %ÛÛX›Ü˜YÜ™\È[™\Â˜\™Ù]
+	ËØ\KØYZ[‹ÙÚ]X‹ØÛÛX›Ü˜]ÜœÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÚHÚİX\™
+
+NÂˆÛÛœİÈ]HHH]ØZ]Úœ™\ÜË›\İÛÛX›Ü˜]ÜœÊÈİÛ™\ˆÒUP—ÓÕÓ‘T‹™\ÎˆÒUP—Ô‘TË\—ÜYÙNˆLJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÛX›Ü˜]ÜœÎˆ]K›X\
+ÈOˆ
+ÂˆÙÚ[ˆË›ÙÚ[‹]˜]\ˆË˜]˜]\—İ\›[İ\›ˆËš[İ\›ˆ\›Z\ÜÚ[Ûˆ
+Ëœ\›Z\ÜÚ[ÛœÈ	‰ˆØš™XİšÙ^\ÊËœ\›Z\ÜÚ[ÛœÊK™š[\ŠÈOˆËœ\›Z\ÜÚ[ÛœÖÚ×JJKš›Ú[Š	Ë	ÊHËœ\›Z\ÜÚ[ÛœËˆ›ÛWÛ˜[YNˆËœ›ÛWÛ˜[YKˆJJHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÑÑUÚ]X‹ØÛÛX›Ü˜]ÜœÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ°îœÜ]YYHH[pèYÙ[™\Â‹ËÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‚‹ËÈ8¥ 8¥ QRSˆÓÓ‘’QÈ8 %ÑUÔUÒ™[[İHÛÛ™šYÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KØYZ[‹ØÛÛ™šYÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÙ™ÈH]ØZ]Ù]\ÛÛ™šYÊ
+NÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÛ™šYÎˆÙ™ÈJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\œ]Ú
+	ËØ\KØYZ[‹ØÛÛ™šYÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆÛÛœİÈÛÛ™šYÎˆ\]\ÈHH™\K˜›ÙNÂˆYˆ
+]\]\È\[Ùˆ\]\ÈOOH	ÛØš™Xİ	ÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ØÛÛ™šYÈØš™Xİ™\]Z\™Y	ÈJNÂ‚ˆÛÛœİİ\œ™[H]ØZ]Ù]\ÛÛ™šYÊ
+NÂˆÛÛœİY\™ÙYHY\Y\™ÙJİ\œ™[\]\ÊNÂˆY\™ÙY™\œÚ[ÛˆH
+İ\œ™[™\œÚ[Ûˆ
+H
+ÈNÂ‚ˆ]ØZ]\ÛÛ™šYË™š[™Û™P[™\]JˆÈÙ^Nˆ	ÛXZ[‰ÈKˆÈÛÛ™šYÎˆY\™ÙY™\œÚ[ÛˆY\™ÙY™\œÚ[Û‹\]Yˆ™]È]J
+HKˆÈ\Ù\ˆYHBˆ
+NÂ‚ˆËÈ[˜[Y]HØXÚBˆØ\ÛÛ™šYĞØXÚHH[ÂˆØ\ÛÛ™šYĞØXÚUÈHÂ‚ˆĞ[\
+	ØÛÛ™šYÉË
+
+HO‚ˆ8¦¦{î#ÈÛÛ™šYÈXİX[^˜YOØˆ‰ÛY\™ÙY™\œÚ[ÛŸW’TˆÛÙO‰ØÛY[\
+™\J_OØÛÙO˜
+NÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	ØÛÛ™šYË\]IËÈ™\œÚ[ÛˆY\™ÙY™\œÚ[Û‹ÙXİ[ÛœÎˆØš™XİšÙ^\Ê\]\ÊHK	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK™\œÚ[ÛˆY\™ÙY™\œÚ[ÛˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ÔUÒØ\KØYZ[‹ØÛÛ™šYÈ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚™[˜İ[ÛˆY\Y\™ÙJ\™Ù]Ûİ\˜ÙJHÂˆÛÛœİ™\İ[HÈ‹‹\™Ù]NÂˆ›Üˆ
+ÛÛœİÙ^HÙˆØš™XİšÙ^\ÊÛİ\˜ÙJJHÂˆYˆ
+Ûİ\˜ÙVÚÙ^WH	‰ˆ\[ÙˆÛİ\˜ÙVÚÙ^WHOOH	ÛØš™Xİ	È	‰ˆP\œ˜^Kš\Ğ\œ˜^JÛİ\˜ÙVÚÙ^WJH	‰ˆ\™Ù]ÚÙ^WH	‰ˆ\[Ùˆ\™Ù]ÚÙ^WHOOH	ÛØš™Xİ	ÊHÂˆ™\İ[ÚÙ^WHHY\Y\™ÙJ\™Ù]ÚÙ^WKÛİ\˜ÙVÚÙ^WJNÂˆH[ÙHÂˆ™\İ[ÚÙ^WHHÛİ\˜ÙVÚÙ^WNÂˆBˆBˆ™]\›ˆ™\İ[ÂŸB‚‹ËÈ8¥ 8¥ ÑUØ\KÚ[XYÙK\ÙX\˜Ú8 %\ØØ\ˆ[pèYÙ[™\ÈšXHÙ\œTH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÚ[XYÙK\ÙX\˜Ú	ËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈHHH™\Kœ]Y\NÂˆYˆ
+\H\Kš[J
+JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ô\°è[Y]›ÈH™\]Y\šYË‰ÈJNÂ‚ˆÛÛœİÑT”ÒÑVHH›ØÙ\ÜË™[‹”ÑT”TWÒÑVNÂˆYˆ
+TÑT”ÒÑVJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ğ°îœÜ]YYHH[pèYÙ[™\È›È\ÜÛšX›K‰ÈJNÂ‚ˆHÂˆÛÛœİ\›HÎ‹ËÜÙ\œ\K˜ÛÛKÜÙX\˜ÚšœÛÛÙ[™Ú[™OYÛÛÙÛWÚ[XYÙ\ÉœOIÙ[˜ÛÙUT’PÛÛ\Û™[
+J_IšY\É™ÛYİ	›[OM‰˜\WÚÙ^OIÔÑT”ÒÑV_XÂˆÛÛœİ™\ÜÛœÙHH]ØZ]™]Ú
+\›
+NÂˆYˆ
+\™\ÜÛœÙK›ÚÊH›İÈ™]È\œ›ÜŠ	ÔÙ\œTH\œ›Üˆ	È
+È™\ÜÛœÙKœİ]\ÊNÂˆÛÛœİ]HH]ØZ]™\ÜÛœÙKšœÛÛŠ
+NÂ‚ˆÛÛœİ[XYÙ\ÈH
+]Kš[XYÙ\×Ü™\İ[È×JKœÛXÙJŠK›X\
+[YÈOˆ
+Âˆ[X›˜Z[ˆ[YË[X›˜Z[ˆÜšYÚ[˜[ˆ[YË›ÜšYÚ[˜[ˆ]Nˆ[YË]HKˆÛİ\˜ÙNˆ[YËœÛİ\˜ÙH	ÉËˆ[šÎˆ[YË›[šÈ[YË›ÜšYÚ[˜[	ÈÉËˆJJNÂ‚ˆ™\ËšœÛÛŠÈ[XYÙ\Ë]Y\NˆHJNÂˆHØ]Ú
+\œŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ú[XYÙK\ÙX\˜Ú\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ó›ÈÙHYY\›ÛˆØ[™\ˆ[pèYÙ[™\Ë‰ÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÑUØ\KÜÙX\˜ÚÙÛÛÙÛH8 %›ŞHÛÛÙÛHİ\İÛHÙX\˜Ú
+Y\ÙX\˜Ú
+H8¥ 8¥ ˜\™Ù]
+	ËØ\KÜÙX\˜ÚÙÛÛÙÛIËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈHHH™\Kœ]Y\NÂˆYˆ
+\H\Kš[J
+JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ô\°è[Y]›ÈH™\]Y\šYË‰ÈJNÂˆˆÛÛœİÑT”ÒÑVHH›ØÙ\ÜË™[‹”ÑT”TWÒÑVNÂˆYˆ
+TÑT”ÒÑVJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ğ°îœÜ]YYHÙXˆ›È\ÜÛšX›K‰ÈJNÂˆˆHÂˆÛÛœİ\›HÎ‹ËÜÙ\œ\K˜ÛÛKÜÙX\˜ÚšœÛÛÙ[™Ú[™OYÛÛÙÛIœOIÙ[˜ÛÙUT’PÛÛ\Û™[
+J_IšY\É™ÛYİ	›[ON	˜\WÚÙ^OIÔÑT”ÒÑV_XÂˆÛÛœİ™\ÜÛœÙHH]ØZ]™]Ú
+\›ÈÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+
+HJNÂˆYˆ
+\™\ÜÛœÙK›ÚÊH›İÈ™]È\œ›ÜŠ	ÔÙ\œTH	È
+È™\ÜÛœÙKœİ]\ÊNÂˆÛÛœİ]HH]ØZ]™\ÜÛœÙKšœÛÛŠ
+NÂˆ™\ËšœÛÛŠÈ][\Îˆ
+]K›Ü™Ø[šX×Ü™\İ[È×JKœÛXÙJ
+K›X\
+ˆOˆ
+È]Nˆ‹]KÛš\]ˆ‹œÛš\][šÎˆ‹›[šÈJJHJNÂˆHØ]Ú
+\œŠHÂˆÛÛœÛÛK™\œ›ÜŠ	ÜÙX\˜ÚÙÛÛÙÛH\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›Üˆ[ˆ°îœÜ]YYHÛÛÙÛK‰ÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ ÑUØ\KÜÙX\˜Úİ]š[H8 %°îœÜ]YYH]š[H
+Y\ÙX\˜Ú
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KÜÙX\˜Úİ]š[IËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈHHH™\Kœ]Y\NÂˆYˆ
+\H\Kš[J
+JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	Ô\°è[Y]›ÈH™\]Y\šYË‰ÈJNÂˆˆÛÛœİU’SWÒÑVHH›ØÙ\ÜË™[‹•U’SWĞTWÒÑVNÂˆYˆ
+UU’SWÒÑVJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ğ°îœÜ]YYH]š[H›È\ÜÛšX›K‰ÈJNÂˆˆHÂˆÛÛœİ™\ÜÛœÙHH]ØZ]™]Ú
+	ÚÎ‹ËØ\K]š[K˜ÛÛKÜÙX\˜Ú	ËÂˆY]Ùˆ	ÔÔÕ	ËˆXY\œÎˆÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰ÈKˆ›ÙNˆ”ÓÓ‹œİš[™ÚYJÈ\WÚÙ^NˆU’SWÒÑVK]Y\NˆKX^Ü™\İ[Îˆ[˜ÛYWØ[œİÙ\ˆYHJKˆÚYÛ˜[ˆX›ÜÚYÛ˜[[Y[İ]
+
+BˆJNÂˆYˆ
+\™\ÜÛœÙK›ÚÊH›İÈ™]È\œ›ÜŠ	Õ]š[H	È
+È™\ÜÛœÙKœİ]\ÊNÂˆÛÛœİ]HH]ØZ]™\ÜÛœÙKšœÛÛŠ
+NÂˆ™\ËšœÛÛŠÈ™\İ[Îˆ
+]Kœ™\İ[È×JKœÛXÙJ
+K[œİÙ\ˆ]K˜[œİÙ\ˆ[JNÂˆHØ]Ú
+\œŠHÂˆÛÛœÛÛK™\œ›ÜŠ	ÜÙX\˜Úİ]š[H\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›Üˆ	Ñ\œ›Üˆ[ˆ°îœÜ]YYH]š[K‰ÈJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ TÒ“ÕQ’PĞUSÓ”È
+ÙXˆ\ÚÈTQ
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[œ›Û[™ÙHİ\ØÜšX™HÛÛˆİHXšXØXÚpìÛˆH[Ù\šYÜˆ]š\ØHÜ‚‹ËÈ\ÚÓÓÈİX[™ÈØ[XšXHHÛÛ™XÚpìÛˆ[Û[XH
+Ú[ˆÜ[JK‚˜ÛÛœİÙXœ\ÚH™\]Z\™J	İÙX‹\\Ú	ÊNÂ‚˜ÛÛœİTQÔP“P×ÒÑVHH›ØÙ\ÜË™[‹•TQÔP“P×ÒÑVH	ÉÎÂ˜ÛÛœİTQÔ’UUWÒÑVHH›ØÙ\ÜË™[‹•TQÔ’UUWÒÑVH	ÉÎÂ˜ÛÛœİTQÔ‘PQHHHJTQÔP“P×ÒÑVH	‰ˆTQÔ’UUWÒÑVJNÂšYˆ
+TQÔ‘PQJHÙXœ\ÚœÙ]˜\Y]Z[Ê	ÛXZ[Î˜YZ[ÛÙZX‹™İ	ËTQÔP“P×ÒÑVKTQÔ’UUWÒÑVJNÂ‚‹ËÈ8¥ 8¥ ’T‘PTÑHÓÕQQTÔĞQÒS‘È
+ÓJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ\Ú[œİ[0è[™[È\˜HH\[™›ÚY˜]]˜K‚›]YZ[ˆH[Â›]˜ÛQ[˜X›YH˜[ÙNÂ›]YZ[“Y\ÜØYÚ[™Ô™YˆH[ÂHÂˆYZ[ˆH™\]Z\™J	Ùš\™X˜\ÙKXYZ[‰ÊNÂˆÛÛœİÙ\šXÙPXØÛİ[H›ØÙ\ÜË™[‹‘’T‘PTÑWÔÑT•’PÑWĞPĞÓÕS•ˆÈ”ÓÓ‹œ\œÙJ›ØÙ\ÜË™[‹‘’T‘PTÑWÔÑT•’PÑWĞPĞÓÕS•
+Bˆˆ[ÂˆYˆ
+Ù\šXÙPXØÛİ[
+HÂˆËÈš\™X˜\ÙKXYZ[ˆŒM
+È^Û™HÙ\[ˆH˜pë^ˆHÙ]Y\ÜØYÚ[™Ê\
+X[ˆ[ˆËÈİXœ]ÈŒLKLLÈÈXğëX[ˆ°ëXHYZ[‹˜Ü™Y[X[˜Ù\HYZ[‹›Y\ÜØYÚ[™Ê
+X‚ˆÛÛœİÙ\›ˆHYZ[‹˜Ù\
+YZ[‹˜Ü™Y[X[	‰ˆYZ[‹˜Ü™Y[X[˜Ù\
+NÂˆYˆ
+XÙ\›ŠH›İÈ™]È\œ›ÜŠ	Ùš\™X˜\ÙKXYZ[ˆÚ[ˆÜ™Y[X[˜Ù\šHÙ\	ÊNÂˆYZ[‹š[š]X[^™P\
+ÈÜ™Y[X[ˆÙ\›ŠÙ\šXÙPXØÛİ[
+HJNÂˆYˆ
+\[ÙˆYZ[‹›Y\ÜØYÚ[™ÈOOH	Ù[˜İ[Û‰ÊHÂˆYZ[“Y\ÜØYÚ[™Ô™YˆHYZ[‹›Y\ÜØYÚ[™Ê
+NÂˆH[ÙHÂˆÛÛœİÈÙ]Y\ÜØYÚ[™ÈHH™\]Z\™J	Ùš\™X˜\ÙKXYZ[‹ÛY\ÜØYÚ[™ÉÊNÂˆYZ[“Y\ÜØYÚ[™Ô™YˆHÙ]Y\ÜØYÚ[™Ê
+NÂˆBˆ˜ÛQ[˜X›YHYNÂˆÛÛœÛÛK›ÙÊ	ø§!HÓNˆš\™X˜\ÙHÛİYY\ÜØYÚ[™ÈXš[]YÉÊNÂˆH[ÙHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÓNˆ’T‘PTÑWÔÑT•’PÑWĞPĞÓÕS•›ÈÛÛ™šYİ\˜YÈ8 %\ÚÙX‹\\Ú0î›šXØ[Y[IÊNÂˆBŸHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÓNˆš\™X˜\ÙKXYZ[ˆ›È\ÜÛšX›N‰ËK›Y\ÜØYÙJNÂŸB‚˜ÛÛœİTÒÔÔSH˜Ü™X]HX›HYˆ›İ^\İÈX›XËœ\ÚÜİXœÈ
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^Kˆ[™Ú[^›İ[[š\]YKˆÙ^\×ÜM™^ˆÙ^\×Ø]]^ˆ]İX›H™XÚ\Ú[Û‹ˆÛˆİX›H™XÚ\Ú[Û‹ˆÚ]H^ˆÛİ[H^ˆ[Y^›Û™H^ˆ\Ù\—ØYÙ[^ˆ[\È›ÛÛX[ˆY˜][YKˆÙZ\ÛZX×Ø[\È›ÛÛX[ˆY˜][YKˆÙZ\ÛZX×ÛXYÈ[Y\šXÈY˜][Kˆ\İØ[\ØÛÛ™][Ûˆ^ˆ\İØ[\Ø][Y\İ[\‹ˆ\İØœšYY—Ø][Y\İ[\‹ˆÙX]\—Ú[\˜[[YÙ\ˆY˜][ˆ\İİÙX]\—ÜÛ˜\Úİ^ˆÜ™X]YØ][Y\İ[\ˆY˜][›İÊ
+Kˆ\]YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ˜Ü™X]H[™^Yˆ›İ^\İÈ\ÚÜİXœ×Ø[\×ÚYÛˆX›XËœ\ÚÜİXœÈ
+[\ÊNÂ˜Â‚‹ËÈZYÜ˜\ˆYÜ™YØ\ˆÛÛ[[˜\ÈÚH›È^\İ[‚˜\Ş[˜È[˜İ[ÛˆZYÜ˜]T\ÚX›J
+HÂˆYˆ
+\İ\X˜\ÙJH™]\›ÂˆHÂˆ]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆ	Ø[\ˆX›HX›XËœ\ÚÜİXœÈYÛÛ[[ˆYˆ›İ^\İÈ\İØœšYY—Ø][Y\İ[\ÉÈJNÂˆ]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆ	Ø[\ˆX›HX›XËœ\ÚÜİXœÈYÛÛ[[ˆYˆ›İ^\İÈÙX]\—Ú[\˜[[YÙ\ˆY˜][ÉÈJNÂˆ]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆ	Ø[\ˆX›HX›XËœ\ÚÜİXœÈYÛÛ[[ˆYˆ›İ^\İÈ\İİÙX]\—ÜÛ˜\Úİ^ÉÈJNÂˆ]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆ	Ø[\ˆX›HX›XËœ\ÚÜİXœÈYÛÛ[[ˆYˆ›İ^\İÈÙZ\ÛZX×Ø[\È›ÛÛX[ˆY˜][YNÉÈJNÂˆ]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆ	Ø[\ˆX›HX›XËœ\ÚÜİXœÈYÛÛ[[ˆYˆ›İ^\İÈÙZ\ÛZX×ÛXYÈ[Y\šXÈY˜][NÉÈJNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ø¦¨;î#È\ÚZYÜ˜]N‰ËK›Y\ÜØYÙJNÈBŸB›ZYÜ˜]T\ÚX›J
+NÂ‚›]\ÚİÜ™HH™]ÈX\
+
+NÈËÈ˜[˜XÚÈ[ˆY[[ÜšXHÚHİ\X˜\ÙH›È\İ0èH\ÜÛšX›B‚˜\Ş[˜È[˜İ[Ûˆ[œİ\™T\ÚX›J
+HÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ˜[ÙNÂˆÛÛœİİ][Y[ÈHÜ]Ü[İ][Y[ÊTÒÔÔS
+NÂˆHÂˆ›Üˆ
+ÛÛœİİ]Ùˆİ][Y[ÊHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆİ]JNÂˆYˆ
+\œ›ÜŠHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#È\Úˆ›ÈÙHYÈÜ™X\ˆX›H\ÚÜİXœÈ
+	È
+È\œ›Ü‹›Y\ÜØYÙH
+È	ÊH8 %Ü™X[HHX[›ÈÛÛˆ˜XÚÙ[™Ü\ÚÜİXœËœÜ[	ÊNÂˆ™]\›ˆ˜[ÙNÂˆBˆBˆÛÛœÛÛK›ÙÊ	ø§!H\ÚˆX›H\ÚÜİXœÈ\İIÊNÂˆ™]\›ˆYNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#È\Úˆ\œ›Üˆ\ÙYİ\˜[™ÈX›N‰ËK›Y\ÜØYÙJNÂˆ™]\›ˆ˜[ÙNÂˆBŸB‚™[˜İ[Ûˆ\Ú›İÕÔİXŠ›İÊHÂˆ™]\›ˆÂˆ[™Ú[ˆ›İË™[™Ú[ˆÙ^\ÎˆÈM™ˆ›İËšÙ^\×ÜM™]]ˆ›İËšÙ^\×Ø]]Kˆ]ˆ›İË›]Ûˆ›İË›Û‹Ú]Nˆ›İË˜Ú]KÛİ[Nˆ›İË˜Ûİ[Kˆ[Y^›Û™Nˆ›İË[Y^›Û™K\Ù\—ØYÙ[ˆ›İË\Ù\—ØYÙ[ˆ[\Îˆ›İË˜[\ËÙZ\ÛZX×Ø[\Îˆ›İËœÙZ\ÛZX×Ø[\ÈOOH˜[ÙKÙZ\ÛZX×ÛXYÎˆ›İËœÙZ\ÛZX×ÛXYÈOH[È
+Ü›İËœÙZ\ÛZX×ÛXYÈˆ[\İØ[\ØÛÛ™][Ûˆ›İË›\İØ[\ØÛÛ™][Û‹\İØ[\Ø]ˆ›İË›\İØ[\Ø]ˆ\İØœšYY—Ø]ˆ›İË›\İØœšYY—Ø][ˆÙX]\—Ú[\˜[ˆ›İËÙX]\—Ú[\˜[OH[È›Ü›X[^™UÙX]\’[\˜[
+›İËÙX]\—Ú[\˜[
+Hˆˆ\İİÙX]\—ÜÛ˜\Úİˆ›İË›\İİÙX]\—ÜÛ˜\Úİ[ˆNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ\Ú\İ
+
+HÂˆYˆ
+İ\X˜\ÙJHÂˆHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ü\ÚÜİXœÉÊKœÙ[Xİ
+	Ê‰ÊNÂˆYˆ
+Y\œ›Üˆ	‰ˆ\œ˜^Kš\Ğ\œ˜^J]JJH™]\›ˆ]K›X\
+\Ú›İÕÔİXŠNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Ô\Ú\İ\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆBˆ™]\›ˆ\œ˜^K™œ›ÛJ\ÚİÜ™K˜[Y\Ê
+JNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ\ÚØ]™J™XÊHÂˆYˆ
+İ\X˜\ÙJHÂˆHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ü\ÚÜİXœÉÊK\Ù\
+Âˆ[™Ú[ˆ™XË™[™Ú[ˆÙ^\×ÜM™ˆ™XËšÙ^\ÏËœM™[ˆÙ^\×Ø]]ˆ™XËšÙ^\ÏË˜]][ˆ]ˆ™XË›]ÏÈ[ˆÛˆ™XË›ÛˆÏÈ[ˆÚ]Nˆ™XË˜Ú]H[ˆÛİ[Nˆ™XË˜Ûİ[H[ˆ[Y^›Û™Nˆ™XË[Y^›Û™H[ˆ\Ù\—ØYÙ[ˆ™XË\Ù\—ØYÙ[[ˆ[\Îˆ™XË˜[\ÈOOH˜[ÙKˆÙZ\ÛZX×Ø[\Îˆ™XËœÙZ\ÛZX×Ø[\ÈOOH˜[ÙKˆÙZ\ÛZX×ÛXYÎˆ™XËœÙZ\ÛZX×ÛXYÈOH[È
+Ü™XËœÙZ\ÛZX×ÛXYÈˆKˆ\İØ[\ØÛÛ™][Ûˆ™XË›\İØ[\ØÛÛ™][Ûˆ[ˆ\İØ[\Ø]ˆ™XË›\İØ[\Ø][ˆ\İØœšYY—Ø]ˆ™XË›\İØœšYY—Ø][ˆÙX]\—Ú[\˜[ˆ™XËÙX]\—Ú[\˜[OH[È›Ü›X[^™UÙX]\’[\˜[
+™XËÙX]\—Ú[\˜[
+Hˆˆ\İİÙX]\—ÜÛ˜\Úİˆ™XË›\İİÙX]\—ÜÛ˜\Úİ[ˆ\]YØ]ˆ™]È]J
+KˆKÈÛÛÛ™›Xİˆ	Ù[™Ú[	ÈJNÂˆYˆ
+Y\œ›ÜŠH™]\›ˆYNÂˆÛÛœÛÛKØ\›Š	Ô\ÚØ]™Hİ\X˜\ÙH\œ›Ü‰Ë\œ›Ü‹›Y\ÜØYÙJNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Ô\ÚØ]™H\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆBˆ\ÚİÜ™KœÙ]
+™XË™[™Ú[™XÊNÂˆ™]\›ˆYNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ\Ú[]J[™Ú[
+HÂˆYˆ
+İ\X˜\ÙJHÂˆHÈ]ØZ]İ\X˜\ÙK™œ›ÛJ	Ü\ÚÜİXœÉÊK™[]J
+K™\J	Ù[™Ú[	Ë[™Ú[
+NÈHØ]Ú
+JHßBˆBˆ\ÚİÜ™K™[]J[™Ú[
+NÂŸB‚˜\Ş[˜È[˜İ[ÛˆÙ[™\Ú
+™XË^[ØY
+HÂˆYˆ
+\™XÈ\™XË™[™Ú[\™XËšÙ^\È\™XËšÙ^\ËœM™\™XËšÙ^\Ë˜]]
+HÂˆ™]\›ˆÈÚÎˆ˜[ÙK™X\ÛÛˆ	Ú[˜ÛÛ\]IÈNÂˆBˆHÂˆ]ØZ]ÙXœ\ÚœÙ[™›İYšXØ][ÛŠˆÈ[™Ú[ˆ™XË™[™Ú[Ù^\ÎˆÈM™ˆ™XËšÙ^\ËœM™]]ˆ™XËšÙ^\Ë˜]]HKˆ”ÓÓ‹œİš[™ÚYJ^[ØY
+KˆÈˆÍŒBˆ
+NÂˆ™]\›ˆÈÚÎˆYHNÂˆHØ]Ú
+JHÂˆËÈÍLHİ\ØÜš\ÚpìÛˆ^\˜YKˆKÍÈHÛ]™HTQ›ÈÛÚ[˜ÚYBˆËÈÛÛˆH]YHÙH\ğìÈ[İ\ØÜšXš\œÙH
+›İXÚpìÛˆHTQÔP“PËÔ’UUWÒÑVBˆËÈÈİXœÈÜ™XY\È[\ÈHšZ˜\ˆ\Ø\È[ˆ˜\œÊKˆ[ˆ[X›ÜÈØ\ÛÜÈHİX‚ˆËÈ\È[œÙ\šX›NˆÙH›Üœ˜H\˜H]YH[ÛY[HÙH™K\İ\ØÜšX˜HÛÛÈBˆËÈ°ìŞ[XH™^ˆ]YHš\Ú]H[Ú][È
+™\ˆÚ\]Y[ÈH\XØ][Û”Ù\™\’Ù^BˆËÈ[ˆ[š][™^\Ú[™^š[
+K‚ˆYˆ
+ÍKËLKš[˜ÛY\ÊKœİ]\ĞÛÙJJHÂˆ]ØZ]\Ú[]J™XË™[™Ú[
+NÂˆBˆ™]\›ˆÈÚÎˆ˜[ÙKÛÙNˆKœİ]\ĞÛÙKY\ÜØYÙNˆK˜›ÙHK›Y\ÜØYÙHNÂˆBŸB‚‹ËÈÛ]™H0î˜›XØHTQ]YH[œ›Û[™X™H\Ø\ˆ[İ\ØÜšXš\œÙK‚‹ËÈ[\È\İX˜H\™ÛÙXYH[ˆ[™^š[
+ÛÛˆ[Z\Û[È˜[ÜˆH˜[˜XÚÂ‹ËÈ]YH\]pëHX˜Z›ÊNÈÚH[ˆ™[™\ˆÙHÛÛ™šYİ\˜X˜[ˆTQÔP“P×ÒÑVKÔ’UUWÒÑVB‹ËÈ›Ü[ÜË[˜XÚÙ[™š\›XX˜HÛÛˆHÛ]™HY]˜H\›È[˜]™YØYÜˆÙYİpëXB‹ËÈİ\ØÜšXšpê[™ÜÙHÛÛˆHÛ]™HšYZ˜H\™ÛÙXYH8¡¤ˆ\ØZ\İHHÛ]™\È8¡¤‚‹ËÈ[\Ú˜[X˜H[ˆÚ[[˜Ú[È
+Hİ\ØÜš\ÚpìÛˆÙHİX\™X˜K\›Â‹ËÈÙXœ\ÚœÙ[™›İYšXØ][Ûˆ[˜ØHYØX˜JKˆ\İH[™Ú[\ÈH0î›šXØB‹ËÈY[HH™\™Yˆ[œ›Û[™HÛÛœİ[H[ˆ™^ˆH[™\›HšZ˜K‚˜\™Ù]
+	ËØ\KÜ\Úİ˜\Y\X›XËZÙ^IË
+Ü™\K™\ÊHOˆÂˆYˆ
+UTQÔ‘PQJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ÕÙXˆ\Ú›ÈÛÛ™šYİ\˜YÈ
+˜[HTQÔP“P×ÒÑVKÕTQÔ’UUWÒÑVJIÈJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÙ^NˆTQÔP“P×ÒÑVHJNÂŸJNÂ‚˜\œÜİ
+	ËØ\KÜ\ÚÜİXœØÜšX™IËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+UTQÔ‘PQJH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ÕÙXˆ\Ú›ÈÛÛ™šYİ\˜YÈ
+˜[HTQÔP“P×ÒÑVKÕTQÔ’UUWÒÑVJIÈJNÂˆHÂˆÛÛœİÈİXœØÜš\[Û‹ØØ][Û‹™YœÈHH™\K˜›ÙHßNÂˆÛÛœİİXˆHİXœØÜš\[ÛˆßNÂˆYˆ
+\İX‹™[™Ú[\İX‹šÙ^\È\İX‹šÙ^\ËœM™\İX‹šÙ^\Ë˜]]
+HÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ôİ\ØÜš\ÚpìÛˆ[°è[YIÈJNÂˆBˆÛÛœİØÈHØØ][ÛˆßNÂˆÛÛœİ™XÈHÂˆ[™Ú[ˆİX‹™[™Ú[ˆÙ^\ÎˆÈM™ˆİX‹šÙ^\ËœM™]]ˆİX‹šÙ^\Ë˜]]Kˆ]ˆ[X™\‹š\Ñš[š]J
+ÛØË›]
+HÈ
+ÛØË›]ˆ[ˆÛˆ[X™\‹š\Ñš[š]J
+ÛØË›ÛŠHÈ
+ÛØË›Ûˆˆ[ˆÚ]Nˆ
+ØË˜Ú]H	ÉÊKœÛXÙJLŒ
+H[ˆÛİ[Nˆ
+ØË˜Ûİ[H	ÉÊKœÛXÙJ
+H[ˆ[Y^›Û™Nˆ
+ØË[Y^›Û™H	ÉÊKœÛXÙJŒ
+H[ˆ\Ù\—ØYÙ[ˆ
+™\K™Ù]
+	İ\Ù\‹XYÙ[	ÊH	ÉÊKœÛXÙJŒ
+Kˆ[\Îˆ™YœÈÈ™YœË˜[\ÈOOH˜[ÙHˆYKˆÙZ\ÛZX×Ø[\Îˆ™YœÈÈ™YœËœÙZ\ÛZX×Ù[˜X›YOOH˜[ÙHˆYKˆÙZ\ÛZX×ÛXYÎˆ™YœÈ	‰ˆ[X™\‹š\Ñš[š]J
+Ü™YœËœÙZ\ÛZX×ÛXYÊHÈ
+
+Ü™YœËœÙZ\ÛZX×ÛXYÊHˆKˆÙX]\—Ú[\˜[ˆ™YœÈ	‰ˆ™YœËš[\˜[È›Ü›X[^™UÙX]\’[\˜[
+™YœËš[\˜[
+HˆˆNÂˆ]ØZ]\ÚØ]™J™XÊNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	Ü\ÚÜİXœØÜšX™H\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\œÜİ
+	ËØ\KÜ\Úİ[œİXœØÜšX™IËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈ[™Ú[HH™\K˜›ÙHßNÂˆYˆ
+Y[™Ú[
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[™Ú[	ÈJNÂˆ]ØZ]\Ú[]J[™Ú[
+NÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂŸJNÂ‚˜\œÜİ
+	ËØ\KÜ\ÚÜÙ][™ÜÉËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ[™Ú[ØØ][Û‹™YœÈHH™\K˜›ÙHßNÂˆYˆ
+Y[™Ú[
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[™Ú[	ÈJNÂˆÛÛœİ\İH]ØZ]\Ú\İ
+
+NÂˆ]™XÈH\İ™š[™
+ˆOˆ‹™[™Ú[OOH[™Ú[
+NÂˆYˆ
+\™XÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ôİ\ØÜš\ÚpìÛˆ›È[˜ÛÛ˜YIÈJNÂˆYˆ
+ØØ][ÛŠHÂˆYˆ
+[X™\‹š\Ñš[š]J
+ÛØØ][Û‹›]
+JH™XË›]H
+ÛØØ][Û‹›]ÂˆYˆ
+[X™\‹š\Ñš[š]J
+ÛØØ][Û‹›ÛŠJH™XË›ÛˆH
+ÛØØ][Û‹›ÛÂˆYˆ
+ØØ][Û‹˜Ú]JH™XË˜Ú]HHİš[™ÊØØ][Û‹˜Ú]JKœÛXÙJLŒ
+NÂˆYˆ
+ØØ][Û‹˜Ûİ[JH™XË˜Ûİ[HHİš[™ÊØØ][Û‹˜Ûİ[JKœÛXÙJ
+NÂˆYˆ
+ØØ][Û‹[Y^›Û™JH™XË[Y^›Û™HHİš[™ÊØØ][Û‹[Y^›Û™JKœÛXÙJŒ
+NÂˆBˆYˆ
+™YœÈ	‰ˆ\[Ùˆ™YœË˜[\ÈOOH	Ø›ÛÛX[‰ÊH™XË˜[\ÈH™YœË˜[\ÎÂˆYˆ
+™YœÈ	‰ˆ\[Ùˆ™YœËœÙZ\ÛZX×Ù[˜X›YOOH	Ø›ÛÛX[‰ÊH™XËœÙZ\ÛZX×Ø[\ÈH™YœËœÙZ\ÛZX×Ù[˜X›YÂˆYˆ
+™YœÈ	‰ˆ[X™\‹š\Ñš[š]J
+Ü™YœËœÙZ\ÛZX×ÛXYÊJH™XËœÙZ\ÛZX×ÛXYÈH
+Ü™YœËœÙZ\ÛZX×ÛXYÎÂˆYˆ
+™YœÈ	‰ˆ™YœËš[\˜[OOH[™Yš[™Y
+H™XËÙX]\—Ú[\˜[H›Ü›X[^™UÙX]\’[\˜[
+™YœËš[\˜[
+NÂˆ]ØZ]\ÚØ]™J™XÊNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚˜\œÜİ
+	ËØ\KÜ\ÚÛ›İYIËÚ][Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ[™Ú[]K›ÙK\›HH™\K˜›ÙHßNÂˆYˆ
+Y[™Ú[]]JH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[™Ú[È]IÈJNÂˆÛÛœİ\İH]ØZ]\Ú\İ
+
+NÂˆÛÛœİ™XÈH\İ™š[™
+ˆOˆ‹™[™Ú[OOH[™Ú[
+NÂˆYˆ
+\™XÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ôİ\ØÜš\ÚpìÛˆ›È[˜ÛÛ˜YIÈJNÂˆÛÛœİˆH]ØZ]Ù[™\Ú
+™XËÈ]K›ÙNˆ›ÙH	ÉË\Nˆ	ÙÙ[™\˜[	ËXÛÛˆ	ËÜÜ\ÚØÛÙZX‹œ™ÉË\›ˆ\›	ËÉÈJNÂˆ™\ËšœÛÛŠŠNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÓHÒÑSˆPSQÑSQS•8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ›]˜ÛUÚÙ[œÈH™]ÈX\
+
+NÈËÈ˜[˜XÚÈ[ˆY[[ÜšXB‚˜ÛÛœİÓWÔÔSH˜Ü™X]HX›HYˆ›İ^\İÈX›XË™˜ÛWİÚÙ[œÈ
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^KˆÚÙ[ˆ^›İ[[š\]YKˆ]İX›H™XÚ\Ú[Û‹ˆÛˆİX›H™XÚ\Ú[Û‹ˆÚ]H^ˆÛİ[H^ˆ\Û˜[YH^Y˜][	ĞÛÙRX‰Ëˆ\İ™\œÚ[Ûˆ^ˆ]›Ü›H^Y˜][	Ø[™›ÚY	Ëˆ\Ù\—ØYÙ[^ˆÜ™X]YØ][Y\İ[\ˆY˜][›İÊ
+Kˆ\]YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ˜Â‚˜\Ş[˜È[˜İ[Ûˆ[œİ\™QÓUX›J
+HÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ˜[ÙNÂˆHÂˆÛÛœİİ][Y[ÈHÜ]Ü[İ][Y[ÊÓWÔÔS
+NÂˆ›Üˆ
+ÛÛœİİ]Ùˆİ][Y[ÊHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆİ]JNÂˆYˆ
+\œ›ÜŠHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÓNˆ›ÈÙHYÈÜ™X\ˆX›H˜ÛWİÚÙ[œÈ8 %	È
+È\œ›Ü‹›Y\ÜØYÙJNÂˆ™]\›ˆ˜[ÙNÂˆBˆBˆÛÛœÛÛK›ÙÊ	ø§!HÓNˆX›H˜ÛWİÚÙ[œÈ\İIÊNÂˆ™]\›ˆYNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÓNˆ\œ›Üˆ\ÙYİ\˜[™ÈX›N‰ËK›Y\ÜØYÙJNÂˆ™]\›ˆ˜[ÙNÂˆBŸB‚‹ËÈ8¥ 8¥ ÕUÈP“TÈ
+İ\X˜\ÙJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜ÛÛœİÕU×ÔÔSH˜Ü™X]HX›HYˆ›İ^\İÈX›XËš\Ú]Ü—ÛÙÜÈ
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^Kˆ\^ˆÛİ[H^ˆÛİ[WØÛÙH^ˆÚ]H^ˆ™YÚ[Ûˆ^ˆ\Ü^ˆÜ™È^ˆ\×İœˆ›ÛÛX[ˆY˜][˜[ÙKˆ\×Ü›ŞH›ÛÛX[ˆY˜][˜[ÙKˆ\×Ø›İ›ÛÛX[ˆY˜][˜[ÙKˆš\Ú×ÜØÛÜ™H[YÙ\ˆY˜][ˆYÙH^ˆXH^ˆš\Ú]YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ‚˜Ü™X]HX›HYˆ›İ^\İÈX›XË™Z[WÜİ]È
+ˆ]H]Hš[X\HÙ^Kˆš\Ú]ÈšYÚ[Y˜][ˆİÛ›ØYÈšYÚ[Y˜][ˆÚ]Û\ÙÜÈšYÚ[Y˜][ˆÛÛİ\Ù\ÈšYÚ[Y˜][ˆÛÛXİÈšYÚ[Y˜][ˆ\]YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ‚˜Ü™X]HX›HYˆ›İ^\İÈX›XËÛÛÜİ]È
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^KˆÛÛÛ˜[YH^›İ[[š\]YKˆ\Ù\ÈšYÚ[Y˜][Kˆ\İİ\ÙY[Y\İ[\ˆY˜][›İÊ
+BŠNÂ‚˜Ü™X]HX›HYˆ›İ^\İÈX›XË™İÛ›ØYÜİ]È
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^Kˆ\Û˜[YH^›İ[[š\]YKˆİÛ›ØYÈšYÚ[Y˜][Kˆ\İÙİÛ›ØY[Y\İ[\ˆY˜][›İÊ
+BŠNÂ‚˜Ü™X]HX›HYˆ›İ^\İÈX›XË™]™[È
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^Kˆ\H^ˆYÙH^ˆY]Y]HœÛÛ˜ˆY˜][	ŞßIÎšœÛÛ˜‹ˆÜ™X]YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ‚˜Ü™X]HX›HYˆ›İ^\İÈX›XËœØØ[—ÛÙÜÈ
+ˆYšYÚ[Ù[™\˜]Y[Ø^\È\ÈY[]Hš[X\HÙ^Kˆ\H^ˆ\™Ù]^ˆ™\™Xİ^ˆš\Ú×ÜØÛÜ™H[YÙ\‹ˆ›İšY\ˆ^ˆY]Y]HœÛÛ˜ˆY˜][	ŞßIÎšœÛÛ˜‹ˆØØ[›™YØ][Y\İ[\ˆY˜][›İÊ
+BŠNÂ˜Â‚˜\Ş[˜È[˜İ[Ûˆ[œİ\™Tİ]ÕX›\Ê
+HÂˆYˆ
+\İ\X˜\ÙJH™]\›ˆ˜[ÙNÂˆHÂˆÛÛœİİ][Y[ÈHÜ]Ü[İ][Y[ÊÕU×ÔÔS
+NÂˆ›Üˆ
+ÛÛœİİ]Ùˆİ][Y[ÊHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙKœœÊ	Ù^X×ÜÜ[	ËÈ]Y\Nˆİ]JNÂˆYˆ
+\œ›ÜŠHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#Èİ]Îˆ›ÈÙHYÈÜ™X\ˆX›HH\İY0ë\İXØ\È8 %	È
+È\œ›Ü‹›Y\ÜØYÙJNÂˆ™]\›ˆ˜[ÙNÂˆBˆBˆÛÛœÛÛK›ÙÊ	ø§!Hİ]ÎˆX›\ÈH\İY0ë\İXØ\È\İ\ÉÊNÂˆ™]\›ˆYNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#Èİ]Îˆ\œ›Üˆ\ÙYİ\˜[™ÈX›\Î‰ËK›Y\ÜØYÙJNÂˆ™]\›ˆ˜[ÙNÂˆBŸB‚˜\Ş[˜È[˜İ[Ûˆ˜ÛS\İÚÙ[œÊ
+HÂˆYˆ
+İ\X˜\ÙJHÂˆHÂˆÛÛœİÈ]K\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊKœÙ[Xİ
+	Ê‰ÊNÂˆYˆ
+Y\œ›Üˆ	‰ˆ\œ˜^Kš\Ğ\œ˜^J]JJH™]\›ˆ]NÂˆHØ]Ú
+JHßBˆBˆ™]\›ˆ\œ˜^K™œ›ÛJ˜ÛUÚÙ[œË˜[Y\Ê
+JNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ˜ÛTØ]™UÚÙ[Š™XÊHÂˆYˆ
+İ\X˜\ÙJHÂˆHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊK\Ù\
+ÂˆÚÙ[ˆ™XËÚÙ[‹ˆ]ˆ™XË›]ÏÈ[ˆÛˆ™XË›ÛˆÏÈ[ˆÚ]Nˆ™XË˜Ú]H[ˆÛİ[Nˆ™XË˜Ûİ[H[ˆ\Û˜[YNˆ™XË˜\˜[YH	ĞÛÙRX‰Ëˆ\İ™\œÚ[Ûˆ™XË˜\™\œÚ[Ûˆ[ˆ]›Ü›Nˆ™XËœ]›Ü›H	Ø[™›ÚY	Ëˆ\Ù\—ØYÙ[ˆ™XË\Ù\YÙ[[ˆ\]YØ]ˆ™]È]J
+KˆKÈÛÛÛ™›Xİˆ	İÚÙ[‰ÈJNÂˆYˆ
+Y\œ›ÜŠH™]\›ˆYNÂˆÛÛœÛÛKØ\›Š	ÑÓHØ]™H\œ›Ü‰Ë\œ›Ü‹›Y\ÜØYÙJNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ÑÓHØ]™H\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆBˆ˜ÛUÚÙ[œËœÙ]
+™XËÚÙ[‹™XÊNÂˆ™]\›ˆYNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ˜ÛU\]SØØ][ÛŠÚÙ[‹]ÛŠHÂˆYˆ
+İ\X˜\ÙJHÂˆHÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊK\]JÈ]Û‹\]YØ]ˆ™]È]J
+HJK™\J	İÚÙ[‰ËÚÙ[ŠNÂˆYˆ
+Y\œ›ÜŠH™]\›ˆYNÂˆHØ]Ú
+JHßBˆBˆÛÛœİ™XÈH˜ÛUÚÙ[œË™Ù]
+ÚÙ[ŠNÂˆYˆ
+™XÊHÈ™XË›]H]È™XË›ÛˆHÛÈBˆ™]\›ˆYNÂŸB‚˜\Ş[˜È[˜İ[Ûˆ˜ÛQ[]UÚÙ[ŠÚÙ[ŠHÂˆYˆ
+İ\X˜\ÙJHÂˆHÈ]ØZ]İ\X˜\ÙK™œ›ÛJ	Ù˜ÛWİÚÙ[œÉÊK™[]J
+K™\J	İÚÙ[‰ËÚÙ[ŠNÈHØ]Ú
+JHßBˆBˆ˜ÛUÚÙ[œË™[]JÚÙ[ŠNÂŸB‚‹ËÈ[šX\ˆ°ëXHÓHH[ˆÚÙ[ˆ\ÜXğëYšXÛÂ˜\Ş[˜È[˜İ[ÛˆÙ[™ÓJÚÙ[‹^[ØY
+HÂˆYˆ
+Y˜ÛQ[˜X›YXYZ[ŠH™]\›ˆÈÚÎˆ˜[ÙK™X\ÛÛˆ	Ù˜ÛWÙ\ØX›Y	ÈNÂˆËÈ]XZÙWÊˆšXZ˜HUKSÓ“H
+[Ë\š[Üš]JNˆ[™›ÚY\ÜY\BˆËÈÛ“Y\ÜØYÙT™XÙZ]™YÒQST‘K[˜Û\ÛÈ\Ù\œ˜YKÑŞ™KH[TÈ\›XHİBˆËÈ›ÜXH›İYšXØXÚpìÛˆH[[HÛÛ\]H
+È[\›XKˆ[šX\ˆ›Ü]YBˆËÈ›İYšXØ][Û˜\°ëXH[™YØH0ëXœšYNˆÓHYYH[Üİ˜\ˆH›İYšXØXÚpìÛ‚ˆËÈ[˜^HH“ÈZ™Xİ]\ˆ[Ù\šXÚ[ÈİX[™ÈH\\İ0èH[ˆ˜XÚÙÜ›İ[™8 %ˆËÈH[\›XHH[Y\™Ù[˜ÚXHÙHY\™KˆÛÛÜ]XZÙH]K[Û›HH[Hš[ÜšYY‚ˆÛÛœİ\Ô]XZÙHH^[ØY\H	‰ˆ^[ØY\Kœİ\ÕÚ]
+	Ü]XZÙIÊNÂˆHÂˆÛÛœİ\ÙÈHÂˆÚÙ[ˆÚÙ[‹ˆ]NˆØš™Xİ˜\ÜÚYÛŠˆ^[ØY\H	‰ˆ^[ØY\Kœİ\ÕÚ]
+	Ü]XZÙIÊBˆÈÂˆËÈ]K[Û›Nˆ]KØ›ÙHšXZ˜[ˆ[ˆH]HÜœ]YH[TÈÜÂˆËÈYH\ÙHÙ]]J
+HİX[™È›È^H›Ü]YH›İYšXØ][Û‹‚ˆ]Nˆ^[ØY]H	ü'æªST•HğãTÓRPĞIËˆ›ÙNˆ^[ØY˜›ÙH	ÉËˆ\Nˆ^[ØY\H	Ü]XZÙWÚ[™›ÉËˆ\›ˆ^[ØY\›	ËÉËˆXYÎˆİš[™Ê^[ØY›XYÈ
+Kˆ\İˆİš[™Ê^[ØY™\İ
+Kˆ\ˆ^[ØY™\ˆ	Ó‰ËˆXÙNˆ^[ØYœXÙH	ÉËˆ[YNˆİš[™Ê^[ØY[YH]K››İÊ
+JKˆ[\\Nˆ^[ØY˜[\\H	ÙX\]XZÙIËˆBˆˆÂˆ]Nˆ^[ØY]Kˆ›ÙNˆ^[ØY˜›ÙKˆ\Nˆ^[ØY\H	ÙÙ[™\˜[	Ëˆ\›ˆ^[ØY\›	ËÉËˆJKˆ[™›ÚYˆÂˆËÈš[Üš]Nˆ	ÚYÚ	È8 %\ÜY\H[\ÜÜÚ]]›È[˜Û\ÛÈ[ˆŞ™BˆËÈ›Ù[™ËˆÚ[ˆ\İÈ[™›ÚYYYH[[Ü˜\ˆH[™YØH\İBˆËÈH°ìŞ[XH™[[˜HHX[[š[ZY[ÈÚHH\›ÈÙH\ØHXÙBˆËÈY[\Ë[™ÈH˜[ØH[\™\ÚpìÛˆH]YH››È\İ0èH\ÜY\H‹‚ˆš[Üš]Nˆ	ÚYÚ	ËˆKˆNÂˆYˆ
+Z\Ô]XZÙJHÂˆËÈ›Ë\]XZÙNˆ›İYšXØXÚpìÛˆ\İ0è[™\ˆ[˜^HÛÛˆÜÈØ[\ÜÈš\İX[\Ë‚ˆ\ÙË››İYšXØ][ÛˆHÈ]Nˆ^[ØY]K›ÙNˆ^[ØY˜›ÙHNÂˆ\ÙË˜[™›ÚY››İYšXØ][ÛˆHÂˆÚ[›™[Yˆ^[ØY\HOOH	İÙX]\‰ÈÈ	ØÛÙZX—İÙX]\‰Èˆ	ØÛÙZX—İ\]\ÉËˆXÛÛˆ	ÚX×Û][˜Ú\—Ü™X[	ËˆÛÛÜˆ	ÈÌ™	ËˆNÂˆBˆ]ØZ]
+YZ[“Y\ÜØYÚ[™Ô™YˆYZ[‹›Y\ÜØYÚ[™Ê
+JKœÙ[™
+\ÙÊNÂˆ™]\›ˆÈÚÎˆYHNÂˆHØ]Ú
+JHÂˆYˆ
+K˜ÛÙHOOH	ÛY\ÜØYÚ[™ËÜ™YÚ\İ˜][Û‹]ÚÙ[‹[›İ\™YÚ\İ\™Y	ÈK˜ÛÙHOOH	ÛY\ÜØYÚ[™ËÚ[˜[Y\™YÚ\İ˜][Û‹]ÚÙ[‰ÊHÂˆ]ØZ]˜ÛQ[]UÚÙ[ŠÚÙ[ŠNÂˆBˆ™]\›ˆÈÚÎˆ˜[ÙKÛÙNˆK˜ÛÙKY\ÜØYÙNˆK›Y\ÜØYÙHNÂˆBŸB‚‹ËÈ˜[YXÚpìÛˆHÛÛÜ™[˜Y\È\˜H[™Ú[ÈÓK‚™[˜İ[Ûˆ˜[YÛÛÜ™ÑÙ[Ê]Û‹İšXİ™\›ÊHÂˆËÈ[X˜\È]\Ù[\ÈHÚ[ˆXšXØXÚpìÛˆ
+\›Z]YÈ[ˆİXœØÜšX™JK‚ˆYˆ
+]OH[	‰ˆÛˆOH[
+H™]\›ˆYNÂˆYˆ
+]OH[ÛˆOH[
+H™]\›ˆ˜[ÙNÂˆYˆ
+S[X™\‹š\Ñš[š]J]
+HS[X™\‹š\Ñš[š]JÛŠJH™]\›ˆ˜[ÙNÂˆYˆ
+]NL]ˆLÛˆLNÛˆˆN
+H™]\›ˆ˜[ÙNÂˆYˆ
+İšXİ™\›È	‰ˆ]OOH	‰ˆÛˆOOH
+H™]\›ˆ˜[ÙNÂˆ™]\›ˆYNÂŸB‚˜\œÜİ
+	ËØ\KÜ\ÚÙ˜ÛK\İXœØÜšX™IË˜ÛS[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈÚÙ[‹]Û‹\˜[YK\™\œÚ[Û‹]›Ü›K\Ù\YÙ[HH™\K˜›ÙHßNÂˆYˆ
+]ÚÙ[ŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[HÚÙ[ˆÓIÈJNÂˆYˆ
+]˜[YÛÛÜ™ÑÙ[Ê]Û‹˜[ÙJJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ĞÛÛÜ™[˜Y\È[°è[Y\ÉÈJNÂˆ]ØZ]˜ÛTØ]™UÚÙ[ŠÈÚÙ[‹]Û‹\˜[YK\™\œÚ[Û‹]›Ü›K\Ù\YÙ[JNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚˜\œÜİ
+	ËØ\KÜ\ÚÙ˜ÛK[ØØ][Û‰Ë˜ÛS[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈÚÙ[‹]ÛˆHH™\K˜›ÙHßNÂˆYˆ
+]ÚÙ[ŠH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[HÚÙ[‰ÈJNÂˆYˆ
+]˜[YÛÛÜ™ÑÙ[Ê]Û‹YJJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ĞÛÛÜ™[˜Y\È[°è[Y\ÉÈJNÂˆ]ØZ]˜ÛU\]SØØ][ÛŠÚÙ[‹]ÛŠNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÔTÒ‘TÔ•S‘È
+\[™›ÚY
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈH\˜]]˜H
+ÙX•šY]ÈÜ˜\\ŠH™\ÜHXğèH[ÈÜ˜\Ú\È˜][\Â‹ËÈ
+™XY•[˜Ø]YÚ^Ù\[Û’[™\ŠHÛÛ[È^Ù\Ú[Û™\È]˜\Y\ÈB‹ËÈ\œ›Ü™\ÈH”È[Ú][È[›È[ÙX•šY]È
+Ú[™İË›Û™\œ›ÜˆÂ‹ËÈ[š[™Y™Z™Xİ[ÛŠKˆ™Y[šX[[ÜÈ[Ú]H[YÜ˜[H[YZ[‚‹ËÈYÜ\[™ÈÜˆš\›XH
+Z\ÛXHÛ\ÙJİYÊH\˜H›È›ÛÙX\ˆÚH[‹ËÈZ\Û[ÈYÈÜ˜\ÚXHH\™\]Y\È™XÙ\ÈÙYİZY\Ë‚™[˜İ[Ûˆ\ØÒ[
+ÊHÂˆ™]\›ˆİš[™ÊÈOH[È	ÉÈˆÊKœ™\XÙJÉ‹ÙË	É˜[\ÉÊKœ™\XÙJÏÙË	É›ÉÊKœ™\XÙJÏ‹ÙË	É™İÉÊNÂŸB‚˜\œÜİ
+	ËØ\KØÜ˜\Ú\™\Ü	ËÜ˜\Ú[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÂˆ˜][YË^Ù\[ÛÛ\ÜËY\ÜØYÙKİXÚÕ˜XÙKˆ\™\œÚ[Û‹]›Ü›K]šXÙS[Ù[[™›ÚY™\œÚ[Û‹[Y\İ[\ˆXİ]š]KÙXİ[Û‹\›ˆHH™\K˜›ÙHßNÂ‚ˆYˆ
+Y^Ù\[ÛÛ\ÜÈ	‰ˆ\İXÚÕ˜XÙH	‰ˆ[Y\ÜØYÙJHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ô™\ÜH˜Xğë[ÉÈJNÂˆB‚ˆËÈÚ[[˜Ú[ÈHZYÈH\˜Ù\›ÜÎˆ\›œİ[Q\œ›Üˆ\È[ˆ\œ›ÜˆHÛÛ™šYİ\˜XÚpìÛ‚ˆËÈ[ÚYÙ]
+ˆZ‹ˆLLŒHÛZ[š[È™]šY]ËÛØØ[›È]]Üš^˜YÈ[ˆ[ˆËÈ[™[HÛİY›\™JHÈH[ˆ›İ›Ü]YXYÈ8 %[˜ØH[ˆYÈHH\‚ˆËÈš[˜YÈÙ\™\‹\ÚYNˆİXœ™H[Xšpê[ˆÛY[\ÈšYZ›ÜÈÛÛˆH”ÈØXÚXYBˆËÈÜˆ[Ù\šXÙHÛÜšÙ\ˆ\İH]YHÙH™[Y]™[‹‚ˆÛÛœİÛÌHİš[™Ê^Ù\[ÛÛ\ÜÈ	ÉÊNÂˆÛÛœİ\ÙÌHİš[™ÊY\ÜØYÙH	ÉÊNÂˆÛÛœİŒHİš[™ÊİXÚÕ˜XÙH	ÉÊNÂˆYˆ
+×•\›œİ[Q\œ›Ü‰ÚK\İ
+ÛÌ
+BˆØÚ[[™Ù\Ï×˜ÛİY›\™W˜ÛÛKÚK\İ
+Œ
+Bˆ×‹Š˜ÛİY›\™H\›œİ[KŠ‰ÚK\İ
+\ÙÌ
+JHÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK]]Yˆ	İ\›œİ[K[›Ú\ÙIÈJNÂˆB‚ˆÛÛœİÚ[ˆH[Y\İ[\È™]È]J[X™\Š[Y\İ[\
+H[Y\İ[\
+Hˆ™]È]J
+NÂˆÛÛœİ˜XÙHHİš[™ÊİXÚÕ˜XÙH	ÉÊKœÛXÙJÌŒ
+NÈËÈX\™Ù[ˆ\˜H[0ë[Z]HHMˆH[YÜ˜[BˆÛÛœİÙ^HHÜ˜\Ú‰Ù˜][È	Ù˜][	Èˆ	ØØ]YÚ	ßN‰İYÈ	ÉßN‰Ù^Ù\[ÛÛ\ÜÈ	ÉßXÂˆÛÛœİXÛÛˆH˜][È	ü'ä©IÈˆ	ø¦¨;î#ÉÎÂˆÛÛœİÚ[™H˜][È	ĞÔTÒUS	Èˆ	Ñ^Ù\ÚpìÛˆØ\\˜YIÎÂˆÛÛœİÜšYÚ[ˆH]›Ü›HOOH	İÙX‰ÈÈ	ÕÙX‰Èˆ	Ğ\[™›ÚY	ÎÂ‚ˆĞ[\
+Ù^K
+
+HO‚ˆ	ÚXÛÛŸH‰ÚÚ[™H8 %	ÛÜšYÚ[ŸOØ—˜
+Âˆ
+YÈÈpìÙ[ÎˆÛÙO‰Ù\ØÒ[
+YÊ_OØÛÙO—˜ˆ	ÉÊH
+ÂˆÛ\ÙNˆÛÙO‰Ù\ØÒ[
+^Ù\[ÛÛ\ÜÈ	ÏÉÊ_OØÛÙO—˜
+ÂˆY[œØZ™Nˆ	Ù\ØÒ[
+Y\ÜØYÙH	ÊÚ[ˆY[œØZ™JIÊ_W˜
+Âˆ
+ÙXİ[ÛˆÈÙXØÚpìÛˆÛÙO‰Ù\ØÒ[
+ÙXİ[ÛŠ_OØÛÙO—˜ˆ	ÉÊH
+Âˆ
+\›ÈT“ˆÛÙO‰Ù\ØÒ[
+İš[™Ê\›
+KœÛXÙJŒ
+J_OØÛÙO—˜ˆ	ÉÊH
+Âˆ\ÜÜÚ]]›Îˆ	Ù\ØÒ[
+]šXÙS[Ù[	ÏÉÊ_H0­È[™›ÚY	Ù\ØÒ[
+[™›ÚY™\œÚ[Ûˆ	ÏÉÊ_W˜
+Âˆ™\œÚpìÛˆ\ˆ	Ù\ØÒ[
+\™\œÚ[Ûˆ	ÏÉÊ_H0­È]Y›Ü›XNˆ	Ù\ØÒ[
+]›Ü›H	Ø[™›ÚY	Ê_W˜
+Âˆ
+Xİ]š]HÈXİ]šYYˆ	Ù\ØÒ[
+İš[™ÊXİ]š]JKœÛXÙJÌ
+J_W˜ˆ	ÉÊH
+ÂˆÜ˜Nˆ	İÚ[‹ÒTÓÔİš[™Ê
+_W—˜
+Âˆ
+˜XÙHÈ™O‰Ù\ØÒ[
+˜XÙJ_OÜ™O˜ˆ	ÉÊKˆÈÚ[™İÓ\ÎˆLJNÂ‚ˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ[°ëXH[ˆ\ÚHÙÜÈÜÈİ\ØÜš\Ü™\È
+œ›ØYØ\İ™]][^˜X›HÜ‚‹ËÈÜÈ›Z›ÜÈ]]Ûpè]XÛÜÎˆY]˜H\\XİX[^˜YKÛÙRXˆ™[X\ÙJK‚‹ËÈ[°ëXH°ëXHÙXˆ\Ú
+TQ
+H
+ÈÓH
+\˜]]˜JK‚˜\Ş[˜È[˜İ[Ûˆœ›ØYØ\İ\Ú
+È]K›ÙHH	ÉË\›H	ËÉË\HH	Ø[››İ[˜Ù[Y[	Ë\Y™\œÚ[ÛˆJHÂˆÛÛœİHİš[™Ê]JKš[J
+KœÛXÙJ
+NÂˆÛÛœİˆHİš[™Ê›ÙH	ÉÊKš[J
+KœÛXÙJN
+NÂˆ]Ù[ÙXˆHÙ[[™›ÚYHÂˆÛÛœİ˜Z[\™\ÈH×NÂ‚ˆËÈJHÙXˆ\Ú
+TQ
+H8 %İ\ØÜš\Ü™\È[˜]™YØYÜ‚ˆÛÛœİÙX”İXœÈH]ØZ]\Ú\İ
+
+NÂˆ›Üˆ
+ÛÛœİİXˆÙˆÙX”İXœÊHÂˆÛÛœİ™\İ[H]ØZ]Ù[™\Ú
+İX‹È]Nˆ›ÙNˆ‹\K\Y™\œÚ[Û‹XÛÛˆ	ËÜÜ\ÚØÛÙZX‹œ™ÉË\›JNÂˆYˆ
+™\İ[›ÚÊHÂˆÙ[ÙXˆ
+ÏHNÂˆH[ÙHÂˆ˜Z[\™\Ëœ\Ú
+ÈÚ[™ˆ	İÙX‰Ë[™Ú[ˆ
+İX‹™[™Ú[	ÉÊKœÛXÙJL
+KÛÙNˆ™\İ[˜ÛÙKY\ÜØYÙNˆ™\İ[›Y\ÜØYÙH™\İ[œ™X\ÛÛˆJNÂˆBˆB‚ˆËÈŠHÓH8 %\[™›ÚY˜]]˜Bˆ]˜ÛUİ[HÂˆYˆ
+˜ÛQ[˜X›Y
+HÂˆÛÛœİ˜ÛTİXœÈH]ØZ]˜ÛS\İÚÙ[œÊ
+NÂˆ˜ÛUİ[H˜ÛTİXœË›[™İÂˆ›Üˆ
+ÛÛœİ™XÈÙˆ˜ÛTİXœÊHÂˆÛÛœİ™\İ[H]ØZ]Ù[™ÓJ™XËÚÙ[‹È]Nˆ›ÙNˆ‹\K\›JNÂˆYˆ
+™\İ[›ÚÊHÂˆÙ[[™›ÚY
+ÏHNÂˆH[ÙHÂˆ˜Z[\™\Ëœ\Ú
+ÈÚ[™ˆ	Ø[™›ÚY	ËÚÙ[ˆ
+™XËÚÙ[ˆ	ÉÊKœÛXÙJLLŠKÛÙNˆ™\İ[˜ÛÙKY\ÜØYÙNˆ™\İ[›Y\ÜØYÙHJNÂˆBˆBˆB‚ˆÛÛœİÙ[HÙ[ÙXˆ
+ÈÙ[[™›ÚYÂˆÛÛœİİ[HÙX”İXœË›[™İ
+È˜ÛUİ[Â‚ˆËÈÙÈ][YÎˆÚ[ˆ\İË[ˆŒHLˆˆ[ˆ[YZ[‹ZXˆ›ÈXÙHQHBˆËÈÜˆ]pêH˜[0ìËˆÛÛˆ\İË[ˆ™[™\ˆ8¡¤ˆÙÜÈÙH™H[[İ]›È^XİÈBˆËÈØYH˜[È
+Û]™HTQ\ØXİX[^˜YKÚÙ[ˆÓH[°è[YË]ËŠBˆYˆ
+Ù[İ[
+HÂˆÛÛœÛÛKØ\›Š8¦¨;î#Èœ›ØYØ\İ\Úˆ	ÜÙ[KÉİİ[H[™YØYÜÈ
+ÙXˆ	ÜÙ[ÙXŸKÉİÙX”İXœË›[™İK[™›ÚY	ÜÙ[[™›ÚYKÉÙ˜ÛUİ[JX
+NÂˆ˜Z[\™\ËœÛXÙJŒ
+K™›Ü‘XXÚ
+ˆOˆÂˆÛÛœÛÛKØ\›Š8§%ÈÉÙ‹šÚ[™WH	Ù‹šÚ[™OOH	İÙX‰ÈÈ	Ù[™Ú[8 )‰È
+È‹™[™Ú[ˆ	İÚÙ[ˆ8 )‰È
+È‹ÚÙ[ŸH8 %ÛÙH	Ù‹˜ÛÙH	ÏÉßNˆ	Ù‹›Y\ÜØYÙH	ÊÚ[ˆ][JIßX
+NÂˆJNÂˆYˆ
+˜Z[\™\Ë›[™İˆŒ
+HÛÛœÛÛKØ\›Š8 )ˆH	Ù˜Z[\™\Ë›[™İHŒH˜[ÜÈpè\Ø
+NÂˆB‚ˆ™]\›ˆÈÙ[İ[Ù[ÙX‹Ù[[™›ÚYÙX•İ[ˆÙX”İXœË›[™İ[™›ÚYİ[ˆ˜ÛUİ[˜ÛQ[˜X›Y˜Z[\™\Îˆ˜Z[\™\ËœÛXÙJŒ
+HNÂŸB‚˜\œÜİ
+	ËØ\KØYZ[‹Ü\ÚØœ›ØYØ\İ	Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ]K›ÙK\›\K\Y™\œÚ[ÛˆHH™\K˜›ÙHßNÂˆYˆ
+]]HTİš[™Ê]JKš[J
+JHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[0ë][ÈHH›İYšXØXÚpìÛ‰ÈJNÂˆBˆÛÛœİˆH]ØZ]œ›ØYØ\İ\Ú
+È]K›ÙK\›\K\Y™\œÚ[ÛˆJNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ü\Ú˜œ›ØYØ\İ	ËÈ]Nˆİš[™Ê]JKœÛXÙJŒ
+K\Nˆ\H	ÉËÙ[ˆËœÙ[K	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK‹‹œˆJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ØYZ[‹Ü\ÚØœ›ØYØ\İ\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ SQÔSHST•È
+Ù\İpìÛˆ›İ
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KØYZ[‹İ[YÜ˜[KØ[\ÉË™\]Z\™PYZ[‹\Ş[˜È
+Ë™\ÊHOˆÂˆHÈÛÛœİÙ™ÈH]ØZ]Ù]\ÛÛ™šYÊ
+NÈÛÛœİHH
+Ù™È	‰ˆÙ™Ë˜[\ÊHßNÈ™\ËšœÛÛŠÈÚÎˆYK[\ÎˆHJNÈBˆØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚˜\œ]Ú
+	ËØ\KØYZ[‹İ[YÜ˜[KØ[\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆÛÛœİÈ[\ÈHßHHH™\K˜›ÙHßNÂˆYˆ
+X[\È\[Ùˆ[\ÈOOH	ÛØš™Xİ	È\œ˜^Kš\Ğ\œ˜^J[\ÊJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÓØš™]È[\È™\]Y\šYÉÈJNÂˆÛÛœİİ\ˆH]ØZ]Ù]\ÛÛ™šYÊ
+NÂˆÛÛœİY\™ÙYH
+İ\ˆ	‰ˆİ\‹˜[\ÈÈÈ‹‹˜İ\‹˜[\Ë‹‹˜[\ÈHˆÈ‹‹˜[\ÈJNÂˆ]ØZ]\ÛÛ™šYË™š[™Û™P[™\]JÈÙ^Nˆ	ÛXZ[‰ÈKÈ	Ù]ˆÈ	ØÛÛ™šYË˜[\ÉÎˆY\™ÙYHKÈ\Ù\ˆYHJNÂˆØ\ÛÛ™šYĞØXÚHH[ÈØ\ÛÛ™šYĞØXÚUÈHÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	İ[YÜ˜[K˜[\Ëœ]Ú	ËÈ[\ÈK	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK[\ÎˆY\™ÙYJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚˜\œÜİ
+	ËØ\KØYZ[‹İ[YÜ˜[Kİ\İX[\	Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİ]HHİš[™Ê
+™\K˜›ÙH	‰ˆ™\K˜›ÙK]JH	ÔYX˜HH[\IÊKœÛXÙJ
+NÂˆÛÛœİ\ÙÈH<'éêˆ”YX˜HH[\OØ—‰Ù\ØÒ[
+]J_W’Ü˜NˆÛÙO‰Û™]È]J
+KÒTÓÔİš[™Ê
+_OØÛÙO˜ÂˆÔÙ[™
+\ÙÊNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	İ[YÜ˜[K\İØ[\	ËÈ]HK	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈ\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÓÑRPˆ‘SPTÑTÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ›İ™YY\È[›ŞYXİÈX›XØY\È\ÙH[YZ[‹ZX‹ˆ[X›XØ\ˆÙB‹ËÈİX\™[ˆ[ˆ[Û™ÛÑ‹ÙH]š\ØHÜˆÙX”ÛØÚÙ]HÙH[°ëXH\ÚHÙÜË‚‚˜\œÜİ
+	ËØ\KØYZ[‹Ü™[X\Ù\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ]K›ÙK™\œÚ[Û‹\›\HHH™\K˜›ÙHßNÂˆYˆ
+]]HTİš[™Ê]JKš[J
+JHÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[0ë][È[™[X\ÙIÈJNÂˆBˆÛÛœİ™[H]ØZ]™[X\ÙK˜Ü™X]JÂˆ]Nˆİš[™Ê]JKš[J
+KœÛXÙJ
+Kˆ›ÙNˆİš[™Ê›ÙH	ÉÊKœÛXÙJL
+Kˆ™\œÚ[Ûˆİš[™Ê™\œÚ[Ûˆ	ÉÊKœÛXÙJ
+Kˆ\›ˆ\›	ËÉËˆ\Nˆ\H	Ü™[X\ÙIËˆJNÂˆœ›ØYØ\İ
+	ØÛÙZX—Ü™[X\ÙIËÈYˆİš[™Ê™[—ÚY
+K]Nˆ™[]K™\œÚ[Ûˆ™[™\œÚ[ÛˆJNÂˆĞ[\
+	Ü™[X\ÙIË
+
+HOˆ<'æ ÛÙRXˆ™[X\ÙOØ—‰Ôİš[™Ê™[]JKœÛXÙJL
+_IÜ™[™\œÚ[ÛˆÈ	È0­È	È
+È™[™\œÚ[Ûˆˆ	ÉßXÈÚ[™İÓ\ÎˆMLJNÂˆÛÛœİ\ÚH]ØZ]œ›ØYØ\İ\Ú
+Âˆ]Nˆ™[™\œÚ[ÛˆÈ	ü'æ ÛÙRXˆ	È
+È™[™\œÚ[Ûˆˆ	ü'æ ÛÙRXˆ™[X\ÙIËˆ›ÙNˆ™[]H
+È
+™[˜›ÙHÈ	È8 %	È
+Èİš[™Ê™[˜›ÙJKœÛXÙJLŒ
+Hˆ	ÉÊKˆ\Nˆ	Ü™[X\ÙIËˆ™\œÚ[Ûˆ™[™\œÚ[Ûˆ	ÉËˆ\›ˆ™[\›	ËÉËˆJNÂˆÙĞYZ[ŠYZ[XİÜ“ÙŠ™\JK	Ü™[X\ÙK˜Ü™X]IËÈ]Nˆ™[]K™\œÚ[Ûˆ™[™\œÚ[Û‹\Nˆ™[\HK	ÛÚÉÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK™[X\ÙNˆ™[\ÚJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ØYZ[‹Ü™[X\Ù\È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚˜\™Ù]
+	ËØ\KØYZ[‹Ü™[X\Ù\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆÛÛœİ™[X\Ù\ÈH]ØZ]™[X\ÙK™š[™
+ßJKœÛÜ
+ÈÜ™X]Y]ˆLHJK›[Z]
+L
+K›X[Š
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK™[X\Ù\ÈJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚˜\™[]J	ËØ\KØYZ[‹Ü™[X\Ù\ËÎšY	Ë™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	Ñˆ›È\ÜÛšX›IÈJNÂˆHÂˆ]ØZ]™[X\ÙK™[]SÛ™JÈÚYˆ™\Kœ\˜[\ËšYJNÂˆ™\ËšœÛÛŠÈÚÎˆYHJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÒS‘ÑSÑÈ8 %0î›[XH™\œÚpìÛˆ\˜H[pè[ÙÛÈHXİX[^˜XÚpìÛˆ8¥ 8¥ ›]ØÚ[™Ù[ÙÈH[Â™[˜İ[ÛˆØYÚ[™Ù[ÙÊ
+HÂˆYˆ
+ØÚ[™Ù[ÙÊH™]\›ˆØÚ[™Ù[ÙÎÂˆHÂˆÛÛœİ˜]ÈHœËœ™XYš[TŞ[˜Ê]š›Ú[Š×Ù\›˜[YK	Ë‹‰Ë	ØÚ[™Ù[ÙËšœÛÛ‰ÊK	İ]	ÊNÂˆØÚ[™Ù[ÙÈH”ÓÓ‹œ\œÙJ˜]ÊNÂˆHØ]Ú
+JHÈØÚ[™Ù[ÙÈH×NÈBˆ™]\›ˆØÚ[™Ù[ÙÎÂŸB‚˜\™Ù]
+	ËØ\KØÚ[™Ù[ÙÉË
+™\K™\ÊHOˆÂˆÛÛœİÛHØYÚ[™Ù[ÙÊ
+NÂˆYˆ
+XÛ›[™İ
+H™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK[šY\Îˆ×HJNÂˆÛÛœİÚ[˜ÙHH™\Kœ]Y\KœÚ[˜ÙH	ÉÎÂˆÛÛœİ[šY\ÈHÚ[˜ÙHÈÛ™š[\ŠHOˆK™\œÚ[ÛˆˆÚ[˜ÙJHˆÛœÛXÙJÊNÂˆ™\ËšœÛÛŠÈÚÎˆYK[šY\ÈJNÂŸJNÂ‚‹ËÈ8¥ 8¥ ‘SSÕHÓÓ‘’QÈ8 %X›XÈ[™Ú[
+œ›Û[™™XYÈ\ÊH8¥ 8¥ 8¥ 8¥ 8¥ ˜\™Ù]
+	ËØ\KØÛÛ™šYÉË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÙ™ÈH]ØZ]Ù]\ÛÛ™šYÊ
+NÂˆÙ™ËZHHØš™Xİ˜\ÜÚYÛŠßKÙ™ËZHßKÂˆÛÛÙÛSX\ÒÙ^Nˆ›ØÙ\ÜË™[‹‘ÓÓÑÓWÓPTÈ	ÉËˆX\[\’Ù^Nˆ›ØÙ\ÜË™[‹“PTST—ÒÑVH	ÉËˆJNÂˆÛÛœİÛY[™\œÚ[ÛˆH\œÙR[
+™\Kœ]Y\KŠHÂˆÛÛœİ™YYÕ\]HHÛY[™\œÚ[ÛˆÙ™Ë™\œÚ[ÛÂˆÛÛœİ\Ó]\İHÙ™Ë˜\Ó]\İ™\œÚ[Ûˆ	ÉÎÂˆÛÛœİ\Ó›İ\ÈHÙ™Ë˜\Õ\]S›İ\È	ÉÎÂˆ™\ËœÙ]
+	ĞØXÚKPÛÛ›Û	Ë	ÜX›XËX^XYÙOLÌ	ÊNÂˆ™\ËœÙ]
+	ÖPÛÛ™šYËU™\œÚ[Û‰Ëİš[™ÊÙ™Ë™\œÚ[ÛŠJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÛ™šYÎˆ™YYÕ\]HÈÙ™ÈˆÈ™\œÚ[ÛˆÙ™Ë™\œÚ[Û‹\]YˆÙ™Ë\]Y[ÛÛÙÛSX\ÒÙ^NˆÙ™ËZK™ÛÛÙÛSX\ÒÙ^KX\[\’Ù^NˆÙ™ËZK›X\[\’Ù^K\Ó]\İ™\œÚ[Ûˆ\Ó]\İ\Õ\]S›İ\Îˆ\Ó›İ\ÈHJNÂˆHØ]Ú
+JHÂˆ™\ËšœÛÛŠÈÚÎˆYKÛÛ™šYÎˆQUSĞÓÓ‘’QÈJNÂˆBŸJNÂ‚‹ËÈ\İH0î˜›XØHH™[X\Ù\È
+Ø[\[˜HH›İYšXØXÚ[Û™\ÈÈ0èYÚ[˜JB˜\™Ù]
+	ËØ\KÜ™[X\Ù\ÉË\Ş[˜È
+™\K™\ÊHOˆÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK™[X\Ù\Îˆ×HJNÂˆHÂˆÛÛœİØXÚYH]ØZ]ØXÚQÙ]
+	Ü™[X\Ù\Î›]\İ	ÊNÂˆYˆ
+ØXÚY
+HÈ™\ËœÙ]
+	ÖPØXÚIË	ÒU	ÊNÈ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYK™[X\Ù\ÎˆØXÚYJNÈBˆÛÛœİ™[X\Ù\ÈH]ØZ]™[X\ÙK™š[™
+ßJKœÛÜ
+ÈÜ™X]Y]ˆLHJK›[Z]
+Œ
+K›X[Š
+NÂˆ]ØZ]ØXÚTÙ]
+	Ü™[X\Ù\Î›]\İ	Ë™[X\Ù\ËŒ
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK™[X\Ù\ÈJNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÓSPH8¡¤ˆTÒ
+pìÙ[ÈÙ\\˜YÈ8¡¤ˆ˜XÚÙ[™ØÛ[XJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈH0ìÙÚXØH[[YÙ[HHÛ[XH
+™]Ú[\\ÈÜˆğäÓSÈØ[XšXN‚‹ËÈ˜YXXÚpìÛˆUˆÜˆÜ˜K›Ø˜Xš[YYH]šXK[\\˜]\˜KšY[ÊB‹ËÈš]™HZÜ˜H[ˆ˜XÚÙ[™ØÛ[XKËˆ\]pëHğìÛÈÙH[YXİ[ˆ\È\[™[˜ÚX\Â‹ËÈHÙH^Û™[ˆÜÈ[™Ú[ÈH[ØÚY[\‹‚˜ÛÛœİÛ[XQ[™Ú[™HH™\]Z\™J	Ë‹ØÛ[XIÊJÂˆİ\X˜\ÙKÙ[™\ÚÙ[™ÓK˜ÛQ[˜X›Y˜ÛS\İÚÙ[œË\Ú\İ\ÚØ]™KŸJNÂ‹ËÈ›Ü›X[^™UÙX]\’[\˜[ÙH™KY^ÜHÛÛ[È[˜İ[ÛˆXÛ\˜][Ûˆ
+Ú\İY
+B‹ËÈ\˜H]YHÚYØ[ˆ[˜Ú[Û˜[™È\È[XY\È™]šX\È[ˆ\Ú›İÕÔİX‹Ü\ÚØ]™K‚™[˜İ[Ûˆ›Ü›X[^™UÙX]\’[\˜[
+ŠHÈ™]\›ˆÛ[XQ[™Ú[™K››Ü›X[^™UÙX]\’[\˜[
+ŠNÈB‹ËÈ[ÚYÙ]HÛ[XHÛÛœİ[H\İH[™Ú[\ÙH[˜]™YØYÜˆ
+0î˜›XÛÊNÂ‹ËÈ˜]H[Z]]š]H\ØØ[™[ÜËØX\ÛÈÛÛ˜HÜÈ›İ™YYÜ™\ÈHÙ[ØÛÙYšXØXÚpìÛ‹‚˜\™Ù]
+	ËØ\KÜ\ÚİÙX]\‹ØÚXÚÉËÚ][Z]\‹Û[XQ[™Ú[™KÙX]\‘[™Ú[
+NÂ‹ËÈØÚY[\ˆÛ[pè]XÛÈ8¡¤ˆØYHÌZ[ÈÛÛÈ[°ëXH\ÚİX[™ÈØ[XšXHHÛÛ™XÚpìÛ‚˜Û[XQ[™Ú[™Kœİ\ØÚY[\ŠÌ
+ˆŒ
+ˆL
+NÂ‚‹ËÈ8¥ 8¥ PÕU’QQğãTÓRPĞH
+\œ™[[İÜÊH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ›İHÛ™\İNˆ“È^\İH[˜HTH0î˜›XØHH˜[\H[\˜[˜HˆB‹ËÈÛÛÙÛH
+\ØYH[ˆ[™›ÚY°ëXH^HÙ\šXÙ\Ë[Z]YHH[ˆpìXYÈB‹ËÈ™YÚ[Û™\ÊKˆ\]pëH\Ø[[ÜÈHTHXšY\HHTÑÔÈ
+ÛØ˜[
+H\˜H]Xİ\‚‹ËÈÚ\Û[ÜÈ‘SUS•TÈ™XÚY[\ÈÙ\˜ØH[\İX\š[ÈH]š\Ø\ˆÜİY]™[Â‹ËÈÛÛˆXYÛš]Y\İ[˜ÚXHHÛÛœÙZ›ÜÈHÙYİ\šYYˆ[ˆ™YÚ[Û™\ÈÛ™B‹ËÈÛÛÙÛHQUÔÈ›ÈYØH
+HX^[Ü°ëXHH][K[˜ÛZYHİX][X[JH\İÂ‹ËÈÚYİYH[™È˜[Üˆ™X[ˆ[\˜\œÙHH[ˆÚ\Û[ÈÙ\˜Ø[›È
+ÈğìÛ[ÈXİX\‹‚‚‹ËÈ™YYHTÕHÙXˆ
+ÙXØÚpìÛˆÚ\Û[ÜÊNˆ0ëXHÛÛ\]ËÛÛˆØXÚ0êH[ˆ[ÛY[K‚˜ÛÛœİTÑÔ×Ñ‘QQH	ÚÎ‹ËÙX\]XZÙK\ÙÜË™Ûİ‹ÙX\]XZÙ\ËÙ™YYİŒKŒÜİ[[X\KØ[Ù^K™Ù[ÚœÛÛ‰ÎÂ‹ËÈ™YYHTÔÈH[\\È\ÚˆÛÛÈH0î›[XHÜ˜H8 %^[ØY]XÚÈpè\Â‹ËÈ\]Ypì[ÈHpè^[XHœ™\Øİ\˜H[ˆ[Ø[Z[›ÈH[Y\™Ù[˜ÚXKˆ[ÛÜH[\››Â‹ËÈHÚ[\ÜÈÚY[\™H[Ø[˜H[™YYHÜ˜K‚˜ÛÛœİTÑÔ×Ñ‘QQÒÕTˆH	ÚÎ‹ËÙX\]XZÙK\ÙÜË™Ûİ‹ÙX\]XZÙ\ËÙ™YYİŒKŒÜİ[[X\KØ[Úİ\‹™Ù[ÚœÛÛ‰ÎÂ‚‹ËÈ[Xœ˜[\ÈÛÛ™šYİ\˜X›\ÈÜˆXYÛš]Y
+YY[ˆY]\œÙH[ˆYZ[ˆÛÛ™šYÊB™[˜İ[ÛˆÙZ\ÛZXÕ™\ÚÛ
+
+HÂˆ™]\›ˆNÈËÈ˜Z›È\İHš]™[›ÈÙH[Û\İH[\İX\š[ÂŸB™[˜İ[ÛˆÙZ\ÛZXÔ˜Y]\ÒÛJ
+HÂˆ™]\›ˆÌÈËÈ\İ[˜ÚXHpè^ˆ\˜HÛÛœÚY\˜\ˆ˜Ù\˜Ø[›Èˆ
+˜[˜XÚÈÙXˆ\Ú
+BŸB‹ËÈ˜Y[È\ØØ[YÈÜˆXYÛš]YÜ›Ù[™YY
+YXH[\İ0è[™\ˆĞTB‹ËÈÛÛÙÛHX›XÈ[\Îˆœ˜Y[ÜÈ™Y]\›Z[˜YÜÈÙYğî›ˆXYÛš]YÂ‹ËÈ›Ù[™YYŠKˆ[ˆMÈÙHÚY[HHLÛNÈ[ˆM\[˜\ÈHL8 %[ˆ˜Y[Â‹ËÈ0î›šXÛÈ›È\ÈÛ™\İËˆXÚÈ\›ÈHÛHÜˆÚ\Û[ÜÈØÙpè[šXÛÜË‚™[˜İ[Ûˆ]XZÙT˜Y]\Ñ›Ü“XYÊXYË\ÛJHÂˆ]ÂˆYˆ
+XYÈHÊHˆHLÂˆ[ÙHYˆ
+XYÈHŠHˆHŒÂˆ[ÙHYˆ
+XYÈHJHˆHLÂˆ[ÙHYˆ
+XYÈH
+HˆHLÂˆ[ÙHˆHNÂˆËÈ›Ù[™È
+ŒLÛJHÙH\˜ÚX™Hpè\È0êXš[[ˆİ\\™šXÚYK‚ˆYˆ
+\ÛHˆL
+Hˆ
+HÂˆ™]\›ˆX]›Z[Š‹
+NÂŸB‹ËÈY\H[ˆY[[ÜšXH\˜HÓH
+›È^HÛÛ[[˜H\İÜ]XZÙH[ˆHX›B‹ËÈ˜ÛWİÚÙ[œÊNˆ]š]H™KY[šX\ˆHRTÓPH[\HØYH\ÜËˆÙHY\™H[‹ËÈ™Z[šXÚX\ˆ[˜XÚÙ[™
+˜\›ÊH8 %XÙ\X›H\˜HH°ëXHH[Y\™Ù[˜ÚXK‚˜ÛÛœİ˜ÛS\İ]XZÙRÙ^HH™]ÈX\
+
+NÂ‚˜\Ş[˜È[˜İ[Ûˆ™]Ú™XÙ[X\]XZÙ\Ê™YY\›
+HÂˆÛÛœİ\›H™YY\›TÑÔ×Ñ‘QQÂˆÛÛœİˆH]ØZ]™]Ú
+\›ÈXY\œÎˆÈ	Õ\Ù\‹PYÙ[	Îˆ	ĞÛÙRX‹TÙZ\ÛZXÉÈHJNÂˆYˆ
+\‹›ÚÊH›İÈ™]È\œ›ÜŠ	ÕTÑÔÈ	È
+È‹œİ]\ÊNÂˆÛÛœİ]HH]ØZ]‹šœÛÛŠ
+NÂˆ™]\›ˆ]K™™X]\™\È×NÂŸB‚™[˜İ[Ûˆ]™\œÚ[™RÛJ]KÛŒK]‹ÛŒŠHÂˆÛÛœİˆHŒÍÌNÂˆÛÛœİ]H
+]ˆH]JH
+ˆX]”HÈNÂˆÛÛœİÛˆH
+ÛŒˆHÛŒJH
+ˆX]”HÈNÂˆÛÛœİHHX]œÚ[Š]ÈŠH
+Šˆˆ
+ÂˆX]˜ÛÜÊ]H
+ˆX]”HÈN
+H
+ˆX]˜ÛÜÊ]ˆ
+ˆX]”HÈN
+H
+ˆX]œÚ[ŠÛˆÈŠH
+ŠˆÂˆ™]\›ˆˆ
+ˆˆ
+ˆX]˜\Ú[ŠX]œÜ\
+JJNÂŸB‚‹ËÈ[X›ÈØ\™[˜[[\XÙ[›È™\ÜXİÈ[\ÜÜÚ]]›È
+\˜H[Ø[\Â‹ËÈ™\ˆˆ[^[ØY]XZÙWÊÈÚ[ˆXÙ[ÜËZ\Û[È\İ[È]YH[˜XÚÙ[™
+K‚™[˜İ[ÛˆÛÛ\\ÜÑ\’ÛJ]KÛŒK]‹ÛŒŠHÂˆÛÛœİ˜YHX]”HÈNÂˆÛÛœİÛˆH
+ÛŒˆHÛŒJH
+ˆ˜YÂˆÛÛœİHHX]œÚ[ŠÛŠH
+ˆX]˜ÛÜÊ]ˆ
+ˆ˜Y
+NÂˆÛÛœİHX]˜ÛÜÊ]H
+ˆ˜Y
+H
+ˆX]œÚ[Š]ˆ
+ˆ˜Y
+HHX]œÚ[Š]H
+ˆ˜Y
+H
+ˆX]˜ÛÜÊ]ˆ
+ˆ˜Y
+H
+ˆX]˜ÛÜÊÛŠNÂˆÛÛœİˆH
+X]˜][ŒŠK
+HÈ˜Y
+ÈÍŒ
+H	HÍŒÂˆÛÛœİ\œÈHÉÓ‰Ë	Ó‘IË	ÑIË	ÔÑIË	ÔÉË	ÔÓÉË	ÓÉË	Ó“É×NÂˆ™]\›ˆ\œÖÓX]œ›İ[™
+ˆÈJH	HNÂŸB‚™[˜İ[Ûˆ\ØÜšX™SXYÛš]YJXYË\İÛJHÂˆÛÛœİ[[ÚšHHXYÈH‹ŒÈ	ü'å)IÈˆXYÈHKŒÈ	ø¦¨;î#ÉÈˆ	ü'äìÉÎÂˆÛÛœİ™X\ˆH\İÛHLÈ	È]^HÙ\˜ØIÈˆ\İÛHMLÈ	ÈÙ\˜Ø[›ÉÈˆ	È[ˆH™YÚpìÛ‰ÎÂˆ™]\›ˆ	Ù[[Úš_HÚ\Û[ÈIÛXYËÑš^Y
+J_IÛ™X\ŸH
+	ÓX]œ›İ[™
+\İÛJ_HÛJXÂŸB‚™[˜İ[ÛˆX\]XZÙTØY™]U\ÊXYÊHÂˆ™]\›ˆXYÈH‹ŒˆÈ	Ô›İYÙHHØX™^˜K[0êZ˜]HH™[[˜\ËÛØš™]ÜÈ]YHØZYØ[ˆKÚHYY\Ë™Y°î™ÚX]H˜Z›È[ˆ]YX›Hš\›YKˆÚYİYH\È[™XØXÚ[Û™\ÈH›İXØÚpìÛˆÚ]š[‰Âˆˆ	Ñ\İ0êH™\\˜YÎˆ™]š\ØH]YH›È^XHÜšY]\ÈY]˜\ÈH\ÙYİ\˜HØš™]ÜÈ]YHYY[ˆØY\ˆ[ˆ[ˆÚ\Û[ÈX^[Ü‹‰ÎÂŸB‚‹ËÈ^˜YH[pë\È\ÙH[^ÈHTÑÔÈ
+ŒLˆÛHÈÙˆXØZ]K[Ø[˜YÜˆŠK‚‹ËÈ[0î›[[ÈÙYÛY[ÈÙ\\˜YÈÜˆÛÛX\È\È0ë\XØ[Y[H[pë\ÎÈ\Èœ˜\Ù\Â‹ËÈ™YÚ[Û˜[\È
+šYÙ\ËİY[˜Ø\ÈØÙpè[šXØ\Ëœ™YÚ[ÛˆŠHÙH\ØØ\[‹‚™[˜İ[ÛˆÛİ[Qœ›ÛUTÑÔÔXÙJXÙJHÂˆYˆ
+\XÙJH™]\›ˆ	ÉÎÂˆÛÛœİ\ÈHİš[™ÊXÙJKœÜ]
+	Ë	ÊK›X\
+ÈOˆËš[J
+JK™š[\Š›ÛÛX[ŠNÂˆYˆ
+\\Ë›[™İ
+H™]\›ˆ	ÉÎÂˆÛÛœİ\İH\ÖÜ\Ë›[™İHWNÂˆYˆ
+Ü™YÚ[ÛŸšYÙ_š\Ù_]X]_™[˜Ú˜\Ú[ŸØÙX[ŸZYX][XßÙ™ˆH
+ÛØ\İÚÜ™J_›Ü\›ŸÛİ]\›ŸX\İ\›ŸÙ\İ\›ŸÙ[˜[‹ÚK\İ
+\İ
+JH™]\›ˆ	ÉÎÂˆ™]\›ˆ\İÂŸB‚™[˜İ[Ûˆ›Ü›PÛİ[JÊHÂˆ™]\›ˆİš[™ÊÈ	ÉÊK››Ü›X[^™J	Ó‘‘	ÊKœ™\XÙJÖ×LÌWLÍ™—KÙË	ÉÊBˆÓİÙ\Ø\ÙJ
+Kœ™\XÙJ×‹ÙË	ÉÊKœ™\XÙJ×ÊËÙË	È	ÊKš[J
+NÂŸB‚‹ËÈÛÚ[˜ÚY[˜ÚXHš[[YÙ[HˆHpë\Ù\ÎˆYÛ›Ü˜HXÙ[ÜËØØZ˜\ÈH™\İY[™B‹ËÈÜÈ›ÛXœ™\È\XØYÜÈpè\ÈÛÛ][™\ÈTÔ8¡áSˆœ™[HHTÑÔË‚™[˜İ[ÛˆØ[YPÛİ[JKŠHÂˆÛÛœİ˜HH›Ü›PÛİ[JJK˜ˆH›Ü›PÛİ[JŠNÂˆYˆ
+[˜H[˜ˆ˜HOOH	İHXšXØXÚ[Û‰È˜ˆOOH	İHXšXØXÚ[Û‰ÊH™]\›ˆ˜[ÙNÂˆYˆ
+˜HOOH˜ŠH™]\›ˆYNÂˆÛÛœİ[X\Ù\ÈHÂˆ	Ù\İYÜÈ[šYÜÉÎˆ	İ[š]Yİ]\ÉËˆ	İ\ØIÎˆ	İ[š]Yİ]\ÉËˆ	ÙYH]IÎˆ	İ[š]Yİ]\ÉËˆ	ÙY]]IÎˆ	İ[š]Yİ]\ÉËˆ	Ü™\X›XØHÛZ[šXØ[˜IÎˆ	ÙÛZ[šXØ[ˆ™\X›XÉËˆ	Ù[Ø[˜YÜ‰Îˆ	Ù[Ø[˜YÜ‰ËˆNÂˆ™]\›ˆ
+[X\Ù\ÖÛ˜WH˜JHOOH
+[X\Ù\ÖÛ˜—H˜ŠNÂŸB‚‹ËÈ[˜HÛÛH\ØYHH™\šYšXØXÚpìÛˆğë\ÛZXØKˆ]Y[™HÈX\]XZÙ\ÎˆˆB˜\Ş[˜È[˜İ[ÛˆÙZ\ÛZXÔ\Ú\ÜÊ
+HÂˆ]İXœÎÂˆHÈİXœÈH]ØZ]\Ú\İ
+
+NÈHØ]Ú
+JHÈ™]\›ˆÈX\]XZÙ\ÎˆNÈBˆÛÛœİ[˜X›YHİXœË™š[\ŠÈOˆË˜[\È	‰ˆËœÙZ\ÛZX×Ø[\ÈOOH˜[ÙH	‰ˆ[X™\‹š\Ñš[š]J
+ÜË›]
+H	‰ˆ[X™\‹š\Ñš[š]J
+ÜË›ÛŠJNÂ‚ˆËÈ[Xšpê[ˆÚÙ[œÈÓBˆÛÛœİ˜ÛUÚÙ[œÈH×NÂˆYˆ
+˜ÛQ[˜X›Y
+HÂˆHÈ˜ÛUÚÙ[œËœ\Ú
+‹‹˜]ØZ]˜ÛS\İÚÙ[œÊ
+JNÈHØ]Ú
+JHßBˆBˆÛÛœİ\™Ù]ÈHÂˆ‹‹™[˜X›Y›X\
+ÈOˆ
+È‹‹œËÚ\ÑÓNˆ˜[ÙHJJKˆ‹‹™˜ÛUÚÙ[œË™š[\ŠOˆ[X™\‹š\Ñš[š]J
+İ›]
+H	‰ˆ[X™\‹š\Ñš[š]J
+İ›ÛŠJK›X\
+Oˆ
+È‹‹Ú\ÑÓNˆYHJJKˆNÂˆYˆ
+]\™Ù]Ë›[™İ
+H™]\›ˆÈX\]XZÙ\ÎˆNÂ‚ˆ]]XZÙ\ÎÂˆHÈ]XZÙ\ÈH]ØZ]™]Ú™XÙ[X\]XZÙ\ÊTÑÔ×Ñ‘QQÒÕTŠNÈHØ]Ú
+JHÈ™]\›ˆÈX\]XZÙ\ÎˆNÈBˆÛÛœİ™\ÚÛHÙZ\ÛZXÕ™\ÚÛ
+
+NÂˆÛÛœİİ]Ù™ˆH]K››İÊ
+HHÈ
+ˆŒ
+ˆŒ
+ˆLÈËÈÛÛÈ0î›[[ÜÈÚ‚ˆ]Ù[HÂˆÛÛœİ\İÙ^HHßNÂˆÛÛœİÙ^HH™]È]J
+KÒTÓÔİš[™Ê
+KœÛXÙJL
+NÂ‚ˆ›Üˆ
+ÛÛœİÙˆ\™Ù]ÊHÂˆÛÛœİİX’Ù^HH™[™Ú[ÚÙ[ˆ
+	Ù˜ÛN‰È
+È
+ÚÙ[ˆ	ÉÊJNÂˆÛÛœİˆH[X™\‹š\Ñš[š]J
+İœÙZ\ÛZX×ÛXYÊHÈ
+İœÙZ\ÛZX×ÛXYÈˆ™\ÚÛÂˆÛÛœİ™[]˜[H]XZÙ\Ë™š[\ŠHOˆÂˆÛÛœİÙ[ÈHK™Ù[ÛY]H	‰ˆK™Ù[ÛY]K˜ÛÛÜ™[˜]\ÎÂˆYˆ
+YÙ[ÊH™]\›ˆ˜[ÙNÂˆÛÛœİXYÈHKœ›Ü\Y\È	‰ˆKœ›Ü\Y\Ë›XYÎÂˆÛÛœİ[YHHKœ›Ü\Y\È	‰ˆKœ›Ü\Y\Ë[YNÂˆYˆ
+\[ÙˆXYÈOOH	Û[X™\‰È][YH[YHİ]Ù™ŠH™]\›ˆ˜[ÙNÂˆYˆ
+XYÈŠH™]\›ˆ˜[ÙNÂˆÛÛœİ\HX]˜XœÊÙ[ÖÌ—H
+NÂˆÛÛœİ\İH]™\œÚ[™RÛJ
+İ›]
+İ›Û‹Ù[ÖÌWKÙ[ÖÌJNÂˆËÈ˜Y[È\ØØ[YÈÜˆXYÛš]YÜ›Ù[™YY›È[ˆ˜Y[ÈšZ›È
+ĞT
+K‚ˆYˆ
+\İH]XZÙT˜Y]\Ñ›Ü“XYÊXYË\
+JH™]\›ˆYNÈËÈÙ\˜ØH[\İX\š[ÂˆËÈ[\\È[[YÙ[\Îˆ[Xšpê[ˆİY[HİX[]ZY\ˆÚ\Û[È[›ÈBˆËÈHpë\Ë˜\ØYÈ[ˆHXšXØXÚpìÛˆ™XÚ\ØHİX\™YH[\ÜÜÚ]]›Ë‚ˆYˆ
+˜Ûİ[JHÂˆÛÛœİXÈHÛİ[Qœ›ÛUTÑÔÔXÙJKœ›Ü\Y\ËœXÙJNÂˆYˆ
+XÈ	‰ˆØ[YPÛİ[J˜Ûİ[KXÊJH™]\›ˆYNÂˆBˆ™]\›ˆ˜[ÙNÂˆJNÂˆËÈÜ™[˜\ˆÜˆY[\Îˆ[pè\È™XÚY[Hš[Y\›Âˆ™[]˜[œÛÜ
+
+KŠHOˆ
+‹œ›Ü\Y\Ë[YH
+HH
+Kœ›Ü\Y\Ë[YH
+JNÂˆÛÛœİ]\İH™[]˜[ÌNÂˆYˆ
+[]\İ
+HÛÛ[YNÂ‚ˆÛÛœİXYÈH]\İœ›Ü\Y\Ë›XYÎÂˆÛÛœİXÙT˜]ÈH]\İœ›Ü\Y\ËœXÙH	ÉÎÂˆÛÛœİXÙHHXÙT˜]Ëœ™\XÙJËŠ‰Ë	ÉÊKš[J
+NÂˆÛÛœİ\İH]™\œÚ[™RÛJ
+İ›]
+İ›Û‹]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌWK]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌJNÂˆÛÛœİXÈHÛİ[Qœ›ÛUTÑÔÔXÙJXÙT˜]ÊNÂˆÛÛœİ[Ûİ[HHXÈÈØ[YPÛİ[J˜Ûİ[KXÊHˆ˜[ÙNÂˆËÈY[œØZ™HY\YÈ[[İ]›ÎˆÙ\˜ØH
+˜Y[ÊHÈ[›ÈHHpë\Ë‚ˆÛÛœİØÑ\ØÈH\İH]XZÙT˜Y]\Ñ›Ü“XYÊXYËX]˜XœÊ]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌ—H
+JBˆÈ\ØÜšX™SXYÛš]YJXYË\İ
+Bˆˆ	ü'ã"ÈÚ\Û[ÈIÈ
+ÈXYËÑš^Y
+JH
+È	È[ˆHpë\ÉÈ
+È
+[Ûİ[H	‰ˆXÈÈ	È
+	È
+ÈXÈ
+È	ÊIÈˆ	ÉÊNÂˆÛÛœİÙ^HH]\İœ›Ü\Y\ËšYÂˆÛÛœİ™]ˆH\İÙ^VÜİX’Ù^WH
+ˆ—Ú\ÑÓBˆÈ˜ÛS\İ]XZÙRÙ^K™Ù]
+ÚÙ[ŠH[ˆˆ
+›\İØ[\ØÛÛ™][Ûˆ	‰ˆ›\İØ[\ØÛÛ™][Û‹œİ\ÕÚ]
+	ÑTN‰ÊHÈ›\İØ[\ØÛÛ™][Ûˆˆ[
+Bˆ
+NÂˆÛÛœİØXÚRÙ^HH	ÑTN‰È
+ÈÙ^NÂ‚ˆËÈ›È™\]\ˆÚHXHÙH]š\ğìÈH\İHZ\Û[ÈÚ\Û[ÂˆYˆ
+™]ˆOOHØXÚRÙ^JHÛÛ[YNÂ‚ˆÛÛœİ›ÙHBˆØÑ\ØÈ
+Âˆ
+XÙHÈ	È0­È	È
+ÈXÙHˆ	ÉÊH
+Âˆ	×‰È
+ÈX\]XZÙTØY™]U\ÊXYÊNÂ‚ˆ]ÂˆYˆ
+—Ú\ÑÓJHÂˆËÈ[œ]YÈÜˆÙ]™\šYY
+TÊNˆ[›È[˜Y[È\ØØ[YÈHOMH8¡¤‚ˆËÈ]XZÙWØ[\
+]K[Û›HH[Hš[ÜšYY8¡¤ˆ[[HÛÛ\]H
+ÂˆËÈ[\›XJKˆİ›ÈÚ\Û[È\˜Ù\X›H8¡¤ˆ]XZÙWÚ[™›È
+XYË]\
+Kˆ[\ÂˆËÈ	ÜÙZ\ÛZXÉÈ]YYHÓÓÈ\˜HH°ëXHÙX‹\\Úˆ[Ù\šXÚ[È˜]]›È›ÂˆËÈÈ›ØÙ\ØHÛÛ[ÈÚ\Û[È
+ÛÙRX‘š\™X˜\ÙTÙ\šXÙHÛÛÈX]Ú\È]XZÙWÊŠK‚ˆÛÛœİ\HX]˜XœÊ]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌ—H
+NÂˆÛÛœİİ›Û™Ó™X\ˆH\İH]XZÙT˜Y]\Ñ›Ü“XYÊXYË\
+H	‰ˆXYÈHNÂˆˆH]ØZ]Ù[™ÓJÚÙ[‹Âˆ]Nˆİ›Û™Ó™X\ˆÈ	ü'æªST•HğãTÓRPĞIÈˆ	ü'ã"ÈXİ]šYYğë\ÛZXØIËˆ›ÙNˆ›ÙH
+È	×¼'äãH	È
+È
+˜Ú]H	ÕH›Û˜IÊKˆ\Nˆİ›Û™Ó™X\ˆÈ	Ü]XZÙWØ[\	Èˆ	Ü]XZÙWÚ[™›ÉËˆ\›ˆ	ËÈÜÚ\Û[ÜË\ÙXİ[Û‰ËˆXYÎˆXYËˆ\İˆX]œ›İ[™
+\İ
+Kˆ\ˆÛÛ\\ÜÑ\’ÛJ
+İ›]
+İ›Û‹]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌWK]\İ™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌJKˆXÙNˆXÙT˜]Ëˆ[YNˆ]\İœ›Ü\Y\Ë[YKˆ[\\Nˆ	ÙX\]XZÙIËˆJNÂˆH[ÙHÂˆˆH]ØZ]Ù[™\Ú
+Âˆ]Nˆ	ü'ã"ÈXİ]šYYğë\ÛZXØIËˆ›ÙNˆ›ÙKˆ\Nˆ	ÜÙZ\ÛZXÉËˆXÛÛˆ	ËÜÜ\ÚØÛÙZX‹œ™ÉËˆ\›ˆ	ËÈÜÚ\Û[ÜË\ÙXİ[Û‰ËˆJNÂˆBˆYˆ
+‹›ÚÊHÂˆ\İÙ^VÜİX’Ù^WHHØXÚRÙ^NÂˆYˆ
+—Ú\ÑÓJH˜ÛS\İ]XZÙRÙ^KœÙ]
+ÚÙ[‹ØXÚRÙ^JNÂˆ[ÙHÈ›\İØ[\ØÛÛ™][ÛˆHØXÚRÙ^NÈ›\İØ[\Ø]H™]È]J
+KÒTÓÔİš[™Ê
+NÈ]ØZ]\ÚØ]™J
+NÈBˆÙ[
+ÊÎÂˆBˆ›ÚYÙ^NÂˆBˆ™]\›ˆÈX\]XZÙ\ÎˆÙ[NÂŸB‚‹ËÈØÚY[\ˆğë\ÛZXÛÈ8 %ØYHˆRS•UÔÈ[ˆH°ëXHH[Y\™Ù[˜ÚXKˆÛÛˆ[™YY‹ËÈHÜ˜H
+ÈÓHYÚ\š[Üš]H[Øš™]]›È™X[\ÈŒKLÈZ[ˆ\ÙH[]™[Â‹ËÈ
+[]YÈHTÑÔÈ
+ÈY\İ›È\ÜÈÛZ[˜]HH][˜ÚXNÈ[\Ú[˜H[‹ËÈÙ\šXÚ[ÈÚY[\™JKˆˆZ[ˆ\È˜\˜]È\˜H™[™\ˆH\œ™[]˜[H\˜HTÑÔË‚œÙ][\˜[
+
+
+HOˆÂˆÙZ\ÛZXÔ\Ú\ÜÊ
+Bˆ[ŠÈOˆÈYˆ
+Ë™X\]XZÙ\ÊHÛÛœÛÛK›ÙÊ	ü'ã"È\Úğë\ÛZXÛÈ[šXYÎ‰ËË™X\]XZÙ\ÊNÈJBˆ˜Ø]Ú
+HOˆÛÛœÛÛKØ\›Š	ø¦¨;î#È\Úğë\ÛZXÛÈ\œ›Ü‰ËK›Y\ÜØYÙJJNÂŸKˆ
+ˆŒ
+ˆL
+NÂ‚˜\™Ù]
+	ËØ\KÜ\ÚÜÙZ\ÛZXËØÚXÚÉË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİİ]H]ØZ]ÙZ\ÛZXÔ\Ú\ÜÊ
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK‹‹›İ]JNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ[™Ú[H™\ÜHHÚ\Û[ÈÜˆ\ÜÜÚ]]›È
+Ø\HÈH[\H[\˜[˜JK‚‹ËÈ[ˆ\ÜÜÚ]]›È]YH]XİH[ˆXÛÈÕKÓH™\ÜHİHXšXØXÚpìÛÈ[‹ËÈ˜XÚÙ[™XÙH˜[›İ]ÓHYÚ\š[Üš]HHÜÈ\ÜÜÚ]]›ÜÈÙ\˜Ø[›ÜË‚‹ËÈ˜]K[[Z]Y
+˜ÛS[Z]\ŠH
+ÈY\H™YÚ[Û˜[ŒÈ\˜H]š]\ˆ›ÛÙ‚˜\œÜİ
+	ËØ\KÜ]XZÙKÜ™\Ü	Ë˜ÛS[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİÈ]Û‹XYË]šXÙRYHH™\K˜›ÙHßNÂˆÛÛœİH
+Û]ÈH
+ÛÛÂˆYˆ
+S[X™\‹š\Ñš[š]J
+HS[X™\‹š\Ñš[š]JÊHNLˆLÈLNÈˆN
+HÂˆ™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ØÛÛÜ™ÉÈJNÂˆBˆÛÛœİ\İXYÈH[X™\‹š\Ñš[š]J
+ÛXYÊHÈX]›X^
+ËKX]›Z[ŠK
+ÛXYÊJHˆNÂˆËÈY\H™YÚ[Û˜[ˆ™YÛ™[Èp¬
+MHÛJH
+È™[[˜HŒË‚ˆÛÛœİÙ^HHX]œ›İ[™
+
+ˆŠHÈˆ
+È	Ë	È
+ÈX]œ›İ[™
+È
+ˆŠHÈÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+]XZÙT™\Ü™XÙ[š\ÊÙ^JH	‰ˆ›İÈH]XZÙT™\Ü™XÙ[™Ù]
+Ù^JHŒ
+HÂˆ™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKY\YˆYHJNÂˆBˆ]XZÙT™\Ü™XÙ[œÙ]
+Ù^K›İÊNÂˆ›Üˆ
+ÛÛœİÚËHÙˆ]XZÙT™\Ü™XÙ[
+HYˆ
+›İÈHˆH
+ˆŒ
+ˆL
+H]XZÙT™\Ü™XÙ[™[]JÊNÂ‚ˆÛÛœİÚÙ[œÈH]ØZ]˜ÛS\İÚÙ[œÊ
+NÂˆÛÛœİ\™Ù]ÈHÚÙ[œË™š[\ŠOˆ[X™\‹š\Ñš[š]J
+İ›]
+H	‰ˆ[X™\‹š\Ñš[š]J
+İ›ÛŠJNÂˆÛÛœİ˜Y]\ÒÛHHÂˆÛÛœİİ›Û™ÈH\İXYÈHNÂˆÛÛœİ\HHİ›Û™ÈÈ	Ü]XZÙWØ[\	Èˆ	Ü]XZÙWÚ[™›ÉÎÂˆÛÛœİ]HHİ›Û™ÈÈ	ü'æªST•HğãTÓRPĞIÈˆ	ü'ã"ÈXİ]šYYğë\ÛZXØIÎÂˆÛÛœİ›ÙHH	ÔÚ\Û[È]XİYÈÜˆ\ÜÜÚ]]›ÜÈÙ\˜Ø[›ÜÈ0­È_‰È
+È\İXYËÑš^Y
+JH
+È	×¼'äãHH›Û˜IÎÂˆ]Ù[HÂˆ›Üˆ
+ÛÛœİÙˆ\™Ù]ÊHÂˆÛÛœİ\İH]™\œÚ[™RÛJË
+İ›]
+İ›ÛŠNÂˆYˆ
+\İˆ˜Y]\ÒÛJHÛÛ[YNÂˆYˆ
+]šXÙRY	‰ˆ™]šXÙWÚYOOH]šXÙRY
+HÛÛ[YNÂˆÛÛœİˆH]ØZ]Ù[™ÓJÚÙ[‹Âˆ]K›ÙK\K\›ˆ	ËÈÜÚ\Û[ÜË\ÙXİ[Û‰ËˆXYÎˆ\İXYË\İˆX]œ›İ[™
+\İ
+Kˆ\ˆÛÛ\\ÜÑ\’ÛJË
+İ›]
+İ›ÛŠKˆXÙNˆ	ØÙ\˜ØHHH›Û˜IË[YNˆ›İË[\\Nˆ	ÙX\]XZÙIËˆJNÂˆYˆ
+‹›ÚÊHÙ[
+ÊÎÂˆBˆÛÛœÛÛK›ÙÊ	ü'æª]XZÙH™\Ü˜[›İ]‰ËÙ[	Ù]šXÙ\Ë_‰È
+È\İXYËÑš^Y
+JJNÂˆ™\ËšœÛÛŠÈÚÎˆYKÙ[JNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈY\H[ˆY[[ÜšXH\˜H™\Ü\ÈHÚ\Û[È
+Ø\HÊK‚˜ÛÛœİ]XZÙT™\Ü™XÙ[H™]ÈX\
+
+NÂ‚‹ËÈ[™Ú[0æ“PÓÈHÚ\Û[ÜÈ\˜HHÙXØÚpìÛˆ”Ú\Û[ÜÈˆ[œ›Û[™‚‹ËÈXÙHH“ÖHXÚXHTÑÔÈ
+Ú[ˆØØ\ˆÔÔ[˜]™YØYÜŠHH]Y[™H[˜B‹ËÈ\İH[\XHHš[˜X›N‚‹ËÈÑUØ\KÜÚ\Û[ÜÏÛZ[“XYÏM	›[Z]N‹ËÈ]Y[™HÜÈÚ\Û[ÜÈ[0ëXH[ˆÙÈ[][™ÈÛÛˆXYÛš]YHZ[“XYË‚˜\™Ù]
+	ËØ\KÜÚ\Û[ÜÉË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİ™X]\™\ÈH]ØZ]™]Ú™XÙ[X\]XZÙ\Ê
+NÂˆÛÛœİZ[“XYÈH\œÙQ›Ø]
+™\Kœ]Y\K›Z[“XYÊNÂˆÛÛœİ˜[YXYÈH[X™\‹š\Ñš[š]JZ[“XYÊHÈZ[“XYÈˆÂˆ][Z]H\œÙR[
+™\Kœ]Y\K›[Z]L
+NÂˆYˆ
+S[X™\‹š\Ñš[š]J[Z]
+H[Z]H
+H[Z]HÂˆ[Z]HX]›Z[Š[Z]Œ
+NÂ‚ˆÛÛœİ]XZÙ\ÈH™X]\™\Âˆ™š[\ŠˆOˆ‹œ›Ü\Y\È	‰ˆ‹™Ù[ÛY]H	‰ˆ\Ñš[š]J‹œ›Ü\Y\Ë›XYÊH	‰ˆ‹œ›Ü\Y\Ë›XYÈH˜[YXYÊBˆœÛÜ
+
+KŠHOˆ
+‹œ›Ü\Y\Ë[YH
+HH
+Kœ›Ü\Y\Ë[YH
+JBˆœÛXÙJ[Z]
+Bˆ›X\
+ˆOˆ
+ÂˆYˆ‹œ›Ü\Y\ËšYˆXYÎˆ‹œ›Ü\Y\Ë›XYËˆXÙNˆ‹œ›Ü\Y\ËœXÙH	ÉËˆÛİ[NˆÛİ[Qœ›ÛUTÑÔÔXÙJ‹œ›Ü\Y\ËœXÙH	ÉÊKˆ]ˆ‹™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌWKˆÛˆ‹™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌKˆ\ˆ‹™Ù[ÛY]K˜ÛÛÜ™[˜]\ÖÌ—Kˆ[YNˆ‹œ›Ü\Y\Ë[YKˆ\›ˆ‹œ›Ü\Y\Ë\›	ÉËˆ\]Yˆ‹œ›Ü\Y\Ë\]YˆJJNÂ‚ˆ™\ËœÙ]
+	ĞØXÚKPÛÛ›Û	Ë	ÜX›XËX^XYÙOMŒ	ÊNÂˆ™\ËšœÛÛŠÈÚÎˆYKÛİ[ˆ]XZÙ\Ë›[™İ]XZÙ\ÈJNÂˆHØ]Ú
+JHÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈØÚY[\ˆÛ[pè]XÛÈ8 %X[™Z˜YÈÜˆ˜XÚÙ[™ØÛ[XH
+[[İÜˆ[YXİHİ\Â‹ËÈ\[™[˜ÚX\ÈH\œ˜[˜ØHİH›Ü[ÈÙ][\˜[HÌZ[ˆ[ˆÙ\™\‹šœÈ˜Z›Â‹ËÈ[›ÛXœ™H[pìÙ[ÊKˆ™\ˆH[šXÚX[^˜XÚpìÛˆ[ˆ[›Ü]YHHÛ[XK‚‚‹ËÈ8¥ 8¥ SÓ’UÔˆUUÓpàUPÓÈH‘SPTÑTÈ
+\ÈÜ[ˆÛİ\˜ÙJH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ™]š\ØH\špìÙXØ[Y[H\È\ÈÛÛˆÛİ\˜ÙWÜ™\Ø°ëXHHTH0î˜›XØB‹ËÈHÚ]XÈÚH^H[˜H™\œÚpìÛˆY]˜HX›XØYHXİX[^˜H[Øİ[Y[Â‹ËÈ[ˆ[Û™ÛÑˆH[°ëXH\ÚHÙÜÈÜÈİ\ØÜš\Ü™\È
+˜\ÙHXİX[^°ìÈŠK‚˜ÛÛœİUU×ÕTUWÓTÈHX]›X^
+Ì
+ˆŒ
+ˆL[X™\Š›ØÙ\ÜË™[‹UU×ÕTUWÓTÊHˆ
+ˆŒ
+ˆŒ
+ˆL
+NÂ˜ÛÛœİÒUP—ÓSÓ’UÔ—ÕÒÑSˆH›ØÙ\ÜË™[‹‘ÒUP—ÕÒÑSˆ[Â‚˜\Ş[˜È[˜İ[Ûˆ™]Ú]\İ™[X\ÙJİÛ™\”™\ÊHÂˆÛÛœİ\›HÎ‹ËØ\K™Ú]X‹˜ÛÛKÜ™\ÜËÉÛİÛ™\”™\ßKÜ™[X\Ù\ËÛ]\İÂˆÛÛœİXY\œÈHÈ	ĞXØÙ\	Îˆ	Ø\XØ][Û‹İ›™™Ú]XŠÚœÛÛ‰Ë	Õ\Ù\‹PYÙ[	Îˆ	ĞÛÙRX‹P\U\]KS[Ûš]Ü‰ÈNÂˆYˆ
+ÒUP—ÓSÓ’UÔ—ÕÒÑSŠHXY\œÖÉĞ]]Üš^˜][Û‰×HH	Ğ™X\™\ˆ	È
+ÈÒUP—ÓSÓ’UÔ—ÕÒÑSÂˆÛÛœİ™\ÈH]ØZ]™]Ú
+\›ÈXY\œÈJNÂˆYˆ
+™\Ëœİ]\ÈOOH
+H™]\›ˆ[ÂˆYˆ
+\™\Ë›ÚÊH›İÈ™]È\œ›ÜŠ	ÑÚ]XˆTH	È
+È™\Ëœİ]\È
+È	È\˜H	È
+ÈİÛ™\”™\ÊNÂˆ™]\›ˆ™\ËšœÛÛŠ
+NÂŸB‚™[˜İ[ÛˆXÚĞ\Ğ\ÜÙ]
+™[X\ÙJHÂˆYˆ
+P\œ˜^Kš\Ğ\œ˜^J™[X\ÙK˜\ÜÙ]ÊJH™]\›ˆ[ÂˆÛÛœİ\ÈH™[X\ÙK˜\ÜÙ]Ë™š[™
+HOˆK›˜[YH	‰ˆK›˜[YKÓİÙ\Ø\ÙJ
+K™[™ÕÚ]
+	Ë˜\ÉÊJNÂˆ™]\›ˆ\ÈÈ\Ë˜œ›İÜÙ\—ÙİÛ›ØYİ\›ˆ[ÂŸB‚‹ËÈ[˜Ø]HZÜ˜Hš]™H[ˆ‹İ][ËšœÈ
+[\ÜYÈ\œšX˜JB‚˜\Ş[˜È[˜İ[Ûˆ]]ĞÚXÚĞ\\]\Ê
+HÂˆYˆ
+YÛÛ›™XİY
+H™]\›ˆÈÚÎˆ˜[ÙK™X\ÛÛˆ	Û›ËY‰Ë\]YˆÙ[ˆNÂˆÛÛœİ\ÈH]ØZ]\™š[™
+ÈÛİ\˜ÙWÜ™\ÎˆÈ	™Nˆ[HJK›X[Š
+K˜Ø]Ú
+
+
+HOˆ×JNÂˆYˆ
+X\Ë›[™İ
+H™]\›ˆÈÚÎˆYK\]YˆÙ[ˆÚXÚÙYˆNÂ‚ˆ]\]YHÙ[HÂˆ›Üˆ
+ÛÛœİ\Ùˆ\ÊHÂˆHÂˆÛÛœİ™[X\ÙHH]ØZ]™]Ú]\İ™[X\ÙJ\œÛİ\˜ÙWÜ™\ÊNÂˆYˆ
+\™[X\ÙJHÛÛ[YNÂˆÛÛœİY]˜U™\œÚ[ÛˆH™[X\ÙKY×Û˜[YH™[X\ÙK›˜[YH[ÂˆYˆ
+[Y]˜U™\œÚ[ÛˆY]˜U™\œÚ[ÛˆOOH\™\œÚ[ÛŠHÛÛ[YNÂ‚ˆÛÛœİ\Õ\›HXÚĞ\Ğ\ÜÙ]
+™[X\ÙJNÂˆÛÛœİ\]HHÂˆ™\œÚ[ÛˆY]˜U™\œÚ[Û‹ˆÚ[™Ù[ÙÎˆ[˜Ø]J™[X\ÙK˜›ÙJKˆYÎˆ	ü'å!XİX[^˜YIËˆ\]Y]ˆ™]È]J
+KˆNÂˆYˆ
+\Õ\›
+H\]K™[›XÙHH\Õ\›Â‚ˆ]ØZ]\\]SÛ™JÈ\Yˆ\˜\YKÈ	Ù]ˆ\]HJNÂˆ]ØZ]ØXÚQ[
+	Ø\Î˜[	ÊNÂˆœ›ØYØ\İ\ĞÚ[™ÙY
+
+NÂˆ\]Y
+ÊÎÂ‚ˆÛÛœİˆH]ØZ]œ›ØYØ\İ\Ú
+Âˆ]Nˆ	ü'å!	È
+È\››ÛXœ™H
+È	ÈÙHXİX[^°ìÉËˆ›ÙNˆ[˜Ø]J™[X\ÙK˜›ÙKLŒ
+H	ÓY]˜H™\œÚpìÛˆ	È
+ÈY]˜U™\œÚ[Ûˆ
+È	È\ÜÛšX›IËˆ\Nˆ	Ø\İ\]IËˆ\Yˆ\˜\Yˆ™\œÚ[ÛˆY]˜U™\œÚ[Û‹ˆ\›ˆ	ËÛÜ[œÛİ\˜ÙKš[	ËˆJNÂˆÙ[
+ÏH‹œÙ[ÂˆÛÛœÛÛK›ÙÊ	ø«!»î#È]]Îˆ	È
+È\››ÛXœ™H
+È	È8¡¤ˆ	È
+ÈY]˜U™\œÚ[Ûˆ
+È	È
+\Ú	È
+È
+‹œÙ[
+H
+È	ÊIÊNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ø¦¨;î#È]]È\]H	È
+È\˜\Y
+È	Î‰ËK›Y\ÜØYÙJNÂˆBˆ]ØZ]™]È›ÛZ\ÙJˆOˆÙ][Y[İ]
+‹L
+JNÂˆBˆ™]\›ˆÈÚÎˆYKÚXÚÙYˆ\Ë›[™İ\]YÙ[NÂŸB‚‹ËÈØÚY[\ˆ[[Ûš]Üˆ8 %ØYHšÜˆY™XİÈ
+ÛÛ™šYİ\˜X›HÛÛˆUU×ÕTUWÓTÊBœÙ][\˜[
+
+
+HOˆÂˆ]]ĞÚXÚĞ\\]\Ê
+Bˆ[ŠÈOˆÈYˆ
+Ë\]Y
+HÛÛœÛÛK›ÙÊ	ü'é%ˆ[Ûš]Üˆ™[X\Ù\Îˆ	È
+ÈË\]Y
+È	ÈXİX[^˜YJÊIÊNÈJBˆ˜Ø]Ú
+HOˆÛÛœÛÛKØ\›Š	ø¦¨;î#È[Ûš]Üˆ™[X\Ù\È\œ›Ü‰ËK›Y\ÜØYÙJJNÂŸKUU×ÕTUWÓTÊNÂ‚‹ËÈ[™Ú[\˜H\Ü\˜\ˆ[[Ûš]ÜˆX[X[Y[H
+YZ[‹ZXˆÈÜ›Ûˆ^\››ÊB˜\™Ù]
+	ËØ\KØYZ[‹Ø\ËØÚXÚË]\]\ÉË™\]Z\™PYZ[‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆÛÛœİİ]H]ØZ]]]ĞÚXÚĞ\\]\Ê
+NÂˆ™\ËšœÛÛŠÈÚÎˆYK‹‹›İ]JNÂˆHØ]Ú
+JHÈ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈBŸJNÂ‚‹ËÈ8¥ 8¥ ÑP’ÓÒÈHÒUPˆ8 %™[X\Ù\È[ˆY[\È™X[8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ]]ĞÚXÚĞ\\]\Ê
+H
+\œšX˜JH™]š\ØHØYHšÜˆÛ[™È8 %[˜Ú[Û˜K‹ËÈ\›È›È\ÈY[\È™X[ˆÚHX›XØ\È[ˆ™[X\ÙKÜÈİ\ØÜš\Ü™\È›Â‹ËÈÙH[\˜[ˆ\İH[ÚYİZY[HÚXÛÈ[[Ûš]Ü‹ˆ\İHÙXšÛÚÈXÙH]YB‹ËÈÚ]Xˆ]š\ÙH[[œİ[H[ˆİX[ÈÙHX›XØH[ˆ™[X\ÙKH\]pëHZ\Û[Â‹ËÈÙH\Ü\˜H[\ÚHÙÜÈÜÈİ\ØÜš\Ü™\ÈÚ[ˆ\Ü\˜\ˆ[Û[™Ë‚‹ËÂ‹ËÈÛÛ™šYİ\˜XÚpìÛˆ™XÙ\Ø\šXH
+[˜H™^ˆÜˆ™\È]YH]ZY\˜\È›İYšXØ\ˆ[‹ËÈ[œİ[KY[pè\ÈHÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘U[ˆ\È[ˆ˜\œÈH™[™\ŠN‚‹ËÈÚ]Xˆ™\È8¡¤ˆÙ][™ÜÈ8¡¤ˆÙXšÛÚÜÈ8¡¤ˆYÙXšÛÚÂ‹ËÈ^[ØYT“ˆÎ‹ËÏKX˜XÚÙ[™‹Ø\KİÙXšÛÚËÙÚ]X‹\™[X\ÙB‹ËÈÛÛ[\Nˆ\XØ][Û‹ÚœÛÛ‚‹ËÈÙXÜ™]ˆ[Z\Û[È˜[Üˆ]YHÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘U‹ËÈ]™[Îˆ“]YHÙ[Xİ[™]šYX[]™[Èˆ8¡¤ˆ™[X\Ù\Â™[˜İ[Ûˆ™\šYQÚ]X”ÚYÛ˜]\™J™\JHÂˆÛÛœİÙXÜ™]H›ØÙ\ÜË™[‹‘ÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘UÂˆYˆ
+\ÙXÜ™]
+H™]\›ˆ˜[ÙNÈËÈÚ[ˆÙXÜ™]ÈÛÛ™šYİ\˜YË›ÈÙHXÙ\H[ÙXšÛÚÂˆÛÛœİÚYÈH™\K™Ù]
+	ŞZX‹\ÚYÛ˜]\™KLM‰ÊH	ÉÎÂˆÛÛœİ^XİYH	ÜÚLMIÈ
+ÈÜ\Ë˜Ü™X]RXXÊ	ÜÚLM‰ËÙXÜ™]
+K\]J™\Kœ˜]Ğ›ÙH	ÉÊK™YÙ\İ
+	Ú^	ÊNÂˆHÂˆ™]\›ˆÚYË›[™İOOH^XİY›[™İ	‰‚ˆÜ\Ë[Z[™ÔØY™Q\]X[
+Y™™\‹™œ›ÛJÚYÊKY™™\‹™œ›ÛJ^XİY
+JNÂˆHØ]Ú
+JHÈ™]\›ˆ˜[ÙNÈBŸB‚˜\œÜİ
+	ËØ\KİÙXšÛÚËÙÚ]X‹\™[X\ÙIË\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆYˆ
+]™\šYQÚ]X”ÚYÛ˜]\™J™\JJH™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñš\›XH[°è[YHÈÒUP—ÕÑP’ÓÒ×ÔÑPÔ‘U›ÈÛÛ™šYİ\˜YÉÈJNÂ‚ˆÛÛœİ]™[H™\K™Ù]
+	ŞYÚ]X‹Y]™[	ÊNÂˆYˆ
+]™[OOH	Ü[™ÉÊH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKÛ™ÎˆYHJNÂˆYˆ
+]™[OOH	Ü™[X\ÙIÊH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKYÛ›Ü™Yˆ]™[JNÂ‚ˆÛÛœİ^[ØYH™\K˜›ÙHßNÂˆYˆ
+^[ØY˜Xİ[ÛˆOOH	ÜX›\ÚY	ÊH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKYÛ›Ü™Yˆ^[ØY˜Xİ[ÛˆJNÂ‚ˆÛÛœİİÛ™\”™\ÈH^[ØYœ™\ÜÚ]ÜH	‰ˆ^[ØYœ™\ÜÚ]ÜK™[Û˜[YNÂˆÛÛœİ™[X\ÙHH^[ØYœ™[X\ÙNÂˆYˆ
+[İÛ™\”™\È\™[X\ÙJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ô^[ØY[˜ÛÛ\]ÉÈJNÂ‚ˆÛÛœİ\ÈH]ØZ]\™š[™Û™JÈÛİ\˜ÙWÜ™\ÎˆİÛ™\”™\ÈJNÂˆYˆ
+X\ÊH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKX]ÚYˆ˜[ÙK™X\ÛÛˆ	Óš[™İ[˜H\[Ø]0è[ÙÛÈ\ØH\ÙHÛİ\˜ÙWÜ™\ÉÈJNÂ‚ˆÛÛœİY]˜U™\œÚ[ÛˆH™[X\ÙKY×Û˜[YH™[X\ÙK›˜[YH[ÂˆYˆ
+[Y]˜U™\œÚ[ÛˆY]˜U™\œÚ[ÛˆOOH\Ë™\œÚ[ÛŠH™]\›ˆ™\ËšœÛÛŠÈÚÎˆYKX]ÚYˆYKÚÚ\Yˆ	ÛZ\ÛXH™\œÚpìÛ‰ÈJNÂ‚ˆÛÛœİ\Õ\›HXÚĞ\Ğ\ÜÙ]
+™[X\ÙJNÂˆÛÛœİ\]HHÂˆ™\œÚ[ÛˆY]˜U™\œÚ[Û‹ˆÚ[™Ù[ÙÎˆ[˜Ø]J™[X\ÙK˜›ÙJKˆYÎˆ	ü'å!XİX[^˜YIËˆ\]Y]ˆ™]È]J
+KˆNÂˆYˆ
+\Õ\›
+H\]K™[›XÙHH\Õ\›Â‚ˆ]ØZ]\\]SÛ™JÈ\Yˆ\Ë˜\YKÈ	Ù]ˆ\]HJNÂˆ]ØZ]ØXÚQ[
+	Ø\Î˜[	ÊNÂˆœ›ØYØ\İ\ĞÚ[™ÙY
+
+NÂ‚ˆÛÛœİˆH]ØZ]œ›ØYØ\İ\Ú
+Âˆ]Nˆ	ü'å!	È
+È\Ë››ÛXœ™H
+È	ÈÙHXİX[^°ìÉËˆ›ÙNˆ[˜Ø]J™[X\ÙK˜›ÙKLŒ
+H	ÓY]˜H™\œÚpìÛˆ	È
+ÈY]˜U™\œÚ[Ûˆ
+È	È\ÜÛšX›IËˆ\Nˆ	Ø\İ\]IËˆ\Yˆ\Ë˜\Yˆ™\œÚ[ÛˆY]˜U™\œÚ[Û‹ˆ\›ˆ	ËÛÜ[œÛİ\˜ÙKš[	ËˆJNÂ‚ˆÛÛœÛÛK›ÙÊ	ø¦¨HÙXšÛÚÈ™[X\ÙH[œİ[0è[™[Îˆ	È
+È\Ë››ÛXœ™H
+È	È8¡¤ˆ	È
+ÈY]˜U™\œÚ[Ûˆ
+È	È
+\Ú	È
+È
+‹œÙ[
+H
+È	ÊIÊNÂˆ™\ËšœÛÛŠÈÚÎˆYKX]ÚYˆYK\]YˆYKÙ[ˆ‹œÙ[JNÂˆHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	İÙXšÛÚËÙÚ]X‹\™[X\ÙH\œ›Ü‰ËK›Y\ÜØYÙJNÂˆ™\Ëœİ]\ÊL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ “ĞÑTÓÎˆØ\\˜\ˆ\œ›Ü™\È›ÈÛÛ›ÛYÜÈ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈÚ[ˆ\İË[ˆ›İÈ\Ş[˜ÈÚ[ˆØ]Ú
+ˆZ‹ˆ[ˆ[ˆ[™\ˆHÔÈÈ[‚‹ËÈÙ][Y[İ]
+H[X˜H[›ØÙ\ÛÈ[\›È[ˆ™[™\ˆÚ[ˆZ˜\ˆ˜\İ›ÈÛ\›Â‹ËÈHHØ]\ØKˆÙHÙİYXH
+ÈÙH]š\ØHÜˆ[YÜ˜[K\›È“ÈÙHXÙB‹ËÈ›ØÙ\ÜË™^]
+
+HØ[›È]YH[\œ›ÜˆÙXH™X[Y[H˜][\˜H[]™[‹ËÈÛÜ8 %Z˜\ˆ[›ØÙ\ÛÈš]›È\È™Y™\šX›HH[ˆÜ˜\Ú[ÛÜ‚œ›ØÙ\ÜË›ÛŠ	İ[š[™Y™Z™Xİ[Û‰Ë
+™X\ÛÛ‹›ÛZ\ÙJHOˆÂˆÛÛœİ\ÙÈH™X\ÛÛˆ[œİ[˜Ù[Ùˆ\œ›ÜˆÈ™X\ÛÛ‹œİXÚÈ™X\ÛÛ‹›Y\ÜØYÙHˆİš[™Ê™X\ÛÛŠNÂˆÛÛœÛÛK™\œ›ÜŠ	ø¦¨;î#È[š[™Y™Z™Xİ[Û‰Ë\ÙÊNÂˆĞ[\
+	İ[š[™YÜ™Z™Xİ[Û‰Ë
+
+HOˆ	ü'å-[š[™Y™Z™Xİ[Û—‰È
+Èİš[™Ê\ÙÊKœÛXÙJL
+KÈÚ[™İÓ\ÎˆÌJNÂŸJNÂ‚œ›ØÙ\ÜË›ÛŠ	İ[˜Ø]YÚ^Ù\[Û‰Ë
+\œŠHOˆÂˆÛÛœÛÛK™\œ›ÜŠ	ü'å-[˜Ø]YÚ^Ù\[Û‰Ë\œ‹œİXÚÈ\œ‹›Y\ÜØYÙJNÂˆĞ[\
+	İ[˜Ø]YÚÙ^Ù\[Û‰Ë
+
+HOˆ	ü'å-[˜Ø]YÚ^Ù\[Û—‰È
+Èİš[™Ê\œ‹œİXÚÈ\œ‹›Y\ÜØYÙJKœÛXÙJL
+KÈÚ[™İÓ\ÎˆÌJNÂˆËÈ›ÈÙH[XH›ØÙ\ÜË™^]
+
+Nˆ[ˆ^™\ÜË[ˆ›İÈğë[˜Ü›Û›È[›ÈBˆËÈ[ˆ›İ]H[™\ˆ›Ü›X[XH\ÈØ\\˜YÈÜˆ^™\ÜÈZ\Û[ÎÈ\İÂˆËÈİXœ™HÛÛÈØ[˜XÚÜËİ[Y\œÈY\˜HH\ÙHÚXÛËˆX[[™\ˆ[ˆËÈ›ØÙ\ÛÈš]›È]š]H™Z[šXÚ[ÜÈ[ˆØ\ØØYH]YH[X˜\°ëX[ˆÙX”ÛØÚÙ]ÂˆËÈHÙ\Ú[Û™\ÈXİ]˜\ÈÜˆ[ˆ\œ›ÜˆZ\ÛYË‚ŸJNÂ‚‹ËÈ8¥ 8¥ İ™X[Z[™ÈÔÑH
+Ù\™\‹TÙ[]™[ÊH8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[™Ú[[\›˜]]›ÈHØ\KØÚ]]YH]Y[™HH™\ÜY\İHÚÙ[ˆÜˆÚÙ[‹‚‹ËÈÛÜÜHÜ›ÜKÙ\™Xœ˜\ËYÙÚ[™Ñ˜XÙKÜ[”›İ]\‹Z\İ˜[Ú[ZH
+Ü[RKXÛÛ\]
+B‹ËÈHÛ]YH
+[›ÜXÈÔÑJKˆÛÚ\™HHÙ[Z[šHš\Ú[ÛˆØY[ˆH›Û‹\İ™X[Z[™Ë‚˜\œÜİ
+	ËØ\KØÚ]Üİ™X[IË™\]Z\™P]]\Ş[˜È
+™\K™\ÊHOˆÂˆÛÛœİÈY\ÜØYÙKÙ\ÜÚ[Û’YH	Ø[›Û‰Ë[XYÙK[XYÙ\Ë•^ÚÚ[ÚYHH™\K˜›ÙNÂˆYˆ
+[Y\ÜØYÙH\[ÙˆY\ÜØYÙHOOH	Üİš[™ÉÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	È›Y\ÜØYÙHˆ™\]Y\šYË‰ÈJNÂˆYˆ
+Y\ÜØYÙKš[J
+K›[™İˆL
+H™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈ\œ›Üˆ	ÓY[œØZ™H]^H\™ÛË‰ÈJNÂˆYˆ
+Z\Ğ[PÚ]Ù^J
+JH™]\›ˆ™\Ëœİ]\ÊLÊKšœÛÛŠÈ\œ›Üˆ	ÔÚ[ˆTHÙ^\Ë‰ÈJNÂ‚ˆËÈ8¥ 8¥ [XYÙ[‹Ôˆ\ØØ[™XYÎˆ˜[˜XÚÈH›Û‹\İ™X[Z[™È
+ÛÛÈÙ[Z[šHš\Ú[ÛŠH8¥ 8¥ ˆÛÛœİ[YÓ\İH[XYÙHÈÚ[XYÙWHˆ
+\œ˜^Kš\Ğ\œ˜^J[XYÙ\ÊH	‰ˆ[XYÙ\Ë›[™İÈ[XYÙ\ËœÛXÙJJHˆ[
+NÂˆYˆ
+[YÓ\İ	‰ˆ[YÓ\İ›[™İ
+HÂˆ™\K\›H	ËØ\KØÚ]	ÎÂˆ™]\›ˆ\š[™J™\K™\ÊNÂˆB‚ˆËÈ8¥ 8¥ 0ë[Z]HX\š[ÈÙ\™\‹\ÚYH8¥ 8¥ ˆÛÛœİ[ZRÙ^HH™\K˜]]\Ù\ˆÈ	İN‰È
+È™\K˜]]\Ù\‹šYˆ	Ù‰È
+ÈÛY[\
+™\JNÂˆÛÛœİ[ZS[Z]H]ØZ]Ù][ZS[Z]
+H\™\K˜]]\Ù\ŠNÂˆÛÛœİ[ZU\ÙYH]ØZ]Ù][ZU\ØYÙJ[ZRÙ^JNÂˆYˆ
+[ZU\ÙYH[ZS[Z]
+HÂˆ™]\›ˆ™\Ëœİ]\ÊJKšœÛÛŠÈ\œ›Üˆ0ë[Z]HX\š[È[Ø[˜YÈ
+	Ù[ZS[Z]HY[œØZ™\ÊKˆ	Ü™\K˜]]\Ù\ˆÈ	ÉÈˆ	Ò[šXÚXHÙ\ÚpìÛˆ\˜Hpè\Ë‰ßXÛÙNˆ	ÑSRWÑRSWÓSRU	Ë[Z]ˆ[ZS[Z]\ÙYˆ[ZU\ÙYJNÂˆB‚ˆËÈ8¥ 8¥ ™Xİ\\˜\ˆ\İÜšX[8¥ 8¥ ˆ]Ù\ÜÚ[Û’\İÜHH×NÂˆYˆ
+ÛÛ›™XİY	‰ˆÙ\ÜÚ[Û’YOOH	Ø[›Û‰ÊHÂˆHÂˆÛÛœİ\İ\ÙÜÈH]ØZ]Ú]Y\ÜØYÙK™š[™
+ÈÙ\ÜÚ[Û’YJKœÛÜ
+ÈÜ™X]Y]ˆLHJK›[Z]
+L
+K›X[Š
+NÂˆÙ\ÜÚ[Û’\İÜHH\İ\ÙÜËœ™]™\œÙJ
+K›X\
+HOˆ
+È›ÛNˆKœ›ÛHOOH	Ø\ÜÚ\İ[	ÈÈ	Ø\ÜÚ\İ[	Èˆ	İ\Ù\‰ËÛÛ[ˆİš[™ÊK˜ÛÛ[
+KœÛXÙJ
+HJJNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	Ñ\œ›Üˆ™Xİ\\˜[™È\İÜšX[‰ËK›Y\ÜØYÙJNÈBˆBˆÙ\ÜÚ[Û’\İÜKœ\Ú
+È›ÛNˆ	İ\Ù\‰ËÛÛ[ˆY\ÜØYÙKš[J
+HJNÂˆYˆ
+\[Ùˆ•^OOH	Üİš[™ÉÈ	‰ˆ•^š[J
+JHÂˆÙ\ÜÚ[Û’\İÜKœÜXÙJÙ\ÜÚ[Û’\İÜK›[™İHKÂˆ›ÛNˆ	İ\Ù\‰ËˆÛÛ[ˆ	ÖÑØİ[Y[ÈY[È8 %™\İ[Y[ˆÛÛ\š[ZYÈ[Øİ[Y[Ëˆ™\ÜÛ™H\Ø[™ÈÓÓÈ\İHÛÛ[šYÈÛÛ[È™Y™\™[˜ÚXK[ˆ\Üpì[ÛN—‰È
+È•^œÛXÙJ
+BˆJNÂˆB‚ˆËÈŒKŒNˆÖTÕSH[°è[ZXÛÈ8 %˜\ÙH\˜H]Y\šY\ÈÙ[™\˜[\ËÛÛ\]H\˜HÛÙRX‚ˆ]Ş\İ[HHÛ\ÜÚYTŞ\İ[JY\ÜØYÙJNÂˆËÈÚÚ[Xİ]˜Nˆ[YXİHİHİpëXBˆYˆ
+ÚÚ[ÚY
+HÂˆÛÛœİÚÚ[HØYÚÚ[œÛÛŠİš[™ÊÚÚ[ÚY
+JNÂˆYˆ
+ÚÚ[	‰ˆÚÚ[œŞ\İ[WÜ›Û\Ú[š™Xİ
+HŞ\İ[HHÚÚ[œŞ\İ[WÜ›Û\Ú[š™Xİ
+È	×—‰È
+ÈŞ\İ[NÂˆBˆËÈÒS‘NˆÛÛ^È][Y[YÈ
+Y[[ÜšXH[\İX\š[È
+È˜\ÙHHÛÛ›ØÚ[ZY[ÈQÊBˆYˆ
+ÛÛ›™XİY
+HÂˆHÂˆÛÛœİİH]ØZ]Z[ÛÛ^
+Âˆ\Ù\’YˆY[U\Ù\“ÙŠ™\KÙ\ÜÚ[Û’Y
+H	Û›Û™IËˆİÛ™\’Yˆ	ØYZ[‰ËˆY\ÜØYÙKˆÜÎˆËˆJNÂˆYˆ
+İ
+HŞ\İ[HH]YÛY[Ş\İ[JŞ\İ[Kİ
+NÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ÕÚ[‘HÛÛ^È\œ›Ü‰ËK›Y\ÜØYÙJNÂˆBˆBˆËÈÒS‘Nˆ°îœÜ]YYHÙXˆ[ˆš]›È
+]ÜÈXİX[\ÊHİX[™ÈHÛÛœİ[HÈYBˆHÂˆÛÛœİ]™HH]ØZ]]™UÙXÛÛ^
+Y\ÜØYÙJNÂˆYˆ
+]™JHŞ\İ[HHŞ\İ[H
+È	×—‰È
+È]™NÂˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈÒS‘Nˆ\œ˜[ZY[HHğìÛ\]È
+ğè[İ[ÜË™XÚKÛÛ™\œÚ[Û™\ÊHÚ[ˆBˆHÂˆÛÛœİÛÛHÛÛ\]UÛÛ
+Y\ÜØYÙJNÂˆYˆ
+ÛÛ
+HŞ\İ[HHŞ\İ[H
+È	×—‰È
+ÈÛÛÂˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈÒS‘Nˆ[˜İ[Û‹XØ[[™È8 %Z™Xİ]HH\œ˜[ZY[H]XİYH
+ÙX‹ØÛÛ\]ËÕT“
+BˆHÂˆÛÛœİH]XİÛÛ
+Y\ÜØYÙJNÂˆYˆ
+
+HÂˆÛÛœİİ]H]ØZ]^Xİ]UÛÛ
+›˜[YK˜\™ÊNÂˆYˆ
+İ]
+HŞ\İ[HHŞ\İ[H
+È	×—‰È
+Èİ]ÂˆBˆHØ]Ú
+JHÈÊˆÚ[[˜Ú[ÜÛÈ
+‹ÈBˆËÈŒKŒŠÑŒKˆÛX\[˜Ø][ÛˆÛÛˆYÙ]HLÈÚÙ[œÈ
+ÈÚ\œÊBˆÛÛœİ\ÙÜÈHZ[ÛX\Y\ÜØYÙ\ÊŞ\İ[KÙ\ÜÚ[Û’\İÜKL
+NÂ‚ˆËÈ8¥ 8¥ Ù]\ÔÑHXY\œÈ8¥ 8¥ ˆ™\ËœÙ]XY\Š	ĞÛÛ[U\IË	İ^Ù]™[\İ™X[IÊNÂˆ™\ËœÙ]XY\Š	ĞØXÚKPÛÛ›Û	Ë	Û›ËXØXÚIÊNÂˆ™\ËœÙ]XY\Š	ĞÛÛ›™Xİ[Û‰Ë	ÚÙY\X[]™IÊNÂˆ™\ËœÙ]XY\Š	ÖPXØÙ[PY™™\š[™ÉË	Û›ÉÊNÂˆ™\Ë™›\ÚXY\œÊ
+NÂ‚ˆÛÛœİ\İ™X[PX›ÜH™]ÈX›ÜÛÛ›Û\Š
+NÂˆ™\K›ÛŠ	ØÛÜÙIË
+
+HOˆ\İ™X[PX›Ü˜X›Ü
+
+JNÂ‚ˆ]™\YYH˜[ÙNÂˆ][™\HH	ÉÎÂˆ]\ØYÙHHÈ[œ]ˆİ]]ˆNÂˆ][Ù[˜[YHH	ÉÎÂ‚ˆ[˜İ[ÛˆÙ[™ÔÑJ]]JHÂˆYˆ
+™\Ë™\İ›ŞYY
+H™]\›Âˆ™\ËÜš]J	Ù]™[ˆ	È
+È]
+È	×™]Nˆ	È
+È”ÓÓ‹œİš[™ÚYJ]JH
+È	×—‰ÊNÂˆB‚ˆËÈÔÑHYHØ]ÚÙÎˆX›ÜHÚH\Ø[ˆÔÑWÕSQSÕUÓTÈÚ[ˆ]ÜÈY]›ÜË‚ˆËÈXZÙYİ™X[\È[ˆ›İšY\œÈ[ÜÈXH›ÈXİ[][[ˆÛØÚÙ]È8¡¤ˆÓÓK‚ˆ\Ş[˜È[˜İ[ÛˆTİ™X[J˜[YK[™Ú[XY\œË›ÙJHÂˆ][Y\ˆH[ÂˆÛÛœİİ›H™]ÈX›ÜÛÛ›Û\Š
+NÂˆÛÛœİÛX\•H
+
+HOˆÈYˆ
+[Y\ŠHÈÛX\•[Y[İ]
+[Y\ŠNÈ[Y\ˆH[ÈHNÂˆÛÛœİÚXÚÈH
+
+HOˆÈÛX\•
+
+NÈ[Y\ˆHÙ][Y[İ]
+
+
+HOˆİ›˜X›Ü
+™]È\œ›ÜŠ˜[YH
+È	Îˆ[Y[İ]ÔÑIÊJKÔÑWÕSQSÕUÓTÊNÈNÂˆÛÛœİÛ”Ù\™\X›ÜH
+
+HOˆİ›˜X›Ü
+
+NÂˆ\İ™X[PX›ÜœÚYÛ˜[˜Y]™[\İ[™\Š	ØX›Ü	ËÛ”Ù\™\X›ÜÈÛ˜ÙNˆYHJNÂˆÚXÚÊ
+NÂˆHÂˆÛÛœİˆH]ØZ]™]Ú
+[™Ú[ÈY]Ùˆ	ÔÔÕ	ËXY\œË›ÙNˆ”ÓÓ‹œİš[™ÚYJ›ÙJKÚYÛ˜[ˆİ›œÚYÛ˜[JNÂˆYˆ
+\‹›ÚÊHÂˆÛX\•
+
+NÈ\İ™X[PX›ÜœÚYÛ˜[œ™[[İ™Q]™[\İ[™\Š	ØX›Ü	ËÛ”Ù\™\X›Ü
+NÂˆÛÛœİHH]ØZ]‹šœÛÛŠ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆÛÛœİ\œˆH™]È\œ›ÜŠK™\œ›ÜË›Y\ÜØYÙH˜[YH
+È	È	È
+È‹œİ]\ÊNÂˆ\œ‹œİ]\ÈH‹œİ]\ÎÂˆ›İÈ\œÂˆBˆ™]\›ˆÈ‹ÚXÚËİÜ
+
+HÈÛX\•
+
+NÈ\İ™X[PX›ÜœÚYÛ˜[œ™[[İ™Q]™[\İ[™\Š	ØX›Ü	ËÛ”Ù\™\X›Ü
+NÈHNÂˆHØ]Ú
+JHÂˆÛX\•
+
+NÈ\İ™X[PX›ÜœÚYÛ˜[œ™[[İ™Q]™[\İ[™\Š	ØX›Ü	ËÛ”Ù\™\X›Ü
+NÂˆ›İÈNÂˆBˆB‚ˆ\Ş[˜È[˜İ[ÛˆÛÛœİ[YSÜ[RTİ™X[JËÛÚ[šÊHÂˆÛÛœİ™XY\ˆHËœ‹˜›ÙK™Ù]™XY\Š
+NÂˆÛÛœİXÛÙ\ˆH™]È^XÛÙ\Š
+NÂˆ]YˆH	ÉÎÂˆHÂˆÚ[H
+YJHÂˆËšÚXÚÊ
+NÂˆÛÛœİÈÛ™K˜[YHHH]ØZ]™XY\‹œ™XY
+
+NÂˆYˆ
+Û™JHœ™XZÎÂˆËšÚXÚÊ
+NÂˆYˆ
+ÏHXÛÙ\‹™XÛÙJ˜[YKÈİ™X[NˆYHJNÂˆÛÛœİ[™\ÈHY‹œÜ]
+	×‰ÊNÂˆYˆH[™\ËœÜ
+
+H	ÉÎÂˆ›Üˆ
+ÛÛœİ[™HÙˆ[™\ÊHÂˆYˆ
+[[™Kœİ\ÕÚ]
+	Ù]Nˆ	ÊJHÛÛ[YNÂˆÛÛœİ^[ØYH[™KœÛXÙJŠKš[J
+NÂˆYˆ
+^[ØYOOH	ÖÑÓ‘WIÊH™]\›ÂˆHÂˆÛÛœİH”ÓÓ‹œ\œÙJ^[ØY
+NÂˆÛÛœİ[HH˜ÚÚXÙ\ÏË–ÌOË™[OË˜ÛÛ[ÂˆYˆ
+[JHÈÛÚ[šÊ[JNÈËšÚXÚÊ
+NÈBˆYˆ
+\ØYÙJHÈ\ØYÙKš[œ]H\ØYÙKœ›Û\İÚÙ[œÈÈ\ØYÙK›İ]]H\ØYÙK˜ÛÛ\][Û—İÚÙ[œÈÈBˆHØ]ÚßBˆBˆBˆHš[˜[HÈËœİÜ
+
+NÈBˆB‚ˆ\Ş[˜È[˜İ[ÛˆÛÛœİ[YPÛ]YTİ™X[JËÛÚ[šÊHÂˆÛÛœİ™XY\ˆHËœ‹˜›ÙK™Ù]™XY\Š
+NÂˆÛÛœİXÛÙ\ˆH™]È^XÛÙ\Š
+NÂˆ]YˆH	ÉÎÂˆHÂˆÚ[H
+YJHÂˆËšÚXÚÊ
+NÂˆÛÛœİÈÛ™K˜[YHHH]ØZ]™XY\‹œ™XY
+
+NÂˆYˆ
+Û™JHœ™XZÎÂˆËšÚXÚÊ
+NÂˆYˆ
+ÏHXÛÙ\‹™XÛÙJ˜[YKÈİ™X[NˆYHJNÂˆÛÛœİ[™\ÈHY‹œÜ]
+	×‰ÊNÂˆYˆH[™\ËœÜ
+
+H	ÉÎÂˆ›Üˆ
+ÛÛœİ[™HÙˆ[™\ÊHÂˆYˆ
+[[™Kœİ\ÕÚ]
+	Ù]Nˆ	ÊJHÛÛ[YNÂˆHÂˆÛÛœİH”ÓÓ‹œ\œÙJ[™KœÛXÙJŠJNÂˆYˆ
+\HOOH	ØÛÛ[Ø›ØÚ×Ù[IÈ	‰ˆ™[OË^
+HÈÛÚ[šÊ™[K^
+NÈËšÚXÚÊ
+NÈBˆYˆ
+\HOOH	ÛY\ÜØYÙWÙ[IÈ	‰ˆ\ØYÙJH\ØYÙK›İ]]H\ØYÙK›İ]]İÚÙ[œÈÂˆYˆ
+\HOOH	ÛY\ÜØYÙWÜİ\	È	‰ˆ›Y\ÜØYÙOË\ØYÙJH\ØYÙKš[œ]H›Y\ÜØYÙK\ØYÙKš[œ]İÚÙ[œÈÂˆHØ]ÚßBˆBˆBˆHš[˜[HÈËœİÜ
+
+NÈBˆB‚ˆHÂˆÛÛœİÜ™\ˆHÛ\ÜÚYT›İ]J\ÙÜÊNÂ‚ˆËÈ8¥ 8¥ Û]YHİ™X[Z[™È8¥ 8¥ ˆYˆ
+\™\YY	‰ˆÜ™\–ÌHOOH	ĞÛ]YIÈ	‰ˆ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVJHÂˆHÂˆÛÛœİŞ\Ó\ÙÈH\ÙÜË™š[™
+HOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİÚ]\ÙÜÈH\ÙÜË™š[\ŠHOˆKœ›ÛHOOH	ÜŞ\İ[IÊNÂˆÛÛœİ›ÙHHÂˆ[Ù[ˆ	ØÛ]YK\ÛÛ›™]MMIËX^İÚÙ[œÎˆY\]™SX^ÚÙ[œÊY\ÜØYÙJK[\\˜]\™NˆKˆŞ\İ[NˆŞ\Ó\ÙÏË˜ÛÛ[	ÉËˆY\ÜØYÙ\ÎˆÚ]\ÙÜË›X\
+HOˆ
+È›ÛNˆKœ›ÛKÛÛ[ˆK˜ÛÛ[JJKˆİ™X[NˆYBˆNÂˆÛÛœİˆH]ØZ]Tİ™X[J	ĞÛ]YIË	ÚÎ‹ËØ\K˜[›ÜXË˜ÛÛKİŒKÛY\ÜØYÙ\ÉËÂˆ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ëˆ	ŞX\KZÙ^IÎˆ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVKˆ	Ø[›ÜXË]™\œÚ[Û‰Îˆ	ÌŒŒËL‹LIÂˆK›ÙJNÂˆ[Ù[˜[YHH	Ø[›ÜXËØÛ]YK\ÛÛ›™]	ÎÂˆ™\YYHYNÂˆ]ØZ]ÛÛœİ[YPÛ]YTİ™X[J‹
+Ú[šÊHOˆÈ[™\H
+ÏHÚ[šÎÈÙ[™ÔÑJ	ØÚ[šÉËÈ^ˆÚ[šÈJNÈJNÂˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	ĞÛ]YHİ™X[Z[™È˜[Ë[[[™ÈÚYİZY[K‹‹‰ÊNÂˆBˆB‚ˆËÈ8¥ 8¥ Ü[RKXÛÛ\]X›Hİ™X[Z[™È›İšY\œÈ8¥ 8¥ ˆYˆ
+\™\YY
+HÂˆÛÛœİØZT›İšY\œÈHÂˆÈ˜[YNˆ	ÒÚ[ZIË[™Ú[ˆ	ÚÎ‹ËØ\K›[ÛÛœÚİ˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÙ^Nˆ›ØÙ\ÜË™[‹’ÒSRWĞTWÒÑVK[Ù[ˆ	ÚÚ[ZKZÌ‹LLK\™]šY]ÉËX™[ˆ	Û[ÛÛœÚİÚÚ[ZKZÌ‰ÈKˆÈ˜[YNˆ	ÑÜ›ÜIË[™Ú[ˆ	ÚÎ‹ËØ\K™Ü›ÜK˜ÛÛKÛÜ[˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÙ^Nˆ›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑVK[Ù[ˆ	Û[XKLËŒËMÌ‹]™\œØ][IËX™[ˆ	ÙÜ›ÜKÛ[XKLËŒËMÌ‰ÈKˆÈ˜[YNˆ	ĞÙ\™Xœ˜\ÉË[™Ú[ˆ	ÚÎ‹ËØ\K˜Ù\™Xœ˜\Ë˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÙ^Nˆ›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑVK[Ù[ˆ	Û[XKLËŒËMÌ‰ËX™[ˆ	ØÙ\™Xœ˜\ËÛ[XKLËŒËMÌ‰ÈKˆÈ˜[YNˆ	ÒYÙÚ[™Ñ˜XÙIË[™Ú[ˆ	ÚÎ‹ËÜ›İ]\‹šYÙÚ[™Ù˜XÙK˜ÛËİŒKØÚ]ØÛÛ\][ÛœÉËÙ^Nˆ›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑVK[Ù[ˆ	ÛY]K[[XKÓ[XKLËŒËMÌ‹R[œİXİ››İš]IËX™[ˆ	ÚYÙÚ[™Ù˜XÙKÛ[XKLËŒËMÌ‰ÈKˆÈ˜[YNˆ	ÓZ\İ˜[	Ë[™Ú[ˆ	ÚÎ‹ËØ\K›Z\İ˜[˜ZKİŒKØÚ]ØÛÛ\][ÛœÉËÙ^Nˆ›ØÙ\ÜË™[‹“RTÕSĞTWÒÑVK[Ù[ˆ	ÛZ\İ˜[\ÛX[[]\İ	ËX™[ˆ	ÛZ\İ˜[ÛZ\İ˜[\ÛX[	ÈKˆNÂˆYˆ
+›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVJHÂˆ›Üˆ
+ÛÛœİHÙˆÔ—Ñ”‘QWÓSÑSÊHÂˆØZT›İšY\œËœ\Ú
+Âˆ˜[YNˆ	ÓÜ[”›İ]\‰Ë[™Ú[ˆ	ÚÎ‹ËÛÜ[œ›İ]\‹˜ZKØ\KİŒKØÚ]ØÛÛ\][ÛœÉËˆÙ^Nˆ›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVK[Ù[ˆKˆX™[ˆ	ÛÜ[œ›İ]\‹ÉÈ
+ÈKœÜ]
+	ËÉÊKœÜ
+
+Kœ™\XÙJ	Î™œ™YIË	ÉÊKˆ^˜RXY\œÎˆÈ	ÒT™Y™\™\‰Îˆ›ØÙ\ÜË™[‹‘”“Ó•S‘ÕT“	ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\	Ë	ÖU]IÎˆ	ÕÒS‘HÓÔSÕ	ÈBˆJNÂˆBˆBˆÛÛœİÜ™\™YHÜ™\‹™š[\ŠˆOˆˆOOH	ĞÛ]YIÈ	‰ˆˆOOH	ÑÙ[Z[šIÈ	‰ˆˆOOH	ĞÛÚ\™IÊNÂˆÛÛœİÛÜYHË‹‹›Ü™\™Y›X\
+ˆOˆØZT›İšY\œË™š[™
+Oˆ›˜[YHOOHŠJK‹‹›ØZT›İšY\œË™š[\ŠOˆ[Ü™\™Yš[˜ÛY\Ê›˜[YJJWK™š[\Š›ÛÛX[ŠNÂ‚ˆ›Üˆ
+ÛÛœİ›İˆÙˆÛÜY
+HÂˆYˆ
+\›İ‹šÙ^H\İ™X[PX›ÜœÚYÛ˜[˜X›ÜY
+HÛÛ[YNÂˆHÂˆÛÛœİ›ÙHHÈ[Ù[ˆ›İ‹›[Ù[X^İÚÙ[œÎˆY\]™SX^ÚÙ[œÊY\ÜØYÙJK[\\˜]\™NˆKY\ÜØYÙ\Îˆ\ÙÜËİ™X[NˆYKİ™X[WÛÜ[ÛœÎˆÈ[˜ÛYWİ\ØYÙNˆYHHNÂˆÛÛœİXY\œÈHÈ	ĞÛÛ[U\IÎˆ	Ø\XØ][Û‹ÚœÛÛ‰Ë]]Üš^˜][Ûˆ	Ğ™X\™\ˆ	È
+È›İ‹šÙ^K‹‹œ›İ‹™^˜RXY\œÈNÂˆÛÛœİˆH]ØZ]Tİ™X[J›İ‹›˜[YK›İ‹™[™Ú[XY\œË›ÙJNÂˆ[Ù[˜[YHH›İ‹›X™[Âˆ™\YYHYNÂˆ]ØZ]ÛÛœİ[YSÜ[RTİ™X[J‹
+Ú[šÊHOˆÈ[™\H
+ÏHÚ[šÎÈÙ[™ÔÑJ	ØÚ[šÉËÈ^ˆÚ[šÈJNÈJNÂˆÛÛœÛÛK›ÙÊ	Ôİ™X[Z[™ÈšXH	È
+È›İ‹›˜[YH
+È	È
+	È
+È›İ‹›[Ù[
+È	ÊIÊNÂˆœ™XZÎÂˆHØ]Ú
+JHÂˆYˆ
+Kœİ]\ÈOOHHKœİ]\ÈOOHJHÈÛÛœÛÛKØ\›Š›İ‹›˜[YH
+È	Îˆ	È
+ÈKœİ]\ÊNÈÛÛ[YNÈBˆÛÛœÛÛKØ\›Š›İ‹›˜[YH
+È	Èİ™X[Z[™È˜[Îˆ	È
+ÈK›Y\ÜØYÙJNÂˆBˆBˆB‚ˆËÈ8¥ 8¥ Ù[Z[šHÈÛÚ\™H˜[˜XÚÎˆ›Û‹\İ™X[Z[™È8¥ 8¥ ˆYˆ
+\™\YY
+HÂˆHÂˆÛÛœİ™\İ[H]ØZ]Ø[RJ\ÙÜÊNÂˆ[™\HH™\İ[œ™\NÂˆ\ØYÙHHÈ[œ]ˆ™\İ[š[œ]İ]]ˆ™\İ[›İ]]NÂˆ[Ù[˜[YHH™\İ[›[Ù[Âˆ™\YYHYNÂˆÙ[™ÔÑJ	ØÚ[šÉËÈ^ˆ[™\HJNÂˆHØ]Ú
+JHÂˆÙ[™ÔÑJ	Ù\œ›Ü‰ËÈ\œ›Üˆ	ÕÙÜÈÜÈ›İ™YYÜ™\ÈHPH˜[\›Û‹‰ÈJNÂˆ™\Ë™[™
+
+NÂˆ™]\›ÂˆBˆB‚ˆËÈ8¥ 8¥ š[˜[^˜\ˆ\œÚ\İ\‹ÚYHY™™XİËÛ™H8¥ 8¥ ˆYˆ
+ÛÛ›™XİY
+HÚ]Y\ÜØYÙKš[œÙ\X[JÂˆÈÙ\ÜÚ[Û’Y›ÛNˆ	İ\Ù\‰ËÛÛ[ˆY\ÜØYÙKš[J
+KÚÙ[œÎˆ\ØYÙKš[œ][Ù[ˆ[Ù[˜[YHKˆÈÙ\ÜÚ[Û’Y›ÛNˆ	Ø\ÜÚ\İ[	ËÛÛ[ˆ[™\KÚÙ[œÎˆ\ØYÙK›İ]][Ù[ˆ[Ù[˜[YHKˆJK˜Ø]Ú
+
+
+HOˆßJNÂ‚ˆÛÛœİ[ZS›İÈH]ØZ][˜Ü‘[ZU\ØYÙJ[ZRÙ^JNÂˆœ›ØYØ\İ
+	ØÚ]İ\ÙY	ËÈ[Ù[ˆ[Ù[˜[YKÚÙ[œÎˆ\ØYÙKš[œ]
+È\ØYÙK›İ]]JNÂˆ˜XÚÑ]™[
+	ØÚ]	Ë[È[Ù[ˆ[Ù[˜[YKÚÙ[œÎˆ\ØYÙKš[œ]
+È\ØYÙK›İ]]JNÂˆĞ[\
+	ØÚ]	Ë
+
+HOˆ	ĞÚ]ÛÛˆÒS‘H
+İ™X[JNˆ	È
+Èİš[™ÊY\ÜØYÙH	ÉÊKœÛXÙJŒ
+Kœ™\XÙJÖÏ—KÙË	ÉÊH
+È	È	È
+È[Ù[˜[YKÈÚ[™İÓ\ÎˆÌJNÂ‚ˆËÈÒS‘Nˆ\™[™HXÚÜÈ[Y[œØZ™H[\İX\š[È
+Y[[ÜšXH[™[˜X›JBˆÛÛœİY[UHHY[U\Ù\“ÙŠ™\KÙ\ÜÚ[Û’Y
+NÂˆYˆ
+ÛÛ›™XİY	‰ˆY[UH	‰ˆY[Q[˜X›YÙŠ™\JJHÂˆYˆ
+Y[UKœİ\ÕÚ]
+	ÜÙ\ÜÎ‰ÊJHÂˆRSY[[ÜK˜Ûİ[Øİ[Y[ÊÈ\Ù\’YˆY[UHJK[Š
+Û
+HOˆÂˆYˆ
+ÛŒ
+H™[Y[X™\ŠÈ\Ù\’YˆY[UK^ˆY\ÜØYÙHJK˜Ø]Ú
+
+
+HOˆßJNÂˆJK˜Ø]Ú
+
+
+HOˆßJNÂˆH[ÙHÂˆ™[Y[X™\ŠÈ\Ù\’YˆY[UK^ˆY\ÜØYÙHJK˜Ø]Ú
+
+
+HOˆßJNÂˆBˆB‚ˆÙ[™ÔÑJ	ÙÛ™IËÈ™\Nˆ[™\K\ØYÙNˆÈ‹‹\ØYÙKİ[ˆ\ØYÙKš[œ]
+È\ØYÙK›İ]]K[Ù[ˆ[Ù[˜[YK[ZNˆÈ\ÙYˆ[ZS›İË[Z]ˆ[ZS[Z]HJNÂˆ™\Ë™[™
+
+NÂ‚ˆHØ]Ú
+\œŠHÂˆÛÛœÛÛK™\œ›ÜŠ	Ôİ™X[H[™Ú[\œ›Ü‰Ë\œ‹›Y\ÜØYÙJNÂˆÙ[™ÔÑJ	Ù\œ›Ü‰ËÈ\œ›Üˆ	Ñ\œ›Üˆ[\››Ë‰ÈJNÂˆ™\Ë™[™
+
+NÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ 8¥£ÒTÕSPH”“Èˆpê]šXØ\È[ˆš]›È
+È]Y]Ü°ëXHHÙYİ\šYY8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ[™[™[ÈHHÛYKˆ[ÛY[H
+ÙX‹ĞTÊHÛÛœİ[HØ\KÛY]šXÜÈØYB‹ËÈHÈH]\ØH[Û[™ÈÛÛˆØİ[Y[š\ÚXš[]Tİ]HÈ[\œÙXİ[Û“ØœÙ\™\‚‹ËÈ\˜H›ÈØ\İ\ˆ˜]\°ëXKˆØ\KÜÙXİ\š]KÜØØ[ˆ]Y]HØX™XÙ\˜\ÈHİX[]ZY\‚‹ËÈÚ][È0î˜›XÛÈÛÛˆİX\™\È[KTÔÔ‘ˆH[Y[İ]‚‚˜ÛÛœİY]šXÜÓ[Z]\ˆH˜]S[Z]
+ÂˆÚ[™İÓ\ÎˆMH
+ˆLX^ˆİ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKˆY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\ÈXİ\˜\ÈHpê]šXØ\Ë‰ËÛÙNˆ	ÓQU’PÔ×ÔUWÓSRU	ÈKˆ[™\ˆ˜]S[Z][™\‹ŸJNÂ‚˜ÛÛœİØØ[“[Z]\ˆH˜]S[Z]
+ÂˆÚ[™İÓ\ÎˆŒ
+ˆLX^ˆ‹İ[™\™XY\œÎˆYKYØXŞRXY\œÎˆ˜[ÙKˆY\ÜØYÙNˆÈ\œ›Üˆ	Ñ[X\ÚXY\È]Y]Ü°ëX\Ëˆ\Ü\˜H[ˆ[ÛY[Ë‰ËÛÙNˆ	ÔĞĞS—ÔUWÓSRU	ÈKˆ[™\ˆ˜]S[Z][™\‹ŸJNÂ‚‹ËÈXİ[][YÜˆH	HÔHš]›ÈˆÛÛ\\˜H›ØÙ\ÜË˜ÜU\ØYÙJ
+H[™H]XÚ[Û™\Ë‚˜ÛÛœİØÜHHÈ\ØYÙNˆ[]ˆNÂ‚˜\™Ù]
+	ËØ\KÛY]šXÜÉËY]šXÜÓ[Z]\‹
+™\K™\ÊHOˆÂˆÛÛœİH›ØÙ\ÜËš[YK˜šYÚ[
+
+NÂˆÛÛœİ›İÈH]K››İÊ
+NÂ‚ˆÛÛœİœÜÓXˆH›ØÙ\ÜË›Y[[ÜU\ØYÙJ
+KœœÜÈÈLMÍÂˆÛÛœİİXˆHX]›X^
+KÜËİ[Y[J
+HÈLMÍŠNÂˆÛÛœİ˜[HHX]›Z[ŠLX]œ›İ[™
+
+œÜÓXˆÈİXŠH
+ˆL
+HÈL
+NÂ‚ˆ]ÜHHÂˆÛÛœİHH›ØÙ\ÜË˜ÜU\ØYÙJ
+NÂˆYˆ
+ØÜK\ØYÙJHÂˆÛÛœİHH
+K\Ù\ˆHØÜK\ØYÙK\Ù\ŠH
+È
+KœŞ\İ[HHØÜK\ØYÙKœŞ\İ[JNÂˆÛÛœİHX]›X^
+K›İÈHØÜK˜]
+NÂˆÜHHX]›Z[ŠLX]›X^
+X]œ›İ[™
+
+HÈÈL
+H
+ˆL
+HÈL
+JNÂˆBˆØÜK\ØYÙHHNÂˆØÜK˜]H›İÎÂ‚ˆÛÛœİ][˜ŞHHX]›X^
+KX]œ›İ[™
+[X™\Š›ØÙ\ÜËš[YK˜šYÚ[
+
+HH
+HÈYMJHÈL
+NÂ‚ˆ™\ËšœÛÛŠÂˆÚÎˆYKˆİ]\Îˆ	ÛÛ›[™IËˆ][˜ŞKˆÜKˆ˜[Kˆ\[YNˆX]œ›İ[™
+›ØÙ\ÜË\[YJ
+JKˆÎˆ]K››İÊ
+KˆJNÂŸJNÂ‚‹ËÈ8¥ 8¥ ]Y]Ü°ëXHHÙYİ\šYY
+[KXÛXÚÚ˜XÚÚ[™ËÕËÔÔÔÔ‘‹YİX\™
+H8¥ 8¥ ™[˜İ[ÛˆÚ\Ôš]˜]RT
+\
+HÂˆÛÛœİH
+\	ÉÊKœÜ]
+	Ë‰ÊK›X\
+[X™\ŠNÂˆYˆ
+›[™İOOH
+H™]\›ˆ˜[ÙNÂˆ™]\›ˆÌHOOHÌHOOHLÌHOOHLÈˆ
+ÌHOOHL	‰ˆÌWHH	‰ˆÌWHHLÊHˆ
+ÌHOOHMH	‰ˆÌWHOOHM
+Hˆ
+ÌHOOHMÌˆ	‰ˆÌWHHMˆ	‰ˆÌWHHÌJHˆ
+ÌHOOHNLˆ	‰ˆÌWHOOH	‰ˆ
+Ì—HOOHÌ—HOOHŠJHˆ
+ÌHOOHNLˆ	‰ˆÌWHOOHM
+Hˆ
+ÌHOOHNN	‰ˆ
+ÌWHOOHNÌWHOOHNJJHˆ
+ÌHOOHNN	‰ˆÌWHOOHLH	‰ˆÌ—HOOHL
+Hˆ
+ÌHOOHŒÈ	‰ˆÌWHOOH	‰ˆÌ—HOOHLLÊHˆÌHHŒÂŸB‚™[˜İ[ÛˆÚ\Ôš]˜]RT
+\
+HÂˆÛÛœİİÙ\ˆHİš[™Ê\
+KÓİÙ\Ø\ÙJ
+NÂˆÛÛœİHİÙ\‹›X]Ú
+Ê
+×—
+×—
+×—
+ÊIÊNÂˆYˆ
+
+H™]\›ˆÚ\Ôš]˜]RT
+ÌWJNÂˆYˆ
+İÙ\ˆOOH	Î‰ÈİÙ\ˆOOH	ÎŒIÊH™]\›ˆYNÂˆYˆ
+İÙ\‹š[˜ÛY\Ê	Î‰ÊJHÂˆÛÛœİH\œÙR[
+
+İÙ\‹œÜ]
+	Î‰ÊVÌH	Ì	ÊKœ™\XÙJÖ×ŒNXKY—KÙË	ÉÊH	Ì	ËMŠNÂˆYˆ
+
+	ˆ™L
+HOOH˜Ì
+H™]\›ˆYNÈËÈSH˜Ì‹ÍÂˆYˆ
+
+	ˆ™˜Ì
+HOOH™N
+H™]\›ˆYNÈËÈ[šË[ØØ[™N‹ÌLˆYˆ
+OOH™ŠH™]\›ˆYNÈËÈ][XØ\İ™Œ‹ÎˆBˆ™]\›ˆ˜[ÙNÂŸB‚˜\Ş[˜È[˜İ[ÛˆØ\ÜÙ\X›XÒÜİ
+Üİ
+HÂˆÛÛœİÚ][Y[İ]H™]È›ÛZ\ÙJ
+Ë™ZŠHO‚ˆÙ][Y[İ]
+
+
+HOˆ™ZŠ™]È\œ›ÜŠ	Ñ[ÛZ[š[È›È™\İY[™H
+[Y[İ]
+IÊJKL
+JNÂˆÛÛœİÛÚİ\HœËœ›ÛZ\Ù\Ë›ÛÚİ\
+ÜİÈ[ˆYHJK[Š
+YœÊHOˆÂˆYˆ
+XYœÈXYœË›[™İ
+H›İÈ™]È\œ›ÜŠ	Ñ[ÛZ[š[È›È™\İY[™IÊNÂˆÛÛœİ˜YHYœË™š[™
+
+JHOˆÚ\Ôš]˜]RT
+K˜Y™\ÜÊJNÂˆYˆ
+˜Y
+H›İÈ™]È\œ›ÜŠ	ĞXØÙ\ÛÈH™Y[\›˜H›Ü]YXYÈ
+	È
+È˜Y˜Y™\ÜÈ
+È	ÊIÊNÂˆ™]\›ˆYœÎÂˆJNÂˆ]ØZ]›ÛZ\ÙKœ˜XÙJÛÛÚİ\Ú][Y[İ]JNÂŸB‚™[˜İ[ÛˆÜ›Ø™UT“
+˜]ÕT“X^™Y\™XİÈHK[Y[İ]\ÈHL
+HÂˆ™]\›ˆ™]È›ÛZ\ÙJ
+™\ÛÛ™K™Z™Xİ
+HOˆÂˆÛÛœİÙY[ˆH™]ÈÙ]
+Ü˜]ÕT“JNÂ‚ˆÛÛœİÔ›Ø™HH
+KÜÊHOˆÂˆ]\œÙYÂˆHÈ\œÙYH™]ÈT“
+JNÈHØ]Ú
+JHÈ™]\›ˆ™Z™Xİ
+™]È\œ›ÜŠ	ÕT“[°è[YIÊJNÈBˆÛÛœİ[ÙH\œÙYœ›İØÛÛOOH	Ú‰ÈÈ™\]Z\™J	Ú	ÊHˆ™\]Z\™J	ÚÉÊNÂˆÛÛœİİ\YH]K››İÊ
+NÂˆÛÛœİ™\HH[Ùœ™\]Y\İ
+\œÙYÂˆY]Ùˆ	ÑÑU	ËˆXY\œÎˆÂˆ	Õ\Ù\‹PYÙ[	Îˆ	Ó[Şš[KÍKŒ
+ÛÙRXˆÙXİ\š]H]Y]È
+ÚÎ‹ËİÚ[ÛÛŒÍŒ[XœË™\˜Ù[˜\
+IËˆXØÙ\ˆ	Ê‹Ê‰Ëˆ	ĞXØÙ\Q[˜ÛÙ[™ÉÎˆ	ÚY[]IËˆKˆ[Y[İ]ˆ[Y[İ]\ËˆK
+™\ÊHOˆÂˆÛÛœİØÈH™\ËšXY\œË›ØØ][ÛˆÈ™]ÈT“
+™\ËšXY\œË›ØØ][Û‹\œÙY
+KÔİš[™Ê
+Hˆ[ÂˆYˆ
+™\Ëœİ]\ĞÛÙHHÌ	‰ˆ™\Ëœİ]\ĞÛÙH	‰ˆØÈ	‰ˆÜÈˆ
+HÂˆ™\Ëœ™\İ[YJ
+NÂˆYˆ
+ÙY[‹š\ÊØÊJH™]\›ˆ™Z™Xİ
+™]È\œ›ÜŠ	ĞXÛHH™Y\™XØÚ[Û™\ÉÊJNÂˆÙY[‹˜Y
+ØÊNÂˆ™]\›ˆÔ›Ø™JØËÜÈHJNÂˆBˆ™\ÛÛ™JÂˆ\›ˆKˆİ]\Îˆ™\Ëœİ]\ĞÛÙHˆXY\œÎˆ™\ËšXY\œÈßKˆš[˜[ØÚ[YNˆ\œÙYœ›İØÛÛˆ][˜ŞNˆ]K››İÊ
+HHİ\YˆJNÂˆ™\Ëœ™\İ[YJ
+NÂˆJNÂˆÛÛœİ[Y\ˆHÙ][Y[İ]
+
+
+HOˆ™\K™\İ›ŞJ™]È\œ›ÜŠ	İ[Y[İ]	ÊJK[Y[İ]\ÊNÂˆ™\K›ÛŠ	İ[Y[İ]	Ë
+
+HOˆ™\K™\İ›ŞJ™]È\œ›ÜŠ	İ[Y[İ]	ÊJJNÂˆ™\K›ÛŠ	Ù\œ›Ü‰Ë
+JHOˆÈÛX\•[Y[İ]
+[Y\ŠNÈ™Z™Xİ
+JNÈJNÂˆ™\K›ÛŠ	ØÛÜÙIË
+
+HOˆÛX\•[Y[İ]
+[Y\ŠJNÂˆ™\K™[™
+
+NÂˆNÂ‚ˆÔ›Ø™J˜]ÕT“X^™Y\™XİÊNÂˆJNÂŸB‚™[˜İ[ÛˆØ]Y]
+™\Ü
+HÂˆÛÛœİH™\ÜšXY\œÈßNÂˆÛÛœİHßNÂˆØš™XİšÙ^\Ê
+K™›Ü‘XXÚ
+
+ÊHOˆÈÚËÓİÙ\Ø\ÙJ
+WHHÚ×NÈJNÂˆÛÛœİÙ]H
+ŠHOˆ
+\œ˜^Kš\Ğ\œ˜^JÛ—JHÈÛ—Kš›Ú[Š	Ë	ÊHˆÛ—JH	ÉÎÂ‚ˆÛÛœİÚXÚÜÈH×NÂˆÛÛœİ[œÈH×NÂˆÛÛœİYH
+˜[YK\ÜËØÛÜ™K\
+HOˆ
+È˜[YK\ÜËØÛÜ™K\JNÂ‚ˆÛÛœİÈH™\Ü™š[˜[ØÚ[YHOOH	ÚÎ‰ÎÂ‚ˆÚXÚÜËœ\Ú
+Y
+	ĞÛÛ™^pìÛˆÚYœ˜YH
+ÊIËËK	Û™]ÛÜšÉÊJNÂˆYˆ
+ZÊH[œËœ\Ú
+ÈÙ]™\š]Nˆ	ĞÔ’UPÓÉË]Nˆ	ĞÛÛ™^pìÛˆÚ[ˆÚYœ˜\ˆ
+
+IË]Z[ˆ	ÓÜÈ]ÜÈšXZ˜[ˆ[ˆ^È[›ÈHYY[ˆÙ\ˆ[\˜Ù\YÜË‰Ë[ˆ	ĞXİ]˜H[ˆÙ\YšXØYÈÈH™Y\šYÙHÙÈ[°èYšXÛÈHË‰ÈJNÂ‚ˆÛÛœİİÈHÙ]
+	ÜİšXİ]˜[œÜÜ\ÙXİ\š]IÊNÂˆÛÛœİİÓÚÈHÈ	‰ˆÛX^XYÙOW
+ËË\İ
+İÊNÂˆÚXÚÜËœ\Ú
+Y
+	ÔİšXİU˜[œÜÜTÙXİ\š]H
+ÕÊIËİÓÚËİÓÚÈÈMHˆ	ÜÙXİ\š]IÊJNÂˆYˆ
+È	‰ˆZİÓÚÊH[œËœ\Ú
+ÂˆÙ]™\š]NˆİÈÈ	ĞSÉÈˆ	ÓQQSÉËˆ]NˆİÈÈ	ÒÕÈX[ÛÛ™šYİ\˜YÉÈˆ	Ñ˜[HÕÉËˆ]Z[ˆİÈÈ
+	Ô™\Ù[H\›ÈÚ[ˆX^XYÙH°è[YÎˆ	È
+ÈİÊHˆ	Ó›ÈÙH[°ëXHİšXİU˜[œÜÜTÙXİ\š]K‰Ëˆ[ˆ	Ñ[°ëXHİšXİU˜[œÜÜTÙXİ\š]NˆX^XYÙOLÌMLÍŒÈ[˜ÛYTİX‘ÛXZ[œË‰ËˆJNÂ‚ˆÛÛœİÜÜHÙ]
+	ØÛÛ[\ÙXİ\š]K\ÛXŞIÊNÂˆÛÛœİÜÜÚÈHHXÜÜÂˆÚXÚÜËœ\Ú
+Y
+	ĞÛÛ[TÙXİ\š]KTÛXŞH
+ÔÔ
+IËÜÜÚËÜÜÚÈÈMHˆ	ÜÙXİ\š]IÊJNÂˆYˆ
+XÜÜÚÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ÓQQSÉË]Nˆ	Ñ˜[HÛÛ[TÙXİ\š]KTÛXŞIËˆ]Z[ˆ	ÔÚ[ˆÔÔ[ˆÔÈYYHØ\™Ø\ˆØÜš\È^\››ÜÈÚ[ˆ0ë[Z]K‰Ëˆ[ˆ‘Yš[™H[˜HÔÔ™\İšXİ]˜H
+ÜˆZ™[\ÈY˜][\Ü˜È	ÜÙ[‰ÊKˆ‹ˆJNÂˆ[ÙHYˆ
+İ[œØY™KZ[›[™_[œØY™KY]˜[Ë\İ
+ÜÜ
+JH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ÓQQSÉË]Nˆ	ĞÔÔÛÛˆ[œØY™KZ[›[™Kİ[œØY™KY]˜[	Ëˆ]Z[ˆ	Ô™YXÙH[™[™YšXÚ[ÈHHÔÔ\›Z]Y[™ÈZ™XİXÚpìÛ‹İ0êXÛšXØ\È[œÙYİ\˜\Ë‰Ëˆ[ˆ‘[[Z[˜H	İ[œØY™KZ[›[™IËÉİ[œØY™KY]˜[	ÈÈ\ØH›Û˜Ù\ËÚ\Ú\Ëˆ‹ˆJNÂ‚ˆÛÛœİ›ÜÛšY™ˆHÙ]
+	ŞXÛÛ[]\K[Ü[ÛœÉÊNÂˆÛÛœİ›ÜÛšY™“ÚÈHÛ›ÜÛšY™‹ÚK\İ
+›ÜÛšY™ŠNÂˆÚXÚÜËœ\Ú
+Y
+	ÖPÛÛ[U\KSÜ[ÛœÎˆ›ÜÛšY™‰Ë›ÜÛšY™“ÚË›ÜÛšY™“ÚÈÈLˆ	ÜÙXİ\š]IÊJNÂˆYˆ
+[›ÜÛšY™“ÚÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ÓQQSÉË]Nˆ	ÔÛšY™š[™ÈHRSQHXš[]YÉËˆ]Z[ˆ	Ñ[˜]™YØYÜˆYYH[™™\š\ˆX[[\ÈH[ˆ™Xİ\œÛÈHZ™Xİ]\ˆÛÛ[šYÈ›È\Ü\˜YË‰Ëˆ[ˆ	Ñ[°ëXHPÛÛ[U\KSÜ[ÛœÎˆ›ÜÛšY™‹‰ËˆJNÂ‚ˆÛÛœİ›ÈHÙ]
+	ŞYœ˜[YK[Ü[ÛœÉÊNÂˆÛÛœİ›ÓÚÈHÙ[_Ø[Y[ÜšYÚ[‹ÚK\İ
+›ÊNÂˆÚXÚÜËœ\Ú
+Y
+	ÖQœ˜[YKSÜ[ÛœÈ
+[KXÛXÚÚ˜XÚÚ[™ÊIË›ÓÚË›ÓÚÈÈLˆ	ÜÙXİ\š]IÊJNÂˆYˆ
+^›ÓÚÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ĞSÉË]Nˆ	ĞÛXÚÚ˜XÚÚ[™ÈÜÚX›IËˆ]Z[ˆ	ÔÚ[ˆ›İXØÚpìÛˆHœ˜[Z[™ËHÙXˆYYH[˜Ü\İ\œÙH[ˆ[ˆYœ˜[YHX[XÚ[ÜÛË‰Ëˆ[ˆ‘[°ëXHQœ˜[YKSÜ[ÛœÎˆĞSQSÔ’QÒSˆÈœ˜[YKX[˜Ù\İÜœÈ	ÜÙ[‰È[ˆHÔÔˆ‹ˆJNÂ‚ˆÛÛœİœHÙ]
+	Ü™Y™\œ™\‹\ÛXŞIÊNÂˆÛÛœİœÚÈHH\œÂˆÚXÚÜËœ\Ú
+Y
+	Ô™Y™\œ™\‹TÛXŞIËœÚËœÚÈÈLˆ	Üš]˜XŞIÊJNÂˆYˆ
+\œÚÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ĞR“ÉË]Nˆ	Ñ˜[H™Y™\œ™\‹TÛXŞIËˆ]Z[ˆ	ÔYY\Èš[˜\ˆHT“ÛÛ\]H
+ÛÛˆÚÙ[œÊHHÛZ[š[ÜÈ^\››ÜË‰Ëˆ[ˆ	Ñ[°ëXH™Y™\œ™\‹TÛXŞNˆİšXİ[ÜšYÚ[‹]Ú[‹XÜ›ÜÜË[ÜšYÚ[‹‰ËˆJNÂ‚ˆÛÛœİHÙ]
+	Ü\›Z\ÜÚ[ÛœË\ÛXŞIÊNÂˆÛÛœİÚÈHH\ÂˆÚXÚÜËœ\Ú
+Y
+	Ô\›Z\ÜÚ[ÛœËTÛXŞIËÚËÚÈÈLˆ	Üš]˜XŞIÊJNÂˆYˆ
+\ÚÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ĞR“ÉË]Nˆ	Ñ˜[H\›Z\ÜÚ[ÛœËTÛXŞIËˆ]Z[ˆ	Ñ[ÛÛ[šYÈ›Ü[ÈYYHY\ˆğè[X\˜KZXÜ°ìÙ›Û›ÈÈÙ[ÛØØ[^˜XÚpìÛˆÚ[ˆ™\İšXØÚpìÛ‹‰Ëˆ[ˆ	Ñ[°ëXH\›Z\ÜÚ[ÛœËTÛXŞH[Z][™ÈÜÈ\›Z\ÛÜÈÙ[œÚX›\Ë‰ËˆJNÂ‚ˆÛÛœİØÈHÉÜÙ]XÛÛÚÚYI×NÂˆÛÛœİÙ]ÛÛÚÚY\ÈH\œ˜^Kš\Ğ\œ˜^JØÊHÈØÈˆ
+ØÈÈÜØ×Hˆ×JNÂˆÛÛœİ[œÙXİ\™PÛÛÚÚY\ÈHÈ	‰ˆÙ]ÛÛÚÚY\ËœÛÛYJ
+ÊHOˆKÎ×ÊœÙXİ\™KÚK\İ
+ÊJNÂˆÚXÚÜËœ\Ú
+Y
+	ĞÛÛÚÚY\ÈÛÛˆ›YÈÙXİ\™IËZ[œÙXİ\™PÛÛÚÚY\Ë[œÙXİ\™PÛÛÚÚY\ÈÈˆK	Üš]˜XŞIÊJNÂˆYˆ
+[œÙXİ\™PÛÛÚÚY\ÊH[œËœ\Ú
+ÂˆÙ]™\š]Nˆ	ÓQQSÉË]Nˆ	ĞÛÛÚÚY\ÈÚ[ˆ›YÈÙXİ\™IËˆ]Z[ˆ	Ó\ÈÛÛÚÚY\ÈYY[ˆšXZ˜\ˆÜˆHÙ\ˆ›Ø˜Y\È[ˆ°è[œÚ]Ë‰Ëˆ[ˆ	ÓX\˜ØHÙXİ\™HHØ[YTÚ]H[ˆÙ\È\ÈÛÛÚÚY\Ë‰ËˆJNÂ‚ˆÛÛœİØÛÜ™HHÚXÚÜËœ™YXÙJ
+ËÊHOˆÈ
+ÈËœØÛÜ™K
+NÂˆÛÛœİ˜[šÈHÉĞÔ’UPÓÉË	ĞSÉË	ÓQQSÉË	ĞR“É×NÂˆ[œËœÛÜ
+
+KŠHOˆ˜[šËš[™^ÙŠKœÙ]™\š]JHH˜[šËš[™^ÙŠ‹œÙ]™\š]JJNÂ‚ˆ™]\›ˆÂˆØÛÜ™Kˆš\ÚÎˆØÛÜ™HHÈ	ÑVÑSS•IÈˆØÛÜ™HHLÈ	ÓSÑTQÉÈˆ	ÔSQÔ“ÔÓÉËˆÚXÚÜËˆ[™\˜Xš[]Y\×Ù›İ[™ˆ[œËˆNÂŸB‚˜\™Ù]
+	ËØ\KÜÙXİ\š]KÜØØ[‰ËØØ[“[Z]\‹\Ş[˜È
+™\K™\ÊHOˆÂˆHÂˆ]˜]ÈHİš[™Ê™\Kœ]Y\K\›	ÉÊKš[J
+NÂˆYˆ
+\˜]ÊH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ˜[H[\°è[Y]›Èİ\›K‹‹‰ÈJNÂˆYˆ
+K×šÏÎ—×ËÚK\İ
+˜]ÊJH˜]ÈH	ÚÎ‹ËÉÈ
+È˜]ÎÂ‚ˆ]\œÙYÂˆHÈ\œÙYH™]ÈT“
+˜]ÊNÈHØ]Ú
+JHÈ™]\›ˆ™\Ëœİ]\ÊŒŠKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ÕT“[°è[YK‰ÈJNÈBˆYˆ
+K×šÏÎ‰Ë\İ
+\œÙYœ›İØÛÛ
+JH™]\›ˆ™\Ëœİ]\ÊŒŠKšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	ÔÛÛÈÙH]Y][ˆT“ÈÚË‰ÈJNÂ‚ˆHÈ]ØZ]Ø\ÜÙ\X›XÒÜİ
+\œÙYšÜİ˜[YJNÈBˆØ]Ú
+JHÈ™]\›ˆ™\Ëœİ]\ÊŒŠKšœÛÛŠÈÚÎˆ˜[ÙK\œ›ÜˆK›Y\ÜØYÙHJNÈB‚ˆÛÛœİš[˜[H]ØZ]Ü›Ø™UT“
+\œÙYÔİš[™Ê
+JNÂˆÛÛœİ]Y]HØ]Y]
+š[˜[
+NÂ‚ˆ™\ËšœÛÛŠÂˆÚÎˆYKˆ\›ˆ\œÙYÔİš[™Ê
+Kˆš[˜[\›ˆš[˜[\›ˆİ]\Îˆš[˜[œİ]\Ëˆ][˜ŞNˆš[˜[›][˜ŞKˆ‹‹˜]Y]ˆØØ[›™Y]ˆ™]È]J
+KÒTÓÔİš[™Ê
+KˆJNÂˆHØ]Ú
+\œŠHÂˆÛÛœİ[Y[İ]H\œˆ	‰ˆİ[Y[İ]ÚK\İ
+İš[™Ê\œ‹›Y\ÜØYÙJJNÂˆ™\Ëœİ]\ÊLŠKšœÛÛŠÂˆÚÎˆ˜[ÙKˆ\œ›Üˆ[Y[İ]ˆÈ	Ó›ÈÙHYÈ[Ø[˜\ˆ[Ú][È
+[Y[İ]
+KˆYX˜HÛÛˆİ˜HT“‰Âˆˆ
+\œˆ	‰ˆ\œ‹›Y\ÜØYÙJH	Ó›ÈÙHYÈÛÛ\]\ˆH]Y]Ü°ëXK‰ËˆJNÂˆBŸJNÂ‚‹ËÈ8¥ 8¥ “ÕHSQÔSH
+YZ[š\İ˜XÚpìÛˆÜˆÚ]
+H8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ ‹ËÈ™XÙ\Üˆ[ÙXšÛÚÈH[YÜ˜[NˆØ\Kİ[YÜ˜[KİÙXšÛÚËˆÙH[ÛHS•TÂ‹ËÈ[ÍLÛØ˜[\È
+ÚH›Ë]YY\°ëXH[˜[Ø[˜X›JKˆH0ìÙÚXØHš]™H[‚‹ËÈ˜XÚÙ[™İ[YÜ˜[KX›İšœÎÈ\]pëHÛÛÈÙHH[YXİHÈ]YHXH^\İN‚‹ËÈHš\›XHHÙ\Ú[Û™\ÈYZ[‹Ğ[\HÙĞYZ[‹‚‹ËÈ˜\šXX›\ÈY]˜\È[ˆ™[™\ˆSQÔSWÕÑP’ÓÒ×ÔÑPÔ‘U
+Ø›YØ]ÜšXJHB‹ËÈ×Ğ“ÕÑSP“Q
+Ú[\İÚ]ÚY˜][YJKˆSQÔSWĞ“ÕÕÒÑSˆB‹ËÈSQÔSWĞÒUÒQXHÙH\ØX˜[ˆ\˜H[™\İ[Y[ˆX\š[Ë‚HÂˆ™\]Z\™J	Ë‹İ[YÜ˜[KX›İ	ÊKš[š]
+Âˆ\ˆÚYÛ”Ù\ÜÚ[ÛˆÜÚYÛ”Ù\ÜÚ[Û‹ˆĞ[\ˆÙĞYZ[‹ˆÜˆÔ•ˆ˜XÚÙ[™\›ˆ›ØÙ\ÜË™[‹PÒÑS‘ÕT“
+	Ú‹ËÌLËŒŒŒN‰È
+ÈÔ•
+KˆYZ[’Ù^Nˆ›ØÙ\ÜË™[‹QRS—ÒÑVKˆJNÂŸHØ]Ú
+JHÂˆÛÛœÛÛK™\œ›ÜŠ	ø¦¨;î#È[YÜ˜[KX›İ›ÈÙHYÈ[Û\‰ËK›Y\ÜØYÙJNÂŸB‚‹ËÈ8¥ 8¥ 
+È\œ›Üˆ[™\ˆÛØ˜[\È
+X™[ˆ\ˆS’SS˜\ÈÙ\È\È]\ÊH8¥ 8¥ ˜\\ÙJ
+™\K™\ÊHOˆÂˆËÈÔSÓ”ÈÚ[ˆÓÔ”È
+›Ø™\Ë™Y›YÚH]\ÈÚ[ˆ[™\ˆ›Ü[ÊNˆ[ˆ™^‚ˆËÈH
+È[\K™\ÜÛ™\ˆŒÛÛˆØX™XÙ\˜\ÈÓÔ”ÈÙ[°ê\šXØ\Ëˆ[›Z›ÂˆËÈ™X[H™Y›YÚ[˜]™YØYÜˆXHÈİXœ™H\\ÙJÛÜœÊH\œšX˜NÈ\İÂˆËÈÛÛÈ]š]HZYÈH\ØØ[™[ÜËÜØÜš\ÈH˜[ÛÜÈ[ˆ]\È[\›˜\Ë‚ˆYˆ
+™\K›Y]ÙOOH	ÓÔSÓ”ÉÊHÂˆ™\ËœÙ]
+	ĞXØÙ\ÜËPÛÛ›ÛP[İËSÜšYÚ[‰Ë	Ê‰ÊNÂˆ™\ËœÙ]
+	ĞXØÙ\ÜËPÛÛ›ÛP[İËSY]ÙÉË	ÑÑUÔÕUÒSUKÔSÓ”ÉÊNÂˆ™\ËœÙ]
+	ĞXØÙ\ÜËPÛÛ›ÛP[İËRXY\œÉË	ĞÛÛ[U\KXYZ[‹ZÙ^KXYZ[‹]\Ù\‹XYZ[‹\Ù\ÜÚ[Û‹XØÙ\]]Üš^˜][Û‰ÊNÂˆ™]\›ˆ™\Ëœİ]\ÊŒ
+K™[™
+
+NÂˆBˆYˆ
+™\Kœ]OOH	ËØ\KÚX[ÚÙ^\ÉÊHÂˆËÈ][HHÙ^\ÈÛÛÈ\˜HYZ[È\˜H[™\İÈÙHÛÛ\ÜHÛÛ[È‚ˆYˆ
+]Ú[R\ĞYZ[Š™\JJH™]\›ˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ô]H›È[˜ÛÛ˜YIËÛÙNˆ	Ó“ÕÑ“ÕS‘	ÈJNÂˆ™]\›ˆ™\ËšœÛÛŠÂˆ]]Ù[š[˜ÙNˆHJ›ØÙ\ÜË™[‹UUÑS’SÑWĞTWÒÑVJKˆÜ›ÜNˆHJ›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑVJKˆÙ[Z[šNˆHJ›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑVJKˆÛ]YNˆHJ›ØÙ\ÜË™[‹S•“ÔP×ĞTWÒÑVJKˆÛÚ\™NˆHJ›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑVJKˆJNÂˆBˆËÈ[ˆ[ˆØ\KÊˆØ\ÚHÚY[\™H\ÈÙpìX[H[ˆYÈ™X[
+]HX[ˆËÈÜ™[˜YK\Ë[™Ú[›Üœ˜YÈÚ[ˆXİX[^˜\ˆ[œ›Û[™
+H8 %BˆËÈY™\™[˜ÚXHHÈY\˜HHØ\KÈ]YHİY[[ˆÙ\ˆ›İÈ\ØØ[™X[™ÂˆËÈ]\È[^˜\‹ˆĞ[\XHY\XØHÜˆ][›ÈH[˜H™[[˜BˆËÈHY[\Ë\ğëH]YH[ˆ›İ[œÚ\İ[H›ÈXÙHÜ[H[ˆ[YÜ˜[K‚ˆYˆ
+™\Kœ]œİ\ÕÚ]
+	ËØ\KÉÊJHÂˆÛÛœİ\HÛY[\
+™\JNÂˆĞ[\
+	Í‰È
+È™\Kœ]ˆO‚ˆ<'ålûî#È[ˆ]H[\›˜OØ—ÛÙO‰Ü™\K›Y]ÙH	Ù\ØÒ[
+™\Kœ]
+_OØÛÙO—’TˆÛÙO‰Ú\OØÛÙO—“Øİ\œ™[˜ÚX\Îˆ	ÛŸW—˜
+ÂˆÚH\İH]HH\ØH[œ›Û[™Ø\™]š\ØH[Ü™[ˆHYš[šXÚpìÛˆ[ˆÙ\™\‹šœÈ8 %[˜H]HXÛ\˜YH\Üpê\ÈH\İHØ]ÚX[]YYH[˜[Ø[˜X›K˜ˆÈÚ[™İÓ\ÎˆÌJNÂˆBˆ™\Ëœİ]\Ê
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ô]H›È[˜ÛÛ˜YIËÛÙNˆ	Ó“ÕÑ“ÕS‘	ÈJNÂŸJNÂ‚‹ËÈ\Û[Y\ØX›K[™^[[™H›Ë][\ÙY]˜\œÂ˜\\ÙJ
+\œ‹™\K™\Ë™^
+HOˆÂˆÛÛœÛÛK™\œ›ÜŠ	ü'å-\œ›ÜˆZY]Ø\™N‰Ë\œ‹œİXÚÈ\œ‹›Y\ÜØYÙJNÂˆĞ[\
+	Ù^™\Ü×Ù\œ›Ü‰Ë
+
+HOˆ	ü'å-\œ›Üˆ^™\ÜÈ[ˆ	È
+È™\K›Y]Ù
+È	È	È
+È™\K›ÜšYÚ[˜[\›
+È	Î—‰È
+Èİš[™Ê\œ‹›Y\ÜØYÙJKœÛXÙJÌ
+KÈÚ[™İÓ\ÎˆÌJNÂˆYˆ
+™\ËšXY\œÔÙ[
+H™]\›Âˆ™\Ëœİ]\Ê\œ‹œİ]\ÈL
+KšœÛÛŠÈÚÎˆ˜[ÙK\œ›Üˆ	Ñ\œ›Üˆ[\››È[Ù\šYÜ‰ËÛÙNˆ	ÒS•T“SÑT”“Ô‰ÈJNÂŸJNÂ‚‹ËÈ8¥ 8¥ T”SĞTˆ8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ 8¥ Š\Ş[˜È
+
+HOˆÂˆ]ØZ][š]™Y\Ê
+NÂˆÛÛ›™XİYH]ØZ]ÛÛ›™XİŠ
+NÂˆYˆ
+İ\X˜\ÙJHÛÛœÛÛK›ÙÊ	ø§!Hİ\X˜\ÙHİÜ˜YÙH\İÈ8 %XÚÙ]‰ËÕÔQÑWĞ•PÒÑU
+NÂˆ]ØZ][œİ\™T\ÚX›J
+NÂˆ]ØZ][œİ\™QÓUX›J
+NÂˆ]ØZ][œİ\™Tİ]ÕX›\Ê
+NÂ‚ˆËÈ[\Y^˜H\špìÙXØHHš\Ú]Ü—ÛÙÜÈ
+ØYH
+Nˆ›Üœ˜H™YÚ\İ›ÜÈBˆËÈpè\ÈHÈ0ëX\È\˜H]YHHX›H›ÈÜ™^˜ØHÚ[ˆ0ë[Z]HH[\İYÈ[ˆËÈYZ[‹ZXˆÙHX[[™ØH°è\YËˆX[Y[™HÜÈ0î›[[ÜÈÈ0ëX\È
+0î[\˜BˆËÈ]Xİ\ˆ]›Û™\ÈHš\Ú]H™XÚY[\ÊK‚ˆÙ][\˜[
+\Ş[˜È
+
+HOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ÂˆHÂˆÛÛœİİ]Ù™ˆH™]È]J]K››İÊ
+HHÈ
+ˆ
+ˆŒ
+ˆŒ
+ˆL
+KÒTÓÔİš[™Ê
+NÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	İš\Ú]Ü—ÛÙÜÉÊK™[]J
+K›
+	İš\Ú]YØ]	Ëİ]Ù™ŠNÂˆYˆ
+\œ›ÜŠHÛÛœÛÛKØ\›Š	ø¦¨;î#Èš\Ú]Ü—ÛÙÜÈÛX[\\œ›Ü‰Ë\œ›Ü‹›Y\ÜØYÙJNÂˆ[ÙHÛÛœÛÛK›ÙÊ	ü'éîHš\Ú]Ü—ÛÙÜÎˆ™YÚ\İ›ÜÈŒÈ0ëX\È[[Z[˜YÜÉÊNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ø¦¨;î#Èš\Ú]Ü—ÛÙÜÈÛX[\\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆK
+ˆŒ
+ˆŒ
+ˆL
+NÂˆËÈš[Y\˜H[\Y^˜HHZ[ˆ\Üpê\È[\œ˜[œ]YH
+›È›Ü]YX\ˆ[›Ûİ
+K‚ˆÙ][Y[İ]
+\Ş[˜È
+
+HOˆÂˆYˆ
+\İ\X˜\ÙJH™]\›ÂˆHÂˆÛÛœİİ]Ù™ˆH™]È]J]K››İÊ
+HHÈ
+ˆ
+ˆŒ
+ˆŒ
+ˆL
+KÒTÓÔİš[™Ê
+NÂˆÛÛœİÈ\œ›ÜˆHH]ØZ]İ\X˜\ÙK™œ›ÛJ	İš\Ú]Ü—ÛÙÜÉÊK™[]J
+K›
+	İš\Ú]YØ]	Ëİ]Ù™ŠNÂˆYˆ
+\œ›ÜŠHÛÛœÛÛKØ\›Š	ø¦¨;î#Èš\Ú]Ü—ÛÙÜÈÛX[\\œ›Ü‰Ë\œ›Ü‹›Y\ÜØYÙJNÂˆ[ÙHÛÛœÛÛK›ÙÊ	ü'éîHš\Ú]Ü—ÛÙÜÎˆ[\Y^˜H[šXÚX[ŒÈ0ëX\ÉÊNÂˆHØ]Ú
+JHÈÛÛœÛÛKØ\›Š	ø¦¨;î#Èš\Ú]Ü—ÛÙÜÈÛX[\\œ›Ü‰ËK›Y\ÜØYÙJNÈBˆKH
+ˆŒ
+ˆL
+NÂˆ]ØZ][œİ\™PÛÛ[][š]UX›\Êİ\X˜\ÙKÜ]Ü[İ][Y[ÊNÂˆ]ØZ][œİ\™U\Ù\‘]UX›\Êİ\X˜\ÙKÜ]Ü[İ][Y[ÊNÂ‚ˆÙ\™\‹›\İ[ŠÔ•
+
+HOˆÂˆÛÛœÛÛK›ÙÊ<'æ ÛÙRXˆ˜XÚÙ[™ŒËŒ[ˆY\È	ÔÔ•X
+NÂˆÛÛœÛÛK›ÙÊ[Û™ÛÑˆ	ÙÛÛ›™XİYÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™^pìÛ‰ßX
+NÂˆÛÛœÛÛK›ÙÊ™Y\Îˆ	Ü™Y\ÈÈ	ø§!IÈˆ	ø¦¨;î#È\Ø[™ÈY[[ÜšXIßX
+NÂˆÛÛœÛÛK›ÙÊÙX”ÛØÚÙ]Îˆ8§!HİÜØ
+NÂˆÛÛœÛÛK›ÙÊÓNˆ	Ù˜ÛQ[˜X›YÈ	ø§!H\Ú˜]]›È[™›ÚY	Èˆ	ø¦¨;î#ÈÛÛÈÙX‹\\Ú	ßX
+NÂˆÛÛœÛÛK›ÙÊÜ›ÜNˆ	Ü›ØÙ\ÜË™[‹‘Ô“ÔWĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊÙ\™Xœ˜\Îˆ	Ü›ØÙ\ÜË™[‹ÑT‘P”T×ĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊYÙÚ[™Ñ˜XÙN‰Ü›ØÙ\ÜË™[‹’QÑÒS‘ÑPÑWĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊ	ÈÜ[”›İ]\ˆ	È
+È
+›ØÙ\ÜË™[‹“ÔS”“ÕUT—ĞTWÒÑVHÈ	ø§!H
+	È
+ÈÔ—Ñ”‘QWÓSÑSË›[™İ
+È	È[Ù[ÜÈÜ˜]\ÊIÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ÊJNÂˆÛÛœÛÛK›ÙÊÙ[Z[šNˆ	Ü›ØÙ\ÜË™[‹‘ÑSRS’WĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊZ\İ˜[ˆ	Ü›ØÙ\ÜË™[‹“RTÕSĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊÛÚ\™Nˆ	Ü›ØÙ\ÜË™[‹ÓÒT‘WĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊİÜ˜YÙNˆ	Üİ\X˜\ÙHÈ	ø§!Hİ\X˜\ÙIÈˆ	ø§c˜[HÕTPTÑWÕT“ÒÑVIßX
+NÂˆÛÛœÛÛK›ÙÊ	È[\\ÎˆÏÈÛX\[\ÈØYHMHZ[ˆ
+ÛÛ™šYÈšXHØ[\\ÊIÊNÂˆÙ][Y[İ]
+
+
+HOˆÈHÈ[[\ÚXÚÜÊ
+NÈÙ][\˜[
+[[\ÚXÚÜËMH
+ˆŒ
+ˆL
+NÈHØ]Ú
+JHßHKŒ
+NÂˆÛÛœÛÛK›ÙÊÙÙ]\ˆ	Ü›ØÙ\ÜË™[‹•ÑÑUT—ĞTWÒÑVHÈ	ø§!IÈˆ	ø¦¨;î#ÈÚ[ˆÛÛ™šYİ\˜\‰ßX
+NÂˆÛÛœÛÛK›ÙÊ\ÚÛ[XNˆ8§!HTQ
+ÈØÚY[\ˆØYHÌZ[ˆ
+ÛÛÈ]š\ØHÚHØ[XšXH[Û[XJX
+NÂˆÛÛœÛÛK›ÙÊ[Ûš]Üˆ™[X\Ù\Îˆ8§!H]]ÈØYH	ÓX]œ›İ[™
+UU×ÕTUWÓTÈÈÍŒ
+_Z
+\ÈÜ[ˆÛİ\˜ÙJX
+NÂˆJNÂŸJJ
+NÂ‚‹ËÈ8¥ 8¥ ‘S‘TˆÑQTSU‘H8 %ÙHYÜ™YØH\Üpê\È[Ù\™\‹›\İ[ˆ8¥ 8¥ 8¥ 8¥ ‹ËÈ™[™\ˆœ™YHY\ˆ\YØH[Ù\šXÚ[È˜\ÈŒMHZ[ˆH[˜Xİ]šYY‚‹ËÈÙ[‹\[™ÈØYHLZ[ˆX[Y[™H[›ØÙ\ÛÈš]›ÈÚ[ˆÙ\šXÚ[È^\››Ë‚‹ËÈ™\]ZY\™Nˆ‘S‘T—ÑVT“SÕT“[ˆ\È˜\šXX›\ÈH[Ü››ÈH™[™\‹‚‚™[˜İ[Ûˆİ\™[™\’ÙY\[]™J
+HÂˆÛÛœİÑS—ÕT“H›ØÙ\ÜË™[‹”‘S‘T—ÑVT“SÕT“[ÂˆYˆ
+TÑS—ÕT“
+HÂˆÛÛœÛÛK›ÙÊ	ÈÙY\[]™Nˆ8¦¨;î#ÈYÜ™YØH‘S‘T—ÑVT“SÕT“[ˆ™[™\ˆˆ[š\›Û›Y[	ÊNÂˆ™]\›ÂˆBˆÛÛœİ\™Ù]HÑS—ÕT“œ™\XÙJ×ÉË	ÉÊH
+È	ËØ\KÚX[	ÎÂˆÛÛœİXˆH\™Ù]œİ\ÕÚ]
+	ÚÉÊHÈ™\]Z\™J	ÚÉÊHˆ™\]Z\™J	Ú	ÊNÂˆÙ][\˜[
+
+
+HOˆÂˆX‹™Ù]
+\™Ù]
+™\ÊHOˆÂˆÛÛœÛÛK›ÙÊ	ü'å%™[™\ˆÙY\[]™H[™È8¡¤‰Ë™\Ëœİ]\ĞÛÙJNÂˆJK›ÛŠ	Ù\œ›Ü‰Ë
+JHOˆÛÛœÛÛKØ\›Š	ø¦¨;î#ÈÙY\[]™H\œ›Ü‰ËK›Y\ÜØYÙJJNÂˆKL
+ˆŒ
+ˆL
+NÂˆÛÛœÛÛK›ÙÊ	ÈÙY\[]™Nˆ8§!HÙ[‹\[™ÈXİ]›È8¡¤ˆ	È
+È\™Ù]
+È	È
+ØYHLZ[ŠIÊNÂŸBœİ\™[™\’ÙY\[]™J
+NÂœİ\™[™\’ÙY\[]™J
+NÂ‚˜ÛÛœİØ[\İ]HHÈ˜Z[Y[œÎˆ™]ÈÙ]
+
+K\İ“Ù™›[™Nˆ\İš\Ú]Ğ[\]Nˆ[NÂ˜\Ş[˜È[˜İ[Ûˆ[[\ÚXÚÜÊ
+HÂˆYˆ
+U×ĞST•×ÑSP“QU×ÕÒÑSˆU×ĞÒUÒQ
+H™]\›ÂˆHÂˆÛÛœİÙ™ÈH]ØZ]Ù]\ÛÛ™šYÊ
+K˜Ø]Ú
+
+
+HOˆ
+ßJJNÂˆÛÛœİHH
+Ù™È	‰ˆÙ™Ë˜[\ÊHßNÂˆYˆ
+K™[˜X›YOOH˜[ÙJH™]\›Â‚ˆËÈJHX[ˆYˆ
+KšX[OOH˜[ÙH	‰ˆYÛÛ›™XİY
+HÂˆÛÛœİ›İÈH]K››İÊ
+NÂˆYˆ
+›İÈHØ[\İ]K›\İ“Ù™›[™HˆŒ
+ˆŒ
+ˆL
+HÂˆØ[\İ]K›\İ“Ù™›[™HH›İÎÂˆÔÙ[™
+	ĞST•Nˆ[Û™ÛÑˆ\ØÛÛ™XİYÈ[ˆ˜XÚÙ[™
+X[Ù™›[™JK‰ÊNÂˆBˆB‚ˆËÈŠHÛÜšÙ›İÜÈ˜[YÜÂˆYˆ
+K™Ú]XˆOOH˜[ÙH	‰ˆ›ØÙ\ÜË™[‹‘ÒUP—ÕÒÑSŠHÂˆHÂˆÛÛœİ[œÈH]ØZ]Ù]Ú[œĞØXÚY
+YJNÂˆ›Üˆ
+ÛÛœİİÙ‹[—HÙˆØš™Xİ™[šY\Ê[œÈßJJHÂˆYˆ
+\[ˆ\[‹œ[—ÚY
+HÛÛ[YNÂˆYˆ
+[‹œİ]\ÈOOH	ØÛÛ\]Y	È	‰ˆ[‹˜ÛÛ˜Û\Ú[ÛˆOOH	Ù˜Z[\™IÊHÂˆYˆ
+WØ[\İ]K™˜Z[Y[œËš\Ê[‹œ[—ÚY
+JHÂˆØ[\İ]K™˜Z[Y[œË˜Y
+[‹œ[—ÚY
+NÂˆĞ[\
+	Ø[\ÙÚÉÈ
+Èİš[™Ê[‹œ[—ÚY
+K
+
+HO‚ˆ	ÈST•NˆZ[˜[YW‰È
+È\ØÒ[
+ÙŠH
+È	×”[ˆ	È
+È[X™\Š[‹œ[—ÚY
+H
+È	×‰È
+È\ØÒ[
+[‹š[İ\›	ÉÊJNÂˆBˆH[ÙHYˆ
+[‹˜ÛÛ˜Û\Ú[ÛˆOOH	ÜİXØÙ\ÜÉÊHÂˆØ[\İ]K™˜Z[Y[œË™[]J[‹œ[—ÚY
+NÂˆBˆBˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	Ğ[\ÚXÚÈÚ]Xˆ\œ›Ü‰ËH	‰ˆK›Y\ÜØYÙJNÂˆBˆB‚ˆËÈÊHØpëYHHš\Ú]\ÈÜˆ0ëXBˆYˆ
+Kš\Ú]ÈOOH˜[ÙH	‰ˆİ\X˜\ÙJHÂˆHÂˆÛÛœİÈ]HHH]ØZ]İ\X˜\ÙK™œ›ÛJ	ÙZ[WÜİ]ÉÊKœÙ[Xİ
+	Ù]Kš\Ú]ÉÊK›Ü™\Š	Ù]IËÈ\ØÙ[™[™Îˆ˜[ÙHJK›[Z]
+
+NÂˆÛÛœİ›İÜÈH
+\œ˜^Kš\Ğ\œ˜^J]JHÈ]Hˆ×JKœÛXÙJ
+NÂˆYˆ
+›İÜË›[™İHÊHÂˆÛÛœİY\İ\™^HH›İÜÖÌWKš\Ú]ÈÂˆÛÛœİ˜\Ù[[™HHX]œ›İ[™
+›İÜËœÛXÙJŠKœ™YXÙJ
+XØËŠHOˆXØÈ
+È[X™\Š‹š\Ú]È
+K
+HÈX]›X^
+K›İÜË›[™İHŠJNÂˆÛÛœİ˜][ÈH
+Kš\Ú]Ñ›Ü˜][È	‰ˆKš\Ú]Ñ›Ü˜][ÈJHÈKš\Ú]Ñ›Ü˜][ÈˆNÂˆÛÛœİ™\ÚÛHX]™›ÛÜŠ˜\Ù[[™H
+ˆ
+HH˜][ÊJNÂˆÛÛœİQ]HHİš[™Ê›İÜÖÌWK™]H	ÉÊKœÛXÙJL
+NÂˆYˆ
+Y\İ\™^H™\ÚÛ	‰ˆØ[\İ]K›\İš\Ú]Ğ[\]HOOHQ]JHÂˆØ[\İ]K›\İš\Ú]Ğ[\]HHQ]NÂˆÔÙ[™
+	ÈST•NˆØZYHHš\Ú]\×^Y\ˆ	È
+ÈY\İ\™^H
+È	×”›ÛYY[Èš[Üˆ	È
+È˜\Ù[[™H
+È	×”˜][ÈÛÛ™šYİ\˜YÎˆ	È
+ÈX]œ›İ[™
+˜][È
+ˆL
+H
+È	ÉIÊNÂˆBˆBˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	Ğ[\ÚXÚÈš\Ú]È\œ›Ü‰ËH	‰ˆK›Y\ÜØYÙJNÂˆBˆBˆHØ]Ú
+JHÂˆÛÛœÛÛKØ\›Š	Ü[[\ÚXÚÜÈ\œ›Ü‰ËH	‰ˆK›Y\ÜØYÙJNÂˆBŸB‚

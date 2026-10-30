@@ -224,20 +224,6 @@
     "source_repo": "OxygenCobalt/Auxio"
   },
   {
-    "appId": "os-echo-nightly",
-    "nombre": "CodeHub Player (Nightly)",
-    "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales. Para añadir extensiones, pega el raw del repositorio o usa la URL de la extensión indicada en la sección de extensiones del proyecto.",
-    "version": "",
-    "tag": "🆕",
-    "changelog": "",
-    "imagen": "/img/opensource/echo-nightly.svg",
-    "categoria": "Música",
-    "verified": true,
-    "enlace": "#",
-    "plugin_enlace": "https://raw.githubusercontent.com/brahmkshatriya/echo/main/README.md",
-    "source_repo": "brahmkshatriya/echo"
-  },
-  {
     "appId": "os-refreezer",
     "nombre": "Refreezer",
     "descripcion": "Cliente alternativo de Deezer para streaming y descarga de música en alta calidad, continuación del proyecto Freezer.",

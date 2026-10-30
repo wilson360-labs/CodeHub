@@ -337,14 +337,6 @@
       "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/File-Manager"
     },
     {
-      "appId": "os-echo-nightly",
-      "nombre": "CodeHub Player (Nightly)",
-      "descripcion": "Builds nocturnas del reproductor de música Echo, basado en extensiones, con soporte para streaming y bibliotecas locales.",
-      "categoria": "Música",
-      "source_repo": "brahmkshatriya/echo",
-      "imagen": "https://opengraph.githubassets.com/1/brahmkshatriya/echo"
-    },
-    {
       "appId": "os-refreezer",
       "nombre": "Refreezer",
       "descripcion": "Cliente alternativo de Deezer para streaming y descarga de música en alta calidad, continuación del proyecto Freezer.",

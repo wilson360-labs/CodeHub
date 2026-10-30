@@ -579,11 +579,8 @@
         <div id="apps-list"><div style="padding:2rem;text-align:center;font-family:var(--mono);font-size:.76rem;color:var(--muted)">Cargando apps...</div></div>
       </div>
       <div style="margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap">
-        <button class="pub-btn" style="background:rgba(0,229,255,.12);border:1px solid rgba(0,229,255,.25);color:var(--c)" onclick="seedFromJSON()">
-          <i class="fas fa-database"></i> Seed desde JSON
-        </button>
-        <button class="pub-btn" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text)" onclick="seedOpenSourceFromJSON()" title="Importa las 48 apps de opensource_seed.json con su source_repo — activa el monitor de GitHub Releases">
-          <i class="fab fa-github"></i> Seed catálogo Open Source
+        <button id="sync-open-source-btn" class="pub-btn" style="background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text)" onclick="replaceLocalOpenSourceCatalog()" title="Sincroniza la lista Open Source del seed local con MongoDB y retira entradas que ya no estén en el seed">
+          <i class="fas fa-arrows-rotate"></i> Actualizar lista Open Source
         </button>
       </div>
     </div>
