@@ -1,12 +1,20 @@
 name: 🌱 CodeHub Catálogo Open Source — Siembra inicial
 
-# Se ejecuta SOLO a mano desde la pestaña Actions (botón "Run workflow").
-# Inserta/actualiza (upsert por appId) las apps definidas en
-# backend/scripts/foss-catalog-seed.json — es seguro correrlo varias
-# veces, nunca duplica registros. Úsalo cada vez que agregues apps
-# nuevas a ese JSON.
+# Se puede ejecutar manualmente o al cambiar el catálogo Android en main.
+# Antes de sembrar, resuelve los applicationId reales desde los repos fuente
+# para que el APK pueda detectar instalaciones y ofrecer actualizaciones.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/scripts/foss-catalog-seed.json'
+      - 'backend/scripts/seed-foss-catalog.js'
+      - 'backend/scripts/resolve-package-names.js'
+      - '.github/workflows/seed-foss-catalog.yml'
+
+permissions:
+  contents: read
 
 jobs:
   seed-catalog:
@@ -22,6 +30,12 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '20'
+
+      - name: 🔎 Resolver packageName reales de Android
+        working-directory: ./backend
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/resolve-package-names.js
 
       - name: 📦 Instalar dependencias (mongoose)
         working-directory: ./backend

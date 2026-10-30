@@ -75,6 +75,13 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.google.android.material:material:1.11.0'
+    // Iconos Open Source en las pantallas Kotlin nativas (incluye logos SVG).
+    implementation 'io.coil-kt.coil3:coil:3.4.0'
+    implementation('io.coil-kt.coil3:coil-network-okhttp:3.4.0') {
+        // :echo fija okhttp-android; evitar traer okhttp JVM con clases duplicadas.
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
+    }
+    implementation 'io.coil-kt.coil3:coil-svg:3.4.0'
     implementation platform('com.google.firebase:firebase-bom:34.18.0')
     implementation 'com.google.firebase:firebase-messaging'
     // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde

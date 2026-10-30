@@ -63,7 +63,7 @@ class NativeStoreActivity : Activity() {
         }
 
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(label("Orion eStore", 26f, 0xFFFFFFFF.toInt(), true),
+        top.addView(label("CodeHub Store", 21f, 0xFFFFFFFF.toInt(), true),
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val myApps = Button(this).apply {
             text = "Mis apps"
@@ -72,6 +72,14 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { startActivityForResult(Intent(this@NativeStoreActivity, NativeMyAppsActivity::class.java), MY_APPS_REQUEST) }
         }
         top.addView(myApps, LinearLayout.LayoutParams(-2, dp(44)))
+        val downloads = Button(this).apply {
+            text = "↓"
+            textSize = 20f
+            isAllCaps = false
+            contentDescription = "Descargas"
+            setOnClickListener { startActivity(Intent(this@NativeStoreActivity, DownloadsActivity::class.java)) }
+        }
+        top.addView(downloads, LinearLayout.LayoutParams(dp(44), dp(44)))
         val refresh = Button(this).apply {
             text = "⟳"
             textSize = 22f
@@ -82,7 +90,7 @@ class NativeStoreActivity : Activity() {
         }
         top.addView(refresh, LinearLayout.LayoutParams(dp(48), dp(48)))
         root.addView(top)
-        root.addView(label("Apps open source verificadas por su repositorio", 13f, 0xFF9AA0B8.toInt()))
+        root.addView(label("Apps Open Source para Android", 13f, 0xFF9AA0B8.toInt()))
 
         search = EditText(this).apply {
             setSingleLine(true)
@@ -209,9 +217,11 @@ class NativeStoreActivity : Activity() {
             setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
             setOnClickListener { showDetails(app) }
         }
-        val icon = label("◈", 25f, 0xFF38EF7D.toInt(), true).apply {
-            gravity = Gravity.CENTER
-            setBackground(roundRect(0xFF1D2C2A.toInt(), 0, dp(14)))
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(14))
+            clipToOutline = true
+            loadCodeHubImage(app.imageUrl)
         }
         card.addView(icon, LinearLayout.LayoutParams(dp(54), dp(54)))
 
@@ -242,12 +252,29 @@ class NativeStoreActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(8), dp(24), dp(8))
         }
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(18))
+            clipToOutline = true
+            loadCodeHubImage(app.imageUrl)
+        }
+        content.addView(icon, LinearLayout.LayoutParams(dp(72), dp(72)).apply { bottomMargin = dp(12) })
         content.addView(label(app.category.uppercase(Locale.ROOT), 12f, 0xFF38EF7D.toInt(), true))
         content.addView(label(app.name, 23f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(7), 0, dp(8)) })
         content.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         })
         content.addView(label("Versión ${app.version.ifEmpty { "disponible" }}\n${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(12), 0, 0)
+        })
+        if (app.changelog.isNotBlank()) {
+            content.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
+            content.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
+                maxLines = 6
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        }
+        content.addView(label("Open Source · ${if (app.verified) "verificado" else "Android"}", 12f, 0xFF38EF7D.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
 
@@ -317,6 +344,9 @@ class NativeStoreActivity : Activity() {
         val category: String,
         val version: String,
         val repo: String,
+        val imageUrl: String,
+        val changelog: String,
+        val verified: Boolean,
     ) {
         companion object {
             fun from(row: JSONObject) = AppEntry(
@@ -326,6 +356,9 @@ class NativeStoreActivity : Activity() {
                 category = row.optString("categoria", "Utilidades"),
                 version = row.optString("version"),
                 repo = row.optString("source_repo"),
+                imageUrl = row.optString("imagen"),
+                changelog = row.optString("changelog"),
+                verified = row.optBoolean("verified", true),
             )
         }
     }

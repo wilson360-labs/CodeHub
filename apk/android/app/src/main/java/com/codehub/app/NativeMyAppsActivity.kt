@@ -265,9 +265,15 @@ class NativeMyAppsActivity : Activity() {
             setPadding(dp(14), dp(13), dp(14), dp(13))
             setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
         }
-        val icon = label("◈", 24f, 0xFF38EF7D.toInt(), true).apply {
-            gravity = Gravity.CENTER
-            setBackground(roundRect(0xFF1D2C2A.toInt(), 0, dp(14)))
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(14))
+            clipToOutline = true
+            try {
+                setImageDrawable(packageManager.getApplicationIcon(app.packageName!!))
+            } catch (_: Exception) {
+                loadCodeHubImage(app.imageUrl)
+            }
         }
         card.addView(icon, LinearLayout.LayoutParams(dp(50), dp(50)))
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(11), 0, dp(8), 0) }
@@ -381,6 +387,7 @@ class NativeMyAppsActivity : Activity() {
         val description: String,
         val category: String,
         val repo: String,
+        val imageUrl: String,
         val packageName: String?,
         val installedVersion: String? = null,
         var latestVersion: String = "",
@@ -395,6 +402,7 @@ class NativeMyAppsActivity : Activity() {
                 description = row.optString("descripcion"),
                 category = row.optString("categoria", "Utilidades"),
                 repo = row.optString("source_repo"),
+                imageUrl = row.optString("imagen"),
                 packageName = row.optString("packageName").takeIf { it.isNotBlank() },
             )
         }

@@ -47,6 +47,21 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
     const prevIsLocal   = !!prev?.imagen && /^\/img\//.test(prev.imagen);
     const imagenFinal   = (seedSinLogoOficial && prevIsLocal) ? prev.imagen : (app.imagen || '');
 
+    const fields = {
+      nombre: app.nombre,
+      descripcion: app.descripcion,
+      categoria: app.categoria,
+      source_repo: app.source_repo,
+      imagen: imagenFinal,
+      tag: '🆕',
+      verified: true,
+      enlace: '#', // el monitor de actualizaciones lo llenará con el .apk del release más reciente
+      updatedAt: new Date(),
+    };
+    // Resolver PackageManager.getPackageInfo requiere el applicationId exacto.
+    // Conserva el valor de la DB si el resolver aún no encontró el de este repo.
+    if (/^[A-Za-z0-9_.]+$/.test(app.packageName || '')) fields.packageName = app.packageName;
+
     const res = await App.updateOne(
       { appId: app.appId },
       {
@@ -54,17 +69,7 @@ const App = mongoose.models.App || mongoose.model('App', new mongoose.Schema({
           appId: app.appId,
           createdAt: new Date(),
         },
-        $set: {
-          nombre: app.nombre,
-          descripcion: app.descripcion,
-          categoria: app.categoria,
-          source_repo: app.source_repo,
-          imagen: imagenFinal,
-          tag: '🆕',
-          verified: true,
-          enlace: '#', // el monitor de actualizaciones lo llenará con el .apk del release más reciente
-          updatedAt: new Date(),
-        },
+        $set: fields,
       },
       { upsert: true }
     );
