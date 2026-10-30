@@ -552,9 +552,13 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 Uri uri = request.getUrl();
+                String path = uri.getPath();
+                if (path != null && path.length() > 1 && path.endsWith("/")) {
+                    path = path.substring(0, path.length() - 1);
+                }
                 if ("wilson360-labs.vercel.app".equalsIgnoreCase(uri.getHost())
-                        && uri.getPath() != null
-                        && (uri.getPath().equals("/pages/tienda.html") || uri.getPath().equals("/pages/opensource.html"))) {
+                        && ("/tienda".equals(path) || "/opensource".equals(path)
+                            || "/pages/tienda.html".equals(path) || "/pages/opensource.html".equals(path))) {
                     openNativeStore();
                     return true;
                 }
