@@ -411,9 +411,9 @@ class NativeStoreActivity : Activity() {
             }
         }
         if (app.platform == "Windows") {
-            dialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Sitio oficial", null)
-            dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Abrir enlace", null)
             dialog.setOnShowListener {
+                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).text = "Sitio oficial"
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Abrir enlace"
                 val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://") || it.startsWith("http://") } ?: app.repo
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { openExternal(downloadTarget) }
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { openExternal(app.repo) }
