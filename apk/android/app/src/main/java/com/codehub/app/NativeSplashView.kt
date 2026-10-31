@@ -7,11 +7,11 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.SweepGradient
 import android.graphics.Typeface
-import android.os.Choreographer
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
+import android.view.Choreographer
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
