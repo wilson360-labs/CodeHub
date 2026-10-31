@@ -64,8 +64,7 @@
             android:launchMode="singleTask"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize">
-            <!-- Launcher: MainActivity muestra NativeSplashView (Kotlin) mientras carga
-                 la primera página del WebView. -->
+            <!-- Launcher: MainActivity abre la portada Kotlin y muestra NativeSplashView. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

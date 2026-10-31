@@ -1,9 +1,5 @@
 package com.codehub.app
 
-import android.animation.Animator
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -11,13 +7,12 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.SweepGradient
 import android.graphics.Typeface
+import android.os.Choreographer
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -25,13 +20,17 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import java.util.Calendar
 
-/** Native port of CodeHub's web splash, used only by the compiled Android app. */
+/** Native port of CodeHub's web splash, shown only by the compiled Android app. */
 class NativeSplashView(context: Context) : FrameLayout(context) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startedAt = SystemClock.elapsedRealtime()
-    private val animations = mutableListOf<Animator>()
+    private val choreographer = Choreographer.getInstance()
     private var dismissed = false
     private var dismissRequested = false
+    private var dismissStartedAt = 0L
+    private var framePosted = false
+    private lateinit var logoView: View
+    private lateinit var orbitalRings: OrbitalRingsView
     private val progressBar: ProgressBar
     private val progressLabel: TextView
     private val statusLabel: TextView
@@ -49,7 +48,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         }
         val logoSize = dp(194)
         val logoFrame = FrameLayout(context)
-        val orbitalRings = OrbitalRingsView(context)
+        orbitalRings = OrbitalRingsView(context)
         logoFrame.addView(orbitalRings, LayoutParams(logoSize, logoSize, Gravity.CENTER))
 
         val logo = ImageView(context).apply {
@@ -58,6 +57,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
             scaleType = ImageView.ScaleType.FIT_CENTER
             elevation = dp(8).toFloat()
         }
+        logoView = logo
         logoFrame.addView(logo, LayoutParams(dp(132), dp(132), Gravity.CENTER))
         content.addView(logoFrame, LinearLayout.LayoutParams(logoSize, logoSize))
 
@@ -142,14 +142,13 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         })
 
         addView(content, LayoutParams(-2, -2, Gravity.CENTER))
-        animateEntrance(logo, orbitalRings)
     }
 
-    /** Receives real WebView load progress, so the native splash tracks the initial page. */
+    /** Lets a visible splash reflect WebView progress when a web route is opened during startup. */
     fun setLoadProgress(value: Int) {
         if (dismissRequested || dismissed) return
         val percent = value.coerceIn(0, 100)
-        progressBar.setProgress(percent, true)
+        progressBar.setProgress(percent, false)
         progressLabel.text = "$percent%"
         statusLabel.text = when {
             percent < 30 -> "INICIANDO…"
@@ -166,44 +165,56 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         val remaining = (900L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
         mainHandler.postDelayed({
             if (dismissed) return@postDelayed
-            dismissed = true
-            animations.forEach { it.cancel() }
-            animations.clear()
-            animate().alpha(0f).scaleX(1.025f).scaleY(1.025f).setDuration(420L)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction { visibility = View.GONE }
-                .start()
+            dismissStartedAt = SystemClock.elapsedRealtime()
         }, remaining)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        postAnimationFrame()
     }
 
     override fun onDetachedFromWindow() {
         mainHandler.removeCallbacksAndMessages(null)
-        animations.forEach { it.cancel() }
-        animations.clear()
+        if (framePosted) choreographer.removeFrameCallback(frameCallback)
+        framePosted = false
         super.onDetachedFromWindow()
     }
 
-    private fun animateEntrance(logo: View, rings: View) {
-        alpha = 0f
-        val entrance = AnimatorSet().apply {
-            playTogether(
-                ObjectAnimator.ofFloat(this@NativeSplashView, View.ALPHA, 0f, 1f).setDuration(450L),
-                ObjectAnimator.ofFloat(logo, View.SCALE_X, .78f, 1f).setDuration(720L),
-                ObjectAnimator.ofFloat(logo, View.SCALE_Y, .78f, 1f).setDuration(720L),
-            )
-            interpolator = AccelerateDecelerateInterpolator()
+    private val frameCallback = Choreographer.FrameCallback { frameTimeNanos ->
+        framePosted = false
+        if (!isAttachedToWindow || dismissed) return@FrameCallback
+
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = now - startedAt
+        val entrance = (elapsed / 720f).coerceIn(0f, 1f)
+        val easedEntrance = 1f - (1f - entrance) * (1f - entrance) * (1f - entrance)
+        alpha = (elapsed / 450f).coerceIn(0f, 1f)
+        logoView.scaleX = .78f + .22f * easedEntrance
+        logoView.scaleY = .78f + .22f * easedEntrance
+        val floatPhase = ((elapsed - 720L).coerceAtLeast(0L) % 3_000L) / 3_000.0
+        logoView.translationY = (-dp(5) * ((1.0 - kotlin.math.cos(floatPhase * Math.PI * 2.0)) / 2.0)).toFloat()
+        orbitalRings.setRotationDegrees((elapsed % 7_000L) * 360f / 7_000f)
+
+        if (dismissStartedAt > 0L) {
+            val exit = ((now - dismissStartedAt) / 420f).coerceIn(0f, 1f)
+            alpha = 1f - exit
+            scaleX = 1f + .025f * exit
+            scaleY = 1f + .025f * exit
+            if (exit >= 1f) {
+                dismissed = true
+                visibility = View.GONE
+                return@FrameCallback
+            }
         }
-        val floatLogo = ObjectAnimator.ofFloat(logo, View.TRANSLATION_Y, 0f, -dp(5).toFloat()).apply {
-            duration = 3_000L
-            repeatMode = ValueAnimator.REVERSE
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = AccelerateDecelerateInterpolator()
+        postAnimationFrame()
+    }
+
+    private fun postAnimationFrame() {
+        if (!framePosted && isAttachedToWindow && !dismissed) {
+            framePosted = true
+            choreographer.postFrameCallback(frameCallback)
         }
-        animations += entrance
-        animations += floatLogo
-        entrance.start()
-        floatLogo.start()
-        rings.invalidate()
     }
 
     private fun greetingText(): String {
@@ -225,17 +236,11 @@ private class OrbitalRingsView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val bounds = RectF()
     private var rotation = 0f
-    private val spin = ValueAnimator.ofFloat(0f, 360f).apply {
-        duration = 7_000L
-        repeatCount = ValueAnimator.INFINITE
-        interpolator = LinearInterpolator()
-        addUpdateListener {
-            rotation = it.animatedValue as Float
-            invalidate()
-        }
-    }
 
-    init { spin.start() }
+    fun setRotationDegrees(value: Float) {
+        rotation = value
+        invalidate()
+    }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -272,10 +277,6 @@ private class OrbitalRingsView(context: Context) : View(context) {
         paint.style = Paint.Style.FILL
     }
 
-    override fun onDetachedFromWindow() {
-        spin.cancel()
-        super.onDetachedFromWindow()
-    }
 }
 
 /** Static star field and soft color blooms matching the original web splash palette. */

@@ -8,7 +8,6 @@ import android.app.DownloadManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.ComponentCallbacks2;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -69,9 +68,11 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private NativeSplashView nativeSplash;
+    private NativeHomeView nativeHome;
     private SwipeRefreshLayout swipeRefreshLayout;
     private ProgressBar progressBar;
     private CodeHubBridge bridge;
+    private String pendingSharedText;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
     private FusedLocationProviderClient fusedLocation;
@@ -100,6 +101,7 @@ public class MainActivity extends Activity {
         swipeRefreshLayout = new SwipeRefreshLayout(this);
         swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF38EF7D);
         swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF141424);
+        swipeRefreshLayout.setVisibility(View.GONE);
         swipeRefreshLayout.addView(webView, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -122,8 +124,8 @@ public class MainActivity extends Activity {
         progressBar.setLayoutParams(pbParams);
         progressBar.setVisibility(View.GONE);
 
-        // Estructura vertical (banners SIEMPRE abajo, nunca sobre el
-        // contenido): mainFrame (webview + barra de progreso) arriba, banner abajo.
+        // La portada Kotlin es la pantalla inicial; el WebView queda oculto
+        // hasta que el usuario abre una sección web. Banners siguen abajo.
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(0xFF080810);
@@ -132,6 +134,16 @@ public class MainActivity extends Activity {
         mainFrame.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mainFrame.addView(progressBar);
+        nativeHome = new NativeHomeView(this, new NativeHomeView.Listener() {
+            @Override public void onOpenStore() { openNativeStore(); }
+            @Override public void onOpenMyApps() { openNativeMyApps(); }
+            @Override public void onOpenWebsite(String path) {
+                String suffix = path == null || path.isEmpty() ? "/" : path;
+                openWebUrl(APP_URL + (suffix.startsWith("/") ? suffix : "/" + suffix));
+            }
+        });
+        mainFrame.addView(nativeHome, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         nativeSplash = new NativeSplashView(this);
         mainFrame.addView(nativeSplash, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -145,6 +157,8 @@ public class MainActivity extends Activity {
 
         setContentView(rootLayout);
         SystemBars.applyInsets(this);
+        nativeSplash.setLoadProgress(100);
+        nativeSplash.dismiss();
 
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
@@ -153,8 +167,6 @@ public class MainActivity extends Activity {
         try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
-        try { checkInternetAndLoad(); } catch (Throwable t) { crashLog("internet", t); }
-
         // Chequeo de actualizaciones SOLO nativo: la app consulta GitHub
         // Releases (release con el asset app-release-signed.apk) y usa su
         // DIÁLOGO PROPIO (res/layout/dialog_update.xml) dentro del APK.
@@ -386,25 +398,22 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ── INTERNET CHECK ──────────────────────────────────────────
-    private void checkInternetAndLoad() {
-        if (isOnline()) {
-            webView.loadUrl(APP_URL);
-        } else {
+    // ── NAVEGACIÓN A SECCIONES WEB ──────────────────────────────
+    /** Opens a web-only section while keeping the Kotlin home available via Back. */
+    private void openWebUrl(String url) {
+        if (webView == null || swipeRefreshLayout == null) return;
+        if (!isOnline()) {
             new AlertDialog.Builder(this)
                 .setTitle("Sin conexión a internet")
-                .setMessage("CodeHub necesita internet para sincronizar datos en tiempo real.\n\n¿Deseas conectar ahora?")
-                .setPositiveButton("Conectar", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int w) { d.dismiss(); checkInternetAndLoad(); }
-                })
-                .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface d, int w) { d.dismiss(); finish(); }
-                })
-                .setCancelable(false)
+                .setMessage("Esta sección necesita internet. La pantalla principal de CodeHub sigue disponible.")
+                .setPositiveButton("Reintentar", (dialog, which) -> openWebUrl(url))
+                .setNegativeButton("Volver", (dialog, which) -> pendingSharedText = null)
                 .show();
+            return;
         }
+        if (nativeHome != null) nativeHome.setVisibility(View.GONE);
+        swipeRefreshLayout.setVisibility(View.VISIBLE);
+        webView.loadUrl(url);
     }
 
     private boolean isOnline() {
@@ -610,6 +619,11 @@ public class MainActivity extends Activity {
                     nativeSplash.dismiss();
                 }
                 injectNativeFlags(view);
+                if (pendingSharedText != null && bridge != null) {
+                    String sharedText = pendingSharedText;
+                    pendingSharedText = null;
+                    view.postDelayed(() -> bridge.handleSharedText(sharedText), 250);
+                }
             }
 
             @Override
@@ -757,19 +771,12 @@ public class MainActivity extends Activity {
                 final String trimmed = shared.trim();
                 String url = extractCodeHubUrl(trimmed);
                 if (url != null && !url.isEmpty()) {
-                    final String loadUrl = url;
-                    webView.postDelayed(new Runnable() {
-                        @Override
-                        public void run() { webView.loadUrl(loadUrl); }
-                    }, 800);
+                    openWebUrl(url);
                     return;
                 }
                 // Texto (no URL) → se deja en la web vía bridge para search/chat.
-                if (bridge != null) {
-                    try {
-                        bridge.handleSharedText(trimmed);
-                    } catch (Exception ignored) {}
-                }
+                pendingSharedText = trimmed;
+                openWebUrl(APP_URL);
                 return;
             }
             return;
@@ -782,11 +789,7 @@ public class MainActivity extends Activity {
             url = intent.getData().toString();
         }
         if (url != null && !url.isEmpty() && isAllowedUrl(url)) {
-            final String loadUrl = url;
-            webView.postDelayed(new Runnable() {
-                @Override
-                public void run() { webView.loadUrl(loadUrl); }
-            }, 1500);
+            openWebUrl(url);
         }
     }
 
@@ -832,8 +835,21 @@ public class MainActivity extends Activity {
     // ── DOUBLE BACK EXIT ────────────────────────────────────────
     @Override
     public void onBackPressed() {
+        if (nativeHome != null && nativeHome.getVisibility() == View.VISIBLE) {
+            if (backPressedOnce) {
+                finish();
+            } else {
+                backPressedOnce = true;
+                Toast.makeText(this, "Presiona atrás otra vez para salir", Toast.LENGTH_SHORT).show();
+                backHandler.postDelayed(() -> backPressedOnce = false, 2000);
+            }
+            return;
+        }
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
+        } else if (nativeHome != null) {
+            nativeHome.setVisibility(View.VISIBLE);
+            if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.GONE);
         } else if (backPressedOnce) {
             finish();
         } else {
