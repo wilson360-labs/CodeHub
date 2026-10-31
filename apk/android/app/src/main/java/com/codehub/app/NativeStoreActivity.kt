@@ -64,6 +64,8 @@ class NativeStoreActivity : Activity() {
     private val favoriteIds = mutableSetOf<String>()
     private var windowsCatalogFailed = false
     private var windowsCatalogLoading = true
+    private var catalogLoaded = false
+    private var catalogFailed = false
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -109,6 +111,7 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { loadCatalog() }
         }
         top.addView(refresh, LinearLayout.LayoutParams(dp(48), dp(48)))
+        refresh.contentDescription = "Actualizar catálogo"
         root.addView(top)
         subtitle = label("Apps Open Source para Android", 13f, 0xFF9AA0B8.toInt())
         root.addView(subtitle)
@@ -207,6 +210,7 @@ class NativeStoreActivity : Activity() {
 
     private fun loadCatalog() {
         status.text = "Actualizando catálogo…"
+        catalogFailed = false
         windowsCatalogLoading = true
         executor.execute {
             var connection: HttpURLConnection? = null
@@ -234,6 +238,7 @@ class NativeStoreActivity : Activity() {
                 runOnUiThread {
                     apps.clear()
                     apps.addAll(loaded)
+                    catalogLoaded = true
                     renderControls()
                     if (apps.none { it.category == category } && category != "Todas") category = "Todas"
                     renderChips()
@@ -252,9 +257,11 @@ class NativeStoreActivity : Activity() {
                 }
             } catch (error: Exception) {
                 windowsCatalogLoading = false
+                catalogFailed = true
                 runOnUiThread {
                     status.text = if (apps.isEmpty()) "No se pudo conectar. Toca ⟳ para reintentar."
                     else "No se pudo actualizar · mostrando el catálogo anterior"
+                    render()
                 }
             } finally {
                 connection?.disconnect()
@@ -385,6 +392,10 @@ class NativeStoreActivity : Activity() {
         val home = selectedPlatform == "Android" && category == "Todas" && query.isBlank() && !favoritesOnly && sort == StoreSort.HOME
         val topRated = filtered.filter { it.ratingCount > 0 }
             .sortedWith(compareByDescending<AppEntry> { it.ratingAverage }.thenByDescending { it.ratingCount }).take(8)
+        if (home && filtered.isNotEmpty()) {
+            val featured = topRated.firstOrNull() ?: filtered.first()
+            appList.addView(featuredCard(featured), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+        }
         if (home && topRated.isNotEmpty()) {
             appList.addView(label("Mejor valoradas", 18f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(8), 0, dp(10)) })
             val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
@@ -414,11 +425,108 @@ class NativeStoreActivity : Activity() {
                 LinearLayout.LayoutParams(-1, dp(120)))
             return
         }
-        if (filtered.isEmpty() && apps.isNotEmpty()) {
-            appList.addView(label("No encontramos apps con esa búsqueda.", 14f, 0xFF9AA0B8.toInt()).apply {
+        if (filtered.isEmpty() && selectedPlatform == "Android") {
+            val title: String
+            val detail: String
+            when {
+                !catalogLoaded && !catalogFailed -> {
+                    title = "Cargando tienda…"
+                    detail = "Conectando con el catálogo Open Source de CodeHub."
+                }
+                catalogFailed && apps.none { it.platform == "Android" } -> {
+                    title = "No pudimos cargar la tienda"
+                    detail = "Revisa tu conexión e inténtalo de nuevo."
+                }
+                apps.none { it.platform == "Android" } -> {
+                    title = "El catálogo está vacío"
+                    detail = "Vuelve a actualizar para buscar aplicaciones disponibles."
+                }
+                favoritesOnly && favoriteIds.none { id -> apps.any { it.id == id && it.platform == "Android" } } -> {
+                    title = "Aún no guardaste favoritos"
+                    detail = "Toca el corazón en una app para tenerla a mano."
+                }
+                else -> {
+                    title = "No encontramos resultados"
+                    detail = "Prueba otra búsqueda o limpia los filtros."
+                }
+            }
+            val empty = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(-1, dp(120)))
+                setPadding(dp(24), dp(20), dp(24), dp(20))
+                setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+            }
+            empty.addView(label(title, 17f, 0xFFFFFFFF.toInt(), true).apply { gravity = Gravity.CENTER })
+            empty.addView(label(detail, 13f, 0xFF9AA0B8.toInt()).apply {
+                gravity = Gravity.CENTER
+                setPadding(0, dp(7), 0, dp(10))
+            })
+            if (title != "Cargando tienda…") {
+                val hasAndroidApps = apps.any { it.platform == "Android" }
+                val hasActiveFilters = query.isNotBlank() || category != "Todas" || favoritesOnly || sort != StoreSort.HOME
+                val actionText = if (hasAndroidApps && hasActiveFilters) "Limpiar filtros" else "Actualizar catálogo"
+                empty.addView(Button(this).apply {
+                    text = actionText
+                    isAllCaps = false
+                    setOnClickListener { if (actionText == "Limpiar filtros") clearFilters() else loadCatalog() }
+                })
+            }
+            appList.addView(empty, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         }
+    }
+
+    private fun clearFilters() {
+        category = "Todas"
+        favoritesOnly = false
+        sort = StoreSort.HOME
+        if (::search.isInitialized) search.setText("")
+        renderControls()
+        renderChips()
+        render()
+    }
+
+    private fun featuredCard(app: AppEntry): View {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(15), dp(16), dp(14))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xFF18372C.toInt(), 0xFF121E1A.toInt()),
+            ).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0xFF35644D.toInt()) }
+            contentDescription = "Aplicación destacada: ${app.name}"
+            setOnClickListener { showDetails(app) }
+        }
+        card.addView(label("CODEHUB STORE  ·  OPEN SOURCE", 10f, 0xFF68F0A9.toInt(), true))
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, dp(10))
+        }
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(16))
+            clipToOutline = true
+            loadCodeHubImage(app.imageUrl)
+        }
+        row.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)))
+        val info = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), 0, 0, 0)
+        }
+        info.addView(label(app.name, 18f, 0xFFFFFFFF.toInt(), true).apply {
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        info.addView(label(app.category + if (app.ratingCount > 0) "  ·  ★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)}" else "", 12f, 0xFF68F0A9.toInt()))
+        info.addView(label(app.description.ifBlank { "Descubre esta aplicación de código abierto." }, 12f, 0xFFCDD7D2.toInt()).apply {
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(4), 0, 0)
+        })
+        row.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
+        card.addView(row)
+        card.addView(label("Ver detalles  ›", 12f, 0xFF68F0A9.toInt(), true).apply { gravity = Gravity.END })
+        return card
     }
 
     private fun updateCard(app: AppEntry, showRating: Boolean = false): View {
@@ -529,7 +637,8 @@ class NativeStoreActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
-        content.addView(label("Open Source · ${if (app.verified) "verificado" else "Android"}", 12f, 0xFF38EF7D.toInt()).apply {
+        val sourceLabel = if (app.platform == "Windows") "Catálogo Windows" else "Open Source · ${if (app.verified) "verificado" else "Android"}"
+        content.addView(label(sourceLabel, 12f, 0xFF38EF7D.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
 
