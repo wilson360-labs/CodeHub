@@ -385,6 +385,7 @@ class NativeStoreActivity : Activity() {
         status.text = when {
             apps.none { it.platform == selectedPlatform } && selectedPlatform == "Windows" && windowsCatalogLoading -> "Cargando catálogo de Windows…"
             apps.none { it.platform == selectedPlatform } && selectedPlatform == "Windows" && windowsCatalogFailed -> "No se pudo cargar el catálogo de Windows. Toca ↻ para reintentar."
+            catalogFailed && selectedPlatform == "Android" && apps.any { it.platform == "Android" } -> "Sin conexión · mostrando ${apps.count { it.platform == "Android" }} apps del catálogo"
             apps.none { it.platform == selectedPlatform } -> status.text
             else -> "${filtered.size} aplicaciones disponibles"
         }
