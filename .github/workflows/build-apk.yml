@@ -150,8 +150,20 @@ jobs:
             DIAGNOSTICS=$(grep -nE '^e: |error:|cannot find symbol|unresolved reference|Could not resolve|Could not find|What went wrong|Execution failed for task|Caused by:' "$LOG" | head -n 100 || true)
             if [ -n "$DIAGNOSTICS" ]; then
               echo "$DIAGNOSTICS"
+              {
+                echo '## Diagnóstico de assembleDebug'
+                echo '```text'
+                echo "$DIAGNOSTICS"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
             else
               tail -n 100 "$LOG"
+              {
+                echo '## Diagnóstico de assembleDebug'
+                echo '```text'
+                tail -n 100 "$LOG"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
             fi
             echo "::endgroup::"
           fi
