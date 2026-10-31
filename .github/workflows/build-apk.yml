@@ -121,14 +121,20 @@ jobs:
                 echo "$ERR1" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 40;
                 echo '```';
                 echo "";
-                echo '**Causa del fallo de Gradle:**';
+                echo '**Causa del fallo de Gradle (bloque What went wrong completo):**';
                 echo '```text';
-                grep -nE 'What went wrong|Execution failed for task|Caused by:' "$LOG" | head -n 10 || true;
+                grep -n -A35 '^\* What went wrong:' "$LOG" | head -n 120 || true;
+                echo '```';
+                echo "";
+                echo '**Keywords clave:**';
+                echo '```text';
+                grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not|Failed to|A problem occurred|^e: |^error:|^FAILURE' "$LOG" | head -n 40 || true;
                 echo '```';
               else
-                echo '**Sin errores de compilación detectados — causa del fallo:**';
+                echo '**Sin errores de compilación detectados — bloque What went wrong completo:**';
                 echo '```text';
-                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$LOG" | head -n 25 || true;
+                grep -n -A35 '^\* What went wrong:' "$LOG" | head -n 120 || true;
+                grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not|Failed to|A problem occurred|^e: |^error:|^FAILURE' "$LOG" | head -n 40 || true;
                 echo '```';
               fi
             else
@@ -350,14 +356,20 @@ jobs:
                 echo "$ERR" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 30;
                 echo '```';
                 echo "";
-                echo '**Causa del fallo de Gradle:**';
+                echo '**Causa del fallo de Gradle (bloque What went wrong completo):**';
                 echo '```text';
-                grep -nE 'What went wrong|Execution failed for task|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 10 || true;
+                grep -n -A35 '^\* What went wrong:' "$RUNNER_TEMP/release-build.log" | head -n 120 || true;
+                echo '```';
+                echo "";
+                echo '**Keywords clave:**';
+                echo '```text';
+                grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not|Failed to|A problem occurred|^e: |^error:|^FAILURE' "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
                 echo '```';
               else
-                echo '**Sin errores de compilación detectados — causa del fallo:**';
+                echo '**Sin errores de compilación detectados — bloque What went wrong completo:**';
                 echo '```text';
-                grep -nE 'FAILURE:|Execution failed for task|What went wrong|Caused by:' "$RUNNER_TEMP/release-build.log" | head -n 25 || true;
+                grep -n -A35 '^\* What went wrong:' "$RUNNER_TEMP/release-build.log" | head -n 120 || true;
+                grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not|Failed to|A problem occurred|^e: |^error:|^FAILURE' "$RUNNER_TEMP/release-build.log" | head -n 40 || true;
                 echo '```';
               fi
             else
@@ -382,6 +394,21 @@ jobs:
         if: always() && steps.release-build.outcome == 'failure'
         run: |
           if [ -f "$RUNNER_TEMP/release-ok" ]; then exit 0; fi
+          LOG="$RUNNER_TEMP/release-build.log"
+          if [ -s "$LOG" ]; then
+            echo "=== Bloques 'What went wrong' del release-build.log ==="
+            grep -n -A35 '^\* What went wrong:' "$LOG" | head -n 120 || true
+            echo "=== Keywords clave ==="
+            DIAG=$(grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not|Failed to|A problem occurred|^e: |^error:|^FAILURE' "$LOG" | head -n 60 || true)
+            echo "$DIAG"
+            {
+              echo '## Diagnóstico de assembleRelease'
+              echo '```text'
+              grep -n -A35 '^\* What went wrong:' "$LOG" | head -n 120 || true
+              echo "$DIAG"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo "::error::assembleRelease fallo (ver log: release-build-log)"
           exit 1
 
@@ -562,7 +589,10 @@ jobs:
               err=$(grep -E "^e: " "$file" | sed -E "s|file://[^ ]*/([^/]+\.kt):|\1:|g" | head -n 12)
               # Prioridad 2: causa del fallo de Gradle (sin volcar tareas).
               if [ -z "$err" ]; then
-                err=$(grep -E "What went wrong|Execution failed for task|Caused by:|^FAILURE:" "$file" | head -n 8)
+                err=$(grep -n -A20 '^\* What went wrong:' "$file" | head -n 30)
+                local kw
+                kw=$(grep -nE 'Caused by:|Execution failed for task|OutOfMemory|Java heap|GC overhead|Kotlin daemon|JavaVersion\.parse|IllegalArgument|Unable to|Could not |Failed to |A problem occurred|^error:' "$file" | head -n 8)
+                if [ -n "$kw" ]; then err="$err"$'\n'"$kw"; fi
               fi
               # Prioridad 3: contexto mínimo si no hay nada reconocible.
               if [ -z "$err" ]; then err=$(grep -E "error:|Unresolved|Unclosed|exception" "$file" | head -n 8); fi
