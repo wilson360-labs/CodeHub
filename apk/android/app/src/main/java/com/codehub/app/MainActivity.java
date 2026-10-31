@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private static final int PERMISSION_REQUEST_CODE = 200;
 
     private WebView webView;
+    private NativeSplashView nativeSplash;
     private SwipeRefreshLayout swipeRefreshLayout;
     private ProgressBar progressBar;
     private CodeHubBridge bridge;
@@ -131,6 +132,9 @@ public class MainActivity extends Activity {
         mainFrame.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mainFrame.addView(progressBar);
+        nativeSplash = new NativeSplashView(this);
+        mainFrame.addView(nativeSplash, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         rootLayout.addView(mainFrame, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -589,6 +593,7 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                if (nativeSplash != null) nativeSplash.setLoadProgress(8);
                 if (progressBar != null) {
                     progressBar.setProgress(15);
                     progressBar.setVisibility(View.VISIBLE);
@@ -600,6 +605,10 @@ public class MainActivity extends Activity {
                 super.onPageFinished(view, url);
                 if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
+                if (nativeSplash != null) {
+                    nativeSplash.setLoadProgress(100);
+                    nativeSplash.dismiss();
+                }
                 injectNativeFlags(view);
             }
 
@@ -609,6 +618,7 @@ public class MainActivity extends Activity {
                 if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                 if (progressBar != null) progressBar.setVisibility(View.GONE);
                 if (request != null && request.isForMainFrame()) {
+                    if (nativeSplash != null) nativeSplash.dismiss();
                     showOfflineFallback(view);
                 }
             }
@@ -635,6 +645,7 @@ public class MainActivity extends Activity {
                     return; // error de subrecurso → no tocar la interfaz
                 }
                 if (failingUrl != null && (failingUrl.startsWith("http://") || failingUrl.startsWith("https://"))) {
+                    if (nativeSplash != null) nativeSplash.dismiss();
                     showOfflineFallback(view);
                 }
             }
@@ -644,6 +655,7 @@ public class MainActivity extends Activity {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 super.onProgressChanged(view, newProgress);
+                if (nativeSplash != null) nativeSplash.setLoadProgress(newProgress);
                 if (progressBar != null) {
                     progressBar.setProgress(newProgress);
                     if (newProgress >= 100) {
@@ -931,6 +943,7 @@ public class MainActivity extends Activity {
     // ── OFFLINE FALLBACK ─────────────────────────────────────────
     private void showOfflineFallback(WebView view) {
         if (view == null) return;
+        if (nativeSplash != null) nativeSplash.dismiss();
         String offlineHtml = "<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>" +
             "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>" +
             "<title>Sin conexión — CodeHub</title>" +

@@ -64,8 +64,8 @@
             android:launchMode="singleTask"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize">
-            <!-- Launcher: la app abre directo en MainActivity. El splash
-                 vive SOLO en la web (navegador), no en la app Android. -->
+            <!-- Launcher: MainActivity muestra NativeSplashView (Kotlin) mientras carga
+                 la primera página del WebView. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

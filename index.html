@@ -21,7 +21,7 @@
     <!-- Ocultar splash ANTES de cualquier render si ya se mostró en esta sesión -->
     <script>
       try {
-        if (sessionStorage.getItem('ch_splash_done')) {
+        if (sessionStorage.getItem('ch_splash_done') || typeof window.CodeHubNative !== 'undefined') {
           var s = document.createElement('style');
           s.textContent = '#ch-splash{display:none!important}';
           document.head.appendChild(s);
