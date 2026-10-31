@@ -76,8 +76,6 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
     private FusedLocationProviderClient fusedLocation;
-    private boolean backPressedOnce = false;
-    private final Handler backHandler = new Handler(Looper.getMainLooper());
     /** Franja inferior reservada para el banner (nunca superpuesto al contenido). */
     private FrameLayout bannerSlot;
 
@@ -832,36 +830,30 @@ public class MainActivity extends Activity {
         handleIntent(intent);
     }
 
-    // ── DOUBLE BACK EXIT ────────────────────────────────────────
+    // ── BACK NAVIGATION ─────────────────────────────────────────
+    // Back follows the visible screen; leaving from home requires explicit confirmation.
     @Override
     public void onBackPressed() {
-        if (nativeHome != null && nativeHome.getVisibility() == View.VISIBLE) {
-            if (backPressedOnce) {
-                finish();
-            } else {
-                backPressedOnce = true;
-                Toast.makeText(this, "Presiona atrás otra vez para salir", Toast.LENGTH_SHORT).show();
-                backHandler.postDelayed(() -> backPressedOnce = false, 2000);
-            }
+        if (swipeRefreshLayout != null && swipeRefreshLayout.getVisibility() == View.VISIBLE
+                && webView != null && webView.getVisibility() == View.VISIBLE && webView.canGoBack()) {
+            webView.goBack();
             return;
         }
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-        } else if (nativeHome != null) {
-            nativeHome.setVisibility(View.VISIBLE);
-            if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.GONE);
-        } else if (backPressedOnce) {
-            finish();
-        } else {
-            backPressedOnce = true;
-            Toast.makeText(this, "Presiona atrás otra vez para salir", Toast.LENGTH_SHORT).show();
-            backHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() { backPressedOnce = false; }
-            }, 2000);
-        }
-    }
 
+        if (nativeHome != null && nativeHome.getVisibility() != View.VISIBLE) {
+            nativeHome.setVisibility(View.VISIBLE);
+            if (webView != null) webView.setVisibility(View.GONE);
+            if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.GONE);
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+            .setTitle("¿Salir de CodeHub?")
+            .setMessage("Puedes seguir explorando la tienda, tus apps y el resto de CodeHub.")
+            .setNegativeButton("Seguir aquí", null)
+            .setPositiveButton("Salir", (dialog, which) -> finish())
+            .show();
+    }
     // ── LIFECYCLE ───────────────────────────────────────────────
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
