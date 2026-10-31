@@ -357,7 +357,7 @@ jobs:
           retention-days: 5
 
       - name: Fail job if release build failed
-        if: always()
+        if: always() && steps.release-build.outcome == 'failure'
         run: |
           if [ -f "$RUNNER_TEMP/release-ok" ]; then exit 0; fi
           echo "::error::assembleRelease fallo (ver log: release-build-log)"
