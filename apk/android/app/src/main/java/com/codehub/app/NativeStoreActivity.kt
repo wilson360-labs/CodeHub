@@ -801,7 +801,7 @@ class NativeStoreActivity : Activity() {
                         releaseStatus.text = "Versiones y variantes APK · elige una versión para instalar"
                         releases.forEach { release ->
                             val apkAssets = release.assets.filter { it.name.endsWith(".apk", true) }
-                            val imageAssets = release.assets.filter { it.name.matches(Regex(".*\\.(png|jpe?g|webp)$", true)) }.take(5)
+                            val imageAssets = release.assets.filter { it.name.matches(Regex(".*\\.(png|jpe?g|webp)$", RegexOption.IGNORE_CASE)) }.take(5)
                             imageAssets.forEach { asset ->
                                 val image = android.widget.ImageView(this).apply {
                                     scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
