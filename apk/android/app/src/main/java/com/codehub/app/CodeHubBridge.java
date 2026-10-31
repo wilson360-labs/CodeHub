@@ -746,10 +746,9 @@ public class CodeHubBridge {
     /** callbackName(granted: boolean) — se llama tras la respuesta del usuario al diálogo de Shizuku. */
     @JavascriptInterface
     public void requestShizukuPermission(final String callbackName) {
-        activity.runOnUiThread(() -> ShizukuInstaller.requestPermission(granted ->
+        activity.runOnUiThread(() -> NativeStoreInstallFlow.request(activity, granted ->
             webView.post(() -> webView.loadUrl("javascript:try{if(window." + callbackName + ")window." +
-                callbackName + "(" + granted + ");}catch(e){}"))
-        ));
+                callbackName + "(" + granted + ");}catch(e){}"))));
     }
 
     /**
@@ -760,6 +759,11 @@ public class CodeHubBridge {
      */
     @JavascriptInterface
     public void downloadAndInstallApk(final String apkUrl, final String appId, final boolean preferSilent, final String callbackName) {
+        activity.runOnUiThread(() -> NativeStoreInstallFlow.request(activity, granted ->
+            downloadAndInstallApkNow(apkUrl, appId, preferSilent && granted, callbackName)));
+    }
+
+    private void downloadAndInstallApkNow(final String apkUrl, final String appId, final boolean preferSilent, final String callbackName) {
         new Thread(() -> {
             File dest = null;
             try {

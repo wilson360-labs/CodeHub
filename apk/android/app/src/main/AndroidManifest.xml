@@ -37,6 +37,7 @@
 
     <queries>
         <package android:name="com.google.android.gms" />
+        <package android:name="moe.shizuku.privileged.api" />
     </queries>
 
     <application

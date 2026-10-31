@@ -1,10 +1,18 @@
 package com.codehub.app;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.Signature;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.security.MessageDigest;
 
 import rikka.shizuku.Shizuku;
 
@@ -38,15 +46,14 @@ public class ShizukuInstaller {
     }
 
     private static PermissionCallback pendingCallback;
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static Runnable pendingTimeout;
 
     private static final Shizuku.OnRequestPermissionResultListener LISTENER =
         (requestCode, grantResult) -> {
             if (requestCode != PERMISSION_REQUEST_CODE) return;
             boolean granted = grantResult == PackageManager.PERMISSION_GRANTED;
-            if (pendingCallback != null) {
-                pendingCallback.onResult(granted);
-                pendingCallback = null;
-            }
+            deliverPermissionResult(granted);
         };
 
     static {
@@ -56,6 +63,62 @@ public class ShizukuInstaller {
     /** true si el servicio Shizuku está corriendo (app abierta al menos una vez y ADB/root activo). */
     public static boolean isBinderAlive() {
         try { return Shizuku.pingBinder(); } catch (Throwable t) { return false; }
+    }
+
+    public static boolean isManagerInstalled(Context context) {
+        try {
+            context.getPackageManager().getPackageInfo("moe.shizuku.privileged.api", 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) { return false; }
+        catch (Throwable ignored) { return false; }
+    }
+
+    public static Intent getManagerLaunchIntent(Context context) {
+        try { return context.getPackageManager().getLaunchIntentForPackage("moe.shizuku.privileged.api"); }
+        catch (Throwable ignored) { return null; }
+    }
+
+    /** Human-readable connection diagnostic for the store's installation flow. */
+    public static String getInstallDiagnostic(Context context) {
+        boolean manager = isManagerInstalled(context);
+        boolean binder = isBinderAlive();
+        String appIdentity = getAppIdentity(context);
+        String state;
+        if (!binder) {
+            state = manager
+                ? "Shizuku está instalado, pero su servicio no está conectado. Inícialo desde Shizuku y vuelve aquí."
+                : "No se detectó Shizuku ni un servicio Sui activo. Instala Shizuku o inicia Sui para habilitar la instalación automática.";
+        } else if (Shizuku.isPreV11()) state = "El servicio está conectado, pero su API es anterior a Shizuku 11 y no permite solicitar el permiso.";
+        else if (!hasPermission()) state = "Servicio conectado · falta autorizar CodeHub en el diálogo de Shizuku.";
+        else try {
+            String mode = Shizuku.getUid() == 0 ? "root" : Shizuku.getUid() == 2000 ? "ADB / shell" : "UID " + Shizuku.getUid();
+            state = "CodeHub está autorizado · servicio activo por " + mode + ".";
+        } catch (Throwable ignored) { state = "CodeHub está autorizado · servicio activo."; }
+        return appIdentity + "\n" + state;
+    }
+
+    private static String getAppIdentity(Context context) {
+        String installer = "fuera de Play / origen no identificado";
+        String fingerprint = "no disponible";
+        try {
+            PackageManager pm = context.getPackageManager();
+            String source = Build.VERSION.SDK_INT >= 30
+                ? pm.getInstallSourceInfo(context.getPackageName()).getInstallingPackageName()
+                : pm.getInstallerPackageName(context.getPackageName());
+            if ("com.android.vending".equals(source)) installer = "Google Play";
+            else if (source != null && !source.isEmpty()) installer = source;
+            int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+            PackageInfo info = pm.getPackageInfo(context.getPackageName(), flags);
+            Signature[] signers = Build.VERSION.SDK_INT >= 28
+                ? info.signingInfo.getApkContentsSigners() : info.signatures;
+            if (signers != null && signers.length > 0) {
+                byte[] digest = MessageDigest.getInstance("SHA-256").digest(signers[0].toByteArray());
+                StringBuilder hex = new StringBuilder();
+                for (int i = 0; i < Math.min(8, digest.length); i++) hex.append(String.format(java.util.Locale.ROOT, "%02X", digest[i]));
+                fingerprint = hex.toString();
+            }
+        } catch (Throwable ignored) { }
+        return "App " + context.getPackageName() + " · origen: " + installer + " · firma SHA-256: " + fingerprint;
     }
 
     /** true si además de estar activo, ya nos dio permiso explícito. */
@@ -74,13 +137,23 @@ public class ShizukuInstaller {
     public static void requestPermission(PermissionCallback cb) {
         if (!isBinderAlive()) { cb.onResult(false); return; }
         if (hasPermission()) { cb.onResult(true); return; }
+        if (pendingCallback != null) { cb.onResult(false); return; }
         pendingCallback = cb;
-        try {
-            Shizuku.requestPermission(PERMISSION_REQUEST_CODE);
-        } catch (Throwable t) {
-            pendingCallback = null;
-            cb.onResult(false);
-        }
+        pendingTimeout = () -> deliverPermissionResult(false);
+        MAIN.postDelayed(pendingTimeout, 45_000L);
+        Runnable request = () -> {
+            try { Shizuku.requestPermission(PERMISSION_REQUEST_CODE); }
+            catch (Throwable t) { deliverPermissionResult(false); }
+        };
+        if (Looper.myLooper() == Looper.getMainLooper()) request.run(); else MAIN.post(request);
+    }
+
+    private static void deliverPermissionResult(boolean granted) {
+        PermissionCallback callback = pendingCallback;
+        pendingCallback = null;
+        if (pendingTimeout != null) MAIN.removeCallbacks(pendingTimeout);
+        pendingTimeout = null;
+        if (callback != null) callback.onResult(granted);
     }
 
     /**
