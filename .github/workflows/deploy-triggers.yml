@@ -103,26 +103,42 @@ jobs:
           fi
           echo "Servicio Render: ${ID}"
 
-          RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
+          API_URL="https://api.render.com/v1/services/${ID}/deploys"
+          RAW_RESP=$(curl -sS -w $'\\n%{http_code}' -X POST "${API_URL}" \
             -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Accept: application/json" \
             -H "Content-Type: application/json" \
-            -d "{\"commitId\":\"${COMMIT}\",\"clearCache\":\"do_not_clear\"}")
-          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
-          if [ -z "${DEPLOY_ID}" ]; then
-            echo "Reintentando deploy simple de Render tras: $(printf '%s' "${RESP}" | head -c 300)"
-            RESP=$(curl -sS -X POST "https://api.render.com/v1/services/${ID}/deploys" \
-              -H "Authorization: Bearer ${RENDER_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d '{"clearCache":"do_not_clear"}')
-            DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // empty')
-          fi
+            -d "{\\"commitId\\":\\"\${COMMIT}\\",\\"clearCache\\":\\"do_not_clear\\"}" || true)
+          HTTP_STATUS="${RAW_RESP##*$'\\n'}"
+          RESP="${RAW_RESP%$'\\n'*}"
+          if [ "${HTTP_STATUS}" = "${RAW_RESP}" ]; then HTTP_STATUS="000"; RESP="${RAW_RESP}"; fi
+          DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // .deploy.id // empty' 2>/dev/null || true)
 
-          echo "Respuesta Render: $(printf '%s' "${RESP}" | head -c 600)"
-          if [ -z "${DEPLOY_ID}" ]; then
-            echo "::error::Render no devolvió un id de deploy."
+          if [[ ! "${HTTP_STATUS}" =~ ^2 ]]; then
+            echo "::error::Render respondió HTTP ${HTTP_STATUS}: $(printf '%s' "${RESP}" | head -c 500)"
             exit 1
           fi
-          echo "✅ Deploy de Render disparado: ${DEPLOY_ID}"
+
+          # Render puede responder 202 (en cola) sin un id. Busca el deploy
+          # del mismo commit antes de fallar o volver a disparar uno duplicado.
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "Render aceptó la solicitud (HTTP ${HTTP_STATUS}) sin id inmediato; buscando deploy del commit."
+            for attempt in $(seq 1 12); do
+              DEPLOYS=$(curl -sS -H "Authorization: Bearer ${RENDER_API_KEY}" \
+                -H "Accept: application/json" "${API_URL}?limit=20" || true)
+              DEPLOY_ID=$(printf '%s' "${DEPLOYS}" | jq -r --arg sha "${COMMIT}" \
+                '[.[] | (.deploy // .)] | map(select((.commit.id // .commitId // "") == $sha)) | .[0].id // empty' 2>/dev/null || true)
+              [ -n "${DEPLOY_ID}" ] && break
+              sleep 5
+            done
+          fi
+
+          echo "Respuesta Render (HTTP ${HTTP_STATUS}): $(printf '%s' "${RESP}" | head -c 600)"
+          if [ -z "${DEPLOY_ID}" ]; then
+            echo "::error::Render aceptó la solicitud pero no aparece un deploy para el commit ${COMMIT}."
+            exit 1
+          fi
+          echo "✅ Deploy de Render disparado o en cola: ${DEPLOY_ID}"
 
           # Sondeo del estado del deploy (hasta ~10 min)
           for i in $(seq 1 60); do
