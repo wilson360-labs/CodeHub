@@ -104,13 +104,13 @@ jobs:
           echo "Servicio Render: ${ID}"
 
           API_URL="https://api.render.com/v1/services/${ID}/deploys"
-          RAW_RESP=$(curl -sS -w $'\\n%{http_code}' -X POST "${API_URL}" \
+          RAW_RESP=$(curl -sS -w $'\n%{http_code}' -X POST "${API_URL}" \
             -H "Authorization: Bearer ${RENDER_API_KEY}" \
             -H "Accept: application/json" \
             -H "Content-Type: application/json" \
-            -d "{\\"commitId\\":\\"\${COMMIT}\\",\\"clearCache\\":\\"do_not_clear\\"}" || true)
-          HTTP_STATUS="${RAW_RESP##*$'\\n'}"
-          RESP="${RAW_RESP%$'\\n'*}"
+            -d "{\"commitId\":\"${COMMIT}\",\"clearCache\":\"do_not_clear\"}" || true)
+          HTTP_STATUS="${RAW_RESP##*$'\n'}"
+          RESP="${RAW_RESP%$'\n'*}"
           if [ "${HTTP_STATUS}" = "${RAW_RESP}" ]; then HTTP_STATUS="000"; RESP="${RAW_RESP}"; fi
           DEPLOY_ID=$(printf '%s' "${RESP}" | jq -r '.id // .deploy.id // empty' 2>/dev/null || true)
 
