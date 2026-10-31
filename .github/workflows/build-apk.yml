@@ -146,7 +146,7 @@ jobs:
           if [ -f "$RUNNER_TEMP/compile-debug-ok" ]; then exit 0; fi
           LOG="$RUNNER_TEMP/compile-debug.log"
           if [ -s "$LOG" ]; then
-            echo "::group::Diagnóstico real de assembleDebug"
+            echo "=== Diagnóstico real de assembleDebug ==="
             DIAGNOSTICS=$(grep -nE '^e: |error:|cannot find symbol|unresolved reference|Could not resolve|Could not find|What went wrong|Execution failed for task|Caused by:' "$LOG" | head -n 100 || true)
             if [ -n "$DIAGNOSTICS" ]; then
               echo "$DIAGNOSTICS"
@@ -157,15 +157,14 @@ jobs:
                 echo '```'
               } >> "$GITHUB_STEP_SUMMARY"
             else
-              tail -n 100 "$LOG"
+              tail -n 160 "$LOG"
               {
                 echo '## Diagnóstico de assembleDebug'
                 echo '```text'
-                tail -n 100 "$LOG"
+                tail -n 160 "$LOG"
                 echo '```'
               } >> "$GITHUB_STEP_SUMMARY"
             fi
-            echo "::endgroup::"
           fi
           echo "::error::assembleDebug fallo. Ver log: compile-debug-log"
           exit 1
