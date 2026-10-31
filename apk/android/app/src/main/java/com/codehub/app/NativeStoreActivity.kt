@@ -20,7 +20,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -28,6 +27,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.Executors
+import org.json.JSONObject
 
 /** Native Open Source catalog for the Android app. The web catalog remains the source of truth. */
 class NativeStoreActivity : Activity() {
@@ -154,6 +154,19 @@ class NativeStoreActivity : Activity() {
         root.addView(status, LinearLayout.LayoutParams(-1, dp(34)))
 
         val scroll = ScrollView(this).apply { isFillViewport = true }
+        var downY = 0f
+        scroll.setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> downY = event.y
+                android.view.MotionEvent.ACTION_UP -> {
+                    if (view.scrollY == 0 && event.y - downY > dp(88)) {
+                        loadCatalog()
+                        return@setOnTouchListener true
+                    }
+                }
+            }
+            false
+        }
         appList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(4), 0, dp(20))
@@ -415,7 +428,17 @@ class NativeStoreActivity : Activity() {
             rail.addView(row)
             appList.addView(rail, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
         }
-        filtered.forEach { appList.addView(appCard(it)) }
+        val useGrid = resources.configuration.smallestScreenWidthDp >= 600
+        if (useGrid) {
+            filtered.chunked(2).forEach { pair ->
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
+                pair.forEach { item ->
+                    row.addView(appCard(item), LinearLayout.LayoutParams(0, -1, 1f).apply { marginEnd = dp(6) })
+                }
+                if (pair.size == 1) row.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = dp(6) })
+                appList.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
+            }
+        } else filtered.forEach { appList.addView(appCard(it)) }
         if (filtered.isEmpty() && selectedPlatform == "Windows" && apps.none { it.platform == "Windows" }) {
             val message = when {
                 windowsCatalogLoading -> "Cargando catálogo de Windows…"
@@ -631,6 +654,15 @@ class NativeStoreActivity : Activity() {
         content.addView(label("Versión ${app.version.ifEmpty { "disponible" }}\n${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
+        val releaseStatus = label("Consultando versiones y variantes…", 13f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(12), 0, 0)
+        }
+        content.addView(releaseStatus)
+        val releaseImages = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val imageScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(releaseImages) }
+        content.addView(imageScroll, LinearLayout.LayoutParams(-1, dp(150)).apply { topMargin = dp(10) })
+        val releaseActions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        content.addView(releaseActions)
         if (app.changelog.isNotBlank()) {
             content.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
             content.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
@@ -649,7 +681,7 @@ class NativeStoreActivity : Activity() {
             })
         }
         val dialog = AlertDialog.Builder(this)
-            .setView(content)
+            .setView(ScrollView(this).apply { isFillViewport = true; addView(content) })
             .setNegativeButton("Cerrar", null)
             .setNeutralButton("Ver código", null)
             .setPositiveButton("Instalar", null)
@@ -674,13 +706,92 @@ class NativeStoreActivity : Activity() {
             }
         }
         dialog.show()
+        dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        if (app.platform == "Android" && app.repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) {
+            executor.execute {
+                val releases = fetchReleases(app.repo)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    releaseActions.removeAllViews()
+                    releaseImages.removeAllViews()
+                    if (releases.isEmpty()) {
+                        releaseStatus.text = "No hay releases públicos con APKs disponibles."
+                    } else {
+                        releaseStatus.text = "Versiones y variantes APK · elige una versión para instalar"
+                        releases.forEach { release ->
+                            val apkAssets = release.assets.filter { it.name.endsWith(".apk", true) }
+                            val imageAssets = release.assets.filter { it.name.matches(Regex(".*\\.(png|jpe?g|webp)$", true)) }.take(5)
+                            imageAssets.forEach { asset ->
+                                val image = android.widget.ImageView(this).apply {
+                                    scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                    background = roundRect(0xFF1D2C2A.toInt(), 0, dp(12))
+                                    clipToOutline = true
+                                    loadCodeHubImage(asset.url)
+                                    contentDescription = "Captura de ${app.name} · ${release.name}"
+                                }
+                                releaseImages.addView(image, LinearLayout.LayoutParams(dp(220), dp(132)).apply { marginEnd = dp(10) })
+                            }
+                            val button = Button(this).apply {
+                                text = "${release.name}${if (release.prerelease) " · Beta" else " · Estable"}  (${apkAssets.size} variantes APK)"
+                                isAllCaps = false
+                                setOnClickListener {
+                                    if (apkAssets.isEmpty()) openExternal(release.url)
+                                    else showReleaseAssets(app, release, apkAssets)
+                                }
+                            }
+                            releaseActions.addView(button, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+                            if (release.notes.isNotBlank()) {
+                                releaseActions.addView(label(release.notes, 12f, 0xFFB7B8C8.toInt()).apply {
+                                    maxLines = 4
+                                    ellipsize = android.text.TextUtils.TruncateAt.END
+                                    setPadding(dp(8), dp(3), dp(8), dp(5))
+                                })
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    private fun startInstall(app: AppEntry) {
+    private data class ReleaseAsset(val name: String, val url: String)
+    private data class AppRelease(val name: String, val url: String, val prerelease: Boolean, val notes: String, val assets: List<ReleaseAsset>)
+
+    private fun fetchReleases(repo: String): List<AppRelease> = runCatching {
+        val connection = URL("https://api.github.com/repos/$repo/releases?per_page=10").openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 12_000
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+            if (connection.responseCode !in 200..299) return@runCatching emptyList()
+            val rows = JSONArray(BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() })
+            (0 until rows.length()).mapNotNull { index ->
+                val row = rows.optJSONObject(index) ?: return@mapNotNull null
+                val assetsJson = row.optJSONArray("assets") ?: JSONArray()
+                val assets = (0 until assetsJson.length()).mapNotNull { assetIndex ->
+                    val item = assetsJson.optJSONObject(assetIndex) ?: return@mapNotNull null
+                    val url = item.optString("browser_download_url")
+                    if (url.startsWith("https://")) ReleaseAsset(item.optString("name"), url) else null
+                }
+                AppRelease(row.optString("name").ifBlank { row.optString("tag_name") }, row.optString("html_url"), row.optBoolean("prerelease"), row.optString("body").trim(), assets)
+            }
+        } finally { connection.disconnect() }
+    }.getOrDefault(emptyList())
+
+    private fun showReleaseAssets(app: AppEntry, release: AppRelease, assets: List<ReleaseAsset>) {
+        AlertDialog.Builder(this)
+            .setTitle("${app.name} · ${release.name}")
+            .setItems(assets.map { it.name }.toTypedArray()) { _, which -> startInstall(app, assets[which].url) }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun startInstall(app: AppEntry, assetUrl: String? = null) {
         if (app.platform != "Android") return
         NativeStoreInstallFlow.request(this) { preferSilent ->
             try {
-                val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
+                val url = assetUrl ?: "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
                 setResult(RESULT_OK, Intent().apply {
                     putExtra(EXTRA_APK_URL, url)
                     putExtra(EXTRA_APP_ID, app.id)

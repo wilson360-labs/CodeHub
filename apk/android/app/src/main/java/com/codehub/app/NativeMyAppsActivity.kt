@@ -2,6 +2,7 @@ package com.codehub.app
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.DownloadManager
 import android.content.Intent
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,6 +23,7 @@ import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -40,6 +42,8 @@ class NativeMyAppsActivity : Activity() {
 
     private val executor = Executors.newSingleThreadExecutor()
     private val installed = mutableListOf<AppEntry>()
+    private val downloads = mutableListOf<DownloadEntry>()
+    private val ignoredUpdateIds = mutableSetOf<String>()
     private lateinit var list: LinearLayout
     private lateinit var filterRow: LinearLayout
     private lateinit var search: EditText
@@ -48,12 +52,14 @@ class NativeMyAppsActivity : Activity() {
     private var refreshing = false
     private var updateCheckFailed = false
     private var hasLoaded = false
+    private var bulkUpdating = false
 
-    private enum class Filter { ALL, UPDATES }
+    private enum class Filter { ALL, UPDATES, DOWNLOADED, LOCAL, IGNORED }
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         SystemBars.fit(this)
+        ignoredUpdateIds.addAll(getSharedPreferences("codehub_store", MODE_PRIVATE).getStringSet("ignored_updates", emptySet()).orEmpty())
         buildScreen()
         refreshApps()
     }
@@ -73,7 +79,7 @@ class NativeMyAppsActivity : Activity() {
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
         }
         root.addView(title)
-        root.addView(label("Instaladas desde el catálogo Open Source", 13f, 0xFF9AA0B8.toInt()))
+        root.addView(label("Biblioteca del dispositivo · apps, descargas y actualizaciones", 13f, 0xFF9AA0B8.toInt()))
 
         val searchRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         search = EditText(this).apply {
@@ -129,6 +135,7 @@ class NativeMyAppsActivity : Activity() {
                 val catalog = try { fetchCatalog() } catch (_: Exception) { failedUpdates = true; emptyList() }
                 val byPackage = catalog.mapNotNull { app -> app.packageName?.let { it to app } }.toMap()
                 val local = fetchInstalledApps(byPackage)
+                val recentDownloads = fetchDownloads()
                 val managed = local.filter { it.repo.isNotBlank() && !it.id.startsWith("local:") }
                 val updates = try { fetchUpdates(managed) } catch (_: Exception) {
                     failedUpdates = true
@@ -141,6 +148,7 @@ class NativeMyAppsActivity : Activity() {
                 }
                 runOnUiThread {
                     installed.clear(); installed.addAll(local)
+                    downloads.clear(); downloads.addAll(recentDownloads)
                     updateCheckFailed = failedUpdates
                     hasLoaded = true
                     renderFilters(); render()
@@ -154,6 +162,27 @@ class NativeMyAppsActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun fetchDownloads(): List<DownloadEntry> {
+        val manager = getSystemService(DOWNLOAD_SERVICE) as? DownloadManager ?: return emptyList()
+        val rows = mutableListOf<DownloadEntry>()
+        val cursor = runCatching { manager.query(DownloadManager.Query()) }.getOrNull() ?: return rows
+        cursor.use {
+            val titleIndex = it.getColumnIndex(DownloadManager.COLUMN_TITLE)
+            val statusIndex = it.getColumnIndex(DownloadManager.COLUMN_STATUS)
+            val bytesIndex = it.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+            val totalIndex = it.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+            while (it.moveToNext()) {
+                rows.add(DownloadEntry(
+                    title = if (titleIndex >= 0) it.getString(titleIndex).orEmpty() else "Descarga",
+                    status = if (statusIndex >= 0) it.getInt(statusIndex) else -1,
+                    bytes = if (bytesIndex >= 0) it.getLong(bytesIndex) else 0L,
+                    total = if (totalIndex >= 0) it.getLong(totalIndex) else 0L,
+                ))
+            }
+        }
+        return rows
     }
 
     private fun fetchInstalledApps(catalog: Map<String, AppEntry>): List<AppEntry> {
@@ -243,7 +272,14 @@ class NativeMyAppsActivity : Activity() {
         filterRow.removeAllViews()
         Filter.values().forEach { option ->
             val selected = filter == option
-            val chip = label(if (option == Filter.ALL) "Instaladas (${installed.size})" else "Actualizaciones (${installed.count { it.hasUpdate }})",
+            val title = when (option) {
+                Filter.ALL -> "Instaladas (${installed.size})"
+                Filter.UPDATES -> "Actualizaciones (${installed.count { it.hasUpdate && it.id !in ignoredUpdateIds }})"
+                Filter.DOWNLOADED -> "Descargas (${downloads.size})"
+                Filter.LOCAL -> "Locales (${installed.count { it.repo.isBlank() }})"
+                Filter.IGNORED -> "Ignoradas (${installed.count { it.hasUpdate && it.id in ignoredUpdateIds }})"
+            }
+            val chip = label(title,
                 13f, if (selected) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(15), 0, dp(15), 0)
@@ -258,21 +294,58 @@ class NativeMyAppsActivity : Activity() {
         if (!::list.isInitialized) return
         list.removeAllViews()
         val query = if (::search.isInitialized) search.text.toString().trim().lowercase(Locale.ROOT) else ""
+        if (filter == Filter.DOWNLOADED) {
+            val visibleDownloads = downloads.filter { it.title.lowercase(Locale.ROOT).contains(query) }
+            status.text = "${downloads.size} descargas en el dispositivo"
+            if (visibleDownloads.isEmpty()) list.addView(label("Aún no hay archivos descargados. Las descargas APK aparecerán aquí.", 14f, 0xFF9AA0B8.toInt()).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, dp(140)))
+            else visibleDownloads.forEach { entry ->
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dp(15), dp(13), dp(15), dp(13))
+                    setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(16)))
+                }
+                row.addView(label(entry.title, 14f, 0xFFFFFFFF.toInt(), true))
+                val progress = if (entry.total > 0) " · ${entry.bytes * 100 / entry.total}%" else ""
+                row.addView(label(downloadStatus(entry.status) + progress, 12f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(5), 0, 0) })
+                row.setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) }
+                list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+            }
+            if (downloads.isNotEmpty()) list.addView(Button(this).apply { text = "Administrar descargas"; isAllCaps = false; setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) } })
+            return
+        }
         val visible = installed.filter { app ->
-            (filter == Filter.ALL || app.hasUpdate) &&
+            when (filter) {
+                Filter.UPDATES -> app.hasUpdate && app.id !in ignoredUpdateIds
+                Filter.LOCAL -> app.repo.isBlank()
+                Filter.IGNORED -> app.hasUpdate && app.id in ignoredUpdateIds
+                else -> true
+            } &&
                 "${app.name} ${app.category} ${app.repo} ${app.packageName}".lowercase(Locale.ROOT).contains(query)
         }
+        val updateCount = installed.count { it.hasUpdate && it.id !in ignoredUpdateIds }
         status.text = when {
             refreshing -> "Buscando actualizaciones…"
+            bulkUpdating -> status.text
             updateCheckFailed -> "${installed.size} instaladas · no se pudieron verificar actualizaciones"
-            else -> "${installed.size} instaladas · ${installed.count { it.hasUpdate }} con actualización"
+            else -> "${installed.size} instaladas · $updateCount actualizaciones · ${installed.count { it.repo.isBlank() }} locales"
+        }
+        if (filter == Filter.UPDATES && updateCount > 0) {
+            list.addView(Button(this).apply {
+                text = "Actualizar todo · $updateCount"
+                isAllCaps = false
+                setOnClickListener { updateAll(updates = installed.filter { it.hasUpdate && it.id !in ignoredUpdateIds }) }
+            }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(10) })
         }
         if (visible.isEmpty()) {
             val message = when {
-                installed.isEmpty() -> "No hay apps del catálogo instaladas en este dispositivo."
+                refreshing -> "Buscando apps instaladas en este dispositivo…"
+                installed.isEmpty() && updateCheckFailed -> "No pudimos leer las apps del dispositivo. Toca ⟳ para reintentar."
+                installed.isEmpty() -> "No hay aplicaciones de usuario instaladas en este dispositivo."
                 filter == Filter.UPDATES && updateCheckFailed -> "No pudimos comprobar las actualizaciones. Toca ⟳ para reintentar."
-                filter == Filter.UPDATES -> "Tus apps están al día."
-                else -> "No encontramos apps con esa búsqueda."
+                filter == Filter.UPDATES -> "Tus apps administradas por CodeHub están al día."
+                filter == Filter.LOCAL -> "No hay apps locales que coincidan."
+                filter == Filter.IGNORED -> "No has ignorado actualizaciones."
+                else -> "No encontramos apps instaladas con esa búsqueda."
             }
             list.addView(label(message, 14f, 0xFF9AA0B8.toInt()).apply { gravity = Gravity.CENTER },
                 LinearLayout.LayoutParams(-1, dp(140)))
@@ -355,6 +428,7 @@ class NativeMyAppsActivity : Activity() {
         val pkg = app.packageName ?: return
         val actions = mutableListOf("Abrir", "Desinstalar")
         if (app.repo.isNotBlank()) actions.add("Ver código fuente")
+        if (app.hasUpdate) actions.add(if (app.id in ignoredUpdateIds) "Mostrar actualización" else "Ignorar actualización")
         AlertDialog.Builder(this)
             .setTitle(app.name)
             .setItems(actions.toTypedArray()) { _, which ->
@@ -369,11 +443,78 @@ class NativeMyAppsActivity : Activity() {
                     } catch (_: Exception) {
                         Toast.makeText(this, "No se pudo abrir el desinstalador", Toast.LENGTH_SHORT).show()
                     }
-                    2 -> openRepository(app)
+                    2 -> if (app.repo.isNotBlank()) openRepository(app) else toggleIgnoredUpdate(app)
+                    3 -> toggleIgnoredUpdate(app)
                 }
             }
             .setNegativeButton("Cerrar", null)
             .show()
+    }
+
+    private fun toggleIgnoredUpdate(app: AppEntry) {
+        if (!ignoredUpdateIds.add(app.id)) ignoredUpdateIds.remove(app.id)
+        getSharedPreferences("codehub_store", MODE_PRIVATE).edit().putStringSet("ignored_updates", ignoredUpdateIds.toSet()).apply()
+        renderFilters()
+        render()
+    }
+
+    private fun updateAll(updates: List<AppEntry>) {
+        if (bulkUpdating || updates.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle("Actualizar ${updates.size} apps")
+            .setMessage("CodeHub descargará e instalará las actualizaciones en secuencia con Shizuku. Mantén la app abierta hasta que termine.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Continuar") { _, _ ->
+                NativeStoreInstallFlow.request(this) { preferSilent ->
+                    if (!preferSilent) {
+                        Toast.makeText(this, "La actualización por lotes requiere Shizuku activo y autorizado.", Toast.LENGTH_LONG).show()
+                        return@request
+                    }
+                    bulkUpdating = true
+                    Thread {
+                        var completed = 0
+                        var failure: String? = null
+                        updates.forEachIndexed { index, app ->
+                            if (failure != null) return@forEachIndexed
+                            val url = app.downloadUrl
+                            if (!url.startsWith("https://")) {
+                                failure = "${app.name}: no hay un APK directo disponible."
+                                return@forEachIndexed
+                            }
+                            val file = File(cacheDir, "codehub-update-$index.apk")
+                            try {
+                                runOnUiThread { status.text = "Actualizando ${index + 1}/${updates.size}: ${app.name}" }
+                                val connection = URL(url).openConnection() as HttpURLConnection
+                                try {
+                                    connection.connectTimeout = 15_000
+                                    connection.readTimeout = 90_000
+                                    if (connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
+                                    connection.inputStream.use { input -> file.outputStream().use { output -> input.copyTo(output) } }
+                                } finally { connection.disconnect() }
+                                ShizukuInstaller.installSilently(file.absolutePath)
+                                completed++
+                            } catch (error: Exception) {
+                                failure = "${app.name}: ${error.message ?: "falló la instalación"}"
+                            } finally { file.delete() }
+                        }
+                        runOnUiThread {
+                            bulkUpdating = false
+                            Toast.makeText(this, if (failure == null) "$completed apps actualizadas" else "$completed actualizadas · $failure", Toast.LENGTH_LONG).show()
+                            refreshApps()
+                        }
+                    }.start()
+                }
+            }
+            .show()
+    }
+
+    private fun downloadStatus(status: Int): String = when (status) {
+        DownloadManager.STATUS_SUCCESSFUL -> "Descarga completada"
+        DownloadManager.STATUS_RUNNING -> "Descargando"
+        DownloadManager.STATUS_PENDING -> "En espera"
+        DownloadManager.STATUS_PAUSED -> "Pausada"
+        DownloadManager.STATUS_FAILED -> "Error de descarga"
+        else -> "Estado de descarga"
     }
 
     private fun openRepository(app: AppEntry) {
@@ -433,4 +574,6 @@ class NativeMyAppsActivity : Activity() {
             )
         }
     }
+
+    private data class DownloadEntry(val title: String, val status: Int, val bytes: Long, val total: Long)
 }
