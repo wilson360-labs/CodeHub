@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -42,6 +43,8 @@ class NativeMyAppsActivity : Activity() {
 
     private val executor = Executors.newSingleThreadExecutor()
     private val installed = mutableListOf<AppEntry>()
+    private val activeTransfers = mutableMapOf<String, TransferProgress>()
+    private val transferViews = mutableMapOf<String, Pair<ProgressBar, TextView>>()
     private val downloads = mutableListOf<DownloadEntry>()
     private val ignoredUpdateIds = mutableSetOf<String>()
     private lateinit var list: LinearLayout
@@ -53,6 +56,8 @@ class NativeMyAppsActivity : Activity() {
     private var updateCheckFailed = false
     private var hasLoaded = false
     private var bulkUpdating = false
+
+    private data class TransferProgress(val downloaded: Long, val total: Long)
 
     private enum class Filter { ALL, UPDATES, DOWNLOADED, LOCAL, IGNORED }
 
@@ -292,6 +297,7 @@ class NativeMyAppsActivity : Activity() {
 
     private fun render() {
         if (!::list.isInitialized) return
+        transferViews.clear()
         list.removeAllViews()
         val query = if (::search.isInitialized) search.text.toString().trim().lowercase(Locale.ROOT) else ""
         if (filter == Filter.DOWNLOADED) {
@@ -353,11 +359,15 @@ class NativeMyAppsActivity : Activity() {
     }
 
     private fun appCard(app: AppEntry): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(11))
+            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) }
+        }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(13), dp(14), dp(13))
-            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
@@ -379,17 +389,44 @@ class NativeMyAppsActivity : Activity() {
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.setOnClickListener { showAppActions(app) }
         if (app.hasUpdate) {
-            val hasDirectApk = app.downloadUrl.endsWith(".apk", true) || app.downloadUrl.contains(".apk?", true)
+            val hasDirectApk = isDirectApkUrl(app.downloadUrl)
             val update = Button(this).apply {
-                text = if (hasDirectApk) "Actualizar" else "Ver release"
+                text = when {
+                    app.id in activeTransfers -> "Descargando…"
+                    hasDirectApk -> "Actualizar"
+                    else -> "Ver release"
+                }
                 isAllCaps = false
                 textSize = 12f
+                isEnabled = app.id !in activeTransfers
                 setOnClickListener { if (hasDirectApk) confirmUpdate(app) else openRelease(app) }
             }
             card.addView(update, LinearLayout.LayoutParams(-2, dp(42)))
         }
-        return card.apply { layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) } }
+        container.addView(card)
+        activeTransfers[app.id]?.let { transfer ->
+            val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
+            val progressText = label(
+                if (transfer.total > 0) "ACTUALIZANDO  ·  $percent%" else "DESCARGANDO ACTUALIZACIÓN  ·  ${android.text.format.Formatter.formatShortFileSize(this, transfer.downloaded)}",
+                10f, 0xFF68F0A9.toInt(), true,
+            )
+            val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 100
+                isIndeterminate = transfer.total <= 0
+                progressTintList = android.content.res.ColorStateList.valueOf(0xFF68F0A9.toInt())
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF26372F.toInt())
+                if (transfer.total > 0) setProgress(percent, false)
+            }
+            container.addView(progressText, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            container.addView(progress, LinearLayout.LayoutParams(-1, dp(4)).apply { topMargin = dp(5) })
+            transferViews[app.id] = progress to progressText
+        }
+        return container
     }
+
+    private fun isDirectApkUrl(url: String): Boolean =
+        url.endsWith(".apk", true) || url.contains(".apk?", true) ||
+            (url.startsWith("$CATALOG_API/", true) && url.endsWith("/download", true))
 
     private fun confirmUpdate(app: AppEntry) {
         val url = app.downloadUrl
@@ -403,13 +440,35 @@ class NativeMyAppsActivity : Activity() {
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Continuar") { _, _ ->
                 NativeStoreInstallFlow.request(this) { preferSilent ->
-                    setResult(RESULT_OK, Intent().apply {
-                        putExtra(EXTRA_APK_URL, url)
-                        putExtra(EXTRA_APP_ID, app.id)
-                        putExtra(NativeStoreActivity.EXTRA_PACKAGE_NAME, app.packageName.orEmpty())
-                        putExtra(EXTRA_PREFER_SILENT, preferSilent)
-                    })
-                    finish()
+                    if (app.id in activeTransfers) return@request
+                    activeTransfers[app.id] = TransferProgress(0, -1)
+                    render()
+                    NativeStoreApkInstaller.install(this, url, app.id, app.packageName, preferSilent,
+                        object : NativeStoreApkInstaller.Listener {
+                            override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+                                activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
+                                transferViews[app.id]?.let { (bar, text) ->
+                                    val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
+                                    bar.isIndeterminate = totalBytes <= 0
+                                    if (totalBytes > 0) bar.setProgress(percent, true)
+                                    text.text = if (totalBytes > 0) "ACTUALIZANDO  ·  $percent%" else "DESCARGANDO ACTUALIZACIÓN  ·  ${android.text.format.Formatter.formatShortFileSize(this@NativeMyAppsActivity, downloadedBytes)}"
+                                }
+                            }
+
+                            override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
+                                activeTransfers.remove(app.id)
+                                renderFilters(); render()
+                                when (status) {
+                                    NativeStoreApkInstaller.Status.INSTALLED -> Toast.makeText(this@NativeMyAppsActivity, "${app.name} se actualizó.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity, "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.FAILED -> AlertDialog.Builder(this@NativeMyAppsActivity)
+                                        .setTitle("No se pudo actualizar ${app.name}")
+                                        .setMessage(message)
+                                        .setPositiveButton("Entendido", null)
+                                        .show()
+                                }
+                            }
+                        })
                 }
             }
             .show()

@@ -2500,6 +2500,34 @@ app.get('/api/apps/:appId/download', async (req, res) => {
 // ── App Updates — verificar versiones desde GitHub Releases ──
 // POST /api/app-updates  { apps: [{ appId, version, source_repo }] }
 // Retorna: [{ appId, currentVersion, latestVersion, hasUpdate, downloadUrl }]
+function compareAppReleaseVersions(left, right) {
+  const clean = value => String(value || '').trim().replace(/^v/i, '').split('+', 1)[0];
+  const a = clean(left), b = clean(right);
+  if (!a || a.toLowerCase() === b.toLowerCase()) return 0;
+  const pattern = /^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?$/;
+  const av = a.match(pattern), bv = b.match(pattern);
+  if (!av || !bv) return a.toLowerCase() === b.toLowerCase() ? 0 : 1;
+  const ac = av[1].split('.'), bc = bv[1].split('.');
+  for (let i = 0; i < Math.max(ac.length, bc.length); i++) {
+    const x = BigInt(ac[i] || '0'), y = BigInt(bc[i] || '0');
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  if (!av[2] && bv[2]) return 1;
+  if (av[2] && !bv[2]) return -1;
+  if (!av[2] && !bv[2]) return 0;
+  const ap = av[2].split('.'), bp = bv[2].split('.');
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    if (ap[i] === undefined) return -1;
+    if (bp[i] === undefined) return 1;
+    if (ap[i] === bp[i]) continue;
+    const an = /^\d+$/.test(ap[i]), bn = /^\d+$/.test(bp[i]);
+    if (an && bn) return BigInt(ap[i]) > BigInt(bp[i]) ? 1 : -1;
+    if (an !== bn) return an ? -1 : 1;
+    return ap[i].localeCompare(bp[i], undefined, { sensitivity: 'base' }) > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
 app.post('/api/app-updates', async (req, res) => {
   try {
     const { apps } = req.body;
@@ -2509,22 +2537,27 @@ app.post('/api/app-updates', async (req, res) => {
       // (URLs, ../, caracteres raros) se ignora en lugar de interpolarse en fetch.
       const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
       if (!app.source_repo || !REPO_RE.test(app.source_repo)) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
-      const cacheKey = `update:${app.source_repo}`;
-      const cached = await cacheGet(cacheKey);
-      if (cached) return { appId: app.appId, currentVersion: app.version, ...cached };
-      const ghRes = await fetch(`https://api.github.com/repos/${app.source_repo}/releases/latest`, {
-        headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
-        signal: AbortSignal.timeout(5000)
-      });
-      if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
-      const release = await ghRes.json();
-      const latest = (release.tag_name || '').replace(/^v/i, '');
-      const current = (app.version || '').replace(/^v/i, '');
-      const apkAsset = (release.assets || []).find(a => a.name && a.name.endsWith('.apk'));
-const downloadUrl = `${(process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, '')}/api/apps/${encodeURIComponent(app.appId)}/download`;
-    const result = { latestVersion: release.tag_name || latest, hasUpdate: latest !== current && !!latest, downloadUrl };
-      await cacheSet(cacheKey, result, 600);
-      return { appId: app.appId, currentVersion: app.version, ...result };
+      const cacheKey = `update:v2:${app.source_repo}`;
+      let latestVersion = await cacheGet(cacheKey);
+      if (!latestVersion) {
+        const ghRes = await fetch(`https://api.github.com/repos/${app.source_repo}/releases/latest`, {
+          headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
+          signal: AbortSignal.timeout(5000)
+        });
+        if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+        const release = await ghRes.json();
+        latestVersion = release.tag_name || '';
+        if (!latestVersion) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+        await cacheSet(cacheKey, latestVersion, 600);
+      }
+      const downloadUrl = `${(process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, '')}/api/apps/${encodeURIComponent(app.appId)}/download`;
+      return {
+        appId: app.appId,
+        currentVersion: app.version,
+        latestVersion,
+        hasUpdate: compareAppReleaseVersions(latestVersion, app.version) > 0,
+        downloadUrl
+      };
     }));
     res.json(results.map(r => r.status === 'fulfilled' ? r.value : { appId: '?', hasUpdate: false }));
   } catch { res.status(500).json({ error: 'Error checking updates' }); }

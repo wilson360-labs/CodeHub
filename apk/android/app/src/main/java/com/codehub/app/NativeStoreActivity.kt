@@ -7,6 +7,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -14,8 +16,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -49,6 +53,9 @@ class NativeStoreActivity : Activity() {
 
     private val executor = Executors.newSingleThreadExecutor()
     private val apps = mutableListOf<AppEntry>()
+    private val activeTransfers = mutableMapOf<String, TransferProgress>()
+    private val transferViews = mutableMapOf<String, Pair<ProgressBar, TextView>>()
+    private val heroHandler = Handler(Looper.getMainLooper())
     private lateinit var appList: LinearLayout
     private lateinit var chips: LinearLayout
     private lateinit var search: EditText
@@ -66,6 +73,25 @@ class NativeStoreActivity : Activity() {
     private var windowsCatalogLoading = true
     private var catalogLoaded = false
     private var catalogFailed = false
+    private var detailDialog: AlertDialog? = null
+    private var heroFrame: FrameLayout? = null
+    private var heroApps: List<AppEntry> = emptyList()
+    private var heroIndex = 0
+
+    private val heroRotator = object : Runnable {
+        override fun run() {
+            val frame = heroFrame ?: return
+            if (heroApps.size < 2 || isFinishing || isDestroyed) return
+            heroIndex = (heroIndex + 1) % heroApps.size
+            val next = featuredCard(heroApps[heroIndex]).apply { alpha = 0f; translationY = dp(6).toFloat() }
+            frame.removeAllViews()
+            frame.addView(next, FrameLayout.LayoutParams(-1, -2))
+            next.animate().alpha(1f).translationY(0f).setDuration(320).start()
+            heroHandler.postDelayed(this, 6_000)
+        }
+    }
+
+    private data class TransferProgress(val downloaded: Long, val total: Long)
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -382,6 +408,9 @@ class NativeStoreActivity : Activity() {
 
     private fun render() {
         if (!::appList.isInitialized) return
+        heroHandler.removeCallbacks(heroRotator)
+        heroFrame = null
+        transferViews.clear()
         appList.removeAllViews()
         val query = if (::search.isInitialized) search.text.toString().trim().lowercase(Locale.ROOT) else ""
         val matches = apps.filter { app ->
@@ -407,8 +436,13 @@ class NativeStoreActivity : Activity() {
         val topRated = filtered.filter { it.ratingCount > 0 }
             .sortedWith(compareByDescending<AppEntry> { it.ratingAverage }.thenByDescending { it.ratingCount }).take(8)
         if (home && filtered.isNotEmpty()) {
-            val featured = topRated.firstOrNull() ?: filtered.first()
-            appList.addView(featuredCard(featured), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+            heroApps = (topRated.ifEmpty { filtered }).take(5)
+            heroIndex %= heroApps.size
+            val frame = FrameLayout(this)
+            heroFrame = frame
+            frame.addView(featuredCard(heroApps[heroIndex]), FrameLayout.LayoutParams(-1, -2))
+            appList.addView(frame, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+            heroHandler.postDelayed(heroRotator, 6_000)
         }
         if (home && topRated.isNotEmpty()) {
             appList.addView(label("Mejor valoradas", 18f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(8), 0, dp(10)) })
@@ -550,6 +584,26 @@ class NativeStoreActivity : Activity() {
         row.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(row)
         card.addView(label("Ver detalles  ›", 12f, 0xFF68F0A9.toInt(), true).apply { gravity = Gravity.END })
+        if (heroApps.size > 1) {
+            val dots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0) }
+            heroApps.indices.forEach { index ->
+                val dot = View(this).apply {
+                    background = roundRect(if (index == heroIndex) 0xFF68F0A9.toInt() else 0xFF557064.toInt(), 0, dp(8))
+                    setOnClickListener {
+                        heroIndex = index
+                        heroHandler.removeCallbacks(heroRotator)
+                        val frame = heroFrame ?: return@setOnClickListener
+                        val next = featuredCard(heroApps[index]).apply { alpha = 0f; translationY = dp(6).toFloat() }
+                        frame.removeAllViews()
+                        frame.addView(next, FrameLayout.LayoutParams(-1, -2))
+                        next.animate().alpha(1f).translationY(0f).setDuration(280).start()
+                        heroHandler.postDelayed(heroRotator, 6_000)
+                    }
+                }
+                dots.addView(dot, LinearLayout.LayoutParams(if (index == heroIndex) dp(18) else dp(6), dp(6)).apply { marginEnd = dp(5) })
+            }
+            card.addView(dots)
+        }
         return card
     }
 
@@ -584,11 +638,15 @@ class NativeStoreActivity : Activity() {
     }
 
     private fun appCard(app: AppEntry): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(11))
+            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
+        }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(14), dp(14), dp(14))
-            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
             setOnClickListener { showDetails(app) }
         }
         val icon = android.widget.ImageView(this).apply {
@@ -616,10 +674,27 @@ class NativeStoreActivity : Activity() {
         })
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(favoriteControl(app))
-        card.addView(label("›", 28f, 0xFF9AA0B8.toInt()))
-        return card.apply {
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
+        val transfer = activeTransfers[app.id]
+        card.addView(label(if (transfer == null) "›" else "↓", 24f, if (transfer == null) 0xFF9AA0B8.toInt() else 0xFF68F0A9.toInt(), transfer != null))
+        container.addView(card)
+        if (transfer != null) {
+            val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
+            val progressText = label(
+                if (transfer.total > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this, transfer.downloaded)}",
+                10f, 0xFF68F0A9.toInt(), true,
+            )
+            val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 100
+                isIndeterminate = transfer.total <= 0
+                progressTintList = android.content.res.ColorStateList.valueOf(0xFF68F0A9.toInt())
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF26372F.toInt())
+                if (transfer.total > 0) setProgress(percent, false)
+            }
+            container.addView(progressText, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            container.addView(progress, LinearLayout.LayoutParams(-1, dp(4)).apply { topMargin = dp(5) })
+            transferViews[app.id] = progress to progressText
         }
+        return container
     }
 
     private fun favoriteControl(app: AppEntry): TextView = label(if (app.id in favoriteIds) "♥" else "♡", 23f, 0xFFFF6B9A.toInt(), true).apply {
@@ -686,8 +761,14 @@ class NativeStoreActivity : Activity() {
             .setNeutralButton("Ver código", null)
             .setPositiveButton("Instalar", null)
             .create()
+        detailDialog = dialog
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { startInstall(app) }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
+                if (app.id in activeTransfers) {
+                    text = "Descargando…"
+                    isEnabled = false
+                } else setOnClickListener { startInstall(app) }
+            }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
@@ -792,13 +873,40 @@ class NativeStoreActivity : Activity() {
         NativeStoreInstallFlow.request(this) { preferSilent ->
             try {
                 val url = assetUrl ?: "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
-                setResult(RESULT_OK, Intent().apply {
-                    putExtra(EXTRA_APK_URL, url)
-                    putExtra(EXTRA_APP_ID, app.id)
-                    putExtra(EXTRA_PACKAGE_NAME, app.packageName.orEmpty())
-                    putExtra(NativeMyAppsActivity.EXTRA_PREFER_SILENT, preferSilent)
-                })
-                finish()
+                if (app.id in activeTransfers) {
+                    Toast.makeText(this, "La descarga de ${app.name} ya está en curso.", Toast.LENGTH_SHORT).show()
+                    return@request
+                }
+                detailDialog?.dismiss()
+                detailDialog = null
+                activeTransfers[app.id] = TransferProgress(0, -1)
+                render()
+                NativeStoreApkInstaller.install(this, url, app.id, app.packageName, preferSilent,
+                    object : NativeStoreApkInstaller.Listener {
+                        override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+                            activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
+                            transferViews[app.id]?.let { (bar, text) ->
+                                val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
+                                bar.isIndeterminate = totalBytes <= 0
+                                if (totalBytes > 0) bar.setProgress(percent, true)
+                                text.text = if (totalBytes > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this@NativeStoreActivity, downloadedBytes)}"
+                            }
+                        }
+
+                        override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
+                            activeTransfers.remove(app.id)
+                            render()
+                            when (status) {
+                                NativeStoreApkInstaller.Status.INSTALLED -> Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
+                                NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+                                NativeStoreApkInstaller.Status.FAILED -> AlertDialog.Builder(this@NativeStoreActivity)
+                                    .setTitle("No se pudo instalar ${app.name}")
+                                    .setMessage(message)
+                                    .setPositiveButton("Entendido", null)
+                                    .show()
+                            }
+                        }
+                    })
             } catch (_: Exception) {
                 Toast.makeText(this, "No se pudo preparar la instalación", Toast.LENGTH_SHORT).show()
             }
@@ -921,6 +1029,7 @@ class NativeStoreActivity : Activity() {
     }
 
     override fun onDestroy() {
+        heroHandler.removeCallbacksAndMessages(null)
         executor.shutdownNow()
         super.onDestroy()
     }
