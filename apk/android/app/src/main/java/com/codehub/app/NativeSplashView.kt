@@ -234,8 +234,15 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
 private class OrbitalRingsView(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val orbitDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF2F80ED.toInt()
+        setShadowLayer(9f * density, 0f, 0f, color)
+    }
     private val bounds = RectF()
     private var rotation = 0f
+    private var gradientWidth = 0
+    private var gradientHeight = 0
+    private var orbitGradient: SweepGradient? = null
 
     fun setRotationDegrees(value: Float) {
         rotation = value
@@ -249,20 +256,22 @@ private class OrbitalRingsView(context: Context) : View(context) {
         val radius = width / 2f - 5f * density
         bounds.set(cx - radius, cy - radius, cx + radius, cy + radius)
 
+        if (gradientWidth != width || gradientHeight != height) {
+            gradientWidth = width
+            gradientHeight = height
+            orbitGradient = SweepGradient(
+                cx, cy,
+                intArrayOf(0xFF2F80ED.toInt(), 0xFF22C55E.toInt(), 0xFF6A11FF.toInt(), 0xFF00C6FF.toInt(), 0xFF2F80ED.toInt()),
+                null,
+            )
+        }
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 2.4f * density
-        paint.shader = SweepGradient(
-            cx, cy,
-            intArrayOf(0xFF2F80ED.toInt(), 0xFF22C55E.toInt(), 0xFF6A11FF.toInt(), 0xFF00C6FF.toInt(), 0xFF2F80ED.toInt()),
-            null,
-        )
+        paint.shader = orbitGradient
         canvas.save()
         canvas.rotate(rotation, cx, cy)
         canvas.drawArc(bounds, 0f, 330f, false, paint)
-        canvas.drawCircle(cx, cy - radius, 4f * density, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFF2F80ED.toInt()
-            setShadowLayer(9f * density, 0f, 0f, color)
-        })
+        canvas.drawCircle(cx, cy - radius, 4f * density, orbitDotPaint)
         canvas.restore()
 
         paint.shader = null
@@ -289,7 +298,6 @@ private class AuroraBackground(context: Context) : View(context) {
         Triple(x, y, radius)
     }
 
-    init { setLayerType(LAYER_TYPE_SOFTWARE, null) }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)

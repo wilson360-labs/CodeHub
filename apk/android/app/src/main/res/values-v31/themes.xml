@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CodeHub" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#2f80ed</item>
+        <item name="android:colorPrimaryDark">#06060F</item>
+        <item name="android:colorAccent">#2f80ed</item>
+        <item name="android:windowBackground">#06060F</item>
+        <item name="android:statusBarColor">#06060F</item>
+        <item name="android:navigationBarColor">#06060F</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:windowTranslucentNavigation">false</item>
+        <item name="android:windowSplashScreenBackground">#06060F</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_startup_blank</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#06060F</item>
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+    </style>
+</resources>
