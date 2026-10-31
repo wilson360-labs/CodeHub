@@ -3601,7 +3601,7 @@ app.post('/api/admin/apps/replace-local-catalog', requireAdmin, async (req, res)
     const ids = new Set();
     for (const item of FOSS_CATALOG) {
       if (!item || !/^[a-z0-9][a-z0-9-]*$/i.test(item.appId || '') || ids.has(item.appId) ||
-          !item.nombre || !/^[\\w.-]+\\/[\\w.-]+$/.test(item.source_repo || '')) {
+          !item.nombre || !/^[\w.-]+\/[\w.-]+$/.test(item.source_repo || '')) {
         return res.status(500).json({ error: 'El catálogo local tiene IDs duplicados o datos inválidos' });
       }
       ids.add(item.appId);
@@ -3615,7 +3615,7 @@ app.post('/api/admin/apps/replace-local-catalog', requireAdmin, async (req, res)
         nombre: item.nombre, descripcion: item.descripcion || '', categoria: item.categoria || '',
         source_repo: item.source_repo, verified: true, updatedAt: now,
       };
-      if (!current || !/^\\/img\\//.test(current.imagen || '')) fields.imagen = item.imagen || '';
+      if (!current || !/^\/img\//.test(current.imagen || '')) fields.imagen = item.imagen || '';
       return { updateOne: {
         filter: { appId: item.appId },
         update: { $set: fields, $setOnInsert: { appId: item.appId, version: '', tag: '🆕', changelog: '',
