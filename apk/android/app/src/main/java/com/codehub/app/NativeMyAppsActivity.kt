@@ -84,7 +84,7 @@ class NativeMyAppsActivity : Activity() {
     private fun buildScreen() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF080810.toInt())
+            setBackgroundColor(0xFF080B11.toInt())
             setPadding(dp(18), dp(12), dp(18), 0)
         }
         val title = TextView(this).apply {
@@ -98,7 +98,7 @@ class NativeMyAppsActivity : Activity() {
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             setTextColor(0xFF12261F.toInt())
             setPadding(dp(12), dp(6), dp(12), dp(6))
-            setBackground(roundRect(0xFF38EF7D.toInt(), 0, dp(16)))
+            setBackground(roundRect(0xFF6366F1.toInt(), 0, dp(16)))
         }
         val titleRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         titleRow.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
@@ -114,7 +114,7 @@ class NativeMyAppsActivity : Activity() {
             setHintTextColor(0xFF77798A.toInt())
             hint = "Buscar en tus apps..."
             setPadding(dp(15), 0, dp(15), 0)
-            setBackground(roundRect(0xFF151522.toInt(), 0xFF272738.toInt(), dp(14)))
+            setBackground(roundRect(0xFF080B11.toInt(), 0xFF1E293B.toInt(), dp(14)))
         }
         searchRow.addView(search, LinearLayout.LayoutParams(0, dp(50), 1f))
         val refresh = Button(this).apply {
@@ -306,10 +306,10 @@ class NativeMyAppsActivity : Activity() {
                 Filter.IGNORED -> "Ignoradas (${installed.count { it.hasUpdate && (it.id in ignoredUpdateIds || snoozedByTracker(it)) }})"
             }
             val chip = label(title,
-                13f, if (selected) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
+                13f, if (selected) 0xFF080B11.toInt() else 0xFFD7D7E4.toInt(), true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(15), 0, dp(15), 0)
-                setBackground(roundRect(if (selected) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), 0, dp(22)))
+                setBackground(roundRect(if (selected) 0xFF6366F1.toInt() else 0xFF080B11.toInt(), 0, dp(22)))
                 setOnClickListener { filter = option; renderFilters(); render() }
             }
             filterRow.addView(chip, LinearLayout.LayoutParams(-2, dp(34)).apply { rightMargin = dp(8); topMargin = dp(7) })
@@ -333,7 +333,7 @@ class NativeMyAppsActivity : Activity() {
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(15), dp(13), dp(15), dp(13))
-                    setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(16)))
+                    setBackground(roundRect(0xFF0D1017.toInt(), 0xFF1E293B.toInt(), dp(16)))
                 }
                 row.addView(label(entry.title, 14f, 0xFFFFFFFF.toInt(), true))
                 val progress = if (entry.total > 0) " · ${entry.bytes * 100 / entry.total}%" else ""
@@ -387,7 +387,7 @@ class NativeMyAppsActivity : Activity() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(11))
-            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+            setBackground(roundRect(0xFF0D1017.toInt(), 0xFF1E293B.toInt(), dp(18)))
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) }
         }
         val card = LinearLayout(this).apply {
@@ -396,7 +396,7 @@ class NativeMyAppsActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(14))
+            background = roundRect(0xFF111827.toInt(), 0, dp(14))
             clipToOutline = true
             try {
                 setImageDrawable(packageManager.getApplicationIcon(app.packageName!!))
@@ -409,7 +409,7 @@ class NativeMyAppsActivity : Activity() {
         info.addView(label(app.name, 15f, 0xFFFFFFFF.toInt(), true).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END })
         val versionLine = if (app.hasUpdate) "v${app.installedVersion}  →  v${app.latestVersion}" else "v${app.installedVersion} · ${if (app.repo.isBlank()) "Local" else "Al día"}"
         val shownVersion = if (updateCheckFailed && !app.hasUpdate) "v${app.installedVersion} · sin verificar" else versionLine
-        info.addView(label(shownVersion, 12f, if (app.hasUpdate) 0xFFFFC857.toInt() else 0xFF38EF7D.toInt()))
+        info.addView(label(shownVersion, 12f, if (app.hasUpdate) 0xFFFFC857.toInt() else 0xFF6366F1.toInt()))
         info.addView(label(app.category, 11f, 0xFF9AA0B8.toInt()))
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.setOnClickListener { showAppActions(app) }
@@ -433,12 +433,12 @@ class NativeMyAppsActivity : Activity() {
             val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
             val progressText = label(
                 if (transfer.total > 0) "ACTUALIZANDO  ·  $percent%" else "DESCARGANDO ACTUALIZACIÓN  ·  ${android.text.format.Formatter.formatShortFileSize(this, transfer.downloaded)}",
-                10f, 0xFF68F0A9.toInt(), true,
+                10f, 0xFF06B6D4.toInt(), true,
             )
             val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = 100
                 isIndeterminate = transfer.total <= 0
-                progressTintList = android.content.res.ColorStateList.valueOf(0xFF68F0A9.toInt())
+                progressTintList = android.content.res.ColorStateList.valueOf(0xFF06B6D4.toInt())
                 progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF26372F.toInt())
                 if (transfer.total > 0) setProgress(percent, false)
             }

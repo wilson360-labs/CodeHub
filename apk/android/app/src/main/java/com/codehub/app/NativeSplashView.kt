@@ -38,7 +38,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     init {
         isClickable = true
         isFocusable = true
-        setBackgroundColor(Color.rgb(21, 21, 34))  // 0xFF151522 brand bg
+        setBackgroundColor(Color.rgb(21, 21, 34))  // 0xFF080B11 brand bg
 
         addView(AuroraBackground(context), LayoutParams(-1, -1))
 
@@ -242,7 +242,7 @@ private class OrbitalRingsView(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val orbitDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF38EF7D.toInt()
+        color = 0xFF6366F1.toInt()
         setShadowLayer(9f * density, 0f, 0f, color)
     }
     private val bounds = RectF()
@@ -268,7 +268,7 @@ private class OrbitalRingsView(context: Context) : View(context) {
             gradientHeight = height
             orbitGradient = SweepGradient(
                 cx, cy,
-                intArrayOf(0xFF38EF7D.toInt(), 0xFF22C55E.toInt(), 0xFF68F0A9.toInt(), 0xFF38EF7D.toInt(), 0xFF38EF7D.toInt()),
+                intArrayOf(0xFF6366F1.toInt(), 0xFF22C55E.toInt(), 0xFF06B6D4.toInt(), 0xFF6366F1.toInt(), 0xFF6366F1.toInt()),
                 null,
             )
         }

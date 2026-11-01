@@ -148,7 +148,7 @@ class NativeStoreActivity : Activity() {
     private fun buildScreen() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF080810.toInt())
+            setBackgroundColor(0xFF080B11.toInt())
             setPadding(dp(18), dp(12), dp(18), 0)
         }
 
@@ -191,10 +191,10 @@ class NativeStoreActivity : Activity() {
             setHintTextColor(0xFF77798A.toInt())
             hint = "Buscar apps, categorías..."
             setPadding(dp(16), 0, dp(16), 0)
-            setBackground(roundRect(0xFF151522.toInt(), 0xFF272738.toInt(), dp(14)))
+            setBackground(roundRect(0xFF080B11.toInt(), 0xFF1E293B.toInt(), dp(14)))
         }
         search.setOnFocusChangeListener { _, hasFocus ->
-            search.setBackground(roundRect(0xFF151522.toInt(), if (hasFocus) 0xFF38EF7D.toInt() else 0xFF272738.toInt(), dp(14)))
+            search.setBackground(roundRect(0xFF080B11.toInt(), if (hasFocus) 0xFF6366F1.toInt() else 0xFF1E293B.toInt(), dp(14)))
         }
         root.addView(search, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
         search.addTextChangedListener(object : TextWatcher {
@@ -257,7 +257,7 @@ class NativeStoreActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(6), dp(6), dp(6), dp(6))
-            setBackground(roundRect(0xFF151522.toInt(), 0xFF29293B.toInt(), dp(24)))
+            setBackground(roundRect(0xFF080B11.toInt(), 0xFF29293B.toInt(), dp(24)))
         }
         renderPlatformDock()
         return platformDock
@@ -276,7 +276,7 @@ class NativeStoreActivity : Activity() {
                 setOnClickListener { selectPlatform(platform) }
             }
             item.addView(label(icon, 19f, 0xFFFFFFFF.toInt()), LinearLayout.LayoutParams(-2, -2).apply { rightMargin = dp(8) })
-            item.addView(label(platform, 14f, if (active) 0xFF68F0A9.toInt() else 0xFFD7D7E4.toInt(), true))
+            item.addView(label(platform, 14f, if (active) 0xFF06B6D4.toInt() else 0xFFD7D7E4.toInt(), true))
             platformDock.addView(item, LinearLayout.LayoutParams(0, -1, 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
         }
     }
@@ -406,10 +406,10 @@ class NativeStoreActivity : Activity() {
         apps.filter { it.platform == selectedPlatform }.forEach { categories.add(it.category) }
         categories.forEach { value ->
             val count = apps.count { it.platform == selectedPlatform && (value == "Todas" || it.category == value) }
-            val chip = label("$value · $count", 13f, if (category == value) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
+            val chip = label("$value · $count", 13f, if (category == value) 0xFF080B11.toInt() else 0xFFD7D7E4.toInt(), true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(15), 0, dp(15), 0)
-                setBackground(roundRect(if (category == value) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), if (category == value) 0 else 0xFF2A2A3E.toInt(), dp(22)))
+                setBackground(roundRect(if (category == value) 0xFF6366F1.toInt() else 0xFF080B11.toInt(), if (category == value) 0 else 0xFF1E293B.toInt(), dp(22)))
                 setOnClickListener {
                     category = value
                     renderChips()
@@ -557,7 +557,7 @@ class NativeStoreActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(24), dp(20), dp(24), dp(20))
-                setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+                setBackground(roundRect(0xFF0D1017.toInt(), 0xFF1E293B.toInt(), dp(18)))
             }
             empty.addView(label(title, 17f, 0xFFFFFFFF.toInt(), true).apply { gravity = Gravity.CENTER })
             empty.addView(label(detail, 13f, 0xFF9AA0B8.toInt()).apply {
@@ -595,12 +595,12 @@ class NativeStoreActivity : Activity() {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(0xFF18372C.toInt(), 0xFF121E1A.toInt()),
-            ).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0xFF35644D.toInt()) }
+            ).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0xFF3730A3.toInt()) }
             elevation = dp(4).toFloat()
             contentDescription = "Aplicación destacada: ${app.name}"
             setOnClickListener { showDetails(app) }
         }
-        card.addView(label("CODEHUB STORE  ·  OPEN SOURCE", 10f, 0xFF68F0A9.toInt(), true))
+        card.addView(label("CODEHUB STORE  ·  OPEN SOURCE", 10f, 0xFF06B6D4.toInt(), true))
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -608,7 +608,7 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0xFF38EF7D.toInt(), dp(16))
+            background = roundRect(0xFF111827.toInt(), 0xFF6366F1.toInt(), dp(16))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
@@ -621,20 +621,20 @@ class NativeStoreActivity : Activity() {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        info.addView(label(app.category + if (app.ratingCount > 0) "  ·  ★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)}" else "", 12f, 0xFF68F0A9.toInt()))
-        info.addView(label(app.description.ifBlank { "Descubre esta aplicación de código abierto." }, 12f, 0xFFCDD7D2.toInt()).apply {
+        info.addView(label(app.category + if (app.ratingCount > 0) "  ·  ★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)}" else "", 12f, 0xFF06B6D4.toInt()))
+        info.addView(label(app.description.ifBlank { "Descubre esta aplicación de código abierto." }, 12f, 0xFFCBD5E1.toInt()).apply {
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             setPadding(0, dp(4), 0, 0)
         })
         row.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(row)
-        card.addView(label("Ver detalles  ›", 12f, 0xFF68F0A9.toInt(), true).apply { gravity = Gravity.END })
+        card.addView(label("Ver detalles  ›", 12f, 0xFF06B6D4.toInt(), true).apply { gravity = Gravity.END })
         if (heroApps.size > 1) {
             val dots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(0, dp(10), 0, 0) }
             heroApps.indices.forEach { index ->
                 val dot = View(this).apply {
-                    background = roundRect(if (index == heroIndex) 0xFF68F0A9.toInt() else 0xFF557064.toInt(), 0, dp(8))
+                    background = roundRect(if (index == heroIndex) 0xFF06B6D4.toInt() else 0xFF475569.toInt(), 0, dp(8))
                     setOnClickListener {
                         heroIndex = index
                         heroHandler.removeCallbacks(heroRotator)
@@ -663,7 +663,7 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(13))
+            background = roundRect(0xFF111827.toInt(), 0, dp(13))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
@@ -674,7 +674,7 @@ class NativeStoreActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         val supporting = if (showRating) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} reseñas" else "Nueva versión · ${app.version}"
-        info.addView(label(supporting, 11f, 0xFF68F0A9.toInt()).apply {
+        info.addView(label(supporting, 11f, 0xFF06B6D4.toInt()).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
@@ -687,7 +687,7 @@ class NativeStoreActivity : Activity() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(11))
-            setBackground(roundRect(0xFF16162A.toInt(), 0xFF2A2A3E.toInt(), dp(20)))
+            setBackground(roundRect(0xFF0D1017.toInt(), 0xFF1E293B.toInt(), dp(20)))
             elevation = dp(2).toFloat()
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
         }
@@ -698,7 +698,7 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0xFF38EF7D.toInt(), dp(14))
+            background = roundRect(0xFF111827.toInt(), 0xFF6366F1.toInt(), dp(14))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
@@ -712,7 +712,7 @@ class NativeStoreActivity : Activity() {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        info.addView(label(app.category + if (app.version.isEmpty()) "" else " · ${app.version}", 12f, 0xFF38EF7D.toInt()).apply {
+        info.addView(label(app.category + if (app.version.isEmpty()) "" else " · ${app.version}", 12f, 0xFF6366F1.toInt()).apply {
             maxLines = 1
         })
         info.addView(label(app.description.ifEmpty { app.repo }, 12f, 0xFF9AA0B8.toInt()).apply {
@@ -722,18 +722,18 @@ class NativeStoreActivity : Activity() {
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(favoriteControl(app))
         val transfer = activeTransfers[app.id]
-        card.addView(label(if (transfer == null) "›" else "↓", 24f, if (transfer == null) 0xFF9AA0B8.toInt() else 0xFF68F0A9.toInt(), transfer != null))
+        card.addView(label(if (transfer == null) "›" else "↓", 24f, if (transfer == null) 0xFF9AA0B8.toInt() else 0xFF06B6D4.toInt(), transfer != null))
         container.addView(card)
         if (transfer != null) {
             val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
             val progressText = label(
                 if (transfer.total > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this, transfer.downloaded)}",
-                10f, 0xFF68F0A9.toInt(), true,
+                10f, 0xFF06B6D4.toInt(), true,
             )
             val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = 100
                 isIndeterminate = transfer.total <= 0
-                progressTintList = android.content.res.ColorStateList.valueOf(0xFF68F0A9.toInt())
+                progressTintList = android.content.res.ColorStateList.valueOf(0xFF06B6D4.toInt())
                 progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF26372F.toInt())
                 if (transfer.total > 0) setProgress(percent, false)
             }
@@ -774,17 +774,17 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(18))
+            background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
         hero.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
         hero.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(label(app.category.uppercase(Locale.ROOT), 11f, 0xFF38EF7D.toInt(), true))
+            addView(label(app.category.uppercase(Locale.ROOT), 11f, 0xFF6366F1.toInt(), true))
             addView(label(app.name, 21f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(4), 0, dp(3)) })
             addView(label(if (app.ratingCount > 0) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} valoraciones" else "Aún sin valoraciones", 13f, 0xFFFFC857.toInt(), true))
-            addView(label(if (app.verified) "Verificado por CodeHub" else "Open Source", 11f, 0xFF68F0A9.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+            addView(label(if (app.verified) "Verificado por CodeHub" else "Open Source", 11f, 0xFF06B6D4.toInt()).apply { setPadding(0, dp(3), 0, 0) })
         }, LinearLayout.LayoutParams(0, -2, 1f))
         sheetContent.addView(hero, LinearLayout.LayoutParams(-1, -2))
 
@@ -795,9 +795,9 @@ class NativeStoreActivity : Activity() {
             setPadding(0, dp(10), 0, dp(2))
         }
         val ring = NativeRingButton(this).apply {
-            ringColor = 0xFF38EF7D.toInt()
-            doneColor = 0xFF68F0A9.toInt()
-            idleColor = 0xFF7BD9F5.toInt()
+            ringColor = 0xFF6366F1.toInt()
+            doneColor = 0xFF06B6D4.toInt()
+            idleColor = 0xFF06B6D4.toInt()
             sizeDp { value -> dp(value) }
             clickAction = { startInstall(app) }
             if (app.id in activeTransfers) setProgress(-1f) else setIdle()
@@ -823,8 +823,8 @@ class NativeStoreActivity : Activity() {
         fun selectTab(key: String) {
             panels.forEach { (k, p) -> p.visibility = if (k == key) android.view.View.VISIBLE else android.view.View.GONE }
             tabButtons.forEach { (k, b) ->
-                b.setTextColor(if (k == key) 0xFF080810.toInt() else 0xFFD7D7E4.toInt())
-                b.background = roundRect(if (k == key) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), 0, dp(16))
+                b.setTextColor(if (k == key) 0xFF080B11.toInt() else 0xFFD7D7E4.toInt())
+                b.background = roundRect(if (k == key) 0xFF6366F1.toInt() else 0xFF080B11.toInt(), 0, dp(16))
             }
         }
         tabLabels.forEach { key ->
@@ -855,16 +855,16 @@ class NativeStoreActivity : Activity() {
             })
         }
         val chipsRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        chipsRow.addView(pill("★ Reseñas y valorar", 0xFF1D2C2A.toInt(), 0xFFB7E8CE.toInt()) { showReviews(app) },
+        chipsRow.addView(pill("★ Reseñas y valorar", 0xFF111827.toInt(), 0xFFB7E8CE.toInt()) { showReviews(app) },
             LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
-        chipsRow.addView(pill("</> Ver código", 0xFF1D2C2A.toInt(), 0xFF9AA0B8.toInt()) {
+        chipsRow.addView(pill("</> Ver código", 0xFF111827.toInt(), 0xFF9AA0B8.toInt()) {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
             } catch (_: Exception) {
                 Toast.makeText(this, "No se pudo abrir GitHub", Toast.LENGTH_SHORT).show()
             }
         }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
-        chipsRow.addView(pill(if (app.id in favoriteIds) "♥" else "♡", 0xFF1D2C2A.toInt(), 0xFFFF6B9A.toInt()) {
+        chipsRow.addView(pill(if (app.id in favoriteIds) "♥" else "♡", 0xFF111827.toInt(), 0xFFFF6B9A.toInt()) {
             toggleFavorite(app); detailDialog?.dismiss()
         }, LinearLayout.LayoutParams(-2, -2))
         descPanel.addView(chipsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
@@ -911,7 +911,7 @@ class NativeStoreActivity : Activity() {
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
-                setColor(0xFF151522.toInt())
+                setColor(0xFF080B11.toInt())
                 setCornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
             }
             setPadding(dp(16), dp(18), dp(16), dp(22))
@@ -960,7 +960,7 @@ class NativeStoreActivity : Activity() {
                 body.addView(label("Permisos sensibles:", 13f, 0xFFFFC857.toInt(), true).apply { setPadding(0, dp(10), 0, dp(4)) })
                 insight.dangerousPermissions.forEach { body.addView(label("• $it", 12f, 0xFFD0D0DE.toInt()).apply { setPadding(dp(6), dp(2), 0, dp(2)) }) }
             } else {
-                body.addView(label("Sin permisos sensibles declarados.", 12f, 0xFF68F0A9.toInt()).apply { setPadding(0, dp(8), 0, 0) })
+                body.addView(label("Sin permisos sensibles declarados.", 12f, 0xFF06B6D4.toInt()).apply { setPadding(0, dp(8), 0, 0) })
             }
             body.addView(label("Permisos totales: ${insight.permissions.size}", 11f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(6), 0, 0) })
         } else {
@@ -977,7 +977,7 @@ class NativeStoreActivity : Activity() {
             }
         }
         // Mis apps shortcut.
-        body.addView(pill("Ir a Mis apps →", 0xFF1D2C2A.toInt(), 0xFF7BD9F5.toInt()) {
+        body.addView(pill("Ir a Mis apps →", 0xFF111827.toInt(), 0xFF06B6D4.toInt()) {
             try { startActivity(Intent(this, NativeMyAppsActivity::class.java)) } catch (_: Exception) { }
         }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
     }
@@ -996,7 +996,7 @@ class NativeStoreActivity : Activity() {
                     container.addView(label("${"★".repeat(review.optInt("stars").coerceIn(1, 5))}  ${review.optString("autor", "Anónimo")}", 13f, 0xFFFFC857.toInt(), true).apply { setPadding(0, dp(12), 0, dp(4)) })
                     container.addView(label(review.optString("texto"), 13f, 0xFFD0D0DE.toInt()))
                 }
-                container.addView(pill("Valorar", 0xFF1D2C2A.toInt(), 0xFFB7E8CE.toInt()) { showRatingDialog(app) }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
+                container.addView(pill("Valorar", 0xFF111827.toInt(), 0xFFB7E8CE.toInt()) { showRatingDialog(app) }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
             }
         }
     }
@@ -1040,12 +1040,12 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(18))
+            background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
         content.addView(icon, LinearLayout.LayoutParams(dp(72), dp(72)).apply { bottomMargin = dp(12) })
-        content.addView(label(app.category.uppercase(Locale.ROOT), 12f, 0xFF38EF7D.toInt(), true))
+        content.addView(label(app.category.uppercase(Locale.ROOT), 12f, 0xFF6366F1.toInt(), true))
         content.addView(label(app.name, 23f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(7), 0, dp(8)) })
         content.addView(label(if (app.ratingCount > 0) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} valoraciones" else "Aún sin valoraciones", 13f, 0xFFFFC857.toInt(), true))
         content.addView(Button(this).apply {
@@ -1075,7 +1075,7 @@ class NativeStoreActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
-        content.addView(label("Catálogo Windows", 12f, 0xFF38EF7D.toInt()).apply {
+        content.addView(label("Catálogo Windows", 12f, 0xFF6366F1.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
         content.addView(label("Ficha informativa: abre el enlace desde una PC con Windows para instalar la aplicación.", 12f, 0xFFFFC857.toInt()).apply {
@@ -1117,7 +1117,7 @@ class NativeStoreActivity : Activity() {
                         imageAssets.forEach { asset ->
                             val image = android.widget.ImageView(this).apply {
                                 scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                                background = roundRect(0xFF1D2C2A.toInt(), 0, dp(12))
+                                background = roundRect(0xFF111827.toInt(), 0, dp(12))
                                 clipToOutline = true
                                 loadCodeHubImage(asset.url)
                                 contentDescription = "Captura de ${app.name} · ${release.name}"

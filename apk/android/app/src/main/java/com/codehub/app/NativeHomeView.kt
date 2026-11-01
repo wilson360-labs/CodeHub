@@ -20,13 +20,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     private val muted = 0xFFA7A9BC.toInt()
-    private val green = 0xFF38EF7D.toInt()
+    private val green = 0xFF6366F1.toInt()
     private val blue = 0xFF43B7FF.toInt()
     private var homeScroll: ScrollView? = null
 
     init {
         orientation = VERTICAL
-        setBackgroundColor(0xFF080810.toInt())
+        setBackgroundColor(0xFF080B11.toInt())
 
         addView(buildHeader(), LayoutParams(-1, dp(64)))
 
@@ -167,7 +167,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(14), dp(14), dp(12), dp(14))
-            background = rounded(0xFF12121E.toInt(), dp(18)).apply {
+            background = rounded(0xFF0D1017.toInt(), dp(18)).apply {
                 setStroke(dp(1), 0xFF28283A.toInt())
             }
             isClickable = true

@@ -62,9 +62,21 @@ class NativeRingButton(context: Context) : View(context) {
         minimumHeight = diameter
     }
 
+    private var flowAngle = 0f
+    private val flowRunnable = object : Runnable {
+        override fun run() {
+            if (state == State.PROGRESS) {
+                flowAngle = (flowAngle + 5f) % 360f
+                invalidate()
+                postDelayed(this, 16)
+            }
+        }
+    }
+
     fun setIdle() {
         state = State.IDLE
         progress = 0f
+        removeCallbacks(flowRunnable)
         contentDescription = "Instalar"
         invalidate()
     }
@@ -73,6 +85,8 @@ class NativeRingButton(context: Context) : View(context) {
     fun setProgress(value: Float) {
         state = State.PROGRESS
         progress = if (value in 0f..1f) value else -1f
+        removeCallbacks(flowRunnable)
+        postDelayed(flowRunnable, 16)
         contentDescription = if (value < 0) "Descargando" else "Descargando " + (progress * 100).toInt() + "%"
         invalidate()
     }
@@ -80,6 +94,8 @@ class NativeRingButton(context: Context) : View(context) {
     fun setDone() {
         state = State.DONE
         progress = 1f
+        removeCallbacks(flowRunnable)
+        flowAngle = 0f
         contentDescription = "Instalación lista"
         invalidate()
     }
@@ -127,11 +143,14 @@ class NativeRingButton(context: Context) : View(context) {
             }
             State.PROGRESS -> {
                 progressPaint.shader = sweep
+                canvas.save()
+                canvas.rotate(flowAngle, cx, cy)
                 if (progress < 0) {
                     canvas.drawArc(arcRect, 0f, 200f, false, progressPaint)
                 } else {
                     canvas.drawArc(arcRect, -90f, 360f * progress, false, progressPaint)
                 }
+                canvas.restore()
                 iconPaint.color = Color.WHITE
                 canvas.drawText(
                     if (progress < 0) "·" else "${(progress * 100).toInt()}" + "%",
