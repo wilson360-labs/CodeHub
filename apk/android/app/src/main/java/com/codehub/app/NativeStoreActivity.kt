@@ -73,7 +73,10 @@ class NativeStoreActivity : Activity() {
     private var windowsCatalogLoading = true
     private var catalogLoaded = false
     private var catalogFailed = false
-    private var detailDialog: AlertDialog? = null
+    private var detailDialog: android.app.Dialog? = null
+    private var detailRing: NativeRingButton? = null
+    private var detailAppId: String? = null
+    private var detailCta: TextView? = null
     private var heroFrame: FrameLayout? = null
     private var heroApps: List<AppEntry> = emptyList()
     private var heroIndex = 0
@@ -99,6 +102,7 @@ class NativeStoreActivity : Activity() {
         favoriteIds.addAll(getSharedPreferences("codehub_store", MODE_PRIVATE).getStringSet("favorites", emptySet()).orEmpty())
         buildScreen()
         loadCatalog()
+        NativeStoreAdGateway.preload()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
@@ -704,6 +708,166 @@ class NativeStoreActivity : Activity() {
     }
 
     private fun showDetails(app: AppEntry) {
+        if (app.platform != "Android") {
+            showDetailsWindows(app)
+            return
+        }
+        detailAppId = app.id
+        detailRing = null
+        detailCta = null
+
+        val sheetContent = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(14), dp(22), dp(12))
+        }
+
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val icon = android.widget.ImageView(this).apply {
+            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(18))
+            clipToOutline = true
+            loadCodeHubImage(app.imageUrl)
+        }
+        hero.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
+        hero.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(label(app.category.uppercase(Locale.ROOT), 11f, 0xFF38EF7D.toInt(), true))
+            addView(label(app.name, 21f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(4), 0, dp(3)) })
+            addView(label(if (app.ratingCount > 0) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} valoraciones" else "Aún sin valoraciones", 13f, 0xFFFFC857.toInt(), true))
+            addView(label(if (app.verified) "Verificado por CodeHub" else "Open Source", 11f, 0xFF68F0A9.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        sheetContent.addView(hero, LinearLayout.LayoutParams(-1, -2))
+
+        sheetContent.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
+            setLineSpacing(dp(3).toFloat(), 1f)
+            setPadding(0, dp(14), 0, dp(4))
+        })
+        sheetContent.addView(label("Versión ${app.version.ifEmpty { "disponible" }}  ·  ${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(2), 0, 0)
+        })
+
+        val releaseStatus = label("Consultando versiones y variantes…", 13f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(12), 0, 0)
+        }
+        sheetContent.addView(releaseStatus)
+        val releaseImages = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val imageScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(releaseImages) }
+        sheetContent.addView(imageScroll, LinearLayout.LayoutParams(-1, dp(132)).apply { topMargin = dp(10) })
+        val releaseActions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        sheetContent.addView(releaseActions)
+
+        if (app.changelog.isNotBlank()) {
+            sheetContent.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
+            sheetContent.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
+                maxLines = 6
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        }
+
+        // CTA estilo Orion: anillo de progreso + estado bajo el botón.
+        val ctaRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(10), 0, dp(2))
+        }
+        val ring = NativeRingButton(this).apply {
+            ringColor = 0xFF38EF7D.toInt()
+            doneColor = 0xFF68F0A9.toInt()
+            idleColor = 0xFF7BD9F5.toInt()
+            sizeDp { value -> dp(value) }
+            clickAction = { startInstall(app) }
+            if (app.id in activeTransfers) setProgress(-1f) else setIdle()
+        }
+        detailRing = ring
+        ctaRow.addView(ring, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
+        ctaRow.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(label("Instalar en Android", 17f, 0xFFFFFFFF.toInt(), true))
+            val phase = label(installPhaseText(app), 12f, 0xFF9AA0B8.toInt()).apply {
+                setPadding(0, dp(3), 0, 0)
+            }
+            detailCta = phase
+            addView(phase)
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        sheetContent.addView(ctaRow, LinearLayout.LayoutParams(-1, -2))
+
+        // Chips inferiores: reseñas, código y favorito.
+        val chipsRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        chipsRow.addView(pill("★ Reseñas y valorar", 0xFF1D2C2A.toInt(), 0xFFB7E8CE.toInt()) { showReviews(app) },
+            LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
+        chipsRow.addView(pill("</> Ver código", 0xFF1D2C2A.toInt(), 0xFF9AA0B8.toInt()) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
+            } catch (_: Exception) {
+                Toast.makeText(this, "No se pudo abrir GitHub", Toast.LENGTH_SHORT).show()
+            }
+        }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
+        chipsRow.addView(pill(if (app.id in favoriteIds) "♥" else "♡", 0xFF1D2C2A.toInt(), 0xFFFF6B9A.toInt()) {
+            toggleFavorite(app); detailDialog?.dismiss()
+        }, LinearLayout.LayoutParams(-2, -2))
+        sheetContent.addView(chipsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+
+        loadReleaseSection(app, releaseStatus, releaseImages, releaseActions)
+
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xFF151522.toInt())
+                cornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
+            }
+            setPadding(dp(16), dp(18), dp(16), dp(22))
+        }
+        sheet.addView(sheetContent)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+            clipToOutline = true
+            addView(sheet)
+        }
+        val dialog = android.app.Dialog(this)
+        detailDialog = dialog
+        dialog.setContentView(scroll)
+        dialog.setCanceledOnTouchOutside(true)
+        dialog.setOnCancelListener { detailDialog = null }
+        dialog.setOnDismissListener { detailDialog = null; detailRing = null; detailCta = null }
+        dialog.show()
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.86f).toInt())
+            setGravity(Gravity.BOTTOM)
+            setDimAmount(0.55f)
+        }
+        scroll.translationY = dp(48)
+        scroll.alpha = 0.35f
+        scroll.postDelayed({
+            scroll.animate().translationY(0f).alpha(1f).setDuration(280).start()
+        }, 40)
+    }
+
+    private fun installPhaseText(app: AppEntry): String = when {
+        app.id in activeTransfers -> "Descargando… deja la ficha abierta para ver la prioridad."
+        else -> "Instalación full-offline · descarga + instalador de Android."
+    }
+
+    private fun pill(text: String, bg: Int, fg: Int, onClick: () -> Unit): TextView {
+        return TextView(this).apply {
+            setText(text)
+            textSize = 12f
+            setTextColor(fg)
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(10), dp(11), dp(10), dp(11))
+            background = GradientDrawable().apply { setColor(bg); cornerRadius = dp(16).toFloat() }
+            setOnClickListener { onClick() }
+        }
+    }
+
+    /** Página de ficha para apps Windows (flujo previo, sin cambios de contrato). */
+    private fun showDetailsWindows(app: AppEntry) {
+        detailAppId = null
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(8), dp(24), dp(8))
@@ -745,89 +909,70 @@ class NativeStoreActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
             })
         }
-        val sourceLabel = if (app.platform == "Windows") "Catálogo Windows" else "Open Source · ${if (app.verified) "verificado" else "Android"}"
-        content.addView(label(sourceLabel, 12f, 0xFF38EF7D.toInt()).apply {
+        content.addView(label("Catálogo Windows", 12f, 0xFF38EF7D.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
-
-        if (app.platform == "Windows") {
-            content.addView(label("Ficha informativa: abre el enlace desde una PC con Windows para instalar la aplicación.", 12f, 0xFFFFC857.toInt()).apply {
-                setPadding(0, dp(10), 0, 0)
-            })
-        }
+        content.addView(label("Ficha informativa: abre el enlace desde una PC con Windows para instalar la aplicación.", 12f, 0xFFFFC857.toInt()).apply {
+            setPadding(0, dp(10), 0, 0)
+        })
         val dialog = AlertDialog.Builder(this)
             .setView(ScrollView(this).apply { isFillViewport = true; addView(content) })
             .setNegativeButton("Cerrar", null)
-            .setNeutralButton("Ver código", null)
-            .setPositiveButton("Instalar", null)
+            .setNeutralButton("Sitio oficial", null)
+            .setPositiveButton("Abrir enlace", null)
             .create()
         detailDialog = dialog
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
-                if (app.id in activeTransfers) {
-                    text = "Descargando…"
-                    isEnabled = false
-                } else setOnClickListener { startInstall(app) }
-            }
-            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
-                } catch (_: Exception) {
-                    Toast.makeText(this, "No se pudo abrir GitHub", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-        if (app.platform == "Windows") {
-            dialog.setOnShowListener {
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).text = "Sitio oficial"
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Abrir enlace"
-                val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://") || it.startsWith("http://") } ?: app.repo
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { openExternal(downloadTarget) }
-                dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { openExternal(app.repo) }
-            }
+            val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://") || it.startsWith("http://") } ?: app.repo
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { openExternal(downloadTarget) }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { openExternal(app.repo) }
         }
         dialog.show()
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        if (app.platform == "Android" && app.repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) {
-            executor.execute {
-                val releases = fetchReleases(app.repo)
-                runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    releaseActions.removeAllViews()
-                    releaseImages.removeAllViews()
-                    if (releases.isEmpty()) {
-                        releaseStatus.text = "No hay releases públicos con APKs disponibles."
-                    } else {
-                        releaseStatus.text = "Versiones y variantes APK · elige una versión para instalar"
-                        releases.forEach { release ->
-                            val apkAssets = release.assets.filter { it.name.endsWith(".apk", true) }
-                            val imageAssets = release.assets.filter { it.name.matches(Regex(".*\\.(png|jpe?g|webp)$", RegexOption.IGNORE_CASE)) }.take(5)
-                            imageAssets.forEach { asset ->
-                                val image = android.widget.ImageView(this).apply {
-                                    scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-                                    background = roundRect(0xFF1D2C2A.toInt(), 0, dp(12))
-                                    clipToOutline = true
-                                    loadCodeHubImage(asset.url)
-                                    contentDescription = "Captura de ${app.name} · ${release.name}"
-                                }
-                                releaseImages.addView(image, LinearLayout.LayoutParams(dp(220), dp(132)).apply { marginEnd = dp(10) })
+        loadReleaseSection(app, releaseStatus, releaseImages, releaseActions)
+    }
+
+    /** Carga async de releases de GitHub (compartida por las dos fichas). */
+    private fun loadReleaseSection(app: AppEntry, releaseStatus: TextView, releaseImages: LinearLayout, releaseActions: LinearLayout) {
+        if (app.platform != "Android" || !app.repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) return
+        executor.execute {
+            val releases = fetchReleases(app.repo)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                releaseActions.removeAllViews()
+                releaseImages.removeAllViews()
+                if (releases.isEmpty()) {
+                    releaseStatus.text = "No hay releases públicos con APKs disponibles."
+                } else {
+                    releaseStatus.text = "Versiones y variantes APK · elige una versión para instalar"
+                    releases.forEach { release ->
+                        val apkAssets = release.assets.filter { it.name.endsWith(".apk", true) }
+                        val imageAssets = release.assets.filter { it.name.matches(Regex(".*\\.(png|jpe?g|webp)$", RegexOption.IGNORE_CASE)) }.take(5)
+                        imageAssets.forEach { asset ->
+                            val image = android.widget.ImageView(this).apply {
+                                scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+                                background = roundRect(0xFF1D2C2A.toInt(), 0, dp(12))
+                                clipToOutline = true
+                                loadCodeHubImage(asset.url)
+                                contentDescription = "Captura de ${app.name} · ${release.name}"
                             }
-                            val button = Button(this).apply {
-                                text = "${release.name}${if (release.prerelease) " · Beta" else " · Estable"}  (${apkAssets.size} variantes APK)"
-                                isAllCaps = false
-                                setOnClickListener {
-                                    if (apkAssets.isEmpty()) openExternal(release.url)
-                                    else showReleaseAssets(app, release, apkAssets)
-                                }
+                            releaseImages.addView(image, LinearLayout.LayoutParams(dp(220), dp(132)).apply { marginEnd = dp(10) })
+                        }
+                        val button = Button(this).apply {
+                            text = "${release.name}${if (release.prerelease) " · Beta" else " · Estable"}  (${apkAssets.size} variantes APK)"
+                            isAllCaps = false
+                            setOnClickListener {
+                                if (apkAssets.isEmpty()) openExternal(release.url)
+                                else showReleaseAssets(app, release, apkAssets)
                             }
-                            releaseActions.addView(button, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
-                            if (release.notes.isNotBlank()) {
-                                releaseActions.addView(label(release.notes, 12f, 0xFFB7B8C8.toInt()).apply {
-                                    maxLines = 4
-                                    ellipsize = android.text.TextUtils.TruncateAt.END
-                                    setPadding(dp(8), dp(3), dp(8), dp(5))
-                                })
-                            }
+                        }
+                        releaseActions.addView(button, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(6) })
+                        if (release.notes.isNotBlank()) {
+                            releaseActions.addView(label(release.notes, 12f, 0xFFB7B8C8.toInt()).apply {
+                                maxLines = 4
+                                ellipsize = android.text.TextUtils.TruncateAt.END
+                                setPadding(dp(8), dp(3), dp(8), dp(5))
+                            })
                         }
                     }
                 }
@@ -870,6 +1015,12 @@ class NativeStoreActivity : Activity() {
 
     private fun startInstall(app: AppEntry, assetUrl: String? = null) {
         if (app.platform != "Android") return
+        NativeStoreAdGateway.requestDownloadReward(this, app.name) {
+            runOnUiThread { proceedInstall(app, assetUrl) }
+        }
+    }
+
+    private fun proceedInstall(app: AppEntry, assetUrl: String?) {
         NativeStoreInstallFlow.request(this) { preferSilent ->
             try {
                 val url = assetUrl ?: "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
@@ -877,9 +1028,9 @@ class NativeStoreActivity : Activity() {
                     Toast.makeText(this, "La descarga de ${app.name} ya está en curso.", Toast.LENGTH_SHORT).show()
                     return@request
                 }
-                detailDialog?.dismiss()
-                detailDialog = null
                 activeTransfers[app.id] = TransferProgress(0, -1)
+                detailRing?.setProgress(-1f)
+                detailCta?.text = "Descargando… \uD83D\uDE80 prioridad activa."
                 render()
                 NativeStoreApkInstaller.install(this, url, app.id, app.packageName, preferSilent,
                     object : NativeStoreApkInstaller.Listener {
@@ -891,19 +1042,36 @@ class NativeStoreActivity : Activity() {
                                 if (totalBytes > 0) bar.setProgress(percent, true)
                                 text.text = if (totalBytes > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this@NativeStoreActivity, downloadedBytes)}"
                             }
+                            if (detailAppId == app.id) {
+                                val ratio = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else -1f
+                                detailRing?.setProgress(ratio)
+                            }
                         }
 
                         override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
                             activeTransfers.remove(app.id)
                             render()
                             when (status) {
-                                NativeStoreApkInstaller.Status.INSTALLED -> Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
-                                NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
-                                NativeStoreApkInstaller.Status.FAILED -> AlertDialog.Builder(this@NativeStoreActivity)
-                                    .setTitle("No se pudo instalar ${app.name}")
-                                    .setMessage(message)
-                                    .setPositiveButton("Entendido", null)
-                                    .show()
+                                NativeStoreApkInstaller.Status.INSTALLED -> {
+                                    detailRing?.setDone()
+                                    detailCta?.text = "${app.name} instalada." 
+                                    NativeStoreAdGateway.showCompletionInterstitial(this@NativeStoreActivity)
+                                    Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
+                                }
+                                NativeStoreApkInstaller.Status.INSTALLER_OPENED -> {
+                                    detailRing?.setDone()
+                                    detailCta?.text = "Descarga lista · confirma la instalación de ${app.name}."
+                                    Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+                                }
+                                NativeStoreApkInstaller.Status.FAILED -> {
+                                    detailRing?.setIdle()
+                                    detailCta?.text = "No se pudo completar · cierra este aviso y reintentar."
+                                    AlertDialog.Builder(this@NativeStoreActivity)
+                                        .setTitle("No se pudo instalar ${app.name}")
+                                        .setMessage(message)
+                                        .setPositiveButton("Entendido", null)
+                                        .show()
+                                }
                             }
                         }
                     })
