@@ -816,7 +816,7 @@ class NativeStoreActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 setColor(0xFF151522.toInt())
-                cornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
+                setCornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
             }
             setPadding(dp(16), dp(18), dp(16), dp(22))
         }
@@ -840,7 +840,7 @@ class NativeStoreActivity : Activity() {
             setGravity(Gravity.BOTTOM)
             setDimAmount(0.55f)
         }
-        scroll.translationY = dp(48)
+        scroll.translationY = dp(48).toFloat()
         scroll.alpha = 0.35f
         scroll.postDelayed({
             scroll.animate().translationY(0f).alpha(1f).setDuration(280).start()
