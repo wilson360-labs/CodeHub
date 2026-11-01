@@ -593,6 +593,7 @@ class NativeStoreActivity : Activity() {
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(0xFF18372C.toInt(), 0xFF121E1A.toInt()),
             ).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0xFF35644D.toInt()) }
+            elevation = dp(4).toFloat()
             contentDescription = "Aplicación destacada: ${app.name}"
             setOnClickListener { showDetails(app) }
         }
@@ -604,7 +605,7 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(16))
+            background = roundRect(0xFF1D2C2A.toInt(), 0xFF38EF7D.toInt(), dp(16))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
@@ -683,7 +684,8 @@ class NativeStoreActivity : Activity() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(11))
-            setBackground(roundRect(0xFF12121E.toInt(), 0xFF242435.toInt(), dp(18)))
+            setBackground(roundRect(0xFF16162A.toInt(), 0xFF2A2A3E.toInt(), dp(20)))
+            elevation = dp(2).toFloat()
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }
         }
         val card = LinearLayout(this).apply {
@@ -693,7 +695,7 @@ class NativeStoreActivity : Activity() {
         }
         val icon = android.widget.ImageView(this).apply {
             scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            background = roundRect(0xFF1D2C2A.toInt(), 0, dp(14))
+            background = roundRect(0xFF1D2C2A.toInt(), 0xFF38EF7D.toInt(), dp(14))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
         }
@@ -736,7 +738,11 @@ class NativeStoreActivity : Activity() {
             container.addView(progress, LinearLayout.LayoutParams(-1, dp(4)).apply { topMargin = dp(5) })
             transferViews[app.id] = progress to progressText
         }
-        return container
+        return container.apply {
+            alpha = 0f
+            translationY = dp(12).toFloat()
+            animate().alpha(1f).translationY(0f).setDuration(260).setStartDelay(40).start()
+        }
     }
 
     private fun favoriteControl(app: AppEntry): TextView = label(if (app.id in favoriteIds) "♥" else "♡", 23f, 0xFFFF6B9A.toInt(), true).apply {
