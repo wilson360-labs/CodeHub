@@ -105,6 +105,43 @@ class NativeStoreActivity : Activity() {
         NativeStoreAdGateway.preload()
     }
 
+    override fun onResume() {
+        super.onResume()
+        NativeStorePresence.visible = true
+        consumePendingInstallTap()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        NativeStorePresence.visible = false
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumePendingInstallTap()
+    }
+
+    /** Notification "Listo para instalar": completes the APK user-confirmation flow. */
+    private fun consumePendingInstallTap() {
+        val appId = intent?.getStringExtra(NativeStoreDownloadService.EXTRA_TAP_APP_ID).orEmpty()
+        if (appId.isBlank()) return
+        if (NativeStoreApkInstaller.pendingApkFile(appId) == null) {
+            Toast.makeText(this, "El APK debe descargarse de nuevo: reinicia la instalación desde la ficha.",
+                Toast.LENGTH_LONG).show()
+            intent.removeExtra(NativeStoreDownloadService.EXTRA_TAP_APP_ID)
+            return
+        }
+        if (NativeStoreApkInstaller.launchUserInstall(this, appId)) {
+            NativeStoreApkInstaller.clearState(appId)
+            Toast.makeText(this, "Instalación de ${NativeStoreApkInstaller.displayName(appId)} · confirma en Android.",
+                Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "No se pudo preparar la instalación", Toast.LENGTH_SHORT).show()
+        }
+        intent.removeExtra(NativeStoreDownloadService.EXTRA_TAP_APP_ID)
+    }
+
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
 
     private fun buildScreen() {
@@ -1032,9 +1069,10 @@ class NativeStoreActivity : Activity() {
                 detailRing?.setProgress(-1f)
                 detailCta?.text = "Descargando… \uD83D\uDE80 prioridad activa."
                 render()
-                NativeStoreApkInstaller.install(this, url, app.id, app.packageName, preferSilent,
+                NativeStoreApkInstaller.start(applicationContext, url, app.id, app.packageName, preferSilent, app.name, this,
                     object : NativeStoreApkInstaller.Listener {
                         override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+                            if (isFinishing || isDestroyed) return
                             activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
                             transferViews[app.id]?.let { (bar, text) ->
                                 val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
@@ -1050,18 +1088,31 @@ class NativeStoreActivity : Activity() {
 
                         override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
                             activeTransfers.remove(app.id)
+                            if (isFinishing || isDestroyed) return
                             render()
                             when (status) {
                                 NativeStoreApkInstaller.Status.INSTALLED -> {
                                     detailRing?.setDone()
                                     detailCta?.text = "${app.name} instalada." 
-                                    NativeStoreAdGateway.showCompletionInterstitial(this@NativeStoreActivity)
+                                    // ADS-COMPLIANCE: interstitial solo en pausa natural con
+                                    // el usuario dentro de la app (no tras salir de ella).
+                                    if (NativeStorePresence.visible) {
+                                        NativeStoreAdGateway.showCompletionInterstitial(this@NativeStoreActivity)
+                                    }
                                     Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
                                 }
                                 NativeStoreApkInstaller.Status.INSTALLER_OPENED -> {
                                     detailRing?.setDone()
                                     detailCta?.text = "Descarga lista · confirma la instalación de ${app.name}."
                                     Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+                                }
+                                NativeStoreApkInstaller.Status.READY_BACKGROUND -> {
+                                    detailRing?.setDone()
+                                    detailCta?.text = "Descarga lista en segundo plano · toca la notificación para instalar."
+                                }
+                                NativeStoreApkInstaller.Status.CANCELLED -> {
+                                    detailRing?.setIdle()
+                                    detailCta?.text = "Descarga cancelada · toca para reintentar."
                                 }
                                 NativeStoreApkInstaller.Status.FAILED -> {
                                     detailRing?.setIdle()

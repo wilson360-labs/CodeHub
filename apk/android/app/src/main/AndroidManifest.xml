@@ -141,6 +141,16 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <!-- Descargas de APK del CodeHub Store en segundo plano: mantiene la
+             transferencia (progreso + cancelación + "Listo para instalar") si
+             el usuario cierra la tienda. Tipo dataSync: tareas cortas (la de
+             larga duración/siempre activa es QuakeDetectorService, specialUse). -->
+        <service
+            android:name=".NativeStoreDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync">
+        </service>
+
         <!-- Reproductor de musica "slide" (abierto desde el panel de
              dispositivo via CodeHubBridge.openMusic). Ejecuta extensiones
              del ecosistema Echo dentro de CodeHub; escanea paquetes con el

@@ -1,6 +1,7 @@
 package com.codehub.app
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Handler
@@ -27,7 +28,11 @@ import java.net.URL
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-/** State of a user-initiated APK transfer. No DownloadManager or OS download notification is used. */
+/**
+ * State of a user-initiated APK transfer. No DownloadManager or OS download
+ * notification is used; NativeStoreDownloadService renders the in-process
+ * notification from this flow.
+ */
 sealed interface ApkTransferState {
     data object Idle : ApkTransferState
     data class Downloading(val downloadedBytes: Long, val totalBytes: Long) : ApkTransferState
@@ -39,14 +44,28 @@ sealed interface ApkTransferState {
     data object Cancelled : ApkTransferState
 }
 
-/** In-app APK download and Android installer handoff used by Store and My Apps. */
+/**
+ * In-app APK download and Android installer handoff used by Store and My Apps.
+ *
+ * Context-agnostic so downloads keep running while the activity is closed:
+ * NativeStoreDownloadService observes [transfers], shows the progress
+ * notification and, when the user is not in the app, offers "Listo para
+ * instalar" through [pendingApkFile] + [launchUserInstall].
+ */
 object NativeStoreApkInstaller {
     interface Listener {
         fun onProgress(downloadedBytes: Long, totalBytes: Long)
         fun onFinished(status: Status, message: String = "")
     }
 
-    enum class Status { INSTALLED, INSTALLER_OPENED, FAILED }
+    enum class Status { INSTALLED, INSTALLER_OPENED, READY_BACKGROUND, FAILED, CANCELLED }
+
+    /** APKs verified and ready for the user-confirmation installer path. */
+    private val pendingApks = ConcurrentHashMap<String, File>()
+    private val displayNames = ConcurrentHashMap<String, String>()
+
+    /** Human name per transfer, read by the download service for notifications. */
+    fun displayName(appId: String): String = displayNames[appId] ?: appId
 
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -59,31 +78,48 @@ object NativeStoreApkInstaller {
     /** Observable UI state; cards can collect this flow without owning download implementation. */
     val transfers: StateFlow<Map<String, ApkTransferState>> = mutableTransfers.asStateFlow()
 
-    fun install(
-        activity: Activity,
+    private fun isSafeHost(host: String): Boolean {
+        val normalized = host.lowercase(Locale.ROOT)
+        return trustedHosts.any { normalized == it || normalized.endsWith(".$it") }
+    }
+
+    /**
+     * Starts (or replaces) the APK transfer for [appId].
+     *
+     * @param context   any Context (engine keeps no Activity reference).
+     * @param activity  visible Activity if the user is in the app; used only to
+     *   open the system installer immediately. When null or finishing, the
+     *   service-side notification takes over.
+     */
+    @JvmStatic
+    fun start(
+        context: Context,
         apkUrl: String,
         appId: String,
         expectedPackage: String?,
         preferSilent: Boolean,
-        listener: Listener,
+        appName: String = appId,
+        activity: Activity? = null,
+        listener: Listener? = null,
     ) {
         if (jobs[appId]?.isActive == true) {
-            listener.onFinished(Status.FAILED, "La descarga de esta app ya está en curso.")
+            listener?.onFinished(Status.FAILED, "La descarga de esta app ya está en curso.")
             return
         }
+        displayNames[appId] = appName.ifBlank { appId }
+
+        NativeStoreDownloadService.ensureStarted(context)
 
         val job = scope.launch(start = CoroutineStart.LAZY) {
             val safeId = appId.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
-            val directory = activity.getExternalFilesDir(null) ?: activity.filesDir
+            val directory = context.getExternalFilesDir(null) ?: context.filesDir
             val destination = File(directory, "store_$safeId.apk")
             val partial = File(directory, "store_$safeId.apk.part")
             try {
                 setState(appId, ApkTransferState.Downloading(0, -1))
                 download(apkUrl, partial) { downloaded, total ->
                     setState(appId, ApkTransferState.Downloading(downloaded, total))
-                    main.post {
-                        if (!activity.isFinishing && !activity.isDestroyed) listener.onProgress(downloaded, total)
-                    }
+                    main.post { listener?.onProgress(downloaded, total) }
                 }
                 setState(appId, ApkTransferState.Verifying)
                 if (destination.exists() && !destination.delete()) throw IOException("No se pudo reemplazar el APK anterior")
@@ -91,7 +127,7 @@ object NativeStoreApkInstaller {
 
                 val archive = withContext(Dispatchers.IO) {
                     @Suppress("DEPRECATION")
-                    activity.packageManager.getPackageArchiveInfo(destination.absolutePath, 0)
+                    context.packageManager.getPackageArchiveInfo(destination.absolutePath, 0)
                 }
                 if (archive?.packageName.isNullOrBlank()) error("El archivo descargado no es un APK válido")
                 if (!expectedPackage.isNullOrBlank() && expectedPackage != archive?.packageName) {
@@ -104,53 +140,42 @@ object NativeStoreApkInstaller {
                         withContext(Dispatchers.IO) { ShizukuInstaller.installSilently(destination.absolutePath) }
                         destination.delete()
                         setState(appId, ApkTransferState.Installed)
-                        main.post {
-                            if (!activity.isFinishing && !activity.isDestroyed) listener.onFinished(Status.INSTALLED)
-                        }
+                        main.post { listener?.onFinished(Status.INSTALLED) }
                         return@launch
                     } catch (_: Exception) {
                         // Shizuku failure falls back to Android's explicit user confirmation.
                     }
                 }
 
-                main.post {
-                    try {
-                        if (activity.isFinishing || activity.isDestroyed) {
-                            destination.delete()
-                            listener.onFinished(Status.FAILED, "La instalación se canceló al salir de la tienda.")
-                            return@post
-                        }
-                        setState(appId, ApkTransferState.AwaitingUserConfirmation)
-                        val uri = FileProvider.getUriForFile(
-                            activity, "${activity.packageName}.fileprovider", destination,
-                        )
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(uri, "application/vnd.android.package-archive")
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                        }
-                        activity.startActivity(intent)
-                        // Keep the file available while Package Installer reads it.
-                        main.postDelayed({ destination.delete() }, 30 * 60 * 1000L)
-                        listener.onFinished(Status.INSTALLER_OPENED)
-                    } catch (error: Exception) {
-                        destination.delete()
-                        setState(appId, ApkTransferState.Failed(error.message ?: "No se pudo abrir el instalador"))
-                        listener.onFinished(Status.FAILED, error.message ?: "No se pudo abrir el instalador")
-                    }
+                val alive = activity != null && !activity.isFinishing && !activity.isDestroyed
+                val launched = alive && runCatching {
+                    openPackageInstaller(context, destination)
+                }.isSuccess
+                if (launched) {
+                    // Keep the file available while Package Installer reads it.
+                    main.postDelayed({ destination.delete(); pendingApks.remove(appId) }, 30 * 60 * 1000L)
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation)
+                    main.post { listener?.onFinished(Status.INSTALLER_OPENED) }
+                } else {
+                    // App in background: the download service shows "Listo para
+                    // instalar". Background activity starts are restricted, so
+                    // the finish happens when the user taps the notification.
+                    pendingApks[appId] = destination
+                    setState(appId, ApkTransferState.AwaitingUserConfirmation)
+                    main.post { listener?.onFinished(Status.READY_BACKGROUND) }
                 }
             } catch (cancelled: CancellationException) {
                 partial.delete()
                 destination.delete()
                 setState(appId, ApkTransferState.Cancelled)
+                main.post { listener?.onFinished(Status.CANCELLED, "Descarga cancelada.") }
                 throw cancelled
             } catch (error: Exception) {
                 partial.delete()
                 destination.delete()
                 val message = error.message ?: "Falló la descarga"
                 setState(appId, ApkTransferState.Failed(message))
-                main.post {
-                    if (!activity.isFinishing && !activity.isDestroyed) listener.onFinished(Status.FAILED, message)
-                }
+                main.post { listener?.onFinished(Status.FAILED, message) }
             } finally {
                 jobs.remove(appId)
             }
@@ -165,6 +190,32 @@ object NativeStoreApkInstaller {
 
     fun clearState(appId: String) {
         mutableTransfers.update { it - appId }
+        pendingApks.remove(appId)
+    }
+
+    /** Drops only the flow state; keeps the verified APK for later launch. */
+    fun clearUiStateOnly(appId: String) {
+        mutableTransfers.update { it - appId }
+    }
+
+    /** File verified and ready for user confirmation, or null for this app. */
+    fun pendingApkFile(appId: String): File? = pendingApks[appId]
+
+    /** Opens Android's package installer over a verified, ready APK. */
+    @JvmStatic
+    fun launchUserInstall(context: Context, appId: String): Boolean {
+        val file = pendingApks[appId] ?: return false
+        return runCatching { openPackageInstaller(context, file) }.isSuccess
+    }
+
+    private fun openPackageInstaller(context: Context, file: File): Intent {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+        return intent
     }
 
     private fun setState(appId: String, state: ApkTransferState) {

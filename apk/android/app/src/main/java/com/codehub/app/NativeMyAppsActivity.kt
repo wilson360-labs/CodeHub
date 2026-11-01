@@ -443,9 +443,10 @@ class NativeMyAppsActivity : Activity() {
                     if (app.id in activeTransfers) return@request
                     activeTransfers[app.id] = TransferProgress(0, -1)
                     render()
-                    NativeStoreApkInstaller.install(this, url, app.id, app.packageName, preferSilent,
+                    NativeStoreApkInstaller.start(applicationContext, url, app.id, app.packageName, preferSilent, app.name, this,
                         object : NativeStoreApkInstaller.Listener {
                             override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+                                if (isFinishing || isDestroyed) return
                                 activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
                                 transferViews[app.id]?.let { (bar, text) ->
                                     val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
@@ -457,10 +458,13 @@ class NativeMyAppsActivity : Activity() {
 
                             override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
                                 activeTransfers.remove(app.id)
+                                if (isFinishing || isDestroyed) return
                                 renderFilters(); render()
                                 when (status) {
                                     NativeStoreApkInstaller.Status.INSTALLED -> Toast.makeText(this@NativeMyAppsActivity, "${app.name} se actualizó.", Toast.LENGTH_LONG).show()
                                     NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity, "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity, "Actualización lista en segundo plano · toca la notificación para instalar.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.CANCELLED -> Toast.makeText(this@NativeMyAppsActivity, "Actualización cancelada.", Toast.LENGTH_SHORT).show()
                                     NativeStoreApkInstaller.Status.FAILED -> AlertDialog.Builder(this@NativeMyAppsActivity)
                                         .setTitle("No se pudo actualizar ${app.name}")
                                         .setMessage(message)
@@ -604,7 +608,13 @@ class NativeMyAppsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        NativeStorePresence.visible = true
         if (hasLoaded) refreshApps()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        NativeStorePresence.visible = false
     }
 
     private data class AppEntry(
