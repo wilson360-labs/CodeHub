@@ -56,6 +56,7 @@ class NativeMyAppsActivity : Activity() {
     private var updateCheckFailed = false
     private var hasLoaded = false
     private var bulkUpdating = false
+    private lateinit var pendingBadge: TextView
 
     private data class TransferProgress(val downloaded: Long, val total: Long)
 
@@ -71,6 +72,15 @@ class NativeMyAppsActivity : Activity() {
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
 
+    /* A version-bound ignore (NativeAppUpdateTracker) hides exactly the catalog
+       version it was granted for; a newly published version resurfaces. Permanent
+       ignores stay in legacy ignoredUpdateIds. */
+    private fun snoozedByTracker(app: AppEntry) =
+        NativeAppUpdateTracker.isSnoozed(this, app.id, app.latestVersion)
+
+    private fun pendingUpdateCount() =
+        installed.count { it.hasUpdate && it.id !in ignoredUpdateIds && !snoozedByTracker(it) }
+
     private fun buildScreen() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -83,7 +93,17 @@ class NativeMyAppsActivity : Activity() {
             setTextColor(0xFFFFFFFF.toInt())
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
         }
-        root.addView(title)
+        pendingBadge = TextView(this).apply {
+            textSize = 12f
+            setTypeface(Typeface.DEFAULT, Typeface.BOLD)
+            setTextColor(0xFF12261F.toInt())
+            setPadding(dp(12), dp(6), dp(12), dp(6))
+            setBackground(roundRect(0xFF38EF7D.toInt(), 0, dp(16)))
+        }
+        val titleRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        titleRow.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        titleRow.addView(pendingBadge)
+        root.addView(titleRow)
         root.addView(label("Biblioteca del dispositivo · apps, descargas y actualizaciones", 13f, 0xFF9AA0B8.toInt()))
 
         val searchRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
@@ -277,12 +297,13 @@ class NativeMyAppsActivity : Activity() {
         filterRow.removeAllViews()
         Filter.values().forEach { option ->
             val selected = filter == option
+            val pending = pendingUpdateCount()
             val title = when (option) {
                 Filter.ALL -> "Instaladas (${installed.size})"
-                Filter.UPDATES -> "Actualizaciones (${installed.count { it.hasUpdate && it.id !in ignoredUpdateIds }})"
+                Filter.UPDATES -> "Actualizaciones ($pending)"
                 Filter.DOWNLOADED -> "Descargas (${downloads.size})"
                 Filter.LOCAL -> "Locales (${installed.count { it.repo.isBlank() }})"
-                Filter.IGNORED -> "Ignoradas (${installed.count { it.hasUpdate && it.id in ignoredUpdateIds }})"
+                Filter.IGNORED -> "Ignoradas (${installed.count { it.hasUpdate && (it.id in ignoredUpdateIds || snoozedByTracker(it)) }})"
             }
             val chip = label(title,
                 13f, if (selected) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
@@ -293,6 +314,10 @@ class NativeMyAppsActivity : Activity() {
             }
             filterRow.addView(chip, LinearLayout.LayoutParams(-2, dp(34)).apply { rightMargin = dp(8); topMargin = dp(7) })
         }
+        // NativeAppUpdateTracker: pending updates including version-bound snoozes.
+        val pending = pendingUpdateCount()
+        pendingBadge.text = if (pending > 0) "$pending sin actualizar" else "Al día"
+        pendingBadge.visibility = if (pending > 0) android.view.View.VISIBLE else android.view.View.GONE
     }
 
     private fun render() {
@@ -321,14 +346,14 @@ class NativeMyAppsActivity : Activity() {
         }
         val visible = installed.filter { app ->
             when (filter) {
-                Filter.UPDATES -> app.hasUpdate && app.id !in ignoredUpdateIds
+                Filter.UPDATES -> app.hasUpdate && app.id !in ignoredUpdateIds && !snoozedByTracker(app)
                 Filter.LOCAL -> app.repo.isBlank()
-                Filter.IGNORED -> app.hasUpdate && app.id in ignoredUpdateIds
+                Filter.IGNORED -> app.hasUpdate && (app.id in ignoredUpdateIds || snoozedByTracker(app))
                 else -> true
             } &&
                 "${app.name} ${app.category} ${app.repo} ${app.packageName}".lowercase(Locale.ROOT).contains(query)
         }
-        val updateCount = installed.count { it.hasUpdate && it.id !in ignoredUpdateIds }
+        val updateCount = pendingUpdateCount()
         status.text = when {
             refreshing -> "Buscando actualizaciones…"
             bulkUpdating -> status.text
@@ -339,7 +364,7 @@ class NativeMyAppsActivity : Activity() {
             list.addView(Button(this).apply {
                 text = "Actualizar todo · $updateCount"
                 isAllCaps = false
-                setOnClickListener { updateAll(updates = installed.filter { it.hasUpdate && it.id !in ignoredUpdateIds }) }
+                setOnClickListener { updateAll(updates = installed.filter { it.hasUpdate && it.id !in ignoredUpdateIds && !snoozedByTracker(it) }) }
             }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(10) })
         }
         if (visible.isEmpty()) {
@@ -350,7 +375,7 @@ class NativeMyAppsActivity : Activity() {
                 filter == Filter.UPDATES && updateCheckFailed -> "No pudimos comprobar las actualizaciones. Toca ⟳ para reintentar."
                 filter == Filter.UPDATES -> "Tus apps administradas por CodeHub están al día."
                 filter == Filter.LOCAL -> "No hay apps locales que coincidan."
-                filter == Filter.IGNORED -> "No has ignorado actualizaciones."
+                filter == Filter.IGNORED -> "No has ignorado actualizaciones ni versiones específicas."
                 else -> "No encontramos apps instaladas con esa búsqueda."
             }
             list.addView(label(message, 14f, 0xFF9AA0B8.toInt()).apply { gravity = Gravity.CENTER },
@@ -461,7 +486,10 @@ class NativeMyAppsActivity : Activity() {
                                 if (isFinishing || isDestroyed) return
                                 renderFilters(); render()
                                 when (status) {
-                                    NativeStoreApkInstaller.Status.INSTALLED -> Toast.makeText(this@NativeMyAppsActivity, "${app.name} se actualizó.", Toast.LENGTH_LONG).show()
+                                    NativeStoreApkInstaller.Status.INSTALLED -> {
+                                        Toast.makeText(this@NativeMyAppsActivity, "${app.name} se actualizó.", Toast.LENGTH_LONG).show()
+                                        NativeAppUpdateTracker.recordInstalled(applicationContext, app.id, app.latestVersion)
+                                    }
                                     NativeStoreApkInstaller.Status.INSTALLER_OPENED -> Toast.makeText(this@NativeMyAppsActivity, "APK lista · confirma la actualización de ${app.name}.", Toast.LENGTH_LONG).show()
                                     NativeStoreApkInstaller.Status.READY_BACKGROUND -> Toast.makeText(this@NativeMyAppsActivity, "Actualización lista en segundo plano · toca la notificación para instalar.", Toast.LENGTH_LONG).show()
                                     NativeStoreApkInstaller.Status.CANCELLED -> Toast.makeText(this@NativeMyAppsActivity, "Actualización cancelada.", Toast.LENGTH_SHORT).show()
@@ -491,7 +519,7 @@ class NativeMyAppsActivity : Activity() {
         val pkg = app.packageName ?: return
         val actions = mutableListOf("Abrir", "Desinstalar")
         if (app.repo.isNotBlank()) actions.add("Ver código fuente")
-        if (app.hasUpdate) actions.add(if (app.id in ignoredUpdateIds) "Mostrar actualización" else "Ignorar actualización")
+        if (app.hasUpdate) actions.add(if (app.id in ignoredUpdateIds || snoozedByTracker(app)) "Mostrar actualización" else "Ignorar actualización")
         AlertDialog.Builder(this)
             .setTitle(app.name)
             .setItems(actions.toTypedArray()) { _, which ->
@@ -515,10 +543,33 @@ class NativeMyAppsActivity : Activity() {
     }
 
     private fun toggleIgnoredUpdate(app: AppEntry) {
-        if (!ignoredUpdateIds.add(app.id)) ignoredUpdateIds.remove(app.id)
-        getSharedPreferences("codehub_store", MODE_PRIVATE).edit().putStringSet("ignored_updates", ignoredUpdateIds.toSet()).apply()
-        renderFilters()
-        render()
+        val permanent = app.id in ignoredUpdateIds
+        val snoozed = snoozedByTracker(app)
+        if (permanent || snoozed) {
+            ignoredUpdateIds.remove(app.id)
+            NativeAppUpdateTracker.restoreIgnored(this, app.id)
+            getSharedPreferences("codehub_store", MODE_PRIVATE).edit()
+                .putStringSet("ignored_updates", ignoredUpdateIds.toSet()).apply()
+            renderFilters(); render()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Ignorar actualización de ${app.name}")
+            .setItems(arrayOf(
+                "Sólo la versión v${app.latestVersion} (reaparece si hay otra)",
+                "Todas las versiones (siempre)",
+            )) { _, which ->
+                if (which == 0) {
+                    NativeAppUpdateTracker.ignoreVersion(this, app.id, app.latestVersion)
+                } else {
+                    ignoredUpdateIds.add(app.id)
+                    getSharedPreferences("codehub_store", MODE_PRIVATE).edit()
+                        .putStringSet("ignored_updates", ignoredUpdateIds.toSet()).apply()
+                }
+                renderFilters(); render()
+            }
+            .setNegativeButton("Cerrar", null)
+            .show()
     }
 
     private fun updateAll(updates: List<AppEntry>) {
@@ -556,6 +607,7 @@ class NativeMyAppsActivity : Activity() {
                                 } finally { connection.disconnect() }
                                 ShizukuInstaller.installSilently(file.absolutePath)
                                 completed++
+                                NativeAppUpdateTracker.recordInstalled(applicationContext, app.id, app.latestVersion)
                             } catch (error: Exception) {
                                 failure = "${app.name}: ${error.message ?: "falló la instalación"}"
                             } finally { file.delete() }
