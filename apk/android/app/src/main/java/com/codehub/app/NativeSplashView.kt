@@ -169,7 +169,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     fun dismiss() {
         if (dismissRequested || dismissed) return
         dismissRequested = true
-        val remaining = (900L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
+        val remaining = (3500L - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0L)
         mainHandler.postDelayed({
             if (dismissed) return@postDelayed
             dismissStartedAt = SystemClock.elapsedRealtime()

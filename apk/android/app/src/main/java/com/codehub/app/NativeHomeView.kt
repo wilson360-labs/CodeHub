@@ -141,12 +141,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(badges, LayoutParams(-1, -2).apply { topMargin = dp(15) })
 
         val buttons = LinearLayout(context).apply { orientation = HORIZONTAL }
-        buttons.addView(button("Explorar tienda", green, 0xFF08110C.toInt()) {
-            listener.onOpenStore()
-        }, LayoutParams(0, dp(46), 1f))
         buttons.addView(button("Mi CV", 0xFF25283B.toInt(), Color.WHITE) {
             listener.onOpenWebsite("/cv")
-        }, LayoutParams(dp(88), dp(46)).apply { marginStart = dp(10) })
+        }, LayoutParams(-1, dp(46)))
         addView(buttons, LayoutParams(-1, -2).apply { topMargin = dp(19) })
     }
 
