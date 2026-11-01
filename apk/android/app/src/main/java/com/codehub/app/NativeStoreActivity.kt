@@ -1009,40 +1009,6 @@ class NativeStoreActivity : Activity() {
         } finally { connection.disconnect() }
     }.getOrDefault(JSONArray())
 
-        val sheet = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                setColor(0xFF151522.toInt())
-                setCornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
-            }
-            setPadding(dp(16), dp(18), dp(16), dp(22))
-        }
-        sheet.addView(sheetContent)
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            isVerticalScrollBarEnabled = false
-            clipToOutline = true
-            addView(sheet)
-        }
-        val dialog = android.app.Dialog(this)
-        detailDialog = dialog
-        dialog.setContentView(scroll)
-        dialog.setCanceledOnTouchOutside(true)
-        dialog.setOnCancelListener { detailDialog = null }
-        dialog.setOnDismissListener { detailDialog = null; detailRing = null; detailCta = null }
-        dialog.show()
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.86f).toInt())
-            setGravity(Gravity.BOTTOM)
-            setDimAmount(0.55f)
-        }
-        scroll.translationY = dp(48).toFloat()
-        scroll.alpha = 0.35f
-        scroll.postDelayed({
-            scroll.animate().translationY(0f).alpha(1f).setDuration(280).start()
-        }, 40)
-    }
 
     private fun installPhaseText(app: AppEntry): String = when {
         app.id in activeTransfers -> "Descargando… deja la ficha abierta para ver la prioridad."

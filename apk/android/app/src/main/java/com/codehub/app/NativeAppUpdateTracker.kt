@@ -105,7 +105,7 @@ object NativeAppUpdateTracker {
                 }
             }
             historyCache.clear()
-            val history = prefs.optJSONArray(KEY_HISTORY) ?: JSONArray()
+            val history = JSONArray(prefs.getString(KEY_HISTORY, "[]").orEmpty())
             repeat(history.length()) { at ->
                 val row = history.optJSONObject(at) ?: return@repeat
                 val appId = row.optString("appId").orEmpty()
