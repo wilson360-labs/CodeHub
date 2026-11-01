@@ -38,7 +38,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     init {
         isClickable = true
         isFocusable = true
-        setBackgroundColor(Color.rgb(6, 6, 15))
+        setBackgroundColor(Color.rgb(21, 21, 34))  // 0xFF151522 brand bg
 
         addView(AuroraBackground(context), LayoutParams(-1, -1))
 
@@ -48,6 +48,13 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         }
         val logoSize = dp(194)
         val logoFrame = FrameLayout(context)
+        val halo = View(context).apply {
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.OVAL
+                setColor(0x1F38EF7D.toInt())
+            }
+        }
+        logoFrame.addView(halo, LayoutParams(logoSize, logoSize, Gravity.CENTER))
         orbitalRings = OrbitalRingsView(context)
         logoFrame.addView(orbitalRings, LayoutParams(logoSize, logoSize, Gravity.CENTER))
 
@@ -65,7 +72,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
             text = greetingText()
             textSize = 10f
             letterSpacing = .16f
-            setTextColor(Color.rgb(0, 198, 255))
+            setTextColor(Color.rgb(56, 239, 125))  // brand green
             typeface = Typeface.create("monospace", Typeface.NORMAL)
             gravity = Gravity.CENTER
         }
@@ -87,7 +94,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         brand.addView(TextView(context).apply {
             text = "Hub"
             textSize = 34f
-            setTextColor(Color.rgb(0, 198, 255))
+            setTextColor(Color.rgb(56, 239, 125))  // brand green
             typeface = Typeface.create("sans-serif", Typeface.BOLD)
             letterSpacing = .035f
         })
@@ -121,7 +128,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         progressLabel = TextView(context).apply {
             text = "0%"
             textSize = 10f
-            setTextColor(Color.rgb(0, 198, 255))
+            setTextColor(Color.rgb(56, 239, 125))  // brand green
             typeface = Typeface.create("monospace", Typeface.BOLD)
         }
         progressTop.addView(statusLabel, LinearLayout.LayoutParams(0, -2, 1f))
@@ -131,8 +138,8 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 0
-            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(0, 198, 255))
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(37, 39, 59))
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(56, 239, 125))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(24, 46, 34))
         }
         progressSection.addView(progressBar, LinearLayout.LayoutParams(-1, dp(3)).apply {
             topMargin = dp(8)
@@ -235,7 +242,7 @@ private class OrbitalRingsView(context: Context) : View(context) {
     private val density = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val orbitDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF2F80ED.toInt()
+        color = 0xFF38EF7D.toInt()
         setShadowLayer(9f * density, 0f, 0f, color)
     }
     private val bounds = RectF()
@@ -261,7 +268,7 @@ private class OrbitalRingsView(context: Context) : View(context) {
             gradientHeight = height
             orbitGradient = SweepGradient(
                 cx, cy,
-                intArrayOf(0xFF2F80ED.toInt(), 0xFF22C55E.toInt(), 0xFF6A11FF.toInt(), 0xFF00C6FF.toInt(), 0xFF2F80ED.toInt()),
+                intArrayOf(0xFF38EF7D.toInt(), 0xFF22C55E.toInt(), 0xFF68F0A9.toInt(), 0xFF38EF7D.toInt(), 0xFF38EF7D.toInt()),
                 null,
             )
         }
@@ -275,7 +282,7 @@ private class OrbitalRingsView(context: Context) : View(context) {
         canvas.restore()
 
         paint.shader = null
-        paint.color = 0x886A11FF.toInt()
+        paint.color = 0x8838EF7D.toInt()
         paint.strokeWidth = 1.4f * density
         val inner = radius - 10f * density
         bounds.set(cx - inner, cy - inner, cx + inner, cy + inner)
@@ -306,20 +313,20 @@ private class AuroraBackground(context: Context) : View(context) {
         val radius = maxOf(w, h) * .62f
         paint.shader = android.graphics.RadialGradient(
             w * .5f, h * .18f, radius,
-            intArrayOf(0x2B6A11FF, 0x0A6A11FF, Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
+            intArrayOf(0x2B38EF7D.toInt(), 0x0A38EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
         )
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = android.graphics.RadialGradient(
             w * .82f, h * .68f, radius * .68f,
-            intArrayOf(0x1900C6FF, Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
+            intArrayOf(0x1938EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
         )
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = null
         stars.forEachIndexed { index, (x, y, starRadius) ->
             paint.color = when (index % 4) {
                 0 -> 0xBFFFFFFF.toInt()
-                1 -> 0xCC00C6FF.toInt()
-                2 -> 0xB37C4DFF.toInt()
+                1 -> 0xCC38EF7D.toInt()
+                2 -> 0xB338EF7D.toInt()
                 else -> 0xB3E8C978.toInt()
             }
             canvas.drawCircle(x * w, y * h, starRadius * resources.displayMetrics.density, paint)
