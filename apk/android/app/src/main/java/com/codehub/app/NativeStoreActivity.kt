@@ -29,6 +29,7 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.Executors
 import org.json.JSONObject
@@ -778,32 +779,6 @@ class NativeStoreActivity : Activity() {
         }, LinearLayout.LayoutParams(0, -2, 1f))
         sheetContent.addView(hero, LinearLayout.LayoutParams(-1, -2))
 
-        sheetContent.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
-            setLineSpacing(dp(3).toFloat(), 1f)
-            setPadding(0, dp(14), 0, dp(4))
-        })
-        sheetContent.addView(label("Versión ${app.version.ifEmpty { "disponible" }}  ·  ${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
-            setPadding(0, dp(2), 0, 0)
-        })
-
-        val releaseStatus = label("Consultando versiones y variantes…", 13f, 0xFF9AA0B8.toInt()).apply {
-            setPadding(0, dp(12), 0, 0)
-        }
-        sheetContent.addView(releaseStatus)
-        val releaseImages = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val imageScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(releaseImages) }
-        sheetContent.addView(imageScroll, LinearLayout.LayoutParams(-1, dp(132)).apply { topMargin = dp(10) })
-        val releaseActions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        sheetContent.addView(releaseActions)
-
-        if (app.changelog.isNotBlank()) {
-            sheetContent.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
-            sheetContent.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
-                maxLines = 6
-                ellipsize = android.text.TextUtils.TruncateAt.END
-            })
-        }
-
         // CTA estilo Orion: anillo de progreso + estado bajo el botón.
         val ctaRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -831,7 +806,45 @@ class NativeStoreActivity : Activity() {
         }, LinearLayout.LayoutParams(0, -2, 1f))
         sheetContent.addView(ctaRow, LinearLayout.LayoutParams(-1, -2))
 
-        // Chips inferiores: reseñas, código y favorito.
+        // Tab strip.
+        val panels = LinkedHashMap<String, LinearLayout>()
+        val tabButtons = LinkedHashMap<String, TextView>()
+        val tabStrip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val tabLabels = listOf("Descripción", "Versiones", "Seguridad", "Reseñas")
+        fun selectTab(key: String) {
+            panels.forEach { (k, p) -> p.visibility = if (k == key) android.view.View.VISIBLE else android.view.View.GONE }
+            tabButtons.forEach { (k, b) ->
+                b.setTextColor(if (k == key) 0xFF080810.toInt() else 0xFFD7D7E4.toInt())
+                b.background = roundRect(if (k == key) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), 0, dp(16))
+            }
+        }
+        tabLabels.forEach { key ->
+            val btn = label(key, 12f, 0xFFD7D7E4.toInt(), true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(6), dp(8), dp(6), dp(8))
+                setOnClickListener { selectTab(key) }
+            }
+            tabButtons[key] = btn
+            tabStrip.addView(btn, LinearLayout.LayoutParams(0, dp(34), 1f).apply { rightMargin = dp(4) })
+        }
+        sheetContent.addView(tabStrip, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+
+        // --- Panel: Descripción ---
+        val descPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        descPanel.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
+            setLineSpacing(dp(3).toFloat(), 1f)
+            setPadding(0, dp(14), 0, dp(4))
+        })
+        descPanel.addView(label("Versión ${app.version.ifEmpty { "disponible" }}  ·  ${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(2), 0, 0)
+        })
+        if (app.changelog.isNotBlank()) {
+            descPanel.addView(label("Novedades", 14f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(14), 0, dp(5)) })
+            descPanel.addView(label(app.changelog, 13f, 0xFFB7B8C8.toInt()).apply {
+                maxLines = 6
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+        }
         val chipsRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         chipsRow.addView(pill("★ Reseñas y valorar", 0xFF1D2C2A.toInt(), 0xFFB7E8CE.toInt()) { showReviews(app) },
             LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
@@ -845,9 +858,150 @@ class NativeStoreActivity : Activity() {
         chipsRow.addView(pill(if (app.id in favoriteIds) "♥" else "♡", 0xFF1D2C2A.toInt(), 0xFFFF6B9A.toInt()) {
             toggleFavorite(app); detailDialog?.dismiss()
         }, LinearLayout.LayoutParams(-2, -2))
-        sheetContent.addView(chipsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        descPanel.addView(chipsRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        panels["Descripción"] = descPanel
+        sheetContent.addView(descPanel, LinearLayout.LayoutParams(-1, -2))
+
+        // --- Panel: Versiones ---
+        val versionsPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val releaseStatus = label("Consultando versiones y variantes…", 13f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(12), 0, 0)
+        }
+        versionsPanel.addView(releaseStatus)
+        val releaseImages = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val imageScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; addView(releaseImages) }
+        versionsPanel.addView(imageScroll, LinearLayout.LayoutParams(-1, dp(132)).apply { topMargin = dp(10) })
+        val releaseActions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        versionsPanel.addView(releaseActions)
+        panels["Versiones"] = versionsPanel
+        versionsPanel.visibility = android.view.View.GONE
+        sheetContent.addView(versionsPanel, LinearLayout.LayoutParams(-1, -2))
+
+        // --- Panel: Seguridad ---
+        val securityPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val securityStatus = label("Analizando la app descargada…", 13f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(12), 0, 0) }
+        securityPanel.addView(securityStatus)
+        val securityBody = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        securityPanel.addView(securityBody, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        panels["Seguridad"] = securityPanel
+        securityPanel.visibility = android.view.View.GONE
+        sheetContent.addView(securityPanel, LinearLayout.LayoutParams(-1, -2))
+        loadSecurityPanel(app, securityStatus, securityBody)
+
+        // --- Panel: Reseñas ---
+        val reviewsPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        panels["Reseñas"] = reviewsPanel
+        reviewsPanel.visibility = android.view.View.GONE
+        sheetContent.addView(reviewsPanel, LinearLayout.LayoutParams(-1, -2))
+        loadReviewsInto(app, reviewsPanel)
 
         loadReleaseSection(app, releaseStatus, releaseImages, releaseActions)
+
+        selectTab("Descripción")
+
+        val sheet = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(0xFF151522.toInt())
+                setCornerRadii(floatArrayOf(dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), dp(26).toFloat(), 0f, 0f, 0f, 0f))
+            }
+            setPadding(dp(16), dp(18), dp(16), dp(22))
+        }
+        sheet.addView(sheetContent)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = false
+            clipToOutline = true
+            addView(sheet)
+        }
+        val dialog = android.app.Dialog(this)
+        detailDialog = dialog
+        dialog.setContentView(scroll)
+        dialog.setCanceledOnTouchOutside(true)
+        dialog.setOnCancelListener { detailDialog = null }
+        dialog.setOnDismissListener { detailDialog = null; detailRing = null; detailCta = null }
+        dialog.show()
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (resources.displayMetrics.heightPixels * 0.86f).toInt())
+            setGravity(Gravity.BOTTOM)
+            setDimAmount(0.55f)
+        }
+        scroll.translationY = dp(48).toFloat()
+        scroll.alpha = 0.35f
+        scroll.postDelayed({
+            scroll.animate().translationY(0f).alpha(1f).setDuration(280).start()
+        }, 40)
+    }
+
+    private fun loadSecurityPanel(app: AppEntry, status: TextView, body: LinearLayout) {
+        body.removeAllViews()
+        val insight = NativeApkInsights.cache(this, app.id)
+            ?: NativeStoreApkInstaller.pendingApkFile(app.id)?.let { file ->
+                NativeApkInsights.analyze(this, app.id, file)?.also { NativeApkInsights.cacheInsight(this, it) }
+            }
+        if (insight != null) {
+            status.text = "Seguridad · análisis local (sin claves externas)"
+            body.addView(label("Paquete: ${insight.packageName}", 13f, 0xFFFFFFFF.toInt()))
+            body.addView(label("Versión: ${insight.versionName} (${insight.versionCode})", 13f, 0xFFD0D0DE.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+            body.addView(label("minSdk ${insight.minSdk} · targetSdk ${insight.targetSdk}", 12f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+            body.addView(label("SHA-256: ${insight.sha256.take(16)}…", 11f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+            body.addView(label("Firma: ${insight.signerDigest.take(16)}…", 11f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(3), 0, 0) })
+            if (insight.dangerousPermissions.isNotEmpty()) {
+                body.addView(label("Permisos sensibles:", 13f, 0xFFFFC857.toInt(), true).apply { setPadding(0, dp(10), 0, dp(4)) })
+                insight.dangerousPermissions.forEach { body.addView(label("• $it", 12f, 0xFFD0D0DE.toInt()).apply { setPadding(dp(6), dp(2), 0, dp(2)) }) }
+            } else {
+                body.addView(label("Sin permisos sensibles declarados.", 12f, 0xFF68F0A9.toInt()).apply { setPadding(0, dp(8), 0, 0) })
+            }
+            body.addView(label("Permisos totales: ${insight.permissions.size}", 11f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(6), 0, 0) })
+        } else {
+            status.text = "Seguridad · descarga primero la app"
+            body.addView(label("Descarga la app para analizar su firma, permisos y hash SHA-256 aquí.", 13f, 0xFFD0D0DE.toInt()))
+        }
+        // Download history.
+        val history = NativeApkInsights.downloads(this, app.id)
+        if (history.isNotEmpty()) {
+            body.addView(label("Historial de descargas", 13f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(12), 0, dp(4)) })
+            history.take(5).forEach { record ->
+                val whenText = android.text.format.DateUtils.getRelativeTimeSpanString(record.at).toString()
+                body.addView(label("v${record.version} · ${android.text.format.Formatter.formatShortFileSize(this, record.sizeBytes)} · $whenText", 12f, 0xFF9AA0B8.toInt()).apply { setPadding(dp(6), dp(2), 0, dp(2)) })
+            }
+        }
+        // Mis apps shortcut.
+        body.addView(pill("Ir a Mis apps →", 0xFF1D2C2A.toInt(), 0xFF7BD9F5.toInt()) {
+            try { startActivity(Intent(this, NativeMyAppsActivity::class.java)) } catch (_: Exception) { }
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
+    }
+
+    private fun loadReviewsInto(app: AppEntry, container: LinearLayout) {
+        container.removeAllViews()
+        container.addView(label("Cargando reseñas…", 13f, 0xFF9AA0B8.toInt()))
+        executor.execute {
+            val reviews = fetchReviews(app)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                container.removeAllViews()
+                if (reviews.length() == 0) container.addView(label("Todavía no hay reseñas. Puedes ser la primera persona en valorar esta app.", 14f, 0xFFB7B8C8.toInt()))
+                for (i in 0 until reviews.length()) {
+                    val review = reviews.optJSONObject(i) ?: continue
+                    container.addView(label("${"★".repeat(review.optInt("stars").coerceIn(1, 5))}  ${review.optString("autor", "Anónimo")}", 13f, 0xFFFFC857.toInt(), true).apply { setPadding(0, dp(12), 0, dp(4)) })
+                    container.addView(label(review.optString("texto"), 13f, 0xFFD0D0DE.toInt()))
+                }
+                container.addView(pill("Valorar", 0xFF1D2C2A.toInt(), 0xFFB7E8CE.toInt()) { showRatingDialog(app) }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
+            }
+        }
+    }
+
+    private fun fetchReviews(app: AppEntry): JSONArray = runCatching {
+        val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/reviews"
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 12_000
+            val body = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() }
+            JSONObject(body).optJSONArray("reviews") ?: JSONArray()
+        } finally { connection.disconnect() }
+    }.getOrDefault(JSONArray())
 
         val sheet = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1136,17 +1290,9 @@ class NativeStoreActivity : Activity() {
         val loading = AlertDialog.Builder(this).setMessage("Cargando reseñas…").setNegativeButton("Cerrar", null).create()
         loading.show()
         executor.execute {
-            val reviews = runCatching {
-                val url = "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/reviews"
-                val connection = URL(url).openConnection() as HttpURLConnection
-                try {
-                    connection.connectTimeout = 8_000
-                    connection.readTimeout = 12_000
-                    val body = BufferedReader(InputStreamReader(connection.inputStream, Charsets.UTF_8)).use { it.readText() }
-                    JSONObject(body).optJSONArray("reviews") ?: JSONArray()
-                } finally { connection.disconnect() }
-            }.getOrDefault(JSONArray())
+            val reviews = fetchReviews(app)
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 loading.dismiss()
                 val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(10), dp(20), dp(10)) }
                 if (reviews.length() == 0) content.addView(label("Todavía no hay reseñas. Puedes ser la primera persona en valorar esta app.", 14f, 0xFFB7B8C8.toInt()))
