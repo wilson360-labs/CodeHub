@@ -193,6 +193,9 @@ class NativeStoreActivity : Activity() {
             setPadding(dp(16), 0, dp(16), 0)
             setBackground(roundRect(0xFF151522.toInt(), 0xFF272738.toInt(), dp(14)))
         }
+        search.setOnFocusChangeListener { _, hasFocus ->
+            search.setBackground(roundRect(0xFF151522.toInt(), if (hasFocus) 0xFF38EF7D.toInt() else 0xFF272738.toInt(), dp(14)))
+        }
         root.addView(search, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(18) })
         search.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -406,7 +409,7 @@ class NativeStoreActivity : Activity() {
             val chip = label("$value · $count", 13f, if (category == value) 0xFF080810.toInt() else 0xFFD7D7E4.toInt(), true).apply {
                 gravity = Gravity.CENTER
                 setPadding(dp(15), 0, dp(15), 0)
-                setBackground(roundRect(if (category == value) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), 0, dp(22)))
+                setBackground(roundRect(if (category == value) 0xFF38EF7D.toInt() else 0xFF151522.toInt(), if (category == value) 0 else 0xFF2A2A3E.toInt(), dp(22)))
                 setOnClickListener {
                     category = value
                     renderChips()
