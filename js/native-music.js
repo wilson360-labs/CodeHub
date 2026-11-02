@@ -79,7 +79,7 @@
     root.style.transform = 'none';
   }
 
-  // Vuelve al layout por defecto (centrado sobre el dock, vía CSS).
+  // Clears custom coordinates so layout() can restore the default position.
   function resetInlinePos() {
     if (!root) return;
     root.style.left = '';
@@ -197,6 +197,7 @@
     el.setAttribute('aria-label', 'Control de música');
     el.hidden = true;
     el.innerHTML =
+      '<span class="ch-nm__head"><span class="ch-nm__brand"><i></i> CODEBEAT</span><span class="ch-nm__draghint" aria-hidden="true"><i></i><i></i></span><span class="ch-nm__status"></span></span>' +
       '<span class="ch-nm__bar"><i></i></span>' +
       '<span class="ch-nm__live" aria-live="polite" aria-atomic="true"></span>' +
       '<span class="ch-nm__row">' +
@@ -274,6 +275,14 @@
     }
     if (savedPos) {
       applyPos(savedPos.l, savedPos.t);
+      return;
+    }
+    if (window.innerWidth <= 640) {
+      root.style.left = '50%';
+      root.style.right = 'auto';
+      root.style.top = '50%';
+      root.style.bottom = 'auto';
+      root.style.transform = 'translate(-50%, -50%)';
       return;
     }
     var px = 116;
