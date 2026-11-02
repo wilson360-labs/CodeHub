@@ -711,6 +711,110 @@
       "categoria": "Utilidades",
       "source_repo": "FossifyOrg/Notes",
       "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Notes"
+    },
+    {
+      "appId": "os-fairemail",
+      "nombre": "FairEmail",
+      "descripcion": "Cliente de correo completo, de código abierto y centrado en la privacidad.",
+      "categoria": "Mensajería",
+      "source_repo": "M66B/FairEmail",
+      "imagen": "https://opengraph.githubassets.com/1/M66B/FairEmail"
+    },
+    {
+      "appId": "os-markor",
+      "nombre": "Markor",
+      "descripcion": "Editor offline para Markdown, notas, listas y archivos de texto.",
+      "categoria": "Productividad",
+      "source_repo": "gsantner/markor",
+      "imagen": "https://opengraph.githubassets.com/1/gsantner/markor"
+    },
+    {
+      "appId": "os-davx5",
+      "nombre": "DAVx⁵",
+      "descripcion": "Sincroniza calendarios y contactos con servicios CalDAV y CardDAV.",
+      "categoria": "Productividad",
+      "source_repo": "bitfireAT/davx5-ose",
+      "imagen": "https://opengraph.githubassets.com/1/bitfireAT/davx5-ose"
+    },
+    {
+      "appId": "os-catima",
+      "nombre": "Catima",
+      "descripcion": "Guarda tarjetas de fidelidad, membresías y códigos de barras sin conexión.",
+      "categoria": "Utilidades",
+      "source_repo": "CatimaLoyalty/Android",
+      "imagen": "https://opengraph.githubassets.com/1/CatimaLoyalty/Android"
+    },
+    {
+      "appId": "os-fossify-calendar",
+      "nombre": "Fossify Calendar",
+      "descripcion": "Calendario privado con eventos, widgets y sin anuncios.",
+      "categoria": "Productividad",
+      "source_repo": "FossifyOrg/Calendar",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Calendar"
+    },
+    {
+      "appId": "os-fossify-clock",
+      "nombre": "Fossify Clock",
+      "descripcion": "Reloj, alarmas, temporizador y cronómetro con widgets.",
+      "categoria": "Utilidades",
+      "source_repo": "FossifyOrg/Clock",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Clock"
+    },
+    {
+      "appId": "os-fossify-calculator",
+      "nombre": "Fossify Calculator",
+      "descripcion": "Calculadora offline, personalizable y sin anuncios.",
+      "categoria": "Utilidades",
+      "source_repo": "FossifyOrg/Calculator",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Calculator"
+    },
+    {
+      "appId": "os-fossify-contacts",
+      "nombre": "Fossify Contacts",
+      "descripcion": "Administra contactos, grupos y favoritos con una app de código abierto.",
+      "categoria": "Productividad",
+      "source_repo": "FossifyOrg/Contacts",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Contacts"
+    },
+    {
+      "appId": "os-fossify-messages",
+      "nombre": "Fossify Messages",
+      "descripcion": "Cliente SMS y MMS de código abierto, sin anuncios.",
+      "categoria": "Mensajería",
+      "source_repo": "FossifyOrg/Messages",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Messages"
+    },
+    {
+      "appId": "os-fossify-phone",
+      "nombre": "Fossify Phone",
+      "descripcion": "Teléfono y gestión de llamadas con bloqueo de números.",
+      "categoria": "Utilidades",
+      "source_repo": "FossifyOrg/Phone",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Phone"
+    },
+    {
+      "appId": "os-fossify-voice-recorder",
+      "nombre": "Fossify Voice Recorder",
+      "descripcion": "Grabadora de voz offline con organización y reproducción de audio.",
+      "categoria": "Música",
+      "source_repo": "FossifyOrg/Voice-Recorder",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Voice-Recorder"
+    },
+    {
+      "appId": "os-fossify-music-player",
+      "nombre": "Fossify Music Player",
+      "descripcion": "Reproductor local con widgets, temas personalizables y sin anuncios.",
+      "categoria": "Música",
+      "source_repo": "FossifyOrg/Music-Player",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Music-Player"
+    },
+    {
+      "appId": "os-fossify-documents",
+      "nombre": "Fossify Documents",
+      "descripcion": "Lector y organizador offline para PDF, DOCX, Markdown, CSV y texto.",
+      "categoria": "Productividad",
+      "source_repo": "FossifyOrg/Documents",
+      "imagen": "https://opengraph.githubassets.com/1/FossifyOrg/Documents"
     }
   ]
 }

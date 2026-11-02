@@ -9,11 +9,12 @@
  * (/img/...) o una URL externa elegida a mano se dejan intactas.
  *
  * Para cada candidata intenta en orden:
- *   1) fastlane/metadata/android/.../icon.png   (ícono real de la app)
- *   2) mipmap-{carpeta}/ic_launcher.png         (ícono de Android)
- *   3) avatar de la ORGANIZACIÓN (solo si el dueño es una org, cuyo avatar
- *      normalmente ES el logo de la app). Los repos de usuarios personales
- *      NO usan avatar para no ponerle una foto de desarrollador de logo.
+ *   1) fastlane/metadata/android/.../images/icon.png o .webp
+ *   2) mipmap-{densidad}/ic_launcher(_round).png o .webp del Android module
+ *   3) drawable-nodpi/ic_launcher.png o .webp
+ *
+ * No utiliza avatares de GitHub: si no hay un icono de la app en su repo,
+ * conserva la portada de respaldo para evitar mostrar una imagen ajena.
  *
  * El logo encontrado se sube a img/opensource/{appId}.png en GitHub y se
  * actualiza `imagen` en MongoDB a la ruta local. Es idempotente: si ya se
@@ -74,45 +75,68 @@ async function fetchRepoInfo(owner, repo) {
   } catch { return null; }
 }
 
-// Ícono real dentro del repo: fastlane y mipmap (PNG), en la rama default.
+// Iconos reales Fastlane / launcher, priorizando la rama default.
 async function findRepoIcon(owner, repo, defaultBranch) {
   const branches = [defaultBranch, 'main', 'master'].filter(Boolean);
-  const paths = [
+  const directPaths = [
     'fastlane/metadata/android/en-US/images/icon.png',
+    'fastlane/metadata/android/en-US/images/icon.webp',
     'metadata/android/en-US/images/icon.png',
+    'metadata/android/en-US/images/icon.webp',
     'app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+    'app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp',
     'app/src/main/res/mipmap-xxhdpi/ic_launcher.png',
+    'app/src/main/res/mipmap-xxhdpi/ic_launcher.webp',
     'app/src/main/res/mipmap-xhdpi/ic_launcher.png',
-    'app/src/main/res/mipmap-anydpi-v26/ic_launcher.png',
+    'app/src/main/res/mipmap-xhdpi/ic_launcher.webp',
   ];
-  for (const branch of branches) {
-    for (const path of paths) {
-      try {
-        const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, { headers: ghHeaders({ Accept: 'application/vnd.github.raw' }) });
-        if (r.ok) {
-          const buf = Buffer.from(await r.arrayBuffer());
-          if (buf.length > 0) return { buffer: buf, ext: '.png', source: path };
-        }
-      } catch { /* siguiente combinación */ }
-    }
-  }
-  return null;
-}
 
-// Avatar de la ORGANIZACIÓN del repo. Solo aplica cuando el dueño es una
-// org (su avatar suele ser el logo oficial de la app). Los repos de
-// usuarios personales se saltan para no poner una foto de perfil de logo.
-async function fetchOwnerAvatar(owner) {
-  try {
-    const r = await fetch(`https://github.com/${encodeURIComponent(owner)}.png`, {
-      headers: { 'User-Agent': 'CodeHub-IconBot' },
-      redirect: 'follow',
-    });
-    if (r.ok) {
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > 0) return { buffer: buf, ext: '.png', source: `avatar-org:${owner}` };
+  for (const branch of branches) {
+    for (const repoPath of directPaths) {
+      try {
+        const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${repoPath}`, {
+          headers: { 'User-Agent': 'CodeHub-IconBot' },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!response.ok) continue;
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.length > 0) return { buffer, ext: repoPath.toLowerCase().endsWith('.webp') ? '.webp' : '.png', source: repoPath };
+      } catch { /* intenta otra ruta */ }
     }
-  } catch {}
+
+    try {
+      const treeResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, {
+        headers: ghHeaders(),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!treeResponse.ok) continue;
+      const tree = await treeResponse.json();
+      if (!Array.isArray(tree.tree)) continue;
+      const candidates = tree.tree
+        .filter(item => item.type === 'blob' && /\.(?:png|webp)$/i.test(item.path))
+        .map(item => item.path)
+        .filter(repoPath => /(?:^|\/)fastlane\/metadata\/android\/[^/]+\/images\/icon\.(?:png|webp)$/i.test(repoPath)
+          || /(?:^|\/)res\/mipmap-(?:xxxhdpi|xxhdpi|xhdpi|hdpi)\/ic_launcher(?:_round)?\.(?:png|webp)$/i.test(repoPath)
+          || /(?:^|\/)res\/drawable-nodpi\/ic_launcher\.(?:png|webp)$/i.test(repoPath))
+        .sort((a, b) => {
+          const rank = value => /fastlane\/metadata\/android\/en-US\/images\/icon/i.test(value) ? 0
+            : /mipmap-xxxhdpi/i.test(value) ? 1 : /mipmap-xxhdpi/i.test(value) ? 2
+              : /mipmap-xhdpi/i.test(value) ? 3 : /mipmap-hdpi/i.test(value) ? 4 : 5;
+          return rank(a) - rank(b);
+        });
+      for (const repoPath of candidates) {
+        try {
+          const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${repoPath}`, {
+            headers: { 'User-Agent': 'CodeHub-IconBot' },
+            signal: AbortSignal.timeout(12000),
+          });
+          if (!response.ok) continue;
+          const buffer = Buffer.from(await response.arrayBuffer());
+          if (buffer.length > 0) return { buffer, ext: repoPath.toLowerCase().endsWith('.webp') ? '.webp' : '.png', source: repoPath };
+        } catch { /* intenta el siguiente icono */ }
+      }
+    } catch { /* prueba otra rama */ }
+  }
   return null;
 }
 
@@ -164,12 +188,10 @@ const NO_LOGO_RE = /opengraph\.githubassets\.com/i;
 
       const info = await fetchRepoInfo(owner, repo);
       const defaultBranch = info?.default_branch;
-      const isOrg = info?.owner?.type === 'Organization';
 
-      let icon = await findRepoIcon(owner, repo, defaultBranch);
-      if (!icon && isOrg) icon = await fetchOwnerAvatar(owner);
+      const icon = await findRepoIcon(owner, repo, defaultBranch);
       if (!icon) {
-        const motivo = !info ? 'repo no accesible' : (isOrg ? 'sin ícono ni avatar disponible' : 'repo de usuario sin fastlane/mipmap (no se usa avatar de usuario)');
+        const motivo = !info ? 'repo no accesible' : 'sin un icono de app disponible en Fastlane o recursos launcher';
         console.log(`⏭️  ${app.nombre}: ${motivo}`);
         saltadas++;
         continue;
