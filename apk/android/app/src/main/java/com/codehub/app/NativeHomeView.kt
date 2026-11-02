@@ -1,9 +1,11 @@
 package com.codehub.app
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
@@ -20,8 +22,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     }
 
     private val muted = 0xFFA7A9BC.toInt()
-    private val green = 0xFF6366F1.toInt()
-    private val blue = 0xFF43B7FF.toInt()
+    private val indigo = 0xFF818CF8.toInt()
+    private val cyan = 0xFF22D3EE.toInt()
     private var homeScroll: ScrollView? = null
 
     init {
@@ -45,19 +47,19 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             LayoutParams(-1, -2).apply { topMargin = dp(28) })
 
         val primaryRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        primaryRow.addView(actionCard("▦", "CodeHub Store", "Apps open source para Android", green) {
+        primaryRow.addView(actionCard("▦", "CodeHub Store", "Apps open source para Android", indigo) {
             listener.onOpenStore()
         }, weightedCard())
-        primaryRow.addView(actionCard("⬇", "Mis aplicaciones", "Instaladas y actualizaciones", blue) {
+        primaryRow.addView(actionCard("↓", "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
             listener.onOpenMyApps()
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
 
         val exploreRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        exploreRow.addView(actionCard("☼", "Clima", "Pronóstico y alertas", 0xFF8D9DFF.toInt()) {
+        exploreRow.addView(actionCard("☼", "Clima", "Pronóstico y alertas", cyan) {
             listener.onOpenWebsite("/#weather-section")
         }, weightedCard())
-        exploreRow.addView(actionCard("⌘", "Herramientas", "Utilidades de CodeHub", 0xFFFFC857.toInt()) {
+        exploreRow.addView(actionCard("⌘", "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -93,39 +95,40 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addView(wordmark, LayoutParams(0, -2, 1f))
         addView(TextView(context).apply {
-            text = "●  NATIVO"
+            text = "APK NATIVA"
             textSize = 9f
             letterSpacing = .04f
-            setTextColor(green)
-            setPadding(dp(10), dp(7), dp(10), dp(7))
-            background = rounded(0xFF153326.toInt(), dp(20))
+            setTextColor(indigo)
+            setPadding(dp(11), dp(7), dp(11), dp(7))
+            background = rounded(0xFF1B1C36.toInt(), dp(20))
         })
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {
         orientation = VERTICAL
         setPadding(dp(20), dp(22), dp(20), dp(20))
+        elevation = dp(4).toFloat()
         background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(0xFF171A30.toInt(), 0xFF101522.toInt(), 0xFF0E191B.toInt()),
-        ).apply { cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0xFF292D43.toInt()) }
+            intArrayOf(0xFF1A1B36.toInt(), 0xFF111A2B.toInt(), 0xFF0C2029.toInt()),
+        ).apply { cornerRadius = dp(26).toFloat(); setStroke(dp(1), 0xFF343652.toInt()) }
 
         addView(TextView(context).apply {
-            text = "●  DISPONIBLE PARA PROYECTOS  ·  GUATEMALA"
+            text = "CODEHUB  ·  GUATEMALA"
             textSize = 9f
-            letterSpacing = .045f
-            setTextColor(green)
+            letterSpacing = .1f
+            setTextColor(cyan)
             setPadding(dp(10), dp(7), dp(10), dp(7))
-            background = rounded(0xFF153326.toInt(), dp(20))
+            background = rounded(0xFF102631.toInt(), dp(20))
         }, LayoutParams(-2, -2))
 
-        addView(label("Hola, soy", 18f, 0xFFE0E2EF.toInt(), false),
+        addView(label("Hola, soy", 16f, 0xFFB9BED3.toInt(), false),
             LayoutParams(-1, -2).apply { topMargin = dp(18) })
-        addView(label("Wilson.E", 39f, Color.WHITE, true), LayoutParams(-1, -2).apply {
+        addView(label("Wilson.E", 42f, Color.WHITE, true), LayoutParams(-1, -2).apply {
             topMargin = dp(1)
         })
         addView(label(
-            "Diseño y construyo experiencias web, herramientas útiles y automatizaciones. Ahora también llevo CodeHub a Android con funciones nativas.",
+            "Experiencias web, herramientas útiles y servicios de CodeHub, ahora con funciones nativas para Android.",
             14f, 0xFFC0C2D1.toInt(), false,
         ).apply { setLineSpacing(dp(4).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
             topMargin = dp(10)
@@ -141,7 +144,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(badges, LayoutParams(-1, -2).apply { topMargin = dp(15) })
 
         val buttons = LinearLayout(context).apply { orientation = HORIZONTAL }
-        buttons.addView(button("Mi CV", 0xFF25283B.toInt(), Color.WHITE) {
+        buttons.addView(button("Ver perfil y proyectos  ↗", 0xFF25284A.toInt(), 0xFFE4E7FF.toInt()) {
             listener.onOpenWebsite("/cv")
         }, LayoutParams(-1, dp(46)))
         addView(buttons, LayoutParams(-1, -2).apply { topMargin = dp(19) })
@@ -167,17 +170,17 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(14), dp(14), dp(12), dp(14))
-            background = rounded(0xFF0D1017.toInt(), dp(18)).apply {
-                setStroke(dp(1), 0xFF28283A.toInt())
-            }
+            background = rippleSurface(0xFF111521.toInt(), dp(18), 0xFF292D43.toInt())
             isClickable = true
             isFocusable = true
+            elevation = dp(2).toFloat()
             setOnClickListener { onClick() }
             addView(TextView(context).apply {
                 text = icon
                 textSize = 24f
                 setTextColor(accent)
                 typeface = Typeface.DEFAULT_BOLD
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             })
             addView(label(title, 14f, Color.WHITE, true), LayoutParams(-1, -2).apply { topMargin = dp(9) })
             addView(label(description, 11f, muted, false).apply {
@@ -190,9 +193,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(16), dp(14), dp(14), dp(14))
-        background = rounded(0xFF111622.toInt(), dp(18)).apply {
-            setStroke(dp(1), 0xFF283246.toInt())
-        }
+        background = rippleSurface(0xFF121724.toInt(), dp(18), 0xFF2E354B.toInt())
         val copy = LinearLayout(context).apply {
             orientation = VERTICAL
             addView(label("Explora todo CodeHub", 14f, Color.WHITE, true))
@@ -200,7 +201,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
         addView(copy, LayoutParams(0, -2, 1f))
-        addView(button("Abrir", 0xFF20243A.toInt(), blue) {
+        addView(button("Abrir", 0xFF20243A.toInt(), cyan) {
             listener.onOpenWebsite("/")
         }, LayoutParams(dp(74), dp(40)))
     }
@@ -210,10 +211,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         gravity = Gravity.CENTER
         setPadding(dp(8), dp(8), dp(8), dp(8))
         background = GradientDrawable().apply {
-            setColor(0xFF0D0D17.toInt())
-            setStroke(dp(1), 0xFF202030.toInt())
+            setColor(0xFF10121D.toInt())
+            setStroke(dp(1), 0xFF272A3C.toInt())
         }
-        addView(dockItem("⌂", "Inicio", green) { homeScroll?.smoothScrollTo(0, 0) }, LayoutParams(0, -1, 1f))
+        addView(dockItem("⌂", "Inicio", indigo) { homeScroll?.smoothScrollTo(0, 0) }, LayoutParams(0, -1, 1f))
         addView(dockItem("▦", "Tienda", muted) { listener.onOpenStore() }, LayoutParams(0, -1, 1f))
         addView(dockItem("⬇", "Mis apps", muted) { listener.onOpenMyApps() }, LayoutParams(0, -1, 1f))
         addView(dockItem("◎", "Web", muted) { listener.onOpenWebsite("/") }, LayoutParams(0, -1, 1f))
@@ -225,6 +226,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
+            background = RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null, null)
             setOnClickListener { onClick() }
             addView(TextView(context).apply {
                 text = icon
@@ -247,7 +249,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setTextColor(foregroundColor)
-            background = rounded(backgroundColor, dp(13))
+            background = rippleSurface(backgroundColor, dp(13), 0xFF3A3D56.toInt())
             isClickable = true
             isFocusable = true
             setOnClickListener { onClick() }
@@ -266,6 +268,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         setColor(color)
         cornerRadius = radius.toFloat()
     }
+
+    private fun rippleSurface(color: Int, radius: Int, stroke: Int) = RippleDrawable(
+        ColorStateList.valueOf(0x24FFFFFF),
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = radius.toFloat()
+            setStroke(dp(1), stroke)
+        },
+        null,
+    )
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + .5f).toInt()
 }

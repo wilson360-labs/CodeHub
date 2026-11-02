@@ -129,45 +129,53 @@ public class CodeHubBridge {
     @JavascriptInterface
     public void sttStart(final String callbackName) {
         activity.runOnUiThread(() -> {
-            try {
-                sttCallback = callbackName == null ? "" : callbackName;
-                int granted = activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO);
-                if (granted != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    notifySttError("Permiso de micrófono requerido para dictar.");
-                    return;
-                }
-                if (sr != null) { sr.destroy(); }
-                sr = SpeechRecognizer.createSpeechRecognizer(activity);
-                if (sr == null) { notifySttError("Reconocimiento de voz no disponible."); return; }
-                sr.setRecognitionListener(new RecognitionListener() {
-                    public void onReadyForSpeech(android.os.Bundle b) { notifySttEvent("ready"); }
-                    public void onBeginningOfSpeech() {}
-                    public void onRmsChanged(float v) {}
-                    public void onBufferReceived(byte[] b) {}
-                    public void onEndOfSpeech() {}
-                    public void onError(int error) { notifySttError("error_nativo_" + error); }
-                    public void onResults(android.os.Bundle results) {
-                        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                        if (matches != null && !matches.isEmpty()) {
-                            notifySttResult(matches.get(0));
-                        } else {
-                            notifySttError("No se escuchó nada.");
-                        }
-                    }
-                    public void onPartialResults(android.os.Bundle partial) {}
-                    public void onEvent(int e, android.os.Bundle b) {}
-                });
-                Intent in = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-GT");
-                in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "es");
-                in.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
-                in.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
-                sr.startListening(in);
-            } catch (Exception ex) {
-                notifySttError("Error iniciando reconocimiento.");
+            sttCallback = callbackName == null ? "" : callbackName;
+            if (activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MainActivity.MICROPHONE_PERMISSION_REQUEST_CODE);
+                return;
             }
+            startSpeechRecognition();
         });
+    }
+
+    public void onMicrophonePermissionResult(boolean granted) {
+        activity.runOnUiThread(() -> {
+            if (granted) startSpeechRecognition();
+            else notifySttError("Permiso de micrófono requerido para dictar.");
+        });
+    }
+
+    private void startSpeechRecognition() {
+        try {
+            if (sr != null) sr.destroy();
+            sr = SpeechRecognizer.createSpeechRecognizer(activity);
+            if (sr == null) { notifySttError("Reconocimiento de voz no disponible."); return; }
+            sr.setRecognitionListener(new RecognitionListener() {
+                public void onReadyForSpeech(android.os.Bundle b) { notifySttEvent("ready"); }
+                public void onBeginningOfSpeech() {}
+                public void onRmsChanged(float v) {}
+                public void onBufferReceived(byte[] b) {}
+                public void onEndOfSpeech() {}
+                public void onError(int error) { notifySttError("error_nativo_" + error); }
+                public void onResults(android.os.Bundle results) {
+                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null && !matches.isEmpty()) notifySttResult(matches.get(0));
+                    else notifySttError("No se escuchó nada.");
+                }
+                public void onPartialResults(android.os.Bundle partial) {}
+                public void onEvent(int e, android.os.Bundle b) {}
+            });
+            Intent in = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            in.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "es-GT");
+            in.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "es");
+            in.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            in.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+            sr.startListening(in);
+        } catch (Exception ex) {
+            notifySttError("Error iniciando reconocimiento.");
+        }
     }
 
     @JavascriptInterface

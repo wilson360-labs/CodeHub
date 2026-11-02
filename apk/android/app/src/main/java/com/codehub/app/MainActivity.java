@@ -20,8 +20,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.PowerManager;
-import android.provider.Settings;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -65,8 +63,12 @@ public class MainActivity extends Activity {
     private static final int NATIVE_STORE_REQUEST = 102;
     private static final int NATIVE_MY_APPS_REQUEST = 103;
     private static final int PERMISSION_REQUEST_CODE = 200;
+    private static final int WEB_PERMISSION_REQUEST_CODE = 201;
+    static final int MICROPHONE_PERMISSION_REQUEST_CODE = 401;
 
     private WebView webView;
+    private String pendingWebUrl;
+    private boolean webViewInitScheduled;
     private NativeSplashView nativeSplash;
     private NativeHomeView nativeHome;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -75,6 +77,8 @@ public class MainActivity extends Activity {
     private String pendingSharedText;
     private ValueCallback<Uri[]> fileUploadCallback;
     private GeolocationPermissions.Callback geoCallback;
+    private String pendingGeoOrigin;
+    private android.webkit.PermissionRequest pendingWebPermissionRequest;
     private FusedLocationProviderClient fusedLocation;
     /** Franja inferior reservada para el banner (nunca superpuesto al contenido). */
     private FrameLayout bannerSlot;
@@ -84,25 +88,10 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Algunos dispositivos con Android 16 y el proveedor de WebView
-        // corrupto lanzan Resources$NotFoundException ("failed to redirect
-        // ResourcesImpl"). No dejamos que tumbe la Activity: mostramos una
-        // pantalla nativa de recuperación con botón para reintentar.
-        try {
-            webView = new WebView(this);
-        } catch (Throwable t) {
-            crashLog("webViewCreate", t);
-            showWebViewUnavailable();
-            return;
-        }
-
         swipeRefreshLayout = new SwipeRefreshLayout(this);
-        swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF38EF7D);
+        swipeRefreshLayout.setColorSchemeColors(0xFF6366F1, 0xFF00E5FF, 0xFF6366F1);
         swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF141424);
         swipeRefreshLayout.setVisibility(View.GONE);
-        swipeRefreshLayout.addView(webView, new ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
         swipeRefreshLayout.setOnRefreshListener(() -> {
             if (webView != null) webView.reload();
         });
@@ -126,7 +115,7 @@ public class MainActivity extends Activity {
         // hasta que el usuario abre una sección web. Banners siguen abajo.
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
-        rootLayout.setBackgroundColor(0xFF080810);
+        rootLayout.setBackgroundColor(0xFF080B11);
 
         FrameLayout mainFrame = new FrameLayout(this);
         mainFrame.addView(swipeRefreshLayout, new FrameLayout.LayoutParams(
@@ -161,8 +150,8 @@ public class MainActivity extends Activity {
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { WeatherNotificationProvider.refresh(this); } catch (Throwable t) { crashLog("wxNotif", t); }
-        try { requestAllPermissions(); } catch (Throwable t) { crashLog("permissions", t); }
-        try { setupWebView(); } catch (Throwable t) { crashLog("webView", t); }
+        // Las funciones solicitan permisos al usarse; no bloquear el primer inicio con varios diálogos.
+        try { startQuakeDetector(); } catch (Throwable t) { crashLog("quakeDetector", t); }
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         // Chequeo de actualizaciones SOLO nativo: la app consulta GitHub
@@ -218,11 +207,32 @@ public class MainActivity extends Activity {
      * Evita que la Activity muera y ofrece reintentar sin salir de la app.
      */
     private void showWebViewUnavailable() {
+        if (nativeHome != null) {
+            final String retryUrl = pendingWebUrl;
+            pendingWebUrl = null;
+            nativeHome.setVisibility(View.VISIBLE);
+            if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.GONE);
+            if (progressBar != null) progressBar.setVisibility(View.GONE);
+            new AlertDialog.Builder(this)
+                .setTitle("El visor web no está disponible")
+                .setMessage("Actualiza Android System WebView y Chrome. El inicio nativo y la tienda siguen disponibles.")
+                .setPositiveButton("Reintentar", (dialog, which) -> {
+                    if (retryUrl != null) {
+                        pendingWebUrl = retryUrl;
+                        nativeHome.setVisibility(View.GONE);
+                        if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.VISIBLE);
+                        initializeWebViewOnDemand();
+                    }
+                })
+                .setNegativeButton("Seguir en inicio", null)
+                .show();
+            return;
+        }
         float density = getResources().getDisplayMetrics().density;
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setBackgroundColor(0xFF080810);
+        box.setBackgroundColor(0xFF080B11);
         int pad = (int) (24 * density);
         box.setPadding(pad, pad, pad, pad);
 
@@ -285,28 +295,6 @@ public class MainActivity extends Activity {
     }
 
     // ── PERMISSIONS ─────────────────────────────────────────────
-    private void requestAllPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(new String[]{
-                Manifest.permission.POST_NOTIFICATIONS,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            }, PERMISSION_REQUEST_CODE);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            requestPermissions(new String[]{
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            }, PERMISSION_REQUEST_CODE);
-        }
-        requestIgnoreBattery();
-        promptSystemEarthquakeAlerts();
-        startQuakeDetector();
-    }
-
     private void startQuakeDetector() {
         try {
             SharedPreferences p = getSharedPreferences("codehub", MODE_PRIVATE);
@@ -317,51 +305,6 @@ public class MainActivity extends Activity {
             } else {
                 startService(i);
             }
-        } catch (Exception ignored) {}
-    }
-
-    private void requestIgnoreBattery() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
-                    intent.setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(intent);
-                }
-            } catch (Exception ignored) {}
-        }
-    }
-
-    private void promptSystemEarthquakeAlerts() {
-        // Onboarding a las alertas sísmicas NATIVAS de Android (Google
-        // Earthquake Alerts). El SO detecta la onda P vía acelerómetros de
-        // la red y avisa con sirena en SEGUNDOS — mucho antes que cualquier
-        // feed de catálogo (USGS publica minutos después del evento).
-        // CodeHub no puede reemplazar eso; solo invitar al usuario a
-        // activarlo. Una vez por instalación.
-        try {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
-            SharedPreferences sp = getSharedPreferences("ch_prefs", MODE_PRIVATE);
-            if (sp.getBoolean("ch_sys_quake_prompted", false)) return;
-
-            Intent ei = new Intent("com.google.android.gms.settings.EARTHQUAKE_ALERTS_SETTINGS");
-            if (ei.resolveActivity(getPackageManager()) == null) {
-                ei = new Intent(Settings.ACTION_SECURITY_SETTINGS);
-                if (ei.resolveActivity(getPackageManager()) == null) return;
-            }
-
-            sp.edit().putBoolean("ch_sys_quake_prompted", true).apply();
-            final Intent launchIntent = ei;
-            new AlertDialog.Builder(this)
-                .setTitle("Alertas sísmicas del sistema")
-                .setMessage("Para avisos en SEGUNDOS (ondas P) activa las alertas sísmicas de Android. "
-                    + "Google detecta el sismo antes de que llegue la onda destructiva y te avisa con sirena.")
-                .setPositiveButton("Activar", (d, w) -> {
-                    try { startActivity(launchIntent); } catch (Exception ignored) {}
-                })
-                .setNegativeButton("Más tarde", null)
-                .show();
         } catch (Exception ignored) {}
     }
 
@@ -378,6 +321,28 @@ public class MainActivity extends Activity {
                 }
             }
             if (locGranted) startLocationUpdates();
+            if (geoCallback != null) {
+                geoCallback.invoke(pendingGeoOrigin, locGranted, false);
+                geoCallback = null;
+                pendingGeoOrigin = null;
+            }
+            injectNativeFlags(webView);
+        }
+        if (requestCode == WEB_PERMISSION_REQUEST_CODE) {
+            android.webkit.PermissionRequest pending = pendingWebPermissionRequest;
+            pendingWebPermissionRequest = null;
+            if (pending != null) {
+                boolean cameraGranted = checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+                boolean audioGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+                boolean approved = true;
+                for (String resource : pending.getResources()) {
+                    if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource) && !cameraGranted) approved = false;
+                    if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource) && !audioGranted) approved = false;
+                }
+                try {
+                    if (approved) pending.grant(pending.getResources()); else pending.deny();
+                } catch (IllegalStateException ignored) {}
+            }
             injectNativeFlags(webView);
         }
         // Location permission from CodeHubBridge.requestLocationPermission()
@@ -394,12 +359,19 @@ public class MainActivity extends Activity {
                 if (bridge != null) bridge.onLocationPermissionResult(granted);
             } catch (Exception ignored) {}
         }
+        if (requestCode == MICROPHONE_PERMISSION_REQUEST_CODE) {
+            boolean granted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            try {
+                if (bridge != null) bridge.onMicrophonePermissionResult(granted);
+            } catch (Exception ignored) {}
+        }
+        injectNativeFlags(webView);
     }
 
     // ── NAVEGACIÓN A SECCIONES WEB ──────────────────────────────
     /** Opens a web-only section while keeping the Kotlin home available via Back. */
     private void openWebUrl(String url) {
-        if (webView == null || swipeRefreshLayout == null) return;
+        if (swipeRefreshLayout == null) return;
         if (!isOnline()) {
             new AlertDialog.Builder(this)
                 .setTitle("Sin conexión a internet")
@@ -411,7 +383,44 @@ public class MainActivity extends Activity {
         }
         if (nativeHome != null) nativeHome.setVisibility(View.GONE);
         swipeRefreshLayout.setVisibility(View.VISIBLE);
+        if (webView == null) {
+            pendingWebUrl = url;
+            if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
+            initializeWebViewOnDemand();
+            return;
+        }
         webView.loadUrl(url);
+    }
+
+    /** Build WebView only when a web-only section is requested so native Inicio renders immediately. */
+    private void initializeWebViewOnDemand() {
+        if (webView != null || webViewInitScheduled || swipeRefreshLayout == null) return;
+        webViewInitScheduled = true;
+        swipeRefreshLayout.postDelayed(() -> {
+            webViewInitScheduled = false;
+            if (isFinishing() || isDestroyed() || webView != null) return;
+            try {
+                webView = new WebView(this);
+                swipeRefreshLayout.addView(webView, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                setupWebView();
+                injectNativeFlags(webView);
+                String url = pendingWebUrl;
+                pendingWebUrl = null;
+                if (url != null) webView.loadUrl(url);
+            } catch (Throwable t) {
+                if (webView != null) {
+                    if (webView.getParent() instanceof ViewGroup) {
+                        ((ViewGroup) webView.getParent()).removeView(webView);
+                    }
+                    try { webView.destroy(); } catch (Throwable ignored) {}
+                    webView = null;
+                }
+                bridge = null;
+                crashLog("webViewCreate", t);
+                showWebViewUnavailable();
+            }
+        }, 80L);
     }
 
     private boolean isOnline() {
@@ -683,17 +692,51 @@ public class MainActivity extends Activity {
             public void onPermissionRequest(final android.webkit.PermissionRequest request) {
                 runOnUiThread(new Runnable() {
                     @Override
-                    public void run() { request.grant(request.getResources()); }
+                    public void run() {
+                        if (request == null || isFinishing() || isDestroyed()) return;
+                        java.util.ArrayList<String> missing = new java.util.ArrayList<>();
+                        boolean needsCamera = false;
+                        boolean needsAudio = false;
+                        boolean unsupportedResource = false;
+                        for (String resource : request.getResources()) {
+                            if (android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(resource)) needsCamera = true;
+                            else if (android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) needsAudio = true;
+                            else unsupportedResource = true;
+                        }
+                        if ((!needsCamera && !needsAudio) || unsupportedResource) {
+                            request.deny();
+                            return;
+                        }
+                        if (needsCamera && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            missing.add(Manifest.permission.CAMERA);
+                        }
+                        if (needsAudio && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            missing.add(Manifest.permission.RECORD_AUDIO);
+                        }
+                        if (missing.isEmpty()) {
+                            request.grant(request.getResources());
+                            return;
+                        }
+                        if (pendingWebPermissionRequest != null) {
+                            try { pendingWebPermissionRequest.deny(); } catch (IllegalStateException ignored) {}
+                        }
+                        pendingWebPermissionRequest = request;
+                        requestPermissions(missing.toArray(new String[0]), WEB_PERMISSION_REQUEST_CODE);
+                    }
                 });
             }
 
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 geoCallback = callback;
+                pendingGeoOrigin = origin;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    boolean hasLocation = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                    if (hasLocation) {
                         callback.invoke(origin, true, false);
                         geoCallback = null;
+                        pendingGeoOrigin = null;
                     } else {
                         requestPermissions(new String[]{
                             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -702,6 +745,8 @@ public class MainActivity extends Activity {
                     }
                 } else {
                     callback.invoke(origin, true, false);
+                    geoCallback = null;
+                    pendingGeoOrigin = null;
                 }
             }
 
@@ -734,12 +779,22 @@ public class MainActivity extends Activity {
         String versionName = "1.2.0";
         try { versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) {}
         String fcmToken = getSharedPreferences("codehub", MODE_PRIVATE).getString("fcm_token", "");
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        boolean notificationsGranted = (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            && notificationManager != null && notificationManager.areNotificationsEnabled();
+        boolean locationGranted = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        boolean cameraGranted = checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean microphoneGranted = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
         String js = "javascript:" +
             "window.__apkNative=true;" +
             "window.__apkOnline=" + online + ";" +
             "window.__apkVersion='" + versionName + "';" +
             "window.__apkFCMToken='" + fcmToken + "';" +
-            "window.__apkPermissions={notifications:true,location:true,backgroundSync:true,periodicSync:true,internet:true,offline:true};" +
+            "window.__apkPermissions={notifications:" + notificationsGranted + ",location:" + locationGranted +
+                ",camera:" + cameraGranted + ",microphone:" + microphoneGranted +
+                ",backgroundSync:true,periodicSync:true,internet:" + online + ",offline:true};" +
             "try{localStorage.setItem('pwa_installed','1');}catch(e){}" +
             // Reporta errores JS no atrapados y promesas rechazadas sin catch
             // al bridge nativo, que los reenvía a /api/crash-report (Telegram).
@@ -893,7 +948,7 @@ public class MainActivity extends Activity {
         try {
             startActivityForResult(new Intent(this, NativeStoreActivity.class), NATIVE_STORE_REQUEST);
         } catch (Exception e) {
-            if (webView != null) webView.loadUrl(APP_URL + "/pages/tienda.html");
+            openWebUrl(APP_URL + "/pages/tienda.html");
         }
     }
 
@@ -901,7 +956,7 @@ public class MainActivity extends Activity {
         try {
             startActivityForResult(new Intent(this, NativeMyAppsActivity.class), NATIVE_MY_APPS_REQUEST);
         } catch (Exception e) {
-            if (webView != null) webView.loadUrl(APP_URL + "/opensource#my-apps-section");
+            openWebUrl(APP_URL + "/opensource#my-apps-section");
         }
     }
 
@@ -933,6 +988,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (pendingWebPermissionRequest != null) {
+            try { pendingWebPermissionRequest.deny(); } catch (IllegalStateException ignored) {}
+            pendingWebPermissionRequest = null;
+        }
         if (webView != null) webView.destroy();
         super.onDestroy();
     }
