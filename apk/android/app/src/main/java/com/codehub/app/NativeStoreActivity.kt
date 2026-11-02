@@ -496,8 +496,10 @@ class NativeStoreActivity : Activity() {
         val home = selectedPlatform == "Android" && category == "Todas" && query.isBlank() && !favoritesOnly && sort == StoreSort.HOME
         val topRated = filtered.filter { it.ratingCount > 0 }
             .sortedWith(compareByDescending<AppEntry> { it.ratingAverage }.thenByDescending { it.ratingCount }).take(8)
+        val showcasedIds = mutableSetOf<String>()
         if (home && filtered.isNotEmpty()) {
             heroApps = (topRated.ifEmpty { filtered }).take(5)
+            showcasedIds.addAll(heroApps.map { it.id })
             heroIndex %= heroApps.size
             val frame = FrameLayout(this)
             heroFrame = frame
@@ -505,27 +507,37 @@ class NativeStoreActivity : Activity() {
             appList.addView(frame, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
             heroHandler.postDelayed(heroRotator, 6_000)
         }
-        if (home && topRated.isNotEmpty()) {
+        val ratedToShow = if (home) topRated.filterNot { it.id in showcasedIds } else emptyList()
+        if (home && ratedToShow.isNotEmpty()) {
             appList.addView(label("Mejor valoradas", 18f, 0xFFFFFFFF.toInt(), true).apply { setPadding(0, dp(8), 0, dp(10)) })
             val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            topRated.forEach { row.addView(updateCard(it, true), LinearLayout.LayoutParams(dp(230), -2).apply { rightMargin = dp(10) }) }
+            ratedToShow.forEach { row.addView(updateCard(it, true), LinearLayout.LayoutParams(dp(230), -2).apply { rightMargin = dp(10) }) }
             rail.addView(row)
             appList.addView(rail, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+            showcasedIds.addAll(ratedToShow.map { it.id })
         }
-        if (home && updatedApps.isNotEmpty()) {
+        val updatesToShow = if (home) updatedApps.filterNot { it.id in showcasedIds } else emptyList()
+        if (home && updatesToShow.isNotEmpty()) {
             appList.addView(label("Con nueva versión", 18f, 0xFFFFFFFF.toInt(), true).apply {
                 setPadding(0, dp(8), 0, dp(10))
             })
             val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            updatedApps.forEach { row.addView(updateCard(it), LinearLayout.LayoutParams(dp(210), -2).apply { rightMargin = dp(10) }) }
+            updatesToShow.forEach { row.addView(updateCard(it), LinearLayout.LayoutParams(dp(210), -2).apply { rightMargin = dp(10) }) }
             rail.addView(row)
             appList.addView(rail, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(16) })
+            showcasedIds.addAll(updatesToShow.map { it.id })
+        }
+        val catalogApps = if (home) filtered.filterNot { it.id in showcasedIds } else filtered
+        if (home && catalogApps.isNotEmpty()) {
+            appList.addView(label("Explorar catálogo", 18f, 0xFFFFFFFF.toInt(), true).apply {
+                setPadding(0, dp(8), 0, dp(10))
+            })
         }
         val useGrid = resources.configuration.smallestScreenWidthDp >= 600
         if (useGrid) {
-            filtered.chunked(2).forEach { pair ->
+            catalogApps.chunked(2).forEach { pair ->
                 val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.TOP }
                 pair.forEach { item ->
                     row.addView(appCard(item), LinearLayout.LayoutParams(0, -1, 1f).apply { marginEnd = dp(6) })
@@ -533,7 +545,7 @@ class NativeStoreActivity : Activity() {
                 if (pair.size == 1) row.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply { marginStart = dp(6) })
                 appList.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
             }
-        } else filtered.forEach { appList.addView(appCard(it)) }
+        } else catalogApps.forEach { appList.addView(appCard(it)) }
         if (filtered.isEmpty() && selectedPlatform == "Windows" && apps.none { it.platform == "Windows" }) {
             val message = when {
                 windowsCatalogLoading -> "Cargando catálogo de Windows…"
@@ -623,7 +635,7 @@ class NativeStoreActivity : Activity() {
             setPadding(0, dp(12), 0, dp(10))
         }
         val icon = android.widget.ImageView(this).apply {
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF18213A.toInt(), 0xFF394B78.toInt(), dp(16))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
@@ -678,7 +690,7 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { showDetails(app) }
         }
         val icon = android.widget.ImageView(this).apply {
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(13))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
@@ -713,7 +725,7 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { showDetails(app) }
         }
         val icon = android.widget.ImageView(this).apply {
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF18213A.toInt(), 0xFF394B78.toInt(), dp(14))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
@@ -789,7 +801,7 @@ class NativeStoreActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val icon = android.widget.ImageView(this).apply {
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
@@ -1055,7 +1067,7 @@ class NativeStoreActivity : Activity() {
             setPadding(dp(24), dp(8), dp(24), dp(8))
         }
         val icon = android.widget.ImageView(this).apply {
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
             loadCodeHubImage(app.imageUrl)
