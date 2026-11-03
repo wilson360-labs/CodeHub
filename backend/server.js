@@ -45,6 +45,9 @@ const supabase = (process.env.SUPABASE_URL?.trim() && process.env.SUPABASE_KEY?.
 const LLM_TIMEOUT_MS      = 30000;  // llamadas no-streaming a proveedores IA
 const SSE_TIMEOUT_MS      = 30000;  // inactividad sin datos en un stream SSE
 const IA_PUT_TIMEOUT_MS   = 120000; // PUT a Archive.org S3 (upload grande)
+const GROQ_CHAT_MODEL = 'openai/gpt-oss-120b';
+const CEREBRAS_CHAT_MODEL = 'gpt-oss-120b';
+const GEMINI_CHAT_MODEL = 'gemini-3.6-flash';
 
 // Helper: registrar evento en Supabase (fire-and-forget — no bloquea la petición)
 async function trackEvent(type, page = null, metadata = {}) {
@@ -1685,12 +1688,12 @@ async function callGroq(msgs, maxTokens) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: GROQ_CHAT_MODEL, max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
     signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Groq ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'groq/llama-3.3-70b' };
+  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'groq/gpt-oss-120b' };
 }
 
 // ── Cerebras (WSE — inferencia ultra rápida, endpoint compatible OpenAI) ──
@@ -1699,12 +1702,12 @@ async function callCerebras(msgs, maxTokens) {
   const res = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.CEREBRAS_API_KEY}` },
-    body: JSON.stringify({ model: 'llama-3.3-70b', max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
+    body: JSON.stringify({ model: CEREBRAS_CHAT_MODEL, max_tokens: maxTokens || 1500, temperature: 0.65, messages: msgs }),
     signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Cerebras ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
-  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'cerebras/llama-3.3-70b' };
+  return { reply: d.choices[0]?.message?.content || '', input: d.usage?.prompt_tokens||0, output: d.usage?.completion_tokens||0, model: 'cerebras/gpt-oss-120b' };
 }
 
 // ── Hugging Face (router unificado, compatible OpenAI) ────────────────────
@@ -1732,14 +1735,14 @@ async function callGemini(msgs, maxTokens, imageParts) {
       if (p && p.data) contents[contents.length - 1].parts.push({ inline_data: { mime_type: p.mimeType, data: p.data } });
     }
   }
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CHAT_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ systemInstruction: { parts: [{ text: sysMsg ? sysMsg.content : SYSTEM_BASE }] }, contents, generationConfig: { maxOutputTokens: maxTokens || 1500, temperature: 0.7 } }),
     signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) { const e = await res.json().catch(() => ({})); const err = new Error(e.error?.message || `Gemini ${res.status}`); err.status = res.status; throw err; }
   const d = await res.json();
-  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: parts.length ? 'gemini-1.5-flash-vision' : 'gemini-1.5-flash' };
+  return { reply: d.candidates?.[0]?.content?.parts?.[0]?.text || '', input: d.usageMetadata?.promptTokenCount||0, output: d.usageMetadata?.candidatesTokenCount||0, model: parts.length ? `${GEMINI_CHAT_MODEL}-vision` : GEMINI_CHAT_MODEL };
 }
 
 // parseImageDataUrl y ALLOWED_IMAGE_MIME ahora viven en ./utils.js (importado arriba)
@@ -1855,7 +1858,7 @@ async function callClaude(msgs, maxTokens) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: maxTokens || 1500,
       temperature: 0.65,
       system: systemMsg?.content || '',
@@ -7130,7 +7133,7 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
         const sysMsg = msgs.find(m => m.role === 'system');
         const chatMsgs = msgs.filter(m => m.role !== 'system');
         const body = {
-          model: 'claude-sonnet-4-5', max_tokens: adaptiveMaxTokens(message), temperature: 0.65,
+          model: 'claude-sonnet-4-5-20250929', max_tokens: adaptiveMaxTokens(message), temperature: 0.65,
           system: sysMsg?.content || '',
           messages: chatMsgs.map(m => ({ role: m.role, content: m.content })),
           stream: true
@@ -7152,8 +7155,8 @@ app.post('/api/chat/stream', requireAuth, async (req, res) => {
     if (!replied) {
       const oaiProviders = [
         { name: 'Kimi', endpoint: 'https://api.moonshot.ai/v1/chat/completions', key: process.env.KIMI_API_KEY, model: 'kimi-k2-0905-preview', label: 'moonshot/kimi-k2' },
-        { name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile', label: 'groq/llama-3.3-70b' },
-        { name: 'Cerebras', endpoint: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: 'llama-3.3-70b', label: 'cerebras/llama-3.3-70b' },
+        { name: 'Groq', endpoint: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: GROQ_CHAT_MODEL, label: 'groq/gpt-oss-120b' },
+        { name: 'Cerebras', endpoint: 'https://api.cerebras.ai/v1/chat/completions', key: process.env.CEREBRAS_API_KEY, model: CEREBRAS_CHAT_MODEL, label: 'cerebras/gpt-oss-120b' },
         { name: 'HuggingFace', endpoint: 'https://router.huggingface.co/v1/chat/completions', key: process.env.HUGGINGFACE_API_KEY, model: 'meta-llama/Llama-3.3-70B-Instruct:novita', label: 'huggingface/llama-3.3-70b' },
         { name: 'Mistral', endpoint: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-small-latest', label: 'mistral/mistral-small' },
       ];
