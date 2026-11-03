@@ -145,6 +145,8 @@ dependencies {
     // duplicadas: declarar `okhttp` (JVM) junto a `okhttp-android` hace que
     // AGP falle en checkDebugDuplicateClasses (mismas okhttp3/* en ambos GAV).
     implementation 'com.squareup.okhttp3:okhttp-android:5.1.0'
+    // Extrae texto de PDFs en el cliente nativo; los PDFs escaneados pasan a Gemini Vision.
+    implementation 'com.tom-roush:pdfbox-android:2.0.27.0'
 }
 
 // La librería androidx.datastore migró a Kotlin Multiplatform en versiones

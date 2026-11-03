@@ -18,6 +18,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     interface Listener {
         fun onOpenStore()
         fun onOpenMyApps()
+        fun onOpenCodeBeat()
+        fun onOpenCopilot()
         fun onOpenWebsite(path: String)
     }
 
@@ -54,6 +56,15 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenMyApps()
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
+
+        val creatorRow = LinearLayout(context).apply { orientation = HORIZONTAL }
+        creatorRow.addView(actionCard("♫", "CodeBeat", "Música y extensiones", cyan) {
+            listener.onOpenCodeBeat()
+        }, weightedCard())
+        creatorRow.addView(actionCard("✦", "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+            listener.onOpenCopilot()
+        }, weightedCard().apply { marginStart = dp(10) })
+        content.addView(creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         val exploreRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         exploreRow.addView(actionCard("☼", "Clima", "Pronóstico y alertas", cyan) {

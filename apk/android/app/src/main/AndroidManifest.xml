@@ -141,6 +141,15 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <!-- Copiloto WIL.E nativo: chat SSE, adjuntos, voz y herramientas del backend. -->
+        <activity
+            android:name=".NativeAiChatActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize">
+        </activity>
+
         <!-- Descargas de APK del CodeHub Store en segundo plano: mantiene la
              transferencia (progreso + cancelación + "Listo para instalar") si
              el usuario cierra la tienda. Tipo dataSync: tareas cortas (la de

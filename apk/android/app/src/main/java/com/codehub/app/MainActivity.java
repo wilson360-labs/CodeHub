@@ -62,6 +62,7 @@ public class MainActivity extends Activity {
     static final int BACKUP_IMPORT_REQUEST  = 101;
     private static final int NATIVE_STORE_REQUEST = 102;
     private static final int NATIVE_MY_APPS_REQUEST = 103;
+    private static final int NATIVE_COPILOT_REQUEST = 104;
     private static final int PERMISSION_REQUEST_CODE = 200;
     private static final int WEB_PERMISSION_REQUEST_CODE = 201;
     static final int MICROPHONE_PERMISSION_REQUEST_CODE = 401;
@@ -124,6 +125,8 @@ public class MainActivity extends Activity {
         nativeHome = new NativeHomeView(this, new NativeHomeView.Listener() {
             @Override public void onOpenStore() { openNativeStore(); }
             @Override public void onOpenMyApps() { openNativeMyApps(); }
+            @Override public void onOpenCodeBeat() { openNativeCodeBeat(); }
+            @Override public void onOpenCopilot() { openNativeCopilot(); }
             @Override public void onOpenWebsite(String path) {
                 String suffix = path == null || path.isEmpty() ? "/" : path;
                 openWebUrl(APP_URL + (suffix.startsWith("/") ? suffix : "/" + suffix));
@@ -957,6 +960,50 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             openWebUrl(APP_URL + "/opensource#my-apps-section");
         }
+    }
+
+    private void openNativeCodeBeat() {
+        try {
+            MusicSessionBridge.onPlayerOpened();
+        } catch (Throwable ignored) {}
+        try {
+            dev.brahmkshatriya.echo.EchoBoot.start(this);
+        } catch (Throwable t) {
+            android.util.Log.e("CodeHub", "Echo no arrancó desde inicio nativo", t);
+        }
+        if (dev.brahmkshatriya.echo.EchoBoot.isReady()) {
+            try {
+                startActivity(new Intent(this, dev.brahmkshatriya.echo.EchoBoot.mainActivity(this)));
+                return;
+            } catch (Exception ignored) {}
+        }
+        startActivity(new Intent(this, com.codehub.app.music.ui.MusicPlayerActivity.class));
+    }
+
+    /** Open the Kotlin WIL.E screen and reuse the current WebView auth session when present. */
+    private void openNativeCopilot() {
+        Runnable launchGuest = () -> startActivityForResult(
+                new Intent(this, NativeAiChatActivity.class), NATIVE_COPILOT_REQUEST);
+        if (webView == null || webView.getUrl() == null) {
+            launchGuest.run();
+            return;
+        }
+        String host = Uri.parse(webView.getUrl()).getHost();
+        if (host == null || !("wilson360-labs.vercel.app".equalsIgnoreCase(host)
+                || "www.wilson360-labs.vercel.app".equalsIgnoreCase(host))) {
+            launchGuest.run();
+            return;
+        }
+        webView.evaluateJavascript("(function(){try{var s=JSON.parse(sessionStorage.getItem('ch_auth_session')||localStorage.getItem('ch_auth_session')||'null');return s&&s.token?s.token:''}catch(e){return ''}})()", value -> {
+            String token = "";
+            try {
+                Object parsed = new org.json.JSONTokener(value == null ? "\"\"" : value).nextValue();
+                if (parsed instanceof String) token = (String) parsed;
+            } catch (Exception ignored) {}
+            Intent intent = new Intent(this, NativeAiChatActivity.class);
+            if (!token.isEmpty()) intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN, token);
+            startActivityForResult(intent, NATIVE_COPILOT_REQUEST);
+        });
     }
 
     @Override
