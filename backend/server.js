@@ -894,7 +894,13 @@ async function requireAuth(req, res, next) {
   try {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) { req.authUser = null; return next(); }
-    req.authUser = { id: data.user.id, email: data.user.email };
+    const metadata = data.user.user_metadata || {};
+    req.authUser = {
+      id: data.user.id,
+      email: data.user.email,
+      name: metadata.full_name || metadata.name || metadata.display_name || data.user.email?.split('@')[0] || 'Usuario',
+      createdAt: data.user.created_at || null,
+    };
   } catch { req.authUser = null; }
   next();
 }
@@ -917,7 +923,11 @@ app.post('/api/auth/register', async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email inválido' });
   if (password.length < 8) return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { display_name: email.split('@')[0] } },
+  });
   if (error) {
     // 422 = user_already_exists o email ocupado
     if (error.status === 422 || /already|exists|registered/i.test(error.message)) {
@@ -1983,6 +1993,37 @@ app.use('/api/community', communityRouter);
 const { createUserDataRouter, ensureUserDataTables } = require('./modules/userdata');
 const userDataRouter = createUserDataRouter(supabase);
 app.use('/api/user', requireAuth, userDataRouter);
+
+// Perfil nativo de CodeHub. La identidad y fecha vienen de Supabase Auth;
+// el uso diario de WIL.E y favoritos se consulta por el ID ya autenticado.
+app.get('/api/user/profile', requireAuth, async (req, res) => {
+  if (!req.authUser?.id) return res.status(401).json({ ok: false, error: 'Inicia sesión para ver tu perfil.' });
+  let savedTools = 0;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('user_data')
+        .select('favorites').eq('user_id', req.authUser.id).maybeSingle();
+      if (!error && data?.favorites) {
+        const favorites = JSON.parse(data.favorites);
+        savedTools = Object.values(favorites).filter(Boolean).length;
+      }
+    } catch (e) { console.warn('Perfil: no se pudieron leer favoritos:', e.message); }
+  }
+  const aiMessagesToday = await getEmiUsage('u:' + req.authUser.id);
+  const aiDailyLimit = await getEmiLimit(true);
+  res.json({
+    ok: true,
+    profile: {
+      id: req.authUser.id,
+      name: req.authUser.name,
+      email: req.authUser.email,
+      createdAt: req.authUser.createdAt,
+      savedTools,
+      aiMessagesToday,
+      aiDailyLimit,
+    },
+  });
+});
 
 // ── Rewards — anuncios recompensados verificados por servidor ─
 // El navegador nunca acredita: /token emite un nonce single-use y la

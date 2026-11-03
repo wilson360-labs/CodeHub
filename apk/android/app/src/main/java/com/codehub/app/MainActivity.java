@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
     private static final int NATIVE_STORE_REQUEST = 102;
     private static final int NATIVE_MY_APPS_REQUEST = 103;
     private static final int NATIVE_COPILOT_REQUEST = 104;
+    private static final int NATIVE_PROFILE_REQUEST = 105;
     private static final int PERMISSION_REQUEST_CODE = 200;
     private static final int WEB_PERMISSION_REQUEST_CODE = 201;
     static final int MICROPHONE_PERMISSION_REQUEST_CODE = 401;
@@ -127,6 +128,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenMyApps() { openNativeMyApps(); }
             @Override public void onOpenCodeBeat() { openNativeCodeBeat(); }
             @Override public void onOpenCopilot() { openNativeCopilot(); }
+            @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWebsite(String path) {
                 String suffix = path == null || path.isEmpty() ? "/" : path;
                 openWebUrl(APP_URL + (suffix.startsWith("/") ? suffix : "/" + suffix));
@@ -915,6 +917,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == NATIVE_PROFILE_REQUEST && resultCode == RESULT_FIRST_USER) {
+            openWebUrl(APP_URL + "/");
+            Toast.makeText(this, "Inicia sesión en CodeHub para abrir tu perfil personal.", Toast.LENGTH_LONG).show();
+            return;
+        }
         if ((requestCode == NATIVE_STORE_REQUEST || requestCode == NATIVE_MY_APPS_REQUEST)
                 && resultCode == RESULT_OK && data != null) {
             String apkUrl = data.getStringExtra(NativeStoreActivity.EXTRA_APK_URL);
@@ -982,8 +989,16 @@ public class MainActivity extends Activity {
 
     /** Open the Kotlin WIL.E screen and reuse the current WebView auth session when present. */
     private void openNativeCopilot() {
+        launchNativeWithAccountSession(NativeAiChatActivity.class, NATIVE_COPILOT_REQUEST);
+    }
+
+    private void openNativeProfile() {
+        launchNativeWithAccountSession(NativeProfileActivity.class, NATIVE_PROFILE_REQUEST);
+    }
+
+    private void launchNativeWithAccountSession(Class<?> activityClass, int requestCode) {
         Runnable launchGuest = () -> startActivityForResult(
-                new Intent(this, NativeAiChatActivity.class), NATIVE_COPILOT_REQUEST);
+                new Intent(this, activityClass), requestCode);
         if (webView == null || webView.getUrl() == null) {
             launchGuest.run();
             return;
@@ -1000,9 +1015,9 @@ public class MainActivity extends Activity {
                 Object parsed = new org.json.JSONTokener(value == null ? "\"\"" : value).nextValue();
                 if (parsed instanceof String) token = (String) parsed;
             } catch (Exception ignored) {}
-            Intent intent = new Intent(this, NativeAiChatActivity.class);
+            Intent intent = new Intent(this, activityClass);
             if (!token.isEmpty()) intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN, token);
-            startActivityForResult(intent, NATIVE_COPILOT_REQUEST);
+            startActivityForResult(intent, requestCode);
         });
     }
 

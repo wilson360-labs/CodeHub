@@ -20,6 +20,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenMyApps()
         fun onOpenCodeBeat()
         fun onOpenCopilot()
+        fun onOpenProfile()
         fun onOpenWebsite(path: String)
     }
 
@@ -109,6 +110,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             setPadding(dp(11), dp(7), dp(11), dp(7))
             background = rounded(0xFF1B1C36.toInt(), dp(20))
         })
+        addView(TextView(context).apply {
+            text = "👤"
+            textSize = 17f
+            gravity = Gravity.CENTER
+            contentDescription = "Abrir perfil de usuario"
+            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { listener.onOpenProfile() }
+        }, LayoutParams(dp(42), dp(42)).apply { marginStart = dp(10) })
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {

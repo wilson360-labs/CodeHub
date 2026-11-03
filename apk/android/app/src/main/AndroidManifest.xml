@@ -150,6 +150,14 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <activity
+            android:name=".NativeProfileActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize">
+        </activity>
+
         <!-- Descargas de APK del CodeHub Store en segundo plano: mantiene la
              transferencia (progreso + cancelación + "Listo para instalar") si
              el usuario cierra la tienda. Tipo dataSync: tareas cortas (la de
