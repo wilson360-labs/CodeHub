@@ -17,7 +17,7 @@
 //        las resuelve y cachea de forma nativa.
 // ═══════════════════════════════════════════════════════
 
-const VERSION = 'codehub-v7.57';
+const VERSION = 'codehub-v7.58';
 const OFFLINE   = '/offline.html';
 // Historial de notificaciones push para el Centro de Notificaciones
 const NOTIF_CACHE = 'codehub-notifs-v1';
@@ -107,7 +107,7 @@ const PRECACHE = [
   '/widgets/weather/weather-widget.css',
   '/widgets/weather/weather-widget.js',
   // dist/ (esbuild Fase 0.1 - bundles hasheados que index.html carga)
-  '/dist/assets/js/auth.f8b782ad93.min.js',
+  '/dist/assets/js/auth.752c57f409.min.js',
   '/dist/assets/js/bug-reporter.9570ed6f8a.min.js',
   '/dist/assets/js/connection-alert.93f5557731.min.js',
   '/dist/assets/js/consent-banner.65800153df.min.js',
