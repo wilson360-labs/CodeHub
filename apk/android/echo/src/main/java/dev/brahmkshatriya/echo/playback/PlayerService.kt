@@ -96,6 +96,7 @@ class PlayerService : MediaLibraryService() {
         )
 
         val session = MediaLibrarySession.Builder(this, player, callback)
+            .setId("codehub_echo_player")
             .setBitmapLoader(PlayerBitmapLoader(this, scope))
             .setSessionActivity(getPendingIntent(this))
             .build()
