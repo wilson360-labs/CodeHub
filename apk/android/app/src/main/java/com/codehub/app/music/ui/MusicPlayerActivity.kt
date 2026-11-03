@@ -756,7 +756,7 @@ class MusicPlayerActivity : Activity() {
         tab.background = if (selected)
             MusicTheme.ripple(this, MusicTheme.rounded(this, MusicTheme.ACCENT, 11))
         else
-            MusicTheme.ripple(this, MusicTheme.rounded(this, MusicTheme.SURFACE, 11))
+            MusicTheme.glassRipple(this, 11)
     }
 
     private fun selectHomeTab() {
@@ -823,7 +823,7 @@ class MusicPlayerActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(3), dp(3), dp(3), dp(3))
-            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE, 13)
+            background = MusicTheme.glassRipple(ctx, 13)
         }
         tabHome = TextView(ctx).apply {
             text = "Inicio"
@@ -859,6 +859,7 @@ class MusicPlayerActivity : Activity() {
             addView(btnExt)
             addView(btnQual)
             addView(btnRefresh)
+            listOf(btnExt, btnQual, btnRefresh).forEach { it.background = MusicTheme.glassRipple(ctx, 20) }
             listOf(btnExt, btnQual).forEach { b ->
                 val lp = b.layoutParams
                 if (lp is ViewGroup.MarginLayoutParams) lp.rightMargin = MusicTheme.dp(ctx, 6)
@@ -873,7 +874,7 @@ class MusicPlayerActivity : Activity() {
             setTextColor(MusicTheme.TEXT)
             setHintTextColor(MusicTheme.MUTED)
             setPadding(MusicTheme.dp(ctx, 14), 0, MusicTheme.dp(ctx, 14), 0)
-            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE_2, 14)
+            background = MusicTheme.glassRipple(ctx, 14)
         }
         searchField.setOnEditorActionListener { _, _, _ ->
             performSearch(searchField.text.toString())
@@ -928,7 +929,7 @@ class MusicPlayerActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             visibility = View.GONE
             setPadding(MusicTheme.dp(ctx, 12), MusicTheme.dp(ctx, 10), MusicTheme.dp(ctx, 12), MusicTheme.dp(ctx, 10))
-            background = MusicTheme.rounded(ctx, MusicTheme.SURFACE, 18)
+            background = MusicTheme.glassRipple(ctx, 18)
             elevation = MusicTheme.dp(ctx, 8).toFloat()
             setOnClickListener { openSlide() }
         }

@@ -3,10 +3,7 @@ package com.codehub.app.music
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.media.AudioFocusRequest
-import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -158,11 +155,6 @@ class MusicPlayer(
     /** Descargas offline (null si el player no se ha vinculado a MusicDownloads). */
     var downloads: MusicDownloads? = null
 
-    private val audioManager =
-        context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private var focusRequest: AudioFocusRequest? = null
-    private var focusListener: AudioManager.OnAudioFocusChangeListener? = null
-
     val exo: ExoPlayer = ExoPlayer.Builder(context)
         .setMediaSourceFactory(MusicMediaSource.Factory(
             this,
@@ -307,7 +299,6 @@ class MusicPlayer(
 
     /** Detiene la reproducción actual y deja la cola vacía (botón cerrar). */
     fun stop() {
-        abandonFocus()
         exo.stop()
         exo.clearMediaItems()
         _isBuffering.value = false
@@ -329,7 +320,6 @@ class MusicPlayer(
         if (tracks.isEmpty()) return
         this.extension = extension
         ensureService()
-        requestFocus()
         val items = tracks.map { buildItem(it, serverIndex, sourceIndex) }
         _queue.value = tracks
         val index = startIndex.coerceIn(0, items.lastIndex)
@@ -354,7 +344,6 @@ class MusicPlayer(
             exo.pause()
         } else {
             ensureService()
-            requestFocus()
             exo.play()
         }
     }
@@ -448,7 +437,6 @@ class MusicPlayer(
         val ext = extension ?: return
         val index = exo.currentMediaItemIndex.coerceAtLeast(0)
         ensureService()
-        requestFocus()
         exo.setMediaItems(
             listOf(buildItem(track, serverIndex = -1, sourceIndex = sourceIndex)),
             index,
@@ -462,64 +450,28 @@ class MusicPlayer(
 
     fun duration(): Long = exo.duration
 
-    // ------------------------------------------------------------------
-    // Audio focus (port de AudioFocusListener de echo-nightly)
-    // ------------------------------------------------------------------
-
-    private fun requestFocus() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val attributes = android.media.AudioAttributes.Builder()
-                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-            val listener = AudioManager.OnAudioFocusChangeListener { change ->
-                when (change) {
-                    AudioManager.AUDIOFOCUS_LOSS,
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        if (exo.isPlaying) exo.pause()
-                    }
-                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                        runCatching { exo.volume = 0.15f }
-                    }
-                    AudioManager.AUDIOFOCUS_GAIN -> {
-                        runCatching { exo.volume = 1f }
-                        if (exo.playWhenReady && !exo.isPlaying) exo.play()
-                    }
-                }
-            }
-            focusListener = listener
-            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(attributes)
-                .setOnAudioFocusChangeListener(listener)
-                .build()
-            focusRequest = req
-            runCatching { audioManager.requestAudioFocus(req) }
-        } else {
-            @Suppress("DEPRECATION")
-            runCatching {
-                audioManager.requestAudioFocus(
-                    null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN
-                )
-            }
-        }
-    }
-
-    private fun abandonFocus() {
-        focusRequest?.let { runCatching { audioManager.abandonAudioFocusRequest(it) } }
-        focusRequest = null
-        focusListener = null
-    }
-
     private var serviceStarted = false
 
     /** Arranca [MusicPlaybackService] (foreground) la primera vez que se
      *  reproduce algo; así la notificación de medios solo existe al sonar. */
+    @Synchronized
     fun ensureService() {
         if (serviceStarted) return
-        serviceStarted = true
-        runCatching {
+        try {
             context.startForegroundService(Intent(context, MusicPlaybackService::class.java))
+            serviceStarted = true
+        } catch (error: Exception) {
+            serviceStarted = false
+            android.util.Log.w("CodeHubMusic", "No se pudo iniciar MusicPlaybackService", error)
+            scope.launch {
+                failures.emit("No se pudo iniciar audio en segundo plano: ${error.message ?: "error del sistema"}")
+            }
         }
+    }
+
+    @Synchronized
+    fun onPlaybackServiceDestroyed() {
+        serviceStarted = false
     }
 
     fun release() {
@@ -576,7 +528,7 @@ class MusicPlayer(
         @Synchronized
         fun releaseShared() {
             val player = sharedInstance ?: return
-            player.abandonFocus()
+            player.onPlaybackServiceDestroyed()
             runCatching { player.exo.release() }
             sharedInstance = null
         }

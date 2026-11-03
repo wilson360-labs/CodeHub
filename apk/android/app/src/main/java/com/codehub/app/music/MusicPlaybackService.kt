@@ -65,6 +65,7 @@ class MusicPlaybackService : MediaLibraryService() {
     override fun onDestroy() {
         session?.release()
         session = null
+        MusicPlayer.peek()?.onPlaybackServiceDestroyed()
         // Sin liberar MusicPlayer aquí: el singleton puede seguir vivo para
         // otras actividades. MusicPlayer.releaseShared() queda para futuras
         // gestiones de teardown (o reinicio del servicio).

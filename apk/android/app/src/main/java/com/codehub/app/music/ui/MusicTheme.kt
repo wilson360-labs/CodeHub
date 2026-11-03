@@ -24,13 +24,14 @@ import android.widget.TextView
  */
 object MusicTheme {
 
-    const val BG = 0xFF080810.toInt()
+    const val BG = 0xFF080B11.toInt()
     const val SURFACE = 0xFF13131C.toInt()
     const val SURFACE_2 = 0xFF1E1E2A.toInt()
     const val TEXT = 0xFFF1F2F6.toInt()
     const val MUTED = 0xFF9AA0B8.toInt()
     const val ACCENT = 0xFF6C9CFF.toInt()
     const val RIPPLE = 0x1FFFFFFF.toInt()
+    const val GLASS_STROKE = 0x66FFFFFF.toInt()
 
     fun dp(context: Context, v: Int): Int =
         (v * context.resources.displayMetrics.density).toInt()
@@ -47,6 +48,25 @@ object MusicTheme {
         setColor(color)
         if (strokeDp > 0) setStroke(dp(context, strokeDp), strokeColor)
     }
+
+    /** Superficie translúcida con brillo y borde fino; el contenido difuso de fondo completa el efecto glass. */
+    fun glass(
+        context: Context,
+        radiusDp: Int,
+        strokeColor: Int = GLASS_STROKE,
+    ): GradientDrawable = GradientDrawable(
+        GradientDrawable.Orientation.TL_BR,
+        intArrayOf(0x55333E55, 0x33202738),
+    ).apply {
+        cornerRadius = dp(context, radiusDp).toFloat()
+        setStroke(dp(context, 1), strokeColor)
+    }
+
+    fun glassRipple(
+        context: Context,
+        radiusDp: Int,
+        strokeColor: Int = GLASS_STROKE,
+    ): RippleDrawable = ripple(context, glass(context, radiusDp, strokeColor))
 
     fun oval(context: Context, color: Int): GradientDrawable =
         GradientDrawable().apply {

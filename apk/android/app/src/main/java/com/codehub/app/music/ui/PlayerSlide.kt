@@ -169,8 +169,12 @@ class PlayerSlide(
         val header = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            background = MusicTheme.glassRipple(context, 20)
+            elevation = dp(4).toFloat()
         }
         likeButton = MusicTheme.iconCircle(context, R.drawable.ic_music_like_border, 26)
+        likeButton.background = MusicTheme.glassRipple(context, 20)
         likeButton.setOnClickListener { toggleLike() }
         val extCol = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -184,15 +188,16 @@ class PlayerSlide(
             context, R.drawable.ic_music_lyrics, 24, MusicTheme.MUTED
         ).apply {
             setOnClickListener { onLyrics?.invoke() }
-            background = MusicTheme.ripple(context, MusicTheme.oval(context, MusicTheme.SURFACE_2))
+            background = MusicTheme.glassRipple(context, 18)
         }
         val listButton = MusicTheme.icon(
             context, R.drawable.ic_music_playlist_add, 24, MusicTheme.MUTED
         ).apply {
             setOnClickListener { player.nowPlaying.value?.let { onAddToPlaylist?.invoke(it) } }
-            background = MusicTheme.ripple(context, MusicTheme.oval(context, MusicTheme.SURFACE_2))
+            background = MusicTheme.glassRipple(context, 18)
         }
         val close = MusicTheme.iconCircle(context, R.drawable.ic_music_close, 24)
+        close.background = MusicTheme.glassRipple(context, 20)
         close.setOnClickListener { dismiss() }
 
         header.addView(likeButton, LinearLayout.LayoutParams(dp(40), dp(40)))
@@ -218,7 +223,7 @@ class PlayerSlide(
         val cover = minOf(
             dm.widthPixels - dp(48),
             (dm.heightPixels * 0.40f).toInt(),
-            (dm.heightPixels - dp(280)).coerceAtLeast(0),
+            (dm.heightPixels - dp(304)).coerceAtLeast(0),
         ).coerceAtLeast(1)
         val coverLp = LinearLayout.LayoutParams(cover, cover)
         coverLp.topMargin = dp(8)
@@ -239,6 +244,14 @@ class PlayerSlide(
         val artistsLp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(2) }
+        val trackInfo = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(9), dp(14), dp(9))
+            background = MusicTheme.glassRipple(context, 18)
+            elevation = dp(4).toFloat()
+            addView(titleView, titleLp)
+            addView(artistsView, artistsLp)
+        }
 
         val fill = View(context)
         fill.layoutParams = LinearLayout.LayoutParams(
@@ -307,6 +320,9 @@ class PlayerSlide(
         val controls = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
+            setPadding(dp(5), dp(4), dp(5), dp(4))
+            background = MusicTheme.glassRipple(context, 28)
+            elevation = dp(6).toFloat()
         }
         shuffleButton = MusicTheme.iconCircle(
             context, R.drawable.ic_music_shuffle, 24, tint = 0x80FFFFFF.toInt()
@@ -389,8 +405,9 @@ class PlayerSlide(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ))
         root.addView(artView, coverLp)
-        root.addView(titleView, titleLp)
-        root.addView(artistsView, artistsLp)
+        root.addView(trackInfo, LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+        ))
         root.addView(fill)
 
         root.addView(progressBox, LinearLayout.LayoutParams(
@@ -401,7 +418,7 @@ class PlayerSlide(
         ))
         root.addView(controls, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply { topMargin = dp(4) })
+        ).apply { topMargin = dp(8) })
         root.addView(subtitle, LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(4) })
@@ -437,7 +454,7 @@ class PlayerSlide(
             label.setPadding(0, dp(4), 0, 0)
             addView(label)
             setPadding(0, dp(4), 0, dp(2))
-            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            background = MusicTheme.glassRipple(context, 14)
         }
         return btn
     }
@@ -448,7 +465,7 @@ class PlayerSlide(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(4), 0, dp(2))
-            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            background = MusicTheme.glassRipple(context, 14)
             setOnClickListener { toggleDownload() }
         }
         dlIcon = MusicTheme.icon(context, R.drawable.ic_music_download, 18, MusicTheme.MUTED)
@@ -467,7 +484,7 @@ class PlayerSlide(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(0, dp(4), 0, dp(2))
-            background = MusicTheme.ripple(context, ColorDrawable(Color.TRANSPARENT))
+            background = MusicTheme.glassRipple(context, 14)
             setOnClickListener { speedDialog() }
         }
         speedLabelView = tv(speedLabel(), 13f, bold = true, color = MusicTheme.MUTED)
@@ -560,7 +577,7 @@ class PlayerSlide(
     override fun show() {
         super.show()
         window ?: return
-        window?.setBackgroundDrawable(ColorDrawable(0xFF080810.toInt()))
+        window?.setBackgroundDrawable(ColorDrawable(0xFF080B11.toInt()))
         window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         window?.setWindowAnimations(R.style.MusicSlideAnimation)
         updated()
