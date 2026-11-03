@@ -106,18 +106,20 @@
             color: #ffffff;
             overflow-x: hidden;
             line-height: 1.6;
-            transition: all 0.5s ease;
+            transition: color 0.2s ease;
             padding-bottom: 110px;
         }/* Scroll Progress Bar */
 #scroll-progress{
             position: fixed;
             top: 0;
             left: 0;
-            width: 0%;
+            width: 100%;
             height: 4px;
             background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
             z-index: 9999;
-            transition: width 0.1s ease;
+            transform: scaleX(0);
+            transform-origin: left center;
+            pointer-events: none;
         }/* ========== MENÚ LATERAL EXPERIMENTAL ========== */
 #experimental-menu{
             position: fixed;

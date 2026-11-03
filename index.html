@@ -253,9 +253,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     </script>
 
     <!-- Estilos principales -->
-    <link rel="stylesheet" href="css/index.css?v=20261019a">
+    <link rel="stylesheet" href="css/index.css?v=20261103a">
     <!-- Estilos de componentes (dock, hero, secciones, chat, PWA) -->
-    <link rel="stylesheet" href="css/components.css?v=20261019a">
+    <link rel="stylesheet" href="css/components.css?v=20261103a">
     <!-- Media queries responsive -->
     <link rel="stylesheet" href="css/index-responsive.css?v=20260809a">
     <link rel="stylesheet" href="css/site-tour.css?v=20261019a">
@@ -2386,14 +2386,23 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         }
 
         function updateExperimentalMotion() {
-            const items = document.querySelectorAll('#experimental-menu .menu-item');
+            const menu = document.getElementById('experimental-menu');
+            if (!menu?.classList.contains('active')) return;
+            const items = menu.querySelectorAll('.menu-item');
             const scrollY = window.scrollY || window.pageYOffset || 0;
             items.forEach((item, index) => {
                 const offset = Math.sin((scrollY * 0.012) + index * 0.7) * 6;
                 item.style.setProperty('--exp-shift', offset.toFixed(2) + 'px');
             });
         }
-        window.addEventListener('scroll', updateExperimentalMotion, { passive: true });
+        let experimentalMotionFrame = 0;
+        window.addEventListener('scroll', () => {
+            if (experimentalMotionFrame) return;
+            experimentalMotionFrame = requestAnimationFrame(() => {
+                experimentalMotionFrame = 0;
+                updateExperimentalMotion();
+            });
+        }, { passive: true });
         window.addEventListener('load', updateExperimentalMotion);
 
         // ── COACH TIPS — burbujas de ayuda contextual (patrón reutilizable) ──
@@ -2926,13 +2935,23 @@ DISPONIBILIDAD:
             if (el) el.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Scroll Progress Bar
+        // Scroll Progress Bar: actualiza una vez por frame y usa transform
+        // para evitar recalcular el layout al cambiar su ancho.
+        const scrollProgress = document.getElementById('scroll-progress');
+        let scrollProgressFrame = 0;
+        function updateScrollProgress() {
+            scrollProgressFrame = 0;
+            if (!scrollProgress) return;
+            const root = document.documentElement;
+            const maxScroll = root.scrollHeight - root.clientHeight;
+            const progress = maxScroll > 0 ? Math.min(1, Math.max(0, window.scrollY / maxScroll)) : 0;
+            scrollProgress.style.transform = `scaleX(${progress})`;
+        }
         window.addEventListener('scroll', () => {
-            const winScroll = document.documentElement.scrollTop;
-            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrolled = (winScroll / height) * 100;
-            document.getElementById('scroll-progress').style.width = scrolled + '%';
-        });
+            if (!scrollProgressFrame) scrollProgressFrame = requestAnimationFrame(updateScrollProgress);
+        }, { passive: true });
+        window.addEventListener('resize', updateScrollProgress, { passive: true });
+        updateScrollProgress();
 
         // Copy Email Function
         function copyEmail(e) {
@@ -3116,32 +3135,8 @@ DISPONIBILIDAD:
             if (chDebug()) console.log(`⚡ Página cargada en ${perfData.loadEventEnd - perfData.fetchStart}ms`);
         });
 
-        // Efecto parallax suave
-        //
-        // SOLO .skill-icon. Antes incluía .service-icon, y eso rompía los
-        // iconos de las tarjetas: el desplazamiento se calculaba como
-        // (posición de scroll * speed * 0.01) con speed creciente por índice
-        // del NodeList, así que los iconos de #guias-home —los últimos del
-        // listado, speed 1.7–2.0— se desplazaban más de 100 px hacia abajo y
-        // caían por debajo del título y de la descripción.
-        //
-        // Ese daño quedaba oculto mientras una animación CSS de `transform`
-        // siguiera en marcha, porque una declaración de animación tiene más
-        // peso que un estilo inline. En cuanto se desactivan las animaciones
-        // (data-anim="0" en <html>, que prefs.css aplica a *; o los
-        // kill-switches por widget) el transform inline tomaba el control y
-        // el icono se descolocaba. Se acota además el offset a ±8 px para que
-        // la misma clase de bug no pueda reaparecer en .skill-icon.
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const parallaxElements = document.querySelectorAll('.skill-icon');
-            
-            parallaxElements.forEach((el, index) => {
-                const speed = 0.5 + (index * 0.1);
-                const offset = Math.max(-8, Math.min(8, scrolled * speed * 0.01));
-                el.style.transform = `translateY(${offset}px)`;
-            });
-        });
+        // El antiguo parallax de .skill-icon consultaba el DOM y escribía
+        // transforms en cada scroll, además de competir con iconFloat.
 
         // beforeunload removido — mejora señales de UX para Google
 
