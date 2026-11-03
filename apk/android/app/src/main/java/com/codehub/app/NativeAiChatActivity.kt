@@ -12,6 +12,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
@@ -95,8 +96,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        SystemBars.fit(this)
         window.statusBarColor = 0xFF090D16.toInt()
         window.navigationBarColor = 0xFF090D16.toInt()
+        window.decorView.setBackgroundColor(0xFF090D16.toInt())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
         sessionId = getSharedPreferences(PREFS, MODE_PRIVATE).getString(SESSION_KEY, null)
             ?: "android-${UUID.randomUUID()}".also {
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(SESSION_KEY, it).apply()
@@ -212,6 +219,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         root.addView(composer)
 
         setContentView(root)
+        SystemBars.applyInsets(this)
         renderHistory()
     }
 

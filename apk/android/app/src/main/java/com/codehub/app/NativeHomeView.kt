@@ -26,8 +26,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val muted = 0xFFA7A9BC.toInt()
     private val indigo = 0xFF818CF8.toInt()
     private val cyan = 0xFF22D3EE.toInt()
-    private var homeScroll: ScrollView? = null
-
     init {
         orientation = VERTICAL
         setBackgroundColor(0xFF080B11.toInt())
@@ -39,7 +37,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             isFillViewport = false
             overScrollMode = View.OVER_SCROLL_NEVER
         }
-        homeScroll = scroll
         val content = LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
@@ -85,7 +82,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         scroll.addView(content)
         addView(scroll, LayoutParams(-1, 0, 1f))
-        addView(buildDock(), LayoutParams(-1, dp(68)))
     }
 
     private fun buildHeader(): View = LinearLayout(context).apply {
@@ -216,42 +212,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenWebsite("/")
         }, LayoutParams(dp(74), dp(40)))
     }
-
-    private fun buildDock(): View = LinearLayout(context).apply {
-        orientation = HORIZONTAL
-        gravity = Gravity.CENTER
-        setPadding(dp(8), dp(8), dp(8), dp(8))
-        background = GradientDrawable().apply {
-            setColor(0xFF10121D.toInt())
-            setStroke(dp(1), 0xFF272A3C.toInt())
-        }
-        addView(dockItem("⌂", "Inicio", indigo) { homeScroll?.smoothScrollTo(0, 0) }, LayoutParams(0, -1, 1f))
-        addView(dockItem("▦", "Tienda", muted) { listener.onOpenStore() }, LayoutParams(0, -1, 1f))
-        addView(dockItem("⬇", "Mis apps", muted) { listener.onOpenMyApps() }, LayoutParams(0, -1, 1f))
-        addView(dockItem("◎", "Web", muted) { listener.onOpenWebsite("/") }, LayoutParams(0, -1, 1f))
-    }
-
-    private fun dockItem(icon: String, title: String, color: Int, onClick: () -> Unit): View =
-        LinearLayout(context).apply {
-            orientation = VERTICAL
-            gravity = Gravity.CENTER
-            isClickable = true
-            isFocusable = true
-            background = RippleDrawable(ColorStateList.valueOf(0x22FFFFFF), null, null)
-            setOnClickListener { onClick() }
-            addView(TextView(context).apply {
-                text = icon
-                textSize = 20f
-                setTextColor(color)
-                gravity = Gravity.CENTER
-            })
-            addView(TextView(context).apply {
-                text = title
-                textSize = 9f
-                setTextColor(color)
-                gravity = Gravity.CENTER
-        }, LayoutParams(-2, -2).apply { topMargin = dp(2) })
-        }
 
     private fun button(text: String, backgroundColor: Int, foregroundColor: Int, onClick: () -> Unit): View =
         TextView(context).apply {
