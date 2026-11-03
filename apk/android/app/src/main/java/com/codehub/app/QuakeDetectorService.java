@@ -39,6 +39,8 @@ public class QuakeDetectorService extends Service implements SensorEventListener
 
     private SensorManager sm;
     private Sensor accel;
+    private boolean detectorRegistered;
+    private boolean foregroundStarted;
     private double sta = 0, lta = 0;
     private long lastTrigger = 0;
     private final AtomicBoolean cooldown = new AtomicBoolean(false);
@@ -61,29 +63,49 @@ public class QuakeDetectorService extends Service implements SensorEventListener
     @Override
     public void onCreate() {
         super.onCreate();
-        // Respeta el toggle del usuario (preferencias "codehub").
-        try {
-            SharedPreferences p = getSharedPreferences("codehub", Context.MODE_PRIVATE);
-            if (!p.getBoolean("quake_detector_enabled", true)) {
-                stopSelf();
-                return;
-            }
-        } catch (Exception ignored) {}
         sm = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accel = sm != null ? sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) : null;
         createChannel();
-        startForeground(NOTIF_ID, buildNotif("CodeHub protegiendo sismos"));
-        if (accel != null) sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        try {
+            SharedPreferences p = getSharedPreferences("codehub", Context.MODE_PRIVATE);
+            if (!p.getBoolean("quake_detector_enabled", true)) {
+                stopSelfResult(startId);
+                return START_NOT_STICKY;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not read detector preference", e);
+        }
+
+        if (!foregroundStarted) {
+            try {
+                startForeground(NOTIF_ID, buildNotif("CodeHub protegiendo sismos"));
+                foregroundStarted = true;
+            } catch (RuntimeException e) {
+                Log.w(TAG, "Android denied foreground start; quake detector remains stopped", e);
+                stopSelfResult(startId);
+                return START_NOT_STICKY;
+            }
+        }
+
+        if (sm != null && accel != null && !detectorRegistered) {
+            detectorRegistered = sm.registerListener(this, accel, SensorManager.SENSOR_DELAY_GAME);
+            if (!detectorRegistered) {
+                Log.w(TAG, "Accelerometer listener could not be registered");
+                stopForeground(true);
+                stopSelfResult(startId);
+                return START_NOT_STICKY;
+            }
+        }
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
-        if (sm != null && accel != null) sm.unregisterListener(this);
+        if (detectorRegistered && sm != null) sm.unregisterListener(this);
         super.onDestroy();
     }
 

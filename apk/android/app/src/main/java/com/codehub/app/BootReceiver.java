@@ -41,19 +41,8 @@ public class BootReceiver extends BroadcastReceiver {
             try { CodeHubSyncScheduler.schedule(context); } catch (Throwable ignored) {}
             try { CodeHubSyncScheduler.syncNow(context); } catch (Throwable ignored) {}
 
-            // Detector de sismos por acelerómetro (capa C): reanudarlo tras
-            // el reboot solo si el usuario no lo desactivó.
-            try {
-                SharedPreferences qp = context.getSharedPreferences("codehub", Context.MODE_PRIVATE);
-                if (qp.getBoolean("quake_detector_enabled", true)) {
-                    Intent qi = new Intent(context, QuakeDetectorService.class);
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        context.startForegroundService(qi);
-                    } else {
-                        context.startService(qi);
-                    }
-                }
-            } catch (Exception ignored) {}
+            // El detector de sismos se inicia desde MainActivity cuando ya
+            // esta visible; no promover un FGS desde este receiver de fondo.
         }
     }
 }

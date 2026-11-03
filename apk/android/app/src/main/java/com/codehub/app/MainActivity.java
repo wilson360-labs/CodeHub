@@ -151,7 +151,6 @@ public class MainActivity extends Activity {
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { WeatherNotificationProvider.refresh(this); } catch (Throwable t) { crashLog("wxNotif", t); }
         // Las funciones solicitan permisos al usarse; no bloquear el primer inicio con varios diálogos.
-        try { startQuakeDetector(); } catch (Throwable t) { crashLog("quakeDetector", t); }
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
         // Chequeo de actualizaciones SOLO nativo: la app consulta GitHub
@@ -976,6 +975,14 @@ public class MainActivity extends Activity {
         // cold-start de.onCreate no ocurre si la app sigue viva en recientes):
         // AppUpdateChecker tiene throttle interno y decide si toca chequear.
         try { AppUpdateChecker.checkIfDue(this); } catch (Throwable t) { crashLog("updateCheckResume", t); }
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        // La Activity ya esta visible; iniciar aqui evita hacerlo desde
+        // onCreate o desde un receiver de arranque en segundo plano.
+        try { startQuakeDetector(); } catch (Throwable t) { crashLog("quakeDetector", t); }
     }
 
     @Override
