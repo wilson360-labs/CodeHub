@@ -134,6 +134,12 @@ object NativeStoreApkInstaller {
                     error("El paquete APK no coincide con la app seleccionada")
                 }
 
+                // Insights + history while the APK is still on disk (silent install
+                // deletes it afterwards). Local, key-less (no VirusTotal).
+                NativeApkInsights.analyze(context, appId, destination)
+                    ?.let { NativeApkInsights.cacheInsight(context, it) }
+                NativeApkInsights.recordDownload(context, appId, archive?.versionName ?: "", destination.length())
+
                 setState(appId, ApkTransferState.ReadyToInstall)
                 if (preferSilent && ShizukuInstaller.isReady()) {
                     try {

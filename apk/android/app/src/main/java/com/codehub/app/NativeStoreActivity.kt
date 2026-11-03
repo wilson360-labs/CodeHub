@@ -47,6 +47,53 @@ class NativeStoreActivity : Activity() {
             "https://cdn.jsdelivr.net/gh/RookieEnough/Orion-Data@main/apps.json",
             "https://raw.githack.com/RookieEnough/Orion-Data/main/apps.json",
         )
+        private val OPEN_SOURCE_ICON_ASSETS = mapOf(
+            "os-kernelsu" to "kernelsu.png",
+            "os-app-manager" to "app-manager.png",
+            "os-key-mapper" to "key-mapper.png",
+            "os-simpmusic" to "simpmusic.png",
+            "os-metrolist" to "metrolist.png",
+            "os-spotube" to "spotube.png",
+            "os-auxio" to "auxio.png",
+            "os-newpipe" to "newpipe.png",
+            "os-libretube" to "libretube.png",
+            "os-ytdlnis" to "ytdlnis.png",
+            "os-next-player" to "next-player.png",
+            "os-protonvpn" to "protonvpn.png",
+            "os-mullvad-vpn" to "mullvadvpn.png",
+            "os-rustdesk" to "rustdesk.png",
+            "os-duckduckgo-privacy-browser" to "duckduckgo-browser.png",
+            "os-obtainium" to "obtainium.png",
+            "os-aurora-store" to "aurora-store.png",
+            "os-bitwarden" to "bitwarden.png",
+            "os-librera-reader" to "librera-reader.png",
+            "os-komikku" to "komikku.png",
+            "os-termux" to "termux.png",
+            "os-orbot" to "orbot.png",
+            "os-signal" to "os-signal.png",
+            "os-mihon" to "mihon.png",
+            "os-shizuku" to "os-shizuku.png",
+            "os-lsposed" to "os-lsposed.png",
+            "os-vlc-para-android" to "os-vlc-para-android.png",
+            "os-seal" to "os-seal.png",
+            "os-netguard" to "os-netguard.png",
+            "os-adaway" to "os-adaway.png",
+            "os-antennapod" to "os-antennapod.png",
+            "os-nextcloud" to "os-nextcloud.png",
+            "os-amaze-file-manager" to "os-amaze-file-manager.png",
+            "os-tusky" to "os-tusky.png",
+            "os-k-9-mail" to "os-k-9-mail.png",
+            "os-acca" to "acca.png",
+            "os-hail" to "hail.png",
+            "os-canta" to "canta.png",
+            "os-fossify-gallery" to "fossify-gallery.png",
+            "os-fossify-file-manager" to "fossify-file-manager.png",
+            "os-refreezer" to "refreezer.png",
+            "os-whatsave" to "whatsave.png",
+            "os-tasks" to "os-tasks.png",
+            "os-material-files" to "os-material-files.png",
+            "os-syncthing" to "os-syncthing.png",
+        )
         private const val MY_APPS_REQUEST = 301
     }
 
@@ -616,6 +663,13 @@ class NativeStoreActivity : Activity() {
         render()
     }
 
+    private fun android.widget.ImageView.loadStoreAppIcon(app: AppEntry) {
+        val shouldUseLocalLogo = app.platform == "Android" &&
+            (app.imageUrl.isBlank() || app.imageUrl.contains("opengraph.githubassets.com", ignoreCase = true))
+        val localLogo = if (shouldUseLocalLogo) OPEN_SOURCE_ICON_ASSETS[app.id] else null
+        loadCodeHubImage(localLogo?.let { "/img/opensource/$it" } ?: app.imageUrl)
+    }
+
     private fun featuredCard(app: AppEntry): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -638,7 +692,7 @@ class NativeStoreActivity : Activity() {
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF18213A.toInt(), 0xFF394B78.toInt(), dp(16))
             clipToOutline = true
-            loadCodeHubImage(app.imageUrl)
+            loadStoreAppIcon(app)
         }
         row.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)))
         val info = LinearLayout(this).apply {
@@ -693,7 +747,7 @@ class NativeStoreActivity : Activity() {
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(13))
             clipToOutline = true
-            loadCodeHubImage(app.imageUrl)
+            loadStoreAppIcon(app)
         }
         card.addView(icon, LinearLayout.LayoutParams(dp(48), dp(48)))
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0) }
@@ -728,7 +782,7 @@ class NativeStoreActivity : Activity() {
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF18213A.toInt(), 0xFF394B78.toInt(), dp(14))
             clipToOutline = true
-            loadCodeHubImage(app.imageUrl)
+            loadStoreAppIcon(app)
         }
         card.addView(icon, LinearLayout.LayoutParams(dp(54), dp(54)))
 
@@ -804,7 +858,7 @@ class NativeStoreActivity : Activity() {
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
-            loadCodeHubImage(app.imageUrl)
+            loadStoreAppIcon(app)
         }
         hero.addView(icon, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
         hero.addView(LinearLayout(this).apply {
@@ -1070,7 +1124,7 @@ class NativeStoreActivity : Activity() {
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF111827.toInt(), 0, dp(18))
             clipToOutline = true
-            loadCodeHubImage(app.imageUrl)
+            loadStoreAppIcon(app)
         }
         content.addView(icon, LinearLayout.LayoutParams(dp(72), dp(72)).apply { bottomMargin = dp(12) })
         content.addView(label(app.category.uppercase(Locale.ROOT), 12f, 0xFF7C90F7.toInt(), true))

@@ -14,7 +14,7 @@ fun ImageView.loadCodeHubImage(path: String?) {
         else -> null
     }
     if (url == null) {
-        setImageDrawable(ColorDrawable(0xFF1D2C2A.toInt()))
+        setImageDrawable(ColorDrawable(0xFF111827.toInt()))
         return
     }
     // Coil 3's Android request extensions are separate APIs; the view background

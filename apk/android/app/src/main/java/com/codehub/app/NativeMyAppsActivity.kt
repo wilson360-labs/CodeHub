@@ -428,6 +428,16 @@ class NativeMyAppsActivity : Activity() {
             }
             card.addView(update, LinearLayout.LayoutParams(-2, dp(42)))
         }
+        val uninstall = android.widget.ImageButton(this).apply {
+            setImageResource(android.R.drawable.ic_menu_delete)
+            setColorFilter(0xFFFF8A9C.toInt())
+            contentDescription = "Desinstalar ${app.name} y liberar espacio"
+            background = roundRect(0xFF26161D.toInt(), 0xFF58303A.toInt(), dp(12))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { requestUninstall(app) }
+        }
+        card.addView(uninstall, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginStart = dp(5) })
         container.addView(card)
         activeTransfers[app.id]?.let { transfer ->
             val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
@@ -529,17 +539,22 @@ class NativeMyAppsActivity : Activity() {
                         if (launch != null) startActivity(launch)
                         else Toast.makeText(this, "Esta app no tiene una pantalla de inicio", Toast.LENGTH_SHORT).show()
                     }
-                    1 -> try {
-                        startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")))
-                    } catch (_: Exception) {
-                        Toast.makeText(this, "No se pudo abrir el desinstalador", Toast.LENGTH_SHORT).show()
-                    }
+                    1 -> requestUninstall(app)
                     2 -> if (app.repo.isNotBlank()) openRepository(app) else toggleIgnoredUpdate(app)
                     3 -> toggleIgnoredUpdate(app)
                 }
             }
             .setNegativeButton("Cerrar", null)
             .show()
+    }
+
+    private fun requestUninstall(app: AppEntry) {
+        val pkg = app.packageName ?: return
+        try {
+            startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")))
+        } catch (_: Exception) {
+            Toast.makeText(this, "No se pudo abrir el desinstalador", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun toggleIgnoredUpdate(app: AppEntry) {

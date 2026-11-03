@@ -37,7 +37,7 @@ object NativeStoreInstallFlow {
         val badge = TextView(activity).apply {
             text = "CODEHUB STORE  ·  INSTALACIÓN SEGURA"
             textSize = 11f
-            setTextColor(0xFF68F0A9.toInt())
+            setTextColor(0xFF06B6D4.toInt())
             setTypeface(Typeface.DEFAULT, Typeface.BOLD)
             setPadding(dp(13), dp(8), dp(13), dp(8))
             background = GradientDrawable().apply {
@@ -64,14 +64,14 @@ object NativeStoreInstallFlow {
             setTextColor(0xFF9AA0B8.toInt())
             setPadding(dp(13), dp(11), dp(13), dp(11))
             background = GradientDrawable().apply {
-                setColor(0xFF151522.toInt()); setStroke(dp(1), 0xFF29293B.toInt()); cornerRadius = dp(14).toFloat()
+                setColor(0xFF080B11.toInt()); setStroke(dp(1), 0xFF29293B.toInt()); cornerRadius = dp(14).toFloat()
             }
         }
         panel.addView(details, LinearLayout.LayoutParams(-1, -2))
         val copyDiagnostic = TextView(activity).apply {
             text = "Copiar diagnóstico"
             textSize = 13f
-            setTextColor(0xFF68F0A9.toInt())
+            setTextColor(0xFF06B6D4.toInt())
             gravity = Gravity.END or Gravity.CENTER_VERTICAL
             setPadding(dp(8), dp(11), dp(4), dp(6))
             setOnClickListener {

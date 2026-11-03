@@ -27,8 +27,8 @@ public final class SystemBars {
             activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            activity.getWindow().setStatusBarColor(0xFF080810);
-            activity.getWindow().setNavigationBarColor(0xFF080810);
+            activity.getWindow().setStatusBarColor(0xFF080B11);
+            activity.getWindow().setNavigationBarColor(0xFF080B11);
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try { activity.getWindow().setStatusBarContrastEnforced(true); } catch (Throwable ignored) {}

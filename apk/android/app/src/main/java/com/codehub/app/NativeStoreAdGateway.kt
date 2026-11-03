@@ -88,7 +88,7 @@ object NativeStoreAdGateway {
             val badge = TextView(activity).apply {
                 text = "CODEHUB STORE  ·  INSTALACIÓN PRIORITARIA"
                 textSize = 11f
-                setTextColor(0xFF68F0A9.toInt())
+                setTextColor(0xFF06B6D4.toInt())
                 typeface = Typeface.DEFAULT_BOLD
                 setPadding(dp(12), dp(7), dp(12), dp(7))
                 background = GradientDrawable().apply {
@@ -120,7 +120,7 @@ object NativeStoreAdGateway {
                 gravity = Gravity.CENTER
                 setPadding(dp(10), dp(13), dp(10), dp(13))
                 background = GradientDrawable().apply {
-                    setColor(0xFF38EF7D.toInt()); cornerRadius = dp(18).toFloat()
+                    setColor(0xFF6366F1.toInt()); cornerRadius = dp(18).toFloat()
                 }
             }
             panel.addView(watch, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(8) })
@@ -137,7 +137,7 @@ object NativeStoreAdGateway {
             val warn = TextView(activity).apply {
                 text = "No mostrar esta oferta de nuevo"
                 textSize = 12f
-                setTextColor(0xFF68F0A9.toInt())
+                setTextColor(0xFF06B6D4.toInt())
                 gravity = Gravity.CENTER
                 setPadding(0, dp(8), 0, dp(4))
             }
@@ -147,7 +147,7 @@ object NativeStoreAdGateway {
                 .setView(panel)
                 .create()
             dialog.window?.let { window ->
-                val dim = GradientDrawable().apply { setColor(0xFF151522.toInt()) }
+                val dim = GradientDrawable().apply { setColor(0xFF080B11.toInt()) }
                 window.setBackgroundDrawable(dim)
             }
             dialog.setOnDismissListener { rewardedSheetOpen = false }

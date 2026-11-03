@@ -53,7 +53,7 @@ public class DownloadsActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xFF080810);
+        root.setBackgroundColor(0xFF080B11);
         root.setPadding((int) (16 * d), (int) (12 * d), (int) (16 * d), (int) (12 * d));
 
         TextView title = new TextView(this);
@@ -75,7 +75,7 @@ public class DownloadsActivity extends Activity {
         clearBtn.setText("Limpiar todo");
         clearBtn.setAllCaps(false);
         clearBtn.setTextColor(0xFF0A0A12);
-        clearBtn.setBackgroundColor(0xFF38EF7D);
+        clearBtn.setBackgroundColor(0xFF6366F1);
         clearBtn.setPadding((int) (16 * d), 0, (int) (16 * d), 0);
         clearBtn.setOnClickListener(v -> confirmClearAll());
         LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(
