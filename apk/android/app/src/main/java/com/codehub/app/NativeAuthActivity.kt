@@ -28,7 +28,7 @@ class NativeAuthActivity : Activity() {
     companion object {
         const val RESULT_AUTHENTICATED = Activity.RESULT_OK
         private const val API = WileChatRepository.BASE_URL
-        private const val TURNSTILE_URL = "https://wilson360-labs.vercel.app/native-auth-check.html"
+        private const val TURNSTILE_URL = "https://wilson360-labs.vercel.app/native-auth-check"
     }
 
     private enum class Action { LOGIN, REGISTER, GOOGLE }

@@ -12,7 +12,7 @@
     h1{margin:0;font-size:22px}p{margin:10px 0 22px;color:#aab3c6;line-height:1.5}#challenge{display:flex;justify-content:center;min-height:66px}.error{color:#ff9b9b}
     button{border:1px solid #505c79;border-radius:12px;background:#202b40;color:#eef2ff;padding:10px 16px;font:600 14px system-ui;cursor:pointer}
   </style>
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script id="turnstile-api" src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body><main>
   <div class="mark">C</div>
@@ -26,8 +26,17 @@
 (function(){
   'use strict';
   var params=new URLSearchParams(location.search),state=params.get('state')||'';
-  var message=document.getElementById('message'),retry=document.getElementById('retry'),widgetId=null;
-  retry.addEventListener('click',function(){if(window.turnstile&&widgetId!==null){retry.hidden=true;message.className='';message.textContent='Completa el reto para continuar.';window.turnstile.reset(widgetId);}});
+  var message=document.getElementById('message'),retry=document.getElementById('retry'),widgetId=null,timer=null;
+  function showError(text){
+    if(timer){clearInterval(timer);timer=null;}
+    message.className='error';message.textContent=text;retry.hidden=false;
+  }
+  retry.addEventListener('click',function(){
+    if(window.turnstile&&widgetId!==null){
+      retry.hidden=true;message.className='';message.textContent='Completa el reto para continuar.';
+      window.turnstile.reset(widgetId);
+    }else location.reload();
+  });
   function returnToApp(token,error){
     var url=new URL('codehub://auth/turnstile');
     url.searchParams.set('state',state);
@@ -35,10 +44,14 @@
     if(error)url.searchParams.set('error',error);
     location.href=url.toString();
   }
+  if(!state){message.className='error';message.textContent='La solicitud llegó incompleta. Vuelve a CodeHub y comienza otra vez.';return;}
+  document.getElementById('turnstile-api').addEventListener('error',function(){
+    showError('No se pudo descargar el verificador de Cloudflare. Revisa tu conexión y reintenta.');
+  });
   var tries=0;
-  var timer=setInterval(function(){
-    if(window.turnstile&&state){
-      clearInterval(timer);
+  timer=setInterval(function(){
+    if(window.turnstile){
+      clearInterval(timer);timer=null;
       try{
         widgetId=window.turnstile.render('#challenge',{
           sitekey:'0x4AAAAAAClKd5T1R81GltW_',
@@ -49,14 +62,17 @@
               body:JSON.stringify({state:state,turnstileToken:token})
             }).then(function(r){return r.json().then(function(data){if(!r.ok)throw new Error(data.error||'Error al validar');return data;});})
               .then(function(data){retry.hidden=true;returnToApp(data.code,'');})
-              .catch(function(e){message.className='error';message.textContent=e.message||'No se pudo confirmar la verificación.';retry.hidden=false;});
+              .catch(function(e){showError(e.message||'No se pudo confirmar la verificación.');});
           },
-          'error-callback':function(){message.className='error';message.textContent='No se pudo verificar. Inténtalo de nuevo.';retry.hidden=false;},
-          'expired-callback':function(){message.textContent='La verificación expiró. Completa el reto otra vez.';retry.hidden=false;}
+          'error-callback':function(code){showError('Cloudflare no pudo completar la comprobación'+(code?' ('+code+')':'')+'. Reintenta.');},
+          'expired-callback':function(){message.textContent='La verificación expiró. Completa el reto otra vez.';retry.hidden=false;},
+          'unsupported-callback':function(){showError('Este navegador no es compatible. Abre la verificación en Chrome o Firefox.');}
         });
         message.textContent='Completa el reto para continuar.';
-      }catch(e){message.className='error';message.textContent='No se pudo cargar la verificación.';retry.hidden=false;}
-    }else if(++tries>100){clearInterval(timer);message.className='error';message.textContent='No se pudo cargar Turnstile. Vuelve a la app e inténtalo otra vez.';}
+      }catch(e){showError('No se pudo iniciar la verificación de Cloudflare. Reintenta.');}
+    }else if(++tries>120){
+      showError('Turnstile tardó demasiado en cargar. Revisa la conexión o el bloqueador de contenido y reintenta.');
+    }
   },100);
 })();
 </script>
