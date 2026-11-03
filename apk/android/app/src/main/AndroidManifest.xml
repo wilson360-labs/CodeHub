@@ -158,6 +158,21 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <activity
+            android:name=".NativeAuthActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="codehub" android:host="auth" />
+            </intent-filter>
+        </activity>
+
         <!-- Descargas de APK del CodeHub Store en segundo plano: mantiene la
              transferencia (progreso + cancelación + "Listo para instalar") si
              el usuario cierra la tienda. Tipo dataSync: tareas cortas (la de

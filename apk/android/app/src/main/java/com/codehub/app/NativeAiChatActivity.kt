@@ -80,7 +80,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private var pendingAttachmentLabel = ""
     private var activeCall: Call? = null
     private var readRepliesAloud = false
-    private val authToken by lazy { intent.getStringExtra(EXTRA_AUTH_TOKEN).orEmpty() }
+    private val authToken by lazy {
+        intent.getStringExtra(EXTRA_AUTH_TOKEN).orEmpty().ifBlank { NativeAuthSessionStore.accessToken(this) }
+    }
     private val repository by lazy { WileChatRepository(authToken) }
     private var thinkingView: TextView? = null
     private var streamingBodyView: TextView? = null

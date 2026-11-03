@@ -65,6 +65,21 @@ public class CodeHubBridge {
         this.webView  = webView;
     }
 
+    /** Mirrors the first-party CodeHub web session into the encrypted native session store. */
+    @JavascriptInterface
+    public void syncAuthSession(String serializedSession) {
+        try {
+            String host = Uri.parse(webView.getUrl()).getHost();
+            if (host == null || !("wilson360-labs.vercel.app".equalsIgnoreCase(host)
+                    || "www.wilson360-labs.vercel.app".equalsIgnoreCase(host))) return;
+            if (serializedSession == null || "null".equals(serializedSession.trim())) {
+                NativeAuthSessionStore.clear(activity);
+                return;
+            }
+            NativeAuthSessionStore.saveWebSession(activity, new JSONObject(serializedSession));
+        } catch (Exception ignored) {}
+    }
+
     // ── VOZ NATIVA (TTS + STT) ───────────────────────────────────
     private TextToSpeech tts;
     private SpeechRecognizer sr;

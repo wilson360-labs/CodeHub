@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
     private static final int NATIVE_MY_APPS_REQUEST = 103;
     private static final int NATIVE_COPILOT_REQUEST = 104;
     private static final int NATIVE_PROFILE_REQUEST = 105;
+    private static final int NATIVE_AUTH_REQUEST = 106;
     private static final int PERMISSION_REQUEST_CODE = 200;
     private static final int WEB_PERMISSION_REQUEST_CODE = 201;
     static final int MICROPHONE_PERMISSION_REQUEST_CODE = 401;
@@ -630,6 +631,7 @@ public class MainActivity extends Activity {
                     nativeSplash.dismiss();
                 }
                 injectNativeFlags(view);
+                syncNativeSessionToWebView(view);
                 if (pendingSharedText != null && bridge != null) {
                     String sharedText = pendingSharedText;
                     pendingSharedText = null;
@@ -918,8 +920,15 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == NATIVE_PROFILE_REQUEST && resultCode == RESULT_FIRST_USER) {
-            openWebUrl(APP_URL + "/");
-            Toast.makeText(this, "Inicia sesión en CodeHub para abrir tu perfil personal.", Toast.LENGTH_LONG).show();
+            startActivityForResult(new Intent(this, NativeAuthActivity.class), NATIVE_AUTH_REQUEST);
+            return;
+        }
+        if (requestCode == NATIVE_AUTH_REQUEST && resultCode == RESULT_OK) {
+            openNativeProfile();
+            return;
+        }
+        if (requestCode == NATIVE_PROFILE_REQUEST && resultCode == NativeProfileActivity.RESULT_LOGGED_OUT) {
+            clearWebAuthSession();
             return;
         }
         if ((requestCode == NATIVE_STORE_REQUEST || requestCode == NATIVE_MY_APPS_REQUEST)
@@ -996,7 +1005,41 @@ public class MainActivity extends Activity {
         launchNativeWithAccountSession(NativeProfileActivity.class, NATIVE_PROFILE_REQUEST);
     }
 
+    private void syncNativeSessionToWebView(WebView view) {
+        if (view == null || view.getUrl() == null) return;
+        String host = Uri.parse(view.getUrl()).getHost();
+        if (!"wilson360-labs.vercel.app".equalsIgnoreCase(host)) return;
+        String serialized = NativeAuthSessionStore.webSession(this);
+        if (serialized == null) return;
+        String quoted = org.json.JSONObject.quote(serialized);
+        String script = "(function(){try{var raw=" + quoted + ";var next=JSON.parse(raw);" +
+                "var old=JSON.parse(sessionStorage.getItem('ch_auth_session')||localStorage.getItem('ch_auth_session')||'null');" +
+                "if(old&&old.token===next.token)return false;sessionStorage.setItem('ch_auth_session',raw);" +
+                "localStorage.removeItem('ch_auth_session');return true;}catch(e){return false;}})()";
+        view.evaluateJavascript(script, changed -> {
+            if ("true".equals(changed)) view.postDelayed(view::reload, 80);
+        });
+    }
+
+    private void clearWebAuthSession() {
+        if (webView == null || webView.getUrl() == null) return;
+        String host = Uri.parse(webView.getUrl()).getHost();
+        if (!"wilson360-labs.vercel.app".equalsIgnoreCase(host)) return;
+        webView.evaluateJavascript("(function(){try{sessionStorage.removeItem('ch_auth_session');" +
+                "localStorage.removeItem('ch_auth_session');location.reload();return true;}catch(e){return false;}})()", null);
+    }
+
     private void launchNativeWithAccountSession(Class<?> activityClass, int requestCode) {
+        NativeAuthSessionStore.refreshIfNeeded(this, token -> runOnUiThread(() -> {
+            if (token != null && !token.isEmpty()) {
+                Intent intent = new Intent(this, activityClass);
+                intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN, token);
+                startActivityForResult(intent, requestCode);
+            } else launchNativeWithWebSession(activityClass, requestCode);
+        }));
+    }
+
+    private void launchNativeWithWebSession(Class<?> activityClass, int requestCode) {
         Runnable launchGuest = () -> startActivityForResult(
                 new Intent(this, activityClass), requestCode);
         if (webView == null || webView.getUrl() == null) {
@@ -1026,6 +1069,7 @@ public class MainActivity extends Activity {
         super.onResume();
         if (webView != null) webView.onResume();
         injectNativeFlags(webView);
+        syncNativeSessionToWebView(webView);
         // Re-verificar Shizuku al volver a la app: si el usuario acaba de
         // conceder el permiso (diálogo in-app o app Shizuku), el panel web
         // recibe el estado en vivo sin recargar la página.

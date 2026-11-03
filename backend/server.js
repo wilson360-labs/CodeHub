@@ -913,6 +913,60 @@ async function requireAuth(req, res, next) {
 const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiados intentos. Espera un poco.', code: 'AUTH_RATE_LIMIT' }, handler: rateLimitHandler });
 app.use('/api/auth', authLimiter);
 
+// Desafío Turnstile móvil: el token del captcha se canjea por un código corto
+// ligado a PKCE antes del deep link, para no exponer el token en la URL de retorno.
+const mobileAuthChallenges = new Map();
+const mobileAuthCodes = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of mobileAuthChallenges) if (value.expiresAt < now) mobileAuthChallenges.delete(key);
+  for (const [key, value] of mobileAuthCodes) if (value.expiresAt < now) mobileAuthCodes.delete(key);
+}, 60 * 1000).unref();
+
+app.post('/api/auth/mobile-challenge/start', (req, res) => {
+  const state = String(req.body?.state || '');
+  const challenge = String(req.body?.challenge || '');
+  if (!/^[A-Za-z0-9_-]{32,64}$/.test(state) || !/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
+    return res.status(400).json({ ok: false, error: 'Desafío móvil inválido.' });
+  }
+  if (mobileAuthChallenges.size + mobileAuthCodes.size >= 10000) return res.status(503).json({ ok: false, error: 'Hay muchas verificaciones activas. Inténtalo más tarde.' });
+  mobileAuthChallenges.set(state, { challenge, expiresAt: Date.now() + 5 * 60 * 1000 });
+  res.json({ ok: true });
+});
+
+app.post('/api/auth/mobile-challenge/complete', async (req, res) => {
+  const state = String(req.body?.state || '');
+  const token = String(req.body?.turnstileToken || '');
+  const request = mobileAuthChallenges.get(state);
+  if (!request || request.expiresAt < Date.now()) {
+    mobileAuthChallenges.delete(state);
+    return res.status(401).json({ ok: false, error: 'La verificación expiró. Regresa a CodeHub e inténtalo otra vez.' });
+  }
+  if (!await validateTurnstile(token)) return res.status(403).json({ ok: false, error: 'No se pudo validar Turnstile.' });
+  if (mobileAuthCodes.size >= 10000) return res.status(503).json({ ok: false, error: 'No se pudo finalizar la verificación. Inténtalo otra vez.' });
+  mobileAuthChallenges.delete(state);
+  const code = base64url(crypto.randomBytes(24));
+  mobileAuthCodes.set(code, { state, challenge: request.challenge, turnstileToken: token, expiresAt: Date.now() + 2 * 60 * 1000 });
+  res.json({ ok: true, code });
+});
+
+app.post('/api/auth/mobile-challenge/exchange', (req, res) => {
+  const state = String(req.body?.state || '');
+  const code = String(req.body?.code || '');
+  const verifier = String(req.body?.verifier || '');
+  const entry = mobileAuthCodes.get(code);
+  if (!entry || entry.expiresAt < Date.now() || entry.state !== state) {
+    mobileAuthCodes.delete(code);
+    return res.status(401).json({ ok: false, error: 'Código de verificación inválido o expirado.' });
+  }
+  const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+  if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier) || challenge !== entry.challenge) {
+    return res.status(401).json({ ok: false, error: 'No se pudo confirmar el regreso a CodeHub.' });
+  }
+  mobileAuthCodes.delete(code);
+  res.json({ ok: true, turnstileToken: entry.turnstileToken });
+});
+
 // POST /api/auth/register — crear cuenta con email + contraseña
 app.post('/api/auth/register', async (req, res) => {
   const email    = String(req.body?.email || '').trim().toLowerCase();
@@ -1008,6 +1062,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 const GOOGLE_STATE_TTL = 10 * 60 * 1000; // vida útil del code PKCE (cookie)
 const GOOGLE_TOKEN_TTL = 5  * 60 * 1000; // vida útil del token de sesión
 const GOOGLE_PKCE_COOKIE = 'ch_google_pkce';
+const GOOGLE_NATIVE_COOKIE = 'ch_google_native';
 const googleTokens = new Map(); // token de un uso -> { user, session, expiresAt }
 
 function base64url(buf) {
@@ -1040,9 +1095,14 @@ app.get('/api/auth/google', (req, res) => {
 
   const verifier  = base64url(crypto.randomBytes(48));
   const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+  const nativeState = String(req.query.native_state || '');
+  const nativeChallenge = String(req.query.native_challenge || '');
+  const nativeFlow = /^[A-Za-z0-9_-]{32,64}$/.test(nativeState) && /^[A-Za-z0-9_-]{43}$/.test(nativeChallenge)
+    ? { state: nativeState, challenge: nativeChallenge } : null;
 
   // Guardar el code_verifier en una cookie httpOnly (viaja con el navegador)
   res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(GOOGLE_STATE_TTL / 1000)}`);
+  if (nativeFlow) res.append('Set-Cookie', `${GOOGLE_NATIVE_COOKIE}=${base64url(Buffer.from(JSON.stringify(nativeFlow)))}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${Math.floor(GOOGLE_STATE_TTL / 1000)}`);
 
   const callback = `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
   const url = `${supabaseUrl()}/auth/v1/authorize?` + new URLSearchParams({
@@ -1060,8 +1120,17 @@ app.get('/api/auth/google', (req, res) => {
 app.get('/api/auth/google/callback', async (req, res) => {
   const { code, error } = req.query;
   const FRONT = frontendUrl();
+  const nativeFlow = (() => {
+    try {
+      const raw = getCookie(req, GOOGLE_NATIVE_COOKIE);
+      const parsed = raw ? JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) : null;
+      return parsed && /^[A-Za-z0-9_-]{32,64}$/.test(parsed.state) && /^[A-Za-z0-9_-]{43}$/.test(parsed.challenge) ? parsed : null;
+    } catch { return null; }
+  })();
   const fail  = msg => {
     res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+    res.append('Set-Cookie', `${GOOGLE_NATIVE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+    if (nativeFlow) return res.redirect(`codehub://auth/google?state=${encodeURIComponent(nativeFlow.state)}&error=${encodeURIComponent(msg)}`);
     res.redirect(`${FRONT}/?auth=google&error=${encodeURIComponent(msg)}`);
   };
   if (error) return fail(String(error));
@@ -1104,11 +1173,14 @@ app.get('/api/auth/google/callback', async (req, res) => {
       expires_at: payload.expires_at || null,
       expires_in: payload.expires_in || null,
     },
+    nativeChallenge: nativeFlow?.challenge || null,
     expiresAt: Date.now() + GOOGLE_TOKEN_TTL,
   });
 
   // Borrar la cookie y redirigir al frontend con el token de un solo uso
   res.setHeader('Set-Cookie', `${GOOGLE_PKCE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+  res.append('Set-Cookie', `${GOOGLE_NATIVE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
+  if (nativeFlow) return res.redirect(`codehub://auth/google?state=${encodeURIComponent(nativeFlow.state)}&token=${encodeURIComponent(oneTime)}`);
   res.redirect(`${FRONT}/?auth=google&token=${oneTime}`);
 });
 
@@ -1117,8 +1189,15 @@ app.post('/api/auth/google/session', (req, res) => {
   const token = String(req.body?.token || '');
   if (!token) return res.status(400).json({ error: 'Falta el token' });
   const entry = googleTokens.get(token);
-  googleTokens.delete(token); // un solo uso
   if (!entry || entry.expiresAt < Date.now()) return res.status(401).json({ error: 'Sesión de Google no válida o expirada' });
+  if (entry.nativeChallenge) {
+    const verifier = String(req.body?.code_verifier || '');
+    const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier) || challenge !== entry.nativeChallenge) {
+      return res.status(401).json({ error: 'Verificación de sesión móvil inválida' });
+    }
+  }
+  googleTokens.delete(token); // un solo uso, después de validar PKCE móvil
   res.status(200).json({ ok: true, user: entry.user, session: entry.session });
 });
 

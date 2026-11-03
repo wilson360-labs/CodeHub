@@ -21,9 +21,13 @@ import java.util.Locale
 class NativeProfileActivity : Activity() {
     companion object {
         private const val LOGIN_REQUESTED = Activity.RESULT_FIRST_USER
+        const val RESULT_LOGGED_OUT = Activity.RESULT_FIRST_USER + 1
     }
 
-    private val token by lazy { intent.getStringExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN).orEmpty() }
+    private val token by lazy {
+        intent.getStringExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN).orEmpty()
+            .ifBlank { NativeAuthSessionStore.accessToken(this) }
+    }
     private val repository by lazy { WileChatRepository(token) }
     private var activeCall: Call? = null
     private lateinit var root: LinearLayout
@@ -160,6 +164,16 @@ class NativeProfileActivity : Activity() {
         content.addView(text("Las métricas de WIL.E se reinician cada día. Tus datos pertenecen a esta cuenta y no se comparten con otros usuarios.", 11f, muted).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(18) })
+        content.addView(action("Cerrar sesión") {
+            activeCall = repository.post("${WileChatRepository.BASE_URL}/api/auth/logout", JSONObject()) { _, _ ->
+                runOnUiThread {
+                    activeCall = null
+                    NativeAuthSessionStore.clear(this)
+                    setResult(RESULT_LOGGED_OUT)
+                    showSignedOut()
+                }
+            }
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(20) })
     }
 
     private fun showSignedOut() {

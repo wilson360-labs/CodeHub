@@ -68,6 +68,11 @@
         localStorage.removeItem(SESSION_KEY);
       }
     } catch (e) {}
+    try {
+      if (window.CodeHubNative && typeof window.CodeHubNative.syncAuthSession === 'function') {
+        window.CodeHubNative.syncAuthSession(JSON.stringify(s || null));
+      }
+    } catch (e) {}
     emit();
   }
   function emit() {
