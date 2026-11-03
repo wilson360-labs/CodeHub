@@ -3,6 +3,7 @@ package com.codehub.app
 import android.app.Activity
 import android.app.AlertDialog
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -43,20 +44,45 @@ import java.io.InputStream
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.UUID
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /** Native WIL.E COPILOT client. AI routing, tools, limits and memory remain server-owned. */
 class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     companion object {
         const val EXTRA_AUTH_TOKEN = "native_wile_auth_token"
+        const val EXTRA_AUTH_ACCOUNT_ID = "native_wile_auth_account_id"
         private const val API = WileChatRepository.BASE_URL
         private const val PICK_ATTACHMENT = 7101
         private const val SPEECH_INPUT = 7102
         private const val PREFS = "native_wile_chat"
+        private const val MIGRATION_PREFS = "native_wile_chat_meta_v2"
+        private const val LEGACY_CLEARED_KEY = "legacy_unscoped_history_cleared"
         private const val SESSION_KEY = "session_id"
         private const val HISTORY_KEY = "history"
         private const val MODE_KEY = "mode"
         private const val MAX_PDF_PAGES = 5
+
+        @JvmStatic
+        fun clearHistoryForAccount(context: Context, accountId: String) {
+            if (accountId.isBlank()) return
+            context.getSharedPreferences(conversationPreferencesName(accountId), Context.MODE_PRIVATE)
+                .edit().clear().apply()
+        }
+
+        private fun conversationPreferencesName(accountId: String): String {
+            if (accountId.isBlank()) return "native_wile_chat_v2_guest"
+            val digest = MessageDigest.getInstance("SHA-256").digest(accountId.toByteArray(Charsets.UTF_8))
+            val hex = "0123456789abcdef"
+            val key = buildString(digest.size * 2) {
+                digest.forEach { byte ->
+                    val value = byte.toInt() and 0xff
+                    append(hex[value ushr 4])
+                    append(hex[value and 0x0f])
+                }
+            }
+            return "native_wile_chat_v2_$key"
+        }
     }
 
     private data class ChatMessage(val role: String, var text: String, val mediaUrl: String? = null)
@@ -83,6 +109,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private val authToken by lazy {
         intent.getStringExtra(EXTRA_AUTH_TOKEN).orEmpty().ifBlank { NativeAuthSessionStore.accessToken(this) }
     }
+    private val accountId by lazy {
+        intent.getStringExtra(EXTRA_AUTH_ACCOUNT_ID).orEmpty()
+            .ifBlank { NativeAuthSessionStore.accountId(this) }
+            .ifBlank { NativeAuthSessionStore.accountIdForToken(authToken) }
+    }
+    private val chatPreferences by lazy {
+        getSharedPreferences(conversationPreferencesName(accountId), MODE_PRIVATE)
+    }
     private val repository by lazy { WileChatRepository(authToken) }
     private var thinkingView: TextView? = null
     private var streamingBodyView: TextView? = null
@@ -98,6 +132,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        clearLegacyUnscopedHistoryOnce()
         SystemBars.fit(this)
         window.statusBarColor = 0xFF090D16.toInt()
         window.navigationBarColor = 0xFF090D16.toInt()
@@ -106,12 +141,12 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
         }
-        sessionId = getSharedPreferences(PREFS, MODE_PRIVATE).getString(SESSION_KEY, null)
+        sessionId = chatPreferences.getString(SESSION_KEY, null)
             ?: "android-${UUID.randomUUID()}".also {
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(SESSION_KEY, it).apply()
+                chatPreferences.edit().putString(SESSION_KEY, it).apply()
             }
-        activeMode = Mode.entries.firstOrNull { it.id == getSharedPreferences(PREFS, MODE_PRIVATE).getString(MODE_KEY, "auto") } ?: Mode.AUTO
-        readRepliesAloud = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("read_replies", false)
+        activeMode = Mode.entries.firstOrNull { it.id == chatPreferences.getString(MODE_KEY, "auto") } ?: Mode.AUTO
+        readRepliesAloud = chatPreferences.getBoolean("read_replies", false)
         loadHistory()
         buildUi()
         renderHistory()
@@ -229,7 +264,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         modeRow.removeAllViews()
         Mode.entries.forEach { mode ->
             val on = mode == activeMode
-            val button = chip(mode.label, on) { activeMode = mode; getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(MODE_KEY, mode.id).apply(); renderModes() }
+            val button = chip(mode.label, on) { activeMode = mode; chatPreferences.edit().putString(MODE_KEY, mode.id).apply(); renderModes() }
             modeRow.addView(button, LinearLayout.LayoutParams(-2, dp(36)).apply { marginEnd = dp(7) })
         }
     }
@@ -353,7 +388,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             "/model" -> addAssistant("WIL.E COPILOT · enrutamiento multi-proveedor desde el backend de CodeHub.")
             "/jarvis" -> {
                 readRepliesAloud = arg.equals("on", true)
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("read_replies", readRepliesAloud).apply()
+                chatPreferences.edit().putBoolean("read_replies", readRepliesAloud).apply()
                 addAssistant(if (readRepliesAloud) "Lectura en voz alta activada. Usa /jarvis off para desactivarla." else "Lectura automática desactivada.")
             }
             "/skills" -> loadSkills()
@@ -509,7 +544,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun clearChat() {
         messages.clear()
         sessionId = "android-${UUID.randomUUID()}"
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(SESSION_KEY, sessionId).remove(HISTORY_KEY).apply()
+        chatPreferences.edit().putString(SESSION_KEY, sessionId).remove(HISTORY_KEY).apply()
         renderHistory()
         addAssistant("Chat nuevo. ¿En qué te ayudo?")
     }
@@ -743,11 +778,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             if (msg.mediaUrl?.startsWith("http") == true) row.put("media", msg.mediaUrl)
             array.put(row)
         }
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(HISTORY_KEY, array.toString()).apply()
+        chatPreferences.edit().putString(HISTORY_KEY, array.toString()).apply()
     }
 
     private fun loadHistory() {
-        val array = runCatching { JSONArray(getSharedPreferences(PREFS, MODE_PRIVATE).getString(HISTORY_KEY, "[]")) }.getOrDefault(JSONArray())
+        val array = runCatching { JSONArray(chatPreferences.getString(HISTORY_KEY, "[]")) }.getOrDefault(JSONArray())
         for (i in 0 until array.length()) {
             val row = array.optJSONObject(i) ?: continue
             messages.add(ChatMessage(row.optString("role"), row.optString("text"), row.optString("media").takeIf { it.isNotBlank() }))
@@ -758,6 +793,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun setBusy(busy: Boolean, label: String = "") { if (::status.isInitialized && label.isNotBlank()) status.text = label; if (::sendButton.isInitialized) sendButton.text = if (busy) "×" else "↑" }
     private fun copy(value: String) { (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("WIL.E", value)); Toast.makeText(this, "Copiado", Toast.LENGTH_SHORT).show() }
     private fun enc(value: String) = URLEncoder.encode(value, "UTF-8")
+
+    private fun clearLegacyUnscopedHistoryOnce() {
+        val migration = getSharedPreferences(MIGRATION_PREFS, MODE_PRIVATE)
+        if (migration.getBoolean(LEGACY_CLEARED_KEY, false)) return
+        // The old history had no owner id, so it cannot be safely assigned to an account.
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().clear().apply()
+        migration.edit().putBoolean(LEGACY_CLEARED_KEY, true).apply()
+    }
     private fun isImageGenerationRequest(value: String) = Regex("(?i)^(🎨|/img\\s)|\\b(genera|crea|diseña|dibuja|haz|generate|create)\\b.{0,30}\\b(imagen|foto|ilustración|logo|banner|avatar|icono|portada|thumbnail|arte|dibujo|image|picture|drawing)\\b").containsMatchIn(value)
     private fun rounded(fill: Int, radius: Int, stroke: Int) = GradientDrawable().apply { setColor(fill); cornerRadius = radius.toFloat(); setStroke(dp(1), stroke) }
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD }

@@ -73,6 +73,7 @@ public class CodeHubBridge {
             if (host == null || !("wilson360-labs.vercel.app".equalsIgnoreCase(host)
                     || "www.wilson360-labs.vercel.app".equalsIgnoreCase(host))) return;
             if (serializedSession == null || "null".equals(serializedSession.trim())) {
+                NativeAiChatActivity.clearHistoryForAccount(activity, NativeAuthSessionStore.accountId(activity));
                 NativeAuthSessionStore.clear(activity);
                 return;
             }

@@ -25,6 +25,7 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONArray
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
@@ -42,6 +43,7 @@ class NativeStoreActivity : Activity() {
         const val EXTRA_PACKAGE_NAME = "native_store_package_name"
         private const val API = "https://codehub-98s6.onrender.com/api/apps"
         private const val RATINGS_API = "https://codehub-98s6.onrender.com/api/ratings"
+        private const val CATALOG_CACHE_FILE = "native_store_catalog_v1.json"
         private val WINDOWS_APIS = listOf(
             "https://raw.githubusercontent.com/RookieEnough/Orion-Data/main/apps.json",
             "https://cdn.jsdelivr.net/gh/RookieEnough/Orion-Data@main/apps.json",
@@ -361,6 +363,17 @@ class NativeStoreActivity : Activity() {
         windowsCatalogLoading = true
         executor.execute {
             var connection: HttpURLConnection? = null
+            val cachedCatalog = readCatalogCache()
+            val cachedWindows = cachedCatalog.filter { it.platform == "Windows" }
+            if (cachedCatalog.isNotEmpty()) runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                apps.clear()
+                apps.addAll(cachedCatalog)
+                catalogLoaded = true
+                renderControls()
+                renderChips()
+                render()
+            }
             try {
                 connection = URL(API).openConnection() as HttpURLConnection
                 connection.connectTimeout = 12_000
@@ -382,9 +395,12 @@ class NativeStoreActivity : Activity() {
                 val ratings = fetchRatings()
                 loaded.replaceAll { app -> ratings[app.id]?.let { app.copy(ratingAverage = it.first, ratingCount = it.second) } ?: app }
                 loaded.sortBy { it.name.lowercase(Locale.ROOT) }
+                val withCachedWindows = loaded + cachedWindows
+                writeCatalogCache(withCachedWindows)
                 runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
                     apps.clear()
-                    apps.addAll(loaded)
+                    apps.addAll(withCachedWindows)
                     catalogLoaded = true
                     renderControls()
                     if (apps.none { it.category == category } && category != "Todas") category = "Todas"
@@ -394,12 +410,13 @@ class NativeStoreActivity : Activity() {
                 val windows = fetchWindowsCatalog()
                 windowsCatalogFailed = windows == null
                 windowsCatalogLoading = false
+                val refreshedCatalog = loaded + (windows ?: cachedWindows)
+                if (windows != null) writeCatalogCache(refreshedCatalog)
                 runOnUiThread {
-                    if (windows != null) {
-                        apps.removeAll { it.platform == "Windows" }
-                        apps.addAll(windows)
-                        if (selectedPlatform == "Windows") renderChips()
-                    }
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    apps.clear()
+                    apps.addAll(refreshedCatalog)
+                    if (selectedPlatform == "Windows") renderChips()
                     render()
                 }
             } catch (error: Exception) {
@@ -417,6 +434,34 @@ class NativeStoreActivity : Activity() {
     }
 
     /** Windows entries are browse-only on Android; the source catalog stays owned by Orion Data. */
+    private fun readCatalogCache(): List<AppEntry> {
+        val file = File(filesDir, CATALOG_CACHE_FILE)
+        if (!file.isFile) return emptyList()
+        return runCatching {
+            val rows = JSONArray(file.readText(Charsets.UTF_8))
+            buildList {
+                for (index in 0 until rows.length()) {
+                    val row = rows.optJSONObject(index) ?: continue
+                    AppEntry.fromCache(row)?.let(::add)
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun writeCatalogCache(entries: List<AppEntry>) {
+        runCatching {
+            val rows = JSONArray()
+            entries.forEach { rows.put(it.toCacheJson()) }
+            val target = File(filesDir, CATALOG_CACHE_FILE)
+            val temporary = File(filesDir, "$CATALOG_CACHE_FILE.tmp")
+            temporary.writeText(rows.toString(), Charsets.UTF_8)
+            if (!temporary.renameTo(target)) {
+                target.writeText(rows.toString(), Charsets.UTF_8)
+                temporary.delete()
+            }
+        }
+    }
+
     private fun fetchWindowsCatalog(): List<AppEntry>? {
         WINDOWS_APIS.forEach { endpoint ->
             var connection: HttpURLConnection? = null
@@ -1483,7 +1528,39 @@ class NativeStoreActivity : Activity() {
         val ratingAverage: Double = 0.0,
         val ratingCount: Int = 0,
     ) {
+        fun toCacheJson() = JSONObject()
+            .put("id", id).put("name", name).put("description", description)
+            .put("category", category).put("version", version).put("repo", repo)
+            .put("imageUrl", imageUrl).put("changelog", changelog).put("verified", verified)
+            .put("tag", tag).put("platform", platform).put("downloadUrl", downloadUrl)
+            .put("packageName", packageName ?: "").put("updatedAt", updatedAt)
+            .put("ratingAverage", ratingAverage).put("ratingCount", ratingCount)
+
         companion object {
+            fun fromCache(row: JSONObject): AppEntry? {
+                val id = row.optString("id")
+                val name = row.optString("name")
+                if (id.isBlank() || name.isBlank()) return null
+                return AppEntry(
+                    id = id,
+                    name = name,
+                    description = row.optString("description"),
+                    category = row.optString("category", "Utilidades"),
+                    version = row.optString("version"),
+                    repo = row.optString("repo"),
+                    imageUrl = row.optString("imageUrl"),
+                    changelog = row.optString("changelog"),
+                    verified = row.optBoolean("verified"),
+                    tag = row.optString("tag"),
+                    platform = row.optString("platform", "Android"),
+                    downloadUrl = row.optString("downloadUrl"),
+                    packageName = row.optString("packageName").takeIf { it.isNotBlank() },
+                    updatedAt = row.optString("updatedAt"),
+                    ratingAverage = row.optDouble("ratingAverage"),
+                    ratingCount = row.optInt("ratingCount"),
+                )
+            }
+
             fun from(row: JSONObject) = AppEntry(
                 id = row.optString("appId"),
                 name = row.optString("nombre", row.optString("appId")),

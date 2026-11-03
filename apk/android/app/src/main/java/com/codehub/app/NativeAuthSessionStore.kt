@@ -74,6 +74,26 @@ internal object NativeAuthSessionStore {
 
     fun accessToken(context: Context): String = read(context)?.optString("access_token").orEmpty()
 
+    /** Stable account key used to isolate local, account-owned data such as chat history. */
+    @JvmStatic
+    fun accountId(context: Context): String {
+        val session = read(context) ?: return ""
+        val userId = session.optJSONObject("user")?.optString("id").orEmpty()
+            .ifBlank { session.optString("id") }
+        return userId.ifBlank { accountIdForToken(session.optString("access_token")) }
+    }
+
+    /** Uses the signed access token subject only as a local key fallback, never as server-side auth. */
+    @JvmStatic
+    fun accountIdForToken(accessToken: String): String {
+        val payload = accessToken.split('.').getOrNull(1).orEmpty()
+        if (payload.isBlank()) return ""
+        return runCatching {
+            val decoded = Base64.decode(payload, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+            JSONObject(String(decoded, StandardCharsets.UTF_8)).optString("sub")
+        }.getOrDefault("")
+    }
+
     @JvmStatic
     fun webSession(context: Context): String? {
         val stored = read(context) ?: return null

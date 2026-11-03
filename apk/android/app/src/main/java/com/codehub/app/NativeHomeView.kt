@@ -47,28 +47,28 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             LayoutParams(-1, -2).apply { topMargin = dp(28) })
 
         val primaryRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        primaryRow.addView(actionCard("▦", "CodeHub Store", "Apps open source para Android", indigo) {
+        primaryRow.addView(actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
             listener.onOpenStore()
         }, weightedCard())
-        primaryRow.addView(actionCard("↓", "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
+        primaryRow.addView(actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
             listener.onOpenMyApps()
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
 
         val creatorRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        creatorRow.addView(actionCard("♫", "CodeBeat", "Música y extensiones", cyan) {
+        creatorRow.addView(actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
             listener.onOpenCodeBeat()
         }, weightedCard())
-        creatorRow.addView(actionCard("✦", "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+        creatorRow.addView(actionCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
             listener.onOpenCopilot()
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         val exploreRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        exploreRow.addView(actionCard("☼", "Clima", "Pronóstico y alertas", cyan) {
+        exploreRow.addView(actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
             listener.onOpenWebsite("/#weather-section")
         }, weightedCard())
-        exploreRow.addView(actionCard("⌘", "Herramientas", "Utilidades de CodeHub", indigo) {
+        exploreRow.addView(actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -111,10 +111,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             background = rounded(0xFF1B1C36.toInt(), dp(20))
         })
         addView(TextView(context).apply {
-            text = "👤"
+            text = ""
             textSize = 17f
             gravity = Gravity.CENTER
             contentDescription = "Abrir perfil de usuario"
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_home_profile, 0, 0, 0)
             background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
             isClickable = true
             isFocusable = true
@@ -184,7 +185,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(label(subtitle, 12f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
 
-    private fun actionCard(icon: String, title: String, description: String, accent: Int, onClick: () -> Unit): View =
+    private fun actionCard(icon: Int, title: String, description: String, accent: Int, onClick: () -> Unit): View =
         LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(14), dp(14), dp(12), dp(14))
@@ -192,18 +193,20 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             isClickable = true
             isFocusable = true
             elevation = dp(2).toFloat()
+            contentDescription = "$title. $description"
             setOnClickListener { onClick() }
-            addView(TextView(context).apply {
-                text = icon
-                textSize = 24f
-                setTextColor(accent)
-                typeface = Typeface.DEFAULT_BOLD
+            addView(ImageView(context).apply {
+                setImageResource(icon)
+                imageTintList = ColorStateList.valueOf(accent)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            })
-            addView(label(title, 14f, Color.WHITE, true), LayoutParams(-1, -2).apply { topMargin = dp(9) })
+            }, LayoutParams(dp(28), dp(28)))
+            addView(label(title, 14f, Color.WHITE, true).apply {
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LayoutParams(-1, -2).apply { topMargin = dp(9) })
             addView(label(description, 11f, muted, false).apply {
                 maxLines = 2
                 setLineSpacing(dp(2).toFloat(), 1f)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
         }
 

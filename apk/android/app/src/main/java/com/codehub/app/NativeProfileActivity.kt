@@ -168,6 +168,7 @@ class NativeProfileActivity : Activity() {
             activeCall = repository.post("${WileChatRepository.BASE_URL}/api/auth/logout", JSONObject()) { _, _ ->
                 runOnUiThread {
                     activeCall = null
+                    NativeAiChatActivity.clearHistoryForAccount(this, NativeAuthSessionStore.accountId(this))
                     NativeAuthSessionStore.clear(this)
                     setResult(RESULT_LOGGED_OUT)
                     showSignedOut()

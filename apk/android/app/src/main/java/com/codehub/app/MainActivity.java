@@ -1034,6 +1034,9 @@ public class MainActivity extends Activity {
             if (token != null && !token.isEmpty()) {
                 Intent intent = new Intent(this, activityClass);
                 intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN, token);
+                String accountId = NativeAuthSessionStore.accountId(this);
+                if (accountId.isEmpty()) accountId = NativeAuthSessionStore.accountIdForToken(token);
+                if (!accountId.isEmpty()) intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_ACCOUNT_ID, accountId);
                 startActivityForResult(intent, requestCode);
             } else launchNativeWithWebSession(activityClass, requestCode);
         }));
@@ -1052,14 +1055,22 @@ public class MainActivity extends Activity {
             launchGuest.run();
             return;
         }
-        webView.evaluateJavascript("(function(){try{var s=JSON.parse(sessionStorage.getItem('ch_auth_session')||localStorage.getItem('ch_auth_session')||'null');return s&&s.token?s.token:''}catch(e){return ''}})()", value -> {
+        webView.evaluateJavascript("(function(){try{var s=JSON.parse(sessionStorage.getItem('ch_auth_session')||localStorage.getItem('ch_auth_session')||'null');return {token:s&&s.token?s.token:'',accountId:s&&s.user&&s.user.id?s.user.id:(s&&s.id?s.id:'')}}catch(e){return {token:'',accountId:''}}})()", value -> {
             String token = "";
+            String accountId = "";
             try {
-                Object parsed = new org.json.JSONTokener(value == null ? "\"\"" : value).nextValue();
-                if (parsed instanceof String) token = (String) parsed;
+                Object parsed = new org.json.JSONTokener(value == null ? "{}" : value).nextValue();
+                if (parsed instanceof org.json.JSONObject) {
+                    org.json.JSONObject session = (org.json.JSONObject) parsed;
+                    token = session.optString("token");
+                    accountId = session.optString("accountId");
+                }
             } catch (Exception ignored) {}
+            if (accountId.isEmpty()) accountId = NativeAuthSessionStore.accountId(this);
+            if (accountId.isEmpty()) accountId = NativeAuthSessionStore.accountIdForToken(token);
             Intent intent = new Intent(this, activityClass);
             if (!token.isEmpty()) intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_TOKEN, token);
+            if (!accountId.isEmpty()) intent.putExtra(NativeAiChatActivity.EXTRA_AUTH_ACCOUNT_ID, accountId);
             startActivityForResult(intent, requestCode);
         });
     }
