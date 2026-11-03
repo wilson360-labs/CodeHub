@@ -2,6 +2,8 @@ package com.codehub.app
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -118,7 +120,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         getSharedPreferences(conversationPreferencesName(accountId), MODE_PRIVATE)
     }
     private val repository by lazy { WileChatRepository(authToken) }
-    private var thinkingView: TextView? = null
+    private var thinkingView: View? = null
+    private var thinkingLabelView: TextView? = null
+    private val thinkingAnimations = mutableListOf<ObjectAnimator>()
     private var streamingBodyView: TextView? = null
     private lateinit var messageList: LinearLayout
     private lateinit var messageScroll: ScrollView
@@ -304,11 +308,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         messages.add(assistant)
         persistHistory()
         renderHistory()
-        thinkingView = text("WIL.E está pensando…", 13f, 0xFFAEBBCE.toInt()).apply {
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(0xFF171F2D.toInt(), dp(16), 0xFF2A3649.toInt())
-        }
-        messageList.addView(thinkingView)
+        showThinking("WIL.E está escribiendo")
         scrollToBottom()
         status.text = "Conectando con los proveedores de IA…"
         sendButton.text = "×"
@@ -363,7 +363,55 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         streamingBodyView = null
     }
 
-    private fun finishThinking() { thinkingView?.let { messageList.removeView(it) }; thinkingView = null }
+    private fun showThinking(label: String) {
+        if (!::messageList.isInitialized) return
+        thinkingLabelView?.text = label
+        if (thinkingView != null) return
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(13), dp(10), dp(14), dp(10))
+            background = rounded(0xFF171F2D.toInt(), dp(16), 0xFF2A4654.toInt())
+        }
+        val spinner = ProgressBar(this, null, android.R.attr.progressBarStyleSmall).apply {
+            isIndeterminate = true
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(0xFF67D8E8.toInt())
+            contentDescription = "WIL.E está generando una respuesta"
+        }
+        row.addView(spinner, LinearLayout.LayoutParams(dp(18), dp(18)))
+        val labelView = text(label, 12f, 0xFFD4E2EE.toInt(), true)
+        thinkingLabelView = labelView
+        row.addView(labelView, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(9) })
+
+        val dots = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        repeat(3) { index ->
+            val dot = text("•", 16f, 0xFF67D8E8.toInt(), true).apply { gravity = Gravity.CENTER }
+            dots.addView(dot, LinearLayout.LayoutParams(dp(9), dp(18)))
+            listOf(
+                ObjectAnimator.ofFloat(dot, View.TRANSLATION_Y, 0f, -dp(4).toFloat(), 0f),
+                ObjectAnimator.ofFloat(dot, View.ALPHA, .35f, 1f, .35f),
+            ).forEach { animator ->
+                animator.duration = 720L
+                animator.startDelay = index * 140L
+                animator.repeatCount = ValueAnimator.INFINITE
+                animator.start()
+                thinkingAnimations.add(animator)
+            }
+        }
+        row.addView(dots, LinearLayout.LayoutParams(-2, dp(20)).apply { marginStart = dp(5) })
+        thinkingView = row
+        messageList.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+        scrollToBottom()
+    }
+
+    private fun finishThinking() {
+        thinkingAnimations.forEach { it.cancel() }
+        thinkingAnimations.clear()
+        thinkingView?.let { if (::messageList.isInitialized) messageList.removeView(it) }
+        thinkingView = null
+        thinkingLabelView = null
+    }
 
     private fun createStreamingBody(): TextView {
         val wrapper = messageList.getChildAt(messageList.childCount - 1) as? LinearLayout
@@ -790,7 +838,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun scrollToBottom() { if (::messageScroll.isInitialized) messageScroll.post { messageScroll.fullScroll(View.FOCUS_DOWN) } }
-    private fun setBusy(busy: Boolean, label: String = "") { if (::status.isInitialized && label.isNotBlank()) status.text = label; if (::sendButton.isInitialized) sendButton.text = if (busy) "×" else "↑" }
+    private fun setBusy(busy: Boolean, label: String = "") {
+        if (::status.isInitialized && label.isNotBlank()) status.text = label
+        if (busy) showThinking(label.ifBlank { "WIL.E está trabajando" }) else finishThinking()
+        if (::sendButton.isInitialized) sendButton.text = if (busy) "×" else "↑"
+    }
     private fun copy(value: String) { (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("WIL.E", value)); Toast.makeText(this, "Copiado", Toast.LENGTH_SHORT).show() }
     private fun enc(value: String) = URLEncoder.encode(value, "UTF-8")
 
@@ -808,7 +860,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun smallAction(label: String, description: String, action: () -> Unit) = TextView(this).apply { text = label; contentDescription = description; textSize = 20f; gravity = Gravity.CENTER; setTextColor(0xFFDCE6F5.toInt()); isClickable = true; setOnClickListener { action() } }
 
     override fun onInit(statusCode: Int) { ttsReady = statusCode == TextToSpeech.SUCCESS; if (ttsReady) tts.language = Locale("es", "GT") }
-    override fun onDestroy() { activeCall?.cancel(); if (::tts.isInitialized) { tts.stop(); tts.shutdown() }; super.onDestroy() }
+    override fun onDestroy() { activeCall?.cancel(); finishThinking(); if (::tts.isInitialized) { tts.stop(); tts.shutdown() }; super.onDestroy() }
 
     private fun Boolean?.orFalse() = this ?: false
 }

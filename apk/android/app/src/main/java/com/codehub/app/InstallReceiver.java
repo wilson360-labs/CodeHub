@@ -1,6 +1,9 @@
 package com.codehub.app;
 
 import android.app.DownloadManager;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,10 +13,13 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
+import android.content.pm.PackageManager;
+import androidx.core.app.NotificationCompat;
 
 import java.io.File;
 
 public class InstallReceiver extends BroadcastReceiver {
+    private static final String UPDATE_CHANNEL = "codehub_apk_updates";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -60,7 +66,7 @@ public class InstallReceiver extends BroadcastReceiver {
 
         // file:// scheme — direct path
         if ("file".equals(fileUri.getScheme())) {
-            installApk(context, new File(fileUri.getPath()));
+            notifyInstallApk(context, new File(fileUri.getPath()), downloadId);
             return;
         }
 
@@ -79,28 +85,55 @@ public class InstallReceiver extends BroadcastReceiver {
             in.close();
             pfd.close();
 
-            installApk(context, tmpApk);
+            notifyInstallApk(context, tmpApk, downloadId);
         } catch (Exception e) {
             // Fallback: try the old path
             File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File apk = new File(downloads, "CodeHub-update.apk");
             if (apk.exists()) {
-                installApk(context, apk);
+                notifyInstallApk(context, apk, downloadId);
             }
         }
     }
 
-    private void installApk(Context context, File apkFile) {
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    private void notifyInstallApk(Context context, File apkFile, long downloadId) {
+        if (apkFile == null || !apkFile.isFile()) return;
+        // Android 13+: if notifications are disabled, DownloadManager's own
+        // completed-download notification remains available as the fallback.
+        if (Build.VERSION.SDK_INT >= 33
+                && context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) return;
+
+        NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (manager == null || !manager.areNotificationsEnabled()) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && manager.getNotificationChannel(UPDATE_CHANNEL) == null) {
+            manager.createNotificationChannel(new NotificationChannel(
+                UPDATE_CHANNEL, "Actualizaciones de CodeHub", NotificationManager.IMPORTANCE_DEFAULT));
+        }
+
+        try {
             Uri contentUri = androidx.core.content.FileProvider.getUriForFile(
                 context, context.getPackageName() + ".fileprovider", apkFile);
-            intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
-        } else {
-            intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
+            Intent installIntent = new Intent(Intent.ACTION_VIEW)
+                .setDataAndType(contentUri, "application/vnd.android.package-archive")
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent installPendingIntent = PendingIntent.getActivity(
+                context, (int) (downloadId & 0x7fffffff), installIntent, flags);
+
+            NotificationCompat.Builder notification = new NotificationCompat.Builder(context, UPDATE_CHANNEL)
+                .setSmallIcon(R.drawable.ic_launcher_real)
+                .setContentTitle("Actualización de CodeHub lista")
+                .setContentText("Toca para abrir el instalador del sistema.")
+                .setCategory(NotificationCompat.CATEGORY_SYSTEM)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .setContentIntent(installPendingIntent);
+            manager.notify((int) (downloadId & 0x7fffffff), notification.build());
+        } catch (Exception ignored) {
+            // DownloadManager keeps its completed-download notification visible.
         }
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(intent);
     }
 }
