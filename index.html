@@ -1780,28 +1780,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         </div>
                     </div>
 
-                    <!-- Reproductor de música en streaming (CodeBeat) -->
-                    <div class="sys-card dev-card-music" id="dev-music-btn" role="button" tabindex="0" aria-label="Abrir CodeBeat, el reproductor de música en streaming">
-                        <span class="cb-halo" aria-hidden="true"></span>
-                        <div class="sys-card-head">
-                            <span class="cb-logo" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M9 3 L9 17.5 A3 3 0 1 1 7 14.5 L7 7 L17 5 L17 15.5 A3 3 0 1 1 15 12.5 L15 3 z"/></svg>
-                                <span class="cb-eq"><i></i><i></i><i></i><i></i></span>
-                            </span>
-                            <div class="sys-head-t">
-                                <h3>CodeBeat <span class="cb-flame" aria-hidden="true">🔥</span><span class="cb-badge">PRO</span></h3>
-                                <span class="sys-muted">Streaming, sin conexión y extensiones</span>
-                            </div>
-                            <i class="fas fa-chevron-right dev-card-music-arrow" aria-hidden="true"></i>
-                        </div>
-                        <p class="cb-desc">Tu música dentro de CodeHub: reproductor flotante con controles en la barra de notificaciones, compatible con Spotify, YouTube Music y tus archivos locales.</p>
-                        <div class="cb-chips">
-                            <span class="cb-chip"><i class="fab fa-spotify" aria-hidden="true"></i> Spotify</span>
-                            <span class="cb-chip"><i class="fab fa-youtube" aria-hidden="true"></i> YouTube Music</span>
-                            <span class="cb-chip"><i class="fas fa-puzzle-piece" aria-hidden="true"></i> Más</span>
-                        </div>
-                    </div>
-
                     <!-- Respaldo 1-tap -->
                     <div class="sys-card dev-card-backup">
                         <div class="sys-card-head">
@@ -1956,20 +1934,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
           });
           var downloadsBtn = document.getElementById('dev-downloads-btn');
           if (downloadsBtn) downloadsBtn.addEventListener('click', function () { try { native.openDownloads(); } catch (e) {} });
-          var musicBtn = document.getElementById('dev-music-btn');
-          if (musicBtn) {
-            var openMusic = function () {
-              try {
-                if (native && typeof native.openMusic === 'function') native.openMusic();
-                else { if (typeof toast === 'function') toast('El reproductor está disponible en el APK', 'info', 3000); }
-              } catch (e) {}
-            };
-            musicBtn.addEventListener('click', openMusic);
-            musicBtn.addEventListener('keydown', function (e) {
-              if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); openMusic(); }
-            });
-          }
-
           var exportBtn = document.getElementById('dev-export-btn');
           if (exportBtn && typeof native.saveBackupFile === 'function') {
             exportBtn.addEventListener('click', function () {
@@ -2508,13 +2472,6 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
                         icon: 'fa-solid fa-code-branch',
                         title: 'Catálogo Open Source',
                         text: 'Apps 100% código abierto, verificadas contra GitHub. Incluye Windows Enhance para recuperación y optimización.'
-                    },
-                    {
-                        selector: '#dev-music-btn',
-                        emoji: '🔥',
-                        title: 'CodeBeat — música en streaming',
-                        text: 'El reproductor de CodeHub. Abre tus fuentes (Spotify, YouTube Music, Deezer y más), escucha en streaming o sin conexión y no pares la música al navegar: el control flotante te deja pausar, cambiar de pista o volver al reproductor.',
-                        optional: true
                     }
                 ], {
                     delay: 0,

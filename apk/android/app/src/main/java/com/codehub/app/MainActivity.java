@@ -139,6 +139,7 @@ public class MainActivity extends Activity {
         mainFrame.addView(nativeHome, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         nativeSplash = new NativeSplashView(this);
+        nativeSplash.setOnDismissed(() -> nativeHome.playEntrance());
         mainFrame.addView(nativeSplash, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         rootLayout.addView(mainFrame, new LinearLayout.LayoutParams(

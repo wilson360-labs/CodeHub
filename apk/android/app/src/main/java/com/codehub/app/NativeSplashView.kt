@@ -29,8 +29,11 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     private var dismissRequested = false
     private var dismissStartedAt = 0L
     private var framePosted = false
+    private var onDismissed: (() -> Unit)? = null
     private lateinit var logoView: View
     private lateinit var orbitalRings: OrbitalRingsView
+    private lateinit var auroraBackground: AuroraBackground
+    private lateinit var haloView: View
     private val progressBar: ProgressBar
     private val progressLabel: TextView
     private val statusLabel: TextView
@@ -40,7 +43,8 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         isFocusable = true
         setBackgroundColor(Color.rgb(21, 21, 34))  // 0xFF080B11 brand bg
 
-        addView(AuroraBackground(context), LayoutParams(-1, -1))
+        auroraBackground = AuroraBackground(context)
+        addView(auroraBackground, LayoutParams(-1, -1))
 
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -48,13 +52,13 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         }
         val logoSize = dp(194)
         val logoFrame = FrameLayout(context)
-        val halo = View(context).apply {
+        haloView = View(context).apply {
             background = android.graphics.drawable.GradientDrawable().apply {
                 shape = android.graphics.drawable.GradientDrawable.OVAL
                 setColor(0x1F38EF7D.toInt())
             }
         }
-        logoFrame.addView(halo, LayoutParams(logoSize, logoSize, Gravity.CENTER))
+        logoFrame.addView(haloView, LayoutParams(logoSize, logoSize, Gravity.CENTER))
         orbitalRings = OrbitalRingsView(context)
         logoFrame.addView(orbitalRings, LayoutParams(logoSize, logoSize, Gravity.CENTER))
 
@@ -165,6 +169,11 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         }
     }
 
+    /** Runs once the splash has fully faded, so the home entrance is visible. */
+    fun setOnDismissed(callback: () -> Unit) {
+        onDismissed = callback
+    }
+
     /** Keeps the splash visible briefly for a polished transition, even on fast networks. */
     fun dismiss() {
         if (dismissRequested || dismissed) return
@@ -194,6 +203,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
 
         val now = SystemClock.elapsedRealtime()
         val elapsed = now - startedAt
+        auroraBackground.setAnimationTime(elapsed)
         val entrance = (elapsed / 720f).coerceIn(0f, 1f)
         val easedEntrance = 1f - (1f - entrance) * (1f - entrance) * (1f - entrance)
         alpha = (elapsed / 450f).coerceIn(0f, 1f)
@@ -202,6 +212,8 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
         val floatPhase = ((elapsed - 720L).coerceAtLeast(0L) % 3_000L) / 3_000.0
         logoView.translationY = (-dp(5) * ((1.0 - kotlin.math.cos(floatPhase * Math.PI * 2.0)) / 2.0)).toFloat()
         orbitalRings.setRotationDegrees((elapsed % 7_000L) * 360f / 7_000f)
+        val pulse = ((kotlin.math.sin(elapsed / 2_250.0 * Math.PI * 2.0) + 1.0) / 2.0).toFloat()
+        haloView.alpha = .62f + .38f * pulse
 
         if (dismissStartedAt > 0L) {
             val exit = ((now - dismissStartedAt) / 420f).coerceIn(0f, 1f)
@@ -211,6 +223,8 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
             if (exit >= 1f) {
                 dismissed = true
                 visibility = View.GONE
+                onDismissed?.invoke()
+                onDismissed = null
                 return@FrameCallback
             }
         }
@@ -278,8 +292,26 @@ private class OrbitalRingsView(context: Context) : View(context) {
         canvas.save()
         canvas.rotate(rotation, cx, cy)
         canvas.drawArc(bounds, 0f, 330f, false, paint)
+        orbitDotPaint.color = 0xFF6366F1.toInt()
         canvas.drawCircle(cx, cy - radius, 4f * density, orbitDotPaint)
         canvas.restore()
+
+        // Two orbit sparks echo the web splash's independent orbital dots.
+        val dotOrbit = radius - 10f * density
+        val phase = Math.toRadians((rotation * 1.72f).toDouble())
+        canvas.drawCircle(
+            cx + kotlin.math.cos(phase).toFloat() * dotOrbit,
+            cy + kotlin.math.sin(phase).toFloat() * dotOrbit,
+            2.4f * density,
+            orbitDotPaint.apply { color = 0xFF22D3EE.toInt() },
+        )
+        val phaseTwo = phase + Math.PI * 1.28
+        canvas.drawCircle(
+            cx + kotlin.math.cos(phaseTwo).toFloat() * (dotOrbit - 5f * density),
+            cy + kotlin.math.sin(phaseTwo).toFloat() * (dotOrbit - 5f * density),
+            2f * density,
+            orbitDotPaint.apply { color = 0xFF38EF7D.toInt() },
+        )
 
         paint.shader = null
         paint.color = 0x8838EF7D.toInt()
@@ -295,9 +327,10 @@ private class OrbitalRingsView(context: Context) : View(context) {
 
 }
 
-/** Static star field and soft color blooms matching the original web splash palette. */
+/** Animated star field and drifting color blooms matching the web splash palette. */
 private class AuroraBackground(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var animationTime = 0L
     private val stars = Array(42) { index ->
         val x = ((index * 73 + 19) % 997) / 997f
         val y = ((index * 137 + 41) % 991) / 991f
@@ -305,30 +338,44 @@ private class AuroraBackground(context: Context) : View(context) {
         Triple(x, y, radius)
     }
 
+    fun setAnimationTime(elapsed: Long) {
+        animationTime = elapsed
+        invalidate()
+    }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val w = width.toFloat()
         val h = height.toFloat()
         val radius = maxOf(w, h) * .62f
+        val phase = animationTime / 16_000.0 * Math.PI * 2.0
+        val driftX = kotlin.math.sin(phase).toFloat()
+        val driftY = kotlin.math.cos(phase).toFloat()
         paint.shader = android.graphics.RadialGradient(
-            w * .5f, h * .18f, radius,
+            w * (.5f + .12f * driftX), h * (.18f + .08f * driftY), radius,
             intArrayOf(0x2B38EF7D.toInt(), 0x0A38EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
         )
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = android.graphics.RadialGradient(
-            w * .82f, h * .68f, radius * .68f,
+            w * (.82f - .08f * driftX), h * (.68f - .1f * driftY), radius * .68f,
             intArrayOf(0x1938EF7D.toInt(), Color.TRANSPARENT), null, android.graphics.Shader.TileMode.CLAMP,
         )
         canvas.drawRect(0f, 0f, w, h, paint)
         paint.shader = null
         stars.forEachIndexed { index, (x, y, starRadius) ->
-            paint.color = when (index % 4) {
-                0 -> 0xBFFFFFFF.toInt()
-                1 -> 0xCC38EF7D.toInt()
-                2 -> 0xB338EF7D.toInt()
-                else -> 0xB3E8C978.toInt()
+            val baseAlpha = when (index % 4) {
+                0 -> 191
+                1 -> 204
+                2 -> 179
+                else -> 179
             }
+            val twinkle = .68f + .32f * ((kotlin.math.sin(animationTime / (780.0 + index * 37.0) + index) + 1.0) / 2.0).toFloat()
+            val color = when (index % 4) {
+                0 -> Color.WHITE
+                1, 2 -> 0xFF38EF7D.toInt()
+                else -> 0xFFE8C978.toInt()
+            }
+            paint.color = Color.argb((baseAlpha * twinkle).toInt(), Color.red(color), Color.green(color), Color.blue(color))
             canvas.drawCircle(x * w, y * h, starRadius * resources.displayMetrics.density, paint)
         }
     }

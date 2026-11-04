@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -28,6 +29,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val muted = 0xFFA7A9BC.toInt()
     private val indigo = 0xFF818CF8.toInt()
     private val cyan = 0xFF22D3EE.toInt()
+    private val entranceTargets = mutableListOf<View>()
+    private var entrancePlayed = false
     init {
         orientation = VERTICAL
         setBackgroundColor(0xFF080B11.toInt())
@@ -43,8 +46,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
         }
-        content.addView(buildHero(), LayoutParams(-1, -2))
-        content.addView(sectionTitle("Tu CodeHub", "Tus espacios principales, listos en Android"),
+        addEntranceTarget(content, buildHero(), LayoutParams(-1, -2))
+        addEntranceTarget(content, sectionTitle("Tu CodeHub", "Tus espacios principales, listos en Android"),
             LayoutParams(-1, -2).apply { topMargin = dp(28) })
 
         val primaryRow = LinearLayout(context).apply { orientation = HORIZONTAL }
@@ -54,7 +57,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         primaryRow.addView(actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
             listener.onOpenMyApps()
         }, weightedCard().apply { marginStart = dp(10) })
-        content.addView(primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        addEntranceTarget(content, primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
 
         val creatorRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         creatorRow.addView(actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
@@ -63,9 +66,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         creatorRow.addView(actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
             listener.onOpenCodeStream()
         }, weightedCard().apply { marginStart = dp(10) })
-        content.addView(creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        content.addView(featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+        addEntranceTarget(content, featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
             listener.onOpenCopilot()
         }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
@@ -76,13 +79,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         exploreRow.addView(actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")
         }, weightedCard().apply { marginStart = dp(10) })
-        content.addView(exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addEntranceTarget(content, exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        content.addView(featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
+        addEntranceTarget(content, featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
             listener.onOpenWebsite("/pages/tools.html#opt-card")
         }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        content.addView(buildWebsiteCard(), LayoutParams(-1, -2).apply { topMargin = dp(18) })
+        addEntranceTarget(content, buildWebsiteCard(), LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
             text = "CodeHub · Guatemala"
             textSize = 11f
@@ -92,6 +95,28 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         scroll.addView(content)
         addView(scroll, LayoutParams(-1, 0, 1f))
+    }
+
+    /** Starts a short staggered reveal after the native splash has faded away. */
+    fun playEntrance() {
+        if (entrancePlayed) return
+        entrancePlayed = true
+        entranceTargets.forEachIndexed { index, view ->
+            view.alpha = 0f
+            view.translationY = dp(14).toFloat()
+            view.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(index * 55L)
+                .setDuration(360L)
+                .setInterpolator(DecelerateInterpolator(1.6f))
+                .start()
+        }
+    }
+
+    private fun addEntranceTarget(parent: LinearLayout, view: View, params: LayoutParams) {
+        parent.addView(view, params)
+        entranceTargets.add(view)
     }
 
     private fun buildHeader(): View = LinearLayout(context).apply {
