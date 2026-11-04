@@ -1,6 +1,7 @@
 package com.codehub.app
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Rect
@@ -9,9 +10,14 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 
@@ -31,6 +37,17 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val indigo = 0xFF818CF8.toInt()
     private val cyan = 0xFF22D3EE.toInt()
     private val entranceTargets = mutableListOf<View>()
+    private val tourPrefs: SharedPreferences by lazy { context.getSharedPreferences("codehub_store", Context.MODE_PRIVATE) }
+    private var storeCard: View? = null
+    private var appsCard: View? = null
+    private var codeBeatCard: View? = null
+    private var codeStreamCard: View? = null
+    private var copilotCard: View? = null
+    private var weatherCard: View? = null
+    private var toolsCard: View? = null
+    private var optimizerCard: View? = null
+    private var tourStepIndex = 0
+    private val tourSteps = mutableListOf<Triple<View?, String, String>>()
     private var entrancePlayed = false
     private lateinit var installedMetric: TextView
     private lateinit var downloadsMetric: TextView
@@ -53,39 +70,41 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus apps principales, listas en Android"),
             LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
-        val storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
+        storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
             listener.onOpenStore()
         }
-        val appsCard = actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
+        appsCard = actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
             listener.onOpenMyApps()
         }
         addEntranceTarget(content, actionPair(storeCard, appsCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
         addEntranceTarget(content, buildActivityCard(), LayoutParams(-1, -2).apply { topMargin = dp(12) })
         addEntranceTarget(content, buildHero(), LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
-        val codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
+        codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
             listener.onOpenCodeBeat()
         }
-        val codeStreamCard = actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
+        codeStreamCard = actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
             listener.onOpenCodeStream()
         }
         addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        addEntranceTarget(content, featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+        val copilotCard = featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
             listener.onOpenCopilot()
-        }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        }
+        addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        val weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
+        weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
             listener.onOpenWebsite("/#weather-section")
         }
-        val toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
+        toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")
         }
         addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        addEntranceTarget(content, featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
+        val optimizerCard = featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
             listener.onOpenWebsite("/pages/tools.html#opt-card")
-        }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        }
+        addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         addEntranceTarget(content, buildWebsiteCard(), LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
@@ -97,6 +116,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         scroll.addView(content)
         addView(scroll, LayoutParams(-1, 0, 1f))
+        postDelayed({ maybeStartTour() }, 1600)
     }
 
     /** Starts a short staggered reveal after the native splash has faded away. */
@@ -118,6 +138,105 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 .start()
         }
     }
+
+    private fun maybeStartTour() {
+        if (tourPrefs.getBoolean("tour_done", false)) return
+        if (tourWindow != null) return
+        tourSteps.clear()
+        tourSteps += Triple(storeCard, "CodeHub Store", "Apps open source verificadas: descarga APKs, gestiona actualizaciones y favoritos.")
+        tourSteps += Triple(appsCard, "Mis aplicaciones", "Ve lo instalado, actualizaciones pendientes e historial de descargas.")
+        tourSteps += Triple(codeBeatCard, "CodeBeat", "Música y extensiones para tu flujo de trabajo.")
+        tourSteps += Triple(codeStreamCard, "CodeStream", "Videos, música y Shorts dentro de la app.")
+        tourSteps += Triple(copilotCard, "WIL.E COPILOT", "Asistente IA nativo para depurar, revisar código y generar README.")
+        tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
+        tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")
+        tourSteps += Triple(optimizerCard, "Optimización del sistema", "RAM, batería, caché y bloatware con Shizuku (ADB o root).")
+        tourSteps += Triple(profilePill, "Tu perfil", "Accede a tu perfil y proyectos de CodeHub.")
+        tourStepIndex = 0
+        showTourStep()
+    }
+
+    private fun showTourStep() {
+        if (tourStepIndex >= tourSteps.size) {
+            tourPrefs.edit().putBoolean("tour_done", true).apply()
+            dismissTour()
+            return
+        }
+        val (target, title, desc) = tourSteps[tourStepIndex]
+        if (target == null) { tourStepIndex++; showTourStep(); return }
+        target.post {
+            val loc = IntArray(2); target.getLocationOnScreen(loc)
+            val bubble = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(16), dp(14), dp(16), dp(14))
+                background = GradientDrawable().apply {
+                    setColor(0xFF111827.toInt())
+                    cornerRadius = dp(16).toFloat()
+                    setStroke(dp(1), 0xFF4B5D8A.toInt())
+                }
+                elevation = dp(8).toFloat()
+            }
+            bubble.addView(TextView(context).apply {
+                text = title
+                textSize = 15f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(0xFFFFFFFF.toInt())
+            })
+            bubble.addView(TextView(context).apply {
+                text = desc
+                textSize = 12f
+                setTextColor(0xFFCBD5E1.toInt())
+                setPadding(0, dp(6), 0, 0)
+                setLineSpacing(dp(2).toFloat(), 1f)
+            })
+            val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END }
+            val skip = Button(context).apply {
+                text = "Saltar"
+                textSize = 12f
+                isAllCaps = false
+                setTextColor(0xFF9AAFC7.toInt())
+                background = null
+                setOnClickListener { tourPrefs.edit().putBoolean("tour_done", true).apply(); dismissTour() }
+            }
+            val next = Button(context).apply {
+                text = if (tourStepIndex == tourSteps.lastIndex) "Listo" else "Siguiente"
+                textSize = 12f
+                isAllCaps = false
+                setTextColor(0xFFFFFFFF.toInt())
+                background = roundRectLocal(0xFF5968E8.toInt(), 0, dp(12))
+                setOnClickListener { tourStepIndex++; showTourStep() }
+            }
+            row.addView(skip, LinearLayout.LayoutParams(-2, dp(40)))
+            row.addView(next, LinearLayout.LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
+            bubble.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+
+            val root = FrameLayout(context).apply {
+                setBackgroundColor(0x99000000.toInt())
+                isClickable = true
+            }
+            val bubbleParams = FrameLayout.LayoutParams(dp(280), FrameLayout.LayoutParams.WRAP_CONTENT).apply {
+                val screenW = resources.displayMetrics.widthPixels
+                leftMargin = (loc[0] + target.width / 2 - dp(140)).coerceIn(dp(12), screenW - dp(292))
+                topMargin = (loc[1] + target.height + dp(8)).coerceAtMost(resources.displayMetrics.heightPixels - dp(180))
+            }
+            root.addView(bubble, bubbleParams)
+
+            dismissTour()
+            val pw = PopupWindow(root, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true)
+            pw.isOutsideTouchable = false
+            pw.isFocusable = true
+            pw.showAtLocation(this@NativeHomeView, Gravity.NO_GRAVITY, 0, 0)
+            tourWindow = pw
+        }
+    }
+
+    private fun dismissTour() {
+        tourWindow?.dismiss()
+        tourWindow = null
+    }
+
+    private fun roundRectLocal(fill: Int, stroke: Int, radius: Int): GradientDrawable =
+        GradientDrawable().apply { setColor(fill); cornerRadius = radius.toFloat(); if (stroke > 0) setStroke(dp(1), stroke) }
 
     /** Updates the home panel from on-device package and download history data. */
     fun refreshActivitySummary() {
@@ -222,7 +341,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             setPadding(dp(11), dp(7), dp(11), dp(7))
             background = rounded(0xFF1B1C36.toInt(), dp(20))
         })
-        addView(ImageView(context).apply {
+        profilePill = ImageView(context).apply {
             setImageResource(R.drawable.ic_home_profile)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Abrir perfil de usuario"
@@ -230,7 +349,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             isClickable = true
             isFocusable = true
             setOnClickListener { listener.onOpenProfile() }
-        }, LayoutParams(dp(42), dp(42)).apply { marginStart = dp(10) })
+        }
+        addView(profilePill, LayoutParams(dp(42), dp(42)).apply { marginStart = dp(10) })
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {
