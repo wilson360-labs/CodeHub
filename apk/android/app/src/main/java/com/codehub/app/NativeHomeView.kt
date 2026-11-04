@@ -78,6 +78,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
+        content.addView(featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
+            listener.onOpenWebsite("/pages/tools.html#opt-card")
+        }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
         content.addView(buildWebsiteCard(), LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
             text = "CodeHub · Guatemala"

@@ -669,6 +669,14 @@
 
     card.style.display = '';
 
+    // Tinta desde la tarjeta de la home nativa: /pages/tools.html#opt-card.
+    // El anchor salta solo si el card ya está visible; si Seattle oculto al
+    // momento del salto, repetimos el scroll después de mostrarlo.
+    if (location.hash === '#opt-card') {
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      catch (e) { try { card.scrollIntoView(); } catch (e2) {} }
+    }
+
     // Sin bridge = web o navegador normal. Antes la tarjeta desaparecía y
     // nadie entendía por qué; ahora se muestra bloqueada explicando que el
     // motor Shizuku solo existe dentro de la app CodeHub.
