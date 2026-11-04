@@ -175,6 +175,14 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         brand.addView(text("WIL.E COPILOT", 16f, Color.WHITE, true))
         brand.addView(text("IA de CodeHub · lista para ayudarte", 11f, 0xFF9BA8BD.toInt()))
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(text("", 24f, 0xFFCAD4E8.toInt(), true).apply {
+            gravity = Gravity.CENTER
+            contentDescription = "Borrar conversación"
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_ai_trash, 0, 0, 0)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { confirmClearChat() }
+        }, LinearLayout.LayoutParams(dp(42), dp(48)))
         top.addView(text("⋮", 24f, 0xFFCAD4E8.toInt(), true).apply {
             gravity = Gravity.CENTER
             contentDescription = "Opciones del chat"
@@ -595,6 +603,18 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         chatPreferences.edit().putString(SESSION_KEY, sessionId).remove(HISTORY_KEY).apply()
         renderHistory()
         addAssistant("Chat nuevo. ¿En qué te ayudo?")
+    }
+
+    private fun confirmClearChat() {
+        AlertDialog.Builder(this)
+            .setTitle("Borrar conversación")
+            .setMessage("Se eliminará este chat de este dispositivo y empezará una conversación nueva. Esta acción no tiene deshacer.")
+            .setPositiveButton("Borrar") { _, _ ->
+                clearChat()
+                Toast.makeText(this, "Conversación borrada", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
     }
 
     private fun showMenu() {
