@@ -4814,6 +4814,27 @@ function validateForm() {
     return 'https://codehub-98s6.onrender.com';
   })();
   const API_URL = BACKEND_URL + '/api/chat';
+  window.updateEmiUsage = function (emi) {
+    if (!emi || !Number.isFinite(Number(emi.used)) || !Number.isFinite(Number(emi.limit))) return;
+    try {
+      sessionStorage.setItem('ch_chat_emi_used', String(Math.max(0, Number(emi.used))));
+      sessionStorage.setItem('ch_chat_emi_limit', String(Math.max(1, Number(emi.limit))));
+    } catch (e) {}
+    if (window.emiMenu && window.emiMenu.open) window.emiMenu.render();
+  };
+  window.refreshEmiUsage = async function () {
+    try {
+      const headers = {};
+      if (window.CodeHubAuth && CodeHubAuth.isLogged()) {
+        const session = CodeHubAuth.getSession();
+        if (session && session.token) headers.Authorization = 'Bearer ' + session.token;
+      }
+      const response = await fetch(BACKEND_URL + '/api/chat/usage', { headers: headers, cache: 'no-store' });
+      if (!response.ok) return;
+      const body = await response.json();
+      window.updateEmiUsage(body.emi);
+    } catch (e) { /* El menú conserva el último dato local y reintenta al abrirse. */ }
+  };
   let _currentAbort = null;
   let _forceImageGen = false;
   window.stopAIGeneration = function () {
@@ -5386,6 +5407,7 @@ function validateForm() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
+            window.updateEmiUsage({ used: data.used, limit: data.limit });
             typingEl.remove();
             addMsg('ai', data.used >= 30
               ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
@@ -5478,6 +5500,7 @@ function validateForm() {
         }
 
         if (streamData.emi) {
+          window.updateEmiUsage(streamData.emi);
           const _remaining = streamData.emi.limit - streamData.emi.used;
           if (_remaining <= 3 && _remaining > 0) addMsg('ai', '<small style="opacity:.5">📊 Te quedan ' + _remaining + ' mensajes hoy.</small>');
         }
@@ -5499,6 +5522,7 @@ function validateForm() {
         const data = await res.json();
         if (!res.ok) {
           if (res.status === 429 && data.code === 'EMI_DAILY_LIMIT') {
+            window.updateEmiUsage({ used: data.used, limit: data.limit });
             typingEl.remove();
             addMsg('ai', data.used >= 30
               ? 'Límite diario alcanzado (' + data.limit + ' mensajes). <button class="ai-inline-cta" onclick="CodeHubAuth.openLogin(\'register\')">Crear cuenta gratis</button> para más.'
@@ -5508,6 +5532,7 @@ function validateForm() {
           throw new Error(data.error || 'HTTP ' + res.status);
         }
         typingEl.remove();
+        if (data.emi) window.updateEmiUsage(data.emi);
         const replyText = data.reply || '¡Respuesta recibida!';
         const searchMatch = replyText.match(/\[BUSCAR_IMAGENES:([^\]]+)\]/);
         const cleanReply = formatAIReply(replyText.replace(/\[BUSCAR_IMAGENES:[^\]]+\]/g, ''));
@@ -6222,6 +6247,7 @@ window.emiMenu = {
     document.body.style.overflow = 'hidden';
     this.open = true;
     this.render();
+    if (typeof window.refreshEmiUsage === 'function') window.refreshEmiUsage();
   },
 
   close: function () {
@@ -6284,11 +6310,17 @@ window.emiMenu = {
   },
 
   _usageHtml: function () {
-    var used = parseInt(sessionStorage.getItem('ch_chat_count') || '0', 10);
-    var limit = 20;
+    var logged = !!(window.CodeHubAuth && CodeHubAuth.isLogged());
+    var fallbackLimit = logged ? 20 : 15;
     if (window.RC && typeof window.RC.limit === 'function') {
-      try { var l = window.RC.limit(); if (l) limit = l; } catch (e) {}
+      try { fallbackLimit = window.RC.limit(logged ? 'emiDailyRegistered' : 'emiDailyGuest', fallbackLimit) || fallbackLimit; } catch (e) {}
     }
+    var cachedUsed = sessionStorage.getItem('ch_chat_emi_used');
+    var cachedLimit = sessionStorage.getItem('ch_chat_emi_limit');
+    var used = parseInt(cachedUsed != null ? cachedUsed : (sessionStorage.getItem('ch_chat_count') || '0'), 10);
+    var limit = parseInt(cachedLimit != null ? cachedLimit : fallbackLimit, 10);
+    if (!Number.isFinite(used) || used < 0) used = 0;
+    if (!Number.isFinite(limit) || limit < 1) limit = fallbackLimit;
     var pct = Math.min(100, Math.round((used / limit) * 100));
     var rest = Math.max(0, limit - used);
     var state = used >= limit

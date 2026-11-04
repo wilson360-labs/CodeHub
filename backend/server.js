@@ -2883,6 +2883,21 @@ app.get('/api/skills/:id', (req, res) => {
 });
 
 // Chat IA
+app.get('/api/chat/usage', requireAuth, async (req, res) => {
+  try {
+    const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+    const [limit, used] = await Promise.all([
+      getEmiLimit(!!req.authUser),
+      getEmiUsage(emiKey),
+    ]);
+    res.set('Cache-Control', 'no-store');
+    res.json({ emi: { used, limit } });
+  } catch (error) {
+    console.warn('Chat usage lookup failed:', error?.message || 'unknown');
+    res.status(503).json({ error: 'No se pudo consultar el uso de IA.' });
+  }
+});
+
 app.post('/api/chat', requireAuth, async (req, res) => {
   const { message, sessionId = 'anon', image, images, pdfText, skill_id } = req.body;
   if (!message || typeof message !== 'string') return res.status(400).json({ error: '"message" requerido.' });
