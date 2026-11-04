@@ -175,10 +175,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         brand.addView(text("WIL.E COPILOT", 16f, Color.WHITE, true))
         brand.addView(text("IA de CodeHub · lista para ayudarte", 11f, 0xFF9BA8BD.toInt()))
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(ImageView(context).apply {
+        top.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            background = roundRect(0xFF171C2B.toInt(), 0xFF333B55.toInt(), dp(22))
             contentDescription = "Borrar conversación"
             isClickable = true
             isFocusable = true
