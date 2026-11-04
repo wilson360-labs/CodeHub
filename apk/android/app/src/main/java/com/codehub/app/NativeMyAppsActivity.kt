@@ -37,6 +37,7 @@ class NativeMyAppsActivity : Activity() {
         const val EXTRA_APK_URL = "native_store_apk_url"
         const val EXTRA_APP_ID = "native_store_app_id"
         const val EXTRA_PREFER_SILENT = "native_my_apps_prefer_silent"
+    const val EXTRA_INITIAL_FILTER = "native_my_apps_initial_filter"
         private const val CATALOG_API = "https://codehub-98s6.onrender.com/api/apps"
         private const val UPDATES_API = "https://codehub-98s6.onrender.com/api/app-updates"
     }
@@ -69,6 +70,9 @@ class NativeMyAppsActivity : Activity() {
         SystemBars.fit(this)
         ignoredUpdateIds.addAll(getSharedPreferences("codehub_store", MODE_PRIVATE).getStringSet("ignored_updates", emptySet()).orEmpty())
         buildScreen()
+        intent.getStringExtra(EXTRA_INITIAL_FILTER)?.let { name ->
+            runCatching { filter = Filter.valueOf(name) }
+        }
         refreshApps()
     }
 

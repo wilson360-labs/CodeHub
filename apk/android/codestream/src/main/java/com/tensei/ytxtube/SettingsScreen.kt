@@ -223,18 +223,6 @@ fun SettingsScreen(
                         title = I18n.t("version", "Version"),
                         subtitle = "CodeStream integrado en CodeHub",
                     )
-                    val openRepo: (String) -> Unit = { url ->
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        }
-                    }
-                    val codeHubRepo = "https://github.com/wilson360-labs/CodeHub"
-                    SettingsRow(
-                        icon = Icons.Rounded.Code,
-                        title = "Código fuente y licencia",
-                        subtitle = "GPL-3.0 · basado en YTXTube · ver CodeHub en GitHub",
-                        onClick = { openRepo(codeHubRepo) },
-                    )
                 }
             }
         }

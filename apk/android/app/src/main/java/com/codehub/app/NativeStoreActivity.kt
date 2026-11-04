@@ -224,7 +224,7 @@ class NativeStoreActivity : Activity() {
             contentDescription = "Descargas"
             isClickable = true
             isFocusable = true
-            setOnClickListener { startActivity(Intent(this@NativeStoreActivity, DownloadsActivity::class.java)) }
+            setOnClickListener { startActivity(Intent(this@NativeStoreActivity, NativeMyAppsActivity::class.java).putExtra(NativeMyAppsActivity.EXTRA_INITIAL_FILTER, "DOWNLOADED")) }
         }
         top.addView(downloads, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(5) })
         val refresh = ImageView(this).apply {
