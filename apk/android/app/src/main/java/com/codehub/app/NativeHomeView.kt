@@ -38,16 +38,18 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val cyan = 0xFF22D3EE.toInt()
     private val entranceTargets = mutableListOf<View>()
     private val tourPrefs: SharedPreferences by lazy { context.getSharedPreferences("codehub_store", Context.MODE_PRIVATE) }
-    private var storeCard: View? = null
-    private var appsCard: View? = null
-    private var codeBeatCard: View? = null
-    private var codeStreamCard: View? = null
-    private var copilotCard: View? = null
-    private var weatherCard: View? = null
-    private var toolsCard: View? = null
-    private var optimizerCard: View? = null
+    private var tourWindow: PopupWindow? = null
+    private lateinit var storeCard: View
+    private lateinit var appsCard: View
+    private lateinit var codeBeatCard: View
+    private lateinit var codeStreamCard: View
+    private lateinit var copilotCard: View
+    private lateinit var weatherCard: View
+    private lateinit var toolsCard: View
+    private lateinit var optimizerCard: View
+    private lateinit var profilePill: View
     private var tourStepIndex = 0
-    private val tourSteps = mutableListOf<Triple<View?, String, String>>()
+    private val tourSteps = mutableListOf<Triple<View, String, String>>()
     private var entrancePlayed = false
     private lateinit var installedMetric: TextView
     private lateinit var downloadsMetric: TextView
@@ -163,7 +165,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             return
         }
         val (target, title, desc) = tourSteps[tourStepIndex]
-        if (target == null) { tourStepIndex++; showTourStep(); return }
         target.post {
             val loc = IntArray(2); target.getLocationOnScreen(loc)
             val bubble = LinearLayout(context).apply {
