@@ -97,11 +97,39 @@
   .cv-paper[data-tpl="minimal"] .pv-h { color:var(--cv); }
 
   .status-line { font-size:.72rem; color:var(--muted); margin-top:.5rem; min-height:1.1em; }
+  .intro-banner { margin:1rem 0; padding:1rem; border:1px solid rgba(56,189,248,.25); border-radius:14px; background:linear-gradient(120deg,rgba(47,128,237,.12),rgba(56,189,248,.04)); }
+  .intro-banner strong { display:block; margin-bottom:.25rem; font-size:.95rem; }
+  .intro-banner p,.hint { color:var(--muted); font-size:.78rem; line-height:1.55; }
+  .private-note { display:flex; gap:.5rem; align-items:flex-start; margin:.6rem 0 1rem; color:var(--muted); font-size:.7rem; line-height:1.5; }
+  .private-note i { color:var(--green); margin-top:.1rem; }
+  .guide-card { margin:.7rem 0; padding:.8rem; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02); }
+  .guide-card summary { cursor:pointer; font-size:.8rem; font-weight:700; color:var(--accent); }
+  .guide-card .hint { margin:.45rem 0 .7rem; }
+  .item-actions { display:flex; gap:.35rem; flex-wrap:wrap; margin-top:.35rem; }
+  .item-actions .btn { min-height:36px; }
+  .checklist { padding:.9rem; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02); }
+  .checklist ul { margin:.55rem 0 0 1.2rem; color:var(--muted); font-size:.75rem; line-height:1.7; }
+  .checklist li.done { color:#b8f5d0; }
+  .checklist li::marker { color:var(--accent); }
+  dialog.ai-dialog { width:min(92vw,620px); max-height:85vh; overflow:auto; border:1px solid rgba(120,140,255,.3); border-radius:18px; padding:0; color:var(--text); background:#111126; box-shadow:0 24px 80px rgba(0,0,0,.65); }
+  dialog.ai-dialog::backdrop { background:rgba(2,3,12,.78); backdrop-filter:blur(4px); }
+  .ai-dialog-head,.ai-dialog-body,.ai-dialog-actions { padding:1rem 1.1rem; }
+  .ai-dialog-head { border-bottom:1px solid var(--border); display:flex; align-items:center; gap:.7rem; }
+  .ai-dialog-head h2 { font-size:1rem; flex:1; }
+  .ai-dialog-body { max-height:58vh; overflow:auto; }
+  .ai-output { white-space:pre-wrap; line-height:1.65; font-size:.86rem; color:#f1f2ff; }
+  .ai-feedback { margin:.8rem 0 0; padding-left:1.1rem; color:var(--muted); font-size:.78rem; line-height:1.6; }
+  .ai-dialog-actions { display:flex; gap:.5rem; flex-wrap:wrap; border-top:1px solid var(--border); justify-content:flex-end; }
+  .ai-dialog button:focus-visible,.btn:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .target-result { margin-top:.65rem; }
+  .target-result h3 { margin:.7rem 0 .25rem; font-size:.78rem; color:var(--accent); }
+  .target-result ul { padding-left:1.2rem; color:var(--muted); font-size:.75rem; line-height:1.6; }
   .loading-spin { display:inline-block; width:12px; height:12px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
   @media (max-width: 860px) { .wrap{ padding:.6rem; } .grid { grid-template-columns:1fr; } .cv-stage { order:-1; } }
   @media (max-width: 480px) { .row2,.row3 { grid-template-columns:1fr; } .field-ai { flex-direction:column; } .nav .btn span { display:none; } .head { gap:.5rem; } }
+  @media (max-width: 380px) { .panel { padding:.75rem; } .cv-stage { padding:.55rem; } .cv-toolbar .btn { flex:1 1 auto; justify-content:center; } .ai-dialog-head,.ai-dialog-body,.ai-dialog-actions { padding:.8rem; } }
   @media print {
     body { background:#fff; }
     .head,.panel,.cv-toolbar { display:none !important; }
@@ -127,15 +155,25 @@
   <div class="grid">
 
     <section class="panel" id="form-panel">
+      <div class="intro-banner"><strong>Un CV claro empieza con tu historia real.</strong><p>Completa lo que tengas. También cuentan proyectos personales, estudios, voluntariado, cuidados y responsabilidades cotidianas.</p></div>
+      <div class="private-note"><i class="fas fa-shield-halved"></i><span>Tu borrador se guarda en este navegador. Si usas IA, los datos profesionales enviados no incluyen nombre, contacto ni ubicación y no se guardan en el historial de chat de CodeHub. Evita incluir información sensible; las solicitudes consumen tu cuota diaria de IA. Revisa cada propuesta antes de aplicarla.</span></div>
       <h2><i class="fas fa-user-pen"></i> Tus datos</h2>
 
       <div class="fld"><label>Nombre completo</label><input id="f-nombre" placeholder="Tu Nombre"></div>
       <div class="fld"><label>Rol / Puesto</label><input id="f-rol" placeholder="Desarrollador Web Full Stack"></div>
+      <div class="fld"><label>Enlace profesional (LinkedIn, portafolio o sitio)</label><input id="f-link" type="url" placeholder="https://..."></div>
       <div class="row3">
         <div class="fld"><label>Email</label><input id="f-email" type="email" placeholder="tucorreo@mail.com"></div>
         <div class="fld"><label>Teléfono</label><input id="f-tel" placeholder="+502 0000 0000"></div>
         <div class="fld"><label>Ubicación</label><input id="f-ubi" placeholder="Guatemala, GT"></div>
       </div>
+
+      <details class="guide-card"><summary><i class="fas fa-compass"></i> ¿Aún no tienes experiencia formal?</summary><p class="hint">Cuéntanos qué has hecho en proyectos, estudios, voluntariado, actividades familiares o por cuenta propia. La IA te ayudará a organizarlo sin presentarlo como empleo formal.</p>
+        <div class="fld"><label>Actividades o responsabilidades que has realizado</label><textarea id="g-activities" placeholder="Ej.: organicé las compras y el presupuesto familiar; ayudé en un negocio; coordiné una actividad escolar..."></textarea></div>
+        <div class="fld"><label>¿De qué te sientes orgulloso/a? ¿Qué resultado observaste?</label><textarea id="g-proud" placeholder="Describe el resultado con tus palabras, aunque no tengas cifras."></textarea></div>
+        <div class="fld"><label>¿Qué estás aprendiendo o qué te gustaría hacer?</label><textarea id="g-learning" placeholder="Temas, cursos, herramientas o tipo de puesto que buscas"></textarea></div>
+        <button class="btn ai" id="btn-ai-guide" onclick="aiGuidedDraft()"><i class="fas fa-wand-magic-sparkles"></i> Crear borrador guiado</button>
+      </details>
 
       <div class="fld">
         <label>Sobre mí</label>
@@ -165,12 +203,16 @@
         <div id="edu-list"></div>
         <button class="btn" onclick="addEdu()"><i class="fas fa-plus"></i> Añadir educación</button>
       </div>
+      <div class="fld"><label>Proyectos, voluntariado y actividades</label><div id="project-list"></div><button class="btn" onclick="addProject()"><i class="fas fa-plus"></i> Añadir proyecto o actividad</button></div>
 
       <div class="fld">
         <label>Idiomas</label>
         <div id="lang-list"></div>
         <button class="btn" onclick="addLang()"><i class="fas fa-plus"></i> Añadir idioma</button>
       </div>
+      <div class="fld"><label>Cursos y certificaciones</label><div id="cert-list"></div><button class="btn" onclick="addCert()"><i class="fas fa-plus"></i> Añadir curso o certificación</button></div>
+      <div class="fld"><label>Vacante objetivo (opcional)</label><textarea id="f-job" placeholder="Pega aquí la descripción del puesto para comparar requisitos y adaptar tu CV con honestidad."></textarea><div class="item-actions"><button class="btn ai" onclick="runAssist('job_match',this)"><i class="fas fa-bullseye"></i> Comparar con vacante</button><button class="btn" onclick="runAssist('review',this)"><i class="fas fa-clipboard-check"></i> Revisar mi CV</button></div></div>
+      <div class="checklist" id="cv-checklist" aria-live="polite"></div>
 
       <h2 style="margin-top:1rem"><i class="fas fa-palette"></i> Plantilla y color</h2>
       <div class="tpl-pick">
@@ -203,10 +245,17 @@
       <div class="cv-stage">
         <div id="cv-preview"></div>
       </div>
+      <p class="hint" style="margin:.55rem .2rem">El PDF se genera en tu dispositivo. Usa “Imprimir” si el navegador bloquea la descarga directa.</p>
     </section>
 
   </div>
 </div>
+
+<dialog class="ai-dialog" id="ai-dialog" aria-labelledby="ai-dialog-title">
+  <div class="ai-dialog-head"><i class="fas fa-sparkles" style="color:var(--accent)"></i><h2 id="ai-dialog-title">Propuesta para revisar</h2><button class="btn ghost" type="button" onclick="closeAiDialog()" aria-label="Cerrar">✕</button></div>
+  <div class="ai-dialog-body" id="ai-dialog-body"></div>
+  <div class="ai-dialog-actions"><button class="btn ghost" type="button" onclick="closeAiDialog()">Seguir editando</button><button class="btn primary" id="ai-apply" type="button" onclick="applyAiSuggestion()">Aplicar propuesta</button></div>
+</dialog>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -217,18 +266,29 @@ var BACKEND_URL = (location.hostname === 'localhost' || location.hostname === '1
 var LS_KEY = 'ch_cvgen_v1';
 
 var def = {
-  nombre: '', rol: '', email: '', tel: '', ubi: '', sobre: '',
-  skills: [], tpl: 'clasico', color: '#2f80ed',
-  exp: [], edu: [], lang: []
+  nombre: '', rol: '', email: '', tel: '', ubi: '', link: '', sobre: '', job: '',
+  guide: { activities: '', proudOf: '', learning: '' }, skills: [], tpl: 'clasico', color: '#2f80ed',
+  exp: [], edu: [], lang: [], projects: [], certifications: []
 };
 
-function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+function normalizeData(value) {
+  var clean = Object.assign(JSON.parse(JSON.stringify(def)), value || {});
+  clean.skills = Array.isArray(clean.skills) ? clean.skills.filter(function(x){return typeof x==='string';}).slice(0,80) : [];
+  var rows = { exp:{rol:'',emp:'',periodo:'',desc:''}, edu:{titulo:'',inst:'',periodo:''}, lang:{nombre:'',nivel:'Básico'}, projects:{name:'',role:'',period:'',desc:'',skills:''}, certifications:{name:'',issuer:'',period:''} };
+  Object.keys(rows).forEach(function(key){ clean[key] = Array.isArray(clean[key]) ? clean[key].filter(function(x){return x && typeof x==='object' && !Array.isArray(x);}).slice(0,40).map(function(x){return Object.assign({},rows[key],x);}) : []; });
+  clean.guide = Object.assign({}, def.guide, clean.guide && typeof clean.guide === 'object' ? clean.guide : {});
+  if (clean.tpl !== 'minimal' && clean.tpl !== 'clasico') clean.tpl = 'clasico';
+  if (!/^#[0-9a-f]{6}$/i.test(clean.color || '')) clean.color = def.color;
+  return clean;
+}
 
 var data = def;
 try {
   var saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
   if (saved && typeof saved === 'object') {
-    data = Object.assign(JSON.parse(JSON.stringify(def)), saved);
+    data = normalizeData(saved);
   }
 } catch (e) {}
 
@@ -242,13 +302,19 @@ function fillForm() {
   $('f-email').value = data.email || '';
   $('f-tel').value = data.tel || '';
   $('f-ubi').value = data.ubi || '';
+  $('f-link').value = data.link || '';
   $('f-sobre').value = data.sobre || '';
-  renderSkills(); renderExp(); renderEdu(); renderLang();
+  $('f-job').value = data.job || '';
+  $('g-activities').value = data.guide.activities || '';
+  $('g-proud').value = data.guide.proudOf || '';
+  $('g-learning').value = data.guide.learning || '';
+  renderSkills(); renderExp(); renderEdu(); renderLang(); renderProjects(); renderCerts();
   var c = $('color-pick').querySelectorAll('.sw');
   for (var i = 0; i < c.length; i++) c[i].classList.toggle('on', c[i].getAttribute('data-c') === data.color);
   $('tpl-' + data.tpl).classList.add('on');
   $('tpl-' + (data.tpl === 'minimal' ? 'clasico' : 'minimal')).classList.remove('on');
   render();
+  renderChecklist();
 }
 
 function render() {
@@ -260,6 +326,7 @@ function render() {
   if (data.email) contact.push('<i class="fas fa-envelope" style="font-size:inherit"></i> ' + esc(data.email));
   if (data.tel) contact.push('<i class="fas fa-phone" style="font-size:inherit"></i> ' + esc(data.tel));
   if (data.ubi) contact.push('<i class="fas fa-location-dot" style="font-size:inherit"></i> ' + esc(data.ubi));
+  if (data.link && /^https?:\/\//i.test(data.link)) contact.push('<i class="fas fa-link" style="font-size:inherit"></i> ' + esc(data.link));
   p.innerHTML =
     '<div class="pv-hero pv" style="background:' + data.color + '14">' +
       '<div class="pv-name">' + esc(data.nombre || 'Tu Nombre') + '</div>' +
@@ -274,9 +341,11 @@ function render() {
           '<div class="s" style="color:#51515f">' + esc(x.periodo) + '</div>' +
           (x.desc ? '<div class="d" style="margin-top:.15rem">' + esc(x.desc) + '</div>' : '') + '</div>';
       }).join('') : '') +
+      (data.projects.length ? '<div class="pv-h">Proyectos y actividades</div>' + data.projects.map(function (x) { return '<div class="pv-item"><div class="t">' + esc(x.name) + (x.role ? ' — ' + esc(x.role) : '') + '</div><div class="s" style="color:#51515f">' + esc(x.period) + '</div>' + (x.desc ? '<div class="d">' + esc(x.desc) + '</div>' : '') + (x.skills ? '<div class="s">' + esc(x.skills) + '</div>' : '') + '</div>'; }).join('') : '') +
       (data.edu.length ? '<div class="pv-h">Educación</div>' + data.edu.map(function (x) {
         return '<div class="pv-item"><div class="t">' + esc(x.titulo) + (x.inst ? ' — ' + esc(x.inst) : '') + '</div><div class="s" style="color:#51515f">' + esc(x.periodo) + '</div></div>';
       }).join('') : '') +
+      (data.certifications.length ? '<div class="pv-h">Cursos y certificaciones</div>' + data.certifications.map(function (x) { return '<div class="pv-item"><div class="t">' + esc(x.name) + (x.issuer ? ' — ' + esc(x.issuer) : '') + '</div><div class="s" style="color:#51515f">' + esc(x.period) + '</div></div>'; }).join('') : '') +
       (data.lang.length ? '<div class="pv-h">Idiomas</div><div class="pv-sec">' + data.lang.map(function (l) { return '<span style="margin-right:.6rem"><b>' + esc(l.nombre) + '</b> — ' + esc(l.nivel) + '</span>'; }).join('') + '</div>' : '') +
     '</div>';
   var wrap = $('cv-preview');
@@ -285,11 +354,13 @@ function render() {
 }
 
 function bindForm() {
-  var fields = ['f-nombre', 'f-rol', 'f-email', 'f-tel', 'f-ubi', 'f-sobre'];
-  var keys = ['nombre', 'rol', 'email', 'tel', 'ubi', 'sobre'];
-  fields.forEach(function (id, i) {
-    $('f-' + id.replace('f-', '')).value = data[keys[i]] || '';
-    $('f-' + id.replace('f-', '')).addEventListener('input', function () { data[keys[i]] = this.value; saveLS(); render(); });
+  var fields = { 'f-nombre':'nombre','f-rol':'rol','f-email':'email','f-tel':'tel','f-ubi':'ubi','f-link':'link','f-sobre':'sobre','f-job':'job', 'g-activities':'guide.activities','g-proud':'guide.proudOf','g-learning':'guide.learning' };
+  Object.keys(fields).forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      var path = fields[id].split('.');
+      if (path.length === 2) data[path[0]][path[1]] = this.value; else data[path[0]] = this.value;
+      saveLS(); render(); renderChecklist();
+    });
   });
 }
 
@@ -307,7 +378,7 @@ function renderSkills() {
 }
 
 var expProto = function () { return { rol: '', emp: '', periodo: '', desc: '' }; };
-function addExp() { data.exp.push(expProto()); saveLS(); renderExp(); }
+function addExp() { data.exp.push(expProto()); saveLS(); renderExp(); renderChecklist(); }
 function renderExp() {
   $('exp-list').innerHTML = data.exp.map(function (x, i) {
     return '<div class="item"><div class="item-top"><b>' + esc(x.rol || 'Nueva experiencia') + '</b><button onclick="delExp(' + i + ')" title="Eliminar"><i class="fas fa-trash"></i></button></div>' +
@@ -320,7 +391,7 @@ function renderExp() {
   }).join('');
 }
 function renderExpName(i) { var b = $('exp-list').querySelectorAll('.item-top b')[i]; if (b) b.textContent = data.exp[i].rol || 'Nueva experiencia'; }
-function delExp(i) { data.exp.splice(i, 1); saveLS(); renderExp(); render(); }
+function delExp(i) { data.exp.splice(i, 1); saveLS(); renderExp(); render(); renderChecklist(); }
 
 function addEdu() { data.edu.push({ titulo: '', inst: '', periodo: '' }); saveLS(); renderEdu(); }
 function renderEdu() {
@@ -345,6 +416,23 @@ function renderLang() {
 }
 function delLang(i) { data.lang.splice(i, 1); saveLS(); renderLang(); render(); }
 
+function addProject() { data.projects.push({ name:'', role:'', period:'', desc:'', skills:'' }); saveLS(); renderProjects(); render(); renderChecklist(); }
+function renderProjects() {
+  $('project-list').innerHTML = data.projects.map(function (x,i) { return '<div class="item"><div class="item-top"><b>' + esc(x.name || 'Nuevo proyecto') + '</b><button onclick="delProject(' + i + ')"><i class="fas fa-trash"></i></button></div><div class="row2"><input placeholder="Proyecto / actividad" value="' + esc(x.name) + '" oninput="data.projects[' + i + '].name=this.value;saveLS();renderProjects();render()"><input placeholder="Tu función" value="' + esc(x.role) + '" oninput="data.projects[' + i + '].role=this.value;saveLS();render()"></div><div class="row2"><input placeholder="Periodo" value="' + esc(x.period) + '" oninput="data.projects[' + i + '].period=this.value;saveLS();render()"><input placeholder="Habilidades usadas" value="' + esc(x.skills) + '" oninput="data.projects[' + i + '].skills=this.value;saveLS();render()"></div><textarea placeholder="Qué hiciste y qué resultado observaste" oninput="data.projects[' + i + '].desc=this.value;saveLS();render()">' + esc(x.desc) + '</textarea></div>'; }).join('');
+}
+function delProject(i) { data.projects.splice(i,1); saveLS(); renderProjects(); render(); renderChecklist(); }
+function addCert() { data.certifications.push({ name:'', issuer:'', period:'' }); saveLS(); renderCerts(); render(); }
+function renderCerts() {
+  $('cert-list').innerHTML = data.certifications.map(function (x,i) { return '<div class="item"><div class="item-top"><b>' + esc(x.name || 'Nuevo curso') + '</b><button onclick="delCert(' + i + ')"><i class="fas fa-trash"></i></button></div><input placeholder="Curso o certificación" value="' + esc(x.name) + '" oninput="data.certifications[' + i + '].name=this.value;saveLS();renderCerts();render()"><div class="row2"><input placeholder="Institución" value="' + esc(x.issuer) + '" oninput="data.certifications[' + i + '].issuer=this.value;saveLS();render()"><input placeholder="Fecha / periodo" value="' + esc(x.period) + '" oninput="data.certifications[' + i + '].period=this.value;saveLS();render()"></div></div>'; }).join('');
+}
+function delCert(i) { data.certifications.splice(i,1); saveLS(); renderCerts(); render(); }
+
+function renderChecklist() {
+  var checks = [ ['Nombre',!!data.nombre], ['Puesto objetivo',!!data.rol], ['Contacto',!!(data.email || data.tel)], ['Perfil profesional',!!data.sobre], ['Habilidades',data.skills.length>0], ['Experiencia o proyecto',data.exp.length>0 || data.projects.length>0], ['Educación',data.edu.length>0] ];
+  var done = checks.filter(function (x) { return x[1]; }).length;
+  $('cv-checklist').innerHTML = '<b>Preparación del CV · ' + done + '/' + checks.length + '</b><ul>' + checks.map(function (x) { return '<li class="' + (x[1]?'done':'') + '">' + (x[1]?'✓ ':'○ ') + esc(x[0]) + '</li>'; }).join('') + '</ul><p class="hint" style="margin-top:.5rem">Guía de integridad, no es una puntuación ATS. Incluye solo datos que puedas confirmar.</p>';
+}
+
 function setTpl(t) { data.tpl = t; saveLS(); $('tpl-' + t).classList.add('on'); $('tpl-' + (t === 'minimal' ? 'clasico' : 'minimal')).classList.remove('on'); render(); }
 function setColor(el) {
   data.color = el.getAttribute('data-c'); saveLS();
@@ -356,9 +444,9 @@ function setColor(el) {
 var statusT = null;
 function status(m, ms) {
   var el = $('status');
-  el.innerHTML = m;
+  el.textContent = m;
   clearTimeout(statusT);
-  if (ms) statusT = setTimeout(function () { el.innerHTML = ''; }, ms);
+  if (ms) statusT = setTimeout(function () { el.textContent = ''; }, ms);
 }
 
 function aiHeaders() {
@@ -369,15 +457,50 @@ function aiHeaders() {
   }
   return h;
 }
-function aiCall(prompt) {
-  return fetch(BACKEND_URL + '/api/chat', {
-    method: 'POST', headers: aiHeaders(),
-    body: JSON.stringify({ message: prompt.slice(0, 1000), sessionId: 'cvgen', memory: false })
-  }).then(function (r) {
-    if (r.status === 401) throw new Error('login');
-    if (!r.ok) throw new Error('http' + r.status);
-    return r.json();
-  }).then(function (d) { return d && d.reply ? d.reply.trim() : ''; });
+var pendingAi = null;
+function buildAiProfile() {
+  return {
+    targetRole:data.rol, summary:data.sobre, skills:data.skills,
+    experience:data.exp.map(function(x){return {role:x.rol,period:x.periodo,facts:x.desc};}),
+    education:data.edu.map(function(x){return {title:x.titulo,period:x.periodo,details:x.inst};}),
+    projects:data.projects.map(function(x){return {name:x.name,role:x.role,period:x.period,facts:x.desc,skills:String(x.skills||'').split(',').map(function(s){return s.trim();}).filter(Boolean)};}),
+    certifications:data.certifications.map(function(x){return {name:x.name,issuer:x.issuer,period:x.period};}),
+    languages:data.lang.map(function(x){return {name:x.nombre,level:x.nivel};}),
+    guide:data.guide, jobDescription:data.job
+  };
+}
+function aiCall(task, selectedIndex) {
+  var profile = buildAiProfile();
+  if (task === 'experience' && Number.isInteger(selectedIndex)) profile.experience = profile.experience[selectedIndex] ? [profile.experience[selectedIndex]] : [];
+  return fetch(BACKEND_URL + '/api/cv/assist', { method:'POST', headers:aiHeaders(), body:JSON.stringify({task:task,profile:profile}) })
+    .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok) throw new Error(d.error || ('http'+r.status)); return d; }); })
+    .then(function(d){ return d.result; });
+}
+function safeList(value) { return Array.isArray(value) ? value.filter(function(x){return typeof x==='string';}) : []; }
+function showAiResult(title, result, target, index) {
+  pendingAi = { result:result, target:target, index:index };
+  $('ai-dialog-title').textContent = title;
+  var body = $('ai-dialog-body'); body.innerHTML = '';
+  var main = document.createElement('div'); main.className='ai-output';
+  var primary = result.suggestion || result.summary || '';
+  main.textContent = primary || 'La IA no generó una propuesta de texto. Revisa el análisis y las preguntas.';
+  body.appendChild(main);
+  var groups = [['Preguntas para completar',safeList(result.questions)],['Puntos que debes confirmar',safeList(result.warnings)],['Fortalezas',safeList(result.strengths)],['Brechas o requisitos sin evidencia',safeList(result.gaps)],['Palabras clave respaldadas',safeList(result.keywords)],['Acciones sugeridas',safeList(result.actions)]];
+  if (Array.isArray(result.checks) && result.checks.length) groups.push(['Revisión',result.checks.map(function(x){return [x.area,x.status,x.advice].filter(Boolean).join(' · ');})]);
+  groups.forEach(function(group){ if(!group[1].length)return; var h=document.createElement('h3'); h.className='target-result'; h.textContent=group[0]; body.appendChild(h); var ul=document.createElement('ul'); ul.className='ai-feedback'; group[1].forEach(function(item){var li=document.createElement('li');li.textContent=item;ul.appendChild(li);}); body.appendChild(ul); });
+  $('ai-apply').hidden = !target || !(result.suggestion || (target==='guided_draft' && result.summary));
+  if (typeof $('ai-dialog').showModal === 'function') $('ai-dialog').showModal(); else $('ai-dialog').setAttribute('open','open');
+}
+function closeAiDialog(){ var d=$('ai-dialog'); if(d.open && d.close)d.close(); else d.removeAttribute('open'); }
+function applyAiSuggestion(){
+  if(!pendingAi)return; var r=pendingAi.result, target=pendingAi.target;
+  if(target==='summary' && r.suggestion){data.sobre=r.suggestion;$('f-sobre').value=r.suggestion;}
+  if(target==='experience' && r.suggestion && data.exp[pendingAi.index]){data.exp[pendingAi.index].desc=r.suggestion;renderExp();}
+  if(target==='guided_draft'){
+    if(r.summary){data.sobre=r.summary;$('f-sobre').value=r.summary;}
+    if(r.activity && (r.activity.title || r.activity.description)){data.projects.push({name:r.activity.title||'Actividad',role:r.activity.kind||'',period:'',desc:r.activity.description||'',skills:safeList(r.activity.skills).join(', ')});renderProjects();}
+  }
+  saveLS();render();renderChecklist();closeAiDialog();status('Propuesta aplicada. Revisa y ajusta los datos.',3500);pendingAi=null;
 }
 
 function busy(btn, on) {
@@ -388,52 +511,41 @@ function busy(btn, on) {
 
 function aiSobre() {
   var btn = $('btn-ai-sobre');
-  if (!window.CodeHubAuth || !CodeHubAuth.isLogged()) { status('🔐 Inicia sesión para usar la IA <a href="javascript:" onclick="CodeHubAuth.openLogin(\'login\')">aquí</a>'); return; }
-  var base = 'Crea un párrafo "Sobre mí" profesional para un CV (máximo 120 palabras, primera persona, español neutro, sin markdown ni títulos).';
-  var ctx = ' Persona: ' + (data.nombre || 'un profesional') + '. Puesto: ' + (data.rol || 'no indicado') + '.';
-  if (data.skills.length) ctx += ' Habilidades: ' + data.skills.join(', ') + '.';
-  if (data.sobre) ctx += ' Texto actual del usuario (mejóralo sin inventar datos): "' + data.sobre.slice(0, 400) + '"';
-  else ctx += ' Genera texto genérico pero atractivo y sin inventar empresas ni logros específicos.';
   busy(btn, true); status('✨ Pensando…');
-  aiCall(base + ctx).then(function (t) {
-    if (t) { data.sobre = t; $('f-sobre').value = t; saveLS(); render(); status('✨ Listo', 2500); }
-    else status('⚠️ Sin respuesta de la IA');
-  }).catch(function (err) {
-    status(err.message === 'login' ? '🔐 Sesión expirada — recarga e inicia sesión.' : '⚠️ No se pudo contactar la IA. ¿Estás en línea?');
-  }).then(function () { busy(btn, false); });
+  aiCall('summary').then(function(r){showAiResult('Perfil profesional para revisar',r,'summary');status('Propuesta lista para revisar.',2500);}).catch(function(err){status('⚠️ '+err.message);}).then(function(){busy(btn,false);});
 }
 
 function aiExp(i) {
-  var x = data.exp[i];
-  if (!window.CodeHubAuth || !CodeHubAuth.isLogged()) { status('🔐 Inicia sesión para usar la IA'); return; }
-  var base = 'Mejora esta descripción de experiencia laboral para un CV (en español neutro, primera persona, máximo 60 palabras, logros medibles, sin markdown):\n\n';
-  var text = (x.rol || '') + (x.emp ? ' en ' + x.emp : '') + (x.desc ? '\n' + x.desc : '\n(sin descripción previa — crea una genérica)');
   var rows = $('exp-list').querySelectorAll('.item');
-  if (rows[i]) busy(rows[i].querySelector('.btn.ai'), true);
+  var btn = rows[i] && rows[i].querySelector('.btn.ai');
+  if (btn) busy(btn, true);
   status('✨ Mejorando experiencia…');
-  aiCall(base + text).then(function (t) {
-    if (t) { x.desc = t; renderExp(); status('✨ Listo', 2500); }
-    else status('⚠️ Sin respuesta');
-  }).catch(function () { status('⚠️ Error al contactar la IA'); }).then(function () {
-    if (rows[i]) busy(rows[i].querySelector('.btn.ai'), false);
-  });
+  aiCall('experience',i).then(function(r){ showAiResult('Descripción de experiencia para revisar',r,'experience',i); }).catch(function(err){status('⚠️ '+err.message);}).then(function(){if(btn)busy(btn,false);});
 }
+function aiGuidedDraft(){var btn=$('btn-ai-guide');busy(btn,true);status('✨ Ordenando tu experiencia…');aiCall('guided_draft').then(function(r){showAiResult('Borrador guiado para revisar',r,'guided_draft');}).catch(function(err){status('⚠️ '+err.message);}).then(function(){busy(btn,false);});}
+function runAssist(task,btn){busy(btn,true);status(task==='job_match'?'✨ Comparando con la vacante…':'✨ Revisando el CV…');aiCall(task).then(function(r){showAiResult(task==='job_match'?'Análisis de la vacante':'Revisión del CV',r,null);}).catch(function(err){status('⚠️ '+err.message);}).then(function(){busy(btn,false);});}
 
 function exportPDF() {
   var btn = document.querySelector('.cv-toolbar .btn.primary');
   var node = $('cv-preview').firstElementChild;
   if (!node) return;
+  if (typeof window.html2canvas !== 'function' || !window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
+    status('No se cargó el exportador PDF. Abriendo impresión…', 3500);
+    window.print();
+    return;
+  }
   busy(btn, true); status('⏳ Generando PDF…');
-  html2canvas(node, { scale: 2, backgroundColor: '#ffffff', logging: false })
+  window.html2canvas(node, { scale: 2, backgroundColor: '#ffffff', logging: false })
     .then(function (canvas) {
       var img = canvas.toDataURL('image/jpeg', 0.95);
-      var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      var pdf = new window.jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       var w = pdf.internal.pageSize.getWidth();
       var h = (canvas.height * w) / canvas.width;
       var ph = pdf.internal.pageSize.getHeight();
       var y = 0;
       while (y < h) { if (y > 0) pdf.addPage(); pdf.addImage(img, 'JPEG', 0, -y, w, h); y += ph; }
-      pdf.save((data.nombre || 'CV') + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
+      var safeName = String(data.nombre || 'CV').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'CV';
+      pdf.save(safeName + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
       status('✅ PDF descargado', 2500);
     })
     .catch(function () { status('❌ Error — usa Imprimir → Guardar como PDF'); })
@@ -456,8 +568,8 @@ function importJSON(inp) {
   rd.onload = function () {
     try {
       var j = JSON.parse(rd.result);
-      if (typeof j === 'object') {
-        data = Object.assign(JSON.parse(JSON.stringify(def)), j);
+      if (j && typeof j === 'object' && !Array.isArray(j)) {
+        data = normalizeData(j);
         saveLS(); fillForm(); status('✅ Importado', 2200);
       }
     } catch (e) { status('⚠️ JSON inválido'); }
@@ -475,7 +587,8 @@ function resetData() {
 fillForm();
 bindForm();
 $('f-skill-in').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } });
-addExp(); renderExp();
+renderChecklist();
+if (!data.exp.length) renderExp();
 </script>
 <footer style="text-align:center;padding:1.5rem 1rem;color:var(--muted);font-size:.75rem;font-family:ui-monospace,Menlo,Consolas,monospace">
   <a href="/" style="color:var(--accent);text-decoration:none">&lt;Wilson.E/&gt;</a> · Generador de CV con IA · <a href="/privacy" style="color:var(--accent);text-decoration:none">Privacidad</a> · <a href="/terms" style="color:var(--accent);text-decoration:none">Términos</a>

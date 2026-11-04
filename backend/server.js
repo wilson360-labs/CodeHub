@@ -212,6 +212,7 @@ const uploadSecurityFile = multer({
 
 // Rate limiting
 const chatLimiter  = rateLimit({ windowMs: 15*60*1000, max: parseInt(process.env.RATE_LIMIT_MAX)||50, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
+const cvAssistLimiter = rateLimit({ windowMs: 15*60*1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes de ayuda para CV. Espera unos minutos.', code: 'CV_RATE_LIMIT' }, handler: rateLimitHandler });
 const adminLimiter = rateLimit({ windowMs: 15*60*1000, max: 500, standardHeaders: true, legacyHeaders: false, handler: rateLimitHandler });
 const publicPostLimiter = rateLimit({ windowMs: 15*60*1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Demasiadas solicitudes. Espera un momento.', code: 'RATE_LIMIT' }, handler: rateLimitHandler });
 // Auth admin: máximo 5 intentos por 15 min por IP (Turnstile + key check)
@@ -3020,6 +3021,110 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     if (err.status === 429) return res.status(429).json({ error: 'Límite alcanzado.' });
     if (imageParts) return res.status(500).json({ error: 'No pude analizar la imagen. Intenta de nuevo.' });
     res.status(500).json({ error: 'Error interno.' });
+  }
+});
+
+// Asistencia de CV: reutiliza el router de proveedores, pero nunca comparte
+// ni persiste el contenido en el historial general de WIL.E.
+app.post('/api/cv/assist', cvAssistLimiter, requireAuth, async (req, res) => {
+  const task = typeof req.body?.task === 'string' ? req.body.task : '';
+  const allowedTasks = new Set(['summary', 'experience', 'guided_draft', 'job_match', 'review']);
+  if (!allowedTasks.has(task)) return res.status(400).json({ error: 'Tarea de CV no válida.' });
+  if (!hasAnyChatKey()) return res.status(503).json({ error: 'La ayuda de IA no está disponible ahora.' });
+
+  const cleanText = (value, max = 1200) => typeof value === 'string' ? value.replace(/\u0000/g, '').trim().slice(0, max) : '';
+  const cleanList = (value, maxItems = 20, maxText = 180) => Array.isArray(value)
+    ? value.slice(0, maxItems).map(item => cleanText(item, maxText)).filter(Boolean)
+    : [];
+  const raw = req.body?.profile && typeof req.body.profile === 'object' ? req.body.profile : {};
+  // Whitelist CV facts. Names, contact information, location and internal IDs
+  // are deliberately omitted from all provider requests.
+  const profile = {
+    targetRole: cleanText(raw.targetRole, 180),
+    summary: cleanText(raw.summary, 1200),
+    skills: cleanList(raw.skills),
+    experience: Array.isArray(raw.experience) ? raw.experience.slice(0, 12).map(item => ({
+      role: cleanText(item?.role, 180),
+      kind: cleanText(item?.kind, 60),
+      organization: cleanText(item?.organization, 180),
+      period: cleanText(item?.period, 80),
+      facts: cleanText(item?.facts, 1600),
+    })) : [],
+    education: Array.isArray(raw.education) ? raw.education.slice(0, 12).map(item => ({
+      title: cleanText(item?.title, 180),
+      institution: cleanText(item?.institution, 180),
+      period: cleanText(item?.period, 80),
+      details: cleanText(item?.details, 600),
+    })) : [],
+    projects: Array.isArray(raw.projects) ? raw.projects.slice(0, 12).map(item => ({
+      name: cleanText(item?.name, 180),
+      role: cleanText(item?.role, 120),
+      period: cleanText(item?.period, 80),
+      facts: cleanText(item?.facts, 1400),
+      skills: cleanList(item?.skills, 12, 100),
+      url: cleanText(item?.url, 300),
+    })) : [],
+    certifications: Array.isArray(raw.certifications) ? raw.certifications.slice(0, 12).map(item => ({
+      name: cleanText(item?.name, 180), issuer: cleanText(item?.issuer, 180), period: cleanText(item?.period, 80),
+    })) : [],
+    languages: Array.isArray(raw.languages) ? raw.languages.slice(0, 10).map(item => ({
+      name: cleanText(item?.name, 80), level: cleanText(item?.level, 80),
+    })) : [],
+    guide: {
+      activities: cleanText(raw.guide?.activities, 1800),
+      proudOf: cleanText(raw.guide?.proudOf, 1200),
+      learning: cleanText(raw.guide?.learning, 1200),
+    },
+    jobDescription: cleanText(raw.jobDescription, 9000),
+  };
+  if (Buffer.byteLength(JSON.stringify(profile), 'utf8') > 20000) {
+    return res.status(413).json({ error: 'El contenido del CV es demasiado extenso para analizarlo de una vez.' });
+  }
+  const emiKey = req.authUser ? 'u:' + req.authUser.id : 'd:' + clientIp(req);
+  const emiLimit = await getEmiLimit(!!req.authUser);
+  const emiUsed = await getEmiUsage(emiKey);
+  if (emiUsed >= emiLimit) {
+    return res.status(429).json({ error: `Alcanzaste el límite diario de ayuda con IA (${emiLimit}).`, code: 'EMI_DAILY_LIMIT', limit: emiLimit, used: emiUsed });
+  }
+
+  const taskInstructions = {
+    summary: 'Redacta el perfil profesional en español claro, con datos que estén respaldados por el perfil. Si falta información, no inventes: entrega una propuesta prudente y preguntas concretas.',
+    experience: 'Convierte los hechos de una experiencia en una descripción breve, clara y orientada a resultados. No inventes cifras, responsabilidades, fechas, herramientas ni logros. Si faltan hechos, solicita detalles en preguntas y ofrece solo una redacción fiel.',
+    guided_draft: 'Ayuda a una persona sin experiencia laboral formal. Aprovecha únicamente actividades, aprendizaje, proyectos, responsabilidades cotidianas y resultados que la persona haya escrito. No conviertas tareas hipotéticas en hechos. Devuelve un perfil inicial y, si hay material suficiente, un proyecto/actividad que la persona pueda revisar.',
+    job_match: 'Compara el perfil con la vacante. Distingue evidencia presente de requisitos ausentes. No afirmes que la persona posee una habilidad solo porque la vacante la pide. Sugiere palabras clave pertinentes sin relleno ni manipulación ATS.',
+    review: 'Revisa integridad, claridad, consistencia y pertinencia del CV. No califiques con una puntuación arbitraria. Prioriza correcciones concretas y marca cualquier dato que deba confirmar la persona.',
+  }[task];
+  const responseShape = {
+    summary: '{"suggestion":"texto","questions":["..."],"warnings":["..."]}',
+    experience: '{"suggestion":"texto","questions":["..."],"warnings":["..."]}',
+    guided_draft: '{"summary":"texto","activity":{"title":"...","kind":"proyecto|voluntariado|actividad académica|otro","description":"...","skills":["..."]},"questions":["..."],"warnings":["..."]}',
+    job_match: '{"summary":"...","strengths":["..."],"gaps":["..."],"keywords":["..."],"actions":["..."],"warnings":["..."]}',
+    review: '{"summary":"...","checks":[{"area":"...","status":"bien|mejorar|falta","advice":"..."}],"warnings":["..."]}',
+  }[task];
+  const system = [
+    'Eres una orientadora profesional de currículum para personas de cualquier nivel y trayectoria.',
+    'Escribe en español neutro y amable. Sé directa, respetuosa y accesible. No des consejos legales ni prometas empleo.',
+    'Regla de veracidad: no inventes empleadores, títulos, fechas, métricas, habilidades, certificaciones ni resultados. No conviertas preguntas o ejemplos en hechos.',
+    'Si no hay datos suficientes, pregunta qué hizo la persona, cómo lo hizo y qué resultado observó. No rellenes huecos con logros falsos.',
+    taskInstructions,
+    'Devuelve solo un objeto JSON válido, sin markdown ni texto fuera del JSON. Forma requerida: ' + responseShape,
+  ].join('\n');
+  try {
+    const completion = await callAI([
+      { role: 'system', content: system },
+      { role: 'user', content: JSON.stringify(profile) },
+    ], 1200);
+    const candidate = String(completion.reply || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const result = JSON.parse(candidate);
+    if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('Formato de respuesta inválido');
+    const used = await incrEmiUsage(emiKey);
+    // No ChatMessage insert, session history, memory, prompt logging or Telegram
+    // alert here; CV content stays out of the shared chat data path.
+    trackEvent('cv_ai', null, { task, model: completion.model });
+    res.json({ result, model: completion.model, emi: { used, limit: emiLimit } });
+  } catch (error) {
+    console.warn('CV assistant provider failure:', error?.status || error?.message || 'unknown');
+    res.status(502).json({ error: 'No se pudo completar la sugerencia. Tu borrador local sigue guardado.' });
   }
 });
 
