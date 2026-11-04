@@ -175,10 +175,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         brand.addView(text("WIL.E COPILOT", 16f, Color.WHITE, true))
         brand.addView(text("IA de CodeHub · lista para ayudarte", 11f, 0xFF9BA8BD.toInt()))
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
-        top.addView(text("", 24f, 0xFFCAD4E8.toInt(), true).apply {
-            gravity = Gravity.CENTER
+        top.addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_ai_trash)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
             contentDescription = "Borrar conversación"
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_ai_trash, 0, 0, 0)
             isClickable = true
             isFocusable = true
             setOnClickListener { confirmClearChat() }

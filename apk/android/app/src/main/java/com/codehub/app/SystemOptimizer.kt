@@ -504,13 +504,34 @@ object SystemOptimizer {
             requireReady()
             val p = pkg.trim()
             if (p.isEmpty()) return@runBlocking "{\"error\":\"paquete vacío\"}"
-            val cmd = if (enabled) "pm enable --user 0 $p" else "pm disable-user --user 0 $p"
-            val (code, out) = runSh(cmd)
-            val msg = out.joinToString(" ").trim()
-            if (code != 0 && !msg.contains("Success")) {
-                return@runBlocking "{\"error\":${quoteJs(msg.ifEmpty { "exit=$code" })}}"
+            // Bajo ADB (uid 2000) `--user 0` funciona para apps de usuario;
+            // para apps del sistema lanza SecurityException. Probamos variantes
+            // y, si ninguna sirve, devolvemos un error claro con hint de root.
+            val cmds = if (enabled) {
+                listOf("pm enable --user 0 $p", "pm enable $p")
+            } else {
+                listOf("pm disable-user --user 0 $p", "pm disable-user $p", "pm disable $p")
             }
-            "{\"ok\":true,\"package\":${quoteJs(p)},\"enabled\":$enabled}"
+            var lastCode = -1
+            var lastMsg = ""
+            for (cmd in cmds) {
+                val (code, out) = runSh(cmd)
+                lastCode = code
+                lastMsg = out.joinToString(" ").trim()
+                if (code == 0 || lastMsg.contains("Success", ignoreCase = true)) {
+                    return@runBlocking "{\"ok\":true,\"package\":${quoteJs(p)},\"enabled\":$enabled}"
+                }
+                // Errores que no se arreglan reintentando → cortar.
+                if (lastMsg.contains("INTERACT_ACROSS_USERS_FULL", ignoreCase = true) ||
+                    lastMsg.contains("SecurityException", ignoreCase = true)) {
+                    break
+                }
+            }
+            val hint = if (!isRootBackend() && (lastMsg.contains("INTERACT_ACROSS_USERS_FULL", ignoreCase = true) ||
+                    lastMsg.contains("SecurityException", ignoreCase = true))) {
+                " (requiere Shizuku con root para apps del sistema)"
+            } else ""
+            "{\"error\":${quoteJs(lastMsg.ifEmpty { "exit=$lastCode" } + hint)}}"
         } catch (t: Throwable) {
             "{\"error\":${quoteJs(t.message ?: t.toString())}}"
         }

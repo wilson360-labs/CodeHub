@@ -216,9 +216,9 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { startActivityForResult(Intent(this@NativeStoreActivity, NativeMyAppsActivity::class.java), MY_APPS_REQUEST) }
         }
         top.addView(myApps, LinearLayout.LayoutParams(-2, dp(42)).apply { marginEnd = dp(6) })
-        val downloads = TextView(this).apply {
-            gravity = Gravity.CENTER
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_store_download, 0, 0, 0)
+        val downloads = ImageView(this).apply {
+            setImageResource(R.drawable.ic_store_download)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF101624.toInt(), 0xFF26324A.toInt(), dp(14))
             contentDescription = "Descargas"
             isClickable = true
@@ -226,9 +226,9 @@ class NativeStoreActivity : Activity() {
             setOnClickListener { startActivity(Intent(this@NativeStoreActivity, DownloadsActivity::class.java)) }
         }
         top.addView(downloads, LinearLayout.LayoutParams(dp(42), dp(42)).apply { marginEnd = dp(5) })
-        val refresh = TextView(this).apply {
-            gravity = Gravity.CENTER
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_store_refresh, 0, 0, 0)
+        val refresh = ImageView(this).apply {
+            setImageResource(R.drawable.ic_store_refresh)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             background = roundRect(0xFF101624.toInt(), 0xFF26324A.toInt(), dp(14))
             contentDescription = "Actualizar catálogo"
             isClickable = true

@@ -119,12 +119,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             setPadding(dp(11), dp(7), dp(11), dp(7))
             background = rounded(0xFF1B1C36.toInt(), dp(20))
         })
-        addView(TextView(context).apply {
-            text = ""
-            textSize = 17f
-            gravity = Gravity.CENTER
+        addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_home_profile)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
             contentDescription = "Abrir perfil de usuario"
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_home_profile, 0, 0, 0)
             background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
             isClickable = true
             isFocusable = true
