@@ -278,8 +278,7 @@
     {
       "source": "/native-auth-check.html",
       "destination": "/native-auth-check",
-      "permanent": false,
-      "preserveQueryParams": true
+      "permanent": false
     },
     {
       "source": "/tools.html",
