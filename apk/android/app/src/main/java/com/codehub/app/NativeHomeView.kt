@@ -419,7 +419,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             background = rounded(0xFF102631.toInt(), dp(20))
         }, LayoutParams(-2, -2))
 
-        addView(label("Hola, soy Wilson.E", 26f, Color.WHITE, true), LayoutParams(-1, -2).apply {
+        addView(label("CodeHub desarrollado por Wilson.E", 22f, Color.WHITE, true), LayoutParams(-1, -2).apply {
             topMargin = dp(10)
         })
         addView(label(
