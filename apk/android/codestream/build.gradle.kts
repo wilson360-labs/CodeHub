@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.tensei.ytxtube"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
@@ -32,9 +32,7 @@ kotlin {
 }
 
 dependencies {
-    // Compose 1.11 supports SDK 36; Compose 1.12 requires API 37, which is
-    // not yet published to the GitHub runner's Android SDK repository.
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     val media3 = "1.10.1"
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
