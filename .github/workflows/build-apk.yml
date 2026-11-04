@@ -55,12 +55,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
         with:
-          # AGP 9.1.1 requiere Gradle 9.3.1 y admite API 37.
+          # AGP 9.1.1 requiere Gradle 9.3.1; compilamos con SDK 36, instalado en CI.
           gradle-version: '9.3.1'
 
       # android-actions/setup-android@v3 puede fallar por timeouts transitorios
       # del runner. Se prueba primero; si falla, se asume que ubuntu-latest ya
-      # trae el SDK pre-instalado (compileSdk 37) en $ANDROID_HOME.
+      # trae el SDK pre-instalado (compileSdk 36) en $ANDROID_HOME.
       - name: Setup Android SDK
         id: setup-android
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
@@ -78,8 +78,8 @@ jobs:
             SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
           fi
           if [ -f "$SDKMANAGER" ]; then
-            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            "$SDKMANAGER" "platforms;android-37" "build-tools;36.0.0"
+            yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
             echo "SDK listo (licenses aceptadas)"
           else
             echo "sdkmanager no encontrado, Gradle se encargará de las licenses"
