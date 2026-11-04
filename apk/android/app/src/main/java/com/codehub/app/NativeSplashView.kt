@@ -22,6 +22,10 @@ import java.util.Calendar
 
 /** Native port of CodeHub's web splash, shown only by the compiled Android app. */
 class NativeSplashView(context: Context) : FrameLayout(context) {
+    fun interface OnDismissedListener {
+        fun onDismissed()
+    }
+
     private val mainHandler = Handler(Looper.getMainLooper())
     private val startedAt = SystemClock.elapsedRealtime()
     private val choreographer = Choreographer.getInstance()
@@ -29,7 +33,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     private var dismissRequested = false
     private var dismissStartedAt = 0L
     private var framePosted = false
-    private var onDismissed: (() -> Unit)? = null
+    private var onDismissed: OnDismissedListener? = null
     private lateinit var logoView: View
     private lateinit var orbitalRings: OrbitalRingsView
     private lateinit var auroraBackground: AuroraBackground
@@ -170,7 +174,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
     }
 
     /** Runs once the splash has fully faded, so the home entrance is visible. */
-    fun setOnDismissed(callback: () -> Unit) {
+    fun setOnDismissed(callback: OnDismissedListener) {
         onDismissed = callback
     }
 
@@ -223,7 +227,7 @@ class NativeSplashView(context: Context) : FrameLayout(context) {
             if (exit >= 1f) {
                 dismissed = true
                 visibility = View.GONE
-                onDismissed?.invoke()
+                onDismissed?.onDismissed()
                 onDismissed = null
                 return@FrameCallback
             }
