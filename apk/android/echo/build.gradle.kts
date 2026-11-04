@@ -61,7 +61,7 @@ kotlin {
 }
 
 dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
 
     // Contrato de extensiones (mismo artefacto que ya usa CodeHub; se excluye
     // protobuf-java porque el AAR no lo referencia y chocaría con el

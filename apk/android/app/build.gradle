@@ -101,7 +101,7 @@ dependencies {
     // en UnityAdsManager.java; el banner vive en la franja reservada del layout.
     implementation 'com.unity3d.ads:unity-ads:4.20.0'
     // Desugaring de librerías java.time (ver compileOptions arriba).
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.1.5'
     implementation 'com.google.android.gms:play-services-location:21.3.0'
     // WorkManager — sync periódico (FCM + ubicación) sin Foreground Service.
     // Reemplaza a CodeHubSyncService (tipo dataSync), que en Android 15/16
