@@ -90,7 +90,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        val copilotCard = featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+        copilotCard = featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
             listener.onOpenCopilot()
         }
         addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
@@ -103,7 +103,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        val optimizerCard = featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
+        optimizerCard = featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
             listener.onOpenWebsite("/pages/tools.html#opt-card")
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
