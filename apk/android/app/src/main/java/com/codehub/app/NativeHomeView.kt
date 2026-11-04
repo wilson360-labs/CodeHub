@@ -3,6 +3,7 @@ package com.codehub.app
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
@@ -31,6 +32,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val cyan = 0xFF22D3EE.toInt()
     private val entranceTargets = mutableListOf<View>()
     private var entrancePlayed = false
+    private lateinit var installedMetric: TextView
+    private lateinit var downloadsMetric: TextView
+    private lateinit var activeDownloadsLabel: TextView
     init {
         orientation = VERTICAL
         setBackgroundColor(0xFF080B11.toInt())
@@ -46,40 +50,38 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(24))
         }
-        addEntranceTarget(content, buildHero(), LayoutParams(-1, -2))
-        addEntranceTarget(content, sectionTitle("Tu CodeHub", "Tus espacios principales, listos en Android"),
-            LayoutParams(-1, -2).apply { topMargin = dp(28) })
+        addEntranceTarget(content, sectionTitle("Acceso rápido", "Tus apps principales, listas en Android"),
+            LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
-        val primaryRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        primaryRow.addView(actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
+        val storeCard = actionCard(R.drawable.ic_home_store, "CodeHub Store", "Apps open source para Android", indigo) {
             listener.onOpenStore()
-        }, weightedCard())
-        primaryRow.addView(actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
+        }
+        val appsCard = actionCard(R.drawable.ic_home_apps, "Mis aplicaciones", "Instaladas y actualizaciones", cyan) {
             listener.onOpenMyApps()
-        }, weightedCard().apply { marginStart = dp(10) })
-        addEntranceTarget(content, primaryRow, LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        }
+        addEntranceTarget(content, actionPair(storeCard, appsCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        addEntranceTarget(content, buildActivityCard(), LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        addEntranceTarget(content, buildHero(), LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
-        val creatorRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        creatorRow.addView(actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
+        val codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
             listener.onOpenCodeBeat()
-        }, weightedCard())
-        creatorRow.addView(actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
+        }
+        val codeStreamCard = actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
             listener.onOpenCodeStream()
-        }, weightedCard().apply { marginStart = dp(10) })
-        addEntranceTarget(content, creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        }
+        addEntranceTarget(content, actionPair(codeBeatCard, codeStreamCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         addEntranceTarget(content, featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
             listener.onOpenCopilot()
         }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        val exploreRow = LinearLayout(context).apply { orientation = HORIZONTAL }
-        exploreRow.addView(actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
+        val weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
             listener.onOpenWebsite("/#weather-section")
-        }, weightedCard())
-        exploreRow.addView(actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
+        }
+        val toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")
-        }, weightedCard().apply { marginStart = dp(10) })
-        addEntranceTarget(content, exploreRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        }
+        addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         addEntranceTarget(content, featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
             listener.onOpenWebsite("/pages/tools.html#opt-card")
@@ -101,7 +103,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     fun playEntrance() {
         if (entrancePlayed) return
         entrancePlayed = true
+        refreshActivitySummary()
         entranceTargets.forEachIndexed { index, view ->
+            val visibleBounds = Rect()
+            if (!view.getGlobalVisibleRect(visibleBounds)) return@forEachIndexed
             view.alpha = 0f
             view.translationY = dp(14).toFloat()
             view.animate()
@@ -111,6 +116,79 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 .setDuration(360L)
                 .setInterpolator(DecelerateInterpolator(1.6f))
                 .start()
+        }
+    }
+
+    /** Updates the home panel from on-device package and download history data. */
+    fun refreshActivitySummary() {
+        if (!entrancePlayed || !::installedMetric.isInitialized || !::downloadsMetric.isInitialized || !::activeDownloadsLabel.isInitialized) return
+        Thread({
+            val installedCount = runCatching {
+                @Suppress("DEPRECATION")
+                val userApps = context.packageManager.getInstalledApplications(0)
+                userApps.count { app ->
+                    app.packageName != context.packageName &&
+                        (app.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+                }
+            }.getOrDefault(0)
+            val downloadCount = NativeApkInsights.downloads(context).size
+            val activeDownloadCount = NativeStoreApkInstaller.transfers.value.count { (_, state) ->
+                state is ApkTransferState.Downloading || state is ApkTransferState.Verifying
+            }
+            post {
+                if (!isAttachedToWindow) return@post
+                installedMetric.text = installedCount.toString()
+                downloadsMetric.text = downloadCount.toString()
+                activeDownloadsLabel.text = if (activeDownloadCount == 0) "Sin descargas en curso" else "$activeDownloadCount descarga${if (activeDownloadCount == 1) "" else "s"} en curso"
+            }
+        }, "CodeHub-home-summary").start()
+    }
+
+    private fun buildActivityCard(): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        setPadding(dp(16), dp(13), dp(16), dp(13))
+        background = rippleSurface(0xFF101622.toInt(), dp(18), 0xFF2A3447.toInt())
+        isClickable = true
+        isFocusable = true
+        contentDescription = "Tu actividad en CodeHub. Abrir Mis aplicaciones."
+        setOnClickListener { listener.onOpenMyApps() }
+        addView(label("TU ACTIVIDAD", 10f, cyan, true))
+        val metrics = LinearLayout(context).apply {
+            orientation = if (resources.configuration.screenWidthDp < 350 || resources.configuration.fontScale >= 1.2f) VERTICAL else HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        installedMetric = activityMetric(metrics, "Apps instaladas")
+        downloadsMetric = activityMetric(metrics, "Historial CodeHub")
+        addView(metrics, LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        activeDownloadsLabel = label("Comprobando descargas…", 11f, muted, false)
+        addView(activeDownloadsLabel, LayoutParams(-1, -2).apply { topMargin = dp(7) })
+    }
+
+    private fun activityMetric(parent: LinearLayout, caption: String): TextView {
+        val block = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val value = label("—", 20f, Color.WHITE, true)
+        block.addView(value, LayoutParams(-2, -2))
+        block.addView(label(caption, 11f, muted, false), LayoutParams(-2, -2).apply { marginStart = dp(8) })
+        val params = if (parent.orientation == HORIZONTAL) LayoutParams(0, -2, 1f)
+        else LayoutParams(-1, -2).apply { topMargin = dp(5) }
+        parent.addView(block, params)
+        return value
+    }
+
+    private fun actionPair(first: View, second: View): View {
+        val stack = resources.configuration.screenWidthDp < 350 || resources.configuration.fontScale >= 1.2f
+        return LinearLayout(context).apply {
+            orientation = if (stack) VERTICAL else HORIZONTAL
+            if (stack) {
+                addView(first, LayoutParams(-1, -2))
+                addView(second, LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            } else {
+                addView(first, weightedCard())
+                addView(second, weightedCard().apply { marginStart = dp(10) })
+            }
         }
     }
 
@@ -157,7 +235,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     private fun buildHero(): View = LinearLayout(context).apply {
         orientation = VERTICAL
-        setPadding(dp(20), dp(22), dp(20), dp(20))
+        setPadding(dp(18), dp(15), dp(18), dp(14))
         elevation = dp(4).toFloat()
         background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
@@ -173,42 +251,18 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             background = rounded(0xFF102631.toInt(), dp(20))
         }, LayoutParams(-2, -2))
 
-        addView(label("Hola, soy", 16f, 0xFFB9BED3.toInt(), false),
-            LayoutParams(-1, -2).apply { topMargin = dp(18) })
-        addView(label("Wilson.E", 42f, Color.WHITE, true), LayoutParams(-1, -2).apply {
-            topMargin = dp(1)
-        })
-        addView(label(
-            "Experiencias web, herramientas útiles y servicios de CodeHub, ahora con funciones nativas para Android.",
-            14f, 0xFFC0C2D1.toInt(), false,
-        ).apply { setLineSpacing(dp(4).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
+        addView(label("Hola, soy Wilson.E", 26f, Color.WHITE, true), LayoutParams(-1, -2).apply {
             topMargin = dp(10)
         })
-
-        val badges = LinearLayout(context).apply {
-            orientation = HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        listOf("Frontend", "Backend", "UI / UX").forEach { item ->
-            addViewToBadges(badges, item)
-        }
-        addView(badges, LayoutParams(-1, -2).apply { topMargin = dp(15) })
-
-        val buttons = LinearLayout(context).apply { orientation = HORIZONTAL }
-        buttons.addView(button("Ver perfil y proyectos  ↗", 0xFF25284A.toInt(), 0xFFE4E7FF.toInt()) {
+        addView(label(
+            "Tu tienda y herramientas favoritas, reunidas en CodeHub para Android.",
+            13f, 0xFFC0C2D1.toInt(), false,
+        ).apply { maxLines = 2; setLineSpacing(dp(3).toFloat(), 1f) }, LayoutParams(-1, -2).apply {
+            topMargin = dp(5)
+        })
+        addView(button("Ver perfil y proyectos  ↗", 0xFF25284A.toInt(), 0xFFE4E7FF.toInt()) {
             listener.onOpenWebsite("/cv")
-        }, LayoutParams(-1, dp(46)))
-        addView(buttons, LayoutParams(-1, -2).apply { topMargin = dp(19) })
-    }
-
-    private fun addViewToBadges(container: LinearLayout, text: String) {
-        container.addView(TextView(context).apply {
-            this.text = text
-            textSize = 10f
-            setTextColor(0xFFBCC4E3.toInt())
-            setPadding(dp(9), dp(6), dp(9), dp(6))
-            background = rounded(0xFF20243A.toInt(), dp(10))
-        }, LayoutParams(-2, -2).apply { marginEnd = dp(7) })
+        }, LayoutParams(-1, dp(42)).apply { topMargin = dp(10) })
     }
 
     private fun sectionTitle(title: String, subtitle: String): View = LinearLayout(context).apply {

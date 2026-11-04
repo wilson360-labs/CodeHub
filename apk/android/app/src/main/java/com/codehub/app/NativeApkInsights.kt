@@ -32,7 +32,14 @@ object NativeApkInsights {
         val analyzedAt: Long,
     )
 
-    data class DownloadRecord(val appId: String, val version: String, val sizeBytes: Long, val at: Long)
+    data class DownloadRecord(
+        val appId: String,
+        val version: String,
+        val sizeBytes: Long,
+        val at: Long,
+        val appName: String = appId,
+        val packageName: String = "",
+    )
 
     private const val PREFS = "codehub_insights"
     private const val KEY_INSIGHTS = "insights"
@@ -121,7 +128,26 @@ object NativeApkInsights {
         }
     }
 
-    fun recordDownload(context: Context, appId: String, version: String, sizeBytes: Long) {
+    /** Removes only the cached APK inspection when the related app is uninstalled. */
+    fun removeInsight(context: Context, appId: String) {
+        runCatching {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val root = JSONObject(prefs.getString(KEY_INSIGHTS, "{}").orEmpty())
+            if (root.has(appId)) {
+                root.remove(appId)
+                prefs.edit().putString(KEY_INSIGHTS, root.toString()).apply()
+            }
+        }
+    }
+
+    fun recordDownload(
+        context: Context,
+        appId: String,
+        version: String,
+        sizeBytes: Long,
+        appName: String = appId,
+        packageName: String = "",
+    ) {
         runCatching {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val array = JSONArray(prefs.getString(KEY_HISTORY, "[]").orEmpty())
@@ -130,6 +156,8 @@ object NativeApkInsights {
                 put("version", version)
                 put("sizeBytes", sizeBytes)
                 put("at", System.currentTimeMillis())
+                put("appName", appName)
+                put("packageName", packageName)
             }
             val next = JSONArray()
             next.put(entry)
@@ -142,13 +170,21 @@ object NativeApkInsights {
         }
     }
 
-    fun downloads(context: Context, appId: String): List<DownloadRecord> = runCatching {
+    fun downloads(context: Context, appId: String? = null): List<DownloadRecord> = runCatching {
         val array = JSONArray(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_HISTORY, "[]").orEmpty())
         (0 until array.length()).mapNotNull { i ->
             val obj = array.optJSONObject(i) ?: return@mapNotNull null
-            if (obj.optString("appId") != appId) return@mapNotNull null
-            DownloadRecord(obj.optString("appId"), obj.optString("version"), obj.optLong("sizeBytes"), obj.optLong("at"))
+            val id = obj.optString("appId")
+            if (appId != null && id != appId) return@mapNotNull null
+            DownloadRecord(
+                appId = id,
+                version = obj.optString("version"),
+                sizeBytes = obj.optLong("sizeBytes"),
+                at = obj.optLong("at"),
+                appName = obj.optString("appName", id).ifBlank { id },
+                packageName = obj.optString("packageName"),
+            )
         }
     }.getOrDefault(emptyList())
 

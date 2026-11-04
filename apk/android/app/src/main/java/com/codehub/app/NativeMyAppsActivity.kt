@@ -56,6 +56,8 @@ class NativeMyAppsActivity : Activity() {
     private var updateCheckFailed = false
     private var hasLoaded = false
     private var bulkUpdating = false
+    private var pendingUninstallPackage: String? = null
+    private var pendingUninstallAppId: String? = null
     private lateinit var pendingBadge: TextView
 
     private data class TransferProgress(val downloaded: Long, val total: Long)
@@ -156,11 +158,12 @@ class NativeMyAppsActivity : Activity() {
         status.text = "Buscando actualizaciones…"
         executor.execute {
             try {
+                NativeStoreApkInstaller.cleanupStaleFiles(applicationContext)
                 var failedUpdates = false
                 val catalog = try { fetchCatalog() } catch (_: Exception) { failedUpdates = true; emptyList() }
                 val byPackage = catalog.mapNotNull { app -> app.packageName?.let { it to app } }.toMap()
                 val local = fetchInstalledApps(byPackage)
-                val recentDownloads = fetchDownloads()
+                val recentDownloads = fetchDownloads(catalog.associateBy { it.id })
                 val managed = local.filter { it.repo.isNotBlank() && !it.id.startsWith("local:") }
                 val updates = try { fetchUpdates(managed) } catch (_: Exception) {
                     failedUpdates = true
@@ -189,25 +192,44 @@ class NativeMyAppsActivity : Activity() {
         }
     }
 
-    private fun fetchDownloads(): List<DownloadEntry> {
-        val manager = getSystemService(DOWNLOAD_SERVICE) as? DownloadManager ?: return emptyList()
+    private fun fetchDownloads(catalog: Map<String, AppEntry>): List<DownloadEntry> {
         val rows = mutableListOf<DownloadEntry>()
-        val cursor = runCatching { manager.query(DownloadManager.Query()) }.getOrNull() ?: return rows
-        cursor.use {
+        val manager = getSystemService(DOWNLOAD_SERVICE) as? DownloadManager
+        val cursor = manager?.let { runCatching { it.query(DownloadManager.Query()) }.getOrNull() }
+        if (cursor != null) cursor.use {
             val titleIndex = it.getColumnIndex(DownloadManager.COLUMN_TITLE)
             val statusIndex = it.getColumnIndex(DownloadManager.COLUMN_STATUS)
             val bytesIndex = it.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
             val totalIndex = it.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+            val timeIndex = it.getColumnIndex(DownloadManager.COLUMN_LAST_MODIFIED_TIMESTAMP)
             while (it.moveToNext()) {
                 rows.add(DownloadEntry(
                     title = if (titleIndex >= 0) it.getString(titleIndex).orEmpty() else "Descarga",
                     status = if (statusIndex >= 0) it.getInt(statusIndex) else -1,
                     bytes = if (bytesIndex >= 0) it.getLong(bytesIndex) else 0L,
                     total = if (totalIndex >= 0) it.getLong(totalIndex) else 0L,
+                    completedAt = if (timeIndex >= 0) it.getLong(timeIndex) else 0L,
                 ))
             }
         }
-        return rows
+        NativeApkInsights.downloads(this).forEach { record ->
+            val catalogApp = catalog[record.appId]
+            val name = record.appName.takeUnless { it == record.appId }
+                ?: catalogApp?.name
+                ?: record.appId
+            rows.add(DownloadEntry(
+                title = name,
+                status = DownloadManager.STATUS_SUCCESSFUL,
+                bytes = record.sizeBytes,
+                total = record.sizeBytes,
+                source = "CodeHub",
+                appId = record.appId,
+                packageName = record.packageName.ifBlank { catalogApp?.packageName.orEmpty() },
+                version = record.version,
+                completedAt = record.at,
+            ))
+        }
+        return rows.sortedByDescending { it.completedAt }
     }
 
     private fun fetchInstalledApps(catalog: Map<String, AppEntry>): List<AppEntry> {
@@ -327,9 +349,11 @@ class NativeMyAppsActivity : Activity() {
         val query = if (::search.isInitialized) search.text.toString().trim().lowercase(Locale.ROOT) else ""
         if (filter == Filter.DOWNLOADED) {
             val visibleDownloads = downloads.filter { it.title.lowercase(Locale.ROOT).contains(query) }
-            status.text = "${downloads.size} descargas en el dispositivo"
-            if (visibleDownloads.isEmpty()) list.addView(label("Aún no hay archivos descargados. Las descargas APK aparecerán aquí.", 14f, 0xFF9AA0B8.toInt()).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, dp(140)))
+            status.text = "${downloads.size} descargas · historial de CodeHub y del dispositivo"
+            if (visibleDownloads.isEmpty()) list.addView(label("Aún no hay descargas. Los APK que bajes desde CodeHub aparecerán aquí.", 14f, 0xFF9AA0B8.toInt()).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(-1, dp(140)))
             else visibleDownloads.forEach { entry ->
+                val installedApp = entry.packageName?.takeIf { it.isNotBlank() }
+                    ?.let { pkg -> installed.firstOrNull { it.packageName == pkg } }
                 val row = LinearLayout(this).apply {
                     orientation = LinearLayout.VERTICAL
                     setPadding(dp(15), dp(13), dp(15), dp(13))
@@ -337,11 +361,28 @@ class NativeMyAppsActivity : Activity() {
                 }
                 row.addView(label(entry.title, 14f, 0xFFFFFFFF.toInt(), true))
                 val progress = if (entry.total > 0) " · ${entry.bytes * 100 / entry.total}%" else ""
-                row.addView(label(downloadStatus(entry.status) + progress, 12f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(5), 0, 0) })
-                row.setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) }
+                val detail = if (entry.source == "CodeHub") {
+                    val date = if (entry.completedAt > 0) java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(java.util.Date(entry.completedAt)) else ""
+                    listOf("CodeHub", entry.version.takeIf { it.isNotBlank() }?.let { "v$it" }, date, android.text.format.Formatter.formatShortFileSize(this, entry.bytes))
+                        .filterNotNull().filter { it.isNotBlank() }.joinToString(" · ")
+                } else downloadStatus(entry.status) + progress
+                row.addView(label(detail, 12f, 0xFF9AA0B8.toInt()).apply { setPadding(0, dp(5), 0, 0) })
+                if (entry.source == "CodeHub") {
+                    val action = Button(this).apply {
+                        text = if (installedApp != null) "Administrar app instalada" else "Volver a la tienda"
+                        isAllCaps = false
+                        setOnClickListener {
+                            if (installedApp != null) showAppActions(installedApp)
+                            else startActivity(Intent(this@NativeMyAppsActivity, NativeStoreActivity::class.java))
+                        }
+                    }
+                    row.addView(action, LinearLayout.LayoutParams(-2, dp(42)).apply { topMargin = dp(9) })
+                } else {
+                    row.setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) }
+                }
                 list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
             }
-            if (downloads.isNotEmpty()) list.addView(Button(this).apply { text = "Administrar descargas"; isAllCaps = false; setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) } })
+            if (downloads.any { it.source != "CodeHub" }) list.addView(Button(this).apply { text = "Administrar descargas del dispositivo"; isAllCaps = false; setOnClickListener { startActivity(Intent(this@NativeMyAppsActivity, DownloadsActivity::class.java)) } })
             return
         }
         val visible = installed.filter { app ->
@@ -550,11 +591,31 @@ class NativeMyAppsActivity : Activity() {
 
     private fun requestUninstall(app: AppEntry) {
         val pkg = app.packageName ?: return
-        try {
-            startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")))
-        } catch (_: Exception) {
-            Toast.makeText(this, "No se pudo abrir el desinstalador", Toast.LENGTH_SHORT).show()
+        val storeTransfer = NativeStoreApkInstaller.transfers.value[app.id]
+        val storeInstallInProgress = storeTransfer is ApkTransferState.Downloading ||
+            storeTransfer is ApkTransferState.Verifying ||
+            storeTransfer == ApkTransferState.ReadyToInstall ||
+            storeTransfer == ApkTransferState.AwaitingUserConfirmation
+        if (app.id in activeTransfers || storeInstallInProgress) {
+            Toast.makeText(this, "Espera a que termine la descarga o instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+            return
         }
+        AlertDialog.Builder(this)
+            .setTitle("Desinstalar ${app.name}")
+            .setMessage("Android abrirá su desinstalador para confirmar. Al completar, Android eliminará la app y sus datos; CodeHub limpiará los APK temporales de esta app.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Continuar") { _, _ ->
+                try {
+                    pendingUninstallPackage = pkg
+                    pendingUninstallAppId = app.id
+                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")))
+                } catch (_: Exception) {
+                    pendingUninstallPackage = null
+                    pendingUninstallAppId = null
+                    Toast.makeText(this, "No se pudo abrir el desinstalador", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .show()
     }
 
     private fun toggleIgnoredUpdate(app: AppEntry) {
@@ -676,7 +737,33 @@ class NativeMyAppsActivity : Activity() {
     override fun onResume() {
         super.onResume()
         NativeStorePresence.visible = true
-        if (hasLoaded) refreshApps()
+        if (!hasLoaded) return
+        val packageToCheck = pendingUninstallPackage
+        val appIdToClean = pendingUninstallAppId
+        pendingUninstallPackage = null
+        pendingUninstallAppId = null
+        if (packageToCheck == null) {
+            refreshApps()
+            return
+        }
+        executor.execute {
+            val stillInstalled = runCatching {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageToCheck, 0)
+            }.isSuccess
+            val cleanedBytes = if (!stillInstalled && appIdToClean != null)
+                NativeStoreApkInstaller.cleanupAppFiles(applicationContext, appIdToClean) else 0L
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (!stillInstalled) {
+                    val reclaimed = android.text.format.Formatter.formatShortFileSize(this, cleanedBytes)
+                    Toast.makeText(this, "App desinstalada · ${if (cleanedBytes > 0) "$reclaimed temporales limpiados" else "Android limpió sus datos"}", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "La app sigue instalada; no se eliminaron archivos.", Toast.LENGTH_SHORT).show()
+                }
+                refreshApps()
+            }
+        }
     }
 
     override fun onPause() {
@@ -711,5 +798,15 @@ class NativeMyAppsActivity : Activity() {
         }
     }
 
-    private data class DownloadEntry(val title: String, val status: Int, val bytes: Long, val total: Long)
+    private data class DownloadEntry(
+        val title: String,
+        val status: Int,
+        val bytes: Long,
+        val total: Long,
+        val source: String = "Dispositivo",
+        val appId: String? = null,
+        val packageName: String? = null,
+        val version: String = "",
+        val completedAt: Long = 0,
+    )
 }

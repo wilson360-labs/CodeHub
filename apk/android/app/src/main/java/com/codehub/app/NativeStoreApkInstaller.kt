@@ -70,6 +70,7 @@ object NativeStoreApkInstaller {
     private val main = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
+    private val installerFileMaxAgeMs = 7L * 24 * 60 * 60 * 1000
     private val trustedHosts = setOf(
         "codehub-98s6.onrender.com", "github.com", "githubusercontent.com", "github.io", "jsdelivr.net",
     )
@@ -138,7 +139,14 @@ object NativeStoreApkInstaller {
                 // deletes it afterwards). Local, key-less (no VirusTotal).
                 NativeApkInsights.analyze(context, appId, destination)
                     ?.let { NativeApkInsights.cacheInsight(context, it) }
-                NativeApkInsights.recordDownload(context, appId, archive?.versionName ?: "", destination.length())
+                NativeApkInsights.recordDownload(
+                    context,
+                    appId,
+                    archive?.versionName ?: "",
+                    destination.length(),
+                    appName,
+                    archive?.packageName.orEmpty(),
+                )
 
                 setState(appId, ApkTransferState.ReadyToInstall)
                 if (preferSilent && ShizukuInstaller.isReady()) {
@@ -158,8 +166,8 @@ object NativeStoreApkInstaller {
                     openPackageInstaller(context, destination)
                 }.isSuccess
                 if (launched) {
-                    // Keep the file available while Package Installer reads it.
-                    main.postDelayed({ destination.delete(); pendingApks.remove(appId) }, 30 * 60 * 1000L)
+                    // Keep it long enough for Package Installer and clean stale APKs later.
+                    scheduleApkCleanup(appId, destination)
                     setState(appId, ApkTransferState.AwaitingUserConfirmation)
                     main.post { listener?.onFinished(Status.INSTALLER_OPENED) }
                 } else {
@@ -167,6 +175,7 @@ object NativeStoreApkInstaller {
                     // instalar". Background activity starts are restricted, so
                     // the finish happens when the user taps the notification.
                     pendingApks[appId] = destination
+                    scheduleApkCleanup(appId, destination, installerFileMaxAgeMs)
                     setState(appId, ApkTransferState.AwaitingUserConfirmation)
                     main.post { listener?.onFinished(Status.READY_BACKGROUND) }
                 }
@@ -211,7 +220,55 @@ object NativeStoreApkInstaller {
     @JvmStatic
     fun launchUserInstall(context: Context, appId: String): Boolean {
         val file = pendingApks[appId] ?: return false
-        return runCatching { openPackageInstaller(context, file) }.isSuccess
+        return runCatching {
+            openPackageInstaller(context, file)
+            scheduleApkCleanup(appId, file)
+        }.isSuccess
+    }
+
+    /** Removes only this app's installer APK and partial file, never app/user data. */
+    @JvmStatic
+    fun cleanupAppFiles(context: Context, appId: String): Long {
+        val safeId = appId.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
+        val directories = listOfNotNull(context.getExternalFilesDir(null), context.filesDir).distinct()
+        var removedBytes = 0L
+        directories.forEach { directory ->
+            listOf(File(directory, "store_$safeId.apk"), File(directory, "store_$safeId.apk.part")).forEach { file ->
+                if (file.isFile) {
+                    val size = file.length()
+                    if (file.delete()) removedBytes += size
+                }
+            }
+        }
+        pendingApks.remove(appId)
+        mutableTransfers.update { it - appId }
+        NativeApkInsights.removeInsight(context, appId)
+        return removedBytes
+    }
+
+    /** Cleans only expired CodeHub installer files; user downloads/media remain untouched. */
+    @JvmStatic
+    fun cleanupStaleFiles(context: Context) {
+        val now = System.currentTimeMillis()
+        val activeIds = jobs.filterValues { it.isActive }.keys
+            .map { it.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100) }
+            .toSet()
+        listOfNotNull(context.getExternalFilesDir(null), context.filesDir).distinct().forEach { directory ->
+            directory.listFiles()?.forEach fileLoop@ { file ->
+                if (!file.isFile || !file.name.startsWith("store_")) return@fileLoop
+                val safeId = file.name.removePrefix("store_").removeSuffix(".apk.part").removeSuffix(".apk")
+                if (safeId in activeIds) return@fileLoop
+                val maxAge = if (file.name.endsWith(".part")) 24L * 60 * 60 * 1000 else installerFileMaxAgeMs
+                if (now - file.lastModified() > maxAge) file.delete()
+            }
+        }
+    }
+
+    private fun scheduleApkCleanup(appId: String, file: File, delayMs: Long = 24L * 60 * 60 * 1000) {
+        main.postDelayed({
+            file.delete()
+            if (pendingApks[appId] == file) pendingApks.remove(appId)
+        }, delayMs)
     }
 
     private fun openPackageInstaller(context: Context, file: File): Intent {

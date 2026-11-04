@@ -1089,6 +1089,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}
         if (webView != null) webView.onResume();
         injectNativeFlags(webView);
         syncNativeSessionToWebView(webView);
