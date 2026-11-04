@@ -178,7 +178,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         top.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            background = roundRect(0xFF171C2B.toInt(), 0xFF333B55.toInt(), dp(22))
+            background = rounded(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
             contentDescription = "Borrar conversación"
             isClickable = true
             isFocusable = true
