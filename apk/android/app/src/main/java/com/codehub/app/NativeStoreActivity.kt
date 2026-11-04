@@ -932,10 +932,15 @@ class NativeStoreActivity : Activity() {
             if (app.id in activeTransfers) setProgress(-1f) else setIdle()
         }
         detailRing = ring
+        ctaRow.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_store_download)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            contentDescription = "Descargar"
+        }, LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(10) })
         ctaRow.addView(ring, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
         ctaRow.addView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(label("Instalar en Android", 17f, 0xFFFFFFFF.toInt(), true))
+            addView(label("Descargar", 17f, 0xFFFFFFFF.toInt(), true))
             val phase = label(installPhaseText(app), 12f, 0xFF9AA0B8.toInt()).apply {
                 setPadding(0, dp(3), 0, 0)
             }
@@ -943,6 +948,15 @@ class NativeStoreActivity : Activity() {
             addView(phase)
         }, LinearLayout.LayoutParams(0, -2, 1f))
         sheetContent.addView(ctaRow, LinearLayout.LayoutParams(-1, -2))
+        val directBtn = Button(this).apply {
+            text = "Descargar directo (sin anuncio)"
+            isAllCaps = false
+            textSize = 12f
+            setTextColor(0xFF9AA0B8.toInt())
+            background = roundRect(0xFF111827.toInt(), 0xFF26324A.toInt(), dp(12))
+            setOnClickListener { proceedInstall(app, null) }
+        }
+        sheetContent.addView(directBtn, LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(4) })
 
         // Tab strip.
         val panels = LinkedHashMap<String, LinearLayout>()
@@ -973,7 +987,7 @@ class NativeStoreActivity : Activity() {
             setLineSpacing(dp(3).toFloat(), 1f)
             setPadding(0, dp(14), 0, dp(4))
         })
-        descPanel.addView(label("Versión ${app.version.ifEmpty { "disponible" }}  ·  ${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
+        descPanel.addView(label("Versión ${app.version.ifEmpty { "disponible" }}", 12f, 0xFF9AA0B8.toInt()).apply {
             setPadding(0, dp(2), 0, 0)
         })
         if (app.changelog.isNotBlank()) {
@@ -986,13 +1000,6 @@ class NativeStoreActivity : Activity() {
         val chipsRow = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
         chipsRow.addView(pill("★ Reseñas y valorar", 0xFF111827.toInt(), 0xFFB7C5FF.toInt()) { showReviews(app) },
             LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
-        chipsRow.addView(pill("</> Ver código", 0xFF111827.toInt(), 0xFF9AA0B8.toInt()) {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
-            } catch (_: Exception) {
-                Toast.makeText(this, "No se pudo abrir GitHub", Toast.LENGTH_SHORT).show()
-            }
-        }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) })
         chipsRow.addView(pill(if (app.id in favoriteIds) "♥" else "♡", 0xFF111827.toInt(), 0xFFFF6B9A.toInt()) {
             toggleFavorite(app); detailDialog?.dismiss()
         }, LinearLayout.LayoutParams(-2, -2))
@@ -1185,7 +1192,7 @@ class NativeStoreActivity : Activity() {
         content.addView(label(app.description.ifEmpty { "Aplicación de código abierto." }, 14f, 0xFFD0D0DE.toInt()).apply {
             setLineSpacing(dp(3).toFloat(), 1f)
         })
-        content.addView(label("Versión ${app.version.ifEmpty { "disponible" }}\n${app.repo}", 12f, 0xFF9AA0B8.toInt()).apply {
+        content.addView(label("Versión ${app.version.ifEmpty { "disponible" }}", 12f, 0xFF9AA0B8.toInt()).apply {
             setPadding(0, dp(12), 0, 0)
         })
         val releaseStatus = label("Consultando versiones y variantes…", 13f, 0xFF9AA0B8.toInt()).apply {

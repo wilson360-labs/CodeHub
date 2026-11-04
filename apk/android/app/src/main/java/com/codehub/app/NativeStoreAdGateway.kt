@@ -156,7 +156,12 @@ object NativeStoreAdGateway {
                 if (!activity.isFinishing && !activity.isDestroyed) dialog.dismiss()
                 if (watchAd) {
                     lastRewardedAt = System.currentTimeMillis()
+                    val timeout = Runnable {
+                        runCatching { onProceed(RewardOfferResult(false, false)) }
+                    }
+                    main.postDelayed(timeout, 20_000)
                     UnityAdsManager.showRewarded(activity) { earned, _, _ ->
+                        main.removeCallbacks(timeout)
                         main.post {
                             runCatching {
                                 if (earned) UnityAdsManager.loadRewarded()
