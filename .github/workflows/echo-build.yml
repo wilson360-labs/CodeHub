@@ -44,7 +44,7 @@ jobs:
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           if [ -f "$SDKMANAGER" ]; then
             yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            "$SDKMANAGER" --channel=3 --install "platforms;android-37" "build-tools;36.0.0"
+            "$SDKMANAGER" --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
           fi
 
       - name: Compile :echo (debug)

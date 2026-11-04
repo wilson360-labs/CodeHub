@@ -23,6 +23,7 @@ val codehubBackend: String =
 android {
     namespace = "dev.brahmkshatriya.echo"
     compileSdk = 37
+    compileSdkMinor = 0
 
     defaultConfig {
         minSdk = 24
