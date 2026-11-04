@@ -118,7 +118,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         scroll.addView(content)
         addView(scroll, LayoutParams(-1, 0, 1f))
-        postDelayed({ maybeStartTour() }, 1600)
     }
 
     /** Starts a short staggered reveal after the native splash has faded away. */
@@ -139,6 +138,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 .setInterpolator(DecelerateInterpolator(1.6f))
                 .start()
         }
+        postDelayed({ maybeStartTour() }, 1100)
     }
 
     private fun maybeStartTour() {
@@ -166,7 +166,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         val (target, title, desc) = tourSteps[tourStepIndex]
         target.post {
+            // Efecto "bombeo" breve sobre la sección marcada.
+            target.animate().cancel()
+            target.animate().scaleX(1.08f).scaleY(1.08f).setDuration(180).withEndAction {
+                target.animate().scaleX(1f).scaleY(1f).setDuration(200).start()
+            }.start()
+
             val loc = IntArray(2); target.getLocationOnScreen(loc)
+            val screenW = resources.displayMetrics.widthPixels
+            val screenH = resources.displayMetrics.heightPixels
+
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(16), dp(14), dp(16), dp(14))
@@ -215,11 +224,49 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 setBackgroundColor(0x99000000.toInt())
                 isClickable = true
             }
-            val bubbleParams = FrameLayout.LayoutParams(dp(280), FrameLayout.LayoutParams.WRAP_CONTENT).apply {
-                val screenW = resources.displayMetrics.widthPixels
-                leftMargin = (loc[0] + target.width / 2 - dp(140)).coerceIn(dp(12), screenW - dp(292))
-                topMargin = (loc[1] + target.height + dp(8)).coerceAtMost(resources.displayMetrics.heightPixels - dp(180))
+
+            val bubbleW = dp(280)
+            val estBubbleH = dp(150)
+            val tCx = loc[0] + target.width / 2
+            val tCy = loc[1] + target.height / 2
+            val belowTop = loc[1] + target.height + dp(14)
+            val bubbleTop = if (belowTop + estBubbleH <= screenH - dp(12)) belowTop else (loc[1] - estBubbleH - dp(14)).coerceAtLeast(dp(12))
+            val bubbleLeft = (tCx - bubbleW / 2).coerceIn(dp(12), screenW - bubbleW - dp(12))
+
+            val bubbleParams = FrameLayout.LayoutParams(bubbleW, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
+                leftMargin = bubbleLeft
+                topMargin = bubbleTop
             }
+
+            // Línea conectora + flecha hacia la sección marcada.
+            val bCx = bubbleLeft + bubbleW / 2
+            val bCy = bubbleTop + estBubbleH / 2
+            val dx = (tCx - bCx).toFloat()
+            val dy = (tCy - bCy).toFloat()
+            val length = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toInt().coerceAtLeast(dp(8))
+            val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
+            val line = View(context).apply {
+                setBackgroundColor(0xFF818CF8.toInt())
+            }
+            root.addView(line, FrameLayout.LayoutParams(length, dp(2)).apply {
+                leftMargin = bCx
+                topMargin = bCy - dp(1)
+            })
+            line.pivotX = 0f
+            line.pivotY = dp(1).toFloat() / 2f
+            line.rotation = angle
+
+            val arrow = TextView(context).apply {
+                text = "➤"
+                textSize = 14f
+                setTextColor(0xFF818CF8.toInt())
+                gravity = Gravity.CENTER
+            }
+            root.addView(arrow, FrameLayout.LayoutParams(dp(20), dp(20)).apply {
+                leftMargin = tCx - dp(10)
+                topMargin = tCy - dp(10)
+            })
+
             root.addView(bubble, bubbleParams)
 
             dismissTour()
