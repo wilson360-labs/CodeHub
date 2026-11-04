@@ -22,7 +22,7 @@ val codehubBackend: String =
 
 android {
     namespace = "dev.brahmkshatriya.echo"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 24
@@ -69,7 +69,7 @@ dependencies {
         exclude(group = "com.google.protobuf", module = "protobuf-java")
     }
 
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.3.21")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.4.20")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 

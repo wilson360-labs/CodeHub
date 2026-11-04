@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "CodeHub"
 include ':app'
 include ':echo'
+include ':codestream'

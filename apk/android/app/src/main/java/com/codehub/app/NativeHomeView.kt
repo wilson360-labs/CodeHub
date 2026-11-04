@@ -19,6 +19,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenStore()
         fun onOpenMyApps()
         fun onOpenCodeBeat()
+        fun onOpenCodeStream()
         fun onOpenCopilot()
         fun onOpenProfile()
         fun onOpenWebsite(path: String)
@@ -59,10 +60,14 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         creatorRow.addView(actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
             listener.onOpenCodeBeat()
         }, weightedCard())
-        creatorRow.addView(actionCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
-            listener.onOpenCopilot()
+        creatorRow.addView(actionCard(R.drawable.ic_codestream, "CodeStream", "Videos, música y Shorts", cyan, tintIcon = false) {
+            listener.onOpenCodeStream()
         }, weightedCard().apply { marginStart = dp(10) })
         content.addView(creatorRow, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
+        content.addView(featureCard(R.drawable.ic_home_copilot, "WIL.E COPILOT", "Asistente IA nativo", indigo) {
+            listener.onOpenCopilot()
+        }, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         val exploreRow = LinearLayout(context).apply { orientation = HORIZONTAL }
         exploreRow.addView(actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
@@ -185,7 +190,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addView(label(subtitle, 12f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
 
-    private fun actionCard(icon: Int, title: String, description: String, accent: Int, onClick: () -> Unit): View =
+    private fun actionCard(icon: Int, title: String, description: String, accent: Int, tintIcon: Boolean = true, onClick: () -> Unit): View =
         LinearLayout(context).apply {
             orientation = VERTICAL
             setPadding(dp(14), dp(14), dp(12), dp(14))
@@ -197,7 +202,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             setOnClickListener { onClick() }
             addView(ImageView(context).apply {
                 setImageResource(icon)
-                imageTintList = ColorStateList.valueOf(accent)
+                if (tintIcon) imageTintList = ColorStateList.valueOf(accent)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(dp(28), dp(28)))
             addView(label(title, 14f, Color.WHITE, true).apply {
@@ -208,6 +213,30 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 setLineSpacing(dp(2).toFloat(), 1f)
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }, LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        }
+
+    private fun featureCard(icon: Int, title: String, description: String, accent: Int, onClick: () -> Unit): View =
+        LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = rippleSurface(0xFF131A29.toInt(), dp(18), 0xFF343B5A.toInt())
+            isClickable = true
+            isFocusable = true
+            contentDescription = "$title. $description"
+            setOnClickListener { onClick() }
+            addView(ImageView(context).apply {
+                setImageResource(icon)
+                imageTintList = ColorStateList.valueOf(accent)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LayoutParams(dp(32), dp(32)))
+            val copy = LinearLayout(context).apply {
+                orientation = VERTICAL
+                addView(label(title, 14f, Color.WHITE, true))
+                addView(label(description, 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(3) })
+            }
+            addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+            addView(label("›", 24f, accent, true))
         }
 
     private fun buildWebsiteCard(): View = LinearLayout(context).apply {

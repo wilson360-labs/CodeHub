@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace 'com.codehub.app'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId "com.codehub.app"
@@ -71,6 +71,8 @@ dependencies {
     // Reproductor completo de Echo Nightly (see apk/android/echo). Se lanza
     // desde el panel Música de CodeHub (CodeHubBridge.openMusic).
     implementation project(':echo')
+    // CodeStream: reproductor nativo basado en YTXTube, integrado como módulo library.
+    implementation project(':codestream')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
@@ -82,6 +84,8 @@ dependencies {
         exclude group: 'com.squareup.okhttp3', module: 'okhttp'
     }
     implementation 'io.coil-kt.coil3:coil-svg:3.4.0'
+    // YTXTube aún usa Coil 2; Coil 3 permanece aislado para las imágenes de CodeHub.
+    implementation 'io.coil-kt:coil:2.7.0'
     implementation platform('com.google.firebase:firebase-bom:34.18.0')
     implementation 'com.google.firebase:firebase-messaging'
     // Requerido en runtime por FirebaseInstallations (JavaDataStorage) desde
@@ -112,7 +116,7 @@ dependencies {
     // Kotlin + Coroutines — núcleo de mantenimiento con Shizuku
     // (borrarCacheTurbo / killAppsPro) en hilos secundarios sin congelar
     // el UI del WebView.
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.3.21'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.4.20'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
 
     // Music player "slide" - jugador nativo compacto para extensiones del

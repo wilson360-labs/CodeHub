@@ -128,6 +128,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenStore() { openNativeStore(); }
             @Override public void onOpenMyApps() { openNativeMyApps(); }
             @Override public void onOpenCodeBeat() { openNativeCodeBeat(); }
+            @Override public void onOpenCodeStream() { openNativeCodeStream(); }
             @Override public void onOpenCopilot() { openNativeCopilot(); }
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWebsite(String path) {
@@ -994,6 +995,15 @@ public class MainActivity extends Activity {
             } catch (Exception ignored) {}
         }
         startActivity(new Intent(this, com.codehub.app.music.ui.MusicPlayerActivity.class));
+    }
+
+    private void openNativeCodeStream() {
+        try {
+            startActivity(new Intent(this, com.tensei.ytxtube.MainActivity.class));
+        } catch (Exception e) {
+            android.util.Log.e("CodeHub", "No se pudo abrir CodeStream", e);
+            android.widget.Toast.makeText(this, "CodeStream no pudo iniciarse.", android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     /** Open the Kotlin WIL.E screen and reuse the current WebView auth session when present. */

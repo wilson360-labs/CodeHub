@@ -2,14 +2,21 @@ package com.codehub.app;
 
 import android.app.Application;
 import android.util.Log;
+import coil.ImageLoader;
+import coil.ImageLoaderFactory;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 
-public class CodeHubApp extends Application {
+public class CodeHubApp extends Application implements ImageLoaderFactory {
 
     private File crashDir;
+
+    @Override
+    public ImageLoader newImageLoader() {
+        return new ImageLoader.Builder(this).crossfade(180).build();
+    }
 
     @Override
     public void onCreate() {

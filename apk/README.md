@@ -51,3 +51,18 @@ Licensing:
   same terms.
 - Extensions loaded by the player are third-party APKs; their licenses
   remain with their authors.
+
+## CodeStream
+
+The Android APK also integrates the native player from
+[Koustubh12345/YTXTube](https://github.com/Koustubh12345/YTXTube), release
+2.2.0, as the **CodeStream** module at `android/codestream/`. Its source and
+upstream license are included in that directory. The integration removes the
+YTXTube self-updater and launcher entry point; CodeHub's own app updater stays
+in the main app.
+
+YTXTube is licensed under **GPL-3.0**. Because CodeStream is linked into the
+combined Android APK, distribution of that combined Android program must
+comply with GPL-3.0. This does not change the license of the separate CodeHub
+web project. Existing MIT notices and notices for other bundled components
+remain applicable to their respective code.
