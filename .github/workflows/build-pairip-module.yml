@@ -1,0 +1,103 @@
+name: Build PairIP module
+
+# Módulo LSPosed (PairIP Fix). Proyecto standalone en apk/android/pairipfix:
+# no entra en el build de la app (apk/android/settings.gradle no lo incluye).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apk/android/pairipfix/**'
+      - '.github/workflows/build-pairip-module.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pairip-module:
+    name: Módulo LSPosed PairIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Java JDK 17
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          # AGP 8.7.3 requiere Gradle 8.9+ (8.11.1 va bien).
+          gradle-version: '8.11.1'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+        continue-on-error: true
+
+      - name: Accept SDK licenses
+        shell: bash
+        run: |
+          set -e
+          if [ -z "$ANDROID_HOME" ] || [ ! -d "$ANDROID_HOME" ]; then
+            echo "::error::Android SDK no encontrado. ANDROID_HOME=$ANDROID_HOME"
+            exit 1
+          fi
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_HOME/tools/bin/sdkmanager"
+          fi
+          if [ -f "$SDKMANAGER" ]; then
+            yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+            echo "SDK listo (licenses aceptadas)"
+          else
+            echo "sdkmanager no encontrado, Gradle se encargará de las licenses"
+          fi
+
+      - name: Build module APK
+        working-directory: apk/android/pairipfix
+        shell: bash
+        run: |
+          set -e
+          gradle assembleRelease --no-daemon --stacktrace
+          mkdir -p dist
+          cp build/outputs/apk/release/*.apk dist/pairipfix-module.apk
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pairipfix-module
+          path: apk/android/pairipfix/dist/pairipfix-module.apk
+          retention-days: 7
+
+      - name: Publish module release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: pairip-module
+          name: "🧩 PairIP Fix — módulo LSPosed"
+          body: |
+            ## PairIP Fix (módulo LSPosed)
+
+            Permite instalar como APK apps protegidas con **PairIP** (la app deja
+            de exigir "instalar desde Google Play" y de bloquear la firma).
+
+            ### Instalación
+            1. Instala LSPosed (Magisk/KernelSU/root).
+            2. Instala este APK y reinicia el dispositivo.
+            3. En LSPosed → PairIP Fix → activa el módulo y marca la app protegida.
+            4. Fuerza el cierre de la app protegida y ábrela otra vez.
+
+            Análisis de APKs (qué apps traen PairIP) desde el bot de Telegram:
+            `/pairip <url>` o `/pairip` + APK como documento.
+
+            Detalles: `docs/PAIRIP-TOOL.md` en el repo.
+          files: apk/android/pairipfix/dist/pairipfix-module.apk
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

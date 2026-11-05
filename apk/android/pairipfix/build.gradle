@@ -1,0 +1,35 @@
+plugins {
+    id 'com.android.application' version '8.7.3'
+}
+
+android {
+    namespace 'com.codehub.pairipfix'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.codehub.pairipfix'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            // Firmado con la clave de debug: el módulo debe ser instalable
+            // tal cual (LSPosed no exige una firma concreta).
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Stubs de la API de Xposed: el runtime real lo inyecta LSPosed.
+    compileOnly 'de.robv.android.xposed:api:82'
+}

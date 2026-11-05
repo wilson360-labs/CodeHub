@@ -68,8 +68,8 @@ const HELP = [
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
   '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
-  '/pairip <url> - analizar y eliminar PairIP de un APK (por link)',
-  '/pairip <appId> - analizar y eliminar PairIP del APK del catálogo',
+  '/pairip <url|appId> - analizar un APK (¿tiene PairIP?)',
+  '/pairip strip <url|appId> - quitar libpairpcore (experimental: hay que re-firmar)',
   '/pairip app.apk - manda el APK con pie de foto "/pairip app.apk"',
   '',
   'Todo lo destructivo pide confirmación con botones.',
@@ -771,7 +771,7 @@ function fmtBytes(n) {
   return (v / 1048576).toFixed(1) + ' MB';
 }
 
-function pairipReportText(report, strippedUrl, guideUrl) {
+function pairipReportText(report, moduleUrl, guideUrl) {
   const lines = ['🔎 <b>PairIP</b>'];
   const app = [report.packageName || 'paquete desconocido', report.versionName ? 'v' + report.versionName : '']
     .filter(Boolean).join(' · ');
@@ -783,16 +783,14 @@ function pairipReportText(report, strippedUrl, guideUrl) {
     if (report.abis.length) lines.push('ABIs: ' + esc(report.abis.join(', ')));
     if (report.pairipMarkers.length) lines.push('Marcadores: <code>' + esc(report.pairipMarkers.join(', ')) + '</code>');
     lines.push('');
-    if (strippedUrl) {
-      lines.push('Eliminación lista — APK sin PairIP:');
-      lines.push(esc(strippedUrl));
-      lines.push('Falta re-firmarlo en tu PC antes de instalar (zipalign + apksigner). Guía: ' + esc(guideUrl));
-    } else {
-      lines.push('No se pudo eliminar automáticamente: ' + esc(guideUrl));
-    }
+    lines.push('Bypass fiable: módulo LSPosed (hook en runtime; el APK no se toca).');
+    lines.push('Módulo: ' + esc(moduleUrl));
+    lines.push('Guía: ' + esc(guideUrl));
+    lines.push('');
+    lines.push('Experimental: <code>/pairip strip <url></code> quita libpairpcore y la firma v1, pero hay que re-firmar y algunas apps siguen sin arrancar.');
   } else {
     lines.push('PairIP: ✅ no detectado');
-    lines.push('No necesita eliminación: instala el APK normal.');
+    lines.push('No necesita bypass: instala el APK normal.');
   }
   lines.push('');
   lines.push('Tamaño: ' + fmtBytes(report.size) + ' · DEX: ' + report.dexFiles);
@@ -801,10 +799,10 @@ function pairipReportText(report, strippedUrl, guideUrl) {
 }
 
 /**
- * Totales: analiza y, si hay PairIP, elimina automáticamente.
+ * Analiza un APK (URL o file_id) y devuelve el informe.
  * @returns {Promise<void>}
  */
-async function analyzeAndStrip(chatId, token, sourceBody) {
+async function analyzeApkSource(chatId, token, sourceBody) {
   const r = await api('POST', '/api/admin/pairip/analyze', sourceBody, token);
   if (r.status !== 200 || !(r.json && r.json.ok)) {
     await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
@@ -812,18 +810,31 @@ async function analyzeAndStrip(chatId, token, sourceBody) {
   }
   const report = r.json.report;
   C.logAdmin('telegram', 'pairip.analyze', { pairip: report.pairip, package: report.packageName }, 'ok', 'bot');
-  let strippedUrl = null;
-  if (report.pairip) {
-    await send(chatId, '⏳ Tiene PairIP. Eliminando…');
-    const s = await api('POST', '/api/admin/pairip/strip', sourceBody, token);
-    if (s.status === 200 && s.json && s.json.ok) {
-      strippedUrl = s.json.url;
-      C.logAdmin('telegram', 'pairip.strip', { removed: s.json.removed.length }, 'ok', 'bot');
-    } else {
-      await send(chatId, '⚠️ No se pudo eliminar automáticamente: ' + esc((s.json && s.json.error) || ('HTTP ' + s.status)));
-    }
+  await send(chatId, pairipReportText(report, r.json.module, r.json.guide));
+}
+
+/**
+ * Vía experimental: re-empaqueta el APK sin libpairpcore ni firma v1.
+ * El resultado hay que re-firmarlo antes de instalar y algunas apps con
+ * métodos protegidos en el VM de PairIP siguen sin arrancar.
+ * @returns {Promise<void>}
+ */
+async function stripApkSource(chatId, token, sourceBody) {
+  const s = await api('POST', '/api/admin/pairip/strip', sourceBody, token);
+  if (s.status !== 200 || !(s.json && s.json.ok)) {
+    await send(chatId, '❌ No se pudo quitar PairIP: ' + esc((s.json && s.json.error) || ('HTTP ' + s.status)));
+    return;
   }
-  await send(chatId, pairipReportText(report, strippedUrl, r.json.guide));
+  C.logAdmin('telegram', 'pairip.strip', { removed: (s.json.removed || []).length }, 'ok', 'bot');
+  await send(chatId, [
+    '🧪 <b>APK sin libpairpcore (experimental)</b>',
+    '',
+    esc(s.json.url),
+    '',
+    'Quité: <code>' + esc((s.json.removed || []).join(', ')) + '</code>',
+    'Falta re-firmarlo (zipalign + apksigner) y algunas apps con métodos en el VM de PairIP siguen sin arrancar.',
+    'Si no funciona, usa el módulo LSPosed: ' + esc(s.json.module || ''),
+  ].join('\n'));
 }
 
 async function cmdPairip(chatId, token, arg) {
@@ -834,19 +845,31 @@ async function cmdPairip(chatId, token, arg) {
     await send(chatId, '🔎 Manda el APK como documento y lo analizo enseguida. También acepto /pairip <url>.');
     return;
   }
-  if (!/^https?:\/\//i.test(raw)) {
-    // Puede ser un appId del catálogo: se resuelve su APK y se analiza.
-    const target = await resolveCatalogApk(raw, token);
-    if (!target) {
+  // /pairip strip <url|appId> → vía experimental de re-empaquetado.
+  const stripMode = /^strip\b/i.test(raw);
+  const target = stripMode ? raw.replace(/^strip\b\s*/i, '').trim() : raw;
+  if (!target) {
+    await send(chatId, 'Uso: /pairip <url|appId>\nO /pairip strip <url|appId> (experimental).');
+    return;
+  }
+  let sourceBody;
+  if (/^https?:\/\//i.test(target)) {
+    sourceBody = { url: target };
+  } else {
+    const resolved = await resolveCatalogApk(target, token);
+    if (!resolved) {
       await send(chatId, 'Uso: /pairip <url del APK>\nO /pairip <appId> del catálogo.\nO manda el APK como documento.');
       return;
     }
-    await send(chatId, '⏳ Analizando ' + esc(target.appId) + '…');
-    await analyzeAndStrip(chatId, token, { url: target.url });
+    sourceBody = { url: resolved.url };
+  }
+  if (stripMode) {
+    await send(chatId, '⏳ Quitando libpairpcore…');
+    await stripApkSource(chatId, token, sourceBody);
     return;
   }
   await send(chatId, '⏳ Analizando…');
-  await analyzeAndStrip(chatId, token, { url: raw });
+  await analyzeApkSource(chatId, token, sourceBody);
 }
 
 /**
@@ -897,7 +920,7 @@ async function processPairipDoc(chatId, doc) {
   }
   pending.delete(String(chatId));
   await send(chatId, '⏳ Analizando ' + esc(name || 'el APK') + '…');
-  await analyzeAndStrip(chatId, token, { file_id: doc.file_id });
+  await analyzeApkSource(chatId, token, { file_id: doc.file_id });
   return true;
 }
 

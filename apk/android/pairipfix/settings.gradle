@@ -1,0 +1,21 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // API de Xposed (solo stubs de compilación; el runtime lo aporta LSPosed).
+        maven { url 'https://api.xposed.info/' }
+    }
+}
+
+// Proyecto standalone: NO se incluye en apk/android/settings.gradle para no
+// tocar el build de la app (CI verde). Se compila aparte con su workflow.
+rootProject.name = 'pairipfix'

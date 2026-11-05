@@ -3503,7 +3503,7 @@ app.post('/api/admin/pairip/analyze', requireAdmin, async (req, res) => {
       pairip: report.pairip,
       package: report.packageName,
     }, 'ok');
-    res.json({ ok: true, source, report, guide: PAIRIP_GUIDE_URL });
+    res.json({ ok: true, source, report, module: PAIRIP_MODULE_URL, guide: PAIRIP_GUIDE_URL });
   } catch (e) {
     console.error('POST /api/admin/pairip/analyze error:', e.message);
     logAdmin(adminActorOf(req), 'pairip.analyze', { error: e.message }, 'error');
@@ -3544,7 +3544,7 @@ app.post('/api/admin/pairip/strip', requireAdmin, async (req, res) => {
       removed: stripped.removed,
       package: report.packageName,
     }, 'ok');
-    res.json({ ok: true, source, report, removed: stripped.removed, url: up.publicUrl, fileName: key });
+    res.json({ ok: true, source, report, removed: stripped.removed, url: up.publicUrl, fileName: key, module: PAIRIP_MODULE_URL, guide: PAIRIP_GUIDE_URL });
   } catch (e) {
     console.error('POST /api/admin/pairip/strip error:', e.message);
     logAdmin(adminActorOf(req), 'pairip.strip', { error: e.message }, 'error');
