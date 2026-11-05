@@ -69,6 +69,7 @@ const HELP = [
   '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
   '/pairip <url> - analizar un APK (¿tiene PairIP?) — o manda el APK solo y lo analizo',
+  '/pairip <appId> - analizar el APK de una app del catálogo',
   '/pairip app.apk - manda el APK con pie de foto "/pairip app.apk" y lo analizo',
   '',
   'Todo lo destructivo pide confirmación con botones.',
@@ -804,7 +805,20 @@ async function cmdPairip(chatId, token, arg) {
     return;
   }
   if (!/^https?:\/\//i.test(raw)) {
-    await send(chatId, 'Uso: /pairip <url del APK>\nO manda /pairip y luego el APK como documento.');
+    // Puede ser un appId del catálogo: se resuelve su APK y se analiza.
+    const target = await resolveCatalogApk(raw, token);
+    if (!target) {
+      await send(chatId, 'Uso: /pairip <url del APK>\nO /pairip <appId> del catálogo.\nO manda el APK como documento.');
+      return;
+    }
+    await send(chatId, '⏳ Analizando ' + esc(target.appId) + '…');
+    const r = await api('POST', '/api/admin/pairip/analyze', { url: target.url }, token);
+    if (r.status !== 200 || !(r.json && r.json.ok)) {
+      await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+      return;
+    }
+    C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName, appId: target.appId }, 'ok', 'bot');
+    await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
     return;
   }
   await send(chatId, '⏳ Analizando…');
@@ -815,6 +829,22 @@ async function cmdPairip(chatId, token, arg) {
   }
   C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName }, 'ok', 'bot');
   await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
+}
+
+/**
+ * Resuelve el APK de una app del catálogo (appId) para poder analizarlo.
+ * @returns {Promise<{appId: string, url: string}|null>}
+ */
+async function resolveCatalogApk(appId, token) {
+  const r = await api('GET', '/api/admin/apps', undefined, token);
+  const apps = (r.json && r.json.apps) || [];
+  const app = apps.find((row) => String(row.appId || '').toLowerCase() === String(appId).toLowerCase());
+  if (!app) return null;
+  const enlace = String(app.enlace || '');
+  if (/^https?:\/\//i.test(enlace)) return { appId: app.appId, url: enlace };
+  const base = String(C.publicUrl || '').replace(/\/$/, '');
+  if (!base) return null;
+  return { appId: app.appId, url: base + '/api/apps/' + encodeURIComponent(app.appId) + '/download' };
 }
 
 function isApkDoc(doc) {

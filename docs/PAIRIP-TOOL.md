@@ -14,8 +14,11 @@ pantalla en runtime (el APK queda intacto; la firma no cambia).
 ```
 /pairip <url>      · analiza un APK por URL (https, tope 120 MB)
 /pairip            · luego manda el APK como documento (file_id Telegram)
-/pairip <appId>    · enlace listo para probar la tienda del catálogo
+/pairip <appId>    · analiza el APK de una app del catálogo (resuelve su enlace)
 ```
+
+Mandar el APK **sin comando** también funciona: el bot detecta el documento
+`.apk` y lo analiza solo (pie de foto `/pairip` opcional).
 
 El comando llama a `POST /api/admin/pairip/analyze` (sesión admin, guardas
 anti-SSRF con `_assertPublicHost`/`validateUrlSafety`, redirects validados).
@@ -29,6 +32,18 @@ carpeta de la app: quitar esas llamadas rompe la app. El enfoque LSPosed
 intercepta en memoria los *checks* y la app corre normal.
 
 ## Módulo LSPosed del repo (`apk/android/pairipfix`)
+
+Proyecto Gradle **standalone** (no entra en `apk/android/settings.gradle`: el
+build de la app no se toca). Se compila en CI con
+`.github/workflows/build-pairip-module.yml` (JDK 17, Gradle 8.11.1, AGP 8.7.3,
+`de.robv.android.xposed:api:82` como `compileOnly` desde `api.xposed.info`) y se
+publica como asset del release móvil `pairip-module`:
+
+```
+https://github.com/wilson360-labs/CodeHub/releases/download/pairip-module/pairipfix-module.apk
+```
+
+Esa URL es la que devuelve el endpoint y la que manda el bot en el informe.
 
 Hooks activos solo si existe `com.pairip.VMRunner` (app sin PairIP no toca nada):
 
