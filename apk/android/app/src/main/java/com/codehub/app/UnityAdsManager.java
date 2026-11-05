@@ -178,10 +178,18 @@ public final class UnityAdsManager {
                 }
 
                 @Override
-                public void onUnityAdsShowStart(String placementId) {}
+                public void onUnityAdsShowStart(String placementId) {
+                    Log.i(TAG, "rewarded mostrado");
+                }
 
                 @Override
-                public void onUnityAdsShowClick(String placementId) {}
+                public void onUnityAdsShowClick(String placementId) {
+                    // El usuario tocó el CTA del anuncio (puede abrir la Play Store
+                    // del anunciante). La descarga NO debe quedar bloqueada por eso:
+                    // liberamos el callback para que CodeHub continúe su flujo.
+                    Log.i(TAG, "rewarded click en el CTA del anuncio");
+                    deliverRewarded(false);
+                }
 
                 @Override
                 public void onUnityAdsShowComplete(String placementId, UnityAds.UnityAdsShowCompletionState state) {

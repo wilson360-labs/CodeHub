@@ -1150,7 +1150,7 @@ class NativeStoreActivity : Activity() {
 
 
     private fun installPhaseText(app: AppEntry): String = when {
-        app.id in activeTransfers -> "Descargando… deja la ficha abierta para ver la prioridad."
+        app.id in activeTransfers -> "Descargando… deja la ficha abierta para ver el progreso."
         else -> "Instalación full-offline · descarga + instalador de Android."
     }
 
@@ -1332,7 +1332,7 @@ class NativeStoreActivity : Activity() {
                 }
                 activeTransfers[app.id] = TransferProgress(0, -1)
                 detailRing?.setProgress(-1f)
-                detailCta?.text = "Descargando… \uD83D\uDE80 prioridad activa."
+                detailCta?.text = "Descargando… puedes cerrar la app, sigue en segundo plano."
                 render()
                 NativeStoreApkInstaller.start(applicationContext, url, app.id, app.packageName, preferSilent, app.name, this,
                     object : NativeStoreApkInstaller.Listener {
