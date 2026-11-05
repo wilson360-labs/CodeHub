@@ -1418,23 +1418,33 @@ class NativeStoreActivity : Activity() {
 
     /**
      * URLs de descarga en orden de preferencia: la variante que eligió el
-     * usuario, el APK del último release de GitHub (CDN estable) y la API de
-     * la tienda (puede devolver HTTP 502 si el host está dormido).
+     * usuario, el APK del release de GitHub que coincide con la versión del
+     * catálogo (CDN estable) y la API de la tienda (puede devolver HTTP 502
+     * si el host está dormido).
      */
     private fun downloadCandidates(app: AppEntry, assetUrl: String?): List<String> {
         val urls = mutableListOf<String>()
         assetUrl?.takeIf { it.startsWith("https://") }?.let { urls += it }
-        releaseApkUrl(app.repo)?.let { urls += it }
+        releaseApkUrl(app.repo, app.version)?.let { urls += it }
         urls += "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
         return urls.distinct()
     }
 
-    /** Último APK publicado en GitHub para ese repo (respaldo del host principal). */
-    private fun releaseApkUrl(repo: String): String? {
+    /**
+     * APK del release de GitHub para ese repo. Prioriza el release que
+     * coincide con la versión del catálogo y, si no hay, el más reciente con
+     * APK (respaldo cuando el host de la tienda devuelve HTTP 502).
+     */
+    private fun releaseApkUrl(repo: String, version: String): String? {
         if (!repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) return null
         val releases = fetchReleases(repo)
-        val apks = releases.flatMap { release -> release.assets }
-            .filter { it.name.endsWith(".apk", true) }
+        val wanted = version.trim().removePrefix("v").removePrefix("V")
+        if (wanted.isNotBlank()) {
+            releases.firstOrNull { release ->
+                release.name.trim().removePrefix("v").removePrefix("V").equals(wanted, ignoreCase = true)
+            }?.assets?.firstOrNull { it.name.endsWith(".apk", true) }?.let { return it.url }
+        }
+        val apks = releases.flatMap { release -> release.assets }.filter { it.name.endsWith(".apk", true) }
         val preferred = apks.firstOrNull { it.name.contains("release", true) } ?: apks.firstOrNull()
         return preferred?.url
     }
