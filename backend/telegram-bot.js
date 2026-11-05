@@ -68,7 +68,8 @@ const HELP = [
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
   '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
-  '/pairip <url> - analizar un APK (¿tiene PairIP?)',
+  '/pairip <url> - analizar un APK (¿tiene PairIP?) — o manda el APK solo y lo analizo',
+  '/pairip app.apk - manda el APK con pie de foto "/pairip app.apk" y lo analizo',
   '',
   'Todo lo destructivo pide confirmación con botones.',
   'Kill-switch: <code>TG_BOT_ENABLED=false</code> en Render.',
@@ -797,8 +798,9 @@ function pairipReportText(report, moduleUrl, guideUrl) {
 async function cmdPairip(chatId, token, arg) {
   const raw = String(arg || '').trim();
   if (!raw) {
-    pending.set(String(chatId), { kind: 'pairip', at: Date.now() });
-    await send(chatId, '🔎 Envía ahora el APK como documento para analizarlo.\n/cancelar para abortar.');
+    // El camino fácil: mandar el APK como documento y el bot lo analiza
+    // solo (sin comando previo, sin /login; el chat ya está en whitelist).
+    await send(chatId, '🔎 Manda el APK como documento y lo analizo enseguida. También acepto /pairip <url>.');
     return;
   }
   if (!/^https?:\/\//i.test(raw)) {
@@ -815,9 +817,17 @@ async function cmdPairip(chatId, token, arg) {
   await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
 }
 
+function isApkDoc(doc) {
+  const name = String(doc.file_name || '').toLowerCase();
+  const mime = String(doc.mime_type || '').toLowerCase();
+  return name.endsWith('.apk') || mime === 'application/vnd.android.package-archive';
+}
+
 async function processPairipDoc(chatId, doc) {
-  const token = sessionOf(chatId);
-  if (!token) { await send(chatId, 'Primero abre sesion: /login <clave>'); return true; }
+  // El chat ya está en whitelist (el webhook lo verifica): si no hay
+  // sesión, se abre una automáticamente para no frenar al operador.
+  let token = sessionOf(chatId);
+  if (!token) token = openSession(chatId);
   const name = String(doc.file_name || '');
   const mime = String(doc.mime_type || '');
   if (!name.toLowerCase().endsWith('.apk') && mime !== 'application/vnd.android.package-archive') {
@@ -1083,12 +1093,15 @@ async function handleUpdate(req, res) {
     }
 
     const doc = msg.document;
+    const caption = String(msg.caption || '').trim();
     const pendingDoc = pending.get(String(msg.chat.id));
     if (doc && pendingDoc && pendingDoc.kind === 'upload') {
       await processUploadDoc(msg.chat.id, doc);
       return;
     }
-    if (doc && pendingDoc && pendingDoc.kind === 'pairip') {
+    // El camino fácil: mandar la app al bot y que trabaje solo.
+    // Acepta el APK pelado, con pie de foto "/pairip" o "/pairip app.apk".
+    if (doc && (pendingDoc?.kind === 'pairip' || caption.startsWith('/pairip') || isApkDoc(doc))) {
       await processPairipDoc(msg.chat.id, doc);
       return;
     }
