@@ -412,6 +412,12 @@ class NativeMyAppsActivity : Activity() {
                 setOnClickListener { updateAll(updates = installed.filter { it.hasUpdate && it.id !in ignoredUpdateIds && !snoozedByTracker(it) }) }
             }, LinearLayout.LayoutParams(-1, dp(48)).apply { bottomMargin = dp(10) })
         }
+        if (filter == Filter.UPDATES && visible.isNotEmpty()) {
+            list.addView(label(
+                "Estas versiones instaladas están obsoletas: actualízalas o bórralas con la papelera para liberar espacio.",
+                13f, 0xFF9AA0B8.toInt(),
+            ).apply { setPadding(dp(4), 0, dp(4), dp(10)) })
+        }
         if (visible.isEmpty()) {
             val message = when {
                 refreshing -> "Buscando apps instaladas en este dispositivo…"
