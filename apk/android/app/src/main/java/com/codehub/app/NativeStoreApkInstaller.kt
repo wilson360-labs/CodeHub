@@ -310,15 +310,17 @@ object NativeStoreApkInstaller {
         }
         for (url in candidates) {
             var attempt = 0
-            while (attempt < 2) {
+            while (attempt < 3) {
                 try {
                     download(url, destination, onProgress)
                     return
                 } catch (error: Exception) {
                     lastError = error
-                    if (!isTransient(error) || attempt >= 1) break
+                    if (!isTransient(error) || attempt >= 2) break
+                    // El host de la tienda puede estar "dormido" (Render free):
+                    // un par de esperas cortas levantan el servicio.
+                    delay(if (attempt == 0) 6_000 else 12_000)
                     attempt++
-                    delay(4_000)
                 }
             }
         }
