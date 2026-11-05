@@ -121,3 +121,19 @@ aparece, el WebView expone el estado real del SDK:
   "software applications" fuera de web/WebView aprobado.
 - No framing de contenido de terceros para monetizar sin permiso.
 - Mantener `ads.txt` (web) y `app-ads.txt` (app) subidos y servidos por el host real.
+
+## 4) Centro de anuncios (administrado por el dev)
+La configuración de anuncios de la app **no** vive en una pantalla para el
+usuario: vive en el código (perillas de `NativeStoreAdGateway`) y en el panel
+de Unity (end cards, skip button, capping). Ver **`docs/ADS-CENTER.md`**.
+
+Mínimos que ese centro debe cumplir siempre:
+- El rewarded es opt-in y **nunca bloquea la descarga**: cierre ✕, botón
+  "Descargar ahora, sin anuncio" y timeout (`REWARDED_TIMEOUT_MS`) siempre.
+- El interstitial post-descarga se anuncia antes (`SKIP_WINDOW_SECONDS`) y
+  ofrece **Omitir**; omitir no penaliza ni vuelve a insistir.
+- **Nunca se obliga a abrir la Google Play Store**: el *end card* del rewarded
+  va desactivado en el panel de Unity; el CTA del anunciante es de Unity y no
+  debe empujar al usuario a la tienda.
+- Si el usuario sale a la Play Store desde el CTA, la descarga arranca sola
+  cuando vuelve a la app (`proceedWhenVisible`).
