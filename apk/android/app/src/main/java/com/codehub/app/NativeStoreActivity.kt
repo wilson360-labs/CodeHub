@@ -1325,7 +1325,6 @@ class NativeStoreActivity : Activity() {
     private fun proceedInstall(app: AppEntry, assetUrl: String?) {
         NativeStoreInstallFlow.request(this) { preferSilent ->
             try {
-                val url = assetUrl ?: "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
                 if (app.id in activeTransfers) {
                     Toast.makeText(this, "La descarga de ${app.name} ya está en curso.", Toast.LENGTH_SHORT).show()
                     return@request
@@ -1334,67 +1333,110 @@ class NativeStoreActivity : Activity() {
                 detailRing?.setProgress(-1f)
                 detailCta?.text = "Descargando… puedes cerrar la app, sigue en segundo plano."
                 render()
-                NativeStoreApkInstaller.start(applicationContext, url, app.id, app.packageName, preferSilent, app.name, this,
-                    object : NativeStoreApkInstaller.Listener {
-                        override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
-                            if (isFinishing || isDestroyed) return
-                            activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
-                            transferViews[app.id]?.let { (bar, text) ->
-                                val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
-                                bar.isIndeterminate = totalBytes <= 0
-                                if (totalBytes > 0) bar.setProgress(percent, true)
-                                text.text = if (totalBytes > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this@NativeStoreActivity, downloadedBytes)}"
-                            }
-                            if (detailAppId == app.id) {
-                                val ratio = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else -1f
-                                detailRing?.setProgress(ratio)
-                            }
+                val listener = object : NativeStoreApkInstaller.Listener {
+                    override fun onProgress(downloadedBytes: Long, totalBytes: Long) {
+                        if (isFinishing || isDestroyed) return
+                        activeTransfers[app.id] = TransferProgress(downloadedBytes, totalBytes)
+                        transferViews[app.id]?.let { (bar, text) ->
+                            val percent = if (totalBytes > 0) (downloadedBytes * 100 / totalBytes).toInt().coerceIn(0, 100) else 0
+                            bar.isIndeterminate = totalBytes <= 0
+                            if (totalBytes > 0) bar.setProgress(percent, true)
+                            text.text = if (totalBytes > 0) "DESCARGANDO  ·  $percent%" else "DESCARGANDO  ·  ${android.text.format.Formatter.formatShortFileSize(this@NativeStoreActivity, downloadedBytes)}"
                         }
+                        if (detailAppId == app.id) {
+                            val ratio = if (totalBytes > 0) downloadedBytes.toFloat() / totalBytes else -1f
+                            detailRing?.setProgress(ratio)
+                        }
+                    }
 
-                        override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
-                            activeTransfers.remove(app.id)
-                            if (isFinishing || isDestroyed) return
-                            render()
-                            when (status) {
-                                NativeStoreApkInstaller.Status.INSTALLED -> {
-                                    detailRing?.setDone()
-                                    detailCta?.text = "${app.name} instalada." 
-                                    // ADS-COMPLIANCE: interstitial solo en pausa natural con
-                                    // el usuario dentro de la app (no tras salir de ella).
-                                    if (NativeStorePresence.visible) {
-                                        NativeStoreAdGateway.showCompletionInterstitial(this@NativeStoreActivity)
-                                    }
-                                    Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
+                    override fun onFinished(status: NativeStoreApkInstaller.Status, message: String) {
+                        activeTransfers.remove(app.id)
+                        if (isFinishing || isDestroyed) return
+                        render()
+                        when (status) {
+                            NativeStoreApkInstaller.Status.INSTALLED -> {
+                                detailRing?.setDone()
+                                detailCta?.text = "${app.name} instalada."
+                                // ADS-COMPLIANCE: interstitial solo en pausa natural con
+                                // el usuario dentro de la app (no tras salir de ella).
+                                if (NativeStorePresence.visible) {
+                                    NativeStoreAdGateway.showCompletionInterstitial(this@NativeStoreActivity)
                                 }
-                                NativeStoreApkInstaller.Status.INSTALLER_OPENED -> {
-                                    detailRing?.setDone()
-                                    detailCta?.text = "Descarga lista · confirma la instalación de ${app.name}."
-                                    Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
-                                }
-                                NativeStoreApkInstaller.Status.READY_BACKGROUND -> {
-                                    detailRing?.setDone()
-                                    detailCta?.text = "Descarga lista en segundo plano · toca la notificación para instalar."
-                                }
-                                NativeStoreApkInstaller.Status.CANCELLED -> {
-                                    detailRing?.setIdle()
-                                    detailCta?.text = "Descarga cancelada · toca para reintentar."
-                                }
-                                NativeStoreApkInstaller.Status.FAILED -> {
-                                    detailRing?.setIdle()
-                                    detailCta?.text = "No se pudo completar · cierra este aviso y reintentar."
-                                    AlertDialog.Builder(this@NativeStoreActivity)
-                                        .setTitle("No se pudo instalar ${app.name}")
-                                        .setMessage(message)
-                                        .setPositiveButton("Entendido", null)
-                                        .show()
-                                }
+                                Toast.makeText(this@NativeStoreActivity, "${app.name} se instaló correctamente.", Toast.LENGTH_LONG).show()
+                            }
+                            NativeStoreApkInstaller.Status.INSTALLER_OPENED -> {
+                                detailRing?.setDone()
+                                detailCta?.text = "Descarga lista · confirma la instalación de ${app.name}."
+                                Toast.makeText(this@NativeStoreActivity, "Descarga lista · confirma la instalación de ${app.name}.", Toast.LENGTH_LONG).show()
+                            }
+                            NativeStoreApkInstaller.Status.READY_BACKGROUND -> {
+                                detailRing?.setDone()
+                                detailCta?.text = "Descarga lista en segundo plano · toca la notificación para instalar."
+                            }
+                            NativeStoreApkInstaller.Status.CANCELLED -> {
+                                detailRing?.setIdle()
+                                detailCta?.text = "Descarga cancelada · toca para reintentar."
+                            }
+                            NativeStoreApkInstaller.Status.FAILED -> {
+                                detailRing?.setIdle()
+                                detailCta?.text = "No se pudo completar · cierra este aviso y reintentar."
+                                AlertDialog.Builder(this@NativeStoreActivity)
+                                    .setTitle("No se pudo instalar ${app.name}")
+                                    .setMessage(message)
+                                    .setPositiveButton("Entendido", null)
+                                    .show()
                             }
                         }
-                    })
+                    }
+                }
+                // El host principal de la tienda puede devolver HTTP 502/503
+                // (se duerme): se resuelven alternativas (release de GitHub)
+                // antes de empezar, y el motor reintenta solo si falla.
+                executor.execute {
+                    val candidates = downloadCandidates(app, assetUrl)
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
+                        NativeStoreApkInstaller.start(
+                            applicationContext,
+                            candidates.first(),
+                            app.id,
+                            app.packageName,
+                            preferSilent,
+                            app.name,
+                            this,
+                            listener,
+                            candidates.drop(1),
+                            app.repo.takeIf { it.isNotBlank() },
+                        )
+                    }
+                }
             } catch (_: Exception) {
                 Toast.makeText(this, "No se pudo preparar la instalación", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /**
+     * URLs de descarga en orden de preferencia: la variante que eligió el
+     * usuario, el APK del último release de GitHub (CDN estable) y la API de
+     * la tienda (puede devolver HTTP 502 si el host está dormido).
+     */
+    private fun downloadCandidates(app: AppEntry, assetUrl: String?): List<String> {
+        val urls = mutableListOf<String>()
+        assetUrl?.takeIf { it.startsWith("https://") }?.let { urls += it }
+        releaseApkUrl(app.repo)?.let { urls += it }
+        urls += "https://codehub-98s6.onrender.com/api/apps/${URLEncoder.encode(app.id, "UTF-8")}/download"
+        return urls.distinct()
+    }
+
+    /** Último APK publicado en GitHub para ese repo (respaldo del host principal). */
+    private fun releaseApkUrl(repo: String): String? {
+        if (!repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) return null
+        val releases = fetchReleases(repo)
+        val apks = releases.flatMap { release -> release.assets }
+            .filter { it.name.endsWith(".apk", true) }
+        val preferred = apks.firstOrNull { it.name.contains("release", true) } ?: apks.firstOrNull()
+        return preferred?.url
     }
 
     private fun showReviews(app: AppEntry) {

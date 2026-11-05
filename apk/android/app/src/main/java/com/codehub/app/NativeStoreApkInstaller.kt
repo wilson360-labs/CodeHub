@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
+import java.net.UnknownHostException
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -102,6 +105,8 @@ object NativeStoreApkInstaller {
         appName: String = appId,
         activity: Activity? = null,
         listener: Listener? = null,
+        fallbackUrls: List<String> = emptyList(),
+        fallbackRepo: String? = null,
     ) {
         if (jobs[appId]?.isActive == true) {
             listener?.onFinished(Status.FAILED, "La descarga de esta app ya está en curso.")
@@ -118,7 +123,7 @@ object NativeStoreApkInstaller {
             val partial = File(directory, "store_$safeId.apk.part")
             try {
                 setState(appId, ApkTransferState.Downloading(0, -1))
-                download(apkUrl, partial) { downloaded, total ->
+                downloadWithFallback(listOf(apkUrl) + fallbackUrls, partial, fallbackRepo) { downloaded, total ->
                     setState(appId, ApkTransferState.Downloading(downloaded, total))
                     main.post { listener?.onProgress(downloaded, total) }
                 }
@@ -283,6 +288,78 @@ object NativeStoreApkInstaller {
 
     private fun setState(appId: String, state: ApkTransferState) {
         mutableTransfers.update { it + (appId to state) }
+    }
+
+    /**
+     * Descarga con reintentos y URLs de respaldo. El host principal de la
+     * tienda (Render) puede devolver HTTP 502/503 cuando se duerme; en ese
+     * caso se reintenta una vez y luego se cae al APK publicado en GitHub.
+     */
+    private suspend fun downloadWithFallback(
+        urls: List<String>,
+        destination: File,
+        fallbackRepo: String?,
+        onProgress: (Long, Long) -> Unit,
+    ) {
+        var lastError: Exception? = null
+        val candidates = urls.distinct().filter { it.isNotBlank() }.toMutableList()
+        // Último recurso: el APK del release más reciente en GitHub (el host
+        // de la tienda devuelve HTTP 502 cuando se duerme).
+        fallbackRepo?.let { repo ->
+            resolveGithubReleaseApk(repo)?.let { candidates += it }
+        }
+        for (url in candidates) {
+            var attempt = 0
+            while (attempt < 2) {
+                try {
+                    download(url, destination, onProgress)
+                    return
+                } catch (error: Exception) {
+                    lastError = error
+                    if (!isTransient(error) || attempt >= 1) break
+                    attempt++
+                    delay(4_000)
+                }
+            }
+        }
+        throw lastError ?: IOException("No se pudo descargar el APK")
+    }
+
+    /** APK del último release público del repo (respaldo del host principal). */
+    private suspend fun resolveGithubReleaseApk(repo: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            if (!repo.matches(Regex("^[\\w.-]+/[\\w.-]+$"))) return@runCatching null
+            val connection = URL("https://api.github.com/repos/$repo/releases/latest").openConnection() as HttpURLConnection
+            try {
+                connection.connectTimeout = 10_000
+                connection.readTimeout = 15_000
+                connection.setRequestProperty("Accept", "application/vnd.github+json")
+                if (connection.responseCode !in 200..299) return@runCatching null
+                val body = connection.inputStream.bufferedReader().use { it.readText() }
+                val assets = org.json.JSONObject(body).optJSONArray("assets") ?: org.json.JSONArray()
+                var preferred: String? = null
+                var any: String? = null
+                for (index in 0 until assets.length()) {
+                    val item = assets.optJSONObject(index) ?: continue
+                    val name = item.optString("name")
+                    if (!name.endsWith(".apk", true)) continue
+                    val url = item.optString("browser_download_url")
+                    if (!url.startsWith("https://")) continue
+                    if (any == null) any = url
+                    if (preferred == null && name.contains("release", true)) preferred = url
+                }
+                preferred ?: any
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrNull()
+    }
+
+    /** Errores de red o de servidor que valen la pena reintentar. */
+    private fun isTransient(error: Exception): Boolean {
+        val message = error.message.orEmpty()
+        if (error is SocketTimeoutException || error is UnknownHostException) return true
+        return listOf("HTTP 429", "HTTP 502", "HTTP 503", "HTTP 504").any { message.contains(it) }
     }
 
     private suspend fun download(url: String, destination: File, onProgress: (Long, Long) -> Unit) =

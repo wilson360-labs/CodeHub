@@ -561,7 +561,10 @@ class NativeMyAppsActivity : Activity() {
                                         .show()
                                 }
                             }
-                        })
+                        },
+                        emptyList(),
+                        app.repo.takeIf { it.isNotBlank() },
+                    )
                 }
             }
             .show()
@@ -579,7 +582,6 @@ class NativeMyAppsActivity : Activity() {
     private fun showAppActions(app: AppEntry) {
         val pkg = app.packageName ?: return
         val actions = mutableListOf("Abrir", "Desinstalar")
-        if (app.repo.isNotBlank()) actions.add("Ver código fuente")
         if (app.hasUpdate) actions.add(if (app.id in ignoredUpdateIds || snoozedByTracker(app)) "Mostrar actualización" else "Ignorar actualización")
         AlertDialog.Builder(this)
             .setTitle(app.name)
@@ -591,8 +593,7 @@ class NativeMyAppsActivity : Activity() {
                         else Toast.makeText(this, "Esta app no tiene una pantalla de inicio", Toast.LENGTH_SHORT).show()
                     }
                     1 -> requestUninstall(app)
-                    2 -> if (app.repo.isNotBlank()) openRepository(app) else toggleIgnoredUpdate(app)
-                    3 -> toggleIgnoredUpdate(app)
+                    else -> toggleIgnoredUpdate(app)
                 }
             }
             .setNegativeButton("Cerrar", null)
@@ -716,14 +717,6 @@ class NativeMyAppsActivity : Activity() {
         DownloadManager.STATUS_PAUSED -> "Pausada"
         DownloadManager.STATUS_FAILED -> "Error de descarga"
         else -> "Estado de descarga"
-    }
-
-    private fun openRepository(app: AppEntry) {
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/${app.repo}")))
-        } catch (_: Exception) {
-            Toast.makeText(this, "No se pudo abrir GitHub", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun label(text: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply {

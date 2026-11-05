@@ -409,7 +409,7 @@ object NativeStoreAdGateway {
         dialog.setOnCancelListener { skipAd() }
         dialog.show()
         dialog.window?.let { window ->
-            window.setBackgroundDrawable(ColorDrawable.TRANSPARENT)
+            window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
             window.setGravity(Gravity.BOTTOM)
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             window.attributes = window.attributes.apply { dimAmount = 0.45f }
