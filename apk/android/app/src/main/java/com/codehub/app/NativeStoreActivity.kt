@@ -851,7 +851,21 @@ class NativeStoreActivity : Activity() {
         card.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(favoriteControl(app))
         val transfer = activeTransfers[app.id]
-        card.addView(label(if (transfer == null) "›" else "↓", 24f, if (transfer == null) 0xFF9AA0B8.toInt() else 0xFF9EB2FF.toInt(), transfer != null))
+        val busy = transfer != null
+        val dl = label(if (busy) "↓" else "⬇ Descargar", 12f, 0xFFFFFFFF.toInt(), true).apply {
+            gravity = Gravity.CENTER
+            contentDescription = if (busy) "Descargando" else "Descargar ${app.name}"
+            setPadding(dp(11), dp(11), dp(11), dp(11))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(
+                    if (busy) 0xFF26324A.toInt() else 0xFF6366F1.toInt(),
+                    if (busy) 0xFF1A2236.toInt() else 0xFF06B6D4.toInt(),
+                ),
+            ).apply { cornerRadius = dp(16).toFloat() }
+            setOnClickListener { if (!busy) startInstall(app) }
+        }
+        card.addView(dl, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) })
         container.addView(card)
         if (transfer != null) {
             val percent = if (transfer.total > 0) (transfer.downloaded * 100 / transfer.total).toInt().coerceIn(0, 100) else 0
@@ -917,46 +931,56 @@ class NativeStoreActivity : Activity() {
         }, LinearLayout.LayoutParams(0, -2, 1f))
         sheetContent.addView(hero, LinearLayout.LayoutParams(-1, -2))
 
-        // CTA estilo Orion: anillo de progreso + estado bajo el botón.
-        val ctaRow = LinearLayout(this).apply {
+        // CTA principal: UNA botón visible con texto "Descargar" + icono.
+        // El anillo sigue mostrando el progreso (detalle visual), pero el
+        // botón entero es el que inicia la descarga.
+        val ctaButton = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(10), 0, dp(2))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { startInstall(app) }
+            setPadding(dp(16), dp(11), dp(10), dp(11))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xFF6366F1.toInt(), 0xFF06B6D4.toInt()),
+            ).apply { cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0xFF8EA2F5.toInt()) }
+            elevation = dp(3).toFloat()
         }
         val ring = NativeRingButton(this).apply {
-            ringColor = 0xFF7C90F7.toInt()
-            doneColor = 0xFF9EB2FF.toInt()
-            idleColor = 0xFF9EB2FF.toInt()
+            ringColor = 0xFFFFFFFF.toInt()
+            doneColor = 0xFFFFFFFF.toInt()
+            idleColor = 0xFFFFFFFF.toInt()
             sizeDp { value -> dp(value) }
             clickAction = { startInstall(app) }
             if (app.id in activeTransfers) setProgress(-1f) else setIdle()
         }
         detailRing = ring
-        ctaRow.addView(ImageView(this).apply {
+        ctaButton.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_store_download)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setColorFilter(0xFFFFFFFF.toInt())
             contentDescription = "Descargar"
-        }, LinearLayout.LayoutParams(dp(28), dp(28)).apply { marginEnd = dp(10) })
-        ctaRow.addView(ring, LinearLayout.LayoutParams(dp(64), dp(64)).apply { marginEnd = dp(14) })
-        ctaRow.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(label("Descargar", 17f, 0xFFFFFFFF.toInt(), true))
-            val phase = label(installPhaseText(app), 12f, 0xFF9AA0B8.toInt()).apply {
-                setPadding(0, dp(3), 0, 0)
-            }
-            detailCta = phase
-            addView(phase)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
-        sheetContent.addView(ctaRow, LinearLayout.LayoutParams(-1, -2))
+        }, LinearLayout.LayoutParams(dp(26), dp(26)).apply { marginEnd = dp(11) })
+        val title = label("Descargar", 19f, 0xFFFFFFFF.toInt(), true)
+        detailCta = title
+        ctaButton.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        ctaButton.addView(ring, LinearLayout.LayoutParams(dp(52), dp(52)))
+        sheetContent.addView(ctaButton, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(4) })
+        sheetContent.addView(label(installPhaseText(app), 12f, 0xFF9AA0B8.toInt()).apply {
+            setPadding(0, dp(4), 0, 0)
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, -2))
         val directBtn = Button(this).apply {
-            text = "Descargar directo (sin anuncio)"
+            text = "⬇  Descargar directo · sin anuncio"
             isAllCaps = false
-            textSize = 12f
-            setTextColor(0xFF9AA0B8.toInt())
-            background = roundRect(0xFF111827.toInt(), 0xFF26324A.toInt(), dp(12))
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            background = roundRect(0xFF202B52.toInt(), 0xFF6366F1.toInt(), dp(16))
             setOnClickListener { proceedInstall(app, null) }
         }
-        sheetContent.addView(directBtn, LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(4) })
+        sheetContent.addView(directBtn, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
 
         // Tab strip.
         val panels = LinkedHashMap<String, LinearLayout>()

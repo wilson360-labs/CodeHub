@@ -447,8 +447,11 @@ object NativeStoreAdGateway {
         val runner = object : Runnable {
             override fun run() {
                 if (activity.isFinishing || activity.isDestroyed) return
-                val visible = activity.window?.decorView?.windowVisibility == View.VISIBLE
-                if (visible || attempts++ >= 120) {
+                // isResumed = CodeHub está en primer plano. Con el anuncio
+                // (Unity) o la Play Store encima la Activity está pausada:
+                // se espera a volver (máx. 2 min) y no se muestra ningún
+                // diálogo encima del anuncio.
+                if (activity.isResumed || attempts++ >= 120) {
                     action()
                     return
                 }

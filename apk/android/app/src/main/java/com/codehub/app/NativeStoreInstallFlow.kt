@@ -180,7 +180,9 @@ object NativeStoreInstallFlow {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener { finish(false) }
         }
         dialog.setOnCancelListener {
-            finished = true
+            // Cancelar NUNCA bloquea la descarga: sigue con el instalador de
+            // Android (preferSilent = false).
+            if (!finished) { finished = true; handler.removeCallbacksAndMessages(null); onContinue.onContinue(false) }
             handler.removeCallbacksAndMessages(null)
         }
         dialog.show()
