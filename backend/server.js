@@ -115,6 +115,7 @@ function loadSkillJson(id) {
 // dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
 // plpgsql) para no cortar un ';' que esté dentro de esos bloques.
 const { splitSqlStatements, clientIp, isPrivateIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
+const { analyzeApk } = require('./pairip');
 
 const app    = express();
 const server = http.createServer(app);
@@ -3392,6 +3393,118 @@ app.post('/api/admin/apps/:appId/upload-from-telegram', requireAdmin, async (req
     res.json({ ok: true, appId, slot: isPlugin ? 'plugin' : 'main', file_id, file_path: tgFp, url: publicDl });
   } catch (e) {
     console.error('upload-from-telegram error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ADMIN: ANÁLISIS PAIRIP ───────────────────────────────────────
+// ¿El APK está protegido con PairIP (libpairpcore.so + clases com.pairip.*)?
+// PairIP es el SDK de Google que exige instalar desde Play, valida la firma
+// y detecta depuradores. El backend SOLO analiza: NO modifica el APK. El
+// bypass real es en runtime con el módulo LSPosed de este repo
+// (apk/android/pairipfix) — ver docs/PAIRIP-TOOL.md.
+const PAIRIP_MAX_BYTES = 120 * 1024 * 1024;   // tope de descarga (APK grande)
+const PAIRIP_MODULE_URL = process.env.PAIRIP_MODULE_URL
+  || 'https://github.com/wilson360-labs/CodeHub/releases/download/pairip-module/pairipfix-module.apk';
+const PAIRIP_GUIDE_URL = 'https://github.com/wilson360-labs/CodeHub/blob/main/docs/PAIRIP-TOOL.md';
+
+/**
+ * Descarga un APK con guardas SSRF, redirects validados y tope de tamaño.
+ * @param {string} rawUrl
+ * @param {number} maxBytes
+ * @returns {Promise<Buffer>}
+ */
+async function pairipDownload(rawUrl, maxBytes = PAIRIP_MAX_BYTES) {
+  const https = require('https');
+  let current = rawUrl;
+  for (let hop = 0; hop < 4; hop++) {
+    const target = await validateUrlSsrf(current);          // bloquea IPs internas
+    const lib = target.protocol === 'https:' ? https : http;
+    const buffer = await new Promise((resolve, reject) => {
+      const req = lib.request(target, {
+        method: 'GET',
+        headers: { 'User-Agent': 'CodeHub-PairIP-Analyzer/1.0', 'Accept': '*/*' },
+        timeout: 60_000,
+      }, (res) => {
+        const status = res.statusCode || 0;
+        if (status >= 300 && status < 400 && res.headers.location) {
+          res.resume();
+          resolve({ redirect: new URL(res.headers.location, target).toString() });
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          res.resume();
+          reject(new Error('HTTP ' + status + ' al descargar el APK'));
+          return;
+        }
+        const chunks = [];
+        let total = 0;
+        res.on('data', (chunk) => {
+          total += chunk.length;
+          if (total > maxBytes) { req.destroy(); reject(new Error('El APK supera el tope de ' + Math.round(maxBytes / 1048576) + ' MB')); return; }
+          chunks.push(chunk);
+        });
+        res.on('end', () => resolve({ buffer: Buffer.concat(chunks) }));
+        res.on('error', reject);
+      });
+      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout descargando el APK')); });
+      req.on('error', reject);
+      req.end();
+    });
+    if (buffer.redirect) { current = buffer.redirect; continue; }
+    if (!buffer.buffer || !buffer.buffer.length) throw new Error('El APK llegó vacío');
+    return buffer.buffer;
+  }
+  throw new Error('Demasiadas redirecciones');
+}
+
+/** Baja un documento de Telegram por file_id (límite de la Bot API: 20 MB). */
+async function pairipDownloadTelegram(fileId) {
+  if (!TG_TOKEN) throw new Error('Sin token de Telegram en el servidor');
+  const https = require('https');
+  const info = await new Promise((resolve, reject) => {
+    https.get({ hostname: 'api.telegram.org', path: `/bot${TG_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}` }, (r) => {
+      const chunks = [];
+      r.on('data', (c) => chunks.push(c));
+      r.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString())); } catch (e) { reject(e); } });
+    }).on('error', reject);
+  });
+  if (!info || !info.ok || !info.result || !info.result.file_path) {
+    throw new Error('Telegram getFile fallo: ' + ((info && info.description) || 'no response'));
+  }
+  const fileUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${info.result.file_path}`;
+  const buffer = await pairipDownload(fileUrl, 20 * 1024 * 1024);
+  return { buffer, filePath: info.result.file_path };
+}
+
+app.post('/api/admin/pairip/analyze', requireAdmin, async (req, res) => {
+  try {
+    const { url, file_id } = req.body || {};
+    if (!url && !file_id) return res.status(400).json({ error: 'Falta url o file_id' });
+
+    let buffer;
+    let source;
+    if (file_id) {
+      const out = await pairipDownloadTelegram(String(file_id));
+      buffer = out.buffer;
+      source = 'telegram:' + out.filePath;
+    } else {
+      const raw = String(url).trim();
+      if (!/^https?:\/\//i.test(raw)) return res.status(400).json({ error: 'La URL debe ser http(s)' });
+      buffer = await pairipDownload(raw);
+      source = raw;
+    }
+
+    const report = analyzeApk(buffer);
+    logAdmin(adminActorOf(req), 'pairip.analyze', {
+      source: String(source).slice(0, 120),
+      pairip: report.pairip,
+      package: report.packageName,
+    }, 'ok');
+    res.json({ ok: true, source, report, module: PAIRIP_MODULE_URL, guide: PAIRIP_GUIDE_URL });
+  } catch (e) {
+    console.error('POST /api/admin/pairip/analyze error:', e.message);
+    logAdmin(adminActorOf(req), 'pairip.analyze', { error: e.message }, 'error');
     res.status(500).json({ error: e.message });
   }
 });

@@ -68,6 +68,7 @@ const HELP = [
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
   '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
+  '/pairip <url> - analizar un APK (¿tiene PairIP?)',
   '',
   'Todo lo destructivo pide confirmación con botones.',
   'Kill-switch: <code>TG_BOT_ENABLED=false</code> en Render.',
@@ -714,6 +715,7 @@ const COMMANDS = {
   '/poner':      (c, t, a) => cmdPoner(c, t, a),
 '/alertas': (c, t, a) => cmdAlertas(c, t, a),
   '/subirapk':   (c, t, a) => cmdSubirapk(c, t, a),
+  '/pairip':     (c, t, a) => cmdPairip(c, t, a),
   '/poner-cancelar': (c) => cancelPending(c),
   '/cancelar':   (c) => cancelPending(c),
 };
@@ -753,6 +755,84 @@ async function processUploadDoc(chatId, doc) {
   }
   C.logAdmin('telegram', 'app.apk.upload_from_telegram', { appId: state.appId, slot: state.slot }, 'ok', 'bot');
   await send(chatId, 'APK guardado para ' + esc(state.appId) + ' (' + esc(state.slot) + '):\n' + esc(up.json.url));
+  return true;
+}
+
+// ── PairIP ───────────────────────────────────────────────────────
+// Analiza un APK y dice si trae protección PairIP (Google Play / firma /
+// anti-depurador). NO parchea el APK: el bypass es en runtime con el módulo
+// LSPosed (apk/android/pairipfix). Ver docs/PAIRIP-TOOL.md.
+function fmtBytes(n) {
+  const v = Number(n) || 0;
+  if (v < 1024) return v + ' B';
+  if (v < 1048576) return (v / 1024).toFixed(1) + ' KB';
+  return (v / 1048576).toFixed(1) + ' MB';
+}
+
+function pairipReportText(report, moduleUrl, guideUrl) {
+  const lines = ['🔎 <b>PairIP</b>'];
+  const app = [report.packageName || 'paquete desconocido', report.versionName ? 'v' + report.versionName : '']
+    .filter(Boolean).join(' · ');
+  lines.push('App: ' + esc(app));
+  if (report.pairip) {
+    const how = [report.pairipNative ? 'nativo (libpairpcore.so)' : '', report.pairipDex ? 'clases com.pairip.*' : '']
+      .filter(Boolean).join(' + ');
+    lines.push('PairIP: <b>⚠️ SÍ</b> ' + esc(how));
+    if (report.abis.length) lines.push('ABIs: ' + esc(report.abis.join(', ')));
+    if (report.pairipMarkers.length) lines.push('Marcadores: <code>' + esc(report.pairipMarkers.join(', ')) + '</code>');
+    lines.push('');
+    lines.push('Bypass: instala el módulo LSPosed, actívalo y reinicia la app.');
+    lines.push('Módulo: ' + esc(moduleUrl));
+    lines.push('Guía: ' + esc(guideUrl));
+  } else {
+    lines.push('PairIP: ✅ no detectado');
+    lines.push('No necesita bypass: instala el APK normal.');
+  }
+  lines.push('');
+  lines.push('Tamaño: ' + fmtBytes(report.size) + ' · DEX: ' + report.dexFiles);
+  lines.push('SHA-256: <code>' + esc(String(report.sha256 || '').slice(0, 16)) + '…</code>');
+  return lines.join('\n');
+}
+
+async function cmdPairip(chatId, token, arg) {
+  const raw = String(arg || '').trim();
+  if (!raw) {
+    pending.set(String(chatId), { kind: 'pairip', at: Date.now() });
+    await send(chatId, '🔎 Envía ahora el APK como documento para analizarlo.\n/cancelar para abortar.');
+    return;
+  }
+  if (!/^https?:\/\//i.test(raw)) {
+    await send(chatId, 'Uso: /pairip <url del APK>\nO manda /pairip y luego el APK como documento.');
+    return;
+  }
+  await send(chatId, '⏳ Analizando…');
+  const r = await api('POST', '/api/admin/pairip/analyze', { url: raw }, token);
+  if (r.status !== 200 || !(r.json && r.json.ok)) {
+    await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName }, 'ok', 'bot');
+  await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
+}
+
+async function processPairipDoc(chatId, doc) {
+  const token = sessionOf(chatId);
+  if (!token) { await send(chatId, 'Primero abre sesion: /login <clave>'); return true; }
+  const name = String(doc.file_name || '');
+  const mime = String(doc.mime_type || '');
+  if (!name.toLowerCase().endsWith('.apk') && mime !== 'application/vnd.android.package-archive') {
+    await send(chatId, 'Eso no es un APK (' + esc(name || mime) + '). Envia .apk.');
+    return true;
+  }
+  pending.delete(String(chatId));
+  await send(chatId, '⏳ Analizando ' + esc(name || 'el APK') + '…');
+  const r = await api('POST', '/api/admin/pairip/analyze', { file_id: doc.file_id }, token);
+  if (r.status !== 200 || !(r.json && r.json.ok)) {
+    await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return true;
+  }
+  C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName, via: 'telegram' }, 'ok', 'bot');
+  await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
   return true;
 }
 
@@ -1003,9 +1083,13 @@ async function handleUpdate(req, res) {
     }
 
     const doc = msg.document;
-    const pendingUpload = pending.get(String(msg.chat.id));
-    if (doc && pendingUpload && pendingUpload.kind === 'upload') {
+    const pendingDoc = pending.get(String(msg.chat.id));
+    if (doc && pendingDoc && pendingDoc.kind === 'upload') {
       await processUploadDoc(msg.chat.id, doc);
+      return;
+    }
+    if (doc && pendingDoc && pendingDoc.kind === 'pairip') {
+      await processPairipDoc(msg.chat.id, doc);
       return;
     }
 
