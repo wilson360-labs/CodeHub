@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
@@ -434,13 +435,18 @@ object NativeStoreAdGateway {
      * salió a la Play Store desde el CTA del anuncio, la descarga arranca sola
      * en cuanto vuelve a CodeHub (sin dialogs sobre una Activity en segundo
      * plano, que romperían la app).
+     *
+     * OJO: no se usa hasWindowFocus() porque con el sheet de la app abierto
+     * (Dialog encima) la Activity pierde el foco aunque siga visible; el
+     * sheet se cuenta como visible mediante windowVisibility.
      */
     private fun proceedWhenVisible(activity: Activity, action: () -> Unit) {
         var attempts = 0
         val runner = object : Runnable {
             override fun run() {
                 if (activity.isFinishing || activity.isDestroyed) return
-                if (activity.hasWindowFocus() || attempts++ >= 120) {
+                val visible = activity.window?.decorView?.windowVisibility == View.VISIBLE
+                if (visible || attempts++ >= 120) {
                     action()
                     return
                 }
