@@ -864,6 +864,19 @@ async function processPairipDoc(chatId, doc) {
     await send(chatId, 'Eso no es un APK (' + esc(name || mime) + '). Envia .apk.');
     return true;
   }
+  // Telegram bloquea documentos > 20 MB en la Bot API (getFile): el APK
+  // grande se analiza por URL directa (el servidor lo baja, tope 120 MB).
+  const sizeMb = Number(doc.file_size) / (1024 * 1024);
+  if (Number(doc.file_size) > 0 && sizeMb > 20) {
+    await send(chatId, [
+      '📦 El APK pesa ' + fmtBytes(doc.file_size) + ' y Telegram no deja bajarlo al bot (tope 20 MB).',
+      '',
+      'Usa el link directo del APK (ej. release de GitHub):',
+      '<code>/pairip https://…/app.apk</code>',
+      'o pega la URL del release y me llega.',
+    ].join('\n'));
+    return true;
+  }
   pending.delete(String(chatId));
   await send(chatId, '⏳ Analizando ' + esc(name || 'el APK') + '…');
   const r = await api('POST', '/api/admin/pairip/analyze', { file_id: doc.file_id }, token);

@@ -3470,7 +3470,11 @@ async function pairipDownloadTelegram(fileId) {
     }).on('error', reject);
   });
   if (!info || !info.ok || !info.result || !info.result.file_path) {
-    throw new Error('Telegram getFile fallo: ' + ((info && info.description) || 'no response'));
+    const desc = (info && info.description) || 'no response';
+    if (/too big|too large|20/i.test(desc)) {
+      throw new Error('Telegram no permite bajar archivos > 20 MB al bot. Analiza por URL: /pairip <https://…/app.apk>');
+    }
+    throw new Error('Telegram getFile fallo: ' + desc);
   }
   const fileUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${info.result.file_path}`;
   const buffer = await pairipDownload(fileUrl, 20 * 1024 * 1024);
