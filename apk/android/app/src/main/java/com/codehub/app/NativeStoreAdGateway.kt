@@ -145,19 +145,28 @@ object NativeStoreAdGateway {
 
             val dialog = AlertDialog.Builder(activity)
                 .setView(panel)
+                .setCancelable(true)
                 .create()
             dialog.window?.let { window ->
                 val dim = GradientDrawable().apply { setColor(0xFF080B11.toInt()) }
                 window.setBackgroundDrawable(dim)
             }
-            dialog.setOnDismissListener { rewardedSheetOpen = false }
+            var proceeded = false
+            fun proceedOnce(result: RewardOfferResult) {
+                if (proceeded) return
+                proceeded = true
+                rewardedSheetOpen = false
+                onProceed(result)
+            }
+            dialog.setOnCancelListener { proceedOnce(RewardOfferResult(false, false)) }
+            dialog.setOnDismissListener { rewardedSheetOpen = false; if (!proceeded) proceedOnce(RewardOfferResult(false, false)) }
 
             fun finish(watchAd: Boolean) {
                 if (!activity.isFinishing && !activity.isDestroyed) dialog.dismiss()
                 if (watchAd) {
                     lastRewardedAt = System.currentTimeMillis()
                     val timeout = Runnable {
-                        runCatching { onProceed(RewardOfferResult(false, false)) }
+                        runCatching { proceedOnce(RewardOfferResult(false, false)) }
                     }
                     main.postDelayed(timeout, 20_000)
                     UnityAdsManager.showRewarded(activity) { earned, _, _ ->
@@ -165,14 +174,34 @@ object NativeStoreAdGateway {
                         main.post {
                             runCatching {
                                 if (earned) UnityAdsManager.loadRewarded()
-                                onProceed(RewardOfferResult(earned, earned))
+                                proceedOnce(RewardOfferResult(earned, earned))
                             }.onFailure { android.util.Log.w(TAG, "reward callback", it) }
                         }
                     }
                 } else {
-                    onProceed(RewardOfferResult(false, false))
+                    proceedOnce(RewardOfferResult(false, false))
                 }
             }
+
+            // Botón de cierre (X) en la esquina superior derecha: nunca obliga
+            // al usuario a ver el anuncio ni a ir a la tienda.
+            val close = TextView(activity).apply {
+                text = "✕"
+                textSize = 18f
+                setTextColor(0xFF9AA0B8.toInt())
+                gravity = Gravity.END
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener { finish(false) }
+            }
+            // Insertar el cierre encima del panel envolviendo en un contenedor.
+            val wrapper = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(close, LinearLayout.LayoutParams(-1, -2))
+                addView(panel, LinearLayout.LayoutParams(-1, -2))
+            }
+            dialog.setView(wrapper)
 
             watch.setOnClickListener { finish(true) }
             skip.setOnClickListener { finish(false) }
