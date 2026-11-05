@@ -26,10 +26,6 @@ backups/
 apk/android/.gradle/
 apk/android/build/
 apk/android/app/build/
-# Módulo LSPosed PairIP (proyecto standalone)
-apk/android/pairipfix/.gradle/
-apk/android/pairipfix/build/
-apk/android/pairipfix/dist/
 
 # Archivos de sistema
 .DS_Store

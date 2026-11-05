@@ -108,7 +108,7 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
 | `/contenido <ruta>` | leer carpeta o archivo | `/api/admin/github/contents` |
 | `/poner <ruta>` | edita archivo (siguiente msg) | `/api/admin/github/contents` |
 | `/subirapk <appId>` | subir APK enviado al chat | `/api/admin/apps/:id/upload-from-telegram` |
-| `/pairip <url>` | analizar APK (¿tiene PairIP?) — ver `docs/PAIRIP-TOOL.md` | `POST /api/admin/pairip/analyze` |
+| `/pairip <url>` | analizar y eliminar PairIP de un APK (por link o doc) | `/api/admin/pairip/analyze` + `/strip` |
 
 Atajos: los botones de resultado incluyen «🔁 Ver runs» para no teclear.
 

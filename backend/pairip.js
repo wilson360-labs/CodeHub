@@ -22,6 +22,11 @@ const CEN_SIG = 0x02014b50;
 const LOC_SIG = 0x04034b50;
 
 const PAIRIP_SO = 'libpairpcore.so';
+
+// Chunks del AndroidManifest.xml binario (AXML).
+const CHUNK_START_ELEMENT = 0x0102;
+const TYPE_STRING = 0x03;    // valor de atributo: string del pool
+const TYPE_INT_DEC = 0x10;   // valor de atributo: entero decimal
 const PAIRIP_MARKERS = [
   'com/pairip/VMRunner',
   'Lcom/pairip/VMRunner;',
@@ -129,6 +134,53 @@ function readStringPool(buf) {
   return strings;
 }
 
+/**
+ * Lee los atributos de <manifest> del AndroidManifest.xml binario:
+ * package, versionName y versionCode (valores reales, sin adivinar).
+ * @param {Buffer} buf
+ * @returns {{packageName: string, versionName: string, versionCode: number}}
+ */
+function readManifestAttributes(buf) {
+  const out = { packageName: '', versionName: '', versionCode: 0 };
+  if (!Buffer.isBuffer(buf) || buf.length < 8 || buf.readUInt16LE(0) !== 0x0003) return out;
+  const strings = readStringPool(buf);
+  let offset = 8;
+  while (offset + 8 <= buf.length) {
+    const type = buf.readUInt16LE(offset);
+    const headerSize = buf.readUInt16LE(offset + 2);
+    const chunkSize = buf.readUInt32LE(offset + 4);
+    if (chunkSize <= 0) break;
+    if (type === CHUNK_START_ELEMENT) {
+      const base = offset + headerSize;
+      if (base + 14 <= buf.length) {
+        const elementName = strings[buf.readUInt32LE(base + 4)] || '';
+        const attrStart = buf.readUInt16LE(base + 8);
+        const attrSize = buf.readUInt16LE(base + 10);
+        const attrCount = buf.readUInt16LE(base + 12);
+        if (elementName === 'manifest' && attrSize >= 20) {
+          const attrsAt = base + attrStart;
+          for (let i = 0; i < attrCount; i++) {
+            const at = attrsAt + i * attrSize;
+            if (at + 20 > buf.length) break;
+            const attrName = strings[buf.readUInt32LE(at + 4)] || '';
+            const rawIndex = buf.readUInt32LE(at + 8);
+            const dataType = buf.readUInt8(at + 15);
+            const data = buf.readUInt32LE(at + 16);
+            let value = '';
+            if (dataType === TYPE_STRING) value = strings[data] || strings[rawIndex] || '';
+            else if (dataType === TYPE_INT_DEC) value = String(data);
+            if (attrName === 'package') out.packageName = value;
+            else if (attrName === 'versionName') out.versionName = value;
+            else if (attrName === 'versionCode') out.versionCode = data;
+          }
+        }
+      }
+    }
+    offset += chunkSize;
+  }
+  return out;
+}
+
 function looksLikePackage(value) {
   if (!value || value.length > 120) return false;
   if (!/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/.test(value)) return false;
@@ -194,16 +246,25 @@ function analyzeApk(buffer) {
     }
   }
 
-  // Metadatos del manifiesto (heurísticos: el paquete y la versión).
+  // Metadatos del manifiesto: se leen del <manifest> binario (package,
+  // versionName, versionCode). Si el AXML no se puede parsear, se cae a la
+  // heurística del string pool.
   let packageName = '';
   let versionName = '';
+  let versionCode = 0;
   const manifestEntry = byName.get('AndroidManifest.xml');
   if (manifestEntry) {
     const manifest = readEntry(buffer, manifestEntry);
     if (manifest) {
-      const strings = readStringPool(manifest);
-      packageName = pickPackage(strings);
-      versionName = pickVersion(strings);
+      const attrs = readManifestAttributes(manifest);
+      packageName = attrs.packageName;
+      versionName = attrs.versionName;
+      versionCode = attrs.versionCode;
+      if (!packageName || !versionName) {
+        const strings = readStringPool(manifest);
+        if (!packageName) packageName = pickPackage(strings);
+        if (!versionName) versionName = pickVersion(strings);
+      }
     }
   }
 
@@ -228,4 +289,111 @@ function analyzeApk(buffer) {
   };
 }
 
-module.exports = { analyzeApk, readCentralDirectory, readEntry, readStringPool };
+module.exports = { analyzeApk, readCentralDirectory, readEntry, readStringPool, stripPairip, buildZip };
+
+// ── Escritura ZIP (para re-empaquetar el APK sin PairIP) ──────────
+
+function crc32(buf) {
+  let c;
+  const table = [];
+  for (let n = 0; n < 256; n++) {
+    c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  let crc = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) crc = table[(crc ^ buf[i]) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+/**
+ * Construye un ZIP válido con las entradas dadas (deflate).
+ * @param {Array<{name: string, data: Buffer}>} files
+ * @returns {Buffer}
+ */
+function buildZip(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const file of files) {
+    const nameBuf = Buffer.from(file.name, 'utf8');
+    const data = Buffer.isBuffer(file.data) ? file.data : Buffer.from(file.data);
+    const deflated = zlib.deflateRawSync(data);
+    const crc = crc32(data);
+
+    const local = Buffer.alloc(30 + nameBuf.length);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(8, 8);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(deflated.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBuf.length, 26);
+    nameBuf.copy(local, 30);
+    locals.push(local, deflated);
+
+    const central = Buffer.alloc(46 + nameBuf.length);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(8, 10);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(deflated.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(nameBuf.length, 28);
+    central.writeUInt32LE(offset, 42);
+    nameBuf.copy(central, 46);
+    centrals.push(central);
+
+    offset += local.length + deflated.length;
+  }
+  const centralBuf = Buffer.concat(centrals);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(files.length, 8);
+  eocd.writeUInt16LE(files.length, 10);
+  eocd.writeUInt32LE(centralBuf.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, centralBuf, eocd]);
+}
+
+// ── Eliminación de PairIP (re-empaquetado) ────────────────────────
+
+/**
+ * Elimina los artefactos de PairIP del APK y re-empaqueta:
+ *   · `lib/<abi>/libpairpcore.so` (el SDK nativo de Google) — fuera.
+ *   · firmas JAR v1 (META-INF/*.RSA|*.DSA|*.EC|*.MF|*.SF) — fuera, porque
+ *     cualquier byte distinto invalida la firma y Android la rechazaría;
+ *     el APK queda listo para re-firmar localmente (zipalign + apksigner).
+ * Sin estas firmas el paquete ya no se instala tal cual: hay que firmar
+ * de nuevo con una clave propia (ver docs/PAIRIP-TOOL.md).
+ *
+ * @param {Buffer} buffer APK original
+ * @returns {{buffer: Buffer, removed: string[]}}
+ */
+function stripPairip(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 22) {
+    throw new Error('Archivo demasiado pequeño o inválido');
+  }
+  const entries = readCentralDirectory(buffer);
+  if (!entries.length) throw new Error('El ZIP no tiene entradas legibles');
+
+  const kept = [];
+  const removed = [];
+  for (const entry of entries) {
+    const name = entry.name;
+    const isPairipSo = /^lib\/[^/]+\/libpairpcore\.so$/i.test(name);
+    const isV1Sig = /^META-INF\/[^/]+\.(RSA|DSA|EC|MF|SF)$/i.test(name);
+    if (isPairipSo || isV1Sig) {
+      removed.push(name);
+      continue;
+    }
+    const data = readEntry(buffer, entry);
+    if (!data) throw new Error('No se pudo leer la entrada ' + name + ' (formato no soportado)');
+    kept.push({ name, data });
+  }
+  if (!removed.length) throw new Error('Nada que eliminar: no se encontró PairIP ni firma v1');
+  return { buffer: buildZip(kept), removed };
+}

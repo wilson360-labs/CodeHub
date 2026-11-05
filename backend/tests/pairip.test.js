@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const zlib = require('node:zlib');
 
-const { analyzeApk } = require('../pairip');
+const { analyzeApk, stripPairip } = require('../pairip');
 
 // ── Constructor de ZIP mínimo (store + deflate) ───────────────────
 function crc32(buf) {
@@ -116,4 +116,19 @@ test('pairip: un APK normal no se marca', () => {
 test('pairip: archivo inválido lanza error claro', () => {
   assert.throws(() => analyzeApk(Buffer.from('no soy un zip')), /ZIP|inválido/i);
   assert.throws(() => analyzeApk(Buffer.alloc(4)), /pequeño|inválido/i);
+});
+
+test('strip: elimina libpairpcore.so y la firma v1, conserva el resto', () => {
+  const { buffer, removed } = stripPairip(apkWithPairip());
+  assert.ok(removed.some((n) => n === 'lib/arm64-v8a/libpairpcore.so'));
+  assert.ok(removed.some((n) => n === 'META-INF/CERT.RSA'));
+  const after = analyzeApk(buffer);
+  assert.equal(after.pairipNative, false);
+  assert.equal(after.pairipDex, true); // las clases Java quedan: el bypass runtime las anula
+  assert.equal(after.signedV1, false);
+  assert.ok(after.entries >= 2);
+});
+
+test('strip: un APK sin PairIP devuelve error claro', () => {
+  assert.throws(() => stripPairip(apkSinPairip()), /Nada que eliminar/i);
 });

@@ -68,9 +68,9 @@ const HELP = [
   '/poner <ruta> — editar archivo (siguiente msg envía el contenido)',
   '/alertas - estado, test, umbral de alertas intelligentes',
   '/subirapk <appId> [plugin|main] - subir un APK enviado al chat',
-  '/pairip <url> - analizar un APK (¿tiene PairIP?) — o manda el APK solo y lo analizo',
-  '/pairip <appId> - analizar el APK de una app del catálogo',
-  '/pairip app.apk - manda el APK con pie de foto "/pairip app.apk" y lo analizo',
+  '/pairip <url> - analizar y eliminar PairIP de un APK (por link)',
+  '/pairip <appId> - analizar y eliminar PairIP del APK del catálogo',
+  '/pairip app.apk - manda el APK con pie de foto "/pairip app.apk"',
   '',
   'Todo lo destructivo pide confirmación con botones.',
   'Kill-switch: <code>TG_BOT_ENABLED=false</code> en Render.',
@@ -771,7 +771,7 @@ function fmtBytes(n) {
   return (v / 1048576).toFixed(1) + ' MB';
 }
 
-function pairipReportText(report, moduleUrl, guideUrl) {
+function pairipReportText(report, strippedUrl, guideUrl) {
   const lines = ['🔎 <b>PairIP</b>'];
   const app = [report.packageName || 'paquete desconocido', report.versionName ? 'v' + report.versionName : '']
     .filter(Boolean).join(' · ');
@@ -783,17 +783,47 @@ function pairipReportText(report, moduleUrl, guideUrl) {
     if (report.abis.length) lines.push('ABIs: ' + esc(report.abis.join(', ')));
     if (report.pairipMarkers.length) lines.push('Marcadores: <code>' + esc(report.pairipMarkers.join(', ')) + '</code>');
     lines.push('');
-    lines.push('Bypass: instala el módulo LSPosed, actívalo y reinicia la app.');
-    lines.push('Módulo: ' + esc(moduleUrl));
-    lines.push('Guía: ' + esc(guideUrl));
+    if (strippedUrl) {
+      lines.push('Eliminación lista — APK sin PairIP:');
+      lines.push(esc(strippedUrl));
+      lines.push('Falta re-firmarlo en tu PC antes de instalar (zipalign + apksigner). Guía: ' + esc(guideUrl));
+    } else {
+      lines.push('No se pudo eliminar automáticamente: ' + esc(guideUrl));
+    }
   } else {
     lines.push('PairIP: ✅ no detectado');
-    lines.push('No necesita bypass: instala el APK normal.');
+    lines.push('No necesita eliminación: instala el APK normal.');
   }
   lines.push('');
   lines.push('Tamaño: ' + fmtBytes(report.size) + ' · DEX: ' + report.dexFiles);
   lines.push('SHA-256: <code>' + esc(String(report.sha256 || '').slice(0, 16)) + '…</code>');
   return lines.join('\n');
+}
+
+/**
+ * Totales: analiza y, si hay PairIP, elimina automáticamente.
+ * @returns {Promise<void>}
+ */
+async function analyzeAndStrip(chatId, token, sourceBody) {
+  const r = await api('POST', '/api/admin/pairip/analyze', sourceBody, token);
+  if (r.status !== 200 || !(r.json && r.json.ok)) {
+    await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
+    return;
+  }
+  const report = r.json.report;
+  C.logAdmin('telegram', 'pairip.analyze', { pairip: report.pairip, package: report.packageName }, 'ok', 'bot');
+  let strippedUrl = null;
+  if (report.pairip) {
+    await send(chatId, '⏳ Tiene PairIP. Eliminando…');
+    const s = await api('POST', '/api/admin/pairip/strip', sourceBody, token);
+    if (s.status === 200 && s.json && s.json.ok) {
+      strippedUrl = s.json.url;
+      C.logAdmin('telegram', 'pairip.strip', { removed: s.json.removed.length }, 'ok', 'bot');
+    } else {
+      await send(chatId, '⚠️ No se pudo eliminar automáticamente: ' + esc((s.json && s.json.error) || ('HTTP ' + s.status)));
+    }
+  }
+  await send(chatId, pairipReportText(report, strippedUrl, r.json.guide));
 }
 
 async function cmdPairip(chatId, token, arg) {
@@ -812,23 +842,11 @@ async function cmdPairip(chatId, token, arg) {
       return;
     }
     await send(chatId, '⏳ Analizando ' + esc(target.appId) + '…');
-    const r = await api('POST', '/api/admin/pairip/analyze', { url: target.url }, token);
-    if (r.status !== 200 || !(r.json && r.json.ok)) {
-      await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
-      return;
-    }
-    C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName, appId: target.appId }, 'ok', 'bot');
-    await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
+    await analyzeAndStrip(chatId, token, { url: target.url });
     return;
   }
   await send(chatId, '⏳ Analizando…');
-  const r = await api('POST', '/api/admin/pairip/analyze', { url: raw }, token);
-  if (r.status !== 200 || !(r.json && r.json.ok)) {
-    await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
-    return;
-  }
-  C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName }, 'ok', 'bot');
-  await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
+  await analyzeAndStrip(chatId, token, { url: raw });
 }
 
 /**
@@ -879,13 +897,7 @@ async function processPairipDoc(chatId, doc) {
   }
   pending.delete(String(chatId));
   await send(chatId, '⏳ Analizando ' + esc(name || 'el APK') + '…');
-  const r = await api('POST', '/api/admin/pairip/analyze', { file_id: doc.file_id }, token);
-  if (r.status !== 200 || !(r.json && r.json.ok)) {
-    await send(chatId, '❌ No se pudo analizar: ' + esc((r.json && r.json.error) || ('HTTP ' + r.status)));
-    return true;
-  }
-  C.logAdmin('telegram', 'pairip.analyze', { pairip: r.json.report.pairip, package: r.json.report.packageName, via: 'telegram' }, 'ok', 'bot');
-  await send(chatId, pairipReportText(r.json.report, r.json.module, r.json.guide));
+  await analyzeAndStrip(chatId, token, { file_id: doc.file_id });
   return true;
 }
 

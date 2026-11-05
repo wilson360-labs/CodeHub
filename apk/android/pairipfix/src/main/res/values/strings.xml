@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">PairIP Fix</string>
-    <string name="xposed_description">Permite instalar como APK apps protegidas con PairIP (Google Play / firma / anti-depurador).</string>
-</resources>

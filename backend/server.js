@@ -115,7 +115,7 @@ function loadSkillJson(id) {
 // dollar-quoting ($$ ... $$ o $tag$ ... $tag$, típico de funciones
 // plpgsql) para no cortar un ';' que esté dentro de esos bloques.
 const { splitSqlStatements, clientIp, isPrivateIp, truncate, parseImageDataUrl, ALLOWED_IMAGE_MIME } = require('./utils');
-const { analyzeApk } = require('./pairip');
+const { analyzeApk, stripPairip } = require('./pairip');
 
 const app    = express();
 const server = http.createServer(app);
@@ -3404,8 +3404,6 @@ app.post('/api/admin/apps/:appId/upload-from-telegram', requireAdmin, async (req
 // bypass real es en runtime con el módulo LSPosed de este repo
 // (apk/android/pairipfix) — ver docs/PAIRIP-TOOL.md.
 const PAIRIP_MAX_BYTES = 120 * 1024 * 1024;   // tope de descarga (APK grande)
-const PAIRIP_MODULE_URL = process.env.PAIRIP_MODULE_URL
-  || 'https://github.com/wilson360-labs/CodeHub/releases/download/pairip-module/pairipfix-module.apk';
 const PAIRIP_GUIDE_URL = 'https://github.com/wilson360-labs/CodeHub/blob/main/docs/PAIRIP-TOOL.md';
 
 /**
@@ -3505,10 +3503,51 @@ app.post('/api/admin/pairip/analyze', requireAdmin, async (req, res) => {
       pairip: report.pairip,
       package: report.packageName,
     }, 'ok');
-    res.json({ ok: true, source, report, module: PAIRIP_MODULE_URL, guide: PAIRIP_GUIDE_URL });
+    res.json({ ok: true, source, report, guide: PAIRIP_GUIDE_URL });
   } catch (e) {
     console.error('POST /api/admin/pairip/analyze error:', e.message);
     logAdmin(adminActorOf(req), 'pairip.analyze', { error: e.message }, 'error');
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ADMIN: ELIMINACIÓN DE PAIRIP ─────────────────────────────────
+// Re-empaqueta el APK sin los artefactos de PairIP (libpairpcore.so +
+// firma v1) y lo deja en Supabase Storage. El APK queda listo para
+// re-firmar localmente antes de instalar (ver docs/PAIRIP-TOOL.md).
+app.post('/api/admin/pairip/strip', requireAdmin, async (req, res) => {
+  try {
+    const { url, file_id } = req.body || {};
+    if (!url && !file_id) return res.status(400).json({ error: 'Falta url o file_id' });
+
+    let buffer;
+    let source;
+    if (file_id) {
+      const out = await pairipDownloadTelegram(String(file_id));
+      buffer = out.buffer;
+      source = 'telegram:' + out.filePath;
+    } else {
+      const raw = String(url).trim();
+      if (!/^https?:\/\//i.test(raw)) return res.status(400).json({ error: 'La URL debe ser http(s)' });
+      buffer = await pairipDownload(raw);
+      source = raw;
+    }
+
+    const report = analyzeApk(buffer);
+    if (!report.pairip) return res.status(400).json({ error: 'No tiene PairIP, nada que eliminar' });
+
+    const stripped = stripPairip(buffer);
+    const key = 'pairip/' + report.sha256 + '-stripped.apk';
+    const up = await uploadToStorage(stripped.buffer, key);
+    logAdmin(adminActorOf(req), 'pairip.strip', {
+      source: String(source).slice(0, 120),
+      removed: stripped.removed,
+      package: report.packageName,
+    }, 'ok');
+    res.json({ ok: true, source, report, removed: stripped.removed, url: up.publicUrl, fileName: key });
+  } catch (e) {
+    console.error('POST /api/admin/pairip/strip error:', e.message);
+    logAdmin(adminActorOf(req), 'pairip.strip', { error: e.message }, 'error');
     res.status(500).json({ error: e.message });
   }
 });
