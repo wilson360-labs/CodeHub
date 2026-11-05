@@ -212,7 +212,9 @@ object NativeStoreAdGateway {
                     main.post {
                         runCatching {
                             if (earned) UnityAdsManager.loadRewarded() else scheduleRewardedReload()
-                            proceedOnce(RewardOfferResult(earned, earned))
+                            // Pequeña espera: el SDK todavía está quitando la vista
+                            // del anuncio y un diálogo encima rompe la app.
+                            main.postDelayed({ proceedOnce(RewardOfferResult(earned, earned)) }, 350)
                         }.onFailure { android.util.Log.w(TAG, "reward callback", it) }
                     }
                 }
