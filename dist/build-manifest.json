@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T19:53:35.230Z",
+  "generatedAt": "2026-11-06T21:51:59.401Z",
   "bundles": {
     "js/admin-hub.js": "assets/js/admin-hub.44bd347d1d.min.js",
     "js/auth.js": "assets/js/auth.752c57f409.min.js",
@@ -21,7 +21,7 @@
     "js/office-generator.js": "assets/js/office-generator.8d6cdf13ee.min.js",
     "js/offline-queue.js": "assets/js/offline-queue.6b72f7a657.min.js",
     "js/opensource.js": "assets/js/opensource.887ce85fdd.min.js",
-    "js/optimizer.js": "assets/js/optimizer.6edf1ad46f.min.js",
+    "js/optimizer.js": "assets/js/optimizer.530a8b137e.min.js",
     "js/permissions-setup.js": "assets/js/permissions-setup.315574d7b4.min.js",
     "js/prefs.js": "assets/js/prefs.853367107e.min.js",
     "js/remote-config.js": "assets/js/remote-config.45cfc79a3f.min.js",
