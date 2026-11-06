@@ -132,6 +132,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenCopilot() { openNativeCopilot(); }
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
+            @Override public void onForceStopApp() { confirmForceStopApp(); }
             @Override public void onOpenWebsite(String path) {
                 String suffix = path == null || path.isEmpty() ? "/" : path;
                 openWebUrl(APP_URL + (suffix.startsWith("/") ? suffix : "/" + suffix));
@@ -159,6 +160,7 @@ public class MainActivity extends Activity {
         try { setupStatusBar(); } catch (Throwable t) { crashLog("statusBar", t); }
         try { createNotificationChannels(); } catch (Throwable t) { crashLog("notifChannels", t); }
         try { WeatherNotificationProvider.refresh(this); } catch (Throwable t) { crashLog("wxNotif", t); }
+        try { WeatherWidgetProvider.resumeUpdates(this); } catch (Throwable t) { crashLog("wxWidgetResume", t); }
         // Las funciones solicitan permisos al usarse; no bloquear el primer inicio con varios diálogos.
         try { initAdMob(); } catch (Throwable t) { crashLog("adMob", t); }
         try { registerFCMToken(); } catch (Throwable t) { crashLog("fcm", t); }
@@ -1023,6 +1025,54 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             android.util.Log.e("CodeHub", "No se pudo abrir CodeSu", e);
             android.widget.Toast.makeText(this, "CodeSu no pudo iniciarse.", android.widget.Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void confirmForceStopApp() {
+        new AlertDialog.Builder(this)
+            .setTitle("Forzar cierre de CodeHub")
+            .setMessage("Android no permite que una app se fuerce a sí misma. Se abrirá Información de la app; toca «Forzar detención» allí para detener CodeHub y sus servicios en segundo plano. Volverán a activarse cuando abras CodeHub de nuevo.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Abrir ajustes", (dialog, which) -> {
+                Intent settings = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:" + getPackageName()));
+                try {
+                    startActivity(settings);
+                    releaseWebView();
+                    finish();
+                } catch (Exception e) {
+                    android.util.Log.e("CodeHub", "No se pudo abrir Información de la app", e);
+                    Toast.makeText(this, "Abre Ajustes > Aplicaciones > CodeHub para forzar el cierre.", Toast.LENGTH_LONG).show();
+                }
+            })
+            .show();
+    }
+
+    /** Libera el renderer antes de salir; las secciones web se crean bajo demanda. */
+    private void releaseWebView() {
+        if (bridge != null) {
+            try { bridge.musicDetach(); } catch (Throwable ignored) {}
+        }
+        if (pendingWebPermissionRequest != null) {
+            try { pendingWebPermissionRequest.deny(); } catch (IllegalStateException ignored) {}
+            pendingWebPermissionRequest = null;
+        }
+        if (fileUploadCallback != null) {
+            try { fileUploadCallback.onReceiveValue(null); } catch (Throwable ignored) {}
+            fileUploadCallback = null;
+        }
+        WebView old = webView;
+        webView = null;
+        bridge = null;
+        pendingWebUrl = null;
+        webViewInitScheduled = false;
+        if (old != null) {
+            try { old.stopLoading(); } catch (Throwable ignored) {}
+            if (old.getParent() instanceof ViewGroup) {
+                ((ViewGroup) old.getParent()).removeView(old);
+            }
+            try { old.removeAllViews(); } catch (Throwable ignored) {}
+            try { old.destroy(); } catch (Throwable ignored) {}
         }
     }
 

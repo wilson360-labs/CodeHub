@@ -9,6 +9,10 @@ android {
     compileSdk 37
     compileSdkMinor 0
 
+    buildFeatures {
+        aidl true
+    }
+
     defaultConfig {
         applicationId "com.codehub.app"
         minSdk 24

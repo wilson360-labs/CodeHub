@@ -36,6 +36,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenCopilot()
         fun onOpenProfile()
         fun onOpenCodeSu()
+        fun onForceStopApp()
         fun onOpenWebsite(path: String)
     }
 
@@ -56,6 +57,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
+    private lateinit var forceStopCard: View
     private lateinit var websiteCard: View
     private lateinit var profilePill: View
     private lateinit var guideButton: View
@@ -121,6 +123,11 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
+        forceStopCard = featureCard(R.drawable.ic_home_power, "Forzar cierre de app", "Abrir los ajustes Android para dormir CodeHub y sus servicios", 0xFFFF8A8A.toInt()) {
+            listener.onForceStopApp()
+        }
+        addEntranceTarget(content, forceStopCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
         websiteCard = buildWebsiteCard()
         addEntranceTarget(content, websiteCard, LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
@@ -174,6 +181,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
         tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")
         tourSteps += Triple(optimizerCard, "CodeSu", "Revisa apps activas y detén solo las que elijas. Requiere Shizuku autorizado; no borra datos ni promete aumentar la batería.")
+        tourSteps += Triple(forceStopCard, "Dormir CodeHub", "Android controla el cierre forzado. Este acceso abre Información de la app, donde puedes detener sus servicios; al abrir CodeHub otra vez se reanudan.")
         tourSteps += Triple(websiteCard, "Explora CodeHub", "Abre la experiencia web para comunidad, proyectos, clima y otras secciones.")
         tourSteps += Triple(profilePill, "Tu perfil", "Accede a tu perfil y proyectos de CodeHub.")
         tourStepIndex = 0

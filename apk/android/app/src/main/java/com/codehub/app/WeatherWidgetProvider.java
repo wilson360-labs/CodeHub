@@ -140,6 +140,14 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         refreshAllInBackground(context);
     }
 
+    /** Re-arms widget alarms after Android force-stops and later restarts CodeHub. */
+    public static void resumeUpdates(Context context) {
+        if (!hasAnyWidget(context)) return;
+        scheduleAlarm(context);
+        scheduleClockTick(context);
+        refreshAllInBackground(context);
+    }
+
     private static boolean hasAnyWidget(Context context) {
         try {
             AppWidgetManager mgr = AppWidgetManager.getInstance(context);
