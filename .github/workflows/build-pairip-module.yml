@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build-pairip-module:
@@ -63,11 +64,48 @@ jobs:
         working-directory: apk/android/pairipfix
         shell: bash
         run: |
-          set -e
-          gradle assembleRelease --no-daemon --stacktrace
-          mkdir -p dist
-          cp build/outputs/apk/release/*.apk dist/pairipfix-module.apk
-          ls -la dist/
+          set +e
+          gradle assembleRelease --no-daemon --stacktrace > "$RUNNER_TEMP/pairip-module-build.log" 2>&1
+          rc=$?
+          echo "gradle rc=$rc"
+          tail -n 80 "$RUNNER_TEMP/pairip-module-build.log"
+          {
+            echo "### Log del build del módulo PairIP"
+            echo '```text'
+            tail -n 120 "$RUNNER_TEMP/pairip-module-build.log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ $rc -eq 0 ]; then
+            mkdir -p dist
+            cp build/outputs/apk/release/*.apk dist/pairipfix-module.apk
+            ls -la dist/
+          fi
+          exit $rc
+
+      - name: Publicar error del build como Issue (diagnostico)
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          LOG="$RUNNER_TEMP/pairip-module-build.log"
+          {
+            echo "## Error de compilación del módulo PairIP · commit \`$GITHUB_SHA\`";
+            echo "";
+            echo "**Paso:** Build module APK — from '.github/workflows/build-pairip-module.yml';";
+            echo "";
+            if [ -f "$LOG" ]; then
+              echo '```text';
+              tail -n 120 "$LOG";
+              echo '```';
+            else
+              echo "(log no encontrado — el paso falló antes de escribirlo)";
+            fi
+          } > "$RUNNER_TEMP/pairip-error-body.md"
+          gh issue create --repo "$GITHUB_REPO" \
+            --title "CI: error del módulo PairIP (${GITHUB_SHA:0:7})" \
+            --body-file "$RUNNER_TEMP/pairip-error-body.md" || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
