@@ -72,7 +72,11 @@ jobs:
           {
             echo "### Log del build del módulo PairIP"
             echo '```text'
-            tail -n 120 "$RUNNER_TEMP/pairip-module-build.log"
+            head -n 60 "$RUNNER_TEMP/pairip-module-build.log"
+            echo '...'
+            grep -nE 'error:|e: |FAILURE:|What went wrong|Could not|Execution failed|Caused by|Unsupported|requires|not found|A problem occurred' "$RUNNER_TEMP/pairip-module-build.log" | head -n 60 || true
+            echo '...'
+            tail -n 40 "$RUNNER_TEMP/pairip-module-build.log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           if [ $rc -eq 0 ]; then
@@ -97,7 +101,11 @@ jobs:
             echo "";
             if [ -f "$LOG" ]; then
               echo '```text';
-              tail -n 120 "$LOG";
+              head -n 60 "$LOG";
+              echo '...';
+              grep -nE 'error:|e: |FAILURE:|What went wrong|Could not|Execution failed|Caused by|Unsupported|requires|not found|A problem occurred' "$LOG" | head -n 80 || true;
+              echo '...';
+              tail -n 40 "$LOG";
               echo '```';
             else
               echo "(log no encontrado — el paso falló antes de escribirlo)";
