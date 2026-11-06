@@ -10,7 +10,6 @@ import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.lang.reflect.Method
@@ -538,50 +537,60 @@ object SystemCleaner {
      * versiones y fabricantes → era una fuente real de incompatibilidad).
      * Se lee con identidad Shizuku (root/ADB) cubriendo todos los PIDs.
      */
-    private fun scanProcRss(): HashMap<Int, Long> {
+    private suspend fun scanProcRss(): HashMap<Int, Long> = withContext(Dispatchers.IO) {
+        // /proc no se puede leer con los permisos del proceso normal de CodeHub.
+        // El recorrido fijo se ejecuta dentro del proceso remoto de Shizuku y
+        // solo devuelve UID + VmRSS; nunca se recibe ni ejecuta texto del usuario.
+        val scan = """
+            for status in /proc/[0-9]*/status; do
+              [ -r "${'$'}status" ] || continue
+              uid=""; rss=0
+              while read -r key value rest; do
+                case "${'$'}key" in
+                  Uid:) uid="${'$'}value" ;;
+                  VmRSS:) rss="${'$'}value" ;;
+                esac
+              done < "${'$'}status"
+              case "${'$'}uid" in ''|*[!0-9]*) continue ;; esac
+              case "${'$'}rss" in ''|*[!0-9]*) rss=0 ;; esac
+              [ "${'$'}uid" -ge $APP_UID_MIN ] && echo "${'$'}uid ${'$'}rss"
+            done
+        """.trimIndent()
+        val (code, output) = runShellDrained("sh", "-c", scan)
+        if (code != 0) throw IllegalStateException("No se pudo leer la lista de procesos (exit=$code)")
         val rssByUid = HashMap<Int, Long>()
-        val pids = File("/proc").list() ?: return rssByUid
-        for (pid in pids) {
-            if (pid.isEmpty() || !pid[0].isDigit()) continue
-            var uid = -1L
-            var rss = 0L
-            try {
-                File("/proc/$pid/status").forEachLine { line ->
-                    when {
-                        line.startsWith("Uid:") -> uid = statusNum(line)
-                        line.startsWith("VmRSS:") -> rss = statusNum(line)
-                    }
-                }
-            } catch (_: Throwable) { continue }
-            if (uid >= APP_UID_MIN.toLong()) rssByUid[uid.toInt()] = (rssByUid[uid.toInt()] ?: 0L) + rss
+        output.lineSequence().forEach { line ->
+            val fields = line.trim().split(Regex("\\s+"))
+            val uid = fields.getOrNull(0)?.toIntOrNull() ?: return@forEach
+            val rssKb = fields.getOrNull(1)?.toLongOrNull() ?: return@forEach
+            if (uid >= APP_UID_MIN && rssKb > 0) rssByUid[uid] = (rssByUid[uid] ?: 0L) + rssKb
         }
-        return rssByUid
+        rssByUid
     }
-
-    /** Primer número de una línea de /proc status (p. ej. "Uid:\t11023\t…" o "VmRSS:\t  5421 kB"). */
-    private fun statusNum(line: String): Long =
-        line.substringAfter(':').trim().split(Regex("\\s+")).firstOrNull()?.toLongOrNull() ?: 0L
 
     /**
      * Paquetes con procesos vivos y su RSS agregado (KB), ordenados por consumo.
      * Solo cuentas de usuario (uid ≥ 10000, incluye el uid de CodeHub que el
      * caller filtra a nivel acción). Devuelve los top-60.
      */
-    suspend fun processesByMemory(): List<PkgMem> = withContext(Dispatchers.IO) {
-        try {
-            val uidToPkg = uidToPackageMap()
-            val rssByUid = scanProcRss()
-            if (rssByUid.isEmpty()) return@withContext emptyList()
-            val perPkg = HashMap<String, Long>()
-            for ((uid, kb) in rssByUid) {
-                val pkg = uidToPkg[uid] ?: continue
-                perPkg[pkg] = (perPkg[pkg] ?: 0L) + kb
-            }
-            perPkg.entries
-                .map { PkgMem(it.key, it.value) }
-                .sortedByDescending { it.rssKb }
-                .take(60)
-        } catch (_: Throwable) { emptyList() }
+    suspend fun processesByMemory(): List<PkgMem> =
+        runCatching { processesByMemoryStrict() }.getOrDefault(emptyList())
+
+    /** Variante con errores visibles para pantallas nativas que deben explicar el fallo. */
+    suspend fun processesByMemoryStrict(): List<PkgMem> = withContext(Dispatchers.IO) {
+        val uidToPkg = uidToPackageMap()
+        if (uidToPkg.isEmpty()) throw IllegalStateException("Shizuku no pudo consultar las aplicaciones instaladas.")
+        val rssByUid = scanProcRss()
+        if (rssByUid.isEmpty()) return@withContext emptyList()
+        val perPkg = HashMap<String, Long>()
+        for ((uid, kb) in rssByUid) {
+            val pkg = uidToPkg[uid] ?: continue
+            perPkg[pkg] = (perPkg[pkg] ?: 0L) + kb
+        }
+        perPkg.entries
+            .map { PkgMem(it.key, it.value) }
+            .sortedByDescending { it.rssKb }
+            .take(60)
     }
 
     private fun fmt(bytes: Long): String {

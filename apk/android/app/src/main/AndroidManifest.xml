@@ -158,6 +158,14 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <!-- CodeSu: utilidades nativas Android con operaciones explícitas vía Shizuku. -->
+        <activity
+            android:name=".CodeSuActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".NativeAuthActivity"
             android:exported="true"

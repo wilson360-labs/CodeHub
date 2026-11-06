@@ -3,8 +3,13 @@ package com.codehub.app
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.res.ColorStateList
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
@@ -30,6 +35,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenCodeStream()
         fun onOpenCopilot()
         fun onOpenProfile()
+        fun onOpenCodeSu()
         fun onOpenWebsite(path: String)
     }
 
@@ -39,15 +45,20 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private val entranceTargets = mutableListOf<View>()
     private val tourPrefs: SharedPreferences by lazy { context.getSharedPreferences("codehub_store", Context.MODE_PRIVATE) }
     private var tourWindow: PopupWindow? = null
+    private lateinit var homeScroll: ScrollView
     private lateinit var storeCard: View
     private lateinit var appsCard: View
+    private lateinit var activityCard: View
+    private lateinit var heroCard: View
     private lateinit var codeBeatCard: View
     private lateinit var codeStreamCard: View
     private lateinit var copilotCard: View
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
+    private lateinit var websiteCard: View
     private lateinit var profilePill: View
+    private lateinit var guideButton: View
     private var tourStepIndex = 0
     private val tourSteps = mutableListOf<Triple<View, String, String>>()
     private var entrancePlayed = false
@@ -60,7 +71,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
         addView(buildHeader(), LayoutParams(-1, dp(64)))
 
-        val scroll = ScrollView(context).apply {
+        homeScroll = ScrollView(context).apply {
             clipToPadding = false
             isFillViewport = false
             overScrollMode = View.OVER_SCROLL_NEVER
@@ -79,8 +90,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             listener.onOpenMyApps()
         }
         addEntranceTarget(content, actionPair(storeCard, appsCard), LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        addEntranceTarget(content, buildActivityCard(), LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        addEntranceTarget(content, buildHero(), LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        activityCard = buildActivityCard()
+        addEntranceTarget(content, activityCard, LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        heroCard = buildHero()
+        addEntranceTarget(content, heroCard, LayoutParams(-1, -2).apply { topMargin = dp(16) })
 
         codeBeatCard = actionCard(R.drawable.ic_home_music, "CodeBeat", "Música y extensiones", cyan) {
             listener.onOpenCodeBeat()
@@ -103,12 +116,13 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, actionPair(weatherCard, toolsCard), LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        optimizerCard = featureCard(R.drawable.ic_home_boost, "OPTIMIZACIÓN DEL SISTEMA", "Ram, batería, caché y bloatware con Shizuku", indigo) {
-            listener.onOpenWebsite("/pages/tools.html#opt-card")
+        optimizerCard = featureCard(R.drawable.ic_home_boost, "CodeSu", "Optimización Android con Shizuku", indigo) {
+            listener.onOpenCodeSu()
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
-        addEntranceTarget(content, buildWebsiteCard(), LayoutParams(-1, -2).apply { topMargin = dp(18) })
+        websiteCard = buildWebsiteCard()
+        addEntranceTarget(content, websiteCard, LayoutParams(-1, -2).apply { topMargin = dp(18) })
         content.addView(TextView(context).apply {
             text = "CodeHub · Guatemala"
             textSize = 11f
@@ -116,8 +130,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             gravity = Gravity.CENTER
         }, LayoutParams(-1, -2).apply { topMargin = dp(22) })
 
-        scroll.addView(content)
-        addView(scroll, LayoutParams(-1, 0, 1f))
+        homeScroll.addView(content)
+        addView(homeScroll, LayoutParams(-1, 0, 1f))
     }
 
     /** Starts a short staggered reveal after the native splash has faded away. */
@@ -143,16 +157,24 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
     private fun maybeStartTour() {
         if (tourPrefs.getBoolean("tour_done", false)) return
+        startTour()
+    }
+
+    /** The help control can replay this native tour at any time. */
+    private fun startTour() {
         if (tourWindow != null) return
         tourSteps.clear()
         tourSteps += Triple(storeCard, "CodeHub Store", "Apps open source verificadas: descarga APKs, gestiona actualizaciones y favoritos.")
         tourSteps += Triple(appsCard, "Mis aplicaciones", "Ve lo instalado, actualizaciones pendientes e historial de descargas.")
+        tourSteps += Triple(activityCard, "Tu actividad", "Consulta cuántas apps tienes instaladas y el historial de descargas de CodeHub. Toca para abrir Mis aplicaciones.")
+        tourSteps += Triple(heroCard, "CodeHub y tu perfil", "Esta portada reúne tus accesos. El botón de la tarjeta abre tu perfil web y tus proyectos.")
         tourSteps += Triple(codeBeatCard, "CodeBeat", "Música y extensiones para tu flujo de trabajo.")
         tourSteps += Triple(codeStreamCard, "CodeStream", "Videos, música y Shorts dentro de la app.")
         tourSteps += Triple(copilotCard, "WIL.E COPILOT", "Asistente IA nativo para depurar, revisar código y generar README.")
         tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
         tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")
-        tourSteps += Triple(optimizerCard, "Optimización del sistema", "RAM, batería, caché y bloatware con Shizuku (ADB o root).")
+        tourSteps += Triple(optimizerCard, "CodeSu", "Revisa apps activas y detén solo las que elijas. Requiere Shizuku autorizado; no borra datos ni promete aumentar la batería.")
+        tourSteps += Triple(websiteCard, "Explora CodeHub", "Abre la experiencia web para comunidad, proyectos, clima y otras secciones.")
         tourSteps += Triple(profilePill, "Tu perfil", "Accede a tu perfil y proyectos de CodeHub.")
         tourStepIndex = 0
         showTourStep()
@@ -166,15 +188,26 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         val (target, title, desc) = tourSteps[tourStepIndex]
         target.post {
+            val visible = Rect()
+            if (!target.getGlobalVisibleRect(visible) || visible.width() < target.width || visible.height() < target.height) {
+                val descendant = Rect(0, 0, target.width, target.height)
+                homeScroll.offsetDescendantRectToMyCoords(target, descendant)
+                homeScroll.smoothScrollTo(0, (descendant.top - dp(80)).coerceAtLeast(0))
+                target.postDelayed({ showTourStep() }, 260)
+                return@post
+            }
             // Efecto "bombeo" breve sobre la sección marcada.
             target.animate().cancel()
             target.animate().scaleX(1.08f).scaleY(1.08f).setDuration(180).withEndAction {
                 target.animate().scaleX(1f).scaleY(1f).setDuration(200).start()
             }.start()
 
-            val loc = IntArray(2); target.getLocationOnScreen(loc)
-            val screenW = resources.displayMetrics.widthPixels
-            val screenH = resources.displayMetrics.heightPixels
+            val loc = IntArray(2); target.getLocationInWindow(loc)
+            val host = IntArray(2); this@NativeHomeView.getLocationInWindow(host)
+            val targetLeft = loc[0] - host[0]
+            val targetTop = loc[1] - host[1]
+            val screenW = this@NativeHomeView.width
+            val screenH = this@NativeHomeView.height
 
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -220,18 +253,16 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             row.addView(next, LinearLayout.LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
             bubble.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
 
-            val root = FrameLayout(context).apply {
-                setBackgroundColor(0x99000000.toInt())
-                isClickable = true
-            }
+            val root = FrameLayout(context).apply { isClickable = true }
 
-            val bubbleW = dp(280)
-            val estBubbleH = dp(150)
-            val tCx = loc[0] + target.width / 2
-            val tCy = loc[1] + target.height / 2
-            val belowTop = loc[1] + target.height + dp(14)
-            val bubbleTop = if (belowTop + estBubbleH <= screenH - dp(12)) belowTop else (loc[1] - estBubbleH - dp(14)).coerceAtLeast(dp(12))
-            val bubbleLeft = (tCx - bubbleW / 2).coerceIn(dp(12), screenW - bubbleW - dp(12))
+            val bubbleW = (screenW - dp(32)).coerceAtMost(dp(340))
+            bubble.measure(MeasureSpec.makeMeasureSpec(bubbleW, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(screenH, MeasureSpec.AT_MOST))
+            val bubbleH = bubble.measuredHeight.coerceAtLeast(dp(130))
+            val tCx = targetLeft + target.width / 2
+            val tCy = targetTop + target.height / 2
+            val belowTop = targetTop + target.height + dp(18)
+            val bubbleTop = if (belowTop + bubbleH <= screenH - dp(12)) belowTop else (targetTop - bubbleH - dp(18)).coerceAtLeast(dp(12))
+            val bubbleLeft = (tCx - bubbleW / 2).coerceIn(dp(12), (screenW - bubbleW - dp(12)).coerceAtLeast(dp(12)))
 
             val bubbleParams = FrameLayout.LayoutParams(bubbleW, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
                 leftMargin = bubbleLeft
@@ -240,7 +271,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
 
             // Línea conectora + flecha hacia la sección marcada.
             val bCx = bubbleLeft + bubbleW / 2
-            val bCy = bubbleTop + estBubbleH / 2
+            val bCy = bubbleTop + bubbleH / 2
             val dx = (tCx - bCx).toFloat()
             val dy = (tCy - bCy).toFloat()
             val length = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toInt().coerceAtLeast(dp(8))
@@ -248,6 +279,10 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             val line = View(context).apply {
                 setBackgroundColor(0xFF818CF8.toInt())
             }
+            root.addView(SpotlightScrim(context, RectF(
+                (targetLeft - dp(5)).toFloat(), (targetTop - dp(5)).toFloat(),
+                (targetLeft + target.width + dp(5)).toFloat(), (targetTop + target.height + dp(5)).toFloat(),
+            )), FrameLayout.LayoutParams(-1, -1))
             root.addView(line, FrameLayout.LayoutParams(length, dp(2)).apply {
                 leftMargin = bCx
                 topMargin = bCy - dp(1)
@@ -273,7 +308,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             val pw = PopupWindow(root, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, true)
             pw.isOutsideTouchable = false
             pw.isFocusable = true
-            pw.showAtLocation(this@NativeHomeView, Gravity.NO_GRAVITY, 0, 0)
+            pw.showAtLocation(this@NativeHomeView, Gravity.TOP or Gravity.START, 0, 0)
             tourWindow = pw
         }
     }
@@ -281,6 +316,19 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private fun dismissTour() {
         tourWindow?.dismiss()
         tourWindow = null
+    }
+
+    private inner class SpotlightScrim(context: Context, private val hole: RectF) : View(context) {
+        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xCC050813.toInt() }
+        private val clear = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
+        init { setLayerType(View.LAYER_TYPE_HARDWARE, null) }
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val layer = canvas.saveLayer(0f, 0f, width.toFloat(), height.toFloat(), null)
+            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dim)
+            canvas.drawRoundRect(hole, dp(18).toFloat(), dp(18).toFloat(), clear)
+            canvas.restoreToCount(layer)
+        }
     }
 
     private fun roundRectLocal(fill: Int, stroke: Int, radius: Int): GradientDrawable =
@@ -381,24 +429,36 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             addView(label("ANDROID · OPEN SOURCE", 9f, muted, false))
         }
         addView(wordmark, LayoutParams(0, -2, 1f))
-        addView(TextView(context).apply {
-            text = "APK NATIVA"
-            textSize = 9f
-            letterSpacing = .04f
-            setTextColor(indigo)
-            setPadding(dp(11), dp(7), dp(11), dp(7))
-            background = rounded(0xFF1B1C36.toInt(), dp(20))
-        })
-        profilePill = ImageView(context).apply {
-            setImageResource(R.drawable.ic_home_profile)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            contentDescription = "Abrir perfil de usuario"
+        guideButton = TextView(context).apply {
+            text = "?"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            setTextColor(cyan)
+            contentDescription = "Ver guía de CodeHub"
+            background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { startTour() }
+        }
+        addView(guideButton, LayoutParams(dp(40), dp(40)).apply { marginStart = dp(8) })
+        profilePill = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), 0, dp(12), 0)
+            contentDescription = "Abrir mi perfil"
             background = rippleSurface(0xFF171C2B.toInt(), dp(22), 0xFF333B55.toInt())
             isClickable = true
             isFocusable = true
             setOnClickListener { listener.onOpenProfile() }
+            addView(ImageView(context).apply {
+                setImageResource(R.drawable.ic_home_profile)
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LayoutParams(dp(20), dp(20)))
+            addView(label("Mi perfil", 10f, indigo, true), LayoutParams(-2, -2).apply { marginStart = dp(5) })
         }
-        addView(profilePill, LayoutParams(dp(42), dp(42)).apply { marginStart = dp(10) })
+        addView(profilePill, LayoutParams(-2, dp(40)).apply { marginStart = dp(8) })
     }
 
     private fun buildHero(): View = LinearLayout(context).apply {

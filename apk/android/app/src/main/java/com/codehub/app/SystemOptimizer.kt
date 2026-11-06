@@ -14,10 +14,11 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 /**
- * Núcleo de OPTIMIZACIÓN del sistema, vía Shizuku.
+ * Operaciones concretas de sistema vía Shizuku. No acepta scripts escritos
+ * por el usuario; cada acción del APK tiene una entrada nativa específica.
  *
- * Ejecuta cada comando como un proceso `sh -c "..."` independiente bajo la
- * identidad de Shizuku. Sin libsu: ShizukuRemoteProcess usa streams Binder
+ * Usa el proceso remoto de Shizuku para las operaciones que Android no expone
+ * a una app normal. Sin libsu: ShizukuRemoteProcess usa streams Binder
  * que libsu 6.x no puede envolver con Shell.Builder.build(Process).
  * Se reutiliza el mismo patrón de ShizukuInstaller (reflexión sobre
  * Shizuku.newProcess privado).
@@ -164,66 +165,6 @@ object SystemOptimizer {
         val shellErr = lastShellError?.let { quoteJs(it) } ?: "null"
         return if (base.endsWith("}")) base.dropLast(1) + ",\"shellError\":$shellErr}" else base
     }
-
-    @JvmStatic
-    fun runScriptSync(rawScript: String): String = runBlocking {
-        try {
-            requireReady()
-            val script = (rawScript ?: "").trim()
-            if (script.isEmpty()) return@runBlocking "{\"error\":\"script vacío\"}"
-            val lines = script.replace("\r", "").split("\n")
-                .map { it.trim() }
-                .filter { it.isNotEmpty() && !it.startsWith("#") }
-            if (lines.isEmpty()) return@runBlocking "{\"error\":\"script vacío\"}"
-            if (lines.any { l -> DENIED_TOKENS.any { l.lowercase().contains(it) } }) {
-                return@runBlocking "{\"error\":\"contiene comandos no permitidos (su, rm, reboot, mount, settings put, wipe…)\"}"
-            }
-            if (lines.any { l -> SENSITIVE_PATHS.any { l.contains(it) } }) {
-                return@runBlocking "{\"error\":\"contiene rutas privadas de otras apps (databases, shared_prefs, /data/data)\"}"
-            }
-            lines.forEach { l ->
-                val bin = l.substringBefore(' ').substringAfterLast('/').trim()
-                if (bin.isNotEmpty() && bin !in ALLOWED_BINS) {
-                    return@runBlocking "{\"error\":${quoteJs("binario no permitido: $bin")}}"
-                }
-            }
-            val outputs = arrayListOf<String>()
-            var highest = 0
-            for (line in lines) {
-                val (code, out) = runSh(line)
-                highest = code
-                if (out.isNotEmpty()) outputs.addAll(out)
-                if (code != 0) outputs += "── exit $code"
-                if (outputs.size > MAX_DIAG_LINES) {
-                    outputs.add("… salida truncada")
-                    break
-                }
-            }
-            val arr = outputs.joinToString(",", "[", "]") { quoteJs(it) }
-            "{\"ok\":true,\"code\":$highest,\"lines\":$arr}"
-        } catch (t: Throwable) {
-            "{\"error\":${quoteJs(t.message ?: t.toString())}}"
-        }
-    }
-
-    // Allowlist de binarios seguros para el runner de scripts.
-    private val ALLOWED_BINS = setOf(
-        "df", "du", "cat", "echo", "dumpsys", "pm", "am", "ps", "top", "free",
-        "uptime", "uname", "getprop", "date", "wc", "ls", "head", "tail",
-        "grep", "id", "whoami", "env"
-    )
-    private val DENIED_TOKENS = listOf(
-        "su ", "sudo", "reboot", "shutdown", "rm ", "chmod", "chown", "mkfs",
-        "dd ", "mount", "umount", "svc ", "settings put", "wipe", "fastboot",
-        "wpa_supplicant", "iptables", "ifconfig", "getenforce"
-    )
-    // Rutas con datos de otras apps/privados del sistema: nunca leerlas desde
-    // el runner de scripts, incluso bajo root (el entorno no las necesita).
-    private val SENSITIVE_PATHS = listOf(
-        "/data/data", "/data/user/", "shared_prefs", "/databases/",
-        "content://", "/proc/kcore", "/sys/kernel/debug", "/cache"
-    )
-    private const val MAX_DIAG_LINES = 400
 
     @JvmStatic
     fun diagnosticsSync(): String = runBlocking {

@@ -1513,11 +1513,6 @@ public class CodeHubBridge {
     }
 
     @JavascriptInterface
-    public void optimizerRunScript(final String cb, final String script) {
-        new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.runScriptSync(script))).start();
-    }
-
-    @JavascriptInterface
     public void optimizerBoostPlan(final String cb) {
         new Thread(() -> notifyOptimizer(cb, SystemOptimizer.INSTANCE.boostPlanSync())).start();
     }

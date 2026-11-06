@@ -131,6 +131,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenCodeStream() { openNativeCodeStream(); }
             @Override public void onOpenCopilot() { openNativeCopilot(); }
             @Override public void onOpenProfile() { openNativeProfile(); }
+            @Override public void onOpenCodeSu() { openNativeCodeSu(); }
             @Override public void onOpenWebsite(String path) {
                 String suffix = path == null || path.isEmpty() ? "/" : path;
                 openWebUrl(APP_URL + (suffix.startsWith("/") ? suffix : "/" + suffix));
@@ -1014,6 +1015,15 @@ public class MainActivity extends Activity {
 
     private void openNativeProfile() {
         launchNativeWithAccountSession(NativeProfileActivity.class, NATIVE_PROFILE_REQUEST);
+    }
+
+    private void openNativeCodeSu() {
+        try {
+            startActivity(new Intent(this, CodeSuActivity.class));
+        } catch (Exception e) {
+            android.util.Log.e("CodeHub", "No se pudo abrir CodeSu", e);
+            android.widget.Toast.makeText(this, "CodeSu no pudo iniciarse.", android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void syncNativeSessionToWebView(WebView view) {

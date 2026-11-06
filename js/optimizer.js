@@ -102,7 +102,7 @@
       renderNotReady();
       return;
     }
-    const fns = { diag: renderDiag, limpiar: renderLimpiar, procesos: renderProcesos, bloat: renderBloat, scripts: renderScripts, impulso: renderImpulso };
+    const fns = { diag: renderDiag, limpiar: renderLimpiar, procesos: renderProcesos, bloat: renderBloat, impulso: renderImpulso };
     const fn = fns[state.tab] || renderDiag;
     els.panel.classList.remove('opt-loaded');
     els.panel.innerHTML = '<div class="opt-note" style="text-align:center;padding:1rem">⏳ Cargando…</div>';
@@ -297,91 +297,6 @@
       html += '<div class="opt-note">Sin apps candidatas o permiso insuficiente.</div>';
     }
     els.panel.innerHTML = html;
-  }
-
-  // ── Scripts (consola segura) ─────────────────────────────────────
-  const SCRIPT_ALLOW = ['df', 'du', 'cat', 'echo', 'dumpsys', 'pm', 'am', 'ps', 'top', 'free',
-    'uptime', 'uname', 'getprop', 'date', 'wc', 'ls', 'head', 'tail', 'grep', 'id', 'whoami', 'env'];
-  const SCRIPT_DENY = ['su ', 'sudo', 'reboot', 'shutdown', 'rm ', 'chmod', 'chown', 'mkfs',
-    'dd ', 'mount', 'umount', 'svc ', 'settings put', 'wipe', 'fastboot', 'wpa_supplicant',
-    'iptables', 'ifconfig', 'getenforce'];
-  const PRESETS = [
-    { name: 'Estado del equipo', script:
-      '# Memoria' + '\n' + 'dumpsys meminfo | head -25' + '\n' + 'echo ----' + '\n' +
-      '# Almacenamiento' + '\n' + 'df -h | head -10' + '\n' + 'echo ----' + '\n' +
-      '# Uptime' + '\n' + 'uptime' },
-    { name: 'Procesos top', script: 'top -b -n 1 | head -30' },
-    { name: 'Batería', script: '# Batería y estado de carga' + '\n' + 'dumpsys battery' },
-    { name: 'Apps en ejecución', script: 'ps -A | head -40' },
-    { name: 'Propiedades (build)', script: 'getprop ro.build.version.release' + '\n' + 'getprop ro.product.model' + '\n' + 'getprop ro.product.brand' }
-  ];
-
-  let scriptDraft = PRESETS[0].script;
-
-  async function renderScripts() {
-    let html = '<div class="opt-note"><i class="fas fa-terminal"></i> Ejecuta comandos de ' +
-      'diagnóstico con la identidad de Shizuku. <strong>Permitidos:</strong> ' +
-      SCRIPT_ALLOW.join(', ') + '. Comandos destructivos (su, rm, reboot, mount, wipe…) están bloqueados.</div>';
-    html += '<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.55rem 0">' +
-      PRESETS.map((p, i) => '<button class="btn bg" data-haptic="game" onclick="window.__optPreset(' + i + ')">' + esc(p.name) + '</button>').join('') +
-      '</div>';
-    html += '<textarea id="opt-script-in" rows="7" spellcheck="false" placeholder="# Escribe tu script — una línea de comando por línea">️</textarea>';
-    html += '<div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.45rem">' +
-      '<button class="btn bp" data-haptic="game" onclick="window.__optRunScript()"><i class="fas fa-play"></i> Ejecutar</button>' +
-      '<button class="btn bg" onclick="window.__optClearScript()"><i class="fas fa-eraser"></i> Limpiar</button></div>';
-    html += '<div id="opt-script-out"></div>';
-    els.panel.innerHTML = html;
-    const tx = document.getElementById('opt-script-in');
-    if (tx) {
-      tx.value = scriptDraft;
-      tx.addEventListener('input', () => { scriptDraft = tx.value; });
-    }
-  }
-
-  function clientScriptError(script) {
-    const lines = script.split('\n').map(l => l.trim()).filter(l => l && l[0] !== '#');
-    if (!lines.length) return 'Escribe al menos una línea.';
-    if (lines.some(l => SCRIPT_DENY.some(t => l.toLowerCase().indexOf(t) !== -1))) {
-      return 'Contiene comandos no permitidos (su, rm, reboot, mount, wipe…).';
-    }
-    for (let i = 0; i < lines.length; i++) {
-      const bin = lines[i].split(/\s+/)[0].split('/').pop();
-      if (bin && SCRIPT_ALLOW.indexOf(bin) === -1) return 'Binario no permitido: ' + bin;
-    }
-    return null;
-  }
-
-  async function __optPreset(i) {
-    if (PRESETS[i]) scriptDraft = PRESETS[i].script;
-    renderTab();
-  }
-
-  function __optClearScript() {
-    scriptDraft = '';
-    const tx = document.getElementById('opt-script-in');
-    if (tx) tx.value = '';
-  }
-
-  async function __optRunScript() {
-    const tx = document.getElementById('opt-script-in');
-    if (tx) scriptDraft = tx.value;
-    const err = clientScriptError(scriptDraft);
-    if (err) { toast(err, false); return; }
-    const out = document.getElementById('opt-script-out');
-    if (out) out.innerHTML = '<div class="opt-note" style="text-align:center;padding:.8rem">⏳ Ejecutando…</div>';
-    const r = await nativeCall('optimizerRunScript', scriptDraft);
-    if (out) {
-      if (r && r.error) {
-        out.innerHTML = '<div class="opt-note err">' + esc(r.error) + '</div>';
-        toast('Script rechazado', false);
-      } else if (r && r.ok) {
-        const body = Array.isArray(r.lines) ? r.lines.join('\n') : '';
-        out.innerHTML = '<div class="opt-script-out"><pre>' +
-          (body ? esc(body) : '<span style="color:var(--muted)">(sin salida)</span>') +
-          '</pre><div style="font-size:.64rem;color:var(--muted);font-family:var(--mono);margin-top:.3rem">exit ' + (r.code || 0) + '</div></div>';
-        toast('Script ejecutado · exit ' + (r.code || 0), r.code === 0);
-      }
-    }
   }
 
   // ── acciones ─────────────────────────────────────────────────────
@@ -659,14 +574,13 @@
     window.__optLoadBloat = __optLoadBloat;
     window.__optGrant = __optGrant;
     window.__optOpenShizuku = __optOpenShizuku;
-    window.__optPreset = __optPreset;
-    window.__optRunScript = __optRunScript;
-    window.__optClearScript = __optClearScript;
     window.__optTab = onTab;
     window.__optApply = __optApply;
     window.__optApplyAll = __optApplyAll;
     window.__optRefreshImpulso = renderTab;
 
+    // La APK usa CodeSu en Kotlin; no exponer el panel antiguo sobre WebView.
+    if (isNative) { card.style.display = 'none'; return; }
     card.style.display = '';
 
     // Tinta desde la tarjeta de la home nativa: /pages/tools.html#opt-card.
@@ -709,7 +623,7 @@
         els.dead.style.display = 'block';
         els.dead.innerHTML = '<i class="fas fa-download"></i> Esta versión de la app no incluye el motor Shizuku. ' +
           'Actualiza CodeHub y vuelve a esta tarjeta para activar ' +
-          '<strong>Diagnóstico, Limpiador, Procesos, Bloatware y Scripts</strong>.';
+          '<strong>Diagnóstico, Limpiador, Procesos y Bloatware</strong>.';
       }
       if (els.goBtn) els.goBtn.style.display = 'none';
       return;
