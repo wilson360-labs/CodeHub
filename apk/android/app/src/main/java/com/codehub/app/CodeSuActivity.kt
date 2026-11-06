@@ -2,6 +2,7 @@ package com.codehub.app
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.TimePickerDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -14,10 +15,6 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
-import android.provider.AlarmClock
-import android.provider.Settings
-import android.telecom.TelecomManager
-import android.provider.Telephony
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -33,7 +30,7 @@ import rikka.shizuku.Shizuku
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** Native app manager. The installed-app catalogue is local; Shizuku is only needed to stop apps. */
+/** CodeSu shows only currently running apps and uses Shizuku for the native kill engine. */
 class CodeSuActivity : Activity() {
     private val bg = 0xFF080B11.toInt()
     private val panel = 0xFF111827.toInt()
@@ -45,10 +42,11 @@ class CodeSuActivity : Activity() {
     private var sourceMode = SourceMode.USER
     private var selectionMode = SelectionMode.INCLUDE
     private var killMode = CodeSuUserService.LEVEL_FORCE_STOP
-    private var protectEssentialApps = true
+    private var hideCriticalApps = true
     private var query = ""
 
     private lateinit var statusText: TextView
+    private lateinit var engineText: TextView
     private lateinit var connectionHelp: TextView
     private lateinit var infoText: TextView
     private lateinit var list: LinearLayout
@@ -58,8 +56,21 @@ class CodeSuActivity : Activity() {
     private lateinit var sourceControls: LinearLayout
     private lateinit var selectionControls: LinearLayout
     private lateinit var killControls: LinearLayout
-    private lateinit var protectCheck: CheckBox
+    private lateinit var killHelp: TextView
+    private lateinit var hideCriticalCheck: CheckBox
     private lateinit var listRefreshButton: Button
+    private lateinit var closeAllButton: Button
+    private lateinit var autoControls: LinearLayout
+    private lateinit var autoInfo: TextView
+    private lateinit var listStyleControls: LinearLayout
+    private lateinit var autoDelayControls: LinearLayout
+    private lateinit var autoTimeButton: Button
+    private var autoMode = AutoMode.OFF
+    private var autoHour = 22
+    private var autoMinute = 0
+    private var screenOffDelayMinutes = 1
+    private var compactRows = false
+    private var listError: String? = null
 
     @Volatile private var remoteService: ICodeSuRemoteService? = null
     @Volatile private var bindLatch: CountDownLatch? = null
@@ -70,7 +81,7 @@ class CodeSuActivity : Activity() {
             .daemon(false)
             .processNameSuffix("codesu")
             .debuggable(false)
-            .version(1)
+            .version(2)
     }
 
     private val userServiceConnection = object : ServiceConnection {
@@ -86,6 +97,7 @@ class CodeSuActivity : Activity() {
 
     private enum class SourceMode(val title: String) { USER("Usuario"), LAUNCHABLE("Con icono"), SYSTEM("Sistema") }
     private enum class SelectionMode(val title: String) { INCLUDE("Incluir"), EXCLUDE("Excluir") }
+    private enum class AutoMode(val title: String) { OFF("Desactivado"), SCREEN_OFF("Al apagar pantalla"), DAILY("Diario") }
 
     private data class Candidate(
         val packageName: String,
@@ -103,16 +115,22 @@ class CodeSuActivity : Activity() {
         sourceMode = SourceMode.entries.getOrElse(prefs.getInt("source_mode", 0)) { SourceMode.USER }
         selectionMode = SelectionMode.entries.getOrElse(prefs.getInt("selection_mode", 0)) { SelectionMode.INCLUDE }
         killMode = prefs.getInt("kill_mode", CodeSuUserService.LEVEL_FORCE_STOP)
-        protectEssentialApps = prefs.getBoolean("protect_essential_apps", true)
+        hideCriticalApps = prefs.getBoolean("hide_critical_apps", prefs.getBoolean("protect_essential_apps", true))
+        autoMode = AutoMode.entries.getOrElse(prefs.getInt("auto_mode", 0)) { AutoMode.OFF }
+        autoHour = prefs.getInt("auto_hour", 22).coerceIn(0, 23)
+        autoMinute = prefs.getInt("auto_minute", 0).coerceIn(0, 59)
+        screenOffDelayMinutes = prefs.getInt("screen_off_delay_minutes", 1).coerceIn(0, 15)
+        compactRows = prefs.getBoolean("compact_rows", false)
         buildUi()
         refreshStatus()
-        loadInstalledApps()
     }
 
     override fun onResume() {
         super.onResume()
-        // After returning from Shizuku, refresh its state without rescanning package labels/icons.
+        // Re-check the Shizuku binder and refresh the live process list on return.
         refreshStatus()
+        renderAutoControls()
+        loadInstalledApps()
     }
 
     override fun onDestroy() {
@@ -162,7 +180,7 @@ class CodeSuActivity : Activity() {
 
         content.addView(card {
             addView(label("Elige qué aplicaciones detener", 17f, Color.WHITE, true))
-            addView(label("CodeSu muestra las apps instaladas según tus filtros. La lista funciona sin Shizuku; el cierre requiere conectar y autorizar Shizuku.", 12f, muted),
+            addView(label("CodeSu muestra solo apps con procesos activos y respeta el origen, la selección y la protección crítica.", 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             addView(label("Forzar detención puede cerrar tareas sin guardar. Android puede volver a iniciar una app cuando otro servicio la necesite.", 11f, 0xFFE5C890.toInt()),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
@@ -171,6 +189,8 @@ class CodeSuActivity : Activity() {
         content.addView(card(dp(10)) {
             statusText = label("Comprobando Shizuku…", 13f, Color.WHITE, true)
             addView(statusText)
+            engineText = label("Killer engine · Shizuku", 12f, muted, true)
+            addView(engineText, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
             connectionHelp = label("Shizuku funciona por ADB inalámbrico o root. CodeSu no necesita root si Shizuku está activo.", 11f, muted)
             addView(connectionHelp, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
             connectButton = Button(this@CodeSuActivity).apply {
@@ -182,14 +202,14 @@ class CodeSuActivity : Activity() {
         })
 
         content.addView(card(dp(10)) {
-            addView(label("Tipo de aplicaciones", 13f, Color.WHITE, true))
+            addView(label("Source mode · apps activas", 13f, Color.WHITE, true))
             sourceControls = LinearLayout(this@CodeSuActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
             addView(sourceControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
 
-            addView(label("Qué hacer con las marcadas", 13f, Color.WHITE, true),
+            addView(label("Selection mode", 13f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
             selectionControls = LinearLayout(this@CodeSuActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -197,43 +217,66 @@ class CodeSuActivity : Activity() {
             }
             addView(selectionControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
 
-            addView(label("Modo de cierre", 13f, Color.WHITE, true),
+            addView(label("Kill level", 13f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
             killControls = LinearLayout(this@CodeSuActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
             addView(killControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            killHelp = label("", 11f, muted)
+            addView(killHelp, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
-            protectCheck = CheckBox(this@CodeSuActivity).apply {
-                text = "Proteger apps esenciales (recomendado)"
+            hideCriticalCheck = CheckBox(this@CodeSuActivity).apply {
+                text = "Hide critical apps (recomendado)"
                 textSize = 12f
                 setTextColor(Color.WHITE)
                 buttonTintList = android.content.res.ColorStateList.valueOf(cyan)
-                isChecked = protectEssentialApps
+                isChecked = hideCriticalApps
                 setOnCheckedChangeListener { _, checked ->
-                    if (!checked && protectEssentialApps) {
+                    if (!checked && hideCriticalApps) {
                         isChecked = true
                         AlertDialog.Builder(this@CodeSuActivity)
-                            .setTitle("Mostrar apps esenciales")
-                            .setMessage("Esto permite incluir en la lista componentes del sistema, como el lanzador, llamadas y servicios centrales. Un cierre forzado puede interrumpir funciones del teléfono.")
-                            .setNegativeButton("Mantener protegidas", null)
+                            .setTitle("Mostrar apps críticas")
+                            .setMessage("Desactivar Hide critical apps permite mostrar y cerrar apps esenciales como el launcher, teclado, llamadas y servicios del sistema. Una detención puede dejar funciones del teléfono temporalmente indisponibles.")
+                            .setNegativeButton("Mantener ocultas", null)
                             .setPositiveButton("Entiendo") { _, _ ->
-                                protectEssentialApps = false
-                                protectCheck.isChecked = false
+                                hideCriticalApps = false
+                                hideCriticalCheck.isChecked = false
                                 persistPreferences()
                                 renderControls()
                                 renderApps()
                             }
                             .show()
-                    } else if (checked != protectEssentialApps) {
-                        protectEssentialApps = checked
+                    } else if (checked != hideCriticalApps) {
+                        hideCriticalApps = checked
                         persistPreferences()
                         renderApps()
                     }
                 }
             }
-            addView(protectCheck, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            addView(hideCriticalCheck, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+
+            addView(label("List UI", 13f, Color.WHITE, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            listStyleControls = LinearLayout(this@CodeSuActivity).apply { orientation = LinearLayout.HORIZONTAL }
+            addView(listStyleControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+
+            addView(label("Auto Killer", 13f, Color.WHITE, true),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            autoControls = LinearLayout(this@CodeSuActivity).apply { orientation = LinearLayout.HORIZONTAL }
+            addView(autoControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            autoInfo = label("Desactivado · solo cerrará apps cuando ejecutes una acción manual.", 11f, muted)
+            addView(autoInfo, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+            autoTimeButton = Button(this@CodeSuActivity).apply {
+                isAllCaps = false
+                setOnClickListener { showDailyTimePicker() }
+            }
+            addView(autoTimeButton, LinearLayout.LayoutParams(-1, dp(42)).apply { topMargin = dp(5) })
+            addView(label("Retraso al apagar pantalla", 11f, muted),
+                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            autoDelayControls = LinearLayout(this@CodeSuActivity).apply { orientation = LinearLayout.HORIZONTAL }
+            addView(autoDelayControls, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
 
             searchField = EditText(this@CodeSuActivity).apply {
                 hint = "Buscar aplicación o paquete"
@@ -258,7 +301,7 @@ class CodeSuActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            selectRow.addView(button("Marcar visibles", 0xFF1A2940.toInt(), cyan) { updateVisibleSelection(true) },
+            selectRow.addView(button("Seleccionar todas", 0xFF1A2940.toInt(), cyan) { updateVisibleSelection(true) },
                 LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(5) })
             selectRow.addView(button("Limpiar visibles", 0xFF1A2940.toInt(), muted) { updateVisibleSelection(false) },
                 LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginStart = dp(5) })
@@ -290,15 +333,26 @@ class CodeSuActivity : Activity() {
         scroll.addView(content)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
+        val footer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(6), dp(18), dp(8))
+        }
         actionButton = Button(this).apply {
-            text = "Forzar cierre (0)"
+            text = "Cerrar seleccionadas (0)"
             isAllCaps = false
             isEnabled = false
             setOnClickListener { confirmStopTargets() }
         }
-        root.addView(actionButton, LinearLayout.LayoutParams(-1, dp(52)).apply {
-            setMargins(dp(18), dp(8), dp(18), dp(10))
-        })
+        footer.addView(actionButton, LinearLayout.LayoutParams(0, dp(50), 1.15f).apply { marginEnd = dp(6) })
+        closeAllButton = Button(this).apply {
+            text = "Cerrar todo (0)"
+            isAllCaps = false
+            isEnabled = false
+            setOnClickListener { confirmStopAllVisible() }
+        }
+        footer.addView(closeAllButton, LinearLayout.LayoutParams(0, dp(50), 0.85f).apply { marginStart = dp(6) })
+        root.addView(footer, LinearLayout.LayoutParams(-1, -2))
         setContentView(root)
         SystemBars.applyInsets(this)
         renderControls()
@@ -307,12 +361,16 @@ class CodeSuActivity : Activity() {
     private fun refreshStatus() {
         val status = SystemCleaner.refreshStatus()
         statusText.text = when (status) {
-            SystemCleaner.Status.READY -> "Shizuku conectado · ${SystemCleaner.backendDescription()}"
+            SystemCleaner.Status.READY -> "Service running"
             SystemCleaner.Status.NEEDS_PERMISSION -> "Shizuku activo · falta autorizar CodeHub"
             SystemCleaner.Status.NOT_RUNNING -> "Shizuku instalado pero el servicio está apagado"
             SystemCleaner.Status.NOT_INSTALLED -> "Shizuku no está disponible o su API es antigua"
             SystemCleaner.Status.DISCONNECTED -> "No se pudo verificar la conexión de Shizuku"
         }
+        val ready = status == SystemCleaner.Status.READY
+        statusText.setTextColor(if (ready) 0xFF4ADE80.toInt() else 0xFFFBBF24.toInt())
+        engineText.text = if (ready) "Killer engine · Shizuku / ${SystemCleaner.backendDescription()}" else "Killer engine · Shizuku sin conexión"
+        engineText.setTextColor(if (ready) 0xFF4ADE80.toInt() else muted)
         connectButton.text = when (status) {
             SystemCleaner.Status.NEEDS_PERMISSION -> "Autorizar CodeHub"
             SystemCleaner.Status.NOT_RUNNING -> "Abrir Shizuku"
@@ -328,7 +386,7 @@ class CodeSuActivity : Activity() {
                 else -> "Comprueba que Shizuku esté iniciado y vuelve a autorizar CodeHub si es necesario."
             }
         } else {
-            connectionHelp.text = "La lista se obtiene de Android. El cierre corre dentro del UserService de Shizuku."
+            connectionHelp.text = "El inventario activo se consulta con el UserService de Shizuku."
         }
         updateActionButton()
     }
@@ -359,7 +417,10 @@ class CodeSuActivity : Activity() {
             val granted = runCatching { SystemCleaner.requestPermissionAsyncCompat() }.getOrDefault(false)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                if (granted) refreshStatus() else {
+                if (granted) {
+                    refreshStatus()
+                    loadInstalledApps()
+                } else {
                     statusText.text = "No se confirmó el permiso. Revisa el diálogo de Shizuku y vuelve a intentar."
                     connectButton.isEnabled = true
                 }
@@ -374,9 +435,19 @@ class CodeSuActivity : Activity() {
 
     private fun loadInstalledApps() {
         listRefreshButton.isEnabled = false
-        infoText.text = "Leyendo aplicaciones instaladas…"
+        val status = SystemCleaner.refreshStatus()
+        if (status != SystemCleaner.Status.READY) {
+            allApps.clear()
+            listError = "Conecta y autoriza Shizuku para listar solo apps en ejecución."
+            listRefreshButton.isEnabled = true
+            infoText.text = listError
+            renderApps()
+            return
+        }
+        infoText.text = "Consultando apps en ejecución con Shizuku…"
         Thread({
             val result = runCatching {
+                val activePackages = bindUserService().runningPackages().orEmpty().toSet()
                 val launchIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 val launcherPackages = packageManager.queryIntentActivities(launchIntent, 0)
                     .mapNotNull { it.activityInfo?.packageName }
@@ -384,6 +455,7 @@ class CodeSuActivity : Activity() {
                 val essential = essentialPackages()
                 packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                     .asSequence()
+                    .filter { it.packageName in activePackages }
                     .filter { it.packageName != packageName && it.packageName != "moe.shizuku.privileged.api" }
                     .map { appInfo ->
                         val label = runCatching { packageManager.getApplicationLabel(appInfo).toString() }
@@ -406,44 +478,22 @@ class CodeSuActivity : Activity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 listRefreshButton.isEnabled = true
                 result.onSuccess { loaded ->
+                    listError = null
                     allApps.clear()
                     allApps.addAll(loaded)
-                    infoText.text = "${visibleCandidates().size} visibles · ${allApps.size} instaladas según la protección actual."
+                    infoText.text = "${allApps.size} apps con procesos activos detectados."
                     renderApps()
                 }.onFailure { error ->
                     allApps.clear()
+                    listError = error.message ?: "No se pudieron leer los procesos activos."
                     renderApps()
-                    infoText.text = error.message ?: "Android no pudo leer las aplicaciones instaladas."
+                    infoText.text = listError
                 }
             }
         }, "CodeSu-package-scan").start()
     }
 
-    private fun essentialPackages(): Set<String> = buildSet {
-        addAll(setOf(
-            "android", "com.android.systemui", "com.android.settings", "com.android.phone",
-            "com.android.server.telecom", "com.android.providers.settings", "com.android.permissioncontroller",
-            "com.android.packageinstaller", "com.google.android.gms", "com.google.android.gsf"
-        ))
-        runCatching {
-            packageManager.resolveActivity(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
-                PackageManager.MATCH_DEFAULT_ONLY,
-            )?.activityInfo?.packageName
-        }.getOrNull()?.let(::add)
-        runCatching {
-            Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-                ?.substringBefore('/')
-        }.getOrNull()?.let(::add)
-        runCatching {
-            (getSystemService(TELECOM_SERVICE) as? TelecomManager)?.defaultDialerPackage
-        }.getOrNull()?.let(::add)
-        runCatching { Telephony.Sms.getDefaultSmsPackage(this@CodeSuActivity) }.getOrNull()?.let(::add)
-        runCatching {
-            packageManager.resolveActivity(Intent(AlarmClock.ACTION_SET_ALARM), PackageManager.MATCH_DEFAULT_ONLY)
-                ?.activityInfo?.packageName
-        }.getOrNull()?.let(::add)
-    }
+    private fun essentialPackages(): Set<String> = CodeSuAppPolicy.criticalPackages(this)
 
     private fun visibleCandidates(): List<Candidate> {
         val needle = query.lowercase(java.util.Locale.ROOT)
@@ -453,14 +503,14 @@ class CodeSuActivity : Activity() {
                 SourceMode.LAUNCHABLE -> app.hasLauncher
                 SourceMode.SYSTEM -> app.isSystem
             }
-            sourceMatches && (needle.isEmpty()
+            sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
                 || app.label.lowercase(java.util.Locale.ROOT).contains(needle)
                 || app.packageName.lowercase(java.util.Locale.ROOT).contains(needle))
         }
     }
 
     private fun targetCandidates(): List<Candidate> {
-        val visible = visibleCandidates().filterNot { protectEssentialApps && it.isEssential }
+        val visible = visibleCandidates()
         return when (selectionMode) {
             SelectionMode.INCLUDE -> visible.filter { it.packageName in selectedPackages }
             SelectionMode.EXCLUDE -> visible.filterNot { it.packageName in selectedPackages }
@@ -495,19 +545,101 @@ class CodeSuActivity : Activity() {
         }
 
         killControls.removeAllViews()
-        killControls.addView(choiceButton("Cerrar segundo plano", killMode == CodeSuUserService.LEVEL_BACKGROUND) {
-            killMode = CodeSuUserService.LEVEL_BACKGROUND
-            prefs.edit().putInt("kill_mode", killMode).apply()
-            renderControls()
-            updateActionButton()
+        listOf(
+            "Soft" to CodeSuUserService.LEVEL_BACKGROUND,
+            "Deep" to CodeSuUserService.LEVEL_FORCE_STOP,
+            "Killer" to CodeSuUserService.LEVEL_KILLER,
+        ).forEach { (title, level) ->
+            killControls.addView(choiceButton(title, killMode == level) {
+                killMode = level
+                prefs.edit().putInt("kill_mode", killMode).apply()
+                renderControls()
+                updateActionButton()
+            }, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                if (level != CodeSuUserService.LEVEL_BACKGROUND) marginStart = dp(3)
+                if (level != CodeSuUserService.LEVEL_KILLER) marginEnd = dp(3)
+            })
+        }
+        hideCriticalCheck.isChecked = hideCriticalApps
+        killHelp.text = when (killMode) {
+            CodeSuUserService.LEVEL_BACKGROUND -> "Soft · am kill; Android decide qué proceso de fondo es seguro cerrar."
+            CodeSuUserService.LEVEL_KILLER -> "Killer · fuerza el cierre; usa SIGKILL adicional con motor root."
+            else -> "Deep · am force-stop; detiene el paquete hasta que vuelva a abrirse."
+        }
+        renderListStyleControls()
+        renderAutoControls()
+    }
+
+    private fun renderListStyleControls() {
+        if (!::listStyleControls.isInitialized) return
+        listStyleControls.removeAllViews()
+        listStyleControls.addView(choiceButton("Cómoda", !compactRows) {
+            compactRows = false
+            prefs.edit().putBoolean("compact_rows", false).apply()
+            renderListStyleControls(); renderApps()
         }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(5) })
-        killControls.addView(choiceButton("Forzar detención", killMode == CodeSuUserService.LEVEL_FORCE_STOP) {
-            killMode = CodeSuUserService.LEVEL_FORCE_STOP
-            prefs.edit().putInt("kill_mode", killMode).apply()
-            renderControls()
-            updateActionButton()
+        listStyleControls.addView(choiceButton("Compacta", compactRows) {
+            compactRows = true
+            prefs.edit().putBoolean("compact_rows", true).apply()
+            renderListStyleControls(); renderApps()
         }, LinearLayout.LayoutParams(0, dp(40), 1f).apply { marginStart = dp(5) })
-        protectCheck.isChecked = protectEssentialApps
+    }
+
+    private fun renderAutoControls() {
+        if (!::autoControls.isInitialized) return
+        autoControls.removeAllViews()
+        AutoMode.entries.forEach { mode ->
+            autoControls.addView(choiceButton(mode.title, autoMode == mode) {
+                val activate = {
+                    autoMode = mode
+                    persistPreferences()
+                    configureAutoKiller()
+                    renderAutoControls()
+                }
+                if (mode != AutoMode.OFF && autoMode == AutoMode.OFF) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Activar Auto Killer")
+                        .setMessage("CodeSu detendrá en segundo plano las apps activas que coincidan con Source mode, Selection mode, Hide critical apps y Kill level. En modo Excluir, una lista vacía incluye todas las apps permitidas por el filtro.")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Activar") { _, _ -> activate() }
+                        .show()
+                } else activate()
+            }, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                if (mode != AutoMode.OFF) marginStart = dp(3)
+                if (mode != AutoMode.DAILY) marginEnd = dp(3)
+            })
+        }
+        autoTimeButton.visibility = if (autoMode == AutoMode.DAILY) View.VISIBLE else View.GONE
+        autoTimeButton.text = String.format(java.util.Locale.ROOT, "Hora diaria · %02d:%02d", autoHour, autoMinute)
+        autoDelayControls.visibility = if (autoMode == AutoMode.SCREEN_OFF) View.VISIBLE else View.GONE
+        autoDelayControls.removeAllViews()
+        listOf(0, 1, 5, 15).forEach { delay ->
+            autoDelayControls.addView(choiceButton("${delay}m", screenOffDelayMinutes == delay) {
+                screenOffDelayMinutes = delay
+                prefs.edit().putInt("screen_off_delay_minutes", delay).apply()
+                renderAutoControls()
+            }, LinearLayout.LayoutParams(0, dp(38), 1f).apply { marginStart = dp(3); marginEnd = dp(3) })
+        }
+        autoInfo.text = when (autoMode) {
+            AutoMode.OFF -> "Desactivado · CodeSu solo cerrará apps por acción manual."
+            AutoMode.SCREEN_OFF -> "Se ejecuta al apagar la pantalla si CodeHub sigue activo; usa el filtro y la selección actuales."
+            AutoMode.DAILY -> "Ejecución diaria aproximada a las ${String.format(java.util.Locale.ROOT, "%02d:%02d", autoHour, autoMinute)}; Android puede retrasarla por ahorro de batería."
+        }
+        prefs.getString("last_auto_result", null)?.let { autoInfo.append("\n$it") }
+    }
+
+    private fun showDailyTimePicker() {
+        TimePickerDialog(this, { _, hour, minute ->
+            autoHour = hour
+            autoMinute = minute
+            persistPreferences()
+            configureAutoKiller()
+            renderAutoControls()
+        }, autoHour, autoMinute, true).show()
+    }
+
+    private fun configureAutoKiller() {
+        CodeSuAutoKillerScheduler.configure(this, autoMode.ordinal, autoHour, autoMinute)
     }
 
     private fun choiceButton(title: String, selected: Boolean, onClick: () -> Unit): Button = Button(this).apply {
@@ -520,13 +652,11 @@ class CodeSuActivity : Activity() {
     }
 
     private fun updateVisibleSelection(select: Boolean) {
-        val visible = visibleCandidates().filterNot { protectEssentialApps && it.isEssential }.map { it.packageName }
-        if (selectionMode == SelectionMode.INCLUDE) {
-            if (select) selectedPackages.addAll(visible) else selectedPackages.removeAll(visible.toSet())
-        } else {
-            if (select) selectedPackages.removeAll(visible.toSet()) else selectedPackages.addAll(visible)
-        }
+        val visible = visibleCandidates().map { it.packageName }
+        selectionMode = SelectionMode.INCLUDE
+        if (select) selectedPackages.addAll(visible) else selectedPackages.removeAll(visible.toSet())
         persistPreferences()
+        renderControls()
         renderApps()
     }
 
@@ -535,35 +665,37 @@ class CodeSuActivity : Activity() {
         list.removeAllViews()
         val visible = visibleCandidates()
         if (visible.isEmpty()) {
-            list.addView(label(if (allApps.isEmpty()) "No se cargaron aplicaciones." else "No hay resultados para este filtro.", 12f, muted),
+            val emptyMessage = listError ?: when {
+                SystemCleaner.refreshStatus() != SystemCleaner.Status.READY -> "Conecta Shizuku para consultar los procesos activos."
+                allApps.isEmpty() -> "No hay aplicaciones con procesos activos ahora."
+                else -> "No hay resultados para este filtro."
+            }
+            list.addView(label(emptyMessage, 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
         visible.forEach { app ->
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(9), dp(8), dp(9))
+                setPadding(dp(12), dp(if (compactRows) 5 else 9), dp(8), dp(if (compactRows) 5 else 9))
                 background = rounded(panel, dp(16)).apply { setStroke(dp(1), 0xFF293449.toInt()) }
             }
             row.addView(ImageView(this).apply {
                 setImageDrawable(app.icon)
                 scaleType = ImageView.ScaleType.FIT_CENTER
-            }, LinearLayout.LayoutParams(dp(38), dp(38)))
+            }, LinearLayout.LayoutParams(dp(if (compactRows) 30 else 38), dp(if (compactRows) 30 else 38)))
             val copy = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 addView(label(app.label, 13f, Color.WHITE, true).apply { maxLines = 1 })
                 addView(label(app.packageName, 10f, muted).apply { maxLines = 1 })
             }
             row.addView(copy, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
-            if (protectEssentialApps && app.isEssential) {
-                copy.addView(label("Protegida", 9f, cyan))
-            }
             val check = CheckBox(this).apply {
                 isChecked = app.packageName in selectedPackages
                 contentDescription = if (selectionMode == SelectionMode.INCLUDE)
                     "Incluir ${app.label} en el cierre" else "Excluir ${app.label} del cierre"
                 buttonTintList = android.content.res.ColorStateList.valueOf(cyan)
-                isEnabled = !protectEssentialApps || !app.isEssential
+                isEnabled = !hideCriticalApps || !app.isEssential
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPackages.add(app.packageName) else selectedPackages.remove(app.packageName)
                     persistPreferences()
@@ -572,10 +704,10 @@ class CodeSuActivity : Activity() {
             }
             row.addView(check)
             row.setOnClickListener { if (check.isEnabled) check.isChecked = !check.isChecked }
-            list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) })
+            list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(if (compactRows) 4 else 7) })
         }
         infoText.text = when {
-            visible.isEmpty() && allApps.isEmpty() -> "No se cargaron aplicaciones. Toca Actualizar lista para volver a intentarlo."
+            visible.isEmpty() && allApps.isEmpty() -> "No hay apps activas detectadas. Actualiza la lista o revisa el estado de Shizuku."
             visible.isEmpty() -> "No hay resultados para el filtro o la búsqueda."
             else -> "${visible.size} visibles · ${targetCandidates().size} objetivo(s) según tu selección."
         }
@@ -588,11 +720,11 @@ class CodeSuActivity : Activity() {
         if (::infoText.isInitialized && allApps.isNotEmpty()) {
             infoText.text = "${visibleCandidates().size} visibles · $targetCount objetivo(s) según tu selección."
         }
-        actionButton.text = when (killMode) {
-            CodeSuUserService.LEVEL_BACKGROUND -> "Cerrar segundo plano ($targetCount)"
-            else -> "Forzar detención ($targetCount)"
-        }
+        actionButton.text = "Cerrar seleccionadas ($targetCount)"
         actionButton.isEnabled = targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        val allCount = visibleCandidates().size
+        closeAllButton.text = "Cerrar todo ($allCount)"
+        closeAllButton.isEnabled = allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
     }
 
     private fun confirmStopTargets() {
@@ -600,7 +732,11 @@ class CodeSuActivity : Activity() {
         if (targets.isEmpty()) return
         val names = targets.take(5).joinToString(", ") { it.label }
         val extra = if (targets.size > 5) " y ${targets.size - 5} más" else ""
-        val action = if (killMode == CodeSuUserService.LEVEL_BACKGROUND) "Cerrar procesos en segundo plano" else "Forzar detención"
+        val action = when (killMode) {
+            CodeSuUserService.LEVEL_BACKGROUND -> "Soft · cerrar en segundo plano"
+            CodeSuUserService.LEVEL_KILLER -> "Killer · cierre máximo"
+            else -> "Deep · forzar detención"
+        }
         val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEstás actuando sobre apps del sistema. Algunas sostienen funciones del teléfono." else ""
         AlertDialog.Builder(this)
             .setTitle("$action · ${targets.size} apps")
@@ -608,6 +744,26 @@ class CodeSuActivity : Activity() {
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Continuar") { _, _ -> stopPackages(targets) }
             .show()
+    }
+
+    private fun confirmStopAllVisible() {
+        val targets = visibleCandidates()
+        if (targets.isEmpty()) return
+        val names = targets.take(5).joinToString(", ") { it.label }
+        val extra = if (targets.size > 5) " y ${targets.size - 5} más" else ""
+        val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEl filtro incluye apps del sistema." else ""
+        AlertDialog.Builder(this)
+            .setTitle("Cerrar todas las visibles · ${targets.size}")
+            .setMessage("Se aplicará ${killLevelName()} a ${names}${extra}. Respeta Source mode y Hide critical apps, pero ignora la selección individual. Las apps pueden perder trabajo sin guardar.$systemNote")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Cerrar todas") { _, _ -> stopPackages(targets) }
+            .show()
+    }
+
+    private fun killLevelName(): String = when (killMode) {
+        CodeSuUserService.LEVEL_BACKGROUND -> "Soft"
+        CodeSuUserService.LEVEL_KILLER -> "Killer"
+        else -> "Deep"
     }
 
     private fun stopPackages(targets: List<Candidate>) {
@@ -627,18 +783,16 @@ class CodeSuActivity : Activity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 response.onSuccess { (stopped, failed, identity) ->
-                    if (selectionMode == SelectionMode.INCLUDE) selectedPackages.removeAll(stopped.toSet())
-                    else selectedPackages.addAll(stopped)
-                    persistPreferences()
                     val failedNames = failed.mapNotNull { pkg -> allApps.firstOrNull { it.packageName == pkg }?.label ?: pkg }
                     val message = buildString {
                         append("Detenidas: ${stopped.size} · Fallidas: ${failed.size}\n")
                         append("Motor: UserService Shizuku ($identity)")
                         if (failedNames.isNotEmpty()) append("\nNo se completó: ${failedNames.joinToString()}")
-                        if (killMode == CodeSuUserService.LEVEL_BACKGROUND) append("\nEl modo suave solo cierra procesos en segundo plano; Android puede mantener servicios activos.")
+                        if (killMode == CodeSuUserService.LEVEL_BACKGROUND) append("\nSoft solo cierra procesos que Android considera seguros de terminar.")
+                        if (killMode == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer aplica force-stop; SIGKILL directo requiere root.")
                     }
                     AlertDialog.Builder(this).setTitle("CodeSu").setMessage(message).setPositiveButton("Listo", null).show()
-                    renderApps()
+                    loadInstalledApps()
                 }.onFailure { error ->
                     AlertDialog.Builder(this)
                         .setTitle("Shizuku no pudo detener las apps")
@@ -676,7 +830,12 @@ class CodeSuActivity : Activity() {
             .putInt("source_mode", sourceMode.ordinal)
             .putInt("selection_mode", selectionMode.ordinal)
             .putInt("kill_mode", killMode)
-            .putBoolean("protect_essential_apps", protectEssentialApps)
+            .putBoolean("hide_critical_apps", hideCriticalApps)
+            .putInt("auto_mode", autoMode.ordinal)
+            .putInt("auto_hour", autoHour)
+            .putInt("auto_minute", autoMinute)
+            .putInt("screen_off_delay_minutes", screenOffDelayMinutes)
+            .putBoolean("compact_rows", compactRows)
             .apply()
     }
 

@@ -6,8 +6,14 @@ import android.os.Process;
 import androidx.annotation.Keep;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +25,7 @@ import java.util.regex.Pattern;
 public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     public static final int LEVEL_BACKGROUND = 0;
     public static final int LEVEL_FORCE_STOP = 1;
+    public static final int LEVEL_KILLER = 2;
     private static final String OWN_PACKAGE = "com.codehub.app";
     private static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
     private static final Pattern PACKAGE_PATTERN = Pattern.compile("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+");
@@ -39,18 +46,105 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         return "uid=" + Process.myUid() + ";pid=" + Process.myPid();
     }
 
+    /** Return only packages with a live process, using the shell identity supplied by Shizuku. */
+    @Override
+    public String[] runningPackages() {
+        try {
+            Map<Integer, LinkedHashSet<String>> packagesByUid = packagesByUid();
+            LinkedHashSet<String> running = new LinkedHashSet<>();
+            File[] entries = new File("/proc").listFiles();
+            if (entries == null) throw new IllegalStateException("No se pudo consultar /proc.");
+            int readableProcesses = 0;
+            for (File entry : entries) {
+                if (!entry.isDirectory() || !entry.getName().matches("[0-9]+")) continue;
+                int uid = readProcessUid(entry);
+                if (uid >= 0) readableProcesses++;
+                if (uid < 0) continue;
+                LinkedHashSet<String> names = packagesByUid.get(uid);
+                if (names == null) continue;
+                String processName = readProcessName(entry);
+                boolean matchedProcessName = false;
+                for (String name : names) {
+                    if (!isAllowedTarget(name)) continue;
+                    if (processName.equals(name) || processName.startsWith(name + ":")) {
+                        running.add(name);
+                        matchedProcessName = true;
+                    }
+                }
+                // System UID is commonly shared by many packages; require an exact process name
+                // there. For app UIDs, retain custom android:process names as a safe fallback.
+                if (!matchedProcessName && uid >= 10_000)
+                    for (String name : names) if (isAllowedTarget(name)) running.add(name);
+            }
+            if (readableProcesses == 0) throw new IllegalStateException("Shizuku no tiene acceso a los UID de /proc en este dispositivo.");
+            return running.toArray(new String[0]);
+        } catch (Exception error) {
+            throw new IllegalStateException("Shizuku no pudo leer los procesos activos: " + error.getMessage(), error);
+        }
+    }
+
+    private static Map<Integer, LinkedHashSet<String>> packagesByUid() throws Exception {
+        String output = readCommand(new String[]{"pm", "list", "packages", "-U"});
+        Map<Integer, LinkedHashSet<String>> result = new HashMap<>();
+        for (String line : output.split("\\r?\\n")) {
+            if (!line.startsWith("package:")) continue;
+            String row = line.substring("package:".length()).trim();
+            int uidAt = row.lastIndexOf(" uid:");
+            if (uidAt <= 0) continue;
+            String name = row.substring(0, uidAt).trim();
+            int uid;
+            try { uid = Integer.parseInt(row.substring(uidAt + 5).trim()); }
+            catch (NumberFormatException ignored) { continue; }
+            result.computeIfAbsent(uid, ignored -> new LinkedHashSet<>()).add(name);
+        }
+        if (result.isEmpty()) throw new IllegalStateException("pm no devolvió paquetes con UID.");
+        return result;
+    }
+
+    private static int readProcessUid(File processDirectory) {
+        File status = new File(processDirectory, "status");
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(status))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith("Uid:")) continue;
+                String[] parts = line.substring(4).trim().split("\\s+");
+                return parts.length == 0 ? -1 : Integer.parseInt(parts[0]);
+            }
+        } catch (Exception ignored) { }
+        return -1;
+    }
+
+    private static String readProcessName(File processDirectory) {
+        File cmdline = new File(processDirectory, "cmdline");
+        try (FileInputStream input = new FileInputStream(cmdline)) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            byte[] buffer = new byte[256];
+            int count;
+            while ((count = input.read(buffer)) > 0) bytes.write(buffer, 0, count);
+            String rawName = new String(bytes.toByteArray(), StandardCharsets.UTF_8);
+            int separator = rawName.indexOf('\0');
+            return separator >= 0 ? rawName.substring(0, separator) : rawName;
+        } catch (Exception ignored) { return ""; }
+    }
+
     @Override
     public Bundle stopPackages(String[] packageNames, int level) {
         ArrayList<String> stopped = new ArrayList<>();
         ArrayList<String> failed = new ArrayList<>();
         if (packageNames != null) {
             for (String packageName : packageNames) {
-                if (!isAllowedTarget(packageName) || (level != LEVEL_BACKGROUND && level != LEVEL_FORCE_STOP)) {
+                if (!isAllowedTarget(packageName)
+                        || (level != LEVEL_BACKGROUND && level != LEVEL_FORCE_STOP && level != LEVEL_KILLER)) {
                     failed.add(packageName == null ? "(desconocido)" : packageName);
                     continue;
                 }
                 String command = level == LEVEL_BACKGROUND ? "kill" : "force-stop";
                 try {
+                    if (level == LEVEL_KILLER && Process.myUid() == 0) {
+                        for (String pid : processIdsForPackage(packageName)) {
+                            Runtime.getRuntime().exec(new String[]{"/system/bin/kill", "-9", pid}).waitFor();
+                        }
+                    }
                     int exitCode = runAm(command, packageName);
                     if (exitCode == 0) stopped.add(packageName); else failed.add(packageName);
                 } catch (Throwable error) {
@@ -112,5 +206,44 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
             throw new IllegalStateException(detail.isEmpty() ? "am salió con código " + exitCode : detail);
         }
         return exitCode;
+    }
+
+    private static ArrayList<String> processIdsForPackage(String packageName) {
+        ArrayList<String> matches = new ArrayList<>();
+        File[] entries = new File("/proc").listFiles();
+        if (entries == null) return matches;
+        for (File entry : entries) {
+            String pid = entry.getName();
+            if (!entry.isDirectory() || !pid.matches("[0-9]+")) continue;
+            String processName = readProcessName(entry);
+            if (processName.equals(packageName) || processName.startsWith(packageName + ":")) matches.add(pid);
+        }
+        return matches;
+    }
+
+    private static String readCommand(String[] command) throws Exception {
+        java.lang.Process process = Runtime.getRuntime().exec(command);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        Thread drain = new Thread(() -> {
+            try (InputStream input = process.getInputStream()) {
+                byte[] buffer = new byte[2048];
+                int count;
+                while ((count = input.read(buffer)) >= 0) output.write(buffer, 0, count);
+            } catch (Exception ignored) { }
+        }, "CodeSu-pm-output");
+        drain.start();
+        FutureTask<Integer> waiter = new FutureTask<>(process::waitFor);
+        new Thread(waiter, "CodeSu-pm-wait").start();
+        int exitCode;
+        try {
+            exitCode = waiter.get(COMMAND_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException timeout) {
+            process.destroy();
+            waiter.cancel(true);
+            throw new IllegalStateException("pm list packages agotó el tiempo.");
+        }
+        drain.join(1_000L);
+        if (exitCode != 0) throw new IllegalStateException("pm list packages salió con código " + exitCode);
+        return output.toString("UTF-8");
     }
 }

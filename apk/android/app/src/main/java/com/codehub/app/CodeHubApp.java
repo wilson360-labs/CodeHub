@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 public class CodeHubApp extends Application implements ImageLoaderFactory {
 
     private File crashDir;
+    private CodeSuScreenReceiver codeSuScreenReceiver;
 
     @Override
     public ImageLoader newImageLoader() {
@@ -21,6 +22,8 @@ public class CodeHubApp extends Application implements ImageLoaderFactory {
     @Override
     public void onCreate() {
         super.onCreate();
+        codeSuScreenReceiver = new CodeSuScreenReceiver();
+        CodeSuScreenReceiver.register(this, codeSuScreenReceiver);
         crashDir = getFilesDir();
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(this));
         // Si quedó un crash.log de una sesión anterior que no pudo enviarse
