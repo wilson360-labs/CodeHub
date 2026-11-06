@@ -238,7 +238,7 @@ class CodeSuActivity : Activity() {
             searchField = EditText(this@CodeSuActivity).apply {
                 hint = "Buscar aplicación o paquete"
                 textSize = 14f
-                singleLine = true
+                setSingleLine(true)
                 setTextColor(Color.WHITE)
                 setHintTextColor(muted)
                 setPadding(dp(12), dp(9), dp(12), dp(9))
