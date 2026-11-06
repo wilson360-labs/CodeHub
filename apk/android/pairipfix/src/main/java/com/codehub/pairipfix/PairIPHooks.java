@@ -30,7 +30,7 @@ final class PairIPHooks {
         // Se recorre la jerarquía: algunos métodos heredan de una clase base.
         for (Class<?> current = clazz; current != null && current != Object.class; current = current.getSuperclass()) {
             try {
-                hooked |= !XposedHelpers.hookAllMethods(current, methodName, new Success()).isEmpty();
+                hooked |= !XposedBridge.hookAllMethods(current, methodName, new Success()).isEmpty();
             } catch (Throwable error) {
                 XposedBridge.log("[PairIPFix] hook fallo " + className + "#" + methodName + ": " + error);
             }
