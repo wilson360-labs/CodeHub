@@ -73,7 +73,7 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     }
 
     private static int runAm(String operation, String packageName) throws Exception {
-        Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/am", operation, packageName});
+        java.lang.Process process = Runtime.getRuntime().exec(new String[]{"/system/bin/am", operation, packageName});
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         CountDownLatch stderrDone = new CountDownLatch(1);
         Thread drainError = new Thread(() -> {
