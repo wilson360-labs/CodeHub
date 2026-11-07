@@ -14,7 +14,9 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
@@ -30,7 +32,7 @@ import rikka.shizuku.Shizuku
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** CodeSu shows only currently running apps and uses Shizuku for the native kill engine. */
+/** CodeSu shows installed apps with live process state and uses Shizuku for the native kill engine. */
 class CodeSuActivity : Activity() {
     private val bg = 0xFF080B11.toInt()
     private val panel = 0xFF111827.toInt()
@@ -39,6 +41,11 @@ class CodeSuActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("codesu_preferences", MODE_PRIVATE) }
     private val selectedPackages = linkedSetOf<String>()
     private val allApps = mutableListOf<Candidate>()
+    private val runningLabels = mutableMapOf<String, TextView>()
+    @Volatile private var runningPackages = emptySet<String>()
+    @Volatile private var runningStatusAvailable = false
+    @Volatile private var runningRefreshInFlight = false
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var sourceMode = SourceMode.USER
     private var selectionMode = SelectionMode.INCLUDE
     private var killMode = CodeSuUserService.LEVEL_FORCE_STOP
@@ -81,7 +88,7 @@ class CodeSuActivity : Activity() {
             .daemon(false)
             .processNameSuffix("codesu")
             .debuggable(false)
-            .version(2)
+            .version(3)
     }
 
     private val userServiceConnection = object : ServiceConnection {
@@ -95,7 +102,7 @@ class CodeSuActivity : Activity() {
         }
     }
 
-    private enum class SourceMode(val title: String) { USER("Usuario"), LAUNCHABLE("Con icono"), SYSTEM("Sistema") }
+    private enum class SourceMode(val title: String) { USER("Usuario"), LAUNCHABLE("Launcher"), SYSTEM("Sistema"), ALL("Todas") }
     private enum class SelectionMode(val title: String) { INCLUDE("Incluir"), EXCLUDE("Excluir") }
     private enum class AutoMode(val title: String) { OFF("Desactivado"), SCREEN_OFF("Al apagar pantalla"), DAILY("Diario") }
 
@@ -106,13 +113,23 @@ class CodeSuActivity : Activity() {
         val isSystem: Boolean,
         val hasLauncher: Boolean,
         val isEssential: Boolean,
+        val isRunning: Boolean?,
+        val isEngineProtected: Boolean,
     )
+
+    private val liveRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            refreshRunningState()
+            mainHandler.postDelayed(this, 5_000L)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SystemBars.fit(this)
         selectedPackages.addAll(prefs.getStringSet("selected_packages", emptySet()).orEmpty())
-        sourceMode = SourceMode.entries.getOrElse(prefs.getInt("source_mode", 0)) { SourceMode.USER }
+        sourceMode = SourceMode.entries.getOrElse(prefs.getInt("source_mode", SourceMode.ALL.ordinal)) { SourceMode.ALL }
         selectionMode = SelectionMode.entries.getOrElse(prefs.getInt("selection_mode", 0)) { SelectionMode.INCLUDE }
         killMode = prefs.getInt("kill_mode", CodeSuUserService.LEVEL_FORCE_STOP)
         hideCriticalApps = prefs.getBoolean("hide_critical_apps", prefs.getBoolean("protect_essential_apps", true))
@@ -127,13 +144,22 @@ class CodeSuActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        // Re-check the Shizuku binder and refresh the live process list on return.
+        // Reload the installed catalog, then keep only the running badges live through Shizuku.
         refreshStatus()
         renderAutoControls()
         loadInstalledApps()
+        refreshRunningState()
+        mainHandler.removeCallbacks(liveRefreshRunnable)
+        mainHandler.postDelayed(liveRefreshRunnable, 5_000L)
+    }
+
+    override fun onPause() {
+        mainHandler.removeCallbacks(liveRefreshRunnable)
+        super.onPause()
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(liveRefreshRunnable)
         if (userServiceBound) {
             try { Shizuku.unbindUserService(userServiceArgs, userServiceConnection, true) } catch (_: Throwable) {}
             userServiceBound = false
@@ -180,7 +206,7 @@ class CodeSuActivity : Activity() {
 
         content.addView(card {
             addView(label("Elige qué aplicaciones detener", 17f, Color.WHITE, true))
-            addView(label("CodeSu muestra solo apps con procesos activos y respeta el origen, la selección y la protección crítica.", 12f, muted),
+            addView(label("CodeSu carga todas las apps instaladas. El estado En ejecución se actualiza en vivo; puedes seleccionar o cerrar apps aunque estén inactivas.", 12f, muted),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
             addView(label("Forzar detención puede cerrar tareas sin guardar. Android puede volver a iniciar una app cuando otro servicio la necesite.", 11f, 0xFFE5C890.toInt()),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
@@ -202,7 +228,7 @@ class CodeSuActivity : Activity() {
         })
 
         content.addView(card(dp(10)) {
-            addView(label("Source mode · apps activas", 13f, Color.WHITE, true))
+            addView(label("Source mode · apps instaladas", 13f, Color.WHITE, true))
             sourceControls = LinearLayout(this@CodeSuActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -321,7 +347,7 @@ class CodeSuActivity : Activity() {
                 text = "Actualizar lista"
                 textSize = 11f
                 isAllCaps = false
-                setOnClickListener { loadInstalledApps() }
+                setOnClickListener { loadInstalledApps(); refreshRunningState() }
             }
             addView(listRefreshButton, LinearLayout.LayoutParams(-2, dp(40)))
         }
@@ -386,7 +412,7 @@ class CodeSuActivity : Activity() {
                 else -> "Comprueba que Shizuku esté iniciado y vuelve a autorizar CodeHub si es necesario."
             }
         } else {
-            connectionHelp.text = "El inventario activo se consulta con el UserService de Shizuku."
+            connectionHelp.text = "Lista todas las apps instaladas y consulta su estado de ejecución con Shizuku."
         }
         updateActionButton()
     }
@@ -396,6 +422,7 @@ class CodeSuActivity : Activity() {
             SystemCleaner.Status.READY -> {
                 refreshStatus()
                 loadInstalledApps()
+                refreshRunningState()
             }
             SystemCleaner.Status.NEEDS_PERMISSION -> requestShizukuPermission()
             SystemCleaner.Status.NOT_RUNNING -> {
@@ -420,6 +447,7 @@ class CodeSuActivity : Activity() {
                 if (granted) {
                     refreshStatus()
                     loadInstalledApps()
+                    refreshRunningState()
                 } else {
                     statusText.text = "No se confirmó el permiso. Revisa el diálogo de Shizuku y vuelve a intentar."
                     connectButton.isEnabled = true
@@ -435,19 +463,9 @@ class CodeSuActivity : Activity() {
 
     private fun loadInstalledApps() {
         listRefreshButton.isEnabled = false
-        val status = SystemCleaner.refreshStatus()
-        if (status != SystemCleaner.Status.READY) {
-            allApps.clear()
-            listError = "Conecta y autoriza Shizuku para listar solo apps en ejecución."
-            listRefreshButton.isEnabled = true
-            infoText.text = listError
-            renderApps()
-            return
-        }
-        infoText.text = "Consultando apps en ejecución con Shizuku…"
+        infoText.text = "Cargando todas las aplicaciones instaladas…"
         Thread({
             val result = runCatching {
-                val activePackages = bindUserService().runningPackages().orEmpty().toSet()
                 val launchIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 val launcherPackages = packageManager.queryIntentActivities(launchIntent, 0)
                     .mapNotNull { it.activityInfo?.packageName }
@@ -455,8 +473,6 @@ class CodeSuActivity : Activity() {
                 val essential = essentialPackages()
                 packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                     .asSequence()
-                    .filter { it.packageName in activePackages }
-                    .filter { it.packageName != packageName && it.packageName != "moe.shizuku.privileged.api" }
                     .map { appInfo ->
                         val label = runCatching { packageManager.getApplicationLabel(appInfo).toString() }
                             .getOrDefault(appInfo.packageName)
@@ -469,6 +485,9 @@ class CodeSuActivity : Activity() {
                             isSystem = appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                             hasLauncher = appInfo.packageName in launcherPackages,
                             isEssential = appInfo.packageName in essential,
+                            isRunning = if (runningStatusAvailable) appInfo.packageName in runningPackages else null,
+                            isEngineProtected = appInfo.packageName == packageName ||
+                                appInfo.packageName == "moe.shizuku.privileged.api",
                         )
                     }
                     .sortedBy { it.label.lowercase(java.util.Locale.ROOT) }
@@ -481,8 +500,9 @@ class CodeSuActivity : Activity() {
                     listError = null
                     allApps.clear()
                     allApps.addAll(loaded)
-                    infoText.text = "${allApps.size} apps con procesos activos detectados."
+                    infoText.text = "${allApps.size} aplicaciones instaladas. Actualizando estado en vivo…"
                     renderApps()
+                    refreshRunningState()
                 }.onFailure { error ->
                     allApps.clear()
                     listError = error.message ?: "No se pudieron leer los procesos activos."
@@ -491,6 +511,39 @@ class CodeSuActivity : Activity() {
                 }
             }
         }, "CodeSu-package-scan").start()
+    }
+
+    /** Refresh only process state; the installed-app list stays complete and stable. */
+    private fun refreshRunningState() {
+        if (runningRefreshInFlight) return
+        runningRefreshInFlight = true
+        Thread({
+            val result = runCatching {
+                if (SystemCleaner.refreshStatus() != SystemCleaner.Status.READY) {
+                    throw IllegalStateException("Shizuku necesita estar activo y autorizado para ver el estado en vivo.")
+                }
+                bindUserService().runningPackages().orEmpty().toSet()
+            }
+            runOnUiThread {
+                runningRefreshInFlight = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                result.onSuccess { active ->
+                    runningPackages = active
+                    runningStatusAvailable = true
+                    listError = null
+                    allApps.indices.forEach { index ->
+                        allApps[index] = allApps[index].copy(isRunning = allApps[index].packageName in active)
+                    }
+                }.onFailure { error ->
+                    runningStatusAvailable = false
+                    runningPackages = emptySet()
+                    listError = error.message ?: "No se pudo actualizar el estado de ejecución."
+                    allApps.indices.forEach { index -> allApps[index] = allApps[index].copy(isRunning = null) }
+                }
+                updateLiveStateBadges()
+                updateActionButton()
+            }
+        }, "CodeSu-live-process-refresh").start()
     }
 
     private fun essentialPackages(): Set<String> = CodeSuAppPolicy.criticalPackages(this)
@@ -502,6 +555,7 @@ class CodeSuActivity : Activity() {
                 SourceMode.USER -> !app.isSystem
                 SourceMode.LAUNCHABLE -> app.hasLauncher
                 SourceMode.SYSTEM -> app.isSystem
+                SourceMode.ALL -> true
             }
             sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
                 || app.label.lowercase(java.util.Locale.ROOT).contains(needle)
@@ -512,8 +566,8 @@ class CodeSuActivity : Activity() {
     private fun targetCandidates(): List<Candidate> {
         val visible = visibleCandidates()
         return when (selectionMode) {
-            SelectionMode.INCLUDE -> visible.filter { it.packageName in selectedPackages }
-            SelectionMode.EXCLUDE -> visible.filterNot { it.packageName in selectedPackages }
+            SelectionMode.INCLUDE -> visible.filter { !it.isEngineProtected && it.packageName in selectedPackages }
+            SelectionMode.EXCLUDE -> visible.filter { !it.isEngineProtected && it.packageName !in selectedPackages }
         }
     }
 
@@ -599,7 +653,7 @@ class CodeSuActivity : Activity() {
                 if (mode != AutoMode.OFF && autoMode == AutoMode.OFF) {
                     AlertDialog.Builder(this)
                         .setTitle("Activar Auto Killer")
-                        .setMessage("CodeSu detendrá en segundo plano las apps activas que coincidan con Source mode, Selection mode, Hide critical apps y Kill level. En modo Excluir, una lista vacía incluye todas las apps permitidas por el filtro.")
+                        .setMessage("CodeSu actuará sobre todas las apps instaladas que coincidan con Source mode, Selection mode, Hide critical apps y Kill level, estén ejecutándose o no. En modo Excluir, una lista vacía incluye todas las apps permitidas por el filtro.")
                         .setNegativeButton("Cancelar", null)
                         .setPositiveButton("Activar") { _, _ -> activate() }
                         .show()
@@ -652,7 +706,7 @@ class CodeSuActivity : Activity() {
     }
 
     private fun updateVisibleSelection(select: Boolean) {
-        val visible = visibleCandidates().map { it.packageName }
+        val visible = visibleCandidates().filterNot { it.isEngineProtected }.map { it.packageName }
         selectionMode = SelectionMode.INCLUDE
         if (select) selectedPackages.addAll(visible) else selectedPackages.removeAll(visible.toSet())
         persistPreferences()
@@ -663,11 +717,12 @@ class CodeSuActivity : Activity() {
     private fun renderApps() {
         if (!::list.isInitialized) return
         list.removeAllViews()
+        runningLabels.clear()
         val visible = visibleCandidates()
         if (visible.isEmpty()) {
             val emptyMessage = listError ?: when {
-                SystemCleaner.refreshStatus() != SystemCleaner.Status.READY -> "Conecta Shizuku para consultar los procesos activos."
-                allApps.isEmpty() -> "No hay aplicaciones con procesos activos ahora."
+                SystemCleaner.refreshStatus() != SystemCleaner.Status.READY -> "Conecta Shizuku para actualizar el estado en ejecución."
+                allApps.isEmpty() -> "No se encontraron aplicaciones instaladas. Actualiza la lista."
                 else -> "No hay resultados para este filtro."
             }
             list.addView(label(emptyMessage, 12f, muted),
@@ -688,6 +743,13 @@ class CodeSuActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 addView(label(app.label, 13f, Color.WHITE, true).apply { maxLines = 1 })
                 addView(label(app.packageName, 10f, muted).apply { maxLines = 1 })
+                val stateView = label("", 9f, muted)
+                setRunningLabel(stateView, app.isRunning)
+                runningLabels[app.packageName] = stateView
+                addView(stateView)
+                if (app.isEngineProtected) {
+                    addView(label("Protegida · necesaria para CodeSu/Shizuku", 9f, 0xFFFBBF24.toInt()))
+                }
             }
             row.addView(copy, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
             val check = CheckBox(this).apply {
@@ -695,7 +757,7 @@ class CodeSuActivity : Activity() {
                 contentDescription = if (selectionMode == SelectionMode.INCLUDE)
                     "Incluir ${app.label} en el cierre" else "Excluir ${app.label} del cierre"
                 buttonTintList = android.content.res.ColorStateList.valueOf(cyan)
-                isEnabled = !hideCriticalApps || !app.isEssential
+                isEnabled = !app.isEngineProtected && (!hideCriticalApps || !app.isEssential)
                 setOnCheckedChangeListener { _, checked ->
                     if (checked) selectedPackages.add(app.packageName) else selectedPackages.remove(app.packageName)
                     persistPreferences()
@@ -707,9 +769,9 @@ class CodeSuActivity : Activity() {
             list.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(if (compactRows) 4 else 7) })
         }
         infoText.text = when {
-            visible.isEmpty() && allApps.isEmpty() -> "No hay apps activas detectadas. Actualiza la lista o revisa el estado de Shizuku."
+            visible.isEmpty() && allApps.isEmpty() -> listError ?: "No se encontraron aplicaciones instaladas. Actualiza la lista."
             visible.isEmpty() -> "No hay resultados para el filtro o la búsqueda."
-            else -> "${visible.size} visibles · ${targetCandidates().size} objetivo(s) según tu selección."
+            else -> appListSummary(visible)
         }
         updateActionButton()
     }
@@ -718,13 +780,39 @@ class CodeSuActivity : Activity() {
         if (!::actionButton.isInitialized) return
         val targetCount = targetCandidates().size
         if (::infoText.isInitialized && allApps.isNotEmpty()) {
-            infoText.text = "${visibleCandidates().size} visibles · $targetCount objetivo(s) según tu selección."
+            infoText.text = appListSummary(visibleCandidates(), targetCount)
         }
         actionButton.text = "Cerrar seleccionadas ($targetCount)"
         actionButton.isEnabled = targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
-        val allCount = visibleCandidates().size
+        val allCount = visibleCandidates().count { !it.isEngineProtected }
         closeAllButton.text = "Cerrar todo ($allCount)"
         closeAllButton.isEnabled = allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+    }
+
+    private fun appListSummary(visible: List<Candidate>, targetCount: Int = targetCandidates().size): String {
+        val runningCount = visible.count { it.isRunning == true }
+        val status = if (runningStatusAvailable) "$runningCount en ejecución" else "estado en vivo pendiente de Shizuku"
+        return "${visible.size} visibles · $status · $targetCount objetivo(s) según tu selección."
+    }
+
+    private fun updateLiveStateBadges() {
+        runningLabels.forEach { (packageName, view) ->
+            setRunningLabel(view, if (runningStatusAvailable) packageName in runningPackages else null)
+        }
+    }
+
+    private fun setRunningLabel(view: TextView, running: Boolean?) {
+        view.text = when (running) {
+            true -> "En ejecución"
+            false -> "Inactiva"
+            null -> "Estado en vivo no disponible"
+        }
+        view.setTextColor(when (running) {
+            true -> 0xFF4ADE80.toInt()
+            false -> muted
+            null -> 0xFFFBBF24.toInt()
+        })
+        view.typeface = if (running == true) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
     }
 
     private fun confirmStopTargets() {
@@ -740,21 +828,21 @@ class CodeSuActivity : Activity() {
         val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEstás actuando sobre apps del sistema. Algunas sostienen funciones del teléfono." else ""
         AlertDialog.Builder(this)
             .setTitle("$action · ${targets.size} apps")
-            .setMessage("${names}${extra}.\n\nUna app detenida puede perder trabajo sin guardar. Android puede volver a iniciarla.$systemNote")
+            .setMessage("${names}${extra}.\n\nLa selección puede incluir apps que ahora estén inactivas. Una app detenida puede perder trabajo sin guardar; Android puede volver a iniciarla.$systemNote")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Continuar") { _, _ -> stopPackages(targets) }
             .show()
     }
 
     private fun confirmStopAllVisible() {
-        val targets = visibleCandidates()
+        val targets = visibleCandidates().filterNot { it.isEngineProtected }
         if (targets.isEmpty()) return
         val names = targets.take(5).joinToString(", ") { it.label }
         val extra = if (targets.size > 5) " y ${targets.size - 5} más" else ""
         val systemNote = if (sourceMode == SourceMode.SYSTEM) "\n\nEl filtro incluye apps del sistema." else ""
         AlertDialog.Builder(this)
             .setTitle("Cerrar todas las visibles · ${targets.size}")
-            .setMessage("Se aplicará ${killLevelName()} a ${names}${extra}. Respeta Source mode y Hide critical apps, pero ignora la selección individual. Las apps pueden perder trabajo sin guardar.$systemNote")
+            .setMessage("Se aplicará ${killLevelName()} a ${names}${extra}, estén en ejecución o no. Respeta Source mode y Hide critical apps, pero ignora la selección individual. Android puede volver a iniciar apps necesarias.$systemNote")
             .setNegativeButton("Cancelar", null)
             .setPositiveButton("Cerrar todas") { _, _ -> stopPackages(targets) }
             .show()
@@ -792,7 +880,7 @@ class CodeSuActivity : Activity() {
                         if (killMode == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer aplica force-stop; SIGKILL directo requiere root.")
                     }
                     AlertDialog.Builder(this).setTitle("CodeSu").setMessage(message).setPositiveButton("Listo", null).show()
-                    loadInstalledApps()
+                    refreshRunningState()
                 }.onFailure { error ->
                     AlertDialog.Builder(this)
                         .setTitle("Shizuku no pudo detener las apps")

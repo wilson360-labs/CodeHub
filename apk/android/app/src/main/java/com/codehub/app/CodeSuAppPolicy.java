@@ -17,12 +17,15 @@ public final class CodeSuAppPolicy {
     public static final int SOURCE_USER = 0;
     public static final int SOURCE_LAUNCHABLE = 1;
     public static final int SOURCE_SYSTEM = 2;
+    public static final int SOURCE_ALL = 3;
 
     private CodeSuAppPolicy() {}
 
     public static Set<String> criticalPackages(Context context) {
         HashSet<String> packages = new HashSet<>();
         packages.add("android");
+        packages.add("com.codehub.app");
+        packages.add("moe.shizuku.privileged.api");
         packages.add("com.android.systemui");
         packages.add("com.android.settings");
         packages.add("com.android.phone");
@@ -61,6 +64,7 @@ public final class CodeSuAppPolicy {
         try {
             ApplicationInfo info = context.getPackageManager().getApplicationInfo(packageName, 0);
             boolean system = (info.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+            if (sourceMode == SOURCE_ALL) return true;
             if (sourceMode == SOURCE_SYSTEM) return system;
             if (sourceMode == SOURCE_LAUNCHABLE) return context.getPackageManager().getLaunchIntentForPackage(packageName) != null;
             return !system;

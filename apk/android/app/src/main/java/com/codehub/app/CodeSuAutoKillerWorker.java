@@ -10,7 +10,6 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -18,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 import rikka.shizuku.Shizuku;
 
-/** Runs a user's saved CodeSu filters once, only for currently running apps. */
+/** Runs the saved CodeSu filters once across all installed packages in scope. */
 public final class CodeSuAutoKillerWorker extends Worker {
     private final Context appContext;
 
@@ -42,24 +41,27 @@ public final class CodeSuAutoKillerWorker extends Worker {
             }
             ICodeSuRemoteService service = bindService();
             try {
-                String[] activePackages = service.runningPackages();
-                Set<String> running = new HashSet<>();
-                if (activePackages != null) running.addAll(Arrays.asList(activePackages));
                 Set<String> critical = CodeSuAppPolicy.criticalPackages(appContext);
                 Set<String> selected = prefs.getStringSet("selected_packages", new HashSet<>());
                 if (selected == null) selected = new HashSet<>();
                 boolean hideCritical = prefs.getBoolean("hide_critical_apps", prefs.getBoolean("protect_essential_apps", true));
-                int source = prefs.getInt("source_mode", CodeSuAppPolicy.SOURCE_USER);
+                int source = prefs.getInt("source_mode", CodeSuAppPolicy.SOURCE_ALL);
                 int selection = prefs.getInt("selection_mode", 0);
+                Set<String> installed = new HashSet<>();
+                for (android.content.pm.ApplicationInfo app : appContext.getPackageManager()
+                        .getInstalledApplications(android.content.pm.PackageManager.GET_META_DATA)) {
+                    if (!app.packageName.equals(appContext.getPackageName())
+                            && !app.packageName.equals("moe.shizuku.privileged.api")) installed.add(app.packageName);
+                }
                 ArrayList<String> targets = new ArrayList<>();
-                for (String packageName : running) {
+                for (String packageName : installed) {
                     if (hideCritical && critical.contains(packageName)) continue;
                     if (!CodeSuAppPolicy.matchesSource(appContext, packageName, source)) continue;
                     boolean isSelected = selected.contains(packageName);
                     if ((selection == 0 && isSelected) || (selection != 0 && !isSelected)) targets.add(packageName);
                 }
                 if (targets.isEmpty()) {
-                    remember(prefs, "Auto Killer: no había apps activas dentro de tu selección.");
+                    remember(prefs, "Auto Killer: no hay apps instaladas dentro de tu selección.");
                     return Result.success();
                 }
                 int level = prefs.getInt("kill_mode", CodeSuUserService.LEVEL_FORCE_STOP);
@@ -92,7 +94,7 @@ public final class CodeSuAutoKillerWorker extends Worker {
 
     private ICodeSuRemoteService bindService() throws Exception {
         args = new Shizuku.UserServiceArgs(new ComponentName(appContext, CodeSuUserService.class))
-            .daemon(false).processNameSuffix("codesu").debuggable(false).version(2);
+            .daemon(false).processNameSuffix("codesu").debuggable(false).version(3);
         connected = new CountDownLatch(1);
         connection = new ServiceConnection() {
             @Override public void onServiceConnected(ComponentName name, IBinder binder) {
@@ -110,10 +112,13 @@ public final class CodeSuAutoKillerWorker extends Worker {
             unbindService();
             throw error;
         }
-        synchronized (lock) {
-            if (remote == null) throw new IllegalStateException("Shizuku no entregó la conexión al UserService.");
-            return remote;
+        ICodeSuRemoteService connectedService;
+        synchronized (lock) { connectedService = remote; }
+        if (connectedService == null) {
+            unbindService();
+            throw new IllegalStateException("Shizuku no entregó la conexión al UserService.");
         }
+        return connectedService;
     }
 
     private void unbindService() {

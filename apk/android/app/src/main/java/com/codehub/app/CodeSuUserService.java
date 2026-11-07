@@ -12,8 +12,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -30,6 +32,20 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     private static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
     private static final Pattern PACKAGE_PATTERN = Pattern.compile("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+");
     private static final long COMMAND_TIMEOUT_MS = 15_000L;
+    private static final long PACKAGE_INDEX_TTL_MS = 30_000L;
+    private static volatile PackageIndex cachedPackageIndex;
+
+    private static final class PackageIndex {
+        final Map<Integer, LinkedHashSet<String>> byUid;
+        final Set<String> packageNames;
+        final long loadedAt;
+
+        PackageIndex(Map<Integer, LinkedHashSet<String>> byUid, Set<String> packageNames) {
+            this.byUid = byUid;
+            this.packageNames = packageNames;
+            this.loadedAt = System.currentTimeMillis();
+        }
+    }
 
     public CodeSuUserService() {
         // Shizuku creates UserService classes by reflection in its shell process.
@@ -50,7 +66,7 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     @Override
     public String[] runningPackages() {
         try {
-            Map<Integer, LinkedHashSet<String>> packagesByUid = packagesByUid();
+            PackageIndex packageIndex = packageIndex();
             LinkedHashSet<String> running = new LinkedHashSet<>();
             File[] entries = new File("/proc").listFiles();
             if (entries == null) throw new IllegalStateException("No se pudo consultar /proc.");
@@ -60,21 +76,22 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
                 int uid = readProcessUid(entry);
                 if (uid >= 0) readableProcesses++;
                 if (uid < 0) continue;
-                LinkedHashSet<String> names = packagesByUid.get(uid);
-                if (names == null) continue;
                 String processName = readProcessName(entry);
-                boolean matchedProcessName = false;
+                int separator = processName.indexOf(':');
+                String baseName = separator >= 0 ? processName.substring(0, separator) : processName;
+                if (packageIndex.packageNames.contains(baseName) && isAllowedTarget(baseName)) {
+                    running.add(baseName);
+                }
+                LinkedHashSet<String> names = packageIndex.byUid.get(uid);
+                if (names == null) continue;
                 for (String name : names) {
                     if (!isAllowedTarget(name)) continue;
                     if (processName.equals(name) || processName.startsWith(name + ":")) {
                         running.add(name);
-                        matchedProcessName = true;
                     }
                 }
-                // System UID is commonly shared by many packages; require an exact process name
-                // there. For app UIDs, retain custom android:process names as a safe fallback.
-                if (!matchedProcessName && uid >= 10_000)
-                    for (String name : names) if (isAllowedTarget(name)) running.add(name);
+                // Do not infer every package sharing a UID as running when the process name
+                // cannot be mapped; that makes the live list report inactive apps as active.
             }
             if (readableProcesses == 0) throw new IllegalStateException("Shizuku no tiene acceso a los UID de /proc en este dispositivo.");
             return running.toArray(new String[0]);
@@ -83,22 +100,38 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         }
     }
 
-    private static Map<Integer, LinkedHashSet<String>> packagesByUid() throws Exception {
+    private static PackageIndex packageIndex() throws Exception {
+        PackageIndex current = cachedPackageIndex;
+        long now = System.currentTimeMillis();
+        if (current != null && now - current.loadedAt < PACKAGE_INDEX_TTL_MS) return current;
+        synchronized (CodeSuUserService.class) {
+            current = cachedPackageIndex;
+            now = System.currentTimeMillis();
+            if (current != null && now - current.loadedAt < PACKAGE_INDEX_TTL_MS) return current;
+            cachedPackageIndex = readPackageIndex();
+            return cachedPackageIndex;
+        }
+    }
+
+    private static PackageIndex readPackageIndex() throws Exception {
         String output = readCommand(new String[]{"pm", "list", "packages", "-U"});
         Map<Integer, LinkedHashSet<String>> result = new HashMap<>();
+        Set<String> packageNames = new HashSet<>();
         for (String line : output.split("\\r?\\n")) {
             if (!line.startsWith("package:")) continue;
             String row = line.substring("package:".length()).trim();
             int uidAt = row.lastIndexOf(" uid:");
+            String name = (uidAt > 0 ? row.substring(0, uidAt) : row).trim();
+            if (name.isEmpty()) continue;
+            packageNames.add(name);
             if (uidAt <= 0) continue;
-            String name = row.substring(0, uidAt).trim();
             int uid;
             try { uid = Integer.parseInt(row.substring(uidAt + 5).trim()); }
             catch (NumberFormatException ignored) { continue; }
             result.computeIfAbsent(uid, ignored -> new LinkedHashSet<>()).add(name);
         }
-        if (result.isEmpty()) throw new IllegalStateException("pm no devolvió paquetes con UID.");
-        return result;
+        if (packageNames.isEmpty()) throw new IllegalStateException("pm no devolvió paquetes instalados.");
+        return new PackageIndex(result, packageNames);
     }
 
     private static int readProcessUid(File processDirectory) {
