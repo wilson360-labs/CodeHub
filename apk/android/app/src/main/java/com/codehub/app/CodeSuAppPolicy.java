@@ -1,11 +1,11 @@
 package com.codehub.app;
 
-import android.app.AlarmClock;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.provider.Settings;
+import android.provider.AlarmClock;
 import android.provider.Telephony;
 import android.telecom.TelecomManager;
 
