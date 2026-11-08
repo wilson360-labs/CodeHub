@@ -79,7 +79,6 @@ dependencies {
     // CodeStream: reproductor nativo basado en YTXTube, integrado como módulo library.
     implementation project(':codestream')
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.webkit:webkit:1.9.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.google.android.material:material:1.11.0'
     // Iconos Open Source en las pantallas Kotlin nativas (incluye logos SVG).

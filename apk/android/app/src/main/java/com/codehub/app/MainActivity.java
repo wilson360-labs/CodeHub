@@ -114,8 +114,8 @@ public class MainActivity extends Activity {
         progressBar.setLayoutParams(pbParams);
         progressBar.setVisibility(View.GONE);
 
-        // La portada Kotlin es la pantalla inicial; el WebView queda oculto
-        // hasta que el usuario abre una sección web. Banners siguen abajo.
+        // La portada Kotlin es la pantalla inicial. Las secciones web se
+        // abren fuera de la app con el navegador elegido por el usuario.
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
         rootLayout.setBackgroundColor(0xFF080B11);
@@ -382,27 +382,20 @@ public class MainActivity extends Activity {
     }
 
     // ── NAVEGACIÓN A SECCIONES WEB ──────────────────────────────
-    /** Opens a web-only section while keeping the Kotlin home available via Back. */
+    /** Open web-only sections in the user's browser; APK features stay native. */
     private void openWebUrl(String url) {
-        if (swipeRefreshLayout == null) return;
-        if (!isOnline()) {
-            new AlertDialog.Builder(this)
-                .setTitle("Sin conexión a internet")
-                .setMessage("Esta sección necesita internet. La pantalla principal de CodeHub sigue disponible.")
-                .setPositiveButton("Reintentar", (dialog, which) -> openWebUrl(url))
-                .setNegativeButton("Volver", (dialog, which) -> pendingSharedText = null)
-                .show();
+        if (!isAllowedUrl(url)) {
+            Toast.makeText(this, "Enlace de CodeHub no válido.", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (nativeHome != null) nativeHome.setVisibility(View.GONE);
-        swipeRefreshLayout.setVisibility(View.VISIBLE);
-        if (webView == null) {
-            pendingWebUrl = url;
-            if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
-            initializeWebViewOnDemand();
-            return;
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (android.content.ActivityNotFoundException e) {
+            Toast.makeText(this, "No hay un navegador disponible para abrir CodeHub.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            android.util.Log.e("CodeHub", "No se pudo abrir CodeHub en el navegador", e);
+            Toast.makeText(this, "No se pudo abrir CodeHub en el navegador.", Toast.LENGTH_SHORT).show();
         }
-        webView.loadUrl(url);
     }
 
     /** Build WebView only when a web-only section is requested so native Inicio renders immediately. */

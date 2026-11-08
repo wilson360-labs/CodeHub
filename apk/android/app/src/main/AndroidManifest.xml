@@ -75,27 +75,8 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
-            <!-- Share target: la app aparece en el menú "Compartir" de otras
-                 apps (texto/links). MainActivity.handleIntent abre la URL si
-                 es de CodeHub o reenvía el texto a la web. -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-            <!-- Deep links: cualquier enlace https://wilson360-labs.vercel.app/*
-                 abierto (desde Telegram, navegador, "Compartir", correos, etc.)
-                 entra directo a la app en esa página. android:autoVerify se
-                 activa SOLO cuando exista assetlinks.json publicado con el
-                 SHA-256 del keystore real del CI — sin eso Chrome no usa la
-                 app automáticamente, pero "Abrir con CodeHub" sí aparece. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="wilson360-labs.vercel.app" />
-                <data android:scheme="http" android:host="wilson360-labs.vercel.app" />
-            </intent-filter>
+            <!-- Los enlaces del sitio permanecen en el navegador y no se
+                 interceptan aquí; las funciones de CodeHub se abren desde Inicio nativo. -->
         </activity>
 
 
@@ -123,7 +104,7 @@
             android:screenOrientation="unspecified">
         </activity>
 
-        <!-- Catálogo Open Source nativo del APK. El resto del sitio conserva su WebView. -->
+        <!-- Catálogo Open Source nativo del APK. -->
         <activity
             android:name=".NativeStoreActivity"
             android:exported="false"

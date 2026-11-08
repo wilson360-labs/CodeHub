@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Atajos dinámicos — acceso directo a secciones de CodeHub.
-         Cada intent es un deep link al dominio propio (wilson360-labs.vercel.app):
-         MainActivity lo recibe vía ACTION_VIEW + data e isAllowedUrl() lo valida
-         antes de cargarlo en el WebView (mismo flujo que los deep links normales). -->
+    <!-- Atajos dinámicos a secciones web; MainActivity los deriva al navegador.
+         El atajo de clima se reconoce como función nativa por su fragmento. -->
     <shortcut
         android:enabled="true"
         android:icon="@drawable/ic_shortcut_chat"
