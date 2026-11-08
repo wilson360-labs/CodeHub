@@ -17,6 +17,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -62,6 +63,9 @@ class NativeWeatherActivity : Activity() {
     private var locationAttemptId = 0
     private var locationToken: CancellationTokenSource? = null
     private var returningFromLocationSettings = false
+    private var hostStarted = false
+    private var hostResumed = false
+    private var radarPlayer: NativeWeatherRadarView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +86,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     override fun onDestroy() {
+        disposeRadarPlayer()
         request?.cancel()
         locationAttemptId++
         locationToken?.cancel()
@@ -90,12 +95,37 @@ class NativeWeatherActivity : Activity() {
         super.onDestroy()
     }
 
+    override fun onStart() {
+        super.onStart()
+        hostStarted = true
+        radarPlayer?.onHostStart()
+    }
+
     override fun onResume() {
         super.onResume()
+        hostResumed = true
+        radarPlayer?.onHostResume()
         if (returningFromLocationSettings) {
             returningFromLocationSettings = false
             if (locationServicesEnabled()) requestLocation() else renderNoLocation("La ubicación sigue desactivada. Actívala para detectar tu zona, o busca una ciudad manualmente.")
         }
+    }
+
+    override fun onPause() {
+        hostResumed = false
+        radarPlayer?.onHostPause()
+        super.onPause()
+    }
+
+    override fun onStop() {
+        hostStarted = false
+        radarPlayer?.onHostStop()
+        super.onStop()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        radarPlayer?.onHostLowMemory()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
@@ -123,6 +153,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderNoLocation(message: String = "Elige una ciudad o comparte tu ubicación para ver el pronóstico.") {
+        disposeRadarPlayer()
         content.removeAllViews()
         content.addView(card {
             addView(text("Tu clima, en CodeHub", 21f, Color.WHITE, true))
@@ -135,6 +166,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderLoading() {
+        disposeRadarPlayer()
         content.removeAllViews()
         content.addView(card {
             addView(text(city.ifBlank { "Consultando tu ubicación" }, 15f, Color.WHITE, true))
@@ -168,6 +200,7 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderForecast(data: JSONObject) {
+        disposeRadarPlayer()
         content.removeAllViews()
         val current = data.optJSONObject("current") ?: return
         val daily = data.optJSONObject("daily") ?: JSONObject()
@@ -202,6 +235,11 @@ class NativeWeatherActivity : Activity() {
             hero.addView(text("☀  ${sunrise.orEmpty()}     ◒  ${sunset.orEmpty()}", 12f, 0xFFE7F1FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(13) })
         }
         content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+
+        radarPlayer = NativeWeatherRadarView(this, lat, lon)
+        content.addView(radarPlayer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
+        if (hostStarted) radarPlayer?.onHostStart()
+        if (hostResumed) radarPlayer?.onHostResume()
 
         content.addView(text("Ahora mismo", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
         val metricRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -463,6 +501,13 @@ class NativeWeatherActivity : Activity() {
         WeatherNotificationProvider.refresh(this)
         CodeHubSyncScheduler.syncNow(this)
         loadWeather()
+    }
+
+    private fun disposeRadarPlayer() {
+        val old = radarPlayer ?: return
+        (old.parent as? ViewGroup)?.removeView(old)
+        old.dispose()
+        radarPlayer = null
     }
 
     private fun addBackgroundControls() {

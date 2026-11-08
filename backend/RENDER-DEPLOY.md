@@ -32,6 +32,12 @@ En el panel de **Render** → Tu Servicio (**codehub**) → **Environment**:
 | `FIREBASE_SERVICE_ACCOUNT` | JSON de la cuenta de servicio de Firebase (FCM) |
 | `GITHUB_WEBHOOK_SECRET` | Secret del webhook de GitHub para releases |
 | `RENDER_EXTERNAL_URL` | `https://codehub-98s6.onrender.com` |
+| `TOMORROW_IO_API_KEY` | Clave privada de Tomorrow.io para servir los mosaicos del radar (solo backend) |
+| `WEATHER_RADAR_MAX_TILES_PER_HOUR` | Tope de seguridad para mosaicos nuevos del proveedor; predeterminado `20` |
+
+El radar nativo muestra un estado de configuración hasta añadir
+`TOMORROW_IO_API_KEY` en Render. La app consulta CodeHub; la clave nunca se
+incluye en el APK. Ajusta el tope horario solo según la cuota del plan contratado.
 
 ---
 

@@ -2063,6 +2063,10 @@ const universalResolverRouter = require('./modules/universal-resolver');
 const { validateUrlSafety: validateUrlSsrf } = require('./modules/universal-resolver/resolver');
 app.use('/api/resolver', universalResolverRouter);
 
+// ── Native weather radar: cached tile proxy keeps Tomorrow.io credentials off-device.
+const weatherRadarRouter = require('./modules/weatherRadar');
+app.use('/api/weather/radar', weatherRadarRouter());
+
 // ── Community — herramientas comunitarias de ciberseguridad ────
 // Central de estafas, muro de alertas y verificador de hashes (Supabase).
 const { createCommunityRouter, ensureCommunityTables } = require('./modules/community');
