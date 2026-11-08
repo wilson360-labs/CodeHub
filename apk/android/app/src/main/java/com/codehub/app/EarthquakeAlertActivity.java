@@ -109,6 +109,7 @@ public class EarthquakeAlertActivity extends Activity {
         boolean isHurricane = "hurricane".equals(alertType) || "cyclone".equals(alertType);
         boolean isTsunami = "tsunami".equals(alertType);
         boolean isFlood = "flood".equals(alertType);
+        boolean isLocalSensor = "local_sensor".equals(alertType);
 
         String alertIcon = "⚠️";
         String alertTitle = "ALERTA DE SISMO";
@@ -134,6 +135,12 @@ public class EarthquakeAlertActivity extends Activity {
             alertColor = 0xFF60A5FA;
             subtitleText = "Riesgo de inundación en tu zona";
             sourceText = sim ? "Simulacro · CodeHub" : "Fuente: NOAA · CodeHub";
+        } else if (isLocalSensor) {
+            alertIcon = "📳";
+            alertTitle = "DETECCIÓN LOCAL";
+            alertColor = 0xFFFBBF24;
+            subtitleText = "El acelerómetro registró una vibración fuerte. No confirma un sismo; verifica fuentes oficiales.";
+            sourceText = "Acelerómetro del dispositivo · CodeHub";
         }
 
         // Actualizar icono de la barra de alerta
@@ -149,20 +156,25 @@ public class EarthquakeAlertActivity extends Activity {
             // Para huracanes/tsunamis/inundaciones, la magnitud muestra categoría o nivel
             magTv.setText(String.format(java.util.Locale.US, "%.0f", mag));
             magTv.setTextSize(48);
+        } else if (isLocalSensor) {
+            magTv.setText("LOCAL");
+            magTv.setTextSize(32);
         } else {
             magTv.setText(String.format(java.util.Locale.US, "M %.1f", mag));
         }
 
-        if (mag >= 7.0 && !isHurricane) {
+        if (!isLocalSensor && mag >= 7.0 && !isHurricane) {
             title.setText("⚠️ SISMO MAYOR");
             title.setTextColor(0xFFFF3B3B);
             magTv.setTextColor(0xFFFF3B3B);
-        } else if (mag >= 6.0 && !isHurricane) {
+        } else if (!isLocalSensor && mag >= 6.0 && !isHurricane) {
             title.setText("⚠️ SISMO FUERTE");
             title.setTextColor(0xFFFF6B6B);
         }
 
-        if (dir != null && !dir.isEmpty()) {
+        if (isLocalSensor) {
+            distTv.setText("Sensor de este teléfono");
+        } else if (dir != null && !dir.isEmpty()) {
             distTv.setText(String.format(Locale.US, "a %d km %s de tu ubicación",
                     Math.round(dist), dir));
         } else {

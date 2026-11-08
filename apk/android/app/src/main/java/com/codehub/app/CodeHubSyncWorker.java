@@ -101,13 +101,20 @@ public class CodeHubSyncWorker extends Worker {
             FusedLocationProviderClient fused = LocationServices.getFusedLocationProviderClient(ctx);
             CurrentLocationRequest request = new CurrentLocationRequest.Builder()
                 .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setMaxUpdateAgeMillis(5 * 60 * 1000L)
+                .setMaxUpdateAgeMillis(10 * 60 * 1000L)
                 .build();
             CancellationTokenSource cts = new CancellationTokenSource();
-            Location loc = Tasks.await(
-                fused.getCurrentLocation(request, cts.getToken()),
-                20, TimeUnit.SECONDS);
-            if (loc != null) return new double[]{loc.getLatitude(), loc.getLongitude()};
+            try {
+                Location loc = Tasks.await(
+                    fused.getCurrentLocation(request, cts.getToken()),
+                    10, TimeUnit.SECONDS);
+                if (loc != null && loc.getLatitude() >= -90 && loc.getLatitude() <= 90
+                        && loc.getLongitude() >= -180 && loc.getLongitude() <= 180) {
+                    return new double[]{loc.getLatitude(), loc.getLongitude()};
+                }
+            } finally {
+                cts.cancel();
+            }
         } catch (Throwable ignored) {}
         return null;
     }

@@ -18,9 +18,6 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
-import org.json.JSONObject;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -145,19 +142,19 @@ public class QuakeDetectorService extends Service implements SensorEventListener
             lastTrigger = now;
             cooldown.set(true);
             new Handler(Looper.getMainLooper()).postDelayed(() -> cooldown.set(false), 30000);
-            triggerQuake(dev / 9.81);
+            triggerQuake();
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor s, int a) {}
 
-    private void triggerQuake(double peakG) {
+    private void triggerQuake() {
         fireLocalAlarm();
-        reportToBackend(peakG);
     }
 
     private void fireLocalAlarm() {
+        if (!getSharedPreferences("codehub", MODE_PRIVATE).getBoolean("quake_alert_enabled", true)) return;
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -167,15 +164,21 @@ public class QuakeDetectorService extends Service implements SensorEventListener
                 nm.createNotificationChannel(ch);
             }
         }
-        Intent tap = new Intent(this, MainActivity.class);
-        tap.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        tap.putExtra("open_url", "/#sismos-section");
+        Intent tap = new Intent(this, EarthquakeAlertActivity.class);
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_MAG, 0f);
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_DIST, 0d);
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_DIR, "—");
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_PLACE, "Vibración detectada por el acelerómetro del dispositivo");
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_TIME, System.currentTimeMillis());
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_SIM, false);
+        tap.putExtra(EarthquakeAlertActivity.EXTRA_TYPE, "local_sensor");
+        tap.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, 4243, tap,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new NotificationCompat.Builder(this, "codehub_quakes_v2")
                 .setSmallIcon(R.drawable.ic_stat_quake)
-                .setContentTitle("🚨 ALERTA SÍSMICA")
-                .setContentText("Sismo detectado por tu dispositivo. Protégete.")
+                .setContentTitle("Vibración detectada")
+                .setContentText("El sensor del teléfono registró un movimiento fuerte. Verifica fuentes oficiales.")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -183,40 +186,6 @@ public class QuakeDetectorService extends Service implements SensorEventListener
                 .setAutoCancel(true)
                 .build();
         nm.notify(4243, n);
-    }
-
-    private void reportToBackend(double peakG) {
-        new Thread(() -> {
-            try {
-                double lat = 0, lon = 0;
-                android.location.LocationManager lm = (android.location.LocationManager) getSystemService(Context.LOCATION_SERVICE);
-                if (lm != null) {
-                    for (String p : lm.getProviders(true)) {
-                        android.location.Location l = lm.getLastKnownLocation(p);
-                        if (l != null) { lat = l.getLatitude(); lon = l.getLongitude(); break; }
-                    }
-                }
-                if (lat == 0 && lon == 0) return;
-                double mag = peakG < 0.2 ? 4.0 : peakG < 0.5 ? 4.8 : peakG < 1.0 ? 5.5 : 6.5;
-                JSONObject json = new JSONObject();
-                json.put("lat", lat);
-                json.put("lon", lon);
-                json.put("mag", mag);
-                json.put("deviceId", android.provider.Settings.Secure.getString(getContentResolver(), android.provider.Settings.Secure.ANDROID_ID));
-                URL url = new URL("https://codehub-98s6.onrender.com/api/quake/report");
-                HttpURLConnection c = (HttpURLConnection) url.openConnection();
-                c.setRequestMethod("POST");
-                c.setRequestProperty("Content-Type", "application/json");
-                c.setDoOutput(true);
-                c.setConnectTimeout(5000);
-                c.setReadTimeout(5000);
-                c.getOutputStream().write(json.toString().getBytes("UTF-8"));
-                c.getResponseCode();
-                c.disconnect();
-            } catch (Exception e) {
-                Log.w(TAG, "report failed: " + e.getMessage());
-            }
-        }).start();
     }
 
     private void refreshModeNotification() {
