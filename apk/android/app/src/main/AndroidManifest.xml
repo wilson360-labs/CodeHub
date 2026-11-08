@@ -158,6 +158,14 @@
             android:windowSoftInputMode="adjustResize">
         </activity>
 
+        <!-- Pronóstico nativo conectado a la ubicación y servicios de fondo de CodeHub. -->
+        <activity
+            android:name=".NativeWeatherActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- CodeSu: utilidades nativas Android con operaciones explícitas vía Shizuku. -->
         <activity
             android:name=".CodeSuActivity"

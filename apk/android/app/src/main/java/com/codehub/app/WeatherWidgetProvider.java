@@ -597,7 +597,7 @@ public class WeatherWidgetProvider extends AppWidgetProvider {
         // Tocar el widget abre la app en la sección de clima.
         Intent openIntent = new Intent(context, MainActivity.class);
         openIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        openIntent.putExtra("open_url", "https://wilson360-labs.vercel.app/index.html#weather-section");
+        openIntent.putExtra("open_weather_native", true);
         int openFlags = PendingIntent.FLAG_UPDATE_CURRENT |
             (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
         PendingIntent openPending = PendingIntent.getActivity(context, 100, openIntent, openFlags);

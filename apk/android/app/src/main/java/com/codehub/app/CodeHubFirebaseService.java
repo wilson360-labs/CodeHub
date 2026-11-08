@@ -50,9 +50,12 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
         //   quake_alert / quake_sim → pantalla completa + alarma
         //   quake_info              → notificación heads-up (sismo perceptible)
         if (type.equals("quake_alert") || type.equals("quake_sim") || type.equals("quake_info")) {
+            if (!getSharedPreferences("codehub", MODE_PRIVATE).getBoolean("quake_alert_enabled", true)) return;
             handleQuake(message, type, title, body);
             return;
         }
+        if ((type.equals("weather") || type.equals("weather_change"))
+                && !getSharedPreferences("codehub", MODE_PRIVATE).getBoolean("weather_notification_enabled", true)) return;
 
         String channelId;
         int notifId;
@@ -64,6 +67,7 @@ public class CodeHubFirebaseService extends FirebaseMessagingService {
                 notifId = 3001 + (int)(System.currentTimeMillis() % 100);
                 break;
             case "weather":
+            case "weather_change":
                 channelId = CHANNEL_WEATHER;
                 notifId = 3002;
                 break;

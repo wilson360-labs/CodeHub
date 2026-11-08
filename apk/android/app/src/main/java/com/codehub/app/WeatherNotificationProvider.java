@@ -92,6 +92,14 @@ public class WeatherNotificationProvider {
 
     private WeatherNotificationProvider() {}
 
+    /** Shared native preference used by the APK UI and FCM handler. */
+    public static void setQuakeAlertsEnabled(Context context, boolean enabled) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("quake_alert_enabled", enabled).apply();
+        if (!enabled) cancel(context, NOTIF_ID_QUAKE);
+        else refresh(context);
+    }
+
     /* ════════════════════════ API PÚBLICA ════════════════════════ */
 
     /**
@@ -119,6 +127,7 @@ public class WeatherNotificationProvider {
     private static void update(Context context) {
         if (!canPostNotifications(context)) return;   // sin permiso: silencio
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        boolean weatherNotificationEnabled = prefs.getBoolean("weather_notification_enabled", true);
         double lat = Double.longBitsToDouble(prefs.getLong("lat_bits", 0));
         double lon = Double.longBitsToDouble(prefs.getLong("lon_bits", 0));
 
@@ -145,8 +154,10 @@ public class WeatherNotificationProvider {
                 }
             } catch (Throwable t) { cacheObj = null; }
         }
-        if (cacheObj != null && cacheObj.has("code")) {
+        if (weatherNotificationEnabled && cacheObj != null && cacheObj.has("code")) {
             paintFromPayload(context, cacheObj, lat, lon, city, true);
+        } else if (!weatherNotificationEnabled) {
+            cancel(context, NOTIF_ID);
         }
 
         // 2) Ciudad real (si el usuario no eligió una): geocodificación inversa.
@@ -179,7 +190,7 @@ public class WeatherNotificationProvider {
             }
             prefs.edit().putString(PREF_CACHE, base.toString()).apply();
         } catch (Throwable ignored) {}
-        paintFromPayload(context, base, lat, lon, city, !live);
+        if (weatherNotificationEnabled) paintFromPayload(context, base, lat, lon, city, !live);
     }
 
     /* ════════════════════════ CIUDAD ════════════════════════ */
@@ -556,6 +567,7 @@ public class WeatherNotificationProvider {
                                                         long at) {
         Intent open = new Intent(context, MainActivity.class);
         open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        open.putExtra("open_weather_native", true);
         PendingIntent pi = PendingIntent.getActivity(context, 2001, open,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
@@ -580,6 +592,7 @@ public class WeatherNotificationProvider {
     private static void evalQuakeAlarm(Context context, JSONObject quake, double lat, double lon) {
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            if (!prefs.getBoolean("quake_alert_enabled", true)) return;
             String id = quake.optString("id", "");
             float mag = (float) quake.optDouble("mag", 0);
             long time = quake.optLong("time", 0);
@@ -616,6 +629,7 @@ public class WeatherNotificationProvider {
 
             Intent open = new Intent(context, MainActivity.class);
             open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            open.putExtra("open_weather_native", true);
             PendingIntent pi = PendingIntent.getActivity(context, 3002, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 

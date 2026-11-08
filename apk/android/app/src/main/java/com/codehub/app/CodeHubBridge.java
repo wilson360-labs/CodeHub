@@ -273,6 +273,7 @@ public class CodeHubBridge {
         } catch (Throwable ignored) {}
         ed.putLong("lat_bits", Double.doubleToRawLongBits(lat))
           .putLong("lon_bits", Double.doubleToRawLongBits(lon))
+          .putString("weather_location_source", "gps")
           .apply();
         WeatherWidgetProvider.requestRefresh(activity);
         try { WeatherNotificationProvider.refresh(activity); } catch (Throwable ignored) {}
@@ -304,6 +305,7 @@ public class CodeHubBridge {
             .putLong("lat_bits", Double.doubleToRawLongBits(lat))
             .putLong("lon_bits", Double.doubleToRawLongBits(lon))
             .putString("widget_city", city == null ? "" : city)
+            .putString("weather_location_source", "manual")
             .apply();
         WeatherWidgetProvider.requestRefresh(activity);
         try { WeatherNotificationProvider.refresh(activity); } catch (Throwable ignored) {}

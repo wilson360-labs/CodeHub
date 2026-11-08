@@ -35,6 +35,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenCodeStream()
         fun onOpenCopilot()
         fun onOpenProfile()
+        fun onOpenWeather()
         fun onOpenCodeSu()
         fun onForceStopApp()
         fun onOpenWebsite(path: String)
@@ -111,7 +112,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         addEntranceTarget(content, copilotCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
         weatherCard = actionCard(R.drawable.ic_home_weather, "Clima", "Pronóstico y alertas", cyan) {
-            listener.onOpenWebsite("/#weather-section")
+            listener.onOpenWeather()
         }
         toolsCard = actionCard(R.drawable.ic_home_tools, "Herramientas", "Utilidades de CodeHub", indigo) {
             listener.onOpenWebsite("/#services")

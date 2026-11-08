@@ -59,7 +59,10 @@ public class CodeHubSyncWorker extends Worker {
             double lat = Double.longBitsToDouble(prefs.getLong("lat_bits", 0));
             double lon = Double.longBitsToDouble(prefs.getLong("lon_bits", 0));
 
-            double[] fresh = fetchLocation(ctx);
+            // Preserve a city explicitly selected by the user; only follow device GPS
+            // when the saved location came from automatic location detection.
+            boolean followDeviceLocation = !"manual".equals(prefs.getString("weather_location_source", "gps"));
+            double[] fresh = followDeviceLocation ? fetchLocation(ctx) : null;
             if (fresh != null) {
                 lat = fresh[0];
                 lon = fresh[1];

@@ -131,6 +131,7 @@ public class MainActivity extends Activity {
             @Override public void onOpenCodeStream() { openNativeCodeStream(); }
             @Override public void onOpenCopilot() { openNativeCopilot(); }
             @Override public void onOpenProfile() { openNativeProfile(); }
+            @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
             @Override public void onForceStopApp() { confirmForceStopApp(); }
             @Override public void onOpenWebsite(String path) {
@@ -330,7 +331,9 @@ public class MainActivity extends Activity {
                     locGranted = true;
                 }
             }
-            if (locGranted) startLocationUpdates();
+            boolean manualWeatherLocation = "manual".equals(
+                getSharedPreferences("codehub", MODE_PRIVATE).getString("weather_location_source", "gps"));
+            if (locGranted && !manualWeatherLocation) startLocationUpdates();
             if (geoCallback != null) {
                 geoCallback.invoke(pendingGeoOrigin, locGranted, false);
                 geoCallback = null;
@@ -500,6 +503,7 @@ public class MainActivity extends Activity {
         prefs.edit()
             .putLong("lat_bits", Double.doubleToRawLongBits(lat))
             .putLong("lon_bits", Double.doubleToRawLongBits(lon))
+            .putString("weather_location_source", "gps")
             .apply();
         try { WeatherNotificationProvider.refresh(this); } catch (Throwable ignored) {}
         runOnUiThread(new Runnable() {
@@ -826,6 +830,11 @@ public class MainActivity extends Activity {
     private void handleIntent(Intent intent) {
         if (intent == null) return;
 
+        if (intent.getBooleanExtra("open_weather_native", false)) {
+            openNativeWeather();
+            return;
+        }
+
         // Share target nativo (ACTION_SEND, text/plain): si lo que compartió
         // otra app contiene una URL de CodeHub, se abre aquí; si es texto
         // suelto, se reenvía a la web para que la procese (búsqueda/chat).
@@ -853,6 +862,10 @@ public class MainActivity extends Activity {
             url = intent.getData().toString();
         }
         if (url != null && !url.isEmpty() && isAllowedUrl(url)) {
+            if (url.contains("#weather-section")) {
+                openNativeWeather();
+                return;
+            }
             openWebUrl(url);
         }
     }
@@ -1017,6 +1030,20 @@ public class MainActivity extends Activity {
 
     private void openNativeProfile() {
         launchNativeWithAccountSession(NativeProfileActivity.class, NATIVE_PROFILE_REQUEST);
+    }
+
+    private void openNativeWeather() {
+        try {
+            if (nativeHome != null) nativeHome.setVisibility(View.VISIBLE);
+            if (webView != null) webView.setVisibility(View.GONE);
+            if (swipeRefreshLayout != null) swipeRefreshLayout.setVisibility(View.GONE);
+            releaseWebView();
+            startActivity(new Intent(this, NativeWeatherActivity.class));
+        }
+        catch (Exception e) {
+            android.util.Log.e("CodeHub", "No se pudo abrir Clima nativo", e);
+            Toast.makeText(this, "Clima no pudo iniciarse.", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void openNativeCodeSu() {
