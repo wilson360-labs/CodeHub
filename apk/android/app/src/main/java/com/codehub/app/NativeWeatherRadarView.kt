@@ -56,6 +56,7 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
     private var hostResumed = false
     private var viewStarted = false
     private var viewResumed = false
+    private var disposed = false
 
     private val status = TextView(context).apply { text = "Preparando radar…"; textSize = 10f; setTextColor(Color.WHITE); setPadding(dp(9), dp(5), dp(9), dp(5)); background = pill(0xC9141C2A.toInt()) }
     private val frameLabel = TextView(context).apply { text = "--:--"; textSize = 11f; setTextColor(muted); gravity = Gravity.CENTER }
@@ -209,6 +210,7 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
     fun onHostLowMemory() { mapView?.onLowMemory() }
 
     fun dispose() {
+        disposed = true
         pausePlayback()
         if (viewResumed) mapView?.onPause()
         if (viewStarted) mapView?.onStop()
@@ -238,7 +240,7 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
                 }
                 val parsed = (0 until values.length()).map { values.optString(it) }.filter { it.isNotBlank() }
                 post {
-                    if (mapView == null || isDetached) return@post
+                    if (mapView == null || disposed) return@post
                     val initialLoad = frames.isEmpty()
                     val previousFrame = frames.getOrNull(frameIndex)
                     if (parsed != frames) {
@@ -299,7 +301,7 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
     }
 
     private fun postStatus(message: String) {
-        post { if (mapView != null && !isDetached) status.text = message }
+        post { if (mapView != null && !disposed) status.text = message }
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
