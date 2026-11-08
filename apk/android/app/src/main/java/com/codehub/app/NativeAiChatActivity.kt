@@ -90,10 +90,10 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private data class ChatMessage(val role: String, var text: String, val mediaUrl: String? = null)
     private enum class Mode(val id: String, val label: String, val prefix: String = "") {
         AUTO("auto", "Auto"),
-        DEV("dev", "Código", "[MODO DEVELOPER] Actúa como ingeniero de software senior. Da código correcto, explica con claridad y señala posibles bugs.\n\n"),
-        IMAGE("img", "Imagen", "[MODO IMAGEN] El usuario puede pedirte generar o buscar imágenes. Guíale para crear imágenes IA o buscar referencias visuales.\n\n"),
-        DOC("doc", "Documentos", "[MODO DOCUMENTOS] Ayuda a leer, resumir y trabajar con PDFs y documentos. Explica documentos e identifica secciones clave.\n\n"),
-        TRANSLATE("translate", "Traductor", "[MODO TRADUCTOR] Traduce con precisión entre idiomas, preservando el tono y aclarando matices.\n\n"),
+        DEV("dev", "Código", "[MODO CÓDIGO] Actúa como ingeniero de software senior. Diagnostica antes de proponer cambios, entrega soluciones verificables, señala riesgos y pide datos solo cuando bloqueen una respuesta correcta. Explica con claridad y no inventes APIs ni resultados de pruebas.\n\n"),
+        IMAGE("img", "Imagen", "[MODO IMAGEN] Ayuda a crear, analizar o editar imágenes con instrucciones visuales concretas. Si la petición requiere generación, usa la herramienta de imagen disponible y explica cualquier límite.\n\n"),
+        DOC("doc", "Documentos", "[MODO DOCUMENTOS] Basa las respuestas en el documento adjunto, cita o identifica sus secciones cuando sea posible, y separa los datos explícitos de las inferencias.\n\n"),
+        TRANSLATE("translate", "Traductor", "[MODO TRADUCTOR] Traduce con precisión entre idiomas, conserva el tono y el formato, y aclara los matices que no tengan una equivalencia directa.\n\n"),
     }
 
     private val http = OkHttpClient.Builder()
@@ -127,7 +127,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var messageList: LinearLayout
     private lateinit var messageScroll: ScrollView
     private lateinit var input: EditText
-    private lateinit var sendButton: TextView
+    private lateinit var sendButton: ImageView
     private lateinit var status: TextView
     private lateinit var attachLabel: TextView
     private lateinit var modeRow: LinearLayout
@@ -166,10 +166,15 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setPadding(dp(14), dp(8), dp(14), dp(10))
         }
         val top = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        top.addView(text("‹", 34f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER
+        top.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_ai_back)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            scaleType = ImageView.ScaleType.CENTER
             contentDescription = "Volver"
+            isClickable = true
+            isFocusable = true
             setOnClickListener { finish() }
+            installPressFeedback(this)
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         brand.addView(text("WIL.E COPILOT", 16f, Color.WHITE, true))
@@ -183,15 +188,21 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             isClickable = true
             isFocusable = true
             setOnClickListener { confirmClearChat() }
+            installPressFeedback(this)
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
-        top.addView(text("⋮", 24f, 0xFFCAD4E8.toInt(), true).apply {
-            gravity = Gravity.CENTER
+        top.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_ai_more)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFCAD4E8.toInt())
+            scaleType = ImageView.ScaleType.CENTER
             contentDescription = "Opciones del chat"
+            isClickable = true
+            isFocusable = true
             setOnClickListener { showMenu() }
+            installPressFeedback(this)
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
         root.addView(top)
 
-        status = text("Online · respuestas protegidas por el backend", 11f, 0xFF8E9BB0.toInt()).apply {
+        status = text("WIL.E · enrutamiento y herramientas de CodeHub", 11f, 0xFF8E9BB0.toInt()).apply {
             setPadding(dp(10), dp(7), dp(10), dp(7))
             background = rounded(0xFF111A27.toInt(), dp(12), 0xFF222E40.toInt())
         }
@@ -224,9 +235,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 input.setText(prompts[index])
                 input.setSelection(input.text.length)
                 input.requestFocus()
-            }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { marginEnd = dp(5) })
+            }, LinearLayout.LayoutParams(-2, dp(36)).apply { marginEnd = dp(7) })
         }
-        root.addView(quick, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(7) })
+        root.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+            addView(quick)
+        }, LinearLayout.LayoutParams(-1, dp(38)).apply { bottomMargin = dp(7) })
 
         attachLabel = text("", 11f, 0xFF8CCBFF.toInt()).apply {
             visibility = View.GONE
@@ -237,17 +252,22 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         val composer = LinearLayout(this).apply {
             gravity = Gravity.BOTTOM
             setPadding(dp(7), dp(7), dp(7), dp(7))
-            background = rounded(0xFF141B28.toInt(), dp(20), 0xFF303A50.toInt())
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF1B2537.toInt(), 0xFF111824.toInt())).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), 0xFF344157.toInt())
+            }
         }
-        val attach = smallAction("＋", "Adjuntar imagen o PDF") { chooseAttachment() }
+        val attach = smallIconAction(R.drawable.ic_ai_attach, "Adjuntar imagen o PDF") { chooseAttachment() }
         composer.addView(attach, LinearLayout.LayoutParams(dp(42), dp(46)))
         input = EditText(this).apply {
-            hint = "Escribe a WIL.E…"
+            hint = "Pregunta, pega código o escribe /help"
             setHintTextColor(0xFF77849A.toInt())
             setTextColor(Color.WHITE)
             textSize = 15f
             setPadding(dp(9), dp(9), dp(6), dp(8))
             setBackgroundColor(Color.TRANSPARENT)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setHorizontallyScrolling(false)
             minLines = 1
             maxLines = 5
             imeOptions = EditorInfo.IME_ACTION_SEND
@@ -258,12 +278,20 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
         composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
-        composer.addView(smallAction("🎙", "Dictar mensaje") { startSpeechInput() }, LinearLayout.LayoutParams(dp(42), dp(46)))
-        sendButton = text("↑", 22f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER
-            background = rounded(0xFF5F6FEA.toInt(), dp(15), 0xFF8491FF.toInt())
+        composer.addView(smallIconAction(R.drawable.ic_ai_mic, "Dictar mensaje") { startSpeechInput() }, LinearLayout.LayoutParams(dp(42), dp(46)))
+        sendButton = ImageView(this).apply {
+            setImageResource(R.drawable.ic_ai_send)
+            imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())).apply {
+                cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), 0xFF9AA5FF.toInt())
+            }
+            scaleType = ImageView.ScaleType.CENTER
+            elevation = dp(3).toFloat()
+            contentDescription = "Enviar mensaje"
             isClickable = true
             setOnClickListener { if (activeCall != null) cancelRequest() else sendMessage() }
+            installPressFeedback(this)
         }
         composer.addView(sendButton, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginStart = dp(4) })
         root.addView(composer)
@@ -286,6 +314,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         val raw = input.text?.toString()?.trim().orEmpty()
         if (activeCall != null) return
         if (raw.isEmpty() && pendingAttachment == null) return
+        if (raw.length > 1000 || (!raw.startsWith("/") && raw.length + activeMode.prefix.length > 1000)) {
+            val limit = (1000 - if (raw.startsWith("/")) 0 else activeMode.prefix.length).coerceAtLeast(0)
+            Toast.makeText(this, "Este modo admite hasta $limit caracteres por mensaje.", Toast.LENGTH_LONG).show()
+            return
+        }
         input.setText("")
         if (raw.startsWith("/")) {
             handleCommand(raw)
@@ -317,15 +350,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         messages.add(assistant)
         persistHistory()
         renderHistory()
-        showThinking("WIL.E está escribiendo")
+        showThinking("WIL.E está preparando una respuesta")
         scrollToBottom()
         status.text = "Conectando con los proveedores de IA…"
-        sendButton.text = "×"
+        setSendButtonState(true)
         streamChat(request, assistant)
     }
 
     private fun streamChat(payload: JSONObject, assistant: ChatMessage) {
         var streamError: String? = null
+        var providerName = ""
+        var emiStatus = ""
         activeCall = repository.streamChat(
             "$API/api/chat/stream",
             payload,
@@ -333,15 +368,17 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 when (event) {
                     "chunk" -> data.optString("text").takeIf { it.isNotEmpty() }?.let { chunk -> runOnUiThread {
                         finishThinking()
+                        if (assistant.text.isBlank()) status.text = "WIL.E · generando respuesta en vivo…"
                         assistant.text += chunk
                         val body = streamingBodyView ?: createStreamingBody().also { streamingBodyView = it }
                         body.append(chunk)
                         scrollToBottom()
                     } }
                     "error" -> streamError = data.optString("error").ifBlank { "WIL.E no pudo responder." }
-                    "done" -> data.optJSONObject("emi")?.let { emi -> runOnUiThread {
-                        status.text = "WIL.E · ${emi.optInt("used")} / ${emi.optInt("limit")} mensajes usados hoy"
-                    } }
+                    "done" -> {
+                        providerName = data.optString("model").substringAfterLast('/').takeIf { it.isNotBlank() }.orEmpty()
+                        data.optJSONObject("emi")?.let { emi -> emiStatus = "${emi.optInt("used")} / ${emi.optInt("limit")} hoy" }
+                    }
                 }
             },
             onFinished = { networkError -> runOnUiThread {
@@ -349,9 +386,13 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
                 finishThinking()
                 if (assistant.text.isBlank()) assistant.text = error ?: "No llegó una respuesta. Intenta de nuevo."
                 if (error != null) status.text = error
-                else if (status.text.toString().startsWith("Conectando")) status.text = "WIL.E · respuesta completada"
+                else status.text = listOf(
+                    "WIL.E",
+                    providerName.takeIf { it.isNotBlank() }?.let { "modelo $it" },
+                    emiStatus.takeIf { it.isNotBlank() }?.let { "$it mensajes" },
+                ).filterNotNull().joinToString(" · ")
                 activeCall = null
-                sendButton.text = "↑"
+                setSendButtonState(false)
                 persistHistory(); renderHistory()
                 streamingBodyView = null
                 if (error == null && readRepliesAloud && ttsReady && assistant.text.isNotBlank()) {
@@ -365,7 +406,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         activeCall?.cancel()
         activeCall = null
         finishThinking()
-        sendButton.text = "↑"
+        setSendButtonState(false)
         status.text = "Respuesta detenida"
         if (messages.lastOrNull()?.role == "assistant" && messages.last().text.isBlank()) messages.removeLast()
         persistHistory(); renderHistory()
@@ -862,7 +903,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun setBusy(busy: Boolean, label: String = "") {
         if (::status.isInitialized && label.isNotBlank()) status.text = label
         if (busy) showThinking(label.ifBlank { "WIL.E está trabajando" }) else finishThinking()
-        if (::sendButton.isInitialized) sendButton.text = if (busy) "×" else "↑"
+        if (::sendButton.isInitialized) setSendButtonState(busy)
     }
     private fun copy(value: String) { (getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("WIL.E", value)); Toast.makeText(this, "Copiado", Toast.LENGTH_SHORT).show() }
     private fun enc(value: String) = URLEncoder.encode(value, "UTF-8")
@@ -877,8 +918,37 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun isImageGenerationRequest(value: String) = Regex("(?i)^(🎨|/img\\s)|\\b(genera|crea|diseña|dibuja|haz|generate|create)\\b.{0,30}\\b(imagen|foto|ilustración|logo|banner|avatar|icono|portada|thumbnail|arte|dibujo|image|picture|drawing)\\b").containsMatchIn(value)
     private fun rounded(fill: Int, radius: Int, stroke: Int) = GradientDrawable().apply { setColor(fill); cornerRadius = radius.toFloat(); setStroke(dp(1), stroke) }
     private fun text(value: String, size: Float, color: Int, bold: Boolean = false) = TextView(this).apply { text = value; textSize = size; setTextColor(color); if (bold) typeface = Typeface.DEFAULT_BOLD }
-    private fun chip(label: String, active: Boolean = false, action: () -> Unit): View = TextView(this).apply { text = label; gravity = Gravity.CENTER; textSize = 11f; setTextColor(if (active) Color.WHITE else 0xFFA9B5C9.toInt()); setPadding(dp(13), 0, dp(13), 0); background = rounded(if (active) 0xFF36427C.toInt() else 0xFF151D2A.toInt(), dp(18), if (active) 0xFF6576D7.toInt() else 0xFF2C3749.toInt()); isClickable = true; setOnClickListener { action() } }
-    private fun smallAction(label: String, description: String, action: () -> Unit) = TextView(this).apply { text = label; contentDescription = description; textSize = 20f; gravity = Gravity.CENTER; setTextColor(0xFFDCE6F5.toInt()); isClickable = true; setOnClickListener { action() } }
+    private fun chip(label: String, active: Boolean = false, action: () -> Unit): View = TextView(this).apply { text = label; gravity = Gravity.CENTER; textSize = 11f; setTextColor(if (active) Color.WHITE else 0xFFA9B5C9.toInt()); setPadding(dp(13), 0, dp(13), 0); background = rounded(if (active) 0xFF36427C.toInt() else 0xFF151D2A.toInt(), dp(18), if (active) 0xFF6576D7.toInt() else 0xFF2C3749.toInt()); isClickable = true; isFocusable = true; isSelected = active; setOnClickListener { action() }; installPressFeedback(this) }
+    private fun smallIconAction(icon: Int, description: String, action: () -> Unit) = ImageView(this).apply {
+        setImageResource(icon)
+        imageTintList = android.content.res.ColorStateList.valueOf(0xFFDCE6F5.toInt())
+        contentDescription = description
+        scaleType = ImageView.ScaleType.CENTER
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { action() }
+        installPressFeedback(this)
+    }
+
+    private fun setSendButtonState(busy: Boolean) {
+        sendButton.setImageResource(if (busy) R.drawable.ic_ai_stop else R.drawable.ic_ai_send)
+        sendButton.contentDescription = if (busy) "Detener respuesta" else "Enviar mensaje"
+        val colors = if (busy) intArrayOf(0xFFE16A76.toInt(), 0xFFB94254.toInt())
+            else intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())
+        val stroke = if (busy) 0xFFFFA2A9.toInt() else 0xFF9AA5FF.toInt()
+        sendButton.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply {
+            cornerRadius = dp(15).toFloat()
+            setStroke(dp(1), stroke)
+        }
+    }
+
+    private fun installPressFeedback(view: View) {
+        view.setOnTouchListener { touched, event ->
+            val scale = if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) .92f else 1f
+            touched.animate().scaleX(scale).scaleY(scale).setDuration(110L).start()
+            false
+        }
+    }
 
     override fun onInit(statusCode: Int) { ttsReady = statusCode == TextToSpeech.SUCCESS; if (ttsReady) tts.language = Locale("es", "GT") }
     override fun onDestroy() { activeCall?.cancel(); finishThinking(); if (::tts.isInitialized) { tts.stop(); tts.shutdown() }; super.onDestroy() }

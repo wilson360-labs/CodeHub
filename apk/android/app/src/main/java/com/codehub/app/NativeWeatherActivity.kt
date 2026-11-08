@@ -18,6 +18,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -66,6 +67,13 @@ class NativeWeatherActivity : Activity() {
     private var hostStarted = false
     private var hostResumed = false
     private var radarPlayer: NativeWeatherRadarView? = null
+    private var radarLatitude = Double.NaN
+    private var radarLongitude = Double.NaN
+    private var weatherRequestId = 0
+    private var geoSearchCall: Call? = null
+    private var locationSearchInput: EditText? = null
+    private var locationSearchResults: LinearLayout? = null
+    private var locationSearchButton: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +96,7 @@ class NativeWeatherActivity : Activity() {
     override fun onDestroy() {
         disposeRadarPlayer()
         request?.cancel()
+        geoSearchCall?.cancel()
         locationAttemptId++
         locationToken?.cancel()
         locationToken = null
@@ -159,25 +168,26 @@ class NativeWeatherActivity : Activity() {
             addView(text("Tu clima, en CodeHub", 21f, Color.WHITE, true))
             addView(text(message, 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
             addView(button("Usar mi ubicación", cyan) { requestLocation() }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(16) })
-            addView(button("Buscar ciudad", 0xFF293754.toInt()) { locationPicker() }, LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(8) })
             addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         })
         addBackgroundControls()
     }
 
     private fun renderLoading() {
-        disposeRadarPlayer()
         content.removeAllViews()
         content.addView(card {
             addView(text(city.ifBlank { "Consultando tu ubicación" }, 15f, Color.WHITE, true))
             addView(text("Cargando el pronóstico…", 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         })
-        content.addView(button("Cambiar ubicación", cyan) { locationPicker() }, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
+        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        addRadarPlayer()
         addBackgroundControls()
     }
 
     private fun loadWeather() {
         if (!validLocation()) { renderNoLocation(); return }
+        val attempt = ++weatherRequestId
+        request?.cancel()
         renderLoading()
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
             "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day" +
@@ -186,12 +196,12 @@ class NativeWeatherActivity : Activity() {
         request = http.newCall(Request.Builder().url(url).header("User-Agent", "CodeHub-Android").build())
         request?.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: Call, e: java.io.IOException) = runOnUiThread {
-                if (!isFinishing && !isDestroyed) renderNoLocation("No se pudo conectar para actualizar el pronóstico. Comprueba internet e inténtalo de nuevo.")
+                if (attempt == weatherRequestId && !call.isCanceled() && !isFinishing && !isDestroyed) renderNoLocation("No se pudo conectar para actualizar el pronóstico. Comprueba internet e inténtalo de nuevo.")
             }
             override fun onResponse(call: Call, response: okhttp3.Response) {
                 val parsed = response.use { if (it.isSuccessful) runCatching { JSONObject(it.body?.string().orEmpty()) }.getOrNull() else null }
                 runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (attempt != weatherRequestId || isFinishing || isDestroyed) return@runOnUiThread
                     if (parsed == null || parsed.optJSONObject("current") == null) renderNoLocation("El servicio de clima no devolvió datos. Inténtalo de nuevo más tarde.")
                     else renderForecast(parsed)
                 }
@@ -200,7 +210,6 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderForecast(data: JSONObject) {
-        disposeRadarPlayer()
         content.removeAllViews()
         val current = data.optJSONObject("current") ?: return
         val daily = data.optJSONObject("daily") ?: JSONObject()
@@ -216,8 +225,10 @@ class NativeWeatherActivity : Activity() {
         }
         place.addView(text("⌖", 19f, cyan, true), LinearLayout.LayoutParams(dp(28), -2))
         place.addView(text(city.ifBlank { "Mi ubicación" }, 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
-        place.addView(text("Cambiar  ›", 11f, cyan, true).apply { setOnClickListener { locationPicker() } })
+        place.addView(text("Mi ubicación  ›", 11f, cyan, true).apply { setOnClickListener { requestLocation() } })
         content.addView(place)
+        content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
+        addRadarPlayer()
 
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -225,7 +236,10 @@ class NativeWeatherActivity : Activity() {
             background = weatherHeroBackground(code, current.optInt("is_day", 1) == 1)
         }
         hero.addView(text("${weatherName(code)}  ·  ${current.optString("time").substringAfter('T', "Ahora")}", 14f, Color.WHITE, true))
-        hero.addView(text(weatherEmoji(code), 60f, Color.WHITE), LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(10) })
+        hero.addView(NativeWeatherGlyph(this, code, 72, animated = true), LinearLayout.LayoutParams(dp(78), dp(78)).apply {
+            topMargin = dp(9)
+            gravity = Gravity.CENTER_HORIZONTAL
+        })
         hero.addView(text("${current.optInt("temperature_2m")}°", 76f, Color.WHITE, true))
         hero.addView(text("Sensación de ${current.optInt("apparent_temperature")}°", 14f, 0xFFE7F1FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
         hero.addView(text("Mín. ${minToday ?: "—"}°     Máx. ${maxToday ?: "—"}°", 14f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
@@ -234,12 +248,7 @@ class NativeWeatherActivity : Activity() {
         if (!sunrise.isNullOrBlank() || !sunset.isNullOrBlank()) {
             hero.addView(text("☀  ${sunrise.orEmpty()}     ◒  ${sunset.orEmpty()}", 12f, 0xFFE7F1FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(13) })
         }
-        content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-
-        radarPlayer = NativeWeatherRadarView(this, lat, lon)
-        content.addView(radarPlayer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-        if (hostStarted) radarPlayer?.onHostStart()
-        if (hostResumed) radarPlayer?.onHostResume()
+        content.addView(hero, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
 
         content.addView(text("Ahora mismo", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
         val metricRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -269,7 +278,9 @@ class NativeWeatherActivity : Activity() {
                     orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER
                     setPadding(dp(8), dp(10), dp(8), dp(10)); background = rounded(panel, dp(20))
                     addView(text(time, 11f, muted, true))
-                    addView(text(weatherEmoji(codes?.optInt(index) ?: 0), 22f, Color.WHITE), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+                    addView(NativeWeatherGlyph(this@NativeWeatherActivity, codes?.optInt(index) ?: 0, 28), LinearLayout.LayoutParams(-1, dp(30)).apply {
+                        topMargin = dp(7)
+                    })
                     addView(text("${temps.optDouble(index).toInt()}°", 15f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
                     addView(text("${rains?.optInt(index) ?: 0}% lluvia", 9f, 0xFF9CD9FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
                     if (uvValues != null && index < uvValues.length()) addView(text("UV ${uvValues.optDouble(index).toInt()}", 9f, 0xFFFFCF70.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
@@ -289,7 +300,7 @@ class NativeWeatherActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                 addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
                 addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 11f, muted), LinearLayout.LayoutParams(dp(110), -2))
-                addView(text(weatherEmoji(dayCodes?.optInt(i) ?: 0), 22f, Color.WHITE), LinearLayout.LayoutParams(dp(42), -2))
+                addView(NativeWeatherGlyph(this@NativeWeatherActivity, dayCodes?.optInt(i) ?: 0, 30), LinearLayout.LayoutParams(dp(36), dp(36)))
                 addView(text("${mins?.optDouble(i)?.toInt() ?: 0}°  ${maxes?.optDouble(i)?.toInt() ?: 0}°", 13f, Color.WHITE, true))
             }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
         }
@@ -298,52 +309,96 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun citySearch(): View {
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val section = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), dp(5), dp(6), dp(5))
+            background = rounded(panel, dp(17))
+        }
         val input = EditText(this).apply {
-            hint = "Buscar ciudad"; setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(muted)
-            setPadding(dp(12), 0, dp(8), 0); background = rounded(panel, dp(14))
+            hint = "Ciudad, municipio o lugar"; setSingleLine(true); textSize = 14f; setTextColor(Color.WHITE); setHintTextColor(muted)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            setPadding(dp(12), 0, dp(8), 0); setBackgroundColor(Color.TRANSPARENT)
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_DONE) {
+                    searchCity(text.toString().trim())
+                    true
+                } else false
+            }
         }
         row.addView(input, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(7) })
-        row.addView(button("Buscar", cyan) { searchCity(input.text.toString().trim()) }, LinearLayout.LayoutParams(dp(94), dp(48)))
-        return row
+        val searchButton = button("Buscar", cyan) { searchCity(input.text.toString().trim()) }
+        row.addView(searchButton, LinearLayout.LayoutParams(dp(88), dp(42)))
+        val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        section.addView(row)
+        section.addView(results, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        locationSearchInput = input
+        locationSearchResults = results
+        locationSearchButton = searchButton
+        return section
     }
 
-    private fun locationPicker() {
-        val input = EditText(this).apply { hint = "Ciudad o municipio"; setSingleLine(true); setPadding(dp(14), 0, dp(14), 0) }
-        AlertDialog.Builder(this).setTitle("Cambiar ubicación")
-            .setView(input)
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Buscar", null)
-            .create().also { dialog ->
-                dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { searchCity(input.text.toString().trim(), dialog) } }
-                dialog.show()
-            }
-    }
-
-    private fun searchCity(query: String, dialog: AlertDialog? = null) {
+    private fun searchCity(query: String) {
         if (query.length < 2) { Toast.makeText(this, "Escribe al menos dos letras.", Toast.LENGTH_SHORT).show(); return }
+        val resultsView = locationSearchResults
+        resultsView?.removeAllViews()
+        resultsView?.visibility = View.VISIBLE
+        resultsView?.addView(text("Buscando lugares…", 12f, muted).apply { setPadding(dp(10), dp(9), dp(10), dp(9)) })
+        locationSearchButton?.isEnabled = false
+        locationSearchInput?.let { (getSystemService(INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0) }
+        geoSearchCall?.cancel()
         val encoded = URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder().url("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=5&language=es&format=json").build()
-        http.newCall(req).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: Call, e: java.io.IOException) = runOnUiThread { Toast.makeText(this@NativeWeatherActivity, "No se pudo buscar la ciudad.", Toast.LENGTH_SHORT).show() }
+        val req = Request.Builder().url("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=8&language=es&format=json").build()
+        geoSearchCall = http.newCall(req).also { call -> call.enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: Call, e: java.io.IOException) = runOnUiThread {
+                if (call.isCanceled() || isFinishing || isDestroyed) return@runOnUiThread
+                showSearchMessage("No se pudo buscar. Revisa tu conexión y vuelve a intentarlo.")
+                locationSearchButton?.isEnabled = true
+            }
             override fun onResponse(call: Call, response: okhttp3.Response) {
                 val results = response.use { res -> if (res.isSuccessful) runCatching { JSONObject(res.body?.string().orEmpty()).optJSONArray("results") }.getOrNull() else null }
                 runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    if (results == null || results.length() == 0) { Toast.makeText(this@NativeWeatherActivity, "No encontramos esa ubicación.", Toast.LENGTH_SHORT).show(); return@runOnUiThread }
-                    val names = (0 until results.length()).map { i ->
-                        val item = results.optJSONObject(i) ?: JSONObject()
-                        listOf(item.optString("name"), item.optString("admin1"), item.optString("country")).filter { it.isNotBlank() }.distinct().joinToString(", ")
+                    if (call.isCanceled() || isFinishing || isDestroyed) return@runOnUiThread
+                    locationSearchButton?.isEnabled = true
+                    val list = resultsView ?: return@runOnUiThread
+                    list.removeAllViews()
+                    if (results == null || results.length() == 0) {
+                        showSearchMessage("No encontramos ese lugar. Prueba con una ciudad cercana.")
+                        return@runOnUiThread
                     }
-                    AlertDialog.Builder(this@NativeWeatherActivity).setTitle("Elige una ubicación")
-                        .setItems(names.toTypedArray()) { _, which ->
-                            val item = results.optJSONObject(which) ?: return@setItems
-                            saveLocation(item.optDouble("latitude"), item.optDouble("longitude"), item.optString("name", query))
-                        }.show()
-                    dialog?.dismiss()
+                    repeat(results.length()) { index ->
+                        val item = results.optJSONObject(index) ?: return@repeat
+                        val name = item.optString("name", query)
+                        val detail = listOf(item.optString("admin1"), item.optString("country"))
+                            .filter { it.isNotBlank() }.distinct().joinToString(", ")
+                        list.addView(LinearLayout(this@NativeWeatherActivity).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(dp(12), dp(10), dp(12), dp(10))
+                            background = rounded(0xFF182438.toInt(), dp(14))
+                            isClickable = true
+                            isFocusable = true
+                            contentDescription = "Usar ubicación $name${if (detail.isBlank()) "" else ", $detail"}"
+                            addView(text(name, 14f, Color.WHITE, true))
+                            if (detail.isNotBlank()) addView(text(detail, 11f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(3) })
+                            setOnClickListener {
+                                list.visibility = View.GONE
+                                saveLocation(item.optDouble("latitude"), item.optDouble("longitude"), listOf(name, detail).filter { it.isNotBlank() }.joinToString(", "))
+                            }
+                        }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+                    }
                 }
             }
-        })
+        }) }
+    }
+
+    private fun showSearchMessage(message: String) {
+        locationSearchResults?.apply {
+            removeAllViews()
+            visibility = View.VISIBLE
+            addView(text(message, 12f, muted).apply { setPadding(dp(10), dp(9), dp(10), dp(9)) })
+        }
     }
 
     private fun requestLocation() {
@@ -508,6 +563,22 @@ class NativeWeatherActivity : Activity() {
         (old.parent as? ViewGroup)?.removeView(old)
         old.dispose()
         radarPlayer = null
+        radarLatitude = Double.NaN
+        radarLongitude = Double.NaN
+    }
+
+    private fun addRadarPlayer() {
+        if (radarPlayer == null || radarLatitude != lat || radarLongitude != lon) {
+            disposeRadarPlayer()
+            radarPlayer = NativeWeatherRadarView(this, lat, lon)
+            radarLatitude = lat
+            radarLongitude = lon
+        }
+        val player = radarPlayer ?: return
+        (player.parent as? ViewGroup)?.removeView(player)
+        content.addView(player, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+        if (hostStarted) player.onHostStart()
+        if (hostResumed) player.onHostResume()
     }
 
     private fun addBackgroundControls() {
@@ -628,11 +699,6 @@ class NativeWeatherActivity : Activity() {
         45, 48 -> "Niebla"; in 51..57 -> "Llovizna"; in 61..67 -> "Lluvia"; in 71..77 -> "Nieve"
         in 80..82 -> "Chubascos"; in 85..86 -> "Nevadas"; in 95..99 -> "Tormenta eléctrica"; else -> "Condiciones variables"
     }
-    private fun weatherEmoji(code: Int) = when (code) {
-        0 -> "☀️"; 1, 2 -> "🌤️"; 3 -> "☁️"; 45, 48 -> "🌫️"; in 51..67 -> "🌧️"
-        in 71..77, 85, 86 -> "❄️"; in 80..82 -> "🌦️"; in 95..99 -> "⛈️"; else -> "🌡️"
-    }
-
     private fun card(block: LinearLayout.() -> Unit): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(15), dp(16), dp(15)); background = rounded(panel, dp(20)); block()
     }

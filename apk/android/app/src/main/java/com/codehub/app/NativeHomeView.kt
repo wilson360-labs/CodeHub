@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
@@ -268,7 +269,6 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
             bubble.measure(MeasureSpec.makeMeasureSpec(bubbleW, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(screenH, MeasureSpec.AT_MOST))
             val bubbleH = bubble.measuredHeight.coerceAtLeast(dp(130))
             val tCx = targetLeft + target.width / 2
-            val tCy = targetTop + target.height / 2
             val belowTop = targetTop + target.height + dp(18)
             val bubbleTop = if (belowTop + bubbleH <= screenH - dp(12)) belowTop else (targetTop - bubbleH - dp(18)).coerceAtLeast(dp(12))
             val bubbleLeft = (tCx - bubbleW / 2).coerceIn(dp(12), (screenW - bubbleW - dp(12)).coerceAtLeast(dp(12)))
@@ -278,38 +278,40 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 topMargin = bubbleTop
             }
 
-            // Línea conectora + flecha hacia la sección marcada.
-            val bCx = bubbleLeft + bubbleW / 2
-            val bCy = bubbleTop + bubbleH / 2
-            val dx = (tCx - bCx).toFloat()
-            val dy = (tCy - bCy).toFloat()
-            val length = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toInt().coerceAtLeast(dp(8))
-            val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
-            val line = View(context).apply {
-                setBackgroundColor(0xFF818CF8.toInt())
-            }
+            // La flecha nace del borde de la burbuja y termina en el borde
+            // del elemento resaltado, con la punta orientada hacia él.
+            val bubbleAboveTarget = bubbleTop < targetTop
+            val startX = tCx.coerceIn(bubbleLeft + dp(22), bubbleLeft + bubbleW - dp(22)).toFloat()
+            val startY = if (bubbleAboveTarget) (bubbleTop + bubbleH).toFloat() else bubbleTop.toFloat()
+            val endX = tCx.toFloat()
+            val endY = if (bubbleAboveTarget) (targetTop - dp(5)).toFloat() else (targetTop + target.height + dp(5)).toFloat()
             root.addView(SpotlightScrim(context, RectF(
                 (targetLeft - dp(5)).toFloat(), (targetTop - dp(5)).toFloat(),
                 (targetLeft + target.width + dp(5)).toFloat(), (targetTop + target.height + dp(5)).toFloat(),
             )), FrameLayout.LayoutParams(-1, -1))
-            root.addView(line, FrameLayout.LayoutParams(length, dp(2)).apply {
-                leftMargin = bCx
-                topMargin = bCy - dp(1)
-            })
-            line.pivotX = 0f
-            line.pivotY = dp(1).toFloat() / 2f
-            line.rotation = angle
-
-            val arrow = TextView(context).apply {
-                text = "➤"
-                textSize = 14f
-                setTextColor(0xFF818CF8.toInt())
-                gravity = Gravity.CENTER
-            }
-            root.addView(arrow, FrameLayout.LayoutParams(dp(20), dp(20)).apply {
-                leftMargin = tCx - dp(10)
-                topMargin = tCy - dp(10)
-            })
+            root.addView(object : View(context) {
+                private val connectorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = 0xFF9AA8FF.toInt()
+                    strokeWidth = dp(2).toFloat()
+                    strokeCap = Paint.Cap.ROUND
+                    strokeJoin = Paint.Join.ROUND
+                    style = Paint.Style.STROKE
+                }
+                override fun onDraw(canvas: Canvas) {
+                    super.onDraw(canvas)
+                    canvas.drawLine(startX, startY, endX, endY, connectorPaint)
+                    val angle = kotlin.math.atan2((endY - startY).toDouble(), (endX - startX).toDouble())
+                    val headLength = dp(8).toFloat()
+                    val spread = Math.toRadians(28.0)
+                    val head = Path().apply {
+                        moveTo(endX, endY)
+                        lineTo(endX - headLength * kotlin.math.cos(angle - spread).toFloat(), endY - headLength * kotlin.math.sin(angle - spread).toFloat())
+                        moveTo(endX, endY)
+                        lineTo(endX - headLength * kotlin.math.cos(angle + spread).toFloat(), endY - headLength * kotlin.math.sin(angle + spread).toFloat())
+                    }
+                    canvas.drawPath(head, connectorPaint)
+                }
+            }, FrameLayout.LayoutParams(-1, -1))
 
             root.addView(bubble, bubbleParams)
 

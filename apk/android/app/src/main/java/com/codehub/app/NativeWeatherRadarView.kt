@@ -105,7 +105,10 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
             clipToOutline = true
         }
         MapLibre.getInstance(context.applicationContext)
-        val nativeMap = MapView(context).apply { onCreate(Bundle()) }
+        val nativeMap = MapView(context).apply {
+            setBackgroundColor(0xFF18243A.toInt())
+            onCreate(Bundle())
+        }
         mapView = nativeMap
         mapFrame.addView(nativeMap, FrameLayout.LayoutParams(-1, -1))
         mapFrame.addView(status, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply { setMargins(dp(9), dp(9), dp(9), dp(9)) })
@@ -234,7 +237,10 @@ class NativeWeatherRadarView(context: Context, private val latitude: Double, pri
                 val body = response.use { runCatching { JSONObject(it.body?.string().orEmpty()) }.getOrNull() }
                 val values = body?.optJSONArray("frames")
                 if (!successful || values == null || values.length() < 2) {
-                    val message = body?.optString("error")?.takeIf { it.isNotBlank() } ?: "Radar temporalmente no disponible"
+                    val message = when (body?.optString("code")) {
+                        "WEATHER_RADAR_NOT_CONFIGURED" -> "Mapa activo · radar pendiente de configurar en servidor"
+                        else -> body?.optString("error")?.takeIf { it.isNotBlank() } ?: "Radar temporalmente no disponible"
+                    }
                     postStatus(message)
                     return
                 }
