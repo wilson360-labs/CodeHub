@@ -18,13 +18,13 @@ internal class NativeWeatherGlyph(
     private val density = resources.displayMetrics.density
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var floatOffset = 0f
+    private var effectPhase = 0f
     private var animator: ValueAnimator? = null
     private val sizePx = (sizeDp * density + .5f).toInt()
 
     init {
         layoutParams = android.view.ViewGroup.LayoutParams(sizePx, sizePx)
         contentDescription = weatherLabel(code)
-        if (animated) startFloat()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -47,18 +47,20 @@ internal class NativeWeatherGlyph(
         val isCloudy = code != 0
         val isPartlyCloudy = code in 1..2
 
-        if (!isCloudy || isPartlyCloudy) drawSun(canvas, if (isPartlyCloudy) 67f else 50f, if (isPartlyCloudy) 32f else 43f)
-        if (isCloudy) drawCloud(canvas, if (isStorm) 0xFFE8F0FF.toInt() else 0xFFF1F7FF.toInt())
+        if (!isCloudy || isPartlyCloudy) drawSun(canvas, if (isPartlyCloudy) 67f else 50f, if (isPartlyCloudy) 32f else 43f, effectPhase)
+        if (isCloudy) drawCloud(canvas, if (isStorm) 0xFFE8F0FF.toInt() else 0xFFF1F7FF.toInt(), effectPhase)
         when {
-            isFog -> drawFog(canvas)
-            isRain -> drawRain(canvas)
-            isSnow -> drawSnow(canvas)
-            isStorm -> drawLightning(canvas)
+            isFog -> drawFog(canvas, effectPhase)
+            isRain -> drawRain(canvas, effectPhase)
+            isSnow -> drawSnow(canvas, effectPhase)
+            isStorm -> drawLightning(canvas, effectPhase)
         }
         canvas.restore()
     }
 
-    private fun drawSun(canvas: Canvas, cx: Float, cy: Float) {
+    private fun drawSun(canvas: Canvas, cx: Float, cy: Float, phase: Float) {
+        canvas.save()
+        canvas.rotate(phase * 24f, cx, cy)
         paint.color = 0xFFFFD477.toInt()
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 5f
@@ -70,9 +72,12 @@ internal class NativeWeatherGlyph(
         }
         paint.style = Paint.Style.FILL
         canvas.drawCircle(cx, cy, 15f, paint)
+        canvas.restore()
     }
 
-    private fun drawCloud(canvas: Canvas, color: Int) {
+    private fun drawCloud(canvas: Canvas, color: Int, phase: Float) {
+        canvas.save()
+        canvas.translate(kotlin.math.sin(phase * Math.PI * 2.0).toFloat() * 1.6f, 0f)
         val cloud = Path().apply {
             moveTo(24f, 69f)
             cubicTo(14f, 69f, 9f, 62f, 9f, 53f)
@@ -90,49 +95,59 @@ internal class NativeWeatherGlyph(
         paint.style = Paint.Style.FILL
         paint.color = color
         canvas.drawPath(cloud, paint)
+        canvas.restore()
     }
 
-    private fun drawRain(canvas: Canvas) {
+    private fun drawRain(canvas: Canvas, phase: Float) {
         paint.color = 0xFF77DDF2.toInt()
         paint.strokeWidth = 5f
         paint.style = Paint.Style.STROKE
-        canvas.drawLine(34f, 77f, 29f, 87f, paint)
-        canvas.drawLine(55f, 77f, 50f, 87f, paint)
-        canvas.drawLine(76f, 77f, 71f, 87f, paint)
+        for (index in 0..2) {
+            val offset = (phase * 18f + index * 6f) % 18f
+            val x = 34f + index * 21f
+            canvas.drawLine(x, 73f + offset, x - 5f, 80f + offset, paint)
+        }
     }
 
-    private fun drawSnow(canvas: Canvas) {
+    private fun drawSnow(canvas: Canvas, phase: Float) {
         paint.color = 0xFFC2E8FF.toInt()
         paint.strokeWidth = 3.5f
         paint.style = Paint.Style.STROKE
-        listOf(32f to 83f, 53f to 88f, 74f to 82f).forEach { (x, y) ->
+        listOf(32f to 81f, 53f to 84f, 74f to 79f).forEachIndexed { index, (x, baseY) ->
+            val y = baseY + (phase * 9f + index * 3f) % 9f
             canvas.drawLine(x - 5f, y, x + 5f, y, paint)
             canvas.drawLine(x, y - 5f, x, y + 5f, paint)
         }
     }
 
-    private fun drawLightning(canvas: Canvas) {
-        paint.color = 0xFFFFD477.toInt()
+    private fun drawLightning(canvas: Canvas, phase: Float) {
+        val alpha = if (phase < .08f || phase in .18f..0.23f) 255 else 150
+        paint.color = (alpha shl 24) or 0x00FFD477
         paint.style = Paint.Style.FILL
         val bolt = Path().apply { moveTo(53f, 66f); lineTo(39f, 84f); lineTo(50f, 84f); lineTo(45f, 98f); lineTo(65f, 76f); lineTo(54f, 76f); close() }
         canvas.drawPath(bolt, paint)
     }
 
-    private fun drawFog(canvas: Canvas) {
+    private fun drawFog(canvas: Canvas, phase: Float) {
         paint.color = 0xFFB8D6E6.toInt()
         paint.strokeWidth = 4f
         paint.style = Paint.Style.STROKE
-        canvas.drawLine(21f, 78f, 79f, 78f, paint)
-        canvas.drawLine(29f, 88f, 71f, 88f, paint)
+        val drift = kotlin.math.sin(phase * Math.PI * 2.0).toFloat() * 5f
+        canvas.drawLine(21f + drift, 78f, 79f + drift, 78f, paint)
+        canvas.drawLine(29f - drift, 88f, 71f - drift, 88f, paint)
     }
 
     private fun startFloat() {
         if (animator != null) return
-        animator = ValueAnimator.ofFloat(0f, -3f, 0f).apply {
-            duration = 2400L
+        animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 1900L
             repeatCount = ValueAnimator.INFINITE
             interpolator = AccelerateDecelerateInterpolator()
-            addUpdateListener { floatOffset = (it.animatedValue as Float) * density; invalidate() }
+            addUpdateListener {
+                effectPhase = it.animatedValue as Float
+                floatOffset = kotlin.math.sin(effectPhase * Math.PI * 2.0).toFloat() * 2.4f * density
+                invalidate()
+            }
             start()
         }
     }

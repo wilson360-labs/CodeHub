@@ -3,6 +3,8 @@ package com.codehub.app
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -17,7 +19,6 @@ import android.os.Looper
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
@@ -64,11 +65,6 @@ class NativeWeatherActivity : Activity() {
     private var locationAttemptId = 0
     private var locationToken: CancellationTokenSource? = null
     private var returningFromLocationSettings = false
-    private var hostStarted = false
-    private var hostResumed = false
-    private var radarPlayer: NativeWeatherRadarView? = null
-    private var radarLatitude = Double.NaN
-    private var radarLongitude = Double.NaN
     private var weatherRequestId = 0
     private var geoSearchCall: Call? = null
     private var locationSearchInput: EditText? = null
@@ -94,7 +90,6 @@ class NativeWeatherActivity : Activity() {
     }
 
     override fun onDestroy() {
-        disposeRadarPlayer()
         request?.cancel()
         geoSearchCall?.cancel()
         locationAttemptId++
@@ -104,37 +99,12 @@ class NativeWeatherActivity : Activity() {
         super.onDestroy()
     }
 
-    override fun onStart() {
-        super.onStart()
-        hostStarted = true
-        radarPlayer?.onHostStart()
-    }
-
     override fun onResume() {
         super.onResume()
-        hostResumed = true
-        radarPlayer?.onHostResume()
         if (returningFromLocationSettings) {
             returningFromLocationSettings = false
             if (locationServicesEnabled()) requestLocation() else renderNoLocation("La ubicación sigue desactivada. Actívala para detectar tu zona, o busca una ciudad manualmente.")
         }
-    }
-
-    override fun onPause() {
-        hostResumed = false
-        radarPlayer?.onHostPause()
-        super.onPause()
-    }
-
-    override fun onStop() {
-        hostStarted = false
-        radarPlayer?.onHostStop()
-        super.onStop()
-    }
-
-    override fun onLowMemory() {
-        super.onLowMemory()
-        radarPlayer?.onHostLowMemory()
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
@@ -149,6 +119,11 @@ class NativeWeatherActivity : Activity() {
             gravity = Gravity.CENTER; contentDescription = "Volver"; setOnClickListener { finish() }
         }, LinearLayout.LayoutParams(dp(46), dp(50)))
         header.addView(text("Clima", 19f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(text("⊞ Widget", 12f, cyan, true).apply {
+            gravity = Gravity.CENTER
+            contentDescription = "Añadir widget de clima a la pantalla de inicio"
+            setOnClickListener { requestWeatherWidgetPin() }
+        }, LinearLayout.LayoutParams(dp(78), dp(44)).apply { marginEnd = dp(4) })
         header.addView(text("⟳", 26f, cyan, true).apply {
             gravity = Gravity.CENTER; contentDescription = "Actualizar clima"; setOnClickListener { loadWeather() }
         }, LinearLayout.LayoutParams(dp(44), dp(48)))
@@ -162,7 +137,6 @@ class NativeWeatherActivity : Activity() {
     }
 
     private fun renderNoLocation(message: String = "Elige una ciudad o comparte tu ubicación para ver el pronóstico.") {
-        disposeRadarPlayer()
         content.removeAllViews()
         content.addView(card {
             addView(text("Tu clima, en CodeHub", 21f, Color.WHITE, true))
@@ -180,7 +154,6 @@ class NativeWeatherActivity : Activity() {
             addView(text("Cargando el pronóstico…", 13f, muted), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
         })
         content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
-        addRadarPlayer()
         addBackgroundControls()
     }
 
@@ -190,9 +163,9 @@ class NativeWeatherActivity : Activity() {
         request?.cancel()
         renderLoading()
         val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
-            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day" +
-            "&hourly=temperature_2m,precipitation_probability,weather_code,uv_index" +
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=3&timezone=auto"
+            "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,pressure_msl,cloud_cover,visibility,is_day" +
+            "&hourly=temperature_2m,precipitation,precipitation_probability,weather_code,uv_index,visibility" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max&forecast_days=3&timezone=auto"
         request = http.newCall(Request.Builder().url(url).header("User-Agent", "CodeHub-Android").build())
         request?.enqueue(object : okhttp3.Callback {
             override fun onFailure(call: Call, e: java.io.IOException) = runOnUiThread {
@@ -228,7 +201,6 @@ class NativeWeatherActivity : Activity() {
         place.addView(text("Mi ubicación  ›", 11f, cyan, true).apply { setOnClickListener { requestLocation() } })
         content.addView(place)
         content.addView(citySearch(), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(9) })
-        addRadarPlayer()
 
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -253,14 +225,25 @@ class NativeWeatherActivity : Activity() {
         content.addView(text("Ahora mismo", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
         val metricRow1 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         metricRow1.addView(metricCard("Humedad", "${current.optInt("relative_humidity_2m")} %", "Gotas", cyan), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
-        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas", 0xFFB9A5FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
+        val gusts = current.optInt("wind_gusts_10m", current.optInt("wind_speed_10m"))
+        val windDirection = current.optInt("wind_direction_10m", -1).let { if (it < 0) "" else " · ${it}°" }
+        metricRow1.addView(metricCard("Viento", "${current.optInt("wind_speed_10m")} km/h", "Ráfagas $gusts km/h$windDirection", 0xFFB9A5FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
         content.addView(metricRow1)
         val metricRow2 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val rain = hours.optJSONArray("precipitation_probability")?.optInt(currentHourIndex) ?: 0
-        metricRow2.addView(metricCard("Lluvia", "$rain %", "Próxima hora", 0xFF88B9FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
+        val rainMm = hours.optJSONArray("precipitation")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f mm", it) } ?: "—"
+        metricRow2.addView(metricCard("Lluvia", "$rain %", "$rainMm · próxima hora", 0xFF88B9FF.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
         val uv = hours.optJSONArray("uv_index")?.optDouble(currentHourIndex)?.let { String.format(java.util.Locale.getDefault(), "%.1f", it) } ?: "—"
         metricRow2.addView(metricCard("Índice UV", uv, "Hoy", 0xFFFFCF70.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
         content.addView(metricRow2, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+
+        val metricRow3 = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        metricRow3.addView(metricCard("Nubosidad", "${current.optInt("cloud_cover")} %", "Cobertura del cielo", 0xFFC4D7F2.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginEnd = dp(5) })
+        val pressure = current.optDouble("pressure_msl", Double.NaN).takeIf { it.isFinite() }?.toInt()?.toString() ?: "—"
+        metricRow3.addView(metricCard("Presión", "$pressure hPa", "A nivel del mar", 0xFFA5B4FC.toInt()), LinearLayout.LayoutParams(0, dp(94), 1f).apply { marginStart = dp(5) })
+        content.addView(metricRow3, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        val visibilityKm = current.optDouble("visibility", Double.NaN).takeIf { it.isFinite() }?.let { String.format(java.util.Locale.getDefault(), "%.1f km", it / 1000.0) } ?: "—"
+        content.addView(metricCard("Visibilidad", visibilityKm, "Alcance estimado", 0xFF9FE7D4.toInt()), LinearLayout.LayoutParams(-1, dp(88)).apply { topMargin = dp(8) })
 
         content.addView(text("Pronóstico por hora", 17f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(22); bottomMargin = dp(9) })
         val hourlyRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -295,14 +278,24 @@ class NativeWeatherActivity : Activity() {
         val dayCodes = daily.optJSONArray("weather_code")
         val maxes = daily.optJSONArray("temperature_2m_max")
         val mins = daily.optJSONArray("temperature_2m_min")
+        val rainChances = daily.optJSONArray("precipitation_probability_max")
+        val rainTotals = daily.optJSONArray("precipitation_sum")
         repeat(dates?.length() ?: 0) { i ->
             content.addView(card {
                 orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
                 addView(text(if (i == 0) "Hoy" else formatDay(dates?.optString(i).orEmpty()), 14f, Color.WHITE, true), LinearLayout.LayoutParams(0, -2, 1f))
-                addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 11f, muted), LinearLayout.LayoutParams(dp(110), -2))
+                val rainTotal = rainTotals?.optDouble(i, 0.0) ?: 0.0
+                val rainSummary = "Lluvia ${rainChances?.optInt(i) ?: 0}% · ${String.format(java.util.Locale.getDefault(), "%.1f", rainTotal)} mm"
+                val dayDescription = LinearLayout(this@NativeWeatherActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(text(weatherName(dayCodes?.optInt(i) ?: 0), 10f, muted, true), LinearLayout.LayoutParams(-1, -2))
+                    addView(text(rainSummary, 9f, 0xFF9CD9FF.toInt()), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(2) })
+                }
+                addView(dayDescription, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6) })
                 addView(NativeWeatherGlyph(this@NativeWeatherActivity, dayCodes?.optInt(i) ?: 0, 30), LinearLayout.LayoutParams(dp(36), dp(36)))
                 addView(text("${mins?.optDouble(i)?.toInt() ?: 0}°  ${maxes?.optDouble(i)?.toInt() ?: 0}°", 13f, Color.WHITE, true))
-            }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(8) })
         }
         addBackgroundControls()
         animateEntrance(content)
@@ -558,33 +551,10 @@ class NativeWeatherActivity : Activity() {
         loadWeather()
     }
 
-    private fun disposeRadarPlayer() {
-        val old = radarPlayer ?: return
-        (old.parent as? ViewGroup)?.removeView(old)
-        old.dispose()
-        radarPlayer = null
-        radarLatitude = Double.NaN
-        radarLongitude = Double.NaN
-    }
-
-    private fun addRadarPlayer() {
-        if (radarPlayer == null || radarLatitude != lat || radarLongitude != lon) {
-            disposeRadarPlayer()
-            radarPlayer = NativeWeatherRadarView(this, lat, lon)
-            radarLatitude = lat
-            radarLongitude = lon
-        }
-        val player = radarPlayer ?: return
-        (player.parent as? ViewGroup)?.removeView(player)
-        content.addView(player, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
-        if (hostStarted) player.onHostStart()
-        if (hostResumed) player.onHostResume()
-    }
-
     private fun addBackgroundControls() {
         content.addView(text("Servicios de fondo", 16f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(7) })
         val widget = Switch(this).apply {
-            text = "Alertas de clima y widget"; textSize = 13f; setTextColor(Color.WHITE)
+            text = "Alertas de clima"; textSize = 13f; setTextColor(Color.WHITE)
             isChecked = prefs.getBoolean("weather_notification_enabled", true)
             setOnCheckedChangeListener { _, checked ->
                 if (checked && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -654,6 +624,23 @@ class NativeWeatherActivity : Activity() {
             Toast.makeText(this, "Android no permitió iniciar el detector: ${error.localizedMessage ?: "error de servicio"}", Toast.LENGTH_LONG).show()
             return false
         }
+    }
+
+    private fun requestWeatherWidgetPin() {
+        val manager = getSystemService(APPWIDGET_SERVICE) as? AppWidgetManager
+        val provider = ComponentName(this, WeatherWidgetProvider::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager?.isRequestPinAppWidgetSupported == true) {
+            val requested = runCatching { manager.requestPinAppWidget(provider, null, null) }.getOrDefault(false)
+            if (requested) {
+                Toast.makeText(this, "Confirma en tu pantalla de inicio para añadir el widget.", Toast.LENGTH_LONG).show()
+                return
+            }
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Añadir widget de clima")
+            .setMessage("Mantén presionada la pantalla de inicio, abre Widgets y elige CodeHub · Clima.")
+            .setPositiveButton("Entendido", null)
+            .show()
     }
 
     private fun validLocation() = lat.isFinite() && lon.isFinite() && (lat != 0.0 || lon != 0.0)

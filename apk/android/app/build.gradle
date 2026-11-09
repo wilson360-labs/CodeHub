@@ -117,8 +117,6 @@ dependencies {
     // Desugaring de librerías java.time (ver compileOptions arriba).
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.1.5'
     implementation 'com.google.android.gms:play-services-location:21.3.0'
-    // Mapa vectorial nativo para el mini radar de precipitación.
-    implementation 'org.maplibre.gl:android-sdk-opengl:13.6.1'
     // WorkManager — sync periódico (FCM + ubicación) sin Foreground Service.
     // Reemplaza a CodeHubSyncService (tipo dataSync), que en Android 15/16
     // lanzaba ForegroundServiceDidNotStopInTimeException. Misma versión que la
