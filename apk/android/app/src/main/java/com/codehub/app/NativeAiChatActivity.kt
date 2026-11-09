@@ -12,6 +12,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Bundle
@@ -201,6 +202,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         top.addView(ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_back)
             imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            background = rippleActionBackground(0xFF111A27.toInt(), 0xFF2B3A50.toInt())
             scaleType = ImageView.ScaleType.CENTER
             contentDescription = "Volver"
             isClickable = true
@@ -232,7 +234,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setImageResource(R.drawable.ic_ai_trash)
             imageTintList = android.content.res.ColorStateList.valueOf(0xFFB8C5D8.toInt())
             scaleType = ImageView.ScaleType.CENTER
-            background = actionIconBackground(0xFF151D2B.toInt(), 0xFF354258.toInt())
+            background = rippleActionBackground(0xFF151D2B.toInt(), 0xFF354258.toInt())
             contentDescription = "Borrar conversación"
             isClickable = true
             isFocusable = true
@@ -249,6 +251,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             setImageResource(R.drawable.ic_ai_more)
             imageTintList = android.content.res.ColorStateList.valueOf(0xFFCAD4E8.toInt())
             scaleType = ImageView.ScaleType.CENTER
+            background = rippleActionBackground(0xFF111A27.toInt(), 0xFF2B3A50.toInt())
             contentDescription = "Opciones del chat"
             isClickable = true
             isFocusable = true
@@ -367,6 +370,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             isFocusable = true
             clipChildren = false
             clipToPadding = false
+            foreground = rippleForeground(0x55B8FFF0.toInt())
             setOnClickListener { animateMicPulse(); startSpeechInput() }
             addView(micHalo, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
             addView(micButton, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
@@ -380,6 +384,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         sendButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_send)
             imageTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
+            foreground = rippleForeground(0x66FFFFFF)
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF7D8AFF.toInt(), 0xFF5868E8.toInt())).apply {
                 cornerRadius = dp(21).toFloat()
                 setStroke(dp(1), 0xFFB0B9FF.toInt())
@@ -423,6 +428,18 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
         shape = GradientDrawable.OVAL
         setStroke(dp(1), stroke)
     }
+
+    private fun rippleForeground(color: Int) = RippleDrawable(
+        android.content.res.ColorStateList.valueOf(color),
+        null,
+        GradientDrawable().apply { setColor(Color.WHITE); shape = GradientDrawable.OVAL },
+    )
+
+    private fun rippleActionBackground(fill: Int, stroke: Int) = RippleDrawable(
+        android.content.res.ColorStateList.valueOf(0x55DCE8FF.toInt()),
+        actionIconBackground(fill, stroke),
+        GradientDrawable().apply { setColor(Color.WHITE); shape = GradientDrawable.OVAL },
+    )
 
     private fun animateMicPulse() {
         if (!::micButton.isInitialized || !::micHalo.isInitialized) return
@@ -1151,7 +1168,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private fun smallIconAction(icon: Int, description: String, action: () -> Unit) = ImageView(this).apply {
         setImageResource(icon)
         imageTintList = android.content.res.ColorStateList.valueOf(0xFFDCE6F5.toInt())
-        background = actionIconBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
+        background = rippleActionBackground(0xFF182334.toInt(), 0xFF34445A.toInt())
         contentDescription = description
         scaleType = ImageView.ScaleType.CENTER
         isClickable = true
@@ -1187,8 +1204,11 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun installPressFeedback(view: View) {
         view.setOnTouchListener { touched, event ->
-            val scale = if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) .96f else 1f
-            touched.animate().scaleX(scale).scaleY(scale).setDuration(130L).setInterpolator(DecelerateInterpolator()).start()
+            val pressed = event.actionMasked == android.view.MotionEvent.ACTION_DOWN
+            val scale = if (pressed) .90f else 1f
+            touched.animate().scaleX(scale).scaleY(scale).alpha(if (pressed) .78f else 1f)
+                .setDuration(if (pressed) 95L else 180L)
+                .setInterpolator(DecelerateInterpolator()).start()
             false
         }
     }

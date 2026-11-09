@@ -217,7 +217,7 @@ class CodeSuActivity : Activity() {
             addView(statusText)
             engineText = label("Killer engine · Shizuku", 12f, muted, true)
             addView(engineText, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-            connectionHelp = label("Shizuku funciona por ADB inalámbrico o root. CodeSu no necesita root si Shizuku está activo.", 11f, muted)
+            connectionHelp = label("Conecta Shizuku mediante Depuración inalámbrica (ADB) y autoriza CodeHub. No se necesita root.", 11f, muted)
             addView(connectionHelp, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
             connectButton = Button(this@CodeSuActivity).apply {
                 text = "Conectar Shizuku"
@@ -408,7 +408,7 @@ class CodeSuActivity : Activity() {
             connectionHelp.text = when (status) {
                 SystemCleaner.Status.NEEDS_PERMISSION -> "Pulsa Autorizar CodeHub y acepta el permiso en Shizuku."
                 SystemCleaner.Status.NOT_RUNNING -> "Inicia Shizuku desde su app; luego vuelve aquí y comprueba la conexión."
-                SystemCleaner.Status.NOT_INSTALLED -> "CodeSu usa Shizuku o Sui para ejecutar cierres con identidad ADB/root."
+                SystemCleaner.Status.NOT_INSTALLED -> "CodeSu usa Shizuku con Depuración inalámbrica (ADB); CodeHub no solicita root."
                 else -> "Comprueba que Shizuku esté iniciado y vuelve a autorizar CodeHub si es necesario."
             }
         } else {
@@ -617,7 +617,7 @@ class CodeSuActivity : Activity() {
         hideCriticalCheck.isChecked = hideCriticalApps
         killHelp.text = when (killMode) {
             CodeSuUserService.LEVEL_BACKGROUND -> "Soft · am kill; Android decide qué proceso de fondo es seguro cerrar."
-            CodeSuUserService.LEVEL_KILLER -> "Killer · fuerza el cierre; usa SIGKILL adicional con motor root."
+            CodeSuUserService.LEVEL_KILLER -> "Killer · fuerza el cierre; con ADB ejecuta force-stop sin requerir root."
             else -> "Deep · am force-stop; detiene el paquete hasta que vuelva a abrirse."
         }
         renderListStyleControls()
@@ -877,7 +877,7 @@ class CodeSuActivity : Activity() {
                         append("Motor: UserService Shizuku ($identity)")
                         if (failedNames.isNotEmpty()) append("\nNo se completó: ${failedNames.joinToString()}")
                         if (killMode == CodeSuUserService.LEVEL_BACKGROUND) append("\nSoft solo cierra procesos que Android considera seguros de terminar.")
-                        if (killMode == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer aplica force-stop; SIGKILL directo requiere root.")
+                        if (killMode == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer usa force-stop. CodeHub no necesita root.")
                     }
                     AlertDialog.Builder(this).setTitle("CodeSu").setMessage(message).setPositiveButton("Listo", null).show()
                     refreshRunningState()

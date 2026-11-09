@@ -520,11 +520,13 @@ public class MainActivity extends Activity {
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setAllowFileAccess(true);
+        // The remote site doesn't need file:// access. Keep content:// enabled
+        // because Android's document picker grants scoped upload URIs.
+        s.setAllowFileAccess(false);
         s.setAllowContentAccess(true);
         s.setDatabaseEnabled(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setLoadWithOverviewMode(true);
         s.setUseWideViewPort(true);
@@ -532,14 +534,11 @@ public class MainActivity extends Activity {
         s.setDisplayZoomControls(false);
         s.setSupportZoom(false);
         s.setSupportMultipleWindows(false);
-        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(false);
         s.setGeolocationEnabled(true);
-        // Permitir TODOS los recursos externos (tiles de mapa, APIs de clima,
-        // anuncios/rastreadores). Chrome Safe Browsing bloquea por defecto
-        // hosts que considera "maliciosos" o de rastreo, lo que en CodeHub
-        // hacía que no cargasen tiles de mapa/capas ni algunas APIs.
+        // Mantener la protección de Safe Browsing para páginas sospechosas.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            s.setSafeBrowsingEnabled(false);
+            s.setSafeBrowsingEnabled(true);
         }
         s.setBlockNetworkImage(false);
         s.setBlockNetworkLoads(false);
@@ -553,23 +552,29 @@ public class MainActivity extends Activity {
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             if (url == null || url.isEmpty()) return;
+            Uri downloadUri = Uri.parse(url);
+            if (!"https".equalsIgnoreCase(downloadUri.getScheme())) {
+                Toast.makeText(this, "Por seguridad, solo se permiten descargas HTTPS.", Toast.LENGTH_LONG).show();
+                return;
+            }
             DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
             if (dm == null) return;
             try {
                 DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
                 req.setMimeType(mimeType);
-                String fileName = "download";
-                if (contentDisposition != null) {
-                    int idx = contentDisposition.indexOf("filename=");
-                    if (idx > -1) fileName = contentDisposition.substring(idx + 9).replace("\"", "").trim();
-                }
-                final String safeFileName = fileName;
-                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFileName);
+                String guessedName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
+                String safeFileName = guessedName
+                    .replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_")
+                    .replaceAll("\\.{2,}", "_")
+                    .trim();
+                if (safeFileName.isEmpty()) safeFileName = "download";
+                final String destinationName = safeFileName;
+                req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, destinationName);
                 req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                req.setTitle(safeFileName);
+                req.setTitle(destinationName);
                 req.setDescription("Descargando desde CodeHub");
                 dm.enqueue(req);
-                runOnUiThread(() -> Toast.makeText(this, "Descargando " + safeFileName, Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "Descargando " + destinationName, Toast.LENGTH_SHORT).show());
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "Error al descargar: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
@@ -606,7 +611,9 @@ public class MainActivity extends Activity {
              *  exacta de host, sin subdominios falsos). */
             private boolean isAppHost(String url) {
                 try {
-                    String host = Uri.parse(url).getHost();
+                    Uri uri = Uri.parse(url);
+                    if (!"https".equalsIgnoreCase(uri.getScheme())) return false;
+                    String host = uri.getHost();
                     if (host == null) return false;
                     return "wilson360-labs.vercel.app".equalsIgnoreCase(host)
                         || "codehub-98s6.onrender.com".equalsIgnoreCase(host);

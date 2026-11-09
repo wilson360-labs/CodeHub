@@ -2632,10 +2632,13 @@ app.get('/api/apps/:appId/download', async (req, res) => {
 function compareAppReleaseVersions(left, right) {
   const clean = value => String(value || '').trim().replace(/^v/i, '').split('+', 1)[0];
   const a = clean(left), b = clean(right);
-  if (!a || a.toLowerCase() === b.toLowerCase()) return 0;
+  if (!a || !b) return null;
+  if (a.toLowerCase() === b.toLowerCase()) return 0;
   const pattern = /^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?$/;
   const av = a.match(pattern), bv = b.match(pattern);
-  if (!av || !bv) return a.toLowerCase() === b.toLowerCase() ? 0 : 1;
+  // If either upstream version is opaque, do not invent an update by
+  // lexicographically guessing. The API reports it as unchecked instead.
+  if (!av || !bv) return null;
   const ac = av[1].split('.'), bc = bv[1].split('.');
   for (let i = 0; i < Math.max(ac.length, bc.length); i++) {
     const x = BigInt(ac[i] || '0'), y = BigInt(bc[i] || '0');
@@ -2665,7 +2668,7 @@ app.post('/api/app-updates', async (req, res) => {
       // Allowlist de repos: solo "owner/repo" simples. Cualquier otro formato
       // (URLs, ../, caracteres raros) se ignora en lugar de interpolarse en fetch.
       const REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-      if (!app.source_repo || !REPO_RE.test(app.source_repo)) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+      if (!app.source_repo || !REPO_RE.test(app.source_repo)) return { appId: app.appId, currentVersion: app.version, latestVersion: null, hasUpdate: false, checked: false, error: 'invalid_repository' };
       const cacheKey = `update:v2:${app.source_repo}`;
       let latestVersion = await cacheGet(cacheKey);
       if (!latestVersion) {
@@ -2673,22 +2676,27 @@ app.post('/api/app-updates', async (req, res) => {
           headers: { 'User-Agent': 'CodeHub-Catalog', 'Accept': 'application/vnd.github.v3+json' },
           signal: AbortSignal.timeout(5000)
         });
-        if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+        if (!ghRes.ok) return { appId: app.appId, currentVersion: app.version, latestVersion: null, hasUpdate: false, checked: false, error: `github_http_${ghRes.status}` };
         const release = await ghRes.json();
         latestVersion = release.tag_name || '';
-        if (!latestVersion) return { appId: app.appId, currentVersion: app.version, latestVersion: app.version, hasUpdate: false, downloadUrl: null };
+        if (!latestVersion) return { appId: app.appId, currentVersion: app.version, latestVersion: null, hasUpdate: false, checked: false, error: 'release_without_version' };
         await cacheSet(cacheKey, latestVersion, 600);
       }
+      const comparison = compareAppReleaseVersions(latestVersion, app.version);
+      if (comparison == null) return { appId: app.appId, currentVersion: app.version, latestVersion, hasUpdate: false, checked: false, error: 'unsupported_version_format' };
       const downloadUrl = `${(process.env.BACKEND_URL || 'https://codehub-98s6.onrender.com').replace(/\/+$/, '')}/api/apps/${encodeURIComponent(app.appId)}/download`;
       return {
         appId: app.appId,
         currentVersion: app.version,
         latestVersion,
-        hasUpdate: compareAppReleaseVersions(latestVersion, app.version) > 0,
+        hasUpdate: comparison > 0,
+        checked: true,
         downloadUrl
       };
     }));
-    res.json(results.map(r => r.status === 'fulfilled' ? r.value : { appId: '?', hasUpdate: false }));
+    res.json(results.map((result, index) => result.status === 'fulfilled'
+      ? result.value
+      : { appId: apps[index]?.appId || '', currentVersion: apps[index]?.version || '', latestVersion: null, hasUpdate: false, checked: false, error: 'release_lookup_failed' }));
   } catch { res.status(500).json({ error: 'Error checking updates' }); }
 });
 

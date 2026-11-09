@@ -613,7 +613,7 @@ class NativeStoreActivity : Activity() {
         }
         val updatesToShow = if (home) updatedApps.filterNot { it.id in showcasedIds } else emptyList()
         if (home && updatesToShow.isNotEmpty()) {
-            appList.addView(label("Con nueva versión", 18f, 0xFFFFFFFF.toInt(), true).apply {
+            appList.addView(label("Actualizadas recientemente", 18f, 0xFFFFFFFF.toInt(), true).apply {
                 setPadding(0, dp(8), 0, dp(10))
             })
             val rail = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
@@ -802,7 +802,7 @@ class NativeStoreActivity : Activity() {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        val supporting = if (showRating) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} reseñas" else "Nueva versión · ${app.version}"
+        val supporting = if (showRating) "★ ${"%.1f".format(Locale.ROOT, app.ratingAverage)} · ${app.ratingCount} reseñas" else "Versión ${app.version} · catálogo"
         info.addView(label(supporting, 11f, 0xFFB7C5FF.toInt()).apply {
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
@@ -1249,7 +1249,7 @@ class NativeStoreActivity : Activity() {
             .create()
         detailDialog = dialog
         dialog.setOnShowListener {
-            val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://") || it.startsWith("http://") } ?: app.repo
+            val downloadTarget = app.downloadUrl.takeIf { it.startsWith("https://", ignoreCase = true) } ?: app.repo
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { openExternal(downloadTarget) }
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { openExternal(app.repo) }
         }
@@ -1556,7 +1556,7 @@ class NativeStoreActivity : Activity() {
 
     private fun openExternal(rawUrl: String) {
         val target = rawUrl.trim()
-        if (!target.startsWith("https://") && !target.startsWith("http://")) {
+        if (!target.startsWith("https://", ignoreCase = true)) {
             Toast.makeText(this, "Esta app no tiene un enlace disponible", Toast.LENGTH_SHORT).show()
             return
         }

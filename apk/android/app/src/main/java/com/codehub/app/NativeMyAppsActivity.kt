@@ -169,12 +169,13 @@ class NativeMyAppsActivity : Activity() {
                 val local = fetchInstalledApps(byPackage)
                 val recentDownloads = fetchDownloads(catalog.associateBy { it.id })
                 val managed = local.filter { it.repo.isNotBlank() && !it.id.startsWith("local:") }
-                val updates = try { fetchUpdates(managed) } catch (_: Exception) {
+                val updateCheck = try { fetchUpdates(managed) } catch (_: Exception) {
                     failedUpdates = true
-                    emptyMap()
+                    UpdateCheckResult(emptyMap(), incomplete = true)
                 }
+                if (updateCheck.incomplete) failedUpdates = true
                 local.forEach { app ->
-                    val update = updates[app.id]
+                    val update = updateCheck.byAppId[app.id]
                     app.latestVersion = update?.first.orEmpty()
                     app.downloadUrl = update?.second.orEmpty()
                 }
@@ -275,8 +276,8 @@ class NativeMyAppsActivity : Activity() {
         return result
     }
 
-    private fun fetchUpdates(apps: List<AppEntry>): Map<String, Pair<String, String>> {
-        if (apps.isEmpty()) return emptyMap()
+    private fun fetchUpdates(apps: List<AppEntry>): UpdateCheckResult {
+        if (apps.isEmpty()) return UpdateCheckResult(emptyMap(), incomplete = false)
         val payload = JSONObject().put("apps", JSONArray().apply {
             apps.forEach { app ->
                 put(JSONObject()
@@ -288,13 +289,22 @@ class NativeMyAppsActivity : Activity() {
         val response = postJson(UPDATES_API, payload.toString())
         val rows = JSONArray(response)
         val updates = mutableMapOf<String, Pair<String, String>>()
+        var incomplete = false
         for (i in 0 until rows.length()) {
             val row = rows.optJSONObject(i) ?: continue
+            // Older backend responses don't contain `checked`; a successful
+            // legacy row has a version and a download endpoint, while failed
+            // lookups returned a null URL. Never turn those failures into "Al día".
+            val hasLegacyResult = row.optString("latestVersion").isNotBlank()
+                && row.optString("downloadUrl").startsWith("https://", ignoreCase = true)
+            val checked = row.optBoolean("checked", hasLegacyResult)
+            if (!checked) { incomplete = true; continue }
             if (!row.optBoolean("hasUpdate")) continue
             val id = row.optString("appId")
             if (id.isNotBlank()) updates[id] = row.optString("latestVersion") to row.optString("downloadUrl")
         }
-        return updates
+        if (rows.length() < apps.size) incomplete = true
+        return UpdateCheckResult(updates, incomplete)
     }
 
     private fun request(url: String): String = openConnection(url, null)
@@ -800,6 +810,11 @@ class NativeMyAppsActivity : Activity() {
             )
         }
     }
+
+    private data class UpdateCheckResult(
+        val byAppId: Map<String, Pair<String, String>>,
+        val incomplete: Boolean,
+    )
 
     private data class DownloadEntry(
         val title: String,
