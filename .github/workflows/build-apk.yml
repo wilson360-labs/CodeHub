@@ -433,7 +433,9 @@ jobs:
           UNIVERSAL=$(find "$RELEASE_DIR" -type f -name '*universal*.apk' -print -quit 2>/dev/null || true)
           ARM64=$(find "$RELEASE_DIR" -type f -name '*arm64-v8a*.apk' -print -quit 2>/dev/null || true)
           ARMV7=$(find "$RELEASE_DIR" -type f -name '*armeabi-v7a*.apk' -print -quit 2>/dev/null || true)
-          if [ -z "$UNIVERSAL" ] || [ -z "$ARM64" ] || [ -z "$ARMV7" ]; then
+          X86_64=$(find "$RELEASE_DIR" -type f -name '*x86_64*.apk' -print -quit 2>/dev/null || true)
+          X86=$(find "$RELEASE_DIR" -type f -name '*x86*.apk' ! -name '*x86_64*.apk' -print -quit 2>/dev/null || true)
+          if [ -z "$UNIVERSAL" ] || [ -z "$ARM64" ] || [ -z "$ARMV7" ] || [ -z "$X86_64" ] || [ -z "$X86" ]; then
             echo "No APK found!"
             {
               echo "## No se encontró APK tras \`assembleRelease\` · commit \`$GITHUB_SHA\`";
@@ -460,7 +462,9 @@ jobs:
           cp "$UNIVERSAL" apk/android/app-release-signed.apk
           cp "$ARM64" apk/android/app-release-arm64-v8a.apk
           cp "$ARMV7" apk/android/app-release-armeabi-v7a.apk
-          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+          cp "$X86_64" apk/android/app-release-x86_64.apk
+          cp "$X86" apk/android/app-release-x86.apk
+          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk apk/android/app-release-x86_64.apk apk/android/app-release-x86.apk; do
             APK_SIZE_BYTES=$(stat -c%s "$APK")
             echo "$(basename "$APK"): $(numfmt --to=iec --suffix=B "$APK_SIZE_BYTES")"
             echo "Largest packaged entries in $(basename "$APK") (compressed bytes):"
@@ -469,6 +473,8 @@ jobs:
           echo "path=apk/android/app-release-signed.apk" >> $GITHUB_OUTPUT
           echo "arm64_path=apk/android/app-release-arm64-v8a.apk" >> $GITHUB_OUTPUT
           echo "armv7_path=apk/android/app-release-armeabi-v7a.apk" >> $GITHUB_OUTPUT
+          echo "x86_64_path=apk/android/app-release-x86_64.apk" >> $GITHUB_OUTPUT
+          echo "x86_path=apk/android/app-release-x86.apk" >> $GITHUB_OUTPUT
 
       - name: Verificar pin de firma (keystore original)
         if: env.HAS_RELEASE_SECRETS == 'true'
@@ -485,7 +491,7 @@ jobs:
           fi
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name 'apksigner' -type f | sort -V | tail -1)
           if [ -z "$APKSIGNER" ]; then echo "::error::apksigner no encontrado en el SDK."; exit 1; fi
-          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+          for APK in apk/android/app-release-signed.apk apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk apk/android/app-release-x86_64.apk apk/android/app-release-x86.apk; do
             DIGEST=$("$APKSIGNER" verify --print-certs "$APK" | grep -i 'SHA-256 digest' | head -1 | sed -E 's/.*: *//' | tr 'A-F' 'a-f' | tr -d ' :\r\n')
             if [ -z "$DIGEST" ] || [ "$DIGEST" != "$EXPECTED" ]; then
               echo "::error::La firma de $(basename "$APK") no coincide con el keystore original."
@@ -503,6 +509,8 @@ jobs:
             apk/android/app-release-signed.apk
             apk/android/app-release-arm64-v8a.apk
             apk/android/app-release-armeabi-v7a.apk
+            apk/android/app-release-x86_64.apk
+            apk/android/app-release-x86.apk
           retention-days: 7
 
       - name: Upload APK to Supabase Storage
@@ -514,7 +522,7 @@ jobs:
         run: |
           set -euo pipefail
           SUPABASE_FREE_LIMIT_BYTES=$((50 * 1000 * 1000))
-          for APK in apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk; do
+          for APK in apk/android/app-release-arm64-v8a.apk apk/android/app-release-armeabi-v7a.apk apk/android/app-release-x86_64.apk apk/android/app-release-x86.apk; do
             [ -f "$APK" ] || continue
             APK_SIZE_BYTES=$(stat -c%s "$APK")
             ASSET=$(basename "$APK")
@@ -554,6 +562,8 @@ jobs:
             ${{ steps.find-apk.outputs.path }}
             ${{ steps.find-apk.outputs.arm64_path }}
             ${{ steps.find-apk.outputs.armv7_path }}
+            ${{ steps.find-apk.outputs.x86_64_path }}
+            ${{ steps.find-apk.outputs.x86_path }}
           make_latest: true
           generate_release_notes: true
         env:

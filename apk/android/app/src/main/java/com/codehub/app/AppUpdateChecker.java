@@ -65,6 +65,8 @@ public class AppUpdateChecker {
     private static final String APK_ASSET_NAME = "app-release-signed.apk";
     private static final String APK_ARM64_ASSET_NAME = "app-release-arm64-v8a.apk";
     private static final String APK_ARMV7_ASSET_NAME = "app-release-armeabi-v7a.apk";
+    private static final String APK_X86_64_ASSET_NAME = "app-release-x86_64.apk";
+    private static final String APK_X86_ASSET_NAME = "app-release-x86.apk";
 
     private static final String PREFS = "codehub";
     private static final String PREF_LAST_CHECK = "update_last_check_ts";
@@ -252,6 +254,8 @@ public class AppUpdateChecker {
         for (String abi : Build.SUPPORTED_ABIS) {
             if ("arm64-v8a".equals(abi)) return APK_ARM64_ASSET_NAME;
             if ("armeabi-v7a".equals(abi)) return APK_ARMV7_ASSET_NAME;
+            if ("x86_64".equals(abi)) return APK_X86_64_ASSET_NAME;
+            if ("x86".equals(abi)) return APK_X86_ASSET_NAME;
         }
         return APK_ASSET_NAME;
     }

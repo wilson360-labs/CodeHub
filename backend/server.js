@@ -3330,6 +3330,8 @@ app.get('/api/download/:fileName', async (req, res) => {
       'app-release-signed.apk',
       'app-release-arm64-v8a.apk',
       'app-release-armeabi-v7a.apk',
+      'app-release-x86_64.apk',
+      'app-release-x86.apk',
     ]);
     if (codeHubApkAssets.has(key)) {
       try {
