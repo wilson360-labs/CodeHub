@@ -26,6 +26,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import rikka.shizuku.Shizuku
@@ -40,6 +41,8 @@ class CodeSuActivity : Activity() {
     private val cyan = 0xFF22D3EE.toInt()
     private val prefs by lazy { getSharedPreferences("codesu_preferences", MODE_PRIVATE) }
     private val selectedPackages = linkedSetOf<String>()
+    private val closedPackages = linkedSetOf<String>()
+    private val hibernatedPackages = linkedSetOf<String>()
     private val allApps = mutableListOf<Candidate>()
     private val runningLabels = mutableMapOf<String, TextView>()
     @Volatile private var runningPackages = emptySet<String>()
@@ -67,6 +70,9 @@ class CodeSuActivity : Activity() {
     private lateinit var hideCriticalCheck: CheckBox
     private lateinit var listRefreshButton: Button
     private lateinit var closeAllButton: Button
+    private lateinit var hibernateButton: Button
+    private lateinit var closeProgress: ProgressBar
+    private lateinit var closeProgressLabel: TextView
     private lateinit var autoControls: LinearLayout
     private lateinit var autoInfo: TextView
     private lateinit var listStyleControls: LinearLayout
@@ -78,6 +84,7 @@ class CodeSuActivity : Activity() {
     private var screenOffDelayMinutes = 1
     private var compactRows = false
     private var listError: String? = null
+    private var isProcessing = false
 
     @Volatile private var remoteService: ICodeSuRemoteService? = null
     @Volatile private var bindLatch: CountDownLatch? = null
@@ -129,6 +136,8 @@ class CodeSuActivity : Activity() {
         super.onCreate(savedInstanceState)
         SystemBars.fit(this)
         selectedPackages.addAll(prefs.getStringSet("selected_packages", emptySet()).orEmpty())
+        closedPackages.addAll(prefs.getStringSet("closed_packages", emptySet()).orEmpty())
+        hibernatedPackages.addAll(prefs.getStringSet("hibernated_packages", emptySet()).orEmpty())
         sourceMode = SourceMode.entries.getOrElse(prefs.getInt("source_mode", SourceMode.ALL.ordinal)) { SourceMode.ALL }
         selectionMode = SelectionMode.entries.getOrElse(prefs.getInt("selection_mode", 0)) { SelectionMode.INCLUDE }
         killMode = prefs.getInt("kill_mode", CodeSuUserService.LEVEL_FORCE_STOP)
@@ -360,9 +369,28 @@ class CodeSuActivity : Activity() {
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val footer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(5), dp(18), dp(8))
+        }
+        closeProgressLabel = label("Listo para optimizar", 10f, muted)
+        footer.addView(closeProgressLabel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(3) })
+        closeProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF4ADE80.toInt())
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0xFF263244.toInt())
+            visibility = View.GONE
+        }
+        footer.addView(closeProgress, LinearLayout.LayoutParams(-1, dp(5)).apply { bottomMargin = dp(7) })
+        hibernateButton = Button(this).apply {
+            text = "Hibernar seleccionadas (0)"
+            isAllCaps = false
+            setOnClickListener { confirmHibernateTargets() }
+        }
+        footer.addView(hibernateButton, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(5) })
+        val actions = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(18), dp(6), dp(18), dp(8))
         }
         actionButton = Button(this).apply {
             text = "Cerrar seleccionadas (0)"
@@ -370,14 +398,15 @@ class CodeSuActivity : Activity() {
             isEnabled = false
             setOnClickListener { confirmStopTargets() }
         }
-        footer.addView(actionButton, LinearLayout.LayoutParams(0, dp(50), 1.15f).apply { marginEnd = dp(6) })
+        actions.addView(actionButton, LinearLayout.LayoutParams(0, dp(50), 1.15f).apply { marginEnd = dp(6) })
         closeAllButton = Button(this).apply {
             text = "Cerrar todo (0)"
             isAllCaps = false
             isEnabled = false
             setOnClickListener { confirmStopAllVisible() }
         }
-        footer.addView(closeAllButton, LinearLayout.LayoutParams(0, dp(50), 0.85f).apply { marginStart = dp(6) })
+        actions.addView(closeAllButton, LinearLayout.LayoutParams(0, dp(50), 0.85f).apply { marginStart = dp(6) })
+        footer.addView(actions, LinearLayout.LayoutParams(-1, -2))
         root.addView(footer, LinearLayout.LayoutParams(-1, -2))
         setContentView(root)
         SystemBars.applyInsets(this)
@@ -473,6 +502,7 @@ class CodeSuActivity : Activity() {
                 val essential = essentialPackages()
                 packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
                     .asSequence()
+                    .filterNot { it.packageName == packageName }
                     .map { appInfo ->
                         val label = runCatching { packageManager.getApplicationLabel(appInfo).toString() }
                             .getOrDefault(appInfo.packageName)
@@ -557,7 +587,7 @@ class CodeSuActivity : Activity() {
                 SourceMode.SYSTEM -> app.isSystem
                 SourceMode.ALL -> true
             }
-            sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
+            app.packageName != packageName && sourceMatches && (!hideCriticalApps || !app.isEssential) && (needle.isEmpty()
                 || app.label.lowercase(java.util.Locale.ROOT).contains(needle)
                 || app.packageName.lowercase(java.util.Locale.ROOT).contains(needle))
         }
@@ -733,7 +763,9 @@ class CodeSuActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(12), dp(if (compactRows) 5 else 9), dp(8), dp(if (compactRows) 5 else 9))
-                background = rounded(panel, dp(16)).apply { setStroke(dp(1), 0xFF293449.toInt()) }
+                val dimmed = app.packageName in closedPackages || app.packageName in hibernatedPackages
+                val tone = if (dimmed) 0xFF101319.toInt() else panel
+                background = rounded(tone, dp(16)).apply { setStroke(dp(1), if (dimmed) 0xFF252A32.toInt() else 0xFF293449.toInt()) }
             }
             row.addView(ImageView(this).apply {
                 setImageDrawable(app.icon)
@@ -741,15 +773,16 @@ class CodeSuActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(if (compactRows) 30 else 38), dp(if (compactRows) 30 else 38)))
             val copy = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                addView(label(app.label, 13f, Color.WHITE, true).apply { maxLines = 1 })
+                addView(label(app.label, 13f, if (dimmed) 0xFF828894.toInt() else Color.WHITE, true).apply { maxLines = 1 })
                 addView(label(app.packageName, 10f, muted).apply { maxLines = 1 })
                 val stateView = label("", 9f, muted)
-                setRunningLabel(stateView, app.isRunning)
+                setRunningLabel(stateView, app.isRunning, app.packageName)
                 runningLabels[app.packageName] = stateView
                 addView(stateView)
                 if (app.isEngineProtected) {
                     addView(label("Protegida · necesaria para CodeSu/Shizuku", 9f, 0xFFFBBF24.toInt()))
                 }
+                if (app.packageName in hibernatedPackages) addView(label("Hibernada por CodeSu", 9f, 0xFF858C98.toInt()))
             }
             row.addView(copy, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
             val check = CheckBox(this).apply {
@@ -783,10 +816,12 @@ class CodeSuActivity : Activity() {
             infoText.text = appListSummary(visibleCandidates(), targetCount)
         }
         actionButton.text = "Cerrar seleccionadas ($targetCount)"
-        actionButton.isEnabled = targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        actionButton.isEnabled = !isProcessing && targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        hibernateButton.text = if (targetCandidates().any { it.packageName in hibernatedPackages }) "Reactivar seleccionadas (${targetCount})" else "Hibernar seleccionadas ($targetCount)"
+        hibernateButton.isEnabled = !isProcessing && targetCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
         val allCount = visibleCandidates().count { !it.isEngineProtected }
         closeAllButton.text = "Cerrar todo ($allCount)"
-        closeAllButton.isEnabled = allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
+        closeAllButton.isEnabled = !isProcessing && allCount > 0 && SystemCleaner.refreshStatus() == SystemCleaner.Status.READY
     }
 
     private fun appListSummary(visible: List<Candidate>, targetCount: Int = targetCandidates().size): String {
@@ -797,11 +832,22 @@ class CodeSuActivity : Activity() {
 
     private fun updateLiveStateBadges() {
         runningLabels.forEach { (packageName, view) ->
-            setRunningLabel(view, if (runningStatusAvailable) packageName in runningPackages else null)
+            setRunningLabel(view, if (runningStatusAvailable) packageName in runningPackages else null, packageName)
         }
     }
 
-    private fun setRunningLabel(view: TextView, running: Boolean?) {
+    private fun setRunningLabel(view: TextView, running: Boolean?, packageName: String? = null) {
+        val pkg = packageName ?: runningLabels.entries.firstOrNull { it.value === view }?.key
+        if (running == true && pkg != null) {
+            val changed = closedPackages.remove(pkg) or hibernatedPackages.remove(pkg)
+            if (changed) persistPreferences()
+        }
+        if (running != true && pkg != null && pkg in closedPackages) {
+            view.text = "Cerrada por CodeSu"
+            view.setTextColor(0xFF747B86.toInt())
+            view.typeface = Typeface.DEFAULT
+            return
+        }
         view.text = when (running) {
             true -> "En ejecución"
             false -> "Inactiva"
@@ -834,6 +880,23 @@ class CodeSuActivity : Activity() {
             .show()
     }
 
+    private fun confirmHibernateTargets() {
+        val selected = targetCandidates()
+        if (selected.isEmpty()) return
+        val restoring = selected.any { it.packageName in hibernatedPackages }
+        val targets = if (restoring) selected.filter { it.packageName in hibernatedPackages } else selected
+        AlertDialog.Builder(this)
+            .setTitle(if (restoring) "Reactivar aplicaciones · ${targets.size}" else "Hibernar aplicaciones · ${targets.size}")
+            .setMessage(if (restoring)
+                "Android retirará la hibernación de las apps seleccionadas. La disponibilidad depende de la versión del sistema y del fabricante."
+            else "Android pondrá en hibernación las apps seleccionadas. Puede detener trabajos y notificaciones, y revocar permisos concedidos automáticamente. CodeHub y Shizuku están excluidos.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton(if (restoring) "Reactivar" else "Hibernar") { _, _ ->
+                stopPackages(targets, if (restoring) CodeSuUserService.LEVEL_UNHIBERNATE else CodeSuUserService.LEVEL_HIBERNATE)
+            }
+            .show()
+    }
+
     private fun confirmStopAllVisible() {
         val targets = visibleCandidates().filterNot { it.isEngineProtected }
         if (targets.isEmpty()) return
@@ -854,34 +917,86 @@ class CodeSuActivity : Activity() {
         else -> "Deep"
     }
 
-    private fun stopPackages(targets: List<Candidate>) {
+    private fun stopPackages(targets: List<Candidate>, operationLevel: Int = killMode) {
+        isProcessing = true
         actionButton.isEnabled = false
+        hibernateButton.isEnabled = false
         actionButton.text = "Conectando con Shizuku…"
+        closeAllButton.isEnabled = false
+        closeProgress.progress = 0
+        closeProgress.visibility = View.VISIBLE
+        closeProgressLabel.text = "Preparando cierre · 0%"
         Thread({
             val response = runCatching {
                 val service = bindUserService()
                 val identity = service.diagnostics()
-                val result = service.stopPackages(targets.map { it.packageName }.toTypedArray(), killMode)
-                Triple(
-                    result.getStringArrayList("stopped").orEmpty(),
-                    result.getStringArrayList("failed").orEmpty(),
-                    result.getString("identity") ?: identity,
-                )
+                val stopped = mutableListOf<String>()
+                val failed = mutableListOf<String>()
+                targets.forEachIndexed { index, target ->
+                    val result = service.stopPackages(arrayOf(target.packageName), operationLevel)
+                    stopped += result.getStringArrayList("stopped").orEmpty()
+                    failed += result.getStringArrayList("failed").orEmpty()
+                    val percent = ((index + 1) * 100 / targets.size).coerceIn(0, 100)
+                    runOnUiThread {
+                        closeProgress.progress = percent
+                        val operationText = when (operationLevel) {
+                            CodeSuUserService.LEVEL_HIBERNATE -> "Hibernando aplicaciones"
+                            CodeSuUserService.LEVEL_UNHIBERNATE -> "Reactivando aplicaciones"
+                            else -> "Cerrando aplicaciones"
+                        }
+                        closeProgressLabel.text = "$operationText · $percent% · ${index + 1}/${targets.size}"
+                        if (target.packageName in stopped) {
+                            when (operationLevel) {
+                                CodeSuUserService.LEVEL_HIBERNATE -> {
+                                    hibernatedPackages += target.packageName
+                                    runningPackages = runningPackages - target.packageName
+                                }
+                                CodeSuUserService.LEVEL_UNHIBERNATE -> hibernatedPackages -= target.packageName
+                                else -> {
+                                    closedPackages += target.packageName
+                                    runningPackages = runningPackages - target.packageName
+                                }
+                            }
+                            persistPreferences()
+                            updateLiveStateBadges()
+                            renderApps()
+                        }
+                    }
+                }
+                Triple(stopped, failed, identity)
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 response.onSuccess { (stopped, failed, identity) ->
                     val failedNames = failed.mapNotNull { pkg -> allApps.firstOrNull { it.packageName == pkg }?.label ?: pkg }
                     val message = buildString {
-                        append("Detenidas: ${stopped.size} · Fallidas: ${failed.size}\n")
+                        val resultLabel = when (operationLevel) {
+                            CodeSuUserService.LEVEL_HIBERNATE -> "Hibernadas"
+                            CodeSuUserService.LEVEL_UNHIBERNATE -> "Reactivadas"
+                            else -> "Detenidas"
+                        }
+                        append("$resultLabel: ${stopped.size} · Fallidas: ${failed.size}\n")
                         append("Motor: UserService Shizuku ($identity)")
                         if (failedNames.isNotEmpty()) append("\nNo se completó: ${failedNames.joinToString()}")
-                        if (killMode == CodeSuUserService.LEVEL_BACKGROUND) append("\nSoft solo cierra procesos que Android considera seguros de terminar.")
-                        if (killMode == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer usa force-stop. CodeHub no necesita root.")
+                        if (operationLevel == CodeSuUserService.LEVEL_BACKGROUND) append("\nSoft solo cierra procesos que Android considera seguros de terminar.")
+                        if (operationLevel == CodeSuUserService.LEVEL_KILLER && !identity.contains("uid=0")) append("\nCon Shizuku ADB, Killer usa force-stop. CodeHub no necesita root.")
                     }
+                    if (operationLevel == CodeSuUserService.LEVEL_HIBERNATE) closeProgressLabel.text = "100% completado · ${stopped.size} hibernadas · ${failed.size} con error"
+                    else if (operationLevel == CodeSuUserService.LEVEL_UNHIBERNATE) closeProgressLabel.text = "100% completado · ${stopped.size} reactivadas · ${failed.size} con error"
+                    closeProgress.progress = 100
+                    if (operationLevel != CodeSuUserService.LEVEL_HIBERNATE && operationLevel != CodeSuUserService.LEVEL_UNHIBERNATE) {
+                        closeProgressLabel.text = "100% completado · ${stopped.size} cerradas · ${failed.size} con error"
+                    }
+                    isProcessing = false
+                    renderApps()
                     AlertDialog.Builder(this).setTitle("CodeSu").setMessage(message).setPositiveButton("Listo", null).show()
                     refreshRunningState()
                 }.onFailure { error ->
+                    isProcessing = false
+                    closeProgressLabel.text = "Operación interrumpida · ${closeProgress.progress}%"
+                    closeProgress.visibility = View.VISIBLE
+                    actionButton.text = "Cerrar seleccionadas (${targetCandidates().size})"
+                    updateActionButton()
                     AlertDialog.Builder(this)
                         .setTitle("Shizuku no pudo detener las apps")
                         .setMessage(error.message ?: error.javaClass.simpleName)
@@ -915,6 +1030,8 @@ class CodeSuActivity : Activity() {
     private fun persistPreferences() {
         prefs.edit()
             .putStringSet("selected_packages", selectedPackages.toSet())
+            .putStringSet("closed_packages", closedPackages.toSet())
+            .putStringSet("hibernated_packages", hibernatedPackages.toSet())
             .putInt("source_mode", sourceMode.ordinal)
             .putInt("selection_mode", selectionMode.ordinal)
             .putInt("kill_mode", killMode)

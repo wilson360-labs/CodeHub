@@ -133,6 +133,18 @@ public class MainActivity extends Activity {
             @Override public void onOpenProfile() { openNativeProfile(); }
             @Override public void onOpenWeather() { openNativeWeather(); }
             @Override public void onOpenCodeSu() { openNativeCodeSu(); }
+            @Override public void onManagePrivacyVpn(boolean start) {
+                if (start) {
+                    Intent intent = new Intent(MainActivity.this, CodeHubPrivacyActivity.class);
+                    intent.putExtra(CodeHubPrivacyActivity.EXTRA_START, true);
+                    startActivity(intent);
+                } else {
+                    stopService(new Intent(MainActivity.this, CodeHubDnsVpnService.class));
+                    getSharedPreferences(CodeHubDnsVpnService.PREFS, MODE_PRIVATE).edit()
+                        .putBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false).apply();
+                    if (nativeHome != null) nativeHome.refreshPrivacyStatus();
+                }
+            }
             @Override public void onForceStopApp() { confirmForceStopApp(); }
             @Override public void onOpenWebsite(String path) {
                 String suffix = path == null || path.isEmpty() ? "/" : path;
@@ -1177,6 +1189,7 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         try { if (nativeHome != null) nativeHome.refreshActivitySummary(); } catch (Throwable ignored) {}
+        try { if (nativeHome != null) nativeHome.refreshPrivacyStatus(); } catch (Throwable ignored) {}
         if (webView != null) webView.onResume();
         injectNativeFlags(webView);
         syncNativeSessionToWebView(webView);

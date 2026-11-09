@@ -554,7 +554,7 @@ class NativeWeatherActivity : Activity() {
     private fun addBackgroundControls() {
         content.addView(text("Servicios de fondo", 16f, Color.WHITE, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(20); bottomMargin = dp(7) })
         val widget = Switch(this).apply {
-            text = "Alertas de clima"; textSize = 13f; setTextColor(Color.WHITE)
+            text = "Alertas de clima y widget"; textSize = 13f; setTextColor(Color.WHITE)
             isChecked = prefs.getBoolean("weather_notification_enabled", true)
             setOnCheckedChangeListener { _, checked ->
                 if (checked && Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {

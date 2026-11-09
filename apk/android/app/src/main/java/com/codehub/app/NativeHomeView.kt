@@ -38,6 +38,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         fun onOpenProfile()
         fun onOpenWeather()
         fun onOpenCodeSu()
+        fun onManagePrivacyVpn(start: Boolean)
         fun onForceStopApp()
         fun onOpenWebsite(path: String)
     }
@@ -59,6 +60,8 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
     private lateinit var weatherCard: View
     private lateinit var toolsCard: View
     private lateinit var optimizerCard: View
+    private lateinit var privacyCard: View
+    private lateinit var privacyStatus: TextView
     private lateinit var forceStopCard: View
     private lateinit var websiteCard: View
     private lateinit var profilePill: View
@@ -125,6 +128,9 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         }
         addEntranceTarget(content, optimizerCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
 
+        privacyCard = buildPrivacyCard()
+        addEntranceTarget(content, privacyCard, LayoutParams(-1, -2).apply { topMargin = dp(10) })
+
         forceStopCard = featureCard(R.drawable.ic_home_power, "Forzar cierre de app", "Abrir los ajustes Android para dormir CodeHub y sus servicios", 0xFFFF8A8A.toInt()) {
             listener.onForceStopApp()
         }
@@ -183,6 +189,7 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
         tourSteps += Triple(weatherCard, "Clima", "Pronóstico y alertas para tu ubicación.")
         tourSteps += Triple(toolsCard, "Herramientas", "Utilidades y servicios de CodeHub.")
         tourSteps += Triple(optimizerCard, "CodeSu", "Revisa apps activas y detén solo las que elijas. Requiere Shizuku autorizado; no borra datos ni promete aumentar la batería.")
+        tourSteps += Triple(privacyCard, "CodeHub Shield", "Activa un filtro DNS local contra dominios de anuncios y rastreadores. Requiere permiso VPN de Android y puedes detenerlo cuando quieras.")
         tourSteps += Triple(forceStopCard, "Dormir CodeHub", "Android controla el cierre forzado. Este acceso abre Información de la app, donde puedes detener sus servicios; al abrir CodeHub otra vez se reanudan.")
         tourSteps += Triple(websiteCard, "Explora CodeHub", "Abre la experiencia web para comunidad, proyectos, clima y otras secciones.")
         tourSteps += Triple(profilePill, "Tu perfil", "Accede a tu perfil y proyectos de CodeHub.")
@@ -368,6 +375,42 @@ class NativeHomeView(context: Context, private val listener: Listener) : LinearL
                 activeDownloadsLabel.text = if (activeDownloadCount == 0) "Sin descargas en curso" else "$activeDownloadCount descarga${if (activeDownloadCount == 1) "" else "s"} en curso"
             }
         }, "CodeHub-home-summary").start()
+    }
+
+    fun refreshPrivacyStatus() {
+        if (!::privacyStatus.isInitialized) return
+        val active = context.getSharedPreferences(CodeHubDnsVpnService.PREFS, Context.MODE_PRIVATE)
+            .getBoolean(CodeHubDnsVpnService.KEY_ACTIVE, false)
+        privacyStatus.text = if (active) "● VPN conectada · anuncios y rastreadores filtrados" else "○ VPN desconectada · protección DNS apagada"
+        privacyStatus.setTextColor(if (active) 0xFF4ADE80.toInt() else muted)
+    }
+
+    private fun buildPrivacyCard(): View = LinearLayout(context).apply {
+        orientation = VERTICAL
+        setPadding(dp(16), dp(14), dp(16), dp(14))
+        background = rippleSurface(0xFF101C20.toInt(), dp(20), 0xFF276A68.toInt())
+        val heading = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        heading.addView(ImageView(context).apply {
+            setImageResource(R.drawable.ic_home_privacy)
+            imageTintList = ColorStateList.valueOf(0xFF5EEAD4.toInt())
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LayoutParams(dp(34), dp(34)))
+        val copy = LinearLayout(context).apply {
+            orientation = VERTICAL
+            addView(label("CodeHub Shield", 15f, Color.WHITE, true))
+            addView(label("VPN DNS · privacidad móvil", 11f, muted, false), LayoutParams(-1, -2).apply { topMargin = dp(2) })
+        }
+        heading.addView(copy, LayoutParams(0, -2, 1f).apply { marginStart = dp(10) })
+        addView(heading)
+        privacyStatus = label("Comprobando protección…", 10f, muted, false)
+        addView(privacyStatus, LayoutParams(-1, -2).apply { topMargin = dp(9) })
+        val actions = LinearLayout(context).apply { orientation = HORIZONTAL }
+        actions.addView(button("Activar", 0xFF174D49.toInt(), 0xFF99F6E4.toInt()) { listener.onManagePrivacyVpn(true) },
+            LayoutParams(0, dp(40), 1f).apply { marginEnd = dp(5); topMargin = dp(9) })
+        actions.addView(button("Detener", 0xFF36242A.toInt(), 0xFFFCA5A5.toInt()) { listener.onManagePrivacyVpn(false) },
+            LayoutParams(0, dp(40), 1f).apply { marginStart = dp(5); topMargin = dp(9) })
+        addView(actions)
+        refreshPrivacyStatus()
     }
 
     private fun buildActivityCard(): View = LinearLayout(context).apply {

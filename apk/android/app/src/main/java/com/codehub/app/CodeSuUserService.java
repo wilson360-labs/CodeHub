@@ -28,6 +28,8 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
     public static final int LEVEL_BACKGROUND = 0;
     public static final int LEVEL_FORCE_STOP = 1;
     public static final int LEVEL_KILLER = 2;
+    public static final int LEVEL_HIBERNATE = 3;
+    public static final int LEVEL_UNHIBERNATE = 4;
     private static final String OWN_PACKAGE = "com.codehub.app";
     private static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
     private static final Pattern PACKAGE_PATTERN = Pattern.compile("[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)+");
@@ -167,8 +169,15 @@ public final class CodeSuUserService extends ICodeSuRemoteService.Stub {
         if (packageNames != null) {
             for (String packageName : packageNames) {
                 if (!isAllowedTarget(packageName)
-                        || (level != LEVEL_BACKGROUND && level != LEVEL_FORCE_STOP && level != LEVEL_KILLER)) {
+                        || (level < LEVEL_BACKGROUND || level > LEVEL_UNHIBERNATE)) {
                     failed.add(packageName == null ? "(desconocido)" : packageName);
+                    continue;
+                }
+                if (level == LEVEL_HIBERNATE || level == LEVEL_UNHIBERNATE) {
+                    String state = level == LEVEL_HIBERNATE ? "true" : "false";
+                    String output = readCommand(new String[]{"cmd", "app_hibernation", "set-state", packageName, state});
+                    if (output.toLowerCase(java.util.Locale.ROOT).contains("error")) failed.add(packageName);
+                    else stopped.add(packageName);
                     continue;
                 }
                 String command = level == LEVEL_BACKGROUND ? "kill" : "force-stop";

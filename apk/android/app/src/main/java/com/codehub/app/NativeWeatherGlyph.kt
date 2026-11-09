@@ -48,9 +48,9 @@ internal class NativeWeatherGlyph(
         val isPartlyCloudy = code in 1..2
 
         if (!isCloudy || isPartlyCloudy) drawSun(canvas, if (isPartlyCloudy) 67f else 50f, if (isPartlyCloudy) 32f else 43f, effectPhase)
-        if (isCloudy) drawCloud(canvas, if (isStorm) 0xFFE8F0FF.toInt() else 0xFFF1F7FF.toInt(), effectPhase)
+        if (isCloudy) drawCloud(canvas, if (isStorm) 0xFFE8F0FF.toInt() else 0xFFF1F7FF.toInt())
         when {
-            isFog -> drawFog(canvas, effectPhase)
+            isFog -> drawFog(canvas)
             isRain -> drawRain(canvas, effectPhase)
             isSnow -> drawSnow(canvas, effectPhase)
             isStorm -> drawLightning(canvas, effectPhase)
@@ -75,9 +75,7 @@ internal class NativeWeatherGlyph(
         canvas.restore()
     }
 
-    private fun drawCloud(canvas: Canvas, color: Int, phase: Float) {
-        canvas.save()
-        canvas.translate(kotlin.math.sin(phase * Math.PI * 2.0).toFloat() * 1.6f, 0f)
+    private fun drawCloud(canvas: Canvas, color: Int) {
         val cloud = Path().apply {
             moveTo(24f, 69f)
             cubicTo(14f, 69f, 9f, 62f, 9f, 53f)
@@ -95,7 +93,6 @@ internal class NativeWeatherGlyph(
         paint.style = Paint.Style.FILL
         paint.color = color
         canvas.drawPath(cloud, paint)
-        canvas.restore()
     }
 
     private fun drawRain(canvas: Canvas, phase: Float) {
@@ -128,13 +125,12 @@ internal class NativeWeatherGlyph(
         canvas.drawPath(bolt, paint)
     }
 
-    private fun drawFog(canvas: Canvas, phase: Float) {
+    private fun drawFog(canvas: Canvas) {
         paint.color = 0xFFB8D6E6.toInt()
         paint.strokeWidth = 4f
         paint.style = Paint.Style.STROKE
-        val drift = kotlin.math.sin(phase * Math.PI * 2.0).toFloat() * 5f
-        canvas.drawLine(21f + drift, 78f, 79f + drift, 78f, paint)
-        canvas.drawLine(29f - drift, 88f, 71f - drift, 88f, paint)
+        canvas.drawLine(21f, 78f, 79f, 78f, paint)
+        canvas.drawLine(29f, 88f, 71f, 88f, paint)
     }
 
     private fun startFloat() {
