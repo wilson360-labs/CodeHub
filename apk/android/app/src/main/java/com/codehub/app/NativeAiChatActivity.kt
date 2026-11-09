@@ -27,9 +27,10 @@ import android.view.inputmethod.EditorInfo
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.TranslateAnimation
+import android.view.animation.ScaleAnimation
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -140,22 +141,24 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var emiVoiceControls: LinearLayout
     private lateinit var quickActionsContainer: View
     private lateinit var micButton: ImageView
+    private lateinit var micHalo: View
     private lateinit var clearChatButton: ImageView
     private var brandMorphSwitcher: TextSwitcher? = null
     private var brandMorphIndex = 0
     private var sendButtonBusy = false
     private val brandMorphPhrases = listOf(
-        "WIL.E COPILOT · IA personal",
-        "Ideas claras. Respuestas útiles.",
-        "Crea, explora y resuelve.",
-        "Tu espacio para pensar en voz alta."
+        "CodeHub",
+        "Developer",
+        "Full Stack",
+        "Freelancer",
+        "Guatemala"
     )
     private val brandMorphTick = object : Runnable {
         override fun run() {
             val switcher = brandMorphSwitcher ?: return
             brandMorphIndex = (brandMorphIndex + 1) % brandMorphPhrases.size
             switcher.setText(brandMorphPhrases[brandMorphIndex])
-            switcher.postDelayed(this, 4200L)
+            switcher.postDelayed(this, 3000L)
         }
     }
     private lateinit var tts: TextToSpeech
@@ -206,28 +209,24 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             installPressFeedback(this)
         }, LinearLayout.LayoutParams(dp(42), dp(48)))
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val codeHubTitle = text("CodeHub", 18f, Color.WHITE, true).apply {
-            letterSpacing = .035f
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            alpha = 0f
-            scaleX = .96f
-            scaleY = .96f
-        }
-        brand.addView(codeHubTitle)
         val morphLine = TextSwitcher(this).apply {
             setFactory {
-                text(brandMorphPhrases.first(), 10.5f, 0xFF98A8BF.toInt()).apply { maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END }
+                text(brandMorphPhrases.first(), 18f, Color.WHITE, true).apply {
+                    letterSpacing = .025f
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                }
             }
             setCurrentText(brandMorphPhrases.first())
             setInAnimation(morphAnimation(true))
             setOutAnimation(morphAnimation(false))
-            contentDescription = "WIL.E COPILOT, inteligencia artificial de CodeHub"
+            contentDescription = "Marca CodeHub con animación de texto"
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             brandMorphSwitcher = this
         }
-        brand.addView(morphLine, LinearLayout.LayoutParams(-1, dp(20)))
-        codeHubTitle.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(480L)
-            .setInterpolator(DecelerateInterpolator()).start()
+        brand.addView(morphLine, LinearLayout.LayoutParams(-1, -2))
+        brand.addView(text("WIL.E COPILOT · IA personal", 10.5f, 0xFF98A8BF.toInt()))
         top.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
         clearChatButton = ImageView(this).apply {
             setImageResource(R.drawable.ic_ai_trash)
@@ -341,13 +340,39 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
             }
         }
         composer.addView(input, LinearLayout.LayoutParams(-1, -2))
-        val composeActions = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        composeActions.addView(smallIconAction(R.drawable.ic_ai_attach, "Adjuntar imagen o PDF") { chooseAttachment() }, LinearLayout.LayoutParams(dp(42), dp(42)))
-        micButton = smallIconAction(R.drawable.ic_ai_mic, "Dictar mensaje") {
-            animateMicPulse()
-            startSpeechInput()
+        val composeActions = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
         }
-        composeActions.addView(micButton, LinearLayout.LayoutParams(dp(42), dp(42)))
+        composeActions.addView(smallIconAction(R.drawable.ic_ai_attach, "Adjuntar imagen o PDF") { chooseAttachment() }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        micHalo = View(this).apply {
+            background = actionIconBackground(Color.TRANSPARENT, 0xFF55DFC1.toInt())
+            alpha = 0f
+        }
+        micButton = ImageView(this).apply {
+            setImageResource(R.drawable.ic_ai_mic)
+            imageTintList = android.content.res.ColorStateList.valueOf(0xFFE5FFF8.toInt())
+            scaleType = ImageView.ScaleType.CENTER
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF277D75.toInt(), 0xFF16504F.toInt())).apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp(1), 0xFF62DCC2.toInt())
+            }
+            elevation = dp(2).toFloat()
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        val micAction = FrameLayout(this).apply {
+            contentDescription = "Dictar mensaje"
+            isClickable = true
+            isFocusable = true
+            clipChildren = false
+            clipToPadding = false
+            setOnClickListener { animateMicPulse(); startSpeechInput() }
+            addView(micHalo, FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER))
+            addView(micButton, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.CENTER))
+            installPressFeedback(this)
+        }
+        composeActions.addView(micAction, LinearLayout.LayoutParams(dp(50), dp(50)))
         composeActions.addView(text("Enter enviar · Shift+Enter nueva línea", 10f, 0xFF7F8DA3.toInt()).apply {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(5), 0, dp(4), 0)
@@ -386,7 +411,9 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
 
     private fun morphAnimation(entering: Boolean) = AnimationSet(true).apply {
         addAnimation(AlphaAnimation(if (entering) 0f else 1f, if (entering) 1f else 0f))
-        if (entering) addAnimation(TranslateAnimation(0f, 0f, dp(5).toFloat(), 0f))
+        val fromScale = if (entering) .90f else 1f
+        val toScale = if (entering) 1f else .90f
+        addAnimation(ScaleAnimation(fromScale, toScale, fromScale, toScale, 1, .5f, 1, .5f))
         duration = if (entering) 360L else 220L
         interpolator = DecelerateInterpolator()
     }
@@ -398,11 +425,23 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun animateMicPulse() {
-        if (!::micButton.isInitialized) return
+        if (!::micButton.isInitialized || !::micHalo.isInitialized) return
         micButton.animate().cancel()
-        micButton.animate().scaleX(1.12f).scaleY(1.12f).setDuration(130L).withEndAction {
-            if (!isFinishing && !isDestroyed) micButton.animate().scaleX(1f).scaleY(1f).setDuration(210L).start()
+        micButton.animate().rotation(-7f).scaleX(.92f).scaleY(.92f).setDuration(100L).withEndAction {
+            if (!isFinishing && !isDestroyed) {
+                micButton.animate().rotation(0f).scaleX(1f).scaleY(1f).setDuration(220L)
+                    .setInterpolator(DecelerateInterpolator()).start()
+            }
         }.start()
+        micHalo.animate().cancel()
+        micHalo.scaleX = .78f
+        micHalo.scaleY = .78f
+        micHalo.alpha = .78f
+        micHalo.animate().scaleX(1.16f).scaleY(1.16f).alpha(0f).setDuration(560L)
+            .setInterpolator(DecelerateInterpolator()).withEndAction {
+                micHalo.scaleX = 1f
+                micHalo.scaleY = 1f
+            }.start()
     }
 
     private fun renderEmiVoiceControls() {
@@ -1158,7 +1197,7 @@ class NativeAiChatActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onResume() {
         super.onResume()
         brandMorphSwitcher?.removeCallbacks(brandMorphTick)
-        brandMorphSwitcher?.postDelayed(brandMorphTick, 4200L)
+        brandMorphSwitcher?.postDelayed(brandMorphTick, 3000L)
     }
     override fun onPause() {
         brandMorphSwitcher?.removeCallbacks(brandMorphTick)
