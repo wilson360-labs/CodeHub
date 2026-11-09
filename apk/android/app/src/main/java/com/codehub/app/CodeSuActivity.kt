@@ -759,11 +759,11 @@ class CodeSuActivity : Activity() {
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
         }
         visible.forEach { app ->
+            val dimmed = app.packageName in closedPackages || app.packageName in hibernatedPackages
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(12), dp(if (compactRows) 5 else 9), dp(8), dp(if (compactRows) 5 else 9))
-                val dimmed = app.packageName in closedPackages || app.packageName in hibernatedPackages
                 val tone = if (dimmed) 0xFF101319.toInt() else panel
                 background = rounded(tone, dp(16)).apply { setStroke(dp(1), if (dimmed) 0xFF252A32.toInt() else 0xFF293449.toInt()) }
             }
